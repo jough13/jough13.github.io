@@ -1,5 +1,5 @@
 // --- FIREBASE INITIALIZATION ---
- const firebaseConfig = {
+const firebaseConfig = {
     apiKey: "AIzaSyCkQ7H6KzvnLFTYOblS1l12RR2tv7Os6iY",
     authDomain: "caves-and-castles.firebaseapp.com",
     projectId: "caves-and-castles",
@@ -7,7 +7,7 @@
     messagingSenderId: "555632047629",
     appId: "1:555632047629:web:32ae69c34b7dbc13578744",
     measurementId: "G-E2QZTWE6N6"
-  };
+};
 
 // Initialize Firebase
 const app = firebase.initializeApp(firebaseConfig);
@@ -24,17 +24,36 @@ let unsubscribePlayerListener;
 let worldStateListeners = {};
 
 const TILE_DATA = {
-    '#': { type: 'lore', message: 'An ancient, weathered stone stands here. The markings are faded.' },
-    '☗': { type: 'lore', message: [ '"...the king has fallen..."', '"...his castle to the west lies empty..."', '"...but a dark presence still lingers."' ] },
-    '⛰': { type: 'dungeon_entrance', getCaveId: (x, y) => `cave_${x}_${y}` },
-    '>': { type: 'dungeon_exit' },
-    '🏰': { type: 'castle_entrance', getCastleId: (x, y) => `castle_${x}_${y}` },
-    'X': { type: 'castle_exit' },
-    'B': { type: 'lore', message: 'This is a bounty board, covered in notices.' },
-    '📖': { 
-      type: 'journal', 
-      title: 'The King\'s Lament',
-      content: `Day 34 since the fall...\n\nThe stones of this castle weep. I hear them every night. The whispers tell of a power that sleeps beneath the mountains, a power we were foolish to awaken.\n\nMy knights are gone. My kingdom is ash. All that remains is this cursed immortality, a silent witness to my failure.` 
+    '#': {
+        type: 'lore',
+        message: 'An ancient, weathered stone stands here. The markings are faded.'
+    },
+    '☗': {
+        type: 'lore',
+        message: ['"...the king has fallen..."', '"...his castle to the west lies empty..."', '"...but a dark presence still lingers."']
+    },
+    '⛰': {
+        type: 'dungeon_entrance',
+        getCaveId: (x, y) => `cave_${x}_${y}`
+    },
+    '>': {
+        type: 'dungeon_exit'
+    },
+    '🏰': {
+        type: 'castle_entrance',
+        getCastleId: (x, y) => `castle_${x}_${y}`
+    },
+    'X': {
+        type: 'castle_exit'
+    },
+    'B': {
+        type: 'lore',
+        message: 'This is a bounty board, covered in notices.'
+    },
+    '📖': {
+        type: 'journal',
+        title: 'The King\'s Lament',
+        content: `Day 34 since the fall...\n\nThe stones of this castle weep. I hear them every night. The whispers tell of a power that sleeps beneath the mountains, a power we were foolish to awaken.\n\nMy knights are gone. My kingdom is ash. All that remains is this cursed immortality, a silent witness to my failure.`
     },
 };
 
@@ -43,21 +62,30 @@ const CAVE_THEMES = {
         name: 'A Dark Cave',
         wall: '▓',
         floor: '.',
-        colors: { wall: '#422006', floor: '#a16207' },
+        colors: {
+            wall: '#422006',
+            floor: '#a16207'
+        },
         decorations: ['+', 'o', '$', '📖']
     },
     ICE: {
         name: 'A Glacial Cavern',
         wall: '▒', // A lighter, "icy" wall
         floor: ':', // A "slick" floor
-        colors: { wall: '#99f6e4', floor: '#e0f2fe' },
+        colors: {
+            wall: '#99f6e4',
+            floor: '#e0f2fe'
+        },
         decorations: ['S', 'Y', '$'] // Stamina/Psyche items are more common
     },
     FIRE: {
         name: 'A Volcanic Fissure',
         wall: '▓',
         floor: '.', // Use a standard floor tile
-        colors: { wall: '#450a0a', floor: '#ef4444' }, // The red color makes it look like lava
+        colors: {
+            wall: '#450a0a',
+            floor: '#ef4444'
+        }, // The red color makes it look like lava
         decorations: ['+', '$'] // Only healing and gold
     }
 };
@@ -116,15 +144,46 @@ const restartButton = document.getElementById('restartButton');
 canvas.width = VIEWPORT_WIDTH * TILE_SIZE;
 canvas.height = VIEWPORT_HEIGHT * TILE_SIZE;
 
-const DAY_CYCLE_STOPS = [
-    { time: 0,    color: [10, 10, 40], opacity: 0.10 },
-    { time: 350,  color: [20, 20, 80], opacity: 0.12 },
-    { time: 390,  color: [255, 150, 80], opacity: 0.08 },
-    { time: 430,  color: [240, 255, 255], opacity: 0.0 },
-    { time: 1070, color: [240, 255, 255], opacity: 0.0 },
-    { time: 1110, color: [255, 150, 80], opacity: 0.08 },
-    { time: 1150, color: [20, 20, 80], opacity: 0.12 },
-    { time: 1440, color: [10, 10, 40], opacity: 0.10 }
+const DAY_CYCLE_STOPS = [{
+        time: 0,
+        color: [10, 10, 40],
+        opacity: 0.10
+    },
+    {
+        time: 350,
+        color: [20, 20, 80],
+        opacity: 0.12
+    },
+    {
+        time: 390,
+        color: [255, 150, 80],
+        opacity: 0.08
+    },
+    {
+        time: 430,
+        color: [240, 255, 255],
+        opacity: 0.0
+    },
+    {
+        time: 1070,
+        color: [240, 255, 255],
+        opacity: 0.0
+    },
+    {
+        time: 1110,
+        color: [255, 150, 80],
+        opacity: 0.08
+    },
+    {
+        time: 1150,
+        color: [20, 20, 80],
+        opacity: 0.12
+    },
+    {
+        time: 1440,
+        color: [10, 10, 40],
+        opacity: 0.10
+    }
 ];
 
 function handleAuthError(error) {
@@ -166,13 +225,24 @@ function createDefaultPlayerState() {
         x: 0,
         y: 0,
         coins: 0,
-        health: 10, maxHealth: 10,
-        mana: 10, maxMana: 10,
-        stamina: 10, maxStamina: 10,
-        psyche: 10, maxPsyche: 10,
-        strength: 1, wits: 1, luck: 1,
-        constitution: 1, dexterity: 1, charisma: 1,
-        willpower: 1, perception: 1, endurance: 1, intuition: 1,
+        health: 10,
+        maxHealth: 10,
+        mana: 10,
+        maxMana: 10,
+        stamina: 10,
+        maxStamina: 10,
+        psyche: 10,
+        maxPsyche: 10,
+        strength: 1,
+        wits: 1,
+        luck: 1,
+        constitution: 1,
+        dexterity: 1,
+        charisma: 1,
+        willpower: 1,
+        perception: 1,
+        endurance: 1,
+        intuition: 1,
         inventory: []
     };
 }
@@ -180,10 +250,10 @@ function createDefaultPlayerState() {
 async function restartGame() {
     // Get the default state for a new character
     const defaultState = createDefaultPlayerState();
-    
+
     // Update the current game state in memory
     Object.assign(gameState.player, defaultState);
-    
+
     gameState.mapMode = 'overworld';
     gameState.currentCastleId = null;
     gameState.currentCaveId = null;
@@ -191,14 +261,14 @@ async function restartGame() {
 
     // Save the new default state to the database
     await playerRef.set(defaultState);
-    
+
     // Update all the UI elements to reflect the new state
     logMessage("Your adventure begins anew...");
     renderStats();
     renderInventory();
     updateRegionDisplay();
     render();
-    
+
     // Hide the game over screen
     gameOverModal.classList.add('hidden');
 }
@@ -227,10 +297,14 @@ function getInterpolatedDayCycleColor(hour, minute) {
 function getOrdinalSuffix(day) {
     if (day > 3 && day < 21) return 'th';
     switch (day % 10) {
-        case 1:  return "st";
-        case 2:  return "nd";
-        case 3:  return "rd";
-        default: return "th";
+        case 1:
+            return "st";
+        case 2:
+            return "nd";
+        case 3:
+            return "rd";
+        default:
+            return "th";
     }
 }
 
@@ -256,8 +330,13 @@ const renderTime = () => {
 };
 
 function Alea(seed) {
-    let s0 = 0, s1 = 0, s2 = 0, c = 1;
-    if (seed == null) { seed = +new Date; }
+    let s0 = 0,
+        s1 = 0,
+        s2 = 0,
+        c = 1;
+    if (seed == null) {
+        seed = +new Date;
+    }
     s0 = (seed >>> 0) * 0x9e3779b9;
     s1 = (seed >>> 0) * 0x9e3779b9;
     s2 = (seed >>> 0) * 0x9e3779b9;
@@ -269,7 +348,9 @@ function Alea(seed) {
     return function() {
         const t = (s0 * 0x9e3779b9 + c * 0x2b759141) | 0;
         c = t < 0 ? 1 : 0;
-        s0 = s1; s1 = s2; s2 = t;
+        s0 = s1;
+        s1 = s2;
+        s2 = t;
         return (s2 >>> 0) / 0x100000000;
     };
 }
@@ -283,23 +364,39 @@ const Perlin = {
         for (let i = 0; i < 256; i++) p[i] = i;
         for (let i = 255; i > 0; i--) {
             const n = Math.floor((i + 1) * random());
-            const t = p[i]; p[i] = p[n]; p[n] = t;
+            const t = p[i];
+            p[i] = p[n];
+            p[n] = t;
         }
-        for (let i=0; i < 256; i++) { this.p[i] = this.p[i + 256] = p[i]; }
+        for (let i = 0; i < 256; i++) {
+            this.p[i] = this.p[i + 256] = p[i];
+        }
     },
     noise: function(x, y, z = 0) {
         const floor = Math.floor;
-        const X = floor(x) & 255, Y = floor(y) & 255, Z = floor(z) & 255;
-        x -= floor(x); y -= floor(y); z -= floor(z);
-        const u = this.fade(x), v = this.fade(y), w = this.fade(z);
-        const A = this.p[X]+Y, AA = this.p[A]+Z, AB = this.p[A+1]+Z, B = this.p[X+1]+Y, BA = this.p[B]+Z, BB = this.p[B+1]+Z;
-        return this.scale(this.lerp(w, this.lerp(v, this.lerp(u, this.grad(this.p[AA], x, y, z), this.grad(this.p[BA], x-1, y, z)), this.lerp(u, this.grad(this.p[AB], x, y-1, z), this.grad(this.p[BB], x-1, y-1, z))), this.lerp(v, this.lerp(u, this.grad(this.p[AA+1], x, y, z-1), this.grad(this.p[BA+1], x-1, y, z-1)), this.lerp(u, this.grad(this.p[AB+1], x, y-1, z-1), this.grad(this.p[BB+1], x-1, y-1, z-1)))));
+        const X = floor(x) & 255,
+            Y = floor(y) & 255,
+            Z = floor(z) & 255;
+        x -= floor(x);
+        y -= floor(y);
+        z -= floor(z);
+        const u = this.fade(x),
+            v = this.fade(y),
+            w = this.fade(z);
+        const A = this.p[X] + Y,
+            AA = this.p[A] + Z,
+            AB = this.p[A + 1] + Z,
+            B = this.p[X + 1] + Y,
+            BA = this.p[B] + Z,
+            BB = this.p[B + 1] + Z;
+        return this.scale(this.lerp(w, this.lerp(v, this.lerp(u, this.grad(this.p[AA], x, y, z), this.grad(this.p[BA], x - 1, y, z)), this.lerp(u, this.grad(this.p[AB], x, y - 1, z), this.grad(this.p[BB], x - 1, y - 1, z))), this.lerp(v, this.lerp(u, this.grad(this.p[AA + 1], x, y, z - 1), this.grad(this.p[BA + 1], x - 1, y, z - 1)), this.lerp(u, this.grad(this.p[AB + 1], x, y - 1, z - 1), this.grad(this.p[BB + 1], x - 1, y - 1, z - 1)))));
     },
     fade: t => t * t * t * (t * (t * 6 - 15) + 10),
     lerp: (t, a, b) => a + t * (b - a),
     grad: (hash, x, y, z) => {
         const h = hash & 15;
-        const u = h < 8 ? x : y, v = h < 4 ? y : h === 12 || h === 14 ? x : z;
+        const u = h < 8 ? x : y,
+            v = h < 4 ? y : h === 12 || h === 14 ? x : z;
         return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
     },
     scale: n => (1 + n) / 2
@@ -318,64 +415,64 @@ function getRegionName(regionX, regionY) {
 }
 
 const TERRAIN_COST = {
-    '^': 3,        // Mountains cost 3 stamina
-    '≈': 2,        // Swamps cost 2 stamina
+    '^': 3, // Mountains cost 3 stamina
+    '≈': 2, // Swamps cost 2 stamina
     '~': Infinity, // Water is impassable
-    'F': 1,        // Forests cost 1 stamina
+    'F': 1, // Forests cost 1 stamina
 };
 
 const ITEM_DATA = {
-    
-    '+': { 
-        name: 'Healing Potion', 
-        type: 'consumable', 
-        effect: (state) => { 
+
+    '+': {
+        name: 'Healing Potion',
+        type: 'consumable',
+        effect: (state) => {
             const oldHealth = state.player.health;
-            state.player.health = Math.min(state.player.maxHealth, state.player.health + HEALING_AMOUNT); 
+            state.player.health = Math.min(state.player.maxHealth, state.player.health + HEALING_AMOUNT);
             if (state.player.health > oldHealth) {
                 triggerStatFlash(statDisplays.health, true); // Flash green
             }
-            logMessage(`Used a Healing Potion. Restored ${HEALING_AMOUNT} health!`); 
-        } 
+            logMessage(`Used a Healing Potion. Restored ${HEALING_AMOUNT} health!`);
+        }
     },
 
-    'o': { 
-        name: 'Mana Orb', 
-        type: 'consumable', 
-        effect: (state) => { 
+    'o': {
+        name: 'Mana Orb',
+        type: 'consumable',
+        effect: (state) => {
             const oldMana = state.player.mana;
-            state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT); 
+            state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT);
             if (state.player.mana > oldMana) {
                 triggerStatFlash(statDisplays.mana, true);
             }
-            logMessage('Used a Mana Orb. Restored mana!'); 
-        } 
+            logMessage('Used a Mana Orb. Restored mana!');
+        }
     },
 
-    'S': { 
-        name: 'Stamina Crystal', 
-        type: 'consumable', 
-        effect: (state) => { 
+    'S': {
+        name: 'Stamina Crystal',
+        type: 'consumable',
+        effect: (state) => {
             const oldStamina = state.player.stamina;
-            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + STAMINA_RESTORE_AMOUNT); 
+            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + STAMINA_RESTORE_AMOUNT);
             if (state.player.stamina > oldStamina) {
                 triggerStatFlash(statDisplays.stamina, true);
             }
-            logMessage(`Used a Stamina Crystal. Restored ${STAMINA_RESTORE_AMOUNT} stamina!`); 
-        } 
+            logMessage(`Used a Stamina Crystal. Restored ${STAMINA_RESTORE_AMOUNT} stamina!`);
+        }
     },
 
-    'Y': { 
-        name: 'Psyche Shard', 
-        type: 'consumable', 
-        effect: (state) => { 
+    'Y': {
+        name: 'Psyche Shard',
+        type: 'consumable',
+        effect: (state) => {
             const oldPsyche = state.player.psyche;
-            state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT); 
+            state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT);
             if (state.player.psyche > oldPsyche) {
                 triggerStatFlash(statDisplays.psyche, true);
             }
-            logMessage('Used a Psyche Shard. Restored psyche.'); 
-        } 
+            logMessage('Used a Psyche Shard. Restored psyche.');
+        }
     },
 
     '$': {
@@ -397,13 +494,20 @@ const ITEM_DATA = {
 };
 
 const statDisplays = {
-    health: document.getElementById('healthDisplay'), mana: document.getElementById('manaDisplay'),
-    stamina: document.getElementById('staminaDisplay'), psyche: document.getElementById('psycheDisplay'),
-    strength: document.getElementById('strengthDisplay'), wits: document.getElementById('witsDisplay'),
-    constitution: document.getElementById('constitutionDisplay'), dexterity: document.getElementById('dexterityDisplay'),
-    charisma: document.getElementById('charismaDisplay'), luck: document.getElementById('luckDisplay'),
-    willpower: document.getElementById('willpowerDisplay'), perception: document.getElementById('perceptionDisplay'),
-    endurance: document.getElementById('enduranceDisplay'), intuition: document.getElementById('intuitionDisplay'),
+    health: document.getElementById('healthDisplay'),
+    mana: document.getElementById('manaDisplay'),
+    stamina: document.getElementById('staminaDisplay'),
+    psyche: document.getElementById('psycheDisplay'),
+    strength: document.getElementById('strengthDisplay'),
+    wits: document.getElementById('witsDisplay'),
+    constitution: document.getElementById('constitutionDisplay'),
+    dexterity: document.getElementById('dexterityDisplay'),
+    charisma: document.getElementById('charismaDisplay'),
+    luck: document.getElementById('luckDisplay'),
+    willpower: document.getElementById('willpowerDisplay'),
+    perception: document.getElementById('perceptionDisplay'),
+    endurance: document.getElementById('enduranceDisplay'),
+    intuition: document.getElementById('intuitionDisplay'),
     coins: document.getElementById('coinsDisplay')
 };
 
@@ -420,7 +524,7 @@ const chunkManager = {
     caveThemes: {},
     castleMaps: {},
 
-generateCave(caveId) {
+    generateCave(caveId) {
         if (this.caveMaps[caveId]) return this.caveMaps[caveId];
 
         // 1. Pick a theme for this cave, seeded by its location
@@ -433,11 +537,16 @@ generateCave(caveId) {
         // 2. Generate the map layout
         const CAVE_WIDTH = 50;
         const CAVE_HEIGHT = 50;
-        const map = Array.from({ length: CAVE_HEIGHT }, () => Array(CAVE_WIDTH).fill(theme.wall)); // Use theme's wall
+        const map = Array.from({
+            length: CAVE_HEIGHT
+        }, () => Array(CAVE_WIDTH).fill(theme.wall)); // Use theme's wall
         const random = Alea(stringToSeed(caveId));
         let x = Math.floor(CAVE_WIDTH / 2);
         let y = Math.floor(CAVE_HEIGHT / 2);
-        const startPos = { x, y };
+        const startPos = {
+            x,
+            y
+        };
         let steps = 1000;
         while (steps > 0) {
             map[y][x] = theme.floor; // Use theme's floor
@@ -494,31 +603,31 @@ generateCave(caveId) {
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
         ];
         const map = baseMap.map(row => row.split(''));
-        
+
         const random = Alea(stringToSeed(castleId));
 
-    // Procedurally add breaches and rubble with smarter rules
-    for (let i = 0; i < 50; i++) { // Increased iterations for more detail
-        const y = Math.floor(random() * (map.length - 2)) + 1;
-        const x = Math.floor(random() * (map[0].length - 2)) + 1;
-        
-        // Rule 1: 50% chance to breach an existing wall
-        if (map[y][x] === '▓' && random() > 0.5) {
-            map[y][x] = '.';
-        } 
-        // Rule 2: Add rubble ONLY to floors that are adjacent to a wall
-        else if (map[y][x] === '.') {
-            const neighbors = [map[y-1][x], map[y+1][x], map[y][x-1], map[y][x+1]];
-            const isNextToWall = neighbors.includes('▓');
-            
-            // 30% chance to add rubble if the rule is met
-            if (isNextToWall && random() > 0.7) { 
-                 map[y][x] = '▒';
+        // Procedurally add breaches and rubble with smarter rules
+        for (let i = 0; i < 50; i++) { // Increased iterations for more detail
+            const y = Math.floor(random() * (map.length - 2)) + 1;
+            const x = Math.floor(random() * (map[0].length - 2)) + 1;
+
+            // Rule 1: 50% chance to breach an existing wall
+            if (map[y][x] === '▓' && random() > 0.5) {
+                map[y][x] = '.';
+            }
+            // Rule 2: Add rubble ONLY to floors that are adjacent to a wall
+            else if (map[y][x] === '.') {
+                const neighbors = [map[y - 1][x], map[y + 1][x], map[y][x - 1], map[y][x + 1]];
+                const isNextToWall = neighbors.includes('▓');
+
+                // 30% chance to add rubble if the rule is met
+                if (isNextToWall && random() > 0.7) {
+                    map[y][x] = '▒';
+                }
             }
         }
-    }
 
-    this.castleMaps[castleId] = map;
+        this.castleMaps[castleId] = map;
         return map;
     },
 
@@ -541,26 +650,30 @@ generateCave(caveId) {
         if (!this.worldState[chunkId]) this.worldState[chunkId] = {};
         const tileKey = `${localX},${localY}`;
         this.worldState[chunkId][tileKey] = newTile;
-        db.collection('worldState').doc(chunkId).set(this.worldState[chunkId], { merge: true });
+        db.collection('worldState').doc(chunkId).set(this.worldState[chunkId], {
+            merge: true
+        });
     },
 
     generateChunk(chunkX, chunkY) {
         const chunkKey = `${chunkX},${chunkY}`;
-        let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE));
+        let chunkData = Array.from({
+            length: this.CHUNK_SIZE
+        }, () => Array(this.CHUNK_SIZE));
         for (let y = 0; y < this.CHUNK_SIZE; y++) {
             for (let x = 0; x < this.CHUNK_SIZE; x++) {
                 const worldX = chunkX * this.CHUNK_SIZE + x;
                 const worldY = chunkY * this.CHUNK_SIZE + y;
                 const elev = elevationNoise.noise(worldX / 70, worldY / 70);
                 const moist = moistureNoise.noise(worldX / 50, worldY / 50);
-                
+
                 let tile = '.';
                 if (elev < 0.35) tile = '~'; // Water
                 else if (elev < 0.4 && moist > 0.7) tile = '≈'; // Swamp: low elevation, very high moisture
                 else if (elev > 0.8) tile = '^'; // Mountain
                 else if (moist > 0.55) tile = 'F'; // Forest
                 else tile = '.'; // Plains
-                
+
                 const featureRoll = Math.random();
                 if (tile === '.' && featureRoll < 0.001) {
                     let features = Object.keys(TILE_DATA);
@@ -593,7 +706,9 @@ generateCave(caveId) {
         if (this.worldState[chunkId] && this.worldState[chunkId][tileKey] !== undefined) {
             return this.worldState[chunkId][tileKey];
         }
-        if (!this.loadedChunks[chunkId]) { this.generateChunk(chunkX, chunkY); }
+        if (!this.loadedChunks[chunkId]) {
+            this.generateChunk(chunkX, chunkY);
+        }
         const chunk = this.loadedChunks[chunkId];
         return chunk[localY][localX];
     },
@@ -601,9 +716,28 @@ generateCave(caveId) {
 
 const gameState = {
     player: {
-        x: 0, y: 0, character: '@', color: 'blue',
-        health: 10, maxHealth: 10, mana: 10, maxMana: 10, stamina: 10, maxStamina: 10, psyche: 10, maxPsyche: 10,
-        strength: 1, wits: 1, luck: 1, constitution: 1, dexterity: 1, charisma: 1, willpower: 1, perception: 1, endurance: 1, intuition: 1,
+        x: 0,
+        y: 0,
+        character: '@',
+        color: 'blue',
+        health: 10,
+        maxHealth: 10,
+        mana: 10,
+        maxMana: 10,
+        stamina: 10,
+        maxStamina: 10,
+        psyche: 10,
+        maxPsyche: 10,
+        strength: 1,
+        wits: 1,
+        luck: 1,
+        constitution: 1,
+        dexterity: 1,
+        charisma: 1,
+        willpower: 1,
+        perception: 1,
+        endurance: 1,
+        intuition: 1,
         inventory: [],
         coins: 0,
         healthRegenProgress: 0,
@@ -614,9 +748,22 @@ const gameState = {
 
     lootedTiles: new Set(),
     discoveredRegions: new Set(),
-    mapMode: 'overworld', currentCaveId: null, currentCaveTheme: null, currentCastleId: null, overworldExit: null,
-    messages: [], flags: { hasSeenForestWarning: false },
-    time: { day: 1, hour: 6, minute: 0, year: 642, era: "of the Fourth Age" }
+    mapMode: 'overworld',
+    currentCaveId: null,
+    currentCaveTheme: null,
+    currentCastleId: null,
+    overworldExit: null,
+    messages: [],
+    flags: {
+        hasSeenForestWarning: false
+    },
+    time: {
+        day: 1,
+        hour: 6,
+        minute: 0,
+        year: 642,
+        era: "of the Fourth Age"
+    }
 };
 
 ctx.font = `${TILE_SIZE}px monospace`;
@@ -679,7 +826,7 @@ const render = () => {
     const viewportCenterY = Math.floor(VIEWPORT_HEIGHT / 2);
     const startX = gameState.player.x - viewportCenterX;
     const startY = gameState.player.y - viewportCenterY;
-    
+
     const isWideChar = (char) => /\p{Extended_Pictographic}/u.test(char);
 
     for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
@@ -705,40 +852,46 @@ const render = () => {
             } else if (gameState.mapMode === 'castle') {
                 const map = chunkManager.castleMaps[gameState.currentCastleId];
                 tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
-                
+
                 if (tile === '▓' || tile === '▒') { // Group wall and rubble tiles
-                    bgColor = '#422006';          // Render both as dark walls
+                    bgColor = '#422006'; // Render both as dark walls
                 } else {
-                    bgColor = '#a16207';          // Everything else is a floor
+                    bgColor = '#a16207'; // Everything else is a floor
                     fgChar = tile;
                 }
             } else { // Overworld
                 tile = chunkManager.getTile(mapX, mapY);
-                 switch (tile) {
-                    case '~': bgColor = '#1e3a8a'; break;
-                    case '≈': 
+                switch (tile) {
+                    case '~':
+                        bgColor = '#1e3a8a';
+                        break;
+                    case '≈':
                         bgColor = '#596643'; // Murky green-brown
                         fgChar = ',';
                         fgColor = '#4b5535'; // Slightly darker texture color
                         break;
-                    case '^': 
+                    case '^':
                         bgColor = '#78350f'; // Brown background
-                        fgChar = '^';        // The mountain character
+                        fgChar = '^'; // The mountain character
                         fgColor = '#52230a'; // A darker brown for texture
                         break;
-                    case 'F': 
-                        bgColor = '#15803d'; 
-                        fgChar = '"'; 
+                    case 'F':
+                        bgColor = '#15803d';
+                        fgChar = '"';
                         fgColor = '#14532d';
                         break;
-                    case '.': 
-                        bgColor = '#22c55e'; 
+                    case '.':
+                        bgColor = '#22c55e';
                         fgChar = '.';
                         fgColor = '#16a34a';
                         break;
-                    case '▓': bgColor = '#422006'; break;
-                    case '▒': bgColor = '#a16207'; break;
-                    default: 
+                    case '▓':
+                        bgColor = '#422006';
+                        break;
+                    case '▒':
+                        bgColor = '#a16207';
+                        break;
+                    default:
                         bgColor = (gameState.mapMode === 'castle') ? '#a16207' : '#22c55e';
                         fgChar = tile;
                         break;
@@ -750,17 +903,39 @@ const render = () => {
 
             if (fgChar) {
                 switch (fgChar) {
-                    case '⛰': fgColor = '#6b7280'; break;
-                    case '>': fgColor = '#eab308'; break;
-                    case '🏰': fgColor = '#f59e0b'; break;
-                    case 'X': fgColor = '#eab308'; break;
-                    case '☗': fgColor = '#854d0e'; break;
-                    case '+': fgColor = '#FF4500'; break;
-                    case 'o': fgColor = '#6a0dad'; break;
-                    case 'S': fgColor = '#ADFF2F'; break;
-                    case 'Y': fgColor = '#4B0082'; break;
-                    case '$': fgColor = '#ffd700'; break;
-                    case 'B': fgColor = '#fde047'; break;
+                    case '⛰':
+                        fgColor = '#6b7280';
+                        break;
+                    case '>':
+                        fgColor = '#eab308';
+                        break;
+                    case '🏰':
+                        fgColor = '#f59e0b';
+                        break;
+                    case 'X':
+                        fgColor = '#eab308';
+                        break;
+                    case '☗':
+                        fgColor = '#854d0e';
+                        break;
+                    case '+':
+                        fgColor = '#FF4500';
+                        break;
+                    case 'o':
+                        fgColor = '#6a0dad';
+                        break;
+                    case 'S':
+                        fgColor = '#ADFF2F';
+                        break;
+                    case 'Y':
+                        fgColor = '#4B0082';
+                        break;
+                    case '$':
+                        fgColor = '#ffd700';
+                        break;
+                    case 'B':
+                        fgColor = '#fde047';
+                        break;
                 }
                 ctx.fillStyle = fgColor;
                 if (isWideChar(fgChar)) {
@@ -773,7 +948,7 @@ const render = () => {
             }
         }
     }
-    
+
     ctx.font = `${TILE_SIZE}px monospace`;
 
     for (const id in otherPlayers) {
@@ -781,7 +956,7 @@ const render = () => {
         const otherPlayer = otherPlayers[id];
         const screenX = (otherPlayer.x - startX) * TILE_SIZE;
         const screenY = (otherPlayer.y - startY) * TILE_SIZE;
-        
+
         if (screenX > -TILE_SIZE && screenX < canvas.width && screenY > -TILE_SIZE && screenY < canvas.height) {
             const healthPercent = (otherPlayer.health || 0) / (otherPlayer.maxHealth || 10);
             const healthBarWidth = TILE_SIZE;
@@ -789,27 +964,30 @@ const render = () => {
             ctx.fillRect(screenX, screenY - 7, healthBarWidth, 5);
             ctx.fillStyle = '#4caf50';
             ctx.fillRect(screenX, screenY - 7, healthBarWidth * healthPercent, 5);
-            ctx.fillStyle = 'red'; 
+            ctx.fillStyle = 'red';
             ctx.fillText('@', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
         }
     }
 
     // Make the player character bold and outlined to stand out
     ctx.font = `bold ${TILE_SIZE}px monospace`;
-    
+
     // 1. Draw the outline
     ctx.strokeStyle = '#000000'; // A solid black outline
-    ctx.lineWidth = 2;          // How thick the outline is
+    ctx.lineWidth = 2; // How thick the outline is
     ctx.strokeText(gameState.player.character, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
 
     // 2. Fill the character with the player color
     ctx.fillStyle = playerColor;
     ctx.fillText(gameState.player.character, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
-    
+
     // 3. Reset the font to normal for any other text
     ctx.font = `${TILE_SIZE}px monospace`;
-    
-    const { hour, minute } = gameState.time;
+
+    const {
+        hour,
+        minute
+    } = gameState.time;
     const overlayColor = getInterpolatedDayCycleColor(hour, minute);
     ctx.fillStyle = overlayColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -818,8 +996,10 @@ const render = () => {
 function syncPlayerState() {
     if (onlinePlayerRef) {
         const stateToSync = {
-            x: gameState.player.x, y: gameState.player.y,
-            health: gameState.player.health, maxHealth: gameState.player.maxHealth,
+            x: gameState.player.x,
+            y: gameState.player.y,
+            health: gameState.player.health,
+            maxHealth: gameState.player.maxHealth,
             mapMode: gameState.mapMode,
             mapId: gameState.currentCaveId || gameState.currentCastleId || null,
         };
@@ -873,7 +1053,7 @@ document.addEventListener('keydown', (event) => {
             itemUsed = true;
         } else if (itemToUse) logMessage(`Cannot use '${itemToUse.name}'.`);
         else logMessage(`No item in slot ${keyNum}.`);
-if (itemUsed) {
+        if (itemUsed) {
             // Create a "clean" version of the inventory for Firestore, without functions.
             const inventoryToSave = gameState.player.inventory.map(item => ({
                 name: item.name,
@@ -882,41 +1062,59 @@ if (itemUsed) {
                 tile: item.tile
             }));
 
-            playerRef.update({ inventory: inventoryToSave });
+            playerRef.update({
+                inventory: inventoryToSave
+            });
             syncPlayerState();
-            renderStats(); 
+            renderStats();
             renderInventory();
         }
-        event.preventDefault(); return;
+        event.preventDefault();
+        return;
     }
-    let startX = gameState.player.x, startY = gameState.player.y;
-    let newX = startX, newY = startY;
+    let startX = gameState.player.x,
+        startY = gameState.player.y;
+    let newX = startX,
+        newY = startY;
     switch (event.key) {
-        case 'ArrowUp': newY--; break;
-        case 'ArrowDown': newY++; break;
-        case 'ArrowLeft': newX--; break;
-        case 'ArrowRight': newX++; break;
-        case 'r': case 'R':
+        case 'ArrowUp':
+            newY--;
+            break;
+        case 'ArrowDown':
+            newY++;
+            break;
+        case 'ArrowLeft':
+            newX--;
+            break;
+        case 'ArrowRight':
+            newX++;
+            break;
+        case 'r':
+        case 'R':
             if (gameState.player.stamina < gameState.player.maxStamina) {
                 gameState.player.stamina++;
                 logMessage("You rest for a moment, recovering 1 stamina.");
             } else logMessage("You are already at full stamina.");
-            playerRef.update({ stamina: gameState.player.stamina });
-            renderStats(); 
-            event.preventDefault(); return;
-        default: return;
+            playerRef.update({
+                stamina: gameState.player.stamina
+            });
+            renderStats();
+            event.preventDefault();
+            return;
+        default:
+            return;
     }
     event.preventDefault();
     if (newX === startX && newY === startY) return;
 
-const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
+    const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
     const tileAtDestination = chunkManager.getTile(newX, newY);
     if (obsoleteTiles.includes(tileAtDestination)) {
         logMessage("You clear away remnants of an older age.");
         chunkManager.setWorldTile(newX, newY, '.');
     }
 
-// --- PASTE THIS NEW BLOCK IN ITS PLACE ---
+    // --- PASTE THIS NEW BLOCK IN ITS PLACE ---
     (async () => {
         // 1. Determine the destination tile
         let newTile;
@@ -959,41 +1157,71 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
             }
             // Handle all other special tiles like entrances/exits
             switch (tileData.type) {
-case 'dungeon_entrance':
-    gameState.mapMode = 'dungeon';
-    gameState.currentCaveId = tileData.getCaveId(newX, newY);
-    gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
-    const caveMap = chunkManager.generateCave(gameState.currentCaveId); // MOVED UP: Generate the cave first.
-    gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId]; // NOW, get the theme.
-    for (let y = 0; y < caveMap.length; y++) {
-        const x = caveMap[y].indexOf('>');
-        if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
-    }
-    logMessage("You enter the "+ (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') +"..."); updateRegionDisplay(); render(); syncPlayerState(); return;
+                case 'dungeon_entrance':
+                    gameState.mapMode = 'dungeon';
+                    gameState.currentCaveId = tileData.getCaveId(newX, newY);
+                    gameState.overworldExit = {
+                        x: gameState.player.x,
+                        y: gameState.player.y
+                    };
+                    const caveMap = chunkManager.generateCave(gameState.currentCaveId); // MOVED UP: Generate the cave first.
+                    gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId]; // NOW, get the theme.
+                    for (let y = 0; y < caveMap.length; y++) {
+                        const x = caveMap[y].indexOf('>');
+                        if (x !== -1) {
+                            gameState.player.x = x;
+                            gameState.player.y = y;
+                            break;
+                        }
+                    }
+                    logMessage("You enter the " + (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') + "...");
+                    updateRegionDisplay();
+                    render();
+                    syncPlayerState();
+                    return;
                 case 'dungeon_exit':
                     gameState.player.x = gameState.overworldExit.x;
                     gameState.player.y = gameState.overworldExit.y;
                     gameState.mapMode = 'overworld';
                     gameState.currentCaveId = null;
                     gameState.overworldExit = null;
-                    logMessage("You emerge back into the sunlight."); updateRegionDisplay(); render(); syncPlayerState(); return;
+                    logMessage("You emerge back into the sunlight.");
+                    updateRegionDisplay();
+                    render();
+                    syncPlayerState();
+                    return;
                 case 'castle_entrance':
                     gameState.mapMode = 'castle';
                     gameState.currentCastleId = tileData.getCastleId(newX, newY);
-                    gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                    gameState.overworldExit = {
+                        x: gameState.player.x,
+                        y: gameState.player.y
+                    };
                     const castleMap = chunkManager.generateCastle(gameState.currentCastleId);
                     for (let y = 0; y < castleMap.length; y++) {
                         const x = castleMap[y].indexOf('X');
-                        if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
+                        if (x !== -1) {
+                            gameState.player.x = x;
+                            gameState.player.y = y;
+                            break;
+                        }
                     }
-                    logMessage("You enter the castle courtyard."); updateRegionDisplay(); render(); syncPlayerState(); return;
+                    logMessage("You enter the castle courtyard.");
+                    updateRegionDisplay();
+                    render();
+                    syncPlayerState();
+                    return;
                 case 'castle_exit':
                     gameState.player.x = gameState.overworldExit.x;
                     gameState.player.y = gameState.overworldExit.y;
                     gameState.mapMode = 'overworld';
                     gameState.currentCastleId = null;
                     gameState.overworldExit = null;
-                    logMessage("You leave the castle."); updateRegionDisplay(); render(); syncPlayerState(); return;
+                    logMessage("You leave the castle.");
+                    updateRegionDisplay();
+                    render();
+                    syncPlayerState();
+                    return;
                 case 'lore':
                     if (Array.isArray(tileData.message)) {
                         const currentTurn = Math.floor((gameState.time.day * 1440 + gameState.time.hour * 60 + gameState.time.minute) / TURN_DURATION_MINUTES);
@@ -1002,11 +1230,14 @@ case 'dungeon_entrance':
                     } else logMessage(tileData.message);
             }
         }
-        
+
         // 4. If the move is valid, calculate stamina and move the player.
         const staminaDeficit = moveCost - gameState.player.stamina;
-        if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) { logMessage("You're too tired, and pushing on would be fatal!"); return; }
-        
+        if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
+            logMessage("You're too tired, and pushing on would be fatal!");
+            return;
+        }
+
         gameState.player.x = newX;
         gameState.player.y = newY;
 
@@ -1016,7 +1247,7 @@ case 'dungeon_entrance':
             gameState.player.health -= staminaDeficit;
             logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
         }
-        
+
         // 5. Handle item pickups and final updates
         const itemData = ITEM_DATA[newTile];
         const tileId = `${newX},${-newY}`;
@@ -1028,11 +1259,18 @@ case 'dungeon_entrance':
                     const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
                     if (existingItem) existingItem.quantity++;
                     else {
-                        const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile };
+                        const itemForDb = {
+                            name: itemData.name,
+                            type: itemData.type,
+                            quantity: 1,
+                            tile: newTile
+                        };
                         gameState.player.inventory.push(itemForDb);
                     }
                     logMessage(`You picked up a ${itemData.name}.`);
-                    playerRef.update({ inventory: gameState.player.inventory });
+                    playerRef.update({
+                        inventory: gameState.player.inventory
+                    });
                 } else ITEM_DATA[newTile].effect(gameState);
                 gameState.lootedTiles.add(tileId);
                 chunkManager.setWorldTile(newX, newY, '.');
@@ -1046,10 +1284,10 @@ case 'dungeon_entrance':
         updateRegionDisplay();
         syncPlayerState();
 
-        playerRef.update({ 
-            x: gameState.player.x, 
-            y: gameState.player.y, 
-            health: gameState.player.health, 
+        playerRef.update({
+            x: gameState.player.x,
+            y: gameState.player.y,
+            health: gameState.player.health,
             stamina: gameState.player.stamina,
             coins: gameState.player.coins
         });
@@ -1061,7 +1299,7 @@ case 'dungeon_entrance':
             gameOverModal.classList.remove('hidden');
         }
         renderStats();
-    
+
     })();
 
 });
@@ -1100,8 +1338,10 @@ chatInput.addEventListener('keydown', (event) => {
         chatInput.value = '';
         const messageRef = rtdb.ref('chat').push();
         messageRef.set({
-            senderId: player_id, email: auth.currentUser.email,
-            message: message, timestamp: firebase.database.ServerValue.TIMESTAMP
+            senderId: player_id,
+            email: auth.currentUser.email,
+            message: message,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
         });
     }
 });
@@ -1115,9 +1355,9 @@ signupButton.addEventListener('click', async () => {
         const user = userCredential.user;
         const playerRef = db.collection('players').doc(user.uid);
         await playerRef.set(createDefaultPlayerState());
-} catch (error) {
-    handleAuthError(error);
-}
+    } catch (error) {
+        handleAuthError(error);
+    }
 });
 
 loginButton.addEventListener('click', async () => {
@@ -1126,9 +1366,9 @@ loginButton.addEventListener('click', async () => {
     authError.textContent = '';
     try {
         await auth.signInWithEmailAndPassword(email, password);
-} catch (error) {
-    handleAuthError(error);
-}
+    } catch (error) {
+        handleAuthError(error);
+    }
 });
 
 function clearSessionState() {
@@ -1137,7 +1377,9 @@ function clearSessionState() {
 }
 
 logoutButton.addEventListener('click', () => {
-    const finalState = { ...gameState.player };
+    const finalState = {
+        ...gameState.player
+    };
 
     // Create a clean version of the inventory before saving
     if (finalState.inventory) {
@@ -1150,8 +1392,10 @@ logoutButton.addEventListener('click', () => {
     }
 
     delete finalState.color;
-    delete finalState.character; 
-    playerRef.set(finalState, { merge: true });
+    delete finalState.character;
+    playerRef.set(finalState, {
+        merge: true
+    });
     if (onlinePlayerRef) onlinePlayerRef.remove();
     if (unsubscribePlayerListener) unsubscribePlayerListener();
     Object.values(worldStateListeners).forEach(unsubscribe => unsubscribe());
@@ -1170,7 +1414,7 @@ async function startGame(user) {
 
     canvas.style.visibility = 'hidden';
 
-try {
+    try {
         const doc = await playerRef.get();
         if (doc.exists) {
             let playerData = doc.data();
@@ -1179,7 +1423,10 @@ try {
                 playerData = createDefaultPlayerState();
                 await playerRef.set(playerData);
             }
-            const fullPlayerData = { ...createDefaultPlayerState(), ...playerData };
+            const fullPlayerData = {
+                ...createDefaultPlayerState(),
+                ...playerData
+            };
             Object.assign(gameState.player, fullPlayerData);
         } else {
 
@@ -1198,30 +1445,36 @@ try {
     connectedRef.on('value', (snap) => {
         if (snap.val() === true) {
             const stateToSet = {
-                x: gameState.player.x, y: gameState.player.y,
-                health: gameState.player.health, maxHealth: gameState.player.maxHealth,
+                x: gameState.player.x,
+                y: gameState.player.y,
+                health: gameState.player.health,
+                maxHealth: gameState.player.maxHealth,
                 mapMode: gameState.mapMode,
                 mapId: gameState.currentCaveId || gameState.currentCastleId || null,
             };
             onlinePlayerRef.set(stateToSet);
 
-onlinePlayerRef.onDisconnect().remove().then(() => {
-        const finalState = { ...gameState.player };
+            onlinePlayerRef.onDisconnect().remove().then(() => {
+                const finalState = {
+                    ...gameState.player
+                };
 
-        // ADD THIS BLOCK TO CLEAN THE INVENTORY
-        if (finalState.inventory) {
-            finalState.inventory = finalState.inventory.map(item => ({
-                name: item.name,
-                type: item.type,
-                quantity: item.quantity,
-                tile: item.tile
-            }));
-        }
-        
-        delete finalState.color;
-        delete finalState.character;
-        playerRef.set(finalState, { merge: true });
-    });
+                // ADD THIS BLOCK TO CLEAN THE INVENTORY
+                if (finalState.inventory) {
+                    finalState.inventory = finalState.inventory.map(item => ({
+                        name: item.name,
+                        type: item.type,
+                        quantity: item.quantity,
+                        tile: item.tile
+                    }));
+                }
+
+                delete finalState.color;
+                delete finalState.character;
+                playerRef.set(finalState, {
+                    merge: true
+                });
+            });
         }
     });
 
@@ -1238,7 +1491,7 @@ onlinePlayerRef.onDisconnect().remove().then(() => {
     });
 
     unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
-        if(doc.exists) {
+        if (doc.exists) {
             const playerData = doc.data();
             if (playerData.inventory) {
                 playerData.inventory.forEach(item => {
@@ -1251,7 +1504,7 @@ onlinePlayerRef.onDisconnect().remove().then(() => {
         }
     });
 
-const timeRef = db.collection("world").doc("time");
+    const timeRef = db.collection("world").doc("time");
     timeRef.onSnapshot((doc) => {
         if (doc.exists) {
             const newTime = doc.data();
@@ -1299,12 +1552,15 @@ const timeRef = db.collection("world").doc("time");
         }
     });
 
-const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(100);
+    const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(100);
     chatRef.on('child_added', (snapshot) => {
         const message = snapshot.val();
         const messageDiv = document.createElement('div');
         const date = new Date(message.timestamp);
-        const timeString = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        const timeString = date.toLocaleTimeString([], {
+            hour: 'numeric',
+            minute: '2-digit'
+        });
         if (message.senderId === player_id) {
             messageDiv.innerHTML = `<span class="muted-text text-xs">[${timeString}]</span> <strong class="highlight-text">${message.email}:</strong> ${message.message}`;
         } else {
@@ -1330,8 +1586,8 @@ auth.onAuthStateChanged((user) => {
     if (user) {
         const savedTheme = localStorage.getItem('theme');
         const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (savedTheme) applyTheme(savedTheme); 
-        else if (prefersDark) applyTheme('dark'); 
+        if (savedTheme) applyTheme(savedTheme);
+        else if (prefersDark) applyTheme('dark');
         else applyTheme('light');
         startGame(user);
     } else {
