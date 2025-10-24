@@ -41,8 +41,12 @@ body {
 canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-border); box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
 
 #messageLog { 
+    /* This can be empty as layout is handled by Tailwind */
+}
 
-    
+/* ADDED: This prevents the inventory from collapsing before JS loads */
+#inventoryPanel {
+    min-height: 8rem;
 }
 
 .themed-container {
