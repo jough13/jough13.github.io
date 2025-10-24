@@ -25,6 +25,9 @@
         </div>
 
         <div id="gameContainer" class="themed-container game-container mx-auto max-w-4xl p-6 rounded-2xl shadow-lg border-2 hidden">
+            <div id="loadingIndicator" class="absolute inset-0 flex items-center justify-center bg-[var(--bg-container)] z-50">
+                <p class="text-2xl font-bold highlight-text">Loading...</p>
+            </div>
             <header class="relative">
                 <h1 class="text-4xl font-bold text-center mb-4">Caves and Castles</h1>
                 <nav class="absolute top-0 right-0 flex items-center gap-2">
@@ -37,31 +40,36 @@
             <div class="lg:grid lg:grid-cols-3 lg:gap-6">
     
                 <div class="lg:col-span-3 flex flex-col gap-4">
-                    <div id="timePanel" class="panel">
-                        </div>
-                    <div class="relative w-full rounded-xl overflow-hidden">
+                    <div id="timePanel" class="panel p-2 rounded-lg border text-center">
+                        <span id="timeDisplay" class="font-bold"></span>
+                        <h2 id="regionDisplay" class="text-sm muted-text"></h2>
+                    </div>
+                    <div class="relative w-full rounded-xl overflow-hidden border-2" style="border-color: var(--border-color);">
                         <canvas id="gameCanvas" class="w-full h-full"></canvas>
                     </div>
                 </div>
 
                 <div class="lg:col-span-2 flex flex-col gap-4 mt-4">
-                    <div id="messageLogPanel" class="panel p-2 w-full rounded-2xl border-2">
-                        <h2 class="text-lg font-bold mb-2 px-2">Log</h2>
-                        <div id="messageLog" class="h-24 overflow-y-auto flex flex-col-reverse text-sm px-2"></div>
+                    <div id="messageLogPanel" class="panel p-4 w-full rounded-2xl border-2">
+                        <h2 class="text-lg font-bold mb-2">Log</h2>
+                        <div id="messageLog" class="h-24 overflow-y-auto flex flex-col-reverse text-sm pr-2"></div>
                     </div>
-                    <div id="inventoryPanel" class="panel">
-                         </div>
+                    <div id="inventoryPanel" class="panel p-4 w-full rounded-2xl border-2">
+                        <h2 class="text-lg font-bold mb-2">Inventory</h2>
+                        <div id="inventoryList" class="flex gap-2">
+                            </div>
+                    </div>
                 </div>
 
                 <div class="lg:col-span-1 flex flex-col gap-4 mt-4 lg:mt-0">
-                    <div id="statusPanel" class="panel flex flex-col w-full p-2 rounded-lg border gap-y-1">
+                    <div id="statusPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-1">
                         <span id="healthDisplay" class="font-bold text-red-500">Health: 10</span>
                         <span id="manaDisplay" class="font-bold text-blue-500">Mana: 10</span>
                         <span id="staminaDisplay" class="font-bold text-green-500">Stamina: 10</span>
                         <span id="psycheDisplay" class="font-bold text-indigo-500">Psyche: 10</span>
                         <span id="coinsDisplay" class="font-bold text-yellow-500">Coins: 0</span>
                     </div>
-                    <div id="coreStatsPanel" class="panel grid grid-cols-2 gap-x-4 w-full p-2 rounded-lg border text-xs">
+                    <div id="coreStatsPanel" class="panel grid grid-cols-2 gap-x-4 w-full p-4 rounded-2xl border-2 text-xs">
                         <span id="strengthDisplay" class="font-bold">Strength: 1</span><span id="witsDisplay" class="font-bold">Wits: 1</span>
                         <span id="constitutionDisplay" class="font-bold">Constitution: 1</span><span id="dexterityDisplay" class="font-bold">Dexterity: 1</span>
                         <span id="charismaDisplay" class="font-bold">Charisma: 1</span><span id="luckDisplay" class="font-bold">Luck: 1</span>
