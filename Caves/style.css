@@ -132,3 +132,21 @@ kbd {
     padding: 2px 6px;
     font-size: 0.8rem;
 }
+
+@keyframes flash-green {
+    from { background-color: rgba(74, 222, 128, 0.5); }
+    to { background-color: transparent; }
+}
+
+@keyframes flash-red {
+    from { background-color: rgba(239, 68, 68, 0.5); }
+    to { background-color: transparent; }
+}
+
+.stat-flash-green {
+    animation: flash-green 0.5s ease-out;
+}
+
+.stat-flash-red {
+    animation: flash-red 0.5s ease-out;
+}
