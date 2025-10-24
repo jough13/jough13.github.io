@@ -1100,6 +1100,8 @@ async function startGame(user) {
     authContainer.classList.add('hidden');
     gameContainer.classList.remove('hidden');
 
+    const loadingIndicator = document.getElementById('loadingIndicator');
+
     canvas.style.visibility = 'hidden';
 
 try {
@@ -1114,7 +1116,7 @@ try {
             const fullPlayerData = { ...createDefaultPlayerState(), ...playerData };
             Object.assign(gameState.player, fullPlayerData);
         } else {
-            // This is the new, crucial part!
+
             // It handles users who are logged in but don't have a player document yet.
             logMessage("Welcome! Creating your character sheet...");
             const defaultState = createDefaultPlayerState();
@@ -1242,6 +1244,8 @@ const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(100);
     syncPlayerState();
     logMessage(`Logged in as ${user.email}`);
     updateRegionDisplay();
+
+    loadingIndicator.classList.add('hidden');
 }
 
 auth.onAuthStateChanged((user) => {
