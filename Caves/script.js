@@ -317,6 +317,14 @@ function triggerStatFlash(statElement, positive = true) {
     }, 500);
 }
 
+function triggerStatAnimation(statElement, animationClass) {
+    statElement.classList.add(animationClass);
+    // Remove the class after the animation finishes
+    setTimeout(() => {
+        statElement.classList.remove(animationClass);
+    }, 600); // 600ms matches the CSS animation time
+}
+
 const renderTime = () => {
     const time = gameState.time;
     const dayOfWeek = DAYS_OF_WEEK[(time.day - 1) % DAYS_OF_WEEK.length];
@@ -436,17 +444,17 @@ const ITEM_DATA = {
         }
     },
 
-    'o': {
-        name: 'Mana Orb',
-        type: 'consumable',
-        effect: (state) => {
+    'o': { 
+        name: 'Mana Orb', 
+        type: 'consumable', 
+        effect: (state) => { 
             const oldMana = state.player.mana;
-            state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT);
+            state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT); 
             if (state.player.mana > oldMana) {
-                triggerStatFlash(statDisplays.mana, true);
+                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue'); // USE NEW FUNCTION
             }
-            logMessage('Used a Mana Orb. Restored mana!');
-        }
+            logMessage('Used a Mana Orb. Restored mana!'); 
+        } 
     },
 
     'S': {
@@ -462,17 +470,17 @@ const ITEM_DATA = {
         }
     },
 
-    'Y': {
-        name: 'Psyche Shard',
-        type: 'consumable',
-        effect: (state) => {
+    'Y': { 
+        name: 'Psyche Shard', 
+        type: 'consumable', 
+        effect: (state) => { 
             const oldPsyche = state.player.psyche;
-            state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT);
+            state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT); 
             if (state.player.psyche > oldPsyche) {
-                triggerStatFlash(statDisplays.psyche, true);
+                triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); // USE NEW FUNCTION
             }
-            logMessage('Used a Psyche Shard. Restored psyche.');
-        }
+            logMessage('Used a Psyche Shard. Restored psyche.'); 
+        } 
     },
 
     '$': {
@@ -1247,6 +1255,7 @@ document.addEventListener('keydown', (event) => {
         else {
             gameState.player.stamina = 0;
             gameState.player.health -= staminaDeficit;
+            triggerStatFlash(statDisplays.health, false);
             logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
         }
 
@@ -1278,6 +1287,7 @@ document.addEventListener('keydown', (event) => {
                 chunkManager.setWorldTile(newX, newY, '.');
             }
         } else if (moveCost > 0) {
+            triggerStatFlash(statDisplays.stamina, false);
             logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
         } else {
             logMessage(`Moved to world coordinate (${newX}, ${-newY}).`);
