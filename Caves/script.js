@@ -456,24 +456,31 @@ generateCave(caveId) {
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
         ];
         const map = baseMap.map(row => row.split(''));
+        
         const random = Alea(stringToSeed(castleId));
 
-        // Procedurally add breaches in walls and rubble
-        for (let i = 0; i < 25; i++) { // Try 25 times to alter the map
-            const y = Math.floor(random() * (map.length - 2)) + 1;
-            const x = Math.floor(random() * (map[0].length - 2)) + 1;
+    // Procedurally add breaches and rubble with smarter rules
+    for (let i = 0; i < 50; i++) { // Increased iterations for more detail
+        const y = Math.floor(random() * (map.length - 2)) + 1;
+        const x = Math.floor(random() * (map[0].length - 2)) + 1;
+        
+        // Rule 1: 50% chance to breach an existing wall
+        if (map[y][x] === '▓' && random() > 0.5) {
+            map[y][x] = '.';
+        } 
+        // Rule 2: Add rubble ONLY to floors that are adjacent to a wall
+        else if (map[y][x] === '.') {
+            const neighbors = [map[y-1][x], map[y+1][x], map[y][x-1], map[y][x+1]];
+            const isNextToWall = neighbors.includes('▓');
             
-            // 50% chance to breach a wall, turning it into a floor
-            if (map[y][x] === '▓' && random() > 0.5) {
-                map[y][x] = '.';
-            } 
-            // 20% chance to add rubble (impassable gray wall) to empty floors
-            else if (map[y][x] === '.' && random() > 0.8) {
-                map[y][x] = '▒';
+            // 30% chance to add rubble if the rule is met
+            if (isNextToWall && random() > 0.7) { 
+                 map[y][x] = '▒';
             }
         }
+    }
 
-        this.castleMaps[castleId] = map;
+    this.castleMaps[castleId] = map;
         return map;
     },
 
@@ -657,15 +664,17 @@ let tile;
                     bgColor = theme.colors.floor;
                     fgChar = tile;
                 }
-            } else if (gameState.mapMode === 'castle') {
-                const map = chunkManager.castleMaps[gameState.currentCastleId];
-                tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
-                if (tile === '▓') bgColor = '#422006';
-                else if (tile === '▒') bgColor = '#a16207';
-                else {
-                    bgColor = '#a16207';
-                    fgChar = tile;
-                }
+} else if (gameState.mapMode === 'castle') {
+    const map = chunkManager.castleMaps[gameState.currentCastleId];
+    tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
+    
+    if (tile === '▓' || tile === '▒') { // Group wall and rubble tiles
+        bgColor = '#422006';          // Render both as dark walls
+    } else {
+        bgColor = '#a16207';          // Everything else is a floor
+        fgChar = tile;
+    }
+}
             } else { // Overworld
                 tile = chunkManager.getTile(mapX, mapY);
                  switch (tile) {
