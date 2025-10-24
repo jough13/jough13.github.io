@@ -1019,6 +1019,8 @@ function updateRegionDisplay() {
         if (!gameState.discoveredRegions.has(regionId)) {
             logMessage(`You have entered ${regionName}.`);
             gameState.discoveredRegions.add(regionId);
+
+            playerRef.update({ discoveredRegions: Array.from(gameState.discoveredRegions) });
         }
     } else if (gameState.mapMode === 'dungeon') {
         regionDisplay.textContent = "A Dark Cave";
@@ -1428,6 +1430,11 @@ async function startGame(user) {
                 ...playerData
             };
             Object.assign(gameState.player, fullPlayerData);
+
+            if (playerData.discoveredRegions && Array.isArray(playerData.discoveredRegions)) {
+                gameState.discoveredRegions = new Set(playerData.discoveredRegions);
+            }
+
         } else {
 
             // It handles users who are logged in but don't have a player document yet.
