@@ -597,7 +597,6 @@ const chunkManager = {
 generateCastle(castleId) {
         if (this.castleMaps[castleId]) return this.castleMaps[castleId];
         
-        // --- NEW, LARGER, AND MORE OPEN BASEMAP (75x35) ---
         const baseMap = [
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
             '▓...................................................................▓',
@@ -630,35 +629,29 @@ generateCastle(castleId) {
             '▓...................................................................▓',
             '▓...................................................................▓',
             '▓...................................................................▓',
-            '▓....................................X................................▓',
+            '▓...................................._................................▓', // MODIFIED: 'X' removed from here
+            '▓....................................X................................▓', // MODIFIED: 'X' added here
             '▓...................................................................▓',
-            '▓...................................................................▓',
-            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓T▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
         ];
-        // --- END OF NEW BASEMAP ---
+
+        baseMap[baseMap.length - 1] = '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓';
 
         const map = baseMap.map(row => row.split(''));
 
         const random = Alea(stringToSeed(castleId));
 
         // Procedurally add breaches and rubble with smarter rules
-        // We run more iterations (75) because the map is larger
         for (let i = 0; i < 75; i++) { 
-            // y from 2 to 32 (avoids top/bottom perimeter)
             const y = Math.floor(random() * (map.length - 4)) + 2; 
-            // x from 2 to 72 (avoids left/right perimeter)
             const x = Math.floor(random() * (map[0].length - 4)) + 2;
 
-            // Rule 1: 50% chance to breach an existing wall
             if (map[y][x] === '▓' && random() > 0.5) {
                 map[y][x] = '.';
             }
-            // Rule 2: Add rubble ONLY to floors that are adjacent to a wall
             else if (map[y][x] === '.') {
                 const neighbors = [map[y - 1][x], map[y + 1][x], map[y][x - 1], map[y][x + 1]];
                 const isNextToWall = neighbors.includes('▓');
-
-                // MODIFIED: Reduced rubble chance (0.85 from 0.7) for a cleaner "open" feel
                 if (isNextToWall && random() > 0.85) {
                     map[y][x] = '▒';
                 }
