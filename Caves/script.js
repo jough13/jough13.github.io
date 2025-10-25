@@ -539,7 +539,8 @@ const statBarElements = {
     health: document.getElementById('healthBar'),
     mana: document.getElementById('manaBar'),
     stamina: document.getElementById('staminaBar'),
-    psyche: document.getElementById('psycheBar')
+    psyche: document.getElementById('psycheBar'),
+    xp: document.getElementById('xpBar')
 };
 
 const elevationNoise = Object.create(Perlin);
@@ -826,8 +827,13 @@ const renderStats = () => {
             const label = statName.charAt(0).toUpperCase() + statName.slice(1);
 
             if (statName === 'xp') {
-                element.textContent = `XP: ${value} / ${gameState.player.xpToNextLevel}`;
-            
+                const max = gameState.player.xpToNextLevel;
+                const percent = (value / max)* 100;
+
+                // Update text and bar width
+                element.textContent = `XP: ${value} / ${max}`;
+                statBarElements.xp.style.width = `${percent}%`;
+
             } else if (statName === 'statPoints') {
                 if (value > 0) {
                     element.textContent = `Stat Points: ${value}`;
