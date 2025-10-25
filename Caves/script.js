@@ -1353,6 +1353,22 @@ loreModal.addEventListener('click', (event) => {
 document.addEventListener('keydown', (event) => {
     if (!player_id || gameState.player.health <= 0 || document.activeElement === chatInput) return;
 
+    if (event.key === 'Escape') {
+        // Check if a modal is open and close it
+        if (!helpModal.classList.contains('hidden')) {
+            helpModal.classList.add('hidden');
+            event.preventDefault();
+            return;
+        }
+        if (!loreModal.classList.contains('hidden')) {
+            loreModal.classList.add('hidden');
+            event.preventDefault();
+            return;
+        }
+        // (We already handle 'isDroppingItem' and 'chatInput' in their own
+        // 'Escape' listeners, so this won't interfere with them)
+    }
+
     if (gameState.isDroppingItem) {
         handleItemDrop(event);
         return; // Stop further processing
