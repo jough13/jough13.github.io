@@ -61,7 +61,7 @@ This prevents the inventory from collapsing before JS loads */
 }
 
 #chatMessages {
-    max-height: 275px;
+    max-height: 250px;
     overflow-y: scroll;
     display: flex;
     flex-direction: column-reverse;
