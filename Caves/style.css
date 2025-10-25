@@ -61,7 +61,7 @@ canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-bord
 }
 
 #chatMessages {
-    max-height: 200px;
+    max-height: 250px;
     overflow-y: scroll;
     display: flex;
     flex-direction: column-reverse;
@@ -189,7 +189,6 @@ kbd {
     animation: pulse-yellow 0.6s ease-out;
 }
 
-/* === ADD THIS NEW BLOCK === */
 .stat-add-btn {
     display: none; /* Hidden by default */
     font-weight: bold;
