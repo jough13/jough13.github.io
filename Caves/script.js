@@ -105,6 +105,8 @@ const STAT_INCREASE_AMOUNT = 1;
 const TURN_DURATION_MINUTES = 10;
 const REGION_SIZE = 160;
 
+const MAX_INVENTORY_SLOTS = 9; // Max number of inventory stacks
+
 const DAYS_OF_WEEK = ["Sunsday", "Moonsday", "Kingsday", "Earthday", "Watersday", "Windsday", "Firesday"];
 const MONTHS_OF_YEAR = ["First Seed", "Rains Hand", "Second Seed", "Suns Height", "Last Seed", "Hearthfire", "Frostfall", "Suns Dusk", "Evening Star", "Morning Star", "Suns Dawn", "Deep Winter"];
 const DAYS_IN_MONTH = 30;
@@ -788,6 +790,7 @@ const gameState = {
     flags: {
         hasSeenForestWarning: false
     },
+    isDroppingItem: false,
     time: {
         day: 1,
         hour: 6,
@@ -906,6 +909,93 @@ function handleStatAllocation(event) {
 
 // Add the event listener to the panel
 coreStatsPanel.addEventListener('click', handleStatAllocation);
+
+function handleItemDrop(event) {
+    event.preventDefault();
+    const player = gameState.player;
+
+    // Cancel action
+    if (event.key === 'Escape') {
+        logMessage("Drop canceled.");
+        gameState.isDroppingItem = false;
+        return;
+    }
+
+    const keyNum = parseInt(event.key);
+    
+    // Check for valid item slot
+    if (isNaN(keyNum) || keyNum < 1 || keyNum > 9) {
+        logMessage("Invalid selection. Press 1-9 or (Esc) to cancel.");
+        return;
+    }
+
+    const itemIndex = keyNum - 1;
+    const itemToDrop = player.inventory[itemIndex];
+
+    if (!itemToDrop) {
+        logMessage("No item in that slot.");
+        gameState.isDroppingItem = false; // Exit drop mode
+        return;
+    }
+
+    // Check if the player is standing on a valid drop tile (a floor)
+    let currentTile;
+    if (gameState.mapMode === 'dungeon') {
+        const map = chunkManager.caveMaps[gameState.currentCaveId];
+        currentTile = (map && map[player.y]) ? map[player.y][player.x] : ' ';
+    } else if (gameState.mapMode === 'castle') {
+        const map = chunkManager.castleMaps[gameState.currentCastleId];
+        currentTile = (map && map[player.y]) ? map[player.y][player.x] : ' ';
+    } else {
+        currentTile = chunkManager.getTile(player.x, player.y);
+    }
+
+    let isValidDropTile = false;
+    if (gameState.mapMode === 'overworld' && currentTile === '.') {
+        isValidDropTile = true;
+    } else if (gameState.mapMode === 'dungeon') {
+        const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+        if (currentTile === theme.floor) isValidDropTile = true;
+    } else if (gameState.mapMode === 'castle' && currentTile === '.') {
+        isValidDropTile = true;
+    }
+
+    if (!isValidDropTile) {
+        logMessage("You can't drop an item here. (Must be on a floor tile)");
+        gameState.isDroppingItem = false; // Exit drop mode
+        return;
+    }
+
+    // --- All checks passed, let's drop the item ---
+    const tileId = `${player.x},${-player.y}`;
+
+    // 1. Remove one item from the stack
+    itemToDrop.quantity--;
+    logMessage(`You dropped one ${itemToDrop.name}.`);
+
+    // 2. Place the item tile on the map
+    if (gameState.mapMode === 'overworld') {
+        chunkManager.setWorldTile(player.x, player.y, itemToDrop.tile);
+        gameState.lootedTiles.delete(tileId); // Allow re-looting
+    } else if (gameState.mapMode === 'dungeon') {
+        chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = itemToDrop.tile;
+    } else if (gameState.mapMode === 'castle') {
+        chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = itemToDrop.tile;
+    }
+
+    // 3. If the stack is empty, remove it from inventory
+    if (itemToDrop.quantity <= 0) {
+        player.inventory.splice(itemIndex, 1);
+    }
+    
+    // 4. Update UI and DB
+    renderInventory();
+    render(); // Re-render the map to show the dropped item
+    playerRef.update({ inventory: player.inventory });
+
+    // 5. Exit drop mode
+    gameState.isDroppingItem = false;
+}
 
 function grantXp(amount) {
     const player = gameState.player;
@@ -1211,6 +1301,12 @@ loreModal.addEventListener('click', (event) => {
 
 document.addEventListener('keydown', (event) => {
     if (!player_id || gameState.player.health <= 0 || document.activeElement === chatInput) return;
+
+    if (gameState.isDroppingItem) {
+        handleItemDrop(event);
+        return; // Stop further processing
+    }
+
     const keyNum = parseInt(event.key);
     if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
         const itemIndex = keyNum - 1;
@@ -1242,29 +1338,41 @@ document.addEventListener('keydown', (event) => {
         event.preventDefault();
         return;
     }
+
+    if (event.key === 'd' || event.key === 'D') {
+        if (gameState.player.inventory.length === 0) {
+            logMessage("Your inventory is empty.");
+            return;
+        }
+        logMessage("Drop which item? (1-9) or (Esc) to cancel.");
+        gameState.isDroppingItem = true;
+        event.preventDefault();
+        return;
+    }
+
     let startX = gameState.player.x,
         startY = gameState.player.y;
     let newX = startX,
         newY = startY;
     switch (event.key) {
         case 'ArrowUp':
-        case 'w': // Add this
-        case 'W': // Add this
+        case 'w': 
+        case 'W': 
             newY--;
             break;
         case 'ArrowDown':
-        case 's': // Add this
-        case 'S': // Add this
+        case 's': 
+        case 'S': 
             newY++;
             break;
         case 'ArrowLeft':
-        case 'a': // Add this
-        case 'A': // Add this
+        case 'a': 
+        case 'A': 
             newX--;
             break;
         case 'ArrowRight':
-        case 'd': // Add this
-        case 'D': // Add this
+        case 'd': 
+        case 'D': 
             newX++;
             break;
         case 'r':
@@ -1446,14 +1554,31 @@ document.addEventListener('keydown', (event) => {
         // 5. Handle item pickups and final updates
         const itemData = ITEM_DATA[newTile];
         const tileId = `${newX},${-newY}`;
+
         if (itemData) {
-            if (gameState.lootedTiles.has(tileId)) {
+            // --- MODIFIED: Check looted state based on map mode ---
+            let isTileLooted = false;
+            if (gameState.mapMode === 'overworld') {
+                isTileLooted = gameState.lootedTiles.has(tileId);
+            }
+            // --- END MODIFICATION ---
+
+            if (isTileLooted) {
                 logMessage(`You see where a ${itemData.name} once was...`);
             } else {
+                let itemPickedUp = false;
+                let tileLooted = true; // Assume we loot it
+
                 if (itemData.type === 'consumable') {
                     const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
-                    if (existingItem) existingItem.quantity++;
-                    else {
+                    
+                    if (existingItem) {
+                        // Case 1: Player has this item, so stack it
+                        existingItem.quantity++;
+                        logMessage(`You picked up a ${itemData.name}.`);
+                        itemPickedUp = true;
+                    } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        // Case 2: Player has a free slot
                         const itemForDb = {
                             name: itemData.name,
                             type: itemData.type,
@@ -1461,17 +1586,39 @@ document.addEventListener('keydown', (event) => {
                             tile: newTile
                         };
                         gameState.player.inventory.push(itemForDb);
+                        logMessage(`You picked up a ${itemData.name}.`);
+                        itemPickedUp = true;
+                    } else {
+                        // Case 3: Inventory is full
+                        logMessage(`You see a ${itemData.name}, but your inventory is full!`);
+                        tileLooted = false; // Don't loot the tile, leave item
                     }
-                    logMessage(`You picked up a ${itemData.name}.`);
-                    playerRef.update({
-                        inventory: gameState.player.inventory
-                    });
-                } else ITEM_DATA[newTile].effect(gameState);
-                gameState.lootedTiles.add(tileId);
-                chunkManager.setWorldTile(newX, newY, '.');
+
+                    if (itemPickedUp) {
+                        playerRef.update({ inventory: gameState.player.inventory });
+                    }
+
+                } else {
+                    // This handles instant items like '$' (Gold)
+                    ITEM_DATA[newTile].effect(gameState);
+                }
+
+                if (tileLooted) {
+                    // --- MODIFIED: Replace tile based on map mode ---
+                    if (gameState.mapMode === 'overworld') {
+                        gameState.lootedTiles.add(tileId);
+                        chunkManager.setWorldTile(newX, newY, '.');
+                    } else if (gameState.mapMode === 'dungeon') {
+                        const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                        chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
+                    } else if (gameState.mapMode === 'castle') {
+                        chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
+                    }
+                    // --- END MODIFICATION ---
+                }
             }
         } else if (moveCost > 0) {
-            triggerStatFlash(statDisplays.stamina, false);
+            triggerStatFlash(statDisplays.stamina, false); // Flash red for stamina cost
             logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
         } else {
             logMessage(`Moved to world coordinate (${newX}, ${-newY}).`);
