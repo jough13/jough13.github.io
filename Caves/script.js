@@ -649,6 +649,30 @@ const chunkManager = {
             }
         }
 
+        // Find the exit 'X' and guarantee it's accessible.
+        let spawnX = -1, spawnY = -1;
+        for (let y = 0; y < map.length; y++) {
+            let x = map[y].indexOf('X');
+            if (x !== -1) {
+                spawnY = y;
+                spawnX = x;
+                break;
+            }
+        }
+        
+        // If we found the spawn point, clear it and its neighbors
+        if (spawnY !== -1 && spawnX !== -1) {
+            map[spawnY][spawnX] = '.';     // Clear the spawn tile itself
+            map[spawnY-1][spawnX] = '.';   // Tile above
+            map[spawnY+1][spawnX] = '.';   // Tile below
+            map[spawnY][spawnX-1] = '.';   // Tile left
+            map[spawnY][spawnX+1] = '.';   // Tile right
+            map[spawnY-1][spawnX-1] = '.'; // Top-left
+            map[spawnY-1][spawnX+1] = '.'; // Top-right
+            map[spawnY+1][spawnX-1] = '.'; // Bottom-left
+            map[spawnY+1][spawnX+1] = '.'; // Bottom-right
+        }
+        
         this.castleMaps[castleId] = map;
         return map;
     },
