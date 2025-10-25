@@ -1053,6 +1053,8 @@ function grantXp(amount) {
     player.xp += amount;
     logMessage(`You gained ${amount} XP!`);
 
+    triggerStatFlash(statDisplays.xp, true); // Flash green for XP gain
+
     // Check for level up (using 'while' handles multiple level-ups at once)
     while (player.xp >= player.xpToNextLevel) {
         player.xp -= player.xpToNextLevel; // Subtract the XP needed, keep the remainder
@@ -1706,6 +1708,10 @@ document.addEventListener('keydown', (event) => {
             gameState.player.health = 0;
             logMessage("You have perished!");
             syncPlayerState();
+
+            document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
+            document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
+
             gameOverModal.classList.remove('hidden');
         }
         renderStats();
