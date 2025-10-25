@@ -75,19 +75,56 @@
                         <span id="xpDisplay" class="font-bold">XP: 0 / 100</span>
                         <span id="statPointsDisplay" class="font-bold text-yellow-400 hidden"></span>
                     </div>
+                    
                     <div id="coreStatsPanel" class="panel grid grid-cols-2 gap-x-4 w-full p-4 rounded-2xl border-2 text-xs">
-                        <span id="strengthDisplay" class="font-bold">Strength: 1</span><span id="witsDisplay" class="font-bold">Wits: 1</span>
-                        <span id="constitutionDisplay" class="font-bold">Constitution: 1</span><span id="dexterityDisplay" class="font-bold">Dexterity: 1</span>
-                        <span id="charismaDisplay" class="font-bold">Charisma: 1</span><span id="luckDisplay" class="font-bold">Luck: 1</span>
-                        <span id="willpowerDisplay" class="font-bold">Willpower: 1</span><span id="perceptionDisplay" class="font-bold">Perception: 1</span>
-                        <span id="enduranceDisplay" class="font-bold">Endurance: 1</span><span id="intuitionDisplay" class="font-bold">Intuition: 1</span>
+                        <span class="flex justify-between items-center">
+                            <span id="strengthDisplay" class="font-bold">Strength: 1</span>
+                            <button id="addStrBtn" class="stat-add-btn" data-stat="strength">+</button>
+                        </span>
+                        <span class="flex justify-between items-center">
+                            <span id="witsDisplay" class="font-bold">Wits: 1</span>
+                            <button id="addWitsBtn" class="stat-add-btn" data-stat="wits">+</button>
+                        </span>
+                        <span class="flex justify-between items-center">
+                            <span id="constitutionDisplay" class="font-bold">Constitution: 1</span>
+                            <button id="addConBtn" class="stat-add-btn" data-stat="constitution">+</button>
+                        </span>
+                        <span class="flex justify-between items-center">
+                            <span id="dexterityDisplay" class="font-bold">Dexterity: 1</span>
+                            <button id="addDexBtn" class="stat-add-btn" data-stat="dexterity">+</button>
+                        </span>
+                        <span class="flex justify-between items-center">
+                            <span id="charismaDisplay" class="font-bold">Charisma: 1</span>
+                            <button id="addChaBtn" class="stat-add-btn" data-stat="charisma">+</button>
+                        </span>
+                        <span class="flex justify-between items-center">
+                            <span id="luckDisplay" class="font-bold">Luck: 1</span>
+                            <button id="addLuckBtn" class="stat-add-btn" data-stat="luck">+</button>
+                        </span>
+                        <span class="flex justify-between items-center">
+                            <span id="willpowerDisplay" class="font-bold">Willpower: 1</span>
+                            <button id="addWillBtn" class="stat-add-btn" data-stat="willpower">+</button>
+                        </span>
+                        <span class="flex justify-between items-center">
+                            <span id="perceptionDisplay" class="font-bold">Perception: 1</span>
+                            <button id="addPercBtn" class="stat-add-btn" data-stat="perception">+</button>
+                        </span>
+                        <span class="flex justify-between items-center">
+                            <span id="enduranceDisplay" class="font-bold">Endurance: 1</span>
+                            <button id="addEndBtn" class="stat-add-btn" data-stat="endurance">+</button>
+                        </span>
+                        <span class="flex justify-between items-center">
+                            <span id="intuitionDisplay" class="font-bold">Intuition: 1</span>
+                            <button id="addIntuiBtn" class="stat-add-btn" data-stat="intuition">+</button>
+                        </span>
                     </div>
                     <div id="chatContainer" class="panel p-4 w-full rounded-2xl border-2 flex flex-col flex-grow">
                         <h2 class="text-xl font-bold mb-2">Chat</h2>
                         <div id="chatMessages" class="flex-grow overflow-y-auto flex flex-col-reverse"></div>
                         <input type="text" id="chatInput" class="themed-input w-full p-2 border rounded text-sm mt-2" placeholder="Say something...">
                     </div>
-                </div> </div>
+                </div>
+            </div>
 
             <div id="controls" class="mt-4 text-center">
                 <p class="text-lg">Use <span class="highlight-text font-bold">Arrow Keys</span> or <span class="highlight-text font-bold">WASD</span> to move. <span class="highlight-text font-bold">1-9</span> to use items. <span class="highlight-text font-bold">R</span> to rest.</p>
