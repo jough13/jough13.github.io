@@ -1,5 +1,5 @@
 :root {
-  
+    /* MODIFIED: Brighter, more saturated light-theme colors */
     --bg-page: #f9fafb; 
     --bg-container: #ffffff; 
     --bg-panel: #f3f4f6;
@@ -9,11 +9,11 @@
     --border-color: #d1d5db; 
     --canvas-bg: #ffffff; 
     --canvas-border: #9ca3af;
-    --player-color: #1e40af; 
+    --player-color: #1e40af; /* MODIFIED: Darker Blue */
     --terrain-color: #374151;
 }
 [data-theme="dark"] {
-
+    /* MODIFIED: Brighter, more saturated dark-theme colors */
     --bg-page: #111827; 
     --bg-container: #1f2937; 
     --bg-panel: #374151;
@@ -44,7 +44,7 @@ canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-bord
     /* This can be empty as layout is handled by Tailwind */
 }
 
-/* ADDED: This prevents the inventory from collapsing before JS loads */
+This prevents the inventory from collapsing before JS loads */
 #inventoryPanel {
     min-height: 8rem;
 }
@@ -212,4 +212,38 @@ kbd {
 /* This class will be added by JS */
 .show-stat-buttons .stat-add-btn {
     display: block;
+}
+
+.stat-bar-container {
+    width: 100%;
+    height: 8px; /* Sets the thickness of the bar */
+    background-color: var(--bg-page); /* The "empty" part of the bar */
+    border-radius: 4px;
+    overflow: hidden; /* Ensures the bar stays inside the rounded corners */
+    border: 1px solid var(--border-color);
+}
+
+.stat-bar {
+    height: 100%;
+    width: 100%; /* Default to full */
+    transition: width 0.3s ease-out; /* Smooth animation when value changes */
+}
+
+/* --- Bar Specific Colors --- */
+
+.bar-health {
+    background-color: #22c55e; /* Green */
+}
+/* We'll add dynamic colors for health later in JS */
+
+.bar-mana {
+    background-color: #3b82f6; /* Blue */
+}
+
+.bar-stamina {
+    background-color: #16a34a; /* Darker Green */
+}
+
+.bar-psyche {
+    background-color: #6366f1; /* Indigo */
 }
