@@ -188,3 +188,29 @@ kbd {
 .stat-pulse-yellow {
     animation: pulse-yellow 0.6s ease-out;
 }
+
+/* === ADD THIS NEW BLOCK === */
+.stat-add-btn {
+    display: none; /* Hidden by default */
+    font-weight: bold;
+    color: var(--text-highlight);
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 1.25rem;
+    height: 1.25rem;
+    line-height: 1.25rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.stat-add-btn:hover {
+    transform: scale(1.1);
+    background-color: var(--bg-page);
+}
+
+/* This class will be added by JS */
+.show-stat-buttons .stat-add-btn {
+    display: block;
+}
