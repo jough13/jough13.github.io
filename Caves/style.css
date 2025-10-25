@@ -61,7 +61,7 @@ canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-bord
 }
 
 #chatMessages {
-
+    min-height: 0;
     overflow-y: scroll;
     display: flex;
     flex-direction: column-reverse;
