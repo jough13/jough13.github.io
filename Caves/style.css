@@ -1,5 +1,5 @@
 :root {
-    /* MODIFIED: Brighter, more saturated light-theme colors */
+  
     --bg-page: #f9fafb; 
     --bg-container: #ffffff; 
     --bg-panel: #f3f4f6;
@@ -9,11 +9,11 @@
     --border-color: #d1d5db; 
     --canvas-bg: #ffffff; 
     --canvas-border: #9ca3af;
-    --player-color: #1e40af; /* MODIFIED: Darker Blue */
+    --player-color: #1e40af; 
     --terrain-color: #374151;
 }
 [data-theme="dark"] {
-    /* MODIFIED: Brighter, more saturated dark-theme colors */
+
     --bg-page: #111827; 
     --bg-container: #1f2937; 
     --bg-panel: #374151;
@@ -61,7 +61,7 @@ canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-bord
 }
 
 #chatMessages {
-    max-height: 250px;
+    max-height: 260px;
     overflow-y: scroll;
     display: flex;
     flex-direction: column-reverse;
