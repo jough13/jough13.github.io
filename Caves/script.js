@@ -1237,6 +1237,29 @@ document.addEventListener('keydown', (event) => {
                 loreModal.classList.remove('hidden');
                 return; // Stop processing after showing lore
             }
+            if (newTile === 'B') {
+                const tileId = `${newX},${-newY}`;
+                
+                // Grant XP the first time the player reads it
+                if (!gameState.foundLore.has(tileId)) {
+                    grantXp(15); // A bit more than lore, less than a journal
+                    gameState.foundLore.add(tileId);
+                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                }
+
+                // Get the DOM elements for the modal
+                loreTitle.textContent = "Bounty Board";
+                
+                // Set the content for the modal
+                // (The \n newlines work because of the 'whitespace-pre-wrap' class in your HTML)
+                loreContent.textContent = "A weathered board. Most notices are unreadable, but a few stand out:\n\n- REWARD: 50 GOLD for clearing the 'Glacial Cavern' to the north.\n\n- LOST: My favorite pet rock, 'Rocky'. Last seen near the old castle.\n\n- BEWARE: A dark presence stirs in the west. Travel with caution.";
+                
+                // Show the modal
+                loreModal.classList.remove('hidden');
+                
+                // IMPORTANT: Stop processing so the player doesn't move
+                return; 
+            }
             // Handle all other special tiles like entrances/exits
             switch (tileData.type) {
                 case 'dungeon_entrance':
