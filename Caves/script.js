@@ -535,6 +535,13 @@ const statDisplays = {
     statPoints: document.getElementById('statPointsDisplay')
 };
 
+const statBarElements = {
+    health: document.getElementById('healthBar'),
+    mana: document.getElementById('manaBar'),
+    stamina: document.getElementById('staminaBar'),
+    psyche: document.getElementById('psycheBar')
+};
+
 const elevationNoise = Object.create(Perlin);
 elevationNoise.init(WORLD_SEED + ':elevation');
 const moistureNoise = Object.create(Perlin);
@@ -825,16 +832,54 @@ const renderStats = () => {
                 if (value > 0) {
                     element.textContent = `Stat Points: ${value}`;
                     element.classList.remove('hidden');
-                    // MODIFIED: Show the [+] buttons
                     coreStatsPanel.classList.add('show-stat-buttons');
                 } else {
                     element.classList.add('hidden');
-                    // MODIFIED: Hide the [+] buttons
                     coreStatsPanel.classList.remove('show-stat-buttons');
                 }
             
+            } else if (statName === 'health') {
+                const max = gameState.player.maxHealth;
+                const percent = (value / max) * 100;
+                
+                // Update bar width
+                statBarElements.health.style.width = `${percent}%`;
+                
+                // Update text and bar color
+                element.textContent = `${label}: ${value}`;
+                element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500'); // Clear old text colors
+                
+                if (percent > 60) {
+                    element.classList.add('text-green-500');
+                    statBarElements.health.style.backgroundColor = '#22c55e'; // Green
+                } else if (percent > 30) {
+                    element.classList.add('text-yellow-500');
+                    statBarElements.health.style.backgroundColor = '#eab308'; // Yellow
+                } else {
+                    element.classList.add('text-red-500');
+                    statBarElements.health.style.backgroundColor = '#ef4444'; // Red
+                }
+
+            } else if (statName === 'mana') {
+                const max = gameState.player.maxMana;
+                const percent = (value / max) * 100;
+                statBarElements.mana.style.width = `${percent}%`;
+                element.textContent = `${label}: ${value}`;
+
+            } else if (statName === 'stamina') {
+                const max = gameState.player.maxStamina;
+                const percent = (value / max) * 100;
+                statBarElements.stamina.style.width = `${percent}%`;
+                element.textContent = `${label}: ${value}`;
+
+            } else if (statName === 'psyche') {
+                const max = gameState.player.maxPsyche;
+                const percent = (value / max) * 100;
+                statBarElements.psyche.style.width = `${percent}%`;
+                element.textContent = `${label}: ${value}`;
+
             } else {
-                // This is the default case for all other stats
+                // Default case for Coins, Level, and Core Stats
                 element.textContent = `${label}: ${value}`;
             }
         }
