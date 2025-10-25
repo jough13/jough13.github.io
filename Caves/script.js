@@ -847,18 +847,39 @@ function handleStatAllocation(event) {
         gameState.player.statPoints--;
         gameState.player[statToIncrease]++;
 
-        // ---
-        // IMPORTANT: This is where you calculate "derived stats"
-        // For example, each point in Constitution could add 5 max health.
-        // ---
         let derivedUpdate = {}; // Store changes for Firebase
+
         if (statToIncrease === 'constitution') {
-             gameState.player.maxHealth += 5;
-             gameState.player.health += 5; // Also heal them
-             derivedUpdate.maxHealth = gameState.player.maxHealth;
-             derivedUpdate.health = gameState.player.health;
-             logMessage(`Your Constitution increases! Max Health is now ${gameState.player.maxHealth}.`);
+            gameState.player.maxHealth += 5;
+            gameState.player.health += 5; // Also heal them
+            derivedUpdate.maxHealth = gameState.player.maxHealth;
+            derivedUpdate.health = gameState.player.health;
+            logMessage(`Your Constitution increases! Max Health is now ${gameState.player.maxHealth}.`);
+        
+        } else if (statToIncrease === 'wits') {
+            gameState.player.maxMana += 5;
+            gameState.player.mana += 5; // Restore mana
+            derivedUpdate.maxMana = gameState.player.maxMana;
+            derivedUpdate.mana = gameState.player.mana;
+            logMessage(`Your Wits increase! Max Mana is now ${gameState.player.maxMana}.`);
+
+        } else if (statToIncrease === 'endurance') {
+            gameState.player.maxStamina += 5;
+            gameState.player.stamina += 5; // Restore stamina
+            derivedUpdate.maxStamina = gameState.player.maxStamina;
+            derivedUpdate.stamina = gameState.player.stamina;
+            logMessage(`Your Endurance increases! Max Stamina is now ${gameState.player.maxStamina}.`);
+        
+        } else if (statToIncrease === 'willpower') {
+            // Psyche seems to be a smaller pool, so we'll add less
+            gameState.player.maxPsyche += 3;
+            gameState.player.psyche += 3; // Restore psyche
+            derivedUpdate.maxPsyche = gameState.player.maxPsyche;
+            derivedUpdate.psyche = gameState.player.psyche;
+            logMessage(`Your Willpower increases! Max Psyche is now ${gameState.player.maxPsyche}.`);
+
         } else {
+            // This handles stats that don't have derived effects yet (like Strength, Luck, etc.)
             logMessage(`You increased your ${statToIncrease}!`);
         }
         
@@ -1241,6 +1262,7 @@ document.addEventListener('keydown', (event) => {
         case 'R':
             if (gameState.player.stamina < gameState.player.maxStamina) {
                 gameState.player.stamina++;
+                triggerStatFlash(statDisplays.stamina, true); // Flash green for gain
                 logMessage("You rest for a moment, recovering 1 stamina.");
             } else logMessage("You are already at full stamina.");
             playerRef.update({
