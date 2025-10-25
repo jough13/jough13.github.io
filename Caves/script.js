@@ -436,7 +436,6 @@ const TERRAIN_COST = {
 };
 
 const ITEM_DATA = {
-
     '+': {
         name: 'Healing Potion',
         type: 'consumable',
@@ -444,7 +443,8 @@ const ITEM_DATA = {
             const oldHealth = state.player.health;
             state.player.health = Math.min(state.player.maxHealth, state.player.health + HEALING_AMOUNT);
             if (state.player.health > oldHealth) {
-                triggerStatFlash(statDisplays.health, true); // Flash green
+                // MODIFIED: Use the new pulse animation
+                triggerStatAnimation(statDisplays.health, 'stat-pulse-green'); 
             }
             logMessage(`Used a Healing Potion. Restored ${HEALING_AMOUNT} health!`);
         }
@@ -463,14 +463,15 @@ const ITEM_DATA = {
         } 
     },
 
-    'S': {
+'S': {
         name: 'Stamina Crystal',
         type: 'consumable',
         effect: (state) => {
             const oldStamina = state.player.stamina;
             state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + STAMINA_RESTORE_AMOUNT);
             if (state.player.stamina > oldStamina) {
-                triggerStatFlash(statDisplays.stamina, true);
+                 // MODIFIED: Use the new pulse animation
+                triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
             }
             logMessage(`Used a Stamina Crystal. Restored ${STAMINA_RESTORE_AMOUNT} stamina!`);
         }
