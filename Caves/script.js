@@ -706,7 +706,7 @@ generateCastle(castleId) {
                 else tile = '.'; // Plains
 
                 const featureRoll = Math.random();
-                if (tile === '.' && featureRoll < 0.001) {
+                if (tile === '.' && featureRoll < 0.0002) {
                     let features = Object.keys(TILE_DATA);
                     features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' && TILE_DATA[f].type !== 'castle_exit');
                     features = features.filter(f => f !== 'B' && f !== '📖'); // Also filter out the Journal
