@@ -1143,15 +1143,23 @@ document.addEventListener('keydown', (event) => {
         newY = startY;
     switch (event.key) {
         case 'ArrowUp':
+        case 'w': // Add this
+        case 'W': // Add this
             newY--;
             break;
         case 'ArrowDown':
+        case 's': // Add this
+        case 'S': // Add this
             newY++;
             break;
         case 'ArrowLeft':
+        case 'a': // Add this
+        case 'A': // Add this
             newX--;
             break;
         case 'ArrowRight':
+        case 'd': // Add this
+        case 'D': // Add this
             newX++;
             break;
         case 'r':
@@ -1414,6 +1422,11 @@ helpModal.addEventListener('click', (event) => {
 
 chatInput.addEventListener('keydown', (event) => {
     event.stopPropagation();
+    if (event.key === 'Escape') {
+        chatInput.blur();
+        event.preventDefault();
+        return;
+    }
     if (event.key === 'Enter' && chatInput.value) {
         const message = chatInput.value;
         chatInput.value = '';
