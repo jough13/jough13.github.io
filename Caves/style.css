@@ -60,7 +60,12 @@ canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-bord
     color: var(--text-default);
 }
 
+#chatContainer {
+    min-height: 0;
+}
+
 #chatMessages {
+
     min-height: 0;
     overflow-y: scroll;
     display: flex;
