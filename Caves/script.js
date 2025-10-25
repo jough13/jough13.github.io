@@ -619,7 +619,7 @@ generateCastle(castleId) {
             '▓....▓...▓.▓...▓.▓...▓...▓..........................................▓',
             '▓....▓...▓▓▓...▓▓▓...▓...▓..........................................▓',
             '▓....▓...................▓..........................................▓',
-            '▓....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..........................................▓',
+            '▓....▓▓▓▓▓▓▓▓▓T▓▓▓▓▓▓▓▓▓▓▓..........................................▓',
             '▓...................................................................▓',
             '▓...................................................................▓',
             '▓...................................................................▓',
@@ -629,19 +629,20 @@ generateCastle(castleId) {
             '▓...................................................................▓',
             '▓...................................................................▓',
             '▓...................................................................▓',
-            '▓...................................._................................▓', // MODIFIED: 'X' removed from here
-            '▓....................................X................................▓', // MODIFIED: 'X' added here
+            '▓...................................._................................▓',
+            '▓...................................................................▓', // This is our spawn line (y=32)
             '▓...................................................................▓',
-            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓T▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
         ];
 
-        baseMap[baseMap.length - 1] = '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓';
-
+        baseMap[21] = '▓....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..........................................▓';
+        baseMap[31] = '▓...................................................................▓';
+        
         const map = baseMap.map(row => row.split(''));
 
         const random = Alea(stringToSeed(castleId));
 
-        // Procedurally add breaches and rubble with smarter rules
+        // Procedurally add breaches and rubble
         for (let i = 0; i < 75; i++) { 
             const y = Math.floor(random() * (map.length - 4)) + 2; 
             const x = Math.floor(random() * (map[0].length - 4)) + 2;
@@ -656,30 +657,6 @@ generateCastle(castleId) {
                     map[y][x] = '▒';
                 }
             }
-        }
-
-        // Find the exit 'X' and guarantee it's accessible.
-        let spawnX = -1, spawnY = -1;
-        for (let y = 0; y < map.length; y++) {
-            let x = map[y].indexOf('X');
-            if (x !== -1) {
-                spawnY = y;
-                spawnX = x;
-                break;
-            }
-        }
-        
-        // If we found the spawn point, clear it and its neighbors
-        if (spawnY !== -1 && spawnX !== -1) {
-            map[spawnY][spawnX] = '.';     // Clear the spawn tile itself
-            map[spawnY-1][spawnX] = '.';   // Tile above
-            map[spawnY+1][spawnX] = '.';   // Tile below
-            map[spawnY][spawnX-1] = '.';   // Tile left
-            map[spawnY][spawnX+1] = '.';   // Tile right
-            map[spawnY-1][spawnX-1] = '.'; // Top-left
-            map[spawnY-1][spawnX+1] = '.'; // Top-right
-            map[spawnY+1][spawnX-1] = '.'; // Bottom-left
-            map[spawnY+1][spawnX+1] = '.'; // Bottom-right
         }
 
         this.castleMaps[castleId] = map;
@@ -1424,14 +1401,8 @@ document.addEventListener('keydown', (event) => {
                         y: gameState.player.y
                     };
                     const castleMap = chunkManager.generateCastle(gameState.currentCastleId);
-                    for (let y = 0; y < castleMap.length; y++) {
-                        const x = castleMap[y].indexOf('X');
-                        if (x !== -1) {
-                            gameState.player.x = x;
-                            gameState.player.y = y;
-                            break;
-                        }
-                    }
+                        gameState.player.x = 37;
+                        gameState.player.y = 32;
                     logMessage("You enter the castle courtyard.");
                     updateRegionDisplay();
                     render();
