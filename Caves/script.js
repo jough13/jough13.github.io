@@ -2510,8 +2510,6 @@ if (itemData) {
                         chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
                     }
 
-                    render();
-
                 }
             }
         } else if (moveCost > 0) {
