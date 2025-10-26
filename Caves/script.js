@@ -55,6 +55,14 @@ const TILE_DATA = {
         title: 'The King\'s Lament',
         content: `Day 34 since the fall...\n\nThe stones of this castle weep. I hear them every night. The whispers tell of a power that sleeps beneath the mountains, a power we were foolish to awaken.\n\nMy knights are gone. My kingdom is ash. All that remains is this cursed immortality, a silent witness to my failure.`
     },
+    'N': {
+        type: 'npc',
+        title: 'Villager'
+    },
+    '§': {
+        type: 'shop',
+        title: 'General Store'
+    },
 };
 
 const CASTLE_LAYOUTS = {
@@ -125,6 +133,26 @@ const CASTLE_LAYOUTS = {
     }
 };
 
+const SELL_MODIFIER = 0.5; // Players sell items for 50% of their base price
+
+const SHOP_INVENTORY = [
+    { 
+        name: 'Healing Potion', 
+        price: 25, 
+        stock: 10 // How many the shop has
+    },
+    { 
+        name: 'Stamina Crystal', 
+        price: 15,
+        stock: 20
+    },
+    { 
+        name: 'Mana Orb', 
+        price: 20,
+        stock: 10
+    }
+];
+
 const CAVE_THEMES = {
     ROCK: {
         name: 'A Dark Cave',
@@ -156,7 +184,7 @@ const CAVE_THEMES = {
         }, // The red color makes it look like lava
         decorations: ['+', '$'] // Only healing and gold
     },
-    
+
     CRYSTAL: {
         name: 'A Crystalline Tunnel',
         wall: '▒', // Use the 'ice' wall, but colors will make it different
@@ -250,6 +278,12 @@ const loreTitle = document.getElementById('loreTitle');
 const loreContent = document.getElementById('loreContent');
 const gameOverModal = document.getElementById('gameOverModal');
 const restartButton = document.getElementById('restartButton');
+
+const shopModal = document.getElementById('shopModal');
+const closeShopButton = document.getElementById('closeShopButton');
+const shopPlayerCoins = document.getElementById('shopPlayerCoins');
+const shopBuyList = document.getElementById('shopBuyList');
+const shopSellList = document.getElementById('shopSellList');
 
 const coreStatsPanel = document.getElementById('coreStatsPanel');
 
@@ -800,10 +834,12 @@ generateCastle(castleId) {
                 else tile = '.'; // Plains
 
                 const featureRoll = Math.random();
-                if (tile === '.' && featureRoll < 0.0002) {
+                if (tile === '.' && featureRoll < 0.00025) { 
                     let features = Object.keys(TILE_DATA);
-                    features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' && TILE_DATA[f].type !== 'castle_exit');
-                    features = features.filter(f => f !== 'B' && f !== '📖'); // Also filter out the Journal
+                    // Filter out tiles that shouldn't auto-spawn
+                    features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' && 
+                                                    TILE_DATA[f].type !== 'castle_exit');
+                    
                     const featureTile = features[Math.floor(Math.random() * features.length)];
 
                     if (TILE_DATA[featureTile].type === 'dungeon_entrance' || TILE_DATA[featureTile].type === 'castle_entrance') {
@@ -1175,6 +1211,166 @@ function grantXp(amount) {
     });
 
     renderStats();
+}
+
+function handleBuyItem(itemName) {
+    const player = gameState.player;
+    const shopItem = SHOP_INVENTORY.find(item => item.name === itemName);
+    const itemTemplate = ITEM_DATA[Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName)];
+
+    if (!shopItem || !itemTemplate) {
+        logMessage("Error: Item not found in shop.");
+        return;
+    }
+
+    // 1. Check if player has enough gold
+    if (player.coins < shopItem.price) {
+        logMessage("You don't have enough gold for that.");
+        return;
+    }
+
+    // 2. Check if player has inventory space
+    const existingStack = player.inventory.find(item => item.name === itemName);
+    if (!existingStack && player.inventory.length >= MAX_INVENTORY_SLOTS) {
+        logMessage("Your inventory is full!");
+        return;
+    }
+
+    // 3. Process the transaction
+    player.coins -= shopItem.price;
+    logMessage(`You bought a ${itemName} for ${shopItem.price} gold.`);
+
+    if (existingStack) {
+        existingStack.quantity++;
+    } else {
+        player.inventory.push({
+            name: itemTemplate.name,
+            type: itemTemplate.type,
+            quantity: 1,
+            tile: itemTemplate.tile || '?' // Find the tile from ITEM_DATA
+        });
+    }
+
+    // 4. Update database and UI
+    playerRef.update({ 
+        coins: player.coins,
+        inventory: player.inventory
+    });
+    renderShop(); // Re-render the shop to show new gold and inventory
+    renderInventory(); // Update the main UI inventory
+    renderStats(); // Update the main UI gold display
+}
+
+function handleSellItem(itemIndex) {
+    const player = gameState.player;
+    const itemToSell = player.inventory[itemIndex];
+
+    if (!itemToSell) {
+        logMessage("Error: Item not in inventory.");
+        return;
+    }
+
+    // Find the item's base price in the shop.
+    // If not in the shop, we'll give it a default low price.
+    const shopItem = SHOP_INVENTORY.find(item => item.name === itemToSell.name);
+    const basePrice = shopItem ? shopItem.price : 2; // Sell unlisted items for 2 gold
+    
+    const sellPrice = Math.floor(basePrice * SELL_MODIFIER);
+
+    // 1. Process the transaction
+    player.coins += sellPrice;
+    logMessage(`You sold a ${itemToSell.name} for ${sellPrice} gold.`);
+
+    // 2. Remove one from the stack
+    itemToSell.quantity--;
+    if (itemToSell.quantity <= 0) {
+        // If stack is empty, remove it
+        player.inventory.splice(itemIndex, 1);
+    }
+
+    // 3. Update database and UI
+    playerRef.update({ 
+        coins: player.coins,
+        inventory: player.inventory
+    });
+    renderShop();
+    renderInventory();
+    renderStats();
+}
+
+function renderShop() {
+    // 1. Clear old lists
+    shopBuyList.innerHTML = '';
+    shopSellList.innerHTML = '';
+
+    // 2. Update player's gold
+    shopPlayerCoins.textContent = `Your Gold: ${gameState.player.coins}`;
+
+    // 3. Populate "Buy" list
+    SHOP_INVENTORY.forEach(item => {
+        const itemTemplate = ITEM_DATA[Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === item.name)];
+        const li = document.createElement('li');
+        li.className = 'shop-item';
+        li.innerHTML = `
+            <div>
+                <span class="shop-item-name">${item.name} (${itemTemplate.tile})</span>
+                <span class="shop-item-details">Price: ${item.price}g</span>
+            </div>
+            <div class="shop-item-actions">
+                <button data-buy-item="${item.name}">Buy</button>
+            </div>
+        `;
+        // Disable buy button if player can't afford it
+        if (gameState.player.coins < item.price) {
+            li.querySelector('button').disabled = true;
+        }
+        shopBuyList.appendChild(li);
+    });
+
+    // 4. Populate "Sell" list
+    if (gameState.player.inventory.length === 0) {
+        shopSellList.innerHTML = '<li class="shop-item-details italic">Your inventory is empty.</li>';
+    } else {
+        gameState.player.inventory.forEach((item, index) => {
+            const shopItem = SHOP_INVENTORY.find(sItem => sItem.name === item.name);
+            const basePrice = shopItem ? shopItem.price : 2; // Default sell price if not in shop
+            const sellPrice = Math.floor(basePrice * SELL_MODIFIER);
+
+            const li = document.createElement('li');
+            li.className = 'shop-item';
+            li.innerHTML = `
+                <div>
+                    <span class="shop-item-name">${item.name} (x${item.quantity})</span>
+                    <span class="shop-item-details">Sell for: ${sellPrice}g</span>
+                </div>
+                <div class="shop-item-actions">
+                    <button data-sell-index="${index}">Sell 1</button>
+                </div>
+            `;
+            shopSellList.appendChild(li);
+        });
+    }
+}
+
+function initShopListeners() {
+    // Close button
+    closeShopButton.addEventListener('click', () => {
+        shopModal.classList.add('hidden');
+    });
+
+    // Handle clicks inside the "Buy" list
+    shopBuyList.addEventListener('click', (e) => {
+        if (e.target.dataset.buyItem) {
+            handleBuyItem(e.target.dataset.buyItem);
+        }
+    });
+
+    // Handle clicks inside the "Sell" list
+    shopSellList.addEventListener('click', (e) => {
+        if (e.target.dataset.sellIndex) {
+            handleSellItem(parseInt(e.target.dataset.sellIndex, 10));
+        }
+    });
 }
 
 const renderInventory = () => {
@@ -1611,66 +1807,78 @@ document.addEventListener('keydown', (event) => {
         // 3. If no collision, check for special tiles (entrances, lore, etc.)
         const tileData = TILE_DATA[newTile];
         if (tileData) {
-            if (tileData.type === 'journal') {
+            const tileId = `${newX},${-newY}`; // Get tileId for XP checks
 
-                const tileId = `${newX},${-newY}`;
+            // Handle all lore/journal/NPC types
+            if (tileData.type === 'journal') {
                 if (!gameState.foundLore.has(tileId)) {
                     grantXp(25);
                     gameState.foundLore.add(tileId);
                     playerRef.update({ foundLore: Array.from(gameState.foundLore) });
                 }
-
                 loreTitle.textContent = tileData.title;
                 loreContent.textContent = tileData.content;
                 loreModal.classList.remove('hidden');
-                return; // Stop processing after showing lore
+                return; // Stop processing
             }
+
             if (newTile === 'B') {
-                const tileId = `${newX},${-newY}`;
-                
-                // Grant XP the first time the player reads it
                 if (!gameState.foundLore.has(tileId)) {
-                    grantXp(15); // A bit more than lore, less than a journal
+                    grantXp(15);
                     gameState.foundLore.add(tileId);
                     playerRef.update({ foundLore: Array.from(gameState.foundLore) });
                 }
-
-                // Get the DOM elements for the modal
                 loreTitle.textContent = "Bounty Board";
-                
-                // Set the content for the modal
-                // (The \n newlines work because of the 'whitespace-pre-wrap' class in your HTML)
                 loreContent.textContent = "A weathered board. Most notices are unreadable, but a few stand out:\n\n- REWARD: 50 GOLD for clearing the 'Glacial Cavern' to the north.\n\n- LOST: My favorite pet rock, 'Rocky'. Last seen near the old castle.\n\n- BEWARE: A dark presence stirs in the west. Travel with caution.";
-                
-                // Show the modal
                 loreModal.classList.remove('hidden');
-                
-                // IMPORTANT: Stop processing so the player doesn't move
                 return; 
             }
-
+            
             if (newTile === '#') {
-                const tileId = `${newX},${-newY}`;
-                
-                // Grant XP the first time
                 if (!gameState.foundLore.has(tileId)) {
                     grantXp(10);
                     gameState.foundLore.add(tileId);
                     playerRef.update({ foundLore: Array.from(gameState.foundLore) });
                 }
-
-                // Use the stone's location to pick a unique, consistent message
                 const seed = stringToSeed(tileId);
                 const random = Alea(seed);
                 const messageIndex = Math.floor(random() * LORE_STONE_MESSAGES.length);
                 const message = LORE_STONE_MESSAGES[messageIndex];
-
-                // Populate and show the modal
                 loreTitle.textContent = "A Faded Rune Stone";
                 loreContent.textContent = `The stone hums with a faint energy. You can just make out the words:\n\n"...${message}..."`;
                 loreModal.classList.remove('hidden');
-                
                 return; // Stop processing
+            }
+
+            // --- NEW 'N' (NPC) TILE ---
+            if (newTile === 'N') {
+                if (!gameState.foundLore.has(tileId)) {
+                    grantXp(5); // A little XP for talking to someone new
+                    gameState.foundLore.add(tileId);
+                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                }
+                const seed = stringToSeed(tileId);
+                const random = Alea(seed);
+                const npcDialogues = [
+                    "Be careful in those caves. I've heard strange noises coming from them.",
+                    "It's a tough world. Glad I'm just here, minding my own business.",
+                    "Looking for the castle? It's said to be cursed, you know.",
+                    "If you find any gold, you should visit a shop. I hear there's one... somewhere."
+                ];
+                const dialogue = npcDialogues[Math.floor(random() * npcDialogues.length)];
+
+                loreTitle.textContent = "Villager";
+                loreContent.textContent = `An old villager looks up as you approach.\n\n"${dialogue}"`;
+                loreModal.classList.remove('hidden');
+                return;
+            }
+
+            // --- NEW '§' (SHOP) TILE ---
+            if (newTile === '§') {
+                logMessage("You enter the General Store.");
+                renderShop(); // Populate the shop
+                shopModal.classList.remove('hidden'); // Show it
+                return; // Stop player from moving
             }
 
             // Handle all other special tiles like entrances/exits
@@ -1682,8 +1890,8 @@ document.addEventListener('keydown', (event) => {
                         x: gameState.player.x,
                         y: gameState.player.y
                     };
-                    const caveMap = chunkManager.generateCave(gameState.currentCaveId); // MOVED UP: Generate the cave first.
-                    gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId]; // NOW, get the theme.
+                    const caveMap = chunkManager.generateCave(gameState.currentCaveId); 
+                    gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId]; 
                     for (let y = 0; y < caveMap.length; y++) {
                         const x = caveMap[y].indexOf('>');
                         if (x !== -1) {
@@ -1698,7 +1906,7 @@ document.addEventListener('keydown', (event) => {
                     syncPlayerState();
                     return;
                 case 'dungeon_exit':
-                    exitToOverworld("You emerge back into the sunlight."); // MODIFIED
+                    exitToOverworld("You emerge back into the sunlight."); 
                     return;
                 case 'castle_entrance':
                     gameState.mapMode = 'castle';
@@ -1707,24 +1915,23 @@ document.addEventListener('keydown', (event) => {
                         x: gameState.player.x,
                         y: gameState.player.y
                     };
-                    // This generates the map AND sets the spawn point
+                    
                     chunkManager.generateCastle(gameState.currentCastleId); 
                     
-                    // Now we retrieve that spawn point
                     const spawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
                     gameState.player.x = spawn.x;
                     gameState.player.y = spawn.y;
                     
-                    logMessage("You enter the castle grounds."); // Changed message slightly
+                    logMessage("You enter the castle grounds."); 
                     updateRegionDisplay();
                     render();
                     syncPlayerState();
                     return;
                 case 'castle_exit':
-                    exitToOverworld("You leave the castle."); // MODIFIED
+                    exitToOverworld("You leave the castle."); 
                     return;
                 case 'lore':
-                    const tileId = `${newX},${-newY}`;
+                    // This is for the '☗' tile
                     if (!gameState.foundLore.has(tileId)) {
                         grantXp(10);
                         gameState.foundLore.add(tileId);
@@ -2154,6 +2361,7 @@ connectedRef.on('value', (snap) => {
     updateRegionDisplay();
 
     loadingIndicator.classList.add('hidden');
+    initShopListeners();
 }
 
 auth.onAuthStateChanged((user) => {
