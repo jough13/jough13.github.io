@@ -57,6 +57,74 @@ const TILE_DATA = {
     },
 };
 
+const CASTLE_LAYOUTS = {
+    COURTYARD: {
+        spawn: { x: 37, y: 32 }, // Your original spawn point
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓...................................................................▓',
+            '▓...................................B...................................▓',
+            '▓.....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓.....▓',
+            '▓.....▓.....................▓.......▓.....................▓.....▓',
+            '▓.....▓.....................▓.......▓.....................▓.....▓',
+            '▓.....▓.....................▓.......▓...▓▓▓...▓▓▓...▓▓▓...▓.....▓',
+            '▓.....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓.......▓...▓.▓...▓.▓...▓.▓...▓.....▓',
+            '▓...................................▓...▓▓▓...▓▓▓...▓▓▓...▓.....▓',
+            '▓...................................▓.....................▓.....▓',
+            '▓...................................▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓.....▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓.......................................▓',
+            '▓....▓...................▓..........................................▓',
+            '▓....▓...▓▓▓...▓▓▓...▓...▓..........................................▓',
+            '▓....▓...▓.▓...▓.▓...▓...▓..........................................▓',
+            '▓....▓...▓▓▓...▓▓▓...▓...▓..........................................▓',
+            '▓....▓...................▓..........................................▓',
+            '▓....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..........................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓X▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', // Exit
+        ]
+    },
+    TOWER: {
+        spawn: { x: 10, y: 18 }, // New spawn point for this map
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓...................▓',
+            '▓...▓▓▓.............▓',
+            '▓...▓.▓...▓▓▓.......▓',
+            '▓...▓.▓...▓.▓.......▓',
+            '▓...▓▓▓...▓▓▓.......▓',
+            '▓...................▓',
+            '▓.........▓▓▓▓▓▓▓▓▓▓▓',
+            '▓.........▓.........▓',
+            '▓.........▓....$....▓',
+            '▓.........▓.........▓',
+            '▓.........▓...📖.....▓', // Put a journal here
+            '▓.........▓.........▓',
+            '▓.........▓▓▓.......▓',
+            '▓.............▓.....▓',
+            '▓.............▓.....▓',
+            '▓.............▓.....▓',
+            '▓.............▓.....▓',
+            '▓.............X.....▓', // Exit
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
+        ]
+    }
+};
+
 const CAVE_THEMES = {
     ROCK: {
         name: 'A Dark Cave',
@@ -87,6 +155,28 @@ const CAVE_THEMES = {
             floor: '#ef4444'
         }, // The red color makes it look like lava
         decorations: ['+', '$'] // Only healing and gold
+    },
+    
+    CRYSTAL: {
+        name: 'A Crystalline Tunnel',
+        wall: '▒', // Use the 'ice' wall, but colors will make it different
+        floor: '.',
+        colors: {
+            wall: '#67e8f9', // Bright Cyan
+            floor: '#22d3ee'  // Darker Cyan
+        },
+        decorations: ['Y', 'o', '$'] // Psyche, Mana, and Gold
+    },
+
+    GROTTO: {
+        name: 'A Sunken Grotto',
+        wall: '▓', // Use standard 'rock' wall
+        floor: ':', // Use 'ice' floor, but colors make it look slick/wet
+        colors: {
+            wall: '#14532d', // Dark Green
+            floor: '#16a34a'  // Bright Green
+        },
+        decorations: ['+', 'S', 'o'] // Health, Stamina, Mana
     }
 };
 
@@ -625,51 +715,27 @@ const chunkManager = {
 generateCastle(castleId) {
         if (this.castleMaps[castleId]) return this.castleMaps[castleId];
         
-        // --- BASEMAP (75x35) - All rooms are now open ---
-        const baseMap = [
-            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
-            '▓...................................................................▓',
-            '▓...................................B...................................▓',
-            '▓.....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓.....▓', // MODIFIED: Widened doors
-            '▓.....▓.....................▓.......▓.....................▓.....▓',
-            '▓.....▓.....................▓.......▓.....................▓.....▓',
-            '▓.....▓.....................▓.......▓...▓▓▓...▓▓▓...▓▓▓...▓.....▓',
-            '▓.....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓.......▓...▓.▓...▓.▓...▓.▓...▓.....▓',
-            '▓...................................▓...▓▓▓...▓▓▓...▓▓▓...▓.....▓',
-            '▓...................................▓.....................▓.....▓',
-            '▓...................................▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓.....▓',
-            '▓...................................................................▓',
-            '▓...................................................................▓',
-            '▓...................................................................▓',
-            '▓...................................................................▓',
-            '▓....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓.......................................▓', // MODIFIED: Widened door
-            '▓....▓...................▓..........................................▓',
-            '▓....▓...▓▓▓...▓▓▓...▓...▓..........................................▓',
-            '▓....▓...▓.▓...▓.▓...▓...▓..........................................▓',
-            '▓....▓...▓▓▓...▓▓▓...▓...▓..........................................▓',
-            '▓....▓...................▓..........................................▓',
-            '▓....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..........................................▓', // MODIFIED: Cleaned stray 'T'
-            '▓...................................................................▓',
-            '▓...................................................................▓',
-            '▓...................................................................▓',
-            '▓...................................................................▓',
-            '▓...................................................................▓',
-            '▓...................................................................▓',
-            '▓...................................................................▓',
-            '▓...................................................................▓',
-            '▓...................................................................▓',
-            '▓...................................................................▓', // MODIFIED: Cleaned stray '_'
-            '▓...................................................................▓', // This is our spawn line (y=32)
-            '▓...................................................................▓',
-            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓X▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', // Exit
-        ];
-        // --- END OF BASEMAP ---
+        // --- MODIFICATION START ---
+        
+        // 1. Use the castleId to pick a layout
+        const randomLayout = Alea(stringToSeed(castleId + ':layout'));
+        const layoutKeys = Object.keys(CASTLE_LAYOUTS);
+        const chosenLayoutKey = layoutKeys[Math.floor(randomLayout() * layoutKeys.length)];
+        const layout = CASTLE_LAYOUTS[chosenLayoutKey];
+
+        // 2. Get the base map and spawn point from the chosen layout
+        const baseMap = layout.map;
+        // Store the spawn point so the movement handler can use it
+        this.castleSpawnPoints = this.castleSpawnPoints || {};
+        this.castleSpawnPoints[castleId] = layout.spawn;
+
+        // --- MODIFICATION END ---
         
         const map = baseMap.map(row => row.split(''));
 
         const random = Alea(stringToSeed(castleId));
 
-        // Procedurally add breaches and rubble
+        // Procedurally add breaches and rubble (This code is unchanged)
         for (let i = 0; i < 75; i++) { 
             const y = Math.floor(random() * (map.length - 4)) + 2; 
             const x = Math.floor(random() * (map[0].length - 4)) + 2;
@@ -1036,33 +1102,45 @@ function handleItemDrop(event) {
     }
 
     // --- All checks passed, let's drop the item ---
-    const tileId = `${player.x},${-player.y}`;
 
-    // 1. Remove one item from the stack
+    // 1. (MODIFIED) Create a unique tileId based on the map
+    let tileId;
+    if (gameState.mapMode === 'overworld') {
+        tileId = `${player.x},${-player.y}`;
+    } else {
+        // This creates a unique ID like "cave_120_340:15,-22"
+        const mapId = gameState.currentCaveId || gameState.currentCastleId;
+        tileId = `${mapId}:${player.x},${-player.y}`;
+    }
+
+    // 2. Remove one item from the stack
     itemToDrop.quantity--;
     logMessage(`You dropped one ${itemToDrop.name}.`);
 
-    // 2. Place the item tile on the map
+    // 3. (MODIFIED) Place the item tile on the map
     if (gameState.mapMode === 'overworld') {
         chunkManager.setWorldTile(player.x, player.y, itemToDrop.tile);
-        gameState.lootedTiles.delete(tileId); // Allow re-looting
     } else if (gameState.mapMode === 'dungeon') {
         chunkManager.caveMaps[gameState.currentCaveId][player.y][player.x] = itemToDrop.tile;
     } else if (gameState.mapMode === 'castle') {
         chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = itemToDrop.tile;
     }
+    
+    // 4. (MOVED & MODIFIED) Allow the tile to be re-looted by deleting
+    // its unique ID from the looted list.
+    gameState.lootedTiles.delete(tileId);
 
-    // 3. If the stack is empty, remove it from inventory
+    // 5. If the stack is empty, remove it from inventory
     if (itemToDrop.quantity <= 0) {
         player.inventory.splice(itemIndex, 1);
     }
     
-    // 4. Update UI and DB
+    // 6. Update UI and DB
     renderInventory();
     render(); // Re-render the map to show the dropped item
     playerRef.update({ inventory: player.inventory });
 
-    // 5. Exit drop mode
+    // 7. Exit drop mode
     gameState.isDroppingItem = false;
 }
 
@@ -1629,10 +1707,15 @@ document.addEventListener('keydown', (event) => {
                         x: gameState.player.x,
                         y: gameState.player.y
                     };
-                    const castleMap = chunkManager.generateCastle(gameState.currentCastleId);
-                        gameState.player.x = 37;
-                        gameState.player.y = 32;
-                    logMessage("You enter the castle courtyard.");
+                    // This generates the map AND sets the spawn point
+                    chunkManager.generateCastle(gameState.currentCastleId); 
+                    
+                    // Now we retrieve that spawn point
+                    const spawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
+                    gameState.player.x = spawn.x;
+                    gameState.player.y = spawn.y;
+                    
+                    logMessage("You enter the castle grounds."); // Changed message slightly
                     updateRegionDisplay();
                     render();
                     syncPlayerState();
@@ -1674,16 +1757,19 @@ document.addEventListener('keydown', (event) => {
         }
 
         // 5. Handle item pickups and final updates
-        const itemData = ITEM_DATA[newTile];
-        const tileId = `${newX},${-newY}`;
+let tileId;
+if (gameState.mapMode === 'overworld') {
+    tileId = `${newX},${-newY}`;
+} else {
+    // This creates a unique ID like "cave_120_340:15,-22"
+    const mapId = gameState.currentCaveId || gameState.currentCastleId;
+    tileId = `${mapId}:${newX},${-newY}`;
+}
 
-        if (itemData) {
-            // --- MODIFIED: Check looted state based on map mode ---
-            let isTileLooted = false;
-            if (gameState.mapMode === 'overworld') {
-                isTileLooted = gameState.lootedTiles.has(tileId);
-            }
-            // --- END MODIFICATION ---
+const itemData = ITEM_DATA[newTile];
+if (itemData) {
+    // Now this check works for all map modes
+    let isTileLooted = gameState.lootedTiles.has(tileId);
 
             if (isTileLooted) {
                 logMessage(`You see where a ${itemData.name} once was...`);
@@ -1726,9 +1812,11 @@ document.addEventListener('keydown', (event) => {
                 }
 
                 if (tileLooted) {
-                    // --- MODIFIED: Replace tile based on map mode ---
+                    // --- MODIFIED: Add to lootedTiles REGARDLESS of map mode ---
+                    gameState.lootedTiles.add(tileId);
+
+                    // Now, just change the tile based on the map
                     if (gameState.mapMode === 'overworld') {
-                        gameState.lootedTiles.add(tileId);
                         chunkManager.setWorldTile(newX, newY, '.');
                     } else if (gameState.mapMode === 'dungeon') {
                         const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
