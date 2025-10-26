@@ -251,3 +251,50 @@ kbd {
 .bar-xp {
     background-color: #facc15; /* Your theme's yellow highlight color */
 }
+
+/* --- Shop Modal Styles --- */
+
+.shop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    background-color: var(--bg-page);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.shop-item-name {
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.shop-item-details {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.shop-item-actions button {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.shop-item-actions button:hover {
+    transform: scale(1.05);
+    border-color: var(--text-highlight);
+    color: var(--text-highlight);
+}
+
+.shop-item-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    border-color: var(--border-color);
+    color: var(--text-muted);
+}
