@@ -180,7 +180,7 @@ const CASTLE_LAYOUTS = {
             '▓...............................................................................▓',
             '▓▓▓▓▓.▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
             '▓....X..........................................................................▓', // Exit is here
-            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓T▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
             '▓...............▓$▓...............▓',
             '▓...............▓$▓...............▓',
             '▓...............▓$▓...............▓',
@@ -1385,7 +1385,10 @@ function handleItemDrop(event) {
     // 6. Update UI and DB
     renderInventory();
     render(); // Re-render the map to show the dropped item
-    playerRef.update({ inventory: player.inventory });
+    const inventoryToSave = gameState.player.inventory.map(item => ({
+        name: item.name, type: item.type, quantity: item.quantity, tile: item.tile
+    }));
+    playerRef.update({ inventory: inventoryToSave }); // Save the clean version
 
     // 7. Exit drop mode
     gameState.isDroppingItem = false;
@@ -1467,6 +1470,15 @@ function handleBuyItem(itemName) {
         coins: player.coins,
         inventory: player.inventory
     });
+
+    const inventoryToSave = gameState.player.inventory.map(item => ({
+        name: item.name, type: item.type, quantity: item.quantity, tile: item.tile
+    }));
+    playerRef.update({ 
+        coins: player.coins,
+        inventory: inventoryToSave // Save the clean version
+    });
+
     renderShop(); // Re-render the shop to show new gold and inventory
     renderInventory(); // Update the main UI inventory
     renderStats(); // Update the main UI gold display
@@ -1500,9 +1512,12 @@ function handleSellItem(itemIndex) {
     }
 
     // 3. Update database and UI
+    const inventoryToSave = gameState.player.inventory.map(item => ({
+        name: item.name, type: item.type, quantity: item.quantity, tile: item.tile
+    }));
     playerRef.update({ 
         coins: player.coins,
-        inventory: player.inventory
+        inventory: inventoryToSave // Save the clean version
     });
     renderShop();
     renderInventory();
