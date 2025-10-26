@@ -1028,7 +1028,8 @@ generateCastle(castleId) {
                     let features = Object.keys(TILE_DATA);
                     features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' && 
                                                     TILE_DATA[f].type !== 'castle_exit' &&
-                                                    TILE_DATA[f].type !== 'enemy'); // <-- Don't spawn enemies here
+                                                    TILE_DATA[f].type !== 'enemy' &&
+                                                    f !== '📖');
                     
                     const featureTile = features[Math.floor(Math.random() * features.length)];
 
