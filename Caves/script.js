@@ -2119,7 +2119,6 @@ if (gameState.mapMode === 'dungeon') {
                 logMessage(`You see the corpse of a ${enemyData.name}.`);
             }
         }
-        }
         if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === '▒' || newTile === ' ')) {
             logMessage("You bump into the castle wall.");
             return; // Stop here if it's a wall or rubble
