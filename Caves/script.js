@@ -1251,6 +1251,15 @@ const render = () => {
         const screenY = (otherPlayer.y - startY) * TILE_SIZE;
 
         if (screenX > -TILE_SIZE && screenX < canvas.width && screenY > -TILE_SIZE && screenY < canvas.height) {
+
+            if (otherPlayer.email) {
+                const name = otherPlayer.email.split('@')[0]; // Show name, not full email
+                ctx.fillStyle = '#FFFFFF'; // White text for the name
+                ctx.textAlign = 'center';
+                // Draw name slightly above the character
+                ctx.fillText(name, screenX + TILE_SIZE / 2, screenY - 12); 
+            }
+
             const healthPercent = (otherPlayer.health || 0) / (otherPlayer.maxHealth || 10);
             const healthBarWidth = TILE_SIZE;
             ctx.fillStyle = '#333';
@@ -1287,7 +1296,7 @@ const render = () => {
 };
 
 function syncPlayerState() {
-    if (onlinePlayerRef) {
+if (onlinePlayerRef) {
         const stateToSync = {
             x: gameState.player.x,
             y: gameState.player.y,
@@ -1295,6 +1304,7 @@ function syncPlayerState() {
             maxHealth: gameState.player.maxHealth,
             mapMode: gameState.mapMode,
             mapId: gameState.currentCaveId || gameState.currentCastleId || null,
+            email: auth.currentUser.email // <-- ADD THIS LINE
         };
         onlinePlayerRef.set(stateToSync);
     }
@@ -1874,7 +1884,7 @@ async function startGame(user) {
 
     onlinePlayerRef = rtdb.ref(`onlinePlayers/${player_id}`);
     const connectedRef = rtdb.ref('.info/connected');
-    connectedRef.on('value', (snap) => {
+connectedRef.on('value', (snap) => {
         if (snap.val() === true) {
             const stateToSet = {
                 x: gameState.player.x,
@@ -1883,6 +1893,7 @@ async function startGame(user) {
                 maxHealth: gameState.player.maxHealth,
                 mapMode: gameState.mapMode,
                 mapId: gameState.currentCaveId || gameState.currentCastleId || null,
+                email: auth.currentUser.email
             };
             onlinePlayerRef.set(stateToSet);
 
