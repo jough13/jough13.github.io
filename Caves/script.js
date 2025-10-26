@@ -63,6 +63,12 @@ const TILE_DATA = {
         type: 'shop',
         title: 'General Store'
     },
+    'b': {
+        type: 'enemy'
+    },
+    'w': {
+        type: 'enemy'
+    },
 };
 
 const CASTLE_LAYOUTS = {
@@ -204,6 +210,41 @@ const SHOP_INVENTORY = [
         stock: 10
     }
 ];
+
+const ENEMY_DATA = {
+    'g': {
+        name: 'Goblin',
+        maxHealth: 5,
+        attack: 2,
+        defense: 0,
+        xp: 10,
+        loot: '$' // Goblins drop gold
+    },
+    's': {
+        name: 'Skeleton',
+        maxHealth: 8,
+        attack: 3,
+        defense: 1,
+        xp: 15,
+        loot: '+' // Skeletons drop healing potions
+    },
+    'b': {
+        name: 'Bandit',
+        maxHealth: 10,
+        attack: 3,
+        defense: 1,
+        xp: 20,
+        loot: '$' // Bandits drop gold
+    },
+    'w': {
+        name: 'Wolf',
+        maxHealth: 6,
+        attack: 4,
+        defense: 0,
+        xp: 15,
+        loot: '+' // Wolves can drop potions
+    }
+};
 
 const CAVE_THEMES = {
     ROCK: {
@@ -776,6 +817,7 @@ const chunkManager = {
     caveMaps: {},
     caveThemes: {},
     castleMaps: {},
+    caveEnemies: {},
 
     generateCave(caveId) {
         if (this.caveMaps[caveId]) return this.caveMaps[caveId];
@@ -817,6 +859,38 @@ const chunkManager = {
             const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
             if (map[randY][randX] === theme.floor) {
                 map[randY][randX] = theme.decorations[Math.floor(random() * theme.decorations.length)];
+            }
+        }
+
+    this.caveEnemies[caveId] = []; // Reset/init the enemy list for this cave
+        const enemyTypes = Object.keys(ENEMY_DATA);
+        
+        for (let i = 0; i < 20; i++) { // Try to spawn 20 enemies
+            const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
+            const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
+            
+            // Only spawn on a floor tile that isn't the start
+            if (map[randY][randX] === theme.floor && (randX !== startPos.x || randY !== startPos.y)) {
+                const enemyTile = enemyTypes[Math.floor(random() * enemyTypes.length)];
+                const enemyTemplate = ENEMY_DATA[enemyTile];
+                
+                // Place the enemy tile on the map
+                map[randY][randX] = enemyTile;
+                
+                // Add its data to the caveEnemies template cache
+                this.caveEnemies[caveId].push({
+                    id: `${caveId}:${randX},${randY}`,
+                    x: randX,
+                    y: randY,
+                    tile: enemyTile,
+                    name: enemyTemplate.name,
+                    health: enemyTemplate.maxHealth, // Start at full health
+                    maxHealth: enemyTemplate.maxHealth,
+                    attack: enemyTemplate.attack,
+                    defense: enemyTemplate.defense,
+                    xp: enemyTemplate.xp,
+                    loot: enemyTemplate.loot
+                });
             }
         }
 
@@ -952,11 +1026,11 @@ generateCastle(castleId) {
                 else tile = '.'; // Plains
 
                 const featureRoll = Math.random();
-                if (tile === '.' && featureRoll < 0.00025) { 
+                if (tile === '.' && featureRoll < 0.0003) { // Spawn safe features
                     let features = Object.keys(TILE_DATA);
-                    // Filter out tiles that shouldn't auto-spawn
                     features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' && 
-                                                    TILE_DATA[f].type !== 'castle_exit');
+                                                    TILE_DATA[f].type !== 'castle_exit' &&
+                                                    TILE_DATA[f].type !== 'enemy'); // <-- Don't spawn enemies here
                     
                     const featureTile = features[Math.floor(Math.random() * features.length)];
 
@@ -967,7 +1041,25 @@ generateCastle(castleId) {
                         chunkData[y][x] = featureTile;
                     }
                 } else {
-                    chunkData[y][x] = tile;
+                    // No safe feature spawned. Check for hostile spawn.
+                    const hostileRoll = Math.random();
+                    
+                    // Wolves spawn in forests (2% chance)
+                    if (tile === 'F' && hostileRoll < 0.02) { 
+                        chunkData[y][x] = 'w';
+                    } 
+                    // Wolves (1%) and Bandits (1%) spawn on plains
+                    else if (tile === '.' && hostileRoll < 0.02) { 
+                        if (hostileRoll < 0.01) {
+                            chunkData[y][x] = 'w'; // 1% chance
+                        } else {
+                            chunkData[y][x] = 'b'; // 1% chance
+                        }
+                    }
+                    // No hostile spawn, just place the terrain tile
+                    else {
+                        chunkData[y][x] = tile;
+                    }
                 }
             }
         }
@@ -1036,6 +1128,8 @@ const gameState = {
     flags: {
         hasSeenForestWarning: false
     },
+    instancedEnemies: [],
+    worldEnemies: {},
     isDroppingItem: false,
     time: {
         day: 1,
@@ -1729,6 +1823,8 @@ function exitToOverworld(exitMessage) {
     gameState.currentCaveId = null;
     gameState.currentCastleId = null;
     gameState.overworldExit = null;
+
+    gameState.instancedEnemies = [];
     
     logMessage(exitMessage);
     updateRegionDisplay();
@@ -1931,6 +2027,98 @@ if (gameState.mapMode === 'dungeon') {
                 logMessage("The wall is solid.");
                 return; // Stop here if it's a solid wall
             }
+        const enemyData = ENEMY_DATA[newTile];
+        if (enemyData) { // This tile is an enemy: 'g', 's', 'b', or 'w'
+            
+            let enemy; // This will hold the "live" enemy instance
+            let enemyId;
+            let isInstanceEnemy = false;
+
+            if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+                // 1. INSTANCE: Find the enemy in the instanced list.
+                enemy = gameState.instancedEnemies.find(e => e.x === newX && e.y === newY);
+                if (enemy) {
+                    enemyId = enemy.id;
+                    isInstanceEnemy = true;
+                }
+            } else if (gameState.mapMode === 'overworld') {
+                // 2. OVERWORLD: Check if this enemy is in our session cache.
+                enemyId = `overworld:${newX},${-newY}`; // Unique overworld ID
+                enemy = gameState.worldEnemies[enemyId];
+
+                if (!enemy) {
+                    // 3. Not in cache. Create a new "live" instance for this session.
+                    enemy = {
+                        // We only need to cache its health and stats
+                        name: enemyData.name,
+                        health: enemyData.maxHealth,
+                        maxHealth: enemyData.maxHealth,
+                        attack: enemyData.attack,
+                        defense: enemyData.defense,
+                        xp: enemyData.xp,
+                        loot: enemyData.loot
+                    };
+                    // 4. Add it to the session cache.
+                    gameState.worldEnemies[enemyId] = enemy;
+                }
+            }
+
+            if (enemy) {
+                // --- PLAYER ATTACKS ENEMY ---
+                const playerDamage = Math.max(1, gameState.player.strength - enemy.defense);
+                enemy.health -= playerDamage;
+                logMessage(`You attack the ${enemy.name} for ${playerDamage} damage!`);
+
+                if (enemy.health <= 0) {
+                    // --- ENEMY IS DEFEATED ---
+                    logMessage(`You defeated the ${enemy.name}!`);
+                    grantXp(enemy.xp);
+                    
+                    // Remove enemy from the map and its cache
+                    if (isInstanceEnemy) {
+                        // Remove from instance list
+                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
+                        // Replace tile on instance map
+                        if (gameState.mapMode === 'dungeon') {
+                            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = enemy.loot;
+                        } else if (gameState.mapMode === 'castle') {
+                            // Ready for when we add castle enemies
+                        }
+                    } else {
+                        // Remove from world cache
+                        delete gameState.worldEnemies[enemyId];
+                        // PERMANENTLY kill the enemy by replacing its tile
+                        chunkManager.setWorldTile(newX, newY, enemy.loot);
+                    }
+                } else {
+                    // --- ENEMY SURVIVES AND ATTACKS ---
+                    const enemyDamage = Math.max(0, enemy.attack); // (Add player defense later)
+                    gameState.player.health -= enemyDamage;
+                    triggerStatFlash(statDisplays.health, false); // Flash health red
+                    logMessage(`The ${enemy.name} hits you for ${enemyDamage} damage!`);
+                    
+                    // Check for player death
+                    if (gameState.player.health <= 0) {
+                        gameState.player.health = 0;
+                        logMessage("You have perished!");
+                        syncPlayerState();
+                        document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
+                        document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
+                        gameOverModal.classList.remove('hidden');
+                    }
+                }
+                
+                // Update stats and re-render
+                renderStats();
+                render();
+                return; // Stop the player's move, ending the turn
+                
+            } else if (gameState.mapMode === 'dungeon') {
+                // This means it was a dungeon enemy ('g'/'s') but not in the active list
+                // It was killed this session. Treat it as a floor.
+                logMessage(`You see the corpse of a ${enemyData.name}.`);
+            }
+        }
         }
         if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === '▒' || newTile === ' ')) {
             logMessage("You bump into the castle wall.");
@@ -2038,6 +2226,10 @@ if (gameState.mapMode === 'dungeon') {
                             break;
                         }
                     }
+
+                    const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
+                    gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+
                     logMessage("You enter the " + (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') + "...");
                     updateRegionDisplay();
                     render();
