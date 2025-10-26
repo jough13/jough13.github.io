@@ -214,35 +214,35 @@ const SHOP_INVENTORY = [
 const ENEMY_DATA = {
     'g': {
         name: 'Goblin',
-        maxHealth: 5,
-        attack: 2,
+        maxHealth: 3,  // Down from 5
+        attack: 1,     // Down from 2
         defense: 0,
-        xp: 10,
-        loot: '$' // Goblins drop gold
+        xp: 5,         // Down from 10
+        loot: '$' 
     },
     's': {
         name: 'Skeleton',
-        maxHealth: 8,
-        attack: 3,
-        defense: 1,
-        xp: 15,
-        loot: '+' // Skeletons drop healing potions
+        maxHealth: 5,  // Down from 8
+        attack: 2,     // Down from 3
+        defense: 0,    // Down from 1
+        xp: 10,        // Down from 15
+        loot: '+' 
     },
     'b': {
         name: 'Bandit',
-        maxHealth: 10,
-        attack: 3,
-        defense: 1,
-        xp: 20,
-        loot: '$' // Bandits drop gold
+        maxHealth: 6,  // Down from 10
+        attack: 2,     // Down from 3
+        defense: 0,    // Down from 1
+        xp: 10,        // Down from 20
+        loot: '$' 
     },
     'w': {
         name: 'Wolf',
-        maxHealth: 6,
-        attack: 4,
+        maxHealth: 4,  // Down from 6
+        attack: 2,     // Down from 4 (This is the biggest fix)
         defense: 0,
-        xp: 15,
-        loot: '+' // Wolves can drop potions
+        xp: 8,         // Down from 15
+        loot: '+' 
     }
 };
 
@@ -1131,6 +1131,7 @@ const gameState = {
     instancedEnemies: [],
     worldEnemies: {},
     isDroppingItem: false,
+    playerTurnCount: 0,
     time: {
         day: 1,
         hour: 6,
@@ -1814,6 +1815,75 @@ if (onlinePlayerRef) {
     }
 }
 
+function processEnemyTurns() {
+    // This function only runs for dungeon/castle enemies
+    if (gameState.mapMode !== 'dungeon' && gameState.mapMode !== 'castle') {
+        return;
+    }
+
+    // Get the correct map and theme
+    let map;
+    let theme;
+    if (gameState.mapMode === 'dungeon') {
+        map = chunkManager.caveMaps[gameState.currentCaveId];
+        theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+    } else {
+        // (This is ready for when we add castle enemies)
+        map = chunkManager.castleMaps[gameState.currentCastleId];
+        theme = { floor: '.' }; // Castles just have a floor
+    }
+    
+    if (!map) return; // Safety check
+
+    // Loop through a copy of the array so we can modify it
+    const enemiesToMove = [...gameState.instancedEnemies];
+    
+    enemiesToMove.forEach(enemy => {
+        // 25% chance to move randomly
+        if (Math.random() < 0.25) {
+            const dirX = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+            const dirY = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+
+            if (dirX === 0 && dirY === 0) {
+                return; // No movement
+            }
+
+            const newX = enemy.x + dirX;
+            const newY = enemy.y + dirY;
+
+            // Check what's at the new position
+            const targetTile = (map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
+
+            // Is the target tile a floor?
+            if (targetTile === theme.floor) {
+                // It's a valid move!
+                // 1. Clear the enemy's old tile
+                map[enemy.y][enemy.x] = theme.floor;
+                
+                // 2. Place the enemy tile on the new tile
+                map[newY][newX] = enemy.tile;
+                
+                // 3. Update the enemy's internal coordinates
+                enemy.x = newX;
+                enemy.y = newY;
+            }
+            // (If it's a wall, another enemy, or the player, the enemy just waits)
+        }
+    });
+}
+
+function endPlayerTurn() {
+    gameState.playerTurnCount++; // Increment the player's turn
+
+    // --- MODIFIED: Only process enemy turns on EVEN turns ---
+    if (gameState.playerTurnCount % 2 === 0) {
+        logMessage("You hear a distant shuffle..."); // Optional: gives the player feedback
+        processEnemyTurns();
+    }
+
+    renderStats(); // We'll move the renderStats() call here
+}
+
 function exitToOverworld(exitMessage) {
     if (gameState.overworldExit) {
         gameState.player.x = gameState.overworldExit.x;
@@ -1919,7 +1989,7 @@ document.addEventListener('keydown', (event) => {
                 inventory: inventoryToSave
             });
             syncPlayerState();
-            renderStats();
+            endPlayerTurn();
             renderInventory();
         }
         event.preventDefault();
@@ -1972,7 +2042,9 @@ document.addEventListener('keydown', (event) => {
             playerRef.update({
                 stamina: gameState.player.stamina
             });
-            renderStats();
+
+            endPlayerTurn();
+
             event.preventDefault();
             return;
         default:
@@ -2113,7 +2185,9 @@ document.addEventListener('keydown', (event) => {
                 }
                 
                 // Update stats and re-render
-                renderStats();
+
+                endPlayerTurn(); // <-- Replaces both functions
+                
                 render();
                 return; // Stop the player's move, ending the turn
                 
@@ -2396,7 +2470,8 @@ if (itemData) {
 
             gameOverModal.classList.remove('hidden');
         }
-        renderStats();
+
+        endPlayerTurn();
 
     })();
 
