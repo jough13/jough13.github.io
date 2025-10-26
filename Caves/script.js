@@ -2553,6 +2553,8 @@ try {
 
     })(); // End async IIFE block
 
+    });
+
 const applyTheme = (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
     darkModeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
