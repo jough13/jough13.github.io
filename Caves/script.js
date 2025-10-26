@@ -306,7 +306,8 @@ const CAVE_THEMES = {
     }
 };
 
-const TILE_SIZE = 12;
+let TILE_SIZE = 12;
+
 const VIEWPORT_WIDTH = 40;
 const VIEWPORT_HEIGHT = 25;
 const WORLD_WIDTH = 500;
@@ -390,9 +391,6 @@ const shopBuyList = document.getElementById('shopBuyList');
 const shopSellList = document.getElementById('shopSellList');
 
 const coreStatsPanel = document.getElementById('coreStatsPanel');
-
-canvas.width = VIEWPORT_WIDTH * TILE_SIZE;
-canvas.height = VIEWPORT_HEIGHT * TILE_SIZE;
 
 const DAY_CYCLE_STOPS = [{
         time: 0,
@@ -1511,6 +1509,37 @@ function handleSellItem(itemIndex) {
     renderStats();
 }
 
+function resizeCanvas() {
+    // Get the container element that holds the canvas
+    const canvasContainer = canvas.parentElement; 
+    if (!canvasContainer) return; // Exit if container not found
+
+    const containerWidth = canvasContainer.clientWidth;
+    const containerHeight = canvasContainer.clientHeight; // We might need this later
+
+    // Calculate the best tile size based on width, ensuring it's an integer
+    // We subtract a small amount (e.g., 2px) to prevent potential minor overflow issues
+    const newTileSizeBasedOnWidth = Math.max(8, Math.floor((containerWidth - 2) / VIEWPORT_WIDTH)); 
+    
+    // --- Optional: Add height constraint if needed ---
+    // const newTileSizeBasedOnHeight = Math.max(8, Math.floor((containerHeight - 2) / VIEWPORT_HEIGHT));
+    // TILE_SIZE = Math.min(newTileSizeBasedOnWidth, newTileSizeBasedOnHeight); // Use the smaller size
+    TILE_SIZE = newTileSizeBasedOnWidth; // Using width only for now
+
+    // Update the canvas internal resolution
+    canvas.width = VIEWPORT_WIDTH * TILE_SIZE;
+    canvas.height = VIEWPORT_HEIGHT * TILE_SIZE;
+
+    // Update the context font size (crucial for drawing)
+    ctx.font = `${TILE_SIZE}px monospace`;
+    ctx.textAlign = 'center'; // Re-apply text alignment
+    ctx.textBaseline = 'middle'; // Re-apply text baseline
+
+    // Re-render the game at the new size
+    render();
+
+}
+
 function renderShop() {
     // 1. Clear old lists
     shopBuyList.innerHTML = '';
@@ -2207,7 +2236,7 @@ document.addEventListener('keydown', (event) => {
                 
                 // Update stats and re-render
 
-                endPlayerTurn(); // <-- Replaces both functions
+                endPlayerTurn();
                 
                 render();
                 return; // Stop the player's move, ending the turn
@@ -2493,6 +2522,8 @@ if (itemData) {
         }
 
         endPlayerTurn();
+
+        render();
 
     })();
 
@@ -2783,7 +2814,11 @@ connectedRef.on('value', (snap) => {
     });
 
     renderStats();
+
     renderTime();
+
+    resizeCanvas();
+
     render();
     canvas.style.visibility = 'visible';
     syncPlayerState();
@@ -2814,3 +2849,5 @@ auth.onAuthStateChanged((user) => {
         console.log("No user is signed in.");
     }
 });
+
+window.addEventListener('resize', resizeCanvas);
