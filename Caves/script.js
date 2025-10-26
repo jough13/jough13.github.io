@@ -1959,22 +1959,26 @@ function updateRegionDisplay() {
         const regionId = `${currentRegionX},${currentRegionY}`;
 
         const regionName = getRegionName(currentRegionX, currentRegionY);
-        regionDisplay.textContent = regionName;
-
+        
+        // --- Append coordinates ---
+        const playerCoords = `(${gameState.player.x}, ${-gameState.player.y})`; // Invert Y for display
+        regionDisplay.textContent = `${regionName} ${playerCoords}`; // Combine name and coords
+        
+        // Check if the region is newly discovered
         if (!gameState.discoveredRegions.has(regionId)) {
-            logMessage(`You have entered ${regionName}.`);
+            logMessage(`You have entered ${regionName}.`); // Log only on discovery
             gameState.discoveredRegions.add(regionId);
-
+            // Update the discovered regions in Firestore
             playerRef.update({ discoveredRegions: Array.from(gameState.discoveredRegions) });
-
+            // Grant XP for discovery
             grantXp(50);
         }
     } else if (gameState.mapMode === 'dungeon') {
-        // --- MODIFIED ---
-        regionDisplay.textContent = getCaveName(gameState.currentCaveId);
+        // Display the procedurally generated cave name
+        regionDisplay.textContent = getCaveName(gameState.currentCaveId); //
     } else if (gameState.mapMode === 'castle') {
-        // --- MODIFIED ---
-        regionDisplay.textContent = getCastleName(gameState.currentCastleId);
+        // Display the procedurally generated castle name
+        regionDisplay.textContent = getCastleName(gameState.currentCastleId); //
     }
 }
 
@@ -2496,7 +2500,7 @@ if (itemData) {
             triggerStatFlash(statDisplays.stamina, false); // Flash red for stamina cost
             logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
         } else {
-            logMessage(`Moved to world coordinate (${newX}, ${-newY}).`);
+            // No message needed here anymore
         }
 
         updateRegionDisplay();
