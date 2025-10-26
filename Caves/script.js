@@ -2497,7 +2497,7 @@ if (itemData) {
                 }
 
                 if (tileLooted) {
-                    // --- MODIFIED: Add to lootedTiles REGARDLESS of map mode ---
+
                     gameState.lootedTiles.add(tileId);
 
                     // Now, just change the tile based on the map
@@ -2509,7 +2509,9 @@ if (itemData) {
                     } else if (gameState.mapMode === 'castle') {
                         chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
                     }
-                    // --- END MODIFICATION ---
+
+                    render();
+
                 }
             }
         } else if (moveCost > 0) {
