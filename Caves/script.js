@@ -210,6 +210,7 @@ const CAVE_THEMES = {
         name: 'A Dark Cave',
         wall: '▓',
         floor: '.',
+        secretWall: '▒',
         colors: {
             wall: '#422006',
             floor: '#a16207'
@@ -219,6 +220,7 @@ const CAVE_THEMES = {
     ICE: {
         name: 'A Glacial Cavern',
         wall: '▒', // A lighter, "icy" wall
+        secretWall: '▓',
         floor: ':', // A "slick" floor
         colors: {
             wall: '#99f6e4',
@@ -229,6 +231,7 @@ const CAVE_THEMES = {
     FIRE: {
         name: 'A Volcanic Fissure',
         wall: '▓',
+        secretWall: '▒',
         floor: '.', // Use a standard floor tile
         colors: {
             wall: '#450a0a',
@@ -240,6 +243,7 @@ const CAVE_THEMES = {
     CRYSTAL: {
         name: 'A Crystalline Tunnel',
         wall: '▒', // Use the 'ice' wall, but colors will make it different
+        secretWall: '▓',
         floor: '.',
         colors: {
             wall: '#67e8f9', // Bright Cyan
@@ -252,6 +256,7 @@ const CAVE_THEMES = {
         name: 'A Sunken Grotto',
         wall: '▓', // Use standard 'rock' wall
         floor: ':', // Use 'ice' floor, but colors make it look slick/wet
+        secretWall: '▒',
         colors: {
             wall: '#14532d', // Dark Green
             floor: '#16a34a'  // Bright Green
@@ -302,6 +307,12 @@ const DAYS_IN_MONTH = 30;
 const NAME_PREFIXES = ["Whispering", "Sunken", "Forgotten", "Broken", "Shrouded", "Glimmering", "Verdant", "Ashen"];
 const NAME_MIDDLES = ["Plains", "Forest", "Hills", "Expanse", "Valley", "Marsh", "Reach", "Woods"];
 const NAME_SUFFIXES = ["of Sorrow", "of the Ancients", "of Ash", "of the King", "of Renewal", "of Despair"];
+
+const CAVE_PREFIXES = ["Whispering", "Sunken", "Forgotten", "Broken", "Shrouded", "Glimmering", "Verdant", "Ashen", "Crystal", "Shadow", "Frozen", "Burning"];
+const CAVE_SUFFIXES = ["Caverns", "Grotto", "Deep", "Lair", "Tunnels", "Delve", "Hollow", "Fissure", "Pits", "Maze"];
+
+const CASTLE_PREFIXES = ["Broken", "Fallen", "King's", "Shadow", "Gleaming", "Iron", "Stone", "Forgotten", "Ancient", "Last", "Crimson"];
+const CASTLE_SUFFIXES = ["Spire", "Keep", "Fortress", "Hold", "Citadel", "Bastion", "Tower", "Ruin", "Reach", "Sanctum"];
 
 // DOM Element Selectors
 const timeDisplay = document.getElementById('timeDisplay');
@@ -615,6 +626,22 @@ const Perlin = {
     scale: n => (1 + n) / 2
 };
 
+function getCaveName(caveId) {
+    const seed = `${WORLD_SEED}:${caveId}`;
+    const random = Alea(stringToSeed(seed));
+    const prefix = CAVE_PREFIXES[Math.floor(random() * CAVE_PREFIXES.length)];
+    const suffix = CAVE_SUFFIXES[Math.floor(random() * CAVE_SUFFIXES.length)];
+    return `The ${prefix} ${suffix}`;
+}
+
+function getCastleName(castleId) {
+    const seed = `${WORLD_SEED}:${castleId}`;
+    const random = Alea(stringToSeed(seed));
+    const prefix = CASTLE_PREFIXES[Math.floor(random() * CASTLE_PREFIXES.length)];
+    const suffix = CASTLE_SUFFIXES[Math.floor(random() * CASTLE_SUFFIXES.length)];
+    return `The ${prefix} ${suffix}`;
+}
+
 function getRegionName(regionX, regionY) {
     const seed = `${WORLD_SEED}:${regionX},${regionY}`;
     const random = Alea(stringToSeed(seed));
@@ -790,6 +817,45 @@ const chunkManager = {
             const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
             if (map[randY][randX] === theme.floor) {
                 map[randY][randX] = theme.decorations[Math.floor(random() * theme.decorations.length)];
+            }
+        }
+
+    const secretWallTile = theme.secretWall;
+        if (secretWallTile) { // Only run if the theme *has* a secret wall defined
+            for (let y = 2; y < CAVE_HEIGHT - 2; y++) {
+                for (let x = 2; x < CAVE_WIDTH - 2; x++) {
+                    
+                    if (map[y][x] === theme.floor) {
+                        // Check if this is a "dead end" (3 walls)
+                        let wallCount = 0;
+                        let floorDir = null; // 0:North, 1:South, 2:West, 3:East
+                        
+                        if (map[y-1][x] === theme.wall) wallCount++; else floorDir = 0;
+                        if (map[y+1][x] === theme.wall) wallCount++; else floorDir = 1;
+                        if (map[y][x-1] === theme.wall) wallCount++; else floorDir = 2;
+                        if (map[y][x+1] === theme.wall) wallCount++; else floorDir = 3;
+
+                        // If it's a dead end and we roll the dice (5% chance)
+                        if (wallCount === 3 && random() > 0.95) { 
+                            
+                            // Find the wall opposite the entrance and carve
+                            // We also check that there is solid wall 2-tiles away to carve into
+                            if (floorDir === 0 && map[y+2][x] === theme.wall) { // Entrance North, carve South
+                                map[y+1][x] = secretWallTile;
+                                map[y+2][x] = '$'; // Place treasure right behind it
+                            } else if (floorDir === 1 && map[y-2][x] === theme.wall) { // Entrance South, carve North
+                                map[y-1][x] = secretWallTile;
+                                map[y-2][x] = '$';
+                            } else if (floorDir === 2 && map[y][x+2] === theme.wall) { // Entrance West, carve East
+                                map[y][x+1] = secretWallTile;
+                                map[y][x+2] = '$';
+                            } else if (floorDir === 3 && map[y][x-2] === theme.wall) { // Entrance East, carve West
+                                map[y][x-1] = secretWallTile;
+                                map[y][x-2] = '$';
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -1688,9 +1754,11 @@ function updateRegionDisplay() {
             grantXp(50);
         }
     } else if (gameState.mapMode === 'dungeon') {
-        regionDisplay.textContent = "A Dark Cave";
+        // --- MODIFIED ---
+        regionDisplay.textContent = getCaveName(gameState.currentCaveId);
     } else if (gameState.mapMode === 'castle') {
-        regionDisplay.textContent = "Castle Courtyard";
+        // --- MODIFIED ---
+        regionDisplay.textContent = getCastleName(gameState.currentCastleId);
     }
 }
 
@@ -1839,11 +1907,29 @@ document.addEventListener('keydown', (event) => {
         }
 
         // 2. Perform ALL collision checks immediately.
-        if (gameState.mapMode === 'dungeon') {
+if (gameState.mapMode === 'dungeon') {
             const theme = CAVE_THEMES[gameState.currentCaveTheme];
+            const secretWallTile = theme ? theme.secretWall : null;
+
+            // --- NEW: Check for secret wall ---
+            if (secretWallTile && newTile === secretWallTile) {
+                logMessage("The wall sounds hollow... You break through!");
+                
+                // Replace the secret wall with a floor tile
+                chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
+                
+                // Grant some XP for finding a secret
+                grantXp(15); 
+                
+                render(); // Re-render to show the new opening
+                return; // Stop the move for this turn. Player must press again to enter.
+            }
+            // --- END NEW ---
+
+            // This is the original wall check
             if (theme && (newTile === theme.wall || newTile === ' ')) {
                 logMessage("The wall is solid.");
-                return; // Stop here if it's a wall
+                return; // Stop here if it's a solid wall
             }
         }
         if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === '▒' || newTile === ' ')) {
