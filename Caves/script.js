@@ -1664,14 +1664,14 @@ const render = () => {
                         bgColor = '#1e3a8a';
                         break;
                     case '≈':
-                        bgColor = '#596643'; // Murky green-brown
+                        bgColor = '#596643'; 
                         fgChar = ',';
-                        fgColor = '#4b5535'; // Slightly darker texture color
+                        fgColor = '#4b5535'; 
                         break;
                     case '^':
-                        bgColor = '#78350f'; // Brown background
-                        fgChar = '^'; // The mountain character
-                        fgColor = '#52230a'; // A darker brown for texture
+                        bgColor = '#78350f'; 
+                        fgChar = '^'; 
+                        fgColor = '#52230a'; 
                         break;
                     case 'F':
                         bgColor = '#15803d';
@@ -1700,41 +1700,50 @@ const render = () => {
             ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
             if (fgChar) {
-                switch (fgChar) {
-                    case '⛰':
-                        fgColor = '#6b7280';
-                        break;
-                    case '>':
-                        fgColor = '#eab308';
-                        break;
-                    case '🏰':
-                        fgColor = '#f59e0b';
-                        break;
-                    case 'X':
-                        fgColor = '#eab308';
-                        break;
-                    case '☗':
-                        fgColor = '#854d0e';
-                        break;
-                    case '+':
-                        fgColor = '#FF4500';
-                        break;
-                    case 'o':
-                        fgColor = '#6a0dad';
-                        break;
-                    case 'S':
-                        fgColor = '#ADFF2F';
-                        break;
-                    case 'Y':
-                        fgColor = '#4B0082';
-                        break;
-                    case '$':
-                        fgColor = '#ffd700';
-                        break;
-                    case 'B':
-                        fgColor = '#fde047';
-                        break;
+                // --- NEW: Check if the tile is an enemy ---
+                if (ENEMY_DATA[fgChar]) {
+                    fgColor = '#ef4444'; // Force a bright red color
+                } 
+                // --- END NEW ---
+                else {
+                    // Original color logic for items/landmarks
+                    switch (fgChar) {
+                        case '⛰':
+                            fgColor = '#6b7280';
+                            break;
+                        case '>':
+                            fgColor = '#eab308';
+                            break;
+                        case '🏰':
+                            fgColor = '#f59e0b';
+                            break;
+                        case 'X':
+                            fgColor = '#eab308';
+                            break;
+                        case '☗':
+                            fgColor = '#854d0e';
+                            break;
+                        case '+':
+                            fgColor = '#FF4500';
+                            break;
+                        case 'o':
+                            fgColor = '#6a0dad';
+                            break;
+                        case 'S':
+                            fgColor = '#ADFF2F';
+                            break;
+                        case 'Y':
+                            fgColor = '#4B0082';
+                            break;
+                        case '$':
+                            fgColor = '#ffd700';
+                            break;
+                        case 'B':
+                            fgColor = '#fde047';
+                            break;
+                    }
                 }
+
                 ctx.fillStyle = fgColor;
                 if (isWideChar(fgChar)) {
                     ctx.font = `${TILE_SIZE + 2}px monospace`;
@@ -1749,6 +1758,7 @@ const render = () => {
 
     ctx.font = `${TILE_SIZE}px monospace`;
 
+    // (The rest of the render function for other players and the main player is unchanged)
     for (const id in otherPlayers) {
         if (otherPlayers[id].mapMode !== gameState.mapMode || otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
         const otherPlayer = otherPlayers[id];
@@ -1818,7 +1828,7 @@ if (onlinePlayerRef) {
 function processEnemyTurns() {
     // This function only runs for dungeon/castle enemies
     if (gameState.mapMode !== 'dungeon' && gameState.mapMode !== 'castle') {
-        return;
+        return false; // <-- MODIFIED: Return false if not in a dungeon
     }
 
     // Get the correct map and theme
@@ -1828,12 +1838,17 @@ function processEnemyTurns() {
         map = chunkManager.caveMaps[gameState.currentCaveId];
         theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
     } else {
-        // (This is ready for when we add castle enemies)
         map = chunkManager.castleMaps[gameState.currentCastleId];
-        theme = { floor: '.' }; // Castles just have a floor
+        theme = { floor: '.' }; 
     }
     
-    if (!map) return; // Safety check
+    if (!map) return false; // <-- MODIFIED: Return false on safety check
+
+    // --- NEW: Add flag and viewport calculations ---
+    let anEnemyMovedNearby = false;
+    const halfViewW = Math.floor(VIEWPORT_WIDTH / 2);
+    const halfViewH = Math.floor(VIEWPORT_HEIGHT / 2);
+    // --- END NEW ---
 
     // Loop through a copy of the array so we can modify it
     const enemiesToMove = [...gameState.instancedEnemies];
@@ -1851,37 +1866,43 @@ function processEnemyTurns() {
             const newX = enemy.x + dirX;
             const newY = enemy.y + dirY;
 
-            // Check what's at the new position
             const targetTile = (map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
 
             // Is the target tile a floor?
             if (targetTile === theme.floor) {
                 // It's a valid move!
-                // 1. Clear the enemy's old tile
                 map[enemy.y][enemy.x] = theme.floor;
-                
-                // 2. Place the enemy tile on the new tile
                 map[newY][newX] = enemy.tile;
-                
-                // 3. Update the enemy's internal coordinates
                 enemy.x = newX;
                 enemy.y = newY;
+
+                // --- NEW: Check if this enemy is on-screen ---
+                const distY = Math.abs(enemy.y - gameState.player.y);
+                const distX = Math.abs(enemy.x - gameState.player.x);
+                if (distX <= halfViewW && distY <= halfViewH) {
+                    anEnemyMovedNearby = true; // Set the flag
+                }
+                // --- END NEW ---
             }
-            // (If it's a wall, another enemy, or the player, the enemy just waits)
         }
     });
+
+    return anEnemyMovedNearby; // <-- MODIFIED: Return the flag
 }
 
 function endPlayerTurn() {
     gameState.playerTurnCount++; // Increment the player's turn
 
-    // --- MODIFIED: Only process enemy turns on EVEN turns ---
+    // --- MODIFIED: Only log if enemies *actually* moved nearby ---
     if (gameState.playerTurnCount % 2 === 0) {
-        logMessage("You hear a distant shuffle..."); // Optional: gives the player feedback
-        processEnemyTurns();
+        const enemiesMovedNearby = processEnemyTurns(); // Capture the return value
+        
+        if (enemiesMovedNearby) {
+            logMessage("You hear a shuffle nearby..."); // Changed message
+        }
     }
 
-    renderStats(); // We'll move the renderStats() call here
+    renderStats(); 
 }
 
 function exitToOverworld(exitMessage) {
