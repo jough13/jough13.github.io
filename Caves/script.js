@@ -1044,13 +1044,13 @@ generateCastle(castleId) {
                     // No safe feature spawned. Check for hostile spawn.
                     const hostileRoll = Math.random();
                     
-                    // Wolves spawn in forests (2% chance)
-                    if (tile === 'F' && hostileRoll < 0.02) { 
+                    // Wolves spawn in forests (0.02% chance)
+                    if (tile === 'F' && hostileRoll < 0.0002) { 
                         chunkData[y][x] = 'w';
                     } 
-                    // Wolves (1%) and Bandits (1%) spawn on plains
-                    else if (tile === '.' && hostileRoll < 0.02) { 
-                        if (hostileRoll < 0.01) {
+                    // Wolves (0.01%) and Bandits (0.01%) spawn on plains
+                    else if (tile === '.' && hostileRoll < 0.0002) { 
+                        if (hostileRoll < 0.0001) {
                             chunkData[y][x] = 'w'; // 1% chance
                         } else {
                             chunkData[y][x] = 'b'; // 1% chance
@@ -1988,8 +1988,7 @@ document.addEventListener('keydown', (event) => {
         chunkManager.setWorldTile(newX, newY, '.');
     }
 
-    // --- PASTE THIS NEW BLOCK IN ITS PLACE ---
-    (async () => {
+(async () => {
         // 1. Determine the destination tile
         let newTile;
         if (gameState.mapMode === 'dungeon') {
@@ -2003,30 +2002,35 @@ document.addEventListener('keydown', (event) => {
         }
 
         // 2. Perform ALL collision checks immediately.
-if (gameState.mapMode === 'dungeon') {
+        // --- DUNGEON WALL CHECK ---
+        if (gameState.mapMode === 'dungeon') {
             const theme = CAVE_THEMES[gameState.currentCaveTheme];
             const secretWallTile = theme ? theme.secretWall : null;
 
-            // --- NEW: Check for secret wall ---
+            // Check for secret wall
             if (secretWallTile && newTile === secretWallTile) {
                 logMessage("The wall sounds hollow... You break through!");
-                
-                // Replace the secret wall with a floor tile
                 chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
-                
-                // Grant some XP for finding a secret
                 grantXp(15); 
-                
-                render(); // Re-render to show the new opening
-                return; // Stop the move for this turn. Player must press again to enter.
+                render(); 
+                return; 
             }
-            // --- END NEW ---
-
             // This is the original wall check
             if (theme && (newTile === theme.wall || newTile === ' ')) {
                 logMessage("The wall is solid.");
-                return; // Stop here if it's a solid wall
+                return; 
             }
+        } 
+        // --- END DUNGEON WALL CHECK ---
+        
+        // --- CASTLE WALL CHECK ---
+        if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === '▒' || newTile === ' ')) {
+            logMessage("You bump into the castle wall.");
+            return; // Stop here if it's a wall or rubble
+        }
+        // --- END CASTLE WALL CHECK ---
+
+        // --- UNIFIED COMBAT CHECK (MOVED TO CORRECT LOCATION) ---
         const enemyData = ENEMY_DATA[newTile];
         if (enemyData) { // This tile is an enemy: 'g', 's', 'b', or 'w'
             
@@ -2118,6 +2122,7 @@ if (gameState.mapMode === 'dungeon') {
                 // It was killed this session. Treat it as a floor.
                 logMessage(`You see the corpse of a ${enemyData.name}.`);
             }
+        
         }
         if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === '▒' || newTile === ' ')) {
             logMessage("You bump into the castle wall.");
