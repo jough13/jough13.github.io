@@ -107,6 +107,24 @@ const REGION_SIZE = 160;
 
 const MAX_INVENTORY_SLOTS = 9; // Max number of inventory stacks
 
+const LORE_STONE_MESSAGES = [
+    "The sky bleeds...",
+    "Five thrones, five traitors...",
+    "What was sundered must be remade.",
+    "The King's folly... the mountain's wrath...",
+    "Ash seeks its own.",
+    "Below the castles, the old gods wait.",
+    "The marsh whispers your name.",
+    "Immortality is a cage.",
+    "They came from the ice.",
+    "The Fourth Age is the last.",
+    "He did not die. He waits.",
+    "All rivers run to the Sunken Valley.",
+    "The forest remembers.",
+    "Stolen from the stars, returned to the earth.",
+    "A crown of shadow, a broken sword."
+];
+
 const DAYS_OF_WEEK = ["Sunsday", "Moonsday", "Kingsday", "Earthday", "Watersday", "Windsday", "Firesday"];
 const MONTHS_OF_YEAR = ["First Seed", "Rains Hand", "Second Seed", "Suns Height", "Last Seed", "Hearthfire", "Frostfall", "Suns Dusk", "Evening Star", "Morning Star", "Suns Dawn", "Deep Winter"];
 const DAYS_IN_MONTH = 30;
@@ -1552,6 +1570,31 @@ document.addEventListener('keydown', (event) => {
                 // IMPORTANT: Stop processing so the player doesn't move
                 return; 
             }
+
+            if (newTile === '#') {
+                const tileId = `${newX},${-newY}`;
+                
+                // Grant XP the first time
+                if (!gameState.foundLore.has(tileId)) {
+                    grantXp(10);
+                    gameState.foundLore.add(tileId);
+                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                }
+
+                // Use the stone's location to pick a unique, consistent message
+                const seed = stringToSeed(tileId);
+                const random = Alea(seed);
+                const messageIndex = Math.floor(random() * LORE_STONE_MESSAGES.length);
+                const message = LORE_STONE_MESSAGES[messageIndex];
+
+                // Populate and show the modal
+                loreTitle.textContent = "A Faded Rune Stone";
+                loreContent.textContent = `The stone hums with a faint energy. You can just make out the words:\n\n"...${message}..."`;
+                loreModal.classList.remove('hidden');
+                
+                return; // Stop processing
+            }
+
             // Handle all other special tiles like entrances/exits
             switch (tileData.type) {
                 case 'dungeon_entrance':
