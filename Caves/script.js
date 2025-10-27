@@ -851,14 +851,47 @@ const chunkManager = {
             steps--;
         }
 
-        // 3. Place decorations based on the theme
-        for (let i = 0; i < 15; i++) {
-            const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
-            const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
-            if (map[randY][randX] === theme.floor) {
-                map[randY][randX] = theme.decorations[Math.floor(random() * theme.decorations.length)];
-            }
+// 3. Place loot and decorations
+
+// --- Part A: Place 0-3 random loot items ---
+const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$'];
+const lootQuantity = Math.floor(random() * 4); // Generates 0, 1, 2, or 3
+
+for (let i = 0; i < lootQuantity; i++) {
+    // Pick a random item from your global loot table
+    const itemToPlace = CAVE_LOOT_TABLE[Math.floor(random() * CAVE_LOOT_TABLE.length)];
+
+    // Try 5 times to find an empty spot
+    let placed = false;
+    for (let attempt = 0; attempt < 5 && !placed; attempt++) {
+        const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
+        const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
+
+        // Only place on a floor tile
+        if (map[randY][randX] === theme.floor) {
+            map[randY][randX] = itemToPlace;
+            placed = true;
         }
+    }
+}
+
+// --- Part B: Place special theme items (like '📖') ---
+// This finds items in the theme list that AREN'T in our loot table
+const specialItems = theme.decorations.filter(item => !CAVE_LOOT_TABLE.includes(item));
+
+for (const itemToPlace of specialItems) {
+    // Try 5 times to find an empty spot
+    let placed = false;
+    for (let attempt = 0; attempt < 5 && !placed; attempt++) {
+        const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
+        const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
+
+        if (map[randY][randX] === theme.floor) {
+            map[randY][randX] = itemToPlace;
+            placed = true;
+        }
+    }
+}
 
     this.caveEnemies[caveId] = []; // Reset/init the enemy list for this cave
         const enemyTypes = Object.keys(ENEMY_DATA);
