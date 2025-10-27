@@ -3190,16 +3190,31 @@ connectedRef.on('value', (snap) => {
         render(); // Re-render the screen to show new health bars
     });
 
-    unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
+unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
         if (doc.exists) {
             const playerData = doc.data();
+
+            // --- Update Inventory ---
             if (playerData.inventory) {
                 playerData.inventory.forEach(item => {
                     const templateItem = Object.values(ITEM_DATA).find(d => d.name === item.name);
-                    if (templateItem) item.effect = templateItem.effect;
+                    if (templateItem) {
+                        item.effect = templateItem.effect;
+                        // Also re-add weapon data if it's missing from DB
+                        if(templateItem.type === 'weapon') {
+                            item.damage = templateItem.damage;
+                            item.slot = templateItem.slot;
+                        }
+                    }
                 });
                 gameState.player.inventory = playerData.inventory;
                 renderInventory();
+            }
+
+            // --- NEW: Update Equipment ---
+            if (playerData.equipment) {
+                gameState.player.equipment = playerData.equipment;
+                renderEquipment();
             }
         }
     });
