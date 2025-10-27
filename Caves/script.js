@@ -2599,7 +2599,7 @@ if (itemData) {
             triggerStatFlash(statDisplays.stamina, false); // Flash red for stamina cost
             logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
         } else {
-            logMessage(`Moved to world coordinate (${newX}, ${-newY}).`);
+           // logMessage(`Moved to world coordinate (${newX}, ${-newY}).`); // <-- Commented out to cleanup log
         }
 
         render();
