@@ -2595,6 +2595,8 @@ if (itemData) {
             logMessage(`Moved to world coordinate (${newX}, ${-newY}).`);
         }
 
+        render();
+
         updateRegionDisplay();
         syncPlayerState();
 
