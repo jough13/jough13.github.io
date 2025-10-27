@@ -1163,6 +1163,7 @@ const gameState = {
     inventoryMode: false,
     instancedEnemies: [],
     worldEnemies: {},
+    sharedEnemies: {},
     isDroppingItem: false,
     playerTurnCount: 0,
     time: {
@@ -1778,6 +1779,33 @@ const render = () => {
             ctx.fillStyle = bgColor;
             ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
+            // --- NEW: Draw Overworld Enemy Health Bars ---
+            if (gameState.mapMode === 'overworld' && ENEMY_DATA[fgChar]) {
+                const enemyId = `overworld:${mapX},${-mapY}`;
+                const enemyHealthData = gameState.sharedEnemies[enemyId];
+
+                // Check if this enemy has shared health data
+                if (enemyHealthData) {
+                    const healthPercent = enemyHealthData.health / enemyHealthData.maxHealth;
+                    const healthBarWidth = TILE_SIZE;
+                    const barX = x * TILE_SIZE;
+                    // Draw the bar at the bottom of the tile
+                    const barY = (y * TILE_SIZE) + TILE_SIZE - 4; 
+
+                    // 1. Draw the "empty" part of the bar
+                    ctx.fillStyle = '#333'; // Dark background
+                    ctx.fillRect(barX, barY, healthBarWidth, 3);
+                    
+                    // 2. Pick the color for the "full" part
+                    if (healthPercent > 0.6) ctx.fillStyle = '#4caf50'; // Green
+                    else if (healthPercent > 0.3) ctx.fillStyle = '#eab308'; // Yellow
+                    else ctx.fillStyle = '#ef4444'; // Red
+
+                    // 3. Draw the "full" part on top
+                    ctx.fillRect(barX, barY, healthBarWidth * healthPercent, 3);
+                }
+            }
+
             if (fgChar) {
                 // --- NEW: Check if the tile is an enemy ---
                 if (ENEMY_DATA[fgChar]) {
@@ -1904,7 +1932,7 @@ if (onlinePlayerRef) {
     }
 }
 
-function processOverworldEnemyTurns() {
+async function processOverworldEnemyTurns() {
     // 1. Define search area around player (e.g., 30x30 box)
     const searchRadius = 15;
     const playerX = gameState.player.x;
@@ -1913,6 +1941,9 @@ function processOverworldEnemyTurns() {
 
     // A list to batch our updates for efficiency
     let movesToMake = [];
+
+    // --- NEW: Chance for an enemy to chase you ---
+    const CHASE_CHANCE = 0.5; // 50% chance to chase
 
     // 2. Loop through the search box
     for (let y = playerY - searchRadius; y <= playerY + searchRadius; y++) {
@@ -1925,10 +1956,23 @@ function processOverworldEnemyTurns() {
             // 3. Is this tile an enemy?
             if (ENEMY_DATA[tile]) {
 
-                // 4. Try to move it (25% chance)
-                if (Math.random() < 0.25) {
-                    const dirX = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-                    const dirY = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+                // 4. Try to move it (75% chance)
+                if (Math.random() < 0.75) {
+                    
+                    let dirX, dirY;
+
+                    // --- NEW CHASE LOGIC ---
+                    if (Math.random() < CHASE_CHANCE) {
+                        // CHASE: Move directly towards the player
+                        dirX = Math.sign(playerX - x);
+                        dirY = Math.sign(playerY - y);
+                    } else {
+                        // WANDER: Move randomly
+                        dirX = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+                        dirY = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+                    }
+                    // --- END NEW LOGIC ---
+                    
                     if (dirX === 0 && dirY === 0) continue;
 
                     const newX = x + dirX;
@@ -1937,7 +1981,6 @@ function processOverworldEnemyTurns() {
                     // 5. Is the new spot valid?
                     const targetTile = chunkManager.getTile(newX, newY);
                     
-                    // --- UPDATED LOGIC ---
                     let canMove = false;
                     if (tile === 'w') { // Wolves
                         // Wolves can move on plains OR in forests
@@ -1946,7 +1989,6 @@ function processOverworldEnemyTurns() {
                         // Bandits stick to the plains
                         canMove = (targetTile === '.'); 
                     }
-                    // --- END UPDATED LOGIC ---
 
                     if (canMove) { // Use our new 'canMove' flag
 
@@ -1972,22 +2014,29 @@ function processOverworldEnemyTurns() {
     }
 
     // --- Process all moves ---
-    // We do this *after* scanning to prevent an enemy from moving twice
-    movesToMake.forEach(move => {
-        // 6. Move the enemy on the map
+    // We use a 'for...of' loop to allow 'await'
+    for (const move of movesToMake) {
+        // 1. Move the enemy on the world map (for everyone)
         chunkManager.setWorldTile(move.oldX, move.oldY, '.');  // Clear old tile
         chunkManager.setWorldTile(move.newX, move.newY, move.tile); // Set new tile
 
-        // 7. Update the session cache (the tricky part)
+        // 2. Define the database paths for its health data
         const oldId = `overworld:${move.oldX},${-move.oldY}`;
         const newId = `overworld:${move.newX},${-move.newY}`;
-        
-        // If this enemy was damaged, transfer its health data to the new location
-        if (gameState.worldEnemies[oldId]) {
-            gameState.worldEnemies[newId] = gameState.worldEnemies[oldId];
-            delete gameState.worldEnemies[oldId];
+        const oldRef = rtdb.ref(`worldEnemies/${oldId}`);
+        const newRef = rtdb.ref(`worldEnemies/${newId}`);
+
+        // 3. Check if this enemy had any health data
+        const snapshot = await oldRef.once('value');
+        const healthData = snapshot.val();
+
+        if (healthData) {
+            // 4. It did! Move the data by setting it in the new spot...
+            await newRef.set(healthData);
+            // ...and removing it from the old one.
+            await oldRef.remove();
         }
-    });
+    }
 
     return anEnemyMovedNearby;
 }
@@ -1995,7 +2044,7 @@ function processOverworldEnemyTurns() {
 function processEnemyTurns() {
     // This function only runs for dungeon/castle enemies
     if (gameState.mapMode !== 'dungeon' && gameState.mapMode !== 'castle') {
-        return false; // <-- MODIFIED: Return false if not in a dungeon
+        return false;
     }
 
     // Get the correct map and theme
@@ -2009,22 +2058,35 @@ function processEnemyTurns() {
         theme = { floor: '.' }; 
     }
     
-    if (!map) return false; // <-- MODIFIED: Return false on safety check
+    if (!map) return false;
 
-    // --- NEW: Add flag and viewport calculations ---
     let anEnemyMovedNearby = false;
     const halfViewW = Math.floor(VIEWPORT_WIDTH / 2);
     const halfViewH = Math.floor(VIEWPORT_HEIGHT / 2);
-    // --- END NEW ---
+
+    // --- NEW: Chance for an enemy to chase you ---
+    const CHASE_CHANCE = 0.5; // 50% chance to chase
 
     // Loop through a copy of the array so we can modify it
     const enemiesToMove = [...gameState.instancedEnemies];
     
     enemiesToMove.forEach(enemy => {
-        // 75% chance to move randomly
-        if (Math.random() < 0.75) {
-            const dirX = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-            const dirY = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+        // 50% chance to move (upped from 25%)
+        if (Math.random() < 0.50) {
+            
+            let dirX, dirY;
+
+            // --- NEW CHASE LOGIC ---
+            if (Math.random() < CHASE_CHANCE) {
+                // CHASE: Move directly towards the player
+                dirX = Math.sign(gameState.player.x - enemy.x);
+                dirY = Math.sign(gameState.player.y - enemy.y);
+            } else {
+                // WANDER: Move randomly
+                dirX = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+                dirY = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+            }
+            // --- END NEW LOGIC ---
 
             if (dirX === 0 && dirY === 0) {
                 return; // No movement
@@ -2043,18 +2105,17 @@ function processEnemyTurns() {
                 enemy.x = newX;
                 enemy.y = newY;
 
-                // --- NEW: Check if this enemy is on-screen ---
+                // Check if this enemy is on-screen
                 const distY = Math.abs(enemy.y - gameState.player.y);
                 const distX = Math.abs(enemy.x - gameState.player.x);
                 if (distX <= halfViewW && distY <= halfViewH) {
                     anEnemyMovedNearby = true; // Set the flag
                 }
-                // --- END NEW ---
             }
         }
     });
 
-    return anEnemyMovedNearby; // <-- MODIFIED: Return the flag
+    return anEnemyMovedNearby;
 }
 
 function endPlayerTurn() {
@@ -2345,106 +2406,165 @@ document.addEventListener('keydown', (event) => {
         }
         // --- END CASTLE WALL CHECK ---
 
+/**
+ * Handles combat for overworld enemies, syncing health via RTDB.
+ */
+async function handleOverworldCombat(newX, newY, enemyData) {
+    const player = gameState.player;
+    const enemyId = `overworld:${newX},${-newY}`; // Unique RTDB key
+    const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
+
+    logMessage(`You attack the ${enemyData.name}!`);
+
+    let enemyWasKilled = false;
+    let enemyAttackedBack = false;
+    let enemyDamageTaken = 0;
+
+    try {
+        // Use a transaction to safely read and write enemy health
+        const transactionResult = await enemyRef.transaction(currentData => {
+            let enemy;
+            if (currentData === null) {
+                // First time this enemy is hit. Create it in RTDB.
+                enemy = {
+                    health: enemyData.maxHealth,
+                    maxHealth: enemyData.maxHealth,
+                    attack: enemyData.attack,
+                    defense: enemyData.defense,
+                    xp: enemyData.xp,
+                    loot: enemyData.loot,
+                    tile: newTile // Store the original tile
+                };
+            } else {
+                enemy = currentData;
+            }
+
+            // --- Player Attacks Enemy ---
+            const playerDamage = Math.max(1, player.strength - enemy.defense);
+            enemy.health -= playerDamage;
+
+            if (enemy.health <= 0) {
+                // Enemy is dead. Return 'null' to delete it from RTDB.
+                return null;
+            } else {
+                // Enemy is still alive. Update its health.
+                return enemy;
+            }
+        });
+
+        // --- Process Transaction Results ---
+        const finalEnemyState = transactionResult.snapshot.val();
+
+        if (finalEnemyState === null) {
+            // --- ENEMY WAS DEFEATED ---
+            enemyWasKilled = true;
+            logMessage(`You defeated the ${enemyData.name}!`);
+            grantXp(enemyData.xp);
+            
+            // The enemy is dead, so we remove it from the map FOR EVERYONE
+            // and replace it with its loot.
+            chunkManager.setWorldTile(newX, newY, enemyData.loot);
+
+        } else {
+            // --- ENEMY SURVIVES AND ATTACKS ---
+            enemyAttackedBack = true;
+            const enemy = finalEnemyState;
+            enemyDamageTaken = Math.max(0, enemy.attack); // (Add player defense later)
+            player.health -= enemyDamageTaken;
+        }
+
+    } catch (error) {
+        console.error("Firebase transaction failed: ", error);
+        logMessage("Your attack falters... (network error)");
+        return; // Exit combat on error
+    }
+
+    // --- Handle Post-Combat Player State ---
+    if (enemyWasKilled) {
+        // Don't do anything else, player killed it
+    } else if (enemyAttackedBack) {
+        triggerStatFlash(statDisplays.health, false); // Flash health red
+        logMessage(`The ${enemyData.name} hits you for ${enemyDamageTaken} damage!`);
+        
+        // Check for player death
+        if (player.health <= 0) {
+            player.health = 0;
+            logMessage("You have perished!");
+            syncPlayerState();
+            document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
+            document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
+            gameOverModal.classList.remove('hidden');
+        }
+    }
+
+    // Finally, update player stats, end the turn, and re-render
+    endPlayerTurn();
+    render();
+}
+
         // --- UNIFIED COMBAT CHECK (MOVED TO CORRECT LOCATION) ---
         const enemyData = ENEMY_DATA[newTile];
         if (enemyData) { // This tile is an enemy: 'g', 's', 'b', or 'w'
             
-            let enemy; // This will hold the "live" enemy instance
-            let enemyId;
-            let isInstanceEnemy = false;
-
             if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-                // 1. INSTANCE: Find the enemy in the instanced list.
-                enemy = gameState.instancedEnemies.find(e => e.x === newX && e.y === newY);
+                // --- INSTANCED COMBAT ---
+                let enemy = gameState.instancedEnemies.find(e => e.x === newX && e.y === newY);
+                let enemyId = enemy ? enemy.id : null;
+
                 if (enemy) {
-                    enemyId = enemy.id;
-                    isInstanceEnemy = true;
-                }
-            } else if (gameState.mapMode === 'overworld') {
-                // 2. OVERWORLD: Check if this enemy is in our session cache.
-                enemyId = `overworld:${newX},${-newY}`; // Unique overworld ID
-                enemy = gameState.worldEnemies[enemyId];
+                    // --- PLAYER ATTACKS ENEMY ---
+                    const playerDamage = Math.max(1, gameState.player.strength - enemy.defense);
+                    enemy.health -= playerDamage;
+                    logMessage(`You attack the ${enemy.name} for ${playerDamage} damage!`);
 
-                if (!enemy) {
-                    // 3. Not in cache. Create a new "live" instance for this session.
-                    enemy = {
-                        // We only need to cache its health and stats
-                        name: enemyData.name,
-                        health: enemyData.maxHealth,
-                        maxHealth: enemyData.maxHealth,
-                        attack: enemyData.attack,
-                        defense: enemyData.defense,
-                        xp: enemyData.xp,
-                        loot: enemyData.loot
-                    };
-                    // 4. Add it to the session cache.
-                    gameState.worldEnemies[enemyId] = enemy;
-                }
-            }
-
-            if (enemy) {
-                // --- PLAYER ATTACKS ENEMY ---
-                const playerDamage = Math.max(1, gameState.player.strength - enemy.defense);
-                enemy.health -= playerDamage;
-                logMessage(`You attack the ${enemy.name} for ${playerDamage} damage!`);
-
-                if (enemy.health <= 0) {
-                    // --- ENEMY IS DEFEATED ---
-                    logMessage(`You defeated the ${enemy.name}!`);
-                    grantXp(enemy.xp);
-                    
-                    // Remove enemy from the map and its cache
-                    if (isInstanceEnemy) {
-                        // Remove from instance list
+                    if (enemy.health <= 0) {
+                        // --- ENEMY IS DEFEATED ---
+                        logMessage(`You defeated the ${enemy.name}!`);
+                        grantXp(enemy.xp);
+                        
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
-                        // Replace tile on instance map
                         if (gameState.mapMode === 'dungeon') {
                             chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = enemy.loot;
                         } else if (gameState.mapMode === 'castle') {
                             // Ready for when we add castle enemies
                         }
                     } else {
-                        // Remove from world cache
-                        delete gameState.worldEnemies[enemyId];
-                        // PERMANENTLY kill the enemy by replacing its tile
-                        chunkManager.setWorldTile(newX, newY, enemy.loot);
+                        // --- ENEMY SURVIVES AND ATTACKS ---
+                        const enemyDamage = Math.max(0, enemy.attack);
+                        gameState.player.health -= enemyDamage;
+                        triggerStatFlash(statDisplays.health, false);
+                        logMessage(`The ${enemy.name} hits you for ${enemyDamage} damage!`);
+                        
+                        if (gameState.player.health <= 0) {
+                            gameState.player.health = 0;
+                            logMessage("You have perished!");
+                            syncPlayerState();
+                            document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
+                            document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
+                            gameOverModal.classList.remove('hidden');
+                        }
                     }
-                } else {
-                    // --- ENEMY SURVIVES AND ATTACKS ---
-                    const enemyDamage = Math.max(0, enemy.attack); // (Add player defense later)
-                    gameState.player.health -= enemyDamage;
-                    triggerStatFlash(statDisplays.health, false); // Flash health red
-                    logMessage(`The ${enemy.name} hits you for ${enemyDamage} damage!`);
                     
-                    // Check for player death
-                    if (gameState.player.health <= 0) {
-                        gameState.player.health = 0;
-                        logMessage("You have perished!");
-                        syncPlayerState();
-                        document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
-                        document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
-                        gameOverModal.classList.remove('hidden');
-                    }
-                }
-                
-                // Update stats and re-render
+                    endPlayerTurn();
+                    render();
+                    return; // Stop the player's move
 
-                endPlayerTurn(); // <-- Replaces both functions
-                
-                render();
-                return; // Stop the player's move, ending the turn
-                
-            } else if (gameState.mapMode === 'dungeon') {
-                // This means it was a dungeon enemy ('g'/'s') but not in the active list
-                // It was killed this session. Treat it as a floor.
-                logMessage(`You see the corpse of a ${enemyData.name}.`);
+                } else {
+                    // --- THIS IS THE "CORPSE" LOGIC ---
+                    // It was a dungeon/castle enemy but not in the active list.
+                    logMessage(`You see the corpse of a ${enemyData.name}.`);
+                    // We don't 'return' here, we let the player move onto the tile.
+                }
+                // (End of instanced combat)
+
+            } else if (gameState.mapMode === 'overworld') {
+                // --- NEW SHARED OVERWORLD COMBAT ---
+                await handleOverworldCombat(newX, newY, enemyData);
+                return; // Stop the player's move
             }
         
         }
-        if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === '▒' || newTile === ' ')) {
-            logMessage("You bump into the castle wall.");
-            return; // Stop here if it's a wall or rubble
-        }
+                
         const moveCost = TERRAIN_COST[newTile] ?? 0;
         if (moveCost === Infinity) {
             logMessage("That way is blocked.");
@@ -2930,6 +3050,12 @@ connectedRef.on('value', (snap) => {
         }
         otherPlayers = newOtherPlayers;
         render();
+    });
+
+    const sharedEnemiesRef = rtdb.ref('worldEnemies');
+    sharedEnemiesRef.on('value', (snapshot) => {
+        gameState.sharedEnemies = snapshot.val() || {};
+        render(); // Re-render the screen to show new health bars
     });
 
     unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
