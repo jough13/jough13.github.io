@@ -1127,6 +1127,7 @@ const gameState = {
     flags: {
         hasSeenForestWarning: false
     },
+    inventoryMode: false,
     instancedEnemies: [],
     worldEnemies: {},
     isDroppingItem: false,
@@ -2025,57 +2026,99 @@ document.addEventListener('keydown', (event) => {
             event.preventDefault();
             return;
         }
-        // (We already handle 'isDroppingItem' and 'chatInput' in their own
-        // 'Escape' listeners, so this won't interfere with them)
+        
+        // --- NEW: Handle exiting game states ---
+        if (gameState.isDroppingItem) {
+            logMessage("Drop canceled.");
+            gameState.isDroppingItem = false;
+            event.preventDefault();
+            return;
+        }
+        if (gameState.inventoryMode) {
+            logMessage("Exited inventory mode.");
+            gameState.inventoryMode = false;
+            event.preventDefault();
+            return;
+        }
+        // --- END NEW ---
     }
 
+    // Handle Drop Mode
     if (gameState.isDroppingItem) {
         handleItemDrop(event);
         return; // Stop further processing
     }
 
-    const keyNum = parseInt(event.key);
-    if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
-        const itemIndex = keyNum - 1;
-        const itemToUse = gameState.player.inventory[itemIndex];
-        let itemUsed = false;
-        if (itemToUse && itemToUse.type === 'consumable') {
-            itemToUse.effect(gameState);
-            itemToUse.quantity--;
-            if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
-            itemUsed = true;
-        } else if (itemToUse) logMessage(`Cannot use '${itemToUse.name}'.`);
-        else logMessage(`No item in slot ${keyNum}.`);
-        if (itemUsed) {
-            // Create a "clean" version of the inventory for Firestore, without functions.
-            const inventoryToSave = gameState.player.inventory.map(item => ({
-                name: item.name,
-                type: item.type,
-                quantity: item.quantity,
-                tile: item.tile
-            }));
+    // --- NEW: Handle Inventory Mode ---
+    if (gameState.inventoryMode) {
+        event.preventDefault(); // Prevent movement keys while in this mode
 
-            playerRef.update({
-                inventory: inventoryToSave
-            });
-            syncPlayerState();
-            endPlayerTurn();
-            renderInventory();
+        const keyNum = parseInt(event.key);
+        if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
+            // --- This is the item USE logic, moved from the top level ---
+            const itemIndex = keyNum - 1;
+            const itemToUse = gameState.player.inventory[itemIndex];
+            let itemUsed = false;
+            if (itemToUse && itemToUse.type === 'consumable') {
+                itemToUse.effect(gameState);
+                itemToUse.quantity--;
+                if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
+                itemUsed = true;
+            } else if (itemToUse) logMessage(`Cannot use '${itemToUse.name}'.`);
+            else logMessage(`No item in slot ${keyNum}.`);
+            
+            if (itemUsed) {
+                const inventoryToSave = gameState.player.inventory.map(item => ({
+                    name: item.name,
+                    type: item.type,
+                    quantity: item.quantity,
+                    tile: item.tile
+                }));
+
+                playerRef.update({
+                    inventory: inventoryToSave
+                });
+                syncPlayerState();
+                endPlayerTurn();
+                renderInventory();
+            }
+            gameState.inventoryMode = false; // Exit inventory mode after use
+            return;
         }
-        event.preventDefault();
+
+        // Check for 'D' key to enter drop mode
+        if (event.key === 'd' || event.key === 'D') {
+            if (gameState.player.inventory.length === 0) {
+                logMessage("Your inventory is empty.");
+                gameState.inventoryMode = false; // Exit inventory mode
+                return;
+            }
+            logMessage("Drop Mode: Press 1-9 to drop or (Esc) to cancel.");
+            gameState.isDroppingItem = true;
+            gameState.inventoryMode = false; // Exit inventory mode, enter drop mode
+            return;
+        }
+
+        // If any other key is pressed in inventory mode, just log a reminder
+        logMessage("Inventory Mode: Press 1-9 to use, D to drop, or (Esc) to exit.");
         return;
     }
+    // --- END NEW INVENTORY MODE ---
 
-    if (event.key === 'd' || event.key === 'D') {
+
+    // --- NEW: Top-level 'I' key to ENTER inventory mode ---
+    if (event.key === 'i' || event.key === 'I') {
         if (gameState.player.inventory.length === 0) {
             logMessage("Your inventory is empty.");
             return;
         }
-        logMessage("Drop which item? (1-9) or (Esc) to cancel.");
-        gameState.isDroppingItem = true;
+        logMessage("Inventory Mode: Press 1-9 to use, D to drop, or (Esc) to exit.");
+        gameState.inventoryMode = true;
         event.preventDefault();
         return;
     }
+    // --- END NEW 'I' KEY ---
+
 
     let startX = gameState.player.x,
         startY = gameState.player.y;
@@ -2256,7 +2299,7 @@ document.addEventListener('keydown', (event) => {
                 
                 // Update stats and re-render
 
-                endPlayerTurn();
+                endPlayerTurn(); // <-- Replaces both functions
                 
                 render();
                 return; // Stop the player's move, ending the turn
@@ -2424,136 +2467,128 @@ document.addEventListener('keydown', (event) => {
         }
 
         // 4. If the move is valid, calculate stamina and move the player.
-try {
-            // 4. If the move is valid, calculate stamina and move the player.
-            const staminaDeficit = moveCost - gameState.player.stamina;
-            if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
-                logMessage("You're too tired, and pushing on would be fatal!");
-                // No 'return' here, let finally handle rendering the current state
+        const staminaDeficit = moveCost - gameState.player.stamina;
+        if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
+            logMessage("You're too tired, and pushing on would be fatal!");
+            return;
+        }
+
+        gameState.player.x = newX;
+        gameState.player.y = newY;
+
+        if (gameState.player.stamina >= moveCost) gameState.player.stamina -= moveCost;
+        else {
+            gameState.player.stamina = 0;
+            gameState.player.health -= staminaDeficit;
+            triggerStatFlash(statDisplays.health, false);
+            logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
+        }
+
+        // 5. Handle item pickups and final updates
+let tileId;
+if (gameState.mapMode === 'overworld') {
+    tileId = `${newX},${-newY}`;
+} else {
+    // This creates a unique ID like "cave_120_340:15,-22"
+    const mapId = gameState.currentCaveId || gameState.currentCastleId;
+    tileId = `${mapId}:${newX},${-newY}`;
+}
+
+const itemData = ITEM_DATA[newTile];
+if (itemData) {
+    // Now this check works for all map modes
+    let isTileLooted = gameState.lootedTiles.has(tileId);
+
+            if (isTileLooted) {
+                logMessage(`You see where a ${itemData.name} once was...`);
             } else {
-                // Only update position and stats if the move wasn't blocked by fatigue
-                gameState.player.x = newX;
-                gameState.player.y = newY;
+                let itemPickedUp = false;
+                let tileLooted = true; // Assume we loot it
 
-                if (gameState.player.stamina >= moveCost) {
-                    gameState.player.stamina -= moveCost;
-                } else {
-                    gameState.player.stamina = 0;
-                    gameState.player.health -= staminaDeficit;
-                    triggerStatFlash(statDisplays.health, false);
-                    logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
-                }
-
-                // 5. Handle item pickups
-                let tileId;
-                if (gameState.mapMode === 'overworld') {
-                    tileId = `${newX},${-newY}`;
-                } else {
-                    const mapId = gameState.currentCaveId || gameState.currentCastleId;
-                    tileId = `${mapId}:${newX},${-newY}`;
-                }
-
-                const itemData = ITEM_DATA[newTile];
-                if (itemData) {
-                    let isTileLooted = gameState.lootedTiles.has(tileId);
-
-                    if (isTileLooted) {
-                        logMessage(`You see where a ${itemData.name} once was...`);
+                if (itemData.type === 'consumable') {
+                    const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
+                    
+                    if (existingItem) {
+                        // Case 1: Player has this item, so stack it
+                        existingItem.quantity++;
+                        logMessage(`You picked up a ${itemData.name}.`);
+                        itemPickedUp = true;
+                    } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        // Case 2: Player has a free slot
+                        const itemForDb = {
+                            name: itemData.name,
+                            type: itemData.type,
+                            quantity: 1,
+                            tile: newTile
+                        };
+                        gameState.player.inventory.push(itemForDb);
+                        logMessage(`You picked up a ${itemData.name}.`);
+                        itemPickedUp = true;
                     } else {
-                        let itemPickedUp = false;
-                        let tileLooted = true; // Assume we loot it
-
-                        if (itemData.type === 'consumable') {
-                            const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
-                            if (existingItem) {
-                                existingItem.quantity++;
-                                logMessage(`You picked up a ${itemData.name}.`);
-                                itemPickedUp = true;
-                            } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                                const itemForInventory = {
-                                    name: itemData.name, type: itemData.type, quantity: 1, tile: newTile
-                                };
-                                // Find the effect function from ITEM_DATA *after* loading from DB if needed
-                                const template = ITEM_DATA[newTile]; 
-                                if (template && template.effect) itemForInventory.effect = template.effect;
-                                
-                                gameState.player.inventory.push(itemForInventory);
-                                logMessage(`You picked up a ${itemData.name}.`);
-                                itemPickedUp = true;
-                            } else {
-                                logMessage(`You see a ${itemData.name}, but your inventory is full!`);
-                                tileLooted = false;
-                            }
-
-                            if (itemPickedUp) {
-                                const inventoryToSave = gameState.player.inventory.map(item => ({
-                                    name: item.name, type: item.type, quantity: item.quantity, tile: item.tile
-                                }));
-                                playerRef.update({ inventory: inventoryToSave });
-                                renderInventory(); // Update inventory UI immediately
-                            }
-                        } else { // Instant items like '$'
-                            itemData.effect(gameState); // Effect might change stats
-                        }
-
-                        if (tileLooted) {
-                            gameState.lootedTiles.add(tileId);
-                            // Update map data
-                            if (gameState.mapMode === 'overworld') {
-                                chunkManager.setWorldTile(newX, newY, '.');
-                            } else if (gameState.mapMode === 'dungeon') {
-                                const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
-                                chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
-                            } else if (gameState.mapMode === 'castle') {
-                                chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
-                            }
-                        }
+                        // Case 3: Inventory is full
+                        logMessage(`You see a ${itemData.name}, but your inventory is full!`);
+                        tileLooted = false; // Don't loot the tile, leave item
                     }
-                } else if (moveCost > 0) {
-                    triggerStatFlash(statDisplays.stamina, false);
-                    logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
+
+                    if (itemPickedUp) {
+                        playerRef.update({ inventory: gameState.player.inventory });
+                    }
+
+                } else {
+                    // This handles instant items like '$' (Gold)
+                    ITEM_DATA[newTile].effect(gameState);
                 }
-                // No log message needed for normal floor movement
-                
-                // Update Firestore with primary stats after potential changes
-                playerRef.update({
-                    x: gameState.player.x,
-                    y: gameState.player.y,
-                    health: gameState.player.health,
-                    stamina: gameState.player.stamina,
-                    coins: gameState.player.coins // Coins might change from '$'
-                });
-            } // End else block (move wasn't blocked by fatigue)
 
-        } catch (error) {
-            console.error("Error during movement/item pickup processing:", error);
-            logMessage("An error occurred processing your action.");
-            // Don't return, let finally run
-        } finally {
-            // This block ALWAYS runs, ensuring updates happen even after errors or returns in try
-            
-            updateRegionDisplay(); // Update region (might depend on new player position)
-            syncPlayerState(); // Sync position/health to RTDB for others to see
+                if (tileLooted) {
+                    // --- MODIFIED: Add to lootedTiles REGARDLESS of map mode ---
+                    gameState.lootedTiles.add(tileId);
 
-            // Final death check after all effects/costs
-            if (gameState.player.health <= 0) {
-                gameState.player.health = 0;
-                logMessage("You have perished!");
-                // No need to sync again, health=0 will be synced above
-                document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
-                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
-                gameOverModal.classList.remove('hidden');
-                // No render needed if game over modal shows
-            } else {
-                 // If not dead, end the turn and render the final state
-                endPlayerTurn(); // Processes enemy turns, calls renderStats
-                render();        // Renders the map
+                    // Now, just change the tile based on the map
+                    if (gameState.mapMode === 'overworld') {
+                        chunkManager.setWorldTile(newX, newY, '.');
+                    } else if (gameState.mapMode === 'dungeon') {
+                        const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                        chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
+                    } else if (gameState.mapMode === 'castle') {
+                        chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
+                    }
+                    // --- END MODIFICATION ---
+                }
             }
-        } // End finally block
+        } else if (moveCost > 0) {
+            triggerStatFlash(statDisplays.stamina, false); // Flash red for stamina cost
+            logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
+        } else {
+            logMessage(`Moved to world coordinate (${newX}, ${-newY}).`);
+        }
 
-    })(); // End async IIFE block
+        updateRegionDisplay();
+        syncPlayerState();
 
-    });
+        playerRef.update({
+            x: gameState.player.x,
+            y: gameState.player.y,
+            health: gameState.player.health,
+            stamina: gameState.player.stamina,
+            coins: gameState.player.coins
+        });
+
+        if (gameState.player.health <= 0) {
+            gameState.player.health = 0;
+            logMessage("You have perished!");
+            syncPlayerState();
+
+            document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
+            document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
+
+            gameOverModal.classList.remove('hidden');
+        }
+
+        endPlayerTurn();
+
+    })();
+
+});
 
 const applyTheme = (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
