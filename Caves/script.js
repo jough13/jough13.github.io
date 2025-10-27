@@ -2021,8 +2021,8 @@ function processEnemyTurns() {
     const enemiesToMove = [...gameState.instancedEnemies];
     
     enemiesToMove.forEach(enemy => {
-        // 25% chance to move randomly
-        if (Math.random() < 0.25) {
+        // 75% chance to move randomly
+        if (Math.random() < 0.75) {
             const dirX = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
             const dirY = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
 
