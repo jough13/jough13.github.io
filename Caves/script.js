@@ -1904,6 +1904,94 @@ if (onlinePlayerRef) {
     }
 }
 
+function processOverworldEnemyTurns() {
+    // 1. Define search area around player (e.g., 30x30 box)
+    const searchRadius = 15;
+    const playerX = gameState.player.x;
+    const playerY = gameState.player.y;
+    let anEnemyMovedNearby = false;
+
+    // A list to batch our updates for efficiency
+    let movesToMake = [];
+
+    // 2. Loop through the search box
+    for (let y = playerY - searchRadius; y <= playerY + searchRadius; y++) {
+        for (let x = playerX - searchRadius; x <= playerX + searchRadius; x++) {
+            // Don't move the tile the player is on
+            if (x === playerX && y === playerY) continue;
+
+            const tile = chunkManager.getTile(x, y);
+
+            // 3. Is this tile an enemy?
+            if (ENEMY_DATA[tile]) {
+
+                // 4. Try to move it (25% chance)
+                if (Math.random() < 0.25) {
+                    const dirX = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+                    const dirY = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+                    if (dirX === 0 && dirY === 0) continue;
+
+                    const newX = x + dirX;
+                    const newY = y + dirY;
+
+                    // 5. Is the new spot valid?
+                    const targetTile = chunkManager.getTile(newX, newY);
+                    
+                    // --- UPDATED LOGIC ---
+                    let canMove = false;
+                    if (tile === 'w') { // Wolves
+                        // Wolves can move on plains OR in forests
+                        canMove = (targetTile === '.' || targetTile === 'F'); 
+                    } else if (tile === 'b') { // Bandits
+                        // Bandits stick to the plains
+                        canMove = (targetTile === '.'); 
+                    }
+                    // --- END UPDATED LOGIC ---
+
+                    if (canMove) { // Use our new 'canMove' flag
+
+                        // Add this move to our batch
+                        movesToMake.push({
+                            oldX: x,
+                            oldY: y,
+                            newX: newX,
+                            newY: newY,
+                            tile: tile
+                        });
+
+                        // 8. Check if it's "nearby" for the log message
+                        const distY = Math.abs(newY - playerY);
+                        const distX = Math.abs(newX - playerX);
+                        if (distX <= 10 && distY <= 10) { // Smaller radius for "hearing"
+                            anEnemyMovedNearby = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Process all moves ---
+    // We do this *after* scanning to prevent an enemy from moving twice
+    movesToMake.forEach(move => {
+        // 6. Move the enemy on the map
+        chunkManager.setWorldTile(move.oldX, move.oldY, '.');  // Clear old tile
+        chunkManager.setWorldTile(move.newX, move.newY, move.tile); // Set new tile
+
+        // 7. Update the session cache (the tricky part)
+        const oldId = `overworld:${move.oldX},${-move.oldY}`;
+        const newId = `overworld:${move.newX},${-move.newY}`;
+        
+        // If this enemy was damaged, transfer its health data to the new location
+        if (gameState.worldEnemies[oldId]) {
+            gameState.worldEnemies[newId] = gameState.worldEnemies[oldId];
+            delete gameState.worldEnemies[oldId];
+        }
+    });
+
+    return anEnemyMovedNearby;
+}
+
 function processEnemyTurns() {
     // This function only runs for dungeon/castle enemies
     if (gameState.mapMode !== 'dungeon' && gameState.mapMode !== 'castle') {
@@ -1972,16 +2060,25 @@ function processEnemyTurns() {
 function endPlayerTurn() {
     gameState.playerTurnCount++; // Increment the player's turn
 
-    // --- MODIFIED: Only log if enemies *actually* moved nearby ---
+    // --- MODIFIED BLOCK ---
     if (gameState.playerTurnCount % 2 === 0) {
-        const enemiesMovedNearby = processEnemyTurns(); // Capture the return value
-        
+        let enemiesMovedNearby = false;
+
+        if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+            // Use the original function for dungeons/castles
+            enemiesMovedNearby = processEnemyTurns();
+        } else if (gameState.mapMode === 'overworld') {
+            // Use our new function for the overworld
+            enemiesMovedNearby = processOverworldEnemyTurns();
+        }
+
         if (enemiesMovedNearby) {
-            logMessage("You hear a shuffle nearby..."); // Changed message
+            logMessage("You hear a shuffle nearby...");
         }
     }
+    // --- END MODIFIED BLOCK ---
 
-    renderStats(); 
+    renderStats();
 }
 
 function exitToOverworld(exitMessage) {
