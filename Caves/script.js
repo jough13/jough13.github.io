@@ -2537,6 +2537,21 @@ if (itemData) {
             } else {
                 let itemPickedUp = false;
                 let tileLooted = true; // Assume we loot it
+               if (tileLooted) {
+                   // --- MODIFIED: Add to lootedTiles REGARDLESS of map mode ---
+                   gameState.lootedTiles.add(tileId);
+
+                   // Now, just change the tile based on the map
+                   if (gameState.mapMode === 'overworld') {
+                       chunkManager.setWorldTile(newX, newY, '.');
+                   } else if (gameState.mapMode === 'dungeon') {
+                       const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                       chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
+                   } else if (gameState.mapMode === 'castle') {
+                       chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
+                   }
+                   // --- END MODIFICATION ---
+               }
 
                 if (itemData.type === 'consumable') {
                     const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
@@ -2564,7 +2579,14 @@ if (itemData) {
                     }
 
                     if (itemPickedUp) {
-                        playerRef.update({ inventory: gameState.player.inventory });
+                        // --- Sanitize the inventory before saving ---
+                        const inventoryToSave = gameState.player.inventory.map(item => ({
+                            name: item.name,
+                            type: item.type,
+                            quantity: item.quantity,
+                            tile: item.tile
+                        }));
+                        playerRef.update({ inventory: inventoryToSave });
                     }
 
                 } else {
@@ -2572,21 +2594,6 @@ if (itemData) {
                     ITEM_DATA[newTile].effect(gameState);
                 }
 
-                if (tileLooted) {
-                    // --- MODIFIED: Add to lootedTiles REGARDLESS of map mode ---
-                    gameState.lootedTiles.add(tileId);
-
-                    // Now, just change the tile based on the map
-                    if (gameState.mapMode === 'overworld') {
-                        chunkManager.setWorldTile(newX, newY, '.');
-                    } else if (gameState.mapMode === 'dungeon') {
-                        const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
-                        chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
-                    } else if (gameState.mapMode === 'castle') {
-                        chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
-                    }
-                    // --- END MODIFICATION ---
-                }
             }
         } else if (moveCost > 0) {
             triggerStatFlash(statDisplays.stamina, false); // Flash red for stamina cost
