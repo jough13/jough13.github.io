@@ -491,6 +491,12 @@ function createDefaultPlayerState() {
         perception: 1,
         endurance: 1,
         intuition: 1,
+        
+        equipment: {
+            weapon: { name: 'Fists', damage: 0 }
+            // We can add armor, shield, etc. here later
+        },
+
         inventory: [],
 
         level: 1,
@@ -2409,6 +2415,7 @@ document.addEventListener('keydown', (event) => {
 /**
  * Handles combat for overworld enemies, syncing health via RTDB.
  */
+
 async function handleOverworldCombat(newX, newY, enemyData) {
     const player = gameState.player;
     const enemyId = `overworld:${newX},${-newY}`; // Unique RTDB key
@@ -2440,7 +2447,11 @@ async function handleOverworldCombat(newX, newY, enemyData) {
             }
 
             // --- Player Attacks Enemy ---
-            const playerDamage = Math.max(1, player.strength - enemy.defense);
+            // --- MODIFIED DAMAGE FORMULA ---
+            const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
+            const playerDamage = Math.max(1, (player.strength + weaponDamage) - enemy.defense);
+            // --- END MODIFICATION ---
+            
             enemy.health -= playerDamage;
 
             if (enemy.health <= 0) {
@@ -2502,7 +2513,7 @@ async function handleOverworldCombat(newX, newY, enemyData) {
     render();
 }
 
-        // --- UNIFIED COMBAT CHECK (MOVED TO CORRECT LOCATION) ---
+// --- UNIFIED COMBAT CHECK ---
         const enemyData = ENEMY_DATA[newTile];
         if (enemyData) { // This tile is an enemy: 'g', 's', 'b', or 'w'
             
@@ -2513,7 +2524,11 @@ async function handleOverworldCombat(newX, newY, enemyData) {
 
                 if (enemy) {
                     // --- PLAYER ATTACKS ENEMY ---
-                    const playerDamage = Math.max(1, gameState.player.strength - enemy.defense);
+                    // --- MODIFIED DAMAGE FORMULA ---
+                    const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
+                    const playerDamage = Math.max(1, (gameState.player.strength + weaponDamage) - enemy.defense);
+                    // --- END MODIFICATION ---
+                    
                     enemy.health -= playerDamage;
                     logMessage(`You attack the ${enemy.name} for ${playerDamage} damage!`);
 
@@ -2548,7 +2563,6 @@ async function handleOverworldCombat(newX, newY, enemyData) {
                     endPlayerTurn();
                     render();
                     return; // Stop the player's move
-
                 } else {
                     // --- THIS IS THE "CORPSE" LOGIC ---
                     // It was a dungeon/castle enemy but not in the active list.
