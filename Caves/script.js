@@ -390,6 +390,8 @@ const shopPlayerCoins = document.getElementById('shopPlayerCoins');
 const shopBuyList = document.getElementById('shopBuyList');
 const shopSellList = document.getElementById('shopSellList');
 
+const equippedWeaponDisplay = document.getElementById('equippedWeaponDisplay');
+
 const coreStatsPanel = document.getElementById('coreStatsPanel');
 
 const DAY_CYCLE_STOPS = [{
@@ -760,7 +762,12 @@ const ITEM_DATA = {
             logMessage('Used a Psyche Shard. Restored psyche.'); 
         } 
     },
-
+    '/': {
+        name: 'Stick',
+        type: 'weapon', // A new type
+        damage: 1,       // It's better than Fists!
+        slot: 'weapon'   // Tells the game where it goes
+    },
     '$': {
         name: 'Gold Coin',
         type: 'instant',
@@ -1700,6 +1707,17 @@ const renderInventory = () => {
     }
 };
 
+const renderEquipment = () => {
+    const weapon = gameState.player.equipment.weapon;
+    if (weapon) {
+        // We'll check for damage, as Fists might not have it
+        const damage = weapon.damage || 0; 
+        equippedWeaponDisplay.textContent = `Weapon: ${weapon.name} (+${damage} Dmg)`;
+    } else {
+        equippedWeaponDisplay.textContent = 'Weapon: None';
+    }
+};
+
 const render = () => {
     const style = getComputedStyle(document.documentElement);
     const canvasBg = style.getPropertyValue('--canvas-bg');
@@ -2246,44 +2264,91 @@ document.addEventListener('keydown', (event) => {
         return; // Stop further processing
     }
 
-    // --- NEW: Handle Inventory Mode ---
+
+// --- NEW: Handle Inventory Mode ---
     if (gameState.inventoryMode) {
         event.preventDefault(); // Prevent movement keys while in this mode
 
+        // --- Start: Correct 1-9 Logic (for Use/Equip) ---
         const keyNum = parseInt(event.key);
         if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
-            // --- This is the item USE logic, moved from the top level ---
             const itemIndex = keyNum - 1;
             const itemToUse = gameState.player.inventory[itemIndex];
-            let itemUsed = false;
-            if (itemToUse && itemToUse.type === 'consumable') {
+            let itemUsed = false; // Flag to save at the end
+
+            if (!itemToUse) {
+                logMessage(`No item in slot ${keyNum}.`);
+                gameState.inventoryMode = false; // Exit inventory mode
+                return;
+            }
+
+            // --- BRANCHING LOGIC FOR ITEM TYPE ---
+            if (itemToUse.type === 'consumable') {
+                // --- 1. USE CONSUMABLE (Existing Logic) ---
                 itemToUse.effect(gameState);
                 itemToUse.quantity--;
-                if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
+                if (itemToUse.quantity <= 0) {
+                    gameState.player.inventory.splice(itemIndex, 1); // Remove if empty
+                }
                 itemUsed = true;
-            } else if (itemToUse) logMessage(`Cannot use '${itemToUse.name}'.`);
-            else logMessage(`No item in slot ${keyNum}.`);
+
+            } else if (itemToUse.type === 'weapon') {
+                // --- 2. EQUIP WEAPON (New Logic) ---
+                const oldWeapon = gameState.player.equipment.weapon;
+
+                // Equip the new item
+                gameState.player.equipment.weapon = itemToUse;
+                // Remove it from inventory
+                gameState.player.inventory.splice(itemIndex, 1);
+
+                // Add the old weapon back to inventory (if it's not Fists)
+                if (oldWeapon && oldWeapon.name !== 'Fists') {
+                    // We also need to add all its data back
+                    const oldWeaponItem = {
+                        name: oldWeapon.name,
+                        type: 'weapon',
+                        quantity: 1,
+                        tile: oldWeapon.tile || '/', // Find a better default?
+                        damage: oldWeapon.damage,
+                        slot: oldWeapon.slot
+                    };
+                    gameState.player.inventory.push(oldWeaponItem);
+                }
+                
+                logMessage(`You equip the ${itemToUse.name}.`);
+                itemUsed = true;
+                
+            } else {
+                // --- 3. CANNOT USE ---
+                logMessage(`You can't use '${itemToUse.name}' right now.`);
+            }
+            // --- END BRANCHING LOGIC ---
             
             if (itemUsed) {
+                // Save both inventory AND equipment changes
                 const inventoryToSave = gameState.player.inventory.map(item => ({
-                    name: item.name,
-                    type: item.type,
-                    quantity: item.quantity,
-                    tile: item.tile
+                    name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
+                    damage: item.damage, slot: item.slot // <-- Make sure to save weapon stats
                 }));
 
                 playerRef.update({
-                    inventory: inventoryToSave
+                    inventory: inventoryToSave,
+                    equipment: gameState.player.equipment // <-- Save the new equipment state
                 });
+                
                 syncPlayerState();
                 endPlayerTurn();
                 renderInventory();
+                renderEquipment();
             }
-            gameState.inventoryMode = false; // Exit inventory mode after use
+
+            gameState.inventoryMode = false; // Exit inventory mode after action
             return;
         }
+        // --- End: Correct 1-9 Logic ---
 
-        // Check for 'D' key to enter drop mode
+
+        // --- Start: Correct 'D' Key Logic (for Drop) ---
         if (event.key === 'd' || event.key === 'D') {
             if (gameState.player.inventory.length === 0) {
                 logMessage("Your inventory is empty.");
@@ -2295,13 +2360,14 @@ document.addEventListener('keydown', (event) => {
             gameState.inventoryMode = false; // Exit inventory mode, enter drop mode
             return;
         }
+        // --- End: Correct 'D' Key Logic ---
+
 
         // If any other key is pressed in inventory mode, just log a reminder
         logMessage("Inventory Mode: Press 1-9 to use, D to drop, or (Esc) to exit.");
         return;
     }
     // --- END NEW INVENTORY MODE ---
-
 
     // --- NEW: Top-level 'I' key to ENTER inventory mode ---
     if (event.key === 'i' || event.key === 'I') {
@@ -2807,18 +2873,70 @@ if (itemData) {
                         // Case 3: Inventory is full
                         logMessage(`You see a ${itemData.name}, but your inventory is full!`);
                         tileLooted = false; // Don't loot the tile, leave item
+                        
+                        // --- ADD THIS TO "UNDO" THE TILE CHANGE ---
+                        gameState.lootedTiles.delete(tileId);
+                        if (gameState.mapMode === 'overworld') {
+                            chunkManager.setWorldTile(newX, newY, newTile); // Put item back
+                        } else if (gameState.mapMode === 'dungeon') {
+                            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = newTile;
+                        } else if (gameState.mapMode === 'castle') {
+                            chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = newTile;
+                        }
+                        // --- END OF "UNDO" BLOCK ---
                     }
 
                     if (itemPickedUp) {
-                        // --- Sanitize the inventory before saving ---
+                        // --- FIX: Sanitize the inventory before saving ---
                         const inventoryToSave = gameState.player.inventory.map(item => ({
                             name: item.name,
                             type: item.type,
                             quantity: item.quantity,
-                            tile: item.tile
+                            tile: item.tile,
+                            damage: item.damage, // Also save weapon stats (will be undefined for consumables, which is fine)
+                            slot: item.slot      // Also save weapon stats (will be undefined for consumables, which is fine)
                         }));
                         playerRef.update({ inventory: inventoryToSave });
                     }
+
+                } else if (itemData.type === 'weapon') {
+                    // --- NEW WEAPON PICKUP LOGIC ---
+                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        // Case 1: Player has a free slot. Add it (no stacking)
+                        const itemForDb = {
+                            name: itemData.name,
+                            type: itemData.type,
+                            quantity: 1,
+                            tile: newTile,
+                            damage: itemData.damage, // Make sure to copy damage
+                            slot: itemData.slot      // and slot
+                        };
+                        gameState.player.inventory.push(itemForDb);
+                        logMessage(`You picked up a ${itemData.name}.`);
+                        itemPickedUp = true;
+                    } else {
+                        // Case 2: Inventory is full
+                        logMessage(`You see a ${itemData.name}, but your inventory is full!`);
+                        tileLooted = false; 
+                        gameState.lootedTiles.delete(tileId);
+                        if (gameState.mapMode === 'overworld') {
+                            chunkManager.setWorldTile(newX, newY, newTile);
+                        } else if (gameState.mapMode === 'dungeon') {
+                            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = newTile;
+                        } else if (gameState.mapMode === 'castle') {
+                            chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = newTile;
+                        }
+                    }
+
+                    if (itemPickedUp) {
+                        // Save the inventory
+                        const inventoryToSave = gameState.player.inventory.map(item => ({
+                            name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
+                            damage: item.damage, slot: item.slot // <-- Also save weapon stats
+                        }));
+                        playerRef.update({ inventory: inventoryToSave });
+                    }
+                    // --- END NEW WEAPON LOGIC ---
 
                 } else {
                     // This handles instant items like '$' (Gold)
@@ -3154,6 +3272,8 @@ connectedRef.on('value', (snap) => {
     });
 
     renderStats();
+
+    renderEquipment();
 
     renderTime();
 
