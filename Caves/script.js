@@ -776,6 +776,18 @@ const ITEM_DATA = {
         defense: 1,
         slot: 'armor'
     },
+    '!': {
+        name: 'Rusty Sword',
+        type: 'weapon',
+        damage: 2,
+        slot: 'weapon'
+    },
+    '[': {
+        name: 'Studded Armor',
+        type: 'armor',
+        defense: 2,
+        slot: 'armor'
+    },
     '$': {
         name: 'Gold Coin',
         type: 'instant',
@@ -875,7 +887,7 @@ const chunkManager = {
 // 3. Place loot and decorations
 
 // --- Part A: Place 0-3 random loot items ---
-const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$', '/', '%'];
+const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$'];
 const lootQuantity = Math.floor(random() * 4); // Generates 0, 1, 2, or 3
 
 for (let i = 0; i < lootQuantity; i++) {
@@ -1449,6 +1461,41 @@ function handleItemDrop(event) {
 
     // 7. Exit drop mode
     gameState.isDroppingItem = false;
+}
+
+/**
+ * Generates level-appropriate loot when an enemy is defeated.
+ * @param {number} playerLevel - The player's current level.
+ * @returns {string} The tile character of the dropped item.
+ */
+function generateEnemyLoot(playerLevel) {
+    const roll = Math.random(); // A roll from 0.0 to 1.0
+
+    // Define our loot pools
+    const commonLoot = ['$', '+', 'o', 'S', 'Y']; // Consumables & Gold
+    const tier1Loot = ['/', '%']; // Stick, Leather Tunic
+    const tier2Loot = ['!', '[']; // Rusty Sword, Studded Armor
+
+    // --- Tier 2 Loot (Best) ---
+    // Start at 0% at level 1, and increases by 8% per level
+    // L1: 0%, L2: 8%, L3: 16%, L4: 24%, L5: 32% ...
+    const tier2Chance = Math.max(0, (playerLevel - 1) * 0.08);
+    if (roll < tier2Chance) {
+        return tier2Loot[Math.floor(Math.random() * tier2Loot.length)];
+    }
+
+    // --- Tier 1 Loot (Medium) ---
+    // Start at 30% chance, but *decreases* as Tier 2 becomes more likely
+    // L1: 30%, L2: 27%, L3: 24%, L4: 21%, L5: 18% ...
+    const tier1Chance = Math.max(0.1, 0.30 - (playerLevel * 0.03));
+    // We add tier2Chance to the roll threshold
+    if (roll < tier2Chance + tier1Chance) {
+        return tier1Loot[Math.floor(Math.random() * tier1Loot.length)];
+    }
+
+    // --- Common Loot (Base) ---
+    // If you fail both rolls, you get common loot.
+    return commonLoot[Math.floor(Math.random() * commonLoot.length)];
 }
 
 function grantXp(amount) {
@@ -2415,21 +2462,44 @@ document.addEventListener('keydown', (event) => {
         case 'D': 
             newX++;
             break;
-        case 'r':
+case 'r':
         case 'R':
+            let rested = false;
+            let logMsg = "You rest for a moment. ";
+
+            // Restore 1 Stamina
             if (gameState.player.stamina < gameState.player.maxStamina) {
                 gameState.player.stamina++;
-                triggerStatFlash(statDisplays.stamina, true); // Flash green for gain
-                logMessage("You rest for a moment, recovering 1 stamina.");
-            } else logMessage("You are already at full stamina.");
+                triggerStatFlash(statDisplays.stamina, true);
+                logMsg += "Recovered 1 stamina.";
+                rested = true;
+            }
+
+            // Restore 1 Health
+            if (gameState.player.health < gameState.player.maxHealth) {
+                gameState.player.health++;
+                triggerStatFlash(statDisplays.health, true);
+                logMsg += " Recovered 1 health.";
+                rested = true;
+            }
+
+            if (!rested) {
+                logMessage("You are already at full health and stamina.");
+            } else {
+                logMessage(logMsg);
+            }
+            
+            // Update the database
             playerRef.update({
-                stamina: gameState.player.stamina
+                stamina: gameState.player.stamina,
+                health: gameState.player.health
             });
 
             endPlayerTurn();
 
             event.preventDefault();
             return;
+
         default:
             return;
     }
@@ -2547,7 +2617,8 @@ async function handleOverworldCombat(newX, newY, enemyData) {
             
             // The enemy is dead, so we remove it from the map FOR EVERYONE
             // and replace it with its loot.
-            chunkManager.setWorldTile(newX, newY, enemyData.loot);
+            const droppedLoot = generateEnemyLoot(gameState.player.level);
+            chunkManager.setWorldTile(newX, newY, droppedLoot);
 
         } else {
             // --- ENEMY SURVIVES AND ATTACKS ---
@@ -2611,9 +2682,12 @@ async function handleOverworldCombat(newX, newY, enemyData) {
                         logMessage(`You defeated the ${enemy.name}!`);
                         grantXp(enemy.xp);
                         
+                        // --- NEW: Generate level-scaled loot ---
+                        const droppedLoot = generateEnemyLoot(gameState.player.level);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
+                        
                         if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = enemy.loot;
+                            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
                         } else if (gameState.mapMode === 'castle') {
                             // Ready for when we add castle enemies
                         }
@@ -2668,6 +2742,7 @@ async function handleOverworldCombat(newX, newY, enemyData) {
             // Handle all lore/journal/NPC types
             if (tileData.type === 'journal') {
                 if (!gameState.foundLore.has(tileId)) {
+                    logMessage("You found a new journal! +25 XP");
                     grantXp(25);
                     gameState.foundLore.add(tileId);
                     playerRef.update({ foundLore: Array.from(gameState.foundLore) });
@@ -2680,6 +2755,7 @@ async function handleOverworldCombat(newX, newY, enemyData) {
 
             if (newTile === 'B') {
                 if (!gameState.foundLore.has(tileId)) {
+                    logMessage("You've discovered a Bounty Board! +15 XP");
                     grantXp(15);
                     gameState.foundLore.add(tileId);
                     playerRef.update({ foundLore: Array.from(gameState.foundLore) });
@@ -2692,6 +2768,7 @@ async function handleOverworldCombat(newX, newY, enemyData) {
             
             if (newTile === '#') {
                 if (!gameState.foundLore.has(tileId)) {
+                    logMessage("You've found an ancient Rune Stone! +10 XP");
                     grantXp(10);
                     gameState.foundLore.add(tileId);
                     playerRef.update({ foundLore: Array.from(gameState.foundLore) });
@@ -2709,6 +2786,7 @@ async function handleOverworldCombat(newX, newY, enemyData) {
             // --- NEW 'N' (NPC) TILE ---
             if (newTile === 'N') {
                 if (!gameState.foundLore.has(tileId)) {
+                    logMessage("You met a new villager. +5 XP");
                     grantXp(5); // A little XP for talking to someone new
                     gameState.foundLore.add(tileId);
                     playerRef.update({ foundLore: Array.from(gameState.foundLore) });
@@ -2731,6 +2809,12 @@ async function handleOverworldCombat(newX, newY, enemyData) {
 
             // --- NEW '§' (SHOP) TILE ---
             if (newTile === '§') {
+                if (!gameState.foundLore.has(tileId)) {
+                    logMessage("You've discovered a General Store! +15 XP");
+                    grantXp(15);
+                    gameState.foundLore.add(tileId);
+                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                }
                 logMessage("You enter the General Store.");
                 renderShop(); // Populate the shop
                 shopModal.classList.remove('hidden'); // Show it
@@ -2740,6 +2824,12 @@ async function handleOverworldCombat(newX, newY, enemyData) {
             // Handle all other special tiles like entrances/exits
             switch (tileData.type) {
                 case 'dungeon_entrance':
+                    if (!gameState.foundLore.has(tileId)) {
+                        logMessage("You've discovered a cave entrance! +10 XP");
+                        grantXp(10);
+                        gameState.foundLore.add(tileId);
+                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    }
                     gameState.mapMode = 'dungeon';
                     gameState.currentCaveId = tileData.getCaveId(newX, newY);
                     gameState.overworldExit = {
@@ -2769,6 +2859,12 @@ async function handleOverworldCombat(newX, newY, enemyData) {
                     exitToOverworld("You emerge back into the sunlight."); 
                     return;
                 case 'castle_entrance':
+                    if (!gameState.foundLore.has(tileId)) {
+                        logMessage("You've discovered a castle entrance! +10 XP");
+                        grantXp(10);
+                        gameState.foundLore.add(tileId);
+                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    }
                     gameState.mapMode = 'castle';
                     gameState.currentCastleId = tileData.getCastleId(newX, newY);
                     gameState.overworldExit = {
@@ -2793,6 +2889,7 @@ async function handleOverworldCombat(newX, newY, enemyData) {
                 case 'lore':
                     // This is for the '☗' tile
                     if (!gameState.foundLore.has(tileId)) {
+                        logMessage("You've found an old signpost! +10 XP");
                         grantXp(10);
                         gameState.foundLore.add(tileId);
                         playerRef.update({ foundLore: Array.from(gameState.foundLore) });
