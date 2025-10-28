@@ -2347,11 +2347,43 @@ document.addEventListener('keydown', (event) => {
 
             // --- BRANCHING LOGIC FOR ITEM TYPE ---
             if (itemToUse.type === 'consumable') {
-                // ... (existing consumable logic) ...
+                // 1. Apply the item's effect
+                if (itemToUse.effect) {
+                    itemToUse.effect(gameState); // (e.g., restore health)
+                }
+
+                // 2. Remove one from the stack
+                itemToUse.quantity--;
+                logMessage(`You used a ${itemToUse.name}.`);
+
+                // 3. If the stack is empty, remove it from inventory
+                if (itemToUse.quantity <= 0) {
+                    gameState.player.inventory.splice(itemIndex, 1);
+                }
                 itemUsed = true;
 
-            } else if (itemToUse.type === 'weapon') {
-                // ... (existing weapon logic) ...
+                } else if (itemToUse.type === 'weapon') {
+                // --- 1. EQUIP WEAPON (This is the missing logic) ---
+                const oldWeapon = gameState.player.equipment.weapon;
+
+                // Equip the new item
+                gameState.player.equipment.weapon = itemToUse;
+                gameState.player.inventory.splice(itemIndex, 1);
+
+                // Add the old weapon back to inventory (if it's not Fists)
+                if (oldWeapon && oldWeapon.name !== 'Fists') {
+                    const oldWeaponItem = {
+                        name: oldWeapon.name,
+                        type: 'weapon',
+                        quantity: 1,
+                        tile: oldWeapon.tile || '/', // Use default stick tile if missing
+                        damage: oldWeapon.damage,
+                        slot: oldWeapon.slot
+                    };
+                    gameState.player.inventory.push(oldWeaponItem);
+                }
+                
+                logMessage(`You equip the ${itemToUse.name}.`);
                 itemUsed = true;
                 
             } else if (itemToUse.type === 'armor') {
@@ -3193,7 +3225,8 @@ function clearSessionState() {
 
 logoutButton.addEventListener('click', () => {
     const finalState = {
-        ...gameState.player
+        ...gameState.player,
+        lootedTiles: Array.from(gameState.lootedTiles)
     };
 
     // Create a clean version of the inventory before saving
@@ -3254,6 +3287,13 @@ async function startGame(user) {
                 gameState.foundLore = new Set();
             }
 
+            if (playerData.lootedTiles && Array.isArray(playerData.lootedTiles)) {
+                gameState.lootedTiles = new Set(playerData.lootedTiles);
+            } else {
+                // This is a new player or first login since the fix
+                gameState.lootedTiles = new Set();
+            }
+
         } else {
 
             // It handles users who are logged in but don't have a player document yet.
@@ -3283,10 +3323,11 @@ connectedRef.on('value', (snap) => {
 
             onlinePlayerRef.onDisconnect().remove().then(() => {
                 const finalState = {
-                    ...gameState.player
+                    ...gameState.player,
+                    lootedTiles: Array.from(gameState.lootedTiles)
                 };
 
-                // ADD THIS BLOCK TO CLEAN THE INVENTORY
+                
                 if (finalState.inventory) {
                     finalState.inventory = finalState.inventory.map(item => ({
                         name: item.name,
