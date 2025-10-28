@@ -61,7 +61,7 @@ This prevents the inventory from collapsing before JS loads */
 }
 
 #chatMessages {
-    max-height: 240px;
+    max-height: 220px;
     overflow-y: scroll;
     display: flex;
     flex-direction: column-reverse;
@@ -234,7 +234,6 @@ kbd {
 .bar-health {
     background-color: #22c55e; /* Green */
 }
-/* We'll add dynamic colors for health later in JS */
 
 .bar-mana {
     background-color: #3b82f6; /* Blue */
