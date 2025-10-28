@@ -392,6 +392,8 @@ const shopSellList = document.getElementById('shopSellList');
 
 const equippedWeaponDisplay = document.getElementById('equippedWeaponDisplay');
 
+const equippedArmorDisplay = document.getElementById('equippedArmorDisplay');
+
 const coreStatsPanel = document.getElementById('coreStatsPanel');
 
 const DAY_CYCLE_STOPS = [{
@@ -495,8 +497,8 @@ function createDefaultPlayerState() {
         intuition: 1,
         
         equipment: {
-            weapon: { name: 'Fists', damage: 0 }
-            // We can add armor, shield, etc. here later
+            weapon: { name: 'Fists', damage: 0 },
+            armor: { name: 'Simple Tunic', defense: 0 }
         },
 
         inventory: [],
@@ -766,7 +768,13 @@ const ITEM_DATA = {
         name: 'Stick',
         type: 'weapon', // A new type
         damage: 1,       // It's better than Fists!
-        slot: 'weapon'   // Tells the game where it goes
+        slot: 'weapon'   
+    },
+    '%': {
+        name: 'Leather Tunic',
+        type: 'armor',
+        defense: 1,
+        slot: 'armor'
     },
     '$': {
         name: 'Gold Coin',
@@ -867,7 +875,7 @@ const chunkManager = {
 // 3. Place loot and decorations
 
 // --- Part A: Place 0-3 random loot items ---
-const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$'];
+const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$', '/', '%'];
 const lootQuantity = Math.floor(random() * 4); // Generates 0, 1, 2, or 3
 
 for (let i = 0; i < lootQuantity; i++) {
@@ -1716,6 +1724,13 @@ const renderEquipment = () => {
     } else {
         equippedWeaponDisplay.textContent = 'Weapon: None';
     }
+    const armor = gameState.player.equipment.armor;
+    if (armor) {
+        const defense = armor.defense || 0;
+        equippedArmorDisplay.textContent = `Armor: ${armor.name} (+${defense} Def)`;
+    } else {
+        equippedArmorDisplay.textContent = 'Armor: None';
+    }
 };
 
 const render = () => {
@@ -2271,69 +2286,63 @@ document.addEventListener('keydown', (event) => {
 
         // --- Start: Correct 1-9 Logic (for Use/Equip) ---
         const keyNum = parseInt(event.key);
+
         if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
             const itemIndex = keyNum - 1;
             const itemToUse = gameState.player.inventory[itemIndex];
-            let itemUsed = false; // Flag to save at the end
+            let itemUsed = false; 
 
             if (!itemToUse) {
                 logMessage(`No item in slot ${keyNum}.`);
-                gameState.inventoryMode = false; // Exit inventory mode
+                gameState.inventoryMode = false;
                 return;
             }
 
             // --- BRANCHING LOGIC FOR ITEM TYPE ---
             if (itemToUse.type === 'consumable') {
-                // --- 1. USE CONSUMABLE (Existing Logic) ---
-                itemToUse.effect(gameState);
-                itemToUse.quantity--;
-                if (itemToUse.quantity <= 0) {
-                    gameState.player.inventory.splice(itemIndex, 1); // Remove if empty
-                }
+                // ... (existing consumable logic) ...
                 itemUsed = true;
 
             } else if (itemToUse.type === 'weapon') {
-                // --- 2. EQUIP WEAPON (New Logic) ---
-                const oldWeapon = gameState.player.equipment.weapon;
+                // ... (existing weapon logic) ...
+                itemUsed = true;
+                
+            } else if (itemToUse.type === 'armor') {
+                // --- 2. EQUIP ARMOR (New Logic) ---
+                const oldArmor = gameState.player.equipment.armor;
 
                 // Equip the new item
-                gameState.player.equipment.weapon = itemToUse;
-                // Remove it from inventory
+                gameState.player.equipment.armor = itemToUse;
                 gameState.player.inventory.splice(itemIndex, 1);
 
-                // Add the old weapon back to inventory (if it's not Fists)
-                if (oldWeapon && oldWeapon.name !== 'Fists') {
-                    // We also need to add all its data back
-                    const oldWeaponItem = {
-                        name: oldWeapon.name,
-                        type: 'weapon',
-                        quantity: 1,
-                        tile: oldWeapon.tile || '/', // Find a better default?
-                        damage: oldWeapon.damage,
-                        slot: oldWeapon.slot
+                // Add the old armor back to inventory (if it's not Simple Tunic)
+                if (oldArmor && oldArmor.name !== 'Simple Tunic') {
+                    const oldArmorItem = {
+                        name: oldArmor.name, type: 'armor', quantity: 1,
+                        tile: oldArmor.tile || '%',
+                        defense: oldArmor.defense,
+                        slot: oldArmor.slot
                     };
-                    gameState.player.inventory.push(oldWeaponItem);
+                    gameState.player.inventory.push(oldArmorItem);
                 }
                 
                 logMessage(`You equip the ${itemToUse.name}.`);
                 itemUsed = true;
-                
+            
             } else {
-                // --- 3. CANNOT USE ---
                 logMessage(`You can't use '${itemToUse.name}' right now.`);
             }
             // --- END BRANCHING LOGIC ---
             
             if (itemUsed) {
-                // Save both inventory AND equipment changes
                 const inventoryToSave = gameState.player.inventory.map(item => ({
                     name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
-                    damage: item.damage, slot: item.slot // <-- Make sure to save weapon stats
+                    damage: item.damage, slot: item.slot, defense: item.defense // <-- Add defense
                 }));
 
                 playerRef.update({
                     inventory: inventoryToSave,
-                    equipment: gameState.player.equipment // <-- Save the new equipment state
+                    equipment: gameState.player.equipment 
                 });
                 
                 syncPlayerState();
@@ -2342,11 +2351,9 @@ document.addEventListener('keydown', (event) => {
                 renderEquipment();
             }
 
-            gameState.inventoryMode = false; // Exit inventory mode after action
+            gameState.inventoryMode = false;
             return;
         }
-        // --- End: Correct 1-9 Logic ---
-
 
         // --- Start: Correct 'D' Key Logic (for Drop) ---
         if (event.key === 'd' || event.key === 'D') {
@@ -2546,7 +2553,8 @@ async function handleOverworldCombat(newX, newY, enemyData) {
             // --- ENEMY SURVIVES AND ATTACKS ---
             enemyAttackedBack = true;
             const enemy = finalEnemyState;
-            enemyDamageTaken = Math.max(0, enemy.attack); // (Add player defense later)
+            const playerDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
+            enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
             player.health -= enemyDamageTaken;
         }
 
@@ -2611,7 +2619,8 @@ async function handleOverworldCombat(newX, newY, enemyData) {
                         }
                     } else {
                         // --- ENEMY SURVIVES AND ATTACKS ---
-                        const enemyDamage = Math.max(0, enemy.attack);
+                        const playerDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
+                        const enemyDamage = Math.max(1, enemy.attack - playerDefense);
                         gameState.player.health -= enemyDamage;
                         triggerStatFlash(statDisplays.health, false);
                         logMessage(`The ${enemy.name} hits you for ${enemyDamage} damage!`);
@@ -2936,7 +2945,34 @@ if (itemData) {
                         }));
                         playerRef.update({ inventory: inventoryToSave });
                     }
-                    // --- END NEW WEAPON LOGIC ---
+                    } else if (itemData.type === 'armor') {
+                    // --- NEW ARMOR PICKUP LOGIC ---
+                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        const itemForDb = {
+                            name: itemData.name, type: itemData.type, quantity: 1, tile: newTile,
+                            defense: itemData.defense, // Make sure to copy defense
+                            slot: itemData.slot
+                        };
+                        gameState.player.inventory.push(itemForDb);
+                        logMessage(`You picked up ${itemData.name}.`);
+                        itemPickedUp = true;
+                    } else {
+                        // Inventory is full
+                        logMessage(`You see ${itemData.name}, but your inventory is full!`);
+                        tileLooted = false; 
+                        gameState.lootedTiles.delete(tileId);
+                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, newTile);
+                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = newTile;
+                        else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = newTile;
+                    }
+
+                    if (itemPickedUp) {
+                        const inventoryToSave = gameState.player.inventory.map(item => ({
+                            name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
+                            damage: item.damage, slot: item.slot, defense: item.defense // <-- Add defense
+                        }));
+                        playerRef.update({ inventory: inventoryToSave });
+                    }
 
                 } else {
                     // This handles instant items like '$' (Gold)
@@ -3200,9 +3236,11 @@ unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
                     const templateItem = Object.values(ITEM_DATA).find(d => d.name === item.name);
                     if (templateItem) {
                         item.effect = templateItem.effect;
-                        // Also re-add weapon data if it's missing from DB
                         if(templateItem.type === 'weapon') {
                             item.damage = templateItem.damage;
+                            item.slot = templateItem.slot;
+                        } else if (templateItem.type === 'armor') { // <-- ADD THIS
+                            item.defense = templateItem.defense;
                             item.slot = templateItem.slot;
                         }
                     }
@@ -3211,9 +3249,14 @@ unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
                 renderInventory();
             }
 
-            // --- NEW: Update Equipment ---
+            // --- Update Equipment ---
             if (playerData.equipment) {
-                gameState.player.equipment = playerData.equipment;
+                // --- MODIFICATION ---
+                // Ensure default equipment is present if not in DB
+                gameState.player.equipment = {
+                    ...{ weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Simple Tunic', defense: 0 } },
+                    ...playerData.equipment
+                };
                 renderEquipment();
             }
         }
