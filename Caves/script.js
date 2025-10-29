@@ -1148,6 +1148,47 @@ generateCastle(castleId) {
         const chunk = this.loadedChunks[chunkId];
         return chunk[localY][localX];
     },
+    unloadOutOfRangeChunks: function(playerChunkX, playerChunkY) {
+        // This defines how many chunks to keep loaded around the player.
+        // '2' means a 5x5 grid (2 chunks N, S, E, W + the center one).
+        const VIEW_RADIUS_CHUNKS = 2; 
+        
+        // 1. Create a Set of all chunk IDs that *should* be visible.
+        const visibleChunkIds = new Set();
+        for (let y = -VIEW_RADIUS_CHUNKS; y <= VIEW_RADIUS_CHUNKS; y++) {
+            for (let x = -VIEW_RADIUS_CHUNKS; x <= VIEW_RADIUS_CHUNKS; x++) {
+                const chunkId = `${playerChunkX + x},${playerChunkY + y}`;
+                visibleChunkIds.add(chunkId);
+            }
+        }
+
+        // 2. Loop through all chunk listeners we currently have active.
+        for (const chunkId in worldStateListeners) {
+            
+            // 3. If an active listener is *not* in our visible set...
+            if (!visibleChunkIds.has(chunkId)) {
+                
+                // 4. ...unload it!
+                // console.log(`Unloading chunk: ${chunkId}`); // For debugging
+                
+                // Call the unsubscribe function to stop listening
+                worldStateListeners[chunkId](); 
+                
+                // Remove it from our tracking object
+                delete worldStateListeners[chunkId]; 
+
+                // (Optional but recommended) Clear the cached terrain data
+                if (this.loadedChunks[chunkId]) {
+                    delete this.loadedChunks[chunkId];
+                }
+
+                // (Optional but recommended) Clear the cached world state
+                if (this.worldState[chunkId]) {
+                    delete this.worldState[chunkId];
+                }
+            }
+        }
+    }
 };
 
 const gameState = {
@@ -2204,24 +2245,69 @@ function processEnemyTurns() {
     return anEnemyMovedNearby;
 }
 
+/**
+ * Asynchronously runs the AI turns for shared maps.
+ * Uses a Firebase RTDB lock to ensure only one client
+ * runs the AI at a time.
+ */
+async function runSharedAiTurns() {
+    let enemiesMovedNearby = false;
+
+    if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+        // Dungeons/castles are instanced, no lock needed.
+        enemiesMovedNearby = processEnemyTurns();
+
+    } else if (gameState.mapMode === 'overworld') {
+        // Overworld is shared. We need a lock.
+        const lockRef = rtdb.ref('world/aiTurnLock');
+        const now = Date.now();
+        const LOCK_DURATION_MS = 5000; // 5 second lock
+
+        try {
+            const transactionResult = await lockRef.transaction(currentLockTime => {
+                if (currentLockTime === null || currentLockTime < (now - LOCK_DURATION_MS)) {
+                    // Lock is free or expired, take it.
+                    return now; 
+                }
+                // Lock is held by someone else, abort.
+                return; // undefined aborts the transaction
+            });
+
+            if (transactionResult.committed) {
+                // We got the lock!
+                // console.log("Acquired AI lock, running overworld enemy turns...");
+                
+                // We MUST await this so we hold the lock until the AI is done.
+                enemiesMovedNearby = await processOverworldEnemyTurns(); 
+                
+                // Release the lock so the next player can run it.
+                await lockRef.set(null);
+
+            } else {
+                // Someone else is running the AI. Do nothing.
+                // console.log("AI lock held by another player.");
+            }
+
+        } catch (error) {
+            console.error("AI Lock transaction failed: ", error);
+            // If the transaction fails, release our lock just in case.
+            await lockRef.set(null);
+        }
+    }
+
+    if (enemiesMovedNearby) {
+        logMessage("You hear a shuffle nearby...");
+    }
+}
+
 function endPlayerTurn() {
     gameState.playerTurnCount++; // Increment the player's turn
 
     // --- MODIFIED BLOCK ---
     if (gameState.playerTurnCount % 2 === 0) {
-        let enemiesMovedNearby = false;
-
-        if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-            // Use the original function for dungeons/castles
-            enemiesMovedNearby = processEnemyTurns();
-        } else if (gameState.mapMode === 'overworld') {
-            // Use our new function for the overworld
-            enemiesMovedNearby = processOverworldEnemyTurns();
-        }
-
-        if (enemiesMovedNearby) {
-            logMessage("You hear a shuffle nearby...");
-        }
+        // Call our new async wrapper function.
+        // We don't 'await' it; just let it run in the background.
+        runSharedAiTurns();
     }
     // --- END MODIFIED BLOCK ---
 
@@ -2244,6 +2330,10 @@ function exitToOverworld(exitMessage) {
     updateRegionDisplay();
     render();
     syncPlayerState();
+
+    const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+    const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+    chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
 }
 
 function updateRegionDisplay() {
@@ -3128,6 +3218,13 @@ if (itemData) {
             stamina: gameState.player.stamina,
             coins: gameState.player.coins
         });
+
+        // After moving, check if we need to unload any chunks
+        if (gameState.mapMode === 'overworld') {
+            const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+            const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+            chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
+        }
 
         if (gameState.player.health <= 0) {
             gameState.player.health = 0;
