@@ -3149,7 +3149,7 @@ case 'r':
                         } else {
                             logMessage(`You see a ${itemData.name}, but your inventory is full!`);
                             tileLooted = false; // Don't loot the tile
-                            return; // <-- *** THE FIX *** Cancel the move!
+                            return;
                         }
                         if (itemPickedUp) inventoryWasUpdated = true;
 
@@ -3159,10 +3159,11 @@ case 'r':
                             gameState.player.inventory.push(itemForDb);
                             logMessage(`You picked up a ${itemData.name}.`);
                             itemPickedUp = true;
+                            clearLootTile();
                         } else {
                             logMessage(`You see a ${itemData.name}, but your inventory is full!`);
                             tileLooted = false;
-                            return; // <-- *** THE FIX ***
+                            return; 
                         }
                         if (itemPickedUp) inventoryWasUpdated = true;
 
@@ -3172,6 +3173,7 @@ case 'r':
                             gameState.player.inventory.push(itemForDb);
                             logMessage(`You picked up ${itemData.name}.`);
                             itemPickedUp = true;
+                            clearLootTile();
                         } else {
                             logMessage(`You see ${itemData.name}, but your inventory is full!`);
                             tileLooted = false;
@@ -3182,25 +3184,14 @@ case 'r':
                     } else if (itemData.type === 'instant') {
                         itemData.effect(gameState); // (e.g., add coins)
                         itemPickedUp = true; // It was "picked up" and instantly used
+                        clearLootTile();
                     }
 
-                    if (tileLooted) {
-                        gameState.lootedTiles.add(tileId); // Mark as looted
-                        // Clear the tile from the map
-                        if (gameState.mapMode === 'overworld') {
-                           chunkManager.setWorldTile(newX, newY, '.');
-                        } else if (gameState.mapMode === 'dungeon') {
-                           const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
-                           chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
-                        } else if (gameState.mapMode === 'castle') {
-                           chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
-                        }
-                    }
                 }
             }
             
             // 5. If move is valid (not blocked, no full inv), calculate stamina and move.
-            // --- THIS IS THE "MOVE PLAYER" BLOCK ---
+
             const staminaDeficit = moveCost - gameState.player.stamina;
             if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
                 logMessage("You're too tired, and pushing on would be fatal!");
@@ -3264,6 +3255,19 @@ case 'r':
                 document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
                 document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
                 gameOverModal.classList.remove('hidden');
+            }
+
+            function clearLootTile() {
+                gameState.lootedTiles.add(tileId); // Mark as looted
+                // Clear the tile from the map
+                if (gameState.mapMode === 'overworld') {
+                   chunkManager.setWorldTile(newX, newY, '.');
+                } else if (gameState.mapMode === 'dungeon') {
+                   const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                   chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
+                } else if (gameState.mapMode === 'castle') {
+                   chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
+                }
             }
 
             endPlayerTurn();
