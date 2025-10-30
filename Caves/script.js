@@ -3143,23 +3143,7 @@ if (newTile === '§') {
             }
         }
 
-        // 4. If the move is valid, calculate stamina and move the player.
-        const staminaDeficit = moveCost - gameState.player.stamina;
-        if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
-            logMessage("You're too tired, and pushing on would be fatal!");
-            return;
-        }
 
-        gameState.player.x = newX;
-        gameState.player.y = newY;
-
-        if (gameState.player.stamina >= moveCost) gameState.player.stamina -= moveCost;
-        else {
-            gameState.player.stamina = 0;
-            gameState.player.health -= staminaDeficit;
-            triggerStatFlash(statDisplays.health, false);
-            logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
-        }
 
         // 5. Handle item pickups and final updates
 let tileId;
@@ -3219,7 +3203,7 @@ if (itemData) {
                     } else {
                         // Case 3: Inventory is full
                         logMessage(`You see a ${itemData.name}, but your inventory is full!`);
-                        tileLooted = false; // Don't loot the tile, leave item
+                        return;
                         
                         // --- ADD THIS TO "UNDO" THE TILE CHANGE ---
                         gameState.lootedTiles.delete(tileId);
@@ -3264,7 +3248,7 @@ if (itemData) {
                     } else {
                         // Case 2: Inventory is full
                         logMessage(`You see a ${itemData.name}, but your inventory is full!`);
-                        tileLooted = false; 
+                        return;
                         gameState.lootedTiles.delete(tileId);
                         if (gameState.mapMode === 'overworld') {
                             chunkManager.setWorldTile(newX, newY, newTile);
@@ -3297,7 +3281,7 @@ if (itemData) {
                     } else {
                         // Inventory is full
                         logMessage(`You see ${itemData.name}, but your inventory is full!`);
-                        tileLooted = false; 
+                        return;
                         gameState.lootedTiles.delete(tileId);
                         if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, newTile);
                         else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = newTile;
@@ -3311,6 +3295,24 @@ if (itemData) {
                         }));
                         playerRef.update({ inventory: inventoryToSave });
                     }
+
+                           // 4. If the move is valid, calculate stamina and move the player.
+       const staminaDeficit = moveCost - gameState.player.stamina;
+       if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
+           logMessage("You're too tired, and pushing on would be fatal!");
+           return;
+       }
+
+       gameState.player.x = newX;
+       gameState.player.y = newY;
+
+       if (gameState.player.stamina >= moveCost) gameState.player.stamina -= moveCost;
+       else {
+           gameState.player.stamina = 0;
+           gameState.player.health -= staminaDeficit;
+           triggerStatFlash(statDisplays.health, false);
+           logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
+       }
 
                 } else {
                     // This handles instant items like '$' (Gold)
