@@ -2723,644 +2723,552 @@ case 'r':
         chunkManager.setWorldTile(newX, newY, '.');
     }
 
-(async () => {
-        // 1. Determine the destination tile
-        let newTile;
-        if (gameState.mapMode === 'dungeon') {
-            const map = chunkManager.caveMaps[gameState.currentCaveId];
-            newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
-        } else if (gameState.mapMode === 'castle') {
-            const map = chunkManager.castleMaps[gameState.currentCastleId];
-            newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
-        } else {
-            newTile = chunkManager.getTile(newX, newY);
-        }
-
-        // 2. Perform ALL collision checks immediately.
-        // --- DUNGEON WALL CHECK ---
-        if (gameState.mapMode === 'dungeon') {
-            const theme = CAVE_THEMES[gameState.currentCaveTheme];
-            const secretWallTile = theme ? theme.secretWall : null;
-
-            // Check for secret wall
-            if (secretWallTile && newTile === secretWallTile) {
-                logMessage("The wall sounds hollow... You break through!");
-                chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
-                grantXp(15); 
-                render(); 
-                return; 
-            }
-            // This is the original wall check
-            if (theme && (newTile === theme.wall || newTile === ' ')) {
-                logMessage("The wall is solid.");
-                return; 
-            }
-        } 
-        // --- END DUNGEON WALL CHECK ---
-        
-        // --- CASTLE WALL CHECK ---
-        if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === '▒' || newTile === ' ')) {
-            logMessage("You bump into the castle wall.");
-            return; // Stop here if it's a wall or rubble
-        }
-        // --- END CASTLE WALL CHECK ---
-
-/**
- * Handles combat for overworld enemies, syncing health via RTDB.
- */
-
-async function handleOverworldCombat(newX, newY, enemyData) {
-    const player = gameState.player;
-    const enemyId = `overworld:${newX},${-newY}`; // Unique RTDB key
-    const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
-
-    logMessage(`You attack the ${enemyData.name}!`);
-
-    let enemyWasKilled = false;
-    let enemyAttackedBack = false;
-    let enemyDamageTaken = 0;
-
-    try {
-        // Use a transaction to safely read and write enemy health
-        const transactionResult = await enemyRef.transaction(currentData => {
-            let enemy;
-            if (currentData === null) {
-                // First time this enemy is hit. Create it in RTDB.
-                enemy = {
-                    health: enemyData.maxHealth,
-                    maxHealth: enemyData.maxHealth,
-                    attack: enemyData.attack,
-                    defense: enemyData.defense,
-                    xp: enemyData.xp,
-                    loot: enemyData.loot,
-                    tile: newTile // Store the original tile
-                };
+    (async () => {
+            // 1. Determine the destination tile
+            let newTile;
+            if (gameState.mapMode === 'dungeon') {
+                const map = chunkManager.caveMaps[gameState.currentCaveId];
+                newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
+            } else if (gameState.mapMode === 'castle') {
+                const map = chunkManager.castleMaps[gameState.currentCastleId];
+                newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
             } else {
-                enemy = currentData;
+                newTile = chunkManager.getTile(newX, newY);
             }
 
-            // --- Player Attacks Enemy ---
-            // --- MODIFIED DAMAGE FORMULA ---
-            const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
-            const playerDamage = Math.max(1, (player.strength + weaponDamage) - enemy.defense);
-            // --- END MODIFICATION ---
-            
-            enemy.health -= playerDamage;
+            // 2. Perform ALL collision checks immediately.
+            // --- DUNGEON WALL CHECK ---
+            if (gameState.mapMode === 'dungeon') {
+                const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                const secretWallTile = theme ? theme.secretWall : null;
 
-            if (enemy.health <= 0) {
-                // Enemy is dead. Return 'null' to delete it from RTDB.
-                return null;
-            } else {
-                // Enemy is still alive. Update its health.
-                return enemy;
+                // Check for secret wall
+                if (secretWallTile && newTile === secretWallTile) {
+                    logMessage("The wall sounds hollow... You break through!");
+                    chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
+                    grantXp(15); 
+                    render(); 
+                    return; 
+                }
+                // This is the original wall check
+                if (theme && (newTile === theme.wall || newTile === ' ')) {
+                    logMessage("The wall is solid.");
+                    return; 
+                }
+            } 
+            // --- END DUNGEON WALL CHECK ---
+            
+            // --- CASTLE WALL CHECK ---
+            if (gameState.mapMode === 'castle' && (newTile === '▓' || newTile === '▒' || newTile === ' ')) {
+                logMessage("You bump into the castle wall.");
+                return; // Stop here if it's a wall or rubble
             }
-        });
+            // --- END CASTLE WALL CHECK ---
 
-        // --- Process Transaction Results ---
-        const finalEnemyState = transactionResult.snapshot.val();
+            /**
+             * Handles combat for overworld enemies, syncing health via RTDB.
+             */
+            async function handleOverworldCombat(newX, newY, enemyData) {
+                const player = gameState.player;
+                const enemyId = `overworld:${newX},${-newY}`; // Unique RTDB key
+                const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-        if (finalEnemyState === null) {
-            // --- ENEMY WAS DEFEATED ---
-            enemyWasKilled = true;
-            logMessage(`You defeated the ${enemyData.name}!`);
-            grantXp(enemyData.xp);
-            
-            // The enemy is dead, so we remove it from the map FOR EVERYONE
-            // and replace it with its loot.
-            const droppedLoot = generateEnemyLoot(gameState.player.level);
-            chunkManager.setWorldTile(newX, newY, droppedLoot);
+                logMessage(`You attack the ${enemyData.name}!`);
 
-        } else {
-            // --- ENEMY SURVIVES AND ATTACKS ---
-            enemyAttackedBack = true;
-            const enemy = finalEnemyState;
-            const playerDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
-            enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
-            player.health -= enemyDamageTaken;
-        }
+                let enemyWasKilled = false;
+                let enemyAttackedBack = false;
+                let enemyDamageTaken = 0;
 
-    } catch (error) {
-        console.error("Firebase transaction failed: ", error);
-        logMessage("Your attack falters... (network error)");
-        return; // Exit combat on error
-    }
-
-    // --- Handle Post-Combat Player State ---
-    if (enemyWasKilled) {
-        // Don't do anything else, player killed it
-    } else if (enemyAttackedBack) {
-        triggerStatFlash(statDisplays.health, false); // Flash health red
-        logMessage(`The ${enemyData.name} hits you for ${enemyDamageTaken} damage!`);
-        
-        // Check for player death
-        if (player.health <= 0) {
-            player.health = 0;
-            logMessage("You have perished!");
-            syncPlayerState();
-            document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
-            document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
-            gameOverModal.classList.remove('hidden');
-        }
-    }
-
-    // Finally, update player stats, end the turn, and re-render
-    endPlayerTurn();
-    render();
-}
-
-// --- UNIFIED COMBAT CHECK ---
-        const enemyData = ENEMY_DATA[newTile];
-        if (enemyData) { // This tile is an enemy: 'g', 's', 'b', or 'w'
-            
-            if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-                // --- INSTANCED COMBAT ---
-                let enemy = gameState.instancedEnemies.find(e => e.x === newX && e.y === newY);
-                let enemyId = enemy ? enemy.id : null;
-
-                if (enemy) {
-                    // --- PLAYER ATTACKS ENEMY ---
-                    // --- MODIFIED DAMAGE FORMULA ---
-                    const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
-                    const playerDamage = Math.max(1, (gameState.player.strength + weaponDamage) - enemy.defense);
-                    // --- END MODIFICATION ---
-                    
-                    enemy.health -= playerDamage;
-                    logMessage(`You attack the ${enemy.name} for ${playerDamage} damage!`);
-
-                    if (enemy.health <= 0) {
-                        // --- ENEMY IS DEFEATED ---
-                        logMessage(`You defeated the ${enemy.name}!`);
-                        grantXp(enemy.xp);
-                        
-                        // --- NEW: Generate level-scaled loot ---
-                        const droppedLoot = generateEnemyLoot(gameState.player.level);
-                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
-                        
-                        if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
-                        } else if (gameState.mapMode === 'castle') {
-                            // Ready for when we add castle enemies
+                try {
+                    // Use a transaction to safely read and write enemy health
+                    const transactionResult = await enemyRef.transaction(currentData => {
+                        let enemy;
+                        if (currentData === null) {
+                            // First time this enemy is hit. Create it in RTDB.
+                            enemy = {
+                                health: enemyData.maxHealth,
+                                maxHealth: enemyData.maxHealth,
+                                attack: enemyData.attack,
+                                defense: enemyData.defense,
+                                xp: enemyData.xp,
+                                loot: enemyData.loot,
+                                tile: newTile // Store the original tile
+                            };
+                        } else {
+                            enemy = currentData;
                         }
+
+                        // --- Player Attacks Enemy ---
+                        const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
+                        const playerDamage = Math.max(1, (player.strength + weaponDamage) - enemy.defense);
+                        enemy.health -= playerDamage;
+
+                        if (enemy.health <= 0) {
+                            // Enemy is dead. Return 'null' to delete it from RTDB.
+                            return null;
+                        } else {
+                            // Enemy is still alive. Update its health.
+                            return enemy;
+                        }
+                    });
+
+                    // --- Process Transaction Results ---
+                    const finalEnemyState = transactionResult.snapshot.val();
+
+                    if (finalEnemyState === null) {
+                        // --- ENEMY WAS DEFEATED ---
+                        enemyWasKilled = true;
+                        logMessage(`You defeated the ${enemyData.name}!`);
+                        grantXp(enemyData.xp);
+                        
+                        const droppedLoot = generateEnemyLoot(gameState.player.level);
+                        chunkManager.setWorldTile(newX, newY, droppedLoot);
+
                     } else {
                         // --- ENEMY SURVIVES AND ATTACKS ---
-                        const playerDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
-                        const enemyDamage = Math.max(1, enemy.attack - playerDefense);
-                        gameState.player.health -= enemyDamage;
-                        triggerStatFlash(statDisplays.health, false);
-                        logMessage(`The ${enemy.name} hits you for ${enemyDamage} damage!`);
+                        enemyAttackedBack = true;
+                        const enemy = finalEnemyState;
+                        const playerDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
+                        enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
+                        player.health -= enemyDamageTaken;
+                    }
+
+                } catch (error) {
+                    console.error("Firebase transaction failed: ", error);
+                    logMessage("Your attack falters... (network error)");
+                    return; // Exit combat on error
+                }
+
+                // --- Handle Post-Combat Player State ---
+                if (enemyAttackedBack) {
+                    triggerStatFlash(statDisplays.health, false); // Flash health red
+                    logMessage(`The ${enemyData.name} hits you for ${enemyDamageTaken} damage!`);
+                    
+                    if (player.health <= 0) {
+                        player.health = 0;
+                        logMessage("You have perished!");
+                        syncPlayerState();
+                        document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
+                        document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
+                        gameOverModal.classList.remove('hidden');
+                    }
+                }
+
+                endPlayerTurn();
+                render();
+            }
+
+            // --- UNIFIED COMBAT CHECK ---
+            const enemyData = ENEMY_DATA[newTile];
+            if (enemyData) { // This tile is an enemy: 'g', 's', 'b', or 'w'
+                
+                if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+                    // --- INSTANCED COMBAT ---
+                    let enemy = gameState.instancedEnemies.find(e => e.x === newX && e.y === newY);
+                    let enemyId = enemy ? enemy.id : null;
+
+                    if (enemy) {
+                        // --- PLAYER ATTACKS ENEMY ---
+                        const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
+                        const playerDamage = Math.max(1, (gameState.player.strength + weaponDamage) - enemy.defense);
                         
-                        if (gameState.player.health <= 0) {
-                            gameState.player.health = 0;
-                            logMessage("You have perished!");
-                            syncPlayerState();
-                            document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
-                            document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
-                            gameOverModal.classList.remove('hidden');
+                        enemy.health -= playerDamage;
+                        logMessage(`You attack the ${enemy.name} for ${playerDamage} damage!`);
+
+                        if (enemy.health <= 0) {
+                            // --- ENEMY IS DEFEATED ---
+                            logMessage(`You defeated the ${enemy.name}!`);
+                            grantXp(enemy.xp);
+                            
+                            const droppedLoot = generateEnemyLoot(gameState.player.level);
+                            gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
+                            
+                            if (gameState.mapMode === 'dungeon') {
+                                chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
+                            } else if (gameState.mapMode === 'castle') {
+                                // Ready for when we add castle enemies
+                            }
+                        } else {
+                            // --- ENEMY SURVIVES AND ATTACKS ---
+                            const playerDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
+                            const enemyDamage = Math.max(1, enemy.attack - playerDefense);
+                            gameState.player.health -= enemyDamage;
+                            triggerStatFlash(statDisplays.health, false);
+                            logMessage(`The ${enemy.name} hits you for ${enemyDamage} damage!`);
+                            
+                            if (gameState.player.health <= 0) {
+                                gameState.player.health = 0;
+                                logMessage("You have perished!");
+                                syncPlayerState();
+                                document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
+                                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
+                                gameOverModal.classList.remove('hidden');
+                            }
                         }
+                        
+                        endPlayerTurn();
+                        render();
+                        return; // Stop the player's move
+                    } else {
+                        logMessage(`You see the corpse of a ${enemyData.name}.`);
+                    }
+                    // (End of instanced combat)
+
+                } else if (gameState.mapMode === 'overworld') {
+                    // --- NEW SHARED OVERWORLD COMBAT ---
+                    await handleOverworldCombat(newX, newY, enemyData);
+                    return; // Stop the player's move
+                }
+            }
+                    
+            const moveCost = TERRAIN_COST[newTile] ?? 0;
+            if (moveCost === Infinity) {
+                logMessage("That way is blocked.");
+                return; // Stop here if impassable
+            }
+
+            // 3. If no collision, check for special tiles (entrances, lore, etc.)
+            const tileData = TILE_DATA[newTile];
+            if (tileData) {
+                const tileId = `${newX},${-newY}`; // Get tileId for XP checks
+
+                if (tileData.type === 'journal') {
+                    if (!gameState.foundLore.has(tileId)) {
+                        logMessage("You found a new journal! +25 XP");
+                        grantXp(25);
+                        gameState.foundLore.add(tileId);
+                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    }
+                    loreTitle.textContent = tileData.title;
+                    loreContent.textContent = tileData.content;
+                    loreModal.classList.remove('hidden');
+                    return; 
+                }
+
+                if (newTile === 'B') {
+                    if (!gameState.foundLore.has(tileId)) {
+                        logMessage("You've discovered a Bounty Board! +15 XP");
+                        grantXp(15);
+                        gameState.foundLore.add(tileId);
+                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    }
+                    loreTitle.textContent = "Bounty Board";
+                    loreContent.textContent = "A weathered board. Most notices are unreadable, but a few stand out:\n\n- REWARD: 50 GOLD for clearing the 'Glacial Cavern' to the north.\n\n- LOST: My favorite pet rock, 'Rocky'. Last seen near the old castle.\n\n- BEWARE: A dark presence stirs in the west. Travel with caution.";
+                    loreModal.classList.remove('hidden');
+                    return; 
+                }
+                
+                if (newTile === '#') {
+                    if (!gameState.foundLore.has(tileId)) {
+                        logMessage("You've found an ancient Rune Stone! +10 XP");
+                        grantXp(10);
+                        gameState.foundLore.add(tileId);
+                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    }
+                    const seed = stringToSeed(tileId);
+                    const random = Alea(seed);
+                    const messageIndex = Math.floor(random() * LORE_STONE_MESSAGES.length);
+                    const message = LORE_STONE_MESSAGES[messageIndex];
+                    loreTitle.textContent = "A Faded Rune Stone";
+                    loreContent.textContent = `The stone hums with a faint energy. You can just make out the words:\n\n"...${message}..."`;
+                    loreModal.classList.remove('hidden');
+                    return; 
+                }
+
+                if (newTile === 'N') {
+                    if (!gameState.foundLore.has(tileId)) {
+                        logMessage("You met a new villager. +5 XP");
+                        grantXp(5); 
+                        gameState.foundLore.add(tileId);
+                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    }
+                    const seed = stringToSeed(tileId);
+                    const random = Alea(seed);
+                    const npcDialogues = [
+                        "Be careful in those caves. I've heard strange noises coming from them.",
+                        "It's a tough world. Glad I'm just here, minding my own business.",
+                        "Looking for the castle? It's said to be cursed, you know.",
+                        "If you find any gold, you should visit a shop. I hear there's one... somewhere."
+                    ];
+                    const dialogue = npcDialogues[Math.floor(random() * npcDialogues.length)];
+
+                    loreTitle.textContent = "Villager";
+                    loreContent.textContent = `An old villager looks up as you approach.\n\n"${dialogue}"`;
+                    loreModal.classList.remove('hidden');
+                    return;
+                }
+
+                if (newTile === '§') {
+                    if (!gameState.foundLore.has(tileId)) {
+                        logMessage("You've discovered a General Store! +15 XP");
+                        grantXp(15);
+                        gameState.foundLore.add(tileId);
+                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
                     }
                     
-                    endPlayerTurn();
-                    render();
-                    return; // Stop the player's move
+                    if (gameState.mapMode === 'castle') {
+                        activeShopInventory = CASTLE_SHOP_INVENTORY;
+                        logMessage("You enter the castle emporium.");
+                    } else {
+                        activeShopInventory = SHOP_INVENTORY;
+                        logMessage("You enter the General Store.");
+                    }
+                    
+                    renderShop(); 
+                    shopModal.classList.remove('hidden'); 
+                    return; 
+                }
+
+                if (newTile === 'H') {
+                    const HEAL_COST = 10;
+                    const player = gameState.player;
+
+                    if (player.health < player.maxHealth) {
+                        if (player.coins >= HEAL_COST) {
+                            player.coins -= HEAL_COST;
+                            player.health = player.maxHealth; 
+                            
+                            logMessage(`The Healer restores your health for ${HEAL_COST} gold.`);
+                            triggerStatAnimation(statDisplays.health, 'stat-pulse-green'); 
+                            
+                            playerRef.update({ health: player.health, coins: player.coins });
+                        } else {
+                            logMessage(`"You need ${HEAL_COST} gold for my services," the Healer says.`);
+                        }
+                    } else {
+                        logMessage(`"You are already at full health!" the Healer says.`);
+                    }
+                    return; 
+                }
+
+                // Handle all other special tiles like entrances/exits
+                switch (tileData.type) {
+                    case 'dungeon_entrance':
+                        if (!gameState.foundLore.has(tileId)) {
+                            logMessage("You've discovered a cave entrance! +10 XP");
+                            grantXp(10);
+                            gameState.foundLore.add(tileId);
+                            playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                        }
+                        gameState.mapMode = 'dungeon';
+                        gameState.currentCaveId = tileData.getCaveId(newX, newY);
+                        gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                        const caveMap = chunkManager.generateCave(gameState.currentCaveId); 
+                        gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId]; 
+                        for (let y = 0; y < caveMap.length; y++) {
+                            const x = caveMap[y].indexOf('>');
+                            if (x !== -1) {
+                                gameState.player.x = x;
+                                gameState.player.y = y;
+                                break;
+                            }
+                        }
+                        const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
+                        gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+                        logMessage("You enter the " + (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') + "...");
+                        updateRegionDisplay();
+                        render();
+                        syncPlayerState();
+                        return;
+                    case 'dungeon_exit':
+                        exitToOverworld("You emerge back into the sunlight."); 
+                        return;
+                    case 'castle_entrance':
+                        if (!gameState.foundLore.has(tileId)) {
+                            logMessage("You've discovered a castle entrance! +10 XP");
+                            grantXp(10);
+                            gameState.foundLore.add(tileId);
+                            playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                        }
+                        gameState.mapMode = 'castle';
+                        gameState.currentCastleId = tileData.getCastleId(newX, newY);
+                        gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                        chunkManager.generateCastle(gameState.currentCastleId); 
+                        const spawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
+                        gameState.player.x = spawn.x;
+                        gameState.player.y = spawn.y;
+                        logMessage("You enter the castle grounds."); 
+                        updateRegionDisplay();
+                        render();
+                        syncPlayerState();
+                        return;
+                    case 'castle_exit':
+                        exitToOverworld("You leave the castle."); 
+                        return;
+                    case 'lore':
+                        if (!gameState.foundLore.has(tileId)) {
+                            logMessage("You've found an old signpost! +10 XP");
+                            grantXp(10);
+                            gameState.foundLore.add(tileId);
+                            playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                        }
+                        if (Array.isArray(tileData.message)) {
+                            const currentTurn = Math.floor((gameState.time.day * 1440 + gameState.time.hour * 60 + gameState.time.minute) / TURN_DURATION_MINUTES);
+                            const messageIndex = currentTurn % tileData.message.length;
+                            logMessage(tileData.message[messageIndex]);
+                        } else logMessage(tileData.message);
+                }
+            }
+
+            // --- *** BEGIN REFACTORED LOGIC *** ---
+            
+            // 4. Handle item pickups *BEFORE* moving.
+            let tileId;
+            if (gameState.mapMode === 'overworld') {
+                tileId = `${newX},${-newY}`;
+            } else {
+                const mapId = gameState.currentCaveId || gameState.currentCastleId;
+                tileId = `${mapId}:${newX},${-newY}`;
+            }
+
+            const itemData = ITEM_DATA[newTile];
+            let inventoryWasUpdated = false; // Flag to save inventory
+            let itemPickedUp = false;
+            let tileLooted = true; // Assume we loot it, unless inventory is full
+            
+            if (itemData) {
+                let isTileLooted = gameState.lootedTiles.has(tileId);
+
+                if (isTileLooted) {
+                    logMessage(`You see where a ${itemData.name} once was...`);
+                    tileLooted = false; // Don't try to clear the tile
                 } else {
-                    // --- THIS IS THE "CORPSE" LOGIC ---
-                    // It was a dungeon/castle enemy but not in the active list.
-                    logMessage(`You see the corpse of a ${enemyData.name}.`);
-                    // We don't 'return' here, we let the player move onto the tile.
+                    // This is an item we can pick up.
+                    
+                    if (itemData.type === 'consumable') {
+                        const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
+                        if (existingItem) {
+                            existingItem.quantity++;
+                            logMessage(`You picked up a ${itemData.name}.`);
+                            itemPickedUp = true;
+                        } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                            const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile };
+                            gameState.player.inventory.push(itemForDb);
+                            logMessage(`You picked up a ${itemData.name}.`);
+                            itemPickedUp = true;
+                        } else {
+                            logMessage(`You see a ${itemData.name}, but your inventory is full!`);
+                            tileLooted = false; // Don't loot the tile
+                            return; // <-- *** THE FIX *** Cancel the move!
+                        }
+                        if (itemPickedUp) inventoryWasUpdated = true;
+
+                    } else if (itemData.type === 'weapon') {
+                        if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                            const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile, damage: itemData.damage, slot: itemData.slot };
+                            gameState.player.inventory.push(itemForDb);
+                            logMessage(`You picked up a ${itemData.name}.`);
+                            itemPickedUp = true;
+                        } else {
+                            logMessage(`You see a ${itemData.name}, but your inventory is full!`);
+                            tileLooted = false;
+                            return; // <-- *** THE FIX ***
+                        }
+                        if (itemPickedUp) inventoryWasUpdated = true;
+
+                    } else if (itemData.type === 'armor') {
+                         if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                            const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile, defense: itemData.defense, slot: itemData.slot };
+                            gameState.player.inventory.push(itemForDb);
+                            logMessage(`You picked up ${itemData.name}.`);
+                            itemPickedUp = true;
+                        } else {
+                            logMessage(`You see ${itemData.name}, but your inventory is full!`);
+                            tileLooted = false;
+                            return; // <-- *** THE FIX ***
+                        }
+                        if (itemPickedUp) inventoryWasUpdated = true;
+
+                    } else if (itemData.type === 'instant') {
+                        itemData.effect(gameState); // (e.g., add coins)
+                        itemPickedUp = true; // It was "picked up" and instantly used
+                    }
+
+                    if (tileLooted) {
+                        gameState.lootedTiles.add(tileId); // Mark as looted
+                        // Clear the tile from the map
+                        if (gameState.mapMode === 'overworld') {
+                           chunkManager.setWorldTile(newX, newY, '.');
+                        } else if (gameState.mapMode === 'dungeon') {
+                           const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                           chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
+                        } else if (gameState.mapMode === 'castle') {
+                           chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
+                        }
+                    }
                 }
-                // (End of instanced combat)
-
-            } else if (gameState.mapMode === 'overworld') {
-                // --- NEW SHARED OVERWORLD COMBAT ---
-                await handleOverworldCombat(newX, newY, enemyData);
-                return; // Stop the player's move
-            }
-        
-        }
-                
-        const moveCost = TERRAIN_COST[newTile] ?? 0;
-        if (moveCost === Infinity) {
-            logMessage("That way is blocked.");
-            return; // Stop here if impassable
-        }
-
-        // 3. If no collision, check for special tiles (entrances, lore, etc.)
-        const tileData = TILE_DATA[newTile];
-        if (tileData) {
-            const tileId = `${newX},${-newY}`; // Get tileId for XP checks
-
-            // Handle all lore/journal/NPC types
-            if (tileData.type === 'journal') {
-                if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You found a new journal! +25 XP");
-                    grantXp(25);
-                    gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-                }
-                loreTitle.textContent = tileData.title;
-                loreContent.textContent = tileData.content;
-                loreModal.classList.remove('hidden');
-                return; // Stop processing
-            }
-
-            if (newTile === 'B') {
-                if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You've discovered a Bounty Board! +15 XP");
-                    grantXp(15);
-                    gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-                }
-                loreTitle.textContent = "Bounty Board";
-                loreContent.textContent = "A weathered board. Most notices are unreadable, but a few stand out:\n\n- REWARD: 50 GOLD for clearing the 'Glacial Cavern' to the north.\n\n- LOST: My favorite pet rock, 'Rocky'. Last seen near the old castle.\n\n- BEWARE: A dark presence stirs in the west. Travel with caution.";
-                loreModal.classList.remove('hidden');
-                return; 
             }
             
-            if (newTile === '#') {
-                if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You've found an ancient Rune Stone! +10 XP");
-                    grantXp(10);
-                    gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-                }
-                const seed = stringToSeed(tileId);
-                const random = Alea(seed);
-                const messageIndex = Math.floor(random() * LORE_STONE_MESSAGES.length);
-                const message = LORE_STONE_MESSAGES[messageIndex];
-                loreTitle.textContent = "A Faded Rune Stone";
-                loreContent.textContent = `The stone hums with a faint energy. You can just make out the words:\n\n"...${message}..."`;
-                loreModal.classList.remove('hidden');
-                return; // Stop processing
-            }
-
-            // --- NEW 'N' (NPC) TILE ---
-            if (newTile === 'N') {
-                if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You met a new villager. +5 XP");
-                    grantXp(5); // A little XP for talking to someone new
-                    gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-                }
-                const seed = stringToSeed(tileId);
-                const random = Alea(seed);
-                const npcDialogues = [
-                    "Be careful in those caves. I've heard strange noises coming from them.",
-                    "It's a tough world. Glad I'm just here, minding my own business.",
-                    "Looking for the castle? It's said to be cursed, you know.",
-                    "If you find any gold, you should visit a shop. I hear there's one... somewhere."
-                ];
-                const dialogue = npcDialogues[Math.floor(random() * npcDialogues.length)];
-
-                loreTitle.textContent = "Villager";
-                loreContent.textContent = `An old villager looks up as you approach.\n\n"${dialogue}"`;
-                loreModal.classList.remove('hidden');
+            // 5. If move is valid (not blocked, no full inv), calculate stamina and move.
+            // --- THIS IS THE "MOVE PLAYER" BLOCK ---
+            const staminaDeficit = moveCost - gameState.player.stamina;
+            if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
+                logMessage("You're too tired, and pushing on would be fatal!");
                 return;
             }
 
-if (newTile === '§') {
-                if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You've discovered a General Store! +15 XP");
-                    grantXp(15);
-                    gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-                }
-                
-                // This is the new dynamic logic
-                if (gameState.mapMode === 'castle') {
-                    activeShopInventory = CASTLE_SHOP_INVENTORY;
-                    logMessage("You enter the castle emporium.");
-                } else {
-                    activeShopInventory = SHOP_INVENTORY;
-                    logMessage("You enter the General Store.");
-                }
-                
-                renderShop(); // Populate the shop with the correct inventory
-                shopModal.classList.remove('hidden'); // Show it
-                return; // Stop player from moving
-            }
+            gameState.player.x = newX;
+            gameState.player.y = newY;
 
-            if (newTile === 'H') {
-                const HEAL_COST = 10;
-                const player = gameState.player;
-
-                if (player.health < player.maxHealth) {
-                    if (player.coins >= HEAL_COST) {
-                        player.coins -= HEAL_COST;
-                        player.health = player.maxHealth; // Full heal!
-                        
-                        logMessage(`The Healer restores your health for ${HEAL_COST} gold.`);
-                        triggerStatAnimation(statDisplays.health, 'stat-pulse-green'); // Flash health
-                        
-                        // Save the changes
-                        playerRef.update({ health: player.health, coins: player.coins });
-                    } else {
-                        logMessage(`"You need ${HEAL_COST} gold for my services," the Healer says.`);
-                    }
-                } else {
-                    logMessage(`"You are already at full health!" the Healer says.`);
-                }
-                return; // Stop the player from moving onto the healer
-            }
-
-            // Handle all other special tiles like entrances/exits
-            switch (tileData.type) {
-                case 'dungeon_entrance':
-                    if (!gameState.foundLore.has(tileId)) {
-                        logMessage("You've discovered a cave entrance! +10 XP");
-                        grantXp(10);
-                        gameState.foundLore.add(tileId);
-                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-                    }
-                    gameState.mapMode = 'dungeon';
-                    gameState.currentCaveId = tileData.getCaveId(newX, newY);
-                    gameState.overworldExit = {
-                        x: gameState.player.x,
-                        y: gameState.player.y
-                    };
-                    const caveMap = chunkManager.generateCave(gameState.currentCaveId); 
-                    gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId]; 
-                    for (let y = 0; y < caveMap.length; y++) {
-                        const x = caveMap[y].indexOf('>');
-                        if (x !== -1) {
-                            gameState.player.x = x;
-                            gameState.player.y = y;
-                            break;
-                        }
-                    }
-
-                    const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
-                    gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
-
-                    logMessage("You enter the " + (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') + "...");
-                    updateRegionDisplay();
-                    render();
-                    syncPlayerState();
-                    return;
-                case 'dungeon_exit':
-                    exitToOverworld("You emerge back into the sunlight."); 
-                    return;
-                case 'castle_entrance':
-                    if (!gameState.foundLore.has(tileId)) {
-                        logMessage("You've discovered a castle entrance! +10 XP");
-                        grantXp(10);
-                        gameState.foundLore.add(tileId);
-                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-                    }
-                    gameState.mapMode = 'castle';
-                    gameState.currentCastleId = tileData.getCastleId(newX, newY);
-                    gameState.overworldExit = {
-                        x: gameState.player.x,
-                        y: gameState.player.y
-                    };
-                    
-                    chunkManager.generateCastle(gameState.currentCastleId); 
-                    
-                    const spawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
-                    gameState.player.x = spawn.x;
-                    gameState.player.y = spawn.y;
-                    
-                    logMessage("You enter the castle grounds."); 
-                    updateRegionDisplay();
-                    render();
-                    syncPlayerState();
-                    return;
-                case 'castle_exit':
-                    exitToOverworld("You leave the castle."); 
-                    return;
-                case 'lore':
-                    // This is for the '☗' tile
-                    if (!gameState.foundLore.has(tileId)) {
-                        logMessage("You've found an old signpost! +10 XP");
-                        grantXp(10);
-                        gameState.foundLore.add(tileId);
-                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-                    }
-                    if (Array.isArray(tileData.message)) {
-                        const currentTurn = Math.floor((gameState.time.day * 1440 + gameState.time.hour * 60 + gameState.time.minute) / TURN_DURATION_MINUTES);
-                        const messageIndex = currentTurn % tileData.message.length;
-                        logMessage(tileData.message[messageIndex]);
-                    } else logMessage(tileData.message);
-            }
-        }
-
-
-
-        // 5. Handle item pickups and final updates
-let tileId;
-if (gameState.mapMode === 'overworld') {
-    tileId = `${newX},${-newY}`;
-} else {
-    // This creates a unique ID like "cave_120_340:15,-22"
-    const mapId = gameState.currentCaveId || gameState.currentCastleId;
-    tileId = `${mapId}:${newX},${-newY}`;
-}
-
-const itemData = ITEM_DATA[newTile];
-if (itemData) {
-    // Now this check works for all map modes
-    let isTileLooted = gameState.lootedTiles.has(tileId);
-
-            if (isTileLooted) {
-                logMessage(`You see where a ${itemData.name} once was...`);
+            if (gameState.player.stamina >= moveCost) {
+                gameState.player.stamina -= moveCost;
             } else {
-                let itemPickedUp = false;
-                let tileLooted = true; // Assume we loot it
-               if (tileLooted) {
-                   // --- MODIFIED: Add to lootedTiles REGARDLESS of map mode ---
-                   gameState.lootedTiles.add(tileId);
-
-                   // Now, just change the tile based on the map
-                   if (gameState.mapMode === 'overworld') {
-                       chunkManager.setWorldTile(newX, newY, '.');
-                   } else if (gameState.mapMode === 'dungeon') {
-                       const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
-                       chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
-                   } else if (gameState.mapMode === 'castle') {
-                       chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
-                   }
-                   // --- END MODIFICATION ---
-               }
-
-                if (itemData.type === 'consumable') {
-                    const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
-                    
-                    if (existingItem) {
-                        // Case 1: Player has this item, so stack it
-                        existingItem.quantity++;
-                        logMessage(`You picked up a ${itemData.name}.`);
-                        itemPickedUp = true;
-                    } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                        // Case 2: Player has a free slot
-                        const itemForDb = {
-                            name: itemData.name,
-                            type: itemData.type,
-                            quantity: 1,
-                            tile: newTile
-                        };
-                        gameState.player.inventory.push(itemForDb);
-                        logMessage(`You picked up a ${itemData.name}.`);
-                        itemPickedUp = true;
-                    } else {
-                        // Case 3: Inventory is full
-                        logMessage(`You see a ${itemData.name}, but your inventory is full!`);
-                        return;
-                        
-                        // --- ADD THIS TO "UNDO" THE TILE CHANGE ---
-                        gameState.lootedTiles.delete(tileId);
-                        if (gameState.mapMode === 'overworld') {
-                            chunkManager.setWorldTile(newX, newY, newTile); // Put item back
-                        } else if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = newTile;
-                        } else if (gameState.mapMode === 'castle') {
-                            chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = newTile;
-                        }
-                        // --- END OF "UNDO" BLOCK ---
-                    }
-
-                    if (itemPickedUp) {
-                        // --- FIX: Sanitize the inventory before saving ---
-                        const inventoryToSave = gameState.player.inventory.map(item => ({
-                            name: item.name,
-                            type: item.type,
-                            quantity: item.quantity,
-                            tile: item.tile,
-                            damage: item.damage, // Also save weapon stats (will be undefined for consumables, which is fine)
-                            slot: item.slot      // Also save weapon stats (will be undefined for consumables, which is fine)
-                        }));
-                        playerRef.update({ inventory: inventoryToSave });
-                    }
-
-                } else if (itemData.type === 'weapon') {
-                    // --- NEW WEAPON PICKUP LOGIC ---
-                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                        // Case 1: Player has a free slot. Add it (no stacking)
-                        const itemForDb = {
-                            name: itemData.name,
-                            type: itemData.type,
-                            quantity: 1,
-                            tile: newTile,
-                            damage: itemData.damage, // Make sure to copy damage
-                            slot: itemData.slot      // and slot
-                        };
-                        gameState.player.inventory.push(itemForDb);
-                        logMessage(`You picked up a ${itemData.name}.`);
-                        itemPickedUp = true;
-                    } else {
-                        // Case 2: Inventory is full
-                        logMessage(`You see a ${itemData.name}, but your inventory is full!`);
-                        return;
-                        gameState.lootedTiles.delete(tileId);
-                        if (gameState.mapMode === 'overworld') {
-                            chunkManager.setWorldTile(newX, newY, newTile);
-                        } else if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = newTile;
-                        } else if (gameState.mapMode === 'castle') {
-                            chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = newTile;
-                        }
-                    }
-
-                    if (itemPickedUp) {
-                        // Save the inventory
-                        const inventoryToSave = gameState.player.inventory.map(item => ({
-                            name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
-                            damage: item.damage, slot: item.slot // <-- Also save weapon stats
-                        }));
-                        playerRef.update({ inventory: inventoryToSave });
-                    }
-                    } else if (itemData.type === 'armor') {
-                    // --- NEW ARMOR PICKUP LOGIC ---
-                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                        const itemForDb = {
-                            name: itemData.name, type: itemData.type, quantity: 1, tile: newTile,
-                            defense: itemData.defense, // Make sure to copy defense
-                            slot: itemData.slot
-                        };
-                        gameState.player.inventory.push(itemForDb);
-                        logMessage(`You picked up ${itemData.name}.`);
-                        itemPickedUp = true;
-                    } else {
-                        // Inventory is full
-                        logMessage(`You see ${itemData.name}, but your inventory is full!`);
-                        return;
-                        gameState.lootedTiles.delete(tileId);
-                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, newTile);
-                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = newTile;
-                        else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = newTile;
-                    }
-
-                    if (itemPickedUp) {
-                        const inventoryToSave = gameState.player.inventory.map(item => ({
-                            name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
-                            damage: item.damage, slot: item.slot, defense: item.defense // <-- Add defense
-                        }));
-                        playerRef.update({ inventory: inventoryToSave });
-                    }
-
-                           // 4. If the move is valid, calculate stamina and move the player.
-       const staminaDeficit = moveCost - gameState.player.stamina;
-       if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
-           logMessage("You're too tired, and pushing on would be fatal!");
-           return;
-       }
-
-       gameState.player.x = newX;
-       gameState.player.y = newY;
-
-       if (gameState.player.stamina >= moveCost) gameState.player.stamina -= moveCost;
-       else {
-           gameState.player.stamina = 0;
-           gameState.player.health -= staminaDeficit;
-           triggerStatFlash(statDisplays.health, false);
-           logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
-       }
-
-                } else {
-                    // This handles instant items like '$' (Gold)
-                    ITEM_DATA[newTile].effect(gameState);
-                }
-
+                gameState.player.stamina = 0;
+                gameState.player.health -= staminaDeficit;
+                triggerStatFlash(statDisplays.health, false);
+                logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
             }
-        } else if (moveCost > 0) {
-            triggerStatFlash(statDisplays.stamina, false); // Flash red for stamina cost
-            logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
-        } else {
-           // logMessage(`Moved to world coordinate (${newX}, ${-newY}).`); // <-- Commented out to cleanup log
-        }
+            
+            if (moveCost > 0) { // <-- This 'if' was changed from 'else if'
+                triggerStatFlash(statDisplays.stamina, false); // Flash red for stamina cost
+                logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
+            }
+            // --- END "MOVE PLAYER" BLOCK ---
 
-        render();
-
-        updateRegionDisplay();
-        syncPlayerState();
-
-        playerRef.update({
-            x: gameState.player.x,
-            y: gameState.player.y,
-            health: gameState.player.health,
-            stamina: gameState.player.stamina,
-            coins: gameState.player.coins
-        });
-
-        // After moving, check if we need to unload any chunks
-        if (gameState.mapMode === 'overworld') {
-            const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
-            const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
-            chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
-        }
-
-        if (gameState.player.health <= 0) {
-            gameState.player.health = 0;
-            logMessage("You have perished!");
+            // 6. Handle final updates
+            render();
+            updateRegionDisplay();
             syncPlayerState();
 
-            document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
-            document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
+            // --- Consolidated Database Update ---
+            let updates = {
+                x: gameState.player.x,
+                y: gameState.player.y,
+                health: gameState.player.health,
+                stamina: gameState.player.stamina,
+                coins: gameState.player.coins
+            };
+            
+            if (inventoryWasUpdated) {
+                updates.inventory = gameState.player.inventory.map(item => ({
+                    name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
+                    damage: item.damage, slot: item.slot, defense: item.defense
+                }));
+                renderInventory(); // Re-render inventory only if it changed
+            }
+            
+            playerRef.update(updates);
+            // --- End Consolidated Update ---
 
-            gameOverModal.classList.remove('hidden');
-        }
+            // After moving, check if we need to unload any chunks
+            if (gameState.mapMode === 'overworld') {
+                const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+                const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+                chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
+            }
 
-        endPlayerTurn();
+            if (gameState.player.health <= 0) {
+                gameState.player.health = 0;
+                logMessage("You have perished!");
+                syncPlayerState();
+                document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
+                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
+                gameOverModal.classList.remove('hidden');
+            }
 
-    })();
+            endPlayerTurn();
+
+        })();
 
 });
 
