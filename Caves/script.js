@@ -1762,7 +1762,8 @@ function renderShop() {
 
     // 3. Populate "Buy" list
     activeShopInventory.forEach(item => {
-        const itemTemplate = ITEM_DATA[Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === item.name)];
+        // Find the key (e.g., '+') which is the tile character
+        const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === item.name);
         const li = document.createElement('li');
         li.className = 'shop-item';
         li.innerHTML = `
@@ -1786,7 +1787,7 @@ function renderShop() {
         shopSellList.innerHTML = '<li class="shop-item-details italic">Your inventory is empty.</li>';
     } else {
         gameState.player.inventory.forEach((item, index) => {
-            const shopItem = SHOP_INVENTORY.find(sItem => sItem.name === item.name);
+            const shopItem = activeShopInventory.find(sItem => sItem.name === item.name);
             const basePrice = shopItem ? shopItem.price : 2; // Default sell price if not in shop
             const sellPrice = Math.floor(basePrice * SELL_MODIFIER);
 
