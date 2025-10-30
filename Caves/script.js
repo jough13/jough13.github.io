@@ -2723,7 +2723,7 @@ case 'r':
         chunkManager.setWorldTile(newX, newY, '.');
     }
 
-    (async () => {
+(async () => {
             // 1. Determine the destination tile
             let newTile;
             if (gameState.mapMode === 'dungeon') {
@@ -2890,7 +2890,7 @@ case 'r':
                             }
                         } else {
                             // --- ENEMY SURVIVES AND ATTACKS ---
-                            const playerDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
+                            const playerDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
                             const enemyDamage = Math.max(1, enemy.attack - playerDefense);
                             gameState.player.health -= enemyDamage;
                             triggerStatFlash(statDisplays.health, false);
@@ -3123,15 +3123,27 @@ case 'r':
 
             const itemData = ITEM_DATA[newTile];
             let inventoryWasUpdated = false; // Flag to save inventory
-            let itemPickedUp = false;
-            let tileLooted = true; // Assume we loot it, unless inventory is full
+            
+            // --- Helper function to clear the tile ---
+            function clearLootTile() {
+                gameState.lootedTiles.add(tileId); // Mark as looted
+                // Clear the tile from the map
+                if (gameState.mapMode === 'overworld') {
+                   chunkManager.setWorldTile(newX, newY, '.');
+                } else if (gameState.mapMode === 'dungeon') {
+                   const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                   chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
+                } else if (gameState.mapMode === 'castle') {
+                   chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
+                }
+            }
+            // --- End Helper ---
             
             if (itemData) {
                 let isTileLooted = gameState.lootedTiles.has(tileId);
 
                 if (isTileLooted) {
                     logMessage(`You see where a ${itemData.name} once was...`);
-                    tileLooted = false; // Don't try to clear the tile
                 } else {
                     // This is an item we can pick up.
                     
@@ -3140,58 +3152,51 @@ case 'r':
                         if (existingItem) {
                             existingItem.quantity++;
                             logMessage(`You picked up a ${itemData.name}.`);
-                            itemPickedUp = true;
+                            inventoryWasUpdated = true;
+                            clearLootTile(); // <-- FIXED
                         } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                             const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile };
                             gameState.player.inventory.push(itemForDb);
                             logMessage(`You picked up a ${itemData.name}.`);
-                            itemPickedUp = true;
+                            inventoryWasUpdated = true;
+                            clearLootTile(); // <-- FIXED
                         } else {
                             logMessage(`You see a ${itemData.name}, but your inventory is full!`);
-                            tileLooted = false; // Don't loot the tile
-                            return;
+                            return; // <-- Cancel the move!
                         }
-                        if (itemPickedUp) inventoryWasUpdated = true;
 
                     } else if (itemData.type === 'weapon') {
                         if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                             const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile, damage: itemData.damage, slot: itemData.slot };
                             gameState.player.inventory.push(itemForDb);
                             logMessage(`You picked up a ${itemData.name}.`);
-                            itemPickedUp = true;
-                            clearLootTile();
+                            inventoryWasUpdated = true;
+                            clearLootTile(); // <-- FIXED
                         } else {
                             logMessage(`You see a ${itemData.name}, but your inventory is full!`);
-                            tileLooted = false;
-                            return; 
+                            return; // <-- Cancel the move!
                         }
-                        if (itemPickedUp) inventoryWasUpdated = true;
 
                     } else if (itemData.type === 'armor') {
                          if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                             const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile, defense: itemData.defense, slot: itemData.slot };
                             gameState.player.inventory.push(itemForDb);
                             logMessage(`You picked up ${itemData.name}.`);
-                            itemPickedUp = true;
-                            clearLootTile();
+                            inventoryWasUpdated = true;
+                            clearLootTile(); // <-- FIXED
                         } else {
                             logMessage(`You see ${itemData.name}, but your inventory is full!`);
-                            tileLooted = false;
-                            return; // <-- *** THE FIX ***
+                            return; // <-- Cancel the move!
                         }
-                        if (itemPickedUp) inventoryWasUpdated = true;
 
                     } else if (itemData.type === 'instant') {
                         itemData.effect(gameState); // (e.g., add coins)
-                        itemPickedUp = true; // It was "picked up" and instantly used
-                        clearLootTile();
+                        clearLootTile(); // <-- FIXED
                     }
-
                 }
             }
             
             // 5. If move is valid (not blocked, no full inv), calculate stamina and move.
-
             const staminaDeficit = moveCost - gameState.player.stamina;
             if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
                 logMessage("You're too tired, and pushing on would be fatal!");
@@ -3210,11 +3215,10 @@ case 'r':
                 logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
             }
             
-            if (moveCost > 0) { // <-- This 'if' was changed from 'else if'
-                triggerStatFlash(statDisplays.stamina, false); // Flash red for stamina cost
+            if (moveCost > 0) {
+                triggerStatFlash(statDisplays.stamina, false); 
                 logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
             }
-            // --- END "MOVE PLAYER" BLOCK ---
 
             // 6. Handle final updates
             render();
@@ -3231,14 +3235,14 @@ case 'r':
             };
             
             if (inventoryWasUpdated) {
-            updates.inventory = gameState.player.inventory.map(item => ({
-                name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
-                damage: item.damage || null,   // <-- ADDED || null
-                slot: item.slot || null,       // <-- ADDED || null
-                defense: item.defense || null  // <-- ADDED || null
-            }));
-            renderInventory(); // Re-render inventory only if it changed
-        }
+                updates.inventory = gameState.player.inventory.map(item => ({
+                    name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
+                    damage: item.damage || null,   // <-- With Firebase fix
+                    slot: item.slot || null,       // <-- With Firebase fix
+                    defense: item.defense || null  // <-- With Firebase fix
+                }));
+                renderInventory(); // Re-render inventory only if it changed
+            }
             
             playerRef.update(updates);
             // --- End Consolidated Update ---
@@ -3257,19 +3261,6 @@ case 'r':
                 document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
                 document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
                 gameOverModal.classList.remove('hidden');
-            }
-
-            function clearLootTile() {
-                gameState.lootedTiles.add(tileId); // Mark as looted
-                // Clear the tile from the map
-                if (gameState.mapMode === 'overworld') {
-                   chunkManager.setWorldTile(newX, newY, '.');
-                } else if (gameState.mapMode === 'dungeon') {
-                   const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
-                   chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
-                } else if (gameState.mapMode === 'castle') {
-                   chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
-                }
             }
 
             endPlayerTurn();
