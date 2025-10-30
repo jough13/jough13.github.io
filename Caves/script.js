@@ -23,6 +23,8 @@ let otherPlayers = {};
 let unsubscribePlayerListener;
 let worldStateListeners = {};
 
+let activeShopInventory = [];
+
 const TILE_DATA = {
     '#': {
         type: 'lore',
@@ -63,6 +65,10 @@ const TILE_DATA = {
         type: 'shop',
         title: 'General Store'
     },
+    'H': {
+        type: 'npc_healer',
+        title: 'Healer'
+    },
     'b': {
         type: 'enemy'
     },
@@ -90,9 +96,9 @@ const CASTLE_LAYOUTS = {
             '▓...................................................................▓',
             '▓...................................................................▓',
             '▓...................................................................▓',
-            '▓....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓.§.....................................▓',
+            '▓....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓.......................................▓',
             '▓....▓...................▓..........................................▓',
-            '▓....▓...▓▓▓...▓▓▓...▓...▓.....................N....................▓',
+            '▓....▓...▓▓▓...▓▓▓...▓...▓..........................................▓',
             '▓....▓...▓.▓...▓.▓...▓...▓..........................................▓',
             '▓....▓...▓▓▓...▓▓▓...▓...▓..........................................▓',
             '▓....▓...................▓..........................................▓',
@@ -124,7 +130,7 @@ const CASTLE_LAYOUTS = {
             '▓...................▓',
             '▓.........▓▓▓▓▓▓▓▓▓▓▓',
             '▓.........▓.........▓',
-            '▓.........▓....N....▓',
+            '▓.........▓........▓',
             '▓.........▓.........▓',
             '▓.........▓...📖.....▓', // Put a journal here
             '▓.........▓.........▓',
@@ -155,7 +161,7 @@ const CASTLE_LAYOUTS = {
             '▓...▓...▓..........▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓...▓',
             '▓...▓...▓..........▓...................................................▓...▓...▓',
             '▓...▓...▓..........▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓',
-            '▓...▓...▓...........................................N.......§...................▓...▓',
+            '▓...▓...▓.......................................................................▓...▓',
             '▓...▓...▓.......................................................................▓...▓',
             '▓...▓...▓.......................................................................▓...▓',
             '▓...▓...▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓',
@@ -163,7 +169,7 @@ const CASTLE_LAYOUTS = {
             '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
-            '▓...▓.............▓...▓.....N...▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
@@ -208,6 +214,34 @@ const SHOP_INVENTORY = [
         name: 'Mana Orb', 
         price: 20,
         stock: 10
+    }
+];
+
+const CASTLE_SHOP_INVENTORY = [
+    { 
+        name: 'Healing Potion', 
+        price: 25, 
+        stock: 20 // Castles have more stock
+    },
+    { 
+        name: 'Stamina Crystal', 
+        price: 15,
+        stock: 30
+    },
+    { 
+        name: 'Mana Orb', 
+        price: 20,
+        stock: 20
+    },
+    { 
+        name: 'Rusty Sword', 
+        price: 100, // This is a Tier 2 item
+        stock: 1
+    },
+    { 
+        name: 'Studded Armor', 
+        price: 120, // This is a Tier 2 item
+        stock: 1
     }
 ];
 
@@ -1041,6 +1075,24 @@ generateCastle(castleId) {
                 }
             }
         }
+        const npcTypesToSpawn = ['N', 'N', '§', 'H']; // 2 Villagers, 1 Shop, 1 Healer
+        let spawnAttempts = 50; // Try 50 times to place them
+        
+        for (const npcTile of npcTypesToSpawn) {
+            let placed = false;
+            for (let i = 0; i < spawnAttempts && !placed; i++) {
+                // Find a random x, y
+                const randY = Math.floor(random() * (map.length - 2)) + 1;
+                const randX = Math.floor(random() * (map[0].length - 2)) + 1;
+
+                // Check if it's a floor tile
+                if (map[randY][randX] === '.') {
+                    map[randY][randX] = npcTile; // Place the NPC
+                    placed = true;
+                }
+            }
+        }
+        // --- END NEW SPAWNING LOGIC ---
 
         this.castleMaps[castleId] = map;
         return map;
@@ -1574,7 +1626,7 @@ function grantXp(amount) {
 
 function handleBuyItem(itemName) {
     const player = gameState.player;
-    const shopItem = SHOP_INVENTORY.find(item => item.name === itemName);
+    const shopItem = activeShopInventory.find(item => item.name === itemName);
     const itemTemplate = ITEM_DATA[Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName)];
 
     if (!shopItem || !itemTemplate) {
@@ -1640,7 +1692,7 @@ function handleSellItem(itemIndex) {
 
     // Find the item's base price in the shop.
     // If not in the shop, we'll give it a default low price.
-    const shopItem = SHOP_INVENTORY.find(item => item.name === itemToSell.name);
+    const shopItem = activeShopInventory.find(item => item.name === itemToSell.name);
     const basePrice = shopItem ? shopItem.price : 2; // Sell unlisted items for 2 gold
     
     const sellPrice = Math.floor(basePrice * SELL_MODIFIER);
@@ -1709,7 +1761,7 @@ function renderShop() {
     shopPlayerCoins.textContent = `Your Gold: ${gameState.player.coins}`;
 
     // 3. Populate "Buy" list
-    SHOP_INVENTORY.forEach(item => {
+    activeShopInventory.forEach(item => {
         const itemTemplate = ITEM_DATA[Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === item.name)];
         const li = document.createElement('li');
         li.className = 'shop-item';
@@ -2929,18 +2981,49 @@ async function handleOverworldCombat(newX, newY, enemyData) {
                 return;
             }
 
-            // --- NEW '§' (SHOP) TILE ---
-            if (newTile === '§') {
+if (newTile === '§') {
                 if (!gameState.foundLore.has(tileId)) {
                     logMessage("You've discovered a General Store! +15 XP");
                     grantXp(15);
                     gameState.foundLore.add(tileId);
                     playerRef.update({ foundLore: Array.from(gameState.foundLore) });
                 }
-                logMessage("You enter the General Store.");
-                renderShop(); // Populate the shop
+                
+                // This is the new dynamic logic
+                if (gameState.mapMode === 'castle') {
+                    activeShopInventory = CASTLE_SHOP_INVENTORY;
+                    logMessage("You enter the castle emporium.");
+                } else {
+                    activeShopInventory = SHOP_INVENTORY;
+                    logMessage("You enter the General Store.");
+                }
+                
+                renderShop(); // Populate the shop with the correct inventory
                 shopModal.classList.remove('hidden'); // Show it
                 return; // Stop player from moving
+            }
+
+            if (newTile === 'H') {
+                const HEAL_COST = 10;
+                const player = gameState.player;
+
+                if (player.health < player.maxHealth) {
+                    if (player.coins >= HEAL_COST) {
+                        player.coins -= HEAL_COST;
+                        player.health = player.maxHealth; // Full heal!
+                        
+                        logMessage(`The Healer restores your health for ${HEAL_COST} gold.`);
+                        triggerStatAnimation(statDisplays.health, 'stat-pulse-green'); // Flash health
+                        
+                        // Save the changes
+                        playerRef.update({ health: player.health, coins: player.coins });
+                    } else {
+                        logMessage(`"You need ${HEAL_COST} gold for my services," the Healer says.`);
+                    }
+                } else {
+                    logMessage(`"You are already at full health!" the Healer says.`);
+                }
+                return; // Stop the player from moving onto the healer
             }
 
             // Handle all other special tiles like entrances/exits
