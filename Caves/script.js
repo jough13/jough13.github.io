@@ -3344,6 +3344,12 @@ loginButton.addEventListener('click', async () => {
 function clearSessionState() {
     gameState.lootedTiles.clear();
     gameState.discoveredRegions.clear();
+
+    chunkManager.caveMaps = {};
+    chunkManager.castleMaps = {};
+    chunkManager.caveEnemies = {};
+    chunkManager.caveThemes = {};
+    chunkManager.castleSpawnPoints = {};
 }
 
 logoutButton.addEventListener('click', () => {
