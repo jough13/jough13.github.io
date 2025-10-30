@@ -2343,6 +2343,8 @@ async function runSharedAiTurns() {
         // Dungeons/castles are instanced, no lock needed.
         enemiesMovedNearby = processEnemyTurns();
 
+        render();
+
     } else if (gameState.mapMode === 'overworld') {
         // Overworld is shared. We need a lock.
         const lockRef = rtdb.ref('world/aiTurnLock');
