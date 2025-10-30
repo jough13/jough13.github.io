@@ -1092,7 +1092,40 @@ generateCastle(castleId) {
                 }
             }
         }
-        // --- END NEW SPAWNING LOGIC ---
+
+        // Ensure the tiles adjacent to spawn are walkable, fixing the
+        // bug where players can be walled-in by procedural generation.
+        const spawnX = layout.spawn.x;
+        const spawnY = layout.spawn.y;
+        
+        // List of adjacent coordinates [y, x]
+        const adjacentCoords = [
+            [spawnY - 1, spawnX], // North
+            [spawnY + 1, spawnX], // South
+            [spawnY, spawnX - 1], // West
+            [spawnY, spawnX + 1]  // East
+        ];
+
+        // These tiles should NOT be overwritten
+        const protectedTiles = ['▓', 'X', 'B', '📖'];
+
+        for (const [y, x] of adjacentCoords) {
+            // Bounds check
+            if (map[y] && map[y][x]) {
+                // Get the *original* tile from the layout
+                const originalTile = (baseMap[y] && baseMap[y][x]) ? baseMap[y][x] : '▓';
+                
+                // If the original tile is NOT a protected tile,
+                // force it to be a floor.
+                // This clears any '▒' (rubble) or 'N', 'H', '§' (NPCs)
+                if (!protectedTiles.includes(originalTile)) {
+                    map[y][x] = '.';
+                }
+            }
+        }
+        
+        // Finally, ensure the spawn tile itself is a floor tile
+        map[spawnY][spawnX] = '.';
 
         this.castleMaps[castleId] = map;
         return map;
