@@ -3231,12 +3231,14 @@ case 'r':
             };
             
             if (inventoryWasUpdated) {
-                updates.inventory = gameState.player.inventory.map(item => ({
-                    name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
-                    damage: item.damage, slot: item.slot, defense: item.defense
-                }));
-                renderInventory(); // Re-render inventory only if it changed
-            }
+            updates.inventory = gameState.player.inventory.map(item => ({
+                name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
+                damage: item.damage || null,   // <-- ADDED || null
+                slot: item.slot || null,       // <-- ADDED || null
+                defense: item.defense || null  // <-- ADDED || null
+            }));
+            renderInventory(); // Re-render inventory only if it changed
+        }
             
             playerRef.update(updates);
             // --- End Consolidated Update ---
