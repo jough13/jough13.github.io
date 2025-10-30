@@ -1768,7 +1768,7 @@ function renderShop() {
         li.className = 'shop-item';
         li.innerHTML = `
             <div>
-                <span class="shop-item-name">${item.name} (${itemTemplate.tile})</span>
+                <span class="shop-item-name">${item.name} (${itemKey || '?'})</span>
                 <span class="shop-item-details">Price: ${item.price}g</span>
             </div>
             <div class="shop-item-actions">
