@@ -252,7 +252,7 @@ const ENEMY_DATA = {
         attack: 1,     // Down from 2
         defense: 0,
         xp: 5,         // Down from 10
-        loot: '$' 
+        loot: 't' 
     },
     's': {
         name: 'Skeleton',
@@ -260,7 +260,7 @@ const ENEMY_DATA = {
         attack: 2,     // Down from 3
         defense: 0,    // Down from 1
         xp: 10,        // Down from 15
-        loot: '+' 
+        loot: '(' 
     },
     'b': {
         name: 'Bandit',
@@ -268,7 +268,7 @@ const ENEMY_DATA = {
         attack: 2,     // Down from 3
         defense: 0,    // Down from 1
         xp: 10,        // Down from 20
-        loot: '$' 
+        loot: 'i' 
     },
     'w': {
         name: 'Wolf',
@@ -276,7 +276,7 @@ const ENEMY_DATA = {
         attack: 2,     // Down from 4 (This is the biggest fix)
         defense: 0,
         xp: 8,         // Down from 15
-        loot: '+' 
+        loot: 'p' 
     }
 };
 
@@ -821,6 +821,22 @@ const ITEM_DATA = {
         type: 'armor',
         defense: 2,
         slot: 'armor'
+    },
+    't': {
+        name: 'Goblin Totem',
+        type: 'junk'
+    },
+    'p': {
+        name: 'Wolf Pelt',
+        type: 'junk'
+    },
+    'i': {
+        name: 'Bandit\'s Insignia',
+        type: 'junk'
+    },
+    '(': {
+        name: 'Bone Shard',
+        type: 'junk'
     },
     '$': {
         name: 'Gold Coin',
@@ -1590,37 +1606,59 @@ function handleItemDrop(event) {
 }
 
 /**
- * Generates level-appropriate loot when an enemy is defeated.
+ * Generates loot when an enemy is defeated.
+ * Drops a mix of Junk, Gold, or Level-Scaled Loot.
  * @param {number} playerLevel - The player's current level.
+ * @param {object} enemy - The enemy data (from ENEMY_DATA or RTDB).
  * @returns {string} The tile character of the dropped item.
  */
-function generateEnemyLoot(playerLevel) {
+function generateEnemyLoot(playerLevel, enemy) {
+    // --- DEFINE DROP CHANCES ---
+    const JUNK_DROP_CHANCE = 0.25; // 25% chance for specific junk
+    const GOLD_DROP_CHANCE = 0.50; // 50% chance for gold
+    // (This leaves a 25% chance for level-scaled loot)
+
     const roll = Math.random(); // A roll from 0.0 to 1.0
 
-    // Define our loot pools
-    const commonLoot = ['$', '+', 'o', 'S', 'Y']; // Consumables & Gold
+    // --- 1. Check for Junk Drop (First 25%) ---
+    if (enemy.loot && roll < JUNK_DROP_CHANCE) { // roll < 0.25
+        // Use the enemy's specific loot item (e.g., 'p' for Wolf Pelt)
+        // If one isn't defined, fall back to Gold.
+        return enemy.loot || '$'; 
+    }
+
+    // --- 2. Check for Gold Drop (Next 50%) ---
+    if (roll < JUNK_DROP_CHANCE + GOLD_DROP_CHANCE) { // roll < 0.75 (0.25 + 0.50)
+        return '$'; // Drop gold
+    }
+
+    // --- 3. If neither, generate Level-Scaled Loot (Final 25%) ---
+    // This is your original tiered loot logic, but with Gold
+    // REMOVED from the commonLoot pool.
+
+    const scaledRoll = Math.random(); // A *new* roll just for the tiered loot
+
+    // --- IMPORTANT: Gold '$' is REMOVED from this list ---
+    const commonLoot = ['+', 'o', 'S', 'Y']; // Consumables ONLY
     const tier1Loot = ['/', '%']; // Stick, Leather Tunic
     const tier2Loot = ['!', '[']; // Rusty Sword, Studded Armor
 
     // --- Tier 2 Loot (Best) ---
-    // Start at 0% at level 1, and increases by 8% per level
-    // L1: 0%, L2: 8%, L3: 16%, L4: 24%, L5: 32% ...
-    const tier2Chance = Math.max(0, (playerLevel - 1) * 0.08);
-    if (roll < tier2Chance) {
+    // (This logic is unchanged)
+    const tier2Chance = Math.max(0, (playerLevel - 1) * 0.08); 
+    if (scaledRoll < tier2Chance) {
         return tier2Loot[Math.floor(Math.random() * tier2Loot.length)];
     }
 
     // --- Tier 1 Loot (Medium) ---
-    // Start at 30% chance, but *decreases* as Tier 2 becomes more likely
-    // L1: 30%, L2: 27%, L3: 24%, L4: 21%, L5: 18% ...
+    // (This logic is unchanged)
     const tier1Chance = Math.max(0.1, 0.30 - (playerLevel * 0.03));
-    // We add tier2Chance to the roll threshold
-    if (roll < tier2Chance + tier1Chance) {
+    if (scaledRoll < tier2Chance + tier1Chance) {
         return tier1Loot[Math.floor(Math.random() * tier1Loot.length)];
     }
 
     // --- Common Loot (Base) ---
-    // If you fail both rolls, you get common loot.
+    // (This is now just consumables)
     return commonLoot[Math.floor(Math.random() * commonLoot.length)];
 }
 
@@ -2821,7 +2859,7 @@ case 'r':
                         logMessage(`You defeated the ${enemyData.name}!`);
                         grantXp(enemyData.xp);
                         
-                        const droppedLoot = generateEnemyLoot(gameState.player.level);
+                        const droppedLoot = generateEnemyLoot(gameState.player.level, enemy);
                         chunkManager.setWorldTile(newX, newY, droppedLoot);
 
                     } else {
@@ -2880,7 +2918,7 @@ case 'r':
                             logMessage(`You defeated the ${enemy.name}!`);
                             grantXp(enemy.xp);
                             
-                            const droppedLoot = generateEnemyLoot(gameState.player.level);
+                            const droppedLoot = generateEnemyLoot(gameState.player.level, enemyData);
                             gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
                             
                             if (gameState.mapMode === 'dungeon') {
@@ -2921,11 +2959,59 @@ case 'r':
                 }
             }
                     
-            const moveCost = TERRAIN_COST[newTile] ?? 0;
-            if (moveCost === Infinity) {
-                logMessage("That way is blocked.");
-                return; // Stop here if impassable
+const moveCost = TERRAIN_COST[newTile] ?? 0;
+        if (moveCost === Infinity) {
+            
+            // --- NEW SECRET CAVE LOGIC ---
+            // Check if the player is bumping into a Mountain tile
+            if (newTile === '^' && gameState.mapMode === 'overworld') {
+                const tileId = `${newX},${-newY}`;
+                const seed = stringToSeed(WORLD_SEED + ':' + tileId);
+                const random = Alea(seed);
+                
+                // Give it a 1 in 20 (5%) chance of being a secret entrance
+                // This check is seeded, so it's the same for all players, always.
+                if (random() < 0.05) { 
+                    logMessage("You push against the rock... and it gives way! You've found a hidden passage! +50 XP");
+                    grantXp(50); // Extra XP for finding a secret
+
+                    // 1. Permanently change this tile to a real entrance for everyone
+                    chunkManager.setWorldTile(newX, newY, '⛰');
+
+                    // 2. Trigger the "enter cave" logic
+                    // (This is copied from the 'dungeon_entrance' case below)
+                    gameState.mapMode = 'dungeon';
+                    gameState.currentCaveId = `cave_${newX}_${newY}`; // Use the standard ID
+                    gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                    
+                    const caveMap = chunkManager.generateCave(gameState.currentCaveId); 
+                    gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId]; 
+                    
+                    // Find the spawn point '>'
+                    for (let y = 0; y < caveMap.length; y++) {
+                        const x = caveMap[y].indexOf('>');
+                        if (x !== -1) {
+                            gameState.player.x = x;
+                            gameState.player.y = y;
+                            break;
+                        }
+                    }
+                    
+                    const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
+                    gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+                    
+                    logMessage("You enter the " + (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') + "...");
+                    updateRegionDisplay();
+                    render();
+                    syncPlayerState();
+                    return; // Stop the rest of the turn
+                }
             }
+            // --- END SECRET CAVE LOGIC ---
+
+            logMessage("That way is blocked."); // Default "bump into wall" message
+            return; // Stop here if impassable
+        }
 
             // 3. If no collision, check for special tiles (entrances, lore, etc.)
             const tileData = TILE_DATA[newTile];
