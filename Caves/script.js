@@ -2859,7 +2859,7 @@ case 'r':
                         logMessage(`You defeated the ${enemyData.name}!`);
                         grantXp(enemyData.xp);
                         
-                        const droppedLoot = generateEnemyLoot(gameState.player.level, enemy);
+                        const droppedLoot = generateEnemyLoot(gameState.player.level, enemyData);
                         chunkManager.setWorldTile(newX, newY, droppedLoot);
 
                     } else {
