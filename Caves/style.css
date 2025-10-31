@@ -298,3 +298,32 @@ kbd {
     border-color: var(--border-color);
     color: var(--text-muted);
 }
+
+/* --- Spellbook Modal Styles --- */
+.spell-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background-color: var(--bg-page);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.spell-item:hover {
+    transform: scale(1.02);
+    border-color: var(--text-highlight);
+    color: var(--text-highlight);
+}
+
+.spell-item-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.spell-item-details {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
