@@ -481,6 +481,10 @@ const shopPlayerCoins = document.getElementById('shopPlayerCoins');
 const shopBuyList = document.getElementById('shopBuyList');
 const shopSellList = document.getElementById('shopSellList');
 
+const spellModal = document.getElementById('spellModal');
+const closeSpellButton = document.getElementById('closeSpellButton');
+const spellList = document.getElementById('spellList');
+
 const equippedWeaponDisplay = document.getElementById('equippedWeaponDisplay');
 
 const equippedArmorDisplay = document.getElementById('equippedArmorDisplay');
@@ -1968,6 +1972,129 @@ function initShopListeners() {
     });
 }
 
+function initSpellbookListeners() {
+    closeSpellButton.addEventListener('click', () => {
+        spellModal.classList.add('hidden');
+    });
+
+    spellList.addEventListener('click', (e) => {
+        const spellItem = e.target.closest('.spell-item');
+        if (spellItem && spellItem.dataset.spell) {
+            castSpell(spellItem.dataset.spell);
+        }
+    });
+}
+
+function openSpellbook() {
+    spellList.innerHTML = ''; // Clear the list
+    const player = gameState.player;
+
+    // --- Spell 1: Lesser Heal ---
+    let healSpellHtml = `
+        <li class="spell-item" data-spell="heal">
+            <div>
+                <span class="spell-item-name">Lesser Heal</span>
+                <span class="spell-item-details">Heals 5 + Wits HP</span>
+            </div>
+            <span class="font-bold">5 Mana</span>
+        </li>`;
+    
+    // --- Spell 2: Clarity ---
+    let claritySpellHtml = `
+        <li class="spell-item" data-spell="clarity">
+            <div>
+                <span class="spell-item-name">Clarity</span>
+                <span class="spell-item-details">Reveals adjacent secret walls</span>
+            </div>
+            <span class="font-bold">8 Psyche</span>
+        </li>`;
+    
+    // In the future, you could add logic like:
+    // if (player.level >= 2) spellList.innerHTML += healSpellHtml;
+    // For now, everyone knows both.
+    spellList.innerHTML += healSpellHtml;
+    spellList.innerHTML += claritySpellHtml;
+
+    spellModal.classList.remove('hidden');
+}
+
+function castSpell(spellName) {
+    const player = gameState.player;
+    let spellCast = false;
+
+    switch (spellName) {
+        case 'heal':
+            const healCost = 5;
+            if (player.mana < healCost) {
+                logMessage("You don't have enough mana to cast that.");
+                return; // Do not close modal, do not end turn
+            }
+            
+            player.mana -= healCost;
+            const healAmount = 5 + player.wits; // Heal scales with Wits
+            const oldHealth = player.health;
+            player.health = Math.min(player.maxHealth, player.health + healAmount);
+            
+            logMessage(`You cast Lesser Heal and recover ${player.health - oldHealth} health.`);
+            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+            playerRef.update({ mana: player.mana, health: player.health });
+            spellCast = true;
+            break;
+
+        case 'clarity':
+            const clarityCost = 8;
+            if (player.psyche < clarityCost) {
+                logMessage("You don't have enough psyche to cast that.");
+                return;
+            }
+
+            if (gameState.mapMode !== 'dungeon') {
+                logMessage("You can only feel for secret walls in caves.");
+                return;
+            }
+
+            player.psyche -= clarityCost;
+            
+            const map = chunkManager.caveMaps[gameState.currentCaveId];
+            const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+            const secretWallTile = theme.secretWall;
+            let foundWall = false;
+
+            // Check all 8 adjacent tiles
+            for (let y = -1; y <= 1; y++) {
+                for (let x = -1; x <= 1; x++) {
+                    if (x === 0 && y === 0) continue; // Skip self
+                    
+                    const checkX = player.x + x;
+                    const checkY = player.y + y;
+                    
+                    if (map[checkY] && map[checkY][checkX] === secretWallTile) {
+                        map[checkY][checkX] = theme.floor; // Reveal the wall!
+                        foundWall = true;
+                    }
+                }
+            }
+            
+            if (foundWall) {
+                logMessage("You focus your mind... and a passage is revealed!");
+                render(); // Re-render to show the new passage
+            } else {
+                logMessage("You focus, but find no hidden passages nearby.");
+            }
+            
+            triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+            playerRef.update({ psyche: player.psyche });
+            spellCast = true;
+            break;
+    }
+
+    if (spellCast) {
+        spellModal.classList.add('hidden'); // Close modal
+        endPlayerTurn(); // Spell costs one turn
+        renderStats(); // Update mana/psyche display
+    }
+}
+
 const renderInventory = () => {
     inventoryList.innerHTML = '';
     if (!gameState.player.inventory || gameState.player.inventory.length === 0) {
@@ -2753,6 +2880,11 @@ document.addEventListener('keydown', (event) => {
     }
     // --- END NEW 'I' KEY ---
 
+    if (event.key === 'm' || event.key === 'M') {
+        openSpellbook();
+        event.preventDefault();
+        return;
+    }
 
     let startX = gameState.player.x,
         startY = gameState.player.y;
@@ -3815,6 +3947,7 @@ unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
 
     loadingIndicator.classList.add('hidden');
     initShopListeners();
+    initSpellbookListeners();
 }
 
 auth.onAuthStateChanged((user) => {
