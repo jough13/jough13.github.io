@@ -485,6 +485,10 @@ const spellModal = document.getElementById('spellModal');
 const closeSpellButton = document.getElementById('closeSpellButton');
 const spellList = document.getElementById('spellList');
 
+const inventoryModal = document.getElementById('inventoryModal');
+const closeInventoryButton = document.getElementById('closeInventoryButton');
+const inventoryModalList = document.getElementById('inventoryModalList');
+
 const equippedWeaponDisplay = document.getElementById('equippedWeaponDisplay');
 
 const equippedArmorDisplay = document.getElementById('equippedArmorDisplay');
@@ -1985,6 +1989,25 @@ function initSpellbookListeners() {
     });
 }
 
+function openInventoryModal() {
+    if (gameState.player.inventory.length === 0) {
+        logMessage("Your inventory is empty.");
+        return;
+    }
+    renderInventory(); // Re-render inventory just before showing
+    inventoryModal.classList.remove('hidden');
+    gameState.inventoryMode = true; // Enter inventory mode
+}
+
+function closeInventoryModal() {
+    inventoryModal.classList.add('hidden');
+    gameState.inventoryMode = false; // Exit inventory mode
+}
+
+function initInventoryListeners() {
+    closeInventoryButton.addEventListener('click', closeInventoryModal);
+}
+
 function openSpellbook() {
     spellList.innerHTML = ''; // Clear the list
     const player = gameState.player;
@@ -2096,9 +2119,9 @@ function castSpell(spellName) {
 }
 
 const renderInventory = () => {
-    inventoryList.innerHTML = '';
+    inventoryModalList.innerHTML = '';
     if (!gameState.player.inventory || gameState.player.inventory.length === 0) {
-        inventoryList.innerHTML = '<span class="muted-text italic px-2">Inventory is empty.</span>';
+        inventoryModalList.innerHTML = '<span class="muted-text italic px-2">Inventory is empty.</span>'; // <-- THIS LINE WAS FIXED
     } else {
         gameState.player.inventory.forEach((item, index) => {
             const itemDiv = document.createElement('div');
@@ -2118,7 +2141,7 @@ const renderInventory = () => {
             itemDiv.appendChild(slotNumber);
             itemDiv.appendChild(itemChar);
             itemDiv.appendChild(itemQuantity);
-            inventoryList.appendChild(itemDiv);
+            inventoryModalList.appendChild(itemDiv);
         });
     }
 };
@@ -2716,7 +2739,13 @@ document.addEventListener('keydown', (event) => {
             return;
         }
         
-        // --- NEW: Handle exiting game states ---
+        if (!inventoryModal.classList.contains('hidden')) {
+            closeInventoryModal();
+            event.preventDefault();
+            return;
+        }
+
+        // Handle exiting game states ---
         if (gameState.isDroppingItem) {
             logMessage("Drop canceled.");
             gameState.isDroppingItem = false;
@@ -2842,7 +2871,7 @@ document.addEventListener('keydown', (event) => {
                 renderEquipment();
             }
 
-            gameState.inventoryMode = false;
+            closeInventoryModal();
             return;
         }
 
@@ -2850,12 +2879,12 @@ document.addEventListener('keydown', (event) => {
         if (event.key === 'd' || event.key === 'D') {
             if (gameState.player.inventory.length === 0) {
                 logMessage("Your inventory is empty.");
-                gameState.inventoryMode = false; // Exit inventory mode
+                closeInventoryModal(); // Exit inventory mode
                 return;
             }
             logMessage("Drop Mode: Press 1-9 to drop or (Esc) to cancel.");
             gameState.isDroppingItem = true;
-            gameState.inventoryMode = false; // Exit inventory mode, enter drop mode
+            closeInventoryModal(); // Exit inventory mode, enter drop mode
             return;
         }
         // --- End: Correct 'D' Key Logic ---
@@ -2867,17 +2896,12 @@ document.addEventListener('keydown', (event) => {
     }
     // --- END NEW INVENTORY MODE ---
 
-    // --- NEW: Top-level 'I' key to ENTER inventory mode ---
-    if (event.key === 'i' || event.key === 'I') {
-        if (gameState.player.inventory.length === 0) {
-            logMessage("Your inventory is empty.");
-            return;
-        }
-        logMessage("Inventory Mode: Press 1-9 to use, D to drop, or (Esc) to exit.");
-        gameState.inventoryMode = true;
-        event.preventDefault();
-        return;
-    }
+    // --- Top-level 'I' key to ENTER inventory mode ---
+if (event.key === 'i' || event.key === 'I') {
+    openInventoryModal(); // <-- CHANGED
+    event.preventDefault();
+    return;
+}
     // --- END NEW 'I' KEY ---
 
     if (event.key === 'm' || event.key === 'M') {
@@ -3948,6 +3972,7 @@ unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
     loadingIndicator.classList.add('hidden');
     initShopListeners();
     initSpellbookListeners();
+    initInventoryListeners();
 }
 
 auth.onAuthStateChanged((user) => {
