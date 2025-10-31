@@ -162,9 +162,9 @@
                 </div>
             </div>
 
-            <div id="controls" class="mt-4 text-center">
-                <p class="text-lg">Use <span class="highlight-text font-bold">Arrow Keys</span> or <span class="highlight-text font-bold">WASD</span> to move. <span class="highlight-text font-bold">1-9</span> to use items. <span class="highlight-text font-bold">R</span> to rest.</p>
-            </div>
+<div id="controls" class="mt-4 text-center">
+    <p class="text-lg">Move: <span class="highlight-text font-bold">WASD</span> | Rest: <span class="highlight-text font-bold">R</span> | Inventory: <span class="highlight-text font-bold">I</span> | Magic: <span class="highlight-text font-bold">M</span></p>
+</div>
         </div>
     </main>
     
@@ -172,13 +172,18 @@
         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Player's Guide</h2>
             <div class="space-y-2 text-sm">
-                <p><strong class="highlight-text">Movement:</strong> Use <kbd>W, A, S, D</kbd> or <kbd>Arrow Keys</kbd>.</p>
-                <p><strong class="highlight-text">Inventory:</strong> Use number keys <kbd>1</kbd> through <kbd>9</kbd> to use consumable items.</p>
-                <p><strong class="highlight-text">Rest:</strong> Press <kbd>R</kbd> to rest and recover 1 stamina.</p>
-                <p><strong class="highlight-text">Chat:</strong> Click the chat box and press <kbd>Enter</kbd> to send messages.</p>
-                <p><strong class="highlight-text">Stamina:</strong> Moving through difficult terrain like forests (<span class="text-green-500">F</span>) costs stamina. If you run out, you'll lose health instead!</p>
-                <p><strong class="highlight-text">Exploration:</strong> Look for special landmarks like signposts (<span class="font-bold">☗</span>), castles (<span class="font-bold">🏰</span>), and caves (<span class="font-bold">⛰</span>) to uncover lore.</p>
-            </div>
+    <p><strong class="highlight-text">Movement:</strong> Use <kbd>W, A, S, D</kbd> or <kbd>Arrow Keys</kbd>.</p>
+    <p><strong class="highlight-text">Rest:</strong> Press <kbd>R</kbd> to rest and recover 1 Health and 1 Stamina.</p>
+    <p><strong class="highlight-text">Inventory:</strong> Press <kbd>I</kbd> to open your inventory.
+        <ul class="list-disc list-inside pl-4">
+            <li>Press <kbd>1-9</kbd> to use or equip an item.</li>
+            <li>Press <kbd>D</kbd> to enter Drop mode.</li>
+        </ul>
+    </p>
+    <p><strong class="highlight-text">Magic:</strong> Press <kbd>M</kbd> to open your spellbook.</p>
+    <p><strong class="highlight-text">Chat:</strong> Click the chat box and press <kbd>Enter</kbd> to send messages.</p>
+    <p><strong class="highlight-text">Exploration:</strong> Look for landmarks like signposts (<span class="font-bold">☗</span>), castles (<span class="font-bold">🏰</span>), caves (<span class="font-bold">⛰</span>), and even secret passages!</p>
+</div>
             <button id="closeHelpButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
         </div>
     </div>
