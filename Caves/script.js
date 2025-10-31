@@ -3369,9 +3369,32 @@ const moveCost = TERRAIN_COST[newTile] ?? 0;
                             return; // <-- Cancel the move!
                         }
 
-                    } else if (itemData.type === 'instant') {
-                        itemData.effect(gameState); // (e.g., add coins)
-                        clearLootTile(); // <-- FIXED
+                    } else if (itemData.type === 'junk') {
+                        const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
+                        
+                        if (existingItem) {
+                            // Case 1: Stack it
+                            existingItem.quantity++;
+                            logMessage(`You picked up a ${itemData.name}.`);
+                            inventoryWasUpdated = true;
+                            clearLootTile();
+                        } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                            // Case 2: Add new item to inventory
+                            const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile };
+                            gameState.player.inventory.push(itemForDb);
+                            logMessage(`You picked up a ${itemData.name}.`);
+                            inventoryWasUpdated = true;
+                            clearLootTile();
+                        } else {
+                            // Case 3: Inventory full
+                            logMessage(`You see a ${itemData.name}, but your inventory is full!`);
+                            return; // <-- Cancel the move!
+                        }
+                    }    
+
+                        else if (itemData.type === 'instant') {
+                            itemData.effect(gameState); // (e.g., add coins)
+                            clearLootTile(); // <-- FIXED
                     }
                 }
             }
