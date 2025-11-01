@@ -3631,10 +3631,10 @@ document.addEventListener('keydown', (event) => {
                         y: gameState.player.y
                     };
 
-                    // --- THIS IS THE KEY ---
+                    
                     // Instead of a random layout, we force it to use FORTRESS
-                    chunkManager.generateCastle(gameState.currentCastleId, 'FORTRESS');
-                    // --- END KEY ---
+                    chunkManager.generateCastle(gameState.currentCastleId, 'GRAND_FORTRESS');
+                    
 
                     const landmarkSpawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
                     gameState.player.x = landmarkSpawn.x;
