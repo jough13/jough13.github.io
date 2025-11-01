@@ -451,3 +451,52 @@ kbd {
 	font-size: 0.9rem;
 	color: var(--text-muted);
 }
+
+/* --- Quest Modal Styles --- */
+.quest-item {
+    padding: 12px;
+    background-color: var(--bg-page);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.quest-title {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: var(--text-highlight);
+}
+
+.quest-description {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    margin-bottom: 12px;
+}
+
+.quest-progress {
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+
+.quest-actions button {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.quest-actions button:hover {
+    transform: scale(1.05);
+    border-color: var(--text-highlight);
+    color: var(--text-highlight);
+}
+
+.quest-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
