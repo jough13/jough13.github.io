@@ -903,22 +903,26 @@ const ITEM_DATA = {
         name: 'Bone Shard',
         type: 'junk'
     },
-    '$': {
-        name: 'Gold Coin',
-        type: 'instant',
-        effect: (state) => {
-            if (Math.random() < 0.05) { // 5% chance of being a trap
-                state.player.health -= DAMAGE_AMOUNT;
-                triggerStatFlash(statDisplays.health, false); // Flash red
-                logMessage(`It was a trap! Lost ${DAMAGE_AMOUNT} health!`);
-            } else { // 95% chance of being a reward
-                const amount = Math.floor(Math.random() * 10) + 1; // 1 to 10 coins
-                state.player.coins += amount;
-                triggerStatFlash(statDisplays.coins, true); // Flash green
-                logMessage(`You found ${amount} gold coins!`);
-            }
+'$': {
+    name: 'Gold Coin',
+    type: 'instant',
+    effect: (state, tileId) => { // <-- ADD tileId
+        // Create a deterministic result based on the tile's location
+        const seed = stringToSeed(tileId || 'gold'); // Use tileId as seed
+        const random = Alea(seed);
+
+        if (random() < 0.05) { // 5% chance of being a trap (now deterministic)
+            state.player.health -= DAMAGE_AMOUNT;
+            triggerStatFlash(statDisplays.health, false); // Flash red
+            logMessage(`It was a trap! Lost ${DAMAGE_AMOUNT} health!`);
+        } else { // 95% chance of being a reward
+            const amount = Math.floor(random() * 10) + 1; // 1 to 10 coins (now deterministic)
+            state.player.coins += amount;
+            triggerStatFlash(statDisplays.coins, true); // Flash green
+            logMessage(`You found ${amount} gold coins!`);
         }
-    },
+    }
+},
 };
 
 const statDisplays = {
@@ -1242,6 +1246,9 @@ generateCastle(castleId, forcedLayoutKey = null) { // <-- ADD THIS
 
     generateChunk(chunkX, chunkY) {
         const chunkKey = `${chunkX},${chunkY}`;
+
+        const random = Alea(stringToSeed(WORLD_SEED + ':' + chunkKey));
+
         let chunkData = Array.from({
             length: this.CHUNK_SIZE
         }, () => Array(this.CHUNK_SIZE));
@@ -1259,7 +1266,7 @@ generateCastle(castleId, forcedLayoutKey = null) { // <-- ADD THIS
                 else if (moist > 0.55) tile = 'F'; // Forest
                 else tile = '.'; // Plains
 
-                const featureRoll = Math.random();
+                const featureRoll = random();
                 
                 // 0.001% chance to spawn the Landmark Fortress
                 
@@ -1285,7 +1292,7 @@ generateCastle(castleId, forcedLayoutKey = null) { // <-- ADD THIS
                     }
                 } else {
                     // No safe feature spawned. Check for hostile spawn.
-                    const hostileRoll = Math.random();
+                    const hostileRoll = random();
                     
                     // Wolves spawn in forests (0.02% chance)
                     if (tile === 'F' && hostileRoll < 0.0002) { 
@@ -3549,8 +3556,8 @@ const moveCost = TERRAIN_COST[newTile] ?? 0;
                     }    
 
                         else if (itemData.type === 'instant') {
-                            itemData.effect(gameState); // (e.g., add coins)
-                            clearLootTile(); // <-- FIXED
+                            itemData.effect(gameState, tileId);
+                            clearLootTile();
                     }
                 }
             }
