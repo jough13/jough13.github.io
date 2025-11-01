@@ -312,6 +312,20 @@ const CASTLE_SHOP_INVENTORY = [{
     }
 ];
 
+const QUEST_DATA = {
+    "wolfHunt": {
+        title: "Bounty: Wolf Hunt",
+        description: "The local shepherds are plagued by wolves. Thin their numbers.",
+        enemy: 'w', // The enemy tile to track
+        needed: 10,
+        reward: {
+            xp: 100,
+            coins: 50
+        }
+    }
+    // We can add more quests here later, like "banditHunt"
+};
+
 const ENEMY_DATA = {
     'g': {
         name: 'Goblin',
@@ -511,6 +525,10 @@ const skillModal = document.getElementById('skillModal');
 const closeSkillButton = document.getElementById('closeSkillButton');
 const skillList = document.getElementById('skillList');
 
+const questModal = document.getElementById('questModal');
+const closeQuestButton = document.getElementById('closeQuestButton');
+const questList = document.getElementById('questList');
+
 const equippedWeaponDisplay = document.getElementById('equippedWeaponDisplay');
 
 const equippedArmorDisplay = document.getElementById('equippedArmorDisplay');
@@ -637,7 +655,9 @@ function createDefaultPlayerState() {
         foundLore: [], // Used to track lore/journals for XP
 
         defenseBonus: 0,
-        defenseBonusTurns: 0
+        defenseBonusTurns: 0,
+
+        quests: {}
     };
 }
 
@@ -2192,6 +2212,7 @@ async function executeLunge(dirX, dirY) {
                     if (enemy.health <= 0) {
                         logMessage(`You defeated the ${enemy.name}!`);
                         grantXp(enemy.xp);
+                        updateQuestProgress(enemy.tile);
                         const droppedLoot = generateEnemyLoot(player.level, enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                         if (gameState.mapMode === 'dungeon') {
@@ -2271,6 +2292,7 @@ async function executeMagicBolt(dirX, dirY) {
                     if (finalEnemyState === null) {
                         logMessage(`You vanquished the ${enemyData.name}!`);
                         grantXp(enemyData.xp);
+                        updateQuestProgress(newTile);
                         const droppedLoot = generateEnemyLoot(player.level, enemyData);
                         chunkManager.setWorldTile(targetX, targetY, droppedLoot);
                     } else {
@@ -2323,6 +2345,146 @@ function initSkillbookListeners() {
         const skillItem = e.target.closest('.skill-item');
         if (skillItem && skillItem.dataset.skill) {
             selectSkill(skillItem.dataset.skill);
+        }
+    });
+}
+
+function openBountyBoard() {
+    renderBountyBoard();
+    questModal.classList.remove('hidden');
+}
+
+// Renders the content of the bounty board
+function renderBountyBoard() {
+    questList.innerHTML = '';
+    const playerQuests = gameState.player.quests;
+
+    // Loop through all defined quests
+    for (const questId in QUEST_DATA) {
+        const quest = QUEST_DATA[questId];
+        const playerQuest = playerQuests[questId];
+        let questHtml = '';
+
+        if (!playerQuest) {
+            // --- Scenario 1: Quest is Available ---
+            questHtml = `
+                <div class="quest-item">
+                    <div class="quest-title">${quest.title}</div>
+                    <div class="quest-description">${quest.description} (Reward: ${quest.reward.xp} XP, ${quest.reward.coins} Gold)</div>
+                    <div class="quest-actions">
+                        <button data-quest-id="${questId}" data-action="accept">Accept</button>
+                    </div>
+                </div>`;
+        } else if (playerQuest.status === 'active') {
+            // --- Scenario 2: Quest is In-Progress ---
+            const progress = `(${playerQuest.kills} / ${quest.needed})`;
+            let actionButton = '';
+
+            if (playerQuest.kills >= quest.needed) {
+                // --- 2a: Ready to Turn In ---
+                actionButton = `<button data-quest-id="${questId}" data-action="turnin">Turn In</button>`;
+            } else {
+                // --- 2b: Still in progress ---
+                actionButton = `<button disabled>In Progress</button>`;
+            }
+            
+            questHtml = `
+                <div class="quest-item">
+                    <div class="quest-title">${quest.title}</div>
+                    <div class="quest-progress">Progress: ${progress}</div>
+                    <div class="quest-actions">${actionButton}</div>
+                </div>`;
+        } else if (playerQuest.status === 'completed') {
+            // --- Scenario 3: Quest is Done ---
+             questHtml = `
+                <div class="quest-item">
+                    <div class="quest-title">${quest.title}</div>
+                    <div class="quest-description">You have already completed this bounty.</div>
+                    <div class="quest-actions"><button disabled>Completed</button></div>
+                </div>`;
+        }
+        questList.innerHTML += questHtml;
+    }
+}
+
+function acceptQuest(questId) {
+    const quest = QUEST_DATA[questId];
+    if (!quest) return;
+
+    logMessage(`New Quest Accepted: ${quest.title}`);
+    gameState.player.quests[questId] = {
+        status: 'active',
+        kills: 0
+    };
+    
+    playerRef.update({ quests: gameState.player.quests });
+    renderBountyBoard(); // Re-render the modal
+}
+
+function turnInQuest(questId) {
+    const quest = QUEST_DATA[questId];
+    const playerQuest = gameState.player.quests[questId];
+
+    if (!quest || !playerQuest || playerQuest.kills < quest.needed) {
+        logMessage("Quest is not ready to turn in.");
+        return;
+    }
+    
+    // --- Give Rewards ---
+    logMessage(`Quest Complete! You gained ${quest.reward.xp} XP and ${quest.reward.coins} Gold!`);
+    grantXp(quest.reward.xp);
+    gameState.player.coins += quest.reward.coins;
+
+    // --- Mark as Completed ---
+    playerQuest.status = 'completed';
+    
+    playerRef.update({
+        quests: gameState.player.quests,
+        coins: gameState.player.coins
+    });
+
+    renderBountyBoard(); // Re-render the modal
+    renderStats(); // Update coins display
+}
+
+// This function will be called every time an enemy is killed
+function updateQuestProgress(enemyTile) {
+    const playerQuests = gameState.player.quests;
+
+    for (const questId in playerQuests) {
+        const questData = QUEST_DATA[questId];
+        const playerQuest = playerQuests[questId];
+
+        // Is this an active quest, not yet complete, and for this enemy type?
+        if (playerQuest.status === 'active' && 
+            questData.enemy === enemyTile &&
+            playerQuest.kills < questData.needed) 
+        {
+            playerQuest.kills++;
+            logMessage(`Bounty: (${playerQuest.kills} / ${questData.needed})`);
+            
+            // Save the new kill count
+            playerRef.update({ quests: gameState.player.quests });
+        }
+    }
+}
+
+function initQuestListeners() {
+    closeQuestButton.addEventListener('click', () => {
+        questModal.classList.add('hidden');
+    });
+
+    questList.addEventListener('click', (e) => {
+        const button = e.target.closest('button');
+        if (!button) return;
+
+        const questId = button.dataset.questId;
+        const action = button.dataset.action;
+
+        if (action === 'accept') {
+            acceptQuest(questId);
+        } else if (action === 'turnin') {
+            turnInQuest(questId);
         }
     });
 }
@@ -3709,18 +3871,16 @@ document.addEventListener('keydown', (event) => {
             }
 
             if (newTile === 'B') {
-                if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You've discovered a Bounty Board! +15 XP");
-                    grantXp(15);
-                    gameState.foundLore.add(tileId);
-                    playerRef.update({
-                        foundLore: Array.from(gameState.foundLore)
-                    });
-                }
-                loreTitle.textContent = "Bounty Board";
-                loreContent.textContent = "A weathered board. Most notices are unreadable, but a few stand out:\n\n- REWARD: 50 GOLD for clearing the 'Glacial Cavern' to the north.\n\n- LOST: My favorite pet rock, 'Rocky'. Last seen near the old castle.\n\n- BEWARE: A dark presence stirs in the west. Travel with caution.";
-                loreModal.classList.remove('hidden');
-                return;
+            if (!gameState.foundLore.has(tileId)) {
+                logMessage("You've discovered a Bounty Board! +15 XP");
+                grantXp(15);
+                gameState.foundLore.add(tileId);
+                playerRef.update({
+                    foundLore: Array.from(gameState.foundLore)
+                });
+            }
+            openBountyBoard();
+            return; // Stop the player's move
             }
 
             if (newTile === '#') {
@@ -4488,6 +4648,8 @@ async function startGame(user) {
     initSpellbookListeners();
     initInventoryListeners();
     initSkillbookListeners();
+
+    initQuestListeners();
 }
 
 auth.onAuthStateChanged((user) => {
