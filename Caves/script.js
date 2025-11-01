@@ -344,6 +344,14 @@ const ENEMY_DATA = {
         defense: 0,
         xp: 8, // Down from 15
         loot: 'p'
+    },
+    'C': {
+        name: 'Bandit Chief',
+        maxHealth: 12, // Tougher than a normal Bandit
+        attack: 3,     // Hits harder
+        defense: 2,
+        xp: 25,
+        loot: 'i'      // Drops the same insignia (or we could change it)
     }
 };
 
@@ -1323,13 +1331,18 @@ const chunkManager = {
                         chunkData[y][x] = 'w';
                     }
                     // Wolves (0.01%) and Bandits (0.01%) spawn on plains
-                    else if (tile === '.' && hostileRoll < 0.0002) {
-                        if (hostileRoll < 0.0001) {
-                            chunkData[y][x] = 'w'; // 1% chance
-                        } else {
-                            chunkData[y][x] = 'b'; // 1% chance
+                else if (tile === '.' && hostileRoll < 0.0002) {
+                    if (hostileRoll < 0.0001) {
+                        chunkData[y][x] = 'w'; // Wolf
+                    } else {
+                        // This is a "Bandit" spawn
+                        if (random() < 0.1) { // 10% of these are a Chief
+                            chunkData[y][x] = 'C';
+                        } else { // 90% are a normal Bandit
+                            chunkData[y][x] = 'b';
                         }
                     }
+                }
                     // No hostile spawn, just place the terrain tile
                     else {
                         chunkData[y][x] = tile;
@@ -2573,31 +2586,38 @@ const renderInventory = () => {
 };
 
 const renderEquipment = () => {
-    const weapon = gameState.player.equipment.weapon;
-    if (weapon) {
-        // We'll check for damage, as Fists might not have it
-        const damage = weapon.damage || 0;
-        equippedWeaponDisplay.textContent = `Weapon: ${weapon.name} (+${damage} Dmg)`;
-    } else {
-        equippedWeaponDisplay.textContent = 'Weapon: None';
+    // --- WEAPON & DAMAGE ---
+    const player = gameState.player;
+    const weapon = player.equipment.weapon || { name: 'Fists', damage: 0 };
+
+    // Calculate total damage
+    const baseDamage = player.strength; // Strength is your base damage
+    const weaponDamage = weapon.damage || 0;
+    const totalDamage = baseDamage + weaponDamage;
+
+    // Update the display
+    equippedWeaponDisplay.textContent = `Weapon: ${weapon.name} (+${weaponDamage})`;
+    // We'll update the strength display to show the total
+    statDisplays.strength.textContent = `Strength: ${player.strength} (Dmg: ${totalDamage})`;
+
+
+    // --- ARMOR & DEFENSE ---
+    const armor = player.equipment.armor || { name: 'Simple Tunic', defense: 0 };
+
+    // Calculate total defense
+    const baseDefense = 0; // You can change this later (e.g., add from Dexterity)
+    const armorDefense = armor.defense || 0;
+    const buffDefense = player.defenseBonus || 0; // <-- GET BUFF
+    const totalDefense = baseDefense + armorDefense + buffDefense; // <-- ADD BUFF
+
+    // Update the display
+    let armorString = `Armor: ${armor.name} (+${armorDefense} Def)`;
+    if (buffDefense > 0) {
+        // Add the buff text, e.g. [Braced +2] (3t)
+        armorString += ` <span class="text-green-500">[Braced +${buffDefense} (${player.defenseBonusTurns}t)]</span>`;
     }
-// --- ARMOR & DEFENSE ---
-const armor = player.equipment.armor || { name: 'Simple Tunic', defense: 0 };
-
-        // Calculate total defense
-        const baseDefense = 0; // You can change this later (e.g., add from Dexterity)
-        const armorDefense = armor.defense || 0;
-        const buffDefense = player.defenseBonus || 0; // <-- GET BUFF
-        const totalDefense = baseDefense + armorDefense + buffDefense; // <-- ADD BUFF
-
-        // Update the display
-        let armorString = `Armor: ${armor.name} (+${armorDefense} Def)`;
-        if (buffDefense > 0) {
-            // Add the buff text, e.g. [Braced +2] (3t)
-            armorString += ` <span class="text-green-500">[Braced +${buffDefense} (${player.defenseBonusTurns}t)]</span>`;
-        }
-        // Use innerHTML to render the new span
-        equippedArmorDisplay.innerHTML = `${armorString} (Total: ${totalDefense} Def)`;
+    // Use innerHTML to render the new span
+    equippedArmorDisplay.innerHTML = `${armorString} (Total: ${totalDefense} Def)`;
 };
 
 const render = () => {
