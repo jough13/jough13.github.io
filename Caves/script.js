@@ -1446,8 +1446,8 @@ const gameState = {
     sharedEnemies: {},
     isDroppingItem: false,
     playerTurnCount: 0,
-    isAimingSkill: false,
-    skillToAim: null,
+    isAiming: false,
+    abilityToAim: null,
     time: {
         day: 1,
         hour: 6,
@@ -2069,8 +2069,8 @@ function openSkillbook() {
 
 function selectSkill(skillName) {
     if (skillName === 'lunge') {
-        gameState.isAimingSkill = true;
-        gameState.skillToAim = 'lunge';
+        gameState.isAiming = true;
+        gameState.abilityToAim = 'lunge';
         skillModal.classList.add('hidden');
         logMessage("Lunge: Press an arrow key or WASD to attack. (Esc) to cancel.");
     }
@@ -2153,6 +2153,102 @@ async function executeLunge(dirX, dirY) {
     render(); // Re-render to show enemy health change
 }
 
+async function executeMagicBolt(dirX, dirY) {
+    const player = gameState.player;
+    const BOLT_COST = 8;
+
+    // We already checked for mana when selecting the spell,
+    // but we'll deduct it now.
+    player.mana -= BOLT_COST; 
+    let hit = false;
+
+    // Loop 2 and 3 tiles away (same as lunge)
+    for (let i = 2; i <= 3; i++) {
+        const targetX = player.x + (dirX * i);
+        const targetY = player.y + (dirY * i);
+
+        let tile;
+        if (gameState.mapMode === 'dungeon') {
+            const map = chunkManager.caveMaps[gameState.currentCaveId];
+            tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+        } else if (gameState.mapMode === 'castle') {
+            const map = chunkManager.castleMaps[gameState.currentCastleId];
+            tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+        } else {
+            tile = chunkManager.getTile(targetX, targetY);
+        }
+
+        const enemyData = ENEMY_DATA[tile];
+
+        if (enemyData) {
+            // Found a target!
+            logMessage(`You hurl a bolt of energy at the ${enemyData.name}!`);
+            hit = true;
+
+            // --- Magic Bolt Damage (Ignores Defense!) ---
+            const spellDamage = 5 + player.wits; 
+
+            if (gameState.mapMode === 'overworld') {
+                // Handle Overworld Combat (enemy attacks back)
+                // We need to do this manually since it's not a normal attack
+                const enemyId = `overworld:${targetX},${-targetY}`;
+                const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
+
+                try {
+                    const transactionResult = await enemyRef.transaction(currentData => {
+                        if (currentData === null) return; // Enemy already dead
+                        currentData.health -= spellDamage;
+                        if (currentData.health <= 0) return null;
+                        return currentData;
+                    });
+
+                    const finalEnemyState = transactionResult.snapshot.val();
+                    if (finalEnemyState === null) {
+                        logMessage(`You vanquished the ${enemyData.name}!`);
+                        grantXp(enemyData.xp);
+                        const droppedLoot = generateEnemyLoot(player.level, enemyData);
+                        chunkManager.setWorldTile(targetX, targetY, droppedLoot);
+                    } else {
+                        logMessage(`The ${enemyData.name} has ${finalEnemyState.health} HP left.`);
+                        // In this magic attack, the enemy does NOT attack back.
+                    }
+                } catch (error) {
+                     console.error("Firebase transaction failed: ", error);
+                     logMessage("Your spell fizzles... (network error)");
+                }
+
+            } else {
+                // Handle Instanced Combat
+                let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+                if (enemy) {
+                    enemy.health -= spellDamage;
+                    logMessage(`You hit the ${enemy.name} for ${spellDamage} magic damage!`);
+
+                    if (enemy.health <= 0) {
+                        logMessage(`You defeated the ${enemy.name}!`);
+                        grantXp(enemy.xp);
+                        const droppedLoot = generateEnemyLoot(player.level, enemy);
+                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                        if (gameState.mapMode === 'dungeon') {
+                            chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
+                        }
+                    }
+                }
+            }
+            break; // Stop looping, we hit our target
+        }
+    }
+
+    if (!hit) {
+        logMessage("Your magic bolt flies harmlessly into the distance.");
+    }
+
+    playerRef.update({ mana: player.mana });
+    triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+    endPlayerTurn(); // Always end turn, even if you miss
+    render(); // Re-render to show enemy health change
+}
+
 function initSkillbookListeners() {
     closeSkillButton.addEventListener('click', () => {
         skillModal.classList.add('hidden');
@@ -2170,7 +2266,6 @@ function openSpellbook() {
     spellList.innerHTML = ''; // Clear the list
     const player = gameState.player;
 
-    // --- Spell 1: Lesser Heal ---
     let healSpellHtml = `
         <li class="spell-item" data-spell="heal">
             <div>
@@ -2180,7 +2275,6 @@ function openSpellbook() {
             <span class="font-bold">5 Mana</span>
         </li>`;
 
-    // --- Spell 2: Clarity ---
     let claritySpellHtml = `
         <li class="spell-item" data-spell="clarity">
             <div>
@@ -2190,11 +2284,19 @@ function openSpellbook() {
             <span class="font-bold">8 Psyche</span>
         </li>`;
 
-    // In the future, you could add logic like:
-    // if (player.level >= 2) spellList.innerHTML += healSpellHtml;
-    // For now, everyone knows both.
+        let boltSpellHtml = `
+            <li class="spell-item" data-spell="bolt">
+                <div>
+                    <span class="spell-item-name">Magic Bolt</span>
+                    <span class="spell-item-details">Hurls a bolt of energy (Dmg: 5 + Wits)</span>
+                </div>
+                <span class="font-bold">8 Mana</span>
+            </li>`;
+
     spellList.innerHTML += healSpellHtml;
     spellList.innerHTML += claritySpellHtml;
+
+    spellList.innerHTML += boltSpellHtml;
 
     spellModal.classList.remove('hidden');
 }
@@ -2272,6 +2374,20 @@ function castSpell(spellName) {
             });
             spellCast = true;
             break;
+
+            case 'bolt':
+        const boltCost = 8;
+        if (player.mana < boltCost) {
+            logMessage("You don't have enough mana to cast that.");
+            return; // Not a full turn, don't close modal
+        }
+
+        // Don't cast yet, just enter aiming mode
+        gameState.isAiming = true;
+        gameState.abilityToAim = 'bolt';
+        spellModal.classList.add('hidden');
+        logMessage("Magic Bolt: Press an arrow key or WASD to fire. (Esc) to cancel.");
+        return; // We don't end the turn until they fire
     }
 
     if (spellCast) {
@@ -3019,6 +3135,14 @@ document.addEventListener('keydown', (event) => {
             return;
         }
 
+        if (gameState.isAiming) {
+            gameState.isAiming = false;
+            gameState.abilityToAim = null;
+            logMessage("Aiming canceled.");
+            event.preventDefault();
+            return;
+        }
+
         if (gameState.inventoryMode) {
             logMessage("Exited inventory mode.");
             gameState.inventoryMode = false;
@@ -3034,33 +3158,38 @@ document.addEventListener('keydown', (event) => {
         return; // Stop further processing
     }
 
-    if (gameState.isAimingSkill) {
-            event.preventDefault();
-            let dirX = 0,
-                dirY = 0;
+    if (gameState.isAiming) {
+    event.preventDefault();
+    let dirX = 0,
+        dirY = 0;
 
-            if (event.key === 'ArrowUp' || event.key === 'w' || event.key === 'W') dirY = -1;
-            else if (event.key === 'ArrowDown' || event.key === 's' || event.key === 'S') dirY = 1;
-            else if (event.key === 'ArrowLeft' || event.key === 'a' || event.key === 'A') dirX = -1;
-            else if (event.key === 'ArrowRight' || event.key === 'd' || event.key === 'D') dirX = 1;
+    if (event.key === 'ArrowUp' || event.key === 'w' || event.key === 'W') dirY = -1;
+    else if (event.key === 'ArrowDown' || event.key === 's' || event.key === 'S') dirY = 1;
+    else if (event.key === 'ArrowLeft' || event.key === 'a' || event.key === 'A') dirX = -1;
+    else if (event.key === 'ArrowRight' || event.key === 'd' || event.key === 'D') dirX = 1;
 
-            if (dirX !== 0 || dirY !== 0) {
-                if (gameState.skillToAim === 'lunge') {
-                    executeLunge(dirX, dirY); // This is async
-                }
-                gameState.isAimingSkill = false;
-                gameState.skillToAim = null;
-            } else if (event.key === 'Escape') {
-                gameState.isAimingSkill = false;
-                gameState.skillToAim = null;
-                logMessage("Lunge canceled.");
-            } else {
-                logMessage("Invalid direction. Use arrow keys or WASD. (Esc) to cancel.");
-            }
-            return; // Stop all other key processing
+    if (dirX !== 0 || dirY !== 0) {
+        // --- NEW: Check which ability to use ---
+        if (gameState.abilityToAim === 'lunge') {
+            executeLunge(dirX, dirY);
+        } else if (gameState.abilityToAim === 'bolt') {
+            executeMagicBolt(dirX, dirY);
         }
+        // --- END NEW ---
 
-    // --- NEW: Handle Inventory Mode ---
+        gameState.isAiming = false;
+        gameState.abilityToAim = null;
+
+    // This 'Escape' check is now handled by the main 'Escape' block above
+    // } else if (event.key === 'Escape') { ... }
+
+    } else {
+        logMessage("Invalid direction. Use arrow keys or WASD. (Esc) to cancel.");
+    }
+    return; // Stop all other key processing
+}
+
+    // --- Handle Inventory Mode ---
     if (gameState.inventoryMode) {
         event.preventDefault(); // Prevent movement keys while in this mode
 
