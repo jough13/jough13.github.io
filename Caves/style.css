@@ -1,688 +1,453 @@
 :root {
-    /* MODIFIED: Brighter, more saturated light-theme colors */
-    --bg-page: #f9fafb; 
-    --bg-container: #ffffff; 
-    --bg-panel: #f3f4f6;
-    --text-default: #111827; 
-    --text-muted: #4b5563; 
-    --text-highlight: #4f46e5;
-    --border-color: #d1d5db; 
-    --canvas-bg: #ffffff; 
-    --canvas-border: #9ca3af;
-    --player-color: #1e40af; /* MODIFIED: Darker Blue */
-    --terrain-color: #374151;
+	/* MODIFIED: Brighter, more saturated light-theme colors */
+	--bg-page: #f9fafb;
+	--bg-container: #ffffff;
+	--bg-panel: #f3f4f6;
+	--text-default: #111827;
+	--text-muted: #4b5563;
+	--text-highlight: #4f46e5;
+	--border-color: #d1d5db;
+	--canvas-bg: #ffffff;
+	--canvas-border: #9ca3af;
+	--player-color: #1e40af;
+	/* MODIFIED: Darker Blue */
+	--terrain-color: #374151;
 }
+
 [data-theme="dark"] {
-    /* MODIFIED: Brighter, more saturated dark-theme colors */
-    --bg-page: #111827; 
-    --bg-container: #1f2937; 
-    --bg-panel: #374151;
-    --text-default: #f9fafb; 
-    --text-muted: #9ca3af; 
-    --text-highlight: #facc15;
-    --border-color: #4b5563; 
-    --canvas-bg: #000000; 
-    --canvas-border: #9ca3af;
-    --player-color: #3b82f6; /* MODIFIED: Darker, richer blue for dark mode */
-    --terrain-color: #d1d5db;
+	/* MODIFIED: Brighter, more saturated dark-theme colors */
+	--bg-page: #111827;
+	--bg-container: #1f2937;
+	--bg-panel: #374151;
+	--text-default: #f9fafb;
+	--text-muted: #9ca3af;
+	--text-highlight: #facc15;
+	--border-color: #4b5563;
+	--canvas-bg: #000000;
+	--canvas-border: #9ca3af;
+	--player-color: #3b82f6;
+	/* MODIFIED: Darker, richer blue for dark mode */
+	--terrain-color: #d1d5db;
 }
 
-body { 
-    background-color: var(--bg-page); 
-    color: var(--text-default); 
-    transition: background-color 0.3s, color 0.3s; 
-    font-weight: 500;
+body {
+	background-color: var(--bg-page);
+	color: var(--text-default);
+	transition: background-color 0.3s, color 0.3s;
+	font-weight: 500;
 }
 
-.game-container { background-color: var(--bg-container); border-color: var(--border-color); }
-.panel { background-color: var(--bg-panel); border-color: var(--border-color); }
-.highlight-text { color: var(--text-highlight); }
-.muted-text { color: var(--text-muted); }
-canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-border); box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
-
-#messageLog { 
-    /* This can be empty as layout is handled by Tailwind */
+.game-container {
+	background-color: var(--bg-container);
+	border-color: var(--border-color);
 }
 
-This prevents the inventory from collapsing before JS loads */
-#inventoryPanel {
-    min-height: 8rem;
+.panel {
+	background-color: var(--bg-panel);
+	border-color: var(--border-color);
+}
+
+.highlight-text {
+	color: var(--text-highlight);
+}
+
+.muted-text {
+	color: var(--text-muted);
+}
+
+canvas {
+	background-color: var(--canvas-bg);
+	border: 1px solid var(--canvas-border);
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+#messageLog {
+	/* This can be empty as layout is handled by Tailwind */
+}
+
+This prevents the inventory from collapsing before JS loads */ #inventoryPanel {
+	min-height: 8rem;
 }
 
 .themed-container {
-    background-color: var(--bg-container);
-    border-color: var(--border-color);
+	background-color: var(--bg-container);
+	border-color: var(--border-color);
 }
 
 .themed-input {
-    background-color: var(--bg-panel);
-    border-color: var(--border-color);
-    color: var(--text-default);
+	background-color: var(--bg-panel);
+	border-color: var(--border-color);
+	color: var(--text-default);
 }
 
 #chatMessages {
-    max-height: 200px;
-    overflow-y: scroll;
-    display: flex;
-    flex-direction: column-reverse;
-    font-size: 0.75rem;
+	max-height: 200px;
+	overflow-y: scroll;
+	display: flex;
+	flex-direction: column-reverse;
+	font-size: 0.75rem;
 }
 
 #chatInput:focus {
-    outline: 2px solid var(--text-highlight);
-    border-color: transparent;
+	outline: 2px solid var(--text-highlight);
+	border-color: transparent;
 }
 
 #inventoryList {
-    flex-wrap: wrap;
+	flex-wrap: wrap;
 }
 
 .inventory-slot {
-    width: 50px;
-    height: 50px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    border: 1px solid var(--border-color);
-    background-color: var(--bg-page);
-    border-radius: 8px; /* Softer corners */
-    transition: all 0.2s ease-in-out; /* Smooth transition for hover */
+	width: 50px;
+	height: 50px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+	border: 1px solid var(--border-color);
+	background-color: var(--bg-page);
+	border-radius: 8px;
+	/* Softer corners */
+	transition: all 0.2s ease-in-out;
+	/* Smooth transition for hover */
 }
 
 .inventory-slot:hover {
-    transform: translateY(-2px); /* Lifts the slot on hover */
-    border-color: var(--text-highlight); /* Highlights on hover */
+	transform: translateY(-2px);
+	/* Lifts the slot on hover */
+	border-color: var(--text-highlight);
+	/* Highlights on hover */
 }
 
 .inventory-slot .item-char {
-    font-size: 1.5rem;
-    font-weight: bold;
+	font-size: 1.5rem;
+	font-weight: bold;
 }
 
 .inventory-slot .item-quantity {
-    position: absolute;
-    bottom: 2px;
-    right: 4px;
-    font-size: 0.7rem;
-    font-weight: bold;
+	position: absolute;
+	bottom: 2px;
+	right: 4px;
+	font-size: 0.7rem;
+	font-weight: bold;
 }
 
 .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.6);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100;
 }
 
 .modal-content {
-    max-width: 500px;
-    width: 90%;
+	max-width: 500px;
+	width: 90%;
 }
 
 kbd {
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 0.8rem;
+	background-color: var(--bg-panel);
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	padding: 2px 6px;
+	font-size: 0.8rem;
 }
 
 @keyframes flash-green {
-    from { background-color: rgba(74, 222, 128, 0.5); }
-    to { background-color: transparent; }
+	from {
+		background-color: rgba(74, 222, 128, 0.5);
+	}
+
+	to {
+		background-color: transparent;
+	}
 }
 
 @keyframes flash-red {
-    from { background-color: rgba(239, 68, 68, 0.5); }
-    to { background-color: transparent; }
+	from {
+		background-color: rgba(239, 68, 68, 0.5);
+	}
+
+	to {
+		background-color: transparent;
+	}
 }
 
 .stat-flash-green {
-    animation: flash-green 0.5s ease-out;
+	animation: flash-green 0.5s ease-out;
 }
 
 .stat-flash-red {
-    animation: flash-red 0.5s ease-out;
+	animation: flash-red 0.5s ease-out;
 }
 
 @keyframes pulse-blue {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-    50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+	0% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+	}
+
+	50% {
+		transform: scale(1.05);
+		box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+	}
+
+	100% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+	}
 }
+
 .stat-pulse-blue {
-    animation: pulse-blue 0.6s ease-out;
+	animation: pulse-blue 0.6s ease-out;
 }
 
 @keyframes pulse-purple {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7); }
-    50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+	0% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7);
+	}
+
+	50% {
+		transform: scale(1.05);
+		box-shadow: 0 0 0 10px rgba(139, 92, 246, 0);
+	}
+
+	100% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+	}
 }
+
 .stat-pulse-purple {
-    animation: pulse-purple 0.6s ease-out;
+	animation: pulse-purple 0.6s ease-out;
 }
 
 @keyframes pulse-green {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
-    50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+	0% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+	}
+
+	50% {
+		transform: scale(1.05);
+		box-shadow: 0 0 0 10px rgba(74, 222, 128, 0);
+	}
+
+	100% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(74, 222, 128, 0);
+	}
 }
+
 .stat-pulse-green {
-    animation: pulse-green 0.6s ease-out;
+	animation: pulse-green 0.6s ease-out;
 }
 
 @keyframes pulse-yellow {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } /* Using a yellow color for stamina */
-    50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
+	0% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7);
+	}
+
+	/* Using a yellow color for stamina */
+	50% {
+		transform: scale(1.05);
+		box-shadow: 0 0 0 10px rgba(234, 179, 8, 0);
+	}
+
+	100% {
+		transform: scale(1);
+		box-shadow: 0 0 0 0 rgba(234, 179, 8, 0);
+	}
 }
+
 .stat-pulse-yellow {
-    animation: pulse-yellow 0.6s ease-out;
+	animation: pulse-yellow 0.6s ease-out;
 }
 
 .stat-add-btn {
-    display: none; /* Hidden by default */
-    font-weight: bold;
-    color: var(--text-highlight);
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 50%;
-    width: 1.25rem;
-    height: 1.25rem;
-    line-height: 1.25rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
+	display: none;
+	/* Hidden by default */
+	font-weight: bold;
+	color: var(--text-highlight);
+	background-color: var(--bg-panel);
+	border: 1px solid var(--border-color);
+	border-radius: 50%;
+	width: 1.25rem;
+	height: 1.25rem;
+	line-height: 1.25rem;
+	text-align: center;
+	cursor: pointer;
+	transition: all 0.2s;
 }
 
 .stat-add-btn:hover {
-    transform: scale(1.1);
-    background-color: var(--bg-page);
+	transform: scale(1.1);
+	background-color: var(--bg-page);
 }
 
 /* This class will be added by JS */
 .show-stat-buttons .stat-add-btn {
-    display: block;
+	display: block;
 }
 
 .stat-bar-container {
-    width: 100%;
-    height: 8px; /* Sets the thickness of the bar */
-    background-color: var(--bg-page); /* The "empty" part of the bar */
-    border-radius: 4px;
-    overflow: hidden; /* Ensures the bar stays inside the rounded corners */
-    border: 1px solid var(--border-color);
+	width: 100%;
+	height: 8px;
+	/* Sets the thickness of the bar */
+	background-color: var(--bg-page);
+	/* The "empty" part of the bar */
+	border-radius: 4px;
+	overflow: hidden;
+	/* Ensures the bar stays inside the rounded corners */
+	border: 1px solid var(--border-color);
 }
 
 .stat-bar {
-    height: 100%;
-    width: 100%; /* Default to full */
-    transition: width 0.3s ease-out; /* Smooth animation when value changes */
+	height: 100%;
+	width: 100%;
+	/* Default to full */
+	transition: width 0.3s ease-out;
+	/* Smooth animation when value changes */
 }
 
 /* --- Bar Specific Colors --- */
 
 .bar-health {
-    background-color: #22c55e; /* Green */
+	background-color: #22c55e;
+	/* Green */
 }
+
 /* We'll add dynamic colors for health later in JS */
 
 .bar-mana {
-    background-color: #3b82f6; /* Blue */
+	background-color: #3b82f6;
+	/* Blue */
 }
 
 .bar-stamina {
-    background-color: #16a34a; /* Darker Green */
+	background-color: #16a34a;
+	/* Darker Green */
 }
 
 .bar-psyche {
-    background-color: #6366f1; /* Indigo */
+	background-color: #6366f1;
+	/* Indigo */
 }
 
 .bar-xp {
-    background-color: #facc15; /* Your theme's yellow highlight color */
+	background-color: #facc15;
+	/* Your theme's yellow highlight color */
 }
 
 /* --- Shop Modal Styles --- */
 
 .shop-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px;
-    background-color: var(--bg-page);
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 8px;
+	background-color: var(--bg-page);
+	border-radius: 6px;
+	border: 1px solid var(--border-color);
 }
 
 .shop-item-name {
-    font-weight: bold;
-    font-size: 1rem;
+	font-weight: bold;
+	font-size: 1rem;
 }
 
 .shop-item-details {
-    font-size: 0.8rem;
-    color: var(--text-muted);
+	font-size: 0.8rem;
+	color: var(--text-muted);
 }
 
 .shop-item-actions button {
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 0.8rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
+	background-color: var(--bg-panel);
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	padding: 4px 8px;
+	font-size: 0.8rem;
+	font-weight: bold;
+	cursor: pointer;
+	transition: all 0.2s;
 }
 
 .shop-item-actions button:hover {
-    transform: scale(1.05);
-    border-color: var(--text-highlight);
-    color: var(--text-highlight);
+	transform: scale(1.05);
+	border-color: var(--text-highlight);
+	color: var(--text-highlight);
 }
 
 .shop-item-actions button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-    border-color: var(--border-color);
-    color: var(--text-muted);
+	opacity: 0.5;
+	cursor: not-allowed;
+	transform: none;
+	border-color: var(--border-color);
+	color: var(--text-muted);
 }
 
 /* --- Spellbook Modal Styles --- */
 .spell-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background-color: var(--bg-page);
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: all 0.2s;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12px;
+	background-color: var(--bg-page);
+	border-radius: 6px;
+	border: 1px solid var(--border-color);
+	cursor: pointer;
+	transition: all 0.2s;
 }
 
 .spell-item:hover {
-    transform: scale(1.02);
-    border-color: var(--text-highlight);
-    color: var(--text-highlight);
+	transform: scale(1.02);
+	border-color: var(--text-highlight);
+	color: var(--text-highlight);
 }
 
 .spell-item-name {
-    font-weight: bold;
-    font-size: 1.1rem;
+	font-weight: bold;
+	font-size: 1.1rem;
 }
 
 .spell-item-details {
-    font-size: 0.9rem;
-    color: var(--text-muted);
-}
-
-:root {
-    /* MODIFIED: Brighter, more saturated light-theme colors */
-    --bg-page: #f9fafb; 
-    --bg-container: #ffffff; 
-    --bg-panel: #f3f4f6;
-    --text-default: #111827; 
-    --text-muted: #4b5563; 
-    --text-highlight: #4f46e5;
-    --border-color: #d1d5db; 
-    --canvas-bg: #ffffff; 
-    --canvas-border: #9ca3af;
-    --player-color: #1e40af; /* MODIFIED: Darker Blue */
-    --terrain-color: #374151;
-}
-[data-theme="dark"] {
-    /* MODIFIED: Brighter, more saturated dark-theme colors */
-    --bg-page: #111827; 
-    --bg-container: #1f2937; 
-    --bg-panel: #374151;
-    --text-default: #f9fafb; 
-    --text-muted: #9ca3af; 
-    --text-highlight: #facc15;
-    --border-color: #4b5563; 
-    --canvas-bg: #000000; 
-    --canvas-border: #9ca3af;
-    --player-color: #3b82f6; /* MODIFIED: Darker, richer blue for dark mode */
-    --terrain-color: #d1d5db;
-}
-
-body { 
-    background-color: var(--bg-page); 
-    color: var(--text-default); 
-    transition: background-color 0.3s, color 0.3s; 
-    font-weight: 500;
-}
-
-.game-container { background-color: var(--bg-container); border-color: var(--border-color); }
-.panel { background-color: var(--bg-panel); border-color: var(--border-color); }
-.highlight-text { color: var(--text-highlight); }
-.muted-text { color: var(--text-muted); }
-canvas { background-color: var(--canvas-bg); border: 1px solid var(--canvas-border); box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
-
-#messageLog { 
-    /* This can be empty as layout is handled by Tailwind */
-}
-
-This prevents the inventory from collapsing before JS loads */
-#inventoryPanel {
-    min-height: 8rem;
-}
-
-.themed-container {
-    background-color: var(--bg-container);
-    border-color: var(--border-color);
-}
-
-.themed-input {
-    background-color: var(--bg-panel);
-    border-color: var(--border-color);
-    color: var(--text-default);
-}
-
-#chatMessages {
-    max-height: 200px;
-    overflow-y: scroll;
-    display: flex;
-    flex-direction: column-reverse;
-    font-size: 0.75rem;
-}
-
-#chatInput:focus {
-    outline: 2px solid var(--text-highlight);
-    border-color: transparent;
-}
-
-#inventoryList {
-    flex-wrap: wrap;
-}
-
-.inventory-slot {
-    width: 50px;
-    height: 50px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    border: 1px solid var(--border-color);
-    background-color: var(--bg-page);
-    border-radius: 8px; /* Softer corners */
-    transition: all 0.2s ease-in-out; /* Smooth transition for hover */
-}
-
-.inventory-slot:hover {
-    transform: translateY(-2px); /* Lifts the slot on hover */
-    border-color: var(--text-highlight); /* Highlights on hover */
-}
-
-.inventory-slot .item-char {
-    font-size: 1.5rem;
-    font-weight: bold;
-}
-
-.inventory-slot .item-quantity {
-    position: absolute;
-    bottom: 2px;
-    right: 4px;
-    font-size: 0.7rem;
-    font-weight: bold;
-}
-
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-}
-
-.modal-content {
-    max-width: 500px;
-    width: 90%;
-}
-
-kbd {
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 0.8rem;
-}
-
-@keyframes flash-green {
-    from { background-color: rgba(74, 222, 128, 0.5); }
-    to { background-color: transparent; }
-}
-
-@keyframes flash-red {
-    from { background-color: rgba(239, 68, 68, 0.5); }
-    to { background-color: transparent; }
-}
-
-.stat-flash-green {
-    animation: flash-green 0.5s ease-out;
-}
-
-.stat-flash-red {
-    animation: flash-red 0.5s ease-out;
-}
-
-@keyframes pulse-blue {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-    50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-}
-.stat-pulse-blue {
-    animation: pulse-blue 0.6s ease-out;
-}
-
-@keyframes pulse-purple {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7); }
-    50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
-}
-.stat-pulse-purple {
-    animation: pulse-purple 0.6s ease-out;
-}
-
-@keyframes pulse-green {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
-    50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
-}
-.stat-pulse-green {
-    animation: pulse-green 0.6s ease-out;
-}
-
-@keyframes pulse-yellow {
-    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7); } /* Using a yellow color for stamina */
-    50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(234, 179, 8, 0); }
-    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); }
-}
-.stat-pulse-yellow {
-    animation: pulse-yellow 0.6s ease-out;
-}
-
-.stat-add-btn {
-    display: none; /* Hidden by default */
-    font-weight: bold;
-    color: var(--text-highlight);
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 50%;
-    width: 1.25rem;
-    height: 1.25rem;
-    line-height: 1.25rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.stat-add-btn:hover {
-    transform: scale(1.1);
-    background-color: var(--bg-page);
-}
-
-/* This class will be added by JS */
-.show-stat-buttons .stat-add-btn {
-    display: block;
-}
-
-.stat-bar-container {
-    width: 100%;
-    height: 8px; /* Sets the thickness of the bar */
-    background-color: var(--bg-page); /* The "empty" part of the bar */
-    border-radius: 4px;
-    overflow: hidden; /* Ensures the bar stays inside the rounded corners */
-    border: 1px solid var(--border-color);
-}
-
-.stat-bar {
-    height: 100%;
-    width: 100%; /* Default to full */
-    transition: width 0.3s ease-out; /* Smooth animation when value changes */
-}
-
-/* --- Bar Specific Colors --- */
-
-.bar-health {
-    background-color: #22c55e; /* Green */
-}
-/* We'll add dynamic colors for health later in JS */
-
-.bar-mana {
-    background-color: #3b82f6; /* Blue */
-}
-
-.bar-stamina {
-    background-color: #16a34a; /* Darker Green */
-}
-
-.bar-psyche {
-    background-color: #6366f1; /* Indigo */
-}
-
-.bar-xp {
-    background-color: #facc15; /* Your theme's yellow highlight color */
-}
-
-/* --- Shop Modal Styles --- */
-
-.shop-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px;
-    background-color: var(--bg-page);
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-}
-
-.shop-item-name {
-    font-weight: bold;
-    font-size: 1rem;
-}
-
-.shop-item-details {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-}
-
-.shop-item-actions button {
-    background-color: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 4px 8px;
-    font-size: 0.8rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.shop-item-actions button:hover {
-    transform: scale(1.05);
-    border-color: var(--text-highlight);
-    color: var(--text-highlight);
-}
-
-.shop-item-actions button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-    border-color: var(--border-color);
-    color: var(--text-muted);
-}
-
-/* --- Spellbook Modal Styles --- */
-.spell-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background-color: var(--bg-page);
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.spell-item:hover {
-    transform: scale(1.02);
-    border-color: var(--text-highlight);
-    color: var(--text-highlight);
-}
-
-.spell-item-name {
-    font-weight: bold;
-    font-size: 1.1rem;
-}
-
-.spell-item-details {
-    font-size: 0.9rem;
-    color: var(--text-muted);
+	font-size: 0.9rem;
+	color: var(--text-muted);
 }
 
 /* --- Skillbook Modal Styles --- */
 .skill-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background-color: var(--bg-page);
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: all 0.2s;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12px;
+	background-color: var(--bg-page);
+	border-radius: 6px;
+	border: 1px solid var(--border-color);
+	cursor: pointer;
+	transition: all 0.2s;
 }
 
 .skill-item:hover {
-    transform: scale(1.02);
-    border-color: var(--text-highlight);
-    color: var(--text-highlight);
+	transform: scale(1.02);
+	border-color: var(--text-highlight);
+	color: var(--text-highlight);
 }
 
 .skill-item-name {
-    font-weight: bold;
-    font-size: 1.1rem;
+	font-weight: bold;
+	font-size: 1.1rem;
 }
 
 .skill-item-details {
-    font-size: 0.9rem;
-    color: var(--text-muted);
+	font-size: 0.9rem;
+	color: var(--text-muted);
 }
