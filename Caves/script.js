@@ -626,7 +626,10 @@ function createDefaultPlayerState() {
         xp: 0,
         xpToNextLevel: 100,
         statPoints: 0,
-        foundLore: [] // Used to track lore/journals for XP
+        foundLore: [], // Used to track lore/journals for XP
+
+        defenseBonus: 0,
+        defenseBonusTurns: 0
     };
 }
 
@@ -2053,7 +2056,16 @@ function openSkillbook() {
     skillList.innerHTML = ''; // Clear the list
     const player = gameState.player;
 
-    // --- Skill 1: Lunge ---
+let braceSkillHtml = `
+    <li class="skill-item" data-skill="brace">
+        <div>
+            <span class="skill-item-name">Brace</span>
+            <span class="spell-item-details">Gain +2 Defense for 3 turns</span>
+        </div>
+        <span class="font-bold">6 Stamina</span>
+    </li>`;
+skillList.innerHTML += braceSkillHtml;
+   
     let lungeSkillHtml = `
         <li class="skill-item" data-skill="lunge">
             <div>
@@ -2073,7 +2085,47 @@ function selectSkill(skillName) {
         gameState.abilityToAim = 'lunge';
         skillModal.classList.add('hidden');
         logMessage("Lunge: Press an arrow key or WASD to attack. (Esc) to cancel.");
+
+        } else if (skillName === 'brace') {
+        castBrace(); // Call the new function immediately
+    
     }
+}
+
+function castBrace() {
+    const player = gameState.player;
+    const BRACE_COST = 6;
+    const BRACE_DEFENSE = 2;
+    const BRACE_DURATION = 3; // 3 of the player's turns
+
+    if (player.stamina < BRACE_COST) {
+        logMessage("You don't have enough stamina to brace!");
+        return; // Don't close modal
+    }
+
+    if (player.defenseBonusTurns > 0) {
+        logMessage("You are already bracing!");
+        return; // Don't close modal
+    }
+
+    // --- Success ---
+    player.stamina -= BRACE_COST;
+    player.defenseBonus = BRACE_DEFENSE;
+    player.defenseBonusTurns = BRACE_DURATION; // Will last for 3 player turns
+
+    logMessage(`You brace for impact, gaining +${BRACE_DEFENSE} Defense!`);
+
+    // Update the database
+    playerRef.update({ 
+        stamina: player.stamina,
+        defenseBonus: player.defenseBonus,
+        defenseBonusTurns: player.defenseBonusTurns
+    });
+
+    triggerStatFlash(statDisplays.stamina, false); // Flash stamina
+    renderEquipment(); // Update UI to show the buff
+    skillModal.classList.add('hidden'); // Close modal
+    endPlayerTurn(); // Skill costs a turn
 }
 
 async function executeLunge(dirX, dirY) {
@@ -2460,7 +2512,9 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
             // --- ENEMY SURVIVES AND ATTACKS ---
             enemyAttackedBack = true;
             const enemy = finalEnemyState;
-            const playerDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
+            const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
+            const buffDefense = player.defenseBonus || 0;
+            const playerDefense = armorDefense + buffDefense;
             enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
             player.health -= enemyDamageTaken;
         }
@@ -2527,13 +2581,23 @@ const renderEquipment = () => {
     } else {
         equippedWeaponDisplay.textContent = 'Weapon: None';
     }
-    const armor = gameState.player.equipment.armor;
-    if (armor) {
-        const defense = armor.defense || 0;
-        equippedArmorDisplay.textContent = `Armor: ${armor.name} (+${defense} Def)`;
-    } else {
-        equippedArmorDisplay.textContent = 'Armor: None';
-    }
+// --- ARMOR & DEFENSE ---
+const armor = player.equipment.armor || { name: 'Simple Tunic', defense: 0 };
+
+        // Calculate total defense
+        const baseDefense = 0; // You can change this later (e.g., add from Dexterity)
+        const armorDefense = armor.defense || 0;
+        const buffDefense = player.defenseBonus || 0; // <-- GET BUFF
+        const totalDefense = baseDefense + armorDefense + buffDefense; // <-- ADD BUFF
+
+        // Update the display
+        let armorString = `Armor: ${armor.name} (+${armorDefense} Def)`;
+        if (buffDefense > 0) {
+            // Add the buff text, e.g. [Braced +2] (3t)
+            armorString += ` <span class="text-green-500">[Braced +${buffDefense} (${player.defenseBonusTurns}t)]</span>`;
+        }
+        // Use innerHTML to render the new span
+        equippedArmorDisplay.innerHTML = `${armorString} (Total: ${totalDefense} Def)`;
 };
 
 const render = () => {
@@ -3022,6 +3086,27 @@ async function runSharedAiTurns() {
 function endPlayerTurn() {
     gameState.playerTurnCount++; // Increment the player's turn
 
+    // Tick down buff/debuff durations
+    if (gameState.player.defenseBonusTurns > 0) {
+        gameState.player.defenseBonusTurns--; // Tick down the turn
+
+        if (gameState.player.defenseBonusTurns === 0) {
+            // Buff expired
+            gameState.player.defenseBonus = 0;
+            logMessage("You are no longer bracing.");
+            playerRef.update({
+                defenseBonus: 0,
+                defenseBonusTurns: 0
+            });
+        } else {
+            // Save the new turn count
+            playerRef.update({
+                defenseBonusTurns: gameState.player.defenseBonusTurns
+            });
+        }
+        renderEquipment(); // Update UI (to show new turn count or remove buff)
+    }
+
     // --- MODIFIED BLOCK ---
     if (gameState.playerTurnCount % 2 === 0) {
         // Call our new async wrapper function.
@@ -3493,7 +3578,9 @@ document.addEventListener('keydown', (event) => {
                         }
                     } else {
                         // --- ENEMY SURVIVES AND ATTACKS ---
-                        const playerDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
+                        const armorDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
+                        const buffDefense = gameState.player.defenseBonus || 0;
+                        const playerDefense = armorDefense + buffDefense;
                         const enemyDamage = Math.max(1, enemy.attack - playerDefense);
                         gameState.player.health -= enemyDamage;
                         triggerStatFlash(statDisplays.health, false);
