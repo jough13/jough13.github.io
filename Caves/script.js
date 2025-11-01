@@ -3018,6 +3018,7 @@ document.addEventListener('keydown', (event) => {
             event.preventDefault();
             return;
         }
+        
         if (gameState.isAimingSkill) {
             event.preventDefault();
             let dirX = 0,
@@ -3043,6 +3044,7 @@ document.addEventListener('keydown', (event) => {
             }
             return; // Stop all other key processing
         }
+        
         if (gameState.inventoryMode) {
             logMessage("Exited inventory mode.");
             gameState.inventoryMode = false;
@@ -3057,7 +3059,6 @@ document.addEventListener('keydown', (event) => {
         handleItemDrop(event);
         return; // Stop further processing
     }
-
 
     // --- NEW: Handle Inventory Mode ---
     if (gameState.inventoryMode) {
