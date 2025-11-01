@@ -3018,8 +3018,23 @@ document.addEventListener('keydown', (event) => {
             event.preventDefault();
             return;
         }
-        
-        if (gameState.isAimingSkill) {
+
+        if (gameState.inventoryMode) {
+            logMessage("Exited inventory mode.");
+            gameState.inventoryMode = false;
+            event.preventDefault();
+            return;
+        }
+        // --- END NEW ---
+    }
+
+    // Handle Drop Mode
+    if (gameState.isDroppingItem) {
+        handleItemDrop(event);
+        return; // Stop further processing
+    }
+
+    if (gameState.isAimingSkill) {
             event.preventDefault();
             let dirX = 0,
                 dirY = 0;
@@ -3044,21 +3059,6 @@ document.addEventListener('keydown', (event) => {
             }
             return; // Stop all other key processing
         }
-        
-        if (gameState.inventoryMode) {
-            logMessage("Exited inventory mode.");
-            gameState.inventoryMode = false;
-            event.preventDefault();
-            return;
-        }
-        // --- END NEW ---
-    }
-
-    // Handle Drop Mode
-    if (gameState.isDroppingItem) {
-        handleItemDrop(event);
-        return; // Stop further processing
-    }
 
     // --- NEW: Handle Inventory Mode ---
     if (gameState.inventoryMode) {
@@ -3074,7 +3074,7 @@ document.addEventListener('keydown', (event) => {
 
             if (!itemToUse) {
                 logMessage(`No item in slot ${keyNum}.`);
-                gameState.inventoryMode = false;
+                closeInventoryModal();
                 return;
             }
 
