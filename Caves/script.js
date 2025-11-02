@@ -1626,8 +1626,20 @@ function handleStatAllocation(event) {
             derivedUpdate.psyche = gameState.player.psyche;
             logMessage(`Your Willpower increases! Max Psyche is now ${gameState.player.maxPsyche}.`);
 
+        } else if (statToIncrease === 'dexterity') {
+            logMessage(`Your Dexterity increases! You feel quicker and harder to hit.`);
+        
+        } else if (statToIncrease === 'luck') {
+            logMessage(`Your Luck increases! You feel a bit luckier.`);
+            
+        } else if (statToIncrease === 'perception') {
+            logMessage(`Your Perception increases! You feel more aware of your surroundings.`);
+
+        } else if (statToIncrease === 'intuition') {
+            logMessage(`Your Intuition increases! You feel more in tune with your surroundings.`);
+            
         } else {
-            // This handles stats that don't have derived effects yet (like Strength, Luck, etc.)
+            // This handles stats that don't have derived effects yet
             logMessage(`You increased your ${statToIncrease}!`);
         }
 
@@ -1756,20 +1768,25 @@ function handleItemDrop(event) {
 /**
  * Generates loot when an enemy is defeated.
  * Drops a mix of Junk, Gold, or Level-Scaled Loot.
- * @param {number} playerLevel - The player's current level.
+ * @param {object} player - The player's full state object.
  * @param {object} enemy - The enemy data (from ENEMY_DATA or RTDB).
  * @returns {string} The tile character of the dropped item.
  */
-function generateEnemyLoot(playerLevel, enemy) {
+
+function generateEnemyLoot(player, enemy) { // <-- UPDATED SIGNATURE
     // --- DEFINE DROP CHANCES ---
-    const JUNK_DROP_CHANCE = 0.25; // 25% chance for specific junk
+    // --- NEW LUCK LOGIC ---
+    // Base 25% junk chance. Each point of Luck reduces this by 0.1%
+    // Capped at a minimum of 5% junk chance.
+    const JUNK_DROP_CHANCE = Math.max(0.05, 0.25 - (player.luck * 0.001));
     const GOLD_DROP_CHANCE = 0.50; // 50% chance for gold
     // (This leaves a 25% chance for level-scaled loot)
 
     const roll = Math.random(); // A roll from 0.0 to 1.0
 
-    // --- 1. Check for Junk Drop (First 25%) ---
-    if (enemy.loot && roll < JUNK_DROP_CHANCE) { // roll < 0.25
+    // --- 1. Check for Junk Drop (First % based on Luck) ---
+    if (enemy.loot && roll < JUNK_DROP_CHANCE) { // roll < (e.g., 0.25)
+
         // Use the enemy's specific loot item (e.g., 'p' for Wolf Pelt)
         // If one isn't defined, fall back to Gold.
         return enemy.loot || '$';
@@ -1793,14 +1810,14 @@ function generateEnemyLoot(playerLevel, enemy) {
 
     // --- Tier 2 Loot (Best) ---
     // (This logic is unchanged)
-    const tier2Chance = Math.max(0, (playerLevel - 1) * 0.08);
+    const tier2Chance = Math.max(0, (player.level - 1) * 0.08);
     if (scaledRoll < tier2Chance) {
         return tier2Loot[Math.floor(Math.random() * tier2Loot.length)];
     }
 
     // --- Tier 1 Loot (Medium) ---
     // (This logic is unchanged)
-    const tier1Chance = Math.max(0.1, 0.30 - (playerLevel * 0.03));
+    const tier1Chance = Math.max(0.1, 0.30 - (player.level * 0.03));
     if (scaledRoll < tier2Chance + tier1Chance) {
         return tier1Loot[Math.floor(Math.random() * tier1Loot.length)];
     }
@@ -1853,8 +1870,18 @@ function handleBuyItem(itemName) {
         return;
     }
 
+    // --- NEW CHARISMA LOGIC ---
+    const basePrice = shopItem.price;
+    // 0.5% discount per point of Charisma
+    const discountPercent = player.charisma * 0.005; 
+    // Cap the discount at 50% (at 100 Charisma)
+    const finalDiscount = Math.min(discountPercent, 0.5); 
+    const finalBuyPrice = Math.floor(basePrice * (1.0 - finalDiscount));
+    // --- END NEW LOGIC ---
+
+
     // 1. Check if player has enough gold
-    if (player.coins < shopItem.price) {
+    if (player.coins < finalBuyPrice) { // <-- Use new variable
         logMessage("You don't have enough gold for that.");
         return;
     }
@@ -1867,8 +1894,8 @@ function handleBuyItem(itemName) {
     }
 
     // 3. Process the transaction
-    player.coins -= shopItem.price;
-    logMessage(`You bought a ${itemName} for ${shopItem.price} gold.`);
+    player.coins -= finalBuyPrice; // <-- Use new variable
+    logMessage(`You bought a ${itemName} for ${finalBuyPrice} gold.`); // <-- Use new variable
 
     if (existingStack) {
         existingStack.quantity++;
@@ -1921,7 +1948,13 @@ function handleSellItem(itemIndex) {
     const shopItem = activeShopInventory.find(item => item.name === itemToSell.name);
     const basePrice = shopItem ? shopItem.price : 2; // Sell unlisted items for 2 gold
 
-    const sellPrice = Math.floor(basePrice * SELL_MODIFIER);
+    // --- NEW CHARISMA LOGIC ---
+    // SELL_MODIFIER is 0.5 (50%)
+    const sellBonusPercent = player.charisma * 0.005; // 0.5% bonus per Charisma
+    // Cap the bonus at 50% (at 100 Charisma), for a max of 100% sell price
+    const finalSellBonus = Math.min(sellBonusPercent, 0.5); 
+    const sellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus));
+    // --- END NEW LOGIC ---
 
     // 1. Process the transaction
     player.coins += sellPrice;
@@ -1993,19 +2026,24 @@ function renderShop() {
     activeShopInventory.forEach(item => {
         // Find the key (e.g., '+') which is the tile character
         const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === item.name);
+        
+        const baseBuyPrice = item.price;
+        const discountPercent = gameState.player.charisma * 0.005;
+        const finalDiscount = Math.min(discountPercent, 0.5);
+        const finalBuyPrice = Math.floor(baseBuyPrice * (1.0 - finalDiscount));
+
         const li = document.createElement('li');
         li.className = 'shop-item';
         li.innerHTML = `
             <div>
                 <span class="shop-item-name">${item.name} (${itemKey || '?'})</span>
-                <span class="shop-item-details">Price: ${item.price}g</span>
+                <span class="shop-item-details">Price: ${finalBuyPrice}g</span>
             </div>
             <div class="shop-item-actions">
-                <button data-buy-item="${item.name}">Buy</button>
-            </div>
+        // ... (rest of loop)
         `;
         // Disable buy button if player can't afford it
-        if (gameState.player.coins < item.price) {
+        if (gameState.player.coins < finalBuyPrice) { // <-- Use new variable
             li.querySelector('button').disabled = true;
         }
         shopBuyList.appendChild(li);
@@ -2015,10 +2053,15 @@ function renderShop() {
     if (gameState.player.inventory.length === 0) {
         shopSellList.innerHTML = '<li class="shop-item-details italic">Your inventory is empty.</li>';
     } else {
-        gameState.player.inventory.forEach((item, index) => {
+            gameState.player.inventory.forEach((item, index) => {
             const shopItem = activeShopInventory.find(sItem => sItem.name === item.name);
             const basePrice = shopItem ? shopItem.price : 2; // Default sell price if not in shop
-            const sellPrice = Math.floor(basePrice * SELL_MODIFIER);
+            
+            // --- NEW: Calculate final sell price for display ---
+            const sellBonusPercent = gameState.player.charisma * 0.005;
+            const finalSellBonus = Math.min(sellBonusPercent, 0.5);
+            const sellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus));
+            // --- END NEW LOGIC ---
 
             const li = document.createElement('li');
             li.className = 'shop-item';
@@ -2217,7 +2260,7 @@ async function executeLunge(dirX, dirY) {
                         logMessage(`You defeated the ${enemy.name}!`);
                         grantXp(enemy.xp);
                         updateQuestProgress(enemy.tile);
-                        const droppedLoot = generateEnemyLoot(player.level, enemy);
+                        const droppedLoot = generateEnemyLoot(player, enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                         if (gameState.mapMode === 'dungeon') {
                             chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
@@ -2297,7 +2340,7 @@ async function executeMagicBolt(dirX, dirY) {
                         logMessage(`You vanquished the ${enemyData.name}!`);
                         grantXp(enemyData.xp);
                         updateQuestProgress(tile);
-                        const droppedLoot = generateEnemyLoot(player.level, enemyData);
+                        const droppedLoot = generateEnemyLoot(player, enemyData);
                         chunkManager.setWorldTile(targetX, targetY, droppedLoot);
                     } else {
                         logMessage(`The ${enemyData.name} has ${finalEnemyState.health} HP left.`);
@@ -2319,7 +2362,7 @@ async function executeMagicBolt(dirX, dirY) {
                         logMessage(`You defeated the ${enemy.name}!`);
                         grantXp(enemy.xp);
                         updateQuestProgress(enemy.tile);
-                        const droppedLoot = generateEnemyLoot(player.level, enemy);
+                        const droppedLoot = generateEnemyLoot(player, enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                         if (gameState.mapMode === 'dungeon') {
                             chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
@@ -2630,6 +2673,79 @@ function castSpell(spellName) {
 }
 
 /**
+ * Converts a direction object {x, y} into a readable string.
+ * @param {object} dir - An object with x and y properties (-1, 0, or 1)
+ * @returns {string} A compass direction, e.g., "north-west".
+ */
+function getDirectionString(dir) {
+    if (!dir) return 'nearby';
+
+    const { x, y } = dir;
+
+    if (y === -1) {
+        if (x === -1) return 'north-west';
+        if (x === 0) return 'north';
+        if (x === 1) return 'north-east';
+    } else if (y === 0) {
+        if (x === -1) return 'west';
+        if (x === 1) return 'east';
+    } else if (y === 1) {
+        if (x === -1) return 'south-west';
+        if (x === 0) return 'south';
+        if (x === 1) return 'south-east';
+    }
+    return 'nearby'; // Fallback
+}
+
+function passivePerceptionCheck() {
+    const player = gameState.player;
+
+    // This check only works in dungeons
+    if (gameState.mapMode !== 'dungeon') {
+        return;
+    }
+
+    const map = chunkManager.caveMaps[gameState.currentCaveId];
+    if (!map) return; // Map not loaded
+    
+    const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+    const secretWallTile = theme.secretWall;
+    if (!secretWallTile) return; // This theme has no secret walls
+
+    let foundWall = false;
+
+    // Check all 8 adjacent tiles
+    for (let y = -1; y <= 1; y++) {
+        for (let x = -1; x <= 1; x++) {
+            if (x === 0 && y === 0) continue; // Skip self
+
+            const checkX = player.x + x;
+            const checkY = player.y + y;
+
+            if (map[checkY] && map[checkY][checkX] === secretWallTile) {
+                // We are adjacent to a secret wall.
+                // Roll to see if we spot it.
+                // 1% chance per perception point, max 75% chance per check.
+                const spotChance = Math.min(player.perception * 0.01, 0.75);
+                
+                if (Math.random() < spotChance) {
+                    map[checkY][checkX] = theme.floor; // Reveal the wall!
+                    foundWall = true;
+                }
+            }
+        }
+    }
+
+    if (foundWall) {
+        // We only log once even if multiple walls are found in one step
+        logMessage("Your keen perception reveals a hidden passage!");
+        grantXp(15); // Grant the same XP as breaking it
+        // We don't need to call render() here, as the main movement
+        // block will call render() just after this function finishes.
+    }
+}
+
+/**
  * Handles combat for overworld enemies, syncing health via RTDB.
  */
 async function handleOverworldCombat(newX, newY, enemyData, newTile) {
@@ -2686,7 +2802,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
             grantXp(enemyData.xp);
             updateQuestProgress(tile);
 
-            const droppedLoot = generateEnemyLoot(gameState.player.level, enemyData);
+            const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
             chunkManager.setWorldTile(newX, newY, droppedLoot);
 
         } else {
@@ -2697,7 +2813,16 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
             const buffDefense = player.defenseBonus || 0;
             const playerDefense = armorDefense + buffDefense;
             enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
-            player.health -= enemyDamageTaken;
+
+            // --- NEW LUCK DODGE CHECK ---
+            const luckDodgeChance = Math.min(player.luck * 0.002, 0.25); // 0.2% per luck, max 25%
+            if (Math.random() < luckDodgeChance) {
+                logMessage(`The ${enemyData.name} attacks, but you luckily dodge!`);
+                enemyDamageTaken = 0; // Negate the damage
+            } else {
+                player.health -= enemyDamageTaken;
+            }
+            // --- END LUCK DODGE CHECK ---
         }
 
     } catch (error) {
@@ -2707,9 +2832,10 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
     }
 
     // --- Handle Post-Combat Player State ---
-    if (enemyAttackedBack) {
+    // --- MODIFIED: Only log if damage was taken ---
+    if (enemyAttackedBack && enemyDamageTaken > 0) { 
         triggerStatFlash(statDisplays.health, false); // Flash health red
-        logMessage(`The ${enemyData.name} hits you for ${enemyDamageTaken} damage!`);
+        logMessage(`The ${enemyData.name} hits you for ${enemyDamageTaken} damage!`);   
 
         if (player.health <= 0) {
             player.health = 0;
@@ -2768,15 +2894,15 @@ const renderEquipment = () => {
     // We'll update the strength display to show the total
     statDisplays.strength.textContent = `Strength: ${player.strength} (Dmg: ${totalDamage})`;
 
-
     // --- ARMOR & DEFENSE ---
-    const armor = player.equipment.armor || { name: 'Simple Tunic', defense: 0 };
+    const armor = player.equipment.armor || { name: 'Simple T tunic', defense: 0 };
 
     // Calculate total defense
-    const baseDefense = 0; // You can change this later (e.g., add from Dexterity)
+    // --- Dexterity adds 1 base def every 5 points ---
+    const baseDefense = Math.floor(player.dexterity / 5); 
     const armorDefense = armor.defense || 0;
-    const buffDefense = player.defenseBonus || 0; // <-- GET BUFF
-    const totalDefense = baseDefense + armorDefense + buffDefense; // <-- ADD BUFF
+    const buffDefense = player.defenseBonus || 0; 
+    const totalDefense = baseDefense + armorDefense + buffDefense;
 
     // Update the display
     let armorString = `Armor: ${armor.name} (+${armorDefense} Def)`;
@@ -2785,7 +2911,8 @@ const renderEquipment = () => {
         armorString += ` <span class="text-green-500">[Braced +${buffDefense} (${player.defenseBonusTurns}t)]</span>`;
     }
     // Use innerHTML to render the new span
-    equippedArmorDisplay.innerHTML = `${armorString} (Total: ${totalDefense} Def)`;
+    // --- MODIFIED: Show Base Defense in the total ---
+    equippedArmorDisplay.innerHTML = `${armorString} (Base: ${baseDefense}, Total: ${totalDefense} Def)`;
 };
 
 const render = () => {
@@ -3020,7 +3147,7 @@ function syncPlayerState() {
             maxHealth: gameState.player.maxHealth,
             mapMode: gameState.mapMode,
             mapId: gameState.currentCaveId || gameState.currentCastleId || null,
-            email: auth.currentUser.email // <-- ADD THIS LINE
+            email: auth.currentUser.email
         };
         onlinePlayerRef.set(stateToSync);
     }
@@ -3031,7 +3158,10 @@ async function processOverworldEnemyTurns() {
     const searchRadius = 15;
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
-    let anEnemyMovedNearby = false;
+
+    let nearestEnemyDir = null;
+    let minDist = Infinity;
+    const HEARING_DISTANCE_SQ = 15 * 15; // "Hearing" range
 
     // A list to batch our updates for efficiency
     let movesToMake = [];
@@ -3084,7 +3214,7 @@ async function processOverworldEnemyTurns() {
                         canMove = (targetTile === '.');
                     }
 
-                    if (canMove) { // Use our new 'canMove' flag
+                    if (canMove) { 
 
                         // Add this move to our batch
                         movesToMake.push({
@@ -3095,11 +3225,19 @@ async function processOverworldEnemyTurns() {
                             tile: tile
                         });
 
+                        const distSq = Math.pow(newX - playerX, 2) + Math.pow(newY - playerY, 2);
+                        if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
+                            minDist = distSq;
+                            const dirX = Math.sign(newX - playerX);
+                            const dirY = Math.sign(newY - playerY);
+                            nearestEnemyDir = { x: dirX, y: dirY };
+                        }
+
                         // 8. Check if it's "nearby" for the log message
                         const distY = Math.abs(newY - playerY);
                         const distX = Math.abs(newX - playerX);
                         if (distX <= 10 && distY <= 10) { // Smaller radius for "hearing"
-                            anEnemyMovedNearby = true;
+                            
                         }
                     }
                 }
@@ -3132,7 +3270,7 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-    return anEnemyMovedNearby;
+    return nearestEnemyDir;
 }
 
 function processEnemyTurns() {
@@ -3154,11 +3292,15 @@ function processEnemyTurns() {
         };
     }
 
-    if (!map) return false;
+    if (!map) return null;
 
-    let anEnemyMovedNearby = false;
-    const halfViewW = Math.floor(VIEWPORT_WIDTH / 2);
-    const halfViewH = Math.floor(VIEWPORT_HEIGHT / 2);
+    // Track nearest enemy direction ---
+    let nearestEnemyDir = null;
+    let minDist = Infinity;
+    const HEARING_DISTANCE_SQ = 15 * 15; // "Hearing" range
+
+    const halfViewW = Math.floor(VIEWPORT_WIDTH / 2); // (This is no longer used, but fine to keep)
+    const halfViewH = Math.floor(VIEWPORT_HEIGHT / 2); // (This is no longer used)
 
     // --- NEW: Chance for an enemy to chase you ---
     const CHASE_CHANCE = 0.5; // 50% chance to chase
@@ -3201,17 +3343,25 @@ function processEnemyTurns() {
                 enemy.x = newX;
                 enemy.y = newY;
 
+                const distSq = Math.pow(enemy.x - gameState.player.x, 2) + Math.pow(enemy.y - gameState.player.y, 2);
+                if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
+                    minDist = distSq;
+                    const dirX = Math.sign(enemy.x - gameState.player.x);
+                    const dirY = Math.sign(enemy.y - gameState.player.y);
+                    nearestEnemyDir = { x: dirX, y: dirY };
+                }
+
                 // Check if this enemy is on-screen
                 const distY = Math.abs(enemy.y - gameState.player.y);
                 const distX = Math.abs(enemy.x - gameState.player.x);
                 if (distX <= halfViewW && distY <= halfViewH) {
-                    anEnemyMovedNearby = true; // Set the flag
+                 
                 }
             }
         }
     });
 
-    return anEnemyMovedNearby;
+    return nearestEnemyDir;
 }
 
 /**
@@ -3220,11 +3370,11 @@ function processEnemyTurns() {
  * runs the AI at a time.
  */
 async function runSharedAiTurns() {
-    let enemiesMovedNearby = false;
+    let nearestEnemyDir = null;
 
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
         // Dungeons/castles are instanced, no lock needed.
-        enemiesMovedNearby = processEnemyTurns();
+        nearestEnemyDir = processEnemyTurns();
 
         render();
 
@@ -3249,7 +3399,7 @@ async function runSharedAiTurns() {
                 // console.log("Acquired AI lock, running overworld enemy turns...");
 
                 // We MUST await this so we hold the lock until the AI is done.
-                enemiesMovedNearby = await processOverworldEnemyTurns();
+                nearestEnemyDir = await processOverworldEnemyTurns();
 
                 // Release the lock so the next player can run it.
                 await lockRef.set(null);
@@ -3266,8 +3416,19 @@ async function runSharedAiTurns() {
         }
     }
 
-    if (enemiesMovedNearby) {
-        logMessage("You hear a shuffle nearby...");
+    if (nearestEnemyDir) {
+        const player = gameState.player;
+        // 0.5% chance per intuition point, max 50%
+        const intuitChance = Math.min(player.intuition * 0.005, 0.5); 
+
+        if (Math.random() < intuitChance) {
+            // Success! Give specific direction.
+            const dirString = getDirectionString(nearestEnemyDir);
+            logMessage(`You sense a hostile presence to the ${dirString}!`);
+        } else {
+            // Fail. Give vague message.
+            logMessage("You hear a shuffle nearby...");
+        }
     }
 }
 
@@ -3757,7 +3918,7 @@ document.addEventListener('keydown', (event) => {
                         grantXp(enemy.xp);
                         updateQuestProgress(enemy.tile);
 
-                        const droppedLoot = generateEnemyLoot(gameState.player.level, enemyData);
+                        const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
 
                         if (gameState.mapMode === 'dungeon') {
@@ -3765,15 +3926,23 @@ document.addEventListener('keydown', (event) => {
                         } else if (gameState.mapMode === 'castle') {
                             // Ready for when we add castle enemies
                         }
-                    } else {
+                        } else {
                         // --- ENEMY SURVIVES AND ATTACKS ---
                         const armorDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
                         const buffDefense = gameState.player.defenseBonus || 0;
                         const playerDefense = armorDefense + buffDefense;
                         const enemyDamage = Math.max(1, enemy.attack - playerDefense);
-                        gameState.player.health -= enemyDamage;
-                        triggerStatFlash(statDisplays.health, false);
-                        logMessage(`The ${enemy.name} hits you for ${enemyDamage} damage!`);
+
+                        // --- NEW LUCK DODGE CHECK ---
+                        const luckDodgeChance = Math.min(gameState.player.luck * 0.002, 0.25); // 0.2% per luck, max 25%
+                        if (Math.random() < luckDodgeChance) {
+                            logMessage(`The ${enemy.name} attacks, but you luckily dodge!`);
+                        } else {
+                            gameState.player.health -= enemyDamage;
+                            triggerStatFlash(statDisplays.health, false);
+                            logMessage(`The ${enemy.name} hits you for ${enemyDamage} damage!`);
+                        }
+                        // --- END LUCK DODGE CHECK ---
 
                         if (gameState.player.health <= 0) {
                             gameState.player.health = 0;
@@ -4249,6 +4418,10 @@ document.addEventListener('keydown', (event) => {
         }
 
         // 6. Handle final updates
+
+        // Must be AFTER player.x/y are updated but BEFORE render()
+        passivePerceptionCheck();
+
         render();
         updateRegionDisplay();
         syncPlayerState();
