@@ -1873,11 +1873,15 @@ function handleBuyItem(itemName) {
     if (existingStack) {
         existingStack.quantity++;
     } else {
+
+        const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName);
+
         player.inventory.push({
+            
             name: itemTemplate.name,
             type: itemTemplate.type,
             quantity: 1,
-            tile: itemTemplate.tile || '?' // Find the tile from ITEM_DATA
+            tile: itemKey || '?'
         });
     }
 
@@ -2292,7 +2296,7 @@ async function executeMagicBolt(dirX, dirY) {
                     if (finalEnemyState === null) {
                         logMessage(`You vanquished the ${enemyData.name}!`);
                         grantXp(enemyData.xp);
-                        updateQuestProgress(newTile);
+                        updateQuestProgress(tile);
                         const droppedLoot = generateEnemyLoot(player.level, enemyData);
                         chunkManager.setWorldTile(targetX, targetY, droppedLoot);
                     } else {
@@ -2314,6 +2318,7 @@ async function executeMagicBolt(dirX, dirY) {
                     if (enemy.health <= 0) {
                         logMessage(`You defeated the ${enemy.name}!`);
                         grantXp(enemy.xp);
+                        updateQuestProgress(enemy.tile);
                         const droppedLoot = generateEnemyLoot(player.level, enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                         if (gameState.mapMode === 'dungeon') {
@@ -2679,6 +2684,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
             enemyWasKilled = true;
             logMessage(`You defeated the ${enemyData.name}!`);
             grantXp(enemyData.xp);
+            updateQuestProgress(tile);
 
             const droppedLoot = generateEnemyLoot(gameState.player.level, enemyData);
             chunkManager.setWorldTile(newX, newY, droppedLoot);
@@ -3749,6 +3755,7 @@ document.addEventListener('keydown', (event) => {
                         // --- ENEMY IS DEFEATED ---
                         logMessage(`You defeated the ${enemy.name}!`);
                         grantXp(enemy.xp);
+                        updateQuestProgress(enemy.tile);
 
                         const droppedLoot = generateEnemyLoot(gameState.player.level, enemyData);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
