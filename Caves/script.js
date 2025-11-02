@@ -69,6 +69,10 @@ const TILE_DATA = {
         type: 'npc_healer',
         title: 'Healer'
     },
+    'W': {
+        type: 'workbench',
+        title: 'Crafting Workbench'
+    },
     '♛': {
         type: 'landmark_castle',
         getCastleId: (x, y) => `castle_landmark_${x}_${y}`
@@ -201,7 +205,7 @@ const CASTLE_LAYOUTS = {
             '▓....X..........................................................................▓', // Exit is here
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
             '▓...............▓$▓...............▓',
-            '▓...............▓$▓...............▓',
+            '▓....W..........▓$▓....W..........▓',
             '▓...............▓$▓...............▓',
             '▓...............▓▓▓...............▓',
             '▓.................................▓',
@@ -860,6 +864,27 @@ const TERRAIN_COST = {
     'F': 1, // Forests cost 1 stamina
 };
 
+const CRAFTING_RECIPES = {
+    // Tier 1 Items
+    "Leather Tunic": { // The name of the item from ITEM_DATA
+        "Wolf Pelt": 3    // Requires 3 "Wolf Pelt"
+    },
+    "Stick": {
+        "Bone Shard": 3   // 3 Bone Shards -> 1 Stick (for future use)
+    },
+    
+    // Tier 2 Items
+    "Bone Dagger": {      // A new item we will define
+        "Bone Shard": 5,
+        "Stick": 1
+    },
+    "Bandit Garb": {      // A new item
+        "Bandit's Insignia": 3,
+        "Leather Tunic": 1
+    }
+    // We can add many more recipes here later
+};
+
 const ITEM_DATA = {
     '+': {
         name: 'Healing Potion',
@@ -953,6 +978,18 @@ const ITEM_DATA = {
     '(': {
         name: 'Bone Shard',
         type: 'junk'
+    },
+    '†': { // Dagger symbol
+        name: 'Bone Dagger',
+        type: 'weapon',
+        damage: 2, // Same as Rusty Sword (Tier 2)
+        slot: 'weapon'
+    },
+    '¶': { // Pilcrow (paragraph) symbol
+        name: 'Bandit Garb',
+        type: 'armor',
+        defense: 2, // Same as Studded Armor (Tier 2)
+        slot: 'armor'
     },
     '$': {
         name: 'Gold Coin',
