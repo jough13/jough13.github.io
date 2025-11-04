@@ -73,6 +73,14 @@ const TILE_DATA = {
         type: 'workbench',
         title: 'Crafting Workbench'
     },
+    'G': {
+        type: 'npc_guard',
+        title: 'Castle Guard'
+    },
+    'O': {
+        type: 'npc_sage',
+        title: 'Sage'
+    },
     '♛': {
         type: 'landmark_castle',
         getCastleId: (x, y) => `castle_landmark_${x}_${y}`
@@ -200,7 +208,7 @@ const CASTLE_LAYOUTS = {
             '▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓',
             '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓',
             '▓...............................................................................▓',
-            '▓...............................................................................▓',
+            '▓.....................................................................G.........▓',
             '▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
             '▓....X..........................................................................▓', // Exit is here
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
@@ -238,7 +246,7 @@ const CASTLE_LAYOUTS = {
             '▓...▓...▓..................▓.........B.........▓.......▓.......................▓...▓',
             '▓...▓...▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓▓▓...▓.........▓...L...▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓.......▓.......▓...▓.........▓...▓.........▓...▓',
-            '▓...▓.............▓...▓.........▓...▓▓▓...▓.......▓.......▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓▓▓...▓.......▓..O....▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓.......▓.......▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓▓▓▓▓▓▓▓▓...▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓.......▓...▓...▓.........▓...▓.........▓...▓',
@@ -254,7 +262,7 @@ const CASTLE_LAYOUTS = {
             '▓...▓.......▓...▓.......▓...▓...$...$...$...▓...▓.......▓...▓.......▓...▓...▓',
             '▓...▓.......▓...▓.......▓...▓.......$.......▓...▓.......▓...▓.......▓...▓...▓',
             '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓...▓',
-            '▓...............................................................................▓',
+            '▓................................G...G..........................................▓',
             '▓...............................................................................▓',
             '▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓.▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
             '▓....X..........................................................................▓', // Exit is here
@@ -312,6 +320,16 @@ const CASTLE_SHOP_INVENTORY = [{
     {
         name: 'Studded Armor',
         price: 120, // This is a Tier 2 item
+        stock: 1
+    },
+    {
+        name: 'Scroll: Clarity',
+        price: 250, // Make it a valuable purchase
+        stock: 1    // Limited stock
+    },
+    {
+        name: 'Scroll of Siphoning',
+        price: 400, // This is a powerful Lvl 4 spell
         stock: 1
     }
 ];
@@ -405,7 +423,7 @@ const CAVE_THEMES = {
             wall: '#450a0a',
             floor: '#ef4444'
         }, // The red color makes it look like lava
-        decorations: ['+', '$'] // Only healing and gold
+        decorations: ['+', '$', '🔥']
     },
 
     CRYSTAL: {
@@ -533,6 +551,10 @@ const questModal = document.getElementById('questModal');
 const closeQuestButton = document.getElementById('closeQuestButton');
 const questList = document.getElementById('questList');
 
+const craftingModal = document.getElementById('craftingModal');
+const closeCraftingButton = document.getElementById('closeCraftingButton');
+const craftingRecipeList = document.getElementById('craftingRecipeList');
+
 const equippedWeaponDisplay = document.getElementById('equippedWeaponDisplay');
 
 const equippedArmorDisplay = document.getElementById('equippedArmorDisplay');
@@ -652,6 +674,12 @@ function createDefaultPlayerState() {
 
         inventory: [],
 
+        spellbook: {
+            "lesserHeal": 1, // Key is the spellID, value is the spell's level
+            "magicBolt": 1
+        },
+
+
         level: 1,
         xp: 0,
         xpToNextLevel: 100,
@@ -660,6 +688,9 @@ function createDefaultPlayerState() {
 
         defenseBonus: 0,
         defenseBonusTurns: 0,
+
+        shieldValue: 0,
+        shieldTurns: 0,
 
         quests: {}
     };
@@ -939,6 +970,36 @@ const ITEM_DATA = {
             logMessage('Used a Psyche Shard. Restored psyche.');
         }
     },
+    '📖': {
+        name: 'Spellbook: Lesser Heal',
+        type: 'spellbook',
+        spellId: 'lesserHeal' // This links it to SPELL_DATA
+    },
+    '📚': {
+        name: 'Spellbook: Magic Bolt',
+        type: 'spellbook',
+        spellId: 'magicBolt'
+    },
+    '📜': {
+        name: 'Scroll: Clarity',
+        type: 'spellbook',
+        spellId: 'clarity'
+    },
+    '🛡️': {
+        name: 'Tome of Shielding',
+        type: 'spellbook',
+        spellId: 'arcaneShield'
+    },
+    '🔥': {
+        name: 'Tome of Fireball',
+        type: 'spellbook',
+        spellId: 'fireball'
+    },
+    '🩸': {
+        name: 'Scroll of Siphoning',
+        type: 'spellbook',
+        spellId: 'siphonLife'
+    },
     '/': {
         name: 'Stick',
         type: 'weapon', // A new type
@@ -1011,6 +1072,68 @@ const ITEM_DATA = {
             }
         }
     },
+};
+
+const SPELL_DATA = {
+    "lesserHeal": {
+        name: "Lesser Heal",
+        description: "Heals for a small amount, scaling with Wits.",
+        cost: 5,
+        costType: "mana",
+        requiredLevel: 1, // Player level needed to learn this
+        target: "self",   // 'self' or 'aimed'
+        baseHeal: 5       // The base amount for the formula
+    },
+    "clarity": {
+        name: "Clarity",
+        description: "Focus your mind to reveal adjacent secret walls.",
+        cost: 8,
+        costType: "psyche",
+        requiredLevel: 1,
+        target: "self",
+        type: "utility" // Special type
+    },
+    "arcaneShield": {
+        name: "Arcane Shield",
+        description: "Creates a temporary shield that absorbs damage. Scales with Wits.",
+        cost: 10,
+        costType: "mana",
+        requiredLevel: 3,
+        target: "self",
+        type: "buff",
+        baseShield: 5,
+        duration: 5 // Lasts for 5 player turns
+    },
+    "fireball": {
+        name: "Fireball",
+        description: "An explosive orb damages enemies in a 3x3 area. Scales with Wits.",
+        cost: 15,
+        costType: "mana",
+        requiredLevel: 5,
+        target: "aimed",
+        baseDamage: 8,
+        radius: 1 // 1-tile radius = 3x3 area
+    },
+    "siphonLife": {
+        name: "Siphon Life",
+        description: "Drains life from a target, healing you. Scales with Willpower.",
+        cost: 12,
+        costType: "psyche",
+        requiredLevel: 4,
+        target: "aimed",
+        baseDamage: 4,
+        healPercent: 0.5 // Heals for 50% of damage dealt
+    },
+    "magicBolt": {
+        name: "Magic Bolt",
+        description: "Hurls a bolt of energy, scaling with Wits.",
+        cost: 8,
+        costType: "mana",
+        requiredLevel: 1,
+        target: "aimed",
+        baseDamage: 5
+    }
+    // We can easily add more spells here later!
 };
 
 const statDisplays = {
@@ -1574,7 +1697,16 @@ const renderStats = () => {
                 statBarElements.health.style.width = `${percent}%`;
 
                 // Update text and bar color
-                element.textContent = `${label}: ${value}`;
+                let healthString = `${label}: ${value}`;
+                if (gameState.player.shieldValue > 0) {
+                    // e.g., "Health: 10 (+5)"
+                    healthString += ` <span class="text-blue-400">(+${Math.ceil(gameState.player.shieldValue)})</span>`;
+                }
+                // Use innerHTML to render the span, and Math.ceil to avoid ugly decimals
+                element.innerHTML = healthString; 
+                // --- END NEW ---
+                
+                // Update text and bar color
                 element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500'); // Clear old text colors
 
                 if (percent > 60) {
@@ -1843,7 +1975,7 @@ function generateEnemyLoot(player, enemy) { // <-- UPDATED SIGNATURE
     // --- IMPORTANT: Gold '$' is REMOVED from this list ---
     const commonLoot = ['+', 'o', 'S', 'Y']; // Consumables ONLY
     const tier1Loot = ['/', '%']; // Stick, Leather Tunic
-    const tier2Loot = ['!', '[']; // Rusty Sword, Studded Armor
+    const tier2Loot = ['!', '[', '📚', '🛡️']; // Rusty Sword, Studded Armor, Spellbook: Magic Bolt, Tome of Shielding
 
     // --- Tier 2 Loot (Best) ---
     // (This logic is unchanged)
@@ -2323,102 +2455,85 @@ async function executeLunge(dirX, dirY) {
     render(); // Re-render to show enemy health change
 }
 
-async function executeMagicBolt(dirX, dirY) {
+/**
+ * Executes an aimed spell (Magic Bolt, Fireball, Siphon Life)
+ * after the player chooses a direction.
+ * @param {string} spellId - The ID of the spell to execute.
+ * @param {number} dirX - The x-direction of the aim.
+ * @param {number} dirY - The y-direction of the aim.
+ */
+async function executeAimedSpell(spellId, dirX, dirY) {
     const player = gameState.player;
-    const BOLT_COST = 8;
+    const spellData = SPELL_DATA[spellId];
+    const spellLevel = player.spellbook[spellId] || 1;
 
-    // We already checked for mana when selecting the spell,
-    // but we'll deduct it now.
-    player.mana -= BOLT_COST; 
-    let hit = false;
+    // --- 1. Deduct Cost ---
+    // The cost was already checked in castSpell. Now we deduct it.
+    player[spellData.costType] -= spellData.cost;
+    let hitSomething = false;
 
-    // Loop 2 and 3 tiles away (same as lunge)
-    for (let i = 2; i <= 3; i++) {
-        const targetX = player.x + (dirX * i);
-        const targetY = player.y + (dirY * i);
+    // --- 2. Execute Spell Logic ---
+    switch (spellId) {
+        case 'magicBolt':
+        case 'siphonLife':
+            // These are single-target, 2-3 tile range spells.
+            const damageStat = (spellId === 'siphonLife') ? player.willpower : player.wits;
+            const spellDamage = spellData.baseDamage + (damageStat * spellLevel);
+            let logMsg = (spellId === 'magicBolt') ? "You hurl a bolt of energy!" : "You cast Siphon Life!";
+            logMessage(logMsg);
 
-        let tile;
-        if (gameState.mapMode === 'dungeon') {
-            const map = chunkManager.caveMaps[gameState.currentCaveId];
-            tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
-        } else if (gameState.mapMode === 'castle') {
-            const map = chunkManager.castleMaps[gameState.currentCastleId];
-            tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
-        } else {
-            tile = chunkManager.getTile(targetX, targetY);
-        }
-
-        const enemyData = ENEMY_DATA[tile];
-
-        if (enemyData) {
-            // Found a target!
-            logMessage(`You hurl a bolt of energy at the ${enemyData.name}!`);
-            hit = true;
-
-            // --- Magic Bolt Damage (Ignores Defense!) ---
-            const spellDamage = 5 + player.wits; 
-
-            if (gameState.mapMode === 'overworld') {
-                // Handle Overworld Combat (enemy attacks back)
-                // We need to do this manually since it's not a normal attack
-                const enemyId = `overworld:${targetX},${-targetY}`;
-                const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
-
-                try {
-                    const transactionResult = await enemyRef.transaction(currentData => {
-                        if (currentData === null) return; // Enemy already dead
-                        currentData.health -= spellDamage;
-                        if (currentData.health <= 0) return null;
-                        return currentData;
-                    });
-
-                    const finalEnemyState = transactionResult.snapshot.val();
-                    if (finalEnemyState === null) {
-                        logMessage(`You vanquished the ${enemyData.name}!`);
-                        grantXp(enemyData.xp);
-                        updateQuestProgress(tile);
-                        const droppedLoot = generateEnemyLoot(player, enemyData);
-                        chunkManager.setWorldTile(targetX, targetY, droppedLoot);
-                    } else {
-                        logMessage(`The ${enemyData.name} has ${finalEnemyState.health} HP left.`);
-                        // In this magic attack, the enemy does NOT attack back.
-                    }
-                } catch (error) {
-                     console.error("Firebase transaction failed: ", error);
-                     logMessage("Your spell fizzles... (network error)");
-                }
-
-            } else {
-                // Handle Instanced Combat
-                let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
-                if (enemy) {
-                    enemy.health -= spellDamage;
-                    logMessage(`You hit the ${enemy.name} for ${spellDamage} magic damage!`);
-
-                    if (enemy.health <= 0) {
-                        logMessage(`You defeated the ${enemy.name}!`);
-                        grantXp(enemy.xp);
-                        updateQuestProgress(enemy.tile);
-                        const droppedLoot = generateEnemyLoot(player, enemy);
-                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                        if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
-                        }
-                    }
+            for (let i = 2; i <= 3; i++) {
+                const targetX = player.x + (dirX * i);
+                const targetY = player.y + (dirY * i);
+                // We await here so Siphon Life's heal applies correctly
+                if (await applySpellDamage(targetX, targetY, spellDamage, spellId)) {
+                    hitSomething = true;
+                    break; // Stop, we hit a target
                 }
             }
-            break; // Stop looping, we hit our target
-        }
+            break;
+
+        case 'fireball':
+            // This is an AoE spell. It hits a 3x3 area, 3 tiles away.
+            const fbDamage = spellData.baseDamage + (player.wits * spellLevel);
+            const radius = spellData.radius; // 1
+            
+            // Fireball targets a point 3 tiles away
+            const targetX = player.x + (dirX * 3);
+            const targetY = player.y + (dirY * 3);
+            logMessage("A fireball erupts in the distance!");
+
+            // Loop in a 3x3 area around the target point
+            for (let y = targetY - radius; y <= targetY + radius; y++) {
+                for (let x = targetX - radius; x <= targetX + radius; x++) {
+                    // Don't await in the AoE loop, just fire them all off
+                    // This feels more like a simultaneous explosion
+                    applySpellDamage(x, y, fbDamage, spellId).then(hit => {
+                        if (hit) hitSomething = true;
+                    });
+                }
+            }
+            break;
     }
 
-    if (!hit) {
-        logMessage("Your magic bolt flies harmlessly into the distance.");
+    if (!hitSomething && (spellId === 'magicBolt' || spellId === 'siphonLife')) {
+        logMessage("Your spell flies harmlessly into the distance.");
     }
 
-    playerRef.update({ mana: player.mana });
-    triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
-    endPlayerTurn(); // Always end turn, even if you miss
-    render(); // Re-render to show enemy health change
+    // --- 3. Finalize Turn ---
+    playerRef.update({
+        [spellData.costType]: player[spellData.costType] // Update mana or psyche
+    });
+    
+    // Trigger the correct stat animation
+    if (spellData.costType === 'mana') {
+        triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+    } else if (spellData.costType === 'psyche') {
+        triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+    }
+
+    endPlayerTurn();
+    render();
 }
 
 function initSkillbookListeners() {
@@ -2574,139 +2689,467 @@ function initQuestListeners() {
     });
 }
 
+function initCraftingListeners() {
+    closeCraftingButton.addEventListener('click', () => {
+        craftingModal.classList.add('hidden');
+    });
+
+    craftingRecipeList.addEventListener('click', (e) => {
+        const button = e.target.closest('button[data-craft-item]');
+        if (button) {
+            handleCraftItem(button.dataset.craftItem);
+        }
+    });
+}
+
+/**
+ * Checks if the player has the required materials for a recipe.
+ * @param {string} recipeName - The name of the item to craft (a key in CRAFTING_RECIPES).
+ * @returns {boolean} - True if the player has all materials, false otherwise.
+ */
+function checkHasMaterials(recipeName) {
+    const recipe = CRAFTING_RECIPES[recipeName];
+    if (!recipe) return false; // Recipe doesn't exist
+
+    const playerInventory = gameState.player.inventory;
+
+    // Check every material in the recipe
+    for (const materialName in recipe) {
+        const requiredQuantity = recipe[materialName];
+        
+        // Find the material in the player's inventory
+        const itemInInventory = playerInventory.find(item => item.name === materialName);
+
+        if (!itemInInventory || itemInInventory.quantity < requiredQuantity) {
+            // Player is missing this material or doesn't have enough
+            return false;
+        }
+    }
+    
+    // If we get here, the player has everything
+    return true;
+}
+
+/**
+ * Renders the list of all available crafting recipes
+ * and checks which ones the player can craft.
+ */
+function renderCraftingModal() {
+    craftingRecipeList.innerHTML = ''; // Clear the old list
+    const playerInventory = gameState.player.inventory;
+
+    for (const recipeName in CRAFTING_RECIPES) {
+        const recipe = CRAFTING_RECIPES[recipeName];
+        const canCraft = checkHasMaterials(recipeName);
+
+        // Find the tile for the item we're crafting
+        const outputItemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === recipeName);
+        const outputItemTile = outputItemKey || '?';
+
+        // Build the list of materials
+        let materialsHtml = '<ul class="crafting-item-materials">';
+        for (const materialName in recipe) {
+            const requiredQuantity = recipe[materialName];
+            const itemInInventory = playerInventory.find(item => item.name === materialName);
+            const currentQuantity = itemInInventory ? itemInInventory.quantity : 0;
+            
+            // Add a red text class if the player is missing this material
+            const quantityClass = currentQuantity < requiredQuantity ? 'text-red-500' : '';
+            
+            materialsHtml += `<li class="${quantityClass}">${materialName} (${currentQuantity}/${requiredQuantity})</li>`;
+        }
+        materialsHtml += '</ul>';
+
+        // Build the full list item
+        const li = document.createElement('li');
+        li.className = 'crafting-item';
+        li.innerHTML = `
+            <div>
+                <span class="crafting-item-name">${recipeName} (${outputItemTile})</span>
+                ${materialsHtml}
+            </div>
+            <div class="crafting-item-actions">
+                <button data-craft-item="${recipeName}" ${canCraft ? '' : 'disabled'}>Craft</button>
+            </div>
+        `;
+        craftingRecipeList.appendChild(li);
+    }
+}
+
+/**
+ * Handles the logic of crafting an item.
+ * Consumes materials and adds the new item to inventory.
+ * @param {string} recipeName - The name of the item to craft.
+ */
+function handleCraftItem(recipeName) {
+    // Final check to make sure we can craft it
+    if (!checkHasMaterials(recipeName)) {
+        logMessage("You're missing the materials for that.");
+        return;
+    }
+
+    const recipe = CRAFTING_RECIPES[recipeName];
+    const playerInventory = gameState.player.inventory;
+
+    // 1. Consume Materials
+    for (const materialName in recipe) {
+        const requiredQuantity = recipe[materialName];
+        const itemInInventory = playerInventory.find(item => item.name === materialName);
+
+        itemInInventory.quantity -= requiredQuantity;
+
+        // If the stack is empty, remove it
+        if (itemInInventory.quantity <= 0) {
+            const itemIndex = playerInventory.indexOf(itemInInventory);
+            playerInventory.splice(itemIndex, 1);
+        }
+    }
+
+    // 2. Add Crafted Item
+    const outputItemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === recipeName);
+    const itemTemplate = ITEM_DATA[outputItemKey];
+
+    const existingStack = playerInventory.find(item => item.name === recipeName);
+
+    if (existingStack) {
+        // Player already has a stack of this, add to it
+        existingStack.quantity++;
+    } else {
+        // Create a new item stack
+        const newItem = {
+            name: itemTemplate.name,
+            type: itemTemplate.type,
+            quantity: 1,
+            tile: outputItemKey || '?',
+            // Add weapon/armor stats if they exist
+            damage: itemTemplate.damage || null,
+            defense: itemTemplate.defense || null,
+            slot: itemTemplate.slot || null
+        };
+        playerInventory.push(newItem);
+    }
+    
+    logMessage(`You successfully crafted a ${recipeName}!`);
+
+    // 3. Update Database and UI
+    const inventoryToSave = gameState.player.inventory.map(item => ({
+        name: item.name,
+        type: item.type,
+        quantity: item.quantity,
+        tile: item.tile,
+        damage: item.damage,
+        slot: item.slot,
+        defense: item.defense
+    }));
+    playerRef.update({ inventory: inventoryToSave });
+
+    renderCraftingModal(); // Re-render the modal to show new quantities
+    renderInventory(); // Re-render the main UI inventory
+}
+
+
+function openCraftingModal() {
+    renderCraftingModal(); // Populate the list based on current inventory
+    craftingModal.classList.remove('hidden');
+}
+
+/**
+ * Opens the spellbook modal.
+ * Dynamically renders the list of spells the player knows
+ * based on their spellbook and the SPELL_DATA.
+ */
 function openSpellbook() {
     spellList.innerHTML = ''; // Clear the list
     const player = gameState.player;
+    const playerSpells = player.spellbook || {};
 
-    let healSpellHtml = `
-        <li class="spell-item" data-spell="heal">
-            <div>
-                <span class="spell-item-name">Lesser Heal</span>
-                <span class="spell-item-details">Heals 5 + Wits HP</span>
-            </div>
-            <span class="font-bold">5 Mana</span>
-        </li>`;
+    // Check if the spellbook is empty
+    if (Object.keys(playerSpells).length === 0) {
+        spellList.innerHTML = '<li class="spell-item-details italic p-4">Your spellbook is empty.</li>';
+        spellModal.classList.remove('hidden');
+        return;
+    }
 
-    let claritySpellHtml = `
-        <li class="spell-item" data-spell="clarity">
-            <div>
-                <span class="spell-item-name">Clarity</span>
-                <span class="spell-item-details">Reveals adjacent secret walls</span>
-            </div>
-            <span class="font-bold">8 Psyche</span>
-        </li>`;
+    // Loop through every spell the player knows
+    for (const spellId in playerSpells) {
+        const spellLevel = playerSpells[spellId];
+        const spellData = SPELL_DATA[spellId]; // Get data from our new constant
 
-        let boltSpellHtml = `
-            <li class="spell-item" data-spell="bolt">
-                <div>
-                    <span class="spell-item-name">Magic Bolt</span>
-                    <span class="spell-item-details">Hurls a bolt of energy (Dmg: 5 + Wits)</span>
-                </div>
-                <span class="font-bold">8 Mana</span>
-            </li>`;
-
-    spellList.innerHTML += healSpellHtml;
-    spellList.innerHTML += claritySpellHtml;
-
-    spellList.innerHTML += boltSpellHtml;
-
-    spellModal.classList.remove('hidden');
-}
-
-function castSpell(spellName) {
-    const player = gameState.player;
-    let spellCast = false;
-
-    switch (spellName) {
-        case 'heal':
-            const healCost = 5;
-            if (player.mana < healCost) {
-                logMessage("You don't have enough mana to cast that.");
-                return; // Do not close modal, do not end turn
-            }
-
-            player.mana -= healCost;
-            const healAmount = 5 + player.wits; // Heal scales with Wits
-            const oldHealth = player.health;
-            player.health = Math.min(player.maxHealth, player.health + healAmount);
-
-            logMessage(`You cast Lesser Heal and recover ${player.health - oldHealth} health.`);
-            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-            playerRef.update({
-                mana: player.mana,
-                health: player.health
-            });
-            spellCast = true;
-            break;
-
-        case 'clarity':
-            const clarityCost = 8;
-            if (player.psyche < clarityCost) {
-                logMessage("You don't have enough psyche to cast that.");
-                return;
-            }
-
-            if (gameState.mapMode !== 'dungeon') {
-                logMessage("You can only feel for secret walls in caves.");
-                return;
-            }
-
-            player.psyche -= clarityCost;
-
-            const map = chunkManager.caveMaps[gameState.currentCaveId];
-            const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
-            const secretWallTile = theme.secretWall;
-            let foundWall = false;
-
-            // Check all 8 adjacent tiles
-            for (let y = -1; y <= 1; y++) {
-                for (let x = -1; x <= 1; x++) {
-                    if (x === 0 && y === 0) continue; // Skip self
-
-                    const checkX = player.x + x;
-                    const checkY = player.y + y;
-
-                    if (map[checkY] && map[checkY][checkX] === secretWallTile) {
-                        map[checkY][checkX] = theme.floor; // Reveal the wall!
-                        foundWall = true;
-                    }
-                }
-            }
-
-            if (foundWall) {
-                logMessage("You focus your mind... and a passage is revealed!");
-                render(); // Re-render to show the new passage
-            } else {
-                logMessage("You focus, but find no hidden passages nearby.");
-            }
-
-            triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
-            playerRef.update({
-                psyche: player.psyche
-            });
-            spellCast = true;
-            break;
-
-            case 'bolt':
-        const boltCost = 8;
-        if (player.mana < boltCost) {
-            logMessage("You don't have enough mana to cast that.");
-            return; // Not a full turn, don't close modal
+        if (!spellData) {
+            console.warn(`Player has unknown spell in spellbook: ${spellId}`);
+            continue;
         }
 
-        // Don't cast yet, just enter aiming mode
-        gameState.isAiming = true;
-        gameState.abilityToAim = 'bolt';
-        spellModal.classList.add('hidden');
-        logMessage("Magic Bolt: Press an arrow key or WASD to fire. (Esc) to cancel.");
-        return; // We don't end the turn until they fire
+        let canCast = false;
+        let costString = `${spellData.cost} ${spellData.costType}`;
+        let costColorClass = ""; // CSS class for cost, e.g., text-red-500
+
+        // Check if the player has enough resources to cast
+        if (spellData.costType === 'mana') {
+            canCast = player.mana >= spellData.cost;
+            if (!canCast) costColorClass = "text-red-500";
+        } else if (spellData.costType === 'psyche') {
+            canCast = player.psyche >= spellData.cost;
+            if (!canCast) costColorClass = "text-red-500";
+        }
+
+        // Build the new list item element
+        const li = document.createElement('li');
+        li.className = 'spell-item';
+        li.dataset.spell = spellId; // Use the spell's ID (e.g., "lesserHeal")
+        
+        // Make the item look disabled if it can't be cast
+        if (!canCast) {
+            li.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Set the dynamic HTML for the spell
+        li.innerHTML = `
+            <div>
+                <span class="spell-item-name">${spellData.name} (Lvl ${spellLevel})</span>
+                <span class="spell-item-details">${spellData.description}</span>
+            </div>
+            <span class="font-bold ${costColorClass}">${costString}</span>
+        `;
+        
+        spellList.appendChild(li);
     }
 
-    if (spellCast) {
-        spellModal.classList.add('hidden'); // Close modal
-        endPlayerTurn(); // Spell costs one turn
-        renderStats(); // Update mana/psyche display
+    spellModal.classList.remove('hidden'); // Show the modal
+}
+
+/**
+ * Handles all spellcasting logic based on SPELL_DATA
+ * and the player's spellbook.
+ * @param {string} spellId - The ID of the spell to cast (e.g., "lesserHeal").
+ */
+function castSpell(spellId) {
+    const player = gameState.player;
+    const spellData = SPELL_DATA[spellId]; // Get data from our new constant
+    
+    // --- FIX: spellLevel is now defined up here, but *after* the spellData check ---
+    if (!spellData) {
+        logMessage("You don't know how to cast that. (No spell data found)");
+        return;
     }
+    
+    const spellLevel = player.spellbook[spellId] || 0; // Get the player's level for this spell
+
+    if (spellLevel === 0) {
+        logMessage("You don't know that spell.");
+        return;
+    }
+
+    // --- 1. Check Resource Cost ---
+    const cost = spellData.cost;
+    const costType = spellData.costType; // 'mana' or 'psyche'
+
+    if (player[costType] < cost) {
+        logMessage(`You don't have enough ${costType} to cast that.`);
+        return; // Do not close modal, do not end turn
+    }
+
+    // --- 2. Handle Targeting ---
+    if (spellData.target === 'aimed') {
+        // --- Aimed Spells (e.g., Magic Bolt) ---
+        // Don't deduct cost yet, just enter aiming mode.
+        gameState.isAiming = true;
+        gameState.abilityToAim = spellId; // Store the spellId (e.g., "magicBolt")
+        spellModal.classList.add('hidden');
+        logMessage(`${spellData.name}: Press an arrow key or WASD to fire. (Esc) to cancel.`);
+        return; // We don't end the turn until they fire
+
+    } else if (spellData.target === 'self') {
+        // --- Self-Cast Spells (e.g., Heal, Clarity) ---
+        // Cast immediately.
+        player[costType] -= cost; // Deduct the resource cost
+        let spellCastSuccessfully = false;
+
+        // --- 3. Execute Spell Effect ---
+        // --- FIX: spellLevel is now available to all cases ---
+        switch (spellId) {
+            case 'lesserHeal':
+                const healAmount = spellData.baseHeal + (player.wits * spellLevel); // Use spell level!
+                const oldHealth = player.health;
+                player.health = Math.min(player.maxHealth, player.health + healAmount);
+                const healedFor = player.health - oldHealth;
+
+                if (healedFor > 0) {
+                    logMessage(`You cast Lesser Heal and recover ${healedFor} health.`);
+                    triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+                } else {
+                    logMessage("You cast Lesser Heal, but you're already at full health.");
+                }
+                playerRef.update({ health: player.health });
+                spellCastSuccessfully = true;
+                break;
+
+            case 'arcaneShield':
+                if (player.shieldTurns > 0) {
+                    logMessage("You already have an active shield!");
+                    spellCastSuccessfully = false; // Don't cast
+                    // We'll refund the cost since this was a mistake
+                    player[costType] += cost;
+                    break; // Exit the switch
+                }
+                
+                // const spellLevel = player.spellbook[spellId] || 1; // <-- This redundant line is removed
+                const shieldAmount = spellData.baseShield + (player.wits * spellLevel);
+                player.shieldValue = shieldAmount;
+                player.shieldTurns = spellData.duration;
+
+                logMessage(`You conjure an Arcane Shield, absorbing ${shieldAmount} damage!`);
+                triggerStatAnimation(statDisplays.health, 'stat-pulse-blue'); // Blue for a magic shield
+                
+                playerRef.update({ 
+                    shieldValue: player.shieldValue,
+                    shieldTurns: player.shieldTurns
+                });
+                spellCastSuccessfully = true;
+                break;
+
+            case 'clarity':
+                if (gameState.mapMode !== 'dungeon') {
+                    logMessage("You can only feel for secret walls in caves.");
+                    // We already spent the psyche, but we'll end the turn.
+                    spellCastSuccessfully = true;
+                    break;
+                }
+
+                const map = chunkManager.caveMaps[gameState.currentCaveId];
+                const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                const secretWallTile = theme.secretWall;
+                let foundWall = false;
+
+                // Check all 8 adjacent tiles (this logic is unchanged)
+                for (let y = -1; y <= 1; y++) {
+                    for (let x = -1; x <= 1; x++) {
+                        if (x === 0 && y === 0) continue;
+                        const checkX = player.x + x;
+                        const checkY = player.y + y;
+
+                        if (map[checkY] && map[checkY][checkX] === secretWallTile) {
+                            map[checkY][checkX] = theme.floor; // Reveal the wall!
+                            foundWall = true;
+                        }
+                    }
+                }
+
+                if (foundWall) {
+                    logMessage("You focus your mind... and a passage is revealed!");
+                    render(); // Re-render to show the new passage
+                } else {
+                    logMessage("You focus, but find no hidden passages nearby.");
+                }
+                triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+                spellCastSuccessfully = true;
+                break;
+        }
+
+        // --- 4. Finalize Self-Cast Turn ---
+        if (spellCastSuccessfully) {
+            playerRef.update({ [costType]: player[costType] }); // Save the new mana/psyche
+            spellModal.classList.add('hidden');
+            endPlayerTurn();
+            renderStats();
+        } else {
+            // Refund the cost if the spell failed for some reason
+            player[costType] += cost;
+        }
+    }
+}
+
+/**
+ * Universal helper function to apply spell damage to a target.
+ * Handles both overworld (Firebase) and instanced enemies.
+ * Also handles special on-hit effects like Siphon Life.
+ * @param {number} targetX - The x-coordinate of the target.
+ * @param {number} targetY - The y-coordinate of the target.
+ * @param {number} damage - The final calculated damage to apply.
+ * @param {string} spellId - The ID of the spell being cast (e.g., "siphonLife").
+ */
+async function applySpellDamage(targetX, targetY, damage, spellId) {
+    const player = gameState.player;
+    const spellData = SPELL_DATA[spellId];
+
+    // Determine the tile and enemy data
+    let tile;
+    if (gameState.mapMode === 'overworld') {
+        tile = chunkManager.getTile(targetX, targetY);
+    } else {
+        const map = (gameState.mapMode === 'dungeon') ? chunkManager.caveMaps[gameState.currentCaveId] : chunkManager.castleMaps[gameState.currentCastleId];
+        tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+    }
+    const enemyData = ENEMY_DATA[tile];
+    if (!enemyData) return false; // No enemy here
+
+    let damageDealt = 0; // Track actual damage for lifesteal
+
+    if (gameState.mapMode === 'overworld') {
+        const enemyId = `overworld:${targetX},${-targetY}`;
+        const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
+
+        try {
+            const transactionResult = await enemyRef.transaction(currentData => {
+                if (currentData === null) return; // Enemy already dead or gone
+                
+                // Calculate actual damage vs. defense (magic ignores defense for now)
+                damageDealt = Math.max(1, damage); // TODO: Add magic resistance?
+                currentData.health -= damageDealt;
+                
+                if (currentData.health <= 0) return null;
+                return currentData;
+            });
+
+            const finalEnemyState = transactionResult.snapshot.val();
+            if (finalEnemyState === null) {
+                logMessage(`The ${enemyData.name} was vanquished!`);
+                grantXp(enemyData.xp);
+                updateQuestProgress(tile);
+                const droppedLoot = generateEnemyLoot(player, enemyData);
+                chunkManager.setWorldTile(targetX, targetY, droppedLoot);
+            }
+        } catch (error) {
+            console.error("Spell damage transaction failed: ", error);
+        }
+
+    } else {
+        // Handle Instanced Combat
+        let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+        if (enemy) {
+            damageDealt = Math.max(1, damage); // TODO: Add magic resistance?
+            enemy.health -= damageDealt;
+            logMessage(`You hit the ${enemy.name} for ${damageDealt} magic damage!`);
+
+            if (enemy.health <= 0) {
+                logMessage(`You defeated the ${enemy.name}!`);
+                grantXp(enemy.xp);
+                updateQuestProgress(enemy.tile);
+                const droppedLoot = generateEnemyLoot(player, enemy);
+                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                if (gameState.mapMode === 'dungeon') {
+                    chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
+                }
+            }
+        }
+    }
+
+    // --- Handle On-Hit Effects ---
+    if (damageDealt > 0 && spellId === 'siphonLife') {
+        const healedAmount = Math.floor(damageDealt * spellData.healPercent);
+        if (healedAmount > 0) {
+            const oldHealth = player.health;
+            player.health = Math.min(player.maxHealth, player.health + healedAmount);
+            const actualHeal = player.health - oldHealth;
+            if (actualHeal > 0) {
+                logMessage(`You drain ${actualHeal} health from the ${enemyData.name}.`);
+                triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+                playerRef.update({ health: player.health });
+            }
+        }
+    }
+    
+    return damageDealt > 0; // Return true if we hit something
 }
 
 /**
@@ -2856,8 +3299,27 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
             if (Math.random() < luckDodgeChance) {
                 logMessage(`The ${enemyData.name} attacks, but you luckily dodge!`);
                 enemyDamageTaken = 0; // Negate the damage
-            } else {
-                player.health -= enemyDamageTaken;
+} else {
+                // --- NEW SHIELD DAMAGE LOGIC ---
+                let damageToApply = enemyDamageTaken;
+                if (player.shieldValue > 0) {
+                    const damageAbsorbed = Math.min(player.shieldValue, damageToApply);
+                    player.shieldValue -= damageAbsorbed;
+                    damageToApply -= damageAbsorbed;
+                    
+                    logMessage(`Your shield absorbs ${damageAbsorbed} damage!`);
+                    
+                    if (player.shieldValue === 0) {
+                        logMessage("Your Arcane Shield shatters!");
+                        // DB update will be handled by the tick-down logic
+                    }
+                }
+                
+                // Apply any remaining damage to health
+                if (damageToApply > 0) {
+                    player.health -= damageToApply;
+                }
+                // --- END NEW SHIELD LOGIC ---
             }
             // --- END LUCK DODGE CHECK ---
         }
@@ -3493,6 +3955,26 @@ function endPlayerTurn() {
         renderEquipment(); // Update UI (to show new turn count or remove buff)
     }
 
+    if (gameState.player.shieldTurns > 0) {
+        gameState.player.shieldTurns--; // Tick down the turn
+
+        if (gameState.player.shieldTurns === 0) {
+            // Shield expired
+            gameState.player.shieldValue = 0;
+            logMessage("Your Arcane Shield fades.");
+            playerRef.update({
+                shieldValue: 0,
+                shieldTurns: 0
+            });
+        } else {
+            // Save the new turn count
+            playerRef.update({
+                shieldTurns: gameState.player.shieldTurns
+            });
+        }
+        renderStats(); // Update UI (to show new turn count or remove shield)
+    }
+
     // --- MODIFIED BLOCK ---
     if (gameState.playerTurnCount % 2 === 0) {
         // Call our new async wrapper function.
@@ -3598,6 +4080,15 @@ document.addEventListener('keydown', (event) => {
             return;
         }
 
+        // --- ADDED ---
+        if (!craftingModal.classList.contains('hidden')) {
+            craftingModal.classList.add('hidden');
+            event.preventDefault();
+            return;
+        }
+        // --- END ADDED ---
+
+
         // Handle exiting game states ---
         if (gameState.isDroppingItem) {
             logMessage("Drop canceled.");
@@ -3639,14 +4130,18 @@ document.addEventListener('keydown', (event) => {
     else if (event.key === 'ArrowLeft' || event.key === 'a' || event.key === 'A') dirX = -1;
     else if (event.key === 'ArrowRight' || event.key === 'd' || event.key === 'D') dirX = 1;
 
-    if (dirX !== 0 || dirY !== 0) {
-        // --- NEW: Check which ability to use ---
-        if (gameState.abilityToAim === 'lunge') {
+if (dirX !== 0 || dirY !== 0) {
+        const abilityId = gameState.abilityToAim; // e.g., "lunge", "magicBolt", "fireball"
+
+        if (abilityId === 'lunge') {
             executeLunge(dirX, dirY);
-        } else if (gameState.abilityToAim === 'bolt') {
-            executeMagicBolt(dirX, dirY);
+        } else if (SPELL_DATA[abilityId]) { // Check if it's a key in our spell database
+            // It's a spell! Call our new generic execute function
+            executeAimedSpell(abilityId, dirX, dirY); 
+        } else {
+            // Fallback in case something went wrong
+            logMessage("Unknown ability. Aiming canceled.");
         }
-        // --- END NEW ---
 
         gameState.isAiming = false;
         gameState.abilityToAim = null;
@@ -3743,6 +4238,38 @@ document.addEventListener('keydown', (event) => {
                 logMessage(`You equip the ${itemToUse.name}.`);
                 itemUsed = true;
 
+            } else if (itemToUse.type === 'spellbook') {
+                const spellId = itemToUse.spellId;
+                const spellData = SPELL_DATA[spellId];
+                const player = gameState.player;
+
+                if (!spellData) {
+                    logMessage("This item appears to be a dud. (No spell data found)");
+                    itemUsed = false; // Don't consume the item
+                } else if (player.level < spellData.requiredLevel) {
+                    logMessage(`You ponder the text, but must be Level ${spellData.requiredLevel} to understand it.`);
+                    itemUsed = false; // Don't consume
+                } else {
+                    // All checks passed. Use the item.
+                    if (player.spellbook[spellId]) {
+                        // Player already knows the spell: Level it up
+                        player.spellbook[spellId]++;
+                        logMessage(`You study the text and learn more about ${spellData.name}! It is now Level ${player.spellbook[spellId]}.`);
+                    } else {
+                        // Player is learning the spell for the first time
+                        player.spellbook[spellId] = 1; // Set to level 1
+                        logMessage(`You have learned a new spell: ${spellData.name}!`);
+                    }
+                    
+                    // Consume the item
+                    itemToUse.quantity--;
+                    if (itemToUse.quantity <= 0) {
+                        player.inventory.splice(itemIndex, 1);
+                    }
+                    itemUsed = true;
+                    // Note: We'll update the 'playerRef' in the 'if (itemUsed)' block below
+                }
+
             } else {
                 logMessage(`You can't use '${itemToUse.name}' right now.`);
             }
@@ -3761,7 +4288,8 @@ document.addEventListener('keydown', (event) => {
 
                 playerRef.update({
                     inventory: inventoryToSave,
-                    equipment: gameState.player.equipment
+                    equipment: gameState.player.equipment,
+                    spellbook: gameState.player.spellbook
                 });
 
                 syncPlayerState();
@@ -3972,12 +4500,30 @@ document.addEventListener('keydown', (event) => {
 
                         // --- NEW LUCK DODGE CHECK ---
                         const luckDodgeChance = Math.min(gameState.player.luck * 0.002, 0.25); // 0.2% per luck, max 25%
-                        if (Math.random() < luckDodgeChance) {
+if (Math.random() < luckDodgeChance) { //
                             logMessage(`The ${enemy.name} attacks, but you luckily dodge!`);
                         } else {
-                            gameState.player.health -= enemyDamage;
-                            triggerStatFlash(statDisplays.health, false);
-                            logMessage(`The ${enemy.name} hits you for ${enemyDamage} damage!`);
+                            // --- NEW SHIELD DAMAGE LOGIC ---
+                            let damageToApply = enemyDamage;
+                            if (gameState.player.shieldValue > 0) {
+                                const damageAbsorbed = Math.min(gameState.player.shieldValue, damageToApply);
+                                gameState.player.shieldValue -= damageAbsorbed;
+                                damageToApply -= damageAbsorbed;
+
+                                logMessage(`Your shield absorbs ${damageAbsorbed} damage!`);
+
+                                if (gameState.player.shieldValue === 0) {
+                                    logMessage("Your Arcane Shield shatters!");
+                                }
+                            }
+
+                            // Apply remaining damage to health
+                            if (damageToApply > 0) {
+                                gameState.player.health -= damageToApply;
+                                triggerStatFlash(statDisplays.health, false);
+                                logMessage(`The ${enemy.name} hits you for ${damageToApply} damage!`);
+                            }
+                            // --- END NEW SHIELD LOGIC ---
                         }
                         // --- END LUCK DODGE CHECK ---
 
@@ -4140,6 +4686,55 @@ document.addEventListener('keydown', (event) => {
                 return;
             }
 
+            if (newTile === 'G') {
+                if (!gameState.foundLore.has(tileId)) {
+                    logMessage("You spoke to a Castle Guard. +5 XP");
+                    grantXp(5);
+                    gameState.foundLore.add(tileId);
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
+                // Use a seeded random to make their dialogue consistent
+                const seed = stringToSeed(tileId);
+                const random = Alea(seed);
+                const guardDialogues = [
+                    "Keep your wits about you. Even in a castle, you can't be too careful.",
+                    "This fortress has stood for ages. It'll stand for many more, long as we're here.",
+                    "Looking for the Sage? He's the one muttering about 'five thrones' all the time.",
+                    "The King's old chambers are off-limits. Place is haunted, they say.",
+                    "Watch yourself near the battlements. It's a long way down."
+                ];
+                const dialogue = guardDialogues[Math.floor(random() * guardDialogues.length)];
+
+                loreTitle.textContent = "Castle Guard";
+                loreContent.textContent = `The guard nods as you approach.\n\n"${dialogue}"`;
+                loreModal.classList.remove('hidden');
+                return;
+            }
+
+            // --- NEW SAGE LOGIC ---
+            if (newTile === 'O') {
+                if (!gameState.foundLore.has(tileId)) {
+                    logMessage("You listen to the Sage's ramblings. +10 XP");
+                    grantXp(10); // Same as a rune stone
+                    gameState.foundLore.add(tileId);
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
+                // Use the same lore as the Rune Stones for a consistent feel
+                const seed = stringToSeed(tileId);
+                const random = Alea(seed);
+                const messageIndex = Math.floor(random() * LORE_STONE_MESSAGES.length);
+                const message = LORE_STONE_MESSAGES[messageIndex];
+
+                loreTitle.textContent = "Sage";
+                loreContent.textContent = `The old Sage is staring at a tapestry, muttering to themself.\n\n"...yes, yes... ${message}..."`;
+                loreModal.classList.remove('hidden');
+                return;
+            }
+
             if (newTile === '§') {
                 if (!gameState.foundLore.has(tileId)) {
                     logMessage("You've discovered a General Store! +15 XP");
@@ -4190,6 +4785,20 @@ document.addEventListener('keydown', (event) => {
 
             // Handle all other special tiles like entrances/exits
             switch (tileData.type) {
+                // --- NEW CASE ---
+                case 'workbench':
+                    if (!gameState.foundLore.has(tileId)) {
+                        logMessage("You found a workbench! +10 XP");
+                        grantXp(10);
+                        gameState.foundLore.add(tileId);
+                        playerRef.update({
+                            foundLore: Array.from(gameState.foundLore)
+                        });
+                    }
+                    openCraftingModal();
+                    return; // Stop the player's move
+                // --- END NEW CASE ---
+
                 case 'dungeon_entrance':
                     if (!gameState.foundLore.has(tileId)) {
                         logMessage("You've discovered a cave entrance! +10 XP");
@@ -4455,10 +5064,12 @@ document.addEventListener('keydown', (event) => {
         }
 
         // 6. Handle final updates
-
+        
+        // --- NEW: Call Perception Check ---
         // Must be AFTER player.x/y are updated but BEFORE render()
         passivePerceptionCheck();
-
+        // --- END NEW ---
+        
         render();
         updateRegionDisplay();
         syncPlayerState();
@@ -4867,6 +5478,8 @@ async function startGame(user) {
     initSkillbookListeners();
 
     initQuestListeners();
+
+    initCraftingListeners();
 }
 
 auth.onAuthStateChanged((user) => {
