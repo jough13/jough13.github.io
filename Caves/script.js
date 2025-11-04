@@ -3280,7 +3280,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
             enemyWasKilled = true;
             logMessage(`You defeated the ${enemyData.name}!`);
             grantXp(enemyData.xp);
-            updateQuestProgress(tile);
+            updateQuestProgress(newTile);
 
             const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
             chunkManager.setWorldTile(newX, newY, droppedLoot);
