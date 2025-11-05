@@ -85,6 +85,11 @@ const TILE_DATA = {
         type: 'npc_skill_trainer',
         title: 'Skill Trainer'
     },
+    'J': {
+        type: 'journal',
+        title: 'Orc War-Chant',
+        content: `Blood and dust. Steel and bone.\n\nThe weak build with stone. The strong build with fear.\n\nWe come from the fire, we return to the ash. The mountain is our mother, the world our feast. Stomp the soft-skins. Take their steel. Raise the tusk-banner.\n\n...the rest is scrawled in a crude, unintelligible script.`
+    },
     '♛': {
         type: 'landmark_castle',
         getCastleId: (x, y) => `castle_landmark_${x}_${y}`
@@ -348,8 +353,38 @@ const QUEST_DATA = {
             xp: 100,
             coins: 50
         }
+    },
+    "goblinHunt": {
+        title: "Bounty: Goblin Hunt",
+        description: "Goblins are multiplying in the nearby caves. Clear them out.",
+        enemy: 'g', // Tracks 'g' tile
+        needed: 15, // Need to kill 15
+        reward: {
+            xp: 75,
+            coins: 30
+        }
+    },
+    "skeletonScourge": {
+        title: "Bounty: Skeleton Scourge",
+        description: "Restless dead are rising. Put them back to rest.",
+        enemy: 's', // Tracks 's' tile
+        needed: 10,
+        reward: {
+            xp: 100,
+            coins: 50
+        }
+    },
+    "banditCleanup": {
+        title: "Bounty: Bandit Cleanup",
+        description: "Bandits have been waylaying travelers. Bring them to justice.",
+        enemy: 'b', // Tracks 'b' tile
+        needed: 12,
+        reward: {
+            xp: 120,
+            coins: 75
+        }
     }
-    // We can add more quests here later, like "banditHunt"
+
 };
 
 const ENEMY_DATA = {
@@ -392,6 +427,22 @@ const ENEMY_DATA = {
         defense: 2,
         xp: 25,
         loot: 'i'      // Drops the same insignia (or we could change it)
+    },
+    'o': {
+        name: 'Orc Brute',
+        maxHealth: 15, // High health
+        attack: 4,     // High attack
+        defense: 1,    // Low defense
+        xp: 30,
+        loot: 'U'      // New item: Orc Tusk
+    },
+    'm': {
+        name: 'Arcane Mage',
+        maxHealth: 10, // Low health
+        attack: 5,     // Very high attack (like a glass cannon)
+        defense: 0,
+        xp: 30,
+        loot: '&'      // New item: Arcane Dust
     }
 };
 
@@ -429,8 +480,8 @@ const CAVE_THEMES = {
             wall: '#450a0a',
             floor: '#ef4444'
         }, // The red color makes it look like lava
-        decorations: ['+', '$', '🔥'],
-        enemies: ['b', 'C']
+        decorations: ['+', '$', '🔥', 'J'],
+        enemies: ['b', 'C', 'o', 'm']
     },
 
     CRYSTAL: {
@@ -930,6 +981,22 @@ const CRAFTING_RECIPES = {
     "Bandit Garb": {      // A new item
         "Bandit's Insignia": 3,
         "Leather Tunic": 1
+    },
+    "Steel Sword": {
+        "Rusty Sword": 1,
+        "Orc Tusk": 4
+    },
+    "Steel Armor": {
+        "Studded Armor": 1,
+        "Orc Tusk": 6
+    },
+    "Warlock's Staff": {
+        "Bone Dagger": 1,
+        "Arcane Dust": 5
+    },
+    "Mage Robe": {
+        "Bandit Garb": 1,
+        "Arcane Dust": 5
     }
     // We can add many more recipes here later
 };
@@ -1068,6 +1135,40 @@ const ITEM_DATA = {
         name: 'Bandit Garb',
         type: 'armor',
         defense: 2, // Same as Studded Armor (Tier 2)
+        slot: 'armor'
+    },
+    'U': {
+        name: 'Orc Tusk',
+        type: 'junk'
+    },
+    '&': {
+        name: 'Arcane Dust',
+        type: 'junk'
+    },
+    
+    // --- NEW TIER 3 GEAR ---
+    '=': {
+        name: 'Steel Sword',
+        type: 'weapon',
+        damage: 4, // Better than Rusty Sword (2)
+        slot: 'weapon'
+    },
+    'A': { // Using 'A' for Heavy armor
+        name: 'Steel Armor',
+        type: 'armor',
+        defense: 4, // Better than Studded Armor (2)
+        slot: 'armor'
+    },
+    'Ψ': { // Psi symbol
+        name: 'Warlock\'s Staff',
+        type: 'weapon',
+        damage: 3, // A good magic-themed weapon
+        slot: 'weapon'
+    },
+    'M': { // Using 'M' for Mage robe
+        name: 'Mage Robe',
+        type: 'armor',
+        defense: 3, // Good, but less than Steel
         slot: 'armor'
     },
     '$': {
