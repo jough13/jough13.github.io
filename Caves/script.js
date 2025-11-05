@@ -3105,7 +3105,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             if (finalEnemyState === null) {
                 logMessage(`The ${enemyData.name} was vanquished!`);
                 grantXp(enemyData.xp);
-                updateQuestProgress(tile);
+                updateQuestProgress(newTile);
                 const droppedLoot = generateEnemyLoot(player, enemyData);
                 chunkManager.setWorldTile(targetX, targetY, droppedLoot);
             }
