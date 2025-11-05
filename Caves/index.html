@@ -247,12 +247,25 @@
         </div>
     </div>
 
-    <div id="craftingModal" class="modal-overlay hidden">
+      <div id="craftingModal" class="modal-overlay hidden">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Crafting Workbench</h2>
             <ul id="craftingRecipeList" class="space-y-3 max-h-80 overflow-y-auto pr-2">
                </ul>
             <button id="closeCraftingButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave Workbench</button>
+         </div>
+      </div>
+
+      <div id="skillTrainerModal" class="modal-overlay hidden">
+         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Skill Trainer</h2>
+                <span id="skillTrainerStatPoints" class="font-bold highlight-text">Your Stat Points: 0</span>
+            </div>
+            <p class="text-sm muted-text mb-4">Spend 1 Stat Point to learn a new skill or level up an existing one.</p>
+            <ul id="skillTrainerList" class="space-y-3 max-h-80 overflow-y-auto pr-2">
+               </ul>
+            <button id="closeSkillTrainerButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave Trainer</button>
          </div>
       </div>
 
