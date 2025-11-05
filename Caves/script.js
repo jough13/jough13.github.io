@@ -405,7 +405,8 @@ const CAVE_THEMES = {
             wall: '#422006',
             floor: '#a16207'
         },
-        decorations: ['+', 'o', '$', '📖']
+        decorations: ['+', 'o', '$', '📖'],
+        enemies: ['g', 's']
     },
     ICE: {
         name: 'A Glacial Cavern',
@@ -416,7 +417,8 @@ const CAVE_THEMES = {
             wall: '#99f6e4',
             floor: '#e0f2fe'
         },
-        decorations: ['S', 'Y', '$'] // Stamina/Psyche items are more common
+        decorations: ['S', 'Y', '$'], // Stamina/Psyche items are more common
+        enemies: ['s', 'w']
     },
     FIRE: {
         name: 'A Volcanic Fissure',
@@ -427,7 +429,8 @@ const CAVE_THEMES = {
             wall: '#450a0a',
             floor: '#ef4444'
         }, // The red color makes it look like lava
-        decorations: ['+', '$', '🔥']
+        decorations: ['+', '$', '🔥'],
+        enemies: ['b', 'C']
     },
 
     CRYSTAL: {
@@ -439,7 +442,8 @@ const CAVE_THEMES = {
             wall: '#67e8f9', // Bright Cyan
             floor: '#22d3ee' // Darker Cyan
         },
-        decorations: ['Y', 'o', '$'] // Psyche, Mana, and Gold
+        decorations: ['Y', 'o', '$'], // Psyche, Mana, and Gold
+        enemies: ['g']
     },
 
     GROTTO: {
@@ -451,7 +455,8 @@ const CAVE_THEMES = {
             wall: '#14532d', // Dark Green
             floor: '#16a34a' // Bright Green
         },
-        decorations: ['+', 'S', 'o'] // Health, Stamina, Mana
+        decorations: ['+', 'S', 'o'], // Health, Stamina, Mana
+        enemies: ['g', 'w']
     }
 };
 
@@ -1296,7 +1301,8 @@ const chunkManager = {
         }
 
         this.caveEnemies[caveId] = []; // Reset/init the enemy list for this cave
-        const enemyTypes = Object.keys(ENEMY_DATA);
+        
+        const enemyTypes = theme.enemies || Object.keys(ENEMY_DATA);
 
         for (let i = 0; i < 20; i++) { // Try to spawn 20 enemies
             const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
