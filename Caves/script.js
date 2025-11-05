@@ -559,6 +559,11 @@ const craftingModal = document.getElementById('craftingModal');
 const closeCraftingButton = document.getElementById('closeCraftingButton');
 const craftingRecipeList = document.getElementById('craftingRecipeList');
 
+const skillTrainerModal = document.getElementById('skillTrainerModal');
+const closeSkillTrainerButton = document.getElementById('closeSkillTrainerButton');
+const skillTrainerList = document.getElementById('skillTrainerList');
+const skillTrainerStatPoints = document.getElementById('skillTrainerStatPoints');
+
 const equippedWeaponDisplay = document.getElementById('equippedWeaponDisplay');
 
 const equippedArmorDisplay = document.getElementById('equippedArmorDisplay');
@@ -2398,11 +2403,12 @@ function openSkillbook() {
     skillModal.classList.remove('hidden'); // Show the modal
 }
 
-**
+/**
  * Handles all skill logic based on SKILL_DATA
  * and the player's skillbook.
  * @param {string} skillId - The ID of the skill to use (e.g., "brace").
  */
+
 function useSkill(skillId) {
     const player = gameState.player;
     const skillData = SKILL_DATA[skillId]; // Get data from our new constant
@@ -2828,6 +2834,19 @@ function initCraftingListeners() {
     });
 }
 
+function initSkillTrainerListeners() {
+    closeSkillTrainerButton.addEventListener('click', () => {
+        skillTrainerModal.classList.add('hidden');
+    });
+
+    skillTrainerList.addEventListener('click', (e) => {
+        const button = e.target.closest('button[data-skill-id]');
+        if (button && !button.disabled) {
+            handleLearnSkill(button.dataset.skillId);
+        }
+    });
+}
+
 /**
  * Checks if the player has the required materials for a recipe.
  * @param {string} recipeName - The name of the item to craft (a key in CRAFTING_RECIPES).
@@ -2973,10 +2992,119 @@ function handleCraftItem(recipeName) {
     renderInventory(); // Re-render the main UI inventory
 }
 
-
 function openCraftingModal() {
     renderCraftingModal(); // Populate the list based on current inventory
     craftingModal.classList.remove('hidden');
+}
+
+/**
+ * Renders the skill trainer modal.
+ * Lists all skills from SKILL_DATA and shows their learn/level-up status.
+ */
+function renderSkillTrainerModal() {
+    skillTrainerList.innerHTML = ''; // Clear the old list
+    const player = gameState.player;
+    skillTrainerStatPoints.textContent = `Your Stat Points: ${player.statPoints}`;
+    const canAfford = player.statPoints > 0;
+
+    for (const skillId in SKILL_DATA) {
+        const skillData = SKILL_DATA[skillId];
+        const currentLevel = player.skillbook[skillId] || 0; // 0 if not learned
+
+        let buttonHtml = '';
+        let levelText = '';
+
+        if (currentLevel === 0) {
+            // Player does not know this skill
+            levelText = '<span class="skill-trainer-level text-red-500">Not Learned</span>';
+            if (player.level >= skillData.requiredLevel) {
+                // Player meets level requirement, show "Learn" button
+                buttonHtml = `<button data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Learn (1 SP)</button>`;
+            } else {
+                // Player does not meet level requirement
+                buttonHtml = `<button disabled>Requires Lvl ${skillData.requiredLevel}</button>`;
+            }
+        } else {
+            // Player knows this skill
+            levelText = `<span class="skill-trainer-level">Level: ${currentLevel}</span>`;
+            // TODO: Add a max level check here later if we want one
+            buttonHtml = `<button data-skill-id="${skillId}" ${canAfford ? '' : 'disabled'}>Level Up (1 SP)</button>`;
+        }
+
+        // Build the full list item
+        const li = document.createElement('li');
+        li.className = 'skill-trainer-item';
+        li.innerHTML = `
+            <div>
+                <span class="skill-trainer-name">${skillData.name}</span>
+                <span class="skill-trainer-desc">${skillData.description}</span>
+            </div>
+            <div class="text-right">
+                ${levelText}
+                <div class="skill-trainer-actions mt-1">
+                    ${buttonHtml}
+                </div>
+            </div>
+        `;
+        skillTrainerList.appendChild(li);
+    }
+}
+
+/**
+ * Handles the logic of spending a stat point to learn or level up a skill.
+ * @param {string} skillId - The ID of the skill to learn (e.g., "brace").
+ */
+function handleLearnSkill(skillId) {
+    const player = gameState.player;
+    const skillData = SKILL_DATA[skillId];
+
+    // --- Final Security Checks ---
+    if (player.statPoints <= 0) {
+        logMessage("You don't have any Stat Points to spend.");
+        return;
+    }
+    if (!skillData) {
+        logMessage("That skill doesn't exist.");
+        return;
+    }
+
+    const currentLevel = player.skillbook[skillId] || 0;
+    if (currentLevel === 0 && player.level < skillData.requiredLevel) {
+        logMessage("You are not high enough level to learn that.");
+        return;
+    }
+    // --- End Checks ---
+
+    // Spend the point
+    player.statPoints--;
+
+    if (currentLevel === 0) {
+        // --- Learn the skill ---
+        player.skillbook[skillId] = 1;
+        logMessage(`You have learned ${skillData.name} (Level 1)!`);
+    } else {
+        // --- Level up the skill ---
+        player.skillbook[skillId]++;
+        logMessage(`${skillData.name} is now Level ${player.skillbook[skillId]}!`);
+    }
+
+    // Update database
+    playerRef.update({
+        statPoints: player.statPoints,
+        skillbook: player.skillbook
+    });
+
+    // Update UI
+    renderStats(); // Update the main UI stat point display
+    renderSkillTrainerModal(); // Re-render the modal to show new state
+}
+
+/**
+ * Opens the Skill Trainer modal.
+ */
+function openSkillTrainerModal() {
+    renderSkillTrainerModal(); // Populate the list
+    skillTrainerModal.classList.remove('hidden');
 }
 
 /**
@@ -3231,7 +3359,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             if (finalEnemyState === null) {
                 logMessage(`The ${enemyData.name} was vanquished!`);
                 grantXp(enemyData.xp);
-                updateQuestProgress(newTile);
+                updateQuestProgress(tile);
                 const droppedLoot = generateEnemyLoot(player, enemyData);
                 chunkManager.setWorldTile(targetX, targetY, droppedLoot);
             }
@@ -3406,7 +3534,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             enemyWasKilled = true;
             logMessage(`You defeated the ${enemyData.name}!`);
             grantXp(enemyData.xp);
-            updateQuestProgress(newTile); // <-- This was the bug you fixed
+            updateQuestProgress(newTile);
 
             const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
             chunkManager.setWorldTile(newX, newY, droppedLoot);
@@ -4871,6 +4999,19 @@ if (Math.random() < luckDodgeChance) { //
                 return;
             }
 
+            if (newTile === 'T') {
+                if (!gameState.foundLore.has(tileId)) {
+                    logMessage("You've found a Skill Trainer! +15 XP");
+                    grantXp(15);
+                    gameState.foundLore.add(tileId);
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
+                openSkillTrainerModal();
+                return; // Stop the player's move
+            }
+
             if (newTile === '§') {
                 if (!gameState.foundLore.has(tileId)) {
                     logMessage("You've discovered a General Store! +15 XP");
@@ -5616,6 +5757,8 @@ async function startGame(user) {
     initQuestListeners();
 
     initCraftingListeners();
+
+    initSkillTrainerListeners();
 }
 
 auth.onAuthStateChanged((user) => {
