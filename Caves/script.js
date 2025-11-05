@@ -81,6 +81,10 @@ const TILE_DATA = {
         type: 'npc_sage',
         title: 'Sage'
     },
+    'T': {
+        type: 'npc_skill_trainer',
+        title: 'Skill Trainer'
+    },
     '♛': {
         type: 'landmark_castle',
         getCastleId: (x, y) => `castle_landmark_${x}_${y}`
@@ -208,7 +212,7 @@ const CASTLE_LAYOUTS = {
             '▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓',
             '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓',
             '▓...............................................................................▓',
-            '▓.....................................................................G.........▓',
+            '▓...............T.....................................................G.........▓',
             '▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
             '▓....X..........................................................................▓', // Exit is here
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
@@ -679,6 +683,10 @@ function createDefaultPlayerState() {
             "magicBolt": 1
         },
 
+        skillbook: {
+            "brace": 1, // Key is the skillID, value is the skill's level
+            "lunge": 1
+        },
 
         level: 1,
         xp: 0,
@@ -1134,6 +1142,32 @@ const SPELL_DATA = {
         baseDamage: 5
     }
     // We can easily add more spells here later!
+};
+
+const SKILL_DATA = {
+    "brace": {
+        name: "Brace",
+        description: "Gain temporary Defense. Scales with Constitution.",
+        cost: 6,
+        costType: "stamina",
+        requiredLevel: 2, // Player level needed to learn this
+        target: "self",   // 'self' or 'aimed'
+        type: "buff",
+        // Formula: defense = base + (Constitution * 0.5)
+        baseDefense: 1, 
+        duration: 3 // Lasts for 3 player turns
+    },
+    "lunge": {
+        name: "Lunge",
+        description: "Attack an enemy 2-3 tiles away. Scales with Strength.",
+        cost: 5,
+        costType: "stamina",
+        requiredLevel: 2,
+        target: "aimed",
+        // Formula: damage = (PlayerDamage * 1.0) + (Strength * level)
+        baseDamageMultiplier: 1.0 
+    }
+    // We can add more skills here later (e.g., Power Attack, Whirlwind)
 };
 
 const statDisplays = {
@@ -2301,99 +2335,183 @@ function initInventoryListeners() {
     closeInventoryButton.addEventListener('click', closeInventoryModal);
 }
 
+/**
+ * Opens the skillbook modal.
+ * Dynamically renders the list of skills the player knows
+ * based on their skillbook and the SKILL_DATA.
+ */
 function openSkillbook() {
     skillList.innerHTML = ''; // Clear the list
     const player = gameState.player;
+    const playerSkills = player.skillbook || {};
 
-let braceSkillHtml = `
-    <li class="skill-item" data-skill="brace">
-        <div>
-            <span class="skill-item-name">Brace</span>
-            <span class="spell-item-details">Gain +2 Defense for 3 turns</span>
-        </div>
-        <span class="font-bold">6 Stamina</span>
-    </li>`;
-skillList.innerHTML += braceSkillHtml;
-   
-    let lungeSkillHtml = `
-        <li class="skill-item" data-skill="lunge">
+    // Check if the skillbook is empty
+    if (Object.keys(playerSkills).length === 0) {
+        skillList.innerHTML = '<li class="spell-item-details italic p-4">You have not learned any skills.</li>';
+        skillModal.classList.remove('hidden');
+        return;
+    }
+
+    // Loop through every skill the player knows
+    for (const skillId in playerSkills) {
+        const skillLevel = playerSkills[skillId];
+        const skillData = SKILL_DATA[skillId]; // Get data from our new constant
+
+        if (!skillData) {
+            console.warn(`Player has unknown skill in skillbook: ${skillId}`);
+            continue;
+        }
+
+        let canUse = false;
+        let costString = `${skillData.cost} ${skillData.costType}`;
+        let costColorClass = ""; // CSS class for cost, e.g., text-red-500
+
+        // Check if the player has enough resources to use
+        if (skillData.costType === 'stamina') {
+            canUse = player.stamina >= skillData.cost;
+            if (!canUse) costColorClass = "text-red-500";
+        }
+        // (We can add other cost types here later, like 'health')
+
+        // Build the new list item element
+        const li = document.createElement('li');
+        li.className = 'skill-item'; // Use 'skill-item'
+        li.dataset.skill = skillId; // Use the skill's ID (e.g., "brace")
+        
+        // Make the item look disabled if it can't be used
+        if (!canUse) {
+            li.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        // Set the dynamic HTML for the skill
+        li.innerHTML = `
             <div>
-                <span class="skill-item-name">Lunge</span>
-                <span class="spell-item-details">Attack an enemy 2-3 tiles away</span>
+                <span class="skill-item-name">${skillData.name} (Lvl ${skillLevel})</span>
+                <span class="spell-item-details">${skillData.description}</span>
             </div>
-            <span class="font-bold">5 Stamina</span>
-        </li>`;
-
-    skillList.innerHTML += lungeSkillHtml;
-    skillModal.classList.remove('hidden');
-}
-
-function selectSkill(skillName) {
-    if (skillName === 'lunge') {
-        gameState.isAiming = true;
-        gameState.abilityToAim = 'lunge';
-        skillModal.classList.add('hidden');
-        logMessage("Lunge: Press an arrow key or WASD to attack. (Esc) to cancel.");
-
-        } else if (skillName === 'brace') {
-        castBrace(); // Call the new function immediately
-    
+            <span class="font-bold ${costColorClass}">${costString}</span>
+        `;
+        
+        skillList.appendChild(li);
     }
+
+    skillModal.classList.remove('hidden'); // Show the modal
 }
 
-function castBrace() {
+**
+ * Handles all skill logic based on SKILL_DATA
+ * and the player's skillbook.
+ * @param {string} skillId - The ID of the skill to use (e.g., "brace").
+ */
+function useSkill(skillId) {
     const player = gameState.player;
-    const BRACE_COST = 6;
-    const BRACE_DEFENSE = 2;
-    const BRACE_DURATION = 3; // 3 of the player's turns
-
-    if (player.stamina < BRACE_COST) {
-        logMessage("You don't have enough stamina to brace!");
-        return; // Don't close modal
+    const skillData = SKILL_DATA[skillId]; // Get data from our new constant
+    
+    if (!skillData) {
+        logMessage("Unknown skill. (No skill data found)");
+        return;
     }
 
-    if (player.defenseBonusTurns > 0) {
-        logMessage("You are already bracing!");
-        return; // Don't close modal
+    const skillLevel = player.skillbook[skillId] || 0; // Get the player's level for this skill
+
+    if (skillLevel === 0) {
+        logMessage("You don't know that skill.");
+        return;
     }
 
-    // --- Success ---
-    player.stamina -= BRACE_COST;
-    player.defenseBonus = BRACE_DEFENSE;
-    player.defenseBonusTurns = BRACE_DURATION; // Will last for 3 player turns
+    // --- 1. Check Player Level Requirement ---
+    if (player.level < skillData.requiredLevel) {
+        logMessage(`You must be Level ${skillData.requiredLevel} to use this skill.`);
+        return;
+    }
 
-    logMessage(`You brace for impact, gaining +${BRACE_DEFENSE} Defense!`);
+    // --- 2. Check Resource Cost ---
+    const cost = skillData.cost;
+    const costType = skillData.costType; // 'stamina'
 
-    // Update the database
-    playerRef.update({ 
-        stamina: player.stamina,
-        defenseBonus: player.defenseBonus,
-        defenseBonusTurns: player.defenseBonusTurns
-    });
+    if (player[costType] < cost) {
+        logMessage(`You don't have enough ${costType} to use that.`);
+        return; // Do not close modal, do not end turn
+    }
 
-    triggerStatFlash(statDisplays.stamina, false); // Flash stamina
-    renderEquipment(); // Update UI to show the buff
-    skillModal.classList.add('hidden'); // Close modal
-    endPlayerTurn(); // Skill costs a turn
+    // --- 3. Handle Targeting ---
+    if (skillData.target === 'aimed') {
+        // --- Aimed Skills (e.g., Lunge) ---
+        // Cost is checked, but *not* deducted. executeLunge will deduct it.
+        gameState.isAiming = true;
+        gameState.abilityToAim = skillId; // Store the skillId (e.g., "lunge")
+        skillModal.classList.add('hidden');
+        logMessage(`${skillData.name}: Press an arrow key or WASD to use. (Esc) to cancel.`);
+        return; // We don't end the turn until they fire
+
+    } else if (skillData.target === 'self') {
+        // --- Self-Cast Skills (e.g., Brace) ---
+        // Cast immediately.
+        player[costType] -= cost; // Deduct the resource cost
+        let skillUsedSuccessfully = false;
+
+        // --- 4. Execute Skill Effect ---
+        switch (skillId) {
+            case 'brace':
+                if (player.defenseBonusTurns > 0) {
+                    logMessage("You are already bracing!");
+                    // Refund the cost
+                    player[costType] += cost;
+                    break; // Exit the switch
+                }
+                
+                // Formula: defense = base + (Constitution * 0.5 * level)
+                const defenseBonus = Math.floor(skillData.baseDefense + (player.constitution * 0.5 * skillLevel));
+                const duration = skillData.duration;
+
+                player.defenseBonus = defenseBonus;
+                player.defenseBonusTurns = duration;
+
+                logMessage(`You brace for impact, gaining +${defenseBonus} Defense!`);
+                
+                playerRef.update({ 
+                    defenseBonus: player.defenseBonus,
+                    defenseBonusTurns: player.defenseBonusTurns
+                });
+                skillUsedSuccessfully = true;
+                break;
+            
+            // Add other self-cast skills here in the future
+        }
+
+        // --- 5. Finalize Self-Cast Turn ---
+        if (skillUsedSuccessfully) {
+            playerRef.update({ [costType]: player[costType] }); // Save the new stamina
+            triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
+            skillModal.classList.add('hidden');
+            endPlayerTurn();
+            renderEquipment(); // Update UI to show buff
+        }
+    }
 }
 
 async function executeLunge(dirX, dirY) {
     const player = gameState.player;
-    const LUNGE_COST = 5;
+    const skillId = "lunge"; // This function is only for Lunge
+    const skillData = SKILL_DATA[skillId];
+    const skillLevel = player.skillbook[skillId] || 1;
 
-    if (player.stamina < LUNGE_COST) {
-        logMessage("You don't have enough stamina to lunge!");
-        return; // Do not end turn
-    }
-
-    player.stamina -= LUNGE_COST; // <-- **THIS IS THE STAMINA COST**
+    // --- 1. Deduct Cost ---
+    // Cost was checked in useSkill, but we deduct it here upon firing.
+    player.stamina -= skillData.cost; 
     let hit = false;
+    
+    // --- 2. Calculate Base Damage ---
+    // This is the player's total damage *before* the skill modifier
+    const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
+    const playerBaseDamage = player.strength + weaponDamage;
 
     // Loop 2 and 3 tiles away
     for (let i = 2; i <= 3; i++) {
         const targetX = player.x + (dirX * i);
         const targetY = player.y + (dirY * i);
 
+        // ... (rest of the tile-checking logic is the same) ...
         let tile;
         if (gameState.mapMode === 'dungeon') {
             const map = chunkManager.caveMaps[gameState.currentCaveId];
@@ -2411,19 +2529,26 @@ async function executeLunge(dirX, dirY) {
             // Found a target!
             logMessage(`You lunge and attack the ${enemyData.name}!`);
             hit = true;
+            
+            // --- 3. Calculate Final Damage ---
+            // Formula: ( (PlayerBaseDmg - EnemyDef) * Multiplier ) + (Strength * Level)
+            const baseLungeDamage = (playerBaseDamage - (enemyData.defense || 0)) * skillData.baseDamageMultiplier;
+            const scalingDamage = (player.strength * skillLevel);
+            const totalLungeDamage = Math.max(1, Math.floor(baseLungeDamage + scalingDamage));
+            // --- End Damage Calc ---
 
             if (gameState.mapMode === 'overworld') {
-                // Handle Overworld Combat (enemy attacks back)
-                await handleOverworldCombat(targetX, targetY, enemyData, tile);
+                // Handle Overworld Combat
+                // We now pass our calculated skill damage!
+                await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
 
             } else {
-                // Handle Instanced Combat (enemy does NOT attack back)
+                // Handle Instanced Combat
                 let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
                 if (enemy) {
-                    const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
-                    const playerDamage = Math.max(1, (player.strength + weaponDamage) - enemy.defense);
-                    enemy.health -= playerDamage;
-                    logMessage(`You hit the ${enemy.name} for ${playerDamage} damage!`);
+                    // We apply our new calculated damage!
+                    enemy.health -= totalLungeDamage; 
+                    logMessage(`You hit the ${enemy.name} for ${totalLungeDamage} damage!`);
 
                     if (enemy.health <= 0) {
                         logMessage(`You defeated the ${enemy.name}!`);
@@ -2433,8 +2558,6 @@ async function executeLunge(dirX, dirY) {
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                         if (gameState.mapMode === 'dungeon') {
                             chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
-                        } else if (gameState.mapMode === 'castle') {
-                            // Ready for castle enemies
                         }
                     }
                 }
@@ -2447,6 +2570,7 @@ async function executeLunge(dirX, dirY) {
         logMessage("You lunge... and hit nothing.");
     }
 
+    // --- 4. Finalize Turn ---
     playerRef.update({
         stamina: player.stamina
     });
@@ -2541,10 +2665,12 @@ function initSkillbookListeners() {
         skillModal.classList.add('hidden');
     });
 
+    // Calls our new, unified useSkill function
     skillList.addEventListener('click', (e) => {
         const skillItem = e.target.closest('.skill-item');
         if (skillItem && skillItem.dataset.skill) {
-            selectSkill(skillItem.dataset.skill);
+            // Pass the skill's ID (e.g., "brace")
+            useSkill(skillItem.dataset.skill); 
         }
     });
 }
@@ -3227,13 +3353,14 @@ function passivePerceptionCheck() {
 
 /**
  * Handles combat for overworld enemies, syncing health via RTDB.
+ * Accepts a pre-calculated playerDamage value.
  */
-async function handleOverworldCombat(newX, newY, enemyData, newTile) {
+async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage) { // <-- ADDED playerDamage
     const player = gameState.player;
     const enemyId = `overworld:${newX},${-newY}`; // Unique RTDB key
     const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-    logMessage(`You attack the ${enemyData.name}!`);
+    // Log message is now passed from the caller (e.g., "You attack..." or "You lunge...")
 
     let enemyWasKilled = false;
     let enemyAttackedBack = false;
@@ -3259,9 +3386,8 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
             }
 
             // --- Player Attacks Enemy ---
-            const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
-            const playerDamage = Math.max(1, (player.strength + weaponDamage) - enemy.defense);
-            enemy.health -= playerDamage;
+            // We now use the damage value passed into the function!
+            enemy.health -= playerDamage; 
 
             if (enemy.health <= 0) {
                 // Enemy is dead. Return 'null' to delete it from RTDB.
@@ -3280,7 +3406,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
             enemyWasKilled = true;
             logMessage(`You defeated the ${enemyData.name}!`);
             grantXp(enemyData.xp);
-            updateQuestProgress(newTile);
+            updateQuestProgress(newTile); // <-- This was the bug you fixed
 
             const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
             chunkManager.setWorldTile(newX, newY, droppedLoot);
@@ -3290,8 +3416,11 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
             enemyAttackedBack = true;
             const enemy = finalEnemyState;
             const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
+            // --- FIX: Add Dex defense ---
+            const baseDefense = Math.floor(player.dexterity / 5);
             const buffDefense = player.defenseBonus || 0;
-            const playerDefense = armorDefense + buffDefense;
+            const playerDefense = baseDefense + armorDefense + buffDefense; // <-- Corrected total defense
+            // --- END FIX ---
             enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
 
             // --- NEW LUCK DODGE CHECK ---
@@ -3299,7 +3428,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
             if (Math.random() < luckDodgeChance) {
                 logMessage(`The ${enemyData.name} attacks, but you luckily dodge!`);
                 enemyDamageTaken = 0; // Negate the damage
-} else {
+            } else {
                 // --- NEW SHIELD DAMAGE LOGIC ---
                 let damageToApply = enemyDamageTaken;
                 if (player.shieldValue > 0) {
@@ -3311,7 +3440,6 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
                     
                     if (player.shieldValue === 0) {
                         logMessage("Your Arcane Shield shatters!");
-                        // DB update will be handled by the tick-down logic
                     }
                 }
                 
@@ -3322,6 +3450,8 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
                 // --- END NEW SHIELD LOGIC ---
             }
             // --- END LUCK DODGE CHECK ---
+            
+            // --- This is the fix for the stray '}' bug ---
         }
 
     } catch (error) {
@@ -3331,7 +3461,6 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile) {
     }
 
     // --- Handle Post-Combat Player State ---
-    // --- MODIFIED: Only log if damage was taken ---
     if (enemyAttackedBack && enemyDamageTaken > 0) { 
         triggerStatFlash(statDisplays.health, false); // Flash health red
         logMessage(`The ${enemyData.name} hits you for ${enemyDamageTaken} damage!`);   
@@ -4547,7 +4676,14 @@ if (Math.random() < luckDodgeChance) { //
 
             } else if (gameState.mapMode === 'overworld') {
                 // --- NEW SHARED OVERWORLD COMBAT ---
-                await handleOverworldCombat(newX, newY, enemyData, newTile);
+                logMessage(`You attack the ${enemyData.name}!`); // <-- Add log message here
+                
+                // Calculate damage first
+                const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
+                const playerDamage = Math.max(1, (gameState.player.strength + weaponDamage) - (enemyData.defense || 0));
+
+                // Pass the calculated damage to the function
+                await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
                 return; // Stop the player's move
             }
         }
