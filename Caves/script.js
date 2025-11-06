@@ -5018,77 +5018,95 @@ if (Math.random() < luckDodgeChance) { //
             }
         }
 
-        let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
+let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
+        let isDisembarking = false;
 
-        // --- NEW TOOL LOGIC ---
-        if (gameState.mapMode === 'overworld') {
-            const playerInventory = gameState.player.inventory;
-            
-            // 1. Check for Machete in Forest
-            if (newTile === 'F' && playerInventory.some(item => item.name === 'Machete')) {
-                moveCost = 0; // Negate forest stamina cost
+        // --- 1. ARE WE BOATING? ---
+        if (gameState.player.isBoating) {
+            if (newTile === '~') {
+                moveCost = 1; // Row, row, row your boat (costs 1 stamina)
+            } else if (moveCost !== Infinity) {
+                // This is a land tile! We are disembarking.
+                isDisembarking = true;
+                // moveCost is already 0 (for '.') or 1 (for 'F'), which is fine.
+            } else {
+                // Trying to boat onto a mountain or other impassable tile
+                logMessage("You can't beach the canoe here.");
+                return;
             }
-
-            // 2. Check for Climbing Tools in Mountains
-            if (newTile === '^' && playerInventory.some(item => item.name === 'Climbing Tools')) {
-                moveCost = Math.max(1, moveCost - 1); // Reduce cost by 1, to a min of 1
-            }
-        }
-        // --- END TOOL LOGIC ---
-
-        if (moveCost === Infinity) {
-            // --- NEW SECRET CAVE LOGIC ---
-            // Check if the player is bumping into a Mountain tile
-            if (newTile === '^' && gameState.mapMode === 'overworld') {
-                const tileId = `${newX},${-newY}`;
-                const seed = stringToSeed(WORLD_SEED + ':' + tileId);
-                const random = Alea(seed);
-
-                // Give it a 1 in 20 (5%) chance of being a secret entrance
-                // This check is seeded, so it's the same for all players, always.
-                if (random() < 0.05) {
-                    logMessage("You push against the rock... and it gives way! You've found a hidden passage! +50 XP");
-                    grantXp(50); // Extra XP for finding a secret
-
-                    // 1. Permanently change this tile to a real entrance for everyone
-                    chunkManager.setWorldTile(newX, newY, '⛰');
-
-                    // 2. Trigger the "enter cave" logic
-                    // (This is copied from the 'dungeon_entrance' case below)
-                    gameState.mapMode = 'dungeon';
-                    gameState.currentCaveId = `cave_${newX}_${newY}`; // Use the standard ID
-                    gameState.overworldExit = {
-                        x: gameState.player.x,
-                        y: gameState.player.y
-                    };
-
-                    const caveMap = chunkManager.generateCave(gameState.currentCaveId);
-                    gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
-
-                    // Find the spawn point '>'
-                    for (let y = 0; y < caveMap.length; y++) {
-                        const x = caveMap[y].indexOf('>');
-                        if (x !== -1) {
-                            gameState.player.x = x;
-                            gameState.player.y = y;
-                            break;
-                        }
-                    }
-
-                    const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
-                    gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
-
-                    logMessage("You enter the " + (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') + "...");
-                    updateRegionDisplay();
-                    render();
-                    syncPlayerState();
-                    return; // Stop the rest of the turn
+        
+        // --- 2. WE ARE ON FOOT (This 'else' block contains your tool logic) ---
+        } else {
+            // Check for tool logic
+            if (gameState.mapMode === 'overworld') {
+                const playerInventory = gameState.player.inventory;
+                // --- YOUR TOOL LOGIC IS HERE ---
+                if (newTile === 'F' && playerInventory.some(item => item.name === 'Machete')) {
+                    moveCost = 0; 
+                }
+                // --- YOUR TOOL LOGIC IS HERE ---
+                if (newTile === '^' && playerInventory.some(item => item.name === 'Climbing Tools')) {
+                    moveCost = Math.max(1, moveCost - 1);
                 }
             }
-            // --- END SECRET CAVE LOGIC ---
+            
+            // Standard impassable check
+            if (moveCost === Infinity) {
+                // Check for secret cave logic
+                if (newTile === '^' && gameState.mapMode === 'overworld') {
+                    const tileId = `${newX},${-newY}`;
+                    const seed = stringToSeed(WORLD_SEED + ':' + tileId);
+                    const random = Alea(seed);
+                    
+                    if (random() < 0.05) { // 5% chance of being a secret
+                        logMessage("You push against the rock... and it gives way! You've found a hidden passage! +50 XP");
+                        grantXp(50); // Extra XP for finding a secret
 
-            logMessage("That way is blocked."); // Default "bump into wall" message
-            return; // Stop here if impassable
+                        chunkManager.setWorldTile(newX, newY, '⛰');
+
+                        // Trigger the "enter cave" logic
+                        gameState.mapMode = 'dungeon';
+                        gameState.currentCaveId = `cave_${newX}_${newY}`;
+                        gameState.overworldExit = {
+                            x: gameState.player.x,
+                            y: gameState.player.y
+                        };
+
+                        const caveMap = chunkManager.generateCave(gameState.currentCaveId);
+                        gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
+
+                        for (let y = 0; y < caveMap.length; y++) {
+                            const x = caveMap[y].indexOf('>');
+                            if (x !== -1) {
+                                gameState.player.x = x;
+                                gameState.player.y = y;
+                                break;
+                            }
+                        }
+
+                        const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
+                        gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+
+                        logMessage("You enter the " + (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') + "...");
+                        updateRegionDisplay();
+                        render();
+                        syncPlayerState();
+                        return; // Stop the rest of the turn
+                    }
+                }
+                
+                logMessage("That way is blocked."); // Default "bump into wall" message
+                return; // Stop here if impassable
+            }
+        }
+        
+        // --- 3. HANDLE DISEMBARKING (if flagged) ---
+        if (isDisembarking) {
+            gameState.player.isBoating = false;
+            logMessage("You beach the canoe and step onto the shore.");
+            // Place the canoe back where we WERE (startX, startY)
+            chunkManager.setWorldTile(startX, startY, 'c');
+            playerRef.update({ isBoating: false });
         }
         
         // 3. If no collision, check for special tiles (entrances, lore, etc.)
