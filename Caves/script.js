@@ -1693,11 +1693,30 @@ const chunkManager = {
 
                 // 0.001% chance to spawn the Landmark Fortress
 
-                if (tile === '.' && featureRoll < 0.00001) {
+                // 0.001% chance to spawn the Landmark Fortress
+                if (tile === '.' && featureRoll < 0.00001) { //
                     this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
+                
+                // --- FIX: This block was moved up so it's no longer unreachable ---
+                } else if (tile === '.' && featureRoll < 0.0003) { // Spawn safe features
+                    let features = Object.keys(TILE_DATA);
+                    features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' &&
+                        TILE_DATA[f].type !== 'castle_exit' &&
+                        TILE_DATA[f].type !== 'enemy' &&
+                        f !== '📖');
 
-                } else if (tile === '.' && featureRoll < 0.0005) { // 0.05% chance
+                    const featureTile = features[Math.floor(Math.random() * features.length)];
+
+                    if (TILE_DATA[featureTile].type === 'dungeon_entrance' || TILE_DATA[featureTile].type === 'castle_entrance') {
+                        this.setWorldTile(worldX, worldY, featureTile);
+                        chunkData[y][x] = featureTile;
+                    } else {
+                        chunkData[y][x] = featureTile;
+                    }
+
+                // --- FIX: Increased spawn chance from 0.0005 to 0.005 (10x increase) ---
+                } else if (tile === '.' && featureRoll < 0.005) { // 0.5% chance (was 0.05%)
                     // Check if this land tile is adjacent to water by checking elevation noise
                     
                     // This helper function checks the noise value for a given coord
@@ -1718,21 +1737,6 @@ const chunkManager = {
                         chunkData[y][x] = tile; // No water, just place the terrain
                     }
 
-                } else if (tile === '.' && featureRoll < 0.0003) { // Spawn safe features
-                    let features = Object.keys(TILE_DATA);
-                    features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' &&
-                        TILE_DATA[f].type !== 'castle_exit' &&
-                        TILE_DATA[f].type !== 'enemy' &&
-                        f !== '📖');
-
-                    const featureTile = features[Math.floor(Math.random() * features.length)];
-
-                    if (TILE_DATA[featureTile].type === 'dungeon_entrance' || TILE_DATA[featureTile].type === 'castle_entrance') {
-                        this.setWorldTile(worldX, worldY, featureTile);
-                        chunkData[y][x] = featureTile;
-                    } else {
-                        chunkData[y][x] = featureTile;
-                    }
                 } else {
                     // No safe feature spawned. Check for hostile spawn.
                     const hostileRoll = random();
@@ -1742,18 +1746,18 @@ const chunkManager = {
                         chunkData[y][x] = 'w';
                     }
                     // Wolves (0.01%) and Bandits (0.01%) spawn on plains
-                else if (tile === '.' && hostileRoll < 0.0002) {
-                    if (hostileRoll < 0.0001) {
-                        chunkData[y][x] = 'w'; // Wolf
-                    } else {
-                        // This is a "Bandit" spawn
-                        if (random() < 0.1) { // 10% of these are a Chief
-                            chunkData[y][x] = 'C';
-                        } else { // 90% are a normal Bandit
-                            chunkData[y][x] = 'b';
+                    else if (tile === '.' && hostileRoll < 0.0002) {
+                        if (hostileRoll < 0.0001) {
+                            chunkData[y][x] = 'w'; // Wolf
+                        } else {
+                            // This is a "Bandit" spawn
+                            if (random() < 0.1) { // 10% of these are a Chief
+                                chunkData[y][x] = 'C';
+                            } else { // 90% are a normal Bandit
+                                chunkData[y][x] = 'b';
+                            }
                         }
                     }
-                }
                     // No hostile spawn, just place the terrain tile
                     else {
                         chunkData[y][x] = tile;
