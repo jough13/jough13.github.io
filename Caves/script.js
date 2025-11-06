@@ -90,6 +90,19 @@ const TILE_DATA = {
         title: 'Orc War-Chant',
         content: `Blood and dust. Steel and bone.\n\nThe weak build with stone. The strong build with fear.\n\nWe come from the fire, we return to the ash. The mountain is our mother, the world our feast. Stomp the soft-skins. Take their steel. Raise the tusk-banner.\n\n...the rest is scrawled in a crude, unintelligible script.`
     },
+    'R': {
+        type: 'journal',
+        title: 'Frozen Journal',
+        content: `Day 12: The cold... it seeps into your bones. But the essence in these walls is worth a fortune. I must have more.\n\nDay 15: I saw one of them today. A... walking corpse, encased in ice. It didn't see me. My pickaxe feels heavy.\n\nDay 17: They are the old ones. The first warriors. The cold preserves them. Binds them. They guard the essence.\n\nDay ???: Can't feel my fingers. It's in my pack. I can't... I...`
+    },
+    'K': {
+        type: 'npc_prospector',
+        title: 'Lost Prospector'
+    },
+    'c': {
+        type: 'canoe',
+        title: 'A small canoe'
+    },
     '♛': {
         type: 'landmark_castle',
         getCastleId: (x, y) => `castle_landmark_${x}_${y}`
@@ -443,6 +456,14 @@ const ENEMY_DATA = {
         defense: 0,
         xp: 30,
         loot: '&'      // New item: Arcane Dust
+    },
+    'Z': {
+        name: 'Draugr',
+        maxHealth: 12, // Tough
+        attack: 3,     // Decent attack
+        defense: 2,    // High defense
+        xp: 25,
+        loot: 'E'      // New item: Frost Essence
     }
 };
 
@@ -456,7 +477,7 @@ const CAVE_THEMES = {
             wall: '#422006',
             floor: '#a16207'
         },
-        decorations: ['+', 'o', '$', '📖'],
+        decorations: ['+', 'o', '$', '📖', 'K'],
         enemies: ['g', 's']
     },
     ICE: {
@@ -468,8 +489,8 @@ const CAVE_THEMES = {
             wall: '#99f6e4',
             floor: '#e0f2fe'
         },
-        decorations: ['S', 'Y', '$'], // Stamina/Psyche items are more common
-        enemies: ['s', 'w']
+        decorations: ['S', 'Y', '$', 'R'],
+        enemies: ['s', 'w', 'Z']
     },
     FIRE: {
         name: 'A Volcanic Fissure',
@@ -493,7 +514,7 @@ const CAVE_THEMES = {
             wall: '#67e8f9', // Bright Cyan
             floor: '#22d3ee' // Darker Cyan
         },
-        decorations: ['Y', 'o', '$'], // Psyche, Mana, and Gold
+        decorations: ['Y', 'o', '$', 'K'],
         enemies: ['g']
     },
 
@@ -761,6 +782,8 @@ function createDefaultPlayerState() {
         shieldValue: 0,
         shieldTurns: 0,
 
+        isBoating: false,
+
         quests: {}
     };
 }
@@ -997,8 +1020,24 @@ const CRAFTING_RECIPES = {
     "Mage Robe": {
         "Bandit Garb": 1,
         "Arcane Dust": 5
+    },"Cryo Blade": {
+        "Rusty Sword": 1,
+        "Frost Essence": 5
+    },
+    "Machete": {
+        "Bone Dagger": 1, // Requires a hilt/blade
+        "Stick": 2,
+        "Wolf Pelt": 1 // For the grip
+    },
+    "Climbing Tools": {
+        "Stick": 3,
+        "Wolf Pelt": 3, // For straps and ropes
+        "Bone Shard": 5 // For spikes/hooks
+    },
+    "Frozen Mail": {
+        "Studded Armor": 1,
+        "Frost Essence": 5
     }
-    // We can add many more recipes here later
 };
 
 const ITEM_DATA = {
@@ -1170,6 +1209,30 @@ const ITEM_DATA = {
         type: 'armor',
         defense: 3, // Good, but less than Steel
         slot: 'armor'
+    },
+    'E': {
+        name: 'Frost Essence',
+        type: 'junk'
+    },
+    'v': {
+        name: 'Cryo Blade',
+        type: 'weapon',
+        damage: 3, // Tier 2.5 (better than Rusty Sword)
+        slot: 'weapon'
+    },
+    'V': {
+        name: 'Frozen Mail',
+        type: 'armor',
+        defense: 3, // Tier 2.5 (better than Studded Armor)
+        slot: 'armor'
+    },
+    '-': {
+        name: 'Machete',
+        type: 'tool' // A new type, so it can't be "used" by default
+    },
+    'h': {
+        name: 'Climbing Tools',
+        type: 'tool'
     },
     '$': {
         name: 'Gold Coin',
@@ -1633,6 +1696,23 @@ const chunkManager = {
                 if (tile === '.' && featureRoll < 0.00001) {
                     this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
+
+                    } else if (tile === '.' && featureRoll < 0.0005) { // 0.05% chance
+                    // Check if this land tile is adjacent to water
+                    const neighbors = [
+                        this.getTile(worldX, worldY - 1), // North
+                        this.getTile(worldX, worldY + 1), // South
+                        this.getTile(worldX - 1, worldY), // West
+                        this.getTile(worldX + 1, worldY)  // East
+                    ];
+                    
+                    if (neighbors.includes('~')) {
+                        chunkData[y][x] = 'c'; // Place a canoe!
+                        this.setWorldTile(worldX, worldY, 'c');
+                    } else {
+                        chunkData[y][x] = tile; // No water, just place the terrain
+                    }
+
                 } else if (tile === '.' && featureRoll < 0.0003) { // Spawn safe features
                     let features = Object.keys(TILE_DATA);
                     features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' &&
@@ -3980,14 +4060,20 @@ const render = () => {
     // Make the player character bold and outlined to stand out
     ctx.font = `bold ${TILE_SIZE}px monospace`;
 
+// Check if player is boating and change their character
+    const playerChar = gameState.player.isBoating ? 'c' : gameState.player.character;
+
+    // Make the player character bold and outlined to stand out
+    ctx.font = `bold ${TILE_SIZE}px monospace`;
+
     // 1. Draw the outline
     ctx.strokeStyle = '#000000'; // A solid black outline
     ctx.lineWidth = 2; // How thick the outline is
-    ctx.strokeText(gameState.player.character, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+    ctx.strokeText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
 
     // 2. Fill the character with the player color
     ctx.fillStyle = playerColor;
-    ctx.fillText(gameState.player.character, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+    ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
 
     // 3. Reset the font to normal for any other text
     ctx.font = `${TILE_SIZE}px monospace`;
@@ -4923,9 +5009,25 @@ if (Math.random() < luckDodgeChance) { //
             }
         }
 
-        const moveCost = TERRAIN_COST[newTile] ?? 0;
-        if (moveCost === Infinity) {
+        let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
 
+        // --- NEW TOOL LOGIC ---
+        if (gameState.mapMode === 'overworld') {
+            const playerInventory = gameState.player.inventory;
+            
+            // 1. Check for Machete in Forest
+            if (newTile === 'F' && playerInventory.some(item => item.name === 'Machete')) {
+                moveCost = 0; // Negate forest stamina cost
+            }
+
+            // 2. Check for Climbing Tools in Mountains
+            if (newTile === '^' && playerInventory.some(item => item.name === 'Climbing Tools')) {
+                moveCost = Math.max(1, moveCost - 1); // Reduce cost by 1, to a min of 1
+            }
+        }
+        // --- END TOOL LOGIC ---
+
+        if (moveCost === Infinity) {
             // --- NEW SECRET CAVE LOGIC ---
             // Check if the player is bumping into a Mountain tile
             if (newTile === '^' && gameState.mapMode === 'overworld') {
@@ -4979,7 +5081,7 @@ if (Math.random() < luckDodgeChance) { //
             logMessage("That way is blocked."); // Default "bump into wall" message
             return; // Stop here if impassable
         }
-
+        
         // 3. If no collision, check for special tiles (entrances, lore, etc.)
         const tileData = TILE_DATA[newTile];
         if (tileData) {
@@ -5119,6 +5221,33 @@ if (Math.random() < luckDodgeChance) { //
                 return; // Stop the player's move
             }
 
+            if (newTile === 'K') {
+                if (!gameState.foundLore.has(tileId)) {
+                    logMessage("You meet a Lost Prospector. +5 XP");
+                    grantXp(5);
+                    gameState.foundLore.add(tileId);
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
+                // Use a seeded random to make their dialogue consistent
+                const seed = stringToSeed(tileId);
+                const random = Alea(seed);
+                const prospectorDialogues = [
+                    "Gold! Gems! Riches! ...Huh? Oh, just you. Thought you were a goblin.",
+                    "Be careful in these caves. The deeper you go, the older the... things... you find.",
+                    "I saw it! A flicker of blue in the ice... essence. But those... those *things*... they guard it.",
+                    "If you find any spare gold, don't spend it all in one place. Not that there's many places to spend it down here.",
+                    "Sometimes I think these caves go on forever. Just... down."
+                ];
+                const dialogue = prospectorDialogues[Math.floor(random() * prospectorDialogues.length)];
+
+                loreTitle.textContent = "Lost Prospector";
+                loreContent.textContent = `A grizzled prospector, muttering to themself, jumps as you approach.\n\n"${dialogue}"`;
+                loreModal.classList.remove('hidden');
+                return;
+            }
+
             if (newTile === '§') {
                 if (!gameState.foundLore.has(tileId)) {
                     logMessage("You've discovered a General Store! +15 XP");
@@ -5167,9 +5296,8 @@ if (Math.random() < luckDodgeChance) { //
                 return;
             }
 
-            // Handle all other special tiles like entrances/exits
+// Handle all other special tiles like entrances/exits
             switch (tileData.type) {
-                // --- NEW CASE ---
                 case 'workbench':
                     if (!gameState.foundLore.has(tileId)) {
                         logMessage("You found a workbench! +10 XP");
@@ -5181,7 +5309,25 @@ if (Math.random() < luckDodgeChance) { //
                     }
                     openCraftingModal();
                     return; // Stop the player's move
-                // --- END NEW CASE ---
+                
+                // --- NEW CANOE (EMBARK) LOGIC ---
+                case 'canoe':
+                    if (!gameState.foundLore.has(tileId)) {
+                        logMessage("You found a canoe! +10 XP");
+                        grantXp(10);
+                        gameState.foundLore.add(tileId);
+                        playerRef.update({
+                            foundLore: Array.from(gameState.foundLore)
+                        });
+                    }
+                    gameState.player.isBoating = true;
+                    logMessage("You get in the canoe.");
+                    // Remove the canoe from the map, replace with land
+                    chunkManager.setWorldTile(newX, newY, '.');
+                    playerRef.update({ isBoating: true });
+                    // We break here; the move itself will be handled next
+                    break; 
+                // --- END NEW LOGIC ---
 
                 case 'dungeon_entrance':
                     if (!gameState.foundLore.has(tileId)) {
@@ -5546,6 +5692,7 @@ chatInput.addEventListener('keydown', (event) => {
         messageRef.set({
             senderId: player_id,
             email: auth.currentUser.email,
+            isBoating: gameState.player.isBoating,
             message: message,
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
