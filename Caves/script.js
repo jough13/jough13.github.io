@@ -1697,16 +1697,21 @@ const chunkManager = {
                     this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
 
-                    } else if (tile === '.' && featureRoll < 0.0005) { // 0.05% chance
-                    // Check if this land tile is adjacent to water
-                    const neighbors = [
-                        this.getTile(worldX, worldY - 1), // North
-                        this.getTile(worldX, worldY + 1), // South
-                        this.getTile(worldX - 1, worldY), // West
-                        this.getTile(worldX + 1, worldY)  // East
-                    ];
+                } else if (tile === '.' && featureRoll < 0.0005) { // 0.05% chance
+                    // Check if this land tile is adjacent to water by checking elevation noise
                     
-                    if (neighbors.includes('~')) {
+                    // This helper function checks the noise value for a given coord
+                    const isWater = (wx, wy) => {
+                        const e = elevationNoise.noise(wx / 70, wy / 70);
+                        return e < 0.35; // This is our water threshold
+                    };
+
+                    // Check neighbors' noise instead of calling getTile()
+                    if (isWater(worldX, worldY - 1) || // North
+                        isWater(worldX, worldY + 1) || // South
+                        isWater(worldX - 1, worldY) || // West
+                        isWater(worldX + 1, worldY))   // East
+                    {
                         chunkData[y][x] = 'c'; // Place a canoe!
                         this.setWorldTile(worldX, worldY, 'c');
                     } else {
