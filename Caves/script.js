@@ -1869,7 +1869,8 @@ const gameState = {
     overworldExit: null,
     messages: [],
     flags: {
-        hasSeenForestWarning: false
+        hasSeenForestWarning: false,
+        canoeEmbarkCount: 0
     },
     inventoryMode: false,
     instancedEnemies: [],
@@ -2657,8 +2658,7 @@ function useSkill(skillId) {
             case 'brace':
                 if (player.defenseBonusTurns > 0) {
                     logMessage("You are already bracing!");
-                    // Refund the cost
-                    player[costType] += cost;
+                   
                     break; // Exit the switch
                 }
                 
@@ -3438,8 +3438,7 @@ function castSpell(spellId) {
                 if (player.shieldTurns > 0) {
                     logMessage("You already have an active shield!");
                     spellCastSuccessfully = false; // Don't cast
-                    // We'll refund the cost since this was a mistake
-                    player[costType] += cost;
+                
                     break; // Exit the switch
                 }
                 
@@ -4667,7 +4666,15 @@ if (dirX !== 0 || dirY !== 0) {
                         damage: oldWeapon.damage,
                         slot: oldWeapon.slot
                     };
-                    gameState.player.inventory.push(oldWeaponItem);
+
+                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        gameState.player.inventory.push(oldWeaponItem);
+                    } else {
+                        logMessage(`Inventory full! Your old ${oldWeapon.name} is dropped on the ground.`);
+                        // We'll just log this for now. A more complex fix
+                        // would be to drop it on the map, but this prevents the bug.
+                    }
+
                 }
 
                 logMessage(`You equip the ${itemToUse.name}.`);
@@ -4691,7 +4698,12 @@ if (dirX !== 0 || dirY !== 0) {
                         defense: oldArmor.defense,
                         slot: oldArmor.slot
                     };
-                    gameState.player.inventory.push(oldArmorItem);
+
+                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        gameState.player.inventory.push(oldArmorItem);
+                    } else {
+                        logMessage(`Inventory full! Your old ${oldArmor.name} is dropped on the ground.`);
+                    }
                 }
 
                 logMessage(`You equip the ${itemToUse.name}.`);
@@ -4953,8 +4965,9 @@ if (dirX !== 0 || dirY !== 0) {
                         } else {
                         // --- ENEMY SURVIVES AND ATTACKS ---
                         const armorDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
+                        const baseDefense = Math.floor(gameState.player.dexterity / 5);
                         const buffDefense = gameState.player.defenseBonus || 0;
-                        const playerDefense = armorDefense + buffDefense;
+                        const playerDefense = baseDefense + armorDefense + buffDefense;
                         const enemyDamage = Math.max(1, enemy.attack - playerDefense);
 
                         // --- NEW LUCK DODGE CHECK ---
@@ -5349,6 +5362,14 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
                     }
                     gameState.player.isBoating = true;
                     logMessage("You get in the canoe.");
+
+                    gameState.flags.canoeEmbarkCount++; // Increment the session counter
+                    const count = gameState.flags.canoeEmbarkCount;
+
+                    if (count === 1 || count === 3 || count === 7) {
+                        logMessage("Be warned: Rowing the canoe will cost stamina!");
+                    }
+                    
                     // Remove the canoe from the map, replace with land
                     chunkManager.setWorldTile(newX, newY, '.');
                     playerRef.update({ isBoating: true });
@@ -5650,6 +5671,9 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
                 slot: item.slot || null, // <-- With Firebase fix
                 defense: item.defense || null // <-- With Firebase fix
             }));
+
+            updates.lootedTiles = Array.from(gameState.lootedTiles);
+
             renderInventory(); // Re-render inventory only if it changed
         }
 
@@ -5754,6 +5778,12 @@ loginButton.addEventListener('click', async () => {
 function clearSessionState() {
     gameState.lootedTiles.clear();
     gameState.discoveredRegions.clear();
+
+    // Reset session-based flags
+    if (gameState.flags) {
+        gameState.flags.hasSeenForestWarning = false;
+        gameState.flags.canoeEmbarkCount = 0; // <-- ADD THIS
+    }
 
     chunkManager.caveMaps = {};
     chunkManager.castleMaps = {};
