@@ -624,13 +624,13 @@ const CAVE_ROOM_TEMPLATES = {
             'WWWWW'
         ]
     },
-    "Treasure Nook": {
+"Treasure Nook": {
         width: 3,
         height: 3,
         map: [
-            'W$W',
+            'W★W',
             '$ $',
-            'W$W'
+            'W☆W'
         ]
     }
 };
@@ -1336,6 +1336,20 @@ const ITEM_DATA = {
     'h': {
         name: 'Climbing Tools',
         type: 'tool'
+    },
+    '★': {
+        name: 'Sword of Strength',
+        type: 'weapon',
+        damage: 3, // A solid Tier 2.5 weapon
+        slot: 'weapon',
+        statBonuses: { strength: 2 }
+    },
+    '☆': {
+        name: 'Robe of Wits',
+        type: 'armor',
+        defense: 2, // A solid Tier 2.5 armor
+        slot: 'armor',
+        statBonuses: { wits: 2 }
     },
     '♦': {
         name: 'Heirloom',
@@ -2431,6 +2445,36 @@ function generateEnemyLoot(player, enemy) {
     return commonLoot[Math.floor(Math.random() * commonLoot.length)];
 }
 
+/**
+ * Adds or subtracts an item's stat bonuses from the player.
+ * @param {object} item - The item object (from equipment).
+ * @param {number} operation - 1 to add, -1 to subtract.
+ */
+function applyStatBonuses(item, operation) {
+    if (!item || !item.statBonuses) {
+        return; // Item has no bonuses, do nothing
+    }
+
+    const player = gameState.player;
+
+    for (const stat in item.statBonuses) {
+        if (player.hasOwnProperty(stat)) {
+            const amount = item.statBonuses[stat] * operation;
+            player[stat] += amount;
+
+            // Log the change
+            if (operation === 1) {
+                logMessage(`You feel ${stat} increase! (+${item.statBonuses[stat]})`);
+                triggerStatFlash(statDisplays[stat], true);
+            } else {
+                logMessage(`You feel your ${stat} bonus fade...`);
+                triggerStatFlash(statDisplays[stat], false);
+            }
+        }
+    }
+    // We don't need to renderStats() here, the equip logic will do it.
+}
+
 function grantXp(amount) {
     const player = gameState.player;
     player.xp += amount;
@@ -3427,7 +3471,8 @@ function handleCraftItem(recipeName) {
             // Add weapon/armor stats if they exist
             damage: itemTemplate.damage || null,
             defense: itemTemplate.defense || null,
-            slot: itemTemplate.slot || null
+            slot: itemTemplate.slot || null,
+            statBonuses: itemTemplate.statBonuses || null
         };
         playerInventory.push(newItem);
     }
@@ -3442,7 +3487,8 @@ function handleCraftItem(recipeName) {
         tile: item.tile,
         damage: item.damage,
         slot: item.slot,
-        defense: item.defense
+        defense: item.defense,
+        statBonuses: item.statBonuses || null
     }));
     playerRef.update({ inventory: inventoryToSave });
 
@@ -4072,7 +4118,20 @@ const renderInventory = () => {
         gameState.player.inventory.forEach((item, index) => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'inventory-slot p-2 rounded-md';
-            itemDiv.title = item.name;
+
+            let title = item.name;
+            if (item.statBonuses) {
+                title += " (";
+                let bonuses = [];
+                for (const stat in item.statBonuses) {
+                    bonuses.push(`+${item.statBonuses[stat]} ${stat}`);
+                }
+                title += bonuses.join(', ');
+                title += ")";
+            }
+            
+            itemDiv.title = title; // <-- SETS THE TOOLTIP
+
             const itemChar = document.createElement('span');
             itemChar.className = 'item-char';
             itemChar.textContent = item.tile;
@@ -4914,6 +4973,10 @@ if (dirX !== 0 || dirY !== 0) {
                 // --- 1. EQUIP WEAPON (This is the missing logic) ---
                 const oldWeapon = gameState.player.equipment.weapon;
 
+                applyStatBonuses(oldWeapon, -1); // <-- SUBTRACT old bonuses
+                gameState.player.equipment.weapon = itemToUse;
+                applyStatBonuses(itemToUse, 1);  // <-- ADD new bonuses
+
                 // Equip the new item
                 gameState.player.equipment.weapon = itemToUse;
                 gameState.player.inventory.splice(itemIndex, 1);
@@ -4926,7 +4989,8 @@ if (dirX !== 0 || dirY !== 0) {
                         quantity: 1,
                         tile: oldWeapon.tile || '/', // Use default stick tile if missing
                         damage: oldWeapon.damage,
-                        slot: oldWeapon.slot
+                        slot: oldWeapon.slot,
+                        statBonuses: oldWeapon.statBonuses || null
                     };
 
                     if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
@@ -4946,6 +5010,10 @@ if (dirX !== 0 || dirY !== 0) {
                 // --- 2. EQUIP ARMOR (New Logic) ---
                 const oldArmor = gameState.player.equipment.armor;
 
+                applyStatBonuses(oldArmor, -1); // <-- SUBTRACT old bonuses
+                gameState.player.equipment.armor = itemToUse;
+                applyStatBonuses(itemToUse, 1);  // <-- ADD new bonuses
+
                 // Equip the new item
                 gameState.player.equipment.armor = itemToUse;
                 gameState.player.inventory.splice(itemIndex, 1);
@@ -4958,7 +5026,8 @@ if (dirX !== 0 || dirY !== 0) {
                         quantity: 1,
                         tile: oldArmor.tile || '%',
                         defense: oldArmor.defense,
-                        slot: oldArmor.slot
+                        slot: oldArmor.slot,
+                        statBonuses: oldArmor.statBonuses || null
                     };
 
                     if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
@@ -5016,19 +5085,34 @@ if (dirX !== 0 || dirY !== 0) {
                     tile: item.tile,
                     damage: item.damage,
                     slot: item.slot,
-                    defense: item.defense // <-- Add defense
+                    defense: item.defense,
+                    statBonuses: item.statBonuses || null
+                
                 }));
 
                 playerRef.update({
                     inventory: inventoryToSave,
                     equipment: gameState.player.equipment,
-                    spellbook: gameState.player.spellbook
+                    spellbook: gameState.player.spellbook,
+
+                    strength: gameState.player.strength,
+                    wits: gameState.player.wits,
+                    luck: gameState.player.luck,
+                    constitution: gameState.player.constitution,
+                    dexterity: gameState.player.dexterity,
+                    charisma: gameState.player.charisma,
+                    willpower: gameState.player.willpower,
+                    perception: gameState.player.perception,
+                    endurance: gameState.player.endurance,
+                    intuition: gameState.player.intuition
+
                 });
 
                 syncPlayerState();
                 endPlayerTurn();
                 renderInventory();
                 renderEquipment();
+                renderStats();
             }
 
             closeInventoryModal();
@@ -5959,7 +6043,8 @@ if (newTile === 'N') {
                             quantity: 1,
                             tile: newTile,
                             damage: itemData.damage,
-                            slot: itemData.slot
+                            slot: itemData.slot,
+                            statBonuses: itemData.statBonuses || null
                         };
                         gameState.player.inventory.push(itemForDb);
                         logMessage(`You picked up a ${itemData.name}.`);
@@ -5978,7 +6063,8 @@ if (newTile === 'N') {
                             quantity: 1,
                             tile: newTile,
                             defense: itemData.defense,
-                            slot: itemData.slot
+                            slot: itemData.slot,
+                            statBonuses: itemData.statBonuses || null
                         };
                         gameState.player.inventory.push(itemForDb);
                         logMessage(`You picked up ${itemData.name}.`);
