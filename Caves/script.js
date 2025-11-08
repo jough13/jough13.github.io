@@ -509,7 +509,10 @@ const ENEMY_DATA = {
         attack: 5,     // Very high attack (like a glass cannon)
         defense: 0,
         xp: 30,
-        loot: '&'      // New item: Arcane Dust
+        loot: '&',
+        caster: true,
+        castRange: 6,
+        spellDamage: 5 
     },
     'Z': {
         name: 'Draugr',
@@ -517,7 +520,10 @@ const ENEMY_DATA = {
         attack: 3,     // Decent attack
         defense: 2,    // High defense
         xp: 25,
-        loot: 'E'      // New item: Frost Essence
+        loot: 'E',
+        caster: true,
+        castRange: 5,
+        spellDamage: 4 
     }
 };
 
@@ -594,7 +600,7 @@ const CAVE_ROOM_TEMPLATES = {
             ' WWWWW ',
             'W.....W',
             'W.g.g.W',
-            'W.....W',
+            'W..📕..W',
             'W.g.g.W',
             'W.....W',
             ' WWWWW '
@@ -620,7 +626,7 @@ const CAVE_ROOM_TEMPLATES = {
             'WWWWW',
             'W.J.W', // Orc Journal
             'W.o.W', // Orc Brute
-            'W.$.W', // Gold
+            'W.📗.W',
             'WWWWW'
         ]
     },
@@ -1350,6 +1356,16 @@ const ITEM_DATA = {
         defense: 2, // A solid Tier 2.5 armor
         slot: 'armor',
         statBonuses: { wits: 2 }
+    },
+    '📕': {
+        name: 'Tome of Bracing',
+        type: 'skillbook',
+        skillId: 'brace'    // <-- Links to SKILL_DATA
+    },
+    '📗': {
+        name: 'Manual of Lunge',
+        type: 'skillbook',
+        skillId: 'lunge'    // <-- Links to SKILL_DATA
     },
     '♦': {
         name: 'Heirloom',
@@ -4129,7 +4145,7 @@ const renderInventory = () => {
                 title += bonuses.join(', ');
                 title += ")";
             }
-            
+
             itemDiv.title = title; // <-- SETS THE TOOLTIP
 
             const itemChar = document.createElement('span');
@@ -4565,44 +4581,137 @@ function processEnemyTurns() {
         theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
     } else {
         map = chunkManager.castleMaps[gameState.currentCastleId];
-        theme = {
-            floor: '.'
-        };
+        theme = { floor: '.' }; // Castles use '.' as floor
     }
 
     if (!map) return null;
 
-    // Track nearest enemy direction ---
+    // Track nearest enemy direction
     let nearestEnemyDir = null;
     let minDist = Infinity;
-    const HEARING_DISTANCE_SQ = 15 * 15; // "Hearing" range
+    const HEARING_DISTANCE_SQ = 15 * 15;
+    const player = gameState.player;
 
-    const halfViewW = Math.floor(VIEWPORT_WIDTH / 2); // (This is no longer used, but fine to keep)
-    const halfViewH = Math.floor(VIEWPORT_HEIGHT / 2); // (This is no longer used)
-
-    // --- NEW: Chance for an enemy to chase you ---
-    const CHASE_CHANCE = 0.5; // 50% chance to chase
+    const CHASE_CHANCE = 0.5;
 
     // Loop through a copy of the array so we can modify it
     const enemiesToMove = [...gameState.instancedEnemies];
 
     enemiesToMove.forEach(enemy => {
-        // 50% chance to move (upped from 25%)
-        if (Math.random() < 0.50) {
+        // --- GET DISTANCE TO PLAYER ---
+        const distSq = Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2);
 
+        // --- 1. NEW: MELEE ATTACK LOGIC (for ALL enemies) ---
+        // Is the enemy adjacent (distSq <= 2 covers diagonals)?
+        if (distSq <= 2) {
+            // Enemy is adjacent! ATTACK.
+            const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
+            const baseDefense = Math.floor(player.dexterity / 5);
+            const buffDefense = player.defenseBonus || 0;
+            const playerDefense = baseDefense + armorDefense + buffDefense;
+            const enemyDamage = Math.max(1, enemy.attack - playerDefense);
+
+            // Check for Luck Dodge
+            const luckDodgeChance = Math.min(player.luck * 0.002, 0.25);
+            if (Math.random() < luckDodgeChance) {
+                logMessage(`The ${enemy.name} attacks, but you luckily dodge!`);
+                return; // End this enemy's turn
+            }
+
+            // Check for Shield Absorb
+            let damageToApply = enemyDamage;
+            if (player.shieldValue > 0) {
+                const damageAbsorbed = Math.min(player.shieldValue, damageToApply);
+                player.shieldValue -= damageAbsorbed;
+                damageToApply -= damageAbsorbed;
+                logMessage(`Your shield absorbs ${damageAbsorbed} damage!`);
+                if (player.shieldValue === 0) {
+                    logMessage("Your Arcane Shield shatters!");
+                }
+            }
+
+            // Apply remaining damage
+            if (damageToApply > 0) {
+                player.health -= damageToApply;
+                triggerStatFlash(statDisplays.health, false);
+                logMessage(`The ${enemy.name} hits you for ${damageToApply} damage!`);
+            }
+
+            // Check for player death
+            if (player.health <= 0) {
+                player.health = 0;
+                logMessage("You have perished!");
+                syncPlayerState();
+                document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
+                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
+                gameOverModal.classList.remove('hidden');
+            }
+            return; // End this enemy's turn
+        }
+
+        // --- 2. NEW: CASTER ATTACK LOGIC (for Caster enemies) ---
+        // Is enemy a caster, in range, and decides to cast (33% chance)?
+        const castRangeSq = Math.pow(enemy.castRange || 6, 2);
+        
+        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.33) {
+            // This is a caster and it's casting!
+            const spellDamage = enemy.spellDamage || 1; // Get damage from ENEMY_DATA
+            const enemyDamage = Math.max(1, spellDamage); // Magic ignores physical defense
+
+            // Log a themed message
+            let spellName = "spell";
+            if (enemy.tile === 'm') spellName = "Arcane Bolt";
+            if (enemy.tile === 'Z') spellName = "Frost Shard";
+
+            // Check for Luck Dodge (Magic can be dodged)
+            const luckDodgeChance = Math.min(player.luck * 0.002, 0.25);
+            if (Math.random() < luckDodgeChance) {
+                logMessage(`The ${enemy.name} hurls a ${spellName}, but you dodge!`);
+                return; // End this enemy's turn
+            }
+            
+            // Check for Shield Absorb (Magic can be blocked)
+            let damageToApply = enemyDamage;
+            if (player.shieldValue > 0) {
+                const damageAbsorbed = Math.min(player.shieldValue, damageToApply);
+                player.shieldValue -= damageAbsorbed;
+                damageToApply -= damageAbsorbed;
+                logMessage(`Your shield absorbs ${damageAbsorbed} magic damage!`);
+                if (player.shieldValue === 0) {
+                    logMessage("Your Arcane Shield shatters!");
+                }
+            }
+
+            // Apply remaining damage
+            if (damageToApply > 0) {
+                player.health -= damageToApply;
+                triggerStatFlash(statDisplays.health, false);
+                logMessage(`The ${enemy.name}'s ${spellName} hits you for ${damageToApply} damage!`);
+            }
+            
+            // Check for player death
+            if (player.health <= 0) {
+                player.health = 0;
+                logMessage("You have perished!");
+                syncPlayerState();
+                gameOverModal.classList.remove('hidden');
+            }
+            return; // End this enemy's turn
+        }
+
+        // --- 3. MOVEMENT LOGIC (if no attack/cast) ---
+        // 50% chance to move (this is your existing logic)
+        if (Math.random() < 0.50) {
             let dirX, dirY;
 
-            // --- NEW CHASE LOGIC ---
+            // CHASE LOGIC (this is your existing logic)
             if (Math.random() < CHASE_CHANCE) {
-                // CHASE: Move directly towards the player
-                dirX = Math.sign(gameState.player.x - enemy.x);
-                dirY = Math.sign(gameState.player.y - enemy.y);
+                dirX = Math.sign(player.x - enemy.x);
+                dirY = Math.sign(player.y - enemy.y);
             } else {
-                // WANDER: Move randomly
-                dirX = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-                dirY = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+                dirX = Math.floor(Math.random() * 3) - 1;
+                dirY = Math.floor(Math.random() * 3) - 1;
             }
-            // --- END NEW LOGIC ---
 
             if (dirX === 0 && dirY === 0) {
                 return; // No movement
@@ -4616,30 +4725,22 @@ function processEnemyTurns() {
             // Is the target tile a floor?
             if (targetTile === theme.floor) {
                 // It's a valid move!
-                map[enemy.y][enemy.x] = theme.floor;
-                map[newY][newX] = enemy.tile;
+                map[enemy.y][enemy.x] = theme.floor; // Clear old spot
+                map[newY][newX] = enemy.tile;      // Move to new spot
                 enemy.x = newX;
                 enemy.y = newY;
 
-                const distSq = Math.pow(enemy.x - gameState.player.x, 2) + Math.pow(enemy.y - gameState.player.y, 2);
-                if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
-                    minDist = distSq;
-                    const dirX = Math.sign(enemy.x - gameState.player.x);
-                    const dirY = Math.sign(enemy.y - gameState.player.y);
-                    nearestEnemyDir = { x: dirX, y: dirY };
-                }
-
-                // Check if this enemy is on-screen
-                const distY = Math.abs(enemy.y - gameState.player.y);
-                const distX = Math.abs(enemy.x - gameState.player.x);
-                if (distX <= halfViewW && distY <= halfViewH) {
-                 
+                // (This is your existing 'intuition' logic, unchanged)
+                const newDistSq = Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2);
+                if (newDistSq < minDist && newDistSq < HEARING_DISTANCE_SQ) {
+                    minDist = newDistSq;
+                    nearestEnemyDir = { x: Math.sign(enemy.x - player.x), y: Math.sign(enemy.y - player.y) };
                 }
             }
         }
     });
 
-    return nearestEnemyDir;
+    return nearestEnemyDir; // Return for the intuition check
 }
 
 /**
@@ -5072,6 +5173,37 @@ if (dirX !== 0 || dirY !== 0) {
                     // Note: We'll update the 'playerRef' in the 'if (itemUsed)' block below
                 }
 
+                } else if (itemToUse.type === 'skillbook') {
+            const skillId = itemToUse.skillId;
+            const skillData = SKILL_DATA[skillId];
+            const player = gameState.player;
+
+            if (!skillData) {
+                logMessage("This item appears to be a dud. (No skill data found)");
+                itemUsed = false;
+            } else if (player.level < skillData.requiredLevel) {
+                logMessage(`You ponder the text, but must be Level ${skillData.requiredLevel} to understand it.`);
+                itemUsed = false;
+            } else {
+                // All checks passed. Use the item.
+                if (player.skillbook[skillId]) {
+                    // Player already knows the skill: Level it up
+                    player.skillbook[skillId]++;
+                    logMessage(`You study the text and learn more about ${skillData.name}! It is now Level ${player.skillbook[skillId]}.`);
+                } else {
+                    // Player is learning the skill for the first time
+                    player.skillbook[skillId] = 1; // Set to level 1
+                    logMessage(`You have learned a new skill: ${skillData.name}!`);
+                }
+
+                // Consume the item
+                itemToUse.quantity--;
+                if (itemToUse.quantity <= 0) {
+                    player.inventory.splice(itemIndex, 1);
+                }
+                itemUsed = true;
+            }
+
             } else {
                 logMessage(`You can't use '${itemToUse.name}' right now.`);
             }
@@ -5086,7 +5218,11 @@ if (dirX !== 0 || dirY !== 0) {
                     damage: item.damage,
                     slot: item.slot,
                     defense: item.defense,
-                    statBonuses: item.statBonuses || null
+                    statBonuses: item.statBonuses || null,
+                    skillbook: gameState.player.skillbook,
+
+                    spellId: item.spellId || null,
+                    skillId: item.skillId || null
                 
                 }));
 
@@ -6073,6 +6209,26 @@ if (newTile === 'N') {
                     } else {
                         logMessage(`You see ${itemData.name}, but your inventory is full!`);
                         return; // <-- Cancel the move!
+                    }
+
+                    } else if (itemData.type === 'spellbook' || itemData.type === 'skillbook' || itemData.type === 'tool') {
+                    // This block handles all special items that just need to be in inventory
+                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        const itemForDb = {
+                            name: itemData.name,
+                            type: itemData.type,
+                            quantity: 1,
+                            tile: newTile,
+                            spellId: itemData.spellId || null, // For spellbooks
+                            skillId: itemData.skillId || null  // For skillbooks
+                        };
+                        gameState.player.inventory.push(itemForDb);
+                        logMessage(`You picked up the ${itemData.name}.`);
+                        inventoryWasUpdated = true;
+                        clearLootTile();
+                    } else {
+                        logMessage(`You see the ${itemData.name}, but your inventory is full!`);
+                        return; // Cancel the move
                     }
 
                 } else if (itemData.type === 'junk') {
