@@ -357,6 +357,18 @@ const CASTLE_SHOP_INVENTORY = [{
 ];
 
 const QUEST_DATA = {
+    "goblinHeirloom": {
+        title: "The Lost Heirloom",
+        description: "A villager is distraught. A goblin ('g') stole their family heirloom!",
+        type: 'fetch',       // <-- New quest type
+        enemy: 'g',          // <-- Who drops it (Goblin)
+        itemNeeded: 'Heirloom', // <-- What we need (from ITEM_DATA)
+        itemTile: '♦',       // <-- The tile to drop (from ITEM_DATA)
+        reward: {
+            xp: 150,
+            coins: 100
+        }
+    },
     "wolfHunt": {
         title: "Bounty: Wolf Hunt",
         description: "The local shepherds are plagued by wolves. Thin their numbers.",
@@ -1233,6 +1245,10 @@ const ITEM_DATA = {
     'h': {
         name: 'Climbing Tools',
         type: 'tool'
+    },
+    '♦': {
+        name: 'Heirloom',
+        type: 'quest' // A new type, so it can't be sold or used
     },
     '$': {
         name: 'Gold Coin',
@@ -2178,7 +2194,36 @@ function handleItemDrop(event) {
  * @returns {string} The tile character of the dropped item.
  */
 
-function generateEnemyLoot(player, enemy) { // <-- UPDATED SIGNATURE
+function generateEnemyLoot(player, enemy) {
+
+    // --- 1. Check for Active Fetch Quests ---
+    const enemyTile = enemy.tile || Object.keys(ENEMY_DATA).find(k => ENEMY_DATA[k].name === enemy.name);
+    
+    for (const questId in player.quests) {
+        const playerQuest = player.quests[questId];
+        const questData = QUEST_DATA[questId];
+
+        // Is this an active fetch quest, for this enemy?
+        if (playerQuest.status === 'active' && 
+            questData.type === 'fetch' &&
+            questData.enemy === enemyTile) 
+        {
+            // Does the player NOT already have the item?
+            const hasItem = player.inventory.some(item => item.name === questData.itemNeeded);
+            
+            if (!hasItem) {
+                // Player is on the quest and needs the item. Roll for it!
+                // 5% base chance + 0.5% per point of Luck
+                const dropChance = 0.05 + (player.luck * 0.005); 
+                
+                if (Math.random() < dropChance) {
+                    logMessage(`The ${enemy.name} dropped a ${questData.itemNeeded}!`);
+                    return questData.itemTile; // Return the '♦' tile
+                }
+            }
+        }
+    }
+
     // --- DEFINE DROP CHANCES ---
     // --- NEW LUCK LOGIC ---
     // Base 25% junk chance. Each point of Luck reduces this by 0.1%
@@ -2890,6 +2935,9 @@ function renderBountyBoard() {
     // Loop through all defined quests
     for (const questId in QUEST_DATA) {
         const quest = QUEST_DATA[questId];
+
+        if (quest.type === 'fetch') continue; // Skip NPC fetch quests
+
         const playerQuest = playerQuests[questId];
         let questHtml = '';
 
@@ -2953,10 +3001,34 @@ function turnInQuest(questId) {
     const quest = QUEST_DATA[questId];
     const playerQuest = gameState.player.quests[questId];
 
-    if (!quest || !playerQuest || playerQuest.kills < quest.needed) {
-        logMessage("Quest is not ready to turn in.");
+    // --- MODIFY THIS BLOCK ---
+    if (!quest || !playerQuest) { // <-- Simplified check
+        logMessage("Quest is not active.");
         return;
     }
+    
+    let hasRequirements = true; // Assume true
+    let itemIndex = -1; // To store the item's location
+
+    if (quest.type === 'fetch') {
+        // --- Check for item ---
+        itemIndex = gameState.player.inventory.findIndex(item => item.name === quest.itemNeeded);
+        if (itemIndex === -1) {
+            logMessage(`You don't have the ${quest.itemNeeded}!`);
+            hasRequirements = false;
+        }
+    } else {
+        // --- Check for kills (your old logic) ---
+        if (playerQuest.kills < quest.needed) {
+            logMessage("Quest is not ready to turn in.");
+            hasRequirements = false;
+        }
+    }
+
+    if (!hasRequirements) {
+        return; // Stop if they don't have the item or kills
+    }
+    // --- END MODIFIED BLOCK ---
     
     // --- Give Rewards ---
     logMessage(`Quest Complete! You gained ${quest.reward.xp} XP and ${quest.reward.coins} Gold!`);
@@ -2966,13 +3038,29 @@ function turnInQuest(questId) {
     // --- Mark as Completed ---
     playerQuest.status = 'completed';
     
+    // --- NEW: Remove fetch item from inventory ---
+    if (quest.type === 'fetch' && itemIndex > -1) {
+        gameState.player.inventory.splice(itemIndex, 1);
+    }
+
+    // --- Update database (must include inventory!) ---
     playerRef.update({
         quests: gameState.player.quests,
-        coins: gameState.player.coins
+        coins: gameState.player.coins,
+        inventory: gameState.player.inventory.map(item => ({ // <-- Add this
+            name: item.name,
+            type: item.type,
+            quantity: item.quantity,
+            tile: item.tile,
+            damage: item.damage || null,
+            slot: item.slot || null,
+            defense: item.defense || null
+        }))
     });
 
     renderBountyBoard(); // Re-render the modal
     renderStats(); // Update coins display
+    renderInventory(); // <-- Add this
 }
 
 // This function will be called every time an enemy is killed
@@ -5174,29 +5262,86 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
                 return;
             }
 
-            if (newTile === 'N') {
-                if (!gameState.foundLore.has(tileId)) {
-                    logMessage("You met a new villager. +5 XP");
+if (newTile === 'N') {
+                // --- NEW FETCH QUEST LOGIC FOR VILLAGERS ---
+                const npcQuestId = "goblinHeirloom"; // The quest this NPC type gives
+                const questData = QUEST_DATA[npcQuestId];
+                const playerQuest = gameState.player.quests[npcQuestId];
+                const player = gameState.player;
+                
+                // Add lore XP for the first time meeting *any* villager
+                const genericVillagerId = "met_villager"; 
+                if (!gameState.foundLore.has(genericVillagerId)) {
+                    logMessage("You meet a villager. +5 XP");
                     grantXp(5);
-                    gameState.foundLore.add(tileId);
+                    gameState.foundLore.add(genericVillagerId); // Use a generic ID
                     playerRef.update({
                         foundLore: Array.from(gameState.foundLore)
                     });
                 }
-                const seed = stringToSeed(tileId);
-                const random = Alea(seed);
-                const npcDialogues = [
-                    "Be careful in those caves. I've heard strange noises coming from them.",
-                    "It's a tough world. Glad I'm just here, minding my own business.",
-                    "Looking for the castle? It's said to be cursed, you know.",
-                    "If you find any gold, you should visit a shop. I hear there's one... somewhere."
-                ];
-                const dialogue = npcDialogues[Math.floor(random() * npcDialogues.length)];
 
-                loreTitle.textContent = "Villager";
-                loreContent.textContent = `An old villager looks up as you approach.\n\n"${dialogue}"`;
-                loreModal.classList.remove('hidden');
-                return;
+                if (!playerQuest) {
+                    // --- SCENARIO A: Player does NOT have the quest ---
+                    loreTitle.textContent = "Distraught Villager";
+                    loreContent.innerHTML = `
+                        <p>An old villager wrings their hands.\n\n"Oh, thank goodness! A goblin stole my family heirloom... It's all I have left. If you find it, please bring it back!"</p>
+                        <button id="acceptNpcQuest" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">"I'll keep an eye out."</button>
+                    `;
+                    loreModal.classList.remove('hidden');
+                    
+                    // Add a one-time listener for the new button
+                    document.getElementById('acceptNpcQuest').addEventListener('click', () => {
+                        acceptQuest(npcQuestId);
+                        loreModal.classList.add('hidden');
+                    }, { once: true }); // {once: true} is important!
+
+                } else if (playerQuest.status === 'active') {
+                    // --- SCENARIO B: Player has the quest ---
+                    const hasItem = player.inventory.some(item => item.name === questData.itemNeeded);
+
+                    if (hasItem) {
+                        // B1: Player has the item!
+                        loreTitle.textContent = "Joyful Villager";
+                        loreContent.innerHTML = `
+                            <p>The villager's eyes go wide.\n\n"You found it! My heirloom! Thank you, thank you! I don't have much, but please, take this for your trouble."</p>
+                            <button id="turnInNpcQuest" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Here you go. (Complete Quest)"</button>
+                        `;
+                        loreModal.classList.remove('hidden');
+
+                        document.getElementById('turnInNpcQuest').addEventListener('click', () => {
+                            turnInQuest(npcQuestId);
+                            loreModal.classList.add('hidden');
+                        }, { once: true });
+
+                    } else {
+                        // B2: Player does NOT have the item
+                        loreTitle.textContent = "Anxious Villager";
+                        loreContent.innerHTML = `
+                            <p>The villager looks up hopefully.\n\n"Any luck finding my heirloom? Those goblins are such pests..."</p>
+                            <button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"I'm still looking."</button>
+                        `;
+                        loreModal.classList.remove('hidden');
+
+                        document.getElementById('closeNpcLore').addEventListener('click', () => {
+                            loreModal.classList.add('hidden');
+                        }, { once: true });
+                    }
+
+                } else if (playerQuest.status === 'completed') {
+                    // --- SCENARIO C: Player has completed the quest ---
+                    loreTitle.textContent = "Grateful Villager";
+                    loreContent.innerHTML = `
+                        <p>The villager smiles warmly.\n\n"Thank you again for your help, traveler. I'll never forget what you did."</p>
+                        <button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"You're welcome."</button>
+                    `;
+                    loreModal.classList.remove('hidden');
+
+                    document.getElementById('closeNpcLore').addEventListener('click', () => {
+                        loreModal.classList.add('hidden');
+                    }, { once: true });
+                }
+                
+                return; // Stop the player's move
             }
 
             if (newTile === 'G') {
