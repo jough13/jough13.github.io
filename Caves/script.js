@@ -113,6 +113,10 @@ const TILE_DATA = {
     'w': {
         type: 'enemy'
     },
+    'V': {
+        type: 'village_entrance',
+        getVillageId: (x, y) => `village_${x}_${y}`
+    }
 };
 
 const CASTLE_LAYOUTS = {
@@ -297,7 +301,34 @@ const CASTLE_LAYOUTS = {
             '▓.................................▓',
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', // Bottom of the fortress
         ]
+
+    },
+    
+    SAFE_HAVEN: {
+        spawn: { x: 14, y: 14 }, // Spawn in the middle
+        map: [
+            'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+            'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+            'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+            'FFF........................FFF',
+            'FFF..▓▓▓▓▓▓...▓▓▓▓▓▓...▓▓▓▓▓..FFF',
+            'FFF..▓...H.▓...▓...§.▓...▓...T.▓..FFF',
+            'FFF..▓.....▓...▓.....▓...▓.....▓..FFF',
+            'FFF..▓▓▓▓▓▓...▓▓▓▓▓▓...▓▓▓▓▓▓..FFF',
+            'FFF........................FFF',
+            'FFF........................FFF',
+            'FFF..▓▓▓▓▓▓...▓▓▓▓▓▓...▓▓▓▓▓..FFF',
+            'FFF..▓...W.▓...▓.....▓...▓.....▓..FFF',
+            'FFF..▓.....▓...▓..B..▓...▓.....▓..FFF',
+            'FFF..▓▓▓▓▓▓...▓▓▓▓▓▓...▓▓▓▓▓▓..FFF',
+            'FFF............X.............FFF', // Use 'X' as the exit
+            'FFF........................FFF',
+            'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+            'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+            'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
+        ]
     }
+
 };
 
 const SELL_MODIFIER = 0.5; // Players sell items for 50% of their base price
@@ -367,6 +398,17 @@ const QUEST_DATA = {
         reward: {
             xp: 150,
             coins: 100
+        }
+    },
+    "goblinTrophies": {
+        title: "Goblin Trophies",
+        description: "A Lost Prospector ('K') is tired of being harassed. He'll reward you for clearing out 10 Goblin Totems.",
+        type: 'collect',     // <-- New quest type
+        itemNeeded: 'Goblin Totem', // <-- The item name from ITEM_DATA
+        needed: 10,          // <-- The quantity required
+        reward: {
+            xp: 200,
+            coins: 150
         }
     },
     "wolfHunt": {
@@ -541,6 +583,55 @@ const CAVE_THEMES = {
         },
         decorations: ['+', 'S', 'o'], // Health, Stamina, Mana
         enemies: ['g', 'w']
+    }
+};
+
+const CAVE_ROOM_TEMPLATES = {
+    "Goblin Barracks": {
+        width: 7,
+        height: 7,
+        map: [
+            ' WWWWW ',
+            'W.....W',
+            'W.g.g.W',
+            'W.....W',
+            'W.g.g.W',
+            'W.....W',
+            ' WWWWW '
+        ]
+    },
+    "Skeleton Crypt": {
+        width: 9,
+        height: 7,
+        map: [
+            ' WWWWWWW ',
+            'WW.....WW',
+            'W...s...W',
+            'W..s†s..W', // Spawns a Bone Dagger!
+            'W...s...W',
+            'WW.....WW',
+            ' WWWWWWW '
+        ]
+    },
+    "Orc Stash": {
+        width: 5,
+        height: 5,
+        map: [
+            'WWWWW',
+            'W.J.W', // Orc Journal
+            'W.o.W', // Orc Brute
+            'W.$.W', // Gold
+            'WWWWW'
+        ]
+    },
+    "Treasure Nook": {
+        width: 3,
+        height: 3,
+        map: [
+            'W$W',
+            '$ $',
+            'W$W'
+        ]
     }
 };
 
@@ -1404,7 +1495,7 @@ const chunkManager = {
     castleMaps: {},
     caveEnemies: {},
 
-    generateCave(caveId) {
+generateCave(caveId) {
         if (this.caveMaps[caveId]) return this.caveMaps[caveId];
 
         // 1. Pick a theme for this cave, seeded by its location
@@ -1438,41 +1529,92 @@ const chunkManager = {
             steps--;
         }
 
-        // 3. Place loot and decorations
+        // --- 3. (NEW) STAMP THEMED ROOMS ---
+        // We do this *before* procedural loot/enemies
+        
+        // Initialize the enemy list here
+        this.caveEnemies[caveId] = [];
+        
+        const roomTemplates = Object.values(CAVE_ROOM_TEMPLATES);
+        const roomAttempts = 5; // Try to place 5 rooms
 
-        // --- Part A: Place 0-3 random loot items ---
+        for (let i = 0; i < roomAttempts; i++) {
+            // Pick a random room template
+            const room = roomTemplates[Math.floor(random() * roomTemplates.length)];
+            
+            // Pick a random top-left corner for the room
+            const roomX = Math.floor(random() * (CAVE_WIDTH - room.width - 2)) + 1;
+            const roomY = Math.floor(random() * (CAVE_HEIGHT - room.height - 2)) + 1;
+
+            // Stamp the room
+            for (let ry = 0; ry < room.height; ry++) {
+                for (let rx = 0; rx < room.width; rx++) {
+                    
+                    const mapX = roomX + rx;
+                    const mapY = roomY + ry;
+                    const templateTile = room.map[ry][rx];
+
+                    if (templateTile === ' ') continue; // Skip empty spaces
+
+                    let tileToPlace = null;
+
+                    if (templateTile === 'W') {
+                        tileToPlace = theme.wall;
+                    } else if (templateTile === 'F') {
+                        tileToPlace = theme.floor;
+                    } else {
+                        tileToPlace = templateTile; // It's an item or enemy
+                    }
+
+                    // Stamp the tile onto the map
+                    map[mapY][mapX] = tileToPlace;
+
+                    // If it's an enemy, we must pre-populate it
+                    if (ENEMY_DATA[tileToPlace]) {
+                        const enemyTemplate = ENEMY_DATA[tileToPlace];
+                        this.caveEnemies[caveId].push({
+                            id: `${caveId}:${mapX},${mapY}`,
+                            x: mapX,
+                            y: mapY,
+                            tile: tileToPlace,
+                            name: enemyTemplate.name,
+                            health: enemyTemplate.maxHealth,
+                            maxHealth: enemyTemplate.maxHealth,
+                            attack: enemyTemplate.attack,
+                            defense: enemyTemplate.defense,
+                            xp: enemyTemplate.xp,
+                            loot: enemyTemplate.loot
+                        });
+                    }
+                }
+            }
+        }
+        // --- END NEW ROOM LOGIC ---
+
+
+        // 4. Place procedural loot and decorations
+        // (This is your existing loot/decoration logic, unchanged)
         const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$'];
-        const lootQuantity = Math.floor(random() * 4); // Generates 0, 1, 2, or 3
+        const lootQuantity = Math.floor(random() * 4); 
 
         for (let i = 0; i < lootQuantity; i++) {
-            // Pick a random item from your global loot table
             const itemToPlace = CAVE_LOOT_TABLE[Math.floor(random() * CAVE_LOOT_TABLE.length)];
-
-            // Try 5 times to find an empty spot
             let placed = false;
             for (let attempt = 0; attempt < 5 && !placed; attempt++) {
                 const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
                 const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
-
-                // Only place on a floor tile
                 if (map[randY][randX] === theme.floor) {
                     map[randY][randX] = itemToPlace;
                     placed = true;
                 }
             }
         }
-
-        // --- Part B: Place special theme items (like '📖') ---
-        // This finds items in the theme list that AREN'T in our loot table
         const specialItems = theme.decorations.filter(item => !CAVE_LOOT_TABLE.includes(item));
-
         for (const itemToPlace of specialItems) {
-            // Try 5 times to find an empty spot
             let placed = false;
             for (let attempt = 0; attempt < 5 && !placed; attempt++) {
                 const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
                 const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
-
                 if (map[randY][randX] === theme.floor) {
                     map[randY][randX] = itemToPlace;
                     placed = true;
@@ -1480,7 +1622,9 @@ const chunkManager = {
             }
         }
 
-        this.caveEnemies[caveId] = []; // Reset/init the enemy list for this cave
+        // 5. (MOVED) Place procedural enemies
+        // This loop now spawns enemies in the random corridors
+        // AND in the "F" (floor) tiles of our stamped rooms
         
         const enemyTypes = theme.enemies || Object.keys(ENEMY_DATA);
 
@@ -1512,8 +1656,15 @@ const chunkManager = {
                 });
             }
         }
-
+        
+        // 6. (NEW) Place the Exit
+        // We do this *after* rooms are stamped to ensure the exit isn't overwritten.
+        map[startPos.y][startPos.x] = '>'; // Place the exit
+        
+        // --- This is where the old function's logic resumes ---
+        // (The Secret Wall logic starts here, around line 1361)
         const secretWallTile = theme.secretWall;
+        
         if (secretWallTile) { // Only run if the theme *has* a secret wall defined
             for (let y = 2; y < CAVE_HEIGHT - 2; y++) {
                 for (let x = 2; x < CAVE_WIDTH - 2; x++) {
@@ -1713,8 +1864,11 @@ const chunkManager = {
                 if (tile === '.' && featureRoll < 0.00001) { //
                     this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
-                
-                // --- FIX: This block was moved up so it's no longer unreachable ---
+
+                } else if (tile === '.' && featureRoll < 0.00011) { // 0.01% chance (0.0001 + 0.00001)
+                    this.setWorldTile(worldX, worldY, 'V');
+                    chunkData[y][x] = 'V';
+
                 } else if (tile === '.' && featureRoll < 0.0003) { // Spawn safe features
                     let features = Object.keys(TILE_DATA);
                     features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' &&
@@ -2936,7 +3090,7 @@ function renderBountyBoard() {
     for (const questId in QUEST_DATA) {
         const quest = QUEST_DATA[questId];
 
-        if (quest.type === 'fetch') continue; // Skip NPC fetch quests
+        if (quest.type === 'fetch' || quest.type === 'collect') continue;
 
         const playerQuest = playerQuests[questId];
         let questHtml = '';
@@ -3017,6 +3171,16 @@ function turnInQuest(questId) {
             logMessage(`You don't have the ${quest.itemNeeded}!`);
             hasRequirements = false;
         }
+
+        } else if (quest.type === 'collect') {
+        // --- Check for a stack of items ---
+        itemIndex = gameState.player.inventory.findIndex(item => item.name === quest.itemNeeded);
+        
+        if (itemIndex === -1 || gameState.player.inventory[itemIndex].quantity < quest.needed) {
+            logMessage(`You don't have enough ${quest.itemNeeded}s! You need ${quest.needed}.`);
+            hasRequirements = false;
+        }
+
     } else {
         // --- Check for kills (your old logic) ---
         if (playerQuest.kills < quest.needed) {
@@ -3038,9 +3202,19 @@ function turnInQuest(questId) {
     // --- Mark as Completed ---
     playerQuest.status = 'completed';
     
-    // --- NEW: Remove fetch item from inventory ---
     if (quest.type === 'fetch' && itemIndex > -1) {
+        // --- This is our existing fetch logic (unchanged) ---
         gameState.player.inventory.splice(itemIndex, 1);
+
+    } else if (quest.type === 'collect' && itemIndex > -1) {
+        // --- Remove the required quantity from the stack ---
+        const itemStack = gameState.player.inventory[itemIndex];
+        itemStack.quantity -= quest.needed;
+        
+        // If the stack is now empty, remove the item
+        if (itemStack.quantity <= 0) {
+            gameState.player.inventory.splice(itemIndex, 1);
+        }
     }
 
     // --- Update database (must include inventory!) ---
@@ -5407,30 +5581,86 @@ if (newTile === 'N') {
             }
 
             if (newTile === 'K') {
-                if (!gameState.foundLore.has(tileId)) {
+                // --- NEW COLLECT QUEST LOGIC FOR PROSPECTOR ---
+                const npcQuestId = "goblinTrophies"; // The quest this NPC type gives
+                const questData = QUEST_DATA[npcQuestId];
+                const playerQuest = gameState.player.quests[npcQuestId];
+                const player = gameState.player;
+                
+                // Add lore XP for the first time meeting *any* prospector
+                const genericProspectorId = "met_prospector"; 
+                if (!gameState.foundLore.has(genericProspectorId)) {
                     logMessage("You meet a Lost Prospector. +5 XP");
                     grantXp(5);
-                    gameState.foundLore.add(tileId);
+                    gameState.foundLore.add(genericProspectorId); // Use a generic ID
                     playerRef.update({
                         foundLore: Array.from(gameState.foundLore)
                     });
                 }
-                // Use a seeded random to make their dialogue consistent
-                const seed = stringToSeed(tileId);
-                const random = Alea(seed);
-                const prospectorDialogues = [
-                    "Gold! Gems! Riches! ...Huh? Oh, just you. Thought you were a goblin.",
-                    "Be careful in these caves. The deeper you go, the older the... things... you find.",
-                    "I saw it! A flicker of blue in the ice... essence. But those... those *things*... they guard it.",
-                    "If you find any spare gold, don't spend it all in one place. Not that there's many places to spend it down here.",
-                    "Sometimes I think these caves go on forever. Just... down."
-                ];
-                const dialogue = prospectorDialogues[Math.floor(random() * prospectorDialogues.length)];
 
-                loreTitle.textContent = "Lost Prospector";
-                loreContent.textContent = `A grizzled prospector, muttering to themself, jumps as you approach.\n\n"${dialogue}"`;
-                loreModal.classList.remove('hidden');
-                return;
+                if (!playerQuest) {
+                    // --- SCENARIO A: Player does NOT have the quest ---
+                    loreTitle.textContent = "Frustrated Prospector";
+                    loreContent.innerHTML = `
+                        <p>A grizzled prospector, muttering to themself, jumps as you approach.\n\n"Goblins! I hate 'em! Always stealing my supplies, leaving these... these *totems* everywhere. Say, if you're clearing 'em out, bring me 10 of those Goblin Totems. I'll make it worth your while!"</p>
+                        <button id="acceptNpcQuest" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">"I'll see what I can do."</button>
+                    `;
+                    loreModal.classList.remove('hidden');
+                    
+                    document.getElementById('acceptNpcQuest').addEventListener('click', () => {
+                        acceptQuest(npcQuestId);
+                        loreModal.classList.add('hidden');
+                    }, { once: true });
+
+                } else if (playerQuest.status === 'active') {
+                    // --- SCENARIO B: Player has the quest ---
+                    const itemInInv = player.inventory.find(item => item.name === questData.itemNeeded);
+                    const hasItems = itemInInv && itemInInv.quantity >= questData.needed;
+
+                    if (hasItems) {
+                        // B1: Player has the items!
+                        loreTitle.textContent = "Surprised Prospector";
+                        loreContent.innerHTML = `
+                            <p>The prospector's eyes go wide as you show him the totems.\n\n"Ha! You actually did it! That'll teach 'em. Here, as promised. This is for your trouble."</p>
+                            <button id="turnInNpcQuest" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Here you go. (Complete Quest)"</button>
+                        `;
+                        loreModal.classList.remove('hidden');
+
+                        document.getElementById('turnInNpcQuest').addEventListener('click', () => {
+                            turnInQuest(npcQuestId);
+                            loreModal.classList.add('hidden');
+                        }, { once: true });
+
+                    } else {
+                        // B2: Player does NOT have the items
+                        const needed = questData.needed - (itemInInv ? itemInInv.quantity : 0);
+                        loreTitle.textContent = "Impatient Prospector";
+                        loreContent.innerHTML = `
+                            <p>The prospector looks up.\n\n"Back already? You still need to find ${needed} more ${questData.itemNeeded}s. Get a move on!"</p>
+                            <button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"I'm still looking."</button>
+                        `;
+                        loreModal.classList.remove('hidden');
+
+                        document.getElementById('closeNpcLore').addEventListener('click', () => {
+                            loreModal.classList.add('hidden');
+                        }, { once: true });
+                    }
+
+                } else if (playerQuest.status === 'completed') {
+                    // --- SCENARIO C: Player has completed the quest ---
+                    loreTitle.textContent = "Grateful Prospector";
+                    loreContent.innerHTML = `
+                        <p>The prospector nods at you.\n\n"Thanks again for your help, adventurer. The caves are a little quieter... for now."</p>
+                        <button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"You're welcome."</button>
+                    `;
+                    loreModal.classList.remove('hidden');
+
+                    document.getElementById('closeNpcLore').addEventListener('click', () => {
+                        loreModal.classList.add('hidden');
+                    }, { once: true });
+                }
+                
+                return; // Stop the player's move
             }
 
             if (newTile === '§') {
@@ -5494,8 +5724,38 @@ if (newTile === 'N') {
                     }
                     openCraftingModal();
                     return; // Stop the player's move
-                
-                // --- NEW CANOE (EMBARK) LOGIC ---
+                case 'village_entrance':
+                    if (!gameState.foundLore.has(tileId)) {
+                        logMessage("You've discovered a safe haven village! +100 XP");
+                        grantXp(100);
+                        gameState.foundLore.add(tileId);
+                        playerRef.update({
+                            foundLore: Array.from(gameState.foundLore)
+                        });
+                    }
+                    gameState.mapMode = 'castle'; // We re-use 'castle' mode
+                    gameState.currentCastleId = tileData.getVillageId(newX, newY); // Use its unique ID
+                    gameState.overworldExit = {
+                        x: gameState.player.x,
+                        y: gameState.player.y
+                    };
+                    
+                    // Force it to use our new layout
+                    chunkManager.generateCastle(gameState.currentCastleId, 'SAFE_HAVEN');
+                    
+                    const villageSpawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
+                    gameState.player.x = villageSpawn.x;
+                    gameState.player.y = villageSpawn.y;
+                    
+                    // We need to clear instanced enemies, as this is a safe zone
+                    gameState.instancedEnemies = []; 
+
+                    logMessage("You enter the peaceful village.");
+                    updateRegionDisplay();
+                    render();
+                    syncPlayerState();
+                    return; // Stop the move
+
                 case 'canoe':
                     if (!gameState.foundLore.has(tileId)) {
                         logMessage("You found a canoe! +10 XP");
