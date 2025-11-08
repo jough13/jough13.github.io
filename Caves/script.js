@@ -276,7 +276,7 @@ const CASTLE_LAYOUTS = {
             '▓...▓.............▓...▓.........▓...▓.▓...▓.......▓.......▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓▓▓▓▓▓▓▓▓...▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓.......▓...▓...▓.........▓...▓.........▓...▓',
-            '▓...▓.............▓...▓.........▓...▓.▓...▓...▓...$.....▓...▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.▓...▓...▓...💪.....▓...▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓.......▓...▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓▓▓▓▓▓▓▓▓...▓...▓.........▓...▓.........▓...▓',
             '▓...▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓',
@@ -523,7 +523,8 @@ const ENEMY_DATA = {
         loot: 'E',
         caster: true,
         castRange: 5,
-        spellDamage: 4 
+        spellDamage: 4,
+        inflicts: 'frostbite'
     }
 };
 
@@ -890,6 +891,9 @@ function createDefaultPlayerState() {
 
         shieldValue: 0,
         shieldTurns: 0,
+
+        poisonTurns: 0,
+        frostbiteTurns: 0,
 
         isBoating: false,
 
@@ -1367,6 +1371,16 @@ const ITEM_DATA = {
         type: 'skillbook',
         skillId: 'lunge'    // <-- Links to SKILL_DATA
     },
+    '💪': {
+        name: 'Tome of Strength',
+        type: 'tome', // <-- NEW TYPE
+        stat: 'strength'
+    },
+    '🧠': {
+        name: 'Tome of Wits',
+        type: 'tome', // <-- NEW TYPE
+        stat: 'wits'
+    },
     '♦': {
         name: 'Heirloom',
         type: 'quest' // A new type, so it can't be sold or used
@@ -1477,6 +1491,14 @@ const SKILL_DATA = {
         target: "aimed",
         // Formula: damage = (PlayerDamage * 1.0) + (Strength * level)
         baseDamageMultiplier: 1.0 
+    },
+    "pacify": {
+        name: "Pacify",
+        description: "Attempt to calm a hostile target, making it non-aggressive. Scales with Charisma.",
+        cost: 10,
+        costType: "psyche",
+        requiredLevel: 3,
+        target: "aimed"
     }
     // We can add more skills here later (e.g., Power Attack, Whirlwind)
 };
@@ -2057,7 +2079,10 @@ const gameState = {
         healthRegenProgress: 0,
         staminaRegenProgress: 0,
         manaRegenProgress: 0,
-        psycheRegenProgress: 0
+        psycheRegenProgress: 0,
+
+        poisonTurns: 0,
+        frostbiteTurns: 0
     },
 
     lootedTiles: new Set(),
@@ -3038,6 +3063,87 @@ async function executeLunge(dirX, dirY) {
     triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
     endPlayerTurn(); // Always end turn, even if you miss
     render(); // Re-render to show enemy health change
+}
+
+/**
+ * Executes the Pacify skill on a target
+ * after the player chooses a direction.
+ * @param {number} dirX - The x-direction of the aim.
+ * @param {number} dirY - The y-direction of the aim.
+ */
+function executePacify(dirX, dirY) {
+    const player = gameState.player;
+    const skillData = SKILL_DATA["pacify"];
+
+    // --- 1. Deduct Cost ---
+    player.psyche -= skillData.cost;
+    let hit = false;
+    
+    // Loop 1 to 3 tiles away
+    for (let i = 1; i <= 3; i++) {
+        const targetX = player.x + (dirX * i);
+        const targetY = player.y + (dirY * i);
+
+        // This skill only works in instanced maps
+        if (gameState.mapMode === 'overworld') {
+            logMessage("This skill only works in dungeons and castles.");
+            hit = true; // Prevents the "miss" message
+            break;
+        }
+
+        let map;
+        let theme;
+        if (gameState.mapMode === 'dungeon') {
+            map = chunkManager.caveMaps[gameState.currentCaveId];
+            theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+        } else {
+            map = chunkManager.castleMaps[gameState.currentCastleId];
+            theme = { floor: '.' };
+        }
+        
+        const tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+        const enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+
+        if (enemy) {
+            // Found a target!
+            hit = true;
+            
+            // --- 3. Calculate Success Chance ---
+            // 5% chance per Charisma point, capped at 75%
+            const successChance = Math.min(0.75, player.charisma * 0.05);
+
+            if (Math.random() < successChance) {
+                // --- SUCCESS ---
+                logMessage(`You calm the ${enemy.name}! It becomes passive.`);
+                
+                // Remove it from the enemy list
+                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                
+                // Set its tile to a floor
+                map[targetY][targetX] = theme.floor;
+                
+            } else {
+                // --- FAILURE ---
+                logMessage(`Your attempt to pacify the ${enemy.name} fails!`);
+            }
+            break; // Stop looping, we found our target
+        } else if (tile !== theme.floor) {
+            // Hit a wall, stop the loop
+            break;
+        }
+    }
+
+    if (!hit) {
+        logMessage("You attempt to calm... nothing.");
+    }
+
+    // --- 4. Finalize Turn ---
+    playerRef.update({
+        psyche: player.psyche
+    });
+    triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+    endPlayerTurn();
+    render();
 }
 
 /**
@@ -4098,7 +4204,6 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             }
             // --- END LUCK DODGE CHECK ---
             
-            // --- This is the fix for the stray '}' bug ---
         }
 
     } catch (error) {
@@ -4602,9 +4707,9 @@ function processEnemyTurns() {
         const distSq = Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2);
 
         // --- 1. NEW: MELEE ATTACK LOGIC (for ALL enemies) ---
-        // Is the enemy adjacent (distSq <= 2 covers diagonals)?
         if (distSq <= 2) {
-            // Enemy is adjacent! ATTACK.
+            // (Your existing melee logic is perfect)
+            // ...
             const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
             const baseDefense = Math.floor(player.dexterity / 5);
             const buffDefense = player.defenseBonus || 0;
@@ -4650,27 +4755,24 @@ function processEnemyTurns() {
         }
 
         // --- 2. NEW: CASTER ATTACK LOGIC (for Caster enemies) ---
-        // Is enemy a caster, in range, and decides to cast (33% chance)?
         const castRangeSq = Math.pow(enemy.castRange || 6, 2);
         
         if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.33) {
-            // This is a caster and it's casting!
-            const spellDamage = enemy.spellDamage || 1; // Get damage from ENEMY_DATA
-            const enemyDamage = Math.max(1, spellDamage); // Magic ignores physical defense
+            // (Your existing caster logic is perfect)
+            // ...
+            const spellDamage = enemy.spellDamage || 1; 
+            const enemyDamage = Math.max(1, spellDamage);
 
-            // Log a themed message
             let spellName = "spell";
             if (enemy.tile === 'm') spellName = "Arcane Bolt";
             if (enemy.tile === 'Z') spellName = "Frost Shard";
 
-            // Check for Luck Dodge (Magic can be dodged)
             const luckDodgeChance = Math.min(player.luck * 0.002, 0.25);
             if (Math.random() < luckDodgeChance) {
                 logMessage(`The ${enemy.name} hurls a ${spellName}, but you dodge!`);
                 return; // End this enemy's turn
             }
             
-            // Check for Shield Absorb (Magic can be blocked)
             let damageToApply = enemyDamage;
             if (player.shieldValue > 0) {
                 const damageAbsorbed = Math.min(player.shieldValue, damageToApply);
@@ -4687,24 +4789,33 @@ function processEnemyTurns() {
                 player.health -= damageToApply;
                 triggerStatFlash(statDisplays.health, false);
                 logMessage(`The ${enemy.name}'s ${spellName} hits you for ${damageToApply} damage!`);
-            }
+
+                if (enemy.inflicts === 'frostbite' && player.frostbiteTurns <= 0) {
+                    logMessage("You are afflicted with Frostbite!");
+                    player.frostbiteTurns = 5; 
+                }
+            } // <-- ***FIX #1:*** The "damageToApply" block closes here.
             
-            // Check for player death
+            // ***FIX #2:*** The death check and return are moved *outside* the
+            // "damageToApply" block, so they run even if 0 damage was dealt.
             if (player.health <= 0) {
                 player.health = 0;
                 logMessage("You have perished!");
                 syncPlayerState();
+                document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
+                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
                 gameOverModal.classList.remove('hidden');
             }
             return; // End this enemy's turn
-        }
+        } // <-- ***THIS IS THE MISSING CLOSING BRACE }***
 
         // --- 3. MOVEMENT LOGIC (if no attack/cast) ---
-        // 50% chance to move (this is your existing logic)
+        // This is now correctly *outside* the caster block.
         if (Math.random() < 0.50) {
             let dirX, dirY;
 
-            // CHASE LOGIC (this is your existing logic)
+            // (Your existing movement logic is perfect)
+            // ...
             if (Math.random() < CHASE_CHANCE) {
                 dirX = Math.sign(player.x - enemy.x);
                 dirY = Math.sign(player.y - enemy.y);
@@ -4722,15 +4833,12 @@ function processEnemyTurns() {
 
             const targetTile = (map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
 
-            // Is the target tile a floor?
             if (targetTile === theme.floor) {
-                // It's a valid move!
-                map[enemy.y][enemy.x] = theme.floor; // Clear old spot
-                map[newY][newX] = enemy.tile;      // Move to new spot
+                map[enemy.y][enemy.x] = theme.floor; 
+                map[newY][newX] = enemy.tile;      
                 enemy.x = newX;
                 enemy.y = newY;
 
-                // (This is your existing 'intuition' logic, unchanged)
                 const newDistSq = Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2);
                 if (newDistSq < minDist && newDistSq < HEARING_DISTANCE_SQ) {
                     minDist = newDistSq;
@@ -4748,6 +4856,7 @@ function processEnemyTurns() {
  * Uses a Firebase RTDB lock to ensure only one client
  * runs the AI at a time.
  */
+
 async function runSharedAiTurns() {
     let nearestEnemyDir = null;
 
@@ -4813,8 +4922,36 @@ async function runSharedAiTurns() {
 
 function endPlayerTurn() {
     gameState.playerTurnCount++; // Increment the player's turn
+    const player = gameState.player;
+    let updates = {};
 
-    // Tick down buff/debuff durations
+    // --- 1. Tick Status Effects ---
+    if (player.poisonTurns > 0) {
+        player.poisonTurns--;
+        player.health -= 1; // Poison deals 1 damage
+        logMessage("You take 1 poison damage...");
+        triggerStatFlash(statDisplays.health, false);
+        updates.health = player.health;
+        updates.poisonTurns = player.poisonTurns;
+        if (player.poisonTurns === 0) {
+            logMessage("The poison has worn off.");
+        }
+    }
+
+    if (player.frostbiteTurns > 0) {
+        player.frostbiteTurns--;
+        player.stamina = Math.max(0, player.stamina - 2); // Frostbite drains 2 stamina
+        logMessage("Frostbite saps your stamina...");
+        triggerStatFlash(statDisplays.stamina, false);
+        updates.stamina = player.stamina;
+        updates.frostbiteTurns = player.frostbiteTurns;
+        if (player.frostbiteTurns === 0) {
+            logMessage("You are no longer frostbitten.");
+        }
+    }
+    // --- END NEW BLOCK ---
+
+    // Tick down buff/debuff durations (This is your existing code)
     if (gameState.player.defenseBonusTurns > 0) {
         gameState.player.defenseBonusTurns--; // Tick down the turn
 
@@ -4829,7 +4966,8 @@ function endPlayerTurn() {
         } else {
             // Save the new turn count
             playerRef.update({
-                defenseBonusTurns: gameState.player.defenseBonusTurns
+                defenseBonusTurns: gameState.player.defenseBonusTurns,
+                ...updates
             });
         }
         renderEquipment(); // Update UI (to show new turn count or remove buff)
@@ -4849,19 +4987,23 @@ function endPlayerTurn() {
         } else {
             // Save the new turn count
             playerRef.update({
-                shieldTurns: gameState.player.shieldTurns
+                shieldTurns: gameState.player.shieldTurns,
+                ...updates
             });
         }
         renderStats(); // Update UI (to show new turn count or remove shield)
     }
 
-    // --- MODIFIED BLOCK ---
     if (gameState.playerTurnCount % 2 === 0) {
         // Call our new async wrapper function.
         // We don't 'await' it; just let it run in the background.
         runSharedAiTurns();
     }
-    // --- END MODIFIED BLOCK ---
+
+    // Save any status effect changes if buffs didn't already
+    if (Object.keys(updates).length > 0) {
+        playerRef.update(updates);
+    }
 
     renderStats();
 }
@@ -5018,6 +5160,8 @@ if (dirX !== 0 || dirY !== 0) {
         } else if (SPELL_DATA[abilityId]) { // Check if it's a key in our spell database
             // It's a spell! Call our new generic execute function
             executeAimedSpell(abilityId, dirX, dirY); 
+        } else if (abilityId === 'pacify') {
+            executePacify(dirX, dirY);
         } else {
             // Fallback in case something went wrong
             logMessage("Unknown ability. Aiming canceled.");
@@ -5204,6 +5348,24 @@ if (dirX !== 0 || dirY !== 0) {
                 itemUsed = true;
             }
 
+            } else if (itemToUse.type === 'tome') {
+                const stat = itemToUse.stat;
+                if (stat && gameState.player.hasOwnProperty(stat)) {
+                    gameState.player[stat]++;
+                    logMessage(`You consume the tome. Your ${stat} has permanently increased by 1!`);
+                    triggerStatAnimation(statDisplays[stat], 'stat-pulse-green');
+                    
+                    // Consume the item
+                    itemToUse.quantity--;
+                    if (itemToUse.quantity <= 0) {
+                        gameState.player.inventory.splice(itemIndex, 1);
+                    }
+                    itemUsed = true;
+                } else {
+                    logMessage("This tome seems to be a dud.");
+                    itemUsed = false;
+                }
+
             } else {
                 logMessage(`You can't use '${itemToUse.name}' right now.`);
             }
@@ -5222,7 +5384,9 @@ if (dirX !== 0 || dirY !== 0) {
                     skillbook: gameState.player.skillbook,
 
                     spellId: item.spellId || null,
-                    skillId: item.skillId || null
+                    skillId: item.skillId || null,
+
+                    stat: item.stat || null
                 
                 }));
 
@@ -6220,7 +6384,8 @@ if (newTile === 'N') {
                             quantity: 1,
                             tile: newTile,
                             spellId: itemData.spellId || null, // For spellbooks
-                            skillId: itemData.skillId || null  // For skillbooks
+                            skillId: itemData.skillId || null,  // For skillbooks
+                            stat: itemData.stat || null
                         };
                         gameState.player.inventory.push(itemForDb);
                         logMessage(`You picked up the ${itemData.name}.`);
@@ -6286,6 +6451,17 @@ if (newTile === 'N') {
         if (moveCost > 0) {
             triggerStatFlash(statDisplays.stamina, false);
             logMessage(`Traversing the terrain costs ${moveCost} stamina.`);
+        }
+
+        if (newTile === '≈') { // Swamplands
+            // 1% chance per point *under* 10 Endurance.
+            // At 10 Endurance, resistChance = 0%.
+            // At 1 Endurance, resistChance = 9%.
+            const resistChance = Math.max(0, (10 - player.endurance)) * 0.01;
+            if (Math.random() > resistChance && player.poisonTurns <= 0) {
+                logMessage("You feel sick from the swamp's foul water. You are Poisoned!");
+                player.poisonTurns = 5; // 5 turns of poison
+            }
         }
 
         // 6. Handle final updates
