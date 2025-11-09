@@ -386,13 +386,6 @@ const CASTLE_SHOP_INVENTORY = [{
         stock: 1
     },
     {
-        name: 'Scroll of Siphoning',
-        price: 400, // This is a powerful Lvl 4 spell
-        stock: 1
-    },
-
-    // --- ADD THESE NEW ITEMS ---
-    {
         name: 'Machete',
         price: 150,
         stock: 2
@@ -619,7 +612,7 @@ const CAVE_THEMES = {
             wall: '#99f6e4',
             floor: '#e0f2fe'
         },
-        decorations: ['S', 'Y', '$', 'R'],
+        decorations: ['S', 'Y', '$', 'R', '❄️'],
         enemies: ['s', 'w', 'Z']
     },
     FIRE: {
@@ -633,6 +626,19 @@ const CAVE_THEMES = {
         }, // The red color makes it look like lava
         decorations: ['+', '$', '🔥', 'J'],
         enemies: ['b', 'C', 'o', 'm']
+    },
+
+    CRYPT: {
+        name: 'A Musty Crypt',
+        wall: '▓', // Standard wall
+        floor: '.', // Standard floor
+        secretWall: '▒',
+        colors: {
+            wall: '#374151', // Dark stone color
+            floor: '#4b5563'  // Lighter, cold stone floor
+        },
+        decorations: ['+', '$', '(', '†', '🌀', '😱'],
+        enemies: ['s', 'Z'] // Skeletons and Draugr
     },
 
     CRYSTAL: {
@@ -695,7 +701,7 @@ const CAVE_ROOM_TEMPLATES = {
         map: [
             'WWWWW',
             'W.J.W', // Orc Journal
-            'W.+📄.W',
+            'W.+o.W',
             'W.📗.W',
             'WWWWW'
         ]
@@ -742,7 +748,7 @@ const CAVE_ROOM_TEMPLATES = {
             'WWWWW',
             'W...W',
             'W.J.W', // A Journal
-            'W.+..W', // A Potion
+            'W.+📄.W',
             'WWWWW'
         ]
     }
@@ -1257,6 +1263,14 @@ const CRAFTING_RECIPES = {
         "Bone Dagger": 1,
         "Arcane Dust": 5
     },
+    "Bandit's Boots": {
+        "Bandit's Insignia": 5, // Requires 5 insignias
+        "Wolf Pelt": 2          // And some pelts for padding
+    },
+    "Orcish Helm": {
+        "Orc Tusk": 6,          // Requires 6 tusks
+        "Bone Shard": 4         // And some bone shards for reinforcement
+    },
     "Mage Robe": {
         "Bandit Garb": 1,
         "Arcane Dust": 5
@@ -1564,6 +1578,35 @@ const ITEM_DATA = {
         slot: 'weapon',
         statBonuses: { wits: 1, willpower: 1 } // A great magic-user sword
     },
+    ']': {
+        name: 'Bandit\'s Boots',
+        type: 'armor',
+        defense: 1,
+        slot: 'armor',
+        statBonuses: { dexterity: 1 } // Bandits are quick
+    },
+    '8': {
+        name: 'Orcish Helm',
+        type: 'armor',
+        defense: 2,
+        slot: 'armor',
+        statBonuses: { strength: 1 } // Orcs are strong
+    },
+    '❄️': {
+        name: 'Scroll: Frost Bolt',
+        type: 'spellbook',
+        spellId: 'frostBolt'
+    },
+    '🌀': {
+        name: 'Tome: Psychic Blast',
+        type: 'spellbook',
+        spellId: 'psychicBlast'
+    },
+    '😱': {
+        name: 'Tome of Madness',
+        type: 'skillbook',
+        skillId: 'inflictMadness'
+    },
     '♦': {
         name: 'Heirloom',
         type: 'quest' // A new type, so it can't be sold or used
@@ -1648,6 +1691,26 @@ const SPELL_DATA = {
         requiredLevel: 1,
         target: "aimed",
         baseDamage: 5
+    },
+    "psychicBlast": {
+        name: "Psychic Blast",
+        description: "Assaults a target's mind, scaling with Willpower.",
+        cost: 10,                 // Costs a bit more than Magic Bolt
+        costType: "psyche",       // <-- Uses Psyche!
+        requiredLevel: 2,         // A level 2 spell
+        target: "aimed",
+        baseDamage: 6             // Does a bit more base damage
+    },
+    "frostBolt": {
+        name: "Frost Bolt",
+        description: "Hurls a shard of ice, scaling with Willpower. Has a chance to inflict Frostbite.",
+        cost: 10,                 // A bit more expensive
+        costType: "mana", 
+        requiredLevel: 1,
+        target: "aimed",
+        baseDamage: 5,
+        inflicts: "frostbite",  // <-- Links to our status effect!
+        inflictChance: 0.25     // 25% chance to inflict it
     }
     // We can easily add more spells here later!
 };
@@ -1681,6 +1744,14 @@ const SKILL_DATA = {
         cost: 10,
         costType: "psyche",
         requiredLevel: 3,
+        target: "aimed"
+    },
+    "inflictMadness": {
+        name: "Inflict Madness",
+        description: "Assault a target's mind, causing it to flee in terror for 5 turns. Scales with Charisma.",
+        cost: 12,
+        costType: "psyche",
+        requiredLevel: 5,
         target: "aimed"
     }
     // We can add more skills here later (e.g., Power Attack, Whirlwind)
@@ -1818,13 +1889,14 @@ generateCave(caveId) {
                             attack: enemyTemplate.attack,
                             defense: enemyTemplate.defense,
                             xp: enemyTemplate.xp,
-                            loot: enemyTemplate.loot
+                            loot: enemyTemplate.loot,
+                            madnessTurns: 0,
+                            frostbiteTurns: 0
                         });
                     }
                 }
             }
         }
-
 
         // 4. Place procedural loot and decorations
 
@@ -1886,7 +1958,9 @@ generateCave(caveId) {
                     attack: enemyTemplate.attack,
                     defense: enemyTemplate.defense,
                     xp: enemyTemplate.xp,
-                    loot: enemyTemplate.loot
+                    loot: enemyTemplate.loot,
+                    madnessTurns: 0,
+                    frostbiteTurns: 0
                 });
             }
         }
@@ -2569,10 +2643,19 @@ function handleItemDrop(event) {
         name: item.name,
         type: item.type,
         quantity: item.quantity,
-        tile: item.tile
-    }));
-    playerRef.update({
+        tile: item.tile,
+        damage: item.damage || null,
+        slot: item.slot || null,
+        defense: item.defense || null,
+        statBonuses: item.statBonuses || null,
+        spellId: item.spellId || null,
+        skillId: item.skillId || null,
+        stat: item.stat || null
+        }));
+    
+        playerRef.update({
         inventory: inventoryToSave
+    
     }); // Save the clean version
 
     // 7. Exit drop mode
@@ -2795,8 +2878,17 @@ function handleBuyItem(itemName) {
         name: item.name,
         type: item.type,
         quantity: item.quantity,
-        tile: item.tile
-    }));
+        tile: item.tile,
+        damage: item.damage || null,
+        slot: item.slot || null,
+        defense: item.defense || null,
+        statBonuses: item.statBonuses || null,
+        spellId: item.spellId || null,
+        skillId: item.skillId || null,
+        stat: item.stat || null
+    
+        }));
+    
     playerRef.update({
         coins: player.coins,
         inventory: inventoryToSave // Save the clean version
@@ -2845,9 +2937,18 @@ function handleSellItem(itemIndex) {
         name: item.name,
         type: item.type,
         quantity: item.quantity,
-        tile: item.tile
-    }));
-    playerRef.update({
+        tile: item.tile,
+        damage: item.damage || null,
+        slot: item.slot || null,
+        defense: item.defense || null,
+        statBonuses: item.statBonuses || null,
+        spellId: item.spellId || null,
+        skillId: item.skillId || null,
+        stat: item.stat || null
+        
+        }));
+
+        playerRef.update({
         coins: player.coins,
         inventory: inventoryToSave // Save the clean version
     });
@@ -2912,9 +3013,10 @@ function renderShop() {
                 <span class="shop-item-name">${item.name} (${itemKey || '?'})</span>
                 <span class="shop-item-details">Price: ${finalBuyPrice}g</span>
             </div>
-            <div class="shop-item-actions">
-        // ... (rest of loop)
-        `;
+              <div class="shop-item-actions">
+            <button data-buy-item="${item.name}">Buy 1</button> 
+        </div>
+    `;
         // Disable buy button if player can't afford it
         if (gameState.player.coins < finalBuyPrice) { // <-- Use new variable
             li.querySelector('button').disabled = true;
@@ -3255,6 +3357,7 @@ async function executeLunge(dirX, dirY) {
  * @param {number} dirX - The x-direction of the aim.
  * @param {number} dirY - The y-direction of the aim.
  */
+
 function executePacify(dirX, dirY) {
     const player = gameState.player;
     const skillData = SKILL_DATA["pacify"];
@@ -3331,12 +3434,87 @@ function executePacify(dirX, dirY) {
 }
 
 /**
+ * Executes the Inflict Madness skill on a target
+ * after the player chooses a direction.
+ * @param {number} dirX - The x-direction of the aim.
+ * @param {number} dirY - The y-direction of the aim.
+ */
+function executeInflictMadness(dirX, dirY) {
+    const player = gameState.player;
+    const skillData = SKILL_DATA["inflictMadness"];
+
+    // --- 1. Deduct Cost ---
+    player.psyche -= skillData.cost;
+    let hit = false;
+    
+    // Loop 1 to 3 tiles away
+    for (let i = 1; i <= 3; i++) {
+        const targetX = player.x + (dirX * i);
+        const targetY = player.y + (dirY * i);
+
+        if (gameState.mapMode === 'overworld') {
+            logMessage("This skill only works in dungeons and castles.");
+            hit = true; 
+            break;
+        }
+
+        let map;
+        let theme;
+        if (gameState.mapMode === 'dungeon') {
+            map = chunkManager.caveMaps[gameState.currentCaveId];
+            theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+        } else {
+            map = chunkManager.castleMaps[gameState.currentCastleId];
+            theme = { floor: '.' };
+        }
+        
+        const tile = (map && map[targetY] && map[targetY][targetX]) ? map[targetY][targetX] : ' ';
+        const enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+
+        if (enemy) {
+            // Found a target!
+            hit = true;
+            
+            // --- 3. Calculate Success Chance ---
+            const successChance = Math.min(0.75, player.charisma * 0.05); // Scales with Charisma
+
+            if (Math.random() < successChance) {
+                // --- SUCCESS ---
+                logMessage(`You assault the ${enemy.name}'s mind! It goes mad!`);
+                enemy.madnessTurns = 5; // Set status for 5 turns
+                
+            } else {
+                // --- FAILURE ---
+                logMessage(`The ${enemy.name} resists your mental assault!`);
+            }
+            break; // Stop looping, we found our target
+        } else if (tile !== theme.floor) {
+            // Hit a wall, stop the loop
+            break;
+        }
+    }
+
+    if (!hit) {
+        logMessage("You assault the minds of... nothing.");
+    }
+
+    // --- 4. Finalize Turn ---
+    playerRef.update({
+        psyche: player.psyche
+    });
+    triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+    endPlayerTurn();
+    render();
+}
+
+/**
  * Executes an aimed spell (Magic Bolt, Fireball, Siphon Life)
  * after the player chooses a direction.
  * @param {string} spellId - The ID of the spell to execute.
  * @param {number} dirX - The x-direction of the aim.
  * @param {number} dirY - The y-direction of the aim.
  */
+
 async function executeAimedSpell(spellId, dirX, dirY) {
     const player = gameState.player;
     const spellData = SPELL_DATA[spellId];
@@ -3348,13 +3526,21 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     let hitSomething = false;
 
     // --- 2. Execute Spell Logic ---
-    switch (spellId) {
+        switch (spellId) {
+
         case 'magicBolt':
         case 'siphonLife':
+        case 'psychicBlast':
             // These are single-target, 2-3 tile range spells.
-            const damageStat = (spellId === 'siphonLife') ? player.willpower : player.wits;
+            
+            const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast') ? player.willpower : player.wits;
+            
             const spellDamage = spellData.baseDamage + (damageStat * spellLevel);
-            let logMsg = (spellId === 'magicBolt') ? "You hurl a bolt of energy!" : "You cast Siphon Life!";
+            
+            let logMsg = "You cast your spell!";
+            if (spellId === 'magicBolt') logMsg = "You hurl a bolt of energy!";
+            if (spellId === 'siphonLife') logMsg = "You cast Siphon Life!";
+            if (spellId === 'psychicBlast') logMsg = "You unleash a blast of mental energy!";
             logMessage(logMsg);
 
             for (let i = 2; i <= 3; i++) {
@@ -3567,18 +3753,24 @@ function turnInQuest(questId) {
         }
     }
 
-    // --- Update database (must include inventory!) ---
+// --- Update database (must include inventory!) ---
+
     playerRef.update({
         quests: gameState.player.quests,
         coins: gameState.player.coins,
-        inventory: gameState.player.inventory.map(item => ({ // <-- Add this
+        inventory: gameState.player.inventory.map(item => ({ 
             name: item.name,
             type: item.type,
             quantity: item.quantity,
             tile: item.tile,
             damage: item.damage || null,
             slot: item.slot || null,
-            defense: item.defense || null
+            defense: item.defense || null,
+    
+            statBonuses: item.statBonuses || null,
+            spellId: item.spellId || null,
+            skillId: item.skillId || null,
+            stat: item.stat || null
         }))
     });
 
@@ -3791,11 +3983,16 @@ function handleCraftItem(recipeName) {
         type: item.type,
         quantity: item.quantity,
         tile: item.tile,
-        damage: item.damage,
-        slot: item.slot,
-        defense: item.defense,
-        statBonuses: item.statBonuses || null
+        damage: item.damage || null,
+        slot: item.slot || null,
+        defense: item.defense || null,
+        statBonuses: item.statBonuses || null,
+        spellId: item.spellId || null,
+        skillId: item.skillId || null,
+        stat: item.stat || null
+    
     }));
+    
     playerRef.update({ inventory: inventoryToSave });
 
     renderCraftingModal(); // Re-render the modal to show new quantities
@@ -4209,6 +4406,20 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
                 playerRef.update({ health: player.health });
             }
+        }
+    }
+
+    else if (damageDealt > 0 && spellData.inflicts && Math.random() < spellData.inflictChance) {
+        
+        // This only applies to instanced enemies for now
+        if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+            let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+            
+            if (enemy && spellData.inflicts === 'frostbite' && enemy.frostbiteTurns <= 0) {
+                logMessage(`The ${enemy.name} is afflicted with Frostbite!`);
+                enemy.frostbiteTurns = 5; // Lasts 5 turns
+            }
+            // (We can add 'poison' here later)
         }
     }
     
@@ -4887,6 +5098,53 @@ function processEnemyTurns() {
     const enemiesToMove = [...gameState.instancedEnemies];
 
     enemiesToMove.forEach(enemy => {
+
+        // --- HANDLE "MADNESS" (FLEEING) ---
+        if (enemy.madnessTurns > 0) {
+            enemy.madnessTurns--;
+            
+            // Calculate the direction *away* from the player
+            const fleeDirX = -Math.sign(player.x - enemy.x);
+            const fleeDirY = -Math.sign(player.y - enemy.y);
+
+            const newX = enemy.x + fleeDirX;
+            const newY = enemy.y + fleeDirY;
+            const targetTile = (map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
+
+            if (targetTile === theme.floor) {
+                // This is a valid floor tile to flee to
+                map[enemy.y][enemy.x] = theme.floor; // Clear old spot
+                map[newY][newX] = enemy.tile;      // Move to new spot
+                enemy.x = newX;
+                enemy.y = newY;
+                logMessage(`The ${enemy.name} flees in terror!`);
+            } else {
+                // Can't flee, it's cornered
+                logMessage(`The ${enemy.name} cowers in the corner!`);
+            }
+
+            if (enemy.madnessTurns === 0) {
+                logMessage(`The ${enemy.name} seems to regain its senses.`);
+            }
+
+            return; // --- This enemy's turn is over. It will not attack or chase. ---
+        }
+
+        if (enemy.frostbiteTurns > 0) {
+            enemy.frostbiteTurns--;
+            logMessage(`The ${enemy.name} shivers from the frost...`);
+
+            if (enemy.frostbiteTurns === 0) {
+                logMessage(`The ${enemy.name} is no longer frostbitten.`);
+            }
+
+            // 25% chance to be "frozen" and skip its turn
+            if (Math.random() < 0.25) {
+                logMessage(`The ${enemy.name} is frozen solid and skips its turn!`);
+                return; // --- This enemy's turn is over. ---
+            }
+        }
+
         // --- GET DISTANCE TO PLAYER ---
         const distSq = Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2);
 
@@ -5348,6 +5606,10 @@ if (dirX !== 0 || dirY !== 0) {
             executeAimedSpell(abilityId, dirX, dirY); 
         } else if (abilityId === 'pacify') {
             executePacify(dirX, dirY);
+
+        } else if (abilityId === 'inflictMadness') {
+            executeInflictMadness(dirX, dirY);
+
         } else {
             // Fallback in case something went wrong
             logMessage("Unknown ability. Aiming canceled.");
@@ -5559,19 +5821,17 @@ if (dirX !== 0 || dirY !== 0) {
 
             if (itemUsed) {
                 const inventoryToSave = gameState.player.inventory.map(item => ({
+
                     name: item.name,
                     type: item.type,
                     quantity: item.quantity,
                     tile: item.tile,
-                    damage: item.damage,
-                    slot: item.slot,
-                    defense: item.defense,
+                    damage: item.damage || null,
+                    slot: item.slot || null,
+                    defense: item.defense || null,
                     statBonuses: item.statBonuses || null,
-                    skillbook: gameState.player.skillbook,
-
                     spellId: item.spellId || null,
                     skillId: item.skillId || null,
-
                     stat: item.stat || null
                 
                 }));
@@ -5714,7 +5974,8 @@ if (dirX !== 0 || dirY !== 0) {
     event.preventDefault();
     if (newX === startX && newY === startY) return;
 
-    const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>'];
+    const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>', 
+                           '★', '☆', '📕', '📗', '💪', '🧠', '"', 'n', 'u', 'q', '📄', 'P', '*'];
     const tileAtDestination = chunkManager.getTile(newX, newY);
     if (obsoleteTiles.includes(tileAtDestination)) {
         logMessage("You clear away remnants of an older age.");
@@ -6665,7 +6926,7 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
             // At 10 Endurance, resistChance = 0%.
             // At 1 Endurance, resistChance = 9%.
             const resistChance = Math.max(0, (10 - player.endurance)) * 0.01;
-            if (Math.random() > resistChance && player.poisonTurns <= 0) {
+            if (Math.random() < resistChance && player.poisonTurns <= 0) {
                 logMessage("You feel sick from the swamp's foul water. You are Poisoned!");
                 player.poisonTurns = 5; // 5 turns of poison
             }
@@ -6829,12 +7090,20 @@ logoutButton.addEventListener('click', () => {
     };
 
     // Create a clean version of the inventory before saving
+
     if (finalState.inventory) {
         finalState.inventory = finalState.inventory.map(item => ({
             name: item.name,
             type: item.type,
             quantity: item.quantity,
-            tile: item.tile
+            tile: item.tile,
+            damage: item.damage || null,
+            slot: item.slot || null,
+            defense: item.defense || null,
+            statBonuses: item.statBonuses || null,
+            spellId: item.spellId || null,
+            skillId: item.skillId || null,
+            stat: item.stat || null
         }));
     }
 
@@ -6926,13 +7195,21 @@ async function startGame(user) {
                     lootedTiles: Array.from(gameState.lootedTiles)
                 };
 
-
                 if (finalState.inventory) {
                     finalState.inventory = finalState.inventory.map(item => ({
+                    
                         name: item.name,
                         type: item.type,
                         quantity: item.quantity,
-                        tile: item.tile
+                        tile: item.tile,
+                        damage: item.damage || null,
+                        slot: item.slot || null,
+                        defense: item.defense || null,
+                        statBonuses: item.statBonuses || null,
+                        spellId: item.spellId || null,
+                        skillId: item.skillId || null,
+                        stat: item.stat || null
+
                     }));
                 }
 
