@@ -525,6 +525,18 @@ const ENEMY_DATA = {
         castRange: 5,
         spellDamage: 4,
         inflicts: 'frostbite'
+    },
+    '@': {
+        name: 'Giant Spider',
+        maxHealth: 6,     // Low health (glass cannon)
+        attack: 3,        // Decent melee attack
+        defense: 0,
+        xp: 12,
+        loot: '"',        // Drops our new "Spider Silk" item
+        caster: true,     // It "spits" poison
+        castRange: 4,     // Shorter range than a mage
+        spellDamage: 2,   // The spell itself does low damage...
+        inflicts: 'poison'  // ...but it inflicts POISON
     }
 };
 
@@ -539,7 +551,7 @@ const CAVE_THEMES = {
             floor: '#a16207'
         },
         decorations: ['+', 'o', '$', '📖', 'K'],
-        enemies: ['g', 's']
+        enemies: ['g', 's', '@']
     },
     ICE: {
         name: 'A Glacial Cavern',
@@ -589,7 +601,7 @@ const CAVE_THEMES = {
             floor: '#16a34a' // Bright Green
         },
         decorations: ['+', 'S', 'o'], // Health, Stamina, Mana
-        enemies: ['g', 'w']
+        enemies: ['g', 'w', '@']
     }
 };
 
@@ -1137,6 +1149,12 @@ const CRAFTING_RECIPES = {
         "Rusty Sword": 1,
         "Frost Essence": 5
     },
+    "Silk Cowl": {
+        "Spider Silk": 4
+    },
+    "Silk Gloves": {
+        "Spider Silk": 3
+    },
     "Machete": {
         "Bone Dagger": 1, // Requires a hilt/blade
         "Stick": 2,
@@ -1380,6 +1398,24 @@ const ITEM_DATA = {
         name: 'Tome of Wits',
         type: 'tome', // <-- NEW TYPE
         stat: 'wits'
+    },
+    '"': {
+        name: 'Spider Silk',
+        type: 'junk'
+    },
+    'n': {
+        name: 'Silk Cowl',
+        type: 'armor',
+        defense: 1,
+        slot: 'armor',
+        statBonuses: { wits: 1 } // Uses our magical item system!
+    },
+    'u': {
+        name: 'Silk Gloves',
+        type: 'armor',
+        defense: 1,
+        slot: 'armor',
+        statBonuses: { dexterity: 1 } // Uses our magical item system!
     },
     '♦': {
         name: 'Heirloom',
@@ -1908,37 +1944,39 @@ generateCave(caveId) {
                 else if (moist > 0.55) tile = 'F'; // Forest
                 else tile = '.'; // Plains
 
-                const featureRoll = random();
+            const featureRoll = random();
 
                 // 0.001% chance to spawn the Landmark Fortress
-
-                // 0.001% chance to spawn the Landmark Fortress
-                if (tile === '.' && featureRoll < 0.00001) { //
+                if (tile === '.' && featureRoll < 0.00001) { 
                     this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
-
-                } else if (tile === '.' && featureRoll < 0.00011) { // 0.01% chance (0.0001 + 0.00001)
+                
+                } else if (tile === '.' && featureRoll < 0.00011) { // 0.01% chance
                     this.setWorldTile(worldX, worldY, 'V');
                     chunkData[y][x] = 'V';
 
-                } else if (tile === '.' && featureRoll < 0.0003) { // Spawn safe features
+                } else if (tile === '.' && featureRoll < 0.01) { // <-- INCREASED to 1% (was 0.0003)
                     let features = Object.keys(TILE_DATA);
+                    // Filter out tiles that shouldn't auto-spawn
                     features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' &&
                         TILE_DATA[f].type !== 'castle_exit' &&
                         TILE_DATA[f].type !== 'enemy' &&
-                        f !== '📖');
+                        f !== '📖' && // Don't spawn Lesser Heal
+                        f !== '♛' && // Already spawned
+                        f !== 'V' && // Already spawned
+                        f !== 'c'    // Spawned separately
+                    );
 
-                    const featureTile = features[Math.floor(Math.random() * features.length)];
+                    // Use the seeded random, not Math.random
+                    const featureTile = features[Math.floor(random() * features.length)]; 
+                    
+                    // --- REVISED LOGIC ---
+                    // ALWAYS set the tile in the DB and local chunk
+                    this.setWorldTile(worldX, worldY, featureTile);
+                    chunkData[y][x] = featureTile;
+                    // --- END REVISED LOGIC ---
 
-                    if (TILE_DATA[featureTile].type === 'dungeon_entrance' || TILE_DATA[featureTile].type === 'castle_entrance') {
-                        this.setWorldTile(worldX, worldY, featureTile);
-                        chunkData[y][x] = featureTile;
-                    } else {
-                        chunkData[y][x] = featureTile;
-                    }
-
-                // --- FIX: Increased spawn chance from 0.0005 to 0.005 (10x increase) ---
-                } else if (tile === '.' && featureRoll < 0.005) { // 0.5% chance (was 0.05%)
+                } else if (tile === '.' && featureRoll < 0.015) {
                     // Check if this land tile is adjacent to water by checking elevation noise
                     
                     // This helper function checks the noise value for a given coord
@@ -4766,6 +4804,7 @@ function processEnemyTurns() {
             let spellName = "spell";
             if (enemy.tile === 'm') spellName = "Arcane Bolt";
             if (enemy.tile === 'Z') spellName = "Frost Shard";
+            if (enemy.tile === '@') spellName = "Poison Spit";
 
             const luckDodgeChance = Math.min(player.luck * 0.002, 0.25);
             if (Math.random() < luckDodgeChance) {
@@ -4790,14 +4829,15 @@ function processEnemyTurns() {
                 triggerStatFlash(statDisplays.health, false);
                 logMessage(`The ${enemy.name}'s ${spellName} hits you for ${damageToApply} damage!`);
 
-                if (enemy.inflicts === 'frostbite' && player.frostbiteTurns <= 0) {
+            if (enemy.inflicts === 'frostbite' && player.frostbiteTurns <= 0) {
                     logMessage("You are afflicted with Frostbite!");
-                    player.frostbiteTurns = 5; 
+                    player.frostbiteTurns = 5; // Lasts 5 turns
+                } else if (enemy.inflicts === 'poison' && player.poisonTurns <= 0) {
+                    logMessage("The creature's spit poisons you!");
+                    player.poisonTurns = 5; // Lasts 5 turns
                 }
-            } // <-- ***FIX #1:*** The "damageToApply" block closes here.
+            }
             
-            // ***FIX #2:*** The death check and return are moved *outside* the
-            // "damageToApply" block, so they run even if 0 damage was dealt.
             if (player.health <= 0) {
                 player.health = 0;
                 logMessage("You have perished!");
