@@ -384,6 +384,33 @@ const CASTLE_SHOP_INVENTORY = [{
         name: 'Scroll of Siphoning',
         price: 400, // This is a powerful Lvl 4 spell
         stock: 1
+    },
+    {
+        name: 'Scroll of Siphoning',
+        price: 400, // This is a powerful Lvl 4 spell
+        stock: 1
+    },
+
+    // --- ADD THESE NEW ITEMS ---
+    {
+        name: 'Machete',
+        price: 150,
+        stock: 2
+    },
+    {
+        name: 'Climbing Tools',
+        price: 250,
+        stock: 2
+    },
+    {
+        name: 'Bone Dagger',
+        price: 80,
+        stock: 3
+    },
+    {
+        name: 'Silk Cowl',
+        price: 200, // It's magical, so it's pricey
+        stock: 1
     }
 ];
 
@@ -406,6 +433,36 @@ const QUEST_DATA = {
         type: 'collect',     // <-- New quest type
         itemNeeded: 'Goblin Totem', // <-- The item name from ITEM_DATA
         needed: 10,          // <-- The quantity required
+        reward: {
+            xp: 200,
+            coins: 150
+        }
+    },
+    "orcHunt": {
+        title: "Bounty: Orc Hunt",
+        description: "The brutes are getting bold. Put them down.",
+        enemy: 'o',
+        needed: 8,
+        reward: {
+            xp: 150,
+            coins: 100
+        }
+    },
+    "mageMenace": {
+        title: "Bounty: Mage Menace",
+        description: "Apprentice mages are experimenting in the wild. Stop them before they burn something down.",
+        enemy: 'm',
+        needed: 5,
+        reward: {
+            xp: 180,
+            coins: 120
+        }
+    },
+    "draugrProblems": {
+        title: "Bounty: Draugr Problems",
+        description: "The Draugr are walking again. Send them back to their graves.",
+        enemy: 'Z',
+        needed: 5,
         reward: {
             xp: 200,
             coins: 150
@@ -638,7 +695,7 @@ const CAVE_ROOM_TEMPLATES = {
         map: [
             'WWWWW',
             'W.J.W', // Orc Journal
-            'W.o.W', // Orc Brute
+            'W.+📄.W',
             'W.📗.W',
             'WWWWW'
         ]
@@ -650,6 +707,43 @@ const CAVE_ROOM_TEMPLATES = {
             'W★W',
             '$ $',
             'W☆W'
+        ]
+    },
+    "Flooded Grotto": {
+        width: 9,
+        height: 7,
+        map: [
+            ' WWWWWWW ',
+            'W~~~~~~~W',
+            'W~W...W~W',
+            'W~W.S.W~W', // Stamina Crystal
+            'W~W...W~W',
+            'W~~~~~~~W',
+            ' WWWWWWW '
+        ]
+    },
+    "Bandit Stash": {
+        width: 7,
+        height: 7,
+        map: [
+            ' WWWWW ',
+            'W.b.b.W',
+            'W..q..W',
+            'W..C..W', // Bandit Chief
+            'W.$.$.W', // Gold
+            'W.....W',
+            ' WWWWW '
+        ]
+    },
+    "Abandoned Camp": {
+        width: 5,
+        height: 5,
+        map: [
+            'WWWWW',
+            'W...W',
+            'W.J.W', // A Journal
+            'W.+..W', // A Potion
+            'WWWWW'
         ]
     }
 };
@@ -687,7 +781,28 @@ const LORE_STONE_MESSAGES = [
     "All rivers run to the Sunken Valley.",
     "The forest remembers.",
     "Stolen from the stars, returned to the earth.",
-    "A crown of shadow, a broken sword."
+    "A crown of shadow, a broken sword.",
+    "The spider waits in the dark.",
+    "Fire and ice are but two sides of the same coin.",
+    "Even the dead can be led.",
+    "Look for the village, but do not trust the path.",
+    "The Prospector saw something he shouldn't have."
+];
+
+const RANDOM_JOURNAL_PAGES = [
+    "Day 4: My boots are soaked. The swamp is trying to swallow me whole. I swear I saw a spider the size of a wolf.",
+    "I've heard tales of a safe village, but the paths are hidden. The guards say it's for our own good.",
+    "The recipe for a 'Machete'? Why would I need... oh. The forest. Of course.",
+    "...the ore from the mountains is useless, but the Draugr guard something... an 'essence'...",
+    "The mage in the tower just laughed. 'Power comes to those who seek it,' he said, before blasting a rock to smithereens.",
+    "T. was right to leave. The chief *is* mad. He's taking all our gold to the old fortress. Says he's 'paying tribute'. To what?",
+    "Don't bother with the caves near the coast. They're flooded and full of grotto-spiders. Nothing of value.",
+    "I saw a wolf the other day... it was *glowing*. Just faintly. I didn't stick around to find out why.",
+    "That prospector, 'K', he's always looking for totems. Says he's building 'a monument to their stupidity'. Strange fellow.",
+    "The guards in the village are jumpy. They keep talking about 'the King's folly' and looking east, toward the old fortress.",
+    "Endurance is the key. A strong constitution can shrug off swamp-sickness, or so I've heard.",
+    "Someone told me a silver tongue is as good as a steel sword. I wonder if they've ever tried to 'pacify' a skeleton?",
+    "That fortress... something is *wrong* there. It's not just bandits. The air feels... heavy."
 ];
 
 const DAYS_OF_WEEK = ["Sunsday", "Moonsday", "Kingsday", "Earthday", "Watersday", "Windsday", "Firesday"];
@@ -1155,6 +1270,14 @@ const CRAFTING_RECIPES = {
     "Silk Gloves": {
         "Spider Silk": 3
     },
+    "Reinforced Tunic": {
+        "Leather Tunic": 1, // <-- Uses a crafted item!
+        "Spider Silk": 4
+    },
+    "Arcane Blade": {
+        "Steel Sword": 1,   // <-- Uses a crafted item!
+        "Arcane Dust": 5
+    },
     "Machete": {
         "Bone Dagger": 1, // Requires a hilt/blade
         "Stick": 2,
@@ -1417,6 +1540,30 @@ const ITEM_DATA = {
         slot: 'armor',
         statBonuses: { dexterity: 1 } // Uses our magical item system!
     },
+    'q': {
+        name: "Bandit's Note",
+        type: 'journal',
+        title: 'A Crumpled Note',
+        content: "The chief is crazy. He says he's hearing whispers from that big fortress to the east.\n\nHe's got us hoarding all this gold... for what? To give to *it*? I'd rather take my chances with the spiders.\n\nI'm taking my share and I'm gone. If anyone finds this, tell my brother I'm headed for the village. - T."
+    },
+    '📄': {
+        name: 'A Scattered Page',
+        type: 'random_journal'
+    },
+    'P': {
+        name: 'Reinforced Tunic',
+        type: 'armor',
+        defense: 3, // Better than Studded Armor (2)
+        slot: 'armor',
+        statBonuses: { endurance: 1 } // Give it a small stat bonus
+    },
+    '*': {
+        name: 'Arcane Blade',
+        type: 'weapon',
+        damage: 5, // Better than Steel Sword (4)
+        slot: 'weapon',
+        statBonuses: { wits: 1, willpower: 1 } // A great magic-user sword
+    },
     '♦': {
         name: 'Heirloom',
         type: 'quest' // A new type, so it can't be sold or used
@@ -1677,13 +1824,12 @@ generateCave(caveId) {
                 }
             }
         }
-        // --- END NEW ROOM LOGIC ---
 
 
         // 4. Place procedural loot and decorations
-        // (This is your existing loot/decoration logic, unchanged)
-        const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$'];
-        const lootQuantity = Math.floor(random() * 4); 
+
+        const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$', '📄'];
+        const lootQuantity = Math.floor(random() * 4);
 
         for (let i = 0; i < lootQuantity; i++) {
             const itemToPlace = CAVE_LOOT_TABLE[Math.floor(random() * CAVE_LOOT_TABLE.length)];
@@ -5860,7 +6006,28 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
                 return;
             }
 
-if (newTile === 'N') {
+            if (tileData.type === 'random_journal') {
+                if (!gameState.foundLore.has(tileId)) {
+                    logMessage("You found a scattered page! +10 XP");
+                    grantXp(10);
+                    gameState.foundLore.add(tileId);
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
+                }
+                // Use the tile's location to pick a random, but persistent, message
+                const seed = stringToSeed(tileId);
+                const random = Alea(seed);
+                const messageIndex = Math.floor(random() * RANDOM_JOURNAL_PAGES.length);
+                const message = RANDOM_JOURNAL_PAGES[messageIndex];
+
+                loreTitle.textContent = "A Scattered Page";
+                loreContent.textContent = `You pick up a damp, crumpled page...\n\n"...${message}..."`;
+                loreModal.classList.remove('hidden');
+                return; // Stop the player's move
+            }
+
+            if (newTile === 'N') {
                 // --- NEW FETCH QUEST LOGIC FOR VILLAGERS ---
                 const npcQuestId = "goblinHeirloom"; // The quest this NPC type gives
                 const questData = QUEST_DATA[npcQuestId];
