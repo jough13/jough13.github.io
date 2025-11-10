@@ -663,7 +663,7 @@ const CAVE_THEMES = {
             wall: '#14532d', // Dark Green
             floor: '#16a34a' // Bright Green
         },
-        decorations: ['+', 'S', 'o'], // Health, Stamina, Mana
+        decorations: ['+', 'S', 'o', '☣️'],
         enemies: ['g', 'w', '@']
     }
 };
@@ -1271,6 +1271,10 @@ const CRAFTING_RECIPES = {
         "Orc Tusk": 6,          // Requires 6 tusks
         "Bone Shard": 4         // And some bone shards for reinforcement
     },
+    "Poisoned Dagger": {
+        "Bone Dagger": 1,
+        "Spider Silk": 5 // Uses the spider loot!
+    },
     "Mage Robe": {
         "Bandit Garb": 1,
         "Arcane Dust": 5
@@ -1607,6 +1611,20 @@ const ITEM_DATA = {
         type: 'skillbook',
         skillId: 'inflictMadness'
     },
+    '☣️': {
+        name: 'Scroll: Poison Bolt',
+        type: 'spellbook',
+        spellId: 'poisonBolt'
+    },
+    '‡': {
+        name: 'Poisoned Dagger',
+        type: 'weapon',
+        damage: 2,
+        slot: 'weapon',
+        inflicts: 'poison',     // <-- NEW PROPERTY
+        inflictChance: 0.25,  // 25% chance on hit
+        statBonuses: { dexterity: 1 }
+    },
     '♦': {
         name: 'Heirloom',
         type: 'quest' // A new type, so it can't be sold or used
@@ -1711,6 +1729,17 @@ const SPELL_DATA = {
         baseDamage: 5,
         inflicts: "frostbite",  // <-- Links to our status effect!
         inflictChance: 0.25     // 25% chance to inflict it
+    },
+    "poisonBolt": {
+        name: "Poison Bolt",
+        description: "Launches a bolt of acidic poison, scaling with Willpower. Has a chance to inflict Poison.",
+        cost: 10,
+        costType: "psyche",       // <-- Uses Psyche
+        requiredLevel: 2,
+        target: "aimed",
+        baseDamage: 4,            // A bit less direct damage
+        inflicts: "poison",
+        inflictChance: 0.50     // 50% chance to inflict it
     }
     // We can easily add more spells here later!
 };
@@ -1891,7 +1920,8 @@ generateCave(caveId) {
                             xp: enemyTemplate.xp,
                             loot: enemyTemplate.loot,
                             madnessTurns: 0,
-                            frostbiteTurns: 0
+                            frostbiteTurns: 0,
+                            poisonTurns: 0
                         });
                     }
                 }
@@ -1960,7 +1990,8 @@ generateCave(caveId) {
                     xp: enemyTemplate.xp,
                     loot: enemyTemplate.loot,
                     madnessTurns: 0,
-                    frostbiteTurns: 0
+                    frostbiteTurns: 0,
+                    poisonTurns: 0
                 });
             }
         }
@@ -3531,9 +3562,10 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         case 'magicBolt':
         case 'siphonLife':
         case 'psychicBlast':
-            // These are single-target, 2-3 tile range spells.
+        case 'frostBolt':
+        case 'poisonBolt':
             
-            const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast') ? player.willpower : player.wits;
+            const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast' || spellId === 'poisonBolt') ? player.willpower : player.wits;
             
             const spellDamage = spellData.baseDamage + (damageStat * spellLevel);
             
@@ -3541,6 +3573,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             if (spellId === 'magicBolt') logMsg = "You hurl a bolt of energy!";
             if (spellId === 'siphonLife') logMsg = "You cast Siphon Life!";
             if (spellId === 'psychicBlast') logMsg = "You unleash a blast of mental energy!";
+            if (spellId === 'frostBolt') logMsg = "You launch a shard of ice!";
+            if (spellId === 'poisonBolt') logMsg = "You hurl a bolt of acid!";
             logMessage(logMsg);
 
             for (let i = 2; i <= 3; i++) {
@@ -4419,6 +4453,12 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 logMessage(`The ${enemy.name} is afflicted with Frostbite!`);
                 enemy.frostbiteTurns = 5; // Lasts 5 turns
             }
+
+            else if (enemy && spellData.inflicts === 'poison' && enemy.poisonTurns <= 0) {
+            logMessage(`The ${enemy.name} is afflicted with Poison!`);
+            enemy.poisonTurns = 3; // Poison lasts 3 turns
+        }
+
             // (We can add 'poison' here later)
         }
     }
@@ -5142,6 +5182,30 @@ function processEnemyTurns() {
             if (Math.random() < 0.25) {
                 logMessage(`The ${enemy.name} is frozen solid and skips its turn!`);
                 return; // --- This enemy's turn is over. ---
+            }
+        }
+
+        if (enemy.poisonTurns > 0) {
+            enemy.poisonTurns--;
+            const poisonDamage = 1; // Poison does 1 damage per turn
+            enemy.health -= poisonDamage;
+            logMessage(`The ${enemy.name} takes ${poisonDamage} poison damage...`);
+
+            if (enemy.health <= 0) {
+                // Enemy died from poison
+                logMessage(`The ${enemy.name} succumbs to the poison!`);
+                grantXp(enemy.xp);
+                updateQuestProgress(enemy.tile);
+                const droppedLoot = generateEnemyLoot(gameState.player, enemy);
+                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                if (gameState.mapMode === 'dungeon') {
+                    chunkManager.caveMaps[gameState.currentCaveId][enemy.y][enemy.x] = droppedLoot;
+                }
+                return; // Enemy is dead, end its turn
+            }
+
+            if (enemy.poisonTurns === 0) {
+                logMessage(`The ${enemy.name} is no longer poisoned.`);
             }
         }
 
@@ -6040,6 +6104,15 @@ if (dirX !== 0 || dirY !== 0) {
 
                     enemy.health -= playerDamage;
                     logMessage(`You attack the ${enemy.name} for ${playerDamage} damage!`);
+
+                    const weapon = gameState.player.equipment.weapon;
+                if (weapon.inflicts === 'poison' && 
+                    enemy.poisonTurns <= 0 && 
+                    Math.random() < (weapon.inflictChance || 0.25)) 
+                {
+                    logMessage(`Your weapon poisons the ${enemy.name}!`);
+                    enemy.poisonTurns = 3; // 3 turns from a weapon
+                }
 
                     if (enemy.health <= 0) {
                         // --- ENEMY IS DEFEATED ---
@@ -7253,7 +7326,7 @@ async function startGame(user) {
                         if (templateItem.type === 'weapon') {
                             item.damage = templateItem.damage;
                             item.slot = templateItem.slot;
-                        } else if (templateItem.type === 'armor') { // <-- ADD THIS
+                        } else if (templateItem.type === 'armor') {
                             item.defense = templateItem.defense;
                             item.slot = templateItem.slot;
                         }
@@ -7265,7 +7338,7 @@ async function startGame(user) {
 
             // --- Update Equipment ---
             if (playerData.equipment) {
-                // --- MODIFICATION ---
+
                 // Ensure default equipment is present if not in DB
                 gameState.player.equipment = {
                     ...{
