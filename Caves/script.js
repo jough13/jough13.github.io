@@ -637,7 +637,7 @@ const CAVE_THEMES = {
             wall: '#374151', // Dark stone color
             floor: '#4b5563'  // Lighter, cold stone floor
         },
-        decorations: ['+', '$', '(', '†', '🌀', '😱'],
+        decorations: ['+', '$', '(', '†', '🌀', '😱', '💀'],
         enemies: ['s', 'Z'] // Skeletons and Draugr
     },
 
@@ -1025,8 +1025,11 @@ function createDefaultPlayerState() {
         shieldValue: 0,
         shieldTurns: 0,
 
-        poisonTurns: 0,
+        strengthBonus: 0,
+        strengthBonusTurns: 0,
+
         frostbiteTurns: 0,
+        poisonTurns: 0,
 
         isBoating: false,
 
@@ -1275,6 +1278,10 @@ const CRAFTING_RECIPES = {
         "Bone Dagger": 1,
         "Spider Silk": 5 // Uses the spider loot!
     },
+    "Potion of Strength": {
+        "Healing Potion": 1, // Requires a potion base
+        "Orc Tusk": 2        // And some strong tusks
+    },
     "Mage Robe": {
         "Bandit Garb": 1,
         "Arcane Dust": 5
@@ -1474,13 +1481,15 @@ const ITEM_DATA = {
         name: 'Warlock\'s Staff',
         type: 'weapon',
         damage: 3, // A good magic-themed weapon
-        slot: 'weapon'
+        slot: 'weapon',
+        statBonuses: { willpower: 2 }
     },
     'M': { // Using 'M' for Mage robe
         name: 'Mage Robe',
         type: 'armor',
         defense: 3, // Good, but less than Steel
-        slot: 'armor'
+        slot: 'armor',
+        statBonuses: { wits: 1 }
     },
     'E': {
         name: 'Frost Essence',
@@ -1621,9 +1630,21 @@ const ITEM_DATA = {
         type: 'weapon',
         damage: 2,
         slot: 'weapon',
-        inflicts: 'poison',     // <-- NEW PROPERTY
+        inflicts: 'poison', 
         inflictChance: 0.25,  // 25% chance on hit
         statBonuses: { dexterity: 1 }
+    },
+    '🧪': {
+        name: 'Potion of Strength',
+        type: 'buff_potion',
+        buff: 'strength',
+        amount: 5,
+        duration: 5 // Lasts 5 turns
+    },
+    '💀': {
+        name: 'Tome: Dark Pact',
+        type: 'spellbook',
+        spellId: 'darkPact'
     },
     '♦': {
         name: 'Heirloom',
@@ -1740,6 +1761,16 @@ const SPELL_DATA = {
         baseDamage: 4,            // A bit less direct damage
         inflicts: "poison",
         inflictChance: 0.50     // 50% chance to inflict it
+    },
+
+    "darkPact": {
+        name: "Dark Pact",
+        description: "Sacrifice 5 Health to restore 10 Mana. Scales with Willpower.",
+        cost: 5,
+        costType: "health", // <-- Uses Health!
+        requiredLevel: 4,
+        target: "self",
+        baseRestore: 10
     }
     // We can easily add more spells here later!
 };
@@ -2370,8 +2401,11 @@ const gameState = {
         manaRegenProgress: 0,
         psycheRegenProgress: 0,
 
-        poisonTurns: 0,
-        frostbiteTurns: 0
+        strengthBonus: 0,
+        strengthBonusTurns: 0,
+
+        frostbiteTurns: 0,
+        poisonTurns: 0
     },
 
     lootedTiles: new Set(),
@@ -3307,7 +3341,8 @@ async function executeLunge(dirX, dirY) {
     // --- 2. Calculate Base Damage ---
     // This is the player's total damage *before* the skill modifier
     const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
-    const playerBaseDamage = player.strength + weaponDamage;
+    const playerStrength = player.strength + (player.strengthBonus || 0);
+    const playerBaseDamage = playerStrength + weaponDamage;
 
     // Loop 2 and 3 tiles away
     for (let i = 2; i <= 3; i++) {
@@ -4218,17 +4253,17 @@ function openSpellbook() {
  * and the player's spellbook.
  * @param {string} spellId - The ID of the spell to cast (e.g., "lesserHeal").
  */
+
 function castSpell(spellId) {
     const player = gameState.player;
-    const spellData = SPELL_DATA[spellId]; // Get data from our new constant
+    const spellData = SPELL_DATA[spellId];
     
-    // --- FIX: spellLevel is now defined up here, but *after* the spellData check ---
     if (!spellData) {
         logMessage("You don't know how to cast that. (No spell data found)");
         return;
     }
     
-    const spellLevel = player.spellbook[spellId] || 0; // Get the player's level for this spell
+    const spellLevel = player.spellbook[spellId] || 0;
 
     if (spellLevel === 0) {
         logMessage("You don't know that spell.");
@@ -4237,34 +4272,40 @@ function castSpell(spellId) {
 
     // --- 1. Check Resource Cost ---
     const cost = spellData.cost;
-    const costType = spellData.costType; // 'mana' or 'psyche'
+    const costType = spellData.costType;
 
-    if (player[costType] < cost) {
+    // --- MODIFIED COST CHECK ---
+    if (costType === 'health') {
+        // Special check for health: must have MORE than the cost
+        if (player[costType] <= cost) { 
+            logMessage("You are too weak to sacrifice your life-force.");
+            return;
+        }
+    } else if (player[costType] < cost) {
         logMessage(`You don't have enough ${costType} to cast that.`);
-        return; // Do not close modal, do not end turn
+        return; 
     }
+    // --- END MODIFICATION ---
 
     // --- 2. Handle Targeting ---
     if (spellData.target === 'aimed') {
-        // --- Aimed Spells (e.g., Magic Bolt) ---
-        // Don't deduct cost yet, just enter aiming mode.
+        // (This block is unchanged)
         gameState.isAiming = true;
-        gameState.abilityToAim = spellId; // Store the spellId (e.g., "magicBolt")
+        gameState.abilityToAim = spellId;
         spellModal.classList.add('hidden');
         logMessage(`${spellData.name}: Press an arrow key or WASD to fire. (Esc) to cancel.`);
-        return; // We don't end the turn until they fire
+        return; 
 
     } else if (spellData.target === 'self') {
-        // --- Self-Cast Spells (e.g., Heal, Clarity) ---
-        // Cast immediately.
+        // --- Self-Cast Spells ---
         player[costType] -= cost; // Deduct the resource cost
         let spellCastSuccessfully = false;
+        let updates = {}; // --- NEW: Object to batch database updates ---
 
         // --- 3. Execute Spell Effect ---
-        // --- FIX: spellLevel is now available to all cases ---
         switch (spellId) {
             case 'lesserHeal':
-                const healAmount = spellData.baseHeal + (player.wits * spellLevel); // Use spell level!
+                const healAmount = spellData.baseHeal + (player.wits * spellLevel);
                 const oldHealth = player.health;
                 player.health = Math.min(player.maxHealth, player.health + healAmount);
                 const healedFor = player.health - oldHealth;
@@ -4275,37 +4316,32 @@ function castSpell(spellId) {
                 } else {
                     logMessage("You cast Lesser Heal, but you're already at full health.");
                 }
-                playerRef.update({ health: player.health });
+                updates.health = player.health; // <-- MODIFIED
                 spellCastSuccessfully = true;
                 break;
 
             case 'arcaneShield':
                 if (player.shieldTurns > 0) {
                     logMessage("You already have an active shield!");
-                    spellCastSuccessfully = false; // Don't cast
-                
-                    break; // Exit the switch
+                    spellCastSuccessfully = false;
+                    break;
                 }
                 
-                // const spellLevel = player.spellbook[spellId] || 1; // <-- This redundant line is removed
                 const shieldAmount = spellData.baseShield + (player.wits * spellLevel);
                 player.shieldValue = shieldAmount;
                 player.shieldTurns = spellData.duration;
 
                 logMessage(`You conjure an Arcane Shield, absorbing ${shieldAmount} damage!`);
-                triggerStatAnimation(statDisplays.health, 'stat-pulse-blue'); // Blue for a magic shield
+                triggerStatAnimation(statDisplays.health, 'stat-pulse-blue');
                 
-                playerRef.update({ 
-                    shieldValue: player.shieldValue,
-                    shieldTurns: player.shieldTurns
-                });
+                updates.shieldValue = player.shieldValue; // <-- MODIFIED
+                updates.shieldTurns = player.shieldTurns; // <-- MODIFIED
                 spellCastSuccessfully = true;
                 break;
 
             case 'clarity':
                 if (gameState.mapMode !== 'dungeon') {
                     logMessage("You can only feel for secret walls in caves.");
-                    // We already spent the psyche, but we'll end the turn.
                     spellCastSuccessfully = true;
                     break;
                 }
@@ -4315,7 +4351,6 @@ function castSpell(spellId) {
                 const secretWallTile = theme.secretWall;
                 let foundWall = false;
 
-                // Check all 8 adjacent tiles (this logic is unchanged)
                 for (let y = -1; y <= 1; y++) {
                     for (let x = -1; x <= 1; x++) {
                         if (x === 0 && y === 0) continue;
@@ -4323,7 +4358,7 @@ function castSpell(spellId) {
                         const checkY = player.y + y;
 
                         if (map[checkY] && map[checkY][checkX] === secretWallTile) {
-                            map[checkY][checkX] = theme.floor; // Reveal the wall!
+                            map[checkY][checkX] = theme.floor;
                             foundWall = true;
                         }
                     }
@@ -4331,23 +4366,44 @@ function castSpell(spellId) {
 
                 if (foundWall) {
                     logMessage("You focus your mind... and a passage is revealed!");
-                    render(); // Re-render to show the new passage
+                    render();
                 } else {
                     logMessage("You focus, but find no hidden passages nearby.");
                 }
                 triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
                 spellCastSuccessfully = true;
                 break;
+            
+            // --- ADD THIS NEW CASE ---
+            case 'darkPact':
+                const manaRestored = spellData.baseRestore + (player.willpower * spellLevel);
+                const oldMana = player.mana;
+                player.mana = Math.min(player.maxMana, player.mana + manaRestored);
+                const actualRestore = player.mana - oldMana;
+
+                if (actualRestore > 0) {
+                    logMessage(`You sacrifice ${cost} health to restore ${actualRestore} mana.`);
+                    triggerStatAnimation(statDisplays.health, 'stat-pulse-red'); // Our new animation
+                    triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                } else {
+                    logMessage("You cast Dark Pact, but your mana is already full.");
+                }
+                updates.health = player.health; // Add health cost to updates
+                updates.mana = player.mana;   // Add mana gain to updates
+                spellCastSuccessfully = true;
+                break;
+            // --- END ---
         }
 
         // --- 4. Finalize Self-Cast Turn ---
         if (spellCastSuccessfully) {
-            playerRef.update({ [costType]: player[costType] }); // Save the new mana/psyche
+            updates[costType] = player[costType]; // Add the resource cost (mana/psyche/health)
+            playerRef.update(updates); // Send all updates at once
             spellModal.classList.add('hidden');
             endPlayerTurn();
             renderStats();
         } else {
-            // Refund the cost if the spell failed for some reason
+            // Refund the cost if the spell failed (e.g., shield already active)
             player[costType] += cost;
         }
     }
@@ -4712,21 +4768,26 @@ const renderEquipment = () => {
     const player = gameState.player;
     const weapon = player.equipment.weapon || { name: 'Fists', damage: 0 };
 
-    // Calculate total damage
-    const baseDamage = player.strength; // Strength is your base damage
+    // Calculate total damage, including the new strength buff
+    const playerStrength = player.strength + (player.strengthBonus || 0); // <-- APPLY BUFF
+    const baseDamage = playerStrength; 
     const weaponDamage = weapon.damage || 0;
     const totalDamage = baseDamage + weaponDamage;
 
-    // Update the display
-    equippedWeaponDisplay.textContent = `Weapon: ${weapon.name} (+${weaponDamage})`;
-    // We'll update the strength display to show the total
+    // Update the display to show the buff
+    let weaponString = `Weapon: ${weapon.name} (+${weaponDamage})`;
+    if (player.strengthBonus > 0) { // <-- ADDED THIS BLOCK
+        weaponString += ` <span class="text-green-500">[Strong +${player.strengthBonus} (${player.strengthBonusTurns}t)]</span>`;
+    }
+    equippedWeaponDisplay.innerHTML = weaponString; // <-- CHANGED to innerHTML
+    
+    // Update the strength display to show the total damage
     statDisplays.strength.textContent = `Strength: ${player.strength} (Dmg: ${totalDamage})`;
 
     // --- ARMOR & DEFENSE ---
-    const armor = player.equipment.armor || { name: 'Simple T tunic', defense: 0 };
+    const armor = player.equipment.armor || { name: 'Simple Tunic', defense: 0 };
 
     // Calculate total defense
-    // --- Dexterity adds 1 base def every 5 points ---
     const baseDefense = Math.floor(player.dexterity / 5); 
     const armorDefense = armor.defense || 0;
     const buffDefense = player.defenseBonus || 0; 
@@ -4738,8 +4799,8 @@ const renderEquipment = () => {
         // Add the buff text, e.g. [Braced +2] (3t)
         armorString += ` <span class="text-green-500">[Braced +${buffDefense} (${player.defenseBonusTurns}t)]</span>`;
     }
-    // Use innerHTML to render the new span
-    // --- MODIFIED: Show Base Defense in the total ---
+    
+    // Show Base Defense in the total
     equippedArmorDisplay.innerHTML = `${armorString} (Base: ${baseDefense}, Total: ${totalDefense} Def)`;
 };
 
@@ -5457,7 +5518,19 @@ function endPlayerTurn() {
             logMessage("You are no longer frostbitten.");
         }
     }
-    // --- END NEW BLOCK ---
+    
+    if (player.strengthBonusTurns > 0) {
+        player.strengthBonusTurns--;
+        updates.strengthBonusTurns = player.strengthBonusTurns;
+
+        if (player.strengthBonusTurns === 0) {
+            player.strengthBonus = 0;
+            logMessage("Your surge of strength fades.");
+            updates.strengthBonus = 0;
+            // No need to update playerRef here, the final updates.length check will catch it
+        }
+        renderEquipment(); // Update UI
+    }
 
     // Tick down buff/debuff durations (This is your existing code)
     if (gameState.player.defenseBonusTurns > 0) {
@@ -5878,7 +5951,32 @@ if (dirX !== 0 || dirY !== 0) {
                     itemUsed = false;
                 }
 
-            } else {
+                
+            }
+            
+            else if (itemToUse.type === 'buff_potion') {
+                const player = gameState.player;
+                if (player.strengthBonusTurns > 0) { // Check if buff is active
+                    logMessage("A similar effect is already active.");
+                    itemUsed = false;
+                } else {
+                    // Apply the buff
+                    player.strengthBonus = itemData.amount;
+                    player.strengthBonusTurns = itemData.duration;
+                    
+                    logMessage(`You drink the potion and feel a surge of strength! (+${itemData.amount} Strength for ${itemData.duration} turns)`);
+                    triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
+
+                    // Consume the item
+                    itemToUse.quantity--;
+                    if (itemToUse.quantity <= 0) {
+                        player.inventory.splice(itemIndex, 1);
+                    }
+                    itemUsed = true;
+                }
+            }
+
+            else {
                 logMessage(`You can't use '${itemToUse.name}' right now.`);
             }
             // --- END BRANCHING LOGIC ---
@@ -6100,7 +6198,8 @@ if (dirX !== 0 || dirY !== 0) {
                 if (enemy) {
                     // --- PLAYER ATTACKS ENEMY ---
                     const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
-                    const playerDamage = Math.max(1, (gameState.player.strength + weaponDamage) - enemy.defense);
+                    const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
+                    const playerDamage = Math.max(1, (playerStrength + weaponDamage) - enemy.defense);
 
                     enemy.health -= playerDamage;
                     logMessage(`You attack the ${enemy.name} for ${playerDamage} damage!`);
@@ -6189,7 +6288,8 @@ if (Math.random() < luckDodgeChance) { //
                 
                 // Calculate damage first
                 const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
-                const playerDamage = Math.max(1, (gameState.player.strength + weaponDamage) - (enemyData.defense || 0));
+                const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
+                const playerDamage = Math.max(1, (playerStrength + weaponDamage) - (enemyData.defense || 0));
 
                 // Pass the calculated damage to the function
                 await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
