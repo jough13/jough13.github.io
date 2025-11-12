@@ -275,7 +275,7 @@ const CASTLE_LAYOUTS = {
             '▓...▓.............▓...▓.........▓...▓▓▓...▓.......▓..O....▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓.......▓.......▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓▓▓▓▓▓▓▓▓...▓...▓.........▓...▓.........▓...▓',
-            '▓...▓.............▓...▓.........▓...▓.▓...▓...▓.......▓...▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.▓...▓...▓.....j.▓...▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓...💪.....▓...▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓.......▓...▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓▓▓▓▓▓▓▓▓...▓...▓.........▓...▓.........▓...▓',
@@ -587,6 +587,14 @@ const ENEMY_DATA = {
         castRange: 4,     // Shorter range than a mage
         spellDamage: 2,   // The spell itself does low damage...
         inflicts: 'poison'  // ...but it inflicts POISON
+    },
+    'a': {
+        name: 'Shadow Acolyte',
+        maxHealth: 5,
+        attack: 1,
+        defense: 0,
+        xp: 8,
+        loot: 'r' // Drops our new "Corrupted Relic"
     }
 };
 
@@ -638,7 +646,7 @@ const CAVE_THEMES = {
             floor: '#4b5563'  // Lighter, cold stone floor
         },
         decorations: ['+', '$', '(', '†', '🌀', '😱', '💀'],
-        enemies: ['s', 'Z'] // Skeletons and Draugr
+        enemies: ['s', 'Z', 'a']
     },
 
     CRYSTAL: {
@@ -751,6 +759,17 @@ const CAVE_ROOM_TEMPLATES = {
             'W.+📄.W',
             'WWWWW'
         ]
+    },
+    "Acolyte's Nook": {
+        width: 5,
+        height: 5,
+        map: [
+            'WWWWW',
+            'W...W',
+            'W.a.W', // An Acolyte
+            'W.j.W', // The new Journal
+            'WWWWW'
+        ]
     }
 };
 
@@ -792,7 +811,9 @@ const LORE_STONE_MESSAGES = [
     "Fire and ice are but two sides of the same coin.",
     "Even the dead can be led.",
     "Look for the village, but do not trust the path.",
-    "The Prospector saw something he shouldn't have."
+    "The Prospector saw something he shouldn't have.",
+    "They are fools. They flock to the old fortress, paying tribute to a shadow.",
+    "The Acolytes think the Crypts hold answers. They only hold the past."
 ];
 
 const RANDOM_JOURNAL_PAGES = [
@@ -1645,6 +1666,16 @@ const ITEM_DATA = {
         name: 'Tome: Dark Pact',
         type: 'spellbook',
         spellId: 'darkPact'
+    },
+    'r': {
+        name: 'Corrupted Relic',
+        type: 'junk'
+    },
+    'j': {
+        name: 'Acolyte\'s Scribblings',
+        type: 'journal',
+        title: 'Acolyte\'s Scribblings',
+        content: "He is risen! The folly of the Old King was not his failure, but his *success*.\n\nThe whispers are true. We, the Shadowed Hand, have come to pay tribute. The fortress is the key.\n\nThe shadows gather. We will be rewarded for our faith when He awakens."
     },
     '♦': {
         name: 'Heirloom',
@@ -6136,8 +6167,9 @@ if (dirX !== 0 || dirY !== 0) {
     event.preventDefault();
     if (newX === startX && newY === startY) return;
 
-    const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>', 
-                           '★', '☆', '📕', '📗', '💪', '🧠', '"', 'n', 'u', 'q', '📄', 'P', '*'];
+const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>', 
+                           '★', '☆', '📕', '📗', '💪', '🧠', '"', 'n', 'u', 'q', '📄', 'P', '*',
+                           ']', '8', '❄️', '🌀', '😱', '☣️', '‡', '🧪', '💀', 'a', 'r', 'j'];
     const tileAtDestination = chunkManager.getTile(newX, newY);
     if (obsoleteTiles.includes(tileAtDestination)) {
         logMessage("You clear away remnants of an older age.");
@@ -6560,7 +6592,8 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
                     "This fortress has stood for ages. It'll stand for many more, long as we're here.",
                     "Looking for the Sage? He's the one muttering about 'five thrones' all the time.",
                     "The King's old chambers are off-limits. Place is haunted, they say.",
-                    "Watch yourself near the battlements. It's a long way down."
+                    "Watch yourself near the battlements. It's a long way down.",
+                    "Steer clear of the old throne room. We've found... strange relics. Dark sigils. The Sage is worried."
                 ];
                 const dialogue = guardDialogues[Math.floor(random() * guardDialogues.length)];
 
