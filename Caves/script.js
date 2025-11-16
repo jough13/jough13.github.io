@@ -276,7 +276,7 @@ const CASTLE_LAYOUTS = {
             '▓...▓.............▓...▓.........▓...▓.▓...▓.......▓.......▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓▓▓▓▓▓▓▓▓...▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓.....j.▓...▓...▓.........▓...▓.........▓...▓',
-            '▓...▓.............▓...▓.........▓...▓.▓...▓...▓...💪.....▓...▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.▓...▓...▓...💪....▓...▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓.......▓...▓...▓.........▓...▓.........▓...▓',
             '▓...▓.............▓...▓.........▓...▓.▓...▓...▓▓▓▓▓▓▓▓▓...▓...▓.........▓...▓.........▓...▓',
             '▓...▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓',
@@ -742,10 +742,10 @@ const CAVE_ROOM_TEMPLATES = {
         map: [
             ' WWWWW ',
             'W.b.b.W',
-            'W..q..W',
+            'W.<q<.W',
             'W..C..W', // Bandit Chief
             'W.$.$.W', // Gold
-            'W.....W',
+            'W.<...W',
             ' WWWWW '
         ]
     },
@@ -910,6 +910,7 @@ const equippedWeaponDisplay = document.getElementById('equippedWeaponDisplay');
 const equippedArmorDisplay = document.getElementById('equippedArmorDisplay');
 
 const coreStatsPanel = document.getElementById('coreStatsPanel');
+const statusEffectsPanel = document.getElementById('statusEffectsPanel');
 
 const DAY_CYCLE_STOPS = [{
         time: 0,
@@ -1303,6 +1304,22 @@ const CRAFTING_RECIPES = {
         "Healing Potion": 1, // Requires a potion base
         "Orc Tusk": 2        // And some strong tusks
     },
+    "Pickaxe": {
+        "Stick": 2,
+        "Orc Tusk": 3 // Tusks make a good pick head
+    },
+    "Spike Trap": {
+        "Iron Ore": 3,
+        "Bone Shard": 3
+    },
+    "Arcane Wraps": {
+        "Arcane Dust": 5,
+        "Spider Silk": 2 // Uses other junk items
+    },
+    "Frozen Greaves": {
+        "Frost Essence": 5,
+        "Wolf Pelt": 3   // Uses other junk items
+    },
     "Mage Robe": {
         "Bandit Garb": 1,
         "Arcane Dust": 5
@@ -1626,6 +1643,20 @@ const ITEM_DATA = {
         slot: 'armor',
         statBonuses: { strength: 1 } // Orcs are strong
     },
+    '9': {
+        name: 'Arcane Wraps',
+        type: 'armor',
+        defense: 1,
+        slot: 'armor',
+        statBonuses: { wits: 2 } // Good for magic users
+    },
+    '0': {
+        name: 'Frozen Greaves',
+        type: 'armor',
+        defense: 2,
+        slot: 'armor',
+        statBonuses: { endurance: 1 } // Good for stamina
+    },
     '❄️': {
         name: 'Scroll: Frost Bolt',
         type: 'spellbook',
@@ -1676,6 +1707,18 @@ const ITEM_DATA = {
         type: 'journal',
         title: 'Acolyte\'s Scribblings',
         content: "He is risen! The folly of the Old King was not his failure, but his *success*.\n\nThe whispers are true. We, the Shadowed Hand, have come to pay tribute. The fortress is the key.\n\nThe shadows gather. We will be rewarded for our faith when He awakens."
+    },
+    '⛏️': {
+        name: 'Pickaxe',
+        type: 'tool'
+    },
+    '•': {
+        name: 'Iron Ore',
+        type: 'junk'
+    },
+    '<': {
+        name: 'Spike Trap',
+        type: 'trap'
     },
     '♦': {
         name: 'Heirloom',
@@ -2478,6 +2521,38 @@ const logMessage = (text) => {
     messageLog.prepend(messageElement);
     messageLog.scrollTop = 0;
 };
+
+/**
+ * Updates the UI to show active buff and debuff icons.
+ */
+
+function renderStatusEffects() {
+    if (!statusEffectsPanel) return; // Safety check
+
+    const player = gameState.player;
+    let icons = ''; // We'll build this up as an HTML string
+
+    // Buffs
+    if (player.shieldValue > 0) {
+        icons += `<span title="Arcane Shield (${Math.ceil(player.shieldValue)} points, ${player.shieldTurns}t)">💠</span>`;
+    }
+    if (player.defenseBonusTurns > 0) {
+        icons += `<span title="Braced (+${player.defenseBonus} Def, ${player.defenseBonusTurns}t)">🛡️</span>`;
+    }
+    if (player.strengthBonusTurns > 0) {
+        icons += `<span title="Strong (+${player.strengthBonus} Str, ${player.strengthBonusTurns}t)">💪</span>`;
+    }
+
+    // Debuffs
+    if (player.poisonTurns > 0) {
+        icons += `<span title="Poisoned (${player.poisonTurns}t)">☣️</span>`;
+    }
+    if (player.frostbiteTurns > 0) {
+        icons += `<span title="Frostbitten (${player.frostbiteTurns}t)">❄️</span>`;
+    }
+
+    statusEffectsPanel.innerHTML = icons;
+}
 
 const renderStats = () => {
     for (const statName in statDisplays) {
@@ -6169,7 +6244,8 @@ if (dirX !== 0 || dirY !== 0) {
 
 const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>', 
                            '★', '☆', '📕', '📗', '💪', '🧠', '"', 'n', 'u', 'q', '📄', 'P', '*',
-                           ']', '8', '❄️', '🌀', '😱', '☣️', '‡', '🧪', '💀', 'a', 'r', 'j'];
+                           ']', '8', '❄️', '🌀', '😱', '☣️', '‡', '🧪', '💀', 'a', 'r', 'j',
+                           '⛏️', '•', '<'];
     const tileAtDestination = chunkManager.getTile(newX, newY);
     if (obsoleteTiles.includes(tileAtDestination)) {
         logMessage("You clear away remnants of an older age.");
@@ -6326,6 +6402,45 @@ if (Math.random() < luckDodgeChance) { //
                 // Pass the calculated damage to the function
                 await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
                 return; // Stop the player's move
+            }
+        }
+
+else if (newTile === '<') {
+            const player = gameState.player;
+            let tileId;
+            if (gameState.mapMode === 'overworld') {
+                tileId = `${newX},${-newY}`; // Traps shouldn't be in overworld, but good to have
+            } else {
+                const mapId = gameState.currentCaveId || gameState.currentCastleId;
+                tileId = `${mapId}:${newX},${-newY}`;
+            }
+
+            // Check if trap has already been triggered/looted
+            if (gameState.lootedTiles.has(tileId)) {
+                logMessage("You step over a disarmed trap.");
+            } else {
+                // It's a live trap! Check Dexterity.
+                const avoidChance = Math.min(0.75, player.dexterity * 0.01); // 1% per Dex, max 75%
+
+                if (Math.random() < avoidChance) {
+                    // --- SUCCESS ---
+                    logMessage("You spot a spike trap and deftly avoid it, disarming it!");
+                    // We "disarm" it by adding it to lootedTiles, but we stop the move.
+                    gameState.lootedTiles.add(tileId);
+                    playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles) });
+                    return; // Stop the move!
+                } else {
+                    // --- FAILURE ---
+                    logMessage("You step right on a spike trap! Ouch!");
+                    const trapDamage = 3;
+                    player.health -= trapDamage;
+                    triggerStatFlash(statDisplays.health, false);
+                    
+                    // Mark it as "looted" so it's gone
+                    gameState.lootedTiles.add(tileId);
+                    // We *don't* return, allowing the player to move onto the tile.
+                    // The item pickup logic later will see it's "looted" and clear it.
+                }
             }
         }
 
@@ -7135,6 +7250,40 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
             if (Math.random() < resistChance && player.poisonTurns <= 0) {
                 logMessage("You feel sick from the swamp's foul water. You are Poisoned!");
                 player.poisonTurns = 5; // 5 turns of poison
+            }
+        }
+
+        if (newTile === '^' && gameState.mapMode === 'overworld') {
+            const playerInventory = gameState.player.inventory;
+            
+            // Check if player has a Pickaxe
+            if (playerInventory.some(item => item.name === 'Pickaxe')) {
+                logMessage("You use your Pickaxe to chip at the rock...");
+                
+                // 25% chance to find ore
+                if (Math.random() < 0.25) {
+                    const existingStack = playerInventory.find(item => item.name === 'Iron Ore');
+                    
+                    if (existingStack) {
+                        existingStack.quantity++;
+                        logMessage("...and find some Iron Ore!");
+                        inventoryWasUpdated = true;
+                    } else if (playerInventory.length < MAX_INVENTORY_SLOTS) {
+                        // Add new item
+                        playerInventory.push({
+                            name: 'Iron Ore',
+                            type: 'junk',
+                            quantity: 1,
+                            tile: '•'
+                        });
+                        logMessage("...and find some Iron Ore!");
+                        inventoryWasUpdated = true;
+                    } else {
+                        logMessage("...you find ore, but your inventory is full!");
+                    }
+                } else {
+                    logMessage("...but find nothing of value.");
+                }
             }
         }
 
