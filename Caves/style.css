@@ -149,6 +149,7 @@ This prevents the inventory from collapsing before JS loads */ #inventoryPanel {
 .modal-content {
 	max-width: 500px;
 	width: 90%;
+	animation: pop-in 0.2s ease-out;
 }
 
 kbd {
@@ -269,6 +270,17 @@ kbd {
 
 .stat-pulse-red {
 	animation: pulse-red 0.6s ease-out;
+}
+
+@keyframes pop-in {
+	from {
+		opacity: 0;
+		transform: scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
 }
 
 @keyframes pulse-yellow {
