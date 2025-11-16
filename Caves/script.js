@@ -116,6 +116,9 @@ const TILE_DATA = {
     'V': {
         type: 'village_entrance',
         getVillageId: (x, y) => `village_${x}_${y}`
+    },
+    '⛩️': {
+        type: 'shrine'
     }
 };
 
@@ -163,7 +166,7 @@ const CASTLE_LAYOUTS = {
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓X▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', // Exit
         ]
     },
-    TOWER: {
+TOWER: {
         spawn: {
             x: 10,
             y: 18
@@ -180,18 +183,18 @@ const CASTLE_LAYOUTS = {
             '▓.........▓.........▓',
             '▓.........▓........▓',
             '▓.........▓.........▓',
-            '▓.........▓...L.....▓', // Put a journal here
+            '▓.........▓...L.....▓',
             '▓.........▓.........▓',
-            '▓.........▓▓▓.......▓',
+            '▓...▓▓▓...▓▓▓.......▓',
+            '▓...▓.O.▓.......▓.....▓', 
+            '▓...▓.📄.▓.......▓.....▓', 
+            '▓...▓▓▓...▓.......▓.....▓',
             '▓.............▓.....▓',
-            '▓.............▓.....▓',
-            '▓.............▓.....▓',
-            '▓.............▓.....▓',
-            '▓.............X.....▓', // Exit
-            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
+            '▓.............X.....▓',
+            '▓▓▓▓▓▓▓▓▓▓▓T▓▓▓▓▓▓▓▓▓'  // <-- Added a Skill Trainer in the wall!
         ]
     },
-    // --- NEWLY ADDED LAYOUT ---
+
     FORTRESS: {
         spawn: {
             x: 4,
@@ -309,8 +312,8 @@ const CASTLE_LAYOUTS = {
         map: [
             'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
             'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
-            'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF',
-            'FFF........................FFF',
+            'F.🔥.FFFFFFFFFFFFFFFFFFFFFFFFF',
+            'F.F........................FFF',
             'FFF..▓▓▓▓▓▓...▓▓▓▓▓▓...▓▓▓▓▓..FFF',
             'FFF..▓...H.▓...▓...§.▓...▓...T.▓..FFF',
             'FFF..▓.....▓...▓.....▓...▓.....▓..FFF',
@@ -459,6 +462,26 @@ const QUEST_DATA = {
         reward: {
             xp: 200,
             coins: 150
+        }
+    },
+    "acolyteHunt": {
+        title: "Bounty: Shadow Acolytes",
+        description: "Strange, robed figures have been spotted in the crypts. Clear them out.",
+        enemy: 'a', // The 'a' tile for Shadow Acolyte
+        needed: 10,
+        reward: {
+            xp: 150,
+            coins: 100
+        }
+    },
+    "spiderHunt": {
+        title: "Bounty: Spider Nest",
+        description: "The caves are crawling with giant spiders. Clear out the nests.",
+        enemy: '@', // The '@' tile for Giant Spider
+        needed: 12,
+        reward: {
+            xp: 120,
+            coins: 80
         }
     },
     "wolfHunt": {
@@ -769,6 +792,19 @@ const CAVE_ROOM_TEMPLATES = {
             'W.a.W', // An Acolyte
             'W.j.W', // The new Journal
             'WWWWW'
+        ]
+    },
+    "Champion's Crypt": {
+        width: 7,
+        height: 7,
+        map: [
+            ' WWWWW ',
+            'W.<.<.W', // Traps!
+            'W.....W',
+            'W..s..W', // The Skeleton "Champion"
+            'W..💪..W', // Guards the Tome of Strength!
+            'W.<.<.W', // More traps!
+            ' WWWWW '
         ]
     }
 };
@@ -1312,6 +1348,18 @@ const CRAFTING_RECIPES = {
         "Iron Ore": 3,
         "Bone Shard": 3
     },
+    "Iron Sword": {
+        "Iron Ore": 5,
+        "Stick": 1
+    },
+    "Iron Mail": {
+        "Iron Ore": 8,
+        "Leather Tunic": 1 // This is a compound recipe!
+    },
+    "Iron Helm": {
+        "Iron Ore": 4,
+        "Wolf Pelt": 1 // For padding
+    },
     "Arcane Wraps": {
         "Arcane Dust": 5,
         "Spider Silk": 2 // Uses other junk items
@@ -1720,6 +1768,18 @@ const ITEM_DATA = {
         name: 'Spike Trap',
         type: 'trap'
     },
+    '¡': {
+        name: 'Iron Sword',
+        type: 'weapon',
+        damage: 3, // Better than Rusty (2), worse than Steel (4)
+        slot: 'weapon'
+    },
+    '¦': {
+        name: 'Iron Mail',
+        type: 'armor',
+        defense: 3, // Better than Studded (2), worse than Steel (4)
+        slot: 'armor'
+    },
     '♦': {
         name: 'Heirloom',
         type: 'quest' // A new type, so it can't be sold or used
@@ -1946,8 +2006,8 @@ generateCave(caveId) {
         this.caveThemes[caveId] = chosenThemeKey; // Remember the theme
 
         // 2. Generate the map layout
-        const CAVE_WIDTH = 50;
-        const CAVE_HEIGHT = 50;
+        const CAVE_WIDTH = 70;
+        const CAVE_HEIGHT = 70;
         const map = Array.from({
             length: CAVE_HEIGHT
         }, () => Array(CAVE_WIDTH).fill(theme.wall)); // Use theme's wall
@@ -1958,7 +2018,7 @@ generateCave(caveId) {
             x,
             y
         };
-        let steps = 1000;
+        let steps = 2000;
         while (steps > 0) {
             map[y][x] = theme.floor; // Use theme's floor
             const direction = Math.floor(random() * 4);
@@ -2310,6 +2370,10 @@ generateCave(caveId) {
                 } else if (tile === '.' && featureRoll < 0.00011) { // 0.01% chance
                     this.setWorldTile(worldX, worldY, 'V');
                     chunkData[y][x] = 'V';
+
+                } else if (tile === '.' && featureRoll < 0.00061) { // 0.05% chance
+                    this.setWorldTile(worldX, worldY, '⛩️');
+                    chunkData[y][x] = '⛩️';
 
                 } else if (tile === '.' && featureRoll < 0.01) { // <-- INCREASED to 1% (was 0.0003)
                     let features = Object.keys(TILE_DATA);
@@ -4971,13 +5035,21 @@ const render = () => {
                         break;
                     case 'F':
                         bgColor = '#15803d';
-                        fgChar = '"';
                         fgColor = '#14532d';
+                        // Add stable random "noise"
+                        const forestSeed = stringToSeed(`${mapX},${mapY}`);
+                        const forestRandom = Alea(forestSeed);
+                        const forestTiles = ['"', 'F', '"', 'F', 'F']; // Weighted
+                        fgChar = forestTiles[Math.floor(forestRandom() * forestTiles.length)];
                         break;
                     case '.':
                         bgColor = '#22c55e';
-                        fgChar = '.';
                         fgColor = '#16a34a';
+                        // Add stable random "noise"
+                        const plainsSeed = stringToSeed(`${mapX},${mapY}`);
+                        const plainsRandom = Alea(plainsSeed);
+                        const plainsTiles = ['.', ',', "'", '.', '.']; // Weighted
+                        fgChar = plainsTiles[Math.floor(plainsRandom() * plainsTiles.length)];
                         break;
                     case '▓':
                         bgColor = '#422006';
@@ -6245,7 +6317,7 @@ if (dirX !== 0 || dirY !== 0) {
 const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>', 
                            '★', '☆', '📕', '📗', '💪', '🧠', '"', 'n', 'u', 'q', '📄', 'P', '*',
                            ']', '8', '❄️', '🌀', '😱', '☣️', '‡', '🧪', '💀', 'a', 'r', 'j',
-                           '⛏️', '•', '<'];
+                           '⛏️', '•', '<', '⛩️'];
     const tileAtDestination = chunkManager.getTile(newX, newY);
     if (obsoleteTiles.includes(tileAtDestination)) {
         logMessage("You clear away remnants of an older age.");
@@ -6405,7 +6477,66 @@ if (Math.random() < luckDodgeChance) { //
             }
         }
 
-else if (newTile === '<') {
+        if (tileData && tileData.type === 'shrine') {
+            const tileId = `${newX},${-newY}`;
+            const player = gameState.player;
+            let shrineUsed = false;
+
+            if (gameState.lootedTiles.has(tileId)) {
+                logMessage("The shrine's power is spent.");
+                return; // Stop the move
+            }
+
+            loreTitle.textContent = "An Ancient Shrine";
+            loreContent.innerHTML = `
+                <p>The shrine hums with a faint energy. You feel you can ask for one boon.</p>
+                <button id="shrineStr" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">Pray for Strength (+5 Str for 5 turns)</button>
+                <button id="shrineWits" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Pray for Wits (+5 Wits for 5 turns)</button>
+            `;
+            loreModal.classList.remove('hidden');
+
+            // Add listeners for the new buttons
+            document.getElementById('shrineStr').addEventListener('click', () => {
+                if (player.strengthBonusTurns > 0) {
+                    logMessage("You are already under the effect of a similar boon!");
+                } else {
+                    logMessage("You pray for Strength. You feel a surge of power!");
+                    player.strengthBonus = 5;
+                    player.strengthBonusTurns = 5;
+                    playerRef.update({ strengthBonus: 5, strengthBonusTurns: 5 });
+                    renderEquipment(); // Update UI
+                    shrineUsed = true;
+                }
+                if (shrineUsed) gameState.lootedTiles.add(tileId);
+                loreModal.classList.add('hidden');
+            }, { once: true });
+
+            document.getElementById('shrineWits').addEventListener('click', () => {
+                // We don't have a witsBuff, so we'll just add to Wits temporarily
+                // This is a bit more complex, let's just do Strength for now.
+                // TODO: Add a Wits buff system later.
+                logMessage("You pray for Wits... but nothing happens. (Wits buff not implemented)");
+                loreModal.classList.add('hidden');
+
+                /* // --- This is what the Wits logic would look like ---
+                if (player.witsBonusTurns > 0) {
+                     logMessage("You are already under the effect of a similar boon!");
+                } else {
+                    logMessage("You pray for Wits. Your mind feels sharper!");
+                    player.witsBonus = 5;
+                    player.witsBonusTurns = 5;
+                    playerRef.update({ witsBonus: 5, witsBonusTurns: 5 });
+                    shrineUsed = true;
+                }
+                if (shrineUsed) gameState.lootedTiles.add(tileId);
+                loreModal.classList.add('hidden');
+                */
+            }, { once: true });
+            
+            return; // Stop the player's move
+        }
+
+        else if (newTile === '<') {
             const player = gameState.player;
             let tileId;
             if (gameState.mapMode === 'overworld') {
