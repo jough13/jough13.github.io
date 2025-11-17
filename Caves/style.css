@@ -120,6 +120,16 @@ This prevents the inventory from collapsing before JS loads */ #inventoryPanel {
 	/* Highlights on hover */
 }
 
+.inventory-slot.equipped {
+    border: 2px solid #eab308; /* Gold border */
+    background-color: rgba(234, 179, 8, 0.1); /* Faint gold glow */
+    box-shadow: 0 0 5px rgba(234, 179, 8, 0.5);
+}
+
+.inventory-slot.equipped .item-char {
+    color: #eab308; /* Make the icon gold too */
+}
+
 .inventory-slot .item-char {
 	font-size: 1.5rem;
 	font-weight: bold;
