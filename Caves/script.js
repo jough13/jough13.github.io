@@ -119,7 +119,19 @@ const TILE_DATA = {
     },
     '⛩️': {
         type: 'shrine'
-    }
+    },
+    '|': {
+        type: 'obelisk'
+    },
+    '¥': {
+    type: 'trader'
+    },
+    '📦': {
+        type: 'loot_chest'
+    },
+    'T': {
+        type: 'decoration', // Dead Tree
+    },
 };
 
 const CASTLE_LAYOUTS = {
@@ -611,6 +623,31 @@ const ENEMY_DATA = {
         spellDamage: 2,   // The spell itself does low damage...
         inflicts: 'poison'  // ...but it inflicts POISON
     },
+    '🦂': {
+        name: 'Giant Scorpion',
+        maxHealth: 6,
+        attack: 3,
+        defense: 1, // Hard shell
+        xp: 15,
+        loot: 'i', // Chitin/Insignia
+        inflicts: 'poison'
+    },
+    '🐺': {
+        name: 'Dire Wolf',
+        maxHealth: 12,    // Double a normal wolf
+        attack: 4,        // Hits hard
+        defense: 1,
+        xp: 40,
+        loot: '🐺'        // Drops Alpha Pelt
+    },
+    '👺': {
+        name: 'Goblin Warlord',
+        maxHealth: 15,    // Tanky
+        attack: 5,        // Very dangerous
+        defense: 2,
+        xp: 50,
+        loot: '$'         // Drops gold\
+    },
     'a': {
         name: 'Shadow Acolyte',
         maxHealth: 5,
@@ -618,6 +655,15 @@ const ENEMY_DATA = {
         defense: 0,
         xp: 8,
         loot: 'r' // Drops our new "Corrupted Relic"
+    },
+    'l': {
+        name: 'Giant Leech',
+        maxHealth: 8,      // Tanky (High HP)
+        attack: 1,         // Low direct damage...
+        defense: 0,
+        xp: 12,
+        loot: 'p',         // Drops slime/pelts (we can use 'p' for now)
+        inflicts: 'poison' // ...but dangerous because of poison!
     }
 };
 
@@ -656,7 +702,7 @@ const CAVE_THEMES = {
             floor: '#ef4444'
         }, // The red color makes it look like lava
         decorations: ['+', '$', '🔥', 'J'],
-        enemies: ['b', 'C', 'o', 'm']
+        enemies: ['b', 'C', 'o', 'm', '👺']
     },
 
     CRYPT: {
@@ -827,29 +873,67 @@ const REGION_SIZE = 160;
 
 const MAX_INVENTORY_SLOTS = 9; // Max number of inventory stacks
 
-const LORE_STONE_MESSAGES = [
-    "The sky bleeds...",
-    "Five thrones, five traitors...",
-    "What was sundered must be remade.",
-    "The King's folly... the mountain's wrath...",
-    "Ash seeks its own.",
-    "Below the castles, the old gods wait.",
-    "The marsh whispers your name.",
-    "Immortality is a cage.",
-    "They came from the ice.",
-    "The Fourth Age is the last.",
-    "He did not die. He waits.",
-    "All rivers run to the Sunken Valley.",
-    "The forest remembers.",
-    "Stolen from the stars, returned to the earth.",
-    "A crown of shadow, a broken sword.",
-    "The spider waits in the dark.",
-    "Fire and ice are but two sides of the same coin.",
-    "Even the dead can be led.",
-    "Look for the village, but do not trust the path.",
-    "The Prospector saw something he shouldn't have.",
-    "They are fools. They flock to the old fortress, paying tribute to a shadow.",
-    "The Acolytes think the Crypts hold answers. They only hold the past."
+const TRADER_INVENTORY = [
+    { name: 'Elixir of Life', price: 500, stock: 1 },
+    { name: 'Elixir of Power', price: 500, stock: 1 },
+    { name: 'Obsidian Shard', price: 200, stock: 3 },
+    { name: 'Scroll: Entangle', price: 300, stock: 1 },
+    { name: 'Scroll of Homing', price: 150, stock: 2 },
+    { name: 'Tattered Map', price: 100, stock: 3 }
+];
+
+const LORE_PLAINS = [
+    "The wind whispers of the Old King's return.",
+    "These fields were once a great battlefield.",
+    "Travelers say the safe haven lies to the west.",
+    "The grass hides many secrets, and many graves.",
+    "Look for the shrines. They still hold power."
+];
+
+const LORE_FOREST = [
+    "The trees remember what the axe forgets.",
+    "Wolves guard the heart of the wood.",
+    "Beware the shadows that move against the wind.",
+    "The Elves left long ago, but their magic remains.",
+    "A Machete is a traveler's best friend here."
+];
+
+const LORE_MOUNTAIN = [
+    "The stone is hollow. The dark deepens.",
+    "Dragons once roosted on these peaks.",
+    "The Prospector seeks gold, but he will find only madness.",
+    "Iron and bone. That is all that remains here.",
+    "Climbing requires strength, or the right tools."
+];
+
+const LORE_SWAMP = [
+    "The water tastes of rot and old magic.",
+    "Sickness takes the weak. Endurance is key.",
+    "The spiders... they are growing larger.",
+    "Do not follow the lights in the mist.",
+    "A sunken city lies beneath the muck."
+];
+
+const VILLAGER_RUMORS = [
+    "I heard spiders hate fire. Burn 'em, I say!",
+    "If you find a pickaxe, try the mountains. Good ore there.",
+    "The castle guards are tough, but they protect good loot.",
+    "Don't eat the yellow snow. Or the blue mushrooms.",
+    "I saw a stone glowing in the woods last night.",
+    "My cousin went into the crypts. He came back... wrong.",
+    "Endurance helps you resist the swamp sickness.",
+    "Wits will help you find hidden doors in the caves."
+];
+
+const VISIONS_OF_THE_PAST = [ // For the new Obelisks
+    "A VISION: You see a golden king standing atop the fortress. He raises a hand, and the mountain splits. A shadow rises from the fissure, swallowing the sun.",
+    "A VISION: Five knights kneel before a dark altar. They drink from a chalice of black ichor, and their eyes turn to blue ice.",
+    "A VISION: The sky burns. Not with fire, but with arcane light. The mages scream as their tower collapses, shattering into dust.",
+    "A VISION: A lone figure seals the crypt doors. He is weeping. 'Sleep well, my brothers,' he whispers. 'Sleep until the world breaks.'",
+    "A VISION: The blacksmith hammers a blade of black glass. 'It drinks the light,' he mutters. 'It drinks the soul.'",
+    "A VISION: A star falls from the heavens, crashing into the plains. The crater glows with a purple light that does not fade.",
+    "A VISION: The woods were not always trees. Once, they were tall spires of bone, reaching for a moon that wasn't there.",
+    "A VISION: The King sits upon his throne, but his face is blank. A shadow whispers in his ear, and the King nods slowly."
 ];
 
 const RANDOM_JOURNAL_PAGES = [
@@ -1088,8 +1172,11 @@ function createDefaultPlayerState() {
 
         frostbiteTurns: 0,
         poisonTurns: 0,
+        rootTurns: 0,
 
         isBoating: false,
+
+        activeTreasure: null,
 
         quests: {}
     };
@@ -1360,6 +1447,16 @@ const CRAFTING_RECIPES = {
         "Iron Ore": 4,
         "Wolf Pelt": 1 // For padding
     },
+    "Obsidian Edge": {
+        "Obsidian Shard": 3, // Requires finding 3 Obelisks!
+        "Steel Sword": 1,    // Upgrade from Steel
+        "Arcane Dust": 5
+    },
+    "Obsidian Plate": {
+        "Obsidian Shard": 4, // Requires finding 4 Obelisks!
+        "Steel Armor": 1,    // Upgrade from Steel
+        "Frost Essence": 3
+    },
     "Arcane Wraps": {
         "Arcane Dust": 5,
         "Spider Silk": 2 // Uses other junk items
@@ -1457,7 +1554,31 @@ const ITEM_DATA = {
                 triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); // USE NEW FUNCTION
             }
             logMessage('Used a Psyche Shard. Restored psyche.');
+        },
+        ':': {
+        name: 'Wildberry',
+        type: 'consumable',
+        effect: (state) => {
+            const oldHealth = state.player.health;
+            state.player.health = Math.min(state.player.maxHealth, state.player.health + 1);
+            if (state.player.health > oldHealth) {
+                triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+            }
+            logMessage('You eat a Wildberry. Tasty! (+1 HP)');
         }
+    },
+    '🍄': {
+        name: 'Bluecap Mushroom',
+        type: 'consumable',
+        effect: (state) => {
+            const oldMana = state.player.mana;
+            state.player.mana = Math.min(state.player.maxMana, state.player.mana + 1);
+            if (state.player.mana > oldMana) {
+                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+            }
+            logMessage('You eat a Bluecap. It tingles... (+1 Mana)');
+        }
+    },
     },
     '📖': {
         name: 'Spellbook: Lesser Heal',
@@ -1780,9 +1901,89 @@ const ITEM_DATA = {
         defense: 3, // Better than Studded (2), worse than Steel (4)
         slot: 'armor'
     },
+    'I': {
+        name: 'Iron Helm',
+        type: 'armor',
+        defense: 2,
+        slot: 'armor',
+        statBonuses: { constitution: 1 } // A small toughness boost
+    },
+    '▲': {
+        name: 'Obsidian Shard',
+        type: 'junk'
+    },
+    '⚔️': {
+        name: 'Obsidian Edge',
+        type: 'weapon',
+        damage: 5, // Top tier damage (beats Steel)
+        slot: 'weapon',
+        statBonuses: { wits: 2 } // Magical sword
+    },
+    '🛡️': {
+        name: 'Obsidian Plate',
+        type: 'armor',
+        defense: 5, // Top tier defense (beats Steel)
+        slot: 'armor',
+        statBonuses: { willpower: 2 } // Mental fortification
+    },
     '♦': {
         name: 'Heirloom',
         type: 'quest' // A new type, so it can't be sold or used
+    },
+    '🍷': {
+        name: 'Elixir of Life',
+        type: 'consumable',
+        effect: (state) => {
+            state.player.maxHealth += 5;
+            state.player.health += 5;
+            logMessage("You drink the thick red liquid. Your Max Health increases by 5!");
+            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+        }
+    },
+    '🧪': { // Reusing the potion icon, or we can use a new one like ⚗️
+        name: 'Elixir of Power',
+        type: 'consumable',
+        effect: (state) => {
+            state.player.maxMana += 5;
+            state.player.mana += 5;
+            logMessage("You drink the glowing blue liquid. Your Max Mana increases by 5!");
+            triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+        }
+    },
+
+    // --- DRUID MAGIC ---
+    '🌿': {
+        name: 'Scroll: Entangle',
+        type: 'spellbook',
+        spellId: 'entangle'
+    },
+    '🌵': {
+        name: 'Tome: Thorn Skin',
+        type: 'spellbook',
+        spellId: 'thornSkin'
+    },
+
+    // --- ELITE LOOT ---
+    '🐺': { // Using the wolf icon for the pelt bundle
+        name: 'Alpha Pelt',
+        type: 'junk' // Valuable sell item
+    },
+    '🏠': {
+        name: 'Scroll of Homing',
+        type: 'teleport'
+    },
+    '🗺️': {
+        name: 'Tattered Map',
+        type: 'treasure_map'
+    },
+    '🍐': { // Using pear icon for cactus fruit
+        name: 'Cactus Fruit',
+        type: 'consumable',
+        effect: (state) => {
+            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 5);
+            logMessage('Juicy and refreshing! (+5 Stamina)');
+            triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+        }
     },
     '$': {
         name: 'Gold Coin',
@@ -1905,6 +2106,28 @@ const SPELL_DATA = {
         requiredLevel: 4,
         target: "self",
         baseRestore: 10
+    },
+    "entangle": {
+        name: "Entangle",
+        description: "Roots an enemy in place, preventing movement and attacks. Scales with Intuition.",
+        cost: 12,
+        costType: "mana",
+        requiredLevel: 3,
+        target: "aimed",
+        baseDamage: 2,       // Low damage
+        inflicts: "root",    // New status!
+        inflictChance: 1.0   // 100% chance (it's the main point of the spell)
+    },
+    "thornSkin": {
+        name: "Thorn Skin",
+        description: "Reflects damage back to attackers. Scales with Intuition.",
+        cost: 15,
+        costType: "mana",
+        requiredLevel: 4,
+        target: "self",
+        type: "buff",
+        baseReflect: 2, // Base damage reflected
+        duration: 5
     }
     // We can easily add more spells here later!
 };
@@ -2095,7 +2318,7 @@ generateCave(caveId) {
 
         // 4. Place procedural loot and decorations
 
-        const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$', '📄'];
+        const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$', '📄', '🍄'];
         const lootQuantity = Math.floor(random() * 4);
 
         for (let i = 0; i < lootQuantity; i++) {
@@ -2357,6 +2580,10 @@ generateCave(caveId) {
                 if (elev < 0.35) tile = '~'; // Water
                 else if (elev < 0.4 && moist > 0.7) tile = '≈'; // Swamp: low elevation, very high moisture
                 else if (elev > 0.8) tile = '^'; // Mountain
+                // High-ish elevation (hills) but very dry
+                else if (elev > 0.6 && moist < 0.3) tile = 'd'; // Deadlands
+                // Low elevation and very dry
+                else if (moist < 0.15) tile = 'D';
                 else if (moist > 0.55) tile = 'F'; // Forest
                 else tile = '.'; // Plains
 
@@ -2374,6 +2601,17 @@ generateCave(caveId) {
                 } else if (tile === '.' && featureRoll < 0.00061) { // 0.05% chance
                     this.setWorldTile(worldX, worldY, '⛩️');
                     chunkData[y][x] = '⛩️';
+
+                } else if (tile === '.' && featureRoll < 0.00071) { // 0.01% chance
+                    this.setWorldTile(worldX, worldY, '|');
+                    chunkData[y][x] = '|';
+
+                } else if (tile === '.' && featureRoll < 0.001) { // Rare on plains
+                    this.setWorldTile(worldX, worldY, '⛲');
+                    chunkData[y][x] = '⛲';
+                } else if ((tile === 'd' || tile === 'D') && featureRoll < 0.001) { // Rifts in Deadlands/Desert
+                    this.setWorldTile(worldX, worldY, 'Ω');
+                    chunkData[y][x] = 'Ω';
 
                 } else if (tile === '.' && featureRoll < 0.01) { // <-- INCREASED to 1% (was 0.0003)
                     let features = Object.keys(TILE_DATA);
@@ -2418,24 +2656,73 @@ generateCave(caveId) {
                     }
 
                 } else {
-                    // No safe feature spawned. Check for hostile spawn.
+                    // No safe feature spawned. Check for hostiles or foraging.
                     const hostileRoll = random();
 
-                    // Wolves spawn in forests (0.02% chance)
-                    if (tile === 'F' && hostileRoll < 0.0002) {
-                        chunkData[y][x] = 'w';
-                    }
-                    // Wolves (0.01%) and Bandits (0.01%) spawn on plains
-                    else if (tile === '.' && hostileRoll < 0.0002) {
-                        if (hostileRoll < 0.0001) {
-                            chunkData[y][x] = 'w'; // Wolf
+                    // --- FORESTS: Wolves ('w') or Wildberries (':') ---
+                    if (tile === 'F') {
+                        if (hostileRoll < 0.0002) {
+                            chunkData[y][x] = 'w'; 
+                        } else if (hostileRoll < 0.00025) { // Rare Elite Spawn
+                            chunkData[y][x] = '🐺'; 
+                        } else if (hostileRoll < 0.00035) { // Rare Trader Spawn
+                            chunkData[y][x] = '¥';
+                            this.setWorldTile(worldX, worldY, '¥');
+                        } else if (hostileRoll < 0.01) { 
+                            chunkData[y][x] = ':'; 
+                            this.setWorldTile(worldX, worldY, ':');
                         } else {
-                            // This is a "Bandit" spawn
-                            if (random() < 0.1) { // 10% of these are a Chief
-                                chunkData[y][x] = 'C';
-                            } else { // 90% are a normal Bandit
-                                chunkData[y][x] = 'b';
+                            chunkData[y][x] = tile;
+                        }
+                    }
+
+                    else if (tile === 'd') {
+                        // Deadlands are dangerous!
+                        if (hostileRoll < 0.001) { // High spawn rate
+                            if (hostileRoll < 0.0005) chunkData[y][x] = 's'; // Skeletons
+                            else chunkData[y][x] = 'b'; // Bandits
+                        } else if (hostileRoll < 0.02) {
+                             chunkData[y][x] = 'T'; // Dead Trees (Decoration)
+                             this.setWorldTile(worldX, worldY, 'T');
+                        } else {
+                            chunkData[y][x] = tile;
+                        }
+                    }
+
+                        else if (tile === 'D') {
+                         if (hostileRoll < 0.02) { // Cacti are common
+                            chunkData[y][x] = '🌵';
+                            this.setWorldTile(worldX, worldY, '🌵');
+                         } else if (hostileRoll < 0.022) { // Scorpions
+                            chunkData[y][x] = '🦂';
+                         } else {
+                            chunkData[y][x] = tile;
+                         }
+                    }
+
+                    // --- SWAMPS: Giant Leeches ('l') ---
+                    else if (tile === '≈') {
+                        if (hostileRoll < 0.0003) { // Slightly more common than wolves
+                            chunkData[y][x] = 'l'; // Giant Leech
+                        } else {
+                            chunkData[y][x] = tile;
+                        }
+                    }
+                    // --- PLAINS: Wolves, Bandits, or Chiefs ---
+                    else if (tile === '.') {
+                        if (hostileRoll < 0.0002) {
+                            if (hostileRoll < 0.0001) {
+                                chunkData[y][x] = 'w'; // Wolf
+                            } else {
+                                // Bandit spawn
+                                if (random() < 0.1) chunkData[y][x] = 'C'; // Chief
+                                else chunkData[y][x] = 'b'; // Bandit
                             }
+                        } else if (hostileRoll < 0.00025) { // Rare Trader Spawn (Plains)
+                            chunkData[y][x] = '¥';
+                            this.setWorldTile(worldX, worldY, '¥');
+                        } else {
+                            chunkData[y][x] = tile;
                         }
                     }
                     // No hostile spawn, just place the terrain tile
@@ -3793,6 +4080,16 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             }
             break;
 
+            case 'thornSkin':
+                const reflectAmount = spellData.baseReflect + (player.intuition * spellLevel);
+                player.thornsValue = reflectAmount;
+                player.thornsTurns = spellData.duration;
+                logMessage(`Your skin hardens with sharp thorns! (Reflect ${reflectAmount} dmg)`);
+                updates.thornsValue = reflectAmount;
+                updates.thornsTurns = spellData.duration;
+                spellCastSuccessfully = true;
+                break;
+
         case 'fireball':
             // This is an AoE spell. It hits a 3x3 area, 3 tiles away.
             const fbDamage = spellData.baseDamage + (player.wits * spellLevel);
@@ -4685,7 +4982,10 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             enemy.poisonTurns = 3; // Poison lasts 3 turns
         }
 
-            // (We can add 'poison' here later)
+        else if (enemy && spellData.inflicts === 'root' && enemy.rootTurns <= 0) {
+                logMessage(`Roots burst from the ground, trapping the ${enemy.name}!`);
+                enemy.rootTurns = 3; // Root lasts 3 turns
+            }
         }
     }
     
@@ -4769,6 +5069,7 @@ function passivePerceptionCheck() {
  * Handles combat for overworld enemies, syncing health via RTDB.
  * Accepts a pre-calculated playerDamage value.
  */
+
 async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage) { // <-- ADDED playerDamage
     const player = gameState.player;
     const enemyId = `overworld:${newX},${-newY}`; // Unique RTDB key
@@ -4857,6 +5158,30 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     }
                 }
                 
+// --- THORNS LOGIC (OVERWORLD) ---
+            if (player.thornsValue > 0) {
+                logMessage(`The ${enemyData.name} takes ${player.thornsValue} damage from your thorns!`);
+                
+                // We run a second transaction to apply the thorn damage safely
+                enemyRef.transaction(thornData => {
+                    if (!thornData) return null; // Enemy already gone
+                    
+                    thornData.health -= player.thornsValue;
+                    
+                    // If health <= 0, return null to delete the enemy
+                    return thornData.health <= 0 ? null : thornData;
+                }).then(result => {
+                    // Check if the enemy was deleted (snapshot doesn't exist)
+                    if (result.committed && !result.snapshot.exists()) {
+                        logMessage(`The ${enemyData.name} is killed by your thorns!`);
+                        grantXp(enemyData.xp);
+                        updateQuestProgress(newTile);
+                        const droppedLoot = generateEnemyLoot(player, enemyData);
+                        chunkManager.setWorldTile(newX, newY, droppedLoot);
+                    }
+                });
+            }
+
                 // Apply any remaining damage to health
                 if (damageToApply > 0) {
                     player.health -= damageToApply;
@@ -5051,6 +5376,41 @@ const render = () => {
                         const plainsTiles = ['.', ',', "'", '.', '.']; // Weighted
                         fgChar = plainsTiles[Math.floor(plainsRandom() * plainsTiles.length)];
                         break;
+                    case 'd':
+                        bgColor = '#2d2d2d'; // Dark Grey
+                        fgChar = '.';
+                        fgColor = '#57534e'; // Warm Grey dots
+                        break;
+                    case 'T': // Dead Tree
+                        bgColor = '#2d2d2d';
+                        fgChar = 'T';
+                        fgColor = '#a8a29e'; // Light Grey tree
+                        break;
+                    case 'D':
+                        bgColor = '#fde047'; // Bright Yellow
+                        fgColor = '#eab308'; // Darker Yellow dots
+                        fgChar = '.';
+                        break;
+                    case '🌵':
+                        bgColor = '#fde047'; // Match sand
+                        fgChar = '🌵';
+                        break;
+                    case '⛲':
+                        bgColor = '#22c55e'; // Grass bg usually
+                        if (gameState.mapMode === 'overworld') bgColor = '#22c55e'; // Simplification
+                        fgChar = '⛲';
+                        break;
+                    case 'Ω':
+                        bgColor = '#000000'; // Void black
+                        fgColor = '#a855f7'; // Purple
+                        fgChar = 'Ω';
+                        break;
+                    case '📦': // Buried Chest
+                         bgColor = (gameState.mapMode === 'overworld') ? '#22c55e' : '#422006';
+                         // Override bg if in deadlands (hard to check here easily, simpler to just default)
+                         if (gameState.mapMode === 'overworld') bgColor = '#2d2d2d'; // Assume deadlands/ground
+                         fgChar = '📦';
+                         break;
                     case '▓':
                         bgColor = '#422006';
                         break;
@@ -5377,6 +5737,13 @@ function processEnemyTurns() {
     const enemiesToMove = [...gameState.instancedEnemies];
 
     enemiesToMove.forEach(enemy => {
+
+        if (enemy.rootTurns > 0) {
+            enemy.rootTurns--;
+            logMessage(`The ${enemy.name} struggles against the entangling roots!`);
+            if (enemy.rootTurns === 0) logMessage(`The ${enemy.name} breaks free.`);
+            return; // Skip turn completely
+        }
 
         // --- HANDLE "MADNESS" (FLEEING) ---
         if (enemy.madnessTurns > 0) {
@@ -5710,6 +6077,16 @@ function endPlayerTurn() {
         renderEquipment(); // Update UI
     }
 
+if (player.thornsTurns > 0) {
+        player.thornsTurns--;
+        updates.thornsTurns = player.thornsTurns;
+        if (player.thornsTurns === 0) {
+            player.thornsValue = 0;
+            updates.thornsValue = 0;
+            logMessage("Your thorny skin softens.");
+        }
+    }
+
     // Tick down buff/debuff durations (This is your existing code)
     if (gameState.player.defenseBonusTurns > 0) {
         gameState.player.defenseBonusTurns--; // Tick down the turn
@@ -5835,6 +6212,35 @@ loreModal.addEventListener('click', (event) => {
 
 document.addEventListener('keydown', (event) => {
     if (!player_id || gameState.player.health <= 0 || document.activeElement === chatInput) return;
+
+            if (gameState.player.thornsValue > 0) {
+                            enemy.health -= gameState.player.thornsValue;
+                            logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} damage from your thorns!`);
+
+                            if (enemy.health <= 0) {
+                                logMessage(`The ${enemy.name} is killed by your thorns!`);
+                                grantXp(enemy.xp);
+                                updateQuestProgress(enemy.tile);
+                                const droppedLoot = generateEnemyLoot(gameState.player, enemy);
+                                
+                                // Remove from the array immediately
+                                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
+
+                                // Place loot on the map
+                                if (gameState.mapMode === 'dungeon') {
+                                    chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
+                                }
+                                // (If we add castle enemies later, add castle loot logic here)
+                            }
+                        }
+
+            if (newTile === '¥') {
+            activeShopInventory = TRADER_INVENTORY;
+            logMessage("You meet a Wandering Trader. 'Rare goods, for a price...'");
+            renderShop();
+            shopModal.classList.remove('hidden');
+            return;
+        }
 
     if (event.key === 'Escape') {
         // Check if a modal is open and close it
@@ -6154,6 +6560,36 @@ if (dirX !== 0 || dirY !== 0) {
                 }
             }
 
+            else if (itemToUse.type === 'teleport') {
+                logMessage("You read the scroll. Space warps around you...");
+                // Teleport to start (0,0)
+                gameState.player.x = 0;
+                gameState.player.y = 0;
+                exitToOverworld("You vanish and reappear at the village gates.");
+                
+                itemToUse.quantity--;
+                if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
+                itemUsed = true;
+            }
+            // --- ADD TREASURE MAP LOGIC ---
+            else if (itemToUse.type === 'treasure_map') {
+                // Generate a treasure location if we don't have one
+                if (!gameState.activeTreasure) {
+                    // Random spot 50-150 tiles away
+                    const dist = 50 + Math.floor(Math.random() * 100);
+                    const angle = Math.random() * 2 * Math.PI;
+                    const tx = Math.floor(gameState.player.x + Math.cos(angle) * dist);
+                    const ty = Math.floor(gameState.player.y + Math.sin(angle) * dist);
+                    
+                    gameState.activeTreasure = { x: tx, y: ty };
+                    logMessage(`The map reveals a hidden mark! Location: (${tx}, ${-ty}).`);
+                } else {
+                     logMessage(`The map marks a location at (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y}).`);
+                }
+                // Maps are NOT consumed on use, they are kept until treasure is found
+                itemUsed = false; 
+            }
+
             else {
                 logMessage(`You can't use '${itemToUse.name}' right now.`);
             }
@@ -6317,7 +6753,8 @@ if (dirX !== 0 || dirY !== 0) {
 const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>', 
                            '★', '☆', '📕', '📗', '💪', '🧠', '"', 'n', 'u', 'q', '📄', 'P', '*',
                            ']', '8', '❄️', '🌀', '😱', '☣️', '‡', '🧪', '💀', 'a', 'r', 'j',
-                           '⛏️', '•', '<', '⛩️'];
+                           '⛏️', '•', '<', 'I', '⛩️', '|', '▲', '⚔️', '🛡️', ':', '🍄', 'l', '¥', '⛲', 'Ω', '🌵', '🍐', '🦂',
+                           '🐺', '👺', '🍷', '🧪', '🌿', '🌵'];
     const tileAtDestination = chunkManager.getTile(newX, newY);
     if (obsoleteTiles.includes(tileAtDestination)) {
         logMessage("You clear away remnants of an older age.");
@@ -6536,6 +6973,98 @@ if (Math.random() < luckDodgeChance) { //
             return; // Stop the player's move
         }
 
+        // 1. THE WISHING WELL
+        if (newTile === '⛲') {
+            if (gameState.player.coins >= 50) {
+                logMessage("You toss 50 gold into the well...");
+                gameState.player.coins -= 50;
+                playerRef.update({ coins: gameState.player.coins });
+                renderStats();
+
+                const roll = Math.random();
+                if (roll < 0.3) {
+                    logMessage("...and receive a Healing Potion!");
+                    gameState.player.inventory.push({ name: 'Healing Potion', type: 'consumable', quantity: 1, tile: '+', effect: ITEM_DATA['+'].effect });
+                } else if (roll < 0.6) {
+                    logMessage("...and feel refreshed! (Full Heal)");
+                    gameState.player.health = gameState.player.maxHealth;
+                    gameState.player.mana = gameState.player.maxMana;
+                    playerRef.update({ health: gameState.player.health, mana: gameState.player.mana });
+                } else {
+                    logMessage("...splash. Nothing happens.");
+                }
+                renderInventory();
+            } else {
+                logMessage("You need 50 gold to make a wish.");
+            }
+            return;
+        }
+
+        // 2. THE UNSTABLE RIFT
+        if (newTile === 'Ω') {
+            logMessage("The world dissolves around you...");
+            // Teleport huge distance
+            const rX = Math.floor((Math.random() * 4000) - 2000);
+            const rY = Math.floor((Math.random() * 4000) - 2000);
+            gameState.player.x = rX;
+            gameState.player.y = rY;
+            exitToOverworld("You stumble out of a rift in a strange land.");
+            return;
+        }
+
+        // 3. CACTUS (Harvesting)
+        if (newTile === '🌵') {
+            logMessage("Ouch! The thorns prick you, but you grab a fruit.");
+            gameState.player.health -= 1;
+            triggerStatFlash(statDisplays.health, false);
+            
+            if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                 gameState.player.inventory.push({
+                    name: 'Cactus Fruit',
+                    type: 'consumable',
+                    quantity: 1,
+                    tile: '🍐',
+                    effect: ITEM_DATA['🍐'].effect
+                });
+                // Clear the cactus
+                chunkManager.setWorldTile(newX, newY, 'D'); // Replace with Desert Sand
+                renderInventory();
+            } else {
+                logMessage("Inventory full! You drop the fruit.");
+            }
+            return; 
+        }
+
+        else if (tileData && tileData.type === 'loot_chest') {
+            logMessage("You pry open the chest...");
+            
+            // Give randomized high-tier loot
+            const rareLoot = ['💎', '🍷', '🧪', '⚔️', '🛡️', '📜', '💰']; // Gems, Elixirs, Obsidian, Scrolls
+            // (For MVP, let's just give 50-100 gold and an Elixir)
+            
+            const goldAmount = 50 + Math.floor(Math.random() * 50);
+            gameState.player.coins += goldAmount;
+            logMessage(`You found ${goldAmount} Gold!`);
+            
+            if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                 gameState.player.inventory.push({
+                    name: 'Elixir of Life',
+                    type: 'consumable',
+                    quantity: 1,
+                    tile: '🍷',
+                    effect: ITEM_DATA['🍷'].effect // Re-bind effect
+                });
+                logMessage("You found an Elixir of Life!");
+            }
+            
+            // Clear the chest
+            chunkManager.setWorldTile(newX, newY, '.'); 
+            
+            playerRef.update({ coins: gameState.player.coins, inventory: gameState.player.inventory });
+            renderInventory();
+            return; 
+        }
+
         else if (newTile === '<') {
             const player = gameState.player;
             let tileId;
@@ -6708,14 +7237,93 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
                         foundLore: Array.from(gameState.foundLore)
                     });
                 }
+                
+                // --- BIOME DETECTION LOGIC ---
+                // We recalculate the noise for this specific spot to determine the biome
+                // Note: We divide coordinates by CHUNK_SIZE (16) because the noise function expects world coords
+                // Actually, newX/newY ARE world coords, so we use the same math as generateChunk.
+                const elev = elevationNoise.noise(newX / 70, newY / 70);
+                const moist = moistureNoise.noise(newX / 50, newY / 50);
+
+                let loreArray = LORE_PLAINS; // Default
+                let biomeName = "Plains";
+
+                if (elev < 0.4 && moist > 0.7) {
+                    loreArray = LORE_SWAMP;
+                    biomeName = "Swamp";
+                } else if (elev > 0.8) {
+                    loreArray = LORE_MOUNTAIN;
+                    biomeName = "Mountain";
+                } else if (moist > 0.55) {
+                    loreArray = LORE_FOREST;
+                    biomeName = "Forest";
+                }
+                // --- END BIOME DETECTION ---
+
                 const seed = stringToSeed(tileId);
                 const random = Alea(seed);
-                const messageIndex = Math.floor(random() * LORE_STONE_MESSAGES.length);
-                const message = LORE_STONE_MESSAGES[messageIndex];
-                loreTitle.textContent = "A Faded Rune Stone";
-                loreContent.textContent = `The stone hums with a faint energy. You can just make out the words:\n\n"...${message}..."`;
+                const messageIndex = Math.floor(random() * loreArray.length);
+                const message = loreArray[messageIndex];
+
+                loreTitle.textContent = `Rune Stone (${biomeName})`;
+                loreContent.textContent = `The stone hums with the energy of the ${biomeName}.\n\n"...${message}..."`;
                 loreModal.classList.remove('hidden');
                 return;
+            }
+
+            if (tileData.type === 'obelisk') {
+                 // 1. Check if this is a new discovery
+                 if (!gameState.foundLore.has(tileId)) {
+    // ... (XP and Lore logic) ...
+
+    // --- STACK-AWARE DROP LOGIC ---
+    // Step 1: Look for an existing stack first
+    const existingStack = gameState.player.inventory.find(item => item.name === 'Obsidian Shard');
+    
+    if (existingStack) {
+        // Case A: We found a stack! Just add to it.
+        existingStack.quantity++;
+        logMessage("The Obelisk hums, and another shard forms in your pack.");
+        playerRef.update({ inventory: gameState.player.inventory });
+        renderInventory();
+    } 
+    else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+        // Case B: No stack, but we have room for a new one.
+        gameState.player.inventory.push({
+            name: 'Obsidian Shard',
+            type: 'junk',
+            quantity: 1,
+            tile: '▲'
+        });
+        logMessage("The Obelisk hums, and a shard of black glass falls into your hand.");
+        playerRef.update({ inventory: gameState.player.inventory });
+        renderInventory();
+    } 
+    else {
+        // Case C: No stack and no room.
+        logMessage("The Obelisk offers a shard, but your inventory is full!");
+    }
+                }
+                
+                if (gameState.player.mana < gameState.player.maxMana || gameState.player.psyche < gameState.player.maxPsyche) {
+                    gameState.player.mana = gameState.player.maxMana;
+                    gameState.player.psyche = gameState.player.maxPsyche;
+                    triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                    triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+                    logMessage("The ancient stone restores your magical energy.");
+                    playerRef.update({ mana: gameState.player.mana, psyche: gameState.player.psyche });
+                    renderStats();
+                }
+
+                const seed = stringToSeed(tileId);
+                const random = Alea(seed);
+                const visionIndex = Math.floor(random() * VISIONS_OF_THE_PAST.length);
+                const vision = VISIONS_OF_THE_PAST[visionIndex];
+
+                loreTitle.textContent = "Ancient Obelisk";
+                loreContent.textContent = `The black stone is cold to the touch. Suddenly, the world fades away...\n\n${vision}`;
+                loreModal.classList.remove('hidden');
+                return; // Stop the player's move
             }
 
             if (tileData.type === 'random_journal') {
@@ -6806,10 +7414,15 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
 
                 } else if (playerQuest.status === 'completed') {
                     // --- SCENARIO C: Player has completed the quest ---
+                    const seed = stringToSeed(tileId); // Need a seed for consistent rumor
+                    const random = Alea(seed);
+                    const rumor = VILLAGER_RUMORS[Math.floor(random() * VILLAGER_RUMORS.length)];
+
                     loreTitle.textContent = "Grateful Villager";
                     loreContent.innerHTML = `
-                        <p>The villager smiles warmly.\n\n"Thank you again for your help, traveler. I'll never forget what you did."</p>
-                        <button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"You're welcome."</button>
+                        <p>The villager smiles warmly.\n\n"Thank you again for your help, traveler. By the way..."</p>
+                        <p class="italic text-sm mt-2">"${rumor}"</p>
+                        <button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Good to know."</button>
                     `;
                     loreModal.classList.remove('hidden');
 
@@ -7384,36 +7997,62 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
             }
         }
 
-        if (newTile === '^' && gameState.mapMode === 'overworld') {
+        if (gameState.mapMode === 'overworld') {
             const playerInventory = gameState.player.inventory;
-            
-            // Check if player has a Pickaxe
-            if (playerInventory.some(item => item.name === 'Pickaxe')) {
-                logMessage("You use your Pickaxe to chip at the rock...");
-                
-                // 25% chance to find ore
-                if (Math.random() < 0.25) {
-                    const existingStack = playerInventory.find(item => item.name === 'Iron Ore');
+            const hasPickaxe = playerInventory.some(item => item.name === 'Pickaxe');
+
+            if (hasPickaxe) {
+                // Case A: Mining Mountains
+                if (newTile === '^') {
+                    logMessage("You use your Pickaxe to chip at the rock...");
                     
-                    if (existingStack) {
-                        existingStack.quantity++;
-                        logMessage("...and find some Iron Ore!");
-                        inventoryWasUpdated = true;
-                    } else if (playerInventory.length < MAX_INVENTORY_SLOTS) {
-                        // Add new item
-                        playerInventory.push({
-                            name: 'Iron Ore',
-                            type: 'junk',
-                            quantity: 1,
-                            tile: '•'
-                        });
-                        logMessage("...and find some Iron Ore!");
-                        inventoryWasUpdated = true;
+                    // 25% chance to find ore
+                    if (Math.random() < 0.25) {
+                        const existingStack = playerInventory.find(item => item.name === 'Iron Ore');
+                        
+                        if (existingStack) {
+                            existingStack.quantity++;
+                            logMessage("...and find some Iron Ore!");
+                            inventoryWasUpdated = true;
+                        } else if (playerInventory.length < MAX_INVENTORY_SLOTS) {
+                            // Add new item
+                            playerInventory.push({
+                                name: 'Iron Ore',
+                                type: 'junk',
+                                quantity: 1,
+                                tile: '•'
+                            });
+                            logMessage("...and find some Iron Ore!");
+                            inventoryWasUpdated = true;
+                        } else {
+                            logMessage("...you find ore, but your inventory is full!");
+                        }
                     } else {
-                        logMessage("...you find ore, but your inventory is full!");
+                        logMessage("...but find nothing of value.");
                     }
-                } else {
-                    logMessage("...but find nothing of value.");
+                } 
+                // Case B: Digging for Treasure
+                else if (gameState.activeTreasure && 
+                         newX === gameState.activeTreasure.x && 
+                         newY === gameState.activeTreasure.y) {
+                    
+                    logMessage("You dig where the map marked... clunk!");
+                    logMessage("You found a Buried Chest!");
+                    
+                    // Spawn the chest tile
+                    chunkManager.setWorldTile(newX, newY, '📦');
+                    
+                    // Clear the active treasure
+                    gameState.activeTreasure = null;
+                    
+                    // Consume the map
+                    const mapIndex = playerInventory.findIndex(i => i.type === 'treasure_map');
+                    if (mapIndex > -1) {
+                         playerInventory[mapIndex].quantity--;
+                         if (playerInventory[mapIndex].quantity <= 0) playerInventory.splice(mapIndex, 1);
+                         logMessage("The map crumbles to dust, its purpose fulfilled.");
+                    }
+                    inventoryWasUpdated = true;
                 }
             }
         }
