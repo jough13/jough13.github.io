@@ -2589,31 +2589,31 @@ generateCave(caveId) {
 
             const featureRoll = random();
 
-                // 0.001% chance to spawn the Landmark Fortress
-                if (tile === '.' && featureRoll < 0.00001) { 
+                
+                if (tile === '.' && featureRoll < 0.000001) { 
                     this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
                 
-                } else if (tile === '.' && featureRoll < 0.00011) { // 0.01% chance
+                } else if (tile === '.' && featureRoll < 0.000011) { 
                     this.setWorldTile(worldX, worldY, 'V');
                     chunkData[y][x] = 'V';
 
-                } else if (tile === '.' && featureRoll < 0.00061) { // 0.05% chance
+                } else if (tile === '.' && featureRoll < 0.000061) { 
                     this.setWorldTile(worldX, worldY, '⛩️');
                     chunkData[y][x] = '⛩️';
 
-                } else if (tile === '.' && featureRoll < 0.00071) { // 0.01% chance
+                } else if (tile === '.' && featureRoll < 0.000071) { 
                     this.setWorldTile(worldX, worldY, '|');
                     chunkData[y][x] = '|';
 
-                } else if (tile === '.' && featureRoll < 0.001) { // Rare on plains
+                } else if (tile === '.' && featureRoll < 0.0001) {
                     this.setWorldTile(worldX, worldY, '⛲');
                     chunkData[y][x] = '⛲';
-                } else if ((tile === 'd' || tile === 'D') && featureRoll < 0.001) { // Rifts in Deadlands/Desert
+                } else if ((tile === 'd' || tile === 'D') && featureRoll < 0.00001) { 
                     this.setWorldTile(worldX, worldY, 'Ω');
                     chunkData[y][x] = 'Ω';
 
-                } else if (tile === '.' && featureRoll < 0.01) { // <-- INCREASED to 1% (was 0.0003)
+                } else if (tile === '.' && featureRoll < 0.001) { 
                     let features = Object.keys(TILE_DATA);
                     // Filter out tiles that shouldn't auto-spawn
                     features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' &&
@@ -2628,11 +2628,11 @@ generateCave(caveId) {
                     // Use the seeded random, not Math.random
                     const featureTile = features[Math.floor(random() * features.length)]; 
                     
-                    // --- REVISED LOGIC ---
+                  
                     // ALWAYS set the tile in the DB and local chunk
                     this.setWorldTile(worldX, worldY, featureTile);
                     chunkData[y][x] = featureTile;
-                    // --- END REVISED LOGIC ---
+                   
 
                 } else if (tile === '.' && featureRoll < 0.015) {
                     // Check if this land tile is adjacent to water by checking elevation noise
@@ -2661,14 +2661,14 @@ generateCave(caveId) {
 
                     // --- FORESTS: Wolves ('w') or Wildberries (':') ---
                     if (tile === 'F') {
-                        if (hostileRoll < 0.0002) {
+                        if (hostileRoll < 0.002) {
                             chunkData[y][x] = 'w'; 
                         } else if (hostileRoll < 0.00025) { // Rare Elite Spawn
                             chunkData[y][x] = '🐺'; 
                         } else if (hostileRoll < 0.00035) { // Rare Trader Spawn
                             chunkData[y][x] = '¥';
                             this.setWorldTile(worldX, worldY, '¥');
-                        } else if (hostileRoll < 0.01) { 
+                        } else if (hostileRoll < 0.001) { 
                             chunkData[y][x] = ':'; 
                             this.setWorldTile(worldX, worldY, ':');
                         } else {
@@ -2678,10 +2678,10 @@ generateCave(caveId) {
 
                     else if (tile === 'd') {
                         // Deadlands are dangerous!
-                        if (hostileRoll < 0.001) { // High spawn rate
-                            if (hostileRoll < 0.0005) chunkData[y][x] = 's'; // Skeletons
+                        if (hostileRoll < 0.0001) { // High spawn rate
+                            if (hostileRoll < 0.000005) chunkData[y][x] = 's'; // Skeletons
                             else chunkData[y][x] = 'b'; // Bandits
-                        } else if (hostileRoll < 0.02) {
+                        } else if (hostileRoll < 0.0002) {
                              chunkData[y][x] = 'T'; // Dead Trees (Decoration)
                              this.setWorldTile(worldX, worldY, 'T');
                         } else {
@@ -2690,10 +2690,10 @@ generateCave(caveId) {
                     }
 
                         else if (tile === 'D') {
-                         if (hostileRoll < 0.02) { // Cacti are common
+                         if (hostileRoll < 0.0002) { // Cacti are common
                             chunkData[y][x] = '🌵';
                             this.setWorldTile(worldX, worldY, '🌵');
-                         } else if (hostileRoll < 0.022) { // Scorpions
+                         } else if (hostileRoll < 0.0022) { // Scorpions
                             chunkData[y][x] = '🦂';
                          } else {
                             chunkData[y][x] = tile;
@@ -2702,7 +2702,7 @@ generateCave(caveId) {
 
                     // --- SWAMPS: Giant Leeches ('l') ---
                     else if (tile === '≈') {
-                        if (hostileRoll < 0.0003) { // Slightly more common than wolves
+                        if (hostileRoll < 0.0000003) { // Slightly more common than wolves
                             chunkData[y][x] = 'l'; // Giant Leech
                         } else {
                             chunkData[y][x] = tile;
@@ -2710,15 +2710,15 @@ generateCave(caveId) {
                     }
                     // --- PLAINS: Wolves, Bandits, or Chiefs ---
                     else if (tile === '.') {
-                        if (hostileRoll < 0.0002) {
-                            if (hostileRoll < 0.0001) {
+                        if (hostileRoll < 0.000002) {
+                            if (hostileRoll < 0.000001) {
                                 chunkData[y][x] = 'w'; // Wolf
                             } else {
                                 // Bandit spawn
                                 if (random() < 0.1) chunkData[y][x] = 'C'; // Chief
                                 else chunkData[y][x] = 'b'; // Bandit
                             }
-                        } else if (hostileRoll < 0.00025) { // Rare Trader Spawn (Plains)
+                        } else if (hostileRoll < 0.000025) { // Rare Trader Spawn (Plains)
                             chunkData[y][x] = '¥';
                             this.setWorldTile(worldX, worldY, '¥');
                         } else {
@@ -3090,6 +3090,12 @@ function handleItemDrop(event) {
     const itemIndex = keyNum - 1;
     const itemToDrop = player.inventory[itemIndex];
 
+    if (itemToDrop.isEquipped) {
+        logMessage("You cannot drop an item you are wearing!");
+        gameState.isDroppingItem = false;
+        return;
+    }
+
     if (!itemToDrop) {
         logMessage("No item in that slot.");
         gameState.isDroppingItem = false; // Exit drop mode
@@ -3172,7 +3178,8 @@ function handleItemDrop(event) {
         statBonuses: item.statBonuses || null,
         spellId: item.spellId || null,
         skillId: item.skillId || null,
-        stat: item.stat || null
+        stat: item.stat || null,
+        isEquipped: item.isEquipped || false
         }));
     
         playerRef.update({
@@ -3407,7 +3414,8 @@ function handleBuyItem(itemName) {
         statBonuses: item.statBonuses || null,
         spellId: item.spellId || null,
         skillId: item.skillId || null,
-        stat: item.stat || null
+        stat: item.stat || null,
+        isEquipped: item.isEquipped || false
     
         }));
     
@@ -3424,6 +3432,11 @@ function handleBuyItem(itemName) {
 function handleSellItem(itemIndex) {
     const player = gameState.player;
     const itemToSell = player.inventory[itemIndex];
+
+    if (itemToSell.isEquipped) {
+        logMessage("You cannot sell an item you are wearing!");
+        return;
+    }
 
     if (!itemToSell) {
         logMessage("Error: Item not in inventory.");
@@ -3466,7 +3479,8 @@ function handleSellItem(itemIndex) {
         statBonuses: item.statBonuses || null,
         spellId: item.spellId || null,
         skillId: item.skillId || null,
-        stat: item.stat || null
+        stat: item.stat || null,
+        isEquipped: item.isEquipped || false
         
         }));
 
@@ -4238,7 +4252,7 @@ function turnInQuest(questId) {
 
     if (quest.type === 'fetch') {
         // --- Check for item ---
-        itemIndex = gameState.player.inventory.findIndex(item => item.name === quest.itemNeeded);
+        itemIndex = gameState.player.inventory.findIndex(item => item.name === quest.itemNeeded && !item.isEquipped);
         if (itemIndex === -1) {
             logMessage(`You don't have the ${quest.itemNeeded}!`);
             hasRequirements = false;
@@ -4306,7 +4320,8 @@ function turnInQuest(questId) {
             statBonuses: item.statBonuses || null,
             spellId: item.spellId || null,
             skillId: item.skillId || null,
-            stat: item.stat || null
+            stat: item.stat || null,
+            isEquipped: item.isEquipped || false
         }))
     });
 
@@ -4525,7 +4540,8 @@ function handleCraftItem(recipeName) {
         statBonuses: item.statBonuses || null,
         spellId: item.spellId || null,
         skillId: item.skillId || null,
-        stat: item.stat || null
+        stat: item.stat || null,
+        isEquipped: item.isEquipped || false
     
     }));
     
@@ -5224,7 +5240,13 @@ const renderInventory = () => {
     } else {
         gameState.player.inventory.forEach((item, index) => {
             const itemDiv = document.createElement('div');
-            itemDiv.className = 'inventory-slot p-2 rounded-md';
+            
+            // Check for isEquipped flag
+            if (item.isEquipped) {
+                itemDiv.className = 'inventory-slot equipped p-2 rounded-md';
+            } else {
+                itemDiv.className = 'inventory-slot p-2 rounded-md';
+            }
 
             let title = item.name;
             if (item.statBonuses) {
@@ -6354,75 +6376,50 @@ if (dirX !== 0 || dirY !== 0) {
                 }
                 itemUsed = true;
 
-            } else if (itemToUse.type === 'weapon') {
-                // --- 1. EQUIP WEAPON (This is the missing logic) ---
-                const oldWeapon = gameState.player.equipment.weapon;
-
-                applyStatBonuses(oldWeapon, -1); // <-- SUBTRACT old bonuses
-                gameState.player.equipment.weapon = itemToUse;
-                applyStatBonuses(itemToUse, 1);  // <-- ADD new bonuses
-
-                // Equip the new item
-                gameState.player.equipment.weapon = itemToUse;
-                gameState.player.inventory.splice(itemIndex, 1);
-
-                // Add the old weapon back to inventory (if it's not Fists)
-                if (oldWeapon && oldWeapon.name !== 'Fists') {
-                    const oldWeaponItem = {
-                        name: oldWeapon.name,
-                        type: 'weapon',
-                        quantity: 1,
-                        tile: oldWeapon.tile || '/', // Use default stick tile if missing
-                        damage: oldWeapon.damage,
-                        slot: oldWeapon.slot,
-                        statBonuses: oldWeapon.statBonuses || null
-                    };
-
-                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                        gameState.player.inventory.push(oldWeaponItem);
-                    } else {
-                        logMessage(`Inventory full! Your old ${oldWeapon.name} is dropped on the ground.`);
-                        // We'll just log this for now. A more complex fix
-                        // would be to drop it on the map, but this prevents the bug.
-                    }
-
+            // 1. Find currently equipped weapon (if any) and unequip it
+                const currentWeapon = gameState.player.inventory.find(i => i.type === 'weapon' && i.isEquipped);
+                if (currentWeapon) {
+                    applyStatBonuses(currentWeapon, -1); // Remove stats
+                    currentWeapon.isEquipped = false;
                 }
 
-                logMessage(`You equip the ${itemToUse.name}.`);
-                itemUsed = true;
+                // 2. If we selected the SAME weapon, we are just unequipping it.
+                if (currentWeapon === itemToUse) {
+                    gameState.player.equipment.weapon = { name: 'Fists', damage: 0 };
+                    logMessage(`You unequip the ${itemToUse.name}.`);
+                } else {
+                    // 3. Equip the new weapon
+                    itemToUse.isEquipped = true;
+                    gameState.player.equipment.weapon = itemToUse;
+                    applyStatBonuses(itemToUse, 1); // Add stats
+                    logMessage(`You equip the ${itemToUse.name}.`);
+                }
+                
+                itemUsed = true; // Triggers save/render
+            }
 
             } else if (itemToUse.type === 'armor') {
-                // --- 2. EQUIP ARMOR (New Logic) ---
-                const oldArmor = gameState.player.equipment.armor;
-
-                applyStatBonuses(oldArmor, -1); // <-- SUBTRACT old bonuses
-                gameState.player.equipment.armor = itemToUse;
-                applyStatBonuses(itemToUse, 1);  // <-- ADD new bonuses
-
-                // Equip the new item
-                gameState.player.equipment.armor = itemToUse;
-                gameState.player.inventory.splice(itemIndex, 1);
-
-                // Add the old armor back to inventory (if it's not Simple Tunic)
-                if (oldArmor && oldArmor.name !== 'Simple Tunic') {
-                    const oldArmorItem = {
-                        name: oldArmor.name,
-                        type: 'armor',
-                        quantity: 1,
-                        tile: oldArmor.tile || '%',
-                        defense: oldArmor.defense,
-                        slot: oldArmor.slot,
-                        statBonuses: oldArmor.statBonuses || null
-                    };
-
-                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                        gameState.player.inventory.push(oldArmorItem);
-                    } else {
-                        logMessage(`Inventory full! Your old ${oldArmor.name} is dropped on the ground.`);
-                    }
+                // --- NEW EQUIP LOGIC (No Splice) ---
+                
+                // 1. Find currently equipped armor
+                const currentArmor = gameState.player.inventory.find(i => i.type === 'armor' && i.isEquipped);
+                if (currentArmor) {
+                    applyStatBonuses(currentArmor, -1);
+                    currentArmor.isEquipped = false;
                 }
 
-                logMessage(`You equip the ${itemToUse.name}.`);
+                // 2. Toggle check
+                if (currentArmor === itemToUse) {
+                    gameState.player.equipment.armor = { name: 'Simple Tunic', defense: 0 };
+                    logMessage(`You unequip the ${itemToUse.name}.`);
+                } else {
+                    // 3. Equip new
+                    itemToUse.isEquipped = true;
+                    gameState.player.equipment.armor = itemToUse;
+                    applyStatBonuses(itemToUse, 1);
+                    logMessage(`You equip the ${itemToUse.name}.`);
+                }
+
                 itemUsed = true;
 
             } else if (itemToUse.type === 'spellbook') {
@@ -6567,8 +6564,8 @@ if (dirX !== 0 || dirY !== 0) {
             // --- END BRANCHING LOGIC ---
 
             if (itemUsed) {
+                // 1. Define the inventory map
                 const inventoryToSave = gameState.player.inventory.map(item => ({
-
                     name: item.name,
                     type: item.type,
                     quantity: item.quantity,
@@ -6579,10 +6576,11 @@ if (dirX !== 0 || dirY !== 0) {
                     statBonuses: item.statBonuses || null,
                     spellId: item.spellId || null,
                     skillId: item.skillId || null,
-                    stat: item.stat || null
-                
+                    stat: item.stat || null,
+                    isEquipped: item.isEquipped || false 
                 }));
 
+                // 2. Update Firebase
                 playerRef.update({
                     inventory: inventoryToSave,
                     equipment: gameState.player.equipment,
@@ -6598,7 +6596,6 @@ if (dirX !== 0 || dirY !== 0) {
                     perception: gameState.player.perception,
                     endurance: gameState.player.endurance,
                     intuition: gameState.player.intuition
-
                 });
 
                 syncPlayerState();
@@ -6607,10 +6604,6 @@ if (dirX !== 0 || dirY !== 0) {
                 renderEquipment();
                 renderStats();
             }
-
-            closeInventoryModal();
-            return;
-        }
 
         // --- Start: Correct 'D' Key Logic (for Drop) ---
         if (event.key === 'd' || event.key === 'D') {
@@ -6726,6 +6719,7 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>',
                            ']', '8', '❄️', '🌀', '😱', '☣️', '‡', '🧪', '💀', 'a', 'r', 'j',
                            '⛏️', '•', '<', 'I', '⛩️', '|', '▲', '⚔️', '🛡️', ':', '🍄', 'l', '¥', '⛲', 'Ω', '🌵', '🍐', '🦂',
                            '🐺', '👺', '🍷', '🧪', '🌿', '🌵'];
+
     const tileAtDestination = chunkManager.getTile(newX, newY);
     if (obsoleteTiles.includes(tileAtDestination)) {
         logMessage("You clear away remnants of an older age.");
@@ -7198,7 +7192,7 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
         }
         
         // 3. If no collision, check for special tiles (entrances, lore, etc.)
-        
+
         if (tileData) {
             const tileId = `${newX},${-newY}`; // Get tileId for XP checks
 
@@ -8230,7 +8224,8 @@ logoutButton.addEventListener('click', () => {
             statBonuses: item.statBonuses || null,
             spellId: item.spellId || null,
             skillId: item.skillId || null,
-            stat: item.stat || null
+            stat: item.stat || null,
+            isEquipped: item.isEquipped || false
         }));
     }
 
@@ -8335,7 +8330,8 @@ async function startGame(user) {
                         statBonuses: item.statBonuses || null,
                         spellId: item.spellId || null,
                         skillId: item.skillId || null,
-                        stat: item.stat || null
+                        stat: item.stat || null,
+                        isEquipped: item.isEquipped || false
 
                     }));
                 }
@@ -8386,6 +8382,14 @@ async function startGame(user) {
                         }
                     }
                 });
+
+                // After loading inventory, set equipment pointers
+                const equippedWeapon = playerData.inventory.find(i => i.type === 'weapon' && i.isEquipped);
+                const equippedArmor = playerData.inventory.find(i => i.type === 'armor' && i.isEquipped);
+
+                gameState.player.equipment.weapon = equippedWeapon || { name: 'Fists', damage: 0 };
+                gameState.player.equipment.armor = equippedArmor || { name: 'Simple Tunic', defense: 0 };
+
                 gameState.player.inventory = playerData.inventory;
                 renderInventory();
             }
