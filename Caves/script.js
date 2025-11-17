@@ -6745,6 +6745,8 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>',
             newTile = chunkManager.getTile(newX, newY);
         }
 
+        const tileData = TILE_DATA[newTile];
+
         if (newTile === '¥') {
             activeShopInventory = TRADER_INVENTORY;
             logMessage("You meet a Wandering Trader. 'Rare goods, for a price...'");
@@ -7196,7 +7198,7 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
         }
         
         // 3. If no collision, check for special tiles (entrances, lore, etc.)
-        const tileData = TILE_DATA[newTile];
+        
         if (tileData) {
             const tileId = `${newX},${-newY}`; // Get tileId for XP checks
 
