@@ -6213,35 +6213,6 @@ loreModal.addEventListener('click', (event) => {
 document.addEventListener('keydown', (event) => {
     if (!player_id || gameState.player.health <= 0 || document.activeElement === chatInput) return;
 
-            if (gameState.player.thornsValue > 0) {
-                            enemy.health -= gameState.player.thornsValue;
-                            logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} damage from your thorns!`);
-
-                            if (enemy.health <= 0) {
-                                logMessage(`The ${enemy.name} is killed by your thorns!`);
-                                grantXp(enemy.xp);
-                                updateQuestProgress(enemy.tile);
-                                const droppedLoot = generateEnemyLoot(gameState.player, enemy);
-                                
-                                // Remove from the array immediately
-                                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
-
-                                // Place loot on the map
-                                if (gameState.mapMode === 'dungeon') {
-                                    chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
-                                }
-                                // (If we add castle enemies later, add castle loot logic here)
-                            }
-                        }
-
-            if (newTile === '¥') {
-            activeShopInventory = TRADER_INVENTORY;
-            logMessage("You meet a Wandering Trader. 'Rare goods, for a price...'");
-            renderShop();
-            shopModal.classList.remove('hidden');
-            return;
-        }
-
     if (event.key === 'Escape') {
         // Check if a modal is open and close it
         if (!helpModal.classList.contains('hidden')) {
@@ -6774,6 +6745,14 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>',
             newTile = chunkManager.getTile(newX, newY);
         }
 
+        if (newTile === '¥') {
+            activeShopInventory = TRADER_INVENTORY;
+            logMessage("You meet a Wandering Trader. 'Rare goods, for a price...'");
+            renderShop();
+            shopModal.classList.remove('hidden');
+            return;
+        }
+
         // 2. Perform ALL collision checks immediately.
         // --- DUNGEON WALL CHECK ---
         if (gameState.mapMode === 'dungeon') {
@@ -6877,6 +6856,27 @@ if (Math.random() < luckDodgeChance) { //
                                 triggerStatFlash(statDisplays.health, false);
                                 logMessage(`The ${enemy.name} hits you for ${damageToApply} damage!`);
                             }
+
+                            if (gameState.player.thornsValue > 0) {
+                            enemy.health -= gameState.player.thornsValue;
+                            logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} damage from your thorns!`);
+
+                            if (enemy.health <= 0) {
+                                logMessage(`The ${enemy.name} is killed by your thorns!`);
+                                grantXp(enemy.xp);
+                                updateQuestProgress(enemy.tile);
+                                const droppedLoot = generateEnemyLoot(gameState.player, enemy);
+                                
+                                // Remove from the array immediately
+                                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
+
+                                // Place loot on the map
+                                if (gameState.mapMode === 'dungeon') {
+                                    chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
+                                }
+                                // (If we add castle enemies later, add castle loot logic here)
+                            }
+                        }
                             // --- END NEW SHIELD LOGIC ---
                         }
                         // --- END LUCK DODGE CHECK ---
