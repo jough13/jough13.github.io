@@ -22,6 +22,65 @@
                <p id="authError" class="text-red-500 text-center text-sm min-h-[1rem]"></p>
             </div>
          </div>
+         <div id="charCreationModal" class="themed-container mx-auto max-w-2xl p-6 rounded-2xl shadow-xl border-2 hidden">
+            <h1 class="text-3xl font-bold text-center mb-2">Choose Your Path</h1>
+            <p class="text-center muted-text mb-6">Who were you before you arrived here?</p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+               
+               <div class="panel p-4 rounded-xl border-2 hover:border-blue-500 cursor-pointer transition-all" onclick="selectBackground('warrior')">
+                  <div class="text-4xl text-center mb-2">⚔️</div>
+                  <h3 class="text-xl font-bold text-center mb-1">Warrior</h3>
+                  <p class="text-sm text-center muted-text mb-3">Strong and tough.</p>
+                  <ul class="text-xs space-y-1 list-disc list-inside">
+                     <li>+2 Strength</li>
+                     <li>+1 Constitution</li>
+                     <li class="text-green-600">Start: Rusty Sword</li>
+                  </ul>
+               </div>
+
+               <div class="panel p-4 rounded-xl border-2 hover:border-yellow-500 cursor-pointer transition-all" onclick="selectBackground('rogue')">
+                  <div class="text-4xl text-center mb-2">🗡️</div>
+                  <h3 class="text-xl font-bold text-center mb-1">Rogue</h3>
+                  <p class="text-sm text-center muted-text mb-3">Fast and lucky.</p>
+                  <ul class="text-xs space-y-1 list-disc list-inside">
+                     <li>+2 Dexterity</li>
+                     <li>+1 Luck</li>
+                     <li class="text-green-600">Start: Bone Dagger</li>
+                  </ul>
+               </div>
+
+               <div class="panel p-4 rounded-xl border-2 hover:border-purple-500 cursor-pointer transition-all" onclick="selectBackground('mage')">
+                  <div class="text-4xl text-center mb-2">🔮</div>
+                  <h3 class="text-xl font-bold text-center mb-1">Mage</h3>
+                  <p class="text-sm text-center muted-text mb-3">Wise and willful.</p>
+                  <ul class="text-xs space-y-1 list-disc list-inside">
+                     <li>+2 Wits</li>
+                     <li>+1 Willpower</li>
+                     <li class="text-green-600">Start: Magic Bolt</li>
+                  </ul>
+               </div>
+
+               <div class="panel p-4 rounded-xl border-2 hover:border-red-600 cursor-pointer transition-all" onclick="selectBackground('wretch')">
+                  <div class="text-4xl text-center mb-2">🦴</div>
+                  <h3 class="text-xl font-bold text-center mb-1">Wretch</h3>
+                  <p class="text-sm text-center text-red-500 mb-3 font-bold">HARD MODE</p>
+                  <ul class="text-xs space-y-1 list-disc list-inside">
+                     <li>No Stat Bonus</li>
+                     <li>No Weapon</li>
+                     <li class="text-red-500">Start: Tattered Rags</li>
+                  </ul>
+               </div>
+
+            </div>
+
+            <div class="mt-6 text-center">
+                <button onclick="const keys=['warrior','rogue','mage','wretch']; selectBackground(keys[Math.floor(Math.random()*keys.length)])" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-full transition-all">
+                    🎲 Random Fate
+                </button>
+            </div>
+         </div>
+         <div id="gameContainer" class="themed-container game-container mx-auto p-6 rounded-2xl shadow-lg border-2 hidden">
          <div id="gameContainer" class="themed-container game-container mx-auto p-6 rounded-2xl shadow-lg border-2 hidden">
             <div id="loadingIndicator" class="absolute inset-0 flex items-center justify-center bg-[var(--bg-container)] z-50">
                <p class="text-2xl font-bold highlight-text">Loading...</p>
@@ -296,7 +355,7 @@ HTML
       </div>
 
       <footer class="text-center text-xs muted-text mt-4">
-         <p>Version 0.1.5 | Last Updated: November 12, 2025</p>
+         <p>Version 0.1.5 | Last Updated: November 19, 2025</p>
       </footer>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
