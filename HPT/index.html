@@ -17456,11 +17456,15 @@ if (mainContentRef.current) {
              const delta = dcgl_val - lbgr_val;
              const relativeShift = delta / sigma_val;
              const shiftKeys = Object.keys(prValues).map(parseFloat);
-             let Pr;
-             if (relativeShift >= 4) {
-               Pr = 1;
-             } else {
-               const lowerKey = Math.max(...shiftKeys.filter(k => k <= relativeShift));
+let Pr;
+if (relativeShift >= 4) {
+    Pr = 1;
+} else if (relativeShift <= 0) {
+    // Relative shift <= 0 means the survey unit is significantly "hotter" than reference + DCGL.
+    // Probability of passing is essentially 0.
+    Pr = 0; 
+} else {
+    const lowerKey = Math.max(...shiftKeys.filter(k => k <= relativeShift));
                const upperKey = Math.min(...shiftKeys.filter(k => k > relativeShift));
                if (isFinite(lowerKey) && isFinite(upperKey)) {
                    const lowerP = prValues[lowerKey];
