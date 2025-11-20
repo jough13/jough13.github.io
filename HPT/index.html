@@ -15422,10 +15422,7 @@ if (mainContentRef.current) {
               * a specific nuclide symbol from another part of the application (e.g., from the main
               * nuclide search).
               */
-              
-         
-         
-         
+                      
          const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
          const CALC_MODE_GAMMA = 'gamma';
          const CALC_MODE_BETA = 'beta';
@@ -15558,6 +15555,17 @@ if (mainContentRef.current) {
          if (!selectedNuclide || !selectedNuclide.dosimetry?.ALI) return [];
          return Object.keys(selectedNuclide.dosimetry.ALI).filter(k => k.startsWith('inhalation_')).map(k => k.split('_')[1]);
          }, [selectedNuclide]);
+
+         React.useEffect(() => {
+        // If we are in internal mode, using inhalation, and we have classes available...
+        if (calcMode === CALC_MODE_INTERNAL && intakeRoute === 'inhalation' && availableClasses.length > 0) {
+            // If the current solubility is empty OR not in the list of valid classes for this nuclide...
+            if (!solubility || !availableClasses.includes(solubility)) {
+                // Automatically select the first available class (e.g., 'W')
+                setSolubility(availableClasses[0]);
+            }
+        }
+    }, [calcMode, intakeRoute, availableClasses, solubility]);
          
          // --- 5. CALCULATION LOGIC ---
          React.useEffect(() => {
