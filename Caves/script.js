@@ -922,6 +922,14 @@ const TRADER_INVENTORY = [
     { name: 'Tattered Map', price: 100, stock: 3 }
 ];
 
+const LORE_STONE_MESSAGES = [
+    "The stars align when the five thrones are empty.",
+    "Iron rots, but obsidian remembers.",
+    "Do not trust the water in the deep grotto.",
+    "The King was not the first to fall to the shadow.",
+    "Magic requires sacrifice. Always."
+];
+
 const LORE_PLAINS = [
     "The wind whispers of the Old King's return.",
     "These fields were once a great battlefield.",
@@ -6853,11 +6861,7 @@ if (dirX !== 0 || dirY !== 0) {
     event.preventDefault();
     if (newX === startX && newY === startY) return;
 
-const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>', 
-                           '★', '☆', '📕', '📗', '💪', '🧠', '"', 'n', 'u', 'q', '📄', 'P', '*',
-                           ']', '8', '❄️', '🌀', '😱', '☣️', '‡', '🧪', '💀', 'a', 'r', 'j',
-                           '⛏️', '•', '<', 'I', '⛩️', '|', '▲', '⚔️', '🛡️', ':', '🍄', 'l', '¥', '⛲', 'Ω', '🌵', '🍐', '🦂',
-                           '🐺', '👺', '🍷', '🧪', '🌿', '🌵', 'x','1', '2', '3', '4'];
+const obsoleteTiles = [];
 
     const tileAtDestination = chunkManager.getTile(newX, newY);
     if (obsoleteTiles.includes(tileAtDestination)) {
