@@ -873,45 +873,6 @@ const REGION_SIZE = 160;
 
 const MAX_INVENTORY_SLOTS = 9; // Max number of inventory stacks
 
-const PLAYER_BACKGROUNDS = {
-    'warrior': {
-        name: 'Warrior',
-        stats: { strength: 2, constitution: 1 },
-        items: [
-            { name: 'Rusty Sword', type: 'weapon', quantity: 1, tile: '!', damage: 2, slot: 'weapon' },
-            { name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
-            { name: 'Conscript\'s Orders', type: 'journal', quantity: 1, tile: '1', title: 'Crumpled Orders', content: ITEM_DATA['1'].content } // <-- Added Journal
-        ]
-    },
-    'rogue': {
-        name: 'Rogue',
-        stats: { dexterity: 2, luck: 1 },
-        items: [
-            { name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
-            { name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
-            { name: 'Thief\'s Map', type: 'journal', quantity: 1, tile: '2', title: 'Scribbled Map', content: ITEM_DATA['2'].content } // <-- Added Journal
-        ]
-    },
-    'mage': {
-        name: 'Mage',
-        stats: { wits: 2, willpower: 1 },
-        items: [
-             { name: 'Spellbook: Magic Bolt', type: 'spellbook', quantity: 1, tile: '📚', spellId: 'magicBolt' },
-             { name: 'Burned Scroll', type: 'journal', quantity: 1, tile: '3', title: 'Singed Parchment', content: ITEM_DATA['3'].content } // <-- Added Journal
-             // Mages keep default tunic
-        ]
-    },
-    // --- HARD MODE CLASS ---
-    'wretch': {
-        name: 'The Wretch',
-        stats: {}, // No bonus stats! (Starts with 1s)
-        items: [
-            { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor' },
-            { name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', content: ITEM_DATA['4'].content }
-        ]
-    }
-
-};
 
 const TRADER_INVENTORY = [
     { name: 'Elixir of Life', price: 500, stock: 1 },
@@ -2152,6 +2113,46 @@ const ITEM_DATA = {
             }
         }
     },
+};
+
+const PLAYER_BACKGROUNDS = {
+    'warrior': {
+        name: 'Warrior',
+        stats: { strength: 2, constitution: 1 },
+        items: [
+            { name: 'Rusty Sword', type: 'weapon', quantity: 1, tile: '!', damage: 2, slot: 'weapon' },
+            { name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
+            { name: 'Conscript\'s Orders', type: 'journal', quantity: 1, tile: '1', title: 'Crumpled Orders', content: ITEM_DATA['1'].content } // <-- Added Journal
+        ]
+    },
+    'rogue': {
+        name: 'Rogue',
+        stats: { dexterity: 2, luck: 1 },
+        items: [
+            { name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
+            { name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
+            { name: 'Thief\'s Map', type: 'journal', quantity: 1, tile: '2', title: 'Scribbled Map', content: ITEM_DATA['2'].content } // <-- Added Journal
+        ]
+    },
+    'mage': {
+        name: 'Mage',
+        stats: { wits: 2, willpower: 1 },
+        items: [
+             { name: 'Spellbook: Magic Bolt', type: 'spellbook', quantity: 1, tile: '📚', spellId: 'magicBolt' },
+             { name: 'Burned Scroll', type: 'journal', quantity: 1, tile: '3', title: 'Singed Parchment', content: ITEM_DATA['3'].content } // <-- Added Journal
+             // Mages keep default tunic
+        ]
+    },
+    // --- HARD MODE CLASS ---
+    'wretch': {
+        name: 'The Wretch',
+        stats: {}, // No bonus stats! (Starts with 1s)
+        items: [
+            { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor' },
+            { name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', content: ITEM_DATA['4'].content }
+        ]
+    }
+
 };
 
 const SPELL_DATA = {
