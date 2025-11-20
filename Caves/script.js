@@ -873,6 +873,46 @@ const REGION_SIZE = 160;
 
 const MAX_INVENTORY_SLOTS = 9; // Max number of inventory stacks
 
+const PLAYER_BACKGROUNDS = {
+    'warrior': {
+        name: 'Warrior',
+        stats: { strength: 2, constitution: 1 },
+        items: [
+            { name: 'Rusty Sword', type: 'weapon', quantity: 1, tile: '!', damage: 2, slot: 'weapon' },
+            { name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
+            { name: 'Conscript\'s Orders', type: 'journal', quantity: 1, tile: '1', title: 'Crumpled Orders', content: ITEM_DATA['1'].content } // <-- Added Journal
+        ]
+    },
+    'rogue': {
+        name: 'Rogue',
+        stats: { dexterity: 2, luck: 1 },
+        items: [
+            { name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
+            { name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
+            { name: 'Thief\'s Map', type: 'journal', quantity: 1, tile: '2', title: 'Scribbled Map', content: ITEM_DATA['2'].content } // <-- Added Journal
+        ]
+    },
+    'mage': {
+        name: 'Mage',
+        stats: { wits: 2, willpower: 1 },
+        items: [
+             { name: 'Spellbook: Magic Bolt', type: 'spellbook', quantity: 1, tile: '📚', spellId: 'magicBolt' },
+             { name: 'Burned Scroll', type: 'journal', quantity: 1, tile: '3', title: 'Singed Parchment', content: ITEM_DATA['3'].content } // <-- Added Journal
+             // Mages keep default tunic
+        ]
+    },
+    // --- HARD MODE CLASS ---
+    'wretch': {
+        name: 'The Wretch',
+        stats: {}, // No bonus stats! (Starts with 1s)
+        items: [
+            { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor' },
+            { name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', content: ITEM_DATA['4'].content }
+        ]
+    }
+
+};
+
 const TRADER_INVENTORY = [
     { name: 'Elixir of Life', price: 500, stock: 1 },
     { name: 'Elixir of Power', price: 500, stock: 1 },
@@ -967,6 +1007,7 @@ const CASTLE_PREFIXES = ["Broken", "Fallen", "King's", "Shadow", "Gleaming", "Ir
 const CASTLE_SUFFIXES = ["Spire", "Keep", "Fortress", "Hold", "Citadel", "Bastion", "Tower", "Ruin", "Reach", "Sanctum"];
 
 // DOM Element Selectors
+const charCreationModal = document.getElementById('charCreationModal');
 const timeDisplay = document.getElementById('timeDisplay');
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -1073,6 +1114,74 @@ const DAY_CYCLE_STOPS = [{
         opacity: 0.10
     }
 ];
+
+// Make it globally accessible for the HTML onclick
+window.selectBackground = async function(bgKey) {
+    const background = PLAYER_BACKGROUNDS[bgKey];
+    if (!background) return;
+
+    const player = gameState.player;
+
+    // 1. Apply Stats
+    for (const stat in background.stats) {
+        player[stat] += background.stats[stat];
+    }
+    // Heal to new max if Con increased
+    if (background.stats.constitution) {
+        player.maxHealth += (background.stats.constitution * 5);
+        player.health = player.maxHealth;
+    }
+    // Restore mana if Wits increased
+    if (background.stats.wits) {
+        player.maxMana += (background.stats.wits * 5);
+        player.mana = player.maxMana;
+    }
+
+    // 2. Apply Inventory
+    // We replace the default "Fists/Simple Tunic" start with the class kit
+    // Note: We keep the default inventory if the class items list doesn't override it completely
+    background.items.forEach(newItem => {
+        player.inventory.push(newItem);
+    });
+
+    // 3. Auto-Equip starting gear
+    const weapon = player.inventory.find(i => i.type === 'weapon');
+    const armor = player.inventory.find(i => i.type === 'armor');
+
+    if (weapon) {
+        player.equipment.weapon = weapon;
+        weapon.isEquipped = true;
+    }
+    if (armor) {
+        player.equipment.armor = armor;
+        armor.isEquipped = true;
+    }
+
+    // 4. Save to Database
+    // We save the whole player state + the new "background" tag
+    await playerRef.set({
+        ...player,
+        background: bgKey
+    }, { merge: true });
+
+    // 5. Start the Game UI
+    charCreationModal.classList.add('hidden');
+    gameContainer.classList.remove('hidden');
+    canvas.style.visibility = 'visible';
+    
+    logMessage(`You have chosen the path of the ${background.name}.`);
+    
+    // Re-run init logic to ensure UI catches up
+    renderStats();
+    renderEquipment();
+    renderInventory();
+    renderTime();
+    render();
+    
+    // Resume the connection listener that was paused/waiting
+    // (We don't need to explicitly resume, the firebase listener below is already running,
+    //  it just updates the state which we just modified)
+};
 
 function handleAuthError(error) {
     let friendlyMessage = '';
@@ -1984,6 +2093,36 @@ const ITEM_DATA = {
             logMessage('Juicy and refreshing! (+5 Stamina)');
             triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
         }
+    },
+    'x': {
+        name: 'Tattered Rags',
+        type: 'armor',
+        defense: 0, // Provides no protection!
+        slot: 'armor'
+    },
+    '1': {
+        name: 'Conscript\'s Orders',
+        type: 'journal',
+        title: 'Crumpled Orders',
+        content: "Soldier,\n\nThe fortress has fallen. The King is... changed. Regroup at the safe haven to the west. Do not engage the shadows. Survive at all costs."
+    },
+    '2': {
+        name: 'Thief\'s Map',
+        type: 'journal',
+        title: 'Scribbled Map',
+        content: "Easy job, they said. Just sneak in, grab the relic, sneak out. They didn't mention the walking skeletons. I dropped my lockpick near the entrance. If you're reading this, I'm probably dead."
+    },
+    '3': {
+        name: 'Burned Scroll',
+        type: 'journal',
+        title: 'Singed Parchment',
+        content: "The experiment failed. The rift is unstable. The creatures coming through... they feed on mana. I must warn the Sage. The Old King must not be disturbed."
+    },
+    '4': {
+        name: 'Mad Scrawlings',
+        type: 'journal',
+        title: 'Dirty Scrap',
+        content: "THE EYES. THE EYES IN THE DARK. THEY SEE ME. COLD. SO COLD. STONE IS SAFE. STONE DOES NOT LIE."
     },
     '$': {
         name: 'Gold Coin',
@@ -6718,7 +6857,7 @@ const obsoleteTiles = ['C', '<', '!', 'E', 'D', 'W', 'P', '&', '>',
                            '★', '☆', '📕', '📗', '💪', '🧠', '"', 'n', 'u', 'q', '📄', 'P', '*',
                            ']', '8', '❄️', '🌀', '😱', '☣️', '‡', '🧪', '💀', 'a', 'r', 'j',
                            '⛏️', '•', '<', 'I', '⛩️', '|', '▲', '⚔️', '🛡️', ':', '🍄', 'l', '¥', '⛲', 'Ω', '🌵', '🍐', '🦂',
-                           '🐺', '👺', '🍷', '🧪', '🌿', '🌵'];
+                           '🐺', '👺', '🍷', '🧪', '🌿', '🌵', 'x','1', '2', '3', '4'];
 
     const tileAtDestination = chunkManager.getTile(newX, newY);
     if (obsoleteTiles.includes(tileAtDestination)) {
@@ -8255,6 +8394,7 @@ async function startGame(user) {
     try {
         const doc = await playerRef.get();
         if (doc.exists) {
+            // --- EXISTING USER LOGIC ---
             let playerData = doc.data();
             if (playerData.health <= 0) {
                 logMessage("You have respawned.");
@@ -8280,17 +8420,31 @@ async function startGame(user) {
             if (playerData.lootedTiles && Array.isArray(playerData.lootedTiles)) {
                 gameState.lootedTiles = new Set(playerData.lootedTiles);
             } else {
-                // This is a new player or first login since the fix
                 gameState.lootedTiles = new Set();
             }
 
-        } else {
+            // --- ADD THIS BLOCK: CHECK FOR BACKGROUND ---
+            // If the player hasn't chosen a class yet, stop everything and show the modal.
+            if (!playerData.background) {
+                loadingIndicator.classList.add('hidden');
+                charCreationModal.classList.remove('hidden');
+                return; // <--- CRITICAL: Stops the game from loading further
+            }
+            // --- END BLOCK ---
 
-            // It handles users who are logged in but don't have a player document yet.
+        } else {
+            // --- NEW USER LOGIC ---
             logMessage("Welcome! Creating your character sheet...");
             const defaultState = createDefaultPlayerState();
             await playerRef.set(defaultState);
             Object.assign(gameState.player, defaultState);
+            
+            // --- ADD THIS BLOCK: FORCE SELECTION ---
+            // Immediately interrupt the load to show character creation
+            loadingIndicator.classList.add('hidden');
+            charCreationModal.classList.remove('hidden');
+            return; // <--- CRITICAL: Stops the game from loading further
+            // --- END BLOCK ---
         }
     } catch (error) {
         console.error("Error fetching initial player state:", error);
