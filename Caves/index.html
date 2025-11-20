@@ -81,7 +81,6 @@
             </div>
          </div>
          <div id="gameContainer" class="themed-container game-container mx-auto p-6 rounded-2xl shadow-lg border-2 hidden">
-         <div id="gameContainer" class="themed-container game-container mx-auto p-6 rounded-2xl shadow-lg border-2 hidden">
             <div id="loadingIndicator" class="absolute inset-0 flex items-center justify-center bg-[var(--bg-container)] z-50">
                <p class="text-2xl font-bold highlight-text">Loading...</p>
             </div>
@@ -297,19 +296,6 @@
          </div>
       </div>
 
-That is a great catch! On smaller screens (like in your screenshot), if the content gets too long, it pushes the "Leave" button right off the bottom of the page, trapping you in the menu.
-
-This is a quick HTML fix. We just need to tell the questList container to have a maximum height and to scroll if it gets too full, exactly like we did for the Shop and Spellbook lists.
-
-Here is the fix for your index.html file.
-
-📜 Update index.html
-Find the questModal section (around line 117). You need to add the classes max-h-80, overflow-y-auto, and pr-2 to the questList div.
-
-Current Code:
-
-HTML
-
       <div id="questModal" class="modal-overlay hidden">
         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Bounty Board</h2>
@@ -355,7 +341,7 @@ HTML
       </div>
 
       <footer class="text-center text-xs muted-text mt-4">
-         <p>Version 0.1.5 | Last Updated: November 19, 2025</p>
+         <p>Version 0.1.5 | Last Updated: November 12, 2025</p>
       </footer>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
