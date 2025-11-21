@@ -2849,7 +2849,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Iron-52',
     symbol: 'Fe-52',
     emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'],
@@ -2885,6 +2885,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_D: 1e-6,
         inhalation_W: 1e-6
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 5.13e-10,
+        inhalation_W: 5.92e-10
       },
       sourceRef: '10CFR20'
     },
@@ -2928,6 +2933,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_D: 8e-7,
         inhalation_W: 2e-6
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 7.26e-10,
+        inhalation_W: 3.61e-10
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -2970,12 +2980,17 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_D: 1e-7,
         inhalation_W: 2e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 4.00e-9,
+        inhalation_W: 3.30e-9
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Krypton-79',
     symbol: 'Kr-79',
     emissionType: ['Positron Emission', 'Electron Capture', 'Gamma'],
@@ -3077,7 +3092,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Lanthanum-140',
     symbol: 'La-140',
     emissionType: ['Beta-minus', 'Gamma'],
@@ -3114,12 +3129,17 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_D: 6e-7,
         inhalation_W: 5e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 9.33e-10,
+        inhalation_W: 1.31e-9
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Lead-206',
     symbol: 'Pb-206',
     emissionType: ['Stable'],
@@ -3218,6 +3238,10 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_D: 1e-10
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 3.67e-6
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -3254,6 +3278,10 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       },
       DAC: {
         inhalation_D: 3e-7,
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 2.35e-9
       },
       sourceRef: '10CFR20'
     },
@@ -3301,6 +3329,10 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_D: 1e-8
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 4.56e-8
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -3338,12 +3370,16 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_D: 3e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 2.11e-9
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Lutetium-176',
     symbol: 'Lu-176',
     emissionType: ['Beta-minus', 'Gamma'],
@@ -3370,6 +3406,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     dosimetry: {
       ALI: { ingestion: 700, inhalation_W: 10, inhalation_Y: 8 },
       DAC: { inhalation_W: 2e-9, inhalation_Y: 3e-9 },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 1.36e-7,
+        inhalation_Y: 1.79e-7
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -3412,12 +3453,17 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_W: 9e-7,
         inhalation_Y: 9e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 6.63e-10,
+        inhalation_Y: 6.63e-10
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Manganese-54',
     symbol: 'Mn-54',
     emissionType: ['Electron Capture', 'Gamma'],
@@ -3430,8 +3476,8 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     decayConstant: '0.00222 day⁻¹',
     gammaConstant: '0.51134 R·m²/hr·Ci',
     sourceRef: {
-    halfLife: 'nndc',
-    gammaConstant: 'plexus_nsd'
+      halfLife: 'nndc',
+      gammaConstant: 'plexus_nsd'
     },
     specificActivity: '2.56 x 10^14 Bq/g',
     parent: 'Iron-54 (d,2n)',
@@ -3444,7 +3490,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       halfLife: 'nndc',
       gammaConstant: 'hps'
     },
-    dValue: 1, 
+    dValue: 1,
     dosimetry: {
       ALI: {
         ingestion: 2000,
@@ -3455,12 +3501,17 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_D: 4e-7,
         inhalation_W: 3e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 1.42e-10,
+        inhalation_W: 1.81e-10
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Molybdenum-99',
     symbol: 'Mo-99',
     emissionType: ['Beta-minus', 'Gamma'],
@@ -3493,18 +3544,23 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     },
     gammaConstant: '0.112924 R·m²/hr·Ci',
     sourceRef: {
-    halfLife: 'nndc',
-    gammaConstant: 'plexus_nsd'
+      halfLife: 'nndc',
+      gammaConstant: 'plexus_nsd'
     },
     dosimetry: {
       ALI: {
-        ingestion: 2000, // Ingestion
-        inhalation_D: 3000, // Class D is common for Moly
+        ingestion: 2000,
+        inhalation_D: 3000,
         inhalation_Y: 1000
       },
       DAC: {
         inhalation_D: 1e-6,
         inhalation_Y: 6e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 5.42e-10,
+        inhalation_Y: 1.07e-9
       },
       sourceRef: '10CFR20'
     },
@@ -3545,12 +3601,16 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 2e-12
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 1.46e-4
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'transuranics',
     ansiCategory: 'alpha_very_high'
   },
-  {
+    {
     name: 'Nickel-56',
     symbol: 'Ni-56',
     emissionType: ['Electron Capture', 'Gamma'],
@@ -3584,6 +3644,12 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_D: 8e-7,
         inhalation_W: 5e-7,
         inhalation_Vapor: 5e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 7.11e-10,
+        inhalation_W: 1.09e-10,
+        inhalation_Vapor: 1.12e-10
       },
       sourceRef: '10CFR20'
     },
@@ -3627,6 +3693,12 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_D: 2e-6,
         inhalation_W: 3e-6,
         inhalation_Vapor: 8e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 3.58e-10,
+        inhalation_W: 2.48e-10,
+        inhalation_Vapor: 7.31e-10
       },
       sourceRef: '10CFR20'
     },
@@ -3673,6 +3745,12 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_W: 1e-6,
         inhalation_Vapor: 3e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 8.39e-10,
+        inhalation_W: 6.22e-10,
+        inhalation_Vapor: 1.70e-10
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -3714,6 +3792,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 5e-7,
         inhalation_Y: 5e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 1.29e-9,
+        inhalation_Y: 1.57e-9
       },
       sourceRef: '10CFR20'
     },
@@ -3812,7 +3895,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Palladium-103',
     symbol: 'Pd-103',
     emissionType: ['Electron Capture', 'X-ray', 'Gamma'],
@@ -3851,12 +3934,18 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_W: 2e-6,
         inhalation_Y: 1e-6
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 2.34e-10,
+        inhalation_W: 3.76e-10,
+        inhalation_Y: 4.24e-10
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Phosphorus-32',
     symbol: 'P-32',
     emissionType: ['Beta-minus'],
@@ -3894,12 +3983,17 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_D: 4e-7,
         inhalation_W: 2e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 1.64e-9,
+        inhalation_W: 4.19e-8
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Plutonium-238',
     symbol: 'Pu-238',
     emissionType: ['Alpha', 'Gamma'],
@@ -3928,13 +4022,18 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     dValue: 0.6,
     dosimetry: {
       ALI: {
-        ingestion: 0.9, // Bone Surface
+        ingestion: 0.9,
         inhalation_W: 0.007,
-        inhalation_Y: 0.02 // Bone Surface 0.04
+        inhalation_Y: 0.02
       },
       DAC: {
         inhalation_W: 3e-12,
         inhalation_Y: 8e-12
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 1.06e-4,
+        inhalation_Y: 7.79e-5
       },
       sourceRef: '10CFR20'
     },
@@ -3977,6 +4076,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 3e-12,
         inhalation_Y: 7e-12
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 1.16e-4,
+        inhalation_Y: 8.33e-5
       },
       sourceRef: '10CFR20'
     },
@@ -16021,7 +16125,10 @@ if (mainContentRef.current) {
 
     const handleSaveToHistory = () => {
         if (!result) return;
-        let historyEntry = { id: Date.now(), view: VIEWS.DOSE_RATE };
+        let historyEntry = {
+            id: Date.now(),
+            view: VIEWS.DOSE_RATE
+        };
         let formattedResult;
         switch (result.type) {
             case 'gamma':
@@ -16096,6 +16203,13 @@ if (mainContentRef.current) {
                                 <button onClick={() => setDoseMethod(METHOD_10CFR20)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${doseMethod === METHOD_10CFR20 ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>10 CFR 20 (ALI)</button>
                                 <button onClick={() => setDoseMethod(METHOD_FGR11)} className={`p-2 rounded-md text-sm font-semibold transition-colors ${doseMethod === METHOD_FGR11 ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>FGR 11 (DCF)</button>
                             </div>
+
+                            {/* NEW: CLARIFICATION NOTE FOR TABLE 1 */}
+                            {doseMethod === METHOD_10CFR20 && (
+                                <p className="text-xs text-center text-slate-500 dark:text-slate-400 mt-1 -mb-1">
+                                    Using 10 CFR 20 Appendix B, <strong>Table 1</strong> (Occupational). Not Table 2 (Effluent).
+                                </p>
+                            )}
 
                              <>{selectedNuclide ? (<CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => { setNuclideSymbol(''); }} />) : (<SearchableSelect options={dosimetryNuclides} onSelect={(symbol) => setNuclideSymbol(symbol)} placeholder="Select an internal emitter..." />)}</>
 
@@ -16228,6 +16342,11 @@ if (mainContentRef.current) {
                                             <select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{['µCi/cm', 'mCi/cm', 'Ci/cm', 'µCi/m', 'mCi/m', 'Ci/m'].map(u => <option key={u} value={u}>{u}</option>)}</select>
                                         </div>
                                     </div>
+                                    {/* ADDED: Geometry Note for Line Source */}
+                                    <ContextualNote type="info">
+                                        <strong>Geometry Note:</strong> Calculation assumes the dose point is located perpendicular to the <strong>center</strong> of the line source.
+                                    </ContextualNote>
+
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium">Line Length</label>
@@ -16256,6 +16375,11 @@ if (mainContentRef.current) {
                                             <select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{['µCi/cm²', 'mCi/cm²', 'Ci/cm²', 'µCi/m²', 'mCi/m²', 'Ci/m²'].map(u => <option key={u} value={u}>{u}</option>)}</select>
                                         </div>
                                     </div>
+                                    {/* ADDED: Geometry Note for Disk Source */}
+                                    <ContextualNote type="info">
+                                        <strong>Geometry Note:</strong> Calculation assumes the dose point is located along the <strong>central axis</strong> (directly above/below the center) of the circular source.
+                                    </ContextualNote>
+
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium">Disk Radius</label>
