@@ -4087,6 +4087,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     regGuideCategory: 'transuranics',
     ansiCategory: 'alpha_very_high'
   },
+  
   {
     name: 'Polonium-208',
     symbol: 'Po-208',
@@ -4112,8 +4113,10 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
 
     },
     dosimetry: {
-      ALI: { ingestion: 3, inhalation_D: 0.6, inhalation_W: 0.6 }, // Po-208 not explicitly in 10CFR20 Table 1, often used Po-210 values or 0.1 generic. Po-210 is ALI 3/0.6.
+      ALI: { ingestion: 3, inhalation_D: 0.6, inhalation_W: 0.6 },
       DAC: { inhalation_D: 3e-10, inhalation_W: 3e-10 },
+      DCF: {
+      },
       sourceRef: '10CFR20 (Po-210 Proxy)'
     },
     regGuideCategory: 'beta_gamma',
@@ -4145,7 +4148,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.02,
       unit: 'TBq'
     },
-    dValue: 0.6, 
+    dValue: 0.6,
     dosimetry: {
       ALI: {
         ingestion: 3,
@@ -4155,6 +4158,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_D: 3e-10,
         inhalation_W: 3e-10
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 2.54e-6,
+        inhalation_W: 2.32e-6
       },
       sourceRef: '10CFR20'
     },
@@ -4183,7 +4191,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       halfLife: 'nndc'
     },
     dosimetry: {
-      ALI: { ingestion: 0.1, inhalation_W: 0.002 }, // Default alpha
+      ALI: { ingestion: 0.1, inhalation_W: 0.002 },
       DAC: { inhalation_W: 1e-13 },
       sourceRef: '10CFR20 (Default Alpha)'
     },
@@ -4347,12 +4355,16 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_D: 2e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 3.34e-9
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Praseodymium-144',
     symbol: 'Pr-144',
     emissionType: ['Beta-minus'],
@@ -4386,6 +4398,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 5e-5,
         inhalation_Y: 5e-5
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 1.10e-11,
+        inhalation_Y: 1.17e-11
       },
       sourceRef: '10CFR20'
     },
@@ -4429,12 +4446,17 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_W: 5e-8,
         inhalation_Y: 6e-8
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 6.97e-9,
+        inhalation_Y: 1.06e-8
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Protactinium-231',
     symbol: 'Pa-231',
     emissionType: ['Alpha', 'Gamma'],
@@ -4469,6 +4491,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 6e-13,
         inhalation_Y: 2e-12
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 3.47e-4,
+        inhalation_Y: 2.32e-4
       },
       sourceRef: '10CFR20'
     },
@@ -4511,6 +4538,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 3e-7,
         inhalation_Y: 2e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 2.24e-9,
+        inhalation_Y: 2.58e-9
       },
       sourceRef: '10CFR20'
     },
@@ -4581,7 +4613,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     regGuideCategory: 'transuranics',
     ansiCategory: 'alpha_very_high'
   },
-  {
+    {
     name: 'Radium-223',
     symbol: 'Ra-223',
     emissionType: ['Alpha', 'Gamma'],
@@ -4614,6 +4646,10 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       },
       DAC: {
         inhalation_W: 3e-10
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 2.12e-6
       },
       sourceRef: '10CFR20'
     },
@@ -4658,102 +4694,112 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 7e-10
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 8.53e-7
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'transuranics',
     ansiCategory: 'alpha_very_high'
   },
-{
-name: 'Radium-226 in Equilibrium',
-symbol: 'Ra-226 eq',
-emissionType: ['Alpha', 'Beta', 'Gamma'],
-emissionEnergies: {
-alpha: ['4.784 MeV (Ra-226)'],
-beta: ['3.27 MeV (Bi-214 max)'],
-gamma: ['0.186 MeV (Ra-226)', '0.609 MeV (Bi-214)', '1.764 MeV (Bi-214)']
-},
-halfLife: '1600 years',
-decayConstant: '4.33 x 10⁻⁴ year⁻¹',
-// This standard value assumes equilibrium with progeny (Rn-222, Pb-214, Bi-214).
-gammaConstant: '0.825 R·m²/hr·Ci',
-specificActivity: '3.7 x 10^10 Bq/g',
-parent: 'Thorium-230',
-daughter: 'Radon-222 (α)',
-commonUses: ['Sealed brachytherapy sources', 'Calibration sources (aged >30 days)', 'Industrial radiography (historical)'],
-category: 'Natural',
-decaySeriesId: 'U-238-series',
-commonality: 'Common',
-commonalityReason: 'Represents an aged Ra-226 source where gamma-emitting daughters contribute significantly to the dose rate.',
-sourceRef: {
-halfLife: 'nndc',
-gammaConstant: 'hps' // The original HPS source is appropriate for this standard operational value
-},
-shipping: {
-A1: 0.2,
-A2: 0.003,
-unit: 'TBq'
-},
-dValue: 0.4, 
-dosimetry: {
-ALI: {
-inhalation_W: 0.6,
-ingestion: 2 // Bone surface 5
-},
-DAC: {
-inhalation_W: 3e-10
-},
-sourceRef: '10CFR20'
-},
-regGuideCategory: 'transuranics',
-ansiCategory: 'alpha_very_high'
-},
-{
-name: 'Radium-226',
-symbol: 'Ra-226',
-emissionType: ['Alpha', 'Gamma'],
-emissionEnergies: {
-alpha: ['4.784 MeV'],
-beta: [],
-gamma: ['0.186 MeV']
-},
-daughterEmissions: {
-from: 'Rn-222',
-alpha: ['5.490 MeV']
-},
-halfLife: '1600 years',
-decayConstant: '4.33 x 10⁻⁴ year⁻¹',
-// This value is for Ra-226 only, without progeny in equilibrium.
-gammaConstant: '0.0121138 R·m²/hr·Ci',
-specificActivity: '3.7 x 10^10 Bq/g',
-parent: 'Thorium-230',
-daughter: 'Radon-222 (α)',
-commonUses: ['Freshly separated sources', 'Neutron sources (Ra-Be)', 'Luminescent paint (historical)'],
-category: 'Natural',
-decaySeriesId: 'U-238-series',
-commonality: 'Common',
-commonalityReason: 'Historically significant nuclide. This entry represents the nuclide without its gamma-emitting progeny.',
-sourceRef: {
-halfLife: 'nndc',
-gammaConstant: 'plexus_nsd' // Citing the new source
-},
-shipping: {
-A1: 0.2,
-A2: 0.003,
-unit: 'TBq'
-},
-dosimetry: {
-ALI: {
-inhalation_W: 0.6,
-ingestion: 2 // Bone surface 5
-},
-DAC: {
-inhalation_W: 3e-10
-},
-sourceRef: '10CFR20'
-},
-regGuideCategory: 'transuranics',
-ansiCategory: 'alpha_very_high'
-},
+  {
+    name: 'Radium-226 in Equilibrium',
+    symbol: 'Ra-226 eq',
+    emissionType: ['Alpha', 'Beta', 'Gamma'],
+    emissionEnergies: {
+      alpha: ['4.784 MeV (Ra-226)'],
+      beta: ['3.27 MeV (Bi-214 max)'],
+      gamma: ['0.186 MeV (Ra-226)', '0.609 MeV (Bi-214)', '1.764 MeV (Bi-214)']
+    },
+    halfLife: '1600 years',
+    decayConstant: '4.33 x 10⁻⁴ year⁻¹',
+    gammaConstant: '0.825 R·m²/hr·Ci',
+    specificActivity: '3.7 x 10^10 Bq/g',
+    parent: 'Thorium-230',
+    daughter: 'Radon-222 (α)',
+    commonUses: ['Sealed brachytherapy sources', 'Calibration sources (aged >30 days)', 'Industrial radiography (historical)'],
+    category: 'Natural',
+    decaySeriesId: 'U-238-series',
+    commonality: 'Common',
+    commonalityReason: 'Represents an aged Ra-226 source where gamma-emitting daughters contribute significantly to the dose rate.',
+    sourceRef: {
+      halfLife: 'nndc',
+      gammaConstant: 'hps'
+    },
+    shipping: {
+      A1: 0.2,
+      A2: 0.003,
+      unit: 'TBq'
+    },
+    dValue: 0.4,
+    dosimetry: {
+      ALI: {
+        inhalation_W: 0.6,
+        ingestion: 2 // Bone surface 5
+      },
+      DAC: {
+        inhalation_W: 3e-10
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 2.32e-6 // Note: Values for pure Ra-226; equilibrium dose depends on daughter retention
+      },
+      sourceRef: '10CFR20'
+    },
+    regGuideCategory: 'transuranics',
+    ansiCategory: 'alpha_very_high'
+  },
+  {
+    name: 'Radium-226',
+    symbol: 'Ra-226',
+    emissionType: ['Alpha', 'Gamma'],
+    emissionEnergies: {
+      alpha: ['4.784 MeV'],
+      beta: [],
+      gamma: ['0.186 MeV']
+    },
+    daughterEmissions: {
+      from: 'Rn-222',
+      alpha: ['5.490 MeV']
+    },
+    halfLife: '1600 years',
+    decayConstant: '4.33 x 10⁻⁴ year⁻¹',
+    gammaConstant: '0.0121138 R·m²/hr·Ci',
+    specificActivity: '3.7 x 10^10 Bq/g',
+    parent: 'Thorium-230',
+    daughter: 'Radon-222 (α)',
+    commonUses: ['Freshly separated sources', 'Neutron sources (Ra-Be)', 'Luminescent paint (historical)'],
+    category: 'Natural',
+    decaySeriesId: 'U-238-series',
+    commonality: 'Common',
+    commonalityReason: 'Historically significant nuclide. This entry represents the nuclide without its gamma-emitting progeny.',
+    sourceRef: {
+      halfLife: 'nndc',
+      gammaConstant: 'plexus_nsd'
+    },
+    shipping: {
+      A1: 0.2,
+      A2: 0.003,
+      unit: 'TBq'
+    },
+    dosimetry: {
+      ALI: {
+        inhalation_W: 0.6,
+        ingestion: 2 // Bone surface 5
+      },
+      DAC: {
+        inhalation_W: 3e-10
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 2.32e-6
+      },
+      sourceRef: '10CFR20'
+    },
+    regGuideCategory: 'transuranics',
+    ansiCategory: 'alpha_very_high'
+  },
   {
     name: 'Radium-228',
     symbol: 'Ra-228',
@@ -4793,6 +4839,10 @@ ansiCategory: 'alpha_very_high'
       },
       DAC: {
         inhalation_W: 5e-10
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 1.29e-6
       },
       sourceRef: '10CFR20'
     },
@@ -4912,6 +4962,7 @@ ansiCategory: 'alpha_very_high'
     regGuideCategory: 'transuranics',
     ansiCategory: 'alpha_high'
   },
+  
   {
     name: 'Rhenium-186',
     symbol: 'Re-186',
@@ -4926,8 +4977,8 @@ ansiCategory: 'alpha_very_high'
     decayConstant: '0.186 day⁻¹',
     gammaConstant: '0.0181633 R·m²/hr·Ci',
     sourceRef: {
-    halfLife: 'nndc',
-    gammaConstant: 'plexus_nsd'
+      halfLife: 'nndc',
+      gammaConstant: 'plexus_nsd'
     },
     parent: 'Tungsten-186 (n,γ)',
     daughter: 'Osmium-186 (stable)',
@@ -4947,10 +4998,17 @@ ansiCategory: 'alpha_very_high'
     dosimetry: {
       ALI: {
         inhalation_W: 2000,
-        ingestion: 2000
+        ingestion: 2000,
+        inhalation_D: 3000
       },
       DAC: {
-        inhalation_W: 7e-7
+        inhalation_W: 7e-7,
+        inhalation_D: 1e-6
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 5.28e-10,
+        inhalation_W: 8.64e-10
       },
       sourceRef: '10CFR20'
     },
@@ -4987,6 +5045,11 @@ ansiCategory: 'alpha_very_high'
     dosimetry: {
       ALI: { ingestion: 600000, inhalation_D: 800000, inhalation_W: 100000 },
       DAC: { inhalation_D: 4e-4, inhalation_W: 4e-5 },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 1.80e-12,
+        inhalation_W: 1.47e-12
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -5029,12 +5092,17 @@ ansiCategory: 'alpha_very_high'
         inhalation_D: 1e-6,
         inhalation_W: 1e-6
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 5.25e-10,
+        inhalation_W: 5.44e-10
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Rhodium-105',
     symbol: 'Rh-105',
     emissionType: ['Beta-minus', 'Gamma'],
@@ -5072,6 +5140,12 @@ ansiCategory: 'alpha_very_high'
         inhalation_D: 5e-6,
         inhalation_W: 3e-6,
         inhalation_Y: 2e-6
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 1.28e-10,
+        inhalation_W: 2.37e-10,
+        inhalation_Y: 2.58e-10
       },
       sourceRef: '10CFR20'
     },
@@ -5117,6 +5191,10 @@ ansiCategory: 'alpha_very_high'
       DAC: {
         inhalation_D: 2e-5
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 3.51e-11
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -5150,9 +5228,7 @@ ansiCategory: 'alpha_very_high'
       unit: 'TBq'
     },
     dosimetry: {
-      // Note: Rb-82 is not explicitly listed in 10 CFR 20 Table 1 due to short half-life.
-      // Values for Rb-82m are often used, or it is treated under submersion rules.
-      // Provided values are typical defaults for short-lived beta/gamma.
+      // FGR 11 does not list Committed Dose DCFs for Rb-82 (submersion only).
       DAC: {
         inhalation_D: 1e-4 // Submersion approximation
       },
@@ -5196,6 +5272,10 @@ ansiCategory: 'alpha_very_high'
       DAC: {
         inhalation_D: 3e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 1.76e-9
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -5235,6 +5315,10 @@ ansiCategory: 'alpha_very_high'
       },
       DAC: {
         inhalation_D: 3e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 1.79e-9
       },
       sourceRef: '10CFR20'
     },
@@ -5280,12 +5364,18 @@ ansiCategory: 'alpha_very_high'
         inhalation_W: 4e-7,
         inhalation_Y: 3e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 8.24e-10,
+        inhalation_W: 1.75e-9,
+        inhalation_Y: 2.42e-9
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+   {
     name: 'Samarium-153',
     symbol: 'Sm-153',
     emissionType: ['Beta-minus', 'Gamma'],
@@ -5320,12 +5410,16 @@ ansiCategory: 'alpha_very_high'
       DAC: {
         inhalation_W: 1e-6
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 5.31e-10
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+   {
     name: 'Scandium-44',
     symbol: 'Sc-44',
     emissionType: ['Positron Emission', 'Gamma'],
@@ -5358,6 +5452,10 @@ ansiCategory: 'alpha_very_high'
       },
       DAC: {
         inhalation_Y: 5e-6
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_Y: 1.33e-10
       },
       sourceRef: '10CFR20'
     },
@@ -5404,6 +5502,10 @@ ansiCategory: 'alpha_very_high'
       DAC: {
         inhalation_Y: 1e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_Y: 8.01e-9
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -5444,12 +5546,16 @@ ansiCategory: 'alpha_very_high'
       DAC: {
         inhalation_Y: 1e-6
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_Y: 4.98e-10
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Selenium-76',
     symbol: 'Se-76',
     emissionType: ['Stable'],
@@ -5506,12 +5612,17 @@ ansiCategory: 'alpha_very_high'
         inhalation_D: 3e-7,
         inhalation_W: 3e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 1.77e-9,
+        inhalation_W: 2.66e-9
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+   {
     name: 'Silver-110m',
     symbol: 'Ag-110m',
     emissionType: ['Beta-minus', 'Isomeric Transition', 'Gamma'],
@@ -5555,12 +5666,18 @@ ansiCategory: 'alpha_very_high'
         inhalation_W: 8e-8,
         inhalation_Y: 4e-8
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 1.07e-8,
+        inhalation_W: 8.34e-9,
+        inhalation_Y: 2.17e-8
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Sodium-22',
     symbol: 'Na-22',
     emissionType: ['Positron Emission', 'Gamma'],
@@ -5601,6 +5718,10 @@ ansiCategory: 'alpha_very_high'
       },
       DAC: {
         inhalation_D: 3e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 2.07e-9
       },
       sourceRef: '10CFR20'
     },
@@ -5667,12 +5788,16 @@ ansiCategory: 'alpha_very_high'
       DAC: {
         inhalation_D: 2e-6
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 3.27e-10
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Strontium-82',
     symbol: 'Sr-82',
     emissionType: ['Electron Capture', 'Gamma'],
@@ -5712,6 +5837,11 @@ ansiCategory: 'alpha_very_high'
       DAC: {
         inhalation_D: 2e-7,
         inhalation_Y: 4e-8
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 3.62e-9,
+        inhalation_Y: 1.66e-8
       },
       sourceRef: '10CFR20'
     },
@@ -5754,6 +5884,11 @@ ansiCategory: 'alpha_very_high'
       DAC: {
         inhalation_D: 4e-7,
         inhalation_Y: 6e-8
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 1.76e-9,
+        inhalation_Y: 1.12e-8
       },
       sourceRef: '10CFR20'
     },
@@ -5802,12 +5937,17 @@ ansiCategory: 'alpha_very_high'
         inhalation_D: 8e-9,
         inhalation_Y: 2e-9
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 6.47e-8,
+        inhalation_Y: 3.51e-7
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Sulfur-34',
     symbol: 'S-34',
     emissionType: ['Stable'],
@@ -5864,12 +6004,17 @@ ansiCategory: 'alpha_very_high'
         inhalation_D: 7e-6,
         inhalation_W: 9e-7
       },
+      DCF: {
+        ingestion: 0, // Organic
+        inhalation_D: 8.15e-11, // Vapor
+        inhalation_W: 6.69e-10
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_low_risk'
   },
-  {
+    {
     name: 'Tantalum-182',
     symbol: 'Ta-182',
     emissionType: ['Beta-minus', 'Gamma'],
@@ -5906,11 +6051,19 @@ ansiCategory: 'alpha_very_high'
         inhalation_W: 1e-7,
         inhalation_Y: 6e-8
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 5.88e-9,
+        inhalation_Y: 1.21e-8
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
+  
+
+
   {
     name: 'Technetium-99',
     symbol: 'Tc-99',
@@ -5947,6 +6100,11 @@ ansiCategory: 'alpha_very_high'
       DAC: {
         inhalation_D: 2e-6,
         inhalation_W: 3e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 2.77e-10,
+        inhalation_W: 2.25e-9
       },
       sourceRef: '10CFR20'
     },
@@ -5996,12 +6154,17 @@ ansiCategory: 'alpha_very_high'
         inhalation_D: 6e-5,
         inhalation_W: 1e-4
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 8.80e-12,
+        inhalation_W: 7.21e-12
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Tellurium-123m',
     symbol: 'Te-123m',
     emissionType: ['Isomeric Transition', 'Gamma', 'X-ray'],
@@ -6036,6 +6199,11 @@ ansiCategory: 'alpha_very_high'
       DAC: {
         inhalation_D: 9e-8,
         inhalation_W: 2e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 2.86e-9,
+        inhalation_W: 2.86e-9
       },
       sourceRef: '10CFR20'
     },
@@ -6097,7 +6265,7 @@ ansiCategory: 'alpha_very_high'
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Terbium-161',
     symbol: 'Tb-161',
     emissionType: ['Beta-minus', 'Gamma', 'Auger electron'],
@@ -6129,6 +6297,10 @@ ansiCategory: 'alpha_very_high'
       },
       DAC: {
         inhalation_W: 7e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 9.20e-10
       },
       sourceRef: '10CFR20'
     },
