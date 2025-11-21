@@ -11537,218 +11537,238 @@ ansiCategory: 'alpha_very_high'
               */
          
          const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
-         // --- 1. CONTEXT & DYNAMIC UNITS ---
-         const { settings } = React.useContext(SettingsContext);
-         const { addHistory } = useCalculationHistory();
-         const { addToast } = useToast();
-         
-         const activityUnits = React.useMemo(() => 
-         settings.unitSystem === 'si' 
-            ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] 
-            : ['µCi', 'mCi', 'Ci'], 
-         [settings.unitSystem]
-         );
-         
-         // --- 2. STATE MANAGEMENT ---
-         const [selectedSymbol, setSelectedSymbol] = React.useState('');
-         const [formType, setFormType] = React.useState('A2');
-         const [activity, setActivity] = React.useState('1');
-         const [activityUnit, setActivityUnit] = React.useState(() => activityUnits[activityUnits.length - 1]); // Default to Ci or TBq
-         const [result, setResult] = React.useState(null);
-         const [error, setError] = React.useState('');
-         
-         // --- 3. useEffect HOOKS ---
-         React.useEffect(() => {
-         if (!activityUnits.includes(activityUnit)) {
+    // --- 1. CONTEXT & DYNAMIC UNITS ---
+    const { settings } = React.useContext(SettingsContext);
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+
+    const activityUnits = React.useMemo(() =>
+        settings.unitSystem === 'si'
+            ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq']
+            : ['µCi', 'mCi', 'Ci'],
+        [settings.unitSystem]
+    );
+
+    // --- 2. STATE MANAGEMENT ---
+    const [selectedSymbol, setSelectedSymbol] = React.useState('');
+    const [formType, setFormType] = React.useState('A2');
+    const [activity, setActivity] = React.useState('1');
+    const [activityUnit, setActivityUnit] = React.useState(() => activityUnits[activityUnits.length - 1]); 
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+
+    // --- 3. useEffect HOOKS ---
+    React.useEffect(() => {
+        if (!activityUnits.includes(activityUnit)) {
             setActivityUnit(activityUnits[activityUnits.length - 1]);
-         }
-         }, [activityUnits, activityUnit]);
-         
-         const transportNuclides = React.useMemo(() =>
-         radionuclides.filter(n => n.shipping && (n.shipping.A1 !== null || n.shipping.A2 !== null)).sort((a,b) => a.name.localeCompare(b.name)),
-         [radionuclides]
-         );
-         
-         const selectedNuclide = React.useMemo(() =>
-         transportNuclides.find(n => n.symbol === selectedSymbol),
-         [selectedSymbol, transportNuclides]
-         );
-         
-         // **FIXED**: This new useEffect hook listens for the preselectedNuclide prop
-         React.useEffect(() => {
-         if (preselectedNuclide && transportNuclides.some(n => n.symbol === preselectedNuclide)) {
-           setSelectedSymbol(preselectedNuclide);
-         }
-         }, [preselectedNuclide, transportNuclides]);
-         
-         // --- 4. DATA, FACTORS, & CALCULATION ---
-         const activityFactorsTBq = {
-         'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12,
-         'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8
-         };
-         
-         const resultStyles = {
-         EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
-         TYPE_A: { container: 'bg-sky-100 dark:bg-sky-900/50', title: 'text-sky-600 dark:text-sky-400', display: 'Type A Package' },
-         TYPE_B: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', display: 'Type B Package' }
-         };
-         
-         React.useEffect(() => {
-         if (!selectedNuclide) {
-           setResult(null); 
-           setError('');
-           return;
-         }
-         const activityValue = parseFloat(activity);
-         if (isNaN(activityValue) || activityValue < 0) {
-           setError('Please enter a valid, non-negative activity.');
-           setResult(null); return;
-         }
-         setError('');
-         const userActivityTBq = activityValue * activityFactorsTBq[activityUnit];
-         
-         // --- A1/A2 Calculation ---
-         const limitTBq = selectedNuclide.shipping[formType];
-         if (limitTBq === null) {
-           setError(`An A-value for ${formType} is not defined for this nuclide.`);
-           setResult(null);
-           return;
-         }
-         let exceptedLimitFactor = 1e-4;
-         if (selectedNuclide.symbol === 'H-3') {
-           exceptedLimitFactor = 2e-2;
-         }
-         const exceptedLimitTBq = exceptedLimitFactor * limitTBq;
-         let classification = '';
-         if (userActivityTBq <= exceptedLimitTBq) {
-           classification = 'EXCEPTED';
-         } else if (userActivityTBq <= limitTBq) {
-           classification = 'TYPE_A';
-         } else {
-           classification = 'TYPE_B';
-         }
-         
-         // --- ANSI/HPS N43.6 Category Calculation ---
-         let ansiCategory = null;
-         if (selectedNuclide.dValue) {
+        }
+    }, [activityUnits, activityUnit]);
+
+    // IMPROVED FILTER: Strictly checks that A1/A2 exist and are not null/undefined
+    const transportNuclides = React.useMemo(() =>
+        radionuclides.filter(n => 
+            n.shipping && 
+            n.shipping.A1 !== undefined && n.shipping.A1 !== null &&
+            n.shipping.A2 !== undefined && n.shipping.A2 !== null
+        ).sort((a, b) => a.name.localeCompare(b.name)),
+        [radionuclides]
+    );
+
+    const selectedNuclide = React.useMemo(() =>
+        transportNuclides.find(n => n.symbol === selectedSymbol),
+        [selectedSymbol, transportNuclides]
+    );
+
+    React.useEffect(() => {
+        if (preselectedNuclide && transportNuclides.some(n => n.symbol === preselectedNuclide)) {
+            setSelectedSymbol(preselectedNuclide);
+        }
+    }, [preselectedNuclide, transportNuclides]);
+
+    // --- 4. DATA, FACTORS, & CALCULATION ---
+    const activityFactorsTBq = {
+        'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12,
+        'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8
+    };
+
+    const resultStyles = {
+        EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
+        TYPE_A: { container: 'bg-sky-100 dark:bg-sky-900/50', title: 'text-sky-600 dark:text-sky-400', display: 'Type A Package' },
+        TYPE_B: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', display: 'Type B Package' }
+    };
+
+    React.useEffect(() => {
+        if (!selectedNuclide) {
+            setResult(null);
+            setError('');
+            return;
+        }
+        const activityValue = parseFloat(activity);
+        if (isNaN(activityValue) || activityValue < 0) {
+            setError('Please enter a valid, non-negative activity.');
+            setResult(null); return;
+        }
+        setError('');
+        const userActivityTBq = activityValue * activityFactorsTBq[activityUnit];
+
+        // --- ROBUST LIMIT HANDLING ---
+        let rawLimit = selectedNuclide.shipping[formType];
+        let limitTBq = 0;
+        let isUnlimited = false;
+
+        // Handle "Unlimited" string (case insensitive)
+        if (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) {
+            limitTBq = Infinity;
+            isUnlimited = true;
+        } else {
+            limitTBq = parseFloat(rawLimit);
+        }
+
+        if (limitTBq === null || isNaN(limitTBq)) {
+            setError(`An A-value for ${formType} is not defined for this nuclide.`);
+            setResult(null);
+            return;
+        }
+
+        // Excepted package limits are usually 10^-3 A1 (Solid) or 10^-4 A1 (Liquid/Gas)
+        // Defaulting to 10^-4 (Liquid) for conservatism unless H-3
+        let exceptedLimitFactor = 1e-4;
+        
+        // H-3 specific handling (often treated differently in regulations, but standard A2 applies)
+        // The user logic for H-3 (0.02) was specific to instruments, sticking to conservative default here.
+        
+        const exceptedLimitTBq = limitTBq === Infinity ? Infinity : exceptedLimitFactor * limitTBq;
+
+        let classification = '';
+        if (userActivityTBq <= exceptedLimitTBq) {
+            classification = 'EXCEPTED';
+        } else if (userActivityTBq <= limitTBq) {
+            classification = 'TYPE_A';
+        } else {
+            classification = 'TYPE_B';
+        }
+
+        // --- ANSI/HPS N43.6 Category Calculation ---
+        let ansiCategory = null;
+        if (selectedNuclide.dValue) {
             ansiCategory = calculateAnsiCategory(userActivityTBq, selectedNuclide.dValue);
-         }
-         
-         const newResult = {
-           classification,
-           ansiCategory,
-           userActivityTBq: userActivityTBq.toExponential(3),
-           limitTBq,
-           exceptedLimitTBq: exceptedLimitTBq.toExponential(3)
-         };
-         setResult(newResult);
-         }, [selectedNuclide, formType, activity, activityUnit]);
-         
-         // --- 5. HANDLERS ---
-         const handleClearInputs = () => {
-         setSelectedSymbol('');
-         setFormType('A2');
-         setActivity('1');
-         setActivityUnit(activityUnits[activityUnits.length-1]);
-         setResult(null);
-         setError('');
-         };
-         
-         const handleSaveToHistory = () => {
-         if (result && selectedNuclide) {
+        }
+
+        const newResult = {
+            classification,
+            ansiCategory,
+            userActivityTBq: userActivityTBq.toExponential(3),
+            limitDisplay: isUnlimited ? 'Unlimited' : `${limitTBq} TBq`,
+            exceptedDisplay: isUnlimited ? 'Unlimited' : `${exceptedLimitTBq.toExponential(3)} TBq`
+        };
+        setResult(newResult);
+    }, [selectedNuclide, formType, activity, activityUnit]);
+
+    // --- 5. HANDLERS ---
+    const handleClearInputs = () => {
+        setSelectedSymbol('');
+        setFormType('A2');
+        setActivity('1');
+        setActivityUnit(activityUnits[activityUnits.length - 1]);
+        setResult(null);
+        setError('');
+    };
+
+    const handleSaveToHistory = () => {
+        if (result && selectedNuclide) {
             addHistory({
-              id: Date.now(),
-              type: 'Transportation',
-              icon: ICONS.transport,
-              inputs: `${activity} ${activityUnit} of ${selectedNuclide.symbol} (${formType})`,
-              result: resultStyles[result.classification].display,
-              view: VIEWS.TRANSPORTATION
+                id: Date.now(),
+                type: 'Transportation',
+                icon: ICONS.transport,
+                inputs: `${activity} ${activityUnit} of ${selectedNuclide.symbol} (${formType})`,
+                result: resultStyles[result.classification].display,
+                view: VIEWS.TRANSPORTATION
             });
             addToast("Calculation saved to history!");
-         }
-         };
-         
-         // --- 6. RENDER (JSX) ---
-         return (
-         <div className="p-4 animate-fade-in">
-           <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-               <div className="flex justify-between items-center mb-4">
-                   <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shipping Calculator</h2>
-                   <ClearButton onClick={handleClearInputs} />
-               </div>
-               <div className="space-y-4">
-                   <div>
-                       <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
-                       <div className="mt-1 min-h-[42px]">
-                           {selectedNuclide ? (
-                               <CalculatorNuclideInfo
-                                   nuclide={selectedNuclide}
-                                   onClear={() => setSelectedSymbol('')}
-                               />
-                           ) : (
-                               <SearchableSelect
-                                   options={transportNuclides}
-                                   onSelect={(symbol) => { setSelectedSymbol(symbol); }}
-                                   placeholder="Search for a radionuclide..."
-                               />
-                           )}
-                       </div>
-                   </div>
-                   <div>
-                       <label className="block text-sm font-medium">Material Form</label>
-                       <div className="mt-2 grid grid-cols-2 gap-2">
-                            <Tooltip text="Special Form: Non-dispersible solid material or an encapsulated source. (e.g., a sealed metal source)">
-                               <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A1' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A1" checked={formType === 'A1'} onChange={e => setFormType(e.target.value)} className="hidden"/>Special Form (A1)</label>
-                           </Tooltip>
-                           <Tooltip text="Normal Form: Dispersible material. (e.g., liquids, powders, gases)">
-                               <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A2' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A2" checked={formType === 'A2'} onChange={e => setFormType(e.target.value)} className="hidden"/>Normal Form (A2)</label>
-                           </Tooltip>
-                       </div>
-                   </div>
-                   <div>
-                       <label className="block text-sm font-medium">Source Activity</label>
-                       <div className="flex">
-                           <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                           <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
-                               {activityUnits.map(u => <option key={u} value={u}>{u}</option>)}
-                           </select>
-                       </div>
-                   </div>
-         
-                   {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
-         
-                   {result && (
-               <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${resultStyles[result.classification].container}`}>
-                    <div className="flex justify-between items-center -mt-2 mb-2">
-                        <div></div>
-                        <p className={`text-2xl font-extrabold ${resultStyles[result.classification].title}`}>{resultStyles[result.classification].display}</p>
-                        <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                           <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                               <Icon path={ICONS.notepad} className="w-5 h-5" />
-                           </button>
-                        </Tooltip>
+        }
+    };
+
+    // --- 6. RENDER (JSX) ---
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shipping Calculator</h2>
+                    <ClearButton onClick={handleClearInputs} />
+                </div>
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
+                        <div className="mt-1 min-h-[42px]">
+                            {selectedNuclide ? (
+                                <CalculatorNuclideInfo
+                                    nuclide={selectedNuclide}
+                                    onClear={() => setSelectedSymbol('')}
+                                />
+                            ) : (
+                                <SearchableSelect
+                                    options={transportNuclides}
+                                    onSelect={(symbol) => { setSelectedSymbol(symbol); }}
+                                    placeholder="Search for a radionuclide..."
+                                />
+                            )}
+                        </div>
                     </div>
-                   <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
-                       <p>Your Activity:</p><p className="font-mono">{result.userActivityTBq} TBq</p>
-                       <p>{formType} Limit:</p><p className="font-mono">{result.limitTBq} TBq</p>
-                       <p>Excepted Limit:</p><p className="font-mono">≤ {result.exceptedLimitTBq} TBq</p>
-                   </div>
-                   
-                   {/* --- ANSI CATEGORY DISPLAY --- */}
-                   {result.ansiCategory && (
-                       <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600">
-                           <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">ANSI/HPS N43.6 Category</p>
-                           <p className="text-xl font-bold text-slate-700 dark:text-slate-200">Category {result.ansiCategory.category}</p>
-                           <p className="text-xs text-slate-500 dark:text-slate-400">({result.ansiCategory.description})</p>
-                       </div>
-                   )}
-               </div>
-           )}
-         </div> 
-         </div> 
-         </div>
-         ); 
-         };
+                    <div>
+                        <label className="block text-sm font-medium">Material Form</label>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                            <Tooltip text="Special Form: Non-dispersible solid material or an encapsulated source. (e.g., a sealed metal source)">
+                                <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A1' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A1" checked={formType === 'A1'} onChange={e => setFormType(e.target.value)} className="hidden" />Special Form (A1)</label>
+                            </Tooltip>
+                            <Tooltip text="Normal Form: Dispersible material. (e.g., liquids, powders, gases)">
+                                <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A2' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A2" checked={formType === 'A2'} onChange={e => setFormType(e.target.value)} className="hidden" />Normal Form (A2)</label>
+                            </Tooltip>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Source Activity</label>
+                        <div className="flex">
+                            <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                            <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
+                                {activityUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    {error && <p className="text-red-500 text-sm text-center pt-2">{error}</p>}
+
+                    {result && (
+                        <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${resultStyles[result.classification].container}`}>
+                            <div className="flex justify-between items-center -mt-2 mb-2">
+                                <div></div>
+                                <p className={`text-2xl font-extrabold ${resultStyles[result.classification].title}`}>{resultStyles[result.classification].display}</p>
+                                <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
+                                    <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
+                                        <Icon path={ICONS.notepad} className="w-5 h-5" />
+                                    </button>
+                                </Tooltip>
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
+                                <p>Your Activity:</p><p className="font-mono">{result.userActivityTBq} TBq</p>
+                                <p>{formType} Limit:</p><p className="font-mono">{result.limitDisplay}</p>
+                                <p>Excepted Limit:</p><p className="font-mono">≤ {result.exceptedDisplay}</p>
+                            </div>
+
+                            {/* --- ANSI CATEGORY DISPLAY --- */}
+                            {result.ansiCategory && (
+                                <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600">
+                                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">ANSI/HPS N43.6 Category</p>
+                                    <p className="text-xl font-bold text-slate-700 dark:text-slate-200">Category {result.ansiCategory.category}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">({result.ansiCategory.description})</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
          
          
               /**
