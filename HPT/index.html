@@ -2789,7 +2789,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       },
       sourceRef: '10CFR20'
     },
-    regGuideCategory: 'beta_gamma',
+    regGuideCategory: 'sr_90',
     ansiCategory: 'beta_gamma'
   },
    {
@@ -4653,7 +4653,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       },
       sourceRef: '10CFR20'
     },
-    regGuideCategory: 'transuranics',
+    regGuideCategory: 'sr_90',
     ansiCategory: 'alpha_very_high'
   },
   {
@@ -4700,7 +4700,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       },
       sourceRef: '10CFR20'
     },
-    regGuideCategory: 'transuranics',
+    regGuideCategory: 'sr_90',
     ansiCategory: 'alpha_very_high'
   },
   {
@@ -5944,7 +5944,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       },
       sourceRef: '10CFR20'
     },
-    regGuideCategory: 'beta_gamma',
+    regGuideCategory: 'sr_90',
     ansiCategory: 'beta_gamma'
   },
     {
@@ -6061,10 +6061,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  
-
-
-  {
+    {
     name: 'Technetium-99',
     symbol: 'Tc-99',
     emissionType: ['Beta-minus'],
@@ -6307,6 +6304,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
+  
   {
     name: 'Thallium-201',
     symbol: 'Tl-201',
@@ -6341,6 +6339,10 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_D: 9e-6
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 6.34e-11
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -6373,7 +6375,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.7,
       unit: 'TBq'
     },
-     dValue: 2, 
+     dValue: 2,
     dosimetry: {
       ALI: {
         ingestion: 2000,
@@ -6381,6 +6383,10 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       },
       DAC: {
         inhalation_D: 9e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 6.5e-10
       },
       sourceRef: '10CFR20'
     },
@@ -6466,7 +6472,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Thorium-227',
     symbol: 'Th-227',
     emissionType: ['Alpha', 'Gamma'],
@@ -6501,6 +6507,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 1e-10,
         inhalation_Y: 1e-10
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 4.12e-6,
+        inhalation_Y: 4.37e-6
       },
       sourceRef: '10CFR20'
     },
@@ -6538,7 +6549,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.001,
       unit: 'TBq'
     },
-    dValue: 0.4, 
+    dValue: 0.4,
     dosimetry: {
       ALI: {
         ingestion: 6, // Bone Surface 10
@@ -6548,6 +6559,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 4e-12,
         inhalation_Y: 7e-12
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 6.75e-5,
+        inhalation_Y: 9.23e-5
       },
       sourceRef: '10CFR20'
     },
@@ -6590,6 +6606,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_W: 4e-13,
         inhalation_Y: 1e-12
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 5.80e-4,
+        inhalation_Y: 4.67e-4
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'transuranics',
@@ -6630,6 +6651,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 3e-12,
         inhalation_Y: 6e-12
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 8.80e-5,
+        inhalation_Y: 7.07e-5
       },
       sourceRef: '10CFR20'
     },
@@ -6673,6 +6699,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 3e-6,
         inhalation_Y: 3e-6
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 2.33e-10,
+        inhalation_Y: 2.37e-10
       },
       sourceRef: '10CFR20'
     },
@@ -6720,9 +6751,14 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_W: 5e-13,
         inhalation_Y: 1e-12
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 4.43e-4,
+        inhalation_Y: 3.11e-4
+      },
       sourceRef: '10CFR20'
     },
-    regGuideCategory: 'u_nat',
+    regGuideCategory: 'sr_90',
     ansiCategory: 'alpha_high'
   },
   {
@@ -6767,12 +6803,17 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_W: 8e-8,
         inhalation_Y: 6e-8
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 8.04e-9,
+        inhalation_Y: 9.47e-9
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'u_nat',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Thulium-170',
     symbol: 'Tm-170',
     emissionType: ['Beta-minus', 'Gamma', 'X-ray'],
@@ -6808,11 +6849,16 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 9e-8
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 7.11e-9
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
+ 
   {
     name: 'Tin-117m',
     symbol: 'Sn-117m',
@@ -6848,6 +6894,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_D: 5e-7,
         inhalation_W: 6e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 6.96e-10,
+        inhalation_W: 1.17e-9
       },
       sourceRef: '10CFR20'
     },
@@ -6891,6 +6942,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_D: 2e-8,
         inhalation_W: 3e-8
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 2.36e-8,
+        inhalation_W: 2.69e-8
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -6932,12 +6988,16 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_D: 2e-5
       },
+      DCF: {
+        ingestion: 1.73e-11,
+        inhalation_D: 1.73e-11 // Water vapor
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_low_risk'
   },
-  {
+    {
     name: 'Tungsten-188',
     symbol: 'W-188',
     emissionType: ['Beta-minus', 'Gamma'],
@@ -6977,12 +7037,16 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_D: 5e-7
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 1.11e-9
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+   {
     name: 'Uranium-230',
     symbol: 'U-230',
     emissionType: ['Alpha', 'Gamma'],
@@ -7019,6 +7083,12 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_D: 2e-10,
         inhalation_W: 1e-10,
         inhalation_Y: 1e-10
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 2.32e-6,
+        inhalation_W: 4.36e-6,
+        inhalation_Y: 5.26e-6
       },
       sourceRef: '10CFR20'
     },
@@ -7058,6 +7128,12 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_W: 2e-6,
         inhalation_Y: 2e-6
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 1.79e-10,
+        inhalation_W: 2.78e-10,
+        inhalation_Y: 3.22e-10
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'u_nat',
@@ -7094,7 +7170,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.001,
       unit: 'TBq'
     },
-    dValue: 0.3, 
+    dValue: 0.3,
     dosimetry: {
       ALI: {
         ingestion: 2,
@@ -7106,6 +7182,12 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_D: 9e-11,
         inhalation_W: 2e-10,
         inhalation_Y: 3e-12
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 3.43e-6,
+        inhalation_W: 4.02e-6,
+        inhalation_Y: 1.78e-4
       },
       sourceRef: '10CFR20'
     },
@@ -7150,6 +7232,12 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_W: 3e-10,
         inhalation_Y: 2e-11
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 7.53e-7,
+        inhalation_W: 2.16e-6,
+        inhalation_Y: 3.66e-5
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'u_nat',
@@ -7186,13 +7274,19 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       ALI: {
         ingestion: 10,
         inhalation_D: 1,
-        inhalation_W: 0.7,
+        inhalation_W: 0.8,
         inhalation_Y: 0.04
       },
       DAC: {
         inhalation_D: 5e-10,
         inhalation_W: 3e-10,
         inhalation_Y: 2e-11
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 7.37e-7,
+        inhalation_W: 2.13e-6,
+        inhalation_Y: 3.58e-5
       },
       sourceRef: '10CFR20'
     },
@@ -7243,6 +7337,12 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_W: 3e-10,
         inhalation_Y: 2e-11
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 6.85e-7,
+        inhalation_W: 1.97e-6,
+        inhalation_Y: 3.32e-5
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'u_nat',
@@ -7291,6 +7391,12 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_D: 6e-10,
         inhalation_W: 3e-10,
         inhalation_Y: 2e-11
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 6.62e-7,
+        inhalation_W: 1.90e-6,
+        inhalation_Y: 3.20e-5
       },
       sourceRef: '10CFR20'
     },
@@ -7355,7 +7461,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+   {
     name: 'Ytterbium-169',
     symbol: 'Yb-169',
     emissionType: ['Electron Capture', 'Gamma', 'X-ray'],
@@ -7394,15 +7500,20 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_Y: 700
       },
       DAC: {
-        inhalation_W: 4e-7,
+        inhalation_W: 3e-7,
         inhalation_Y: 3e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 1.89e-9,
+        inhalation_Y: 2.18e-9
       },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+    {
     name: 'Yttrium-90',
     symbol: 'Y-90',
     emissionType: ['Beta-minus'],
@@ -7439,6 +7550,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_W: 3e-7,
         inhalation_Y: 3e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_W: 2.13e-9,
+        inhalation_Y: 2.28e-9
       },
       sourceRef: '10CFR20'
     },
@@ -7479,6 +7595,10 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       DAC: {
         inhalation_Y: 3e-6
       },
+      DCF: {
+        ingestion: 0,
+        inhalation_Y: 2.20e-10
+      },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -7518,8 +7638,14 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       },
       DAC: {
         inhalation_D: 1e-6,
-        inhalation_W: 1e-6,
-        inhalation_Y: 1e-6
+        inhalation_W: 8e-7,
+        inhalation_Y: 6e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 3.88e-10,
+        inhalation_W: 6.06e-10,
+        inhalation_Y: 6.41e-10
       },
       sourceRef: '10CFR20'
     },
@@ -7569,6 +7695,12 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_D: 5e-8,
         inhalation_W: 2e-7,
         inhalation_Y: 1e-7
+      },
+      DCF: {
+        ingestion: 0,
+        inhalation_D: 6.39e-9,
+        inhalation_W: 4.29e-9,
+        inhalation_Y: 6.31e-9
       },
       sourceRef: '10CFR20'
     },
@@ -7830,10 +7962,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
               };
               
          const REG_GUIDE_1_86_LIMITS = {
-         'transuranics': { removable: 20, total: 100, label: 'Transuranics & other high-toxicity alpha emitters' },
-         'u_nat': { removable: 1000, total: 5000, label: 'U-nat, U-235, U-238, and associated decay products' },
-         'beta_gamma': { removable: 1000, total: 5000, label: 'Beta-gamma emitters (nuclides with decay modes other than alpha)' }
-         };
+    'transuranics': { removable: 20, total: 100, label: 'Transuranics, I-125, I-129, Ra-226, Ac-227' },
+    'sr_90': { removable: 200, total: 1000, label: 'Th-nat, Sr-90, I-131, Ra-223, Ra-224, U-232' }, // <--- NEW CATEGORY
+    'u_nat': { removable: 1000, total: 5000, label: 'U-nat, U-235, U-238, and associated decay products' },
+    'beta_gamma': { removable: 1000, total: 5000, label: 'Beta-gamma emitters (nuclides with decay modes other than alpha)' }
+};
               
               const ANSI_13_12_LIMITS = {
               'alpha_very_high': { removable: 20, total: 100, label: 'Alpha Emitters (Very High Hazard - e.g., Pu-238, Am-241)' },
