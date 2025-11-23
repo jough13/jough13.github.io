@@ -132,6 +132,27 @@ const TILE_DATA = {
     'T': {
         type: 'decoration', // Dead Tree
     },
+    '⚰️': {
+        type: 'loot_container', // We'll treat this like a chest, but with specific flavor
+        name: 'Ancient Grave',
+        flavor: "You disturb the resting place of a forgotten warrior...",
+        lootTable: ['(', '(', '†', '👢', '🛡️', '💀'] // Bones, Daggers, Boots, Shields
+    },
+    '🗿': {
+        type: 'lore_statue',
+        message: [
+            "The statue's face is worn away, but it still holds a bowl of fresh water.",
+            "A statue of a weeping knight. The inscription reads: 'Duty is heavier than a mountain.'",
+            "A crude idol made of mud and sticks. It smells of goblin musk.",
+            "A statue of a woman holding a lantern. You feel safer standing near it."
+        ]
+    },
+    '🏺': {
+        type: 'loot_container',
+        name: 'Dusty Urn',
+        flavor: "You smash the urn open...",
+        lootTable: ['$', '$', 'gold_dust', 'ancient_coin', '💍']
+    },
 };
 
 const CASTLE_LAYOUTS = {
@@ -855,10 +876,10 @@ const CAVE_ROOM_TEMPLATES = {
     }
 };
 
-let TILE_SIZE = 12;
+let TILE_SIZE = 20; // Fixed tile size (prevent them from getting huge)
+let VIEWPORT_WIDTH = 40; // Will update on resize
+let VIEWPORT_HEIGHT = 25; // Will update on resize
 
-const VIEWPORT_WIDTH = 40;
-const VIEWPORT_HEIGHT = 25;
 const WORLD_WIDTH = 500;
 const WORLD_HEIGHT = 500;
 const WORLD_SEED = 'caves-and-castles-v1';
@@ -893,45 +914,64 @@ const LORE_STONE_MESSAGES = [
 
 const LORE_PLAINS = [
     "The wind whispers of the Old King's return.",
-    "These fields were once a great battlefield.",
-    "Travelers say the safe haven lies to the west.",
+    "These fields were once a great battlefield. Rusty arrowheads still surface after rain.",
+    "Travelers say the safe haven lies to the west, past the old ruins.",
     "The grass hides many secrets, and many graves.",
-    "Look for the shrines. They still hold power."
+    "Look for the shrines. They still hold the power of the old gods.",
+    "A broken cart lies here, its wheel rotted away.",
+    "The horizon feels endless here. You feel small.",
+    "Wildflowers grow in a perfect circle here. Strange.",
+    "You find a stone marker with a name you cannot read."
 ];
 
 const LORE_FOREST = [
     "The trees remember what the axe forgets.",
-    "Wolves guard the heart of the wood.",
+    "Wolves guard the heart of the wood. Tread lightly.",
     "Beware the shadows that move against the wind.",
-    "The Elves left long ago, but their magic remains.",
-    "A Machete is a traveler's best friend here."
+    "The Elves left long ago, but their magic remains in the roots.",
+    "A Machete is a traveler's best friend here.",
+    "The canopy is so thick it blocks out the sun.",
+    "You hear a twig snap behind you, but see nothing.",
+    "Old carvings on the bark warn of 'The Sleeper'.",
+    "Mushrooms glow faintly in the twilight."
 ];
 
 const LORE_MOUNTAIN = [
     "The stone is hollow. The dark deepens.",
-    "Dragons once roosted on these peaks.",
+    "Dragons once roosted on these peaks. Now, only the wind remains.",
     "The Prospector seeks gold, but he will find only madness.",
     "Iron and bone. That is all that remains here.",
-    "Climbing requires strength, or the right tools."
+    "Climbing requires strength, or the right tools.",
+    "The air is thin and cold. Every breath is a struggle.",
+    "You see a cave entrance that looks like a screaming mouth.",
+    "Avalanches are common this time of year.",
+    "The echo of your footsteps sounds like someone following you."
 ];
 
 const LORE_SWAMP = [
     "The water tastes of rot and old magic.",
     "Sickness takes the weak. Endurance is key.",
     "The spiders... they are growing larger.",
-    "Do not follow the lights in the mist.",
-    "A sunken city lies beneath the muck."
+    "Do not follow the lights in the mist. They lead to drowning.",
+    "A sunken city lies beneath the muck. You can see the spires.",
+    "Bubbles rise from the bog, smelling of sulfur.",
+    "The mud sucks at your boots, trying to pull you down.",
+    "Leeches the size of your arm swim in the murky pools."
 ];
 
 const VILLAGER_RUMORS = [
     "I heard spiders hate fire. Burn 'em, I say!",
     "If you find a pickaxe, try the mountains. Good ore there.",
     "The castle guards are tough, but they protect good loot.",
-    "Don't eat the yellow snow. Or the blue mushrooms.",
-    "I saw a stone glowing in the woods last night.",
-    "My cousin went into the crypts. He came back... wrong.",
-    "Endurance helps you resist the swamp sickness.",
-    "Wits will help you find hidden doors in the caves."
+    "Don't eat the yellow snow. Or the blue mushrooms. Actually, just stick to bread.",
+    "I saw a stone glowing in the woods last night. Didn't go near it.",
+    "My cousin went into the crypts. He came back... wrong. Kept staring at the wall.",
+    "Endurance helps you resist the swamp sickness. Eat your greens.",
+    "Wits will help you find hidden doors in the caves. Knock on every wall!",
+    "They say the Old King isn't dead, just... waiting.",
+    "The shopkeeper cheats at cards. Don't play him.",
+    "If you see a rift in the world, jump in! What's the worst that could happen?",
+    "A Golden Apple can bring a man back from the brink of death."
 ];
 
 const VISIONS_OF_THE_PAST = [ // For the new Obelisks
@@ -1581,6 +1621,62 @@ const CRAFTING_RECIPES = {
 };
 
 const ITEM_DATA = {
+    '👢': {
+        name: 'Traveler\'s Boots',
+        type: 'armor',
+        defense: 1,
+        slot: 'armor',
+        statBonuses: { endurance: 2 } // Helps you run further
+    },
+    '🧥': {
+        name: 'Traveler\'s Cloak',
+        type: 'armor',
+        defense: 1,
+        slot: 'armor',
+        statBonuses: { perception: 2 } // Helps find secrets
+    },
+    '🧭': {
+        name: 'Brass Compass',
+        type: 'tool', // Keeps in inventory
+        statBonuses: { luck: 1 } // Just having it brings luck
+    },
+
+    // --- VALUABLE RELICS (Lore/Trade Goods) ---
+    '👑': {
+        name: 'Shattered Crown',
+        type: 'junk', // High value sell item
+        description: "The gold is tarnished, but the gems are real."
+    },
+    '💍': {
+        name: 'Signet Ring',
+        type: 'junk',
+        description: "Bearing the crest of a fallen house."
+    },
+    'gold_dust': {
+        name: 'Pouch of Gold Dust',
+        type: 'junk',
+        tile: '💰' // Visual tile
+    },
+    'ancient_coin': {
+        name: 'Ancient Coin',
+        type: 'junk',
+        tile: '🪙',
+        description: "Minted in an age before the Old King."
+    },
+    
+    // --- RARE CONSUMABLES ---
+    '🍎': {
+        name: 'Golden Apple',
+        type: 'consumable',
+        tile: '🍎',
+        effect: (state) => {
+            state.player.health = state.player.maxHealth;
+            state.player.stamina = state.player.maxStamina;
+            state.player.mana = state.player.maxMana;
+            logMessage("You eat the Golden Apple. You feel revitalized! (Full Restore)");
+            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+        }
+    },
     '+': {
         name: 'Healing Potion',
         type: 'consumable',
@@ -1592,7 +1688,8 @@ const ITEM_DATA = {
                 triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
             }
             logMessage(`Used a Healing Potion. Restored ${HEALING_AMOUNT} health!`);
-        }
+        },
+        description: "A thick red liquid. It tastes of strawberries and copper."
     },
 
     'o': {
@@ -1605,7 +1702,8 @@ const ITEM_DATA = {
                 triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue'); // USE NEW FUNCTION
             }
             logMessage('Used a Mana Orb. Restored mana!');
-        }
+        },
+        description: "A fragment of a dream given form. It feels insubstantial in your hand."
     },
 
     'S': {
@@ -1615,11 +1713,12 @@ const ITEM_DATA = {
             const oldStamina = state.player.stamina;
             state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + STAMINA_RESTORE_AMOUNT);
             if (state.player.stamina > oldStamina) {
-                // MODIFIED: Use the new pulse animation
+            
                 triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
             }
             logMessage(`Used a Stamina Crystal. Restored ${STAMINA_RESTORE_AMOUNT} stamina!`);
-        }
+        },
+        description: "A jagged green crystal that pulses with a rhythmic light."
     },
 
     'Y': {
@@ -1692,25 +1791,30 @@ const ITEM_DATA = {
         name: 'Stick',
         type: 'weapon', // A new type
         damage: 1, // It's better than Fists!
-        slot: 'weapon'
+        slot: 'weapon',
+        description: "A sturdy branch fallen from an oak tree. Better than nothing."
+        
     },
     '%': {
         name: 'Leather Tunic',
         type: 'armor',
         defense: 1,
-        slot: 'armor'
+        slot: 'armor',
+        description: "Boiled leather stitched with sinew. It smells of cured hide."
     },
     '!': {
         name: 'Rusty Sword',
         type: 'weapon',
         damage: 2,
-        slot: 'weapon'
+        slot: 'weapon',
+        description: "The edge is pitted with age, but the steel core remains strong."
     },
     '[': {
         name: 'Studded Armor',
         type: 'armor',
         defense: 2,
-        slot: 'armor'
+        slot: 'armor',
+        description: "Leather reinforced with iron rivets. Offers decent protection against claws."
     },
     't': {
         name: 'Goblin Totem',
@@ -1732,21 +1836,25 @@ const ITEM_DATA = {
         name: 'Bone Dagger',
         type: 'weapon',
         damage: 2, // Same as Rusty Sword (Tier 2)
-        slot: 'weapon'
+       slot: 'weapon',
+        description: "Carved from a single femur. It feels unnaturally cold to the touch."
     },
     '¶': { // Pilcrow (paragraph) symbol
         name: 'Bandit Garb',
         type: 'armor',
         defense: 2, // Same as Studded Armor (Tier 2)
-        slot: 'armor'
+        slot: 'armor',
+        description: "Dark grey fabric designed to blend into the shadows."
     },
     'U': {
         name: 'Orc Tusk',
-        type: 'junk'
+        type: 'junk',
+        description: "Yellowed and cracked. A brutal trophy."
     },
     '&': {
         name: 'Arcane Dust',
-        type: 'junk'
+        type: 'junk',
+        description: "It glitters like diamond dust, but vanishes if you don't look at it directly."
     },
     
     // --- NEW TIER 3 GEAR ---
@@ -1754,27 +1862,31 @@ const ITEM_DATA = {
         name: 'Steel Sword',
         type: 'weapon',
         damage: 4, // Better than Rusty Sword (2)
-        slot: 'weapon'
+        slot: 'weapon',
+        description: "A soldier's blade. Well-balanced, sharp, and reliable."
     },
     'A': { // Using 'A' for Heavy armor
         name: 'Steel Armor',
         type: 'armor',
         defense: 4, // Better than Studded Armor (2)
-        slot: 'armor'
+        slot: 'armor',
+        description: "Polished plates of steel. Heavy, but it will turn aside all but the strongest blows."
     },
     'Ψ': { // Psi symbol
         name: 'Warlock\'s Staff',
         type: 'weapon',
         damage: 3, // A good magic-themed weapon
         slot: 'weapon',
-        statBonuses: { willpower: 2 }
+        statBonuses: { willpower: 2 },
+        description: "The wood is charred black and warm to the touch. It whispers to you."
     },
     'M': { // Using 'M' for Mage robe
         name: 'Mage Robe',
         type: 'armor',
         defense: 3, // Good, but less than Steel
         slot: 'armor',
-        statBonuses: { wits: 1 }
+        statBonuses: { wits: 1 },
+        description: "Silk woven with arcane threads. It shimmers in the moonlight."
     },
     'E': {
         name: 'Frost Essence',
@@ -1836,7 +1948,8 @@ const ITEM_DATA = {
     },
     '"': {
         name: 'Spider Silk',
-        type: 'junk'
+        type: 'junk',
+        description: "Incredibly strong and sticky. Handle with care."
     },
     'n': {
         name: 'Silk Cowl',
@@ -2466,7 +2579,7 @@ generateCave(caveId) {
 
         // 4. Place procedural loot and decorations
 
-        const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$', '📄', '🍄'];
+        const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
         const lootQuantity = Math.floor(random() * 4);
 
         for (let i = 0; i < lootQuantity; i++) {
@@ -2737,10 +2850,19 @@ generateCave(caveId) {
 
             const featureRoll = random();
 
-                
                 if (tile === '.' && featureRoll < 0.000001) { 
                     this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
+
+                } else if (tile === '.' && featureRoll < 0.0002) {
+                    // Rare spawn on plains: Ancient Grave
+                    this.setWorldTile(worldX, worldY, '⚰️');
+                    chunkData[y][x] = '⚰️';
+
+                } else if (tile === 'F' && featureRoll < 0.0002) {
+                    // Rare spawn in forest: Statue
+                    this.setWorldTile(worldX, worldY, '🗿');
+                    chunkData[y][x] = '🗿';
                 
                 } else if (tile === '.' && featureRoll < 0.000011) { 
                     this.setWorldTile(worldX, worldY, 'V');
@@ -2760,6 +2882,8 @@ generateCave(caveId) {
                 } else if ((tile === 'd' || tile === 'D') && featureRoll < 0.00001) { 
                     this.setWorldTile(worldX, worldY, 'Ω');
                     chunkData[y][x] = 'Ω';
+
+                    
 
                 } else if (tile === '.' && featureRoll < 0.001) { 
                     let features = Object.keys(TILE_DATA);
@@ -2978,7 +3102,10 @@ const gameState = {
         strengthBonusTurns: 0,
 
         frostbiteTurns: 0,
-        poisonTurns: 0
+        poisonTurns: 0,
+
+        weather: 'clear', // clear, rain, storm, snow, fog
+        weatherTimer: 0,  // Counts turns until weather changes
     },
 
     lootedTiles: new Set(),
@@ -3020,6 +3147,91 @@ const logMessage = (text) => {
     messageLog.prepend(messageElement);
     messageLog.scrollTop = 0;
 };
+
+function triggerAtmosphericFlavor(tile) {
+    // 2% chance to trigger flavor text on move
+    if (Math.random() > 0.02) return;
+
+    let flavorText = "";
+
+    // Dungeons
+    if (gameState.mapMode === 'dungeon') {
+        const theme = CAVE_THEMES[gameState.currentCaveTheme];
+        if (theme.name.includes("Ice")) {
+            flavorText = "Your breath mists in the freezing air.";
+        } else if (theme.name.includes("Fire")) {
+            flavorText = "The heat is oppressive. Sweat runs down your back.";
+        } else {
+            flavorText = "Water drips rhythmically from the ceiling. Plip. Plip.";
+        }
+    } 
+    // Castles
+    else if (gameState.mapMode === 'castle') {
+        flavorText = "Dust motes dance in a shaft of light.";
+    } 
+    // Overworld Biomes
+    else {
+        if (tile === 'F') { // Forest
+            const msgs = ["Leaves rustle, though there is no wind.", "A bird calls out, then is suddenly silenced.", "The smell of pine and damp earth fills the air."];
+            flavorText = msgs[Math.floor(Math.random() * msgs.length)];
+        } else if (tile === '≈') { // Swamp
+            const msgs = ["Something splashes in the water nearby.", "A thick mist rolls over the water.", "The air smells of decay."];
+            flavorText = msgs[Math.floor(Math.random() * msgs.length)];
+        } else if (tile === '^') { // Mountain
+            const msgs = ["Loose stones clatter down the cliffside.", "The wind howls through the crags.", "You feel the weight of the mountain looming above."];
+            flavorText = msgs[Math.floor(Math.random() * msgs.length)];
+        } else if (tile === '.') { // Plains
+            const msgs = ["A warm breeze ripples through the grass.", "Cloud shadows race across the plains.", "You spot a hawk circling high above."];
+            flavorText = msgs[Math.floor(Math.random() * msgs.length)];
+        } else if (tile === 'd' || tile === 'D') { // Deadlands/Desert
+            flavorText = "The silence here is deafening.";
+        }
+    }
+
+    if (flavorText) {
+        logMessage(flavorText);
+    }
+}
+
+function updateWeather() {
+    // Only update weather every 10 turns to prevent flickering
+    if (gameState.playerTurnCount % 10 !== 0) return;
+
+    const x = gameState.player.x;
+    const y = gameState.player.y;
+    
+    // Use your existing noise generators, scaled for larger weather patterns
+    const temp = elevationNoise.noise(x / 200, y / 200); // Temperature pattern
+    const humid = moistureNoise.noise(x / 200 + 100, y / 200 + 100); // Humidity pattern (offset)
+
+    let newWeather = 'clear';
+
+    if (gameState.mapMode !== 'overworld') {
+        newWeather = 'clear'; // Indoors is always clear
+    } else {
+        if (humid > 0.6) {
+            if (temp < 0.3) newWeather = 'snow';
+            else if (humid > 0.8) newWeather = 'storm';
+            else newWeather = 'rain';
+        } else if (humid > 0.4 && temp < 0.4) {
+            newWeather = 'fog';
+        }
+    }
+
+    if (newWeather !== gameState.weather) {
+        gameState.weather = newWeather;
+        
+        let msg = "";
+        if (newWeather === 'rain') msg = "It starts to rain.";
+        if (newWeather === 'storm') msg = "Thunder rumbles. A storm is brewing.";
+        if (newWeather === 'snow') msg = "Snow begins to fall.";
+        if (newWeather === 'fog') msg = "A thick fog rolls in.";
+        if (newWeather === 'clear') msg = "The skies clear up.";
+        
+        if (msg) logMessage(msg);
+        render(); // Re-render to show effects
+    }
+}
 
 /**
  * Updates the UI to show active buff and debuff icons.
@@ -3594,7 +3806,18 @@ function handleSellItem(itemIndex) {
     // Find the item's base price in the shop.
     // If not in the shop, we'll give it a default low price.
     const shopItem = activeShopInventory.find(item => item.name === itemToSell.name);
-    const basePrice = shopItem ? shopItem.price : 2; // Sell unlisted items for 2 gold
+    
+    let basePrice = 2; // Default
+    if (shopItem) {
+        basePrice = shopItem.price;
+    } else {
+        // --- SPECIAL PRICES FOR RELICS ---
+        if (itemToSell.name === 'Shattered Crown') basePrice = 200;
+        if (itemToSell.name === 'Signet Ring') basePrice = 80;
+        if (itemToSell.name === 'Pouch of Gold Dust') basePrice = 50;
+        if (itemToSell.name === 'Ancient Coin') basePrice = 25;
+        if (itemToSell.name === 'Alpha Pelt') basePrice = 60;
+    }
 
     // --- NEW CHARISMA LOGIC ---
     // SELL_MODIFIER is 0.5 (50%)
@@ -3644,32 +3867,33 @@ function handleSellItem(itemIndex) {
 function resizeCanvas() {
     // Get the container element that holds the canvas
     const canvasContainer = canvas.parentElement;
-    if (!canvasContainer) return; // Exit if container not found
+    if (!canvasContainer) return; 
 
     const containerWidth = canvasContainer.clientWidth;
-    const containerHeight = canvasContainer.clientHeight; // We might need this later
+    
+    // --- ADAPTIVE ZOOM FIX ---
+    // Instead of stretching tiles, we calculate how many tiles fit in the width
+    // We keep TILE_SIZE fixed at 20px (or whatever you prefer)
+    TILE_SIZE = 20; 
+    
+    // Calculate new viewport width based on container size
+    VIEWPORT_WIDTH = Math.floor(containerWidth / TILE_SIZE);
+    
+    // Optional: Adjust height to fit standard aspect ratio or fill container
+    // For now, let's keep height somewhat static or slightly larger
+    VIEWPORT_HEIGHT = 30; 
 
-    // Calculate the best tile size based on width, ensuring it's an integer
-    // We subtract a small amount (e.g., 2px) to prevent potential minor overflow issues
-    const newTileSizeBasedOnWidth = Math.max(8, Math.floor((containerWidth - 2) / VIEWPORT_WIDTH));
-
-    // --- Optional: Add height constraint if needed ---
-    // const newTileSizeBasedOnHeight = Math.max(8, Math.floor((containerHeight - 2) / VIEWPORT_HEIGHT));
-    // TILE_SIZE = Math.min(newTileSizeBasedOnWidth, newTileSizeBasedOnHeight); // Use the smaller size
-    TILE_SIZE = newTileSizeBasedOnWidth; // Using width only for now
-
-    // Update the canvas internal resolution
+    // Update the canvas resolution
     canvas.width = VIEWPORT_WIDTH * TILE_SIZE;
     canvas.height = VIEWPORT_HEIGHT * TILE_SIZE;
 
-    // Update the context font size (crucial for drawing)
+    // Update the font
     ctx.font = `${TILE_SIZE}px monospace`;
-    ctx.textAlign = 'center'; // Re-apply text alignment
-    ctx.textBaseline = 'middle'; // Re-apply text baseline
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
 
-    // Re-render the game at the new size
+    // Re-render immediately
     render();
-
 }
 
 function renderShop() {
@@ -4124,6 +4348,7 @@ function executePacify(dirX, dirY) {
  * @param {number} dirX - The x-direction of the aim.
  * @param {number} dirY - The y-direction of the aim.
  */
+
 function executeInflictMadness(dirX, dirY) {
     const player = gameState.player;
     const skillData = SKILL_DATA["inflictMadness"];
@@ -4241,16 +4466,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 }
             }
             break;
-
-            case 'thornSkin':
-                const reflectAmount = spellData.baseReflect + (player.intuition * spellLevel);
-                player.thornsValue = reflectAmount;
-                player.thornsTurns = spellData.duration;
-                logMessage(`Your skin hardens with sharp thorns! (Reflect ${reflectAmount} dmg)`);
-                updates.thornsValue = reflectAmount;
-                updates.thornsTurns = spellData.duration;
-                spellCastSuccessfully = true;
-                break;
 
         case 'fireball':
             // This is an AoE spell. It hits a 3x3 area, 3 tiles away.
@@ -4935,6 +5150,18 @@ function castSpell(spellId) {
 
         // --- 3. Execute Spell Effect ---
         switch (spellId) {
+
+            case 'thornSkin':
+                const reflectAmount = spellData.baseReflect + (player.intuition * spellLevel);
+                player.thornsValue = reflectAmount;
+                player.thornsTurns = spellData.duration;
+                logMessage(`Your skin hardens! (Reflect ${reflectAmount} dmg)`);
+                
+                updates.thornsValue = reflectAmount;
+                updates.thornsTurns = spellData.duration;
+                spellCastSuccessfully = true;
+                break;
+
             case 'lesserHeal':
                 const healAmount = spellData.baseHeal + (player.wits * spellLevel);
                 const oldHealth = player.health;
@@ -5108,6 +5335,9 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 updateQuestProgress(enemy.tile);
                 const droppedLoot = generateEnemyLoot(player, enemy);
                 gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+                }
                 if (gameState.mapMode === 'dungeon') {
                     chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
                 }
@@ -5732,6 +5962,45 @@ const render = () => {
     // 3. Reset the font to normal for any other text
     ctx.font = `${TILE_SIZE}px monospace`;
 
+    if (gameState.weather === 'rain') {
+        ctx.fillStyle = 'rgba(0, 0, 100, 0.15)'; // Blue tint
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw simple rain lines
+        ctx.strokeStyle = 'rgba(100, 100, 255, 0.4)';
+        ctx.lineWidth = 1;
+        for(let i=0; i<50; i++) {
+             const rx = Math.random() * canvas.width;
+             const ry = Math.random() * canvas.height;
+             ctx.beginPath();
+             ctx.moveTo(rx, ry);
+             ctx.lineTo(rx - 5, ry + 10);
+             ctx.stroke();
+        }
+    } else if (gameState.weather === 'snow') {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; // White tint
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw snowflakes
+        ctx.fillStyle = 'white';
+        for(let i=0; i<50; i++) {
+             const rx = Math.random() * canvas.width;
+             const ry = Math.random() * canvas.height;
+             ctx.fillRect(rx, ry, 2, 2);
+        }
+    } else if (gameState.weather === 'storm') {
+        ctx.fillStyle = 'rgba(20, 20, 40, 0.3)'; // Dark tint
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Occasional lightning (visual only for now)
+        if (Math.random() < 0.05) {
+            ctx.fillStyle = 'rgba(255, 255, 200, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    } else if (gameState.weather === 'fog') {
+        ctx.fillStyle = 'rgba(200, 200, 200, 0.3)'; // Gray tint
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
     const {
         hour,
         minute
@@ -6206,6 +6475,9 @@ async function runSharedAiTurns() {
 
 function endPlayerTurn() {
     gameState.playerTurnCount++; // Increment the player's turn
+
+    updateWeather();
+
     const player = gameState.player;
     let updates = {};
 
@@ -6656,21 +6928,25 @@ if (dirX !== 0 || dirY !== 0) {
             
             else if (itemToUse.type === 'buff_potion') {
                 const player = gameState.player;
+                // Look up the template data to ensure we have amount/duration
+                const itemTemplateKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemToUse.name);
+                const template = ITEM_DATA[itemTemplateKey];
+
                 if (player.strengthBonusTurns > 0) { // Check if buff is active
                     logMessage("A similar effect is already active.");
                     itemUsed = false;
                 } else {
-                    // Apply the buff
-                    player.strengthBonus = itemData.amount;
-                    player.strengthBonusTurns = itemData.duration;
+                    // Apply the buff using the TEMPLATE data
+                    player.strengthBonus = template.amount;
+                    player.strengthBonusTurns = template.duration;
                     
-                    logMessage(`You drink the potion and feel a surge of strength! (+${itemData.amount} Strength for ${itemData.duration} turns)`);
+                    logMessage(`You drink the potion. (+${template.amount} Strength for ${template.duration} turns)`);
                     triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
 
                     // Consume the item
                     itemToUse.quantity--;
                     if (itemToUse.quantity <= 0) {
-                        player.inventory.splice(itemIndex, 1);
+                        gameState.player.inventory.splice(itemIndex, 1);
                     }
                     itemUsed = true;
                 }
@@ -6959,8 +7235,13 @@ const obsoleteTiles = [];
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
 
                         if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
-                        } else if (gameState.mapMode === 'castle') {
+                            if (chunkManager.caveEnemies[gameState.currentCaveId]) {
+                                chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
+                            }
+                        chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
+                        }
+
+                    else if (gameState.mapMode === 'castle') {
                             // Ready for when we add castle enemies
                         }
                         } else {
@@ -7244,7 +7525,12 @@ if (Math.random() < luckDodgeChance) { //
             }
         }
 
-let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
+        let moveCost = TERRAIN_COST[newTile] ?? 0;
+
+        if (gameState.weather === 'storm' || gameState.weather === 'snow') {
+            moveCost += 1; // Harder to move in storms/snow
+        }
+
         let isDisembarking = false;
 
         // --- 1. ARE WE BOATING? ---
@@ -7355,6 +7641,86 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
                 return;
             }
 
+            if (tileData.type === 'lore_statue') {
+                // Pick a random message from the array
+                const seed = stringToSeed(tileId);
+                const random = Alea(seed);
+                const msg = tileData.message[Math.floor(random() * tileData.message.length)];
+                
+                loreTitle.textContent = "Weathered Statue";
+                loreContent.textContent = msg;
+                loreModal.classList.remove('hidden');
+                
+                // Optional: Grant small XP for finding it
+                if (!gameState.foundLore.has(tileId)) {
+                    grantXp(10);
+                    gameState.foundLore.add(tileId);
+                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                }
+                return; // Stop movement
+            }
+
+            if (tileData.type === 'loot_container') {
+                logMessage(tileData.flavor);
+                
+                // Determine loot based on the table in TILE_DATA
+                const lootTable = tileData.lootTable;
+                const seed = stringToSeed(tileId);
+                const random = Alea(seed);
+                
+                // 1-2 items
+                const lootCount = 1 + Math.floor(random() * 2);
+                
+                for(let i=0; i<lootCount; i++) {
+                    const itemKey = lootTable[Math.floor(random() * lootTable.length)];
+                    
+                    // Special case for Gold '$'
+                    if (itemKey === '$') {
+                        const amount = 5 + Math.floor(random() * 15);
+                        gameState.player.coins += amount;
+                        logMessage(`You found ${amount} gold coins.`);
+                        continue;
+                    }
+
+                    // Standard Item lookup
+                    const itemTemplate = ITEM_DATA[itemKey];
+                    if (itemTemplate) {
+                        if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                             gameState.player.inventory.push({
+                                name: itemTemplate.name,
+                                type: itemTemplate.type,
+                                quantity: 1,
+                                tile: itemKey, // The visual tile
+                                damage: itemTemplate.damage || null,
+                                defense: itemTemplate.defense || null,
+                                slot: itemTemplate.slot || null,
+                                statBonuses: itemTemplate.statBonuses || null
+                            });
+                            logMessage(`You found: ${itemTemplate.name}`);
+                        } else {
+                            logMessage(`You found a ${itemTemplate.name}, but your pack is full.`);
+                        }
+                    }
+                }
+                
+                // Clear the container after looting
+                if (gameState.mapMode === 'overworld') {
+                    chunkManager.setWorldTile(newX, newY, '.');
+                } else if (gameState.mapMode === 'dungeon') {
+                    const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                    chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
+                }
+                
+                // Sync updates
+                playerRef.update({ 
+                    coins: gameState.player.coins, 
+                    inventory: gameState.player.inventory 
+                });
+                renderInventory();
+                renderStats();
+                return; // Stop movement
+            }
+
             if (newTile === 'B') {
             if (!gameState.foundLore.has(tileId)) {
                 logMessage("You've discovered a Bounty Board! +15 XP");
@@ -7380,8 +7746,6 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
                 
                 // --- BIOME DETECTION LOGIC ---
                 // We recalculate the noise for this specific spot to determine the biome
-                // Note: We divide coordinates by CHUNK_SIZE (16) because the noise function expects world coords
-                // Actually, newX/newY ARE world coords, so we use the same math as generateChunk.
                 const elev = elevationNoise.noise(newX / 70, newY / 70);
                 const moist = moistureNoise.noise(newX / 50, newY / 50);
 
@@ -8199,11 +8563,11 @@ let moveCost = TERRAIN_COST[newTile] ?? 0; // Changed to 'let'
 
         // 6. Handle final updates
         
-        // --- NEW: Call Perception Check ---
         // Must be AFTER player.x/y are updated but BEFORE render()
         passivePerceptionCheck();
-        // --- END NEW ---
-        
+
+        triggerAtmosphericFlavor(newTile);
+
         render();
         updateRegionDisplay();
         syncPlayerState();
