@@ -560,6 +560,44 @@ const QUEST_DATA = {
 
 };
 
+/**
+ * Scales an enemy based on distance from the center of the world.
+ * Adds prefixes (Weak, Feral, Ancient) and buffs stats.
+ */
+function getScaledEnemy(enemyTemplate, x, y) {
+    // 1. Calculate Distance
+    const dist = Math.sqrt(x * x + y * y);
+    
+    // 2. Calculate "Zone Level" (Every 50 tiles is 1 level)
+    const zoneLevel = Math.floor(dist / 50);
+
+    // 3. Clone the template so we don't modify the original
+    let enemy = { ...enemyTemplate };
+
+    // 4. Apply Scaling (10% stats per zone level)
+    const multiplier = 1 + (zoneLevel * 0.10);
+    
+    enemy.maxHealth = Math.floor(enemy.maxHealth * multiplier);
+    enemy.health = enemy.maxHealth; // Start full
+    enemy.attack = Math.floor(enemy.attack * multiplier);
+    enemy.xp = Math.floor(enemy.xp * multiplier); // Reward more XP!
+
+    // 5. Add Flavor Prefixes
+    if (zoneLevel === 0) {
+        enemy.name = `Starving ${enemy.name}`;
+        enemy.maxHealth = Math.floor(enemy.maxHealth * 0.8); // Nerf slightly for newbies
+        enemy.health = enemy.maxHealth;
+    } else if (zoneLevel >= 2 && zoneLevel < 5) {
+        enemy.name = `Feral ${enemy.name}`;
+    } else if (zoneLevel >= 5 && zoneLevel < 10) {
+        enemy.name = `Elder ${enemy.name}`;
+    } else if (zoneLevel >= 10) {
+        enemy.name = `Ancient ${enemy.name}`;
+    }
+
+    return enemy;
+}
+
 const ENEMY_DATA = {
     'g': {
         name: 'Goblin',
@@ -1016,6 +1054,12 @@ const CASTLE_PREFIXES = ["Broken", "Fallen", "King's", "Shadow", "Gleaming", "Ir
 const CASTLE_SUFFIXES = ["Spire", "Keep", "Fortress", "Hold", "Citadel", "Bastion", "Tower", "Ruin", "Reach", "Sanctum"];
 
 // DOM Element Selectors
+
+const characterSelectModal = document.getElementById('characterSelectModal');
+const slotsContainer = document.getElementById('slotsContainer');
+const logoutFromSelectButton = document.getElementById('logoutFromSelectButton');
+let currentUser = null; // Store the firebase user object
+
 const charCreationModal = document.getElementById('charCreationModal');
 const timeDisplay = document.getElementById('timeDisplay');
 const canvas = document.getElementById('gameCanvas');
@@ -1191,6 +1235,125 @@ window.selectBackground = async function(bgKey) {
     // (We don't need to explicitly resume, the firebase listener below is already running,
     //  it just updates the state which we just modified)
 };
+
+async function initCharacterSelect(user) {
+    currentUser = user;
+    authContainer.classList.add('hidden');
+    characterSelectModal.classList.remove('hidden');
+    loadingIndicator.classList.remove('hidden'); // Show loading while checking slots
+
+    // 1. Legacy Migration Check
+    // If the user has data in the old root path 'players/{uid}', move it to 'players/{uid}/characters/slot1'
+    const oldRootRef = db.collection('players').doc(user.uid);
+    const oldDoc = await oldRootRef.get();
+
+    if (oldDoc.exists && oldDoc.data().level) {
+        console.log("Migrating legacy save to Slot 1...");
+        const legacyData = oldDoc.data();
+        // Copy to Slot 1
+        await oldRootRef.collection('characters').doc('slot1').set(legacyData);
+        // Delete old data to prevent re-migration (and clean up)
+        await oldRootRef.delete(); 
+    }
+
+    renderSlots();
+}
+
+async function renderSlots() {
+    slotsContainer.innerHTML = '';
+    const charsRef = db.collection('players').doc(currentUser.uid).collection('characters');
+    
+    // Define our 3 slots
+    const slotIds = ['slot1', 'slot2', 'slot3'];
+
+    for (const slotId of slotIds) {
+        const doc = await charsRef.doc(slotId).get();
+        const slotDiv = document.createElement('div');
+        slotDiv.className = "panel p-4 rounded-xl border-2 flex flex-col items-center justify-between min-h-[200px] transition-all";
+        
+        if (doc.exists) {
+            const data = doc.data();
+            const bg = PLAYER_BACKGROUNDS[data.background] || { name: 'Unknown' };
+            
+            // --- OCCUPIED SLOT UI ---
+            slotDiv.classList.add('hover:border-blue-500');
+            slotDiv.innerHTML = `
+                <div class="text-center w-full">
+                    <h3 class="text-xl font-bold mb-1">Slot ${slotId.replace('slot', '')}</h3>
+                    <div class="text-4xl mb-2">${data.isBoating ? 'c' : (data.character || '@')}</div>
+                    <p class="font-bold highlight-text">${bg.name}</p>
+                    <p class="text-sm muted-text">Level ${data.level || 1}</p>
+                    <p class="text-xs muted-text mt-2">${getRegionName(Math.floor((data.x||0)/160), Math.floor((data.y||0)/160))}</p>
+                </div>
+                <div class="flex gap-2 w-full mt-4">
+                    <button onclick="selectSlot('${slotId}')" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Play</button>
+                    <button onclick="deleteSlot('${slotId}')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">🗑️</button>
+                </div>
+            `;
+        } else {
+            // --- EMPTY SLOT UI ---
+            slotDiv.classList.add('opacity-75', 'hover:opacity-100', 'hover:border-green-500', 'cursor-pointer');
+            slotDiv.onclick = (e) => {
+                // Only trigger if clicking the div, not if clicking a button (though no buttons here)
+                if(e.target === slotDiv || e.target.closest('.empty-slot-content')) selectSlot(slotId);
+            };
+            slotDiv.innerHTML = `
+                <div class="text-center w-full empty-slot-content">
+                    <h3 class="text-xl font-bold mb-4">Slot ${slotId.replace('slot', '')}</h3>
+                    <div class="text-4xl mb-4 text-gray-600">+</div>
+                    <p class="muted-text">Empty</p>
+                </div>
+                <button class="w-full mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">Create New</button>
+            `;
+        }
+        slotsContainer.appendChild(slotDiv);
+    }
+    loadingIndicator.classList.add('hidden');
+}
+
+// Make these global so HTML buttons can call them
+window.selectSlot = async function(slotId) {
+    loadingIndicator.classList.remove('hidden');
+    
+    // 1. Set the global playerRef to the specific character slot
+    player_id = currentUser.uid; // Keep Auth ID for ownership
+    // CRITICAL: This directs all game saves/loads to the specific slot
+    playerRef = db.collection('players').doc(player_id).collection('characters').doc(slotId);
+    
+    // 2. Check if data exists
+    const doc = await playerRef.get();
+    
+    characterSelectModal.classList.add('hidden');
+    
+    if (doc.exists) {
+        // Load existing game
+        enterGame(doc.data());
+    } else {
+        // Start creation wizard
+        gameContainer.classList.remove('hidden'); // Needs to be visible for rendering logic
+        canvas.style.visibility = 'hidden'; // Hide canvas until ready
+        
+        const defaultState = createDefaultPlayerState();
+        // We DON'T save yet. We wait for background selection.
+        Object.assign(gameState.player, defaultState);
+        
+        loadingIndicator.classList.add('hidden');
+        charCreationModal.classList.remove('hidden');
+    }
+};
+
+window.deleteSlot = async function(slotId) {
+    if(confirm("Are you sure you want to delete this character? This cannot be undone.")) {
+        await db.collection('players').doc(currentUser.uid).collection('characters').doc(slotId).delete();
+        renderSlots();
+    }
+};
+
+logoutFromSelectButton.addEventListener('click', () => {
+    auth.signOut();
+    characterSelectModal.classList.add('hidden');
+    authContainer.classList.remove('hidden');
+});
 
 function handleAuthError(error) {
     let friendlyMessage = '';
@@ -2556,21 +2719,36 @@ generateCave(caveId) {
                     // If it's an enemy, we must pre-populate it
                     if (ENEMY_DATA[tileToPlace]) {
                         const enemyTemplate = ENEMY_DATA[tileToPlace];
+                        // Parse the cave's world coordinates
+                        const parts = caveId.split('_');
+                        const caveX = parseInt(parts[1]);
+                        const caveY = parseInt(parts[2]);
+
+                        // Generate scaled stats
+                        const scaledStats = getScaledEnemy(enemyTemplate, caveX, caveY);
+
                         this.caveEnemies[caveId].push({
+                            // --- FIX: Use mapX and mapY ---
                             id: `${caveId}:${mapX},${mapY}`,
                             x: mapX,
                             y: mapY,
-                            tile: tileToPlace,
-                            name: enemyTemplate.name,
-                            health: enemyTemplate.maxHealth,
-                            maxHealth: enemyTemplate.maxHealth,
-                            attack: enemyTemplate.attack,
+                            tile: tileToPlace, // Use the actual tile variable
+                            // ------------------------------
+                            name: scaledStats.name,
+                            health: scaledStats.maxHealth,
+                            maxHealth: scaledStats.maxHealth,
+                            attack: scaledStats.attack,
                             defense: enemyTemplate.defense,
-                            xp: enemyTemplate.xp,
+                            xp: scaledStats.xp,
                             loot: enemyTemplate.loot,
+                            caster: enemyTemplate.caster || false,
+                            castRange: enemyTemplate.castRange || 0,
+                            spellDamage: Math.floor((enemyTemplate.spellDamage || 0) * (1 + (Math.floor(Math.sqrt(caveX*caveX + caveY*caveY)/50) * 0.1))),
+                            inflicts: enemyTemplate.inflicts || null,
                             madnessTurns: 0,
                             frostbiteTurns: 0,
-                            poisonTurns: 0
+                            poisonTurns: 0,
+                            rootTurns: 0
                         });
                     }
                 }
@@ -2793,6 +2971,37 @@ generateCave(caveId) {
 
         // Finally, ensure the spawn tile itself is a floor tile
         map[spawnY][spawnX] = '.';
+
+        // Extract Guards to Entities (Living World) ---
+        // Clear old friendly NPCs for this ID to prevent duplicates
+        this.friendlyNpcs = this.friendlyNpcs || {};
+        this.friendlyNpcs[castleId] = [];
+
+        for(let y=0; y < map.length; y++) {
+            for(let x=0; x < map[0].length; x++) {
+                if (map[y][x] === 'G') {
+                    // Found a static guard tile. Remove it.
+                    map[y][x] = '.'; 
+                    
+                    // Create a mobile guard entity
+                    this.friendlyNpcs[castleId].push({
+                        id: `guard_${x}_${y}`,
+                        x: x,
+                        y: y,
+                        name: "Castle Guard",
+                        tile: 'G',
+                        role: 'guard',
+                        dialogue: [
+                            "The night shift is quiet. Just how I like it.",
+                            "Keep your weapons sheathed in the village.",
+                            "I heard wolves howling to the east.",
+                            "Patrolling makes my feet ache.",
+                            "Nothing to report."
+                        ]
+                    });
+                }
+            }
+        }
 
         this.castleMaps[castleId] = map;
         return map;
@@ -3122,6 +3331,7 @@ const gameState = {
     },
     inventoryMode: false,
     instancedEnemies: [],
+    friendlyNpcs: [],
     worldEnemies: {},
     sharedEnemies: {},
     isDroppingItem: false,
@@ -4237,6 +4447,7 @@ async function executeLunge(dirX, dirY) {
                         updateQuestProgress(enemy.tile);
                         const droppedLoot = generateEnemyLoot(player, enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                        
                         if (gameState.mapMode === 'dungeon') {
                             chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
                         }
@@ -5299,20 +5510,39 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
         try {
             const transactionResult = await enemyRef.transaction(currentData => {
-                if (currentData === null) return; // Enemy already dead or gone
+                let enemy;
                 
-                // Calculate actual damage vs. defense (magic ignores defense for now)
-                damageDealt = Math.max(1, damage); // TODO: Add magic resistance?
-                currentData.health -= damageDealt;
+                // --- NEW: Handle fresh spawn via magic ---
+                if (currentData === null) {
+                    // If it doesn't exist yet, create it scaled!
+                    const scaledStats = getScaledEnemy(enemyData, targetX, targetY);
+                    enemy = {
+                        health: scaledStats.maxHealth,
+                        maxHealth: scaledStats.maxHealth,
+                        attack: scaledStats.attack,
+                        defense: enemyData.defense,
+                        xp: scaledStats.xp,
+                        loot: enemyData.loot,
+                        tile: tile,
+                        name: scaledStats.name
+                    };
+                } else {
+                    enemy = currentData;
+                }
+            
+                // Calculate actual damage
+                damageDealt = Math.max(1, damage); 
+                enemy.health -= damageDealt;
                 
-                if (currentData.health <= 0) return null;
-                return currentData;
+                if (enemy.health <= 0) return null;
+                return enemy;
             });
 
             const finalEnemyState = transactionResult.snapshot.val();
             if (finalEnemyState === null) {
-                logMessage(`The ${enemyData.name} was vanquished!`);
-                grantXp(enemyData.xp);
+                const deadEnemyInfo = getScaledEnemy(enemyData, newX, newY);
+                logMessage(`The ${deadEnemyInfo.name} was vanquished!`);
+                grantXp(deadEnemyInfo.xp);
                 updateQuestProgress(tile);
                 const droppedLoot = generateEnemyLoot(player, enemyData);
                 chunkManager.setWorldTile(targetX, targetY, droppedLoot);
@@ -5481,15 +5711,19 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             let enemy;
             if (currentData === null) {
                 // First time this enemy is hit. Create it in RTDB.
+                const scaledStats = getScaledEnemy(enemyData, newX, newY);
+                
                 enemy = {
-                    health: enemyData.maxHealth,
-                    maxHealth: enemyData.maxHealth,
-                    attack: enemyData.attack,
+                    health: scaledStats.maxHealth,
+                    maxHealth: scaledStats.maxHealth,
+                    attack: scaledStats.attack,
                     defense: enemyData.defense,
-                    xp: enemyData.xp,
+                    xp: scaledStats.xp,
                     loot: enemyData.loot,
-                    tile: newTile // Store the original tile
+                    tile: newTile, // Store the original tile
+                    name: scaledStats.name // Store the scaled name (e.g., "Feral Wolf")
                 };
+                // -----------------------------------
             } else {
                 enemy = currentData;
             }
@@ -5509,12 +5743,11 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
         // --- Process Transaction Results ---
         const finalEnemyState = transactionResult.snapshot.val();
-
-        if (finalEnemyState === null) {
-            // --- ENEMY WAS DEFEATED ---
-            enemyWasKilled = true;
-            logMessage(`You defeated the ${enemyData.name}!`);
-            grantXp(enemyData.xp);
+            if (finalEnemyState === null) {
+                // Re-calculate for the log/xp since the DB entry is gone
+                const deadEnemyInfo = getScaledEnemy(enemyData, newX, newY);
+                logMessage(`The ${deadEnemyInfo.name} was vanquished!`);
+                grantXp(deadEnemyInfo.xp);
             updateQuestProgress(newTile);
 
             const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
@@ -5525,20 +5758,20 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             enemyAttackedBack = true;
             const enemy = finalEnemyState;
             const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
-            // --- FIX: Add Dex defense ---
+            
             const baseDefense = Math.floor(player.dexterity / 5);
             const buffDefense = player.defenseBonus || 0;
             const playerDefense = baseDefense + armorDefense + buffDefense; // <-- Corrected total defense
-            // --- END FIX ---
+            
             enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
 
-            // --- NEW LUCK DODGE CHECK ---
+            // --- LUCK DODGE CHECK ---
             const luckDodgeChance = Math.min(player.luck * 0.002, 0.25); // 0.2% per luck, max 25%
             if (Math.random() < luckDodgeChance) {
                 logMessage(`The ${enemyData.name} attacks, but you luckily dodge!`);
                 enemyDamageTaken = 0; // Negate the damage
             } else {
-                // --- NEW SHIELD DAMAGE LOGIC ---
+                // --- SHIELD DAMAGE LOGIC ---
                 let damageToApply = enemyDamageTaken;
                 if (player.shieldValue > 0) {
                     const damageAbsorbed = Math.min(player.shieldValue, damageToApply);
@@ -5911,9 +6144,31 @@ const render = () => {
         }
     }
 
+    if (gameState.mapMode === 'castle' && gameState.friendlyNpcs) {
+                gameState.friendlyNpcs.forEach(npc => {
+                    // Calculate screen position relative to viewport start
+                    const screenX = (npc.x - startX) * TILE_SIZE;
+                    const screenY = (npc.y - startY) * TILE_SIZE;
+
+                    // Only draw if within the canvas bounds
+                    if (screenX > -TILE_SIZE && screenX < canvas.width && screenY > -TILE_SIZE && screenY < canvas.height) {
+                        
+                        // 1. Draw Background (Optional, helps them pop)
+                        ctx.fillStyle = '#a16207'; // Match castle floor/theme
+                        ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+                        
+                        // 2. Draw the Character
+                        ctx.font = `bold ${TILE_SIZE}px monospace`;
+                        ctx.fillStyle = '#FFFFFF'; // White text for visibility
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(npc.tile, screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
+                    }
+                });
+            }
+
     ctx.font = `${TILE_SIZE}px monospace`;
 
-    // (The rest of the render function for other players and the main player is unchanged)
     for (const id in otherPlayers) {
         if (otherPlayers[id].mapMode !== gameState.mapMode || otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
         const otherPlayer = otherPlayers[id];
@@ -6127,16 +6382,14 @@ async function processOverworldEnemyTurns() {
                         // 8. Check if it's "nearby" for the log message
                         const distY = Math.abs(newY - playerY);
                         const distX = Math.abs(newX - playerX);
-                        if (distX <= 10 && distY <= 10) { // Smaller radius for "hearing"
-                            
-                        }
+                        
                     }
                 }
             }
         }
     }
 
-// --- Process all moves ---
+    // --- Process all moves ---
     // We use a 'for...of' loop to allow 'await'
     for (const move of movesToMake) {
         // 1. Move the enemy on the world map (for everyone)
@@ -6166,6 +6419,40 @@ async function processOverworldEnemyTurns() {
     }
 
     return nearestEnemyDir;
+}
+
+function processFriendlyTurns() {
+    if (gameState.mapMode !== 'castle') return;
+
+    const map = chunkManager.castleMaps[gameState.currentCastleId];
+    if (!map) return;
+
+    const player = gameState.player;
+
+    gameState.friendlyNpcs.forEach(npc => {
+        // 50% chance to move
+        if (Math.random() < 0.5) {
+            const dirX = Math.floor(Math.random() * 3) - 1;
+            const dirY = Math.floor(Math.random() * 3) - 1;
+
+            if (dirX === 0 && dirY === 0) return;
+
+            const newX = npc.x + dirX;
+            const newY = npc.y + dirY;
+
+            // Check bounds and collision
+            // Must be a floor '.', and not occupied by player or another NPC
+            if (map[newY] && map[newY][newX] === '.') {
+                const occupiedByPlayer = (newX === player.x && newY === player.y);
+                const occupiedByNpc = gameState.friendlyNpcs.some(n => n.x === newX && n.y === newY);
+
+                if (!occupiedByPlayer && !occupiedByNpc) {
+                    npc.x = newX;
+                    npc.y = newY;
+                }
+            }
+        }
+    });
 }
 
 function processEnemyTurns() {
@@ -6592,6 +6879,9 @@ if (player.thornsTurns > 0) {
                 ...updates
             });
         }
+
+        processFriendlyTurns();
+
         renderStats(); // Update UI (to show new turn count or remove shield)
     }
 
@@ -7183,6 +7473,22 @@ const obsoleteTiles = [];
         }
 
         const tileData = TILE_DATA[newTile];
+
+        if (gameState.mapMode === 'castle' && gameState.friendlyNpcs) {
+            const npc = gameState.friendlyNpcs.find(n => n.x === newX && n.y === newY);
+            if (npc) {
+                // Use the seeded random for consistent dialogue
+                const seed = stringToSeed(gameState.playerTurnCount + npc.id);
+                const random = Alea(seed);
+                const dialogue = npc.dialogue[Math.floor(random() * npc.dialogue.length)];
+                
+                loreTitle.textContent = npc.name || "Villager";
+                loreContent.textContent = `The ${npc.role} stops to address you.\n\n"${dialogue}"`;
+                loreModal.classList.remove('hidden');
+                
+                return; // Stop movement (don't walk through them)
+            }
+        }
 
         if (newTile === '¥') {
             activeShopInventory = TRADER_INVENTORY;
@@ -8108,6 +8414,14 @@ if (Math.random() < luckDodgeChance) { //
             }
 
             if (newTile === '§') {
+
+                const hour = gameState.time.hour;
+                // Open from 6 AM (6) to 8 PM (20)
+                if (hour < 6 || hour >= 20) {
+                    logMessage("The General Store is closed. A sign reads: 'Open 6 AM - 8 PM'.");
+                    return; // Stop interaction
+                }
+
                 if (!gameState.foundLore.has(tileId)) {
                     logMessage("You've discovered a General Store! +15 XP");
                     grantXp(15);
@@ -8131,6 +8445,14 @@ if (Math.random() < luckDodgeChance) { //
             }
 
             if (newTile === 'H') {
+
+                const hour = gameState.time.hour;
+                // Healer sleeps from 8 PM to 6 AM
+                if (hour < 6 || hour >= 20) {
+                    logMessage("The Healer's cottage is dark. They must be sleeping.");
+                    return; // Stop interaction
+                }
+
                 const HEAL_COST = 10;
                 const player = gameState.player;
 
@@ -8193,6 +8515,8 @@ if (Math.random() < luckDodgeChance) { //
                     
                     // We need to clear instanced enemies, as this is a safe zone
                     gameState.instancedEnemies = []; 
+
+                    gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
 
                     logMessage("You enter the peaceful village.");
                     updateRegionDisplay();
@@ -8286,6 +8610,8 @@ if (Math.random() < luckDodgeChance) { //
                     gameState.player.x = landmarkSpawn.x;
                     gameState.player.y = landmarkSpawn.y;
 
+                    gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
+
                     logMessage("You enter the imposing fortress...");
                     updateRegionDisplay();
                     render();
@@ -8310,6 +8636,9 @@ if (Math.random() < luckDodgeChance) { //
                     const spawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
                     gameState.player.x = spawn.x;
                     gameState.player.y = spawn.y;
+
+                    gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
+
                     logMessage("You enter the castle grounds.");
                     updateRegionDisplay();
                     render();
@@ -8773,77 +9102,61 @@ logoutButton.addEventListener('click', () => {
     auth.signOut();
 });
 
-async function startGame(user) {
-    player_id = user.uid;
-    playerRef = db.collection('players').doc(player_id);
-    authContainer.classList.add('hidden');
+async function enterGame(playerData) {
     gameContainer.classList.remove('hidden');
-
     const loadingIndicator = document.getElementById('loadingIndicator');
-
     canvas.style.visibility = 'hidden';
 
-    try {
-        const doc = await playerRef.get();
-        if (doc.exists) {
-            // --- EXISTING USER LOGIC ---
-            let playerData = doc.data();
-            if (playerData.health <= 0) {
-                logMessage("You have respawned.");
-                playerData = createDefaultPlayerState();
-                await playerRef.set(playerData);
-            }
-            const fullPlayerData = {
-                ...createDefaultPlayerState(),
-                ...playerData
-            };
-            Object.assign(gameState.player, fullPlayerData);
-
-            if (playerData.discoveredRegions && Array.isArray(playerData.discoveredRegions)) {
-                gameState.discoveredRegions = new Set(playerData.discoveredRegions);
-            }
-
-            if (playerData.foundLore && Array.isArray(playerData.foundLore)) {
-                gameState.foundLore = new Set(playerData.foundLore);
-            } else {
-                gameState.foundLore = new Set();
-            }
-
-            if (playerData.lootedTiles && Array.isArray(playerData.lootedTiles)) {
-                gameState.lootedTiles = new Set(playerData.lootedTiles);
-            } else {
-                gameState.lootedTiles = new Set();
-            }
-
-            // --- ADD THIS BLOCK: CHECK FOR BACKGROUND ---
-            // If the player hasn't chosen a class yet, stop everything and show the modal.
-            if (!playerData.background) {
-                loadingIndicator.classList.add('hidden');
-                charCreationModal.classList.remove('hidden');
-                return; // <--- CRITICAL: Stops the game from loading further
-            }
-            // --- END BLOCK ---
-
-        } else {
-            // --- NEW USER LOGIC ---
-            logMessage("Welcome! Creating your character sheet...");
-            const defaultState = createDefaultPlayerState();
-            await playerRef.set(defaultState);
-            Object.assign(gameState.player, defaultState);
-            
-            // --- ADD THIS BLOCK: FORCE SELECTION ---
-            // Immediately interrupt the load to show character creation
-            loadingIndicator.classList.add('hidden');
-            charCreationModal.classList.remove('hidden');
-            return; // <--- CRITICAL: Stops the game from loading further
-            // --- END BLOCK ---
-        }
-    } catch (error) {
-        console.error("Error fetching initial player state:", error);
+    // --- 1. Load State ---
+    if (playerData.health <= 0) {
+        logMessage("You have respawned.");
+        // Reset to default but keep the background
+        const bgKey = playerData.background;
+        playerData = createDefaultPlayerState();
+        playerData.background = bgKey;
+        
+        // Note: playerRef is already set to the correct slot in selectSlot
+        await playerRef.set(playerData);
     }
 
+    const fullPlayerData = {
+        ...createDefaultPlayerState(),
+        ...playerData
+    };
+    Object.assign(gameState.player, fullPlayerData);
+
+    // --- 2. Restore Sets (Discovery/Lore/Loot) ---
+    if (playerData.discoveredRegions && Array.isArray(playerData.discoveredRegions)) {
+        gameState.discoveredRegions = new Set(playerData.discoveredRegions);
+    } else {
+        gameState.discoveredRegions = new Set();
+    }
+
+    if (playerData.foundLore && Array.isArray(playerData.foundLore)) {
+        gameState.foundLore = new Set(playerData.foundLore);
+    } else {
+        gameState.foundLore = new Set();
+    }
+
+    if (playerData.lootedTiles && Array.isArray(playerData.lootedTiles)) {
+        gameState.lootedTiles = new Set(playerData.lootedTiles);
+    } else {
+        gameState.lootedTiles = new Set();
+    }
+
+    // --- 3. Check Background (Safety Check) ---
+    if (!playerData.background) {
+        // If no background, redirect to character creation
+        loadingIndicator.classList.add('hidden');
+        charCreationModal.classList.remove('hidden');
+        return;
+    }
+
+    // --- 4. Setup Listeners ---
+    // Note: player_id was set in selectSlot (it is currentUser.uid)
     onlinePlayerRef = rtdb.ref(`onlinePlayers/${player_id}`);
     const connectedRef = rtdb.ref('.info/connected');
+
     connectedRef.on('value', (snap) => {
         if (snap.val() === true) {
             const stateToSet = {
@@ -8858,6 +9171,7 @@ async function startGame(user) {
             onlinePlayerRef.set(stateToSet);
 
             onlinePlayerRef.onDisconnect().remove().then(() => {
+                // Prepare final save state on disconnect
                 const finalState = {
                     ...gameState.player,
                     lootedTiles: Array.from(gameState.lootedTiles)
@@ -8865,7 +9179,6 @@ async function startGame(user) {
 
                 if (finalState.inventory) {
                     finalState.inventory = finalState.inventory.map(item => ({
-                    
                         name: item.name,
                         type: item.type,
                         quantity: item.quantity,
@@ -8878,7 +9191,6 @@ async function startGame(user) {
                         skillId: item.skillId || null,
                         stat: item.stat || null,
                         isEquipped: item.isEquipped || false
-
                     }));
                 }
 
@@ -8894,6 +9206,7 @@ async function startGame(user) {
     rtdb.ref('onlinePlayers').on('value', (snapshot) => {
         const newOtherPlayers = snapshot.val() || {};
         if (newOtherPlayers[player_id]) {
+            // Update local player position if needed (mostly for debugging/sync)
             const myData = newOtherPlayers[player_id];
             gameState.player.x = myData.x;
             gameState.player.y = myData.y;
@@ -8906,16 +9219,16 @@ async function startGame(user) {
     const sharedEnemiesRef = rtdb.ref('worldEnemies');
     sharedEnemiesRef.on('value', (snapshot) => {
         gameState.sharedEnemies = snapshot.val() || {};
-        render(); // Re-render the screen to show new health bars
+        render(); // Re-render to show new health bars
     });
 
     unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
         if (doc.exists) {
-            const playerData = doc.data();
+            const data = doc.data();
 
             // --- Update Inventory ---
-            if (playerData.inventory) {
-                playerData.inventory.forEach(item => {
+            if (data.inventory) {
+                data.inventory.forEach(item => {
                     const templateItem = Object.values(ITEM_DATA).find(d => d.name === item.name);
                     if (templateItem) {
                         item.effect = templateItem.effect;
@@ -8929,33 +9242,24 @@ async function startGame(user) {
                     }
                 });
 
-                // After loading inventory, set equipment pointers
-                const equippedWeapon = playerData.inventory.find(i => i.type === 'weapon' && i.isEquipped);
-                const equippedArmor = playerData.inventory.find(i => i.type === 'armor' && i.isEquipped);
+                const equippedWeapon = data.inventory.find(i => i.type === 'weapon' && i.isEquipped);
+                const equippedArmor = data.inventory.find(i => i.type === 'armor' && i.isEquipped);
 
                 gameState.player.equipment.weapon = equippedWeapon || { name: 'Fists', damage: 0 };
                 gameState.player.equipment.armor = equippedArmor || { name: 'Simple Tunic', defense: 0 };
 
-                gameState.player.inventory = playerData.inventory;
+                gameState.player.inventory = data.inventory;
                 renderInventory();
             }
 
-            // --- Update Equipment ---
-            if (playerData.equipment) {
-
-                // Ensure default equipment is present if not in DB
+            // --- Update Equipment Stats ---
+            if (data.equipment) {
                 gameState.player.equipment = {
                     ...{
-                        weapon: {
-                            name: 'Fists',
-                            damage: 0
-                        },
-                        armor: {
-                            name: 'Simple Tunic',
-                            defense: 0
-                        }
+                        weapon: { name: 'Fists', damage: 0 },
+                        armor: { name: 'Simple Tunic', defense: 0 }
                     },
-                    ...playerData.equipment
+                    ...data.equipment
                 };
                 renderEquipment();
             }
@@ -8976,14 +9280,13 @@ async function startGame(user) {
                 const player = gameState.player;
                 let statsUpdated = false;
 
-                // Define a helper function for clarity
                 const applyRegen = (stat, maxStat, progressStat) => {
                     if (player[stat] < player[maxStat]) {
                         player[progressStat] += regenAmount;
                         if (player[progressStat] >= 1) {
                             const pointsToAdd = Math.floor(player[progressStat]);
                             player[stat] = Math.min(player[maxStat], player[stat] + pointsToAdd);
-                            player[progressStat] -= pointsToAdd; // Keep the remainder
+                            player[progressStat] -= pointsToAdd;
                             statsUpdated = true;
                         }
                     }
@@ -9025,34 +9328,31 @@ async function startGame(user) {
             messageDiv.innerHTML = `<span class="muted-text text-xs">[${timeString}]</span> <strong>${message.email}:</strong> ${message.message}`;
         }
         chatMessages.prepend(messageDiv);
-        // This keeps the scrollbar at the bottom (most recent message)
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 
+    // --- 5. Final Render & Initialization ---
     renderStats();
-
     renderEquipment();
-
     renderTime();
-
     resizeCanvas();
-
     render();
+    
     canvas.style.visibility = 'visible';
     syncPlayerState();
-    logMessage(`Logged in as ${user.email}`);
+    
+    logMessage(`Welcome back, ${playerData.background} of level ${gameState.player.level}.`);
     updateRegionDisplay();
 
     loadingIndicator.classList.add('hidden');
+    
+    // Initialize all UI listeners
     initShopListeners();
     initSpellbookListeners();
     initInventoryListeners();
     initSkillbookListeners();
-
     initQuestListeners();
-
     initCraftingListeners();
-
     initSkillTrainerListeners();
 }
 
@@ -9063,10 +9363,13 @@ auth.onAuthStateChanged((user) => {
         if (savedTheme) applyTheme(savedTheme);
         else if (prefersDark) applyTheme('dark');
         else applyTheme('light');
-        startGame(user);
+        
+        // --- CHANGED: Call initCharacterSelect instead of startGame ---
+        initCharacterSelect(user); 
     } else {
         authContainer.classList.remove('hidden');
         gameContainer.classList.add('hidden');
+        characterSelectModal.classList.add('hidden'); // Hide select modal
         player_id = null;
         if (onlinePlayerRef) onlinePlayerRef.remove();
         if (unsubscribePlayerListener) unsubscribePlayerListener();
