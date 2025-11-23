@@ -153,6 +153,11 @@ const TILE_DATA = {
         flavor: "You smash the urn open...",
         lootTable: ['$', '$', 'gold_dust', 'ancient_coin', '💍']
     },
+    '🕳️': {
+        type: 'landmark_cave', // New type
+        getCaveId: (x, y) => `cave_landmark`, // Fixed ID so it's always the same dungeon
+        flavor: "A gaping abyss stares back at you. Cold air rushes up from the depths."
+    },    
 };
 
 const CASTLE_LAYOUTS = {
@@ -723,7 +728,19 @@ const ENEMY_DATA = {
         xp: 12,
         loot: 'p',         // Drops slime/pelts (we can use 'p' for now)
         inflicts: 'poison' // ...but dangerous because of poison!
-    }
+    },
+    '🧙': {
+        name: 'Necromancer Lord',
+        maxHealth: 60, // Huge health pool
+        attack: 6,     // Hits hard
+        defense: 3,    // Hard to hurt
+        xp: 1000,      // Massive XP reward
+        loot: '👑',    // Guaranteed Shattered Crown (sell for 200g)
+        caster: true,
+        castRange: 7,
+        spellDamage: 8, // Shadow Bolt
+        isBoss: true   // Enables Boss AI
+    },
 };
 
 const CAVE_THEMES = {
@@ -788,6 +805,19 @@ const CAVE_THEMES = {
         },
         decorations: ['Y', 'o', '$', 'K'],
         enemies: ['g']
+    },
+
+    ABYSS: {
+        name: 'The Maw',
+        wall: '▓',
+        floor: '.',
+        secretWall: '▒',
+        colors: {
+            wall: '#0f0f0f', // Almost black
+            floor: '#331133' // Dark purple
+        },
+        decorations: ['💀', '🕸️', '🔥', 'Ω', '💎'], // Omegas and Gems!
+        enemies: ['o', 'm', 'Z', '👺', '🐺', 'scorpion', 'a'] // Only tough enemies
     },
 
     GROTTO: {
@@ -1459,7 +1489,11 @@ function createDefaultPlayerState() {
 
         activeTreasure: null,
 
-        quests: {}
+        quests: {},
+
+        hotbar: [null, null, null, null, null], // 5 slots
+        cooldowns: {}, // Tracks turns remaining: { 'lunge': 2 }
+        stealthTurns: 0, // For the new Stealth skill
     };
 }
 
@@ -2562,12 +2596,12 @@ const SKILL_DATA = {
         description: "Gain temporary Defense. Scales with Constitution.",
         cost: 6,
         costType: "stamina",
-        requiredLevel: 2, // Player level needed to learn this
-        target: "self",   // 'self' or 'aimed'
+        requiredLevel: 2,
+        target: "self",
         type: "buff",
-        // Formula: defense = base + (Constitution * 0.5)
         baseDefense: 1, 
-        duration: 3 // Lasts for 3 player turns
+        duration: 3,
+        cooldown: 5 // <-- NEW
     },
     "lunge": {
         name: "Lunge",
@@ -2576,26 +2610,47 @@ const SKILL_DATA = {
         costType: "stamina",
         requiredLevel: 2,
         target: "aimed",
-        // Formula: damage = (PlayerDamage * 1.0) + (Strength * level)
-        baseDamageMultiplier: 1.0 
+        baseDamageMultiplier: 1.0,
+        cooldown: 3 // <-- NEW
     },
     "pacify": {
         name: "Pacify",
-        description: "Attempt to calm a hostile target, making it non-aggressive. Scales with Charisma.",
+        description: "Attempt to calm a hostile target. Scales with Charisma.",
         cost: 10,
         costType: "psyche",
         requiredLevel: 3,
-        target: "aimed"
+        target: "aimed",
+        cooldown: 5 // <-- NEW
     },
     "inflictMadness": {
         name: "Inflict Madness",
-        description: "Assault a target's mind, causing it to flee in terror for 5 turns. Scales with Charisma.",
+        description: "Assault a target's mind. Scales with Charisma.",
         cost: 12,
         costType: "psyche",
         requiredLevel: 5,
-        target: "aimed"
+        target: "aimed",
+        cooldown: 8 // <-- NEW
+    },
+    // --- NEW SKILLS ---
+    "whirlwind": {
+        name: "Whirlwind",
+        description: "Strike all adjacent enemies. Scales with Strength and Dexterity.",
+        cost: 15,
+        costType: "stamina",
+        requiredLevel: 4,
+        target: "self", // Instant AoE
+        cooldown: 6
+    },
+    "stealth": {
+        name: "Stealth",
+        description: "Become invisible to enemies for 5 turns or until you attack.",
+        cost: 10,
+        costType: "stamina",
+        requiredLevel: 3,
+        target: "self",
+        duration: 5,
+        cooldown: 10
     }
-    // We can add more skills here later (e.g., Power Attack, Whirlwind)
 };
 
 const statDisplays = {
@@ -2645,22 +2700,39 @@ const chunkManager = {
 generateCave(caveId) {
         if (this.caveMaps[caveId]) return this.caveMaps[caveId];
 
-        // 1. Pick a theme for this cave, seeded by its location
-        const randomTheme = Alea(stringToSeed(caveId + ':theme'));
-        const themeKeys = Object.keys(CAVE_THEMES);
-        const chosenThemeKey = themeKeys[Math.floor(randomTheme() * themeKeys.length)];
+        // --- 1. Setup Variables (Dynamic Scaling) ---
+        let chosenThemeKey;
+        let CAVE_WIDTH = 70;
+        let CAVE_HEIGHT = 70;
+        let enemyCount = 20;
+
+        // --- EPIC CAVE LOGIC ---
+        if (caveId === 'cave_landmark') {
+            chosenThemeKey = 'ABYSS'; // Force the Epic Theme
+            CAVE_WIDTH = 100;  // Huge map (Standard is 70)
+            CAVE_HEIGHT = 100; // Huge map
+            enemyCount = 60;   // Triple the enemies (Standard is 20)
+        } else {
+            // Normal procedural cave
+            const randomTheme = Alea(stringToSeed(caveId + ':theme'));
+            // Filter out 'ABYSS' so it doesn't appear in normal caves
+            const themeKeys = Object.keys(CAVE_THEMES).filter(k => k !== 'ABYSS');
+            chosenThemeKey = themeKeys[Math.floor(randomTheme() * themeKeys.length)];
+        }
+        // -----------------------
+
         const theme = CAVE_THEMES[chosenThemeKey];
         this.caveThemes[caveId] = chosenThemeKey; // Remember the theme
 
         // 2. Generate the map layout
-        const CAVE_WIDTH = 70;
-        const CAVE_HEIGHT = 70;
         const map = Array.from({
             length: CAVE_HEIGHT
-        }, () => Array(CAVE_WIDTH).fill(theme.wall)); // Use theme's wall
+        }, () => Array(CAVE_WIDTH).fill(theme.wall));
+        
         const random = Alea(stringToSeed(caveId));
         let x = Math.floor(CAVE_WIDTH / 2);
         let y = Math.floor(CAVE_HEIGHT / 2);
+
         const startPos = {
             x,
             y
@@ -2785,13 +2857,12 @@ generateCave(caveId) {
             }
         }
 
-        // 5. (MOVED) Place procedural enemies
+        // 5. Place procedural enemies
         // This loop now spawns enemies in the random corridors
         // AND in the "F" (floor) tiles of our stamped rooms
         
-        const enemyTypes = theme.enemies || Object.keys(ENEMY_DATA);
+        for (let i = 0; i < enemyCount; i++) {
 
-        for (let i = 0; i < 20; i++) { // Try to spawn 20 enemies
             const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
             const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
 
@@ -2870,6 +2941,52 @@ generateCave(caveId) {
                         }
                     }
                 }
+            }
+        }
+
+        if (caveId === 'cave_landmark') {
+            let bossPlaced = false;
+            let attempts = 0;
+            while (!bossPlaced && attempts < 1000) {
+                // Pick a random spot
+                const bx = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
+                const by = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
+                
+                // Must be floor, and far from entrance (distance > 30)
+                const distFromStart = Math.sqrt(Math.pow(bx - startPos.x, 2) + Math.pow(by - startPos.y, 2));
+                
+                if (map[by][bx] === theme.floor && distFromStart > 30) {
+                    const bossTile = '🧙';
+                    const bossTemplate = ENEMY_DATA[bossTile];
+                    
+                    // Place on map
+                    map[by][bx] = bossTile;
+                    
+                    // Add to enemy list
+                    this.caveEnemies[caveId].push({
+                        id: `${caveId}:BOSS`, // Unique ID
+                        x: bx,
+                        y: by,
+                        tile: bossTile,
+                        name: bossTemplate.name,
+                        health: bossTemplate.maxHealth,
+                        maxHealth: bossTemplate.maxHealth,
+                        attack: bossTemplate.attack,
+                        defense: bossTemplate.defense,
+                        xp: bossTemplate.xp,
+                        loot: bossTemplate.loot,
+                        caster: true,
+                        castRange: bossTemplate.castRange,
+                        spellDamage: bossTemplate.spellDamage,
+                        isBoss: true, // Important flag
+                        madnessTurns: 0,
+                        frostbiteTurns: 0,
+                        poisonTurns: 0,
+                        rootTurns: 0
+                    });
+                    bossPlaced = true;
+                }
+                attempts++;
             }
         }
 
@@ -3062,6 +3179,11 @@ generateCave(caveId) {
                 if (tile === '.' && featureRoll < 0.000001) { 
                     this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
+
+                    } else if ((tile === 'd' || tile === '^') && featureRoll < 0.000002) { 
+                    // Spawns in Deadlands ('d') or Mountains ('^')
+                    this.setWorldTile(worldX, worldY, '🕳️');
+                    chunkData[y][x] = '🕳️';
 
                 } else if (tile === '.' && featureRoll < 0.0002) {
                     // Rare spawn on plains: Ancient Grave
@@ -4206,6 +4328,113 @@ function initSpellbookListeners() {
     });
 }
 
+const hotbarContainer = document.getElementById('hotbarContainer');
+
+function renderHotbar() {
+    hotbarContainer.innerHTML = '';
+    const hotbar = gameState.player.hotbar;
+    const cooldowns = gameState.player.cooldowns || {};
+
+    hotbar.forEach((abilityId, index) => {
+        const slotDiv = document.createElement('div');
+        slotDiv.className = "relative w-12 h-12 border-2 rounded flex items-center justify-center cursor-pointer bg-[var(--bg-page)] hover:border-blue-500 transition-all";
+        
+        // Add keyboard number hint
+        const keyHint = document.createElement('span');
+        keyHint.className = "absolute top-0 left-1 text-[10px] font-bold text-[var(--text-muted)]";
+        keyHint.textContent = index + 1;
+        slotDiv.appendChild(keyHint);
+
+        if (abilityId) {
+            // Determine if it's a Skill or Spell for data lookup
+            const data = SKILL_DATA[abilityId] || SPELL_DATA[abilityId];
+            if (data) {
+                // Show Icon/Name abbreviation
+                const label = document.createElement('span');
+                label.className = "font-bold text-sm";
+                label.textContent = data.name.substring(0, 2).toUpperCase(); // First 2 letters
+                slotDiv.title = `${data.name} (Cost: ${data.cost} ${data.costType})`;
+                slotDiv.appendChild(label);
+
+                // Cooldown Overlay
+                if (cooldowns[abilityId] > 0) {
+                    slotDiv.classList.add('opacity-50', 'cursor-not-allowed');
+                    const cdOverlay = document.createElement('div');
+                    cdOverlay.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white font-bold";
+                    cdOverlay.textContent = cooldowns[abilityId];
+                    slotDiv.appendChild(cdOverlay);
+                }
+            }
+        } else {
+            slotDiv.classList.add('border-dashed', 'opacity-50');
+        }
+
+        // Click to clear slot (Right click logic could go here later)
+        slotDiv.onclick = () => {
+            if (gameState.inventoryMode) return; // Don't trigger during inventory
+            useHotbarSlot(index);
+        };
+
+        hotbarContainer.appendChild(slotDiv);
+    });
+}
+
+/**
+ * Sets the cooldown for a skill or spell and updates the DB/UI.
+ */
+function triggerAbilityCooldown(abilityId) {
+    const data = SKILL_DATA[abilityId] || SPELL_DATA[abilityId];
+    
+    if (data && data.cooldown) {
+        // Initialize object if it doesn't exist
+        if (!gameState.player.cooldowns) gameState.player.cooldowns = {};
+        
+        // Set the turns
+        gameState.player.cooldowns[abilityId] = data.cooldown;
+        
+        // Update Database
+        playerRef.update({ cooldowns: gameState.player.cooldowns });
+        
+        // Update UI (Safeguard in case you haven't added the Hotbar UI yet)
+        if (typeof renderHotbar === 'function') renderHotbar();
+    }
+}
+
+function useHotbarSlot(index) {
+    const abilityId = gameState.player.hotbar[index];
+    if (!abilityId) return;
+
+    const cooldowns = gameState.player.cooldowns || {};
+    if (cooldowns[abilityId] > 0) {
+        logMessage("That ability is on cooldown!");
+        return;
+    }
+
+    if (SKILL_DATA[abilityId]) {
+        useSkill(abilityId);
+    } else if (SPELL_DATA[abilityId]) {
+        castSpell(abilityId);
+    }
+}
+
+function assignToHotbar(abilityId) {
+    // Find first empty slot
+    const hotbar = gameState.player.hotbar;
+    let index = hotbar.indexOf(null);
+    
+    if (index === -1) {
+        // Full? Replace slot 1 or just notify
+        index = 0; 
+        logMessage(`Hotbar full. Replaced Slot 1 with ${abilityId}.`);
+    } else {
+        logMessage(`Assigned ${abilityId} to Hotbar Slot ${index + 1}.`);
+    }
+
+    hotbar[index] = abilityId;
+    playerRef.update({ hotbar: hotbar });
+    renderHotbar();
+}
+
 function openInventoryModal() {
     if (gameState.player.inventory.length === 0) {
         logMessage("Your inventory is empty.");
@@ -4279,7 +4508,13 @@ function openSkillbook() {
                 <span class="skill-item-name">${skillData.name} (Lvl ${skillLevel})</span>
                 <span class="spell-item-details">${skillData.description}</span>
             </div>
-            <span class="font-bold ${costColorClass}">${costString}</span>
+            <div class="flex flex-col items-end">
+                <span class="font-bold ${costColorClass}">${costString}</span>
+                <button class="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded mt-1" 
+                    onclick="assignToHotbar('${skillId}'); event.stopPropagation();">
+                    Assign
+                </button>
+            </div>
         `;
         
         skillList.appendChild(li);
@@ -4300,6 +4535,11 @@ function useSkill(skillId) {
     
     if (!skillData) {
         logMessage("Unknown skill. (No skill data found)");
+        return;
+    }
+
+    if (player.cooldowns && player.cooldowns[skillId] > 0) {
+        logMessage(`That skill is not ready yet (${player.cooldowns[skillId]} turns).`);
         return;
     }
 
@@ -4346,16 +4586,12 @@ function useSkill(skillId) {
             case 'brace':
                 if (player.defenseBonusTurns > 0) {
                     logMessage("You are already bracing!");
-                   
-                    break; // Exit the switch
+                    break; 
                 }
-                
                 // Formula: defense = base + (Constitution * 0.5 * level)
                 const defenseBonus = Math.floor(skillData.baseDefense + (player.constitution * 0.5 * skillLevel));
-                const duration = skillData.duration;
-
                 player.defenseBonus = defenseBonus;
-                player.defenseBonusTurns = duration;
+                player.defenseBonusTurns = skillData.duration;
 
                 logMessage(`You brace for impact, gaining +${defenseBonus} Defense!`);
                 
@@ -4365,8 +4601,48 @@ function useSkill(skillId) {
                 });
                 skillUsedSuccessfully = true;
                 break;
-            
-            // Add other self-cast skills here in the future
+
+            // --- NEW SKILL: STEALTH ---
+            case 'stealth':
+                player.stealthTurns = skillData.duration;
+                logMessage("You fade into the shadows... (Invisible)");
+                playerRef.update({ stealthTurns: player.stealthTurns });
+                skillUsedSuccessfully = true;
+                break;
+
+            // --- NEW SKILL: WHIRLWIND ---
+            case 'whirlwind':
+                logMessage("You spin in a deadly vortex!");
+                let hitCount = 0;
+                // Stronger scaling: Str + Dex
+                const baseDmg = (player.strength + player.dexterity) * skillLevel; 
+                
+                // Attack all adjacent tiles (-1 to 1)
+                for (let y = -1; y <= 1; y++) {
+                    for (let x = -1; x <= 1; x++) {
+                        if (x === 0 && y === 0) continue; // Skip self
+                        const tx = player.x + x;
+                        const ty = player.y + y;
+                        
+                        // Check for instanced enemies
+                        let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
+                        if (enemy) {
+                            enemy.health -= baseDmg;
+                            logMessage(`Whirlwind hits ${enemy.name} for ${baseDmg}!`);
+                            hitCount++;
+                            
+                            if (enemy.health <= 0) {
+                                logMessage(`${enemy.name} is slain!`);
+                                grantXp(enemy.xp);
+                                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                                // Note: Not generating loot for AoE to keep it simple, or add it if you want
+                            }
+                        }
+                    }
+                }
+                if (hitCount === 0) logMessage("You whirl through empty air.");
+                skillUsedSuccessfully = true;
+                break;
         }
 
         // --- 5. Finalize Self-Cast Turn ---
@@ -4374,6 +4650,7 @@ function useSkill(skillId) {
             playerRef.update({ [costType]: player[costType] }); // Save the new stamina
             triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
             skillModal.classList.add('hidden');
+            triggerAbilityCooldown(skillId);
             endPlayerTurn();
             renderEquipment(); // Update UI to show buff
         }
@@ -4467,6 +4744,7 @@ async function executeLunge(dirX, dirY) {
         stamina: player.stamina
     });
     triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
+    triggerAbilityCooldown('lunge');
     endPlayerTurn(); // Always end turn, even if you miss
     render(); // Re-render to show enemy health change
 }
@@ -4512,6 +4790,13 @@ function executePacify(dirX, dirY) {
         const enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
 
         if (enemy) {
+
+            if (enemy.isBoss) {
+                logMessage(`The ${enemy.name} is immune to your charms!`);
+                hit = true;
+                break; 
+            }
+
             // Found a target!
             hit = true;
             
@@ -4549,6 +4834,7 @@ function executePacify(dirX, dirY) {
         psyche: player.psyche
     });
     triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+    triggerAbilityCooldown('pacify');
     endPlayerTurn();
     render();
 }
@@ -4593,6 +4879,13 @@ function executeInflictMadness(dirX, dirY) {
         const enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
 
         if (enemy) {
+
+            if (enemy.isBoss) {
+                logMessage(`The ${enemy.name}'s mind is too strong to break!`);
+                hit = true;
+                break; 
+            }
+            
             // Found a target!
             hit = true;
             
@@ -4624,6 +4917,7 @@ function executeInflictMadness(dirX, dirY) {
         psyche: player.psyche
     });
     triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
+    triggerAbilityCooldown('inflictMadness');
     endPlayerTurn();
     render();
 }
@@ -4716,6 +5010,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     } else if (spellData.costType === 'psyche') {
         triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
     }
+
+    triggerAbilityCooldown(spellId);
 
     endPlayerTurn();
     render();
@@ -5296,7 +5592,13 @@ function openSpellbook() {
                 <span class="spell-item-name">${spellData.name} (Lvl ${spellLevel})</span>
                 <span class="spell-item-details">${spellData.description}</span>
             </div>
-            <span class="font-bold ${costColorClass}">${costString}</span>
+            <div class="flex flex-col items-end">
+                <span class="font-bold ${costColorClass}">${costString}</span>
+                <button class="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded mt-1" 
+                    onclick="assignToHotbar('${spellId}'); event.stopPropagation();">
+                    Assign
+                </button>
+            </div>
         `;
         
         spellList.appendChild(li);
@@ -5317,6 +5619,11 @@ function castSpell(spellId) {
     
     if (!spellData) {
         logMessage("You don't know how to cast that. (No spell data found)");
+        return;
+    }
+
+    if (player.cooldowns && player.cooldowns[spellId] > 0) {
+        logMessage(`That spell is not ready yet (${player.cooldowns[spellId]} turns).`);
         return;
     }
     
@@ -5469,6 +5776,9 @@ function castSpell(spellId) {
             updates[costType] = player[costType]; // Add the resource cost (mana/psyche/health)
             playerRef.update(updates); // Send all updates at once
             spellModal.classList.add('hidden');
+
+            triggerAbilityCooldown(spellId);
+
             endPlayerTurn();
             renderStats();
         } else {
@@ -6457,7 +6767,7 @@ function processFriendlyTurns() {
 
 function processEnemyTurns() {
     // This function only runs for dungeon/castle enemies
-    if (gameState.mapMode !== 'dungeon' && gameState.mapMode !== 'castle') {
+    if (gameState.mapMode !== 'dungeon') {
         return false;
     }
 
@@ -6523,6 +6833,76 @@ function processEnemyTurns() {
             }
 
             return; // --- This enemy's turn is over. It will not attack or chase. ---
+        }
+
+        if (enemy.isBoss) {
+            
+            // 1. Boss Immunity: Reduce status effects immediately
+            if (enemy.madnessTurns > 0 || enemy.poisonTurns > 0 || enemy.frostbiteTurns > 0 || enemy.rootTurns > 0) {
+                if (Math.random() < 0.5) { // 50% chance to shrug off effects per turn
+                    enemy.madnessTurns = 0;
+                    enemy.poisonTurns = 0;
+                    enemy.frostbiteTurns = 0;
+                    enemy.rootTurns = 0;
+                    logMessage(`The ${enemy.name} laughs and purges your feeble magic!`);
+                }
+            }
+
+            // 2. Special Ability: SUMMON UNDEAD (20% chance if player is close)
+            const distToPlayer = Math.sqrt(Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2));
+            
+            if (distToPlayer < 10 && Math.random() < 0.20) {
+                // Attempt to spawn a skeleton nearby
+                let spawned = false;
+                for(let sy = -1; sy <= 1; sy++) {
+                    for(let sx = -1; sx <= 1; sx++) {
+                        if(sx===0 && sy===0) continue;
+                        if (spawned) break;
+                        
+                        const sxPos = enemy.x + sx;
+                        const syPos = enemy.y + sy;
+                        
+                        // Check if empty floor
+                        if (map[syPos] && map[syPos][sxPos] === theme.floor) {
+                            // Spawn Skeleton
+                            map[syPos][sxPos] = 's';
+                            const minionTemplate = ENEMY_DATA['s'];
+                            gameState.instancedEnemies.push({
+                                id: `${gameState.currentCaveId}:minion_${Date.now()}`,
+                                x: sxPos,
+                                y: syPos,
+                                tile: 's',
+                                name: "Summoned Skeleton",
+                                health: minionTemplate.maxHealth,
+                                maxHealth: minionTemplate.maxHealth,
+                                attack: minionTemplate.attack,
+                                defense: minionTemplate.defense,
+                                xp: 0, // Minions give no XP (prevents farming)
+                                loot: null
+                            });
+                            logMessage(`The ${enemy.name} raises the dead! A Skeleton appears.`);
+                            spawned = true;
+                            return; // Boss uses turn to summon
+                        }
+                    }
+                }
+            }
+            
+            // 3. Special Ability: TELEPORT (If low health and hit)
+            if (enemy.health < enemy.maxHealth * 0.5 && Math.random() < 0.25) {
+                // Teleport to a random spot nearby (safety)
+                const tx = Math.max(1, Math.min(map[0].length - 2, enemy.x + (Math.floor(Math.random()*10)-5)));
+                const ty = Math.max(1, Math.min(map.length - 2, enemy.y + (Math.floor(Math.random()*10)-5)));
+                
+                if (map[ty][tx] === theme.floor) {
+                    map[enemy.y][enemy.x] = theme.floor;
+                    map[ty][tx] = enemy.tile;
+                    enemy.x = tx;
+                    enemy.y = ty;
+                    logMessage(`The ${enemy.name} dissolves into mist and reappears elsewhere!`);
+                    return; // Turn used
+                }
+            }
         }
 
         if (enemy.frostbiteTurns > 0) {
@@ -6618,9 +6998,9 @@ function processEnemyTurns() {
         // --- 2. NEW: CASTER ATTACK LOGIC (for Caster enemies) ---
         const castRangeSq = Math.pow(enemy.castRange || 6, 2);
         
-        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.33) {
-            // (Your existing caster logic is perfect)
-            // ...
+        // NERF: Reduced chance from 0.33 to 0.20 (20% chance to cast per turn)
+        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20) {
+            
             const spellDamage = enemy.spellDamage || 1; 
             const enemyDamage = Math.max(1, spellDamage);
 
@@ -6631,7 +7011,7 @@ function processEnemyTurns() {
 
             const luckDodgeChance = Math.min(player.luck * 0.002, 0.25);
             if (Math.random() < luckDodgeChance) {
-                logMessage(`The ${enemy.name} hurls a ${spellName}, but you dodge!`);
+                logMessage(`The ${enemy.name} fires a ${spellName} from range, but you dodge!`);
                 return; // End this enemy's turn
             }
             
@@ -6650,7 +7030,8 @@ function processEnemyTurns() {
             if (damageToApply > 0) {
                 player.health -= damageToApply;
                 triggerStatFlash(statDisplays.health, false);
-                logMessage(`The ${enemy.name}'s ${spellName} hits you for ${damageToApply} damage!`);
+                // NEW: Clearer message indicating ranged damage
+                logMessage(`The ${enemy.name} strikes from a distance with ${spellName} for ${damageToApply} damage!`);
 
             if (enemy.inflicts === 'frostbite' && player.frostbiteTurns <= 0) {
                     logMessage("You are afflicted with Frostbite!");
@@ -6670,15 +7051,13 @@ function processEnemyTurns() {
                 gameOverModal.classList.remove('hidden');
             }
             return; // End this enemy's turn
-        } // <-- ***THIS IS THE MISSING CLOSING BRACE }***
+        
+        }
 
         // --- 3. MOVEMENT LOGIC (if no attack/cast) ---
-        // This is now correctly *outside* the caster block.
         if (Math.random() < 0.50) {
             let dirX, dirY;
 
-            // (Your existing movement logic is perfect)
-            // ...
             if (Math.random() < CHASE_CHANCE) {
                 dirX = Math.sign(player.x - enemy.x);
                 dirY = Math.sign(player.y - enemy.y);
@@ -6776,8 +7155,8 @@ async function runSharedAiTurns() {
             // Success! Give specific direction.
             const dirString = getDirectionString(nearestEnemyDir);
             logMessage(`You sense a hostile presence to the ${dirString}!`);
-        } else {
-            // Fail. Give vague message.
+        } else if (Math.random() < 0.1) { 
+            // Fail. Only show vague message 10% of the time to reduce spam.
             logMessage("You hear a shuffle nearby...");
         }
     }
@@ -6829,7 +7208,7 @@ function endPlayerTurn() {
         renderEquipment(); // Update UI
     }
 
-if (player.thornsTurns > 0) {
+    if (player.thornsTurns > 0) {
         player.thornsTurns--;
         updates.thornsTurns = player.thornsTurns;
         if (player.thornsTurns === 0) {
@@ -6839,7 +7218,31 @@ if (player.thornsTurns > 0) {
         }
     }
 
-    // Tick down buff/debuff durations (This is your existing code)
+// --- TICK COOLDOWNS ---
+    if (player.cooldowns) {
+        let cooldownsChanged = false;
+        for (const key in player.cooldowns) {
+            if (player.cooldowns[key] > 0) {
+                player.cooldowns[key]--;
+                cooldownsChanged = true;
+            }
+        }
+        if (cooldownsChanged) {
+            updates.cooldowns = player.cooldowns;
+            renderHotbar(); // Update visuals
+        }
+    }
+    
+    // --- TICK STEALTH ---
+    if (player.stealthTurns > 0) {
+        player.stealthTurns--;
+        if (player.stealthTurns === 0) {
+            logMessage("You emerge from the shadows.");
+        }
+        updates.stealthTurns = player.stealthTurns;
+    }
+
+    // Tick down buff/debuff durations
     if (gameState.player.defenseBonusTurns > 0) {
         gameState.player.defenseBonusTurns--; // Tick down the turn
 
@@ -7018,13 +7421,21 @@ document.addEventListener('keydown', (event) => {
             return;
         }
 
+        const keyNum = parseInt(event.key);
+    // Only trigger if we are NOT in inventory mode, NOT dropping, and NOT aiming
+    if (!gameState.inventoryMode && !gameState.isDroppingItem && !gameState.isAiming && !isNaN(keyNum) && keyNum >= 1 && keyNum <= 5) {
+        useHotbarSlot(keyNum - 1);
+        event.preventDefault();
+        return; // Stop processing
+    }
+
         if (gameState.inventoryMode) {
             logMessage("Exited inventory mode.");
             gameState.inventoryMode = false;
             event.preventDefault();
             return;
         }
-        // --- END NEW ---
+
     }
 
     // Handle Drop Mode
@@ -8523,6 +8934,41 @@ if (Math.random() < luckDodgeChance) { //
                     render();
                     syncPlayerState();
                     return; // Stop the move
+
+                case 'landmark_cave':
+                    if (!gameState.foundLore.has(tileId)) {
+                        logMessage("You stare into the abyss... and it stares back. +100 XP");
+                        grantXp(100);
+                        gameState.foundLore.add(tileId);
+                        playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    }
+                    gameState.mapMode = 'dungeon';
+                    gameState.currentCaveId = 'cave_landmark'; // Force the unique ID
+                    gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                    
+                    // Generate (or load) the Epic Cave
+                    const epicMap = chunkManager.generateCave(gameState.currentCaveId);
+                    gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
+                    
+                    // Find entrance
+                    for (let y = 0; y < epicMap.length; y++) {
+                        const x = epicMap[y].indexOf('>');
+                        if (x !== -1) {
+                            gameState.player.x = x;
+                            gameState.player.y = y;
+                            break;
+                        }
+                    }
+                    
+                    // Load enemies
+                    const epicEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
+                    gameState.instancedEnemies = JSON.parse(JSON.stringify(epicEnemies));
+                    
+                    logMessage("You descend into The Maw.");
+                    updateRegionDisplay();
+                    render();
+                    syncPlayerState();
+                    return;
 
                 case 'canoe':
                     if (!gameState.foundLore.has(tileId)) {
