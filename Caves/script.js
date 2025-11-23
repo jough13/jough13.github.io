@@ -6025,6 +6025,25 @@ function syncPlayerState() {
     }
 }
 
+/**
+ * Calculates the natural terrain for a specific coordinate
+ * based on the world seed noises.
+ */
+function getBaseTerrain(worldX, worldY) {
+    // Recalculate noise values for this specific spot
+    const elev = elevationNoise.noise(worldX / 70, worldY / 70);
+    const moist = moistureNoise.noise(worldX / 50, worldY / 50);
+
+    // Return the correct biome character
+    if (elev < 0.35) return '~'; // Water
+    if (elev < 0.4 && moist > 0.7) return '≈'; // Swamp
+    if (elev > 0.8) return '^'; // Mountain
+    if (elev > 0.6 && moist < 0.3) return 'd'; // Deadlands
+    if (moist < 0.15) return 'D'; // Desert
+    if (moist > 0.55) return 'F'; // Forest
+    return '.'; // Plains
+}
+
 async function processOverworldEnemyTurns() {
     // 1. Define search area around player (e.g., 30x30 box)
     const searchRadius = 15;
@@ -6117,11 +6136,15 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-    // --- Process all moves ---
+// --- Process all moves ---
     // We use a 'for...of' loop to allow 'await'
     for (const move of movesToMake) {
         // 1. Move the enemy on the world map (for everyone)
-        chunkManager.setWorldTile(move.oldX, move.oldY, '.'); // Clear old tile
+        
+        // ---Restore the correct biome instead of forcing '.' ---
+        const restoredTile = getBaseTerrain(move.oldX, move.oldY);
+        chunkManager.setWorldTile(move.oldX, move.oldY, restoredTile);
+
         chunkManager.setWorldTile(move.newX, move.newY, move.tile); // Set new tile
 
         // 2. Define the database paths for its health data
