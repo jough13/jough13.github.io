@@ -129,6 +129,15 @@ const TILE_DATA = {
     '📦': {
         type: 'loot_chest'
     },
+    '🔥': {
+        type: 'cooking_fire',
+        flavor: "A crackling fire. Good for cooking."
+    },
+    'Ω': {
+        type: 'dungeon_entrance',
+        getCaveId: (x, y) => `void_${x}_${y}`, // Creates a unique ID starting with "void_"
+        flavor: "The reality tears open here. You hear whispers from the other side."
+    },
     'T': {
         type: 'decoration', // Dead Tree
     },
@@ -659,6 +668,15 @@ const ENEMY_DATA = {
         xp: 10, // Down from 20
         loot: 'i'
     },
+    'v': {
+        name: 'Void Stalker',
+        maxHealth: 12,    // Not tanky...
+        attack: 5,        // ...but hits hard
+        defense: 1,
+        xp: 45,
+        loot: 'vd',       // Drops Void Dust
+        teleporter: true  // <--- New AI Flag
+    },
     'w': {
         name: 'Wolf',
         maxHealth: 4, // Down from 6
@@ -693,6 +711,14 @@ const ENEMY_DATA = {
         caster: true,
         castRange: 6,
         spellDamage: 5 
+    },
+    '🐗': {
+        name: 'Wild Boar',
+        maxHealth: 8,     // Tankier than a wolf
+        attack: 2,        // Same damage
+        defense: 0,
+        xp: 12,
+        loot: '🍖'        // Guaranteed Meat drop
     },
     'Z': {
         name: 'Draugr',
@@ -837,7 +863,18 @@ const CAVE_THEMES = {
         decorations: ['Y', 'o', '$', 'K'],
         enemies: ['g']
     },
-
+    VOID: {
+        name: 'The Void Sanctum',
+        wall: '▓',         // Solid Wall
+        floor: '.',        // Floor
+        phaseWall: '▒',    // <--- Special "Fake" Wall
+        colors: {
+            wall: '#2e0249', // Deep Purple
+            floor: '#0f0518' // Almost Black
+        },
+        decorations: ['✨', '💀', 'Ω'],
+        enemies: ['v', 'a', 'm', 'v'] // Mostly Stalkers
+    },
     ABYSS: {
         name: 'The Maw',
         wall: '▓',
@@ -1733,6 +1770,29 @@ const TERRAIN_COST = {
     'F': 1, // Forests cost 1 stamina
 };
 
+const COOKING_RECIPES = {
+    "Steak": { 
+        materials: { "Raw Meat": 1 }, 
+        xp: 10, level: 1 
+    },
+    "Grilled Fish": { 
+        materials: { "Raw Fish": 1 }, 
+        xp: 10, level: 1 
+    },
+    "Berry Juice": { 
+        materials: { "Wildberry": 3 }, 
+        xp: 5, level: 1 
+    },
+    "Cactus Stew": { 
+        materials: { "Cactus Fruit": 2, "Raw Meat": 1 }, 
+        xp: 20, level: 2 
+    },
+    "Hearty Meal": { 
+        materials: { "Steak": 1, "Grilled Fish": 1, "Wildberry": 1 }, 
+        xp: 50, level: 3 
+    }
+};
+
 const CRAFTING_RECIPES = {
     // --- TIER 1 (Basic Survival) ---
     "Stick": { 
@@ -1865,7 +1925,12 @@ const ITEM_DATA = {
         type: 'tool', // Keeps in inventory
         statBonuses: { luck: 1 } // Just having it brings luck
     },
-
+    'vd': {
+        name: 'Void Dust',
+        type: 'junk', // Sellable for now, crafting later
+        description: "A pile of glittering dust that fades in and out of existence.",
+        tile: '✨' // Visual representation
+    },
     // --- VALUABLE RELICS (Lore/Trade Goods) ---
     '👑': {
         name: 'Shattered Crown',
@@ -1887,6 +1952,75 @@ const ITEM_DATA = {
         type: 'junk',
         tile: '🪙',
         description: "Minted in an age before the Old King."
+    },
+
+    // --- COOKING INGREDIENTS ---
+    '🍖': {
+        name: 'Raw Meat',
+        type: 'junk',
+        description: "Bloody and raw. Needs cooking."
+    },
+    '🐟': {
+        name: 'Raw Fish',
+        type: 'junk',
+        description: "Freshly caught. Slimey."
+    },
+    // --- COOKED FOOD ---
+    '🥩': {
+        name: 'Steak',
+        type: 'consumable',
+        description: "Seared to perfection. (+5 Health)",
+        effect: (state) => {
+            state.player.health = Math.min(state.player.maxHealth, state.player.health + 5);
+            logMessage("You eat the steak. Delicious! (+5 HP)");
+            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+        }
+    },
+    '🍣': { // Sushi icon for fish
+        name: 'Grilled Fish',
+        type: 'consumable',
+        description: "Flaky and warm. (+5 Stamina)",
+        effect: (state) => {
+            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 5);
+            logMessage("You eat the fish. You feel energized! (+5 Stamina)");
+            triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+        }
+    },
+    '🥤': { 
+        name: 'Berry Juice',
+        type: 'consumable',
+        description: "Sweet and tart. (+3 Mana)",
+        effect: (state) => {
+            state.player.mana = Math.min(state.player.maxMana, state.player.mana + 3);
+            logMessage("You drink the juice. Refreshing! (+3 Mana)");
+            triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+        }
+    },
+    '🍲': {
+        name: 'Cactus Stew',
+        type: 'consumable',
+        description: "Spicy and filling. (+5 HP, +5 Stamina)",
+        effect: (state) => {
+            state.player.health = Math.min(state.player.maxHealth, state.player.health + 5);
+            state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 5);
+            logMessage("The spicy stew clears your sinuses! (+5 HP/Stamina)");
+            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+        }
+    },
+    '🥘': {
+        name: 'Hearty Meal',
+        type: 'consumable',
+        description: "A feast fit for a king. (Full Restore + Buff)",
+        effect: (state) => {
+            state.player.health = state.player.maxHealth;
+            state.player.stamina = state.player.maxStamina;
+            // Grant "Well Fed" buff
+            state.player.defenseBonus = 1;
+            state.player.defenseBonusTurns = 20;
+            logMessage("You feel invincible! (Full Restore + Well Fed)");
+            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+            playerRef.update({ defenseBonus: 1, defenseBonusTurns: 20 });
+        }
     },
     
     // --- RARE CONSUMABLES ---
@@ -2839,17 +2973,20 @@ generateCave(caveId) {
         let CAVE_HEIGHT = 70;
         let enemyCount = 20;
 
-        // --- EPIC CAVE LOGIC ---
+        // --- THEME SELECTION LOGIC ---
         if (caveId === 'cave_landmark') {
             chosenThemeKey = 'ABYSS'; // Force the Epic Theme
             CAVE_WIDTH = 100;  // Huge map (Standard is 70)
             CAVE_HEIGHT = 100; // Huge map
             enemyCount = 60;   // Triple the enemies (Standard is 20)
+        } else if (caveId.startsWith('void_')) {
+            chosenThemeKey = 'VOID'; // Force Void Theme
+            enemyCount = 25;   // Slightly denser than normal
         } else {
             // Normal procedural cave
             const randomTheme = Alea(stringToSeed(caveId + ':theme'));
-            // Filter out 'ABYSS' so it doesn't appear in normal caves
-            const themeKeys = Object.keys(CAVE_THEMES).filter(k => k !== 'ABYSS');
+            // Filter out special themes so they doesn't appear in normal caves
+            const themeKeys = Object.keys(CAVE_THEMES).filter(k => k !== 'ABYSS' && k !== 'VOID');
             chosenThemeKey = themeKeys[Math.floor(randomTheme() * themeKeys.length)];
         }
         // -----------------------
@@ -2881,9 +3018,7 @@ generateCave(caveId) {
             steps--;
         }
 
-        // --- 3. (NEW) STAMP THEMED ROOMS ---
-        // We do this *before* procedural loot/enemies
-        
+        // --- 3. STAMP THEMED ROOMS ---
         // Initialize the enemy list here
         this.caveEnemies[caveId] = [];
         
@@ -2924,21 +3059,19 @@ generateCave(caveId) {
                     // If it's an enemy, we must pre-populate it
                     if (ENEMY_DATA[tileToPlace]) {
                         const enemyTemplate = ENEMY_DATA[tileToPlace];
-                        // Parse the cave's world coordinates
+                        // Parse the cave's world coordinates if available, or default to 0
                         const parts = caveId.split('_');
-                        const caveX = parseInt(parts[1]);
-                        const caveY = parseInt(parts[2]);
+                        const caveX = parts.length > 2 ? parseInt(parts[1]) : 0;
+                        const caveY = parts.length > 2 ? parseInt(parts[2]) : 0;
 
                         // Generate scaled stats
                         const scaledStats = getScaledEnemy(enemyTemplate, caveX, caveY);
 
                         this.caveEnemies[caveId].push({
-                            // --- FIX: Use mapX and mapY ---
                             id: `${caveId}:${mapX},${mapY}`,
                             x: mapX,
                             y: mapY,
-                            tile: tileToPlace, // Use the actual tile variable
-                            // ------------------------------
+                            tile: tileToPlace,
                             name: scaledStats.name,
                             health: scaledStats.maxHealth,
                             maxHealth: scaledStats.maxHealth,
@@ -2960,7 +3093,7 @@ generateCave(caveId) {
             }
         }
 
-        // 4. Place procedural loot and decorations
+        // --- 4. Place procedural loot and decorations ---
 
         const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
         const lootQuantity = Math.floor(random() * 4);
@@ -2977,6 +3110,7 @@ generateCave(caveId) {
                 }
             }
         }
+        
         const specialItems = theme.decorations.filter(item => !CAVE_LOOT_TABLE.includes(item));
         for (const itemToPlace of specialItems) {
             let placed = false;
@@ -2990,10 +3124,19 @@ generateCave(caveId) {
             }
         }
 
-        // 5. Place procedural enemies
-        // This loop now spawns enemies in the random corridors
-        // AND in the "F" (floor) tiles of our stamped rooms
+        // --- 4b. Place Phase Walls (Only in Void) ---
+        if (chosenThemeKey === 'VOID') {
+            for(let i=0; i<40; i++) {
+                const randY = Math.floor(random() * (CAVE_HEIGHT - 4)) + 2;
+                const randX = Math.floor(random() * (CAVE_WIDTH - 4)) + 2;
+                // Turn a normal wall into a phase wall
+                if (map[randY][randX] === theme.wall) {
+                    map[randY][randX] = theme.phaseWall;
+                }
+            }
+        }
 
+        // --- 5. Place procedural enemies ---
         const enemyTypes = theme.enemies || Object.keys(ENEMY_DATA);
         
         for (let i = 0; i < enemyCount; i++) {
@@ -3016,28 +3159,33 @@ generateCave(caveId) {
                     y: randY,
                     tile: enemyTile,
                     name: enemyTemplate.name,
-                    health: enemyTemplate.maxHealth, // Start at full health
+                    health: enemyTemplate.maxHealth,
                     maxHealth: enemyTemplate.maxHealth,
                     attack: enemyTemplate.attack,
                     defense: enemyTemplate.defense,
                     xp: enemyTemplate.xp,
                     loot: enemyTemplate.loot,
+                    // Check flags from data
+                    teleporter: enemyTemplate.teleporter || false, 
+                    caster: enemyTemplate.caster || false,
+                    castRange: enemyTemplate.castRange || 0,
+                    spellDamage: enemyTemplate.spellDamage || 0,
+                    inflicts: enemyTemplate.inflicts || null,
                     madnessTurns: 0,
                     frostbiteTurns: 0,
-                    poisonTurns: 0
+                    poisonTurns: 0,
+                    rootTurns: 0
                 });
             }
         }
         
-        // 6. (NEW) Place the Exit
-        // We do this *after* rooms are stamped to ensure the exit isn't overwritten.
-        map[startPos.y][startPos.x] = '>'; // Place the exit
+        // --- 6. Place the Exit ---
+        map[startPos.y][startPos.x] = '>'; 
         
-        // --- This is where the old function's logic resumes ---
-        // (The Secret Wall logic starts here, around line 1361)
+        // --- 7. Secret Wall Generation ---
         const secretWallTile = theme.secretWall;
         
-        if (secretWallTile) { // Only run if the theme *has* a secret wall defined
+        if (secretWallTile) { 
             for (let y = 2; y < CAVE_HEIGHT - 2; y++) {
                 for (let x = 2; x < CAVE_WIDTH - 2; x++) {
 
@@ -3059,17 +3207,16 @@ generateCave(caveId) {
                         if (wallCount === 3 && random() > 0.95) {
 
                             // Find the wall opposite the entrance and carve
-                            // We also check that there is solid wall 2-tiles away to carve into
-                            if (floorDir === 0 && map[y + 2][x] === theme.wall) { // Entrance North, carve South
+                            if (floorDir === 0 && map[y + 2][x] === theme.wall) { 
                                 map[y + 1][x] = secretWallTile;
-                                map[y + 2][x] = '$'; // Place treasure right behind it
-                            } else if (floorDir === 1 && map[y - 2][x] === theme.wall) { // Entrance South, carve North
+                                map[y + 2][x] = '$'; 
+                            } else if (floorDir === 1 && map[y - 2][x] === theme.wall) { 
                                 map[y - 1][x] = secretWallTile;
                                 map[y - 2][x] = '$';
-                            } else if (floorDir === 2 && map[y][x + 2] === theme.wall) { // Entrance West, carve East
+                            } else if (floorDir === 2 && map[y][x + 2] === theme.wall) { 
                                 map[y][x + 1] = secretWallTile;
                                 map[y][x + 2] = '$';
-                            } else if (floorDir === 3 && map[y][x - 2] === theme.wall) { // Entrance East, carve West
+                            } else if (floorDir === 3 && map[y][x - 2] === theme.wall) { 
                                 map[y][x - 1] = secretWallTile;
                                 map[y][x - 2] = '$';
                             }
@@ -3079,6 +3226,7 @@ generateCave(caveId) {
             }
         }
 
+        // --- 8. Landmark Boss Placement ---
         if (caveId === 'cave_landmark') {
             let bossPlaced = false;
             let attempts = 0;
@@ -3125,7 +3273,8 @@ generateCave(caveId) {
             }
         }
 
-        map[startPos.y][startPos.x] = '>'; // Place the exit
+        // Ensure entrance is clear
+        map[startPos.y][startPos.x] = '>'; 
         this.caveMaps[caveId] = map;
         return map;
     },
@@ -3410,6 +3559,8 @@ generateCave(caveId) {
                     if (tile === 'F') {
                         if (hostileRoll < 0.002) {
                             chunkData[y][x] = 'w'; 
+                        } else if (hostileRoll < 0.004) { 
+                            chunkData[y][x] = '🐗'; // Boar (Meat)
                         } else if (hostileRoll < 0.005) { // NEW: Thickets
                             chunkData[y][x] = '🌳';
                             this.setWorldTile(worldX, worldY, '🌳');
@@ -3615,6 +3766,9 @@ const gameState = {
         canoeEmbarkCount: 0
     },
     inventoryMode: false,
+
+    currentCraftingMode: 'workbench',
+
     instancedEnemies: [],
     friendlyNpcs: [],
     worldEnemies: {},
@@ -4088,17 +4242,26 @@ function generateEnemyLoot(player, enemy) {
     }
 
     // --- DEFINE DROP CHANCES ---
-    // --- NEW LUCK LOGIC ---
+
+    // --- 1. Check for Junk Drop (First % based on Luck) ---
     // Base 25% junk chance. Each point of Luck reduces this by 0.1%
     // Capped at a minimum of 5% junk chance.
     const JUNK_DROP_CHANCE = Math.max(0.05, 0.25 - (player.luck * 0.001));
     const GOLD_DROP_CHANCE = 0.50; // 50% chance for gold
-    // (This leaves a 25% chance for level-scaled loot)
 
     const roll = Math.random(); // A roll from 0.0 to 1.0
 
-    // --- 1. Check for Junk Drop (First % based on Luck) ---
-    if (enemy.loot && roll < JUNK_DROP_CHANCE) { // roll < (e.g., 0.25)
+    if (roll < JUNK_DROP_CHANCE) { 
+        // --- NEW: Override Logic for Cooking Ingredients ---
+        // Ensure Leeches drop Fish (even if data says 'p')
+        if (enemy.tile === 'l' || enemy.name === 'Giant Leech') {
+            return '🐟'; 
+        }
+        // Ensure Boars drop Meat
+        if (enemy.tile === '🐗' || enemy.name === 'Wild Boar') {
+            return '🍖'; 
+        }
+        // ---------------------------------------------------
 
         // Use the enemy's specific loot item (e.g., 'p' for Wolf Pelt)
         // If one isn't defined, fall back to Gold.
@@ -5715,42 +5878,65 @@ function checkHasMaterials(recipeName) {
  * Renders the list of all available crafting recipes
  * and checks which ones the player can craft.
  */
-function renderCraftingModal() {
-    craftingRecipeList.innerHTML = ''; // Clear the old list
-    const playerInventory = gameState.player.inventory;
-    const playerLevel = gameState.player.craftingLevel || 1;
 
-    for (const recipeName in CRAFTING_RECIPES) {
-        const recipe = CRAFTING_RECIPES[recipeName];
-        const canCraft = checkHasMaterials(recipeName);
+function renderCraftingModal() {
+    craftingRecipeList.innerHTML = ''; 
+    const playerInventory = gameState.player.inventory;
+    
+    // Select the correct recipe list
+    let activeRecipes = {};
+    let playerLevel = 1;
+
+    if (gameState.currentCraftingMode === 'cooking') {
+        activeRecipes = COOKING_RECIPES;
+        playerLevel = 1; // Everyone can cook level 1 stuff for now
+        // Or use wisdom? Let's just allow all cooking for simplicity.
+    } else {
+        activeRecipes = CRAFTING_RECIPES;
+        playerLevel = gameState.player.craftingLevel || 1;
+    }
+
+    for (const recipeName in activeRecipes) {
+        const recipe = activeRecipes[recipeName];
         
-        // Check if player meets the crafting level requirement
+        // --- CHECK MATERIALS (Reused Logic) ---
+        let canCraft = true;
+        for (const materialName in recipe.materials) {
+            const requiredQuantity = recipe.materials[materialName];
+            const itemInInventory = playerInventory.find(item => item.name === materialName);
+            if (!itemInInventory || itemInInventory.quantity < requiredQuantity) {
+                canCraft = false;
+            }
+        }
+        // --------------------------------------
+        
         const levelMet = playerLevel >= recipe.level;
 
-        // Find the tile for the item we're crafting
+        // Find the tile
         const outputItemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === recipeName);
         const outputItemTile = outputItemKey || '?';
 
-        // Build the list of materials
+        // Build Material List
         let materialsHtml = '<ul class="crafting-item-materials">';
-        // Iterate over recipe.materials (updated structure)
         for (const materialName in recipe.materials) {
             const requiredQuantity = recipe.materials[materialName];
             const itemInInventory = playerInventory.find(item => item.name === materialName);
             const currentQuantity = itemInInventory ? itemInInventory.quantity : 0;
-            
-            // Add a red text class if the player is missing this material
             const quantityClass = currentQuantity < requiredQuantity ? 'text-red-500' : '';
-            
             materialsHtml += `<li class="${quantityClass}">${materialName} (${currentQuantity}/${requiredQuantity})</li>`;
         }
         materialsHtml += '</ul>';
 
-        // Build the Level/XP info line
-        let levelClass = levelMet ? 'text-green-600' : 'text-red-500 font-bold';
-        let infoHtml = `<div class="text-xs mt-1 ${levelClass}">Requires Crafting Lvl ${recipe.level} (Reward: ${recipe.xp} XP)</div>`;
+        // Build Info Line
+        let infoHtml = '';
+        if (gameState.currentCraftingMode === 'workbench') {
+             let levelClass = levelMet ? 'text-green-600' : 'text-red-500 font-bold';
+             infoHtml = `<div class="text-xs mt-1 ${levelClass}">Requires Crafting Lvl ${recipe.level} (Reward: ${recipe.xp} XP)</div>`;
+        } else {
+             // Cooking doesn't have levels yet, just XP
+             infoHtml = `<div class="text-xs mt-1 text-green-600">Delicious! (Reward: ${recipe.xp} XP)</div>`;
+        }
 
-        // Build the full list item
         const li = document.createElement('li');
         li.className = 'crafting-item';
         li.innerHTML = `
@@ -5760,7 +5946,7 @@ function renderCraftingModal() {
                 ${infoHtml}
             </div>
             <div class="crafting-item-actions">
-                <button data-craft-item="${recipeName}" ${canCraft && levelMet ? '' : 'disabled'}>Craft</button>
+                <button data-craft-item="${recipeName}" ${canCraft && levelMet ? '' : 'disabled'}>${gameState.currentCraftingMode === 'cooking' ? 'Cook' : 'Craft'}</button>
             </div>
         `;
         craftingRecipeList.appendChild(li);
@@ -5774,24 +5960,34 @@ function renderCraftingModal() {
  */
 
 function handleCraftItem(recipeName) {
-    if (!checkHasMaterials(recipeName)) {
-        logMessage("You're missing the materials for that.");
-        return;
-    }
-
-    const recipe = CRAFTING_RECIPES[recipeName];
-    const player = gameState.player;
+    // 1. Check both lists to find the recipe data
+    const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName];
     
-    // Check Level Requirement
+    if (!recipe) return;
+
+    const player = gameState.player;
+    const playerInventory = player.inventory;
+    
+    // 2. Check Level Requirement
+    // If it's a Workbench recipe, check crafting level. Cooking is currently Lvl 1 for all.
     const playerCraftLevel = player.craftingLevel || 1;
-    if (playerCraftLevel < recipe.level) {
+    if (CRAFTING_RECIPES[recipeName] && playerCraftLevel < recipe.level) {
         logMessage(`You need Crafting Level ${recipe.level} to make this.`);
         return;
     }
 
-    const playerInventory = player.inventory;
+    // 3. Check Materials
+    for (const materialName in recipe.materials) {
+        const requiredQuantity = recipe.materials[materialName];
+        const itemInInventory = playerInventory.find(item => item.name === materialName);
+        
+        if (!itemInInventory || itemInInventory.quantity < requiredQuantity) {
+            logMessage(`You are missing materials: ${materialName}`);
+            return;
+        }
+    }
 
-    // 1. Consume Materials (recipe.materials is the new structure)
+    // 4. Consume Materials
     for (const materialName in recipe.materials) {
         const requiredQuantity = recipe.materials[materialName];
         const itemInInventory = playerInventory.find(item => item.name === materialName);
@@ -5803,37 +5999,31 @@ function handleCraftItem(recipeName) {
         }
     }
 
-    // 2. Add Crafted Item
+    // 5. Add Crafted Item
     const outputItemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === recipeName);
     const itemTemplate = ITEM_DATA[outputItemKey];
     
-    // --- MASTERWORK CHECK ---
-    // 10% base chance + 5% per level above requirement
+    // --- Masterwork Logic (Only for Equipment) ---
     const levelDiff = playerCraftLevel - recipe.level;
     const masterworkChance = 0.10 + (levelDiff * 0.05);
     let isMasterwork = false;
     let craftedName = itemTemplate.name;
     let craftedStats = itemTemplate.statBonuses ? {...itemTemplate.statBonuses} : {};
 
-    // Only equipment can be masterwork
     if ((itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && Math.random() < masterworkChance) {
         isMasterwork = true;
         craftedName = `Masterwork ${itemTemplate.name}`;
         
-        // Add random bonus stat
         const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
         const randomStat = stats[Math.floor(Math.random() * stats.length)];
-        
         craftedStats[randomStat] = (craftedStats[randomStat] || 0) + 1;
         
-        // Bonus Damage/Defense
         if (itemTemplate.type === 'weapon') itemTemplate.damage = (itemTemplate.damage || 0) + 1;
         if (itemTemplate.type === 'armor') itemTemplate.defense = (itemTemplate.defense || 0) + 1;
     }
-    // ------------------------
 
-    const existingStack = playerInventory.find(item => item.name === craftedName && !isMasterwork); 
-    // (Masterwork items don't stack because they are unique)
+    // Stack Logic (Don't stack masterworks)
+    const existingStack = playerInventory.find(item => item.name === craftedName && !isMasterwork);
 
     if (existingStack) {
         existingStack.quantity++;
@@ -5846,19 +6036,20 @@ function handleCraftItem(recipeName) {
             damage: itemTemplate.damage || null,
             defense: itemTemplate.defense || null,
             slot: itemTemplate.slot || null,
-            statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null
+            statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
+            effect: itemTemplate.effect // CRITICAL: Copy the food effect!
         };
         playerInventory.push(newItem);
     }
     
     if (isMasterwork) {
         logMessage(`Critical Success! You crafted a ${craftedName}!`);
-        triggerStatAnimation(statDisplays.level, 'stat-pulse-purple'); // Flash UI
+        triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
     } else {
-        logMessage(`You successfully crafted a ${recipeName}.`);
+        logMessage(`You crafted/cooked: ${recipeName}.`);
     }
 
-    // 3. Grant Crafting XP
+    // 6. Grant XP (Unified Crafting XP)
     const xpGain = recipe.xp || 10;
     player.craftingXp = (player.craftingXp || 0) + xpGain;
     player.craftingXpToNext = player.craftingXpToNext || 50;
@@ -5873,7 +6064,7 @@ function handleCraftItem(recipeName) {
         triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
     }
 
-    // 4. Update Database and UI
+    // 7. Update Database & UI
     const inventoryToSave = gameState.player.inventory.map(item => ({
         name: item.name,
         type: item.type,
@@ -5900,8 +6091,18 @@ function handleCraftItem(recipeName) {
     renderInventory();
 }
 
-function openCraftingModal() {
-    renderCraftingModal(); // Populate the list based on current inventory
+function openCraftingModal(mode = 'workbench') {
+    gameState.currentCraftingMode = mode;
+    
+    // Update Title based on mode
+    const title = document.querySelector('#craftingModal h2');
+    if (mode === 'cooking') {
+        title.textContent = "Cooking Pot";
+    } else {
+        title.textContent = "Crafting Workbench";
+    }
+
+    renderCraftingModal(); 
     craftingModal.classList.remove('hidden');
 }
 
@@ -7418,6 +7619,33 @@ function processEnemyTurns() {
             }
         }
 
+        if (enemy.teleporter) {
+            const distToPlayer = Math.sqrt(Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2));
+            
+            // 20% chance to teleport if not adjacent
+            if (distToPlayer > 1.5 && Math.random() < 0.20) {
+                // Try to teleport behind or near the player
+                const offsets = [[-1,0], [1,0], [0,-1], [0,1], [-1,-1], [1,1]];
+                const pick = offsets[Math.floor(Math.random() * offsets.length)];
+                const tx = player.x + pick[0];
+                const ty = player.y + pick[1];
+
+                // Check if valid floor
+                if (map[ty] && map[ty][tx] === theme.floor) {
+                    // Check if occupied
+                    const occupied = gameState.instancedEnemies.some(e => e.x === tx && e.y === ty);
+                    if (!occupied) {
+                        map[enemy.y][enemy.x] = theme.floor; // Leave old spot
+                        map[ty][tx] = enemy.tile;            // Appear in new spot
+                        enemy.x = tx;
+                        enemy.y = ty;
+                        logMessage(`The ${enemy.name} blinks through the void and appears next to you!`);
+                        return; // Turn used
+                    }
+                }
+            }
+        }
+
         if (enemy.frostbiteTurns > 0) {
             enemy.frostbiteTurns--;
             logMessage(`The ${enemy.name} shivers from the frost...`);
@@ -8418,8 +8646,9 @@ const obsoleteTiles = [];
         if (gameState.mapMode === 'dungeon') {
             const theme = CAVE_THEMES[gameState.currentCaveTheme];
             const secretWallTile = theme ? theme.secretWall : null;
+            const phaseWallTile = theme ? theme.phaseWall : null; // <--- Get Phase Wall
 
-            // Check for secret wall
+            // Check for secret wall (Breakable)
             if (secretWallTile && newTile === secretWallTile) {
                 logMessage("The wall sounds hollow... You break through!");
                 chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
@@ -8427,8 +8656,15 @@ const obsoleteTiles = [];
                 render();
                 return;
             }
-            // This is the original wall check
-            if (theme && (newTile === theme.wall || newTile === ' ')) {
+
+            // Check for Phase Wall (Walkable)
+            if (phaseWallTile && newTile === phaseWallTile) {
+                logMessage("You step into the wall... and pass right through it like smoke.");
+                // We DON'T return here. We let the code proceed to movement.
+                // We just effectively skip the "impassable" check below.
+            } 
+            else if (theme && (newTile === theme.wall || newTile === ' ')) {
+                // Standard Wall Check
                 logMessage("The wall is solid.");
                 return;
             }
@@ -9567,7 +9803,7 @@ if (Math.random() < luckDodgeChance) { //
                             foundLore: Array.from(gameState.foundLore)
                         });
                     }
-                    openCraftingModal();
+                    openCraftingModal('workbench');
                     return; // Stop the player's move
                 case 'village_entrance':
                     if (!gameState.foundLore.has(tileId)) {
@@ -9602,6 +9838,11 @@ if (Math.random() < luckDodgeChance) { //
                     render();
                     syncPlayerState();
                     return; // Stop the move
+
+                case 'cooking_fire':
+                    logMessage("You sit by the fire. The warmth is inviting.");
+                    openCraftingModal('cooking'); 
+                    return; // Stop move
 
                 case 'landmark_cave':
                     if (!gameState.foundLore.has(tileId)) {
