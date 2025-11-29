@@ -1527,6 +1527,10 @@ function createDefaultPlayerState() {
         stealthTurns: 0, // For the new Stealth skill
 
         companion: null, // Will store { name: "Wolf", tile: "w", type: "beast", hp: 10, maxHp: 10, atk: 2 }
+
+        craftingLevel: 1,
+        craftingXp: 0,
+        craftingXpToNext: 50,
     };
 }
 
@@ -1730,123 +1734,114 @@ const TERRAIN_COST = {
 };
 
 const CRAFTING_RECIPES = {
-    // Tier 1 Items
-    "Leather Tunic": { // The name of the item from ITEM_DATA
-        "Wolf Pelt": 3    // Requires 3 "Wolf Pelt"
+    // --- TIER 1 (Basic Survival) ---
+    "Stick": { 
+        materials: { "Bone Shard": 2 }, 
+        xp: 5, level: 1 
     },
-    "Stick": {
-        "Bone Shard": 3   // 3 Bone Shards -> 1 Stick (for future use)
+    "Leather Tunic": { 
+        materials: { "Wolf Pelt": 3 }, 
+        xp: 10, level: 1 
     },
-    
-    // Tier 2 Items
-    "Bone Dagger": {      // A new item we will define
-        "Bone Shard": 5,
-        "Stick": 1
+    "Bone Dagger": { 
+        materials: { "Bone Shard": 5, "Stick": 1 }, 
+        xp: 15, level: 1 
     },
-    "Bandit Garb": {      // A new item
-        "Bandit's Insignia": 3,
-        "Leather Tunic": 1
+    "Healing Potion": { 
+        materials: { "Wildberry": 2, "Cactus Fruit": 1 }, // New recipe!
+        xp: 10, level: 1 
     },
-    "Steel Sword": {
-        "Rusty Sword": 1,
-        "Orc Tusk": 4
+
+    // --- TIER 2 (Apprentice) ---
+    "Bandit Garb": { 
+        materials: { "Bandit's Insignia": 3, "Leather Tunic": 1 }, 
+        xp: 25, level: 2 
     },
-    "Steel Armor": {
-        "Studded Armor": 1,
-        "Orc Tusk": 6
+    "Bandit's Boots": { 
+        materials: { "Bandit's Insignia": 5, "Wolf Pelt": 2 }, 
+        xp: 20, level: 2 
     },
-    "Warlock's Staff": {
-        "Bone Dagger": 1,
-        "Arcane Dust": 5
+    "Pickaxe": { 
+        materials: { "Stick": 2, "Orc Tusk": 3 }, 
+        xp: 30, level: 2 
     },
-    "Bandit's Boots": {
-        "Bandit's Insignia": 5, // Requires 5 insignias
-        "Wolf Pelt": 2          // And some pelts for padding
+    "Machete": { 
+        materials: { "Bone Dagger": 1, "Stick": 2, "Wolf Pelt": 1 }, 
+        xp: 30, level: 2 
     },
-    "Orcish Helm": {
-        "Orc Tusk": 6,          // Requires 6 tusks
-        "Bone Shard": 4         // And some bone shards for reinforcement
+    "Spike Trap": { 
+        materials: { "Iron Ore": 3, "Bone Shard": 3 }, 
+        xp: 20, level: 2 
     },
-    "Poisoned Dagger": {
-        "Bone Dagger": 1,
-        "Spider Silk": 5 // Uses the spider loot!
+
+    // --- TIER 3 (Journeyman) ---
+    "Iron Sword": { 
+        materials: { "Iron Ore": 5, "Stick": 1 }, 
+        xp: 40, level: 3 
     },
-    "Potion of Strength": {
-        "Healing Potion": 1, // Requires a potion base
-        "Orc Tusk": 2        // And some strong tusks
+    "Iron Helm": { 
+        materials: { "Iron Ore": 4, "Wolf Pelt": 1 }, 
+        xp: 35, level: 3 
     },
-    "Pickaxe": {
-        "Stick": 2,
-        "Orc Tusk": 3 // Tusks make a good pick head
+    "Iron Mail": { 
+        materials: { "Iron Ore": 8, "Leather Tunic": 1 }, 
+        xp: 50, level: 3 
     },
-    "Spike Trap": {
-        "Iron Ore": 3,
-        "Bone Shard": 3
+    "Poisoned Dagger": { 
+        materials: { "Bone Dagger": 1, "Spider Silk": 5 }, 
+        xp: 45, level: 3 
     },
-    "Iron Sword": {
-        "Iron Ore": 5,
-        "Stick": 1
+    "Silk Cowl": { 
+        materials: { "Spider Silk": 4 }, 
+        xp: 40, level: 3 
     },
-    "Iron Mail": {
-        "Iron Ore": 8,
-        "Leather Tunic": 1 // This is a compound recipe!
+    "Silk Gloves": { 
+        materials: { "Spider Silk": 3 }, 
+        xp: 35, level: 3 
     },
-    "Iron Helm": {
-        "Iron Ore": 4,
-        "Wolf Pelt": 1 // For padding
+
+    // --- TIER 4 (Expert) ---
+    "Steel Sword": { 
+        materials: { "Rusty Sword": 1, "Orc Tusk": 4, "Iron Ore": 2 }, 
+        xp: 60, level: 4 
     },
-    "Obsidian Edge": {
-        "Obsidian Shard": 3, // Requires finding 3 Obelisks!
-        "Steel Sword": 1,    // Upgrade from Steel
-        "Arcane Dust": 5
+    "Steel Armor": { 
+        materials: { "Studded Armor": 1, "Orc Tusk": 6 }, 
+        xp: 70, level: 4 
     },
-    "Obsidian Plate": {
-        "Obsidian Shard": 4, // Requires finding 4 Obelisks!
-        "Steel Armor": 1,    // Upgrade from Steel
-        "Frost Essence": 3
+    "Warlock's Staff": { 
+        materials: { "Bone Dagger": 1, "Arcane Dust": 5 }, 
+        xp: 65, level: 4 
     },
-    "Arcane Wraps": {
-        "Arcane Dust": 5,
-        "Spider Silk": 2 // Uses other junk items
+    "Mage Robe": { 
+        materials: { "Bandit Garb": 1, "Arcane Dust": 5 }, 
+        xp: 65, level: 4 
     },
-    "Frozen Greaves": {
-        "Frost Essence": 5,
-        "Wolf Pelt": 3   // Uses other junk items
+    "Climbing Tools": { 
+        materials: { "Stick": 3, "Wolf Pelt": 3, "Bone Shard": 5 }, 
+        xp: 50, level: 4 
     },
-    "Mage Robe": {
-        "Bandit Garb": 1,
-        "Arcane Dust": 5
-    },"Cryo Blade": {
-        "Rusty Sword": 1,
-        "Frost Essence": 5
+
+    // --- TIER 5 (Master - Needs Rare Mats) ---
+    "Obsidian Edge": { 
+        materials: { "Obsidian Shard": 3, "Steel Sword": 1, "Arcane Dust": 5 }, 
+        xp: 100, level: 5 
     },
-    "Silk Cowl": {
-        "Spider Silk": 4
+    "Obsidian Plate": { 
+        materials: { "Obsidian Shard": 4, "Steel Armor": 1, "Frost Essence": 3 }, 
+        xp: 120, level: 5 
     },
-    "Silk Gloves": {
-        "Spider Silk": 3
+    "Cryo Blade": { 
+        materials: { "Rusty Sword": 1, "Frost Essence": 5 }, 
+        xp: 90, level: 5 
     },
-    "Reinforced Tunic": {
-        "Leather Tunic": 1, // <-- Uses a crafted item!
-        "Spider Silk": 4
+    "Frozen Mail": { 
+        materials: { "Studded Armor": 1, "Frost Essence": 5 }, 
+        xp: 100, level: 5 
     },
-    "Arcane Blade": {
-        "Steel Sword": 1,   // <-- Uses a crafted item!
-        "Arcane Dust": 5
-    },
-    "Machete": {
-        "Bone Dagger": 1, // Requires a hilt/blade
-        "Stick": 2,
-        "Wolf Pelt": 1 // For the grip
-    },
-    "Climbing Tools": {
-        "Stick": 3,
-        "Wolf Pelt": 3, // For straps and ropes
-        "Bone Shard": 5 // For spikes/hooks
-    },
-    "Frozen Mail": {
-        "Studded Armor": 1,
-        "Frost Essence": 5
+    "Arcane Blade": { 
+        materials: { "Steel Sword": 1, "Arcane Dust": 8 }, 
+        xp: 110, level: 5 
     }
 };
 
@@ -4274,6 +4269,56 @@ function handleBuyItem(itemName) {
     renderStats(); // Update the main UI gold display
 }
 
+function getRegionalPriceMultiplier(itemType, itemName) {
+    let multiplier = 1.0;
+    
+    // Get current biome info
+    const isDungeon = gameState.mapMode === 'dungeon';
+    const isCastle = gameState.mapMode === 'castle';
+    
+    // Default Overworld check
+    let biome = 'Plains';
+    if (!isDungeon && !isCastle) {
+        const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70);
+        const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50);
+        if (elev < 0.35) biome = 'Water';
+        else if (elev < 0.4 && moist > 0.7) biome = 'Swamp';
+        else if (elev > 0.8) biome = 'Mountain';
+        else if (elev > 0.6 && moist < 0.3) biome = 'Deadlands';
+        else if (moist < 0.15) biome = 'Desert';
+        else if (moist > 0.55) biome = 'Forest';
+    }
+
+    // --- SUPPLY & DEMAND LOGIC ---
+
+    // 1. DESERT: Pays huge for Water/Food/Herbs. Hates Sand/Cactus.
+    if (biome === 'Desert') {
+        if (itemName === 'Cactus Fruit') multiplier = 0.5; // Supply is high
+        if (itemName === 'Wildberry' || itemName === 'Healing Potion') multiplier = 2.0; // Demand is high
+        if (itemName === 'Obsidian Shard') multiplier = 1.5;
+    }
+
+    // 2. MOUNTAIN: Pays for Wood/Food. Hates Ore/Stone.
+    if (biome === 'Mountain' || (isDungeon && gameState.currentCaveTheme === 'ROCK')) {
+        if (itemName === 'Iron Ore' || itemName === 'Stone') multiplier = 0.5;
+        if (itemName === 'Stick' || itemName === 'Machete') multiplier = 1.5;
+    }
+
+    // 3. FOREST/SWAMP: Pays for Metal/Tech. Hates Wood/Herbs.
+    if (biome === 'Forest' || biome === 'Swamp') {
+        if (itemName === 'Medicinal Herb' || itemName === 'Stick') multiplier = 0.5;
+        if (itemName === 'Iron Ore' || itemName === 'Steel Sword') multiplier = 1.3;
+    }
+
+    // 4. CASTLES: Pay extra for Luxury/Relics.
+    if (isCastle) {
+        if (itemType === 'junk' || itemType === 'quest') multiplier = 1.2; // Art/History
+        if (itemName === 'Shattered Crown' || itemName === 'Signet Ring') multiplier = 1.5;
+    }
+
+    return multiplier;
+}
+
 function handleSellItem(itemIndex) {
     const player = gameState.player;
     const itemToSell = player.inventory[itemIndex];
@@ -4304,13 +4349,17 @@ function handleSellItem(itemIndex) {
         if (itemToSell.name === 'Alpha Pelt') basePrice = 60;
     }
 
-    // --- NEW CHARISMA LOGIC ---
-    // SELL_MODIFIER is 0.5 (50%)
-    const sellBonusPercent = player.charisma * 0.005; // 0.5% bonus per Charisma
-    // Cap the bonus at 50% (at 100 Charisma), for a max of 100% sell price
-    const finalSellBonus = Math.min(sellBonusPercent, 0.5); 
-    const sellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus));
-    // --- END NEW LOGIC ---
+    const regionMult = getRegionalPriceMultiplier(itemToSell.type, itemToSell.name);
+    
+    const sellBonusPercent = player.charisma * 0.005;
+    const finalSellBonus = Math.min(sellBonusPercent, 0.5);
+    
+    // Base * (0.5 modifier + Charisma Bonus) * Regional Multiplier
+    const sellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
+    
+    // Log the bonus if it's significant
+    if (regionMult > 1.0) logMessage(`Market demand is high here! (x${regionMult})`);
+    else if (regionMult < 1.0) logMessage(`Market flooded. Low demand. (x${regionMult})`);
 
     // 1. Process the transaction
     player.coins += sellPrice;
@@ -5569,8 +5618,9 @@ function checkHasMaterials(recipeName) {
     const playerInventory = gameState.player.inventory;
 
     // Check every material in the recipe
-    for (const materialName in recipe) {
-        const requiredQuantity = recipe[materialName];
+    // We now iterate over 'recipe.materials' because the structure changed
+    for (const materialName in recipe.materials) {
+        const requiredQuantity = recipe.materials[materialName];
         
         // Find the material in the player's inventory
         const itemInInventory = playerInventory.find(item => item.name === materialName);
@@ -5592,10 +5642,14 @@ function checkHasMaterials(recipeName) {
 function renderCraftingModal() {
     craftingRecipeList.innerHTML = ''; // Clear the old list
     const playerInventory = gameState.player.inventory;
+    const playerLevel = gameState.player.craftingLevel || 1;
 
     for (const recipeName in CRAFTING_RECIPES) {
         const recipe = CRAFTING_RECIPES[recipeName];
         const canCraft = checkHasMaterials(recipeName);
+        
+        // Check if player meets the crafting level requirement
+        const levelMet = playerLevel >= recipe.level;
 
         // Find the tile for the item we're crafting
         const outputItemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === recipeName);
@@ -5603,8 +5657,9 @@ function renderCraftingModal() {
 
         // Build the list of materials
         let materialsHtml = '<ul class="crafting-item-materials">';
-        for (const materialName in recipe) {
-            const requiredQuantity = recipe[materialName];
+        // Iterate over recipe.materials (updated structure)
+        for (const materialName in recipe.materials) {
+            const requiredQuantity = recipe.materials[materialName];
             const itemInInventory = playerInventory.find(item => item.name === materialName);
             const currentQuantity = itemInInventory ? itemInInventory.quantity : 0;
             
@@ -5615,6 +5670,10 @@ function renderCraftingModal() {
         }
         materialsHtml += '</ul>';
 
+        // Build the Level/XP info line
+        let levelClass = levelMet ? 'text-green-600' : 'text-red-500 font-bold';
+        let infoHtml = `<div class="text-xs mt-1 ${levelClass}">Requires Crafting Lvl ${recipe.level} (Reward: ${recipe.xp} XP)</div>`;
+
         // Build the full list item
         const li = document.createElement('li');
         li.className = 'crafting-item';
@@ -5622,9 +5681,10 @@ function renderCraftingModal() {
             <div>
                 <span class="crafting-item-name">${recipeName} (${outputItemTile})</span>
                 ${materialsHtml}
+                ${infoHtml}
             </div>
             <div class="crafting-item-actions">
-                <button data-craft-item="${recipeName}" ${canCraft ? '' : 'disabled'}>Craft</button>
+                <button data-craft-item="${recipeName}" ${canCraft && levelMet ? '' : 'disabled'}>Craft</button>
             </div>
         `;
         craftingRecipeList.appendChild(li);
@@ -5636,24 +5696,31 @@ function renderCraftingModal() {
  * Consumes materials and adds the new item to inventory.
  * @param {string} recipeName - The name of the item to craft.
  */
+
 function handleCraftItem(recipeName) {
-    // Final check to make sure we can craft it
     if (!checkHasMaterials(recipeName)) {
         logMessage("You're missing the materials for that.");
         return;
     }
 
     const recipe = CRAFTING_RECIPES[recipeName];
-    const playerInventory = gameState.player.inventory;
+    const player = gameState.player;
+    
+    // Check Level Requirement
+    const playerCraftLevel = player.craftingLevel || 1;
+    if (playerCraftLevel < recipe.level) {
+        logMessage(`You need Crafting Level ${recipe.level} to make this.`);
+        return;
+    }
 
-    // 1. Consume Materials
-    for (const materialName in recipe) {
-        const requiredQuantity = recipe[materialName];
+    const playerInventory = player.inventory;
+
+    // 1. Consume Materials (recipe.materials is the new structure)
+    for (const materialName in recipe.materials) {
+        const requiredQuantity = recipe.materials[materialName];
         const itemInInventory = playerInventory.find(item => item.name === materialName);
 
         itemInInventory.quantity -= requiredQuantity;
-
-        // If the stack is empty, remove it
         if (itemInInventory.quantity <= 0) {
             const itemIndex = playerInventory.indexOf(itemInInventory);
             playerInventory.splice(itemIndex, 1);
@@ -5663,31 +5730,74 @@ function handleCraftItem(recipeName) {
     // 2. Add Crafted Item
     const outputItemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === recipeName);
     const itemTemplate = ITEM_DATA[outputItemKey];
+    
+    // --- MASTERWORK CHECK ---
+    // 10% base chance + 5% per level above requirement
+    const levelDiff = playerCraftLevel - recipe.level;
+    const masterworkChance = 0.10 + (levelDiff * 0.05);
+    let isMasterwork = false;
+    let craftedName = itemTemplate.name;
+    let craftedStats = itemTemplate.statBonuses ? {...itemTemplate.statBonuses} : {};
 
-    const existingStack = playerInventory.find(item => item.name === recipeName);
+    // Only equipment can be masterwork
+    if ((itemTemplate.type === 'weapon' || itemTemplate.type === 'armor') && Math.random() < masterworkChance) {
+        isMasterwork = true;
+        craftedName = `Masterwork ${itemTemplate.name}`;
+        
+        // Add random bonus stat
+        const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
+        const randomStat = stats[Math.floor(Math.random() * stats.length)];
+        
+        craftedStats[randomStat] = (craftedStats[randomStat] || 0) + 1;
+        
+        // Bonus Damage/Defense
+        if (itemTemplate.type === 'weapon') itemTemplate.damage = (itemTemplate.damage || 0) + 1;
+        if (itemTemplate.type === 'armor') itemTemplate.defense = (itemTemplate.defense || 0) + 1;
+    }
+    // ------------------------
+
+    const existingStack = playerInventory.find(item => item.name === craftedName && !isMasterwork); 
+    // (Masterwork items don't stack because they are unique)
 
     if (existingStack) {
-        // Player already has a stack of this, add to it
         existingStack.quantity++;
     } else {
-        // Create a new item stack
         const newItem = {
-            name: itemTemplate.name,
+            name: craftedName,
             type: itemTemplate.type,
             quantity: 1,
             tile: outputItemKey || '?',
-            // Add weapon/armor stats if they exist
             damage: itemTemplate.damage || null,
             defense: itemTemplate.defense || null,
             slot: itemTemplate.slot || null,
-            statBonuses: itemTemplate.statBonuses || null
+            statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null
         };
         playerInventory.push(newItem);
     }
     
-    logMessage(`You successfully crafted a ${recipeName}!`);
+    if (isMasterwork) {
+        logMessage(`Critical Success! You crafted a ${craftedName}!`);
+        triggerStatAnimation(statDisplays.level, 'stat-pulse-purple'); // Flash UI
+    } else {
+        logMessage(`You successfully crafted a ${recipeName}.`);
+    }
 
-    // 3. Update Database and UI
+    // 3. Grant Crafting XP
+    const xpGain = recipe.xp || 10;
+    player.craftingXp = (player.craftingXp || 0) + xpGain;
+    player.craftingXpToNext = player.craftingXpToNext || 50;
+    
+    logMessage(`+${xpGain} Crafting XP`);
+
+    if (player.craftingXp >= player.craftingXpToNext) {
+        player.craftingXp -= player.craftingXpToNext;
+        player.craftingLevel++;
+        player.craftingXpToNext = Math.floor(player.craftingXpToNext * 1.5);
+        logMessage(`CRAFTING LEVEL UP! You are now Artisan Level ${player.craftingLevel}.`);
+        triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
+    }
+
+    // 4. Update Database and UI
     const inventoryToSave = gameState.player.inventory.map(item => ({
         name: item.name,
         type: item.type,
@@ -5701,13 +5811,17 @@ function handleCraftItem(recipeName) {
         skillId: item.skillId || null,
         stat: item.stat || null,
         isEquipped: item.isEquipped || false
-    
     }));
     
-    playerRef.update({ inventory: inventoryToSave });
+    playerRef.update({ 
+        inventory: inventoryToSave,
+        craftingLevel: player.craftingLevel,
+        craftingXp: player.craftingXp,
+        craftingXpToNext: player.craftingXpToNext
+    });
 
-    renderCraftingModal(); // Re-render the modal to show new quantities
-    renderInventory(); // Re-render the main UI inventory
+    renderCraftingModal(); 
+    renderInventory();
 }
 
 function openCraftingModal() {
@@ -7020,16 +7134,18 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-    // --- Process all moves ---
-    // We use a 'for...of' loop to allow 'await'
+// --- Process all moves ---
     for (const move of movesToMake) {
-        // 1. Move the enemy on the world map (for everyone)
+        // 1. Move the enemy on the world map
         
-        // ---Restore the correct biome instead of forcing '.' ---
+        // Check if we have a saved state for this tile in the chunk manager first
+        // If not, revert to base procedural terrain.
+        // Note: This still has the "Bulldozer" issue for items, but ensures we don't
+        // accidentally delete biome data if you add complex biomes later.
         const restoredTile = getBaseTerrain(move.oldX, move.oldY);
+        
         chunkManager.setWorldTile(move.oldX, move.oldY, restoredTile);
-
-        chunkManager.setWorldTile(move.newX, move.newY, move.tile); // Set new tile
+        chunkManager.setWorldTile(move.newX, move.newY, move.tile);
 
         // 2. Define the database paths for its health data
         const oldId = `overworld:${move.oldX},${-move.oldY}`;
@@ -7818,7 +7934,7 @@ document.addEventListener('keydown', (event) => {
         if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
             const itemIndex = keyNum - 1;
             const itemToUse = gameState.player.inventory[itemIndex];
-            let itemUsed = false;
+            let itemUsed = false; // <--- Critical: Defined in this scope
 
             if (!itemToUse) {
                 logMessage(`No item in slot ${keyNum}.`);
@@ -7830,7 +7946,7 @@ document.addEventListener('keydown', (event) => {
             if (itemToUse.type === 'consumable') {
                 // 1. Apply the item's effect
                 if (itemToUse.effect) {
-                    itemToUse.effect(gameState); // (e.g., restore health)
+                    itemToUse.effect(gameState); 
                 }
 
                 // 2. Remove one from the stack
@@ -7843,7 +7959,8 @@ document.addEventListener('keydown', (event) => {
                 }
                 itemUsed = true;
 
-            // 1. Find currently equipped weapon (if any) and unequip it
+            } else if (itemToUse.type === 'weapon') {
+                // 1. Find currently equipped weapon (if any) and unequip it
                 const currentWeapon = gameState.player.inventory.find(i => i.type === 'weapon' && i.isEquipped);
                 if (currentWeapon) {
                     applyStatBonuses(currentWeapon, -1); // Remove stats
@@ -7862,11 +7979,9 @@ document.addEventListener('keydown', (event) => {
                     logMessage(`You equip the ${itemToUse.name}.`);
                 }
                 
-                itemUsed = true; // Triggers save/render
-            }
+                itemUsed = true; 
 
             } else if (itemToUse.type === 'armor') {
-                // --- NEW EQUIP LOGIC (No Splice) ---
                 
                 // 1. Find currently equipped armor
                 const currentArmor = gameState.player.inventory.find(i => i.type === 'armor' && i.isEquipped);
@@ -7896,61 +8011,52 @@ document.addEventListener('keydown', (event) => {
 
                 if (!spellData) {
                     logMessage("This item appears to be a dud. (No spell data found)");
-                    itemUsed = false; // Don't consume the item
+                    itemUsed = false; 
                 } else if (player.level < spellData.requiredLevel) {
                     logMessage(`You ponder the text, but must be Level ${spellData.requiredLevel} to understand it.`);
-                    itemUsed = false; // Don't consume
+                    itemUsed = false; 
                 } else {
-                    // All checks passed. Use the item.
                     if (player.spellbook[spellId]) {
-                        // Player already knows the spell: Level it up
                         player.spellbook[spellId]++;
                         logMessage(`You study the text and learn more about ${spellData.name}! It is now Level ${player.spellbook[spellId]}.`);
                     } else {
-                        // Player is learning the spell for the first time
-                        player.spellbook[spellId] = 1; // Set to level 1
+                        player.spellbook[spellId] = 1; 
                         logMessage(`You have learned a new spell: ${spellData.name}!`);
                     }
                     
-                    // Consume the item
                     itemToUse.quantity--;
                     if (itemToUse.quantity <= 0) {
-                        player.inventory.splice(itemIndex, 1);
+                        gameState.player.inventory.splice(itemIndex, 1);
                     }
                     itemUsed = true;
-                    // Note: We'll update the 'playerRef' in the 'if (itemUsed)' block below
                 }
 
-                } else if (itemToUse.type === 'skillbook') {
-            const skillId = itemToUse.skillId;
-            const skillData = SKILL_DATA[skillId];
-            const player = gameState.player;
+            } else if (itemToUse.type === 'skillbook') {
+                const skillId = itemToUse.skillId;
+                const skillData = SKILL_DATA[skillId];
+                const player = gameState.player;
 
-            if (!skillData) {
-                logMessage("This item appears to be a dud. (No skill data found)");
-                itemUsed = false;
-            } else if (player.level < skillData.requiredLevel) {
-                logMessage(`You ponder the text, but must be Level ${skillData.requiredLevel} to understand it.`);
-                itemUsed = false;
-            } else {
-                // All checks passed. Use the item.
-                if (player.skillbook[skillId]) {
-                    // Player already knows the skill: Level it up
-                    player.skillbook[skillId]++;
-                    logMessage(`You study the text and learn more about ${skillData.name}! It is now Level ${player.skillbook[skillId]}.`);
+                if (!skillData) {
+                    logMessage("This item appears to be a dud. (No skill data found)");
+                    itemUsed = false;
+                } else if (player.level < skillData.requiredLevel) {
+                    logMessage(`You ponder the text, but must be Level ${skillData.requiredLevel} to understand it.`);
+                    itemUsed = false;
                 } else {
-                    // Player is learning the skill for the first time
-                    player.skillbook[skillId] = 1; // Set to level 1
-                    logMessage(`You have learned a new skill: ${skillData.name}!`);
-                }
+                    if (player.skillbook[skillId]) {
+                        player.skillbook[skillId]++;
+                        logMessage(`You study the text and learn more about ${skillData.name}! It is now Level ${player.skillbook[skillId]}.`);
+                    } else {
+                        player.skillbook[skillId] = 1;
+                        logMessage(`You have learned a new skill: ${skillData.name}!`);
+                    }
 
-                // Consume the item
-                itemToUse.quantity--;
-                if (itemToUse.quantity <= 0) {
-                    player.inventory.splice(itemIndex, 1);
+                    itemToUse.quantity--;
+                    if (itemToUse.quantity <= 0) {
+                        gameState.player.inventory.splice(itemIndex, 1);
+                    }
+                    itemUsed = true;
                 }
-                itemUsed = true;
-            }
 
             } else if (itemToUse.type === 'tome') {
                 const stat = itemToUse.stat;
@@ -7959,7 +8065,6 @@ document.addEventListener('keydown', (event) => {
                     logMessage(`You consume the tome. Your ${stat} has permanently increased by 1!`);
                     triggerStatAnimation(statDisplays[stat], 'stat-pulse-green');
                     
-                    // Consume the item
                     itemToUse.quantity--;
                     if (itemToUse.quantity <= 0) {
                         gameState.player.inventory.splice(itemIndex, 1);
@@ -7970,38 +8075,29 @@ document.addEventListener('keydown', (event) => {
                     itemUsed = false;
                 }
 
-                
-            }
-            
-            else if (itemToUse.type === 'buff_potion') {
+            } else if (itemToUse.type === 'buff_potion') {
                 const player = gameState.player;
-                // Look up the template data to ensure we have amount/duration
                 const itemTemplateKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemToUse.name);
                 const template = ITEM_DATA[itemTemplateKey];
 
-                if (player.strengthBonusTurns > 0) { // Check if buff is active
+                if (player.strengthBonusTurns > 0) { 
                     logMessage("A similar effect is already active.");
                     itemUsed = false;
                 } else {
-                    // Apply the buff using the TEMPLATE data
                     player.strengthBonus = template.amount;
                     player.strengthBonusTurns = template.duration;
                     
                     logMessage(`You drink the potion. (+${template.amount} Strength for ${template.duration} turns)`);
                     triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
 
-                    // Consume the item
                     itemToUse.quantity--;
                     if (itemToUse.quantity <= 0) {
                         gameState.player.inventory.splice(itemIndex, 1);
                     }
                     itemUsed = true;
                 }
-            }
-
-            else if (itemToUse.type === 'teleport') {
+            } else if (itemToUse.type === 'teleport') {
                 logMessage("You read the scroll. Space warps around you...");
-                // Teleport to start (0,0)
                 gameState.player.x = 0;
                 gameState.player.y = 0;
                 exitToOverworld("You vanish and reappear at the village gates.");
@@ -8009,12 +8105,9 @@ document.addEventListener('keydown', (event) => {
                 itemToUse.quantity--;
                 if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
                 itemUsed = true;
-            }
-            // --- ADD TREASURE MAP LOGIC ---
-            else if (itemToUse.type === 'treasure_map') {
-                // Generate a treasure location if we don't have one
+
+            } else if (itemToUse.type === 'treasure_map') {
                 if (!gameState.activeTreasure) {
-                    // Random spot 50-150 tiles away
                     const dist = 50 + Math.floor(Math.random() * 100);
                     const angle = Math.random() * 2 * Math.PI;
                     const tx = Math.floor(gameState.player.x + Math.cos(angle) * dist);
@@ -8025,17 +8118,15 @@ document.addEventListener('keydown', (event) => {
                 } else {
                      logMessage(`The map marks a location at (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y}).`);
                 }
-                // Maps are NOT consumed on use, they are kept until treasure is found
                 itemUsed = false; 
-            }
-
-            else {
+                
+            } else {
                 logMessage(`You can't use '${itemToUse.name}' right now.`);
             }
             // --- END BRANCHING LOGIC ---
 
             if (itemUsed) {
-                // 1. Define the inventory map
+                // 1. Define the inventory map to sanitize data before saving
                 const inventoryToSave = gameState.player.inventory.map(item => ({
                     name: item.name,
                     type: item.type,
@@ -8051,12 +8142,15 @@ document.addEventListener('keydown', (event) => {
                     isEquipped: item.isEquipped || false 
                 }));
 
-                // 2. Update Firebase
+                // 2. Update Firebase with ALL player stats to ensure sync
                 playerRef.update({
                     inventory: inventoryToSave,
                     equipment: gameState.player.equipment,
                     spellbook: gameState.player.spellbook,
-
+                    skillbook: gameState.player.skillbook,
+                    statPoints: gameState.player.statPoints,
+                    
+                    // Core Stats
                     strength: gameState.player.strength,
                     wits: gameState.player.wits,
                     luck: gameState.player.luck,
@@ -8066,7 +8160,17 @@ document.addEventListener('keydown', (event) => {
                     willpower: gameState.player.willpower,
                     perception: gameState.player.perception,
                     endurance: gameState.player.endurance,
-                    intuition: gameState.player.intuition
+                    intuition: gameState.player.intuition,
+
+                    // Vitals (in case consumable used)
+                    health: gameState.player.health,
+                    mana: gameState.player.mana,
+                    stamina: gameState.player.stamina,
+                    psyche: gameState.player.psyche,
+                    
+                    // Buffs (in case potion used)
+                    strengthBonus: gameState.player.strengthBonus,
+                    strengthBonusTurns: gameState.player.strengthBonusTurns
                 });
 
                 syncPlayerState();
@@ -8075,27 +8179,27 @@ document.addEventListener('keydown', (event) => {
                 renderEquipment();
                 renderStats();
             }
+        }
 
-        // --- Start: Correct 'D' Key Logic (for Drop) ---
+        // --- Handle 'D' Key (Drop) ---
         if (event.key === 'd' || event.key === 'D') {
             if (gameState.player.inventory.length === 0) {
                 logMessage("Your inventory is empty.");
-                closeInventoryModal(); // Exit inventory mode
+                closeInventoryModal(); 
                 return;
             }
             logMessage("Drop Mode: Press 1-9 to drop or (Esc) to cancel.");
             gameState.isDroppingItem = true;
-            closeInventoryModal(); // Exit inventory mode, enter drop mode
+            closeInventoryModal(); 
             return;
         }
-        // --- End: Correct 'D' Key Logic ---
 
-
-        // If any other key is pressed in inventory mode, just log a reminder
-        logMessage("Inventory Mode: Press 1-9 to use, D to drop, or (Esc) to exit.");
+        // If any other key is pressed in inventory mode
+        if (isNaN(keyNum) && event.key !== 'd' && event.key !== 'D') {
+             logMessage("Inventory Mode: Press 1-9 to use, D to drop, or (Esc) to exit.");
+        }
         return;
     }
-    // --- END NEW INVENTORY MODE ---
 
     // --- Top-level 'I' key to ENTER inventory mode ---
     if (event.key === 'i' || event.key === 'I') {
