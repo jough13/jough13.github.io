@@ -65,7 +65,9 @@ canvas {
 	/* This can be empty as layout is handled by Tailwind */
 }
 
-This prevents the inventory from collapsing before JS loads */ #inventoryPanel {
+/* This prevents the inventory from collapsing before JS loads */ 
+
+#inventoryPanel {
 	min-height: 8rem;
 }
 
