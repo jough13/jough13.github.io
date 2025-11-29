@@ -8762,27 +8762,23 @@ if (Math.random() < luckDodgeChance) { //
             if (tileData.type === 'campsite') {
                 logMessage("You rest at the abandoned camp...");
                 
-                // Heal up to max + a bonus 5 HP buffer (optional mechanic)
-                // or just full restore. Let's do a Full Restore + Save.
                 gameState.player.health = gameState.player.maxHealth;
                 gameState.player.stamina = gameState.player.maxStamina;
                 gameState.player.mana = gameState.player.maxMana;
                 gameState.player.psyche = gameState.player.maxPsyche;
                 
-                // Visual feedback
                 triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
                 triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
                 
                 logMessage("The fire warms your bones. You feel fully restored.");
                 
-                // Save state immediately
                 playerRef.update({ 
                     health: gameState.player.health, 
                     stamina: gameState.player.stamina,
                     mana: gameState.player.mana,
                     psyche: gameState.player.psyche
                 });
-                return; // Stop movement (Player stays on previous tile)
+                // No return! Player walks onto the tile.
             }
 
             if (tileData.type === 'ruin') {
