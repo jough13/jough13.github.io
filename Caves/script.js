@@ -2559,6 +2559,15 @@ const PLAYER_BACKGROUNDS = {
              // Mages keep default tunic
         ]
     },
+    'necromancer': {
+        name: 'Necromancer',
+        stats: { wits: 1, willpower: 2 }, // High Willpower for managing minions
+        items: [
+             { name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
+             { name: 'Tome: Raise Dead', type: 'spellbook', quantity: 1, tile: '💀', spellId: 'raiseDead' },
+             { name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', content: ITEM_DATA['4'].content }
+        ]
+    },
     // --- HARD MODE CLASS ---
     'wretch': {
         name: 'The Wretch',
@@ -2589,6 +2598,15 @@ const SPELL_DATA = {
         requiredLevel: 1,
         target: "self",
         type: "utility" // Special type
+    },
+    "raiseDead": {
+        name: "Raise Dead",
+        description: "Summons a Skeleton Minion from a corpse (or bone pile) to fight for you.",
+        cost: 15,
+        costType: "mana", // Or 'psyche' if you prefer
+        requiredLevel: 1,
+        target: "aimed", // You aim at the tile you want to raise
+        range: 3
     },
     "arcaneShield": {
         name: "Arcane Shield",
@@ -5297,6 +5315,64 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             }
             break;
 
+            case 'raiseDead':
+            // 1. Calculate target coordinates
+            // (We assume range 1-3 based on the loop in executeAimedSpell, 
+            // but Raise Dead usually targets a specific spot. Let's look 1 tile away for simplicity first).
+            const targetX = player.x + dirX;
+            const targetY = player.y + dirY;
+            
+            // 2. Determine what is on that tile
+            let tileType;
+            if (gameState.mapMode === 'overworld') {
+                tileType = chunkManager.getTile(targetX, targetY);
+            } else if (gameState.mapMode === 'dungeon') {
+                 tileType = chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX];
+            } else {
+                 tileType = chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX];
+            }
+
+            // 3. Check for valid "corpse" materials
+            // Valid: 's' (Skeleton enemy?), '(' (Bone Shard), '⚰️' (Grave)
+            // For now, let's say you can raise from Bone Shards '(' or graves '⚰️'
+            // OR if we just want it to be a summon, we can ignore requirements. 
+            // Let's require a Bone Shard '(' on the ground for balance.
+            
+            if (tileType === '(' || tileType === '⚰️') {
+                
+                if (gameState.player.companion) {
+                    logMessage("You already have a companion! Dismiss them first.");
+                } else {
+                    logMessage("You chant the words of unlife... A Skeleton rises to serve you!");
+                    
+                    // Consume the bones/grave
+                    if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(targetX, targetY, '.');
+                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
+                    
+                    // Create the companion
+                    gameState.player.companion = {
+                        name: "Risen Skeleton",
+                        tile: "s",
+                        type: "undead",
+                        hp: 15 + (player.willpower * 5), // Scales with Willpower
+                        maxHp: 15 + (player.willpower * 5),
+                        attack: 3 + Math.floor(player.wits / 2),
+                        defense: 1,
+                        x: targetX,
+                        y: targetY
+                    };
+                    
+                    // Update DB
+                    playerRef.update({ companion: gameState.player.companion });
+                    hitSomething = true; // Consumes the spell resource
+                    
+                    render(); // Show the change
+                }
+            } else {
+                logMessage("You need a pile of bones '(' or a grave '⚰️' to raise the dead.");
+            }
+            break;
+
         case 'fireball':
             // This is an AoE spell. It hits a 3x3 area, 3 tiles away.
             const fbDamage = spellData.baseDamage + (player.wits * spellLevel);
@@ -7640,7 +7716,6 @@ function endPlayerTurn() {
             player.strengthBonus = 0;
             logMessage("Your surge of strength fades.");
             updates.strengthBonus = 0;
-            // No need to update playerRef here, the final updates.length check will catch it
         }
         renderEquipment(); // Update UI
     }
@@ -7655,7 +7730,7 @@ function endPlayerTurn() {
         }
     }
 
-// --- TICK COOLDOWNS ---
+    // --- TICK COOLDOWNS ---
     if (player.cooldowns) {
         let cooldownsChanged = false;
         for (const key in player.cooldowns) {
@@ -7719,14 +7794,16 @@ function endPlayerTurn() {
                 ...updates
             });
         }
-
-        processFriendlyTurns();
-
         renderStats(); // Update UI (to show new turn count or remove shield)
     }
 
+    // --- ENTITY LOGIC (Fixed Placement) ---
+    // These now run independently of your shield or buffs
+    processFriendlyTurns(); // Moves castle guards
+    runCompanionTurn();     // Moves your skeleton/pet
+
     if (gameState.playerTurnCount % 2 === 0) {
-        // Call our new async wrapper function.
+        // Call our async AI wrapper function.
         // We don't 'await' it; just let it run in the background.
         runSharedAiTurns();
     }
