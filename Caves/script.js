@@ -157,7 +157,38 @@ const TILE_DATA = {
         type: 'landmark_cave', // New type
         getCaveId: (x, y) => `cave_landmark`, // Fixed ID so it's always the same dungeon
         flavor: "A gaping abyss stares back at you. Cold air rushes up from the depths."
-    },    
+    },
+    '⛺': {
+        type: 'campsite',
+        flavor: "An abandoned campsite. The embers are still warm."
+    },
+    '🏛️': {
+        type: 'ruin',
+        flavor: "The crumbling remains of an ancient library."
+    },
+    '🌿': {
+        type: 'forage',
+        item: 'Medicinal Herb'
+    },
+    '🕸': {
+        type: 'obstacle',
+        name: 'Spider Web',
+        tool: 'Machete',
+        spell: 'fireball', // Fireball can burn it
+        flavor: "A thick, sticky web blocks the path."
+    },
+    '🏚': {
+        type: 'obstacle',
+        name: 'Cracked Wall',
+        tool: 'Pickaxe',
+        flavor: "The stone looks fractured and weak."
+    },
+    '🌳': {
+        type: 'obstacle',
+        name: 'Thicket',
+        tool: 'Machete',
+        flavor: "A dense wall of thorny vines."
+    },
 };
 
 const CASTLE_LAYOUTS = {
@@ -452,10 +483,10 @@ const QUEST_DATA = {
     "goblinHeirloom": {
         title: "The Lost Heirloom",
         description: "A villager is distraught. A goblin ('g') stole their family heirloom!",
-        type: 'fetch',       // <-- New quest type
-        enemy: 'g',          // <-- Who drops it (Goblin)
-        itemNeeded: 'Heirloom', // <-- What we need (from ITEM_DATA)
-        itemTile: '♦',       // <-- The tile to drop (from ITEM_DATA)
+        type: 'fetch',     
+        enemy: 'g',        
+        itemNeeded: 'Heirloom', 
+        itemTile: '♦',       
         reward: {
             xp: 150,
             coins: 100
@@ -753,7 +784,7 @@ const CAVE_THEMES = {
             wall: '#422006',
             floor: '#a16207'
         },
-        decorations: ['+', 'o', '$', '📖', 'K'],
+        decorations: ['+', 'o', '$', '📖', 'K', '🏚'],
         enemies: ['g', 's', '@']
     },
     ICE: {
@@ -790,7 +821,7 @@ const CAVE_THEMES = {
             wall: '#374151', // Dark stone color
             floor: '#4b5563'  // Lighter, cold stone floor
         },
-        decorations: ['+', '$', '(', '†', '🌀', '😱', '💀'],
+        decorations: ['+', '$', '(', '†', '🌀', '😱', '💀', '🕸'],
         enemies: ['s', 'Z', 'a']
     },
 
@@ -816,7 +847,7 @@ const CAVE_THEMES = {
             wall: '#0f0f0f', // Almost black
             floor: '#331133' // Dark purple
         },
-        decorations: ['💀', '🕸️', '🔥', 'Ω', '💎'], // Omegas and Gems!
+        decorations: ['💀', '🕸️', '🔥', 'Ω', '💎', '🕸'], // Omegas and Gems!
         enemies: ['o', 'm', 'Z', '👺', '🐺', 'scorpion', 'a'] // Only tough enemies
     },
 
@@ -829,7 +860,7 @@ const CAVE_THEMES = {
             wall: '#14532d', // Dark Green
             floor: '#16a34a' // Bright Green
         },
-        decorations: ['+', 'S', 'o', '☣️'],
+        decorations: ['+', 'S', 'o', '☣️', '🕸'],
         enemies: ['g', 'w', '@']
     }
 };
@@ -1494,6 +1525,8 @@ function createDefaultPlayerState() {
         hotbar: [null, null, null, null, null], // 5 slots
         cooldowns: {}, // Tracks turns remaining: { 'lunge': 2 }
         stealthTurns: 0, // For the new Stealth skill
+
+        companion: null, // Will store { name: "Wolf", tile: "w", type: "beast", hp: 10, maxHp: 10, atk: 2 }
     };
 }
 
@@ -1929,6 +1962,30 @@ const ITEM_DATA = {
             }
             logMessage('Used a Psyche Shard. Restored psyche.');
         },
+        '📜C': {
+        name: 'Mercenary Contract',
+        type: 'consumable',
+        tile: '📜',
+        description: "Hires a Castle Guard to protect you.",
+        effect: (state) => {
+            if (state.player.companion) {
+                logMessage("You already have a companion. Dismiss them first.");
+                return;
+            }
+            state.player.companion = {
+                name: "Hired Guard",
+                tile: "G",
+                type: "humanoid",
+                hp: 30,
+                maxHp: 30,
+                attack: 4,
+                defense: 2
+            };
+            logMessage("The Guard salutes. 'I will watch your back.'");
+            // Save immediately
+            playerRef.update({ companion: state.player.companion });
+        }
+    },
         ':': {
         name: 'Wildberry',
         type: 'consumable',
@@ -2423,6 +2480,60 @@ const ITEM_DATA = {
             }
         }
     },
+    '📜1': {
+        name: 'Chronicle Vol. I',
+        type: 'journal',
+        title: 'The First Age: Starlight',
+        content: "Before the sun, there was only the stars and the void. The First King was not a man, but a being of pure light who descended to the mountain peaks."
+    },
+    '📜2': {
+        name: 'Chronicle Vol. II',
+        type: 'journal',
+        title: 'The Second Age: Iron',
+        content: "Men learned to forge steel from the dwarves of the deep. The great fortresses were built, not to keep enemies out, but to keep the magic in."
+    },
+    '📜3': {
+        name: 'Chronicle Vol. III',
+        type: 'journal',
+        title: 'The Third Age: Betrayal',
+        content: "The Wizard Council grew jealous of the King's immortality. They whispered to the shadows, and the shadows whispered back."
+    },
+    '📜4': {
+        name: 'Chronicle Vol. IV',
+        type: 'journal',
+        title: 'The Fourth Age: The Fall',
+        content: "The sky turned purple. The dead rose. The King locked himself in the Grand Fortress, but he was already changed. The Golden Age ended in a single night."
+    },
+    '📜5': {
+        name: 'Chronicle Vol. V',
+        type: 'journal',
+        title: 'Prophecy of the Return',
+        content: "It is written: When the five thrones are empty, and the crown is shattered, a traveler from the void will restore the balance."
+    },
+    '👓': {
+        name: 'Scholar\'s Spectacles',
+        type: 'armor', // Accessory slot really
+        defense: 1,
+        slot: 'armor', // Takes armor slot for now
+        statBonuses: { wits: 3, intuition: 2 },
+        description: "Relic of a master historian. Reveals the world's secrets."
+    },
+    '🌿': {
+        name: 'Medicinal Herb',
+        type: 'consumable',
+        tile: '🌿',
+        effect: (state) => {
+            state.player.health = Math.min(state.player.maxHealth, state.player.health + 2);
+            // Cures Poison!
+            if (state.player.poisonTurns > 0) {
+                state.player.poisonTurns = 0;
+                logMessage("The herb neutralizes the poison in your veins.");
+            } else {
+                logMessage("You chew the bitter herb. (+2 HP)");
+            }
+            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+        }
+    },
 };
 
 const PLAYER_BACKGROUNDS = {
@@ -2602,6 +2713,15 @@ const SKILL_DATA = {
         baseDefense: 1, 
         duration: 3,
         cooldown: 5 // <-- NEW
+    },
+    "tame": {
+        name: "Tame Beast",
+        description: "Attempt to bond with a weakened animal (HP < 30%). Scales with Charisma.",
+        cost: 15,
+        costType: "psyche",
+        requiredLevel: 3,
+        target: "aimed",
+        cooldown: 20
     },
     "lunge": {
         name: "Lunge",
@@ -2860,6 +2980,8 @@ generateCave(caveId) {
         // 5. Place procedural enemies
         // This loop now spawns enemies in the random corridors
         // AND in the "F" (floor) tiles of our stamped rooms
+
+        const enemyTypes = theme.enemies || Object.keys(ENEMY_DATA);
         
         for (let i = 0; i < enemyCount; i++) {
 
@@ -3262,10 +3384,25 @@ generateCave(caveId) {
                     // No safe feature spawned. Check for hostiles or foraging.
                     const hostileRoll = random();
 
+                    if (featureRoll < 0.0005) { // Very Rare (Ruins)
+                    this.setWorldTile(worldX, worldY, '🏛️');
+                    chunkData[y][x] = '🏛️';
+                } 
+                else if (featureRoll < 0.002) { // Uncommon (Campsite)
+                    this.setWorldTile(worldX, worldY, '⛺');
+                    chunkData[y][x] = '⛺';
+                }
+
                     // --- FORESTS: Wolves ('w') or Wildberries (':') ---
                     if (tile === 'F') {
                         if (hostileRoll < 0.002) {
                             chunkData[y][x] = 'w'; 
+                        } else if (hostileRoll < 0.005) { // NEW: Thickets
+                            chunkData[y][x] = '🌳';
+                            this.setWorldTile(worldX, worldY, '🌳');
+                        } else if (hostileRoll < 0.007) { // NEW: Webs
+                            chunkData[y][x] = '🕸';
+                            this.setWorldTile(worldX, worldY, '🕸');
                         } else if (hostileRoll < 0.00025) { // Rare Elite Spawn
                             chunkData[y][x] = '🐺'; 
                         } else if (hostileRoll < 0.00035) { // Rare Trader Spawn
@@ -3303,10 +3440,13 @@ generateCave(caveId) {
                          }
                     }
 
-                    // --- SWAMPS: Giant Leeches ('l') ---
+                    // --- SWAMPS: Giant Leeches ('l') or Herbs ('🌿') ---
                     else if (tile === '≈') {
-                        if (hostileRoll < 0.0000003) { // Slightly more common than wolves
-                            chunkData[y][x] = 'l'; // Giant Leech
+                        if (hostileRoll < 0.0000003) { 
+                            chunkData[y][x] = 'l'; 
+                        } else if (hostileRoll < 0.002) {
+                            chunkData[y][x] = '🌿'; 
+                            this.setWorldTile(worldX, worldY, '🌿');
                         } else {
                             chunkData[y][x] = tile;
                         }
@@ -3328,6 +3468,16 @@ generateCave(caveId) {
                             chunkData[y][x] = tile;
                         }
                     }
+
+                    else if (tile === '^') { // Mountains
+                         if (hostileRoll < 0.005) { // Rare Cracked Wall
+                            chunkData[y][x] = '🏚';
+                            this.setWorldTile(worldX, worldY, '🏚');
+                         } else {
+                            chunkData[y][x] = tile;
+                         }
+                    }
+
                     // No hostile spawn, just place the terrain tile
                     else {
                         chunkData[y][x] = tile;
@@ -3598,6 +3748,9 @@ function renderStatusEffects() {
 }
 
 const renderStats = () => {
+
+    renderStatusEffects();
+
     for (const statName in statDisplays) {
         const element = statDisplays[statName];
         if (element && gameState.player.hasOwnProperty(statName)) {
@@ -4657,6 +4810,52 @@ function useSkill(skillId) {
     }
 }
 
+async function runCompanionTurn() {
+    const companion = gameState.player.companion;
+    if (!companion) return;
+
+    // Check adjacent tiles for enemies
+    const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+    let attacked = false;
+
+    for (const [dx, dy] of dirs) {
+        if (attacked) break;
+        const tx = companion.x + dx;
+        const ty = companion.y + dy;
+
+        // --- INSTANCED COMBAT ---
+        if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+            const enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
+            if (enemy) {
+                // Attack!
+                const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
+                enemy.health -= dmg;
+                logMessage(`Your ${companion.name} attacks ${enemy.name} for ${dmg} damage!`);
+                attacked = true;
+
+                if (enemy.health <= 0) {
+                    logMessage(`Your companion killed the ${enemy.name}!`);
+                    grantXp(Math.floor(enemy.xp / 2)); // Half XP for pet kills
+                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                    // (Add dungeon map loot update logic if desired)
+                }
+            }
+        }
+        // --- OVERWORLD COMBAT ---
+        else if (gameState.mapMode === 'overworld') {
+            const tile = chunkManager.getTile(tx, ty);
+            const enemyData = ENEMY_DATA[tile];
+            if (enemyData) {
+                // We use handleOverworldCombat but with a flag or manual logic?
+                // Reuse handleOverworldCombat but suppress some player-specific logs?
+                // Let's call it directly:
+                await handleOverworldCombat(tx, ty, enemyData, tile, companion.attack);
+                attacked = true;
+            }
+        }
+    }
+}
+
 async function executeLunge(dirX, dirY) {
     const player = gameState.player;
     const skillId = "lunge"; // This function is only for Lunge
@@ -4839,6 +5038,83 @@ function executePacify(dirX, dirY) {
     render();
 }
 
+function executeTame(dirX, dirY) {
+    const player = gameState.player;
+    const skillData = SKILL_DATA["tame"];
+
+    // 1. Deduct Cost
+    player.psyche -= skillData.cost;
+    let hit = false;
+
+    // Range: 1-2 tiles
+    for (let i = 1; i <= 2; i++) {
+        const targetX = player.x + (dirX * i);
+        const targetY = player.y + (dirY * i);
+        
+        // Check for instanced enemies (Dungeon/Castle)
+        // (Simplification: Taming only works in instances for now to avoid complexity with Overworld RTDB deletion)
+        if (gameState.mapMode === 'overworld') {
+            logMessage("The beast is too wild here. Drive it into a cave first.");
+            hit = true; 
+            break;
+        }
+
+        let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+        
+        if (enemy) {
+            hit = true;
+            
+            // Check beast types (Wolf, Spider, Scorpion, Bear/DireWolf)
+            const beastTiles = ['w', '@', '🦂', '🐺'];
+            if (!beastTiles.includes(enemy.tile)) {
+                logMessage("You can only tame beasts!");
+                break;
+            }
+
+            // Check HP Threshold (30%)
+            const hpPercent = enemy.health / enemy.maxHealth;
+            if (hpPercent > 0.30) {
+                logMessage(`The ${enemy.name} is too healthy to tame! Weaken it first.`);
+                break;
+            }
+
+            // Success Roll
+            const tameChance = 0.3 + (player.charisma * 0.05); // Base 30% + 5% per Charisma
+            if (Math.random() < tameChance) {
+                logMessage(`You calm the ${enemy.name}... It accepts you as its master!`);
+                
+                // Create Companion
+                player.companion = {
+                    name: `Tamed ${enemy.name}`,
+                    tile: enemy.tile,
+                    type: "beast",
+                    hp: enemy.maxHealth, // Heals up when tamed
+                    maxHp: enemy.maxHealth,
+                    attack: enemy.attack,
+                    defense: enemy.defense || 0,
+                    x: player.x, // Temp position
+                    y: player.y
+                };
+
+                // Remove enemy
+                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                playerRef.update({ companion: player.companion });
+
+            } else {
+                logMessage(`The ${enemy.name} resists your call and snaps at you!`);
+            }
+            break;
+        }
+    }
+
+    if (!hit) logMessage("You try to tame the empty air.");
+
+    playerRef.update({ psyche: player.psyche });
+    triggerAbilityCooldown('tame');
+    endPlayerTurn();
+    render();
+}
+
 /**
  * Executes the Inflict Madness skill on a target
  * after the player chooses a direction.
@@ -4985,6 +5261,19 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             // Loop in a 3x3 area around the target point
             for (let y = targetY - radius; y <= targetY + radius; y++) {
                 for (let x = targetX - radius; x <= targetX + radius; x++) {
+
+                    let tileAt;
+                    if (gameState.mapMode === 'dungeon') {
+                        const map = chunkManager.caveMaps[gameState.currentCaveId];
+                        tileAt = (map && map[y]) ? map[y][x] : null;
+                        
+                        if (tileAt === '🕸') {
+                            const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                            map[y][x] = theme.floor; // Burn it away
+                            logMessage("The web catches fire and burns away!");
+                        }
+                    }
+
                     // Don't await in the AoE loop, just fire them all off
                     // This feels more like a simultaneous explosion
                     applySpellDamage(x, y, fbDamage, spellId).then(hit => {
@@ -6467,6 +6756,38 @@ const render = () => {
                         ctx.fillStyle = '#a16207'; // Match castle floor/theme
                         ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
                         
+                        // --- DRAW COMPANION ---
+
+        if (gameState.player.companion) {
+            const comp = gameState.player.companion;
+            const screenX = (comp.x - startX) * TILE_SIZE;
+            const screenY = (comp.y - startY) * TILE_SIZE;
+
+        // Only draw if within the visible canvas
+        if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
+            
+            // 1. Draw Background (Context sensitive)
+            if (gameState.mapMode === 'castle') {
+                ctx.fillStyle = '#a16207'; // Castle floor
+            } else if (gameState.mapMode === 'dungeon') {
+                // Try to match the dungeon theme floor color if possible, or default dark
+                const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                ctx.fillStyle = theme ? theme.colors.floor : '#333';
+            } else {
+                ctx.fillStyle = '#22c55e'; // Overworld Grass (simplified)
+            }
+            
+            ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+
+            // 2. Draw Character (Cyan for friendly)
+            ctx.font = `bold ${TILE_SIZE}px monospace`;
+            ctx.fillStyle = '#06b6d4'; // Cyan-500 (Distinct friendly color)
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(comp.tile, screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
+        }
+    }
+                        
                         // 2. Draw the Character
                         ctx.font = `bold ${TILE_SIZE}px monospace`;
                         ctx.fillStyle = '#FFFFFF'; // White text for visibility
@@ -7454,24 +7775,26 @@ document.addEventListener('keydown', (event) => {
     else if (event.key === 'ArrowLeft' || event.key === 'a' || event.key === 'A') dirX = -1;
     else if (event.key === 'ArrowRight' || event.key === 'd' || event.key === 'D') dirX = 1;
 
-if (dirX !== 0 || dirY !== 0) {
-        const abilityId = gameState.abilityToAim; // e.g., "lunge", "magicBolt", "fireball"
+    if (dirX !== 0 || dirY !== 0) {
+            const abilityId = gameState.abilityToAim; 
 
-        if (abilityId === 'lunge') {
-            executeLunge(dirX, dirY);
-        } else if (SPELL_DATA[abilityId]) { // Check if it's a key in our spell database
-            // It's a spell! Call our new generic execute function
-            executeAimedSpell(abilityId, dirX, dirY); 
-        } else if (abilityId === 'pacify') {
-            executePacify(dirX, dirY);
+            if (abilityId === 'lunge') {
+                executeLunge(dirX, dirY);
+            } else if (SPELL_DATA[abilityId]) { 
+                executeAimedSpell(abilityId, dirX, dirY); 
+            } else if (abilityId === 'pacify') {
+                executePacify(dirX, dirY);
+            } else if (abilityId === 'inflictMadness') {
+                executeInflictMadness(dirX, dirY);
+            
+            // --- NEW: Handle Taming ---
+            } else if (abilityId === 'tame') {
+                executeTame(dirX, dirY);
+            // --------------------------
 
-        } else if (abilityId === 'inflictMadness') {
-            executeInflictMadness(dirX, dirY);
-
-        } else {
-            // Fallback in case something went wrong
-            logMessage("Unknown ability. Aiming canceled.");
-        }
+            } else {
+                logMessage("Unknown ability. Aiming canceled.");
+            }
 
         gameState.isAiming = false;
         gameState.abilityToAim = null;
@@ -8381,6 +8704,174 @@ if (Math.random() < luckDodgeChance) { //
                 return;
             }
 
+            if (tileData.type === 'obstacle') {
+                const playerInventory = gameState.player.inventory;
+                const toolName = tileData.tool;
+                const hasTool = playerInventory.some(i => i.name === toolName);
+
+                if (hasTool) {
+                    logMessage(`You use your ${toolName} to clear the ${tileData.name}.`);
+                    
+                    // 1. Success Animation/Sound could go here
+                    if (toolName === 'Pickaxe') triggerStatFlash(statDisplays.strength, true);
+                    if (toolName === 'Machete') triggerStatFlash(statDisplays.dexterity, true);
+
+                    // 2. Loot Logic (Optional rewards for clearing)
+                    if (newTile === '🏚') { // Cracked Wall
+                        // 30% chance to drop Ore or Gems
+                        const roll = Math.random();
+                        let drop = null;
+                        if (roll < 0.20) drop = '•'; // Iron Ore
+                        else if (roll < 0.25) drop = '▲'; // Obsidian
+                        else if (roll < 0.26) drop = '💎'; // Gem!
+                        
+                        if (drop) {
+                            // We place the loot on the tile we are about to clear
+                            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, drop);
+                            else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = drop;
+                            logMessage("Something was hidden inside the wall!");
+                            render();
+                            return; // Stop move (player sees loot)
+                        }
+                    }
+
+                    // 3. Clear the tile (Set to floor)
+                    // Determine floor tile based on context
+                    let floorTile = '.';
+                    if (gameState.mapMode === 'dungeon') {
+                        const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                        floorTile = theme.floor;
+                    } else if (gameState.mapMode === 'overworld') {
+                        if (newTile === '🌳') floorTile = 'F'; // Forest floor
+                        else if (newTile === '🏚') floorTile = '^'; // Mountain floor
+                    }
+
+                    if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, floorTile);
+                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = floorTile;
+                    else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
+
+                    render();
+                    return; // Stop movement (clearing takes a turn)
+                
+                } else {
+                    logMessage(`${tileData.flavor} (Requires ${toolName})`);
+                    return; // Block movement
+                }
+            }
+
+            if (tileData.type === 'campsite') {
+                logMessage("You rest at the abandoned camp...");
+                
+                // Heal up to max + a bonus 5 HP buffer (optional mechanic)
+                // or just full restore. Let's do a Full Restore + Save.
+                gameState.player.health = gameState.player.maxHealth;
+                gameState.player.stamina = gameState.player.maxStamina;
+                gameState.player.mana = gameState.player.maxMana;
+                gameState.player.psyche = gameState.player.maxPsyche;
+                
+                // Visual feedback
+                triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+                triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+                
+                logMessage("The fire warms your bones. You feel fully restored.");
+                
+                // Save state immediately
+                playerRef.update({ 
+                    health: gameState.player.health, 
+                    stamina: gameState.player.stamina,
+                    mana: gameState.player.mana,
+                    psyche: gameState.player.psyche
+                });
+                return; // Stop movement (Player stays on previous tile)
+            }
+
+            if (tileData.type === 'ruin') {
+                const tileId = `${newX},${-newY}`;
+                
+                // 1. Check if already looted
+                if (gameState.lootedTiles.has(tileId)) {
+                    logMessage("These ruins have already been searched.");
+                    return;
+                }
+
+                logMessage("You search the ancient shelves...");
+                
+                // 2. Identify which chronicles the player DOESN'T have
+                const allChronicles = ['📜1', '📜2', '📜3', '📜4', '📜5'];
+                // Check inventory for tiles matching the chronicle IDs
+                const playerItemTiles = gameState.player.inventory.map(i => i.tile); 
+                const missingChronicles = allChronicles.filter(c => !playerItemTiles.includes(c));
+
+                if (missingChronicles.length > 0) {
+                    // --- Case A: Give the next missing chronicle ---
+                    const nextChronicleKey = missingChronicles[0]; // Get the first missing one
+                    const itemTemplate = ITEM_DATA[nextChronicleKey];
+                    
+                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        gameState.player.inventory.push({
+                            name: itemTemplate.name,
+                            type: itemTemplate.type,
+                            quantity: 1,
+                            tile: nextChronicleKey, 
+                            title: itemTemplate.title, // Important for journals
+                            content: itemTemplate.content
+                        });
+                        logMessage(`You found ${itemTemplate.name}!`);
+                        grantXp(50); // Big XP reward
+                        
+                        // Check if that was the LAST one needed
+                        if (missingChronicles.length === 1) {
+                            logMessage("You have collected all the Lost Chronicles!");
+                            logMessage("You feel a surge of intellect.");
+                            
+                            // Bonus Reward: Scholar's Spectacles
+                            if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                                const reward = ITEM_DATA['👓'];
+                                gameState.player.inventory.push({
+                                    name: reward.name,
+                                    type: reward.type,
+                                    quantity: 1,
+                                    tile: '👓',
+                                    defense: reward.defense,
+                                    slot: reward.slot,
+                                    statBonuses: reward.statBonuses
+                                });
+                                logMessage("You found the Scholar's Spectacles!");
+                            } else {
+                                logMessage("You found the Spectacles, but your pack was full! (They are lost in the rubble...)");
+                            }
+                        }
+                    } else {
+                        logMessage("You found a Chronicle, but your inventory is full!");
+                        return; // Stop interaction so they can come back later
+                    }
+                } else {
+                    // --- Case B: Player has everything. Give generic loot. ---
+                    logMessage("You found an Arcane Scroll.");
+                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        gameState.player.inventory.push({ 
+                            name: 'Scroll: Clarity', 
+                            type: 'spellbook', 
+                            quantity: 1, 
+                            tile: '📜', 
+                            spellId: 'clarity' 
+                        });
+                    } else {
+                        logMessage("But your inventory is full.");
+                        return;
+                    }
+                }
+
+                // 3. Mark as looted and save
+                gameState.lootedTiles.add(tileId);
+                playerRef.update({ 
+                    lootedTiles: Array.from(gameState.lootedTiles), 
+                    inventory: gameState.player.inventory 
+                });
+                renderInventory();
+                return; // Stop movement
+            }
+
             if (tileData.type === 'lore_statue') {
                 // Pick a random message from the array
                 const seed = stringToSeed(tileId);
@@ -9051,7 +9542,6 @@ if (Math.random() < luckDodgeChance) { //
                     // Instead of a random layout, we force it to use FORTRESS
                     chunkManager.generateCastle(gameState.currentCastleId, 'GRAND_FORTRESS');
                     
-
                     const landmarkSpawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
                     gameState.player.x = landmarkSpawn.x;
                     gameState.player.y = landmarkSpawn.y;
@@ -9063,6 +9553,7 @@ if (Math.random() < luckDodgeChance) { //
                     render();
                     syncPlayerState();
                     return;
+
                 case 'castle_entrance':
                     if (!gameState.foundLore.has(tileId)) {
                         logMessage("You've discovered a castle entrance! +10 XP");
@@ -9109,8 +9600,6 @@ if (Math.random() < luckDodgeChance) { //
                     } else logMessage(tileData.message);
             }
         }
-
-        // --- *** BEGIN REFACTORED LOGIC *** ---
 
         // 4. Handle item pickups *BEFORE* moving.
         let tileId;
@@ -9271,8 +9760,22 @@ if (Math.random() < luckDodgeChance) { //
             return;
         }
 
+        const prevX = gameState.player.x;
+        const prevY = gameState.player.y;
+
         gameState.player.x = newX;
         gameState.player.y = newY;
+
+        // --- COMPANION FOLLOW LOGIC ---
+        if (gameState.player.companion) {
+            // Companion moves to where you were
+            gameState.player.companion.x = prevX;
+            gameState.player.companion.y = prevY;
+            
+            // Note: We don't save companion X/Y to DB every step to save bandwidth, 
+            // only on specific events or if you want strict persistence.
+            // For now, let's just keep it in memory.
+        }
 
         if (gameState.player.stamina >= moveCost) {
             gameState.player.stamina -= moveCost;
