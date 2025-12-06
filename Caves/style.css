@@ -594,3 +594,91 @@ kbd {
     border-color: var(--border-color);
     color: var(--text-muted);
 }
+
+/* --- Mobile Controls --- */
+.mobile-controls {
+    position: fixed;
+    bottom: 20px;
+    left: 0;
+    width: 100%;
+    height: 180px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 20px;
+    pointer-events: none; /* Let clicks pass through empty space */
+    z-index: 50;
+}
+
+/* Hide on large screens */
+@media (min-width: 1024px) {
+    .mobile-controls {
+        display: none !important;
+    }
+}
+
+.d-pad-container {
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: 60px 60px 60px;
+    grid-template-rows: 60px 60px 60px;
+    gap: 5px;
+}
+
+.d-pad-btn {
+    width: 60px;
+    height: 60px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    user-select: none;
+    transition: transform 0.1s; /* Smooth click animation */
+}
+
+/* This creates the "press down" effect when clicked/tapped */
+.d-pad-btn:active, 
+.action-btn:active {
+    transform: scale(0.95);
+    background-color: rgba(200, 200, 200, 0.9);
+}
+
+[data-theme="dark"] .d-pad-btn, 
+[data-theme="dark"] .action-btn {
+    background-color: rgba(55, 65, 81, 0.9);
+    color: white;
+}
+
+/* Grid Positioning for D-Pad */
+.d-pad-btn.up { grid-column: 2; grid-row: 1; }
+.d-pad-btn.left { grid-column: 1; grid-row: 2; }
+.d-pad-btn.center { grid-column: 2; grid-row: 2; font-size: 1.2rem; background-color: rgba(200, 200, 255, 0.9);}
+.d-pad-btn.right { grid-column: 3; grid-row: 2; }
+.d-pad-btn.down { grid-column: 2; grid-row: 3; }
+
+.action-buttons-container {
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: 50px 50px;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.action-btn {
+    width: 50px;
+    height: 50px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.action-btn.red {
+    background-color: rgba(239, 68, 68, 0.9);
+    color: white;
+}
