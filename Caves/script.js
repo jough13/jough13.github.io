@@ -5924,162 +5924,171 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     let hitSomething = false;
 
     // --- 2. Execute Spell Logic ---
-        switch (spellId) {
+    switch (spellId) {
 
         case 'magicBolt':
         case 'siphonLife':
         case 'psychicBlast':
         case 'frostBolt':
         case 'poisonBolt':
-            
-            const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast' || spellId === 'poisonBolt') ? player.willpower : player.wits;
-            
-            const spellDamage = spellData.baseDamage + (damageStat * spellLevel);
-            
-            let logMsg = "You cast your spell!";
-            if (spellId === 'magicBolt') logMsg = "You hurl a bolt of energy!";
-            if (spellId === 'siphonLife') logMsg = "You cast Siphon Life!";
-            if (spellId === 'psychicBlast') logMsg = "You unleash a blast of mental energy!";
-            if (spellId === 'frostBolt') logMsg = "You launch a shard of ice!";
-            if (spellId === 'poisonBolt') logMsg = "You hurl a bolt of acid!";
-            logMessage(logMsg);
+            { // <--- BRACE ADDED FOR SCOPE
+                const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast' || spellId === 'poisonBolt') ? player.willpower : player.wits;
+                
+                const spellDamage = spellData.baseDamage + (damageStat * spellLevel);
+                
+                let logMsg = "You cast your spell!";
+                if (spellId === 'magicBolt') logMsg = "You hurl a bolt of energy!";
+                if (spellId === 'siphonLife') logMsg = "You cast Siphon Life!";
+                if (spellId === 'psychicBlast') logMsg = "You unleash a blast of mental energy!";
+                if (spellId === 'frostBolt') logMsg = "You launch a shard of ice!";
+                if (spellId === 'poisonBolt') logMsg = "You hurl a bolt of acid!";
+                logMessage(logMsg);
 
-            // --- BUG FIX: CHANGED i=2 TO i=1 ---
-            // Now checks 1, 2, and 3 tiles away
-            for (let i = 1; i <= 3; i++) { 
-                const targetX = player.x + (dirX * i);
-                const targetY = player.y + (dirY * i);
-                // We await here so Siphon Life's heal applies correctly
-                if (await applySpellDamage(targetX, targetY, spellDamage, spellId)) {
-                    hitSomething = true;
-                    break; // Stop, we hit a target
+                // --- BUG FIX: CHANGED i=2 TO i=1 ---
+                // Now checks 1, 2, and 3 tiles away
+                for (let i = 1; i <= 3; i++) { 
+                    const targetX = player.x + (dirX * i);
+                    const targetY = player.y + (dirY * i);
+                    // We await here so Siphon Life's heal applies correctly
+                    if (await applySpellDamage(targetX, targetY, spellDamage, spellId)) {
+                        hitSomething = true;
+                        break; // Stop, we hit a target
+                    }
                 }
-            }
+            } // <--- CLOSE BRACE
             break;
 
-            case 'thunderbolt':
-            const thunderDmg = spellData.baseDamage + (player.wits * spellLevel);
-            logMessage("CRACK! Lightning strikes!");
-            // Thunderbolt is instant hit, range 4
-            for (let i = 1; i <= 4; i++) {
-                const tx = player.x + (dirX * i);
-                const ty = player.y + (dirY * i);
-                if (await applySpellDamage(tx, ty, thunderDmg, spellId)) {
-                    ParticleSystem.createExplosion(tx, ty, '#facc15'); // Yellow sparks
-                    hitSomething = true;
-                    break;
+        case 'thunderbolt':
+            { // <--- BRACE ADDED FOR SCOPE
+                const thunderDmg = spellData.baseDamage + (player.wits * spellLevel);
+                logMessage("CRACK! Lightning strikes!");
+                // Thunderbolt is instant hit, range 4
+                for (let i = 1; i <= 4; i++) {
+                    const tx = player.x + (dirX * i);
+                    const ty = player.y + (dirY * i);
+                    if (await applySpellDamage(tx, ty, thunderDmg, spellId)) {
+                        ParticleSystem.createExplosion(tx, ty, '#facc15'); // Yellow sparks
+                        hitSomething = true;
+                        break;
+                    }
                 }
-            }
+            } // <--- CLOSE BRACE
             break;
 
         case 'meteor':
-            // Huge AoE (radius 2)
-            const meteorDmg = spellData.baseDamage + (player.wits * spellLevel);
-            const mx = player.x + (dirX * 3);
-            const my = player.y + (dirY * 3);
-            logMessage("A meteor crashes down!");
-            
-            for (let y = my - spellData.radius; y <= my + spellData.radius; y++) {
-                for (let x = mx - spellData.radius; x <= mx + spellData.radius; x++) {
-                    applySpellDamage(x, y, meteorDmg, spellId).then(hit => {
-                        if (hit) ParticleSystem.createExplosion(x, y, '#f97316'); // Fire explosion
-                    });
+            { // <--- BRACE ADDED FOR SCOPE
+                // Huge AoE (radius 2)
+                const meteorDmg = spellData.baseDamage + (player.wits * spellLevel);
+                const mx = player.x + (dirX * 3);
+                const my = player.y + (dirY * 3);
+                logMessage("A meteor crashes down!");
+                
+                for (let y = my - spellData.radius; y <= my + spellData.radius; y++) {
+                    for (let x = mx - spellData.radius; x <= mx + spellData.radius; x++) {
+                        applySpellDamage(x, y, meteorDmg, spellId).then(hit => {
+                            if (hit) ParticleSystem.createExplosion(x, y, '#f97316'); // Fire explosion
+                        });
+                    }
                 }
-            }
-            hitSomething = true;
+                hitSomething = true;
+            } // <--- CLOSE BRACE
             break;
 
-            case 'raiseDead':
-            // 1. Calculate target coordinates
-            // (We assume range 1-3 based on the loop in executeAimedSpell, 
-            // but Raise Dead usually targets a specific spot. Let's look 1 tile away for simplicity first).
-            const targetX = player.x + dirX;
-            const targetY = player.y + dirY;
-            
-            // 2. Determine what is on that tile
-            let tileType;
-            if (gameState.mapMode === 'overworld') {
-                tileType = chunkManager.getTile(targetX, targetY);
-            } else if (gameState.mapMode === 'dungeon') {
-                 tileType = chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX];
-            } else {
-                 tileType = chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX];
-            }
-
-            // 3. Check for valid "corpse" materials
-            // Valid: 's' (Skeleton enemy?), '(' (Bone Shard), '⚰️' (Grave)
-            // For now, let's say you can raise from Bone Shards '(' or graves '⚰️'
-            // OR if we just want it to be a summon, we can ignore requirements. 
-            // Let's require a Bone Shard '(' on the ground for balance.
-            
-            if (tileType === '(' || tileType === '⚰️') {
+        case 'raiseDead':
+            { // <--- BRACE ADDED FOR SCOPE
+                // 1. Calculate target coordinates
+                // (We assume range 1-3 based on the loop in executeAimedSpell, 
+                // but Raise Dead usually targets a specific spot. Let's look 1 tile away for simplicity first).
+                const targetX = player.x + dirX;
+                const targetY = player.y + dirY;
                 
-                if (gameState.player.companion) {
-                    logMessage("You already have a companion! Dismiss them first.");
+                // 2. Determine what is on that tile
+                let tileType;
+                if (gameState.mapMode === 'overworld') {
+                    tileType = chunkManager.getTile(targetX, targetY);
+                } else if (gameState.mapMode === 'dungeon') {
+                     tileType = chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX];
                 } else {
-                    logMessage("You chant the words of unlife... A Skeleton rises to serve you!");
-                    
-                    // Consume the bones/grave
-                    if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(targetX, targetY, '.');
-                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
-                    
-                    // Create the companion
-                    gameState.player.companion = {
-                        name: "Risen Skeleton",
-                        tile: "s",
-                        type: "undead",
-                        hp: 15 + (player.willpower * 5), // Scales with Willpower
-                        maxHp: 15 + (player.willpower * 5),
-                        attack: 3 + Math.floor(player.wits / 2),
-                        defense: 1,
-                        x: targetX,
-                        y: targetY
-                    };
-                    
-                    // Update DB
-                    playerRef.update({ companion: gameState.player.companion });
-                    hitSomething = true; // Consumes the spell resource
-                    
-                    render(); // Show the change
+                     tileType = chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX];
                 }
-            } else {
-                logMessage("You need a pile of bones '(' or a grave '⚰️' to raise the dead.");
-            }
+
+                // 3. Check for valid "corpse" materials
+                // Valid: 's' (Skeleton enemy?), '(' (Bone Shard), '⚰️' (Grave)
+                // For now, let's say you can raise from Bone Shards '(' or graves '⚰️'
+                // OR if we just want it to be a summon, we can ignore requirements. 
+                // Let's require a Bone Shard '(' on the ground for balance.
+                
+                if (tileType === '(' || tileType === '⚰️') {
+                    
+                    if (gameState.player.companion) {
+                        logMessage("You already have a companion! Dismiss them first.");
+                    } else {
+                        logMessage("You chant the words of unlife... A Skeleton rises to serve you!");
+                        
+                        // Consume the bones/grave
+                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(targetX, targetY, '.');
+                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
+                        
+                        // Create the companion
+                        gameState.player.companion = {
+                            name: "Risen Skeleton",
+                            tile: "s",
+                            type: "undead",
+                            hp: 15 + (player.willpower * 5), // Scales with Willpower
+                            maxHp: 15 + (player.willpower * 5),
+                            attack: 3 + Math.floor(player.wits / 2),
+                            defense: 1,
+                            x: targetX,
+                            y: targetY
+                        };
+                        
+                        // Update DB
+                        playerRef.update({ companion: gameState.player.companion });
+                        hitSomething = true; // Consumes the spell resource
+                        
+                        render(); // Show the change
+                    }
+                } else {
+                    logMessage("You need a pile of bones '(' or a grave '⚰️' to raise the dead.");
+                }
+            } // <--- CLOSE BRACE
             break;
 
         case 'fireball':
-            // This is an AoE spell. It hits a 3x3 area, 3 tiles away.
-            const fbDamage = spellData.baseDamage + (player.wits * spellLevel);
-            const radius = spellData.radius; // 1
-            
-            // Fireball targets a point 3 tiles away
-            const targetX = player.x + (dirX * 3);
-            const targetY = player.y + (dirY * 3);
-            logMessage("A fireball erupts in the distance!");
+            { // <--- BRACE ADDED FOR SCOPE
+                // This is an AoE spell. It hits a 3x3 area, 3 tiles away.
+                const fbDamage = spellData.baseDamage + (player.wits * spellLevel);
+                const radius = spellData.radius; // 1
+                
+                // Fireball targets a point 3 tiles away
+                const targetX = player.x + (dirX * 3);
+                const targetY = player.y + (dirY * 3);
+                logMessage("A fireball erupts in the distance!");
 
-            // Loop in a 3x3 area around the target point
-            for (let y = targetY - radius; y <= targetY + radius; y++) {
-                for (let x = targetX - radius; x <= targetX + radius; x++) {
+                // Loop in a 3x3 area around the target point
+                for (let y = targetY - radius; y <= targetY + radius; y++) {
+                    for (let x = targetX - radius; x <= targetX + radius; x++) {
 
-                    let tileAt;
-                    if (gameState.mapMode === 'dungeon') {
-                        const map = chunkManager.caveMaps[gameState.currentCaveId];
-                        tileAt = (map && map[y]) ? map[y][x] : null;
-                        
-                        if (tileAt === '🕸') {
-                            const theme = CAVE_THEMES[gameState.currentCaveTheme];
-                            map[y][x] = theme.floor; // Burn it away
-                            logMessage("The web catches fire and burns away!");
+                        let tileAt;
+                        if (gameState.mapMode === 'dungeon') {
+                            const map = chunkManager.caveMaps[gameState.currentCaveId];
+                            tileAt = (map && map[y]) ? map[y][x] : null;
+                            
+                            if (tileAt === '🕸') {
+                                const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                                map[y][x] = theme.floor; // Burn it away
+                                logMessage("The web catches fire and burns away!");
+                            }
                         }
-                    }
 
-                    // Don't await in the AoE loop, just fire them all off
-                    // This feels more like a simultaneous explosion
-                    applySpellDamage(x, y, fbDamage, spellId).then(hit => {
-                        if (hit) hitSomething = true;
-                    });
+                        // Don't await in the AoE loop, just fire them all off
+                        // This feels more like a simultaneous explosion
+                        applySpellDamage(x, y, fbDamage, spellId).then(hit => {
+                            if (hit) hitSomething = true;
+                        });
+                    }
                 }
-            }
+            } // <--- CLOSE BRACE
             break;
     }
 
