@@ -711,7 +711,7 @@ const ENEMY_DATA = {
         defense: 0, // no armor
         xp: 45,
         loot: '$'
-    }
+    },
     'C': {
         name: 'Bandit Chief',
         maxHealth: 12, // Tougher than a normal Bandit
