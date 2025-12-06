@@ -3812,6 +3812,101 @@ generateCave(caveId) {
     }
 };
 
+const ParticleSystem = {
+    particles: [],
+    
+    // Creates a spray of "dust" or "blood"
+    createExplosion: (x, y, color, count = 8) => {
+        for (let i = 0; i < count; i++) {
+            ParticleSystem.particles.push({
+                x: x + 0.5, // Center of tile
+                y: y + 0.5,
+                vx: (Math.random() - 0.5) * 0.15, // Random velocity
+                vy: (Math.random() - 0.5) * 0.15,
+                life: 1.0,
+                color: color,
+                type: 'dust',
+                size: Math.random() * 4 + 2
+            });
+        }
+    },
+
+    // Creates floating numbers floating UP
+    createFloatingText: (x, y, text, color) => {
+        ParticleSystem.particles.push({
+            x: x + 0.5,
+            y: y, // Start at top of tile
+            vx: 0,
+            vy: -0.02, // Float upwards
+            life: 2.0, // Lasts 2 seconds
+            color: color,
+            text: text,
+            type: 'text',
+            size: 16
+        });
+    },
+
+    // Confetti for Level Up
+    createLevelUp: (x, y) => {
+        for (let i = 0; i < 40; i++) {
+            const colors = ['#facc15', '#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
+            ParticleSystem.particles.push({
+                x: x + 0.5,
+                y: y + 0.5,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: (Math.random() - 0.5) * 0.3,
+                life: 3.0,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                type: 'dust',
+                size: Math.random() * 5 + 3
+            });
+        }
+        ParticleSystem.createFloatingText(x, y, "LEVEL UP!", "#facc15");
+    },
+
+    update: () => {
+        for (let i = ParticleSystem.particles.length - 1; i >= 0; i--) {
+            const p = ParticleSystem.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.02; // Decay
+
+            if (p.life <= 0) {
+                ParticleSystem.particles.splice(i, 1);
+            }
+        }
+    },
+
+    draw: (ctx, startX, startY) => {
+        // Draw relative to viewport (TILE_SIZE is global)
+        ParticleSystem.particles.forEach(p => {
+            const screenX = (p.x - startX) * TILE_SIZE;
+            const screenY = (p.y - startY) * TILE_SIZE;
+
+            // Optimization: Don't draw off-screen
+            if (screenX < -TILE_SIZE || screenX > ctx.canvas.width ||
+                screenY < -TILE_SIZE || screenY > ctx.canvas.height) return;
+
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, p.life); // Fade out
+            
+            if (p.type === 'text') {
+                ctx.fillStyle = p.color;
+                ctx.font = `bold ${p.size}px monospace`;
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 3;
+                ctx.strokeText(p.text, screenX, screenY);
+                ctx.fillText(p.text, screenX, screenY);
+            } else {
+                ctx.fillStyle = p.color;
+                ctx.fillRect(screenX, screenY, p.size, p.size);
+            }
+            
+            ctx.restore();
+        });
+    }
+};
+
 const gameState = {
     player: {
         x: 0,
@@ -4448,6 +4543,7 @@ function grantXp(amount) {
         player.xpToNextLevel = player.level * 100; // The next level costs more
 
         logMessage(`LEVEL UP! You are now level ${player.level}!`);
+        ParticleSystem.createLevelUp(player.x, player.y);
         logMessage(`You have ${player.statPoints} stat point(s) to spend.`);
 
         // Optional: Flash the level and stat point displays
@@ -4728,7 +4824,6 @@ function renderShop() {
 
     // 3. Populate "Buy" list
     activeShopInventory.forEach(item => {
-        // Find the key (e.g., '+') which is the tile character
         const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === item.name);
         
         const baseBuyPrice = item.price;
@@ -4747,8 +4842,7 @@ function renderShop() {
             <button data-buy-item="${item.name}">Buy 1</button> 
         </div>
     `;
-        // Disable buy button if player can't afford it
-        if (gameState.player.coins < finalBuyPrice) { // <-- Use new variable
+        if (gameState.player.coins < finalBuyPrice) {
             li.querySelector('button').disabled = true;
         }
         shopBuyList.appendChild(li);
@@ -4758,15 +4852,31 @@ function renderShop() {
     if (gameState.player.inventory.length === 0) {
         shopSellList.innerHTML = '<li class="shop-item-details italic">Your inventory is empty.</li>';
     } else {
-            gameState.player.inventory.forEach((item, index) => {
+        gameState.player.inventory.forEach((item, index) => {
             const shopItem = activeShopInventory.find(sItem => sItem.name === item.name);
-            const basePrice = shopItem ? shopItem.price : 2; // Default sell price if not in shop
             
-            // --- NEW: Calculate final sell price for display ---
+            // 1. Determine Base Price
+            let basePrice = 2; // Default
+            if (shopItem) {
+                basePrice = shopItem.price;
+            } else {
+                // Relic Prices (Must match handleSellItem logic!)
+                if (item.name === 'Shattered Crown') basePrice = 200;
+                else if (item.name === 'Signet Ring') basePrice = 80;
+                else if (item.name === 'Pouch of Gold Dust') basePrice = 50;
+                else if (item.name === 'Ancient Coin') basePrice = 25;
+                else if (item.name === 'Alpha Pelt') basePrice = 60;
+            }
+
+            // 2. Calculate Bonuses
+            const regionMult = getRegionalPriceMultiplier(item.type, item.name);
             const sellBonusPercent = gameState.player.charisma * 0.005;
             const finalSellBonus = Math.min(sellBonusPercent, 0.5);
-            const sellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus));
-            // --- END NEW LOGIC ---
+            let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
+
+            // 3. Apply the 80% Cap (Visual Fix)
+            const maxSellPrice = Math.floor(basePrice * 0.8);
+            const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
 
             const li = document.createElement('li');
             li.className = 'shop-item';
@@ -6513,6 +6623,9 @@ function castSpell(spellId) {
                 if (healedFor > 0) {
                     logMessage(`You cast Lesser Heal and recover ${healedFor} health.`);
                     triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+
+                    ParticleSystem.createFloatingText(player.x, player.y, `+${healedFor}`, '#22c55e'); // Green text
+
                 } else {
                     logMessage("You cast Lesser Heal, but you're already at full health.");
                 }
@@ -6667,6 +6780,14 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 // Calculate actual damage
                 damageDealt = Math.max(1, damage); 
                 enemy.health -= damageDealt;
+
+                let color = '#3b82f6'; // Blue for magic
+            
+                    if (spellId === 'fireball') color = '#f97316'; // Orange for fire
+                    if (spellId === 'poisonBolt') color = '#22c55e'; // Green for poison
+
+                    ParticleSystem.createExplosion(targetX, targetY, color);
+                    ParticleSystem.createFloatingText(targetX, targetY, `-${damageDealt}`, color);
                 
                 if (enemy.health <= 0) return null;
                 return enemy;
@@ -6865,6 +6986,9 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             // --- Player Attacks Enemy ---
             // We now use the damage value passed into the function!
             enemy.health -= playerDamage; 
+
+            ParticleSystem.createExplosion(newX, newY, '#ef4444'); // Red blood
+            ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
 
             if (enemy.health <= 0) {
                 // Enemy is dead. Return 'null' to delete it from RTDB.
@@ -7336,6 +7460,10 @@ const render = () => {
     } else if (gameState.weather === 'fog') {
         ctx.fillStyle = 'rgba(200, 200, 200, 0.3)'; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    if (typeof ParticleSystem !== 'undefined') {
+        ParticleSystem.draw(ctx, startX, startY);
     }
 };
 
@@ -8748,6 +8876,9 @@ const obsoleteTiles = [];
                     enemy.health -= playerDamage;
                     logMessage(`You attack the ${enemy.name} for ${playerDamage} damage!`);
 
+                    ParticleSystem.createExplosion(newX, newY, '#ef4444'); 
+                    ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
+
                     const weapon = gameState.player.equipment.weapon;
                 if (weapon.inflicts === 'poison' && 
                     enemy.poisonTurns <= 0 && 
@@ -8806,6 +8937,10 @@ if (Math.random() < luckDodgeChance) { //
                             // Apply remaining damage to health
                             if (damageToApply > 0) {
                                 gameState.player.health -= damageToApply;
+
+                                ParticleSystem.createExplosion(player.x, player.y, '#ef4444'); 
+                                ParticleSystem.createFloatingText(player.x, player.y, `-${damageToApply}`, '#ef4444'); // Red text
+
                                 triggerStatFlash(statDisplays.health, false);
                                 logMessage(`The ${enemy.name} hits you for ${damageToApply} damage!`);
                             }
@@ -10808,5 +10943,21 @@ auth.onAuthStateChanged((user) => {
         console.log("No user is signed in.");
     }
 });
+
+function gameLoop() {
+    // 1. Update Particles
+    ParticleSystem.update();
+    
+    // 2. Re-render the game
+    // Note: This renders 60fps. If performance is an issue, we can limit this.
+    if (gameState.mapMode) {
+        render();
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Start the loop
+requestAnimationFrame(gameLoop);
 
 window.addEventListener('resize', resizeCanvas);
