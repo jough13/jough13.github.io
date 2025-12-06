@@ -77,7 +77,7 @@ const TILE_DATA = {
         type: 'npc_guard',
         title: 'Castle Guard'
     },
-    'O': {
+    'S': {
         type: 'npc_sage',
         title: 'Sage'
     },
@@ -609,6 +609,7 @@ const QUEST_DATA = {
  * Scales an enemy based on distance from the center of the world.
  * Adds prefixes (Weak, Feral, Ancient) and buffs stats.
  */
+
 function getScaledEnemy(enemyTemplate, x, y) {
     // 1. Calculate Distance
     const dist = Math.sqrt(x * x + y * y);
@@ -685,6 +686,32 @@ const ENEMY_DATA = {
         xp: 8, // Down from 15
         loot: 'p'
     },
+    'k': { // Replaces Kraken (move Kraken to 🐙 if you want)
+        name: 'Kobold',
+        maxHealth: 4,
+        attack: 2,
+        defense: 0,
+        xp: 6,
+        loot: '$', // Drops small coins
+        flavor: "Yip yip!"
+    },
+    'M': { // Mimic
+        name: 'Mimic',
+        maxHealth: 15,
+        attack: 5,
+        defense: 2,
+        xp: 40,
+        loot: '💍',
+        inflicts: 'root' // It bites and holds you!
+    },
+    'O': { // Ogre
+        name: 'Ogre',
+        maxHealth: 20,
+        attack: 6, // hits hard
+        defense: 0, // no armor
+        xp: 45,
+        loot: '$'
+    }
     'C': {
         name: 'Bandit Chief',
         maxHealth: 12, // Tougher than a normal Bandit
@@ -2003,6 +2030,51 @@ const ITEM_DATA = {
         description: "A pile of glittering dust that fades in and out of existence.",
         tile: '✨' // Visual representation
     },
+    '⚔️l': {
+        name: 'Longsword',
+        type: 'weapon',
+        tile: '⚔️',
+        damage: 4, // Tier 3
+        slot: 'weapon',
+        description: "A versatile steel blade used by knights."
+    },
+    '🔨': {
+        name: 'Warhammer',
+        type: 'weapon',
+        tile: '🔨',
+        damage: 5, // High damage
+        slot: 'weapon',
+        statBonuses: { dexterity: -1 }, // Heavy!
+        description: "Crushes armor and bone alike."
+    },
+    '🪓': {
+        name: 'Greataxe',
+        type: 'weapon',
+        tile: '🪓',
+        damage: 6, // Tier 4
+        slot: 'weapon',
+        statBonuses: { strength: 1, dexterity: -2 }, // Very heavy
+        description: "Requires two hands and a lot of rage."
+    },
+
+    // --- CLASSIC ARMOR ---
+    '⛓️': {
+        name: 'Chainmail',
+        type: 'armor',
+        tile: '⛓️',
+        defense: 3, // Tier 3
+        slot: 'armor',
+        description: "Interlinked steel rings. Noisy but protective."
+    },
+    '🛡️p': {
+        name: 'Plate Armor',
+        type: 'armor',
+        tile: '🛡️',
+        defense: 5, // Tier 4
+        slot: 'armor',
+        statBonuses: { dexterity: -2 }, // Hard to move
+        description: "A full suit of polished steel plates."
+    },
     // --- VALUABLE RELICS (Lore/Trade Goods) ---
     '👑': {
         name: 'Shattered Crown',
@@ -2325,6 +2397,30 @@ const ITEM_DATA = {
         defense: 1,
         slot: 'armor',
         description: "Boiled leather stitched with sinew. It smells of cured hide."
+    },
+    '🛡️': { // Tome of Shielding (Magic) - Keep as is
+        name: 'Tome of Shielding',
+        type: 'spellbook',
+        spellId: 'arcaneShield'
+    },
+    // --- NEW PHYSICAL SHIELDS ---
+    '🛡️w': {
+        name: 'Wooden Shield',
+        type: 'armor',
+        tile: '🛡️',
+        defense: 1,
+        slot: 'offhand', // Note: You might need to change 'armor' slot logic if you want true dual slots, but for now we can treat it as armor
+        blockChance: 0.10, // 10% Block Chance
+        description: "A splintered plank with a handle."
+    },
+    '🛡️i': {
+        name: 'Iron Heater Shield',
+        type: 'armor',
+        tile: '🛡️',
+        defense: 2,
+        slot: 'armor', // Occupies armor slot for simplicity in current code, or add 'offhand' logic later
+        blockChance: 0.20, // 20% Block Chance
+        description: "Sturdy iron protection."
     },
     '!': {
         name: 'Rusty Sword',
@@ -3845,14 +3941,14 @@ generateCave(caveId) {
                     // No safe feature spawned. Check for hostiles or foraging.
                     const hostileRoll = random();
 
-                    if (featureRoll < 0.0005) { // Very Rare (Ruins)
-                    this.setWorldTile(worldX, worldY, '🏛️');
-                    chunkData[y][x] = '🏛️';
-                } 
-                else if (featureRoll < 0.002) { // Uncommon (Campsite)
-                    this.setWorldTile(worldX, worldY, '⛺');
-                    chunkData[y][x] = '⛺';
-                }
+                    if (tile !== '~' && tile !== '≈' && featureRoll < 0.0005) { // Very Rare (Ruins)
+                        this.setWorldTile(worldX, worldY, '🏛️');
+                        chunkData[y][x] = '🏛️';
+                    } 
+                    else if (tile !== '~' && tile !== '≈' && featureRoll < 0.002) { // Uncommon (Campsite)
+                        this.setWorldTile(worldX, worldY, '⛺');
+                        chunkData[y][x] = '⛺';
+                    }
 
                     // --- FORESTS: Wolves ('w') or Wildberries (':') ---
                     if (tile === 'F') {
@@ -7392,66 +7488,87 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             // --- ENEMY SURVIVES AND ATTACKS ---
             enemyAttackedBack = true;
             const enemy = finalEnemyState;
-            const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
-            
-            const baseDefense = Math.floor(player.dexterity / 5);
-            const buffDefense = player.defenseBonus || 0;
-            const playerDefense = baseDefense + armorDefense + buffDefense; // <-- Corrected total defense
-            
-            enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
 
-            // --- LUCK DODGE CHECK ---
-            const luckDodgeChance = Math.min(player.luck * 0.002, 0.25); // 0.2% per luck, max 25%
-            if (Math.random() < luckDodgeChance) {
-                logMessage(`The ${enemyData.name} attacks, but you luckily dodge!`);
-                enemyDamageTaken = 0; // Negate the damage
+            // --- 1. NEW: Shield Block Check ---
+            let blockChance = 0;
+            // Check Armor slot (Shields)
+            if (player.equipment.armor && player.equipment.armor.blockChance) {
+                blockChance += player.equipment.armor.blockChance;
+            }
+            // Check Weapon slot (Parrying daggers or shields in main hand)
+            if (player.equipment.weapon && player.equipment.weapon.blockChance) {
+                blockChance += player.equipment.weapon.blockChance;
+            }
+
+            if (Math.random() < blockChance) {
+                logMessage(`CLANG! You blocked the ${enemyData.name}'s attack!`);
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createFloatingText(player.x, player.y, "BLOCKED", "#ccc");
+                }
+                enemyDamageTaken = 0;
             } else {
-                // --- SHIELD DAMAGE LOGIC ---
+                // --- 2. Calculate Potential Damage ---
+                const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
+                const baseDefense = Math.floor(player.dexterity / 5);
+                const buffDefense = player.defenseBonus || 0;
+                const playerDefense = baseDefense + armorDefense + buffDefense;
+
+                enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
+
+                // --- 3. Luck Dodge Check ---
+                const luckDodgeChance = Math.min(player.luck * 0.002, 0.25); // Cap at 25%
+                if (Math.random() < luckDodgeChance) {
+                    logMessage(`The ${enemyData.name} attacks, but you luckily dodge!`);
+                    enemyDamageTaken = 0;
+                }
+            }
+
+            // --- 4. Apply Final Damage & Reactives ---
+            if (enemyDamageTaken > 0) {
                 let damageToApply = enemyDamageTaken;
+
+                // -- Arcane Shield Logic --
                 if (player.shieldValue > 0) {
                     const damageAbsorbed = Math.min(player.shieldValue, damageToApply);
                     player.shieldValue -= damageAbsorbed;
                     damageToApply -= damageAbsorbed;
-                    
+
                     logMessage(`Your shield absorbs ${damageAbsorbed} damage!`);
-                    
+
                     if (player.shieldValue === 0) {
                         logMessage("Your Arcane Shield shatters!");
                     }
                 }
-                
-// --- THORNS LOGIC (OVERWORLD) ---
-            if (player.thornsValue > 0) {
-                logMessage(`The ${enemyData.name} takes ${player.thornsValue} damage from your thorns!`);
-                
-                // We run a second transaction to apply the thorn damage safely
-                enemyRef.transaction(thornData => {
-                    if (!thornData) return null; // Enemy already gone
-                    
-                    thornData.health -= player.thornsValue;
-                    
-                    // If health <= 0, return null to delete the enemy
-                    return thornData.health <= 0 ? null : thornData;
-                }).then(result => {
-                    // Check if the enemy was deleted (snapshot doesn't exist)
-                    if (result.committed && !result.snapshot.exists()) {
-                        logMessage(`The ${enemyData.name} is killed by your thorns!`);
-                        grantXp(enemyData.xp);
-                        updateQuestProgress(newTile);
-                        const droppedLoot = generateEnemyLoot(player, enemyData);
-                        chunkManager.setWorldTile(newX, newY, droppedLoot);
-                    }
-                });
-            }
 
-                // Apply any remaining damage to health
+                // -- Thorns Logic (Reflect Damage) --
+                if (player.thornsValue > 0) {
+                    logMessage(`The ${enemyData.name} takes ${player.thornsValue} damage from your thorns!`);
+
+                    // Use a nested transaction to safely apply thorn damage to the DB
+                    enemyRef.transaction(thornData => {
+                        if (!thornData) return null; // Enemy already dead/gone
+                        
+                        thornData.health -= player.thornsValue;
+                        
+                        // If dead, return null to delete
+                        return thornData.health <= 0 ? null : thornData;
+                    }).then(result => {
+                        // Check if the enemy was deleted (snapshot doesn't exist)
+                        if (result.committed && !result.snapshot.exists()) {
+                            logMessage(`The ${enemyData.name} is killed by your thorns!`);
+                            grantXp(enemyData.xp);
+                            updateQuestProgress(newTile);
+                            const droppedLoot = generateEnemyLoot(player, enemyData);
+                            chunkManager.setWorldTile(newX, newY, droppedLoot);
+                        }
+                    });
+                }
+
+                // -- Apply Final Health Damage --
                 if (damageToApply > 0) {
                     player.health -= damageToApply;
                 }
-                // --- END NEW SHIELD LOGIC ---
             }
-            // --- END LUCK DODGE CHECK ---
-            
         }
 
     } catch (error) {
@@ -9107,28 +9224,55 @@ async function attemptMovePlayer(newX, newY) {
     // --- COMBAT CHECK ---
     const enemyData = ENEMY_DATA[newTile];
     if (enemyData) {
+        
+        // 1. Calculate Player's Raw Attack Power (Shared Logic)
+        const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
+        const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
+        let rawDamage = playerStrength + weaponDamage;
+
+        // 2. Critical Hit Check (5% base + 0.5% per Luck)
+        const critChance = 0.05 + (gameState.player.luck * 0.005);
+        let isCrit = false;
+        
+        if (Math.random() < critChance) {
+            rawDamage = Math.floor(rawDamage * 1.5); // 1.5x Damage on Crit
+            isCrit = true;
+        }
+
         if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
             // --- INSTANCED COMBAT ---
             let enemy = gameState.instancedEnemies.find(e => e.x === newX && e.y === newY);
             let enemyId = enemy ? enemy.id : null;
 
             if (enemy) {
-                // ATTACK
-                const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
-                const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
-                const playerDamage = Math.max(1, (playerStrength + weaponDamage) - enemy.defense);
+                // Calculate Final Damage vs Enemy Defense
+                const playerDamage = Math.max(1, rawDamage - (enemy.defense || 0));
 
                 enemy.health -= playerDamage;
-                logMessage(`You attack the ${enemy.name} for ${playerDamage} damage!`);
-                ParticleSystem.createExplosion(newX, newY, '#ef4444'); 
-                ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
+                
+                // Log & Effects
+                if (isCrit) {
+                    logMessage(`CRITICAL HIT! You strike the ${enemy.name} for ${playerDamage} damage!`);
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(newX, newY, '#facc15'); // Yellow sparks
+                        ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
+                    }
+                } else {
+                    logMessage(`You attack the ${enemy.name} for ${playerDamage} damage!`);
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(newX, newY, '#ef4444'); 
+                        ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
+                    }
+                }
 
+                // Weapon Poison Effect
                 const weapon = gameState.player.equipment.weapon;
-                if (weapon.inflicts === 'poison' && enemy.poisonTurns <= 0 && Math.random() < (weapon.inflictChance || 0.25)) {
+                if (weapon && weapon.inflicts === 'poison' && enemy.poisonTurns <= 0 && Math.random() < (weapon.inflictChance || 0.25)) {
                     logMessage(`Your weapon poisons the ${enemy.name}!`);
                     enemy.poisonTurns = 3;
                 }
 
+                // Enemy Death Logic
                 if (enemy.health <= 0) {
                     logMessage(`You defeated the ${enemy.name}!`);
                     grantXp(enemy.xp);
@@ -9148,13 +9292,17 @@ async function attemptMovePlayer(newX, newY) {
                     const baseDefense = Math.floor(gameState.player.dexterity / 5);
                     const buffDefense = gameState.player.defenseBonus || 0;
                     const playerDefense = baseDefense + armorDefense + buffDefense;
+                    
                     const enemyDamage = Math.max(1, enemy.attack - playerDefense);
 
                     const luckDodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
+                    
                     if (Math.random() < luckDodgeChance) {
                         logMessage(`The ${enemy.name} attacks, but you luckily dodge!`);
                     } else {
                         let damageToApply = enemyDamage;
+                        
+                        // Shield Absorb
                         if (gameState.player.shieldValue > 0) {
                             const damageAbsorbed = Math.min(gameState.player.shieldValue, damageToApply);
                             gameState.player.shieldValue -= damageAbsorbed;
@@ -9165,12 +9313,15 @@ async function attemptMovePlayer(newX, newY) {
 
                         if (damageToApply > 0) {
                             gameState.player.health -= damageToApply;
-                            ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444'); 
-                            ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, `-${damageToApply}`, '#ef4444');
+                            if (typeof ParticleSystem !== 'undefined') {
+                                ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444'); 
+                                ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, `-${damageToApply}`, '#ef4444');
+                            }
                             triggerStatFlash(statDisplays.health, false);
                             logMessage(`The ${enemy.name} hits you for ${damageToApply} damage!`);
                         }
 
+                        // Thorns Damage
                         if (gameState.player.thornsValue > 0) {
                             enemy.health -= gameState.player.thornsValue;
                             logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} damage from your thorns!`);
@@ -9203,10 +9354,19 @@ async function attemptMovePlayer(newX, newY) {
 
         } else if (gameState.mapMode === 'overworld') {
             // --- SHARED COMBAT ---
-            logMessage(`You attack the ${enemyData.name}!`);
-            const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
-            const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
-            const playerDamage = Math.max(1, (playerStrength + weaponDamage) - (enemyData.defense || 0));
+            // Calculate Final Damage vs Base Enemy Defense
+            const playerDamage = Math.max(1, rawDamage - (enemyData.defense || 0));
+
+            // Log before calling handleOverworldCombat (which handles the enemy reaction log)
+            if (isCrit) {
+                logMessage(`CRITICAL HIT! You strike the ${enemyData.name} for ${playerDamage} damage!`);
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
+                }
+            } else {
+                logMessage(`You attack the ${enemyData.name} for ${playerDamage} damage!`);
+            }
+
             await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
             return;
         }
@@ -9309,6 +9469,30 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     else if (tileData && tileData.type === 'loot_chest') {
+
+    // --- MIMIC CHECK ---
+        // 10% Chance to be a Mimic
+        if (Math.random() < 0.10) {
+            logMessage("The chest lurches open... It has teeth! IT'S A MIMIC!");
+            
+            // Transform the tile into a Mimic
+            if (gameState.mapMode === 'overworld') {
+                chunkManager.setWorldTile(newX, newY, 'M');
+            } else if (gameState.mapMode === 'dungeon') {
+                chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = 'M';
+            } else {
+                chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = 'M';
+            }
+            
+            // Trigger combat immediately? Or let the player attack next turn?
+            // Let's force a hit from the mimic immediately for surprise!
+            gameState.player.health -= 3;
+            triggerStatFlash(statDisplays.health, false);
+            logMessage("The Mimic bites you for 3 damage!");
+            render();
+            return;
+        }
+
         logMessage("You pry open the chest...");
         const goldAmount = 50 + Math.floor(Math.random() * 50);
         gameState.player.coins += goldAmount;
