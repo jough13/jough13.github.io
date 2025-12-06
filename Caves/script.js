@@ -645,235 +645,249 @@ function getScaledEnemy(enemyTemplate, x, y) {
 }
 
 const ENEMY_DATA = {
+    // --- LEVEL 1 (Vermin & Weaklings) ---
+    'r': {
+        name: 'Giant Rat',
+        maxHealth: 3,
+        attack: 1,
+        defense: 0,
+        xp: 4,
+        loot: '🐀', // Rat Tail
+        flavor: "It hisses and bares yellow teeth."
+    },
+    '🦇': {
+        name: 'Giant Bat',
+        maxHealth: 2,
+        attack: 1,
+        defense: 0,
+        xp: 5,
+        loot: '🦇', // Bat Wing
+        flavor: "It swoops down from the darkness!"
+    },
+    '🐍': {
+        name: 'Viper',
+        maxHealth: 4,
+        attack: 2,
+        defense: 0,
+        xp: 8,
+        loot: '🦷', // Snake Fang
+        inflicts: 'poison',
+        inflictChance: 0.2
+    },
+    'R': {
+        name: 'Bandit Recruit',
+        maxHealth: 5,
+        attack: 2, // Has a weapon
+        defense: 0,
+        xp: 10,
+        loot: '🧣', // Red Bandana
+        flavor: "He looks nervous, holding his dagger with shaking hands."
+    },
+
+    // --- LEVEL 2-3 (Standard Threats) ---
     'g': {
         name: 'Goblin',
-        maxHealth: 3, // Down from 5
-        attack: 1, // Down from 2
+        maxHealth: 6,
+        attack: 2,
         defense: 0,
-        xp: 5, // Down from 10
+        xp: 12,
         loot: 't'
+    },
+    'w': {
+        name: 'Wolf',
+        maxHealth: 8,
+        attack: 3, 
+        defense: 0,
+        xp: 15,
+        loot: 'p'
     },
     's': {
         name: 'Skeleton',
-        maxHealth: 5, // Down from 8
-        attack: 2, // Down from 3
-        defense: 0, // Down from 1
-        xp: 10, // Down from 15
+        maxHealth: 10,
+        attack: 3,
+        defense: 1, // Bones are hard
+        xp: 18,
         loot: '('
     },
     'b': {
         name: 'Bandit',
-        maxHealth: 6, // Down from 10
-        attack: 2, // Down from 3
-        defense: 0, // Down from 1
-        xp: 10, // Down from 20
+        maxHealth: 12,
+        attack: 3,
+        defense: 1, // Leather armor
+        xp: 20,
         loot: 'i'
     },
-    'v': {
-        name: 'Void Stalker',
-        maxHealth: 12,    // Not tanky...
-        attack: 5,        // ...but hits hard
-        defense: 1,
-        xp: 45,
-        loot: 'vd',       // Drops Void Dust
-        teleporter: true  // <--- New AI Flag
-    },
-    'w': {
-        name: 'Wolf',
-        maxHealth: 4, // Down from 6
-        attack: 2, // Down from 4 (This is the biggest fix)
-        defense: 0,
-        xp: 8, // Down from 15
-        loot: 'p'
-    },
-    'k': { // Replaces Kraken (move Kraken to 🐙 if you want)
+    'k': {
         name: 'Kobold',
-        maxHealth: 4,
+        maxHealth: 6,
         attack: 2,
         defense: 0,
-        xp: 6,
-        loot: '$', // Drops small coins
+        xp: 10,
+        loot: '$', 
         flavor: "Yip yip!"
-    },
-    'M': { // Mimic
-        name: 'Mimic',
-        maxHealth: 15,
-        attack: 5,
-        defense: 2,
-        xp: 40,
-        loot: '💍',
-        inflicts: 'root' // It bites and holds you!
-    },
-    'Ø': { // CHANGED FROM 'O' TO 'Ø'
-        name: 'Ogre',
-        maxHealth: 20,
-        attack: 6,
-        defense: 0,
-        xp: 45,
-        loot: '$'
-    },
-    'C': {
-        name: 'Bandit Chief',
-        maxHealth: 12, // Tougher than a normal Bandit
-        attack: 3,     // Hits harder
-        defense: 2,
-        xp: 25,
-        loot: 'i'      // Drops the same insignia (or we could change it)
-    },
-    'o': {
-        name: 'Orc Brute',
-        maxHealth: 15, // High health
-        attack: 4,     // High attack
-        defense: 1,    // Low defense
-        xp: 30,
-        loot: 'U'      // New item: Orc Tusk
-    },
-    'm': {
-        name: 'Arcane Mage',
-        maxHealth: 10, // Low health
-        attack: 5,     // Very high attack (like a glass cannon)
-        defense: 0,
-        xp: 30,
-        loot: '&',
-        caster: true,
-        castRange: 6,
-        spellDamage: 5 
     },
     '🐗': {
         name: 'Wild Boar',
-        maxHealth: 8,     // Tankier than a wolf
-        attack: 2,        // Same damage
+        maxHealth: 12, 
+        attack: 3,     
         defense: 0,
-        xp: 12,
-        loot: '🍖'        // Guaranteed Meat drop
-    },
-    'Z': {
-        name: 'Draugr',
-        maxHealth: 12, // Tough
-        attack: 3,     // Decent attack
-        defense: 2,    // High defense
-        xp: 25,
-        loot: 'E',
-        caster: true,
-        castRange: 5,
-        spellDamage: 4,
-        inflicts: 'frostbite'
-    },
-    '@': {
-        name: 'Giant Spider',
-        maxHealth: 6,     // Low health (glass cannon)
-        attack: 3,        // Decent melee attack
-        defense: 0,
-        xp: 12,
-        loot: '"',        // Drops our new "Spider Silk" item
-        caster: true,     // It "spits" poison
-        castRange: 4,     // Shorter range than a mage
-        spellDamage: 2,   // The spell itself does low damage...
-        inflicts: 'poison'  // ...but it inflicts POISON
-    },
-    '🦂': {
-        name: 'Giant Scorpion',
-        maxHealth: 6,
-        attack: 3,
-        defense: 1, // Hard shell
-        xp: 15,
-        loot: 'i', // Chitin/Insignia
-        inflicts: 'poison'
-    },
-    '🐺': {
-        name: 'Dire Wolf',
-        maxHealth: 12,    // Double a normal wolf
-        attack: 4,        // Hits hard
-        defense: 1,
-        xp: 40,
-        loot: '🐺'        // Drops Alpha Pelt
-    },
-    'Y': {
-        name: 'Yeti',
-        maxHealth: 25,
-        attack: 5,
-        defense: 2,
-        xp: 60,
-        loot: '❄️f', // Yeti Fur
-        inflicts: 'frostbite'
-    },
-    'f': {
-        name: 'Fire Elemental',
-        maxHealth: 15,
-        attack: 6, // High damage
-        defense: 3, // Hard to hurt
-        xp: 50,
-        loot: '🔥c', // Core
-        caster: true,
-        castRange: 4,
-        spellDamage: 4, // Firebolt
-        inflicts: 'burn' // Reuse poison logic, just flavor text change
-    },
-    'k': {
-        name: 'Kraken Tentacle',
-        maxHealth: 30,
-        attack: 6,
-        defense: 0,
-        xp: 80,
-        loot: '🦑', // Ink Sac
-        inflicts: 'root'
-    },
-    'D': {
-        name: 'Void Demon',
-        maxHealth: 40,
-        attack: 8,
-        defense: 4,
-        xp: 200,
-        loot: '😈', // Demon Horn
-        teleporter: true,
-        inflicts: 'madness'
-    },
-    'B': {
-        name: 'Basilisk',
-        maxHealth: 20,
-        attack: 4,
-        defense: 2,
-        xp: 70,
-        loot: '👁️', // Basilisk Eye
-        inflicts: 'stun', // Uses our new logic!
-        inflictChance: 0.3
-    },
-    '👺': {
-        name: 'Goblin Warlord',
-        maxHealth: 15,    // Tanky
-        attack: 5,        // Very dangerous
-        defense: 2,
-        xp: 50,
-        loot: '$'         // Drops gold\
+        xp: 20,
+        loot: '🍖' 
     },
     'a': {
         name: 'Shadow Acolyte',
-        maxHealth: 5,
+        maxHealth: 8,
         attack: 1,
         defense: 0,
-        xp: 8,
-        loot: 'r' // Drops our new "Corrupted Relic"
+        xp: 15,
+        loot: 'r',
+        caster: true,
+        castRange: 4,
+        spellDamage: 3
+    },
+
+    // --- LEVEL 4-5 (Advanced Threats) ---
+    '@': {
+        name: 'Giant Spider',
+        maxHealth: 10,
+        attack: 4,
+        defense: 0,
+        xp: 25,
+        loot: '"',
+        inflicts: 'poison'
+    },
+    '🦂': {
+        name: 'Giant Scorpion',
+        maxHealth: 12,
+        attack: 4,
+        defense: 2, // Hard shell
+        xp: 30,
+        loot: 'i',
+        inflicts: 'poison'
     },
     'l': {
         name: 'Giant Leech',
-        maxHealth: 8,      // Tanky (High HP)
-        attack: 1,         // Low direct damage...
+        maxHealth: 15, 
+        attack: 2,     
         defense: 0,
-        xp: 12,
-        loot: 'p',         // Drops slime/pelts (we can use 'p' for now)
-        inflicts: 'poison' // ...but dangerous because of poison!
+        xp: 20,
+        loot: 'p',         
+        inflicts: 'poison' 
+    },
+    'o': {
+        name: 'Orc Brute',
+        maxHealth: 20,
+        attack: 5,     
+        defense: 1,    
+        xp: 40,
+        loot: 'U'      
+    },
+    'Z': {
+        name: 'Draugr',
+        maxHealth: 18,
+        attack: 4,
+        defense: 2,
+        xp: 35,
+        loot: 'E',
+        inflicts: 'frostbite'
+    },
+
+    // --- LEVEL 6+ (Elites) ---
+    '🐺': {
+        name: 'Dire Wolf',
+        maxHealth: 25,
+        attack: 6,
+        defense: 1,
+        xp: 60,
+        loot: '🐺'
+    },
+    'Ø': { // FIXED: Changed ID to avoid Sage conflict
+        name: 'Ogre',
+        maxHealth: 35,
+        attack: 7,
+        defense: 1,
+        xp: 80,
+        loot: '$'
+    },
+    'Y': {
+        name: 'Yeti',
+        maxHealth: 40,
+        attack: 6,
+        defense: 2,
+        xp: 90,
+        loot: '❄️f', 
+        inflicts: 'frostbite'
+    },
+    'm': {
+        name: 'Arcane Mage',
+        maxHealth: 15, 
+        attack: 2,
+        defense: 0,
+        xp: 50,
+        loot: '&',
+        caster: true,
+        castRange: 6,
+        spellDamage: 6 
+    },
+    'C': {
+        name: 'Bandit Chief',
+        maxHealth: 25,
+        attack: 5,
+        defense: 2,
+        xp: 50,
+        loot: 'i'
+    },
+    'f': {
+        name: 'Fire Elemental',
+        maxHealth: 20,
+        attack: 5,
+        defense: 3, 
+        xp: 60,
+        loot: '🔥c',
+        caster: true,
+        castRange: 4,
+        spellDamage: 5,
+        inflicts: 'burn'
+    },
+    'D': {
+        name: 'Void Demon',
+        maxHealth: 50,
+        attack: 8,
+        defense: 4,
+        xp: 200,
+        loot: '😈',
+        teleporter: true,
+        inflicts: 'madness'
+    },
+    'v': {
+        name: 'Void Stalker',
+        maxHealth: 15,    
+        attack: 6,        
+        defense: 1,
+        xp: 55,
+        loot: 'vd',       
+        teleporter: true 
+    },
+    'M': { 
+        name: 'Mimic',
+        maxHealth: 20,
+        attack: 6,
+        defense: 2,
+        xp: 50,
+        loot: '💍',
+        inflicts: 'root' 
     },
     '🧙': {
         name: 'Necromancer Lord',
-        maxHealth: 60, // Huge health pool
-        attack: 6,     // Hits hard
-        defense: 3,    // Hard to hurt
-        xp: 1000,      // Massive XP reward
-        loot: '👑',    // Guaranteed Shattered Crown (sell for 200g)
+        maxHealth: 80, 
+        attack: 7,     
+        defense: 3,    
+        xp: 1000,      
+        loot: '👑',    
         caster: true,
         castRange: 7,
-        spellDamage: 8, // Shadow Bolt
-        isBoss: true   // Enables Boss AI
+        spellDamage: 8, 
+        isBoss: true   
     },
 };
 
@@ -1870,6 +1884,19 @@ const COOKING_RECIPES = {
 };
 
 const CRAFTING_RECIPES = {
+    // --- TIER 0 (Basic Survival) ---
+    "Wooden Club": { 
+        materials: { "Stick": 2 }, 
+        xp: 5, level: 1 
+    },
+    "Quarterstaff": { 
+        materials: { "Stick": 4 }, 
+        xp: 10, level: 1 
+    },
+    "Padded Armor": { 
+        materials: { "Tattered Rags": 2, "Stick": 1 }, // Represents sewing with a needle/stick
+        xp: 10, level: 1 
+    },
     // --- TIER 1 (Basic Survival) ---
     "Stick": { 
         materials: { "Bone Shard": 2 }, 
@@ -2056,6 +2083,57 @@ const ITEM_DATA = {
         statBonuses: { strength: 1, dexterity: -2 }, // Very heavy
         description: "Requires two hands and a lot of rage."
     },
+    '🏏': {
+        name: 'Wooden Club',
+        type: 'weapon',
+        tile: '🏏',
+        damage: 2, // Solid starter damage
+        slot: 'weapon',
+        description: "A heavy piece of oak. Crude but effective."
+    },
+    'staff': {
+        name: 'Quarterstaff',
+        type: 'weapon',
+        tile: '/', 
+        damage: 1, 
+        defense: 1, // Grants defense!
+        slot: 'weapon',
+        description: "A long pole used by travelers and monks."
+    },
+    '🏹': {
+        name: 'Shortbow',
+        type: 'weapon',
+        tile: '🏹',
+        damage: 2,
+        slot: 'weapon',
+        statBonuses: { dexterity: 1 },
+        description: "Simple wood and string. Good for hunting."
+    },
+
+    // --- STARTER ARMOR ---
+    '👕': {
+        name: 'Padded Armor',
+        type: 'armor',
+        tile: '👕',
+        defense: 1,
+        slot: 'armor',
+        description: "Thick layers of cloth. Stops scratches, not swords."
+    },
+    '👘': {
+        name: 'Heavy Robes',
+        type: 'armor',
+        tile: '👘',
+        defense: 0,
+        slot: 'armor',
+        statBonuses: { mana: 5 }, // Good for early mages
+        description: "Thick wool robes that help focus the mind."
+    },
+
+    // --- NEW MONSTER LOOT ---
+    '🐀': { name: 'Rat Tail', type: 'junk', description: "Gross, but the apothecary might buy it." },
+    '🦇': { name: 'Bat Wing', type: 'junk', description: "Leathery and thin." },
+    '🦷': { name: 'Snake Fang', type: 'junk', description: "Still dripping with venom." },
+    '🧣': { name: 'Red Bandana', type: 'junk', description: "Worn by low-level thugs." },
 
     // --- CLASSIC ARMOR ---
     '⛓️': {
@@ -3911,21 +3989,26 @@ generateCave(caveId) {
                     chunkData[y][x] = '⛺';
                 }
 
-                // --- 5. HOSTILE SPAWNS (Scaled by Distance) ---
                 else {
                     const hostileRoll = random();
                     
                     // --- MOUNTAINS ---
                     if (tile === '^') { 
-                        if (dist > 300 && hostileRoll < 0.002) chunkData[y][x] = 'Y'; // Yeti
-                        else if (dist > 150 && hostileRoll < 0.003) chunkData[y][x] = 'Ø'; // Ogre (Updated ID)
+                        if (dist > 300 && hostileRoll < 0.002) chunkData[y][x] = 'Y'; // Yeti (Far)
+                        else if (dist > 150 && hostileRoll < 0.003) chunkData[y][x] = 'Ø'; // Ogre (Medium)
                         else if (hostileRoll < 0.003) chunkData[y][x] = 'g'; // Goblins (Near)
+                        else if (hostileRoll < 0.005) chunkData[y][x] = '🦇'; // Giant Bat
                         
-                        else if (hostileRoll < 0.006) { // Resources
-                            this.setWorldTile(worldX, worldY, '🏚'); chunkData[y][x] = '🏚';
-                        } else if (dist > 200 && hostileRoll < 0.009) { // Mithril (Far)
-                            this.setWorldTile(worldX, worldY, '💠'); chunkData[y][x] = '💠';
-                        } else {
+                        // Resources
+                        else if (hostileRoll < 0.007) { 
+                            this.setWorldTile(worldX, worldY, '🏚'); 
+                            chunkData[y][x] = '🏚'; // Cracked Wall
+                        } 
+                        else if (dist > 200 && hostileRoll < 0.010) { 
+                            this.setWorldTile(worldX, worldY, '💠'); 
+                            chunkData[y][x] = '💠'; // Mithril
+                        } 
+                        else {
                             chunkData[y][x] = tile;
                         }
                     }
@@ -3935,32 +4018,39 @@ generateCave(caveId) {
                         if (dist > 250 && hostileRoll < 0.001) chunkData[y][x] = '🐺'; // Dire Wolf (Far)
                         else if (hostileRoll < 0.002) chunkData[y][x] = 'w'; // Wolf
                         else if (hostileRoll < 0.004) chunkData[y][x] = '🐗'; // Boar
-                        else if (hostileRoll < 0.006) { this.setWorldTile(worldX, worldY, '🌳'); chunkData[y][x] = '🌳'; }
-                        else if (hostileRoll < 0.008) { this.setWorldTile(worldX, worldY, '🕸'); chunkData[y][x] = '🕸'; }
-                        else if (hostileRoll < 0.0015) { this.setWorldTile(worldX, worldY, ':'); chunkData[y][x] = ':'; }
-                        else chunkData[y][x] = tile;
-                    }
-
-                    // --- DEADLANDS ---
-                    else if (tile === 'd') {
-                        if (dist > 400 && hostileRoll < 0.001) chunkData[y][x] = 'D'; // Void Demon (Very Far)
-                        else if (hostileRoll < 0.002) chunkData[y][x] = 's'; // Skeleton
-                        else if (hostileRoll < 0.004) chunkData[y][x] = 'b'; // Bandit
-                        else chunkData[y][x] = tile;
-                    }
-
-                    // --- DESERT ---
-                    else if (tile === 'D') {
-                        if (hostileRoll < 0.001) { this.setWorldTile(worldX, worldY, '🌵'); chunkData[y][x] = '🌵'; }
-                        else if (hostileRoll < 0.003) chunkData[y][x] = '🦂'; // Scorpion
-                        else chunkData[y][x] = tile;
+                        else if (hostileRoll < 0.006) chunkData[y][x] = '🐍'; // Viper
+                        
+                        // Resources
+                        else if (hostileRoll < 0.009) { 
+                            this.setWorldTile(worldX, worldY, '🌳'); 
+                            chunkData[y][x] = '🌳'; // Thicket
+                        } 
+                        else if (hostileRoll < 0.012) { 
+                            this.setWorldTile(worldX, worldY, '🕸'); 
+                            chunkData[y][x] = '🕸'; // Spider Web
+                        } 
+                        else if (hostileRoll < 0.015) { 
+                            this.setWorldTile(worldX, worldY, ':'); 
+                            chunkData[y][x] = ':'; // Wildberry
+                        }
+                        else {
+                            chunkData[y][x] = tile;
+                        }
                     }
 
                     // --- SWAMP ---
                     else if (tile === '≈') {
-                        if (hostileRoll < 0.002) chunkData[y][x] = 'l'; // Leech
-                        else if (hostileRoll < 0.004) { this.setWorldTile(worldX, worldY, '🌿'); chunkData[y][x] = '🌿'; }
-                        else chunkData[y][x] = tile;
+                        if (hostileRoll < 0.003) chunkData[y][x] = 'l'; // Leech
+                        else if (hostileRoll < 0.005) chunkData[y][x] = '🐍'; // Viper
+                        
+                        // Resources
+                        else if (hostileRoll < 0.008) { 
+                            this.setWorldTile(worldX, worldY, '🌿'); 
+                            chunkData[y][x] = '🌿'; // Herb
+                        }
+                        else {
+                            chunkData[y][x] = tile;
+                        }
                     }
 
                     // --- PLAINS ---
@@ -3968,7 +4058,33 @@ generateCave(caveId) {
                         if (dist > 150 && hostileRoll < 0.001) chunkData[y][x] = 'o'; // Orc (Medium)
                         else if (hostileRoll < 0.001) chunkData[y][x] = 'w'; // Wolf
                         else if (hostileRoll < 0.002) chunkData[y][x] = 'b'; // Bandit
-                        else chunkData[y][x] = tile;
+                        else if (hostileRoll < 0.004) chunkData[y][x] = 'r'; // Giant Rat
+                        else if (hostileRoll < 0.005) chunkData[y][x] = 'R'; // Bandit Recruit
+                        else {
+                            chunkData[y][x] = tile;
+                        }
+                    }
+
+                    // --- DEADLANDS ---
+                    else if (tile === 'd') {
+                        if (dist > 400 && hostileRoll < 0.001) chunkData[y][x] = 'D'; // Void Demon (Very Far)
+                        else if (hostileRoll < 0.002) chunkData[y][x] = 's'; // Skeleton
+                        else if (hostileRoll < 0.004) chunkData[y][x] = 'b'; // Bandit
+                        else {
+                            chunkData[y][x] = tile;
+                        }
+                    }
+
+                    // --- DESERT ---
+                    else if (tile === 'D') {
+                        if (hostileRoll < 0.001) { 
+                            this.setWorldTile(worldX, worldY, '🌵'); 
+                            chunkData[y][x] = '🌵'; // Cactus
+                        }
+                        else if (hostileRoll < 0.003) chunkData[y][x] = '🦂'; // Scorpion
+                        else {
+                            chunkData[y][x] = tile;
+                        }
                     }
                     
                     else {
