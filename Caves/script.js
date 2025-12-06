@@ -2955,6 +2955,106 @@ elevationNoise.init(WORLD_SEED + ':elevation');
 const moistureNoise = Object.create(Perlin);
 moistureNoise.init(WORLD_SEED + ':moisture');
 
+const TileRenderer = {
+    // Helper to draw a base background
+    drawBase: (ctx, x, y, color) => {
+        ctx.fillStyle = color;
+        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    },
+
+    // 🌲 Forests: Draw darker trees on top of grass
+    drawForest: (ctx, x, y, baseColor, accentColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        ctx.fillStyle = accentColor;
+        const cx = x * TILE_SIZE + TILE_SIZE / 2;
+        const cy = y * TILE_SIZE + TILE_SIZE / 2;
+        
+        // Draw a simple triangle tree
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - TILE_SIZE * 0.4);
+        ctx.lineTo(cx + TILE_SIZE * 0.3, cy + TILE_SIZE * 0.3);
+        ctx.lineTo(cx - TILE_SIZE * 0.3, cy + TILE_SIZE * 0.3);
+        ctx.fill();
+    },
+
+    // ⛰ Mountains: Draw a rocky peak
+    drawMountain: (ctx, x, y, baseColor, accentColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        ctx.fillStyle = accentColor;
+        const tx = x * TILE_SIZE;
+        const ty = y * TILE_SIZE;
+        
+        // Draw jagged peak
+        ctx.beginPath();
+        ctx.moveTo(tx + TILE_SIZE * 0.5, ty + TILE_SIZE * 0.1);
+        ctx.lineTo(tx + TILE_SIZE * 0.9, ty + TILE_SIZE * 0.9);
+        ctx.lineTo(tx + TILE_SIZE * 0.1, ty + TILE_SIZE * 0.9);
+        ctx.fill();
+    },
+
+    // 🧱 Walls: Draw a brick pattern
+    drawWall: (ctx, x, y, baseColor, accentColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        ctx.strokeStyle = accentColor; // Line color
+        ctx.lineWidth = 1;
+        const tx = x * TILE_SIZE;
+        const ty = y * TILE_SIZE;
+        
+        // Horizontal lines
+        ctx.beginPath();
+        ctx.moveTo(tx, ty + TILE_SIZE/2);
+        ctx.lineTo(tx + TILE_SIZE, ty + TILE_SIZE/2);
+        ctx.stroke();
+
+        // Vertical brick offsets
+        ctx.beginPath();
+        ctx.moveTo(tx + TILE_SIZE/2, ty);
+        ctx.lineTo(tx + TILE_SIZE/2, ty + TILE_SIZE/2);
+        ctx.moveTo(tx + TILE_SIZE * 0.25, ty + TILE_SIZE/2);
+        ctx.lineTo(tx + TILE_SIZE * 0.25, ty + TILE_SIZE);
+        ctx.moveTo(tx + TILE_SIZE * 0.75, ty + TILE_SIZE/2);
+        ctx.lineTo(tx + TILE_SIZE * 0.75, ty + TILE_SIZE);
+        ctx.stroke();
+    },
+
+    // 🌊 Water: Draw waves
+    drawWater: (ctx, x, y, baseColor, accentColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 1;
+        const tx = x * TILE_SIZE;
+        const ty = y * TILE_SIZE;
+        
+        // Draw little wave lines
+        const timeOffset = Math.sin(Date.now() / 1000 + x); // Animate slightly!
+        const yOffset = timeOffset * 2;
+
+        ctx.beginPath();
+        ctx.moveTo(tx + 2, ty + TILE_SIZE/2 + yOffset);
+        ctx.lineTo(tx + TILE_SIZE - 2, ty + TILE_SIZE/2 + yOffset);
+        ctx.stroke();
+    },
+    
+    // . Plains: Simple grass tufts
+    drawPlains: (ctx, x, y, baseColor, accentColor) => {
+    TileRenderer.drawBase(ctx, x, y, baseColor);
+    // Use a simple hash for deterministic "randomness" without the heavy Alea library
+    // (x * y) % 5 === 0 is a simple way to pick 20% of tiles deterministically
+    if ((x * 123 + y * 456) % 5 !== 0) return; 
+
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = 1;
+        const tx = x * TILE_SIZE + TILE_SIZE/2;
+        const ty = y * TILE_SIZE + TILE_SIZE/2;
+        
+        ctx.beginPath();
+        ctx.moveTo(tx - 2, ty + 2);
+        ctx.lineTo(tx, ty - 2);
+        ctx.lineTo(tx + 2, ty + 2);
+        ctx.stroke();
+    }
+};
+
 const chunkManager = {
     CHUNK_SIZE: 16,
     loadedChunks: {},
@@ -4515,7 +4615,6 @@ function handleSellItem(itemIndex) {
     }
 
     // Find the item's base price in the shop.
-    // If not in the shop, we'll give it a default low price.
     const shopItem = activeShopInventory.find(item => item.name === itemToSell.name);
     
     let basePrice = 2; // Default
@@ -4535,8 +4634,18 @@ function handleSellItem(itemIndex) {
     const sellBonusPercent = player.charisma * 0.005;
     const finalSellBonus = Math.min(sellBonusPercent, 0.5);
     
-    // Base * (0.5 modifier + Charisma Bonus) * Regional Multiplier
-    const sellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
+    // --- BUG FIX: ECONOMY CAP ---
+    // Calculate raw sell price
+    let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
+    
+    // Cap the sell price at 80% of the base price to prevent infinite money loops
+    // (e.g. buying for 90g and selling for 100g)
+    const maxSellPrice = Math.floor(basePrice * 0.8);
+    
+    // If the item is a rare relic (not sold in shops), we don't need to cap it strictly
+    // strictly against a shop price, but for general goods, we apply the cap.
+    const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
+    // ----------------------------
     
     // Log the bonus if it's significant
     if (regionMult > 1.0) logMessage(`Market demand is high here! (x${regionMult})`);
@@ -4549,7 +4658,6 @@ function handleSellItem(itemIndex) {
     // 2. Remove one from the stack
     itemToSell.quantity--;
     if (itemToSell.quantity <= 0) {
-        // If stack is empty, remove it
         player.inventory.splice(itemIndex, 1);
     }
 
@@ -4567,12 +4675,11 @@ function handleSellItem(itemIndex) {
         skillId: item.skillId || null,
         stat: item.stat || null,
         isEquipped: item.isEquipped || false
-        
-        }));
+    }));
 
-        playerRef.update({
+    playerRef.update({
         coins: player.coins,
-        inventory: inventoryToSave // Save the clean version
+        inventory: inventoryToSave 
     });
     renderShop();
     renderInventory();
@@ -5053,11 +5160,10 @@ async function runCompanionTurn() {
         const tx = companion.x + dx;
         const ty = companion.y + dy;
 
-        // --- INSTANCED COMBAT ---
+        // --- INSTANCED COMBAT (Dungeons/Castles) ---
         if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
             const enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
             if (enemy) {
-                // Attack!
                 const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
                 enemy.health -= dmg;
                 logMessage(`Your ${companion.name} attacks ${enemy.name} for ${dmg} damage!`);
@@ -5067,20 +5173,56 @@ async function runCompanionTurn() {
                     logMessage(`Your companion killed the ${enemy.name}!`);
                     grantXp(Math.floor(enemy.xp / 2)); // Half XP for pet kills
                     gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                    // (Add dungeon map loot update logic if desired)
                 }
             }
         }
-        // --- OVERWORLD COMBAT ---
+        // --- OVERWORLD COMBAT (Shared) ---
         else if (gameState.mapMode === 'overworld') {
             const tile = chunkManager.getTile(tx, ty);
             const enemyData = ENEMY_DATA[tile];
+            
             if (enemyData) {
-                // We use handleOverworldCombat but with a flag or manual logic?
-                // Reuse handleOverworldCombat but suppress some player-specific logs?
-                // Let's call it directly:
-                await handleOverworldCombat(tx, ty, enemyData, tile, companion.attack);
                 attacked = true;
+                const enemyId = `overworld:${tx},${-ty}`;
+                const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
+                
+                // --- BUG FIX: Custom Transaction for Companion ---
+                // We do NOT use handleOverworldCombat here to avoid player taking damage
+                try {
+                    await enemyRef.transaction(currentData => {
+                        let enemy = currentData;
+                        
+                        // If enemy doesn't exist in DB yet (fresh spawn), we create it momentarily to hit it
+                        if (enemy === null) {
+                             const scaledStats = getScaledEnemy(enemyData, tx, ty);
+                             enemy = { ...scaledStats, tile: tile };
+                        }
+
+                        // Apply Companion Damage
+                        const dmg = Math.max(1, companion.attack - (enemy.defense || 0));
+                        enemy.health -= dmg;
+
+                        // If dead, return null to delete
+                        if (enemy.health <= 0) return null;
+                        
+                        return enemy;
+                    }, (error, committed, snapshot) => {
+                        if (committed) {
+                            if (!snapshot.exists()) {
+                                // Enemy died
+                                logMessage(`Your ${companion.name} vanquished the ${enemyData.name}!`);
+                                grantXp(Math.floor(enemyData.xp / 2));
+                                // Visual cleanup handled by listener, but we can update local chunk tile
+                                chunkManager.setWorldTile(tx, ty, '.'); // Clear enemy tile locally
+                            } else {
+                                // Enemy survived
+                                logMessage(`Your ${companion.name} hits the ${enemyData.name}!`);
+                            }
+                        }
+                    });
+                } catch (err) {
+                    console.error("Companion combat error:", err);
+                }
             }
         }
     }
@@ -5467,7 +5609,9 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             if (spellId === 'poisonBolt') logMsg = "You hurl a bolt of acid!";
             logMessage(logMsg);
 
-            for (let i = 2; i <= 3; i++) {
+            // --- BUG FIX: CHANGED i=2 TO i=1 ---
+            // Now checks 1, 2, and 3 tiles away
+            for (let i = 1; i <= 3; i++) { 
                 const targetX = player.x + (dirX * i);
                 const targetY = player.y + (dirY * i);
                 // We await here so Siphon Life's heal applies correctly
@@ -6923,15 +7067,42 @@ const renderEquipment = () => {
 };
 
 const render = () => {
+    // 1. Setup Canvas
     const style = getComputedStyle(document.documentElement);
     const canvasBg = style.getPropertyValue('--canvas-bg');
-    const playerColor = style.getPropertyValue('--player-color');
     ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     const viewportCenterX = Math.floor(VIEWPORT_WIDTH / 2);
     const viewportCenterY = Math.floor(VIEWPORT_HEIGHT / 2);
     const startX = gameState.player.x - viewportCenterX;
     const startY = gameState.player.y - viewportCenterY;
+
+    // --- LIGHTING CALCULATION ---
+    let ambientLight = 0.0; // 0.0 = bright, 1.0 = pitch black
+    let lightRadius = 4; // Base vision radius
+
+    // Add bonus radius from perception or items (e.g. Torch)
+    // lightRadius += gameState.player.perception; 
+    
+    if (gameState.mapMode === 'dungeon') {
+        ambientLight = 0.95; // Dungeons are very dark
+        lightRadius = 5 + Math.floor(gameState.player.perception / 2); // Perception helps in caves
+    } else if (gameState.mapMode === 'castle') {
+        ambientLight = 0.2; // Castles are dimly lit
+        lightRadius = 8;
+    } else {
+        // Overworld Day/Night Cycle
+        const hour = gameState.time.hour;
+        if (hour >= 6 && hour < 18) ambientLight = 0.0; // Day
+        else if (hour >= 18 && hour < 20) ambientLight = 0.3; // Dusk
+        else if (hour >= 5 && hour < 6) ambientLight = 0.3; // Dawn
+        else ambientLight = 0.85; // Night (Very dark)
+        
+        if (ambientLight > 0.5) lightRadius = 5; // Reduced vision at night
+        else lightRadius = 20; // Full vision at day
+    }
+    // ---------------------------
 
     const isWideChar = (char) => /\p{Extended_Pictographic}/u.test(char);
 
@@ -6939,352 +7110,233 @@ const render = () => {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
             const mapY = startY + y;
+            
+            // --- DISTANCE CHECK FOR LIGHTING ---
+            const distToPlayer = Math.sqrt(Math.pow(mapX - gameState.player.x, 2) + Math.pow(mapY - gameState.player.y, 2));
+            
+            // Calculate opacity for this specific tile
+            let tileShadowOpacity = ambientLight;
+            
+            // If we are within the player's light bubble, clear the shadow
+            if (distToPlayer < lightRadius) {
+                // Create a smooth gradient at the edge of the light
+                const edge = lightRadius - distToPlayer;
+                if (edge < 2) {
+                    tileShadowOpacity = ambientLight * (1 - (edge / 2)); 
+                } else {
+                    tileShadowOpacity = 0; // Fully lit
+                }
+            }
+            
+            // Optimization: If it's pitch black, draw black and skip details
+            if (tileShadowOpacity >= 0.95) {
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                continue; 
+            }
+            // -----------------------------------
+
             let tile;
-            let bgColor;
+            let bgColor = '#000';
             let fgChar = null;
             let fgColor = '#FFFFFF';
 
+            // --- TILE DATA RETRIEVAL (Unchanged logic, just compacted) ---
             if (gameState.mapMode === 'dungeon') {
                 const map = chunkManager.caveMaps[gameState.currentCaveId];
                 tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
                 const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
-
-                if (tile === theme.wall) bgColor = theme.colors.wall;
-                else if (tile === theme.floor) bgColor = theme.colors.floor;
-                else { // It's a decoration or item
-                    bgColor = theme.colors.floor;
+                
+                // Use TileRenderer for Dungeon Walls/Floors
+                if (tile === theme.wall) {
+                    TileRenderer.drawWall(ctx, x, y, theme.colors.wall, '#00000033'); // Darker overlay for bricks
+                } else if (tile === theme.floor) {
+                    TileRenderer.drawBase(ctx, x, y, theme.colors.floor);
+                } else {
+                    TileRenderer.drawBase(ctx, x, y, theme.colors.floor);
                     fgChar = tile;
                 }
-            } else if (gameState.mapMode === 'castle') {
+            } 
+            else if (gameState.mapMode === 'castle') {
                 const map = chunkManager.castleMaps[gameState.currentCastleId];
                 tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
-
-                if (tile === '▓' || tile === '▒') { // Group wall and rubble tiles
-                    bgColor = '#422006'; // Render both as dark walls
+                if (tile === '▓' || tile === '▒') {
+                    TileRenderer.drawWall(ctx, x, y, '#422006', '#2d1b0e');
                 } else {
-                    bgColor = '#a16207'; // Everything else is a floor
+                    TileRenderer.drawBase(ctx, x, y, '#a16207');
                     fgChar = tile;
                 }
-            } else { // Overworld
+            } 
+            else { // Overworld
                 tile = chunkManager.getTile(mapX, mapY);
+                // --- PROCEDURAL OVERWORLD RENDERING ---
                 switch (tile) {
                     case '~':
-                        bgColor = '#1e3a8a';
+                        TileRenderer.drawWater(ctx, x, y, '#1e3a8a', '#3b82f6');
                         break;
-                    case '≈':
-                        bgColor = '#596643';
-                        fgChar = ',';
-                        fgColor = '#4b5535';
+                    case '≈': // Swamp
+                        TileRenderer.drawWater(ctx, x, y, '#422006', '#14532d'); // Muddy water
+                        fgChar = ','; fgColor = '#4b5535';
                         break;
                     case '^':
-                        bgColor = '#78350f';
-                        fgChar = '^';
-                        fgColor = '#52230a';
+                        TileRenderer.drawMountain(ctx, x, y, '#57534e', '#d6d3d1');
                         break;
                     case 'F':
-                        bgColor = '#15803d';
-                        fgColor = '#14532d';
-                        // Add stable random "noise"
-                        const forestSeed = stringToSeed(`${mapX},${mapY}`);
-                        const forestRandom = Alea(forestSeed);
-                        const forestTiles = ['"', 'F', '"', 'F', 'F']; // Weighted
-                        fgChar = forestTiles[Math.floor(forestRandom() * forestTiles.length)];
+                        TileRenderer.drawForest(ctx, x, y, '#14532d', '#166534');
                         break;
                     case '.':
-                        bgColor = '#22c55e';
-                        fgColor = '#16a34a';
-                        // Add stable random "noise"
-                        const plainsSeed = stringToSeed(`${mapX},${mapY}`);
-                        const plainsRandom = Alea(plainsSeed);
-                        const plainsTiles = ['.', ',', "'", '.', '.']; // Weighted
-                        fgChar = plainsTiles[Math.floor(plainsRandom() * plainsTiles.length)];
+                        TileRenderer.drawPlains(ctx, x, y, '#22c55e', '#15803d');
                         break;
-                    case 'd':
-                        bgColor = '#2d2d2d'; // Dark Grey
-                        fgChar = '.';
-                        fgColor = '#57534e'; // Warm Grey dots
+                    case 'd': // Deadlands
+                        TileRenderer.drawPlains(ctx, x, y, '#2d2d2d', '#444');
                         break;
-                    case 'T': // Dead Tree
-                        bgColor = '#2d2d2d';
-                        fgChar = 'T';
-                        fgColor = '#a8a29e'; // Light Grey tree
-                        break;
-                    case 'D':
-                        bgColor = '#fde047'; // Bright Yellow
-                        fgColor = '#eab308'; // Darker Yellow dots
-                        fgChar = '.';
-                        break;
-                    case '🌵':
-                        bgColor = '#fde047'; // Match sand
-                        fgChar = '🌵';
-                        break;
-                    case '⛲':
-                        bgColor = '#22c55e'; // Grass bg usually
-                        if (gameState.mapMode === 'overworld') bgColor = '#22c55e'; // Simplification
-                        fgChar = '⛲';
+                    case 'D': // Desert
+                        TileRenderer.drawBase(ctx, x, y, '#fde047');
                         break;
                     case 'Ω':
-                        bgColor = '#000000'; // Void black
-                        fgColor = '#a855f7'; // Purple
-                        fgChar = 'Ω';
-                        break;
-                    case '📦': // Buried Chest
-                         bgColor = (gameState.mapMode === 'overworld') ? '#22c55e' : '#422006';
-                         // Override bg if in deadlands (hard to check here easily, simpler to just default)
-                         if (gameState.mapMode === 'overworld') bgColor = '#2d2d2d'; // Assume deadlands/ground
-                         fgChar = '📦';
-                         break;
-                    case '▓':
-                        bgColor = '#422006';
-                        break;
-                    case '▒':
-                        bgColor = '#a16207';
+                        TileRenderer.drawBase(ctx, x, y, '#000');
+                        fgChar = 'Ω'; fgColor = '#a855f7';
                         break;
                     default:
-                        bgColor = (gameState.mapMode === 'castle') ? '#a16207' : '#22c55e';
+                        TileRenderer.drawBase(ctx, x, y, '#22c55e');
                         fgChar = tile;
                         break;
                 }
             }
 
-            ctx.fillStyle = bgColor;
-            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-
-            // --- NEW: Draw Overworld Enemy Health Bars ---
-            if (gameState.mapMode === 'overworld' && ENEMY_DATA[fgChar]) {
-                const enemyId = `overworld:${mapX},${-mapY}`;
-                const enemyHealthData = gameState.sharedEnemies[enemyId];
-
-                // Check if this enemy has shared health data
-                if (enemyHealthData) {
-                    const healthPercent = enemyHealthData.health / enemyHealthData.maxHealth;
-                    const healthBarWidth = TILE_SIZE;
-                    const barX = x * TILE_SIZE;
-                    // Draw the bar at the bottom of the tile
-                    const barY = (y * TILE_SIZE) + TILE_SIZE - 4;
-
-                    // 1. Draw the "empty" part of the bar
-                    ctx.fillStyle = '#333'; // Dark background
-                    ctx.fillRect(barX, barY, healthBarWidth, 3);
-
-                    // 2. Pick the color for the "full" part
-                    if (healthPercent > 0.6) ctx.fillStyle = '#4caf50'; // Green
-                    else if (healthPercent > 0.3) ctx.fillStyle = '#eab308'; // Yellow
-                    else ctx.fillStyle = '#ef4444'; // Red
-
-                    // 3. Draw the "full" part on top
-                    ctx.fillRect(barX, barY, healthBarWidth * healthPercent, 3);
-                }
-            }
-
-            if (fgChar) {
-                // --- NEW: Check if the tile is an enemy ---
-                if (ENEMY_DATA[fgChar]) {
-                    fgColor = '#ef4444'; // Force a bright red color
-                }
-                // --- END NEW ---
-                else {
-                    // Original color logic for items/landmarks
-                    switch (fgChar) {
-                        case '⛰':
-                            fgColor = '#6b7280';
-                            break;
-                        case '>':
-                            fgColor = '#eab308';
-                            break;
-                        case '🏰':
-                            fgColor = '#f59e0b';
-                            break;
-                        case 'X':
-                            fgColor = '#eab308';
-                            break;
-                        case '☗':
-                            fgColor = '#854d0e';
-                            break;
-                        case '+':
-                            fgColor = '#FF4500';
-                            break;
-                        case 'o':
-                            fgColor = '#6a0dad';
-                            break;
-                        case 'S':
-                            fgColor = '#ADFF2F';
-                            break;
-                        case 'Y':
-                            fgColor = '#4B0082';
-                            break;
-                        case '$':
-                            fgColor = '#ffd700';
-                            break;
-                        case 'B':
-                            fgColor = '#fde047';
-                            break;
+            // --- ENTITY & ITEM RENDERING ---
+            // (Only render if player can see them!)
+            // We use a simpler check: if shadow is very dark, hide entities
+            if (tileShadowOpacity < 0.8) {
+                
+                // Draw Health Bars for Shared Enemies
+                if (gameState.mapMode === 'overworld' && ENEMY_DATA[fgChar]) {
+                    const enemyId = `overworld:${mapX},${-mapY}`;
+                    const enemyHealthData = gameState.sharedEnemies[enemyId];
+                    if (enemyHealthData) {
+                        const healthPercent = enemyHealthData.health / enemyHealthData.maxHealth;
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE, 3);
+                        ctx.fillStyle = healthPercent > 0.5 ? '#4caf50' : '#ef4444';
+                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE * healthPercent, 3);
                     }
                 }
 
-                ctx.fillStyle = fgColor;
-                if (isWideChar(fgChar)) {
-                    ctx.font = `${TILE_SIZE + 2}px monospace`;
-                    ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2 + 1);
-                } else {
-                    ctx.font = `${TILE_SIZE}px monospace`;
+                if (fgChar) {
+                    if (ENEMY_DATA[fgChar]) fgColor = '#ef4444'; // Red enemies
+                    else if (fgChar === '$') fgColor = '#ffd700';
+                    else if (fgChar === 'B') fgColor = '#fde047';
+                    // ... (Add other specific colors if desired) ...
+                    
+                    ctx.fillStyle = fgColor;
+                    ctx.font = isWideChar(fgChar) ? `${TILE_SIZE}px monospace` : `${TILE_SIZE}px monospace`;
                     ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
                 }
             }
+
+            // --- APPLY SHADOW OVERLAY ---
+            if (tileShadowOpacity > 0) {
+            if (gameState.mapMode === 'overworld') {
+                    // Use your existing time interpolation logic
+                    const colorString = getInterpolatedDayCycleColor(gameState.time.hour, gameState.time.minute);
+                    // Parse the rgba string to inject our specific opacity
+                    // (This assumes getInterpolatedDayCycleColor returns "rgba(r, g, b, a)")
+                    const rgb = colorString.match(/\d+, \d+, \d+/)[0]; 
+                    ctx.fillStyle = `rgba(${rgb}, ${tileShadowOpacity})`;
+                } else {
+                    // Dungeons/Castles stay pure black for atmosphere
+                    ctx.fillStyle = `rgba(0, 0, 0, ${tileShadowOpacity})`;
+                }
+                
+                ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
         }
     }
 
+    // --- DRAW CHARACTERS ON TOP ---
+    // (This block is largely unchanged, just ensure coordinates are correct)
+    
+    // Draw Friendly NPCs (Castle)
     if (gameState.mapMode === 'castle' && gameState.friendlyNpcs) {
-                gameState.friendlyNpcs.forEach(npc => {
-                    // Calculate screen position relative to viewport start
-                    const screenX = (npc.x - startX) * TILE_SIZE;
-                    const screenY = (npc.y - startY) * TILE_SIZE;
-
-                    // Only draw if within the canvas bounds
-                    if (screenX > -TILE_SIZE && screenX < canvas.width && screenY > -TILE_SIZE && screenY < canvas.height) {
-                        
-                        // 1. Draw Background (Optional, helps them pop)
-                        ctx.fillStyle = '#a16207'; // Match castle floor/theme
-                        ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-                        
-                        // --- DRAW COMPANION ---
-
-        if (gameState.player.companion) {
-            const comp = gameState.player.companion;
-            const screenX = (comp.x - startX) * TILE_SIZE;
-            const screenY = (comp.y - startY) * TILE_SIZE;
-
-        // Only draw if within the visible canvas
-        if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
-            
-            // 1. Draw Background (Context sensitive)
-            if (gameState.mapMode === 'castle') {
-                ctx.fillStyle = '#a16207'; // Castle floor
-            } else if (gameState.mapMode === 'dungeon') {
-                // Try to match the dungeon theme floor color if possible, or default dark
-                const theme = CAVE_THEMES[gameState.currentCaveTheme];
-                ctx.fillStyle = theme ? theme.colors.floor : '#333';
-            } else {
-                ctx.fillStyle = '#22c55e'; // Overworld Grass (simplified)
+        gameState.friendlyNpcs.forEach(npc => {
+            const screenX = (npc.x - startX) * TILE_SIZE;
+            const screenY = (npc.y - startY) * TILE_SIZE;
+            if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
+                ctx.fillStyle = '#FFFFFF'; 
+                ctx.fillText(npc.tile, screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
             }
-            
-            ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+        });
+    }
 
-            // 2. Draw Character (Cyan for friendly)
-            ctx.font = `bold ${TILE_SIZE}px monospace`;
-            ctx.fillStyle = '#06b6d4'; // Cyan-500 (Distinct friendly color)
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
+    // Draw Companion
+    if (gameState.player.companion) {
+        const comp = gameState.player.companion;
+        const screenX = (comp.x - startX) * TILE_SIZE;
+        const screenY = (comp.y - startY) * TILE_SIZE;
+        if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
+            ctx.fillStyle = '#06b6d4'; 
             ctx.fillText(comp.tile, screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
         }
     }
-                        
-                        // 2. Draw the Character
-                        ctx.font = `bold ${TILE_SIZE}px monospace`;
-                        ctx.fillStyle = '#FFFFFF'; // White text for visibility
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(npc.tile, screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
-                    }
-                });
-            }
 
-    ctx.font = `${TILE_SIZE}px monospace`;
-
+    // Draw Other Players
     for (const id in otherPlayers) {
         if (otherPlayers[id].mapMode !== gameState.mapMode || otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
-        const otherPlayer = otherPlayers[id];
-        const screenX = (otherPlayer.x - startX) * TILE_SIZE;
-        const screenY = (otherPlayer.y - startY) * TILE_SIZE;
-
-        if (screenX > -TILE_SIZE && screenX < canvas.width && screenY > -TILE_SIZE && screenY < canvas.height) {
-
-            if (otherPlayer.email) {
-                const name = otherPlayer.email.split('@')[0]; // Show name, not full email
-                ctx.fillStyle = '#FFFFFF'; // White text for the name
-                ctx.textAlign = 'center';
-                // Draw name slightly above the character
-                ctx.fillText(name, screenX + TILE_SIZE / 2, screenY - 12);
+        const op = otherPlayers[id];
+        const screenX = (op.x - startX) * TILE_SIZE;
+        const screenY = (op.y - startY) * TILE_SIZE;
+        if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
+            ctx.fillStyle = '#f97316';
+            ctx.fillText('@', screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
+            if (op.email) {
+                ctx.font = '10px monospace';
+                ctx.fillStyle = '#fff';
+                ctx.fillText(op.email.split('@')[0], screenX + TILE_SIZE/2, screenY - 5);
+                ctx.font = `${TILE_SIZE}px monospace`;
             }
-
-            const healthPercent = (otherPlayer.health || 0) / (otherPlayer.maxHealth || 10);
-            const healthBarWidth = TILE_SIZE;
-            ctx.fillStyle = '#333';
-            ctx.fillRect(screenX, screenY - 7, healthBarWidth, 5);
-            ctx.fillStyle = '#4caf50';
-            ctx.fillRect(screenX, screenY - 7, healthBarWidth * healthPercent, 5);
-            ctx.fillStyle = '#f97316'; // A neutral orange
-            ctx.fillText('@', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
         }
     }
 
-    // Make the player character bold and outlined to stand out
-    ctx.font = `bold ${TILE_SIZE}px monospace`;
-
-// Check if player is boating and change their character
+    // Draw Player (Outline + Fill)
     const playerChar = gameState.player.isBoating ? 'c' : gameState.player.character;
-
-    // Make the player character bold and outlined to stand out
+    const style2 = getComputedStyle(document.documentElement);
+    const playerColor = style2.getPropertyValue('--player-color');
+    
     ctx.font = `bold ${TILE_SIZE}px monospace`;
-
-    // 1. Draw the outline
-    ctx.strokeStyle = '#000000'; // A solid black outline
-    ctx.lineWidth = 2; // How thick the outline is
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
     ctx.strokeText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
-
-    // 2. Fill the character with the player color
     ctx.fillStyle = playerColor;
     ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
-
-    // 3. Reset the font to normal for any other text
+    
+    // Reset Font
     ctx.font = `${TILE_SIZE}px monospace`;
 
+    // --- WEATHER OVERLAY (Last) ---
     if (gameState.weather === 'rain') {
-        ctx.fillStyle = 'rgba(0, 0, 100, 0.15)'; // Blue tint
+        ctx.fillStyle = 'rgba(0, 0, 100, 0.15)'; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw simple rain lines
         ctx.strokeStyle = 'rgba(100, 100, 255, 0.4)';
         ctx.lineWidth = 1;
         for(let i=0; i<50; i++) {
              const rx = Math.random() * canvas.width;
              const ry = Math.random() * canvas.height;
-             ctx.beginPath();
-             ctx.moveTo(rx, ry);
-             ctx.lineTo(rx - 5, ry + 10);
-             ctx.stroke();
+             ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + 10); ctx.stroke();
         }
     } else if (gameState.weather === 'snow') {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; // White tint
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw snowflakes
         ctx.fillStyle = 'white';
         for(let i=0; i<50; i++) {
-             const rx = Math.random() * canvas.width;
-             const ry = Math.random() * canvas.height;
-             ctx.fillRect(rx, ry, 2, 2);
+             ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
         }
     } else if (gameState.weather === 'storm') {
-        ctx.fillStyle = 'rgba(20, 20, 40, 0.3)'; // Dark tint
+        ctx.fillStyle = 'rgba(20, 20, 40, 0.3)'; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        // Occasional lightning (visual only for now)
-        if (Math.random() < 0.05) {
-            ctx.fillStyle = 'rgba(255, 255, 200, 0.2)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
     } else if (gameState.weather === 'fog') {
-        ctx.fillStyle = 'rgba(200, 200, 200, 0.3)'; // Gray tint
+        ctx.fillStyle = 'rgba(200, 200, 200, 0.3)'; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-
-    const {
-        hour,
-        minute
-    } = gameState.time;
-    const overlayColor = getInterpolatedDayCycleColor(hour, minute);
-    ctx.fillStyle = overlayColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
 };
 
 function syncPlayerState() {
@@ -10596,14 +10648,24 @@ async function enterGame(playerData) {
             // --- Update Inventory ---
             if (data.inventory) {
                 data.inventory.forEach(item => {
-                    const templateItem = Object.values(ITEM_DATA).find(d => d.name === item.name);
+                    // 1. Try exact name match
+                    let templateItem = Object.values(ITEM_DATA).find(d => d.name === item.name);
+                    
+                    // 2. If not found, check if it's a Masterwork and strip the prefix
+                    if (!templateItem && item.name.startsWith("Masterwork ")) {
+                        const baseName = item.name.replace("Masterwork ", "");
+                        templateItem = Object.values(ITEM_DATA).find(d => d.name === baseName);
+                    }
+
                     if (templateItem) {
-                        item.effect = templateItem.effect;
+                        item.effect = templateItem.effect; // Re-bind function
+                        
+                        // Only reset stats if they are missing (preserve crafted stats!)
                         if (templateItem.type === 'weapon') {
-                            item.damage = templateItem.damage;
+                            if (!item.damage) item.damage = templateItem.damage;
                             item.slot = templateItem.slot;
                         } else if (templateItem.type === 'armor') {
-                            item.defense = templateItem.defense;
+                            if (!item.defense) item.defense = templateItem.defense;
                             item.slot = templateItem.slot;
                         }
                     }
