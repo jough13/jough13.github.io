@@ -8816,8 +8816,18 @@ function handleInput(key) {
 
 // Attach the listener
 document.addEventListener('keydown', (event) => {
-    // Ignore if typing in chat
+    // 1. Ignore if typing in chat
     if (document.activeElement === chatInput) return;
+
+    // 2. Prevent default scrolling for game keys
+    // This tells the browser: "Don't scroll if I press these keys"
+    const keysToBlock = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', ' '];
+    
+    if (keysToBlock.includes(event.key)) {
+        event.preventDefault(); 
+    }
+
+    // 3. Pass the input to the game logic
     handleInput(event.key);
 });
 
