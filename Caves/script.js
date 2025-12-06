@@ -704,11 +704,11 @@ const ENEMY_DATA = {
         loot: '💍',
         inflicts: 'root' // It bites and holds you!
     },
-    'O': { // Ogre
+    'Ø': { // CHANGED FROM 'O' TO 'Ø'
         name: 'Ogre',
         maxHealth: 20,
-        attack: 6, // hits hard
-        defense: 0, // no armor
+        attack: 6,
+        defense: 0,
         xp: 45,
         loot: '$'
     },
@@ -3829,218 +3829,148 @@ generateCave(caveId) {
 
     generateChunk(chunkX, chunkY) {
         const chunkKey = `${chunkX},${chunkY}`;
-
         const random = Alea(stringToSeed(WORLD_SEED + ':' + chunkKey));
 
-        let chunkData = Array.from({
-            length: this.CHUNK_SIZE
-        }, () => Array(this.CHUNK_SIZE));
+        let chunkData = Array.from({ length: this.CHUNK_SIZE }, () => Array(this.CHUNK_SIZE));
+
         for (let y = 0; y < this.CHUNK_SIZE; y++) {
             for (let x = 0; x < this.CHUNK_SIZE; x++) {
                 const worldX = chunkX * this.CHUNK_SIZE + x;
                 const worldY = chunkY * this.CHUNK_SIZE + y;
+                
+                // Calculate Distance from Spawn (0,0)
+                const dist = Math.sqrt(worldX * worldX + worldY * worldY);
+
                 const elev = elevationNoise.noise(worldX / 70, worldY / 70);
                 const moist = moistureNoise.noise(worldX / 50, worldY / 50);
 
                 let tile = '.';
-                if (elev < 0.35) tile = '~'; // Water
-                else if (elev < 0.4 && moist > 0.7) tile = '≈'; // Swamp: low elevation, very high moisture
-                else if (elev > 0.8) tile = '^'; // Mountain
-                // High-ish elevation (hills) but very dry
-                else if (elev > 0.6 && moist < 0.3) tile = 'd'; // Deadlands
-                // Low elevation and very dry
+                if (elev < 0.35) tile = '~'; 
+                else if (elev < 0.4 && moist > 0.7) tile = '≈'; 
+                else if (elev > 0.8) tile = '^'; 
+                else if (elev > 0.6 && moist < 0.3) tile = 'd'; 
                 else if (moist < 0.15) tile = 'D';
-                else if (moist > 0.55) tile = 'F'; // Forest
-                else tile = '.'; // Plains
+                else if (moist > 0.55) tile = 'F'; 
+                else tile = '.'; 
 
-            const featureRoll = random();
+                const featureRoll = random();
 
-                if (tile === '.' && featureRoll < 0.000001) { 
+                // --- 1. LEGENDARY LANDMARKS (Unique, Very Rare) ---
+                if (tile === '.' && featureRoll < 0.0000005) { // 1 in 2M (Reduced)
                     this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
-
-                    } else if ((tile === 'd' || tile === '^') && featureRoll < 0.000002) { 
-                    // Spawns in Deadlands ('d') or Mountains ('^')
+                } 
+                else if ((tile === 'd' || tile === '^') && featureRoll < 0.000001) { 
                     this.setWorldTile(worldX, worldY, '🕳️');
                     chunkData[y][x] = '🕳️';
-
-                } else if (tile === '.' && featureRoll < 0.0002) {
-                    // Rare spawn on plains: Ancient Grave
-                    this.setWorldTile(worldX, worldY, '⚰️');
-                    chunkData[y][x] = '⚰️';
-
-                } else if (tile === 'F' && featureRoll < 0.0002) {
-                    // Rare spawn in forest: Statue
-                    this.setWorldTile(worldX, worldY, '🗿');
-                    chunkData[y][x] = '🗿';
+                }
                 
-                } else if (tile === '.' && featureRoll < 0.000011) { 
+                // --- 2. RARE STRUCTURES (Scaled by Distance) ---
+                else if (tile === '.' && featureRoll < 0.000005) { // Safe Haven
                     this.setWorldTile(worldX, worldY, 'V');
                     chunkData[y][x] = 'V';
-
-                } else if (tile === '.' && featureRoll < 0.000061) { 
+                } 
+                else if (tile === '.' && featureRoll < 0.00003) { // Shrine
                     this.setWorldTile(worldX, worldY, '⛩️');
                     chunkData[y][x] = '⛩️';
-
-                } else if (tile === '.' && featureRoll < 0.000071) { 
+                } 
+                else if (tile === '.' && featureRoll < 0.00004) { // Obelisk
                     this.setWorldTile(worldX, worldY, '|');
                     chunkData[y][x] = '|';
-
-                } else if (tile === '.' && featureRoll < 0.0001) {
+                } 
+                else if (tile === '.' && featureRoll < 0.00005) { // Wishing Well
                     this.setWorldTile(worldX, worldY, '⛲');
                     chunkData[y][x] = '⛲';
-                } else if ((tile === 'd' || tile === 'D') && featureRoll < 0.00001) { 
+                } 
+                else if ((tile === 'd' || tile === 'D') && featureRoll < 0.000005) { // Void Rift
                     this.setWorldTile(worldX, worldY, 'Ω');
                     chunkData[y][x] = 'Ω';
+                }
 
-                    
-
-                } else if (tile === '.' && featureRoll < 0.001) { 
+                // --- 3. COMMON FEATURES (Reduced Density) ---
+                else if (tile === '.' && featureRoll < 0.0005) { // General Features (Castles/Caves)
                     let features = Object.keys(TILE_DATA);
-                    // Filter out tiles that shouldn't auto-spawn
-                    features = features.filter(f => TILE_DATA[f].type !== 'dungeon_exit' &&
+                    features = features.filter(f => 
+                        TILE_DATA[f].type !== 'dungeon_exit' &&
                         TILE_DATA[f].type !== 'castle_exit' &&
                         TILE_DATA[f].type !== 'enemy' &&
-                        f !== '📖' && // Don't spawn Lesser Heal
-                        f !== '♛' && // Already spawned
-                        f !== 'V' && // Already spawned
-                        f !== 'c'    // Spawned separately
+                        f !== '📖' && f !== '♛' && f !== 'V' && f !== 'c'
                     );
-
-                    // Use the seeded random, not Math.random
                     const featureTile = features[Math.floor(random() * features.length)]; 
-                    
-                  
-                    // ALWAYS set the tile in the DB and local chunk
                     this.setWorldTile(worldX, worldY, featureTile);
                     chunkData[y][x] = featureTile;
-                   
+                }
+                
+                // --- 4. GENERIC STRUCTURES (Ruins/Camps) ---
+                else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0001) { // Ruins (Very Rare now)
+                    this.setWorldTile(worldX, worldY, '🏛️');
+                    chunkData[y][x] = '🏛️';
+                } 
+                else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0002) { // Campsite (Rare now)
+                    this.setWorldTile(worldX, worldY, '⛺');
+                    chunkData[y][x] = '⛺';
+                }
 
-                } else if (tile === '.' && featureRoll < 0.015) {
-                    // Check if this land tile is adjacent to water by checking elevation noise
-                    
-                    // This helper function checks the noise value for a given coord
-                    const isWater = (wx, wy) => {
-                        const e = elevationNoise.noise(wx / 70, wy / 70);
-                        return e < 0.35; // This is our water threshold
-                    };
-
-                    // Check neighbors' noise instead of calling getTile()
-                    if (isWater(worldX, worldY - 1) || // North
-                        isWater(worldX, worldY + 1) || // South
-                        isWater(worldX - 1, worldY) || // West
-                        isWater(worldX + 1, worldY))   // East
-                    {
-                        chunkData[y][x] = 'c'; // Place a canoe!
-                        this.setWorldTile(worldX, worldY, 'c');
-                    } else {
-                        chunkData[y][x] = tile; // No water, just place the terrain
-                    }
-
-                } else {
-                    // No safe feature spawned. Check for hostiles or foraging.
+                // --- 5. HOSTILE SPAWNS (Scaled by Distance) ---
+                else {
                     const hostileRoll = random();
-
-                    if (tile !== '~' && tile !== '≈' && featureRoll < 0.0005) { // Very Rare (Ruins)
-                        this.setWorldTile(worldX, worldY, '🏛️');
-                        chunkData[y][x] = '🏛️';
-                    } 
-                    else if (tile !== '~' && tile !== '≈' && featureRoll < 0.002) { // Uncommon (Campsite)
-                        this.setWorldTile(worldX, worldY, '⛺');
-                        chunkData[y][x] = '⛺';
-                    }
-
-                    // --- FORESTS: Wolves ('w') or Wildberries (':') ---
-                    if (tile === 'F') {
-                        if (hostileRoll < 0.002) {
-                            chunkData[y][x] = 'w'; 
-                        } else if (hostileRoll < 0.004) { 
-                            chunkData[y][x] = '🐗'; // Boar (Meat)
-                        } else if (hostileRoll < 0.005) { // NEW: Thickets
-                            chunkData[y][x] = '🌳';
-                            this.setWorldTile(worldX, worldY, '🌳');
-                        } else if (hostileRoll < 0.007) { // NEW: Webs
-                            chunkData[y][x] = '🕸';
-                            this.setWorldTile(worldX, worldY, '🕸');
-                        } else if (hostileRoll < 0.00025) { // Rare Elite Spawn
-                            chunkData[y][x] = '🐺'; 
-                        } else if (hostileRoll < 0.00035) { // Rare Trader Spawn
-                            chunkData[y][x] = '¥';
-                            this.setWorldTile(worldX, worldY, '¥');
-                        } else if (hostileRoll < 0.001) { 
-                            chunkData[y][x] = ':'; 
-                            this.setWorldTile(worldX, worldY, ':');
+                    
+                    // --- MOUNTAINS ---
+                    if (tile === '^') { 
+                        if (dist > 300 && hostileRoll < 0.002) chunkData[y][x] = 'Y'; // Yeti
+                        else if (dist > 150 && hostileRoll < 0.003) chunkData[y][x] = 'Ø'; // Ogre (Updated ID)
+                        else if (hostileRoll < 0.003) chunkData[y][x] = 'g'; // Goblins (Near)
+                        
+                        else if (hostileRoll < 0.006) { // Resources
+                            this.setWorldTile(worldX, worldY, '🏚'); chunkData[y][x] = '🏚';
+                        } else if (dist > 200 && hostileRoll < 0.009) { // Mithril (Far)
+                            this.setWorldTile(worldX, worldY, '💠'); chunkData[y][x] = '💠';
                         } else {
                             chunkData[y][x] = tile;
                         }
                     }
 
+                    // --- FORESTS ---
+                    else if (tile === 'F') {
+                        if (dist > 250 && hostileRoll < 0.001) chunkData[y][x] = '🐺'; // Dire Wolf (Far)
+                        else if (hostileRoll < 0.002) chunkData[y][x] = 'w'; // Wolf
+                        else if (hostileRoll < 0.004) chunkData[y][x] = '🐗'; // Boar
+                        else if (hostileRoll < 0.006) { this.setWorldTile(worldX, worldY, '🌳'); chunkData[y][x] = '🌳'; }
+                        else if (hostileRoll < 0.008) { this.setWorldTile(worldX, worldY, '🕸'); chunkData[y][x] = '🕸'; }
+                        else if (hostileRoll < 0.0015) { this.setWorldTile(worldX, worldY, ':'); chunkData[y][x] = ':'; }
+                        else chunkData[y][x] = tile;
+                    }
+
+                    // --- DEADLANDS ---
                     else if (tile === 'd') {
-                        // Deadlands are dangerous!
-                        if (hostileRoll < 0.0001) { // High spawn rate
-                            if (hostileRoll < 0.000005) chunkData[y][x] = 's'; // Skeletons
-                            else chunkData[y][x] = 'b'; // Bandits
-                        } else if (hostileRoll < 0.0002) {
-                             chunkData[y][x] = 'T'; // Dead Trees (Decoration)
-                             this.setWorldTile(worldX, worldY, 'T');
-                        } else {
-                            chunkData[y][x] = tile;
-                        }
+                        if (dist > 400 && hostileRoll < 0.001) chunkData[y][x] = 'D'; // Void Demon (Very Far)
+                        else if (hostileRoll < 0.002) chunkData[y][x] = 's'; // Skeleton
+                        else if (hostileRoll < 0.004) chunkData[y][x] = 'b'; // Bandit
+                        else chunkData[y][x] = tile;
                     }
 
-                        else if (tile === 'D') {
-                         if (hostileRoll < 0.0002) { // Cacti are common
-                            chunkData[y][x] = '🌵';
-                            this.setWorldTile(worldX, worldY, '🌵');
-                         } else if (hostileRoll < 0.0022) { // Scorpions
-                            chunkData[y][x] = '🦂';
-                         } else {
-                            chunkData[y][x] = tile;
-                         }
+                    // --- DESERT ---
+                    else if (tile === 'D') {
+                        if (hostileRoll < 0.001) { this.setWorldTile(worldX, worldY, '🌵'); chunkData[y][x] = '🌵'; }
+                        else if (hostileRoll < 0.003) chunkData[y][x] = '🦂'; // Scorpion
+                        else chunkData[y][x] = tile;
                     }
 
-                    // --- SWAMPS: Giant Leeches ('l') or Herbs ('🌿') ---
+                    // --- SWAMP ---
                     else if (tile === '≈') {
-                        if (hostileRoll < 0.0000003) { 
-                            chunkData[y][x] = 'l'; 
-                        } else if (hostileRoll < 0.002) {
-                            chunkData[y][x] = '🌿'; 
-                            this.setWorldTile(worldX, worldY, '🌿');
-                        } else {
-                            chunkData[y][x] = tile;
-                        }
+                        if (hostileRoll < 0.002) chunkData[y][x] = 'l'; // Leech
+                        else if (hostileRoll < 0.004) { this.setWorldTile(worldX, worldY, '🌿'); chunkData[y][x] = '🌿'; }
+                        else chunkData[y][x] = tile;
                     }
-                    // --- PLAINS: Wolves, Bandits, or Chiefs ---
+
+                    // --- PLAINS ---
                     else if (tile === '.') {
-                        if (hostileRoll < 0.000002) {
-                            if (hostileRoll < 0.000001) {
-                                chunkData[y][x] = 'w'; // Wolf
-                            } else {
-                                // Bandit spawn
-                                if (random() < 0.1) chunkData[y][x] = 'C'; // Chief
-                                else chunkData[y][x] = 'b'; // Bandit
-                            }
-                        } else if (hostileRoll < 0.000025) { // Rare Trader Spawn (Plains)
-                            chunkData[y][x] = '¥';
-                            this.setWorldTile(worldX, worldY, '¥');
-                        } else {
-                            chunkData[y][x] = tile;
-                        }
+                        if (dist > 150 && hostileRoll < 0.001) chunkData[y][x] = 'o'; // Orc (Medium)
+                        else if (hostileRoll < 0.001) chunkData[y][x] = 'w'; // Wolf
+                        else if (hostileRoll < 0.002) chunkData[y][x] = 'b'; // Bandit
+                        else chunkData[y][x] = tile;
                     }
-
-                    else if (tile === '^') { // Mountains
-                         if (hostileRoll < 0.005) { // Rare Cracked Wall
-                            chunkData[y][x] = '🏚';
-                            this.setWorldTile(worldX, worldY, '🏚');
-                         } else if (hostileRoll < 0.008) { // NEW: Mithril
-                            chunkData[y][x] = '💠';
-                            this.setWorldTile(worldX, worldY, '💠');
-                         } else {
-                            chunkData[y][x] = tile;
-                         }
-                    }
-
-                    // No hostile spawn, just place the terrain tile
+                    
                     else {
                         chunkData[y][x] = tile;
                     }
@@ -4705,94 +4635,84 @@ function handleItemDrop(event) {
  */
 
 function generateEnemyLoot(player, enemy) {
-
-    // --- 1. Check for Active Fetch Quests ---
+    // --- 1. Check for Active Fetch Quests (Unchanged) ---
     const enemyTile = enemy.tile || Object.keys(ENEMY_DATA).find(k => ENEMY_DATA[k].name === enemy.name);
-    
     for (const questId in player.quests) {
         const playerQuest = player.quests[questId];
         const questData = QUEST_DATA[questId];
-
-        // Is this an active fetch quest, for this enemy?
-        if (playerQuest.status === 'active' && 
-            questData.type === 'fetch' &&
-            questData.enemy === enemyTile) 
-        {
-            // Does the player NOT already have the item?
+        if (playerQuest.status === 'active' && questData.type === 'fetch' && questData.enemy === enemyTile) {
             const hasItem = player.inventory.some(item => item.name === questData.itemNeeded);
-            
             if (!hasItem) {
-                // Player is on the quest and needs the item. Roll for it!
-                // 5% base chance + 0.5% per point of Luck
                 const dropChance = 0.05 + (player.luck * 0.005); 
-                
                 if (Math.random() < dropChance) {
                     logMessage(`The ${enemy.name} dropped a ${questData.itemNeeded}!`);
-                    return questData.itemTile; // Return the '♦' tile
+                    return questData.itemTile;
                 }
             }
         }
     }
 
-    // --- DEFINE DROP CHANCES ---
+    // --- 2. Calculate Distance for Scaling ---
+    const dist = Math.sqrt(player.x * player.x + player.y * player.y);
 
-    // --- 1. Check for Junk Drop (First % based on Luck) ---
-    // Base 25% junk chance. Each point of Luck reduces this by 0.1%
-    // Capped at a minimum of 5% junk chance.
+    // --- 3. Determine Drop Tables ---
     const JUNK_DROP_CHANCE = Math.max(0.05, 0.25 - (player.luck * 0.001));
-    const GOLD_DROP_CHANCE = 0.50; // 50% chance for gold
+    const GOLD_DROP_CHANCE = 0.50;
 
-    const roll = Math.random(); // A roll from 0.0 to 1.0
+    const roll = Math.random();
 
+    // Junk / Specific Loot
     if (roll < JUNK_DROP_CHANCE) { 
-        // --- NEW: Override Logic for Cooking Ingredients ---
-        // Ensure Leeches drop Fish (even if data says 'p')
-        if (enemy.tile === 'l' || enemy.name === 'Giant Leech') {
-            return '🐟'; 
-        }
-        // Ensure Boars drop Meat
-        if (enemy.tile === '🐗' || enemy.name === 'Wild Boar') {
-            return '🍖'; 
-        }
-        // ---------------------------------------------------
-
-        // Use the enemy's specific loot item (e.g., 'p' for Wolf Pelt)
-        // If one isn't defined, fall back to Gold.
+        if (enemy.tile === 'l' || enemy.name === 'Giant Leech') return '🐟'; 
+        if (enemy.tile === '🐗' || enemy.name === 'Wild Boar') return '🍖'; 
         return enemy.loot || '$';
     }
 
-    // --- 2. Check for Gold Drop (Next 50%) ---
-    if (roll < JUNK_DROP_CHANCE + GOLD_DROP_CHANCE) { // roll < 0.75 (0.25 + 0.50)
-        return '$'; // Drop gold
+    // Gold
+    if (roll < JUNK_DROP_CHANCE + GOLD_DROP_CHANCE) { 
+        return '$'; 
     }
 
-    // --- 3. If neither, generate Level-Scaled Loot (Final 25%) ---
-    // This is your original tiered loot logic, but with Gold
-    // REMOVED from the commonLoot pool.
+    // --- 4. Distance-Based Equipment Drops ---
+    const scaledRoll = Math.random();
+    
+    // Define Tiers
+    const commonLoot = ['+', 'o', 'S', 'Y']; 
+    const tier1Loot = ['/', '%']; // Starter
+    const tier2Loot = ['!', '[', '📚', '🛡️', '🛡️w']; // Rusty/Leather/Basic Magic/Wood Shield
+    const tier3Loot = ['=', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i']; // Steel/Warlock/Longsword/Chainmail/Iron Shield
+    const tier4Loot = ['🪓', '🔨', '🛡️p']; // Greataxe/Warhammer/Plate
 
-    const scaledRoll = Math.random(); // A *new* roll just for the tiered loot
+    // Base Chance for "Good Loot"
+    let tier1Chance = 0.30;
+    let tier2Chance = 0.0;
+    let tier3Chance = 0.0;
+    let tier4Chance = 0.0;
 
-    // --- IMPORTANT: Gold '$' is REMOVED from this list ---
-    const commonLoot = ['+', 'o', 'S', 'Y']; // Consumables ONLY
-    const tier1Loot = ['/', '%']; // Stick, Leather Tunic
-    const tier2Loot = ['!', '[', '📚', '🛡️']; // Rusty Sword, Studded Armor, Spellbook: Magic Bolt, Tome of Shielding
-
-    // --- Tier 2 Loot (Best) ---
-    // (This logic is unchanged)
-    const tier2Chance = Math.max(0, (player.level - 1) * 0.08);
-    if (scaledRoll < tier2Chance) {
-        return tier2Loot[Math.floor(Math.random() * tier2Loot.length)];
+    // Adjust chances based on distance
+    if (dist > 500) { // Endgame Zone
+        tier1Chance = 0.0;
+        tier2Chance = 0.20;
+        tier3Chance = 0.50;
+        tier4Chance = 0.30;
+    } else if (dist > 250) { // Midgame Zone
+        tier1Chance = 0.10;
+        tier2Chance = 0.40;
+        tier3Chance = 0.30;
+        tier4Chance = 0.05;
+    } else if (dist > 100) { // Adventure Zone
+        tier1Chance = 0.30;
+        tier2Chance = 0.30;
+        tier3Chance = 0.05;
+        tier4Chance = 0.0;
     }
 
-    // --- Tier 1 Loot (Medium) ---
-    // (This logic is unchanged)
-    const tier1Chance = Math.max(0.1, 0.30 - (player.level * 0.03));
-    if (scaledRoll < tier2Chance + tier1Chance) {
-        return tier1Loot[Math.floor(Math.random() * tier1Loot.length)];
-    }
+    // Roll for Loot
+    if (scaledRoll < tier4Chance) return tier4Loot[Math.floor(Math.random() * tier4Loot.length)];
+    if (scaledRoll < tier4Chance + tier3Chance) return tier3Loot[Math.floor(Math.random() * tier3Loot.length)];
+    if (scaledRoll < tier4Chance + tier3Chance + tier2Chance) return tier2Loot[Math.floor(Math.random() * tier2Loot.length)];
+    if (scaledRoll < tier4Chance + tier3Chance + tier2Chance + tier1Chance) return tier1Loot[Math.floor(Math.random() * tier1Loot.length)];
 
-    // --- Common Loot (Base) ---
-    // (This is now just consumables)
     return commonLoot[Math.floor(Math.random() * commonLoot.length)];
 }
 
@@ -9757,7 +9677,19 @@ async function attemptMovePlayer(newX, newY) {
 
         if (tileData.type === 'loot_container') {
             logMessage(tileData.flavor);
-            const lootTable = tileData.lootTable;
+            let lootTable = tileData.lootTable; // Default table
+            
+            // --- NEW: Dynamic Loot Table for Generic Chests ---
+            // If it's a generic chest (lootTable not strictly defined or is generic)
+            // we inject scaling logic.
+            if (!lootTable || tileData.name === 'Dusty Urn' || newTile === '📦') {
+                const dist = Math.sqrt(newX*newX + newY*newY);
+                if (dist > 250) {
+                    lootTable = ['$', '$', 'S', 'o', '+', '⚔️l', '⛓️', '💎', '🧪']; // High Tier
+                } else {
+                    lootTable = ['$', '$', '(', '†', '+', '!', '[', '🛡️w']; // Low Tier
+                }
+            }
             const seed = stringToSeed(tileId);
             const random = Alea(seed);
             const lootCount = 1 + Math.floor(random() * 2);
