@@ -2455,7 +2455,7 @@ const ITEM_DATA = {
                 triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); // USE NEW FUNCTION
             }
             logMessage('Used a Psyche Shard. Restored psyche.');
-            
+        }
         },
         '📜C': {
         name: 'Mercenary Contract',
@@ -2504,7 +2504,6 @@ const ITEM_DATA = {
             }
             logMessage('You eat a Bluecap. It tingles... (+1 Mana)');
         }
-    },
     },
     '📖': {
         name: 'Spellbook: Lesser Heal',
@@ -3540,15 +3539,77 @@ const moistureNoise = Object.create(Perlin);
 moistureNoise.init(WORLD_SEED + ':moisture');
 
 const TileRenderer = {
-    // Helper to draw a base background
+    // Helper: Deterministic random based on coordinates
+    getPseudoRandom: (x, y) => {
+        return Math.abs(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1;
+    },
+
     drawBase: (ctx, x, y, color) => {
         ctx.fillStyle = color;
         ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     },
 
+    // --- DECORATION HELPERS ---
+    drawGrassTuft: (ctx, x, y, color) => {
+        const tx = x * TILE_SIZE;
+        const ty = y * TILE_SIZE;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        // Draw 3 little blades
+        ctx.moveTo(tx + 4, ty + 16); ctx.lineTo(tx + 4, ty + 10);
+        ctx.moveTo(tx + 8, ty + 16); ctx.lineTo(tx + 8, ty + 8);
+        ctx.moveTo(tx + 12, ty + 16); ctx.lineTo(tx + 12, ty + 11);
+        ctx.stroke();
+    },
+
+    drawFlower: (ctx, x, y) => {
+        const tx = x * TILE_SIZE;
+        const ty = y * TILE_SIZE;
+        // Stem
+        ctx.strokeStyle = '#166534';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(tx + 10, ty + 16); ctx.lineTo(tx + 10, ty + 8); ctx.stroke();
+        // Petals
+        ctx.fillStyle = (x + y) % 2 === 0 ? '#f472b6' : '#facc15'; // Pink or Yellow
+        ctx.beginPath(); ctx.arc(tx + 10, ty + 8, 2.5, 0, Math.PI * 2); ctx.fill();
+    },
+
+    drawPebble: (ctx, x, y, color) => {
+        const tx = x * TILE_SIZE + (x * 3 % 10) + 2; // Random-ish position
+        const ty = y * TILE_SIZE + (y * 7 % 10) + 5;
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(tx, ty, 2, 0, Math.PI * 2); ctx.fill();
+    },
+
+    drawBone: (ctx, x, y) => {
+        const tx = x * TILE_SIZE + 10;
+        const ty = y * TILE_SIZE + 10;
+        ctx.strokeStyle = '#d4d4d8';
+        ctx.lineWidth = 2;
+        // Tiny X shape
+        ctx.beginPath(); 
+        ctx.moveTo(tx-3, ty-3); ctx.lineTo(tx+3, ty+3);
+        ctx.moveTo(tx+3, ty-3); ctx.lineTo(tx-3, ty+3);
+        ctx.stroke();
+    },
+
+    // --- BIOME RENDERERS ---
+
     // 🌲 Forests
     drawForest: (ctx, x, y, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
+        
+        // 20% chance for a mushroom
+        if (TileRenderer.getPseudoRandom(x, y) < 0.2) {
+            const tx = x * TILE_SIZE + 10;
+            const ty = y * TILE_SIZE + 14;
+            ctx.fillStyle = '#fca5a5'; // Light red mushroom
+            ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI, true); ctx.fill(); // Cap
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(tx - 1, ty, 2, 4); // Stem
+        }
+
         ctx.fillStyle = accentColor;
         const cx = x * TILE_SIZE + TILE_SIZE / 2;
         const cy = y * TILE_SIZE + TILE_SIZE / 2;
@@ -3562,6 +3623,11 @@ const TileRenderer = {
     // ⛰ Mountains
     drawMountain: (ctx, x, y, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
+        // Add random pebbles
+        if (TileRenderer.getPseudoRandom(x, y) > 0.5) {
+            TileRenderer.drawPebble(ctx, x, y, '#78716c');
+        }
+        
         ctx.fillStyle = accentColor;
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
@@ -3570,6 +3636,59 @@ const TileRenderer = {
         ctx.lineTo(tx + TILE_SIZE * 0.9, ty + TILE_SIZE * 0.9);
         ctx.lineTo(tx + TILE_SIZE * 0.1, ty + TILE_SIZE * 0.9);
         ctx.fill();
+    },
+
+    // . Plains
+    drawPlains: (ctx, x, y, baseColor, accentColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        
+        const rand = TileRenderer.getPseudoRandom(x, y);
+        
+        if (rand < 0.1) {
+            TileRenderer.drawFlower(ctx, x, y); // 10% Chance for Flower
+        } else if (rand < 0.3) {
+            TileRenderer.drawGrassTuft(ctx, x, y, accentColor); // 20% Chance for detailed grass
+        } else if ((x * 123 + y * 456) % 7 === 0) { 
+            // Fallback to simple line for variety
+            ctx.strokeStyle = accentColor;
+            ctx.lineWidth = 1;
+            const tx = x * TILE_SIZE + TILE_SIZE/2;
+            const ty = y * TILE_SIZE + TILE_SIZE/2;
+            ctx.beginPath();
+            ctx.moveTo(tx - 2, ty + 2);
+            ctx.lineTo(tx, ty - 2);
+            ctx.lineTo(tx + 2, ty + 2);
+            ctx.stroke();
+        }
+    },
+
+    // d Deadlands
+    drawDeadlands: (ctx, x, y, baseColor, accentColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        const rand = TileRenderer.getPseudoRandom(x, y);
+        
+        if (rand < 0.1) {
+            TileRenderer.drawBone(ctx, x, y); // 10% Chance for Bones
+        } else if (rand < 0.3) {
+            TileRenderer.drawPebble(ctx, x, y, '#52525b');
+        }
+    },
+
+    // D Desert
+    drawDesert: (ctx, x, y, baseColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        // Draw sand ripples
+        const rand = TileRenderer.getPseudoRandom(x, y);
+        if (rand > 0.6) {
+            const tx = x * TILE_SIZE;
+            const ty = y * TILE_SIZE;
+            ctx.strokeStyle = '#d97706'; // Darker sand
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(tx + 4, ty + 10);
+            ctx.lineTo(tx + 16, ty + 10);
+            ctx.stroke();
+        }
     },
 
     // 🧱 Walls
@@ -3605,27 +3724,26 @@ const TileRenderer = {
         ctx.stroke();
     },
     
-    // 🔥 Fire (Animated) - NEW!
+    // 🔥 Fire (Animated)
     drawFire: (ctx, x, y) => {
-        TileRenderer.drawBase(ctx, x, y, '#451a03'); // Dark ground
+        TileRenderer.drawBase(ctx, x, y, '#451a03'); 
         const tx = x * TILE_SIZE + TILE_SIZE/2;
         const ty = y * TILE_SIZE + TILE_SIZE - 2;
         
-        // Flicker effect
         const flicker = Math.sin(Date.now() / 100) * 3;
         
-        ctx.fillStyle = '#ef4444'; // Red base
+        ctx.fillStyle = '#ef4444'; 
         ctx.beginPath();
         ctx.arc(tx, ty - 4, 4 + (flicker*0.2), 0, Math.PI * 2);
         ctx.fill();
         
-        ctx.fillStyle = '#facc15'; // Yellow core
+        ctx.fillStyle = '#facc15'; 
         ctx.beginPath();
         ctx.arc(tx, ty - 4, 2 + (flicker*0.1), 0, Math.PI * 2);
         ctx.fill();
     },
 
-    // Ω Void Rift (Animated) - NEW!
+    // Ω Void Rift (Animated)
     drawVoid: (ctx, x, y) => {
         TileRenderer.drawBase(ctx, x, y, '#000');
         const tx = x * TILE_SIZE + TILE_SIZE/2;
@@ -3634,31 +3752,16 @@ const TileRenderer = {
         const pulse = Math.sin(Date.now() / 300);
         const size = 6 + (pulse * 2);
         
-        ctx.strokeStyle = '#a855f7'; // Purple
+        ctx.strokeStyle = '#a855f7'; 
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(tx, ty, size, 0, Math.PI * 2);
         ctx.stroke();
         
-        ctx.fillStyle = '#581c87'; // Dark Purple
+        ctx.fillStyle = '#581c87'; 
         ctx.beginPath();
         ctx.arc(tx, ty, size/2, 0, Math.PI * 2);
         ctx.fill();
-    },
-
-    // . Plains
-    drawPlains: (ctx, x, y, baseColor, accentColor) => {
-        TileRenderer.drawBase(ctx, x, y, baseColor);
-        if ((x * 123 + y * 456) % 5 !== 0) return; 
-        ctx.strokeStyle = accentColor;
-        ctx.lineWidth = 1;
-        const tx = x * TILE_SIZE + TILE_SIZE/2;
-        const ty = y * TILE_SIZE + TILE_SIZE/2;
-        ctx.beginPath();
-        ctx.moveTo(tx - 2, ty + 2);
-        ctx.lineTo(tx, ty - 2);
-        ctx.lineTo(tx + 2, ty + 2);
-        ctx.stroke();
     }
 };
 
@@ -8316,7 +8419,9 @@ const render = () => {
             } 
             else { // Overworld
                 tile = chunkManager.getTile(mapX, mapY);
+
                 // --- PROCEDURAL OVERWORLD RENDERING ---
+
                 switch (tile) {
                     case '~':
                         TileRenderer.drawWater(ctx, x, y, '#1e3a8a', '#3b82f6');
@@ -8341,14 +8446,10 @@ const render = () => {
                         TileRenderer.drawPlains(ctx, x, y, '#22c55e', '#15803d');
                         break;
                     case 'd': // Deadlands
-                        TileRenderer.drawPlains(ctx, x, y, '#2d2d2d', '#444');
+                        TileRenderer.drawDeadlands(ctx, x, y, '#2d2d2d', '#444');
                         break;
                     case 'D': // Desert
-                        TileRenderer.drawBase(ctx, x, y, '#fde047');
-                        break;
-                    case 'Ω':
-                        TileRenderer.drawBase(ctx, x, y, '#000');
-                        fgChar = 'Ω'; fgColor = '#a855f7';
+                        TileRenderer.drawDesert(ctx, x, y, '#fde047');
                         break;
                     default:
                         TileRenderer.drawBase(ctx, x, y, '#22c55e');
@@ -8524,6 +8625,29 @@ const render = () => {
     } else if (gameState.weather === 'fog') {
         ctx.fillStyle = 'rgba(200, 200, 200, 0.3)'; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // --- BIOME ATMOSPHERE TINT ---
+    if (gameState.mapMode === 'overworld') {
+        const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70);
+        const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50);
+        
+        let tintColor = null;
+
+        if (elev > 0.6 && moist < 0.3) {
+            tintColor = 'rgba(50, 0, 0, 0.1)'; // Red tint for Deadlands
+        } else if (moist < 0.15) {
+            tintColor = 'rgba(255, 100, 0, 0.05)'; // Orange tint for Desert
+        } else if (elev < 0.35 || (elev < 0.4 && moist > 0.7)) {
+            tintColor = 'rgba(0, 50, 0, 0.1)'; // Green tint for Swamp
+        } else if (elev > 0.8) {
+            tintColor = 'rgba(200, 200, 255, 0.1)'; // Blue/Cold tint for Mountains
+        }
+
+        if (tintColor) {
+            ctx.fillStyle = tintColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
     }
 
     if (typeof ParticleSystem !== 'undefined') {
