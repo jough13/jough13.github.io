@@ -2028,10 +2028,42 @@ const CRAFTING_RECIPES = {
     "Amulet of the Magi": {
         materials: { "Gold Coin": 200, "Arcane Dust": 10, "Basilisk Eye": 1 },
         xp: 250, level: 5
-    }
+    },
+    // --- SURVIVAL GEAR ---
+    "Campfire Kit": { 
+        materials: { "Wood Log": 3, "Stone": 4 }, 
+        xp: 15, level: 1 
+    },
+    // Update Stick to allow crafting from Wood
+    "Stick": {
+        materials: { "Wood Log": 1 },
+        xp: 5, level: 1,
+        yield: 4 // (Optional logic: 1 log = 4 sticks? For now, standard 1->1 or change logic later)
+    },
 };
 
 const ITEM_DATA = {
+    // --- RESOURCES ---
+    '🪵': {
+        name: 'Wood Log',
+        type: 'junk',
+        description: "A sturdy log. Good for fuel or construction."
+    },
+    '🪨': {
+        name: 'Stone',
+        type: 'junk',
+        description: "A heavy gray stone."
+    },
+    '⛺k': {
+        name: 'Campfire Kit',
+        type: 'consumable', // It's "consumed" when placed
+        tile: '🔥', // Looks like fire in inventory
+        description: "Contains flint, tinder, and dry wood. Creates a cooking fire.",
+        effect: (state) => {
+            // Logic handled in useInventoryItem to place it on the map
+            logMessage("Use this item to place a fire on the ground.");
+        }
+    },
     '👢': {
         name: 'Traveler\'s Boots',
         type: 'armor',
@@ -3341,14 +3373,12 @@ const TileRenderer = {
         ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
     },
 
-    // 🌲 Forests: Draw darker trees on top of grass
+    // 🌲 Forests
     drawForest: (ctx, x, y, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         ctx.fillStyle = accentColor;
         const cx = x * TILE_SIZE + TILE_SIZE / 2;
         const cy = y * TILE_SIZE + TILE_SIZE / 2;
-        
-        // Draw a simple triangle tree
         ctx.beginPath();
         ctx.moveTo(cx, cy - TILE_SIZE * 0.4);
         ctx.lineTo(cx + TILE_SIZE * 0.3, cy + TILE_SIZE * 0.3);
@@ -3356,14 +3386,12 @@ const TileRenderer = {
         ctx.fill();
     },
 
-    // ⛰ Mountains: Draw a rocky peak
+    // ⛰ Mountains
     drawMountain: (ctx, x, y, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         ctx.fillStyle = accentColor;
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
-        
-        // Draw jagged peak
         ctx.beginPath();
         ctx.moveTo(tx + TILE_SIZE * 0.5, ty + TILE_SIZE * 0.1);
         ctx.lineTo(tx + TILE_SIZE * 0.9, ty + TILE_SIZE * 0.9);
@@ -3371,61 +3399,88 @@ const TileRenderer = {
         ctx.fill();
     },
 
-    // 🧱 Walls: Draw a brick pattern
+    // 🧱 Walls
     drawWall: (ctx, x, y, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
-        ctx.strokeStyle = accentColor; // Line color
+        ctx.strokeStyle = accentColor;
         ctx.lineWidth = 1;
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
-        
-        // Horizontal lines
         ctx.beginPath();
         ctx.moveTo(tx, ty + TILE_SIZE/2);
         ctx.lineTo(tx + TILE_SIZE, ty + TILE_SIZE/2);
         ctx.stroke();
-
-        // Vertical brick offsets
         ctx.beginPath();
         ctx.moveTo(tx + TILE_SIZE/2, ty);
         ctx.lineTo(tx + TILE_SIZE/2, ty + TILE_SIZE/2);
-        ctx.moveTo(tx + TILE_SIZE * 0.25, ty + TILE_SIZE/2);
-        ctx.lineTo(tx + TILE_SIZE * 0.25, ty + TILE_SIZE);
-        ctx.moveTo(tx + TILE_SIZE * 0.75, ty + TILE_SIZE/2);
-        ctx.lineTo(tx + TILE_SIZE * 0.75, ty + TILE_SIZE);
         ctx.stroke();
     },
 
-    // 🌊 Water: Draw waves
+    // 🌊 Water (Animated)
     drawWater: (ctx, x, y, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         ctx.strokeStyle = accentColor;
         ctx.lineWidth = 1;
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
-        
-        // Draw little wave lines
-        const timeOffset = Math.sin(Date.now() / 1000 + x); // Animate slightly!
+        // Wave animation based on time
+        const timeOffset = Math.sin(Date.now() / 500 + x); 
         const yOffset = timeOffset * 2;
-
         ctx.beginPath();
         ctx.moveTo(tx + 2, ty + TILE_SIZE/2 + yOffset);
         ctx.lineTo(tx + TILE_SIZE - 2, ty + TILE_SIZE/2 + yOffset);
         ctx.stroke();
     },
     
-    // . Plains: Simple grass tufts
-    drawPlains: (ctx, x, y, baseColor, accentColor) => {
-    TileRenderer.drawBase(ctx, x, y, baseColor);
-    // Use a simple hash for deterministic "randomness" without the heavy Alea library
-    // (x * y) % 5 === 0 is a simple way to pick 20% of tiles deterministically
-    if ((x * 123 + y * 456) % 5 !== 0) return; 
+    // 🔥 Fire (Animated) - NEW!
+    drawFire: (ctx, x, y) => {
+        TileRenderer.drawBase(ctx, x, y, '#451a03'); // Dark ground
+        const tx = x * TILE_SIZE + TILE_SIZE/2;
+        const ty = y * TILE_SIZE + TILE_SIZE - 2;
+        
+        // Flicker effect
+        const flicker = Math.sin(Date.now() / 100) * 3;
+        
+        ctx.fillStyle = '#ef4444'; // Red base
+        ctx.beginPath();
+        ctx.arc(tx, ty - 4, 4 + (flicker*0.2), 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.fillStyle = '#facc15'; // Yellow core
+        ctx.beginPath();
+        ctx.arc(tx, ty - 4, 2 + (flicker*0.1), 0, Math.PI * 2);
+        ctx.fill();
+    },
 
-    ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 1;
+    // Ω Void Rift (Animated) - NEW!
+    drawVoid: (ctx, x, y) => {
+        TileRenderer.drawBase(ctx, x, y, '#000');
         const tx = x * TILE_SIZE + TILE_SIZE/2;
         const ty = y * TILE_SIZE + TILE_SIZE/2;
         
+        const pulse = Math.sin(Date.now() / 300);
+        const size = 6 + (pulse * 2);
+        
+        ctx.strokeStyle = '#a855f7'; // Purple
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(tx, ty, size, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        ctx.fillStyle = '#581c87'; // Dark Purple
+        ctx.beginPath();
+        ctx.arc(tx, ty, size/2, 0, Math.PI * 2);
+        ctx.fill();
+    },
+
+    // . Plains
+    drawPlains: (ctx, x, y, baseColor, accentColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        if ((x * 123 + y * 456) % 5 !== 0) return; 
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 1;
+        const tx = x * TILE_SIZE + TILE_SIZE/2;
+        const ty = y * TILE_SIZE + TILE_SIZE/2;
         ctx.beginPath();
         ctx.moveTo(tx - 2, ty + 2);
         ctx.lineTo(tx, ty - 2);
@@ -7859,6 +7914,12 @@ const render = () => {
                         TileRenderer.drawWater(ctx, x, y, '#422006', '#14532d'); // Muddy water
                         fgChar = ','; fgColor = '#4b5535';
                         break;
+                    case '🔥': // Cooking Fire
+                        TileRenderer.drawFire(ctx, x, y);
+                        break;
+                    case 'Ω': // Void Rift
+                        TileRenderer.drawVoid(ctx, x, y);
+                        break;
                     case '^':
                         TileRenderer.drawMountain(ctx, x, y, '#57534e', '#d6d3d1');
                         break;
@@ -8999,7 +9060,39 @@ function useInventoryItem(itemIndex) {
 
     let itemUsed = false;
 
-    if (itemToUse.type === 'consumable') {
+    // --- CAMPFIRE LOGIC ---
+    if (itemToUse.name === 'Campfire Kit') {
+        const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
+        
+        // Only place on flat ground (Plains, Desert, Deadlands)
+        // or dungeon floors
+        let valid = false;
+        if (gameState.mapMode === 'overworld' && (currentTile === '.' || currentTile === 'd' || currentTile === 'D')) valid = true;
+        if (gameState.mapMode === 'dungeon') valid = true; // Assume dungeon floor is stone
+
+        if (valid) {
+            logMessage("You arrange the stones and light the fire.");
+            
+            if (gameState.mapMode === 'overworld') {
+                chunkManager.setWorldTile(gameState.player.x, gameState.player.y, '🔥');
+            } else if (gameState.mapMode === 'dungeon') {
+                chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] = '🔥';
+            }
+            
+            // Consume item
+            itemToUse.quantity--;
+            if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
+            itemUsed = true;
+            
+            // Force immediate render to show the fire
+            render();
+        } else {
+            logMessage("You can't build a fire here.");
+            return;
+        }
+    }
+
+    else if (itemToUse.type === 'consumable') {
         if (itemToUse.effect) itemToUse.effect(gameState);
         itemToUse.quantity--;
         logMessage(`You used a ${itemToUse.name}.`);
@@ -9674,6 +9767,27 @@ async function attemptMovePlayer(newX, newY) {
 
             if (hasTool) {
                 logMessage(`You use your ${toolName} to clear the ${tileData.name}.`);
+                if (tileData.name === 'Thicket' || tileData.name === 'Dead Tree') {
+                    if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        const existingWood = playerInventory.find(i => i.name === 'Wood Log');
+                        if (existingWood) existingWood.quantity++;
+                        else playerInventory.push({ name: 'Wood Log', type: 'junk', quantity: 1, tile: '🪵' });
+                        logMessage("You gathered a Wood Log!");
+                        inventoryWasUpdated = true;
+                    } else {
+                        logMessage("Inventory full! The wood is lost.");
+                    }
+                } 
+                // Only grant Stone if using a Pickaxe on a generic obstacle (like Cracked Wall)
+                else if (toolName === 'Pickaxe') {
+                     if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                        const existingStone = playerInventory.find(i => i.name === 'Stone');
+                        if (existingStone) existingStone.quantity++;
+                        else playerInventory.push({ name: 'Stone', type: 'junk', quantity: 1, tile: '🪨' });
+                        logMessage("You gathered Stone!");
+                        inventoryWasUpdated = true;
+                    }
+                }
                 if (toolName === 'Pickaxe') triggerStatFlash(statDisplays.strength, true);
                 if (toolName === 'Machete') triggerStatFlash(statDisplays.dexterity, true);
 
