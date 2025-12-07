@@ -90,7 +90,7 @@ const TILE_DATA = {
         title: 'Orc War-Chant',
         content: `Blood and dust. Steel and bone.\n\nThe weak build with stone. The strong build with fear.\n\nWe come from the fire, we return to the ash. The mountain is our mother, the world our feast. Stomp the soft-skins. Take their steel. Raise the tusk-banner.\n\n...the rest is scrawled in a crude, unintelligible script.`
     },
-    'R': {
+    '📘': {
         type: 'journal',
         title: 'Frozen Journal',
         content: `Day 12: The cold... it seeps into your bones. But the essence in these walls is worth a fortune. I must have more.\n\nDay 15: I saw one of them today. A... walking corpse, encased in ice. It didn't see me. My pickaxe feels heavy.\n\nDay 17: They are the old ones. The first warriors. The cold preserves them. Binds them. They guard the essence.\n\nDay ???: Can't feel my fingers. It's in my pack. I can't... I...`
@@ -2091,12 +2091,12 @@ const ITEM_DATA = {
         slot: 'weapon',
         description: "A heavy piece of oak. Crude but effective."
     },
-    'staff': {
+    '🦯': { // CHANGED key from 'staff' to '🦯'
         name: 'Quarterstaff',
         type: 'weapon',
-        tile: '/', 
+        tile: '🦯', // CHANGED tile from '/' to '🦯'
         damage: 1, 
-        defense: 1, // Grants defense!
+        defense: 1, 
         slot: 'weapon',
         description: "A long pole used by travelers and monks."
     },
@@ -2391,6 +2391,12 @@ const ITEM_DATA = {
         name: 'Scroll of Siphoning',
         type: 'spellbook',
         spellId: 'siphonLife'
+    },
+    '📘': {
+        name: 'Frozen Journal',
+        type: 'journal',
+        title: 'Frozen Journal',
+        content: `Day 12: The cold... it seeps into your bones...` 
     },
     // --- CRAFTING MATERIALS ---
     '❄️f': { name: 'Yeti Fur', type: 'junk', description: "Thick, warm, and smells like wet dog." },
@@ -2756,7 +2762,7 @@ const ITEM_DATA = {
         type: 'spellbook',
         spellId: 'darkPact'
     },
-    'r': {
+    '💔': {
         name: 'Corrupted Relic',
         type: 'junk'
     },
@@ -4793,8 +4799,8 @@ function generateEnemyLoot(player, enemy) {
     const scaledRoll = Math.random();
     
     // Define Tiers
-    const commonLoot = ['+', 'o', 'S', 'Y']; 
-    const tier1Loot = ['/', '%']; // Starter
+    const commonLoot = ['+', 'o', 'S', 'Y', '🐀', '🦇', '🦷', '🧣']; // Added mob drops here too!
+    const tier1Loot = ['/', '%', '🏏', '🦯', '🏹', '👕', '👘'];
     const tier2Loot = ['!', '[', '📚', '🛡️', '🛡️w']; // Rusty/Leather/Basic Magic/Wood Shield
     const tier3Loot = ['=', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i']; // Steel/Warlock/Longsword/Chainmail/Iron Shield
     const tier4Loot = ['🪓', '🔨', '🛡️p']; // Greataxe/Warhammer/Plate
