@@ -611,28 +611,23 @@ const QUEST_DATA = {
  */
 
 function getScaledEnemy(enemyTemplate, x, y) {
-    // 1. Calculate Distance
+    // 1. Calculate Distance & Zone
     const dist = Math.sqrt(x * x + y * y);
-    
-    // 2. Calculate "Zone Level" (Every 50 tiles is 1 level)
     const zoneLevel = Math.floor(dist / 50);
 
-    // 3. Clone the template so we don't modify the original
+    // 2. Clone the template
     let enemy = { ...enemyTemplate };
 
-    // 4. Apply Scaling (10% stats per zone level)
+    // 3. Apply Base Scaling (10% stats per zone level)
     const multiplier = 1 + (zoneLevel * 0.10);
     
     enemy.maxHealth = Math.floor(enemy.maxHealth * multiplier);
-    enemy.health = enemy.maxHealth; // Start full
     enemy.attack = Math.floor(enemy.attack * multiplier);
-    enemy.xp = Math.floor(enemy.xp * multiplier); // Reward more XP!
+    enemy.xp = Math.floor(enemy.xp * multiplier);
 
-    // 5. Add Flavor Prefixes
+    // 4. Apply Zone Name (Cosmetic)
     if (zoneLevel === 0) {
-        enemy.name = `Starving ${enemy.name}`;
-        enemy.maxHealth = Math.floor(enemy.maxHealth * 0.8); // Nerf slightly for newbies
-        enemy.health = enemy.maxHealth;
+        // No prefix for zone 0, keep it simple
     } else if (zoneLevel >= 2 && zoneLevel < 5) {
         enemy.name = `Feral ${enemy.name}`;
     } else if (zoneLevel >= 5 && zoneLevel < 10) {
@@ -641,8 +636,87 @@ function getScaledEnemy(enemyTemplate, x, y) {
         enemy.name = `Ancient ${enemy.name}`;
     }
 
+    // --- 5. NEW: Elite Affix Roll (THIS WAS MISSING) ---
+    // Chance increases with distance and player luck
+    // Base 5% chance, +1% per zone level
+    const eliteChance = 0.05 + (zoneLevel * 0.01); 
+    
+    // Don't apply prefixes to Bosses (they are hard enough)
+    if (!enemy.isBoss && Math.random() < eliteChance) {
+        const prefixKeys = Object.keys(ENEMY_PREFIXES);
+        const prefixKey = prefixKeys[Math.floor(Math.random() * prefixKeys.length)];
+        const affix = ENEMY_PREFIXES[prefixKey];
+
+        // Apply Name Change
+        enemy.name = `${prefixKey} ${enemy.name}`;
+        enemy.isElite = true; // Flag for renderer and loot logic
+        enemy.color = affix.color; // For the renderer
+
+        // Apply Stat Modifiers
+        if (affix.statModifiers) {
+            if (affix.statModifiers.attack) enemy.attack += affix.statModifiers.attack;
+            if (affix.statModifiers.defense) enemy.defense = (enemy.defense || 0) + affix.statModifiers.defense;
+            if (affix.statModifiers.maxHealth) enemy.maxHealth += affix.statModifiers.maxHealth;
+        }
+
+        // Apply Special Effects
+        if (affix.special === 'poison') {
+            enemy.inflicts = 'poison';
+            enemy.inflictChance = 0.5;
+        } else if (affix.special === 'frostbite') {
+            enemy.inflicts = 'frostbite';
+            enemy.inflictChance = 0.5;
+        }
+
+        // Boost XP
+        enemy.xp = Math.floor(enemy.xp * affix.xpMult);
+    }
+
+    // Reset current health to new max
+    enemy.health = enemy.maxHealth;
+
     return enemy;
 }
+
+const ENEMY_PREFIXES = {
+    "Savage": { 
+        description: "Deals extra damage.",
+        statModifiers: { attack: 2 },
+        xpMult: 1.2,
+        color: '#ef4444' // Red-ish
+    },
+    "Armored": { 
+        description: "Harder to hit.",
+        statModifiers: { defense: 2 },
+        xpMult: 1.2,
+        color: '#9ca3af' // Grey
+    },
+    "Swift": { 
+        description: "Harder to hit and moves fast.",
+        statModifiers: { defense: 1 }, // Simulates dodging
+        xpMult: 1.1,
+        color: '#facc15' // Yellow
+    },
+    "Massive": { 
+        description: "A giant among its kind.",
+        statModifiers: { maxHealth: 10, attack: 1 },
+        xpMult: 1.5,
+        color: '#ea580c' // Orange
+    },
+    "Plagued": { 
+        description: "Carries disease.",
+        statModifiers: { maxHealth: 5 },
+        special: 'poison',
+        xpMult: 1.3,
+        color: '#22c55e' // Green
+    },
+    "Spectral": {
+        description: "Hard to hurt with physical weapons.",
+        statModifiers: { defense: 3, maxHealth: -5 }, // High def, low HP
+        xpMult: 1.4,
+        color: '#a855f7' // Purple
+    }
+};
 
 const ENEMY_DATA = {
     // --- LEVEL 1 (Vermin & Weaklings) ---
@@ -1424,6 +1498,8 @@ window.selectBackground = async function(bgKey) {
     //  it just updates the state which we just modified)
 };
 
+
+
 async function initCharacterSelect(user) {
     currentUser = user;
     authContainer.classList.add('hidden');
@@ -1614,6 +1690,8 @@ function createDefaultPlayerState() {
 
         inventory: [],
 
+        killCounts: {}, // Tracks { "Goblin": 5, "Wolf": 12 }
+
         spellbook: {
             "lesserHeal": 1, // Key is the spellID, value is the spell's level
             "magicBolt": 1
@@ -1686,6 +1764,33 @@ async function restartGame() {
 
     // Hide the game over screen
     gameOverModal.classList.add('hidden');
+}
+
+function registerKill(enemy) {
+    // 1. Update Kill Count
+    // Use the base name (remove "Feral", "Savage" prefixes) for clean tracking
+    let baseName = enemy.name;
+    // Simple logic: if name has 2+ words, check if the last word is the base
+    // Or simpler: map Tile to Name using ENEMY_DATA
+    if (ENEMY_DATA[enemy.tile]) {
+        baseName = ENEMY_DATA[enemy.tile].name;
+    }
+
+    if (!gameState.player.killCounts) gameState.player.killCounts = {};
+    
+    gameState.player.killCounts[baseName] = (gameState.player.killCounts[baseName] || 0) + 1;
+
+    // 2. Handle Quests
+    updateQuestProgress(enemy.tile);
+
+    // 3. Grant XP
+    grantXp(enemy.xp);
+    
+    // 4. Save
+    playerRef.update({ 
+        killCounts: gameState.player.killCounts,
+        quests: gameState.player.quests
+    });
 }
 
 function getInterpolatedDayCycleColor(hour, minute) {
@@ -1983,6 +2088,12 @@ const CRAFTING_RECIPES = {
     "Climbing Tools": { 
         materials: { "Stick": 3, "Wolf Pelt": 3, "Bone Shard": 5 }, 
         xp: 50, level: 4 
+    },
+
+    // --- TIER 4/5 (Special) ---
+    "Void Key": { 
+        materials: { "Void Dust": 5, "Obsidian Shard": 1 }, 
+        xp: 100, level: 4 
     },
 
     // --- TIER 5 (Master - Needs Rare Mats) ---
@@ -2344,6 +2455,7 @@ const ITEM_DATA = {
                 triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); // USE NEW FUNCTION
             }
             logMessage('Used a Psyche Shard. Restored psyche.');
+            
         },
         '📜C': {
         name: 'Mercenary Contract',
@@ -2889,7 +3001,15 @@ const ITEM_DATA = {
         type: 'spellbook',
         spellId: 'thornSkin'
     },
-
+    '🗝️v': {
+        name: 'Void Key',
+        type: 'consumable', // It is consumed upon use
+        tile: '🗝️',
+        description: "It vibrates violently. Unlocks a Void Rift.",
+        effect: (state) => {
+            logMessage("Stand on a Void Rift (Ω) and use this to enter.");
+        }
+    },
     // --- ELITE LOOT ---
     '🐺': { // Using the wolf icon for the pelt bundle
         name: 'Alpha Pelt',
@@ -3016,6 +3136,59 @@ const ITEM_DATA = {
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
         }
     },
+    '✨': {
+        name: 'Unidentified Magic Item',
+        type: 'junk', // Temporary type until picked up
+        description: "It hums with potential energy."
+    },
+    // --- VOID ITEMS ---
+    '🗝️v': {
+        name: 'Void Key',
+        type: 'consumable', // Used on the rift
+        tile: '🗝️',
+        description: "It vibrates violently. Unlocks a Void Rift.",
+        effect: (state) => {
+            // Logic is handled in the main useInventoryItem function
+            logMessage("Stand on a Void Rift (Ω) and use this to enter.");
+        }
+    },
+    'vd': {
+        name: 'Void Dust',
+        type: 'junk',
+        tile: '✨',
+        description: "Remains of a creature that shouldn't exist."
+    },
+};
+
+// --- RANDOMIZED LOOT DATA ---
+const LOOT_PREFIXES = {
+    "Sharp": { type: 'weapon', bonus: { damage: 1 } },
+    "Jagged": { type: 'weapon', bonus: { damage: 2 } },
+    "Deadly": { type: 'weapon', bonus: { damage: 3 } },
+    "Legendary": { type: 'weapon', bonus: { damage: 4 } },
+    
+    "Sturdy": { type: 'armor', bonus: { defense: 1 } },
+    "Reinforced": { type: 'armor', bonus: { defense: 2 } },
+    "Hardened": { type: 'armor', bonus: { defense: 3 } },
+    "Impenetrable": { type: 'armor', bonus: { defense: 4 } },
+    
+    "Balanced": { type: 'weapon', bonus: { dexterity: 1 } },
+    "Heavy": { type: 'weapon', bonus: { strength: 1 } },
+    "Light": { type: 'armor', bonus: { dexterity: 1 } },
+};
+
+const LOOT_SUFFIXES = {
+    "of the Bear": { bonus: { strength: 1, constitution: 1 } },
+    "of the Wolf": { bonus: { dexterity: 1, strength: 1 } },
+    "of the Owl": { bonus: { wits: 2 } },
+    "of the Eagle": { bonus: { perception: 2 } },
+    "of the Fox": { bonus: { charisma: 2 } },
+    "of Vitality": { bonus: { maxHealth: 5 } },
+    "of the Titan": { bonus: { strength: 2, defense: 1 } },
+    "of Speed": { bonus: { dexterity: 2 } },
+    "of Kings": { bonus: { charisma: 1, luck: 1, willpower: 1 } },
+    "of the Void": { bonus: { willpower: 2, psyche: 2 } },
+    "of Stone": { bonus: { constitution: 2, defense: 1 } }
 };
 
 const PLAYER_BACKGROUNDS = {
@@ -3607,6 +3780,8 @@ generateCave(caveId) {
                             y: mapY,
                             tile: tileToPlace,
                             name: scaledStats.name,
+                            isElite: scaledStats.isElite || false,
+                            color: scaledStats.color || null,
                             health: scaledStats.maxHealth,
                             maxHealth: scaledStats.maxHealth,
                             attack: scaledStats.attack,
@@ -3617,6 +3792,8 @@ generateCave(caveId) {
                             castRange: enemyTemplate.castRange || 0,
                             spellDamage: Math.floor((enemyTemplate.spellDamage || 0) * (1 + (Math.floor(Math.sqrt(caveX*caveX + caveY*caveY)/50) * 0.1))),
                             inflicts: enemyTemplate.inflicts || null,
+                            isElite: scaledStats.isElite || false,
+                            color: scaledStats.color || null,
                             madnessTurns: 0,
                             frostbiteTurns: 0,
                             poisonTurns: 0,
@@ -3678,33 +3855,40 @@ generateCave(caveId) {
             const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
             const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
 
-            // Only spawn on a floor tile that isn't the start
             if (map[randY][randX] === theme.floor && (randX !== startPos.x || randY !== startPos.y)) {
                 const enemyTile = enemyTypes[Math.floor(random() * enemyTypes.length)];
                 const enemyTemplate = ENEMY_DATA[enemyTile];
 
-                // Place the enemy tile on the map
+                // Parse coordinates for scaling
+                const parts = caveId.split('_');
+                const caveX = parts.length > 2 ? parseInt(parts[1]) : 0;
+                const caveY = parts.length > 2 ? parseInt(parts[2]) : 0;
+                const scaledStats = getScaledEnemy(enemyTemplate, caveX, caveY);
+
+
                 map[randY][randX] = enemyTile;
 
-                // Add its data to the caveEnemies template cache
                 this.caveEnemies[caveId].push({
                     id: `${caveId}:${randX},${randY}`,
                     x: randX,
                     y: randY,
                     tile: enemyTile,
-                    name: enemyTemplate.name,
-                    health: enemyTemplate.maxHealth,
-                    maxHealth: enemyTemplate.maxHealth,
-                    attack: enemyTemplate.attack,
+                    name: scaledStats.name, // Use scaled name
+                    health: scaledStats.maxHealth, // Use scaled HP
+                    maxHealth: scaledStats.maxHealth,
+                    attack: scaledStats.attack, // Use scaled Atk
                     defense: enemyTemplate.defense,
-                    xp: enemyTemplate.xp,
+                    xp: scaledStats.xp,
                     loot: enemyTemplate.loot,
-                    // Check flags from data
                     teleporter: enemyTemplate.teleporter || false, 
                     caster: enemyTemplate.caster || false,
                     castRange: enemyTemplate.castRange || 0,
                     spellDamage: enemyTemplate.spellDamage || 0,
                     inflicts: enemyTemplate.inflicts || null,
+
+                    isElite: scaledStats.isElite || false,
+                    color: scaledStats.color || null,
+
                     madnessTurns: 0,
                     frostbiteTurns: 0,
                     poisonTurns: 0,
@@ -4803,6 +4987,78 @@ function handleItemDrop(event) {
     gameState.isDroppingItem = false;
 }
 
+function generateMagicItem(tier) {
+    // 1. Pick a random base item (Weapons or Armor)
+    const baseKeys = Object.keys(ITEM_DATA).filter(k => 
+        ITEM_DATA[k].type === 'weapon' || ITEM_DATA[k].type === 'armor'
+    );
+    // Filter out legendary/unique items if desired, or keep them for crazy rolls
+    const validBaseKeys = baseKeys.filter(k => !['Fists', 'Simple Tunic'].includes(ITEM_DATA[k].name));
+    
+    const baseKey = validBaseKeys[Math.floor(Math.random() * validBaseKeys.length)];
+    const template = ITEM_DATA[baseKey];
+    
+    // Clone the item
+    let newItem = {
+        name: template.name,
+        type: template.type,
+        quantity: 1,
+        tile: baseKey,
+        damage: template.damage || 0,
+        defense: template.defense || 0,
+        slot: template.slot,
+        statBonuses: template.statBonuses ? {...template.statBonuses} : {}
+    };
+
+    // 2. Roll for Prefix (50% chance + tier bonus)
+    if (Math.random() < 0.5 + (tier * 0.1)) {
+        const validPrefixes = Object.keys(LOOT_PREFIXES).filter(p => LOOT_PREFIXES[p].type === newItem.type);
+        if (validPrefixes.length > 0) {
+            // Pick based on tier (approximate logic: higher tier = better chance for good prefix)
+            const prefixName = validPrefixes[Math.floor(Math.random() * validPrefixes.length)];
+            const prefixData = LOOT_PREFIXES[prefixName];
+            
+            newItem.name = `${prefixName} ${newItem.name}`;
+            
+            // Apply bonuses
+            for (const stat in prefixData.bonus) {
+                if (stat === 'damage') newItem.damage += prefixData.bonus[stat];
+                else if (stat === 'defense') newItem.defense += prefixData.bonus[stat];
+                else newItem.statBonuses[stat] = (newItem.statBonuses[stat] || 0) + prefixData.bonus[stat];
+            }
+        }
+    }
+
+    // 3. Roll for Suffix (30% chance + tier bonus)
+    if (Math.random() < 0.3 + (tier * 0.1)) {
+        const suffixKeys = Object.keys(LOOT_SUFFIXES);
+        const suffixName = suffixKeys[Math.floor(Math.random() * suffixKeys.length)];
+        const suffixData = LOOT_SUFFIXES[suffixName];
+        
+        newItem.name = `${newItem.name} ${suffixName}`;
+        
+        // Apply bonuses
+        for (const stat in suffixData.bonus) {
+            if (stat === 'damage') newItem.damage += suffixData.bonus[stat];
+            else if (stat === 'defense') newItem.defense += suffixData.bonus[stat];
+            else newItem.statBonuses[stat] = (newItem.statBonuses[stat] || 0) + suffixData.bonus[stat];
+        }
+    }
+    
+    // 4. Scale base stats slightly by tier (The "+1 to +4" logic)
+    // If it didn't get a prefix, force a small buff based on tier
+    const tierBuff = Math.floor(Math.random() * tier) + 1;
+    if (newItem.type === 'weapon') newItem.damage += tierBuff;
+    if (newItem.type === 'armor') newItem.defense += tierBuff;
+    
+    // Ensure "Magic" status visually
+    if (newItem.name === template.name) {
+        newItem.name = `Reinforced ${newItem.name}`; // Fallback name
+    }
+
+    return newItem;
+}
+
 /**
  * Generates loot when an enemy is defeated.
  * Drops a mix of Junk, Gold, or Level-Scaled Loot.
@@ -4812,7 +5068,7 @@ function handleItemDrop(event) {
  */
 
 function generateEnemyLoot(player, enemy) {
-    // --- 1. Check for Active Fetch Quests (Unchanged) ---
+    // --- 1. Check for Active Fetch Quests ---
     const enemyTile = enemy.tile || Object.keys(ENEMY_DATA).find(k => ENEMY_DATA[k].name === enemy.name);
     for (const questId in player.quests) {
         const playerQuest = player.quests[questId];
@@ -4840,8 +5096,11 @@ function generateEnemyLoot(player, enemy) {
 
     // Junk / Specific Loot
     if (roll < JUNK_DROP_CHANCE) { 
+        // Specific overrides for flavor items not in ENEMY_DATA loot field
         if (enemy.tile === 'l' || enemy.name === 'Giant Leech') return '🐟'; 
         if (enemy.tile === '🐗' || enemy.name === 'Wild Boar') return '🍖'; 
+        
+        // Otherwise return the default loot defined in ENEMY_DATA (Rat Tails, etc.)
         return enemy.loot || '$';
     }
 
@@ -4850,15 +5109,41 @@ function generateEnemyLoot(player, enemy) {
         return '$'; 
     }
 
-    // --- 4. Distance-Based Equipment Drops ---
+    // --- 4. Magic Item Chance  ---
+    // Higher tier zones have higher chance of magic drops
+    let magicChance = 0.01; // 1% Base
+    if (dist > 500) magicChance = 0.10; // 10% in endgame
+    else if (dist > 250) magicChance = 0.05; // 5% in midgame
+    
+    // Luck Bonus (0.5% per luck point)
+    magicChance += (player.luck * 0.005);
+
+    if (enemy.isElite) {
+        magicChance += 0.15; // +15% chance for Magic Item from Elites!
+        logMessage(`The ${enemy.name} leaves behind a powerful essence...`);
+    }
+
+    if (Math.random() < magicChance) {
+        return '✨'; // Drop Unidentified Magic Item!
+    }
+
+    // --- 5. Standard Equipment Drops ---
     const scaledRoll = Math.random();
     
     // Define Tiers
-    const commonLoot = ['+', 'o', 'S', 'Y', '🐀', '🦇', '🦷', '🧣']; // Added mob drops here too!
-    const tier1Loot = ['/', '%', '🏏', '🦯', '🏹', '👕', '👘'];
-    const tier2Loot = ['!', '[', '📚', '🛡️', '🛡️w']; // Rusty/Leather/Basic Magic/Wood Shield
-    const tier3Loot = ['=', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i']; // Steel/Warlock/Longsword/Chainmail/Iron Shield
-    const tier4Loot = ['🪓', '🔨', '🛡️p']; // Greataxe/Warhammer/Plate
+    const commonLoot = ['+', 'o', 'S', 'Y', '🐀', '🦇', '🦷', '🧣']; 
+    
+    // Tier 1: Starter Gear (Club, Staff, Bow, Padded, Robes)
+    const tier1Loot = ['/', '%', '🏏', '🦯', '🏹', '👕', '👘']; 
+    
+    // Tier 2: Basic Iron/Leather
+    const tier2Loot = ['!', '[', '📚', '🛡️', '🛡️w']; 
+    
+    // Tier 3: Steel/Chain/Magic
+    const tier3Loot = ['=', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i']; 
+    
+    // Tier 4: Heavy/Plate
+    const tier4Loot = ['🪓', '🔨', '🛡️p']; 
 
     // Base Chance for "Good Loot"
     let tier1Chance = 0.30;
@@ -5651,7 +5936,9 @@ function useSkill(skillId) {
                             
                             if (enemy.health <= 0) {
                                 logMessage(`${enemy.name} is slain!`);
-                                grantXp(enemy.xp);
+                               
+                                registerKill(enemy);
+                                
                                 gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                                 // Note: Not generating loot for AoE to keep it simple, or add it if you want
                             }
@@ -5819,8 +6106,9 @@ async function executeLunge(dirX, dirY) {
 
                     if (enemy.health <= 0) {
                         logMessage(`You defeated the ${enemy.name}!`);
-                        grantXp(enemy.xp);
-                        updateQuestProgress(enemy.tile);
+                        
+                        registerKill(enemy);
+
                         const droppedLoot = generateEnemyLoot(player, enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                         
@@ -6544,6 +6832,129 @@ function initCraftingListeners() {
         }
     });
 }
+
+const collectionsModal = document.getElementById('collectionsModal');
+const closeCollectionsButton = document.getElementById('closeCollectionsButton');
+const bestiaryView = document.getElementById('bestiaryView');
+const libraryView = document.getElementById('libraryView');
+const tabBestiary = document.getElementById('tabBestiary');
+const tabLibrary = document.getElementById('tabLibrary');
+
+function openCollections() {
+    renderBestiary();
+    renderLibrary();
+    collectionsModal.classList.remove('hidden');
+}
+
+function renderBestiary() {
+    bestiaryView.innerHTML = '';
+    const kills = gameState.player.killCounts || {};
+    const sortedEnemies = Object.keys(ENEMY_DATA).sort((a,b) => ENEMY_DATA[a].name.localeCompare(ENEMY_DATA[b].name));
+
+    sortedEnemies.forEach(key => {
+        const data = ENEMY_DATA[key];
+        const count = kills[data.name] || 0;
+
+        // Unlock Levels
+        const unlockedName = count > 0;
+        const unlockedStats = count >= 5;
+        const unlockedLore = count >= 10;
+
+        if (!unlockedName) {
+            // Show ??? entry
+            const div = document.createElement('div');
+            div.className = 'bestiary-entry opacity-50';
+            div.innerHTML = `<div class="bestiary-icon">?</div><div>Unknown Creature</div>`;
+            bestiaryView.appendChild(div);
+            return;
+        }
+
+        let statsHtml = `<span class="text-xs">Kills: ${count}</span>`;
+        if (unlockedStats) {
+            statsHtml += `<br><span class="text-green-600">HP: ${data.maxHealth}</span> | <span class="text-red-500">Atk: ${data.attack}</span> | <span class="text-blue-500">Def: ${data.defense}</span>`;
+        } else {
+            statsHtml += `<br><span class="text-xs italic text-gray-400">Kill 5 to reveal stats</span>`;
+        }
+
+        let loreHtml = '';
+        if (unlockedLore && data.flavor) {
+            loreHtml = `<div class="text-xs mt-1 italic text-gray-600">"${data.flavor}"</div>`;
+        } else if (!unlockedLore) {
+             loreHtml = `<div class="text-xs mt-1 text-gray-300">Kill 10 to reveal lore</div>`;
+        }
+
+        const div = document.createElement('div');
+        div.className = 'bestiary-entry';
+        div.innerHTML = `
+            <div class="flex items-center gap-4">
+                <div class="bestiary-icon">${key}</div>
+                <div class="bestiary-info">
+                    <h4>${data.name}</h4>
+                    ${statsHtml}
+                    ${loreHtml}
+                </div>
+            </div>
+        `;
+        bestiaryView.appendChild(div);
+    });
+}
+
+function renderLibrary() {
+    libraryView.innerHTML = '';
+    
+    // 1. Gather all journals the player has *seen* or currently *has*
+    
+    // Iterate ITEM_DATA. If type == 'journal', check if player.foundLore has the key OR inventory has it.
+    
+    const inventoryTiles = gameState.player.inventory.map(i => i.tile);
+    
+    Object.keys(ITEM_DATA).forEach(key => {
+        const item = ITEM_DATA[key];
+        if (item.type === 'journal' || item.type === 'random_journal') {
+            
+            // Do we have it?
+            const hasItem = inventoryTiles.includes(key);
+            // Alternatively, add a "collectedJournals" set to player state later for permanent record
+            
+            if (hasItem) {
+                const div = document.createElement('div');
+                div.className = 'library-entry';
+                div.innerHTML = `<h4 class="font-bold">${item.name}</h4><p class="text-xs text-gray-500">${item.title || 'Untitled'}</p>`;
+                div.onclick = () => {
+                    loreTitle.textContent = item.title || item.name;
+                    loreContent.textContent = item.content || "The ink is smeared...";
+                    loreModal.classList.remove('hidden');
+                };
+                libraryView.appendChild(div);
+            }
+        }
+    });
+    
+    if (libraryView.children.length === 0) {
+        libraryView.innerHTML = '<div class="p-4 italic text-gray-500">You have not collected any journals yet.</div>';
+    }
+}
+
+// --- Event Listeners ---
+closeCollectionsButton.addEventListener('click', () => collectionsModal.classList.add('hidden'));
+
+tabBestiary.addEventListener('click', () => {
+    bestiaryView.classList.remove('hidden');
+    libraryView.classList.add('hidden');
+    tabBestiary.classList.add('border-b-2', 'border-blue-500', 'text-black');
+    tabBestiary.classList.remove('text-gray-500');
+    tabLibrary.classList.remove('border-b-2', 'border-blue-500', 'text-black');
+    tabLibrary.classList.add('text-gray-500');
+});
+
+tabLibrary.addEventListener('click', () => {
+    libraryView.classList.remove('hidden');
+    bestiaryView.classList.add('hidden');
+    tabLibrary.classList.add('border-b-2', 'border-blue-500', 'text-black');
+    tabLibrary.classList.remove('text-gray-500');
+    tabBestiary.classList.remove('border-b-2', 'border-blue-500', 'text-black');
+    tabBestiary.classList.add('text-gray-500');
+});
 
 function initSkillTrainerListeners() {
     closeSkillTrainerButton.addEventListener('click', () => {
@@ -7274,8 +7685,9 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
                     if (enemy.health <= 0) {
                         logMessage(`You defeated ${enemy.name}!`);
-                        grantXp(enemy.xp);
-                        updateQuestProgress(enemy.tile);
+
+                        registerKill(enemy);
+
                         const droppedLoot = generateEnemyLoot(player, enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                         if (map) map[coords.y][coords.x] = droppedLoot;
@@ -7362,14 +7774,13 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
            const finalEnemyState = transactionResult.snapshot.val();
             if (finalEnemyState === null) {
-                // FIX: Changed newX/newY to targetX/targetY
+
                 const deadEnemyInfo = getScaledEnemy(enemyData, targetX, targetY);
-                logMessage(`The ${deadEnemyInfo.name} was vanquished!`);
-                grantXp(deadEnemyInfo.xp);
-                updateQuestProgress(tile); // using 'tile' from earlier in the function
+                
+                registerKill(deadEnemyInfo);
+                
                 const droppedLoot = generateEnemyLoot(player, enemyData);
                 
-                // FIX: Changed newX/newY to targetX/targetY
                 chunkManager.setWorldTile(targetX, targetY, droppedLoot);
             }
                     } catch (error) {
@@ -7386,8 +7797,9 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
             if (enemy.health <= 0) {
                 logMessage(`You defeated the ${enemy.name}!`);
-                grantXp(enemy.xp);
-                updateQuestProgress(enemy.tile);
+                
+                registerKill(enemy);
+
                 const droppedLoot = generateEnemyLoot(player, enemy);
                 gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                 if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
@@ -7721,7 +8133,6 @@ const renderInventory = () => {
                     handleInput((index + 1).toString());
                 }
             };
-            // ----------------------------------
 
             // Build Tooltip Title
             let title = item.name;
@@ -7965,16 +8376,50 @@ const render = () => {
                 }
 
                 if (fgChar) {
-                    if (ENEMY_DATA[fgChar]) fgColor = '#ef4444'; // Red enemies
-                    else if (fgChar === '$') fgColor = '#ffd700';
-                    else if (fgChar === 'B') fgColor = '#fde047';
-                    // ... (Add other specific colors if desired) ...
+                    // Default Color
+                    ctx.fillStyle = fgColor; 
+
+                    // Check for Enemies
+                    if (ENEMY_DATA[fgChar]) {
+                        ctx.fillStyle = '#ef4444'; // Default Red
+
+                        // --- Elite Color Check ---
+                        // We need to find the specific enemy instance to check for the 'isElite' flag
+                        let isElite = false;
+                        let eliteColor = null;
+
+                        if (gameState.mapMode === 'overworld') {
+                            const enemyId = `overworld:${mapX},${-mapY}`;
+                            const enemyData = gameState.sharedEnemies[enemyId];
+                            if (enemyData && enemyData.isElite) {
+                                isElite = true;
+                                eliteColor = enemyData.color;
+                            }
+                        } else {
+                            // Instanced
+                            const enemy = gameState.instancedEnemies.find(e => e.x === mapX && e.y === mapY);
+                            if (enemy && enemy.isElite) {
+                                isElite = true;
+                                eliteColor = enemy.color;
+                            }
+                        }
+
+                        if (isElite) {
+                            ctx.fillStyle = eliteColor || '#facc15'; // Use affix color or Gold default
+                            // Optional: Draw a subtle glow/box behind elites
+                            ctx.strokeStyle = eliteColor || '#facc15';
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                        }
+                    } 
+                    else if (fgChar === '$') ctx.fillStyle = '#ffd700';
+                    else if (fgChar === '✨') ctx.fillStyle = '#a855f7'; // Magic items look purple!
+                    else if (fgChar === 'B') ctx.fillStyle = '#fde047';
                     
-                    ctx.fillStyle = fgColor;
+                    // Draw the Character
                     ctx.font = isWideChar(fgChar) ? `${TILE_SIZE}px monospace` : `${TILE_SIZE}px monospace`;
                     ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
                 }
-            }
 
             // --- APPLY SHADOW OVERLAY ---
             if (tileShadowOpacity > 0) {
@@ -8474,8 +8919,9 @@ function processEnemyTurns() {
             if (enemy.health <= 0) {
                 // Enemy died from poison
                 logMessage(`The ${enemy.name} succumbs to the poison!`);
-                grantXp(enemy.xp);
-                updateQuestProgress(enemy.tile);
+                
+                registerKill(enemy);
+                
                 const droppedLoot = generateEnemyLoot(gameState.player, enemy);
                 gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                 if (gameState.mapMode === 'dungeon') {
@@ -9013,6 +9459,7 @@ function handleInput(key) {
     if (key === 'i' || key === 'I') { openInventoryModal(); return; }
     if (key === 'm' || key === 'M') { openSpellbook(); return; }
     if (key === 'k' || key === 'K') { openSkillbook(); return; }
+    if (key === 'c' || key === 'C') { openCollections(); return; }
 
     // --- MOVEMENT & REST ---
     let newX = gameState.player.x;
@@ -9088,6 +9535,49 @@ function useInventoryItem(itemIndex) {
             render();
         } else {
             logMessage("You can't build a fire here.");
+            return;
+        }
+    }
+
+    // --- VOID KEY LOGIC ---
+    else if (itemToUse.name === 'Void Key') {
+        const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
+        
+        if (currentTile === 'Ω') {
+            logMessage("You insert the key into the rift...");
+            logMessage("REALITY SHATTERS.");
+            
+            // Consume key
+            itemToUse.quantity--;
+            if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
+            itemUsed = true;
+
+            // --- TELEPORT TO VOID ---
+            gameState.mapMode = 'dungeon';
+            // Create a unique ID for this specific rift instance
+            gameState.currentCaveId = `void_${gameState.player.x}_${gameState.player.y}`;
+            gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+            
+            // Generate the Void
+            const voidMap = chunkManager.generateCave(gameState.currentCaveId);
+            gameState.currentCaveTheme = 'VOID'; // Force the theme
+            
+            // Find entrance ('>')
+            for (let y = 0; y < voidMap.length; y++) {
+                const x = voidMap[y].indexOf('>');
+                if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
+            }
+            
+            // Setup enemies
+            const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
+            gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+            
+            updateRegionDisplay();
+            render();
+            syncPlayerState();
+            return; // Stop processing other logic
+        } else {
+            logMessage("You must be standing on a Void Rift (Ω) to use this.");
             return;
         }
     }
@@ -9343,7 +9833,7 @@ async function attemptMovePlayer(newX, newY) {
         }
         if (phaseWallTile && newTile === phaseWallTile) {
             logMessage("You step into the wall... and pass right through it like smoke.");
-        } 
+        }
         else if (theme && (newTile === theme.wall || newTile === ' ')) {
             logMessage("The wall is solid.");
             return;
@@ -9410,8 +9900,9 @@ async function attemptMovePlayer(newX, newY) {
                 // Enemy Death Logic
                 if (enemy.health <= 0) {
                     logMessage(`You defeated the ${enemy.name}!`);
-                    grantXp(enemy.xp);
-                    updateQuestProgress(enemy.tile);
+                    
+                    registerKill(enemy);
+
                     const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
                     gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
 
@@ -9462,8 +9953,9 @@ async function attemptMovePlayer(newX, newY) {
                             logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} damage from your thorns!`);
                             if (enemy.health <= 0) {
                                 logMessage(`The ${enemy.name} is killed by your thorns!`);
-                                grantXp(enemy.xp);
-                                updateQuestProgress(enemy.tile);
+                                
+                                registerKill(enemy);
+
                                 const droppedLoot = generateEnemyLoot(gameState.player, enemy);
                                 gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
                                 if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
@@ -9574,13 +10066,10 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     if (newTile === 'Ω') {
-        logMessage("The world dissolves around you...");
-        const rX = Math.floor((Math.random() * 4000) - 2000);
-        const rY = Math.floor((Math.random() * 4000) - 2000);
-        gameState.player.x = rX;
-        gameState.player.y = rY;
-        exitToOverworld("You stumble out of a rift in a strange land.");
-        return;
+        logMessage("A tear in reality. It is unstable.");
+        logMessage("You need a Void Key to stabilize the passage.");
+        // We allow the player to walk ONTO it, so they can use the key.
+        // We do NOT return here, allowing the movement to complete.
     }
 
     if (newTile === '🌵') {
@@ -10418,6 +10907,40 @@ async function attemptMovePlayer(newX, newY) {
 
     const itemData = ITEM_DATA[newTile];
     let inventoryWasUpdated = false;
+
+    if (newTile === '✨') {
+        if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+            // 1. Calculate Tier based on location
+            const dist = Math.sqrt(newX * newX + newY * newY);
+            let tier = 1;
+            if (dist > 500) tier = 4;
+            else if (dist > 250) tier = 3;
+            else if (dist > 100) tier = 2;
+            
+            // 2. Generate the Item
+            const newItem = generateMagicItem(tier);
+            
+            // 3. Add to inventory
+            gameState.player.inventory.push(newItem);
+            logMessage(`You picked up a ${newItem.name}!`);
+            
+            inventoryWasUpdated = true;
+            gameState.lootedTiles.add(tileId); 
+            
+            // Clear the tile
+            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '.');
+            else if (gameState.mapMode === 'dungeon') {
+                const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
+            } else if (gameState.mapMode === 'castle') {
+                chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
+            }
+        } else {
+            logMessage("You see a sparkling item, but your inventory is full!");
+        }
+        // Skip standard item logic
+        itemData = null; 
+    }
 
     function clearLootTile() {
         gameState.lootedTiles.add(tileId); 
