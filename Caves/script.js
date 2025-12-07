@@ -8420,6 +8420,7 @@ const render = () => {
                     ctx.font = isWideChar(fgChar) ? `${TILE_SIZE}px monospace` : `${TILE_SIZE}px monospace`;
                     ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
                 }
+            }
 
             // --- APPLY SHADOW OVERLAY ---
             if (tileShadowOpacity > 0) {
