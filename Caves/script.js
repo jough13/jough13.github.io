@@ -7817,6 +7817,34 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
  * @param {string} spellId - The ID of the spell being cast (e.g., "siphonLife").
  */
 async function applySpellDamage(targetX, targetY, damage, spellId) {
+
+    // --- WEATHER SYNERGY ---
+    const weather = gameState.weather; // Get current weather
+    let finalDamage = damage;
+
+    if (gameState.mapMode === 'overworld' && weather !== 'clear') {
+        
+        // Rain/Storm Logic
+        if (weather === 'rain' || weather === 'storm') {
+            if (spellId === 'fireball' || spellId === 'meteor') {
+                finalDamage = Math.floor(damage * 0.5); // Fire fizzles in rain
+                // Visual cue (only if player is casting)
+                if (gameState.player.x !== targetX) ParticleSystem.createFloatingText(targetX, targetY, "Fizzle...", "#aaa");
+            } else if (spellId === 'thunderbolt' || spellId === 'magicBolt') { 
+                finalDamage = Math.floor(damage * 1.5); // Lightning conducts!
+            }
+        } 
+        
+        // Snow Logic
+        else if (weather === 'snow') {
+             if (spellId === 'frostBolt') {
+                 finalDamage = Math.floor(damage * 1.5); // Ice enhanced
+             } else if (spellId === 'fireball') {
+                 finalDamage = Math.floor(damage * 0.8); // Fire dampened
+             }
+        }
+    }
+
     const player = gameState.player;
     const spellData = SPELL_DATA[spellId];
 
@@ -7860,7 +7888,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 }
             
                 // Calculate actual damage
-                damageDealt = Math.max(1, damage); 
+                damageDealt = Math.max(1, finalDamage);
                 enemy.health -= damageDealt;
 
                 let color = '#3b82f6'; // Blue for magic
@@ -8328,18 +8356,15 @@ const render = () => {
     const startX = gameState.player.x - viewportCenterX;
     const startY = gameState.player.y - viewportCenterY;
 
-    // --- LIGHTING CALCULATION ---
+// --- LIGHTING CALCULATION ---
     let ambientLight = 0.0; // 0.0 = bright, 1.0 = pitch black
     let lightRadius = 4; // Base vision radius
 
-    // Add bonus radius from perception or items (e.g. Torch)
-    // lightRadius += gameState.player.perception; 
-    
     if (gameState.mapMode === 'dungeon') {
-        ambientLight = 0.95; // Dungeons are very dark
-        lightRadius = 5 + Math.floor(gameState.player.perception / 2); // Perception helps in caves
+        ambientLight = 0.95; 
+        lightRadius = 5 + Math.floor(gameState.player.perception / 2); 
     } else if (gameState.mapMode === 'castle') {
-        ambientLight = 0.2; // Castles are dimly lit
+        ambientLight = 0.2; 
         lightRadius = 8;
     } else {
         // Overworld Day/Night Cycle
@@ -8347,12 +8372,20 @@ const render = () => {
         if (hour >= 6 && hour < 18) ambientLight = 0.0; // Day
         else if (hour >= 18 && hour < 20) ambientLight = 0.3; // Dusk
         else if (hour >= 5 && hour < 6) ambientLight = 0.3; // Dawn
-        else ambientLight = 0.85; // Night (Very dark)
+        else ambientLight = 0.85; // Night
         
-        if (ambientLight > 0.5) lightRadius = 5; // Reduced vision at night
-        else lightRadius = 20; // Full vision at day
+        // Base radius based on light
+        lightRadius = (ambientLight > 0.5) ? 5 : 20;
+
+        
+        if (gameState.weather === 'fog') {
+            lightRadius = 3; // Fog is blinding!
+            ambientLight = Math.max(ambientLight, 0.4); // Fog makes everything gray/dim
+        } else if (gameState.weather === 'storm' || gameState.weather === 'rain' || gameState.weather === 'snow') {
+            lightRadius = Math.max(lightRadius - 6, 4); // Storms darken vision
+        }
+        
     }
-    // ---------------------------
 
     const isWideChar = (char) => /\p{Extended_Pictographic}/u.test(char);
 
@@ -9282,6 +9315,35 @@ function endPlayerTurn() {
     gameState.playerTurnCount++; // Increment the player's turn
 
     updateWeather();
+
+    // --- NEW: STORM LIGHTNING STRIKES ---
+    if (gameState.mapMode === 'overworld' && gameState.weather === 'storm') {
+        // 15% chance of a lightning strike per turn
+        if (Math.random() < 0.15) {
+            // Pick a random spot near the player
+            const rx = gameState.player.x + Math.floor(Math.random() * 20) - 10;
+            const ry = gameState.player.y + Math.floor(Math.random() * 20) - 10;
+            
+            // Visual Effect
+            logMessage("⚡ CRACK! Lightning strikes nearby!");
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createExplosion(rx, ry, '#facc15', 10);
+            }
+
+            // Check if Player was hit!
+            if (rx === gameState.player.x && ry === gameState.player.y) {
+                logMessage("You were struck by lightning!! (10 Dmg)");
+                gameState.player.health -= 10;
+                triggerStatFlash(statDisplays.health, false);
+            } 
+            else {
+                // Check if Enemy was hit (re-use spell logic for convenience)
+                // We fake a 'thunderbolt' cast by nature to damage enemies
+                // We use 10 flat damage
+                applySpellDamage(rx, ry, 10, 'thunderbolt');
+            }
+        }
+    }
 
     const player = gameState.player;
     let updates = {};
