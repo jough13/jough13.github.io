@@ -682,3 +682,48 @@ kbd {
     background-color: rgba(239, 68, 68, 0.9);
     color: white;
 }
+
+.bestiary-entry {
+    background-color: var(--bg-page);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bestiary-icon {
+    font-size: 2rem;
+    width: 50px;
+    text-align: center;
+}
+
+.bestiary-info h4 {
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.bestiary-stats {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.bestiary-hidden {
+    filter: blur(4px);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.library-entry {
+    background-color: var(--bg-page);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 12px;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+.library-entry:hover {
+    transform: translateX(4px);
+    border-color: var(--text-highlight);
+}
