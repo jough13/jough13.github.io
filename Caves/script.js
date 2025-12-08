@@ -6078,19 +6078,26 @@ function initMobileControls() {
     // Show controls when entering game
     mobileContainer.classList.remove('hidden');
 
-    // Attach listeners
-    mobileContainer.addEventListener('click', (e) => {
-        // Prevent default double-tap zoom behaviors if possible
+    // Remove old listeners to prevent duplicates (Standard practice)
+    const newContainer = mobileContainer.cloneNode(true);
+    mobileContainer.parentNode.replaceChild(newContainer, mobileContainer);
+    
+    // Attach Generic Listener
+    // This automatically handles the new 'q' button we added to the HTML!
+    newContainer.addEventListener('click', (e) => {
         const btn = e.target.closest('button');
+        
+        // Prevent double-tap zoom
+        e.preventDefault();
+        
         if (btn && btn.dataset.key) {
-            e.preventDefault();
-            e.stopPropagation(); // Stop it from clicking through to the canvas
-            handleInput(btn.dataset.key);
+            e.stopPropagation(); // Stop click passing to canvas
+            handleInput(btn.dataset.key); // Sends 'q', 'ArrowUp', etc.
         }
     });
     
     // Prevent double-tap zoom on the buttons
-    mobileContainer.addEventListener('dblclick', (e) => {
+    newContainer.addEventListener('dblclick', (e) => {
         e.preventDefault();
     });
 }
@@ -9955,14 +9962,13 @@ function endPlayerTurn() {
     const player = gameState.player;
 
     // Base drain rates (Standard difficulty)
-    let hungerDrain = 0.1; // Was 0.2 (Slower overall)
-    let thirstDrain = 0.15; // Was 0.25 (Slower overall)
+    let hungerDrain = 0.02; // You lose 1 hunger every 50 turns. (Very slow)
+    let thirstDrain = 0.05; // You lose 1 thirst every 20 turns. (Manageable)
 
-    // "Grace Period" for new characters (Level 1 & 2)
-    // Drastically reduces drain so they can explore freely.
+    // Grace Period (Level 1-2)
     if (player.level < 3) {
-        hungerDrain = 0.01; // Extremely slow (basically paused)
-        thirstDrain = 0.02;
+        hungerDrain = 0.005; // Effectively zero
+        thirstDrain = 0.01;
     }
 
     player.hunger = Math.max(0, player.hunger - hungerDrain);
@@ -10234,6 +10240,90 @@ loreModal.addEventListener('click', (event) => {
     }
 });
 
+function drinkFromSource() {
+    const player = gameState.player;
+    
+    // 1. Define offsets to check (Current tile + N/S/E/W)
+    const offsets = [
+        {x:0, y:0},   // Standing on
+        {x:0, y:-1},  // North
+        {x:0, y:1},   // South
+        {x:-1, y:0},  // West
+        {x:1, y:0}    // East
+    ];
+
+    let foundWater = false;
+    let waterType = null;
+
+    // 2. Scan surroundings
+    for (const offset of offsets) {
+        const tx = player.x + offset.x;
+        const ty = player.y + offset.y;
+        
+        let tile;
+        // Logic to get tile based on map mode
+        if (gameState.mapMode === 'overworld') {
+            tile = chunkManager.getTile(tx, ty);
+        } else if (gameState.mapMode === 'dungeon') {
+            const map = chunkManager.caveMaps[gameState.currentCaveId];
+            tile = (map && map[ty]) ? map[ty][tx] : null;
+        } else if (gameState.mapMode === 'castle') {
+            const map = chunkManager.castleMaps[gameState.currentCastleId];
+            tile = (map && map[ty]) ? map[ty][tx] : null;
+        }
+
+        // Check for water types
+        if (tile === '~') { waterType = 'fresh'; foundWater = true; break; } // River/Lake
+        if (tile === '≈') { waterType = 'swamp'; foundWater = true; break; } // Swamp
+        if (tile === '⛲') { waterType = 'magic'; foundWater = true; break; } // Fountain
+    }
+
+    // 3. Apply Effects
+    if (foundWater) {
+        if (player.thirst >= player.maxThirst) {
+            logMessage("You aren't thirsty.");
+            return;
+        }
+
+        if (waterType === 'fresh') {
+            player.thirst = Math.min(player.maxThirst, player.thirst + 50);
+            logMessage("You cup your hands and drink from the water. (+50 Thirst)");
+            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+        } 
+        else if (waterType === 'swamp') {
+            player.thirst = Math.min(player.maxThirst, player.thirst + 30);
+            logMessage("The water tastes foul, but it helps. (+30 Thirst)");
+            
+            // 20% chance of Dysentery (Poison)
+            if (Math.random() < 0.2) {
+                logMessage("Your stomach churns... (Poisoned)");
+                player.poisonTurns = 5;
+            }
+            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+        }
+        else if (waterType === 'magic') {
+            player.thirst = player.maxThirst;
+            player.stamina = player.maxStamina; // Bonus!
+            logMessage("The magic water revitalizes you! (Full Thirst & Stamina)");
+            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+        }
+
+        // Save state
+        playerRef.update({ 
+            thirst: player.thirst,
+            poisonTurns: player.poisonTurns,
+            stamina: player.stamina 
+        });
+        
+        // Cost 1 turn
+        endPlayerTurn(); 
+        renderStats();
+
+    } else {
+        logMessage("There is no water nearby to drink.");
+    }
+}
+
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
     if (!player_id || gameState.player.health <= 0) return;
@@ -10262,6 +10352,11 @@ function handleInput(key) {
             gameState.inventoryMode = false;
             return;
         }
+        return;
+    }
+
+    if (key === 'q' || key === 'Q') {
+        drinkFromSource();
         return;
     }
 
