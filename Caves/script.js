@@ -2302,6 +2302,10 @@ const CRAFTING_RECIPES = {
         xp: 5, level: 1,
         yield: 4 // (Optional logic: 1 log = 4 sticks? For now, standard 1->1 or change logic later)
     },
+    "Torch": { 
+        materials: { "Stick": 1, "Tattered Rags": 1 }, 
+        xp: 5, level: 1 
+    },
 };
 
 const ITEM_DATA = {
@@ -2315,6 +2319,12 @@ const ITEM_DATA = {
         name: 'Stone',
         type: 'junk',
         description: "A heavy gray stone."
+    },
+    '🕯️': {
+        name: 'Torch',
+        type: 'tool',
+        tile: '🕯️', // Visual icon
+        description: "Increases light radius in dark places. Keep in inventory."
     },
     '⛺k': {
         name: 'Campfire Kit',
@@ -8822,12 +8832,18 @@ const render = () => {
     let ambientLight = 0.0; // 0.0 = bright, 1.0 = pitch black
     let baseRadius = 4;
 
+    // --- NEW: Check for Torch in Inventory ---
+    const hasTorch = gameState.player.inventory.some(item => item.name === 'Torch');
+    const torchBonus = hasTorch ? 4 : 0; // +4 radius if you have a torch
+    // -----------------------------------------
+
     if (gameState.mapMode === 'dungeon') {
         ambientLight = 0.95; 
-        baseRadius = 5 + Math.floor(gameState.player.perception / 2); 
+        // Add torchBonus here
+        baseRadius = 5 + Math.floor(gameState.player.perception / 2) + torchBonus; 
     } else if (gameState.mapMode === 'castle') {
         ambientLight = 0.2; 
-        baseRadius = 8;
+        baseRadius = 8 + torchBonus; // Castles are dim, so torch helps a bit
     } else {
         // Overworld Day/Night Cycle
         const hour = gameState.time.hour;
@@ -8836,14 +8852,15 @@ const render = () => {
         else if (hour >= 5 && hour < 6) ambientLight = 0.3; 
         else ambientLight = 0.85; 
         
-        baseRadius = (ambientLight > 0.5) ? 5 : 20;
+        // Only apply torch bonus if it's actually dark
+        baseRadius = (ambientLight > 0.5) ? 5 + torchBonus : 20;
 
         // Weather modifiers
         if (gameState.weather === 'fog') {
-            baseRadius = 3; 
+            baseRadius = 3 + (hasTorch ? 2 : 0); // Torch helps less in fog
             ambientLight = Math.max(ambientLight, 0.4); 
         } else if (gameState.weather === 'storm' || gameState.weather === 'rain') {
-            baseRadius = Math.max(baseRadius - 6, 4); 
+            baseRadius = Math.max(baseRadius - 6, 4) + torchBonus; 
         }
     }
 
