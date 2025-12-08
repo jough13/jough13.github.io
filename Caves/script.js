@@ -4323,97 +4323,68 @@ generateCave(caveId) {
                     
                     // --- MOUNTAINS ---
                     if (tile === '^') { 
-                        if (dist > 300 && hostileRoll < 0.002) chunkData[y][x] = 'Y'; // Yeti (Far)
-                        else if (dist > 150 && hostileRoll < 0.003) chunkData[y][x] = 'Ø'; // Ogre (Medium)
-                        else if (hostileRoll < 0.003) chunkData[y][x] = 'g'; // Goblins (Near)
-                        else if (hostileRoll < 0.005) chunkData[y][x] = '🦇'; // Giant Bat
+                        if (dist > 300 && hostileRoll < 0.0002) chunkData[y][x] = 'Y'; // Yeti (Was 0.002)
+                        else if (dist > 150 && hostileRoll < 0.0003) chunkData[y][x] = 'Ø'; // Ogre (Was 0.003)
+                        else if (hostileRoll < 0.0003) chunkData[y][x] = 'g'; // Goblins (Was 0.003)
+                        else if (hostileRoll < 0.0005) chunkData[y][x] = '🦇'; // Giant Bat (Was 0.005)
                         
-                        // Resources
+                        // Resources (Kept somewhat common so you can craft)
                         else if (hostileRoll < 0.007) { 
                             this.setWorldTile(worldX, worldY, '🏚'); 
-                            chunkData[y][x] = '🏚'; // Cracked Wall
+                            chunkData[y][x] = '🏚'; 
                         } 
                         else if (dist > 200 && hostileRoll < 0.010) { 
                             this.setWorldTile(worldX, worldY, '💠'); 
-                            chunkData[y][x] = '💠'; // Mithril
+                            chunkData[y][x] = '💠'; 
                         } 
-                        else {
-                            chunkData[y][x] = tile;
-                        }
+                        else chunkData[y][x] = tile;
                     }
 
                     // --- FORESTS ---
                     else if (tile === 'F') {
-                        if (dist > 250 && hostileRoll < 0.001) chunkData[y][x] = '🐺'; // Dire Wolf (Far)
-                        else if (hostileRoll < 0.002) chunkData[y][x] = 'w'; // Wolf
-                        else if (hostileRoll < 0.004) chunkData[y][x] = '🐗'; // Boar
-                        else if (hostileRoll < 0.006) chunkData[y][x] = '🐍'; // Viper
+                        if (dist > 250 && hostileRoll < 0.0001) chunkData[y][x] = '🐺'; // Dire Wolf (Was 0.001)
+                        else if (hostileRoll < 0.0002) chunkData[y][x] = 'w'; // Wolf (Was 0.002)
+                        else if (hostileRoll < 0.0004) chunkData[y][x] = '🐗'; // Boar (Was 0.004)
+                        else if (hostileRoll < 0.0006) chunkData[y][x] = '🐍'; // Viper (Was 0.006)
                         
                         // Resources
-                        else if (hostileRoll < 0.009) { 
-                            this.setWorldTile(worldX, worldY, '🌳'); 
-                            chunkData[y][x] = '🌳'; // Thicket
-                        } 
-                        else if (hostileRoll < 0.012) { 
-                            this.setWorldTile(worldX, worldY, '🕸'); 
-                            chunkData[y][x] = '🕸'; // Spider Web
-                        } 
-                        else if (hostileRoll < 0.015) { 
-                            this.setWorldTile(worldX, worldY, ':'); 
-                            chunkData[y][x] = ':'; // Wildberry
-                        }
-                        else {
-                            chunkData[y][x] = tile;
-                        }
+                        else if (hostileRoll < 0.009) { this.setWorldTile(worldX, worldY, '🌳'); chunkData[y][x] = '🌳'; } 
+                        else if (hostileRoll < 0.012) { this.setWorldTile(worldX, worldY, '🕸'); chunkData[y][x] = '🕸'; } 
+                        else if (hostileRoll < 0.015) { this.setWorldTile(worldX, worldY, ':'); chunkData[y][x] = ':'; }
+                        else chunkData[y][x] = tile;
                     }
 
                     // --- SWAMP ---
                     else if (tile === '≈') {
-                        if (hostileRoll < 0.003) chunkData[y][x] = 'l'; // Leech
-                        else if (hostileRoll < 0.005) chunkData[y][x] = '🐍'; // Viper
-                        
-                        // Resources
-                        else if (hostileRoll < 0.008) { 
-                            this.setWorldTile(worldX, worldY, '🌿'); 
-                            chunkData[y][x] = '🌿'; // Herb
-                        }
-                        else {
-                            chunkData[y][x] = tile;
-                        }
+                        if (hostileRoll < 0.0003) chunkData[y][x] = 'l'; // Leech (Was 0.003)
+                        else if (hostileRoll < 0.0005) chunkData[y][x] = '🐍'; // Viper (Was 0.005)
+                        else if (hostileRoll < 0.008) { this.setWorldTile(worldX, worldY, '🌿'); chunkData[y][x] = '🌿'; }
+                        else chunkData[y][x] = tile;
                     }
 
                     // --- PLAINS ---
                     else if (tile === '.') {
-                        if (dist > 150 && hostileRoll < 0.001) chunkData[y][x] = 'o'; // Orc (Medium)
-                        else if (hostileRoll < 0.001) chunkData[y][x] = 'w'; // Wolf
-                        else if (hostileRoll < 0.002) chunkData[y][x] = 'b'; // Bandit
-                        else if (hostileRoll < 0.004) chunkData[y][x] = 'r'; // Giant Rat
-                        else if (hostileRoll < 0.005) chunkData[y][x] = 'R'; // Bandit Recruit
-                        else {
-                            chunkData[y][x] = tile;
-                        }
+                        if (dist > 150 && hostileRoll < 0.0001) chunkData[y][x] = 'o'; // Orc (Was 0.001)
+                        else if (hostileRoll < 0.0001) chunkData[y][x] = 'w'; // Wolf (Was 0.001)
+                        else if (hostileRoll < 0.0002) chunkData[y][x] = 'b'; // Bandit (Was 0.002)
+                        else if (hostileRoll < 0.0004) chunkData[y][x] = 'r'; // Giant Rat (Was 0.004)
+                        else if (hostileRoll < 0.0005) chunkData[y][x] = 'R'; // Bandit Recruit (Was 0.005)
+                        else chunkData[y][x] = tile;
                     }
 
                     // --- DEADLANDS ---
                     else if (tile === 'd') {
-                        if (dist > 400 && hostileRoll < 0.001) chunkData[y][x] = 'D'; // Void Demon (Very Far)
-                        else if (hostileRoll < 0.002) chunkData[y][x] = 's'; // Skeleton
-                        else if (hostileRoll < 0.004) chunkData[y][x] = 'b'; // Bandit
-                        else {
-                            chunkData[y][x] = tile;
-                        }
+                        if (dist > 400 && hostileRoll < 0.0001) chunkData[y][x] = 'D'; // Void Demon (Was 0.001)
+                        else if (hostileRoll < 0.0002) chunkData[y][x] = 's'; // Skeleton (Was 0.002)
+                        else if (hostileRoll < 0.0004) chunkData[y][x] = 'b'; // Bandit (Was 0.004)
+                        else chunkData[y][x] = tile;
                     }
 
                     // --- DESERT ---
                     else if (tile === 'D') {
-                        if (hostileRoll < 0.001) { 
-                            this.setWorldTile(worldX, worldY, '🌵'); 
-                            chunkData[y][x] = '🌵'; // Cactus
-                        }
-                        else if (hostileRoll < 0.003) chunkData[y][x] = '🦂'; // Scorpion
-                        else {
-                            chunkData[y][x] = tile;
-                        }
+                        if (hostileRoll < 0.001) { this.setWorldTile(worldX, worldY, '🌵'); chunkData[y][x] = '🌵'; }
+                        else if (hostileRoll < 0.0003) chunkData[y][x] = '🦂'; // Scorpion (Was 0.003)
+                        else chunkData[y][x] = tile;
                     }
                     
                     else {
@@ -8434,8 +8405,9 @@ const render = () => {
                 tile = chunkManager.getTile(mapX, mapY);
 
                 // --- PROCEDURAL OVERWORLD RENDERING ---
-                
+
                 switch (tile) {
+                    // --- BIOMES ---
                     case '~':
                         TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#1e3a8a', '#3b82f6');
                         break;
@@ -8464,6 +8436,48 @@ const render = () => {
                     case 'D': // Desert
                         TileRenderer.drawDesert(ctx, x, y, mapX, mapY, '#fde047');
                         break;
+
+                    // --- FOREST ITEMS (Dark Green Background) ---
+                    case ':': // Wildberry
+                        TileRenderer.drawBase(ctx, x, y, '#14532d'); 
+                        fgChar = tile; fgColor = '#f87171'; // Red Berries
+                        break;
+                    case '🕸': // Web
+                        TileRenderer.drawBase(ctx, x, y, '#14532d'); 
+                        fgChar = tile; fgColor = '#e5e7eb'; // White Web
+                        break;
+                    case '🌳': // Thicket
+                        TileRenderer.drawBase(ctx, x, y, '#14532d'); 
+                        fgChar = tile; fgColor = '#4ade80'; // Bright Green Thicket
+                        break;
+
+                    // --- SWAMP ITEMS (Swamp Water Background) ---
+                    case '🌿': // Herb
+                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#422006', '#14532d');
+                        fgChar = tile; fgColor = '#86efac'; // Light Green Herb
+                        break;
+                    case 'l': // Leech
+                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#422006', '#14532d');
+                        fgChar = tile; fgColor = '#a3a3a3'; // Grey Leech
+                        break;
+
+                    // --- MOUNTAIN ITEMS (Grey Stone Background) ---
+                    case '🏚': // Cracked Wall
+                        TileRenderer.drawBase(ctx, x, y, '#57534e');
+                        fgChar = tile; fgColor = '#d6d3d1'; // Light Grey Wall
+                        break;
+                    case '💠': // Mithril
+                        TileRenderer.drawBase(ctx, x, y, '#57534e');
+                        fgChar = tile; fgColor = '#67e8f9'; // Cyan Crystal
+                        break;
+
+                    // --- DESERT ITEMS (Sand Background) ---
+                    case '🌵': // Cactus
+                        TileRenderer.drawDesert(ctx, x, y, mapX, mapY, '#fde047');
+                        fgChar = tile; fgColor = '#15803d'; // Green Cactus
+                        break;
+
+                    // --- DEFAULT (Plains Green) ---
                     default:
                         TileRenderer.drawBase(ctx, x, y, '#22c55e');
                         fgChar = tile;
