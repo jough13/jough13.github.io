@@ -8421,9 +8421,28 @@ const render = () => {
                     case 'Ω': // Void Rift
                         TileRenderer.drawVoid(ctx, x, y);
                         break;
-                    case '^':
-                        TileRenderer.drawMountain(ctx, x, y, mapX, mapY, '#57534e', '#d6d3d1');
+                    case '^': 
+                        // Check moisture to determine background color
+                        const mtMoist = moistureNoise.noise(mapX / 50, mapY / 50);
+                        let mtBg = '#57534e'; // Default: Grey Rock
+                        
+                        if (mtMoist > 0.55) mtBg = '#14532d';      // High Moisture: Forest Green
+                        else if (mtMoist > 0.15) mtBg = '#22c55e'; // Med Moisture: Plains Green (Grassy Hill)
+                        
+                        TileRenderer.drawMountain(ctx, x, y, mapX, mapY, mtBg, '#d6d3d1');
                         break;
+
+                    case '⛰': // Cave Entrance
+                        const caveMoist = moistureNoise.noise(mapX / 50, mapY / 50);
+                        let caveBg = '#57534e'; // Default: Grey
+                        
+                        if (caveMoist > 0.55) caveBg = '#14532d';      // Forest Green
+                        else if (caveMoist > 0.15) caveBg = '#22c55e'; // Plains Green
+                        
+                        TileRenderer.drawBase(ctx, x, y, caveBg);
+                        fgChar = tile; 
+                        break;
+                        
                     case 'F':
                         TileRenderer.drawForest(ctx, x, y, mapX, mapY, '#14532d', '#166534');
                         break;
