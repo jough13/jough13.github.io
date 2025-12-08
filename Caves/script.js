@@ -1519,6 +1519,9 @@ window.selectBackground = async function(bgKey) {
     renderEquipment();
     renderInventory();
     renderTime();
+
+    resizeCanvas();
+    
     render();
     
     // Resume the connection listener that was paused/waiting
