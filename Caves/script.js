@@ -9363,6 +9363,42 @@ const render = () => {
     if (typeof ParticleSystem !== 'undefined') {
         ParticleSystem.draw(ctx, startX, startY);
     }
+
+    // --- BOSS HEALTH BAR UI ---
+    // Check if there is an active boss in the current instance
+    if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+        const activeBoss = gameState.instancedEnemies.find(e => e.isBoss);
+        
+        if (activeBoss) {
+            const barWidth = canvas.width * 0.6; // 60% of screen width
+            const barHeight = 20;
+            const barX = (canvas.width - barWidth) / 2; // Center it
+            const barY = 40; // Near the top
+
+            // 1. Draw Name
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(activeBoss.name, canvas.width / 2, barY - 10);
+
+            // 2. Draw Background (Black)
+            ctx.fillStyle = '#000000';
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+            // 3. Draw Health (Red)
+            const healthPercent = Math.max(0, activeBoss.health / activeBoss.maxHealth);
+            ctx.fillStyle = '#dc2626'; // Deep Red
+            ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * healthPercent, barHeight - 4);
+
+            // 4. Draw Text (HP / Max)
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '12px monospace';
+            ctx.fillText(`${activeBoss.health} / ${activeBoss.maxHealth}`, canvas.width / 2, barY + 14);
+        }
+    }
 };
 
 function syncPlayerState() {
