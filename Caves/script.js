@@ -3539,7 +3539,7 @@ const moistureNoise = Object.create(Perlin);
 moistureNoise.init(WORLD_SEED + ':moisture');
 
 const TileRenderer = {
-    // Helper: Deterministic random based on coordinates
+    // Helper: Deterministic random based on WORLD coordinates
     getPseudoRandom: (x, y) => {
         return Math.abs(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1;
     },
@@ -3563,21 +3563,22 @@ const TileRenderer = {
         ctx.stroke();
     },
 
-    drawFlower: (ctx, x, y) => {
+    drawFlower: (ctx, x, y, seedX, seedY) => {
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
         // Stem
         ctx.strokeStyle = '#166534';
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(tx + 10, ty + 16); ctx.lineTo(tx + 10, ty + 8); ctx.stroke();
-        // Petals
-        ctx.fillStyle = (x + y) % 2 === 0 ? '#f472b6' : '#facc15'; // Pink or Yellow
+        // Petals (Color based on world coord, not screen)
+        ctx.fillStyle = (seedX + seedY) % 2 === 0 ? '#f472b6' : '#facc15'; 
         ctx.beginPath(); ctx.arc(tx + 10, ty + 8, 2.5, 0, Math.PI * 2); ctx.fill();
     },
 
-    drawPebble: (ctx, x, y, color) => {
-        const tx = x * TILE_SIZE + (x * 3 % 10) + 2; // Random-ish position
-        const ty = y * TILE_SIZE + (y * 7 % 10) + 5;
+    drawPebble: (ctx, x, y, color, seedX, seedY) => {
+        // Position relies on world coords to stay static
+        const tx = x * TILE_SIZE + (Math.abs(seedX) * 3 % 10) + 2; 
+        const ty = y * TILE_SIZE + (Math.abs(seedY) * 7 % 10) + 5;
         ctx.fillStyle = color;
         ctx.beginPath(); ctx.arc(tx, ty, 2, 0, Math.PI * 2); ctx.fill();
     },
@@ -3587,27 +3588,26 @@ const TileRenderer = {
         const ty = y * TILE_SIZE + 10;
         ctx.strokeStyle = '#d4d4d8';
         ctx.lineWidth = 2;
-        // Tiny X shape
         ctx.beginPath(); 
         ctx.moveTo(tx-3, ty-3); ctx.lineTo(tx+3, ty+3);
         ctx.moveTo(tx+3, ty-3); ctx.lineTo(tx-3, ty+3);
         ctx.stroke();
     },
 
-    // --- BIOME RENDERERS ---
+    // --- BIOME RENDERERS (Now accepting mapX/mapY) ---
 
     // 🌲 Forests
-    drawForest: (ctx, x, y, baseColor, accentColor) => {
+    drawForest: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         
-        // 20% chance for a mushroom
-        if (TileRenderer.getPseudoRandom(x, y) < 0.2) {
+        // Reduced frequency: 5% chance (was 20%)
+        if (TileRenderer.getPseudoRandom(mapX, mapY) < 0.05) {
             const tx = x * TILE_SIZE + 10;
             const ty = y * TILE_SIZE + 14;
-            ctx.fillStyle = '#fca5a5'; // Light red mushroom
-            ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI, true); ctx.fill(); // Cap
+            ctx.fillStyle = '#fca5a5'; 
+            ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI, true); ctx.fill(); 
             ctx.fillStyle = '#fff';
-            ctx.fillRect(tx - 1, ty, 2, 4); // Stem
+            ctx.fillRect(tx - 1, ty, 2, 4); 
         }
 
         ctx.fillStyle = accentColor;
@@ -3621,11 +3621,11 @@ const TileRenderer = {
     },
 
     // ⛰ Mountains
-    drawMountain: (ctx, x, y, baseColor, accentColor) => {
+    drawMountain: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
-        // Add random pebbles
-        if (TileRenderer.getPseudoRandom(x, y) > 0.5) {
-            TileRenderer.drawPebble(ctx, x, y, '#78716c');
+        // Reduced frequency: 10% chance (was 50%)
+        if (TileRenderer.getPseudoRandom(mapX, mapY) < 0.1) {
+            TileRenderer.drawPebble(ctx, x, y, '#78716c', mapX, mapY);
         }
         
         ctx.fillStyle = accentColor;
@@ -3639,17 +3639,17 @@ const TileRenderer = {
     },
 
     // . Plains
-    drawPlains: (ctx, x, y, baseColor, accentColor) => {
+    drawPlains: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         
-        const rand = TileRenderer.getPseudoRandom(x, y);
+        const rand = TileRenderer.getPseudoRandom(mapX, mapY);
         
-        if (rand < 0.1) {
-            TileRenderer.drawFlower(ctx, x, y); // 10% Chance for Flower
-        } else if (rand < 0.3) {
-            TileRenderer.drawGrassTuft(ctx, x, y, accentColor); // 20% Chance for detailed grass
-        } else if ((x * 123 + y * 456) % 7 === 0) { 
-            // Fallback to simple line for variety
+        // Reduced frequencies:
+        if (rand < 0.02) { // 2% Chance for Flower (was 10%)
+            TileRenderer.drawFlower(ctx, x, y, mapX, mapY); 
+        } else if (rand < 0.10) { // 8% Chance for Grass (was 20%)
+            TileRenderer.drawGrassTuft(ctx, x, y, accentColor); 
+        } else if ((mapX * 123 + mapY * 456) % 11 === 0) { // Spread out detail lines
             ctx.strokeStyle = accentColor;
             ctx.lineWidth = 1;
             const tx = x * TILE_SIZE + TILE_SIZE/2;
@@ -3663,26 +3663,25 @@ const TileRenderer = {
     },
 
     // d Deadlands
-    drawDeadlands: (ctx, x, y, baseColor, accentColor) => {
+    drawDeadlands: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
-        const rand = TileRenderer.getPseudoRandom(x, y);
+        const rand = TileRenderer.getPseudoRandom(mapX, mapY);
         
-        if (rand < 0.1) {
-            TileRenderer.drawBone(ctx, x, y); // 10% Chance for Bones
-        } else if (rand < 0.3) {
-            TileRenderer.drawPebble(ctx, x, y, '#52525b');
+        if (rand < 0.03) { // 3% Chance for Bones (was 10%)
+            TileRenderer.drawBone(ctx, x, y); 
+        } else if (rand < 0.15) {
+            TileRenderer.drawPebble(ctx, x, y, '#52525b', mapX, mapY);
         }
     },
 
     // D Desert
-    drawDesert: (ctx, x, y, baseColor) => {
+    drawDesert: (ctx, x, y, mapX, mapY, baseColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
-        // Draw sand ripples
-        const rand = TileRenderer.getPseudoRandom(x, y);
-        if (rand > 0.6) {
+        const rand = TileRenderer.getPseudoRandom(mapX, mapY);
+        if (rand > 0.7) { // Reduced ripples
             const tx = x * TILE_SIZE;
             const ty = y * TILE_SIZE;
-            ctx.strokeStyle = '#d97706'; // Darker sand
+            ctx.strokeStyle = '#d97706'; 
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(tx + 4, ty + 10);
@@ -3691,32 +3690,15 @@ const TileRenderer = {
         }
     },
 
-    // 🧱 Walls
-    drawWall: (ctx, x, y, baseColor, accentColor) => {
-        TileRenderer.drawBase(ctx, x, y, baseColor);
-        ctx.strokeStyle = accentColor;
-        ctx.lineWidth = 1;
-        const tx = x * TILE_SIZE;
-        const ty = y * TILE_SIZE;
-        ctx.beginPath();
-        ctx.moveTo(tx, ty + TILE_SIZE/2);
-        ctx.lineTo(tx + TILE_SIZE, ty + TILE_SIZE/2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(tx + TILE_SIZE/2, ty);
-        ctx.lineTo(tx + TILE_SIZE/2, ty + TILE_SIZE/2);
-        ctx.stroke();
-    },
-
     // 🌊 Water (Animated)
-    drawWater: (ctx, x, y, baseColor, accentColor) => {
+    drawWater: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         ctx.strokeStyle = accentColor;
         ctx.lineWidth = 1;
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
-        // Wave animation based on time
-        const timeOffset = Math.sin(Date.now() / 500 + x); 
+        // Use mapX for consistent wave position
+        const timeOffset = Math.sin(Date.now() / 500 + mapX); 
         const yOffset = timeOffset * 2;
         ctx.beginPath();
         ctx.moveTo(tx + 2, ty + TILE_SIZE/2 + yOffset);
@@ -3729,18 +3711,12 @@ const TileRenderer = {
         TileRenderer.drawBase(ctx, x, y, '#451a03'); 
         const tx = x * TILE_SIZE + TILE_SIZE/2;
         const ty = y * TILE_SIZE + TILE_SIZE - 2;
-        
         const flicker = Math.sin(Date.now() / 100) * 3;
         
         ctx.fillStyle = '#ef4444'; 
-        ctx.beginPath();
-        ctx.arc(tx, ty - 4, 4 + (flicker*0.2), 0, Math.PI * 2);
-        ctx.fill();
-        
+        ctx.beginPath(); ctx.arc(tx, ty - 4, 4 + (flicker*0.2), 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#facc15'; 
-        ctx.beginPath();
-        ctx.arc(tx, ty - 4, 2 + (flicker*0.1), 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(tx, ty - 4, 2 + (flicker*0.1), 0, Math.PI * 2); ctx.fill();
     },
 
     // Ω Void Rift (Animated)
@@ -3748,20 +3724,25 @@ const TileRenderer = {
         TileRenderer.drawBase(ctx, x, y, '#000');
         const tx = x * TILE_SIZE + TILE_SIZE/2;
         const ty = y * TILE_SIZE + TILE_SIZE/2;
-        
         const pulse = Math.sin(Date.now() / 300);
         const size = 6 + (pulse * 2);
         
         ctx.strokeStyle = '#a855f7'; 
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(tx, ty, size, 0, Math.PI * 2);
-        ctx.stroke();
-        
+        ctx.beginPath(); ctx.arc(tx, ty, size, 0, Math.PI * 2); ctx.stroke();
         ctx.fillStyle = '#581c87'; 
-        ctx.beginPath();
-        ctx.arc(tx, ty, size/2, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(tx, ty, size/2, 0, Math.PI * 2); ctx.fill();
+    },
+
+    // 🧱 Walls (Standard)
+    drawWall: (ctx, x, y, baseColor, accentColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 1;
+        const tx = x * TILE_SIZE;
+        const ty = y * TILE_SIZE;
+        ctx.beginPath(); ctx.moveTo(tx, ty + TILE_SIZE/2); ctx.lineTo(tx + TILE_SIZE, ty + TILE_SIZE/2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(tx + TILE_SIZE/2, ty); ctx.lineTo(tx + TILE_SIZE/2, ty + TILE_SIZE/2); ctx.stroke();
     }
 };
 
@@ -8451,18 +8432,42 @@ const render = () => {
             } 
             else { 
                 tile = chunkManager.getTile(mapX, mapY);
-                // Draw Terrain
+
+                // --- PROCEDURAL OVERWORLD RENDERING ---
+                
                 switch (tile) {
-                    case '~': TileRenderer.drawWater(ctx, x, y, '#1e3a8a', '#3b82f6'); break;
-                    case '≈': TileRenderer.drawWater(ctx, x, y, '#422006', '#14532d'); fgChar = ','; fgColor = '#4b5535'; break;
-                    case '🔥': TileRenderer.drawFire(ctx, x, y); break;
-                    case 'Ω': TileRenderer.drawVoid(ctx, x, y); break;
-                    case '^': TileRenderer.drawMountain(ctx, x, y, '#57534e', '#d6d3d1'); break;
-                    case 'F': TileRenderer.drawForest(ctx, x, y, '#14532d', '#166534'); break;
-                    case '.': TileRenderer.drawPlains(ctx, x, y, '#22c55e', '#15803d'); break;
-                    case 'd': TileRenderer.drawDeadlands(ctx, x, y, '#2d2d2d', '#444'); break;
-                    case 'D': TileRenderer.drawDesert(ctx, x, y, '#fde047'); break;
-                    default: TileRenderer.drawBase(ctx, x, y, '#22c55e'); fgChar = tile; break;
+                    case '~':
+                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#1e3a8a', '#3b82f6');
+                        break;
+                    case '≈': // Swamp
+                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#422006', '#14532d'); 
+                        fgChar = ','; fgColor = '#4b5535';
+                        break;
+                    case '🔥': // Cooking Fire
+                        TileRenderer.drawFire(ctx, x, y);
+                        break;
+                    case 'Ω': // Void Rift
+                        TileRenderer.drawVoid(ctx, x, y);
+                        break;
+                    case '^':
+                        TileRenderer.drawMountain(ctx, x, y, mapX, mapY, '#57534e', '#d6d3d1');
+                        break;
+                    case 'F':
+                        TileRenderer.drawForest(ctx, x, y, mapX, mapY, '#14532d', '#166534');
+                        break;
+                    case '.':
+                        TileRenderer.drawPlains(ctx, x, y, mapX, mapY, '#22c55e', '#15803d');
+                        break;
+                    case 'd': // Deadlands
+                        TileRenderer.drawDeadlands(ctx, x, y, mapX, mapY, '#2d2d2d', '#444');
+                        break;
+                    case 'D': // Desert
+                        TileRenderer.drawDesert(ctx, x, y, mapX, mapY, '#fde047');
+                        break;
+                    default:
+                        TileRenderer.drawBase(ctx, x, y, '#22c55e');
+                        fgChar = tile;
+                        break;
                 }
             }
 
