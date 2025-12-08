@@ -489,6 +489,32 @@ const CASTLE_SHOP_INVENTORY = [{
 ];
 
 const QUEST_DATA = {
+    "healerSupply": {
+        title: "Herbal Remedies",
+        description: "The Healer is running low on supplies. Gather 5 Medicinal Herbs ('🌿') from the swamp.",
+        type: 'collect',
+        itemNeeded: 'Medicinal Herb',
+        needed: 5,
+        reward: {
+            xp: 200,
+            coins: 50,
+            item: 'Healing Potion', // New reward type!
+            itemQty: 3
+        }
+    },
+    "banditChief": {
+        title: "Wanted: The Chief",
+        description: "The Bandit Chief ('C') has been spotted in the fortresses. Put an end to his reign.",
+        type: 'kill', // Uses the standard kill tracking
+        enemy: 'C',   // Tracks kills of 'C' (Bandit Chief)
+        needed: 1,
+        reward: {
+            xp: 500,
+            coins: 300,
+            item: 'Steel Sword',
+            itemQty: 1
+        }
+    },
     "goblinHeirloom": {
         title: "The Lost Heirloom",
         description: "A villager is distraught. A goblin ('g') stole their family heirloom!",
@@ -1666,6 +1692,15 @@ function createDefaultPlayerState() {
         maxStamina: 10,
         psyche: 10,
         maxPsyche: 10,
+
+        // --- LIGHT SURVIVAL STATS ---
+        hunger: 50, // Start at half (Neutral)
+        maxHunger: 100,
+        thirst: 50,
+        maxThirst: 100,
+
+        unlockedWaypoints: [], // Stores objects: { x, y, name }
+
         strength: 1,
         wits: 1,
         luck: 1,
@@ -1689,6 +1724,8 @@ function createDefaultPlayerState() {
         },
 
         inventory: [],
+
+        bank: [], // Persistent storage
 
         talents: [], // Array of strings (e.g. ['bloodlust', 'scholar'])
         talentPoints: 0,
@@ -1815,6 +1852,76 @@ function registerKill(enemy) {
         quests: gameState.player.quests
     });
 }
+
+const fastTravelModal = document.getElementById('fastTravelModal');
+const fastTravelList = document.getElementById('fastTravelList');
+const closeFastTravelButton = document.getElementById('closeFastTravelButton');
+
+function openFastTravelModal() {
+    renderFastTravelList();
+    fastTravelModal.classList.remove('hidden');
+    // Hide the lore modal if it was open (since we opened this from there)
+    loreModal.classList.add('hidden');
+}
+
+function renderFastTravelList() {
+    fastTravelList.innerHTML = '';
+    const waypoints = gameState.player.unlockedWaypoints || [];
+    
+    if (waypoints.length <= 1) {
+        fastTravelList.innerHTML = '<li class="italic text-gray-500 p-2">You haven\'t attuned to any other Waystones yet. Explore the world to find them!</li>';
+        return;
+    }
+
+    waypoints.forEach(wp => {
+        // Don't show the one we are standing on
+        if (wp.x === gameState.player.x && wp.y === gameState.player.y) return;
+
+        const li = document.createElement('li');
+        li.className = 'shop-item'; // Reuse shop styling for nice boxes
+        li.innerHTML = `
+            <div>
+                <span class="font-bold text-indigo-400">${wp.name}</span>
+                <div class="text-xs text-gray-400">Coords: ${wp.x}, ${-wp.y}</div>
+            </div>
+            <button class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded text-xs font-bold" onclick="handleFastTravel(${wp.x}, ${wp.y})">Travel</button>
+        `;
+        fastTravelList.appendChild(li);
+    });
+}
+
+window.handleFastTravel = function(targetX, targetY) {
+    const player = gameState.player;
+    const TRAVEL_COST = 10;
+
+    if (player.mana < TRAVEL_COST) {
+        logMessage("Not enough Mana to travel the leylines.");
+        return;
+    }
+
+    player.mana -= TRAVEL_COST;
+    player.x = targetX;
+    player.y = targetY;
+
+    logMessage("You dissolve into pure energy and reappear at the Waystone.");
+    triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+    
+    // Teleport logic
+    chunkManager.setWorldTile(player.x, player.y, '#'); // Ensure landing spot exists visually
+    updateRegionDisplay();
+    render();
+    syncPlayerState();
+    
+    // Unload far chunks
+    const currentChunkX = Math.floor(player.x / chunkManager.CHUNK_SIZE);
+    const currentChunkY = Math.floor(player.y / chunkManager.CHUNK_SIZE);
+    chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
+
+    fastTravelModal.classList.add('hidden');
+    playerRef.update({ mana: player.mana, x: player.x, y: player.y });
+};
+
+closeFastTravelButton.addEventListener('click', () => fastTravelModal.classList.add('hidden'));
 
 function getInterpolatedDayCycleColor(hour, minute) {
     const currentTimeInMinutes = hour * 60 + minute;
@@ -2005,6 +2112,10 @@ const COOKING_RECIPES = {
         materials: { "Cactus Fruit": 2, "Raw Meat": 1 }, 
         xp: 20, level: 2 
     },
+    "Clean Water": { 
+        materials: { "Dirty Water": 1 }, 
+        xp: 5, level: 1 
+    },
     "Hearty Meal": { 
         materials: { "Steak": 1, "Grilled Fish": 1, "Wildberry": 1 }, 
         xp: 50, level: 3 
@@ -2163,6 +2274,23 @@ const CRAFTING_RECIPES = {
         materials: { "Gold Coin": 200, "Arcane Dust": 10, "Basilisk Eye": 1 },
         xp: 250, level: 5
     },
+    // --- HOMESTEAD ---
+    "Stone Wall": { 
+        materials: { "Stone": 2 }, 
+        xp: 10, level: 1 
+    },
+    "Wood Floor": { 
+        materials: { "Wood Log": 1 }, 
+        xp: 5, level: 1, yield: 2 // Get 2 floors per log
+    },
+    "Wooden Door": { 
+        materials: { "Wood Log": 2 }, 
+        xp: 15, level: 1 
+    },
+    "Stash Box": { 
+        materials: { "Wood Log": 4, "Iron Ore": 1 }, 
+        xp: 50, level: 2 
+    },
     // --- SURVIVAL GEAR ---
     "Campfire Kit": { 
         materials: { "Wood Log": 3, "Stone": 4 }, 
@@ -2276,6 +2404,49 @@ const ITEM_DATA = {
         description: "Simple wood and string. Good for hunting."
     },
 
+    // --- SURVIVAL ITEMS ---
+    '🫙': {
+        name: 'Empty Bottle',
+        type: 'consumable', 
+        description: "Use on water (~/≈) to fill.",
+        tile: '🫙'
+    },
+    '💧': {
+        name: 'Clean Water',
+        type: 'consumable',
+        tile: '💧',
+        description: "Refreshing. (+40 Thirst)",
+        effect: (state) => {
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 40);
+            logMessage("Ahhh. Crisp and cold. (+40 Thirst)");
+            triggerStatAnimation(statDisplays.stamina, 'stat-pulse-blue'); // Thirst boosts stamina regen indirectly
+            
+            // Return Empty Bottle
+            if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                state.player.inventory.push({ name: 'Empty Bottle', type: 'consumable', quantity: 1, tile: '🫙' });
+            }
+        }
+    },
+    '🤢': {
+        name: 'Dirty Water',
+        type: 'consumable',
+        tile: '🤢',
+        description: "Gross. Small thirst gain, but risky.",
+        effect: (state) => {
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 15);
+            logMessage("You choke it down. (+15 Thirst)");
+            // 20% chance to feel sick (stop regen for a bit)
+            if (Math.random() < 0.2) {
+                logMessage("Your stomach churns... (Poisoned)");
+                state.player.poisonTurns = 3;
+            }
+            // Return Empty Bottle
+            if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                state.player.inventory.push({ name: 'Empty Bottle', type: 'consumable', quantity: 1, tile: '🫙' });
+            }
+        }
+    },
+
     // --- STARTER ARMOR ---
     '👕': {
         name: 'Padded Armor',
@@ -2357,41 +2528,47 @@ const ITEM_DATA = {
     '🥩': {
         name: 'Steak',
         type: 'consumable',
-        description: "Seared to perfection. (+5 Health)",
+        description: "Seared meat. (+40 Hunger, +5 HP)",
         effect: (state) => {
             state.player.health = Math.min(state.player.maxHealth, state.player.health + 5);
-            logMessage("You eat the steak. Delicious! (+5 HP)");
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 40);
+            logMessage("Savory! (+40 Hunger, +5 HP)");
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
         }
     },
-    '🍣': { // Sushi icon for fish
+    '🍣': { 
         name: 'Grilled Fish',
         type: 'consumable',
-        description: "Flaky and warm. (+5 Stamina)",
+        description: "Flaky fish. (+30 Hunger, +10 Thirst)", // Fish is hydrating!
         effect: (state) => {
             state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 5);
-            logMessage("You eat the fish. You feel energized! (+5 Stamina)");
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 30);
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10);
+            logMessage("Tasty! (+30 Hunger, +10 Thirst)");
             triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
         }
     },
     '🥤': { 
         name: 'Berry Juice',
         type: 'consumable',
-        description: "Sweet and tart. (+3 Mana)",
+        description: "Sweet and tart. (+20 Thirst, +3 Mana)", 
         effect: (state) => {
             state.player.mana = Math.min(state.player.maxMana, state.player.mana + 3);
-            logMessage("You drink the juice. Refreshing! (+3 Mana)");
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); // <-- NEW
+            logMessage("Refreshing! (+20 Thirst, +3 Mana)");
             triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
         }
     },
     '🍲': {
         name: 'Cactus Stew',
         type: 'consumable',
-        description: "Spicy and filling. (+5 HP, +5 Stamina)",
+        description: "Spicy and filling. (+30 Hunger, +20 Thirst, +5 HP)",
         effect: (state) => {
             state.player.health = Math.min(state.player.maxHealth, state.player.health + 5);
             state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 5);
-            logMessage("The spicy stew clears your sinuses! (+5 HP/Stamina)");
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 30); // <-- NEW
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); // <-- NEW
+            logMessage("Hearty and spicy! (+30 Hunger, +20 Thirst)");
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
         }
     },
@@ -2402,6 +2579,8 @@ const ITEM_DATA = {
         effect: (state) => {
             state.player.health = state.player.maxHealth;
             state.player.stamina = state.player.maxStamina;
+            state.player.hunger = state.player.maxHunger; // <-- NEW
+            state.player.thirst = state.player.maxThirst; // <-- NEW
             // Grant "Well Fed" buff
             state.player.defenseBonus = 1;
             state.player.defenseBonusTurns = 20;
@@ -2409,6 +2588,32 @@ const ITEM_DATA = {
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
             playerRef.update({ defenseBonus: 1, defenseBonusTurns: 20 });
         }
+    },
+
+    // --- HOMESTEAD ITEMS ---
+    '🧱': {
+        name: 'Stone Wall',
+        type: 'constructible',
+        tile: '🧱',
+        description: "A solid wall to keep enemies out."
+    },
+    '=': { // Using equals sign for wood floor planks
+        name: 'Wood Floor',
+        type: 'constructible',
+        tile: '=',
+        description: "Smooth wooden planks. Safe to walk on."
+    },
+    '+': {
+        name: 'Wooden Door',
+        type: 'constructible',
+        tile: '+',
+        description: "A door with a simple latch."
+    },
+    '☒': {
+        name: 'Stash Box',
+        type: 'constructible',
+        tile: '☒',
+        description: "Access your global storage from anywhere you place this."
     },
     
     // --- RARE CONSUMABLES ---
@@ -2420,6 +2625,8 @@ const ITEM_DATA = {
             state.player.health = state.player.maxHealth;
             state.player.stamina = state.player.maxStamina;
             state.player.mana = state.player.maxMana;
+            state.player.hunger = state.player.maxHunger; // <-- NEW
+            state.player.thirst = state.player.maxThirst; // <-- NEW
             logMessage("You eat the Golden Apple. You feel revitalized! (Full Restore)");
             triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
         }
@@ -2427,16 +2634,16 @@ const ITEM_DATA = {
     '+': {
         name: 'Healing Potion',
         type: 'consumable',
+        description: "A thick red liquid. (+Health, +10 Thirst)",
         effect: (state) => {
             const oldHealth = state.player.health;
             state.player.health = Math.min(state.player.maxHealth, state.player.health + HEALING_AMOUNT);
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10); // <-- NEW: Hydration
             if (state.player.health > oldHealth) {
-                // MODIFIED: Use the new pulse animation
                 triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
             }
-            logMessage(`Used a Healing Potion. Restored ${HEALING_AMOUNT} health!`);
-        },
-        description: "A thick red liquid. It tastes of strawberries and copper."
+            logMessage(`Used a Healing Potion. (+HP, +10 Thirst)`);
+        }
     },
 
     'o': {
@@ -2508,12 +2715,11 @@ const ITEM_DATA = {
         name: 'Wildberry',
         type: 'consumable',
         effect: (state) => {
-            const oldHealth = state.player.health;
             state.player.health = Math.min(state.player.maxHealth, state.player.health + 1);
-            if (state.player.health > oldHealth) {
-                triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-            }
-            logMessage('You eat a Wildberry. Tasty! (+1 HP)');
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 5);
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 5);
+            logMessage('Sweet! (+5 Hunger/Thirst, +1 HP)');
+            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
         }
     },
     '🍄': {
@@ -2522,10 +2728,11 @@ const ITEM_DATA = {
         effect: (state) => {
             const oldMana = state.player.mana;
             state.player.mana = Math.min(state.player.maxMana, state.player.mana + 1);
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 5); // <-- NEW: Small snack
             if (state.player.mana > oldMana) {
                 triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
             }
-            logMessage('You eat a Bluecap. It tingles... (+1 Mana)');
+            logMessage('You eat a Bluecap. (+1 Mana, +5 Hunger)');
         }
     },
     '📖': {
@@ -2997,17 +3204,19 @@ const ITEM_DATA = {
         effect: (state) => {
             state.player.maxHealth += 5;
             state.player.health += 5;
-            logMessage("You drink the thick red liquid. Your Max Health increases by 5!");
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); // <-- NEW
+            logMessage("You drink the thick red liquid. (+Max HP, +20 Thirst)");
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
         }
     },
-    '🧪': { // Reusing the potion icon, or we can use a new one like ⚗️
+    '🧪': { 
         name: 'Elixir of Power',
         type: 'consumable',
         effect: (state) => {
             state.player.maxMana += 5;
             state.player.mana += 5;
-            logMessage("You drink the glowing blue liquid. Your Max Mana increases by 5!");
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); // <-- NEW
+            logMessage("You drink the glowing blue liquid. (+Max Mana, +20 Thirst)");
             triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
         }
     },
@@ -3045,12 +3254,15 @@ const ITEM_DATA = {
         name: 'Tattered Map',
         type: 'treasure_map'
     },
-    '🍐': { // Using pear icon for cactus fruit
+    '🍐': { 
         name: 'Cactus Fruit',
         type: 'consumable',
+        description: "Juicy and hydrating. (+10 Hunger, +15 Thirst, +5 Stamina)",
         effect: (state) => {
             state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + 5);
-            logMessage('Juicy and refreshing! (+5 Stamina)');
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 10); // <-- NEW
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 15); // <-- NEW
+            logMessage('Juicy! (+10 Hunger, +15 Thirst, +5 Stamina)');
             triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
         }
     },
@@ -3655,6 +3867,8 @@ const statDisplays = {
     mana: document.getElementById('manaDisplay'),
     stamina: document.getElementById('staminaDisplay'),
     psyche: document.getElementById('psycheDisplay'),
+    hunger: document.getElementById('hungerDisplay'),
+    thirst: document.getElementById('thirstDisplay'),
     strength: document.getElementById('strengthDisplay'),
     wits: document.getElementById('witsDisplay'),
     constitution: document.getElementById('constitutionDisplay'),
@@ -3677,6 +3891,8 @@ const statBarElements = {
     mana: document.getElementById('manaBar'),
     stamina: document.getElementById('staminaBar'),
     psyche: document.getElementById('psycheBar'),
+    hunger: document.getElementById('hungerBar'),
+    thirst: document.getElementById('thirstBar'),
     xp: document.getElementById('xpBar')
 };
 
@@ -4979,6 +5195,17 @@ const renderStats = () => {
                 statBarElements.psyche.style.width = `${percent}%`;
                 element.textContent = `${label}: ${value}`;
 
+            } else if (statName === 'hunger') {
+                const max = gameState.player.maxHunger;
+                const percent = (value / max) * 100;
+                statBarElements.hunger.style.width = `${percent}%`;
+                element.textContent = `${label}: ${Math.floor(value)}`; // Use Math.floor to hide decimals
+            } else if (statName === 'thirst') {
+                const max = gameState.player.maxThirst;
+                const percent = (value / max) * 100;
+                statBarElements.thirst.style.width = `${percent}%`;
+                element.textContent = `${label}: ${Math.floor(value)}`;
+
             } else {
                 // Default case for Coins, Level, and Core Stats
                 element.textContent = `${label}: ${value}`;
@@ -5811,6 +6038,89 @@ function initMobileControls() {
         e.preventDefault();
     });
 }
+
+const stashModal = document.getElementById('stashModal');
+const closeStashButton = document.getElementById('closeStashButton');
+const stashPlayerList = document.getElementById('stashPlayerList');
+const stashBankList = document.getElementById('stashBankList');
+
+function openStashModal() {
+    renderStash();
+    stashModal.classList.remove('hidden');
+}
+
+function renderStash() {
+    stashPlayerList.innerHTML = '';
+    stashBankList.innerHTML = '';
+    
+    // Render Player Inventory (Deposit)
+    gameState.player.inventory.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.className = 'shop-item';
+        li.innerHTML = `
+            <span>${item.name} (x${item.quantity})</span>
+            <button class="text-xs bg-green-600 text-white px-2 py-1 rounded" onclick="handleStashTransfer('deposit', ${index})">Deposit</button>
+        `;
+        stashPlayerList.appendChild(li);
+    });
+
+    // Render Bank (Withdraw)
+    const bank = gameState.player.bank || [];
+    if (bank.length === 0) {
+        stashBankList.innerHTML = '<li class="italic text-sm text-gray-500">Stash is empty.</li>';
+    } else {
+        bank.forEach((item, index) => {
+            const li = document.createElement('li');
+            li.className = 'shop-item';
+            li.innerHTML = `
+                <span>${item.name} (x${item.quantity})</span>
+                <button class="text-xs bg-blue-600 text-white px-2 py-1 rounded" onclick="handleStashTransfer('withdraw', ${index})">Withdraw</button>
+            `;
+            stashBankList.appendChild(li);
+        });
+    }
+}
+
+window.handleStashTransfer = function(action, index) {
+    const player = gameState.player;
+    if (!player.bank) player.bank = [];
+
+    if (action === 'deposit') {
+        const item = player.inventory[index];
+        // Check if item exists in bank
+        const bankItem = player.bank.find(i => i.name === item.name);
+        if (bankItem) {
+            bankItem.quantity += item.quantity;
+        } else {
+            player.bank.push(JSON.parse(JSON.stringify(item))); // Deep copy
+        }
+        player.inventory.splice(index, 1);
+        logMessage(`Deposited ${item.name}.`);
+    } 
+    else if (action === 'withdraw') {
+        const item = player.bank[index];
+        if (player.inventory.length >= MAX_INVENTORY_SLOTS) {
+            logMessage("Your inventory is full!");
+            return;
+        }
+        // Check if item exists in inventory
+        const invItem = player.inventory.find(i => i.name === item.name);
+        if (invItem) {
+            invItem.quantity += item.quantity;
+        } else {
+            player.inventory.push(JSON.parse(JSON.stringify(item)));
+        }
+        player.bank.splice(index, 1);
+        logMessage(`Withdrew ${item.name}.`);
+    }
+
+    // Save and Render
+    playerRef.update({ inventory: player.inventory, bank: player.bank });
+    renderStash();
+    renderInventory();
+};
+
+closeStashButton.addEventListener('click', () => stashModal.classList.add('hidden'));
 
 function initShopListeners() {
     // Close button
@@ -6947,6 +7257,33 @@ function turnInQuest(questId) {
     logMessage(`Quest Complete! You gained ${quest.reward.xp} XP and ${quest.reward.coins} Gold!`);
     grantXp(quest.reward.xp);
     gameState.player.coins += quest.reward.coins;
+
+    if (quest.reward.item) {
+        const rewardItem = Object.values(ITEM_DATA).find(i => i.name === quest.reward.item);
+        if (rewardItem) {
+            // Check keys to find the tile char
+            const rewardKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === quest.reward.item);
+            const qty = quest.reward.itemQty || 1;
+            
+            if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                gameState.player.inventory.push({
+                    name: rewardItem.name,
+                    type: rewardItem.type,
+                    quantity: qty,
+                    tile: rewardKey || '?',
+                    damage: rewardItem.damage || null,
+                    defense: rewardItem.defense || null,
+                    slot: rewardItem.slot || null,
+                    statBonuses: rewardItem.statBonuses || null,
+                    effect: rewardItem.effect // Bind effect function
+                });
+                logMessage(`You received: ${rewardItem.name} (x${qty})`);
+            } else {
+                logMessage(`You received a ${rewardItem.name}, but your inventory was full! It fell to the ground.`);
+                // Logic to drop it on the ground would go here, but for now we warn them.
+            }
+        }
+    }
 
     // --- Mark as Completed ---
     playerQuest.status = 'completed';
@@ -8580,6 +8917,29 @@ const render = () => {
                 // --- PROCEDURAL OVERWORLD RENDERING ---
 
                 switch (tile) {
+                    // --- HOMESTEAD TILES ---
+                    case '🧱': // Stone Wall
+                        TileRenderer.drawWall(ctx, x, y, '#78716c', '#57534e'); // Grey brick
+                        break;
+                    case '=': // Wood Floor
+                        TileRenderer.drawBase(ctx, x, y, '#78350f'); // Dark Wood
+                        // Optional: Draw plank lines
+                        ctx.strokeStyle = '#92400e';
+                        ctx.beginPath(); ctx.moveTo(x*TILE_SIZE, y*TILE_SIZE+10); ctx.lineTo(x*TILE_SIZE+20, y*TILE_SIZE+10); ctx.stroke();
+                        break;
+                    case '+': // Door (Closed)
+                        TileRenderer.drawBase(ctx, x, y, '#78350f'); // Wood background
+                        TileRenderer.drawWall(ctx, x, y, '#78350f', '#000'); // Door frame
+                        fgChar = '+'; fgColor = '#fbbf24'; // Gold handle/symbol
+                        break;
+                    case '/': // Door (Open)
+                        TileRenderer.drawBase(ctx, x, y, '#78350f');
+                        fgChar = '/'; fgColor = '#000';
+                        break;
+                    case '☒': // Stash
+                        TileRenderer.drawBase(ctx, x, y, '#78350f');
+                        fgChar = '☒'; fgColor = '#fbbf24'; // Gold Chest
+                        break;
                     // --- BIOMES ---
                     case '~':
                         TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#1e3a8a', '#3b82f6');
@@ -9509,6 +9869,42 @@ async function runSharedAiTurns() {
 }
 
 function endPlayerTurn() {
+
+// --- LIGHT SURVIVAL MECHANICS ---
+    const player = gameState.player;
+    
+    // Very slow decay (0.2 per turn = 500 turns from full to empty)
+    player.hunger = Math.max(0, player.hunger - 0.2);
+    player.thirst = Math.max(0, player.thirst - 0.25); // Thirst slightly faster
+
+    // --- 1. THE BONUSES (Vitality) ---
+    // If stats are high (>80%), you regenerate naturally!
+    let regenBonus = false;
+    
+    if (player.hunger > 80 && player.health < player.maxHealth && gameState.playerTurnCount % 5 === 0) {
+        player.health++; // Free healing every 5 turns
+        logMessage("Well Fed: You regenerate 1 Health.");
+        triggerStatFlash(statDisplays.health, true);
+        regenBonus = true;
+    }
+    
+    if (player.thirst > 80 && player.stamina < player.maxStamina && gameState.playerTurnCount % 3 === 0) {
+        player.stamina++; // Free energy every 3 turns
+        logMessage("Hydrated: You regenerate 1 Stamina.");
+        triggerStatFlash(statDisplays.stamina, true);
+        regenBonus = true;
+    }
+
+    // --- 2. THE PENALTIES (Weakness) ---
+    // If stats hit 0, you don't die, you just stop regenerating via Time/Rest
+    // We handle the "Stop Regen" in the Time Listener below.
+    if (player.hunger <= 0 && gameState.playerTurnCount % 10 === 0) {
+        logMessage("Your stomach growls. You feel weak. (No HP Regen)");
+    }
+    if (player.thirst <= 0 && gameState.playerTurnCount % 10 === 0) {
+        logMessage("Your throat is parched. You feel sluggish. (No Stamina Regen)");
+    }
+
     gameState.playerTurnCount++; // Increment the player's turn
 
     updateWeather();
@@ -9920,6 +10316,57 @@ function useInventoryItem(itemIndex) {
             render();
         } else {
             logMessage("You can't build a fire here.");
+            return;
+        }
+    }
+
+    else if (itemToUse.type === 'constructible') {
+        const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
+        
+        // Cannot build on water, existing walls, or other objects
+        const invalidTiles = ['~', '≈', '🧱', '+', '☒', '▓', '^'];
+        
+        if (invalidTiles.includes(currentTile)) {
+            logMessage("You cannot build here.");
+            return;
+        }
+
+        logMessage(`You place the ${itemToUse.name}.`);
+        
+        if (gameState.mapMode === 'overworld') {
+            chunkManager.setWorldTile(gameState.player.x, gameState.player.y, itemToUse.tile);
+        } else if (gameState.mapMode === 'dungeon') {
+            chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] = itemToUse.tile;
+        }
+        
+        // Consume item
+        itemToUse.quantity--;
+        if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
+        itemUsed = true;
+        render();
+    }
+
+    // --- BOTTLE FILLING LOGIC ---
+    if (itemToUse.name === 'Empty Bottle') {
+        const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
+        
+        if (currentTile === '~' || currentTile === '≈' || currentTile === '⛲') {
+            logMessage("You fill the bottle.");
+            
+            itemToUse.quantity--;
+            if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
+            
+            const dirtyWater = { name: 'Dirty Water', type: 'consumable', quantity: 1, tile: '🤢', effect: ITEM_DATA['🤢'].effect };
+            
+            // Stack logic
+            const existingDirty = gameState.player.inventory.find(i => i.name === 'Dirty Water');
+            if (existingDirty) existingDirty.quantity++;
+            else gameState.player.inventory.push(dirtyWater);
+            
+            renderInventory();
+            return;
+        } else {
+            logMessage("Stand on water (~/≈) to fill this.");
             return;
         }
     }
@@ -10619,6 +11066,27 @@ async function attemptMovePlayer(newX, newY) {
         playerRef.update({ isBoating: false });
     }
     
+// --- DOOR LOGIC ---
+    if (newTile === '+') {
+        logMessage("You open the door.");
+        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '/'); // '/' is Open Door
+        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = '/';
+        render();
+        return; // Spend turn opening
+    }
+    if (newTile === '/') {
+        // Auto-close logic? Or just walk through. Let's just walk through for now.
+        // If you want to close it, maybe Ctrl+Click or specific command later.
+        // For now, it's just walkable.
+    }
+
+    // --- STASH LOGIC ---
+    if (newTile === '☒') {
+        logMessage("You open your Stash Box.");
+        openStashModal();
+        return;
+    }
+
     // Check special tiles
     if (tileData) {
         const tileId = `${newX},${-newY}`;
@@ -10857,30 +11325,71 @@ async function attemptMovePlayer(newX, newY) {
         }
 
         if (newTile === '#') {
-            if (!gameState.foundLore.has(tileId)) {
-                logMessage("You've found an ancient Rune Stone! +10 XP");
-                grantXp(10);
-                gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-            }
+        const tileId = `${newX},${-newY}`;
+        const player = gameState.player;
+        
+        // 1. Initialize array if missing
+        if (!player.unlockedWaypoints) player.unlockedWaypoints = [];
+
+        // 2. Check if already unlocked
+        const existingWP = player.unlockedWaypoints.find(wp => wp.x === newX && wp.y === newY);
+        
+        if (!existingWP) {
+            // New discovery!
+            const regionX = Math.floor(newX / REGION_SIZE);
+            const regionY = Math.floor(newY / REGION_SIZE);
+            const regionName = getRegionName(regionX, regionY);
             
-            const elev = elevationNoise.noise(newX / 70, newY / 70);
-            const moist = moistureNoise.noise(newX / 50, newY / 50);
-            let loreArray = LORE_PLAINS; let biomeName = "Plains";
-            if (elev < 0.4 && moist > 0.7) { loreArray = LORE_SWAMP; biomeName = "Swamp"; }
-            else if (elev > 0.8) { loreArray = LORE_MOUNTAIN; biomeName = "Mountain"; }
-            else if (moist > 0.55) { loreArray = LORE_FOREST; biomeName = "Forest"; }
-
-            const seed = stringToSeed(tileId);
-            const random = Alea(seed);
-            const messageIndex = Math.floor(random() * loreArray.length);
-            const message = loreArray[messageIndex];
-
-            loreTitle.textContent = `Rune Stone (${biomeName})`;
-            loreContent.textContent = `The stone hums with the energy of the ${biomeName}.\n\n"...${message}..."`;
-            loreModal.classList.remove('hidden');
-            return;
+            player.unlockedWaypoints.push({
+                x: newX,
+                y: newY,
+                name: regionName
+            });
+            
+            logMessage("Waystone Attuned! You can now fast travel here.");
+            grantXp(25);
+            triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue'); // Visual flair
+            
+            // Save immediately
+            playerRef.update({ unlockedWaypoints: player.unlockedWaypoints });
         }
+
+        // 3. Generate Lore (Keep existing flavor)
+        if (!gameState.foundLore.has(tileId)) {
+            // grantXp(10); // Removed small XP, moved to Attunement above
+            gameState.foundLore.add(tileId);
+            playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+        }
+        
+        const elev = elevationNoise.noise(newX / 70, newY / 70);
+        const moist = moistureNoise.noise(newX / 50, newY / 50);
+        let loreArray = LORE_PLAINS; let biomeName = "Plains";
+        if (elev < 0.4 && moist > 0.7) { loreArray = LORE_SWAMP; biomeName = "Swamp"; }
+        else if (elev > 0.8) { loreArray = LORE_MOUNTAIN; biomeName = "Mountain"; }
+        else if (moist > 0.55) { loreArray = LORE_FOREST; biomeName = "Forest"; }
+
+        const seed = stringToSeed(tileId);
+        const random = Alea(seed);
+        const messageIndex = Math.floor(random() * loreArray.length);
+        const message = loreArray[messageIndex];
+
+        // 4. Show Modal with Travel Button
+        loreTitle.textContent = `Waystone: ${biomeName}`;
+        loreContent.innerHTML = `
+            <p class="italic text-gray-600 mb-4">"...${message}..."</p>
+            <p>The stone hums with power. It is attuned to the leylines.</p>
+            <button id="openFastTravel" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded w-full">✨ Fast Travel (10 Mana)</button>
+        `;
+        loreModal.classList.remove('hidden');
+        
+        // Bind the button
+        setTimeout(() => { // Timeout ensures element is in DOM
+            const btn = document.getElementById('openFastTravel');
+            if (btn) btn.onclick = openFastTravelModal;
+        }, 0);
+        
+        return;
+    }
 
         if (tileData.type === 'obelisk') {
             if (!gameState.foundLore.has(tileId)) {
@@ -10985,28 +11494,34 @@ async function attemptMovePlayer(newX, newY) {
         }
 
         if (newTile === 'G') {
-            if (!gameState.foundLore.has(tileId)) {
-                logMessage("You spoke to a Castle Guard. +5 XP");
-                grantXp(5);
-                gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-            }
-            const seed = stringToSeed(tileId);
-            const random = Alea(seed);
-            const guardDialogues = [
-                "Keep your wits about you. Even in a castle, you can't be too careful.",
-                "This fortress has stood for ages. It'll stand for many more, long as we're here.",
-                "Looking for the Sage? He's the one muttering about 'five thrones' all the time.",
-                "The King's old chambers are off-limits. Place is haunted, they say.",
-                "Watch yourself near the battlements. It's a long way down.",
-                "Steer clear of the old throne room. We've found... strange relics. Dark sigils. The Sage is worried."
-            ];
-            const dialogue = guardDialogues[Math.floor(random() * guardDialogues.length)];
-            loreTitle.textContent = "Castle Guard";
-            loreContent.textContent = `The guard nods as you approach.\n\n"${dialogue}"`;
+        const questId = "banditChief";
+        const playerQuest = gameState.player.quests[questId];
+
+        if (!playerQuest) {
+            loreTitle.textContent = "Captain of the Guard";
+            loreContent.innerHTML = `<p>The Captain looks grim.\n\n"The Bandit Chief has grown too bold. He's holed up in a fortress nearby. I need someone expendable—err, brave—to take him out."</p><button id="acceptGuard" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded w-full">"Consider it done."</button>`;
             loreModal.classList.remove('hidden');
+            document.getElementById('acceptGuard').addEventListener('click', () => { acceptQuest(questId); loreModal.classList.add('hidden'); }, { once: true });
             return;
+        } 
+        else if (playerQuest.status === 'active') {
+            if (playerQuest.kills >= 1) {
+                loreTitle.textContent = "Impressed Captain";
+                loreContent.innerHTML = `<p>"They say the Chief is dead? Ha! I knew you had it in you. Take this blade, you've earned it."</p><button id="turnInGuard" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Thanks. (Complete)"</button>`;
+                loreModal.classList.remove('hidden');
+                document.getElementById('turnInGuard').addEventListener('click', () => { turnInQuest(questId); loreModal.classList.add('hidden'); }, { once: true });
+                return;
+            } else {
+                logMessage("The Captain nods. 'Bring me the Chief's head.'");
+            }
+        } 
+        else {
+            // Default Flavor Text if quest is done
+            const msgs = ["The roads are safer thanks to you.", "Stay sharp out there.", "Move along, citizen."];
+            logMessage(`Guard: "${msgs[Math.floor(Math.random() * msgs.length)]}"`);
         }
+        return;
+    }
 
         if (newTile === 'O') {
             if (!gameState.foundLore.has(tileId)) {
@@ -11108,6 +11623,31 @@ async function attemptMovePlayer(newX, newY) {
                 logMessage("The Healer's cottage is dark. They must be sleeping.");
                 return;
             }
+
+            const questId = "healerSupply";
+        const questData = QUEST_DATA[questId];
+        const playerQuest = gameState.player.quests[questId];
+        
+        if (!playerQuest) {
+            loreTitle.textContent = "Worried Healer";
+            loreContent.innerHTML = `<p>"The swamp fever is spreading, and I am out of herbs. If you can brave the swamps and bring me 5 Medicinal Herbs, I can make a cure."</p><button id="acceptHealer" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">"I'll find them."</button>`;
+            loreModal.classList.remove('hidden');
+            document.getElementById('acceptHealer').addEventListener('click', () => { acceptQuest(questId); loreModal.classList.add('hidden'); }, { once: true });
+            return;
+        } 
+        else if (playerQuest.status === 'active') {
+            const itemIndex = gameState.player.inventory.findIndex(i => i.name === 'Medicinal Herb');
+            const qty = itemIndex > -1 ? gameState.player.inventory[itemIndex].quantity : 0;
+            
+            if (qty >= 5) {
+                loreTitle.textContent = "Relieved Healer";
+                loreContent.innerHTML = `<p>"You found them! These are perfect. Here, take these potions for your trouble."</p><button id="turnInHealer" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Glad to help. (Complete)"</button>`;
+                loreModal.classList.remove('hidden');
+                document.getElementById('turnInHealer').addEventListener('click', () => { turnInQuest(questId); loreModal.classList.add('hidden'); }, { once: true });
+                return;
+            }
+        }
+
             const HEAL_COST = 10;
             const player = gameState.player;
             if (player.health < player.maxHealth) {
@@ -11858,6 +12398,13 @@ async function enterGame(playerData) {
                 let statsUpdated = false;
 
                 const applyRegen = (stat, maxStat, progressStat) => {
+                    // --- LIGHT SURVIVAL: PENALTY CHECK ---
+                    // If Hunger is 0, Health won't regen passively
+                    if (stat === 'health' && gameState.player.hunger <= 0) return;
+                    
+                    // If Thirst is 0, Stamina won't regen passively
+                    if (stat === 'stamina' && gameState.player.thirst <= 0) return;
+
                     if (player[stat] < player[maxStat]) {
                         player[progressStat] += regenAmount;
                         if (player[progressStat] >= 1) {
