@@ -9150,11 +9150,46 @@ const render = () => {
             }
 
             // Warm Torch Tint (Only apply if we are visible and it's dark)
+            // --- DYNAMIC LIGHTING TINT ---
+            // Only apply tint if we are visible and it's somewhat dark
             if (ambientLight > 0.3 && tileShadowOpacity < 0.5) {
-                // Calculate tint intensity based on distance from center
+                
+                // 1. Determine Light Color based on Location
+                let r = 255, g = 180, b = 100; // Default Warm Orange (Torch)
+
+                if (gameState.mapMode === 'dungeon') {
+                    const theme = chunkManager.caveThemes[gameState.currentCaveId];
+                    if (theme === 'ICE' || theme === 'CRYSTAL') {
+                        r = 100; g = 240; b = 255; // Cold Cyan ❄️
+                    } else if (theme === 'SWAMP' || theme === 'GROTTO') {
+                        r = 50; g = 255; b = 50;   // Eerie Green 🤢
+                    } else if (theme === 'FIRE') {
+                        r = 255; g = 80; b = 50;   // Angry Red 🔥
+                    } else if (theme === 'VOID' || theme === 'ABYSS') {
+                        r = 180; g = 50; b = 255;  // Dark Purple 🔮
+                    } else if (theme === 'CRYPT') {
+                        r = 150; g = 150; b = 200; // Ghostly Blue/Grey 👻
+                    }
+                } 
+                else if (gameState.mapMode === 'overworld') {
+                    // Optional: Tint based on biome!
+                    // Check the tile under the player
+                    const pTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
+                    if (pTile === '≈') { // Swamp
+                        r = 100; g = 200; b = 100; 
+                    } else if (pTile === 'd' || pTile === 'D') { // Deadlands/Desert
+                        r = 200; g = 200; b = 180; // Desaturated Dust
+                    } else if (gameState.weather === 'storm') {
+                        r = 100; g = 100; b = 150; // Stormy Blue
+                    }
+                }
+
+                // 2. Apply the Tint
+                // Calculate intensity based on distance from center (brighter in center)
                 const tintStrength = (1 - (distToPlayer / effectiveRadius)) * 0.15;
+                
                 if (tintStrength > 0) {
-                    ctx.fillStyle = `rgba(255, 180, 100, ${tintStrength})`; // Warm orange
+                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${tintStrength})`;
                     ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             }
