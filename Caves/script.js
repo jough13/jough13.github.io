@@ -3707,8 +3707,10 @@ const TileRenderer = {
     },
     
     // 🔥 Fire (Animated)
-    drawFire: (ctx, x, y) => {
-        TileRenderer.drawBase(ctx, x, y, '#451a03'); 
+
+    drawFire: (ctx, x, y, baseColor) => { // <-- Added baseColor parameter
+        TileRenderer.drawBase(ctx, x, y, baseColor || '#451a03'); // <-- Use it, or fallback to brown
+        
         const tx = x * TILE_SIZE + TILE_SIZE/2;
         const ty = y * TILE_SIZE + TILE_SIZE - 2;
         const flicker = Math.sin(Date.now() / 100) * 3;
@@ -8415,8 +8417,21 @@ const render = () => {
                         TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#422006', '#14532d'); 
                         fgChar = ','; fgColor = '#4b5535';
                         break;
-                    case '🔥': // Cooking Fire
-                        TileRenderer.drawFire(ctx, x, y);
+                    case '🔥': 
+                    case '⛺':
+                        const campMoist = moistureNoise.noise(mapX / 50, mapY / 50);
+                        let campBg = '#22c55e'; // Default: Plains Green
+                        
+                        // Check biome thresholds to match the ground
+                        if (campMoist > 0.55) campBg = '#14532d';      // Forest Green
+                        else if (campMoist < 0.15) campBg = '#fde047'; // Desert Sand
+                        
+                        if (tile === '🔥') {
+                            TileRenderer.drawFire(ctx, x, y, campBg);
+                        } else {
+                            TileRenderer.drawBase(ctx, x, y, campBg);
+                            fgChar = tile;
+                        }
                         break;
                     case 'Ω': // Void Rift
                         TileRenderer.drawVoid(ctx, x, y);
