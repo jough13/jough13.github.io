@@ -4900,7 +4900,7 @@ const ParticleSystem = {
             x: x + 0.5,
             y: y, // Start at top of tile
             vx: 0,
-            vy: -0.02, // Float upwards
+            vy: -0.05, // Float upwards
             life: 2.0, // Lasts 2 seconds
             color: color,
             text: text,
@@ -8755,6 +8755,8 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
         triggerStatFlash(statDisplays.health, false); // Flash health red
         logMessage(`The ${enemyData.name} hits you for ${enemyDamageTaken} damage!`);   
 
+        ParticleSystem.createFloatingText(player.x, player.y, `-${enemyDamageTaken}`, '#ef4444');
+
         if (player.health <= 0) {
             player.health = 0;
             logMessage("You have perished!");
@@ -9727,6 +9729,9 @@ function processEnemyTurns() {
             
             if (Math.random() < Math.min(player.luck * 0.002, 0.25)) {
                 logMessage(`The ${enemy.name} attacks, but you dodge!`);
+
+                ParticleSystem.createFloatingText(player.x, player.y, "Dodge!", "#3b82f6");
+
             } else {
                 let dmg = Math.max(1, enemy.attack - totalDefense);
                 // Shield Absorb
@@ -9741,6 +9746,8 @@ function processEnemyTurns() {
                     player.health -= dmg;
                     triggerStatFlash(statDisplays.health, false);
                     logMessage(`The ${enemy.name} hits you for ${dmg} damage!`);
+
+                    ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
                 }
                 // Thorns Reflect
                 if (player.thornsValue > 0) {
@@ -9982,6 +9989,9 @@ function endPlayerTurn() {
         player.health++; // Free healing every 5 turns
         logMessage("Well Fed: You regenerate 1 Health.");
         triggerStatFlash(statDisplays.health, true);
+
+        ParticleSystem.createFloatingText(player.x, player.y, "♥", "#22c55e"); // Heart icon!
+
         regenBonus = true;
     }
     
@@ -10043,6 +10053,9 @@ function endPlayerTurn() {
         player.health -= 1; // Poison deals 1 damage
         logMessage("You take 1 poison damage...");
         triggerStatFlash(statDisplays.health, false);
+
+        ParticleSystem.createFloatingText(player.x, player.y, "-1", "#22c55e"); // Green text for poison
+
         updates.health = player.health;
         updates.poisonTurns = player.poisonTurns;
         if (player.poisonTurns === 0) {
