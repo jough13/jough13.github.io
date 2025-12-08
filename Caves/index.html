@@ -165,6 +165,18 @@
                            <div id="psycheBar" class="stat-bar bar-psyche"></div>
                         </div>
                      </div>
+                     <div>
+                        <span id="hungerDisplay" class="font-bold text-orange-500">Hunger: 100</span>
+                        <div class="stat-bar-container">
+                           <div id="hungerBar" class="stat-bar" style="background-color: #f97316;"></div>
+                        </div>
+                     </div>
+                     <div>
+                        <span id="thirstDisplay" class="font-bold text-cyan-500">Thirst: 100</span>
+                        <div class="stat-bar-container">
+                           <div id="thirstBar" class="stat-bar" style="background-color: #06b6d4;"></div>
+                        </div>
+                     </div>
                      <div id="statusEffectsPanel" class="flex gap-2 justify-center pt-2 min-h-[1.5rem] text-lg">
                         </div>
                      <span id="coinsDisplay" class="font-bold text-yellow-500 pt-1">Coins: 0</span>
@@ -249,6 +261,15 @@
                <p><strong class="highlight-text">Exploration:</strong> Look for landmarks like signposts (<span class="font-bold">☗</span>), castles (<span class="font-bold">🏰</span>), caves (<span class="font-bold">⛰</span>), and even secret passages!</p>
             </div>
             <button id="closeHelpButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
+         </div>
+      </div>
+      <div id="fastTravelModal" class="modal-overlay hidden">
+         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
+            <h2 class="text-2xl font-bold mb-4">Leyline Network</h2>
+            <p class="text-sm muted-text mb-4">Travel to an attuned Waystone? (Cost: 10 Mana)</p>
+            <ul id="fastTravelList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
+               </ul>
+            <button id="closeFastTravelButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Cancel</button>
          </div>
       </div>
       <div id="gameOverModal" class="modal-overlay hidden">
@@ -361,6 +382,25 @@
             <ul id="skillTrainerList" class="space-y-3 max-h-80 overflow-y-auto pr-2">
                </ul>
             <button id="closeSkillTrainerButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave Trainer</button>
+         </div>
+      </div>
+
+      <div id="stashModal" class="modal-overlay hidden">
+         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
+            <h2 class="text-2xl font-bold mb-4">Storage Stash</h2>
+            <div class="grid grid-cols-2 gap-6">
+               <div>
+                  <h3 class="text-lg font-bold mb-2 border-b-2" style="border-color: var(--border-color);">Your Inventory</h3>
+                  <ul id="stashPlayerList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
+                     </ul>
+               </div>
+               <div>
+                  <h3 class="text-lg font-bold mb-2 border-b-2" style="border-color: var(--border-color);">Stash Contents</h3>
+                  <ul id="stashBankList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
+                     </ul>
+               </div>
+            </div>
+            <button id="closeStashButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close Stash</button>
          </div>
       </div>
 
