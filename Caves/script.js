@@ -8422,27 +8422,28 @@ const render = () => {
                         TileRenderer.drawVoid(ctx, x, y);
                         break;
                     case '^': 
-                        // Check moisture to determine background color
                         const mtMoist = moistureNoise.noise(mapX / 50, mapY / 50);
                         let mtBg = '#57534e'; // Default: Grey Rock
                         
-                        if (mtMoist > 0.55) mtBg = '#14532d';      // High Moisture: Forest Green
-                        else if (mtMoist > 0.15) mtBg = '#22c55e'; // Med Moisture: Plains Green (Grassy Hill)
+                        // FIX: Lower threshold to 0.35 so mountains near forests blend in!
+                        if (mtMoist > 0.35) mtBg = '#14532d';      // High/Med Moisture: Forest Green
+                        else if (mtMoist > 0.15) mtBg = '#22c55e'; // Low Moisture: Plains Green
                         
                         TileRenderer.drawMountain(ctx, x, y, mapX, mapY, mtBg, '#d6d3d1');
                         break;
 
                     case '⛰': // Cave Entrance
                         const caveMoist = moistureNoise.noise(mapX / 50, mapY / 50);
-                        let caveBg = '#57534e'; // Default: Grey
+                        let caveBg = '#57534e'; 
                         
-                        if (caveMoist > 0.55) caveBg = '#14532d';      // Forest Green
-                        else if (caveMoist > 0.15) caveBg = '#22c55e'; // Plains Green
+                        // FIX: Lower threshold here too
+                        if (caveMoist > 0.35) caveBg = '#14532d';      
+                        else if (caveMoist > 0.15) caveBg = '#22c55e'; 
                         
                         TileRenderer.drawBase(ctx, x, y, caveBg);
                         fgChar = tile; 
                         break;
-                        
+
                     case 'F':
                         TileRenderer.drawForest(ctx, x, y, mapX, mapY, '#14532d', '#166534');
                         break;
