@@ -4061,7 +4061,7 @@ const TileRenderer = {
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
         // Use mapX for consistent wave position
-        const timeOffset = Math.sin(Date.now() / 500 + mapX); 
+        const timeOffset = Math.sin(Date.now() / 1500 + mapX); 
         const yOffset = timeOffset * 2;
         ctx.beginPath();
         ctx.moveTo(tx + 2, ty + TILE_SIZE/2 + yOffset);
@@ -8850,7 +8850,7 @@ const render = () => {
     // --- 2. CALCULATE FLICKER (The "Alive" part) ---
     // A sine wave based on time makes the light pulse gently
     const now = Date.now();
-    const torchFlicker = (Math.sin(now / 200) * 0.3) + (Math.cos(now / 500) * 0.1);
+    const torchFlicker = (Math.sin(now / 1000) * 0.2) + (Math.cos(now / 2500) * 0.1);
     
     // Apply flicker only if it's dark
     const lightRadius = (ambientLight > 0.2) ? baseRadius + torchFlicker : baseRadius;
@@ -9903,7 +9903,7 @@ function endPlayerTurn() {
             }
         }
     }
-    
+
     let updates = {};
 
     // --- 1. Tick Status Effects ---
