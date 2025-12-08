@@ -639,7 +639,7 @@ const QUEST_DATA = {
 function getScaledEnemy(enemyTemplate, x, y) {
     // 1. Calculate Distance & Zone
     const dist = Math.sqrt(x * x + y * y);
-    const zoneLevel = Math.floor(dist / 50);
+    const zoneLevel = Math.floor(dist / 150);
 
     // 2. Clone the template
     let enemy = { ...enemyTemplate };
@@ -811,8 +811,8 @@ const ENEMY_DATA = {
     },
     'b': {
         name: 'Bandit',
-        maxHealth: 12,
-        attack: 3,
+        maxHealth: 10,
+        attack: 2,
         defense: 1, // Leather armor
         xp: 20,
         loot: 'i'
@@ -4739,11 +4739,21 @@ generateCave(caveId) {
 
                     // --- PLAINS ---
                     else if (tile === '.') {
-                        if (dist > 150 && hostileRoll < 0.0001) chunkData[y][x] = 'o'; // Orc (Was 0.001)
-                        else if (hostileRoll < 0.0001) chunkData[y][x] = 'w'; // Wolf (Was 0.001)
-                        else if (hostileRoll < 0.0002) chunkData[y][x] = 'b'; // Bandit (Was 0.002)
-                        else if (hostileRoll < 0.0004) chunkData[y][x] = 'r'; // Giant Rat (Was 0.004)
-                        else if (hostileRoll < 0.0005) chunkData[y][x] = 'R'; // Bandit Recruit (Was 0.005)
+                        // Orcs: Only far out (unchanged)
+                        if (dist > 150 && hostileRoll < 0.0001) chunkData[y][x] = 'o'; 
+                        
+                        // Wolves: Now require distance > 120 (approx 6 screens away)
+                        else if (dist > 120 && hostileRoll < 0.0002) chunkData[y][x] = 'w'; 
+                        
+                        // Bandits: Now require distance > 80 (approx 4 screens away)
+                        else if (dist > 80 && hostileRoll < 0.0003) chunkData[y][x] = 'b'; 
+                        
+                        // Rats: Common everywhere
+                        else if (hostileRoll < 0.0005) chunkData[y][x] = 'r'; 
+                        
+                        // Bandit Recruits: Common everywhere (Weak, good for leveling)
+                        else if (hostileRoll < 0.0007) chunkData[y][x] = 'R'; 
+                        
                         else chunkData[y][x] = tile;
                     }
 
