@@ -8433,6 +8433,25 @@ const render = () => {
                             fgChar = tile;
                         }
                         break;
+                    case '🏛️': 
+                    case '🕳️':
+                    case '📦':
+                        // Calculate exact biome color for this spot
+                        const smartElev = elevationNoise.noise(mapX / 70, mapY / 70);
+                        const smartMoist = moistureNoise.noise(mapX / 50, mapY / 50);
+                        let smartBg = '#22c55e'; // Default: Plains Green
+
+                        if (smartElev > 0.8) smartBg = '#57534e';        // Mountain
+                        else if (smartElev > 0.6 && smartMoist < 0.3) smartBg = '#2d2d2d'; // Deadlands
+                        else if (smartMoist < 0.15) smartBg = '#fde047'; // Desert
+                        else if (smartMoist > 0.55) smartBg = '#14532d'; // Forest
+                        
+                        TileRenderer.drawBase(ctx, x, y, smartBg);
+                        fgChar = tile;
+                        
+                        // Optional: Abyss should look dark/scary
+                        if (tile === '🕳️') fgColor = '#000'; 
+                        break;
                     case 'Ω': // Void Rift
                         TileRenderer.drawVoid(ctx, x, y);
                         break;
