@@ -9973,10 +9973,6 @@ function endPlayerTurn() {
 
     player.hunger = Math.max(0, player.hunger - hungerDrain);
     player.thirst = Math.max(0, player.thirst - thirstDrain);
-    
-    // Very slow decay (0.2 per turn = 500 turns from full to empty)
-    player.hunger = Math.max(0, player.hunger - 0.2);
-    player.thirst = Math.max(0, player.thirst - 0.25); // Thirst slightly faster
 
     // --- 1. THE BONUSES (Vitality) ---
     // If stats are high (>80%), you regenerate naturally!
