@@ -338,6 +338,19 @@
          </div>
       </div>
 
+      <div id="talentModal" class="modal-overlay hidden">
+         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Class Mastery</h2>
+                <span id="talentPointsDisplay" class="font-bold highlight-text">Points: 0</span>
+            </div>
+            <p class="text-sm muted-text mb-4">Choose a permanent passive ability.</p>
+            <div id="talentList" class="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto pr-2">
+               </div>
+            <button id="closeTalentButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
+         </div>
+      </div>
+
       <div id="skillTrainerModal" class="modal-overlay hidden">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <div class="flex justify-between items-center mb-4">
@@ -372,7 +385,7 @@
       </div>
 
       <footer class="text-center text-xs muted-text mt-4">
-         <p>Version 0.1.7.1 | Last Updated: December 8th, 2025</p>
+         <p>Version 0.1.8 | Last Updated: December 8th, 2025</p>
       </footer>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
