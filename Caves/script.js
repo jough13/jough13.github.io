@@ -9435,8 +9435,8 @@ function processFriendlyTurns() {
 
 function processEnemyTurns() {
     // This function only runs for dungeon/castle enemies
-    if (gameState.mapMode !== 'dungeon') {
-        return false;
+    if (gameState.mapMode !== 'dungeon' && gameState.mapMode !== 'castle') {
+        return null;
     }
 
     // Get the correct map and theme
@@ -9447,356 +9447,322 @@ function processEnemyTurns() {
         theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
     } else {
         map = chunkManager.castleMaps[gameState.currentCastleId];
-        theme = { floor: '.' }; // Castles use '.' as floor
+        theme = { floor: '.' }; 
     }
 
     if (!map) return null;
 
-    // Track nearest enemy direction
     let nearestEnemyDir = null;
     let minDist = Infinity;
     const HEARING_DISTANCE_SQ = 15 * 15;
-    const player = gameState.player;
+    const player = gameState.player; // <--- This is the only declaration allowed!
 
-    const CHASE_CHANCE = 0.5;
+    // Helper: Check if a tile is free
+    const isWalkable = (tx, ty) => {
+        return map[ty] && map[ty][tx] === theme.floor;
+    };
 
-    // Loop through a copy of the array so we can modify it
+    // Loop through a copy so we can modify the original list safely
     const enemiesToMove = [...gameState.instancedEnemies];
 
     enemiesToMove.forEach(enemy => {
 
+        // --- 1. STATUS EFFECTS (Turn Skips) ---
         if (enemy.rootTurns > 0) {
             enemy.rootTurns--;
-            logMessage(`The ${enemy.name} struggles against the entangling roots!`);
+            logMessage(`The ${enemy.name} struggles against roots!`);
             if (enemy.rootTurns === 0) logMessage(`The ${enemy.name} breaks free.`);
-            return; // Skip turn completely
+            return; 
         }
-
         if (enemy.stunTurns > 0) {
             enemy.stunTurns--;
-            logMessage(`The ${enemy.name} is stunned and cannot move!`);
-            return; // Skip turn completely
+            logMessage(`The ${enemy.name} is stunned!`);
+            return; 
         }
 
-        // --- HANDLE "MADNESS" (FLEEING) ---
+        // --- 2. MADNESS LOGIC (Forced Fleeing) ---
         if (enemy.madnessTurns > 0) {
             enemy.madnessTurns--;
-            
-            // Calculate the direction *away* from the player
+            // Move AWAY from player
             const fleeDirX = -Math.sign(player.x - enemy.x);
             const fleeDirY = -Math.sign(player.y - enemy.y);
-
             const newX = enemy.x + fleeDirX;
             const newY = enemy.y + fleeDirY;
-            const targetTile = (map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
 
-            if (targetTile === theme.floor) {
-                // This is a valid floor tile to flee to
-                map[enemy.y][enemy.x] = theme.floor; // Clear old spot
-                map[newY][newX] = enemy.tile;      // Move to new spot
+            if (isWalkable(newX, newY)) {
+                map[enemy.y][enemy.x] = theme.floor;
+                map[newY][newX] = enemy.tile;
                 enemy.x = newX;
                 enemy.y = newY;
                 logMessage(`The ${enemy.name} flees in terror!`);
             } else {
-                // Can't flee, it's cornered
                 logMessage(`The ${enemy.name} cowers in the corner!`);
             }
 
-            if (enemy.madnessTurns === 0) {
-                logMessage(`The ${enemy.name} seems to regain its senses.`);
-            }
-
-            return; // --- This enemy's turn is over. It will not attack or chase. ---
+            if (enemy.madnessTurns === 0) logMessage(`The ${enemy.name} regains its senses.`);
+            return; // Turn Over
         }
 
+        // --- 3. BOSS & ELITE LOGIC ---
         if (enemy.isBoss) {
-            
-            // 1. Boss Immunity: Reduce status effects immediately
-            if (enemy.madnessTurns > 0 || enemy.poisonTurns > 0 || enemy.frostbiteTurns > 0 || enemy.rootTurns > 0) {
-                if (Math.random() < 0.5) { // 50% chance to shrug off effects per turn
-                    enemy.madnessTurns = 0;
-                    enemy.poisonTurns = 0;
-                    enemy.frostbiteTurns = 0;
-                    enemy.rootTurns = 0;
-                    logMessage(`The ${enemy.name} laughs and purges your feeble magic!`);
-                }
+            // Boss Immunity
+            if ((enemy.poisonTurns > 0 || enemy.rootTurns > 0) && Math.random() < 0.5) {
+                enemy.poisonTurns = 0; enemy.rootTurns = 0;
+                logMessage(`The ${enemy.name} shrugs off your magic!`);
             }
-
-            // 2. Special Ability: SUMMON UNDEAD (20% chance if player is close)
-            const distToPlayer = Math.sqrt(Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2));
-            
-            if (distToPlayer < 10 && Math.random() < 0.20) {
-                // Attempt to spawn a skeleton nearby
-                let spawned = false;
-                for(let sy = -1; sy <= 1; sy++) {
-                    for(let sx = -1; sx <= 1; sx++) {
-                        if(sx===0 && sy===0) continue;
-                        if (spawned) break;
-                        
-                        const sxPos = enemy.x + sx;
-                        const syPos = enemy.y + sy;
-                        
-                        // Check if empty floor
-                        if (map[syPos] && map[syPos][sxPos] === theme.floor) {
-                            // Spawn Skeleton
-                            map[syPos][sxPos] = 's';
-                            const minionTemplate = ENEMY_DATA['s'];
-                            gameState.instancedEnemies.push({
-                                id: `${gameState.currentCaveId}:minion_${Date.now()}`,
-                                x: sxPos,
-                                y: syPos,
-                                tile: 's',
-                                name: "Summoned Skeleton",
-                                health: minionTemplate.maxHealth,
-                                maxHealth: minionTemplate.maxHealth,
-                                attack: minionTemplate.attack,
-                                defense: minionTemplate.defense,
-                                xp: 0, // Minions give no XP (prevents farming)
-                                loot: null
-                            });
-                            logMessage(`The ${enemy.name} raises the dead! A Skeleton appears.`);
-                            spawned = true;
-                            return; // Boss uses turn to summon
-                        }
-                    }
-                }
-            }
-            
-            // 3. Special Ability: TELEPORT (If low health and hit)
-            if (enemy.health < enemy.maxHealth * 0.5 && Math.random() < 0.25) {
-                // Teleport to a random spot nearby (safety)
-                const tx = Math.max(1, Math.min(map[0].length - 2, enemy.x + (Math.floor(Math.random()*10)-5)));
-                const ty = Math.max(1, Math.min(map.length - 2, enemy.y + (Math.floor(Math.random()*10)-5)));
-                
-                if (map[ty][tx] === theme.floor) {
-                    map[enemy.y][enemy.x] = theme.floor;
-                    map[ty][tx] = enemy.tile;
-                    enemy.x = tx;
-                    enemy.y = ty;
-                    logMessage(`The ${enemy.name} dissolves into mist and reappears elsewhere!`);
-                    return; // Turn used
-                }
-            }
-        }
-
-        if (enemy.teleporter) {
-            const distToPlayer = Math.sqrt(Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2));
-            
-            // 20% chance to teleport if not adjacent
-            if (distToPlayer > 1.5 && Math.random() < 0.20) {
-                // Try to teleport behind or near the player
-                const offsets = [[-1,0], [1,0], [0,-1], [0,1], [-1,-1], [1,1]];
-                const pick = offsets[Math.floor(Math.random() * offsets.length)];
-                const tx = player.x + pick[0];
-                const ty = player.y + pick[1];
-
-                // Check if valid floor
-                if (map[ty] && map[ty][tx] === theme.floor) {
-                    // Check if occupied
-                    const occupied = gameState.instancedEnemies.some(e => e.x === tx && e.y === ty);
-                    if (!occupied) {
-                        map[enemy.y][enemy.x] = theme.floor; // Leave old spot
-                        map[ty][tx] = enemy.tile;            // Appear in new spot
-                        enemy.x = tx;
-                        enemy.y = ty;
-                        logMessage(`The ${enemy.name} blinks through the void and appears next to you!`);
+            // Boss Summon (20% chance)
+            const dist = Math.sqrt(Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2));
+            if (dist < 10 && Math.random() < 0.20) {
+                const offsets = [[-1,0],[1,0],[0,-1],[0,1]];
+                for(let ofs of offsets) {
+                    const sx = enemy.x + ofs[0];
+                    const sy = enemy.y + ofs[1];
+                    if (isWalkable(sx, sy)) {
+                        map[sy][sx] = 's';
+                        const t = ENEMY_DATA['s'];
+                        gameState.instancedEnemies.push({
+                            id: `${gameState.currentCaveId}:minion_${Date.now()}`,
+                            x: sx, y: sy, tile: 's', name: "Summoned Skeleton",
+                            health: t.maxHealth, maxHealth: t.maxHealth, attack: t.attack, defense: t.defense, xp: 0
+                        });
+                        logMessage(`The ${enemy.name} summons a Skeleton!`);
                         return; // Turn used
                     }
                 }
             }
+            // Boss Panic Teleport
+            if (enemy.health < enemy.maxHealth * 0.5 && Math.random() < 0.25) {
+                const tx = Math.max(1, Math.min(map[0].length - 2, enemy.x + (Math.floor(Math.random()*10)-5)));
+                const ty = Math.max(1, Math.min(map.length - 2, enemy.y + (Math.floor(Math.random()*10)-5)));
+                if (isWalkable(tx, ty)) {
+                    map[enemy.y][enemy.x] = theme.floor;
+                    map[ty][tx] = enemy.tile;
+                    enemy.x = tx; enemy.y = ty;
+                    logMessage(`The ${enemy.name} vanishes in mist!`);
+                    return;
+                }
+            }
         }
 
+        // Void Stalker Teleport
+        if (enemy.teleporter) {
+            const dist = Math.sqrt(Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2));
+            if (dist > 1.5 && Math.random() < 0.20) {
+                const offsets = [[-1,0], [1,0], [0,-1], [0,1]];
+                const pick = offsets[Math.floor(Math.random() * offsets.length)];
+                const tx = player.x + pick[0];
+                const ty = player.y + pick[1];
+                if (isWalkable(tx, ty)) {
+                    const occupied = gameState.instancedEnemies.some(e => e.x === tx && e.y === ty);
+                    if (!occupied) {
+                        map[enemy.y][enemy.x] = theme.floor;
+                        map[ty][tx] = enemy.tile;
+                        enemy.x = tx; enemy.y = ty;
+                        logMessage(`The ${enemy.name} blinks through the void!`);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // --- 4. DAMAGE STATUS EFFECTS ---
         if (enemy.frostbiteTurns > 0) {
             enemy.frostbiteTurns--;
-            logMessage(`The ${enemy.name} shivers from the frost...`);
-
-            if (enemy.frostbiteTurns === 0) {
-                logMessage(`The ${enemy.name} is no longer frostbitten.`);
-            }
-
-            // 25% chance to be "frozen" and skip its turn
+            if (enemy.frostbiteTurns === 0) logMessage(`The ${enemy.name} is no longer frostbitten.`);
             if (Math.random() < 0.25) {
                 logMessage(`The ${enemy.name} is frozen solid and skips its turn!`);
-                return; // --- This enemy's turn is over. ---
+                return;
             }
         }
 
         if (enemy.poisonTurns > 0) {
             enemy.poisonTurns--;
-            const poisonDamage = 1; // Poison does 1 damage per turn
-            enemy.health -= poisonDamage;
-            logMessage(`The ${enemy.name} takes ${poisonDamage} poison damage...`);
-
+            enemy.health -= 1;
+            logMessage(`The ${enemy.name} takes poison damage.`);
             if (enemy.health <= 0) {
-                // Enemy died from poison
-                logMessage(`The ${enemy.name} succumbs to the poison!`);
-                
+                logMessage(`The ${enemy.name} succumbs to poison!`);
                 registerKill(enemy);
-                
-                const droppedLoot = generateEnemyLoot(gameState.player, enemy);
                 gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                if (gameState.mapMode === 'dungeon') {
-                    chunkManager.caveMaps[gameState.currentCaveId][enemy.y][enemy.x] = droppedLoot;
-                }
-                return; // Enemy is dead, end its turn
+                map[enemy.y][enemy.x] = generateEnemyLoot(player, enemy);
+                return; 
             }
-
-            if (enemy.poisonTurns === 0) {
-                logMessage(`The ${enemy.name} is no longer poisoned.`);
-            }
+            if (enemy.poisonTurns === 0) logMessage(`The ${enemy.name} is no longer poisoned.`);
         }
 
-        // --- GET DISTANCE TO PLAYER ---
-        const distSq = Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2);
+        // --- 5. COMBAT LOGIC ---
+        const dx = player.x - enemy.x;
+        const dy = player.y - enemy.y;
+        const distSq = dx*dx + dy*dy;
+        const dist = Math.sqrt(distSq);
 
-        // --- 1. NEW: MELEE ATTACK LOGIC (for ALL enemies) ---
+        // Melee Attack (Range 1)
         if (distSq <= 2) {
-            // (Your existing melee logic is perfect)
-            // ...
             const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
             const baseDefense = Math.floor(player.dexterity / 5);
             const buffDefense = player.defenseBonus || 0;
-
-            // --- TALENT: IRON SKIN ---
             const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
-
-            const playerDefense = baseDefense + armorDefense + buffDefense;
-            const enemyDamage = Math.max(1, enemy.attack - playerDefense);
-
-            // Check for Luck Dodge
-            const luckDodgeChance = Math.min(player.luck * 0.002, 0.25);
-            if (Math.random() < luckDodgeChance) {
-                logMessage(`The ${enemy.name} attacks, but you luckily dodge!`);
-                return; // End this enemy's turn
-            }
-
-            // Check for Shield Absorb
-            let damageToApply = enemyDamage;
-            if (player.shieldValue > 0) {
-                const damageAbsorbed = Math.min(player.shieldValue, damageToApply);
-                player.shieldValue -= damageAbsorbed;
-                damageToApply -= damageAbsorbed;
-                logMessage(`Your shield absorbs ${damageAbsorbed} damage!`);
-                if (player.shieldValue === 0) {
-                    logMessage("Your Arcane Shield shatters!");
-                }
-            }
-
-            // Apply remaining damage
-            if (damageToApply > 0) {
-                player.health -= damageToApply;
-                triggerStatFlash(statDisplays.health, false);
-                logMessage(`The ${enemy.name} hits you for ${damageToApply} damage!`);
-            }
-
-            // Check for player death
-            if (player.health <= 0) {
-                player.health = 0;
-                logMessage("You have perished!");
-                syncPlayerState();
-                document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
-                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
-                gameOverModal.classList.remove('hidden');
-            }
-            return; // End this enemy's turn
-        }
-
-        // --- 2. NEW: CASTER ATTACK LOGIC (for Caster enemies) ---
-        const castRangeSq = Math.pow(enemy.castRange || 6, 2);
-        
-        // NERF: Reduced chance from 0.33 to 0.20 (20% chance to cast per turn)
-        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20) {
+            const totalDefense = baseDefense + armorDefense + buffDefense + talentDefense;
             
-            const spellDamage = enemy.spellDamage || 1; 
-            const enemyDamage = Math.max(1, spellDamage);
-
-            let spellName = "spell";
-            if (enemy.tile === 'm') spellName = "Arcane Bolt";
-            if (enemy.tile === 'Z') spellName = "Frost Shard";
-            if (enemy.tile === '@') spellName = "Poison Spit";
-
-            const luckDodgeChance = Math.min(player.luck * 0.002, 0.25);
-            if (Math.random() < luckDodgeChance) {
-                logMessage(`The ${enemy.name} fires a ${spellName} from range, but you dodge!`);
-                return; // End this enemy's turn
-            }
-            
-            let damageToApply = enemyDamage;
-            if (player.shieldValue > 0) {
-                const damageAbsorbed = Math.min(player.shieldValue, damageToApply);
-                player.shieldValue -= damageAbsorbed;
-                damageToApply -= damageAbsorbed;
-                logMessage(`Your shield absorbs ${damageAbsorbed} magic damage!`);
-                if (player.shieldValue === 0) {
-                    logMessage("Your Arcane Shield shatters!");
-                }
-            }
-
-            // Apply remaining damage
-            if (damageToApply > 0) {
-                player.health -= damageToApply;
-                triggerStatFlash(statDisplays.health, false);
-                // NEW: Clearer message indicating ranged damage
-                logMessage(`The ${enemy.name} strikes from a distance with ${spellName} for ${damageToApply} damage!`);
-
-            if (enemy.inflicts === 'frostbite' && player.frostbiteTurns <= 0) {
-                    logMessage("You are afflicted with Frostbite!");
-                    player.frostbiteTurns = 5; // Lasts 5 turns
-                } else if (enemy.inflicts === 'poison' && player.poisonTurns <= 0) {
-                    logMessage("The creature's spit poisons you!");
-                    player.poisonTurns = 5; // Lasts 5 turns
-                }
-            }
-            
-            if (player.health <= 0) {
-                player.health = 0;
-                logMessage("You have perished!");
-                syncPlayerState();
-                document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
-                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
-                gameOverModal.classList.remove('hidden');
-            }
-            return; // End this enemy's turn
-        
-        }
-
-        // --- 3. MOVEMENT LOGIC (if no attack/cast) ---
-        if (Math.random() < 0.50) {
-            let dirX, dirY;
-
-            if (Math.random() < CHASE_CHANCE) {
-                dirX = Math.sign(player.x - enemy.x);
-                dirY = Math.sign(player.y - enemy.y);
+            if (Math.random() < Math.min(player.luck * 0.002, 0.25)) {
+                logMessage(`The ${enemy.name} attacks, but you dodge!`);
             } else {
-                dirX = Math.floor(Math.random() * 3) - 1;
-                dirY = Math.floor(Math.random() * 3) - 1;
+                let dmg = Math.max(1, enemy.attack - totalDefense);
+                // Shield Absorb
+                if (player.shieldValue > 0) {
+                    const absorb = Math.min(player.shieldValue, dmg);
+                    player.shieldValue -= absorb;
+                    dmg -= absorb;
+                    logMessage(`Shield absorbs ${absorb} damage!`);
+                    if (player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
+                }
+                if (dmg > 0) {
+                    player.health -= dmg;
+                    triggerStatFlash(statDisplays.health, false);
+                    logMessage(`The ${enemy.name} hits you for ${dmg} damage!`);
+                }
+                // Thorns Reflect
+                if (player.thornsValue > 0) {
+                    enemy.health -= player.thornsValue;
+                    logMessage(`The ${enemy.name} takes ${player.thornsValue} thorn damage!`);
+                    if (enemy.health <= 0) {
+                        registerKill(enemy);
+                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                        map[enemy.y][enemy.x] = generateEnemyLoot(player, enemy);
+                    }
+                }
             }
-
-            if (dirX === 0 && dirY === 0) {
-                return; // No movement
+            // Check Death
+            if (player.health <= 0) {
+                player.health = 0;
+                logMessage("You have perished!");
+                syncPlayerState();
+                document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
+                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
+                gameOverModal.classList.remove('hidden');
             }
+            return; // Turn Over
+        }
 
-            const newX = enemy.x + dirX;
-            const newY = enemy.y + dirY;
+        // Caster Attack (Range Check)
+        const castRangeSq = Math.pow(enemy.castRange || 6, 2);
+        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20) {
+             const spellDmg = Math.max(1, enemy.spellDamage || 1);
+             
+             let spellName = "spell";
+             if (enemy.tile === 'm') spellName = "Arcane Bolt";
+             if (enemy.tile === 'Z') spellName = "Frost Shard";
+             if (enemy.tile === '@') spellName = "Poison Spit";
 
-            const targetTile = (map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
+             if (Math.random() < Math.min(player.luck * 0.002, 0.25)) {
+                 logMessage(`The ${enemy.name} fires a ${spellName}, but you dodge!`);
+             } else {
+                 let dmg = spellDmg;
+                 if (player.shieldValue > 0) {
+                     const absorb = Math.min(player.shieldValue, dmg);
+                     player.shieldValue -= absorb;
+                     dmg -= absorb;
+                     logMessage(`Shield absorbs ${absorb} magic damage!`);
+                 }
+                 if (dmg > 0) {
+                     player.health -= dmg;
+                     triggerStatFlash(statDisplays.health, false);
+                     logMessage(`The ${enemy.name} casts ${spellName} for ${dmg} damage!`);
+                     
+                     if (enemy.inflicts === 'frostbite') player.frostbiteTurns = 5;
+                     if (enemy.inflicts === 'poison') player.poisonTurns = 5;
+                 }
+             }
+             if (player.health <= 0) {
+                player.health = 0;
+                logMessage("You have perished!");
+                syncPlayerState();
+                document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
+                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
+                gameOverModal.classList.remove('hidden');
+            }
+             return;
+        }
 
-            if (targetTile === theme.floor) {
-                map[enemy.y][enemy.x] = theme.floor; 
-                map[newY][newX] = enemy.tile;      
+        // --- 6. NEW TACTICAL MOVEMENT (Smart Pathing) ---
+        
+        let desiredX = 0;
+        let desiredY = 0;
+        let moveType = 'chase';
+
+        // A. Fleeing Logic (Low Health + Not Undead)
+        const isFearless = ['s', 'Z', 'D', 'v', 'a', 'm'].includes(enemy.tile) || enemy.isBoss;
+        if (!isFearless && (enemy.health < enemy.maxHealth * 0.25)) {
+            moveType = 'flee';
+        } 
+        // B. Kiting Logic (Casters stay at range 3-4)
+        else if (enemy.caster && dist < 3.5) {
+            moveType = 'flee'; 
+        }
+
+        if (moveType === 'flee') {
+            desiredX = -Math.sign(dx);
+            desiredY = -Math.sign(dy);
+            if (desiredX === 0) desiredX = Math.random() < 0.5 ? 1 : -1;
+            if (desiredY === 0) desiredY = Math.random() < 0.5 ? 1 : -1;
+        } else {
+            desiredX = Math.sign(dx);
+            desiredY = Math.sign(dy);
+        }
+
+        // Smart Pathing: Try Primary -> Secondary -> Slide
+        let moveX = 0, moveY = 0;
+        let madeMove = false;
+
+        // Try ideal Diagonal first
+        if (isWalkable(enemy.x + desiredX, enemy.y + desiredY)) {
+            moveX = desiredX; moveY = desiredY; madeMove = true;
+        } 
+        // If diagonal blocked, slide along axis
+        else {
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // X Priority
+                if (desiredX !== 0 && isWalkable(enemy.x + desiredX, enemy.y)) {
+                    moveX = desiredX; moveY = 0; madeMove = true;
+                } else if (desiredY !== 0 && isWalkable(enemy.x, enemy.y + desiredY)) {
+                    moveX = 0; moveY = desiredY; madeMove = true;
+                }
+            } else {
+                // Y Priority
+                if (desiredY !== 0 && isWalkable(enemy.x, enemy.y + desiredY)) {
+                    moveX = 0; moveY = desiredY; madeMove = true;
+                } else if (desiredX !== 0 && isWalkable(enemy.x + desiredX, enemy.y)) {
+                    moveX = desiredX; moveY = 0; madeMove = true;
+                }
+            }
+        }
+
+        if (madeMove) {
+            const newX = enemy.x + moveX;
+            const newY = enemy.y + moveY;
+            
+            // Check for collision with other enemies
+            const occupied = gameState.instancedEnemies.some(e => e.x === newX && e.y === newY);
+            if (!occupied) {
+                map[enemy.y][enemy.x] = theme.floor;
+                map[newY][newX] = enemy.tile;
                 enemy.x = newX;
                 enemy.y = newY;
 
-                const newDistSq = Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2);
+                // Update intuition hint
+                const newDistSq = Math.pow(newX - player.x, 2) + Math.pow(newY - player.y, 2);
                 if (newDistSq < minDist && newDistSq < HEARING_DISTANCE_SQ) {
                     minDist = newDistSq;
-                    nearestEnemyDir = { x: Math.sign(enemy.x - player.x), y: Math.sign(enemy.y - player.y) };
+                    nearestEnemyDir = { x: Math.sign(newX - player.x), y: Math.sign(newY - player.y) };
+                }
+                
+                if (moveType === 'flee') {
+                    logMessage(`The ${enemy.name} retreats!`);
                 }
             }
         }
     });
 
-    return nearestEnemyDir; // Return for the intuition check
+    return nearestEnemyDir;
 }
 
 /**
