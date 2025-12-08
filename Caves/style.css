@@ -610,6 +610,11 @@ kbd {
     z-index: 50;
 }
 
+.action-btn.blue {
+    background-color: rgba(59, 130, 246, 0.9); /* Bright Blue */
+    color: white;
+}
+
 /* Hide on large screens */
 @media (min-width: 1024px) {
     .mobile-controls {
