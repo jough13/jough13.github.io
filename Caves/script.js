@@ -1585,17 +1585,19 @@ async function renderSlots() {
         } else {
             // --- EMPTY SLOT UI ---
             slotDiv.classList.add('opacity-75', 'hover:opacity-100', 'hover:border-green-500', 'cursor-pointer');
+            
             slotDiv.onclick = (e) => {
-                // Only trigger if clicking the div, not if clicking a button (though no buttons here)
+                // If they click the box background or the big +, select the slot
                 if(e.target === slotDiv || e.target.closest('.empty-slot-content')) selectSlot(slotId);
             };
+
             slotDiv.innerHTML = `
                 <div class="text-center w-full empty-slot-content">
                     <h3 class="text-xl font-bold mb-4">Slot ${slotId.replace('slot', '')}</h3>
                     <div class="text-4xl mb-4 text-gray-600">+</div>
                     <p class="muted-text">Empty</p>
                 </div>
-                <button class="w-full mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">Create New</button>
+                <button onclick="event.stopPropagation(); selectSlot('${slotId}')" class="w-full mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">Create New</button>
             `;
         }
         slotsContainer.appendChild(slotDiv);
@@ -1685,6 +1687,8 @@ function createDefaultPlayerState() {
     return {
         x: 0,
         y: 0,
+        character: '@',
+        color: '#3b82f6',
         coins: 0,
         health: 10,
         maxHealth: 10,
@@ -12193,6 +12197,8 @@ loginButton.addEventListener('click', async () => {
 function clearSessionState() {
     gameState.lootedTiles.clear();
     gameState.discoveredRegions.clear();
+
+    gameState.mapMode = null;
 
     // Reset session-based flags
     if (gameState.flags) {
