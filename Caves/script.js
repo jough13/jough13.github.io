@@ -9455,7 +9455,7 @@ function processEnemyTurns() {
     let nearestEnemyDir = null;
     let minDist = Infinity;
     const HEARING_DISTANCE_SQ = 15 * 15;
-    const player = gameState.player; // <--- This is the only declaration allowed!
+    const player = gameState.player; // <--- This is the ONLY declaration of 'player'
 
     // Helper: Check if a tile is free
     const isWalkable = (tx, ty) => {
@@ -9683,7 +9683,7 @@ function processEnemyTurns() {
              return;
         }
 
-        // --- 6. NEW TACTICAL MOVEMENT (Smart Pathing) ---
+        // --- 6. NEW TACTICAL MOVEMENT ---
         
         let desiredX = 0;
         let desiredY = 0;
@@ -9903,8 +9903,7 @@ function endPlayerTurn() {
             }
         }
     }
-
-    const player = gameState.player;
+    
     let updates = {};
 
     // --- 1. Tick Status Effects ---
