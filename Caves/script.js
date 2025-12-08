@@ -1521,7 +1521,7 @@ window.selectBackground = async function(bgKey) {
     renderTime();
 
     resizeCanvas();
-    
+
     render();
     
     // Resume the connection listener that was paused/waiting
@@ -1732,7 +1732,10 @@ function createDefaultPlayerState() {
             }
         },
 
-        inventory: [],
+        inventory: [
+            { name: 'Hardtack', type: 'consumable', quantity: 2, tile: '🍞' },
+            { name: 'Flask of Water', type: 'consumable', quantity: 2, tile: '💧' }
+        ],
 
         bank: [], // Persistent storage
 
@@ -2319,6 +2322,28 @@ const CRAFTING_RECIPES = {
 
 const ITEM_DATA = {
     // --- RESOURCES ---
+    '🍞': {
+        name: 'Hardtack',
+        type: 'consumable',
+        tile: '🍞',
+        description: "Dry, hard bread. Keeps forever. (+30 Hunger)",
+        effect: (state) => {
+            state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 30);
+            logMessage("You gnaw on the rock-hard bread. (+30 Hunger)");
+            triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+        }
+    },
+    '💧f': { 
+        name: 'Flask of Water',
+        type: 'consumable',
+        tile: '💧', // Visual icon
+        description: "Fresh water. (+30 Thirst)",
+        effect: (state) => {
+            state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 30);
+            logMessage("Refreshing. (+30 Thirst)");
+            triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+        }
+    },
     '🪵': {
         name: 'Wood Log',
         type: 'junk',
@@ -9916,6 +9941,20 @@ function endPlayerTurn() {
 
 // --- LIGHT SURVIVAL MECHANICS ---
     const player = gameState.player;
+
+    // Base drain rates (Standard difficulty)
+    let hungerDrain = 0.1; // Was 0.2 (Slower overall)
+    let thirstDrain = 0.15; // Was 0.25 (Slower overall)
+
+    // "Grace Period" for new characters (Level 1 & 2)
+    // Drastically reduces drain so they can explore freely.
+    if (player.level < 3) {
+        hungerDrain = 0.01; // Extremely slow (basically paused)
+        thirstDrain = 0.02;
+    }
+
+    player.hunger = Math.max(0, player.hunger - hungerDrain);
+    player.thirst = Math.max(0, player.thirst - thirstDrain);
     
     // Very slow decay (0.2 per turn = 500 turns from full to empty)
     player.hunger = Math.max(0, player.hunger - 0.2);
