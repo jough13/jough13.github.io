@@ -6335,7 +6335,19 @@ function closeInventoryModal() {
 }
 
 function initInventoryListeners() {
-    closeInventoryButton.addEventListener('click', closeInventoryModal);
+    // 1. Re-select the button to ensure we have the element
+    const btn = document.getElementById('closeInventoryButton');
+    
+    if (btn) {
+        // 2. Use 'onclick' which is a hard override (more reliable here)
+        btn.onclick = (e) => {
+            e.preventDefault();  // Stop any default browser behavior
+            e.stopPropagation(); // Stop the click from bubbling to other elements
+            closeInventoryModal();
+        };
+    } else {
+        console.error("Error: closeInventoryButton not found in DOM.");
+    }
 }
 
 /**
