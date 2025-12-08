@@ -1690,6 +1690,9 @@ function createDefaultPlayerState() {
 
         inventory: [],
 
+        talents: [], // Array of strings (e.g. ['bloodlust', 'scholar'])
+        talentPoints: 0,
+
         killCounts: {}, // Tracks { "Goblin": 5, "Wolf": 12 }
 
         spellbook: {
@@ -1779,6 +1782,26 @@ function registerKill(enemy) {
     if (!gameState.player.killCounts) gameState.player.killCounts = {};
     
     gameState.player.killCounts[baseName] = (gameState.player.killCounts[baseName] || 0) + 1;
+
+    // --- TALENT: BLOODLUST (Warrior) ---
+    if (gameState.player.talents && gameState.player.talents.includes('bloodlust')) {
+        const heal = 2;
+        if (gameState.player.health < gameState.player.maxHealth) {
+            gameState.player.health = Math.min(gameState.player.maxHealth, gameState.player.health + heal);
+            logMessage("Bloodlust heals you for 2 HP!");
+            triggerStatFlash(statDisplays.health, true);
+        }
+    }
+
+    // --- TALENT: SOUL SIPHON (Necromancer) ---
+    if (gameState.player.talents && gameState.player.talents.includes('soul_siphon')) {
+        const restore = 2;
+        if (gameState.player.mana < gameState.player.maxMana) {
+            gameState.player.mana = Math.min(gameState.player.maxMana, gameState.player.mana + restore);
+            logMessage("You siphon 2 Mana from the soul.");
+            triggerStatFlash(statDisplays.mana, true);
+        }
+    }
 
     // 2. Handle Quests
     updateQuestProgress(enemy.tile);
@@ -3401,6 +3424,57 @@ const SPELL_DATA = {
     // We can easily add more spells here later!
 };
 
+const TALENT_DATA = {
+    "bloodlust": { 
+        name: "Bloodlust", 
+        description: "Heal 2 HP whenever you kill an enemy.", 
+        class: "warrior",
+        icon: "🩸"
+    },
+    "iron_skin": { 
+        name: "Iron Skin", 
+        description: "Permanent +1 Bonus to Defense.", 
+        class: "warrior",
+        icon: "🛡️"
+    },
+    "backstab": { 
+        name: "Backstab", 
+        description: "Critical hits deal 3x damage instead of 1.5x.", 
+        class: "rogue",
+        icon: "🗡️"
+    },
+    "evasion": { 
+        name: "Evasion", 
+        description: "+10% chance to dodge enemy attacks.", 
+        class: "rogue",
+        icon: "💨"
+    },
+    "arcane_potency": { 
+        name: "Arcane Potency", 
+        description: "All spells deal +2 Bonus Damage.", 
+        class: "mage",
+        icon: "✨"
+    },
+    "scholar": { 
+        name: "Scholar", 
+        description: "Gain +20% more XP from all sources.", 
+        class: "mage",
+        icon: "📖"
+    },
+    "soul_siphon": { 
+        name: "Soul Siphon", 
+        description: "Restore 2 Mana whenever you kill an enemy.", 
+        class: "necromancer",
+        icon: "💀"
+    },
+    "survivalist": { 
+        name: "Survivalist", 
+        description: "Foraging (Wildberries/Herbs) restores double HP/Mana.", 
+        class: "general",
+        icon: "🌿"
+    }
+};
+
 const SKILL_DATA = {
     "brace": {
         name: "Brace",
@@ -3502,6 +3576,79 @@ const SKILL_DATA = {
         cooldown: 10
     }
 };
+
+const talentModal = document.getElementById('talentModal');
+const closeTalentButton = document.getElementById('closeTalentButton');
+const talentListDiv = document.getElementById('talentList');
+const talentPointsDisplay = document.getElementById('talentPointsDisplay');
+
+function openTalentModal() {
+    renderTalentTree();
+    talentModal.classList.remove('hidden');
+}
+
+function renderTalentTree() {
+    talentListDiv.innerHTML = '';
+    const player = gameState.player;
+    const playerTalents = player.talents || [];
+    
+    talentPointsDisplay.textContent = `Mastery Points: ${player.talentPoints || 0}`;
+
+    for (const key in TALENT_DATA) {
+        const talent = TALENT_DATA[key];
+        const isLearned = playerTalents.includes(key);
+        const canAfford = (player.talentPoints > 0);
+
+        const div = document.createElement('div');
+        div.className = `panel p-3 rounded border ${isLearned ? 'border-green-500 bg-green-900 bg-opacity-20' : 'border-gray-600'}`;
+        
+        let btnHtml = '';
+        if (isLearned) {
+            btnHtml = `<span class="text-green-500 font-bold text-sm">Learned</span>`;
+        } else if (canAfford) {
+            btnHtml = `<button onclick="learnTalent('${key}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-sm">Learn</button>`;
+        } else {
+            btnHtml = `<span class="text-gray-500 text-sm">Locked</span>`;
+        }
+
+        div.innerHTML = `
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="text-2xl">${talent.icon}</div>
+                    <div>
+                        <div class="font-bold">${talent.name} <span class="text-xs text-gray-400 uppercase">[${talent.class}]</span></div>
+                        <div class="text-xs text-gray-300">${talent.description}</div>
+                    </div>
+                </div>
+                <div>${btnHtml}</div>
+            </div>
+        `;
+        talentListDiv.appendChild(div);
+    }
+}
+
+// Global scope for HTML onclick
+window.learnTalent = function(talentId) {
+    const player = gameState.player;
+    if (!player.talentPoints || player.talentPoints <= 0) return;
+    if (player.talents && player.talents.includes(talentId)) return;
+
+    if (!player.talents) player.talents = [];
+    player.talents.push(talentId);
+    player.talentPoints--;
+
+    logMessage(`You mastered the ${TALENT_DATA[talentId].name} talent!`);
+    triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+
+    playerRef.update({
+        talents: player.talents,
+        talentPoints: player.talentPoints
+    });
+
+    renderTalentTree();
+};
+
+closeTalentButton.addEventListener('click', () => talentModal.classList.add('hidden'));
 
 const statDisplays = {
     health: document.getElementById('healthDisplay'),
@@ -5267,33 +5414,44 @@ function applyStatBonuses(item, operation) {
 
 function grantXp(amount) {
     const player = gameState.player;
+    
+    // --- TALENT: SCHOLAR (+20% XP) ---
+    if (player.talents && player.talents.includes('scholar')) {
+        amount = Math.floor(amount * 1.2);
+    }
+    // ---------------------------------
+
     player.xp += amount;
     logMessage(`You gained ${amount} XP!`);
+    triggerStatFlash(statDisplays.xp, true); 
 
-    triggerStatFlash(statDisplays.xp, true); // Flash green for XP gain
-
-    // Check for level up (using 'while' handles multiple level-ups at once)
     while (player.xp >= player.xpToNextLevel) {
-        player.xp -= player.xpToNextLevel; // Subtract the XP needed, keep the remainder
+        player.xp -= player.xpToNextLevel;
         player.level++;
         player.statPoints++;
-        player.xpToNextLevel = player.level * 100; // The next level costs more
+        player.xpToNextLevel = player.level * 100;
 
         logMessage(`LEVEL UP! You are now level ${player.level}!`);
         ParticleSystem.createLevelUp(player.x, player.y);
-        logMessage(`You have ${player.statPoints} stat point(s) to spend.`);
+        
+        // --- Award Talent Point every 3 levels ---
+        if (player.level % 3 === 0) {
+            player.talentPoints = (player.talentPoints || 0) + 1;
+            logMessage("You gained a Mastery Talent Point! Press 'P' to spend it.");
+            triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+        } else {
+            logMessage(`You gained 1 Stat Point.`);
+            triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
+        }
 
-        // Optional: Flash the level and stat point displays
-        triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
-        triggerStatAnimation(statDisplays.statPoints, 'stat-pulse-purple');
     }
 
-    // Save the new XP and level state to Firestore
     playerRef.update({
         xp: player.xp,
         level: player.level,
         xpToNextLevel: player.xpToNextLevel,
-        statPoints: player.statPoints
+        statPoints: player.statPoints,
+        talentPoints: player.talentPoints || 0
     });
 
     renderStats();
@@ -7776,6 +7934,11 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
     const weather = gameState.weather; // Get current weather
     let finalDamage = damage;
 
+    // --- TALENT: ARCANE POTENCY ---
+    if (gameState.player.talents && gameState.player.talents.includes('arcane_potency')) {
+        finalDamage += 2;
+    }
+
     if (gameState.mapMode === 'overworld' && weather !== 'clear') {
         
         // Rain/Storm Logic
@@ -8105,6 +8268,10 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                 const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
                 const baseDefense = Math.floor(player.dexterity / 5);
                 const buffDefense = player.defenseBonus || 0;
+
+                // --- TALENT: IRON SKIN ---
+                const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
+
                 const playerDefense = baseDefense + armorDefense + buffDefense;
 
                 enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
@@ -8285,6 +8452,10 @@ const renderEquipment = () => {
     const baseDefense = Math.floor(player.dexterity / 5); 
     const armorDefense = armor.defense || 0;
     const buffDefense = player.defenseBonus || 0; 
+
+    // --- TALENT: IRON SKIN ---
+    const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
+
     const totalDefense = baseDefense + armorDefense + buffDefense;
 
     // Update the display
@@ -9125,6 +9296,10 @@ function processEnemyTurns() {
             const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
             const baseDefense = Math.floor(player.dexterity / 5);
             const buffDefense = player.defenseBonus || 0;
+
+            // --- TALENT: IRON SKIN ---
+            const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
+
             const playerDefense = baseDefense + armorDefense + buffDefense;
             const enemyDamage = Math.max(1, enemy.attack - playerDefense);
 
@@ -9669,6 +9844,7 @@ function handleInput(key) {
     if (key === 'm' || key === 'M') { openSpellbook(); return; }
     if (key === 'k' || key === 'K') { openSkillbook(); return; }
     if (key === 'c' || key === 'C') { openCollections(); return; }
+    if (key === 'p' || key === 'P') { openTalentModal(); return; }
 
     // --- MOVEMENT & REST ---
     let newX = gameState.player.x;
@@ -10069,6 +10245,8 @@ async function attemptMovePlayer(newX, newY) {
         let isCrit = false;
         
         if (Math.random() < critChance) {
+            // --- TALENT: BACKSTAB ---
+            const mult = (gameState.player.talents && gameState.player.talents.includes('backstab')) ? 3.0 : 1.5;
             rawDamage = Math.floor(rawDamage * 1.5); // 1.5x Damage on Crit
             isCrit = true;
         }
