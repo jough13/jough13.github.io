@@ -1509,6 +1509,8 @@ window.selectBackground = async function(bgKey) {
     charCreationModal.classList.add('hidden');
     gameContainer.classList.remove('hidden');
     canvas.style.visibility = 'visible';
+
+    gameState.mapMode = 'overworld';
     
     logMessage(`You have chosen the path of the ${background.name}.`);
     
@@ -4979,7 +4981,9 @@ const gameState = {
 
     lootedTiles: new Set(),
     discoveredRegions: new Set(),
-    mapMode: 'overworld',
+
+    mapMode: null,
+
     currentCaveId: null,
     currentCaveTheme: null,
     currentCastleId: null,
@@ -8827,7 +8831,11 @@ const renderEquipment = () => {
 };
 
 const render = () => {
+
+    if (!gameState.mapMode) return;
+
     // 1. Setup Canvas
+
     const style = getComputedStyle(document.documentElement);
     const canvasBg = style.getPropertyValue('--canvas-bg');
     ctx.fillStyle = canvasBg;
@@ -12259,6 +12267,8 @@ async function enterGame(playerData) {
         ...playerData
     };
     Object.assign(gameState.player, fullPlayerData);
+
+    gameState.mapMode = playerData.mapMode || 'overworld';
 
     // --- 2. Restore Sets (Discovery/Lore/Loot) ---
     if (playerData.discoveredRegions && Array.isArray(playerData.discoveredRegions)) {
