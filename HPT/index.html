@@ -416,7 +416,7 @@ const RADIONUCLIDE_DATA = [
     },
     dosimetry: {
       ALI: {
-        ingestion: 0,
+        ingestion: 2000,
         inhalation_D: 9,
         inhalation_W: 40,
         inhalation_Y: 40
@@ -512,7 +512,7 @@ const RADIONUCLIDE_DATA = [
     },
     dosimetry: {
       ALI: {
-        ingestion: 600,
+        ingestion: 500,
         inhalation_D: 900,
         inhalation_W: 200
       },
@@ -786,13 +786,11 @@ const RADIONUCLIDE_DATA = [
     },
     dosimetry: {
       ALI: {
-        ingestion: 50000,
-        inhalation_W: 100000,
-        inhalation_Y: 100000
+        ingestion: 100,
+        inhalation_D: 200
       },
       DAC: {
-        inhalation_W: 6e-5,
-        inhalation_Y: 5e-5
+        inhalation_D: 6e-8,
       },
       // FGR 11 does not typically list separate inhalation DCFs for very short-lived Ba-137m; dose is usually attributed to Cs-137 parent
       sourceRef: '10CFR20 (Isomer)'
@@ -1383,13 +1381,13 @@ const RADIONUCLIDE_DATA = [
     dValue: 0.2,
     dosimetry: {
       ALI: {
-        ingestion: 5,
+        ingestion: 2,
         inhalation_W: 0.02,
         inhalation_Y: 0.03
       },
       DAC: {
         inhalation_W: 8e-12,
-        inhalation_Y: 11e-11
+        inhalation_Y: 1e-11
       },
       DCF: {
         ingestion: 0,
@@ -1720,7 +1718,7 @@ const RADIONUCLIDE_DATA = [
 shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     dosimetry: {
       ALI: {
-        ingestion: 500,
+        ingestion: 200,
         inhalation_W: 200,
         inhalation_Y: 30
       },
@@ -2130,7 +2128,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     dosimetry: {
       ALI: {
         ingestion: 5000,
-        inhalation_D: 200,
+        inhalation_D: 100,
         inhalation_W: 600
       },
       DAC: {
@@ -2457,12 +2455,10 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     dosimetry: {
       ALI: {
         ingestion: 900,
-        inhalation_W: 2000,
-        inhalation_Y: 2000
+        inhalation_W: 2000
       },
       DAC: {
-        inhalation_W: 7e-7,
-        inhalation_Y: 6e-7
+        inhalation_W: 7e-7
       },
       DCF: {
         ingestion: 0,
@@ -4391,7 +4387,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     },
     dosimetry: {
       ALI: {
-        ingestion: 40000,
+        ingestion: 30000,
         inhalation_W: 100000,
         inhalation_Y: 100000
       },
@@ -4786,7 +4782,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     dosimetry: {
       ALI: {
         inhalation_W: 0.6,
-        ingestion: 2 // Bone surface 5
+        ingestion: 2 // Bone surface 
       },
       DAC: {
         inhalation_W: 3e-10
@@ -4955,7 +4951,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     },
     dosimetry: {
       DAC: {
-        inhalation: 3e-8 // With daughters removed. Or 4e-6 (0.33 WL) with daughters present.
+        inhalation: 3e-8 // With daughters present. Or 4e-6 (0.33 WL) with daughters removed.
       },
       sourceRef: '10CFR20'
     },
@@ -5605,12 +5601,12 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     dosimetry: {
       ALI: {
         ingestion: 600,
-        inhalation_D: 600,
-        inhalation_W: 700
+        inhalation_D: 800,
+        inhalation_W: 600
       },
       DAC: {
         inhalation_D: 3e-7,
-        inhalation_W: 3e-7
+        inhalation_W: 2e-7
       },
       DCF: {
         ingestion: 0,
@@ -5996,7 +5992,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     },
     dosimetry: {
       ALI: {
-        ingestion: 10000, // Sulfides
+        ingestion: 600, // W, elemental sulfur
         inhalation_D: 20000, // Vapor
         inhalation_W: 2000
       },
@@ -7274,7 +7270,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       ALI: {
         ingestion: 10,
         inhalation_D: 1,
-        inhalation_W: 0.8,
+        inhalation_W: 0.7,
         inhalation_Y: 0.04
       },
       DAC: {
@@ -7500,7 +7496,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_Y: 700
       },
       DAC: {
-        inhalation_W: 3e-7,
+        inhalation_W: 4e-7,
         inhalation_Y: 3e-7
       },
       DCF: {
@@ -7638,8 +7634,8 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       },
       DAC: {
         inhalation_D: 1e-6,
-        inhalation_W: 8e-7,
-        inhalation_Y: 6e-7
+        inhalation_W: 1e-6,
+        inhalation_Y: 1e-6
       },
       DCF: {
         ingestion: 0,
@@ -16957,7 +16953,16 @@ if (mainContentRef.current) {
                        let hvl_cm;
                        if (useManualHVL) { hvl_cm = parseFloat(manualHVL); } 
                        else if (calcMode === MODE_GENERIC) { hvl_cm = HVL_DATA['Cs-137'][shieldMaterial]; } 
-                       else if (nuclideSymbol) { const nuclide = shieldingNuclides.find(n => n.symbol === nuclideSymbol); if (!nuclide) return; hvl_cm = HVL_DATA[nuclide.symbol][shieldMaterial]; } 
+                       else if (nuclideSymbol) { const nuclide = shieldingNuclides.find(n => n.symbol === nuclideSymbol); if (!nuclide) return; 
+
+// ---  Guard Clause against missing HVL Data ---
+        if (!HVL_DATA[nuclide.symbol]) {
+            setError(`Shielding data (HVL) is not available for ${nuclide.name}. Please switch to "Manual Input" or choose a different nuclide.`);
+            setResult(null);
+            return;
+        }
+
+hvl_cm = HVL_DATA[nuclide.symbol][shieldMaterial]; } 
                        else { return; }
                        if (isNaN(hvl_cm) || hvl_cm <= 0) { setError('Please select a material or enter a valid HVL value.'); return; }
          
@@ -17154,7 +17159,26 @@ if (mainContentRef.current) {
                                    {calcMode === MODE_GENERIC && ( <div className="animate-fade-in space-y-4"><div><label className="block text-sm font-medium">Initial Dose Rate</label><div className="flex"><input type="number" value={knownDoseRate} onChange={e => setKnownDoseRate(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={knownDoseRateUnit} onChange={e => setKnownDoseRateUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div></div> )}
                                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
                                        <div className="flex items-center justify-between mb-2"><label className="block text-sm font-medium">Shield Material / HVL</label><label className="flex items-center gap-2 cursor-pointer"><span className="text-xs text-slate-500">Manual HVL</span><input type="checkbox" checked={useManualHVL} onChange={e => setUseManualHVL(e.target.checked)} className="form-checkbox h-4 w-4 rounded text-sky-600" /></label></div>
-                                       {useManualHVL ? ( <div className="relative"><input type="number" value={manualHVL} onChange={e => setManualHVL(e.target.value)} placeholder="HVL in cm" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/><div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500">cm</div></div> ) : ( <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">{calcMode === MODE_GENERIC ? materials.map(m => <option key={m} value={m}>{m}</option>) : availableMaterials.map(m => <option key={m} value={m}>{m}</option>)}</select> )}
+                                       {useManualHVL ? ( <div className="relative"><input type="number" value={manualHVL} onChange={e => setManualHVL(e.target.value)} placeholder="HVL in cm" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/><div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-500">cm</div>
+</div> ) : ( 
+
+(calcMode === MODE_GENERIC || availableMaterials.length > 0) ? (
+        <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+            {calcMode === MODE_GENERIC 
+                ? materials.map(m => <option key={m} value={m}>{m}</option>) 
+                : availableMaterials.map(m => <option key={m} value={m}>{m}</option>)
+            }
+        </select>
+    ) : (
+        <div className="p-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded flex items-center dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-2 flex-shrink-0"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+            Data unavailable. Switch to "Manual HVL".
+        </div>
+    )
+
+)}
+
+
                                        {calcMode === MODE_FROM_SOURCE && ( <div><label className="block text-sm font-medium">Shield Thickness</label><div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{thicknessUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div> )}
                                        {calcMode === MODE_FIND_THICKNESS && ( <div><label className="block text-sm font-medium">Target Dose Rate</label><div className="flex"><input type="number" value={targetDoseRate} onChange={e => setTargetDoseRate(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={targetDoseRateUnit} onChange={e => setTargetDoseRateUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div> )}
                                        {calcMode === MODE_GENERIC && ( <div><label className="block text-sm font-medium">Shield Thickness</label><div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{thicknessUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div> )}
@@ -17183,7 +17207,6 @@ if (mainContentRef.current) {
               * The dose rate can be calculated from a specific source or entered manually.
               */
              
-              
          const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
              const INPUT_MODE_SOURCE = 'fromSource';
              const INPUT_MODE_MANUAL = 'manualRate';
@@ -18519,9 +18542,17 @@ if (relativeShift >= 4) {
          
          const highlightStyle = { weight: 5, color: '#0ea5e9', dashArray: '', fillOpacity: 0.5 };
          const defaultStyle = { color: '#3388ff' };
+
+	const plottedPointsRef = React.useRef(plottedPoints);
+	const surveyUnitNameRef = React.useRef(surveyUnitName);
+	const surveyClassRef = React.useRef(surveyClass);
+
+	// Keep refs synchronized with state
+	React.useEffect(() => { plottedPointsRef.current = plottedPoints; }, [plottedPoints]);
+	React.useEffect(() => { surveyUnitNameRef.current = surveyUnitName; }, [surveyUnitName]);
+	React.useEffect(() => { surveyClassRef.current = surveyClass; }, [surveyClass]);
          
          // --- HELPER FUNCTIONS ---
-         
          
          React.useEffect(() => {
          if (surveyUnitLayer) {
@@ -18529,9 +18560,7 @@ if (relativeShift >= 4) {
          surveyUnitLayer.setPopupContent(popupContent);
          }
          }, [surveyUnitName, surveyClass, surveyUnitLayer, surveyUnitArea]);
-         
-         
-         
+              
          const getNextIdForPrefix = (points, prefix) => {
              const existingNumbers = points
                  .filter(p => p.id.startsWith(prefix + '-'))
@@ -18595,73 +18624,93 @@ if (relativeShift >= 4) {
          };
          
          // --- CORE LOGIC ---
-         const onDrawEditOrCreate = (e) => {
-             if (e.type === 'draw:edited') {
-         
-         // Clear all old statistical (non-biased) points from the map and state
-         
-         handleClearPoints(); // This function already clears non-biased points
-         addToast("Survey unit edited. Please regenerate statistical samples.");
-         
-                 const statisticalPoints = plottedPoints.filter(p => p.type !== 'Biased');
-                 setPlottedPoints(() => {
-                      const updatedBiasedPoints = [];
-                      e.layers.eachLayer(layer => {
-                          if (layer instanceof L.CircleMarker && layer.myCustomId) {
-                              const latLng = layer.getLatLng();
-                              // CHANGED: Preserves the ID on edit
-                              updatedBiasedPoints.push({ id: layer.myCustomId, lat: latLng.lat, lng: latLng.lng, type: 'Biased' });
-                          } else if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
-                              const area = calculatePolygonArea(layer.getLatLngs());
-                              setSurveyUnitArea(area);
-                              const popupContent = `<b>Survey Unit: ${surveyUnitName}</b><br>Class: ${surveyClass}<br>Area: ${area.toFixed(1)} m²`;
-                              layer.setPopupContent(popupContent);
-                          }
-                      });
-                      return [...updatedBiasedPoints, ...statisticalPoints];
-                 });
-                 addToast("Item(s) updated.");
-                 return;
-             }
-         
-             const layer = e.layer;
-             if (!layer) return;
-         
-             if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
-                 drawnItemsRef.current.eachLayer(l => {
-                     if (l instanceof L.Polygon || l instanceof L.Rectangle) { drawnItemsRef.current.removeLayer(l); }
-                 });
-                 handleClearPoints();
-                 drawnItemsRef.current.addLayer(layer);
-                 setSurveyUnitLayer(layer);
-                 const area = calculatePolygonArea(layer.getLatLngs());
-                 setSurveyUnitArea(area);
-                 const popupContent = `<b>Survey Unit: ${surveyUnitName}</b><br>Class: ${surveyClass}<br>Area: ${area.toFixed(1)} m²`;
-                 layer.bindPopup(popupContent).openPopup();
-                 layer.on({
-                     mouseover: (e) => e.target.setStyle(highlightStyle),
-                     mouseout: (e) => e.target.setStyle(defaultStyle)
-                 });
-             } else if (layer instanceof L.Marker) {
-         
-         
-         // Remove the temporary marker that Leaflet.Draw creates to avoid duplicates.
-         drawnItemsRef.current.removeLayer(layer);
-         
-         
-                 const latLng = layer.getLatLng();
-                 setPlottedPoints(currentPoints => {
-                     // CHANGED: Now uses the prefix-based ID generator
-                     const newId = getNextIdForPrefix(currentPoints, 'B');
-                     const newPoint = { id: newId, lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
-                     const popupContent = `<b>Bias Sample Point #${newId}</b><br>Type: Biased<br>Lat: ${latLng.lat.toFixed(6)}<br>Lng: ${latLng.lng.toFixed(6)}`;
-                     const newMarker = L.circleMarker(latLng, { radius: 4, className: 'biased-sample-marker' }).bindPopup(popupContent);
-                     newMarker.myCustomId = newId;
-                     drawnItemsRef.current.addLayer(newMarker);
-                     return [...currentPoints, newPoint];
-                 });
-             }
-         };
+const onDrawEditOrCreate = (e) => {
+    if (e.type === 'draw:edited') {
+        // FIX: Use plottedPointsRef.current to get the FRESH list of points
+        const currentPoints = plottedPointsRef.current;
+        
+        // Separate out existing biased points so we don't lose them
+        // (We don't need to call handleClearPoints() here because we are about to overwrite state)
+        const statisticalPoints = currentPoints.filter(p => p.type !== 'Biased');
+        
+        const updatedBiasedPoints = [];
+        
+        e.layers.eachLayer(layer => {
+            if (layer instanceof L.CircleMarker && layer.myCustomId) {
+                const latLng = layer.getLatLng();
+                updatedBiasedPoints.push({ 
+                    id: layer.myCustomId, 
+                    lat: latLng.lat, 
+                    lng: latLng.lng, 
+                    type: 'Biased' 
+                });
+            } else if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
+                const area = calculatePolygonArea(layer.getLatLngs());
+                setSurveyUnitArea(area);
+                
+                // FIX: Use refs for Name and Class to ensure popup has current values
+                const popupContent = `<b>Survey Unit: ${surveyUnitNameRef.current}</b><br>Class: ${surveyClassRef.current}<br>Area: ${area.toFixed(1)} m²`;
+                layer.setPopupContent(popupContent);
+            }
+        });
+
+        // Merge the updates
+        setPlottedPoints([...updatedBiasedPoints, ...statisticalPoints]);
+        addToast("Item(s) updated.");
+        return;
+    }
+
+    const layer = e.layer;
+    if (!layer) return;
+
+    if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
+        drawnItemsRef.current.eachLayer(l => {
+            if (l instanceof L.Polygon || l instanceof L.Rectangle) { drawnItemsRef.current.removeLayer(l); }
+        });
+        handleClearPoints(); // This clears statistical points from the map
+        drawnItemsRef.current.addLayer(layer);
+        setSurveyUnitLayer(layer);
+        
+        const area = calculatePolygonArea(layer.getLatLngs());
+        setSurveyUnitArea(area);
+        
+        // FIX: Use refs for Name and Class
+        const popupContent = `<b>Survey Unit: ${surveyUnitNameRef.current}</b><br>Class: ${surveyClassRef.current}<br>Area: ${area.toFixed(1)} m²`;
+        layer.bindPopup(popupContent).openPopup();
+        
+        layer.on({
+            mouseover: (e) => e.target.setStyle(highlightStyle),
+            mouseout: (e) => e.target.setStyle(defaultStyle)
+        });
+    } else if (layer instanceof L.Marker) {
+        // Remove the temporary marker Leaflet draws
+        drawnItemsRef.current.removeLayer(layer);
+
+        const latLng = layer.getLatLng();
+        
+        // FIX: Use the ref to generate the next ID correctly based on CURRENT points
+        setPlottedPoints(prevPoints => {
+            // Note: Inside a setState callback, 'prevPoints' is safe/fresh, 
+            // but for consistency with getNextId logic, using the ref is also fine.
+            // However, the getNextId function relies on the full list.
+            const newId = getNextIdForPrefix(prevPoints, 'B');
+            const newPoint = { id: newId, lat: latLng.lat, lng: latLng.lng, type: 'Biased' };
+            
+            const popupContent = `<b>Bias Sample Point #${newId}</b><br>Type: Biased<br>Lat: ${latLng.lat.toFixed(6)}<br>Lng: ${latLng.lng.toFixed(6)}`;
+            
+            // We must add the marker to the map manually here
+            const newMarker = L.circleMarker(latLng, { 
+                radius: 4, 
+                className: 'biased-sample-marker' 
+            }).bindPopup(popupContent);
+            
+            newMarker.myCustomId = newId;
+            drawnItemsRef.current.addLayer(newMarker);
+            
+            return [...prevPoints, newPoint];
+        });
+    }
+};
          
          const handleGenerateSamples = React.useCallback((pattern) => {
          // 1. Initial Validation
