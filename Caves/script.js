@@ -9495,49 +9495,64 @@ const render = () => {
 
             // --- ENTITY RENDERING ---
             if (tileShadowOpacity < 0.95) {
-                // Health Bars
-                if (gameState.mapMode === 'overworld' && ENEMY_DATA[fgChar]) {
-                    const enemyId = `overworld:${mapX},${-mapY}`;
-                    const enemyHealthData = gameState.sharedEnemies[enemyId];
-                    if (enemyHealthData) {
-                        const healthPercent = enemyHealthData.health / enemyHealthData.maxHealth;
-                        ctx.fillStyle = '#333';
-                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE, 3);
-                        ctx.fillStyle = healthPercent > 0.5 ? '#4caf50' : '#ef4444';
-                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE * healthPercent, 3);
-                    }
-                }
-
-                // Characters
-                if (fgChar) {
-                    ctx.fillStyle = fgColor; 
-                    if (ENEMY_DATA[fgChar]) {
-                        ctx.fillStyle = '#ef4444'; 
-                        let isElite = false;
-                        let eliteColor = null;
-
-                        // Check Elite Status
-                        if (gameState.mapMode === 'overworld') {
-                            const enemyData = gameState.sharedEnemies[`overworld:${mapX},${-mapY}`];
-                            if (enemyData && enemyData.isElite) { isElite = true; eliteColor = enemyData.color; }
-                        } else {
-                            const enemy = gameState.instancedEnemies.find(e => e.x === mapX && e.y === mapY);
-                            if (enemy && enemy.isElite) { isElite = true; eliteColor = enemy.color; }
-                        }
-
-                        if (isElite) {
-                            ctx.fillStyle = eliteColor || '#facc15';
-                            ctx.strokeStyle = eliteColor || '#facc15';
-                            ctx.lineWidth = 1;
-                            ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-                        }
-                    } 
-                    else if (fgChar === '$') ctx.fillStyle = '#ffd700';
+                
+                // 1. Draw Loot/Items (Keep existing logic for items embedded in tile)
+                if (fgChar && !ENEMY_DATA[fgChar]) { // Draw items, but NOT enemies from tile data
+                    ctx.fillStyle = fgColor;
+                    if (fgChar === '$') ctx.fillStyle = '#ffd700';
                     else if (fgChar === '✨') ctx.fillStyle = '#a855f7';
                     else if (fgChar === 'B') ctx.fillStyle = '#fde047';
                     
                     ctx.font = isWideChar(fgChar) ? `${TILE_SIZE}px monospace` : `${TILE_SIZE}px monospace`;
                     ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                }
+
+                // 2. Draw Overworld Enemies (Layered on top)
+                if (gameState.mapMode === 'overworld') {
+                    const enemyId = `overworld:${mapX},${-mapY}`;
+                    const enemy = gameState.sharedEnemies[enemyId];
+                    
+                    if (enemy) {
+                        // Draw Health Bar
+                        const healthPercent = enemy.health / enemy.maxHealth;
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE, 3);
+                        ctx.fillStyle = healthPercent > 0.5 ? '#4caf50' : '#ef4444';
+                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE * healthPercent, 3);
+
+                        // Draw Enemy Sprite
+                        const isElite = enemy.isElite || false;
+                        const enemyColor = isElite ? (enemy.color || '#facc15') : '#ef4444';
+                        
+                        ctx.fillStyle = enemyColor;
+                        ctx.font = `${TILE_SIZE}px monospace`;
+                        ctx.fillText(enemy.tile, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+
+                        // Draw Elite Border
+                        if (isElite) {
+                            ctx.strokeStyle = enemyColor;
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                        }
+                    }
+                } 
+                // 3. Draw Instanced Enemies (Dungeons/Castles)
+                else {
+                    const enemy = gameState.instancedEnemies.find(e => e.x === mapX && e.y === mapY);
+                    if (enemy) {
+                        // (Use existing instanced rendering logic, just ensure we draw the tile char)
+                        const isElite = enemy.isElite || false;
+                        const enemyColor = isElite ? (enemy.color || '#facc15') : '#ef4444';
+                        
+                        ctx.fillStyle = enemyColor;
+                        ctx.fillText(enemy.tile, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                        
+                        if (isElite) {
+                            ctx.strokeStyle = enemyColor;
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                        }
+                    }
                 }
             }
 
@@ -9782,19 +9797,18 @@ async function processOverworldEnemyTurns() {
     const AI_MOVE_COOLDOWN = 5000; 
 
     // 1. PLAN MOVES
+    // We scan tiles, but we look at sharedEnemies for positions now, not just the map tiles
+    // Actually, iterating tiles is still fine as long as we check ENEMY_DATA
     for (let y = playerY - searchRadius; y <= playerY + searchRadius; y++) {
         for (let x = playerX - searchRadius; x <= playerX + searchRadius; x++) {
             if (x === playerX && y === playerY) continue;
 
-            const tile = chunkManager.getTile(x, y);
-
-            if (ENEMY_DATA[tile]) {
-                const enemyId = `overworld:${x},${-y}`;
-                // Check local cache
-                const cachedEnemy = gameState.sharedEnemies ? gameState.sharedEnemies[enemyId] : null;
-                
-                // If we have data and it moved recently, skip
-                if (cachedEnemy && cachedEnemy.lastMove && Date.now() - cachedEnemy.lastMove < AI_MOVE_COOLDOWN) {
+            const enemyId = `overworld:${x},${-y}`;
+            const cachedEnemy = gameState.sharedEnemies[enemyId];
+            
+            // Only process if we actually have enemy data here
+            if (cachedEnemy) {
+                if (cachedEnemy.lastMove && Date.now() - cachedEnemy.lastMove < AI_MOVE_COOLDOWN) {
                     continue; 
                 }
 
@@ -9812,21 +9826,27 @@ async function processOverworldEnemyTurns() {
 
                     const newX = x + dirX;
                     const newY = y + dirY;
+                    
+                    // Check tile at destination (This gets the TERRAIN now, e.g. 'F' or '.')
                     const targetTile = chunkManager.getTile(newX, newY);
 
+                    // Collision check
+                    const targetEnemyId = `overworld:${newX},${-newY}`;
+                    const isOccupied = gameState.sharedEnemies[targetEnemyId] || targetTile === '♛' || targetTile === 'V' || (newX === playerX && newY === playerY);
+                    
+                    // Terrain check
                     let canMove = false;
-                    if (tile === 'w') canMove = (targetTile === '.' || targetTile === 'F');
-                    else if (tile === 'b') canMove = (targetTile === '.');
-                    else canMove = (targetTile === '.');
+                    const enemyType = cachedEnemy.tile; // Get type from data
+                    if (enemyType === 'w') canMove = (targetTile === '.' || targetTile === 'F');
+                    else if (enemyType === 'b') canMove = (targetTile === '.');
+                    else canMove = (targetTile === '.'); // Default
 
-                    if (targetTile === '@' || ENEMY_DATA[targetTile] || targetTile === '♛' || targetTile === 'V') canMove = false;
-
-                    if (canMove) { 
+                    if (!isOccupied && canMove) { 
                         movesToMake.push({
                             oldX: x, oldY: y,
                             newX: newX, newY: newY,
-                            tile: tile,
-                            tileUnderneath: targetTile
+                            tile: enemyType,
+                            tileUnderneath: targetTile 
                         });
 
                         const distSq = Math.pow(newX - playerX, 2) + Math.pow(newY - playerY, 2);
@@ -9859,29 +9879,11 @@ async function processOverworldEnemyTurns() {
 
         try {
             await oldRef.transaction(currentData => {
+                if (currentData === null) return null; 
                 const now = Date.now();
-
-                // --- GHOST RESURRECTION LOGIC ---
-                if (currentData === null) {
-                    // Enemy exists visually but not in DB. Create it now!
-                    const enemyTemplate = ENEMY_DATA[move.tile];
-                    if (!enemyTemplate) return null; // Should not happen
-
-                    const scaledStats = getScaledEnemy(enemyTemplate, move.oldX, move.oldY);
-                    
-                    return {
-                        ...scaledStats,
-                        tile: move.tile,
-                        lastMove: now, // Mark as moved so we claim it
-                        standingOn: getBaseTerrain(move.oldX, move.oldY) // Assume it was on base terrain
-                    };
-                }
-                // -------------------------------
-                
                 if (currentData.lastMove && now - currentData.lastMove < AI_MOVE_COOLDOWN) {
-                    return; // Abort
+                    return; 
                 }
-                
                 currentData.lastMove = now;
                 return currentData;
             }, (error, committed, snapshot) => {
@@ -9891,26 +9893,104 @@ async function processOverworldEnemyTurns() {
             });
 
             if (claimedData) {
+                // Update Memory
                 const restoredTile = claimedData.standingOn || getBaseTerrain(move.oldX, move.oldY);
                 claimedData.standingOn = move.tileUnderneath;
 
-                // Atomic Move
+                // Move in Database
                 const updates = {};
                 updates[`worldEnemies/${newChunkKey}/${newId}`] = claimedData;
                 updates[`worldEnemies/${oldChunkKey}/${oldId}`] = null;
-                
                 await rtdb.ref().update(updates);
 
-                chunkManager.setWorldTile(move.oldX, move.oldY, restoredTile);
-                chunkManager.setWorldTile(move.newX, move.newY, move.tile);
+                // --- SMOOTH MOVEMENT FIX ---
+                // We update gameState.sharedEnemies locally so the renderer sees the move instantly.
+                // We DO NOT touch chunkManager.loadedChunks (Terrain), preserving the trees/grass!
+                
+                delete gameState.sharedEnemies[oldId];
+                gameState.sharedEnemies[newId] = claimedData;
+                
+                // (Optional) If we really need to clean the terrain of 'ghosts':
+                if (chunkManager.loadedChunks[oldChunkKey]) {
+                     const lx = (move.oldX % 16 + 16) % 16;
+                     const ly = (move.oldY % 16 + 16) % 16;
+                     // Ensure the map actually shows terrain, not a leftover 'r'
+                     chunkManager.loadedChunks[oldChunkKey][ly][lx] = restoredTile;
+                }
             }
 
         } catch (err) {
             console.error("AI Move Error:", err);
         }
     }
+    
+    if (movesToMake.length > 0) render();
 
     return nearestEnemyDir;
+}
+
+/**
+ * ONE-TIME FIX: Scans visible chunks. If an enemy tile exists but has no data,
+ * it creates the data in the new database location.
+ */
+async function fixGhostEnemies() {
+    if (gameState.mapMode !== 'overworld') return;
+    
+    logMessage("Scanning for ghost enemies...");
+    
+    const chunkX = Math.floor(gameState.player.x / 16);
+    const chunkY = Math.floor(gameState.player.y / 16);
+    let fixedCount = 0;
+
+    // Scan 3x3 Chunks
+    for (let cy = chunkY - 1; cy <= chunkY + 1; cy++) {
+        for (let cx = chunkX - 1; cx <= chunkX + 1; cx++) {
+            const chunkKey = `${cx},${cy}`;
+            // Ensure we have enemy data for this chunk
+            const chunkEnemies = loadedEnemyChunks[chunkKey] || {};
+            
+            // Iterate tiles in this chunk (0-15)
+            for (let ly = 0; ly < 16; ly++) {
+                for (let lx = 0; lx < 16; lx++) {
+                    const wx = cx * 16 + lx;
+                    const wy = cy * 16 + ly;
+                    
+                    const tile = chunkManager.getTile(wx, wy);
+                    
+                    // If it looks like an enemy...
+                    if (ENEMY_DATA[tile]) {
+                        const enemyId = `overworld:${wx},${-wy}`;
+                        
+                        // ...but has no data in the database?
+                        if (!chunkEnemies[enemyId]) {
+                            // CREATE IT!
+                            const enemyTemplate = ENEMY_DATA[tile];
+                            const scaledStats = getScaledEnemy(enemyTemplate, wx, wy);
+                            
+                            const newEnemy = {
+                                ...scaledStats,
+                                tile: tile,
+                                standingOn: getBaseTerrain(wx, wy), // Assume base terrain
+                                lastMove: 0 // Ready to move immediately
+                            };
+                            
+                            // Save to the NEW chunked path
+                            await rtdb.ref(`worldEnemies/${chunkKey}/${enemyId}`).set(newEnemy);
+                            fixedCount++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    if (fixedCount > 0) {
+        logMessage(`Resurrected ${fixedCount} ghost enemies. They should move now.`);
+        // Refresh listeners to pick up new data
+        manageEnemyListeners();
+    } else {
+        logMessage("No ghosts found nearby.");
+    }
 }
 
 function processFriendlyTurns() {
@@ -13034,6 +13114,8 @@ async function enterGame(playerData) {
     initMobileControls();
 
     manageEnemyListeners();
+
+    setTimeout(fixGhostEnemies, 2000); // Run 2 seconds after load to ensure map is ready
 }
 
 auth.onAuthStateChanged((user) => {
