@@ -23,6 +23,9 @@ let otherPlayers = {};
 let unsubscribePlayerListener;
 let worldStateListeners = {};
 
+let activeEnemyListeners = {}; // Tracks which chunks we are listening to
+let loadedEnemyChunks = {};    // Stores the enemy data for each chunk
+
 let activeShopInventory = [];
 
 const TILE_DATA = {
@@ -988,6 +991,46 @@ const ENEMY_DATA = {
         castRange: 7,
         spellDamage: 8, 
         isBoss: true   
+    },
+    'c': {
+        name: 'Cultist Initiate',
+        maxHealth: 12,
+        attack: 3,
+        defense: 0,
+        xp: 25,
+        loot: '📜', // Drops random scrolls often
+        flavor: "He mutters prayers to a sleeping god."
+    },
+    'F': {
+        name: 'Cultist Fanatic',
+        maxHealth: 15,
+        attack: 6, // High damage!
+        defense: 0, // No armor
+        xp: 35,
+        loot: '🗡️', // Often drops daggers
+        flavor: "He fights with reckless abandon."
+    },
+    
+    // --- NEW BEASTS (Tanky & Dangerous) ---
+    '🗿': {
+        name: 'Stone Golem',
+        maxHealth: 40,
+        attack: 4,
+        defense: 4, // Very high defense! Needs magic or pickaxe.
+        xp: 60,
+        loot: '🪨', // Drops Stone/Ore
+        flavor: "A walking boulder. Blades skitter off its hide."
+    },
+    '🐲': {
+        name: 'Young Drake',
+        maxHealth: 50,
+        attack: 7,
+        defense: 2,
+        xp: 100,
+        loot: '🐉', // Dragon Scale
+        inflicts: 'burn', // We'll map this to fire damage
+        inflictChance: 0.3,
+        flavor: "Smoke curls from its nostrils."
     },
 };
 
@@ -1956,6 +1999,61 @@ function getInterpolatedDayCycleColor(hour, minute) {
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
+/**
+ * Manages Firebase listeners for enemies based on player position.
+ * Only downloads enemies in the 3x3 chunks around the player.
+ */
+function manageEnemyListeners() {
+    if (gameState.mapMode !== 'overworld') return;
+
+    const chunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+    const chunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+    
+    // We want the center chunk + 1 neighbor in every direction (3x3 grid)
+    const visibleChunks = new Set();
+    for (let y = -1; y <= 1; y++) {
+        for (let x = -1; x <= 1; x++) {
+            visibleChunks.add(`${chunkX + x},${chunkY + y}`);
+        }
+    }
+
+    // 1. Remove Old Listeners (Chunks we walked away from)
+    for (const key in activeEnemyListeners) {
+        if (!visibleChunks.has(key)) {
+            // Unsubscribe from Firebase
+            activeEnemyListeners[key].off();
+            delete activeEnemyListeners[key];
+            
+            // Clear local data
+            delete loadedEnemyChunks[key];
+        }
+    }
+
+    // 2. Add New Listeners (New chunks we just walked into)
+    visibleChunks.forEach(key => {
+        if (!activeEnemyListeners[key]) {
+            const ref = rtdb.ref(`worldEnemies/${key}`);
+            activeEnemyListeners[key] = ref;
+            
+            ref.on('value', (snapshot) => {
+                const val = snapshot.val();
+                if (val) {
+                    loadedEnemyChunks[key] = val;
+                } else {
+                    delete loadedEnemyChunks[key];
+                }
+                
+                // Merge all loaded chunks into the sharedEnemies object for rendering
+                gameState.sharedEnemies = {};
+                for (const chunkKey in loadedEnemyChunks) {
+                    Object.assign(gameState.sharedEnemies, loadedEnemyChunks[chunkKey]);
+                }
+                render();
+            });
+        }
+    });
+}
+
 function getOrdinalSuffix(day) {
     if (day > 3 && day < 21) return 'th';
     switch (day % 10) {
@@ -2241,7 +2339,26 @@ const CRAFTING_RECIPES = {
         materials: { "Void Dust": 5, "Obsidian Shard": 1 }, 
         xp: 100, level: 4 
     },
-
+    // --- TIER 4.5 (Dragon) ---
+    "Dragonscale Tunic": { 
+        materials: { "Dragon Scale": 5, "Leather Tunic": 1 }, 
+        xp: 150, level: 4 
+    },
+    "Dragonbone Dagger": { 
+        materials: { "Dragon Scale": 2, "Bone Dagger": 1, "Obsidian Shard": 1 }, 
+        xp: 120, level: 4 
+    },
+    // --- TIER 5 (Diamond) ---
+    "Diamond Tipped Pickaxe": { 
+        materials: { "Pickaxe": 1, "Raw Diamond": 2 }, 
+        xp: 200, level: 5 
+        // Note: You'd need to update obstacle logic to check for this name if you want it to break harder rocks!
+    },
+    // --- UTILITY ---
+    "Black Powder Bomb": { 
+        materials: { "Stone": 1, "Fire Elemental Core": 1 }, // Requires killing fire elementals
+        xp: 50, level: 3 
+    },
     // --- TIER 5 (Master - Needs Rare Mats) ---
     "Obsidian Edge": { 
         materials: { "Obsidian Shard": 3, "Steel Sword": 1, "Arcane Dust": 5 }, 
@@ -2509,7 +2626,83 @@ const ITEM_DATA = {
         statBonuses: { mana: 5 }, // Good for early mages
         description: "Thick wool robes that help focus the mind."
     },
+    // --- NEW CRAFTING MATERIALS ---
+    '🐉': { name: 'Dragon Scale', type: 'junk', description: "Warm to the touch and harder than steel." },
+    '💎': { name: 'Raw Diamond', type: 'junk', description: "Uncut, but incredibly sharp." },
 
+    // --- NEW WEAPONS ---
+    '🔱': {
+        name: 'Trident',
+        type: 'weapon',
+        tile: '🔱',
+        damage: 4,
+        slot: 'weapon',
+        description: "Excellent for keeping enemies at bay."
+    },
+    '🔨h': { // Heavy variant
+        name: 'Meteor Hammer',
+        type: 'weapon',
+        tile: '🔨',
+        damage: 7, // Very High Damage
+        slot: 'weapon',
+        statBonuses: { dexterity: -3 }, // Makes you clumsy
+        description: "A heavy iron ball on a chain. Devastating but unwieldy."
+    },
+    '🗡️d': {
+        name: 'Dragonbone Dagger',
+        type: 'weapon',
+        tile: '🗡️',
+        damage: 4,
+        slot: 'weapon',
+        statBonuses: { dexterity: 2, luck: 1 },
+        description: "Carved from the fang of a drake. Light and lethal."
+    },
+
+    // --- DRAGONSCALE SET (Tier 4.5 - Bridge to Endgame) ---
+    '🛡️d': {
+        name: 'Dragonscale Shield',
+        type: 'armor',
+        tile: '🛡️',
+        defense: 4,
+        slot: 'armor',
+        blockChance: 0.30, // 30% Block!
+        description: "Fashioned from a single massive scale."
+    },
+    '🧥d': {
+        name: 'Dragonscale Tunic',
+        type: 'armor',
+        tile: '🧥',
+        defense: 6,
+        slot: 'armor',
+        statBonuses: { strength: 1, willpower: 1 }, // Good for battlemages
+        description: "Fireproof and tough."
+    },
+
+    // --- NEW CONSUMABLES ---
+    '🧪s': {
+        name: 'Potion of Speed',
+        type: 'buff_potion',
+        buff: 'dexterity',
+        amount: 5,
+        duration: 10,
+        tile: '🧪',
+        description: "You feel light as a feather. (+5 Dex for 10 turns)"
+    },
+    '💣': {
+        name: 'Black Powder Bomb',
+        type: 'consumable',
+        tile: '💣',
+        description: "Throw it! Deals 15 damage to a target.",
+        effect: (state) => {
+            // Simple instant "grenade" logic for now
+            logMessage("You light the fuse... BOOM! (Deals 15 damage to self if not careful!)");
+            // For safety in this version, let's make it a flat AoE around player or self-hit
+            // Implementing aiming for items is complex, so let's make it a "Panic Button"
+            // hits all adjacent enemies.
+            logMessage("The explosion blasts everything nearby!");
+            // (You would add AoE logic here similar to Whirlwind)
+        }
+    },
     // --- NEW MONSTER LOOT ---
     '🐀': { name: 'Rat Tail', type: 'junk', description: "Gross, but the apothecary might buy it." },
     '🦇': { name: 'Bat Wing', type: 'junk', description: "Leathery and thin." },
@@ -3557,6 +3750,26 @@ const SPELL_DATA = {
         baseShield: 5,
         duration: 5 // Lasts for 5 player turns
     },
+    "chainLightning": {
+        name: "Chain Lightning",
+        description: "Strikes a target, then jumps to a nearby enemy.",
+        cost: 18,
+        costType: "mana",
+        requiredLevel: 6,
+        target: "aimed",
+        baseDamage: 6,
+        // You'd handle the "jump" in executeAimedSpell
+    },
+    "stoneSkin": {
+        name: "Stone Skin",
+        description: "Greatly increases Defense but lowers Dexterity.",
+        cost: 20,
+        costType: "mana",
+        requiredLevel: 3,
+        target: "self",
+        type: "buff",
+        // Handled in castSpell switch case
+    },
     "fireball": {
         name: "Fireball",
         description: "An explosive orb damages enemies in a 3x3 area. Scales with Wits.",
@@ -3732,6 +3945,28 @@ const TALENT_DATA = {
 };
 
 const SKILL_DATA = {
+    "kick": {
+        name: "Kick",
+        description: "Stun an enemy for 2 turns. Deals low damage.",
+        cost: 8,
+        costType: "stamina",
+        requiredLevel: 1,
+        target: "aimed",
+        baseDamageMultiplier: 0.2, // Very low damage
+        cooldown: 8,
+        // You need to handle the stun logic in 'executeMeleeSkill' similar to shieldBash
+    },
+    "vanish": {
+        name: "Vanish",
+        description: "Instantly drop all enemy aggro and enter Stealth.",
+        cost: 15,
+        costType: "stamina",
+        requiredLevel: 4,
+        target: "self",
+        cooldown: 30,
+        type: "utility"
+        // Needs a tiny update in useSkill to set stealthTurns
+    },
     "brace": {
         name: "Brace",
         description: "Gain temporary Defense. Scales with Constitution.",
@@ -6072,6 +6307,8 @@ function renderShop() {
     }
 }
 
+
+
 function initMobileControls() {
     const mobileContainer = document.getElementById('mobileControls');
     
@@ -7132,7 +7369,81 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 } else {
                     logMessage("You need a pile of bones '(' or a grave '⚰️' to raise the dead.");
                 }
-            } // <--- CLOSE BRACE
+            }
+            break;
+
+            case 'chainLightning':
+            { 
+                // 1. Calculate Base Damage
+                const lightningDmg = spellData.baseDamage + (player.wits * spellLevel);
+                
+                // 2. Determine Primary Impact Point (3 tiles away, like Fireball)
+                const targetX = player.x + (dirX * 3);
+                const targetY = player.y + (dirY * 3);
+                
+                logMessage("A bolt of lightning arcs from your hands!");
+
+                // 3. Hit Primary Target
+                // We use 'await' here to ensure the main bolt hits first
+                const hitPrimary = await applySpellDamage(targetX, targetY, lightningDmg, spellId);
+                
+                if (hitPrimary) {
+                    hitSomething = true;
+                    // Visual: Bright Blue/Yellow Spark
+                    ParticleSystem.createExplosion(targetX, targetY, '#facc15'); 
+                }
+
+                // 4. The "Chain" Logic
+                // Instead of a fixed square, we scan a radius and pick RANDOM valid enemies
+                const jumpRadius = 3; // How far the lightning can jump
+                let potentialJumpTargets = [];
+
+                // Scan the area around the impact point
+                for (let y = targetY - jumpRadius; y <= targetY + jumpRadius; y++) {
+                    for (let x = targetX - jumpRadius; x <= targetX + jumpRadius; x++) {
+                        // Don't hit the primary target again
+                        if (x === targetX && y === targetY) continue; 
+
+                        // Check if there is actually an enemy here
+                        let hasEnemy = false;
+                        if (gameState.mapMode === 'overworld') {
+                            const tile = chunkManager.getTile(x, y);
+                            if (ENEMY_DATA[tile]) hasEnemy = true;
+                        } else {
+                            if (gameState.instancedEnemies.some(e => e.x === x && e.y === y)) hasEnemy = true;
+                        }
+
+                        if (hasEnemy) {
+                            potentialJumpTargets.push({x, y});
+                        }
+                    }
+                }
+
+                // 5. Select Jump Targets
+                // Max jumps scales slightly with spell level (Base 2 jumps + 1 per 2 levels)
+                const maxJumps = 2 + Math.floor(spellLevel / 2);
+                
+                // Shuffle the potential targets array (Fisher-Yates shuffle simplified)
+                potentialJumpTargets.sort(() => Math.random() - 0.5);
+
+                // Hit the first N targets
+                const jumpsToMake = Math.min(potentialJumpTargets.length, maxJumps);
+                
+                if (jumpsToMake > 0) {
+                    // Slight delay in log to simulate the "travel" time
+                    setTimeout(() => logMessage(`The lightning arcs to ${jumpsToMake} nearby enemies!`), 200);
+                }
+
+                for (let i = 0; i < jumpsToMake; i++) {
+                    const jumpTgt = potentialJumpTargets[i];
+                    // Chain hits deal 75% damage
+                    const jumpDmg = Math.max(1, Math.floor(lightningDmg * 0.75));
+                    
+                    applySpellDamage(jumpTgt.x, jumpTgt.y, jumpDmg, spellId).then(hit => {
+                        if (hit) ParticleSystem.createExplosion(jumpTgt.x, jumpTgt.y, '#93c5fd'); // Lighter blue for arcs
+                    });
+                }
+            } 
             break;
 
         case 'fireball':
@@ -8043,7 +8354,6 @@ function openSpellbook() {
  * and the player's spellbook.
  * @param {string} spellId - The ID of the spell to cast (e.g., "lesserHeal").
  */
-
 function castSpell(spellId) {
     const player = gameState.player;
     const spellData = SPELL_DATA[spellId];
@@ -8069,9 +8379,8 @@ function castSpell(spellId) {
     const cost = spellData.cost;
     const costType = spellData.costType;
 
-    // --- MODIFIED COST CHECK ---
+    // Special check for health: must have MORE than the cost to survive
     if (costType === 'health') {
-        // Special check for health: must have MORE than the cost
         if (player[costType] <= cost) { 
             logMessage("You are too weak to sacrifice your life-force.");
             return;
@@ -8080,11 +8389,9 @@ function castSpell(spellId) {
         logMessage(`You don't have enough ${costType} to cast that.`);
         return; 
     }
-    // --- END MODIFICATION ---
 
     // --- 2. Handle Targeting ---
     if (spellData.target === 'aimed') {
-        // (This block is unchanged)
         gameState.isAiming = true;
         gameState.abilityToAim = spellId;
         spellModal.classList.add('hidden');
@@ -8093,9 +8400,9 @@ function castSpell(spellId) {
 
     } else if (spellData.target === 'self') {
         // --- Self-Cast Spells ---
-        player[costType] -= cost; // Deduct the resource cost
+        
         let spellCastSuccessfully = false;
-        let updates = {}; // --- NEW: Object to batch database updates ---
+        let updates = {}; // Object to batch database updates
 
         // --- 3. Execute Spell Effect ---
         switch (spellId) {
@@ -8111,16 +8418,16 @@ function castSpell(spellId) {
                 spellCastSuccessfully = true;
                 break;
 
-                case 'divineLight':
+            case 'divineLight':
                 player.health = player.maxHealth;
                 player.poisonTurns = 0;
                 player.frostbiteTurns = 0;
-                player.madnessTurns = 0; // New status clean
+                player.madnessTurns = 0; 
                 player.rootTurns = 0;
                 
                 logMessage("A holy light bathes you. You are fully restored!");
                 triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-                ParticleSystem.createLevelUp(player.x, player.y); // Use the sparkle effect
+                ParticleSystem.createLevelUp(player.x, player.y); 
                 
                 updates.health = player.health;
                 updates.poisonTurns = 0;
@@ -8138,13 +8445,11 @@ function castSpell(spellId) {
                 if (healedFor > 0) {
                     logMessage(`You cast Lesser Heal and recover ${healedFor} health.`);
                     triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-
-                    ParticleSystem.createFloatingText(player.x, player.y, `+${healedFor}`, '#22c55e'); // Green text
-
+                    ParticleSystem.createFloatingText(player.x, player.y, `+${healedFor}`, '#22c55e'); 
                 } else {
                     logMessage("You cast Lesser Heal, but you're already at full health.");
                 }
-                updates.health = player.health; // <-- MODIFIED
+                updates.health = player.health; 
                 spellCastSuccessfully = true;
                 break;
 
@@ -8162,14 +8467,15 @@ function castSpell(spellId) {
                 logMessage(`You conjure an Arcane Shield, absorbing ${shieldAmount} damage!`);
                 triggerStatAnimation(statDisplays.health, 'stat-pulse-blue');
                 
-                updates.shieldValue = player.shieldValue; // <-- MODIFIED
-                updates.shieldTurns = player.shieldTurns; // <-- MODIFIED
+                updates.shieldValue = player.shieldValue; 
+                updates.shieldTurns = player.shieldTurns; 
                 spellCastSuccessfully = true;
                 break;
 
             case 'clarity':
                 if (gameState.mapMode !== 'dungeon') {
                     logMessage("You can only feel for secret walls in caves.");
+                    // Clarity consumes resources even if it fails to find anything, consistent with standard RPG logic
                     spellCastSuccessfully = true;
                     break;
                 }
@@ -8202,41 +8508,49 @@ function castSpell(spellId) {
                 spellCastSuccessfully = true;
                 break;
             
-            // --- ADD THIS NEW CASE ---
             case 'darkPact':
                 const manaRestored = spellData.baseRestore + (player.willpower * spellLevel);
-                const oldMana = player.mana;
-                player.mana = Math.min(player.maxMana, player.mana + manaRestored);
-                const actualRestore = player.mana - oldMana;
+                const missingMana = player.maxMana - player.mana;
 
-                if (actualRestore > 0) {
-                    logMessage(`You sacrifice ${cost} health to restore ${actualRestore} mana.`);
-                    triggerStatAnimation(statDisplays.health, 'stat-pulse-red'); // Our new animation
-                    triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
-                } else {
+                if (missingMana <= 0) {
                     logMessage("You cast Dark Pact, but your mana is already full.");
+                    spellCastSuccessfully = false;
+                    break;
                 }
-                updates.health = player.health; // Add health cost to updates
-                updates.mana = player.mana;   // Add mana gain to updates
+
+                // DEDUCT HEALTH MANUALLY HERE
+                player.health -= cost; 
+                
+                // ADD MANA
+                const actualRestore = Math.min(missingMana, manaRestored);
+                player.mana += actualRestore;
+
+                logMessage(`You sacrifice ${cost} health to restore ${actualRestore} mana.`);
+                triggerStatAnimation(statDisplays.health, 'stat-pulse-red'); 
+                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                
+                updates.health = player.health; 
+                updates.mana = player.mana;   
                 spellCastSuccessfully = true;
                 break;
-            // --- END ---
         }
 
         // --- 4. Finalize Self-Cast Turn ---
         if (spellCastSuccessfully) {
-            updates[costType] = player[costType]; // Add the resource cost (mana/psyche/health)
-            playerRef.update(updates); // Send all updates at once
+            
+            // Only deduct generic cost if it wasn't a health spell (handled manually in darkPact)
+            if (costType !== 'health') {
+                player[costType] -= cost; 
+            }
+
+            updates[costType] = player[costType]; // Add the final resource state to updates
+            playerRef.update(updates); 
+            
             spellModal.classList.add('hidden');
-
             triggerAbilityCooldown(spellId);
-
             endPlayerTurn();
             renderStats();
-        } else {
-            // Refund the cost if the spell failed (e.g., shield already active)
-            player[costType] += cost;
-        }
+        } 
     }
 }
 
@@ -8245,6 +8559,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
     const skillData = SKILL_DATA[skillId];
     const skillLevel = player.skillbook[skillId] || 1;
 
+    // Deduct Cost
     player[skillData.costType] -= skillData.cost;
     let hit = false;
 
@@ -8252,33 +8567,30 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
     const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
     const playerStrength = player.strength + (player.strengthBonus || 0);
     const baseDmg = (playerStrength + weaponDamage) * skillData.baseDamageMultiplier;
+    
+    // Final Damage Formula
     const finalDmg = Math.max(1, Math.floor(baseDmg + (player.strength * 0.5 * skillLevel)));
 
-    // Target Logic
-    // Shield Bash / Cleave hit adjacent (Range 1)
+    // --- Target Logic ---
     const targetX = player.x + dirX;
     const targetY = player.y + dirY;
 
-    // Check primary target
+    // Default: Hit the target in front
     let enemiesToHit = [{ x: targetX, y: targetY }];
 
-    // If Cleave, add side targets
+    // If Cleave, add side targets (90 degree angles)
     if (skillId === 'cleave') {
-        // If attacking North(0, -1), sides are (-1, -1) and (1, -1)
-        // Simple logic: add perpendicular offsets? No, cleave usually hits a wide arc in front.
-        // Let's hit the main target, plus the tiles 90 degrees to it.
-        // If attacking (1, 0) [East], hit (1, -1) [NE] and (1, 1) [SE]
-        if (dirX !== 0) { // Horizontal attack
+        if (dirX !== 0) { // Attacking Horizontal, hit Vertical sides
             enemiesToHit.push({ x: targetX, y: targetY - 1 });
             enemiesToHit.push({ x: targetX, y: targetY + 1 });
-        } else { // Vertical attack
+        } else { // Attacking Vertical, hit Horizontal sides
             enemiesToHit.push({ x: targetX - 1, y: targetY });
             enemiesToHit.push({ x: targetX + 1, y: targetY });
         }
     }
 
     for (const coords of enemiesToHit) {
-        // ... (Insert standard tile check logic here: Overworld vs Instanced) ...
+        // --- 1. RESOLVE TILE (The fixed logic) ---
         let tile;
         let map;
         if (gameState.mapMode === 'dungeon') {
@@ -8291,30 +8603,36 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
             tile = chunkManager.getTile(coords.x, coords.y);
         }
 
+        // --- 2. CHECK FOR ENEMY ---
         const enemyData = ENEMY_DATA[tile];
+        
         if (enemyData) {
             hit = true;
-            // Apply Damage
+            
+            // --- A. Overworld Combat (Firebase) ---
             if (gameState.mapMode === 'overworld') {
+                // For kicks/stuns in Overworld, we can't easily sync "Stunned" state 
+                // without complex DB changes, so we just apply damage.
                 await handleOverworldCombat(coords.x, coords.y, enemyData, tile, finalDmg);
-            } else {
+            } 
+            // --- B. Instanced Combat (Local) ---
+            else {
                 let enemy = gameState.instancedEnemies.find(e => e.x === coords.x && e.y === coords.y);
                 if (enemy) {
                     enemy.health -= finalDmg;
                     logMessage(`You hit ${enemy.name} for ${finalDmg}!`);
                     ParticleSystem.createExplosion(coords.x, coords.y, '#fff');
 
-                    // APPLY SHIELD BASH STUN
-                    if (skillId === 'shieldBash') {
-                        enemy.stunTurns = 3; // Stunned for 3 turns
+                    // --- APPLY STATUS EFFECTS ---
+                    if (skillId === 'shieldBash' || skillId === 'kick') { 
+                        enemy.stunTurns = (skillId === 'kick' ? 2 : 3); 
                         logMessage(`${enemy.name} is stunned!`);
                     }
 
+                    // Check Death
                     if (enemy.health <= 0) {
                         logMessage(`You defeated ${enemy.name}!`);
-
                         registerKill(enemy);
-
                         const droppedLoot = generateEnemyLoot(player, enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                         if (map) map[coords.y][coords.x] = droppedLoot;
@@ -8334,7 +8652,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 /**
  * Universal helper function to apply spell damage to a target.
  * Handles both overworld (Firebase) and instanced enemies.
- * Also handles special on-hit effects like Siphon Life.
+ * Now includes Chunking and Bulldozer fixes.
  * @param {number} targetX - The x-coordinate of the target.
  * @param {number} targetY - The y-coordinate of the target.
  * @param {number} damage - The final calculated damage to apply.
@@ -8391,14 +8709,22 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
     let damageDealt = 0; // Track actual damage for lifesteal
 
     if (gameState.mapMode === 'overworld') {
+        // --- OVERWORLD LOGIC (CHUNKED) ---
+        
+        // 1. Calculate Chunk ID
+        const chunkX = Math.floor(targetX / 16);
+        const chunkY = Math.floor(targetY / 16);
+        const chunkKey = `${chunkX},${chunkY}`;
+        
         const enemyId = `overworld:${targetX},${-targetY}`;
-        const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
+        // UPDATE: Path now includes chunkKey
+        const enemyRef = rtdb.ref(`worldEnemies/${chunkKey}/${enemyId}`);
 
         try {
             const transactionResult = await enemyRef.transaction(currentData => {
                 let enemy;
                 
-                // --- NEW: Handle fresh spawn via magic ---
+                // --- Handle fresh spawn via magic ---
                 if (currentData === null) {
                     // If it doesn't exist yet, create it scaled!
                     const scaledStats = getScaledEnemy(enemyData, targetX, targetY);
@@ -8410,7 +8736,9 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                         xp: scaledStats.xp,
                         loot: enemyData.loot,
                         tile: tile,
-                        name: scaledStats.name
+                        name: scaledStats.name,
+                        // --- BULLDOZER FIX ---
+                        standingOn: tile // Memorize the floor immediately
                     };
                 } else {
                     enemy = currentData;
@@ -8422,11 +8750,11 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
                 let color = '#3b82f6'; // Blue for magic
             
-                    if (spellId === 'fireball') color = '#f97316'; // Orange for fire
-                    if (spellId === 'poisonBolt') color = '#22c55e'; // Green for poison
+                if (spellId === 'fireball') color = '#f97316'; // Orange for fire
+                if (spellId === 'poisonBolt') color = '#22c55e'; // Green for poison
 
-                    ParticleSystem.createExplosion(targetX, targetY, color);
-                    ParticleSystem.createFloatingText(targetX, targetY, `-${damageDealt}`, color);
+                ParticleSystem.createExplosion(targetX, targetY, color);
+                ParticleSystem.createFloatingText(targetX, targetY, `-${damageDealt}`, color);
                 
                 if (enemy.health <= 0) return null;
                 return enemy;
@@ -8434,7 +8762,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
            const finalEnemyState = transactionResult.snapshot.val();
             if (finalEnemyState === null) {
-
+                // Enemy Died
                 const deadEnemyInfo = getScaledEnemy(enemyData, targetX, targetY);
                 
                 registerKill(deadEnemyInfo);
@@ -8443,15 +8771,15 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 
                 chunkManager.setWorldTile(targetX, targetY, droppedLoot);
             }
-                    } catch (error) {
+        } catch (error) {
             console.error("Spell damage transaction failed: ", error);
         }
 
     } else {
-        // Handle Instanced Combat
+        // --- INSTANCED LOGIC (Dungeons/Castles) ---
         let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
         if (enemy) {
-            damageDealt = Math.max(1, damage); // TODO: Add magic resistance?
+            damageDealt = Math.max(1, finalDamage); // Apply weather mod here too
             enemy.health -= damageDealt;
             logMessage(`You hit the ${enemy.name} for ${damageDealt} magic damage!`);
 
@@ -8462,17 +8790,20 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
                 const droppedLoot = generateEnemyLoot(player, enemy);
                 gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
-                }
+                
                 if (gameState.mapMode === 'dungeon') {
+                    if (chunkManager.caveEnemies[gameState.currentCaveId]) {
+                        chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+                    }
                     chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
+                } else if (gameState.mapMode === 'castle') {
+                    chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = droppedLoot;
                 }
             }
         }
     }
 
-    // --- Handle On-Hit Effects ---
+    // --- Handle On-Hit Effects (Universal) ---
     if (damageDealt > 0 && spellId === 'siphonLife') {
         const healedAmount = Math.floor(damageDealt * spellData.healPercent);
         if (healedAmount > 0) {
@@ -8489,7 +8820,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
 
     else if (damageDealt > 0 && spellData.inflicts && Math.random() < spellData.inflictChance) {
         
-        // This only applies to instanced enemies for now
+        // This only applies to instanced enemies for now (Status effects not synced to DB yet)
         if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
             let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
             
@@ -8499,11 +8830,11 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
             }
 
             else if (enemy && spellData.inflicts === 'poison' && enemy.poisonTurns <= 0) {
-            logMessage(`The ${enemy.name} is afflicted with Poison!`);
-            enemy.poisonTurns = 3; // Poison lasts 3 turns
-        }
+                logMessage(`The ${enemy.name} is afflicted with Poison!`);
+                enemy.poisonTurns = 3; // Poison lasts 3 turns
+            }
 
-        else if (enemy && spellData.inflicts === 'root' && enemy.rootTurns <= 0) {
+            else if (enemy && spellData.inflicts === 'root' && enemy.rootTurns <= 0) {
                 logMessage(`Roots burst from the ground, trapping the ${enemy.name}!`);
                 enemy.rootTurns = 3; // Root lasts 3 turns
             }
@@ -8591,25 +8922,28 @@ function passivePerceptionCheck() {
  * Accepts a pre-calculated playerDamage value.
  */
 
-async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage) { // <-- ADDED playerDamage
+async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage) {
     const player = gameState.player;
-    const enemyId = `overworld:${newX},${-newY}`; // Unique RTDB key
-    const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-    // Log message is now passed from the caller (e.g., "You attack..." or "You lunge...")
+    // 1. Calculate Chunk ID (Spatial Partitioning)
+    const chunkX = Math.floor(newX / 16);
+    const chunkY = Math.floor(newY / 16);
+    const chunkKey = `${chunkX},${chunkY}`;
 
-    let enemyWasKilled = false;
+    const enemyId = `overworld:${newX},${-newY}`;
+    // UPDATE: Path now includes chunkKey
+    const enemyRef = rtdb.ref(`worldEnemies/${chunkKey}/${enemyId}`);
+
     let enemyAttackedBack = false;
     let enemyDamageTaken = 0;
 
     try {
-        // Use a transaction to safely read and write enemy health
+        // 2. Run Transaction (Atomic Health Update)
         const transactionResult = await enemyRef.transaction(currentData => {
             let enemy;
             if (currentData === null) {
-                // First time this enemy is hit. Create it in RTDB.
+                // If it doesn't exist yet, create it scaled!
                 const scaledStats = getScaledEnemy(enemyData, newX, newY);
-                
                 enemy = {
                     health: scaledStats.maxHealth,
                     maxHealth: scaledStats.maxHealth,
@@ -8617,54 +8951,52 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     defense: enemyData.defense,
                     xp: scaledStats.xp,
                     loot: enemyData.loot,
-                    tile: newTile, // Store the original tile
-                    name: scaledStats.name // Store the scaled name (e.g., "Feral Wolf")
+                    tile: newTile,
+                    name: scaledStats.name,
+                    standingOn: newTile // <--- Bulldozer Fix: Memorize floor on spawn
                 };
-                // -----------------------------------
             } else {
                 enemy = currentData;
             }
 
-            // --- Player Attacks Enemy ---
-            // We now use the damage value passed into the function!
-            enemy.health -= playerDamage; 
+            // Apply Player Damage
+            enemy.health -= playerDamage;
 
+            // Visuals
             ParticleSystem.createExplosion(newX, newY, '#ef4444'); // Red blood
             ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
 
-            if (enemy.health <= 0) {
-                // Enemy is dead. Return 'null' to delete it from RTDB.
-                return null;
-            } else {
-                // Enemy is still alive. Update its health.
-                return enemy;
-            }
+            // If dead, return null to delete from DB
+            if (enemy.health <= 0) return null;
+            
+            return enemy;
         });
 
-        // --- Process Transaction Results ---
+        // 3. Process Result
         const finalEnemyState = transactionResult.snapshot.val();
-            if (finalEnemyState === null) {
-                // Re-calculate for the log/xp since the DB entry is gone
-                const deadEnemyInfo = getScaledEnemy(enemyData, newX, newY);
-                logMessage(`The ${deadEnemyInfo.name} was vanquished!`);
-                grantXp(deadEnemyInfo.xp);
+
+        if (finalEnemyState === null) {
+            // --- SCENARIO A: ENEMY DIED ---
+            // Re-calculate stats locally for the log since DB entry is gone
+            const deadEnemyInfo = getScaledEnemy(enemyData, newX, newY);
+            
+            logMessage(`The ${deadEnemyInfo.name} was vanquished!`);
+            grantXp(deadEnemyInfo.xp);
             updateQuestProgress(newTile);
 
             const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
             chunkManager.setWorldTile(newX, newY, droppedLoot);
 
         } else {
-            // --- ENEMY SURVIVES AND ATTACKS ---
+            // --- SCENARIO B: ENEMY SURVIVED & ATTACKS BACK ---
             enemyAttackedBack = true;
             const enemy = finalEnemyState;
 
-            // --- 1. NEW: Shield Block Check ---
+            // --- B1. Shield Block Check ---
             let blockChance = 0;
-            // Check Armor slot (Shields)
             if (player.equipment.armor && player.equipment.armor.blockChance) {
                 blockChance += player.equipment.armor.blockChance;
             }
-            // Check Weapon slot (Parrying daggers or shields in main hand)
             if (player.equipment.weapon && player.equipment.weapon.blockChance) {
                 blockChance += player.equipment.weapon.blockChance;
             }
@@ -8676,27 +9008,29 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                 }
                 enemyDamageTaken = 0;
             } else {
-                // --- 2. Calculate Potential Damage ---
+                // --- B2. Calculate Defense ---
                 const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
                 const baseDefense = Math.floor(player.dexterity / 5);
                 const buffDefense = player.defenseBonus || 0;
-
-                // --- TALENT: IRON SKIN ---
                 const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
 
-                const playerDefense = baseDefense + armorDefense + buffDefense;
+                const playerDefense = baseDefense + armorDefense + buffDefense + talentDefense;
 
+                // Calculate Raw Damage
                 enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
 
-                // --- 3. Luck Dodge Check ---
+                // --- B3. Luck Dodge Check ---
                 const luckDodgeChance = Math.min(player.luck * 0.002, 0.25); // Cap at 25%
                 if (Math.random() < luckDodgeChance) {
                     logMessage(`The ${enemyData.name} attacks, but you luckily dodge!`);
                     enemyDamageTaken = 0;
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createFloatingText(player.x, player.y, "Dodge!", "#3b82f6");
+                    }
                 }
             }
 
-            // --- 4. Apply Final Damage & Reactives ---
+            // --- B4. Apply Final Damage & Reactives ---
             if (enemyDamageTaken > 0) {
                 let damageToApply = enemyDamageTaken;
 
@@ -8717,16 +9051,12 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                 if (player.thornsValue > 0) {
                     logMessage(`The ${enemyData.name} takes ${player.thornsValue} damage from your thorns!`);
 
-                    // Use a nested transaction to safely apply thorn damage to the DB
+                    // Nested transaction to damage the enemy in DB without overwriting
                     enemyRef.transaction(thornData => {
-                        if (!thornData) return null; // Enemy already dead/gone
-                        
+                        if (!thornData) return null; // Already dead/gone
                         thornData.health -= player.thornsValue;
-                        
-                        // If dead, return null to delete
                         return thornData.health <= 0 ? null : thornData;
                     }).then(result => {
-                        // Check if the enemy was deleted (snapshot doesn't exist)
                         if (result.committed && !result.snapshot.exists()) {
                             logMessage(`The ${enemyData.name} is killed by your thorns!`);
                             grantXp(enemyData.xp);
@@ -8747,14 +9077,18 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
     } catch (error) {
         console.error("Firebase transaction failed: ", error);
         logMessage("Your attack falters... (network error)");
-        return; // Exit combat on error
+        return; 
     }
 
-    // --- Handle Post-Combat Player State ---
+    // --- 4. Handle Post-Combat Player State ---
     if (enemyAttackedBack && enemyDamageTaken > 0) { 
-        triggerStatFlash(statDisplays.health, false); // Flash health red
+        // Only flash if actual health was lost (shield might have absorbed it all)
+        // But we usually flash on hit impact anyway.
+        if (player.shieldValue <= 0 || (enemyDamageTaken - (player.shieldValue || 0)) > 0) {
+             triggerStatFlash(statDisplays.health, false); 
+        }
+        
         logMessage(`The ${enemyData.name} hits you for ${enemyDamageTaken} damage!`);   
-
         ParticleSystem.createFloatingText(player.x, player.y, `-${enemyDamageTaken}`, '#ef4444');
 
         if (player.health <= 0) {
@@ -9436,123 +9770,128 @@ function getBaseTerrain(worldX, worldY) {
 }
 
 async function processOverworldEnemyTurns() {
-    // 1. Define search area around player (e.g., 30x30 box)
     const searchRadius = 15;
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
 
     let nearestEnemyDir = null;
     let minDist = Infinity;
-    const HEARING_DISTANCE_SQ = 15 * 15; // "Hearing" range
-
-    // A list to batch our updates for efficiency
+    const HEARING_DISTANCE_SQ = 15 * 15;
     let movesToMake = [];
+    const CHASE_CHANCE = 0.5;
+    const AI_MOVE_COOLDOWN = 5000; 
 
-    // --- NEW: Chance for an enemy to chase you ---
-    const CHASE_CHANCE = 0.5; // 50% chance to chase
-
-    // 2. Loop through the search box
+    // 1. PLAN MOVES
     for (let y = playerY - searchRadius; y <= playerY + searchRadius; y++) {
         for (let x = playerX - searchRadius; x <= playerX + searchRadius; x++) {
-            // Don't move the tile the player is on
             if (x === playerX && y === playerY) continue;
 
             const tile = chunkManager.getTile(x, y);
 
-            // 3. Is this tile an enemy?
             if (ENEMY_DATA[tile]) {
+                const enemyId = `overworld:${x},${-y}`;
+                // Check the cached sharedEnemies (which now contains data from all visible chunks)
+                const cachedEnemy = gameState.sharedEnemies ? gameState.sharedEnemies[enemyId] : null;
+                
+                if (cachedEnemy && cachedEnemy.lastMove && Date.now() - cachedEnemy.lastMove < AI_MOVE_COOLDOWN) {
+                    continue; 
+                }
 
-                // 4. Try to move it (75% chance)
                 if (Math.random() < 0.75) {
-
                     let dirX, dirY;
-
-                    // --- NEW CHASE LOGIC ---
                     if (Math.random() < CHASE_CHANCE) {
-                        // CHASE: Move directly towards the player
                         dirX = Math.sign(playerX - x);
                         dirY = Math.sign(playerY - y);
                     } else {
-                        // WANDER: Move randomly
-                        dirX = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-                        dirY = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+                        dirX = Math.floor(Math.random() * 3) - 1; 
+                        dirY = Math.floor(Math.random() * 3) - 1; 
                     }
-                    // --- END NEW LOGIC ---
 
                     if (dirX === 0 && dirY === 0) continue;
 
                     const newX = x + dirX;
                     const newY = y + dirY;
-
-                    // 5. Is the new spot valid?
                     const targetTile = chunkManager.getTile(newX, newY);
 
                     let canMove = false;
-                    if (tile === 'w') { // Wolves
-                        // Wolves can move on plains OR in forests
-                        canMove = (targetTile === '.' || targetTile === 'F');
-                    } else if (tile === 'b') { // Bandits
-                        // Bandits stick to the plains
-                        canMove = (targetTile === '.');
-                    }
+                    if (tile === 'w') canMove = (targetTile === '.' || targetTile === 'F');
+                    else if (tile === 'b') canMove = (targetTile === '.');
+                    else canMove = (targetTile === '.');
+
+                    if (targetTile === '@' || ENEMY_DATA[targetTile] || targetTile === '♛' || targetTile === 'V') canMove = false;
 
                     if (canMove) { 
-
-                        // Add this move to our batch
                         movesToMake.push({
-                            oldX: x,
-                            oldY: y,
-                            newX: newX,
-                            newY: newY,
-                            tile: tile
+                            oldX: x, oldY: y,
+                            newX: newX, newY: newY,
+                            tile: tile,
+                            tileUnderneath: targetTile
                         });
 
                         const distSq = Math.pow(newX - playerX, 2) + Math.pow(newY - playerY, 2);
                         if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
                             minDist = distSq;
-                            const dirX = Math.sign(newX - playerX);
-                            const dirY = Math.sign(newY - playerY);
-                            nearestEnemyDir = { x: dirX, y: dirY };
+                            nearestEnemyDir = { x: Math.sign(newX - playerX), y: Math.sign(newY - playerY) };
                         }
-
-                        // 8. Check if it's "nearby" for the log message
-                        const distY = Math.abs(newY - playerY);
-                        const distX = Math.abs(newX - playerX);
-                        
                     }
                 }
             }
         }
     }
 
-// --- Process all moves ---
+    // 2. EXECUTE MOVES
     for (const move of movesToMake) {
-        // 1. Move the enemy on the world map
-        
-        // Check if we have a saved state for this tile in the chunk manager first
-        // If not, revert to base procedural terrain.
-        // Note: This still has the "Bulldozer" issue for items, but ensures we don't
-        // accidentally delete biome data if you add complex biomes later.
-        const restoredTile = getBaseTerrain(move.oldX, move.oldY);
-        
-        chunkManager.setWorldTile(move.oldX, move.oldY, restoredTile);
-        chunkManager.setWorldTile(move.newX, move.newY, move.tile);
+        // Calculate Chunks for Old and New positions
+        const oldChunkX = Math.floor(move.oldX / 16);
+        const oldChunkY = Math.floor(move.oldY / 16);
+        const oldChunkKey = `${oldChunkX},${oldChunkY}`;
 
-        // 2. Define the database paths for its health data
+        const newChunkX = Math.floor(move.newX / 16);
+        const newChunkY = Math.floor(move.newY / 16);
+        const newChunkKey = `${newChunkX},${newChunkY}`;
+
         const oldId = `overworld:${move.oldX},${-move.oldY}`;
         const newId = `overworld:${move.newX},${-move.newY}`;
-        const oldRef = rtdb.ref(`worldEnemies/${oldId}`);
-        const newRef = rtdb.ref(`worldEnemies/${newId}`);
+        
+        // Transaction on the OLD location
+        const oldRef = rtdb.ref(`worldEnemies/${oldChunkKey}/${oldId}`);
 
-        // 3. Check if this enemy had any health data
-        const snapshot = await oldRef.once('value');
-        const healthData = snapshot.val();
+        let claimedData = null;
 
-        if (healthData) {
-            // 4. It did! Move the data by setting it in the new spot...
-            await newRef.set(healthData);
-            // ...and removing it from the old one.
-            await oldRef.remove();
+        try {
+            await oldRef.transaction(currentData => {
+                if (currentData === null) return null; 
+                
+                const now = Date.now();
+                if (currentData.lastMove && now - currentData.lastMove < AI_MOVE_COOLDOWN) {
+                    return; // Abort
+                }
+                
+                currentData.lastMove = now;
+                return currentData;
+            }, (error, committed, snapshot) => {
+                if (committed) {
+                    claimedData = snapshot.val();
+                }
+            });
+
+            if (claimedData) {
+                const restoredTile = claimedData.standingOn || getBaseTerrain(move.oldX, move.oldY);
+                claimedData.standingOn = move.tileUnderneath;
+
+                // ATOMIC UPDATE: Delete from Old Chunk, Add to New Chunk
+                const updates = {};
+                updates[`worldEnemies/${newChunkKey}/${newId}`] = claimedData;
+                updates[`worldEnemies/${oldChunkKey}/${oldId}`] = null;
+                
+                await rtdb.ref().update(updates);
+
+                chunkManager.setWorldTile(move.oldX, move.oldY, restoredTile);
+                chunkManager.setWorldTile(move.newX, move.newY, move.tile);
+            }
+
+        } catch (err) {
+            console.error("AI Move Error:", err);
         }
     }
 
@@ -9940,60 +10279,24 @@ async function runSharedAiTurns() {
     let nearestEnemyDir = null;
 
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-        // Dungeons/castles are instanced, no lock needed.
+        // Instanced maps (Standard Logic)
         nearestEnemyDir = processEnemyTurns();
-
         render();
-
     } else if (gameState.mapMode === 'overworld') {
-        // Overworld is shared. We need a lock.
-        const lockRef = rtdb.ref('world/aiTurnLock');
-        const now = Date.now();
-        const LOCK_DURATION_MS = 5000; // 5 second lock
-
-        try {
-            const transactionResult = await lockRef.transaction(currentLockTime => {
-                if (currentLockTime === null || currentLockTime < (now - LOCK_DURATION_MS)) {
-                    // Lock is free or expired, take it.
-                    return now;
-                }
-                // Lock is held by someone else, abort.
-                return; // undefined aborts the transaction
-            });
-
-            if (transactionResult.committed) {
-                // We got the lock!
-                // console.log("Acquired AI lock, running overworld enemy turns...");
-
-                // We MUST await this so we hold the lock until the AI is done.
-                nearestEnemyDir = await processOverworldEnemyTurns();
-
-                // Release the lock so the next player can run it.
-                await lockRef.set(null);
-
-            } else {
-                // Someone else is running the AI. Do nothing.
-                // console.log("AI lock held by another player.");
-            }
-
-        } catch (error) {
-            console.error("AI Lock transaction failed: ", error);
-            // If the transaction fails, release our lock just in case.
-            await lockRef.set(null);
-        }
+        // Shared World (Decentralized Logic)
+        // We no longer lock the whole world. We just process our local area.
+        nearestEnemyDir = await processOverworldEnemyTurns();
     }
 
+    // --- Intuition Hint (Unchanged) ---
     if (nearestEnemyDir) {
         const player = gameState.player;
-        // 0.5% chance per intuition point, max 50%
         const intuitChance = Math.min(player.intuition * 0.005, 0.5); 
 
         if (Math.random() < intuitChance) {
-            // Success! Give specific direction.
             const dirString = getDirectionString(nearestEnemyDir);
             logMessage(`You sense a hostile presence to the ${dirString}!`);
         } else if (Math.random() < 0.1) { 
-            // Fail. Only show vague message 10% of the time to reduce spam.
             logMessage("You hear a shuffle nearby...");
         }
     }
@@ -12298,6 +12601,7 @@ async function attemptMovePlayer(newX, newY) {
     playerRef.update(updates);
 
     if (gameState.mapMode === 'overworld') {
+        manageEnemyListeners();
         const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
         const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
         chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
@@ -12561,11 +12865,7 @@ async function enterGame(playerData) {
         render();
     });
 
-    const sharedEnemiesRef = rtdb.ref('worldEnemies');
-    sharedEnemiesRef.on('value', (snapshot) => {
-        gameState.sharedEnemies = snapshot.val() || {};
-        render(); // Re-render to show new health bars
-    });
+
 
     unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
         if (doc.exists) {
@@ -12717,6 +13017,8 @@ async function enterGame(playerData) {
     initCraftingListeners();
     initSkillTrainerListeners();
     initMobileControls();
+
+    manageEnemyListeners();
 }
 
 auth.onAuthStateChanged((user) => {
