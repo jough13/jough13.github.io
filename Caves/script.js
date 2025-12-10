@@ -6282,29 +6282,34 @@ function renderShop() {
 
 function initMobileControls() {
     const mobileContainer = document.getElementById('mobileControls');
+    if (!mobileContainer) return; // Safety check
     
     // Show controls when entering game
     mobileContainer.classList.remove('hidden');
+    
+    // --- FIX START: Force show on larger mobile screens ---
+    // This removes the Tailwind class that hides it on large screens
+    mobileContainer.classList.remove('lg:hidden'); 
+    // --- FIX END ---
 
     // Remove old listeners to prevent duplicates (Standard practice)
     const newContainer = mobileContainer.cloneNode(true);
     mobileContainer.parentNode.replaceChild(newContainer, mobileContainer);
     
     // Attach Generic Listener
-    // This automatically handles the new 'q' button we added to the HTML!
     newContainer.addEventListener('click', (e) => {
         const btn = e.target.closest('button');
         
-        // Prevent double-tap zoom
+        // Prevent double-tap zoom behavior
         e.preventDefault();
         
         if (btn && btn.dataset.key) {
-            e.stopPropagation(); // Stop click passing to canvas
-            handleInput(btn.dataset.key); // Sends 'q', 'ArrowUp', etc.
+            e.stopPropagation(); 
+            handleInput(btn.dataset.key); 
         }
     });
     
-    // Prevent double-tap zoom on the buttons
+    // Prevent double-tap zoom on the buttons specifically
     newContainer.addEventListener('dblclick', (e) => {
         e.preventDefault();
     });
