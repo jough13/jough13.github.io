@@ -9747,12 +9747,17 @@ async function processOverworldEnemyTurns() {
                     const targetTile = chunkManager.getTile(newX, newY);
 
                     let canMove = false;
+
+                    // 1. General Rule: Most enemies can only move on Plains ('.') or Dungeon Floors
+                    // Since this is overworld, we usually just check for '.'
+                    if (targetTile === '.') {
+                        canMove = true; 
+                    }
+
+                    // 2. Specific Overrides
                     if (tile === 'w') { // Wolves
-                        // Wolves can move on plains OR in forests
-                        canMove = (targetTile === '.' || targetTile === 'F');
-                    } else if (tile === 'b') { // Bandits
-                        // Bandits stick to the plains
-                        canMove = (targetTile === '.');
+                        // Wolves can ALSO move in forests
+                        if (targetTile === 'F') canMove = true;
                     }
 
                     if (canMove) { 
