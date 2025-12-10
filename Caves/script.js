@@ -989,6 +989,46 @@ const ENEMY_DATA = {
         spellDamage: 8, 
         isBoss: true   
     },
+    'c': {
+        name: 'Cultist Initiate',
+        maxHealth: 12,
+        attack: 3,
+        defense: 0,
+        xp: 25,
+        loot: '📜', // Drops random scrolls often
+        flavor: "He mutters prayers to a sleeping god."
+    },
+    'F': {
+        name: 'Cultist Fanatic',
+        maxHealth: 15,
+        attack: 6, // High damage!
+        defense: 0, // No armor
+        xp: 35,
+        loot: '🗡️', // Often drops daggers
+        flavor: "He fights with reckless abandon."
+    },
+    
+    // --- NEW BEASTS (Tanky & Dangerous) ---
+    '🗿': {
+        name: 'Stone Golem',
+        maxHealth: 40,
+        attack: 4,
+        defense: 4, // Very high defense! Needs magic or pickaxe.
+        xp: 60,
+        loot: '🪨', // Drops Stone/Ore
+        flavor: "A walking boulder. Blades skitter off its hide."
+    },
+    '🐲': {
+        name: 'Young Drake',
+        maxHealth: 50,
+        attack: 7,
+        defense: 2,
+        xp: 100,
+        loot: '🐉', // Dragon Scale
+        inflicts: 'burn', // We'll map this to fire damage
+        inflictChance: 0.3,
+        flavor: "Smoke curls from its nostrils."
+    },
 };
 
 const CAVE_THEMES = {
@@ -2236,6 +2276,27 @@ const CRAFTING_RECIPES = {
         xp: 50, level: 4 
     },
 
+    // --- TIER 4.5 (Dragon) ---
+    "Dragonscale Tunic": { 
+        materials: { "Dragon Scale": 5, "Leather Tunic": 1 }, 
+        xp: 150, level: 4 
+    },
+    "Dragonbone Dagger": { 
+        materials: { "Dragon Scale": 2, "Bone Dagger": 1, "Obsidian Shard": 1 }, 
+        xp: 120, level: 4 
+    },
+    // --- TIER 5 (Diamond) ---
+    "Diamond Tipped Pickaxe": { 
+        materials: { "Pickaxe": 1, "Raw Diamond": 2 }, 
+        xp: 200, level: 5 
+        // Note: You'd need to update obstacle logic to check for this name if you want it to break harder rocks!
+    },
+    // --- UTILITY ---
+    "Black Powder Bomb": { 
+        materials: { "Stone": 1, "Fire Elemental Core": 1 }, // Requires killing fire elementals
+        xp: 50, level: 3 
+    },
+
     // --- TIER 4/5 (Special) ---
     "Void Key": { 
         materials: { "Void Dust": 5, "Obsidian Shard": 1 }, 
@@ -2488,6 +2549,83 @@ const ITEM_DATA = {
             if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
                 state.player.inventory.push({ name: 'Empty Bottle', type: 'consumable', quantity: 1, tile: '🫙' });
             }
+        }
+    },
+    // --- NEW CRAFTING MATERIALS ---
+    '🐉': { name: 'Dragon Scale', type: 'junk', description: "Warm to the touch and harder than steel." },
+    '💎': { name: 'Raw Diamond', type: 'junk', description: "Uncut, but incredibly sharp." },
+
+    // --- NEW WEAPONS ---
+    '🔱': {
+        name: 'Trident',
+        type: 'weapon',
+        tile: '🔱',
+        damage: 4,
+        slot: 'weapon',
+        description: "Excellent for keeping enemies at bay."
+    },
+    '🔨h': { // Heavy variant
+        name: 'Meteor Hammer',
+        type: 'weapon',
+        tile: '🔨',
+        damage: 7, // Very High Damage
+        slot: 'weapon',
+        statBonuses: { dexterity: -3 }, // Makes you clumsy
+        description: "A heavy iron ball on a chain. Devastating but unwieldy."
+    },
+    '🗡️d': {
+        name: 'Dragonbone Dagger',
+        type: 'weapon',
+        tile: '🗡️',
+        damage: 4,
+        slot: 'weapon',
+        statBonuses: { dexterity: 2, luck: 1 },
+        description: "Carved from the fang of a drake. Light and lethal."
+    },
+
+    // --- DRAGONSCALE SET (Tier 4.5 - Bridge to Endgame) ---
+    '🛡️d': {
+        name: 'Dragonscale Shield',
+        type: 'armor',
+        tile: '🛡️',
+        defense: 4,
+        slot: 'armor',
+        blockChance: 0.30, // 30% Block!
+        description: "Fashioned from a single massive scale."
+    },
+    '🧥d': {
+        name: 'Dragonscale Tunic',
+        type: 'armor',
+        tile: '🧥',
+        defense: 6,
+        slot: 'armor',
+        statBonuses: { strength: 1, willpower: 1 }, // Good for battlemages
+        description: "Fireproof and tough."
+    },
+
+    // --- NEW CONSUMABLES ---
+    '🧪s': {
+        name: 'Potion of Speed',
+        type: 'buff_potion',
+        buff: 'dexterity',
+        amount: 5,
+        duration: 10,
+        tile: '🧪',
+        description: "You feel light as a feather. (+5 Dex for 10 turns)"
+    },
+    '💣': {
+        name: 'Black Powder Bomb',
+        type: 'consumable',
+        tile: '💣',
+        description: "Throw it! Deals 15 damage to a target.",
+        effect: (state) => {
+            // Simple instant "grenade" logic for now
+            logMessage("You light the fuse... BOOM! (Deals 15 damage to self if not careful!)");
+            // For safety in this version, let's make it a flat AoE around player or self-hit
+            // Implementing aiming for items is complex, so let's make it a "Panic Button"
+            // hits all adjacent enemies.
+            logMessage("The explosion blasts everything nearby!");
+            // (You would add AoE logic here similar to Whirlwind)
         }
     },
 
@@ -3519,6 +3657,26 @@ const PLAYER_BACKGROUNDS = {
 };
 
 const SPELL_DATA = {
+    "chainLightning": {
+        name: "Chain Lightning",
+        description: "Strikes a target, then jumps to a nearby enemy.",
+        cost: 18,
+        costType: "mana",
+        requiredLevel: 6,
+        target: "aimed",
+        baseDamage: 6,
+        // You'd handle the "jump" in executeAimedSpell
+    },
+    "stoneSkin": {
+        name: "Stone Skin",
+        description: "Greatly increases Defense but lowers Dexterity.",
+        cost: 20,
+        costType: "mana",
+        requiredLevel: 3,
+        target: "self",
+        type: "buff",
+        // Handled in castSpell switch case
+    },
     "lesserHeal": {
         name: "Lesser Heal",
         description: "Heals for a small amount, scaling with Wits.",
@@ -3732,6 +3890,28 @@ const TALENT_DATA = {
 };
 
 const SKILL_DATA = {
+    "kick": {
+        name: "Kick",
+        description: "Stun an enemy for 2 turns. Deals low damage.",
+        cost: 8,
+        costType: "stamina",
+        requiredLevel: 1,
+        target: "aimed",
+        baseDamageMultiplier: 0.2, // Very low damage
+        cooldown: 8,
+        // You need to handle the stun logic in 'executeMeleeSkill' similar to shieldBash
+    },
+    "vanish": {
+        name: "Vanish",
+        description: "Instantly drop all enemy aggro and enter Stealth.",
+        cost: 15,
+        costType: "stamina",
+        requiredLevel: 4,
+        target: "self",
+        cooldown: 30,
+        type: "utility"
+        // Needs a tiny update in useSkill to set stealthTurns
+    },
     "brace": {
         name: "Brace",
         description: "Gain temporary Defense. Scales with Constitution.",
@@ -7132,7 +7312,81 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 } else {
                     logMessage("You need a pile of bones '(' or a grave '⚰️' to raise the dead.");
                 }
-            } // <--- CLOSE BRACE
+            }
+            break;
+
+        case 'chainLightning':
+            { 
+                // 1. Calculate Base Damage
+                const lightningDmg = spellData.baseDamage + (player.wits * spellLevel);
+                
+                // 2. Determine Primary Impact Point (3 tiles away, like Fireball)
+                const targetX = player.x + (dirX * 3);
+                const targetY = player.y + (dirY * 3);
+                
+                logMessage("A bolt of lightning arcs from your hands!");
+
+                // 3. Hit Primary Target
+                // We use 'await' here to ensure the main bolt hits first
+                const hitPrimary = await applySpellDamage(targetX, targetY, lightningDmg, spellId);
+                
+                if (hitPrimary) {
+                    hitSomething = true;
+                    // Visual: Bright Blue/Yellow Spark
+                    ParticleSystem.createExplosion(targetX, targetY, '#facc15'); 
+                }
+
+                // 4. The "Chain" Logic
+                // Instead of a fixed square, we scan a radius and pick RANDOM valid enemies
+                const jumpRadius = 3; // How far the lightning can jump
+                let potentialJumpTargets = [];
+
+                // Scan the area around the impact point
+                for (let y = targetY - jumpRadius; y <= targetY + jumpRadius; y++) {
+                    for (let x = targetX - jumpRadius; x <= targetX + jumpRadius; x++) {
+                        // Don't hit the primary target again
+                        if (x === targetX && y === targetY) continue; 
+
+                        // Check if there is actually an enemy here
+                        let hasEnemy = false;
+                        if (gameState.mapMode === 'overworld') {
+                            const tile = chunkManager.getTile(x, y);
+                            if (ENEMY_DATA[tile]) hasEnemy = true;
+                        } else {
+                            if (gameState.instancedEnemies.some(e => e.x === x && e.y === y)) hasEnemy = true;
+                        }
+
+                        if (hasEnemy) {
+                            potentialJumpTargets.push({x, y});
+                        }
+                    }
+                }
+
+                // 5. Select Jump Targets
+                // Max jumps scales slightly with spell level (Base 2 jumps + 1 per 2 levels)
+                const maxJumps = 2 + Math.floor(spellLevel / 2);
+                
+                // Shuffle the potential targets array (Fisher-Yates shuffle simplified)
+                potentialJumpTargets.sort(() => Math.random() - 0.5);
+
+                // Hit the first N targets
+                const jumpsToMake = Math.min(potentialJumpTargets.length, maxJumps);
+                
+                if (jumpsToMake > 0) {
+                    // Slight delay in log to simulate the "travel" time
+                    setTimeout(() => logMessage(`The lightning arcs to ${jumpsToMake} nearby enemies!`), 200);
+                }
+
+                for (let i = 0; i < jumpsToMake; i++) {
+                    const jumpTgt = potentialJumpTargets[i];
+                    // Chain hits deal 75% damage
+                    const jumpDmg = Math.max(1, Math.floor(lightningDmg * 0.75));
+                    
+                    applySpellDamage(jumpTgt.x, jumpTgt.y, jumpDmg, spellId).then(hit => {
+                        if (hit) ParticleSystem.createExplosion(jumpTgt.x, jumpTgt.y, '#93c5fd'); // Lighter blue for arcs
+                    });
+                }
+            } 
             break;
 
         case 'fireball':
@@ -8261,6 +8515,11 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
     // Check primary target
     let enemiesToHit = [{ x: targetX, y: targetY }];
+
+    if (skillId === 'shieldBash' || skillId === 'kick') { // Add kick here
+    enemy.stunTurns = (skillId === 'kick' ? 2 : 3); // Kick is 2 turns, Bash is 3
+    logMessage(`${enemy.name} is stunned!`);
+}
 
     // If Cleave, add side targets
     if (skillId === 'cleave') {
@@ -10424,7 +10683,7 @@ function handleInput(key) {
             const abilityId = gameState.abilityToAim; 
             // Route abilities
             if (abilityId === 'lunge') executeLunge(dirX, dirY);
-            else if (abilityId === 'shieldBash' || abilityId === 'cleave') executeMeleeSkill(abilityId, dirX, dirY);
+            else if (abilityId === 'shieldBash' || abilityId === 'cleave' || abilityId === 'kick') executeMeleeSkill(abilityId, dirX, dirY);
             else if (SPELL_DATA[abilityId]) executeAimedSpell(abilityId, dirX, dirY); 
             else if (abilityId === 'pacify') executePacify(dirX, dirY);
             else if (abilityId === 'inflictMadness') executeInflictMadness(dirX, dirY);
