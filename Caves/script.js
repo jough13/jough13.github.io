@@ -998,7 +998,7 @@ const ENEMY_DATA = {
         loot: '📜', // Drops random scrolls often
         flavor: "He mutters prayers to a sleeping god."
     },
-    'F': {
+    'z': {
         name: 'Cultist Fanatic',
         maxHealth: 15,
         attack: 6, // High damage!
