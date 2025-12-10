@@ -1832,29 +1832,57 @@ function createDefaultPlayerState() {
 }
 
 async function restartGame() {
-    // Get the default state for a new character
-    const defaultState = createDefaultPlayerState();
+    // 1. Capture the current background so we don't lose the class choice
+    const currentBg = gameState.player.background;
 
-    // Update the current game state in memory
+    // 2. Clear Session State FIRST (This resets mapMode to null)
+    clearSessionState(); 
+
+    // 3. Get fresh state
+    const defaultState = createDefaultPlayerState();
+    
+    // 4. Re-apply background tag and stats (so you stay a Warrior/Mage/etc)
+    if (currentBg && PLAYER_BACKGROUNDS[currentBg]) {
+        defaultState.background = currentBg;
+        
+        const bgStats = PLAYER_BACKGROUNDS[currentBg].stats;
+        for(let stat in bgStats) {
+            defaultState[stat] += bgStats[stat];
+        }
+        // Recalculate derived stats based on background bonuses
+        if (bgStats.constitution) defaultState.maxHealth += (bgStats.constitution * 5);
+        if (bgStats.wits) defaultState.maxMana += (bgStats.wits * 5);
+        
+        // Heal to new max
+        defaultState.health = defaultState.maxHealth;
+        defaultState.mana = defaultState.maxMana;
+        
+        // Note: You get the default items (Bread/Water), not the starting class kit again.
+        // If you want the class kit, you'd need to re-merge the 'items' array from PLAYER_BACKGROUNDS here.
+    }
+
+    // 5. Apply to Game State
     Object.assign(gameState.player, defaultState);
 
-    gameState.mapMode = 'overworld';
+    // 6. Set Map Mode (MUST be done AFTER clearSessionState)
+    gameState.mapMode = 'overworld'; 
     gameState.currentCastleId = null;
     gameState.currentCaveId = null;
 
-    clearSessionState(); // Resets lootedTiles and discoveredRegions
-
-    // Save the new default state to the database
+    // 7. Save to DB
     await playerRef.set(defaultState);
 
-    // Update all the UI elements to reflect the new state
+    // 8. UI Updates
     logMessage("Your adventure begins anew...");
     renderStats();
     renderInventory();
     updateRegionDisplay();
+    
+    // Force a re-render/resize to ensure canvas is active
+    resizeCanvas(); 
     render();
 
-    // Hide the game over screen
+    // 9. Hide the modal
     gameOverModal.classList.add('hidden');
 }
 
