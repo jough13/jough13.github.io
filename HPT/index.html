@@ -7719,8 +7719,8 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
               // --- APPLICATION METADATA & CONSTANTS
               //==============================================================================
               
-              const VERSION = '3.6.4';
-              const LAST_UPDATED = 'October 12th, 2025';
+              const VERSION = '3.7';
+              const LAST_UPDATED = 'December 10th, 2025';
               
               // NEW: A global constant for all navigation views
               
@@ -11915,7 +11915,6 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     );
 };
          
-         // Replace the entire SurfaceContaminationCalculator in your file with this one
          const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, staticData, setStaticData, wipeGrossCpm, setWipeGrossCpm, wipeBackgroundCpm, setWipeBackgroundCpm, instrumentEff, setInstrumentEff, smearEff, setSmearEff, result, setResult, error, setError }) => {
          const { addHistory } = useCalculationHistory();
          const { addToast } = useToast();
@@ -12055,8 +12054,285 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
              </div>
          );
          };
+
+/**
+ * @description A calculator to estimate detector response (cpm) from source activity.
+ * Includes shielding attenuation and multi-particle summation for GM probes.
+ */
+const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, activity, setActivity, activityUnit, setActivityUnit, distance, setDistance, distanceUnit, setDistanceUnit, detectorType, setDetectorType, shieldMaterial, setShieldMaterial, shieldThickness, setShieldThickness, shieldThicknessUnit, setShieldThicknessUnit, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    // --- Data: Detector Efficiency Models ---
+    const DETECTORS = {
+        'nai_1x1': { label: '1" x 1" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 175 },
+        'nai_2x2': { label: '2" x 2" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 900 },
+        // GM: 20% Beta (4pi), ~15% Alpha (4pi), 3.3 cpm/uR/hr Gamma
+        'gm_pancake': { label: 'Pancake GM (e.g., Ludlum 44-9)', type: 'mix', betaEff: 0.20, alphaEff: 0.15, gammaCpmPerMicroR: 3.3 },
+        'zns_alpha': { label: 'ZnS(Ag) Scintillator', type: 'alpha_only', alphaEff: 0.20 }
+    };
+
+    const SHIELD_PROPS = {
+        'None': { density: 0 },
+        'Paper/Clothing': { density: 0.8, isPorous: true }, // Stops Alpha
+        'Plastic/Lucite': { density: 1.18, mapTo: 'Water' }, // Stops Beta
+        'Wood': { density: 0.6, mapTo: 'Water' },
+        'Soil': { density: 1.6, mapTo: 'Concrete' },
+        'Concrete': { density: 2.35, mapTo: 'Concrete' },
+        'Aluminum': { density: 2.7, mapTo: 'Aluminum' },
+        'Steel': { density: 7.8, mapTo: 'Steel' },
+        'Lead': { density: 11.34, mapTo: 'Lead' }
+    };
+
+    const activityFactorsCi = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'TBq': 1 / 0.037, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
+    const distanceFactorsM = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
+    const thicknessFactorsCm = { 'mm': 0.1, 'cm': 1, 'in': 2.54 };
+
+    // Filter relevant nuclides
+    const availableNuclides = React.useMemo(() => {
+        const det = DETECTORS[detectorType];
+        if (det.type === 'alpha_only') return radionuclides.filter(n => n.emissionEnergies?.alpha?.length > 0);
+        if (det.type === 'gamma_only') return radionuclides.filter(n => n.gammaConstant);
+        return radionuclides; // Mix detectors (GM) show all
+    }, [radionuclides, detectorType]);
+
+    const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
+
+    React.useEffect(() => {
+        try {
+            setError('');
+            if (!selectedNuclide) { setResult(null); return; }
+
+            const A_val = parseFloat(activity);
+            const d_val = parseFloat(distance);
+            const t_val = shieldMaterial === 'None' ? 0 : parseFloat(shieldThickness);
+
+            if (isNaN(A_val) || isNaN(d_val) || A_val <= 0 || d_val <= 0) {
+                if(activity && distance) setError("Inputs must be valid positive numbers.");
+                setResult(null); return;
+            }
+            if (shieldMaterial !== 'None' && (isNaN(t_val) || t_val < 0)) {
+                setError("Shield thickness must be a valid number.");
+                setResult(null); return;
+            }
+
+            const detInfo = DETECTORS[detectorType];
+            const A_Ci = A_val * activityFactorsCi[activityUnit];
+            const d_m = d_val * distanceFactorsM[distanceUnit];
+            const t_cm = t_val * thicknessFactorsCm[shieldThicknessUnit];
+            const shieldDensity = SHIELD_PROPS[shieldMaterial].density;
+
+            let cpmGamma = 0;
+            let cpmBeta = 0;
+            let cpmAlpha = 0;
+            let attenuationMsg = [];
+
+            // --- 1. GAMMA CALCULATION ---
+            if (detInfo.type !== 'alpha_only' && selectedNuclide.gammaConstant) {
+                const gamma = parseFloat(selectedNuclide.gammaConstant || 0);
+                if (gamma > 0) {
+                    // Unshielded Rate
+                    const doseRate_uR_hr = ((gamma * A_Ci) / Math.pow(d_m, 2)) * 1e6;
+                    
+                    // Apply Shielding
+                    let transmission = 1;
+                    if (shieldMaterial !== 'None' && t_cm > 0) {
+                        // Look for direct HVL data, or map to proxy (e.g. Soil -> Concrete)
+                        const mapMaterial = SHIELD_PROPS[shieldMaterial].mapTo;
+                        let hvl = null;
+                        
+                        if (HVL_DATA[selectedNuclide.symbol] && HVL_DATA[selectedNuclide.symbol][mapMaterial]) {
+                            // We have data for the mapped material
+                            const refHvl = HVL_DATA[selectedNuclide.symbol][mapMaterial];
+                            const refDensity = SHIELD_PROPS[mapMaterial].density;
+                            // Scale HVL by density ratio: HVL_soil = HVL_conc * (Rho_conc / Rho_soil)
+                            hvl = refHvl * (refDensity / shieldDensity);
+                        } else if (HVL_DATA['Cs-137'][mapMaterial]) {
+                            // Fallback to Cs-137 if specific nuclide data missing
+                            const refHvl = HVL_DATA['Cs-137'][mapMaterial];
+                            const refDensity = SHIELD_PROPS[mapMaterial].density;
+                            hvl = refHvl * (refDensity / shieldDensity);
+                            attenuationMsg.push("Gamma approximated using Cs-137 data.");
+                        }
+
+                        if (hvl) {
+                            transmission = Math.pow(0.5, t_cm / hvl);
+                        }
+                    }
+
+                    const responseFactor = detInfo.refCpmPerMicroR || detInfo.gammaCpmPerMicroR;
+                    cpmGamma = doseRate_uR_hr * transmission * responseFactor;
+                }
+            }
+
+            // --- 2. ALPHA/BETA GEOMETRY & SHIELDING ---
+            if (detInfo.type === 'mix' || detInfo.type === 'alpha_only') {
+                const r_det_cm = 2.2; 
+                const d_cm = d_m * 100;
+                // Simple geometry factor
+                const geoEff = 0.5 * (1 - (d_cm / Math.sqrt(Math.pow(d_cm, 2) + Math.pow(r_det_cm, 2))));
+                const A_dpm = A_Ci * 2.22e12;
+
+                // --- BETA ---
+                if (detInfo.type === 'mix' && selectedNuclide.emissionEnergies?.beta?.length > 0) {
+                    let isBlocked = false;
+                    
+                    // Range Check
+                    if (shieldMaterial !== 'None' && t_cm > 0) {
+                        // Max Beta Energy
+                        const eMaxStr = selectedNuclide.emissionEnergies.beta[0]; 
+                        const eMax = parseFloat(eMaxStr.split(' ')[0]); // Approx
+                        // Feather's Rule for Range (g/cm^2)
+                        const range_g_cm2 = eMax > 0.8 ? (0.542 * eMax - 0.133) : (0.407 * Math.pow(eMax, 1.38));
+                        const range_cm_in_material = range_g_cm2 / shieldDensity;
+                        
+                        if (t_cm >= range_cm_in_material) {
+                            isBlocked = true;
+                            attenuationMsg.push(`Betas shielded by ${shieldMaterial}.`);
+                        }
+                    }
+
+                    // Air Attenuation Check (Rough) - Range in air ~ meters. 
+                    // If distance is > 1m, neglect beta for simple handheld estimates.
+                    if (d_m > 1) isBlocked = true;
+
+                    if (!isBlocked) {
+                        cpmBeta = A_dpm * geoEff * detInfo.betaEff;
+                    }
+                }
+
+                // --- ALPHA ---
+                if (detInfo.alphaEff && selectedNuclide.emissionEnergies?.alpha?.length > 0) {
+                    let isBlocked = false;
+                    
+                    // Alpha is blocked by ANY solid shield or significant air gap
+                    if (shieldMaterial !== 'None' && t_cm > 0) {
+                        isBlocked = true;
+                        attenuationMsg.push(`Alphas shielded by ${shieldMaterial}.`);
+                    }
+                    if (d_m > 0.05) { // Alphas die in ~5cm of air
+                        isBlocked = true;
+                        if(shieldMaterial === 'None') attenuationMsg.push("Alphas attenuated by air gap.");
+                    }
+
+                    if (!isBlocked) {
+                        cpmAlpha = A_dpm * geoEff * detInfo.alphaEff;
+                    }
+                }
+            }
+
+            const totalCpm = cpmGamma + cpmBeta + cpmAlpha;
+            
+            // Format breakdown string
+            let breakdown = [];
+            if (cpmGamma > 1) breakdown.push(`γ: ${cpmGamma.toPrecision(3)}`);
+            if (cpmBeta > 1) breakdown.push(`β: ${cpmBeta.toPrecision(3)}`);
+            if (cpmAlpha > 1) breakdown.push(`α: ${cpmAlpha.toPrecision(3)}`);
+
+            setResult({ 
+                cpm: totalCpm.toPrecision(3), 
+                detLabel: detInfo.label,
+                breakdown: breakdown.join(', '),
+                notes: attenuationMsg 
+            });
+
+        } catch (e) { setError(e.message); setResult(null); }
+    }, [nuclideSymbol, activity, activityUnit, distance, distanceUnit, detectorType, shieldMaterial, shieldThickness, shieldThicknessUnit]);
+
+    const handleSave = () => {
+        if(result) {
+            const shieldText = shieldMaterial === 'None' ? 'Unshielded' : `${shieldThickness} ${shieldThicknessUnit} ${shieldMaterial}`;
+            addHistory({ id: Date.now(), type: 'Detector Response', icon: ICONS.doseRate, inputs: `${activity} ${activityUnit} ${nuclideSymbol} (${shieldText})`, result: `${result.cpm} cpm`, view: VIEWS.OPERATIONAL_HP });
+            addToast("Saved to history");
+        }
+    }
+
+    return (
+        <div className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-400">Estimate instrument response with shielding considerations.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <div className="md:col-span-2">
+                    <label className="block text-sm font-medium">Detector Type</label>
+                    <select value={detectorType} onChange={e => setDetectorType(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                        {Object.entries(DETECTORS).map(([key, cfg]) => <option key={key} value={key}>{cfg.label}</option>)}
+                    </select>
+                </div>
+                <div className="md:col-span-2">
+                    <label className="text-sm font-medium">Radionuclide</label>
+                    <div className="mt-1">
+                        {selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={availableNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide..." />}
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Activity</label>
+                    <div className="flex">
+                        <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                        <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{['µCi', 'mCi', 'Ci', 'Bq', 'kBq', 'MBq'].map(u => <option key={u} value={u}>{u}</option>)}</select>
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Source Distance</label>
+                    <div className="flex">
+                        <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                        <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{['cm', 'm', 'in', 'ft'].map(u => <option key={u} value={u}>{u}</option>)}</select>
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Shielding Material</label>
+                    <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                        <option value="None">None</option>
+                        {Object.keys(SHIELD_PROPS).filter(k => k !== 'None').map(k => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                </div>
+                {shieldMaterial !== 'None' && (
+                    <div className="animate-fade-in">
+                        <label className="block text-sm font-medium">Shield Thickness</label>
+                        <div className="flex">
+                            <input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                            <select value={shieldThicknessUnit} onChange={e => setShieldThicknessUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{['mm', 'cm', 'in'].map(u => <option key={u} value={u}>{u}</option>)}</select>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <ContextualNote type="warning">
+                <strong>Limitation of Estimate:</strong> This tool uses generic efficiency and attenuation factors. It does not account for buildup factors, complex geometry, or background radiation. Results are theoretical estimates.
+            </ContextualNote>
+
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
+                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Estimated Net Response</p>
+                    <div className="flex items-center justify-center">
+                        <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.cpm}</p>
+                        <CopyButton textToCopy={result.cpm} />
+                    </div>
+                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">Counts Per Minute (cpm)</p>
+                    
+                    {result.breakdown && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                            Contribution: {result.breakdown}
+                        </p>
+                    )}
+                    
+                    {result.notes.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-slate-300 dark:border-slate-600">
+                            {result.notes.map((note, i) => (
+                                <p key={i} className="text-xs text-amber-600 dark:text-amber-400 italic">{note}</p>
+                            ))}
+                        </div>
+                    )}
+                    
+                    <button onClick={handleSave} className="mt-3 text-xs text-slate-400 hover:text-sky-500 underline">Save to History</button>
+                </div>
+            )}
+        </div>
+    );
+};
          
-         const OperationalHPCalculators = ({ radionuclides }) => {
+const OperationalHPCalculators = ({ radionuclides }) => {
     const [activeCalculator, setActiveCalculator] = React.useState('surfaceContam');
     const { settings } = React.useContext(SettingsContext);
 
@@ -12090,11 +12366,24 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     const [ac_result, setAc_result] = React.useState(null);
     const [ac_error, setAc_error] = React.useState('');
 
+    // State for DetectorResponseCalculator (NEW)
+    const [resp_nuclideSymbol, setResp_nuclideSymbol] = React.useState('');
+    const [resp_activity, setResp_activity] = React.useState('1');
+    const [resp_activityUnit, setResp_activityUnit] = React.useState('µCi');
+    const [resp_distance, setResp_distance] = React.useState('30');
+    const [resp_distanceUnit, setResp_distanceUnit] = React.useState('cm');
+    const [resp_detectorType, setResp_detectorType] = React.useState('nai_2x2');
+    const [resp_shieldMaterial, setResp_shieldMaterial] = React.useState('None');
+    const [resp_shieldThickness, setResp_shieldThickness] = React.useState('1');
+    const [resp_shieldThicknessUnit, setResp_shieldThicknessUnit] = React.useState('cm');
+    const [resp_result, setResp_result] = React.useState(null);
+    const [resp_error, setResp_error] = React.useState('');
+
     React.useEffect(() => {
         if (!activityUnits.includes(ac_activityUnit)) setAc_activityUnit(activityUnits[0]);
     }, [settings.unitSystem]);
 
-    // --- Updated Clear Logic ---
+    // --- Clear Logic ---
     const handleSurfaceContamClear = () => {
         setSc_nuclideSymbol(''); setSc_staticData(''); setSc_wipeGrossCpm('150');
         setSc_wipeBackgroundCpm('50'); setSc_instrumentEff('25'); setSc_smearEff('0.1');
@@ -12113,11 +12402,19 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         setAc_result(null); setAc_error('');
     };
 
+    const handleResponseClear = () => {
+        setResp_nuclideSymbol(''); setResp_activity('1'); setResp_activityUnit('µCi');
+        setResp_distance('30'); setResp_distanceUnit('cm'); setResp_detectorType('nai_2x2');
+        setResp_shieldMaterial('None'); setResp_shieldThickness('1');
+        setResp_result(null); setResp_error('');
+    };
+
     const handleClearActiveCalculator = () => {
         switch (activeCalculator) {
             case 'surfaceContam': handleSurfaceContamClear(); break;
             case 'leakTest': handleLeakTestClear(); break;
             case 'airborne': handleAirborneClear(); break;
+            case 'response': handleResponseClear(); break;
             default: break;
         }
     };
@@ -12150,7 +12447,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
             />
         },
         airborne: {
-            label: 'Airborne',
+            label: 'Airborne Release',
             icon: ICONS.radon,
             component: <AirborneCalculator
                 radionuclides={radionuclides}
@@ -12164,6 +12461,24 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
                 result={ac_result} setResult={setAc_result}
                 error={ac_error} setError={setAc_error}
             />
+        },
+        response: {
+            label: 'Detector Resp.',
+            icon: ICONS.doseRate,
+            component: <DetectorResponseCalculator 
+                radionuclides={radionuclides}
+                nuclideSymbol={resp_nuclideSymbol} setNuclideSymbol={setResp_nuclideSymbol}
+                activity={resp_activity} setActivity={setResp_activity}
+                activityUnit={resp_activityUnit} setActivityUnit={setResp_activityUnit}
+                distance={resp_distance} setDistance={setResp_distance}
+                distanceUnit={resp_distanceUnit} setDistanceUnit={setResp_distanceUnit}
+                detectorType={resp_detectorType} setDetectorType={setResp_detectorType}
+                shieldMaterial={resp_shieldMaterial} setShieldMaterial={setResp_shieldMaterial}
+                shieldThickness={resp_shieldThickness} setShieldThickness={setResp_shieldThickness}
+                shieldThicknessUnit={resp_shieldThicknessUnit} setShieldThicknessUnit={setResp_shieldThicknessUnit}
+                result={resp_result} setResult={setResp_result}
+                error={resp_error} setError={setResp_error}
+            />
         }
     };
 
@@ -12174,22 +12489,32 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Operational HP Calculators</h2>
                     <ClearButton onClick={handleClearActiveCalculator} />
                 </div>
-                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6 overflow-x-auto">
+                
+                {/* 2x2 Grid Layout for Navigation with consistent styling */}
+                <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6">
                     {Object.entries(calculatorViews).map(([key, { label, icon }]) => (
-                        <button key={key} onClick={() => setActiveCalculator(key)} className={`flex-shrink-0 w-1/3 p-2 rounded-md text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${activeCalculator === key ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>
-                            <Icon path={icon} className="w-4 h-4" />
+                        <button 
+                            key={key} 
+                            onClick={() => setActiveCalculator(key)} 
+                            className={`p-3 rounded-md text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                                activeCalculator === key 
+                                ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' 
+                                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600'
+                            }`}
+                        >
+                            <Icon path={icon} className="w-5 h-5" />
                             {label}
                         </button>
                     ))}
                 </div>
+
                 <div className="mt-4">
                     {calculatorViews[activeCalculator].component}
                 </div>
             </div>
         </div>
     );
-};
-         
+};        
               
               /**
               * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B)
