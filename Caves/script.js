@@ -9790,9 +9790,10 @@ async function processOverworldEnemyTurns() {
 
             if (ENEMY_DATA[tile]) {
                 const enemyId = `overworld:${x},${-y}`;
-                // Check the cached sharedEnemies (which now contains data from all visible chunks)
+                // Check local cache
                 const cachedEnemy = gameState.sharedEnemies ? gameState.sharedEnemies[enemyId] : null;
                 
+                // If we have data and it moved recently, skip
                 if (cachedEnemy && cachedEnemy.lastMove && Date.now() - cachedEnemy.lastMove < AI_MOVE_COOLDOWN) {
                     continue; 
                 }
@@ -9841,7 +9842,6 @@ async function processOverworldEnemyTurns() {
 
     // 2. EXECUTE MOVES
     for (const move of movesToMake) {
-        // Calculate Chunks for Old and New positions
         const oldChunkX = Math.floor(move.oldX / 16);
         const oldChunkY = Math.floor(move.oldY / 16);
         const oldChunkKey = `${oldChunkX},${oldChunkY}`;
@@ -9853,16 +9853,31 @@ async function processOverworldEnemyTurns() {
         const oldId = `overworld:${move.oldX},${-move.oldY}`;
         const newId = `overworld:${move.newX},${-move.newY}`;
         
-        // Transaction on the OLD location
         const oldRef = rtdb.ref(`worldEnemies/${oldChunkKey}/${oldId}`);
 
         let claimedData = null;
 
         try {
             await oldRef.transaction(currentData => {
-                if (currentData === null) return null; 
-                
                 const now = Date.now();
+
+                // --- GHOST RESURRECTION LOGIC ---
+                if (currentData === null) {
+                    // Enemy exists visually but not in DB. Create it now!
+                    const enemyTemplate = ENEMY_DATA[move.tile];
+                    if (!enemyTemplate) return null; // Should not happen
+
+                    const scaledStats = getScaledEnemy(enemyTemplate, move.oldX, move.oldY);
+                    
+                    return {
+                        ...scaledStats,
+                        tile: move.tile,
+                        lastMove: now, // Mark as moved so we claim it
+                        standingOn: getBaseTerrain(move.oldX, move.oldY) // Assume it was on base terrain
+                    };
+                }
+                // -------------------------------
+                
                 if (currentData.lastMove && now - currentData.lastMove < AI_MOVE_COOLDOWN) {
                     return; // Abort
                 }
@@ -9879,7 +9894,7 @@ async function processOverworldEnemyTurns() {
                 const restoredTile = claimedData.standingOn || getBaseTerrain(move.oldX, move.oldY);
                 claimedData.standingOn = move.tileUnderneath;
 
-                // ATOMIC UPDATE: Delete from Old Chunk, Add to New Chunk
+                // Atomic Move
                 const updates = {};
                 updates[`worldEnemies/${newChunkKey}/${newId}`] = claimedData;
                 updates[`worldEnemies/${oldChunkKey}/${oldId}`] = null;
