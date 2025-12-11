@@ -5974,6 +5974,11 @@ function handleBuyItem(itemName) {
         return;
     }
 
+    if (shopItem.stock <= 0) {
+        logMessage("The shop is out of stock!");
+        return;
+    }
+
     // 2. Check if player has inventory space
     const existingStack = player.inventory.find(item => item.name === itemName);
     if (!existingStack && player.inventory.length >= MAX_INVENTORY_SLOTS) {
@@ -5982,7 +5987,8 @@ function handleBuyItem(itemName) {
     }
 
     // 3. Process the transaction
-    player.coins -= finalBuyPrice; // <-- Use new variable
+    player.coins -= finalBuyPrice;
+    shopItem.stock--;
     logMessage(`You bought a ${itemName} for ${finalBuyPrice} gold.`); // <-- Use new variable
 
     if (existingStack) {
@@ -6925,6 +6931,10 @@ async function executeLunge(dirX, dirY) {
                         const droppedLoot = generateEnemyLoot(player, enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                         
+                        if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+                        }
+
                         if (gameState.mapMode === 'dungeon') {
                             chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
                         }
@@ -8546,14 +8556,6 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
     const targetX = player.x + dirX;
     const targetY = player.y + dirY;
 
-    // Check primary target
-    let enemiesToHit = [{ x: targetX, y: targetY }];
-
-    if (skillId === 'shieldBash' || skillId === 'kick') { // Add kick here
-    enemy.stunTurns = (skillId === 'kick' ? 2 : 3); // Kick is 2 turns, Bash is 3
-    logMessage(`${enemy.name} is stunned!`);
-}
-
     // If Cleave, add side targets
     if (skillId === 'cleave') {
         // If attacking North(0, -1), sides are (-1, -1) and (1, -1)
@@ -8609,6 +8611,12 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
                         const droppedLoot = generateEnemyLoot(player, enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                        
+                        if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+                        
+                        }
+
                         if (map) map[coords.y][coords.x] = droppedLoot;
                     }
                 }
@@ -9795,7 +9803,18 @@ async function processOverworldEnemyTurns() {
 
                     if (canMove) { 
 
-                        // Add this move to our batch
+                        // If the enemy tries to move ONTO the player, hit them instead!
+                        if (newX === playerX && newY === playerY) {
+                            const enemyAtk = ENEMY_DATA[tile].attack;
+                            const dmg = Math.max(1, enemyAtk - (gameState.player.defenseBonus || 0)); // Simple calc
+                            gameState.player.health -= dmg;
+                            logMessage(`A ${ENEMY_DATA[tile].name} moves in and attacks you for ${dmg} damage!`);
+                            triggerStatFlash(statDisplays.health, false);
+                            
+                            // Don't move the enemy, they used their turn to attack
+                            continue; 
+                        }
+
                         movesToMake.push({
                             oldX: x,
                             oldY: y,
@@ -11533,6 +11552,12 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     let moveCost = TERRAIN_COST[newTile] ?? 0;
+
+    // Entering a structure should never cost extra stamina
+    if (['⛰', '🏰', 'V', '♛', '🕳️'].includes(newTile)) {
+        moveCost = 0;
+    }
+
     if (gameState.weather === 'storm' || gameState.weather === 'snow') {
         moveCost += 1;
     }
