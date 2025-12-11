@@ -15469,347 +15469,369 @@ const MassActivityModule = ({ radionuclides, selectedNuclide, setSelectedNuclide
          * @prop {boolean} isOpen - Boolean to control the visibility of the modal.
          * @prop {function} onClose - A callback function to close the modal.
          */
-         const ManualModal = ({ isOpen, onClose }) => {
-         if (!isOpen) return null;
+        
+/**
+ * @description React component for displaying the application's user manual, FAQ, and technical reference.
+ */
+const ManualModal = ({ isOpen, onClose }) => {
+    if (!isOpen) return null;
+
+    // Internal component for the static content of the manual
+    const ManualContent = () => {
+        return (
+            <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
+                <h1 className="text-slate-900 dark:text-slate-100"><strong>User Manual & FAQ</strong></h1>
+                <p>
+                    Welcome to the Health Physics Toolbox! This application is designed to be a comprehensive, all-in-one resource for students, health physicists, and nuclear professionals. Our philosophy is to centralize the essential data and calculations you need, removing the reliance on scattered spreadsheets, outdated software, or manual lookups. This guide will walk you through the various features to help you get the most out of the tool.
+                </p>
+
+                <hr className="my-4" />
+
+                <h2 className="text-slate-900 dark:text-slate-100"><strong>Getting Started: Finding a Nuclide</strong></h2>
+                <p>
+                    The primary function of the tool is to look up detailed information on a specific radionuclide. The search bar at the top of the page is your main entry point.
+                </p>
+                <h4 className="italic mt-4">Searching</h4>
+                <p>
+                    You can search by either the nuclide's full name (e.g., <code>"Cesium-137"</code>) or its symbol (e.g., <code>"Cs-137"</code>). The search is flexible and ignores spaces or hyphens, so <code>"cs137"</code> will also work. As you type, a list of the top 10 suggestions will appear, prioritized by how common the nuclide is, to help you find what you're looking for faster.
+                </p>
+                <h4 className="italic mt-4">The Nuclide Card</h4>
+                <p>
+                    Once you select a nuclide, its detailed information card is displayed. This card is a comprehensive summary, containing key data points grouped into logical sections like **Decay Properties**, **Physical Properties**, **Genealogy**, **Transportation Limits**, **Internal Dosimetry**, and **Principal Emissions**. You can add a nuclide to your persistent <strong>Favorites</strong> list by clicking the star icon in the top right, making it easily accessible from the home page.
+                </p>
+
+                <hr className="my-4" />
+
+                <h2 className="text-slate-900 dark:text-slate-100"><strong>Core Features</strong></h2>
+                <p>The main navigation bar provides access to all the specialized tools and views within the application.</p>
+
+                <h3 className="mt-6"><strong>Database & Compare</strong></h3>
+                <ul>
+                    <li><strong>Database:</strong> This view is for discovery and exploration. It allows you to browse and sort the entire collection of radionuclides. The sidebar on the left provides a powerful set of filters to help you find nuclides with specific properties, such as category, emission type, half-life, and energy ranges. This is perfect for finding the right nuclide for a specific application.</li>
+                    <li><strong>Compare:</strong> This tool is designed for nuanced analysis, allowing you to view multiple nuclides in a side-by-side table. This is especially useful for comparing similar candidates for a task, such as different isotopes for brachytherapy or medical imaging. The table automatically highlights the minimum and maximum values in each numerical row and displays in-cell data bars to provide an immediate visual sense of magnitude. This view also includes an <strong>Export to CSV</strong> function.</li>
+                </ul>
+
+                <h3 className="mt-6"><strong>Calculators</strong></h3>
+                <p>The application includes a comprehensive suite of calculators for a wide range of radiological scenarios.</p>
+
+                <h4 className="italic mt-4">Decay Calculators</h4>
+                <p>This group of tools handles the physics of radioactive decay over time.</p>
+                <ul>
+                    <li><strong>Decay Tools:</strong> A multi-tool for fundamental decay calculations. The <strong>Standard</strong> tab solves the fundamental decay equation for any one variable (initial activity, remaining activity, or time). The <strong>Correction</strong> tab is a specialized tool for correcting a source's activity from its calibration date to a new date. The <strong>To Limit</strong> tab calculates the time required for a source to decay to a specific activity level, which is useful for waste management.</li>
+                    <li><strong>Series Decay:</strong> This advanced tool uses the full Bateman equations to model the activity of <em>every</em> nuclide in a long decay chain (like the Uranium or Thorium series) over time. It provides both a final activity table and an interactive chart showing the in-growth and decay of each progeny, which is essential for understanding complex decay dynamics.</li>
+                    <li><strong>Equilibrium:</strong> This calculator specifically analyzes a parent-daughter pair to determine their equilibrium relationship. It will automatically classify the relationship as <strong>Secular</strong> (parent half-life is much longer than daughter's) or <strong>Transient</strong> (parent half-life is longer, but not by a huge margin) and calculates important metrics like the time to maximum daughter activity.</li>
+                </ul>
+                
+                <h4 className="italic mt-4">Dose & Shielding Calculators</h4>
+                <p>These tools are for external dosimetry, helping to estimate radiation dose and the shielding required to reduce it.</p>
+                <ul>
+                    <li><strong>Dose & Dose Rate:</strong> A versatile tool with multiple modes. <strong>Gamma</strong> mode models dose from Point, Line, and Area (Disk) geometries. <strong>Beta</strong> mode includes two sub-calculators: Skin Dose from surface contamination and Dose in Air from a point source. <strong>Bremsstrahlung</strong> mode estimates the secondary X-ray dose produced when beta particles are stopped by shielding. <strong>Internal</strong> mode calculates the Committed Effective Dose Equivalent (CEDE) from an intake using 10 CFR 20 ALI values.</li>
+                    <li><strong>Shielding:</strong> This calculator models the attenuation of radiation. The <strong>Gamma</strong> modes calculate the final dose rate after passing through a shield or the required shield thickness to reach a target dose rate. It includes an optional Buildup Factor correction for a more accurate result in broad beam geometries. The <strong>Beta Range</strong> mode calculates the thickness of low-Z material required to completely stop beta particles.</li>
+                    <li><strong>Stay Time:</strong> A practical tool for ALARA planning. It calculates the maximum time a person can stay in an area with a known dose rate before accumulating a specific dose limit.</li>
+                </ul>
+
+                <h4 className="italic mt-4">Operational HP Tools</h4>
+                <p>A suite of calculators designed for day-to-day radiation safety tasks and survey analysis.</p>
+                <ul>
+                   <li><strong>Surface Contamination:</strong> A comprehensive tool that calculates both removable contamination (from a wipe test) and total contamination (from a static probe survey). It automatically compares the results against the standard limits found in both NRC Regulatory Guide 1.86 and ANSI N13.12.</li>
+                   <li><strong>Leak Test:</strong> A specialized version of the wipe survey calculator for evaluating sealed sources against the common 0.005 µCi regulatory limit for removable contamination.</li>
+                   <li><strong>Airborne Release:</strong> This tool models a theoretical airborne release in a room to calculate the initial concentration in DAC (Derived Air Concentration) units. It also estimates the time required for the room's ventilation system (in Air Changes per Hour) to reduce the concentration back down to 1 DAC.</li>
+                   <li><strong>Detector Response:</strong> Estimates the count rate (cpm) a detector would see from a source, accounting for geometry, efficiency, and shielding. Includes models for NaI(Tl) and GM probes.</li>
+                </ul>
+
+                {/* --- NEW SECTION: Medical Physics --- */}
+                <h4 className="italic mt-4">Medical Physics Tools</h4>
+                <p>Calculators tailored to scenarios commonly found in a medical or hospital environment.</p>
+                <ul>
+                   <li><strong>X-Ray Shielding:</strong> A screening tool to calculate the required thickness of lead, concrete, or drywall for diagnostic X-ray rooms. It is based on the NCRP Report No. 147 methodology, accounting for workload, use factor, occupancy, and distance.</li>
+                   <li><strong>Patient Release:</strong> This tool helps determine if a patient administered with a radiopharmaceutical can be released from the hospital based on the criteria in 10 CFR 35.75. It checks against activity-based limits, dose-rate limits, or a full public dose calculation (TEDE) based on occupancy scenarios.</li>
+                </ul>
+
+                {/* --- NEW SECTION: Neutron Tools --- */}
+                <h4 className="italic mt-4">Neutron Tools</h4>
+                <p>A set of specialized calculators for dealing with neutron radiation, a common consideration in reactor and accelerator facilities.</p>
+                <ul>
+                   <li><strong>Fluence/Dose:</strong> Converts between neutron fluence (n/cm²) and dose equivalent (rem or Sv) for a given neutron energy. The conversion is performed using a log-log interpolation of the quality factors and fluence-per-rem data specified in 10 CFR 20.</li>
+                   <li><strong>Activation:</strong> Calculates the activity of a product nuclide created by irradiating a specific target material in a known thermal neutron flux for a given amount of time. It includes both a database of common (n,γ) reactions and a manual input mode for custom scenarios.</li>
+                   <li><strong>Composite Activation:</strong> Estimates the principal activation products from irradiating common composite materials like concrete or steel, which contain trace elements that can become significant activation products.</li>
+                   <li><strong>Shielding:</strong> Estimates the attenuation of fast or thermal neutrons through various common shielding materials using approximate Half-Value Layer (HVL) data.</li>
+                </ul>
+
+                {/* --- NEW SECTION: MARSSIM --- */}
+                <h4 className="italic mt-4">MARSSIM Tools</h4>
+                <p>A suite of tools dedicated to planning and evaluating final status surveys according to the Multi-Agency Radiation Survey and Site Investigation Manual.</p>
+                <ul>
+                    <li><strong>MDA/MDC:</strong> Calculates key decision values for radiation counting instrumentation. It includes a mode for <strong>Static Count MDA</strong> (based on NUREG-1507) and <strong>Scan Survey MDC</strong> (based on MARSSIM formulas) to ensure your survey methods can detect contamination at the required levels.</li>
+                    <li><strong>Sample Design:</strong> A two-part suite. The <strong>Calculator</strong> determines the required number of statistical samples for a survey unit using the Wilcoxon Rank Sum (WRS) test methodology. The <strong>Drawing Tool</strong> provides an interactive map to draw survey unit boundaries and automatically generate sample locations in a square grid, triangular grid, or random pattern.</li>
+                    <li><strong>Statistical Tests:</strong> Performs the two primary MARSSIM statistical tests on a set of data. The <strong>WRS Test</strong> is used to compare a survey unit to a reference area to determine if it meets the release criteria. The <strong>EMC Sign Test</strong> is used for evaluating localized areas of elevated activity to ensure they are not a significant risk.</li>
+                </ul>
+
+                {/* --- NEW SECTION: Lab Stats --- */}
+                <h4 className="italic mt-4">Lab Statistics & QA/QC</h4>
+                <p>Tools for quality assurance and control of radiation counting equipment and laboratory processes.</p>
+                <ul>
+                   <li><strong>Chi-Squared (χ²) Test:</strong> This is a key performance test for a counting system. It performs a chi-squared test on a set of repeated counts of a stable source to check if the observed variance is consistent with a random Poisson distribution, ensuring the detector is functioning properly.</li>
+                   <li><strong>Dead Time Correction:</strong> Corrects an observed count rate for counts that were missed due to detector dead time—the brief period after detecting a particle when the system is busy and cannot register another. This is crucial for accurate measurements at high count rates.</li>
+                   <li><strong>RPD:</strong> Calculates the Relative Percent Difference between two duplicate samples to evaluate measurement precision and the reproducibility of your lab processes.</li>
+                   <li><strong>FWHM / Resolution:</strong> Calculates a detector's Full Width at Half Maximum (FWHM) and energy resolution from a photopeak's properties (centroid and half-max energies). This is a fundamental measure of a gamma spectroscopy system's performance.</li>
+                </ul>
+                
+                <h4 className="italic mt-4">Utility Tools</h4>
+                <p>A collection of helpful tools to streamline your workflow.</p>
+                <ul>
+                    <li><strong>Peak Identifier:</strong> An essential tool for spectroscopy. The <strong>Search</strong> tab finds matching radionuclides for a given peak energy and tolerance. It also analyzes for common spectral artifacts like Compton Edges, escape peaks, and lead X-rays. The <strong>Data Tables</strong> tab provides a comprehensive, sortable, and filterable list of all alpha, beta, and gamma emissions in the database.</li>
+                    <li><strong>Activity/Mass Tools:</strong> A three-in-one module. <strong>Mass ↔ Activity</strong> converts between a nuclide's mass and its activity using its specific activity. <strong>Activity from Dose</strong> calculates a source's activity based on a gamma dose rate measurement. <strong>Specific Activity</strong> is a first-principles calculator for determining a nuclide's SA (Bq/g) from its atomic weight and half-life.</li>
+                    <li><strong>Radon Tools:</strong> A three-part suite for radon analysis. <strong>Concentration</strong> converts between radon concentration units (e.g., pCi/L and Bq/m³) and estimates annual dose. <strong>Ingrowth</strong> calculates the Rn-222 activity from a given mass of its parent, Ra-226. <strong>Kusnetz (WL)</strong> determines the Working Level of radon progeny from air sampling data.</li>
+                    <li><strong>Transportation:</strong> Determines the required shipping package type (Excepted, Type A, or Type B) for a given radionuclide and activity, based on its IAEA A₁ (special form) and A₂ (normal form) values.</li>
+                    <li><strong>Converter:</strong> A general-purpose unit converter for activity, dose, dose rate, energy, concentration, and other common physical units.</li>
+                    <li><strong>Scratchpad:</strong> A persistent text area for jotting down notes or intermediate results. Notes are saved to your browser's local storage.</li>
+                    <li><strong>Scientific Calculator:</strong> A professional-grade calculator with "Smart Start" (operators apply to previous answer), memory functions, scientific notation (`EXP`), and quick-insert buttons for physics constants.</li>
+                </ul>
+
+                <hr className="my-4" />
+
+                <h2 className="text-slate-900 dark:text-slate-100"><strong>Formulas & Equations Reference</strong></h2>
+
+                <h3 className="mt-6"><b>Decay & Activity Formulas</b></h3>
+                <h4 className="italic mt-4">Radioactive Decay</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>A(t) = A₀ · e<sup>-λt</sup></pre>
+                </div>
+                <ul>
+                    <li><code>A(t)</code> = Activity at time t</li>
+                    <li><code>A₀</code> = Initial activity at t=0</li>
+                    <li><code>λ</code> = Decay constant (ln(2) / T<sub>1/2</sub>)</li>
+                    <li><code>t</code> = Elapsed time</li>
+                </ul>
+
+                <h4 className="italic mt-4">Series (Bateman) Decay for a 2-step chain (A → B)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>A₂(t) = [A₁(0)·λ₂/(λ₂-λ₁)]·[e<sup>-λ₁t</sup> - e<sup>-λ₂t</sup>] + A₂(0)e<sup>-λ₂t</sup></pre>
+                </div>
+                 <ul>
+                    <li><code>A₂(t)</code> = Activity of the daughter at time t</li>
+                    <li><code>A₁(0)</code> = Initial activity of the parent</li>
+                    <li><code>A₂(0)</code> = Initial activity of the daughter</li>
+                    <li><code>λ₁</code>, <code>λ₂</code> = Decay constants for parent and daughter, respectively</li>
+                </ul>
+
+                <h4 className="italic mt-4">Specific Activity (SA)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>SA (Bq/g) = (Nₐ · λ) / Mₐ</pre>
+                </div>
+                <ul>
+                    <li><code>Nₐ</code> = Avogadro's Number (6.022 x 10²³ atoms/mol)</li>
+                    <li><code>Mₐ</code> = Molar mass of the radionuclide (g/mol)</li>
+                    <li><code>λ</code> = Decay constant in seconds⁻¹</li>
+                </ul>
+
+                <h3 className="mt-6"><b>Dose & Shielding Formulas</b></h3>
+                <h4 className="italic mt-4">Gamma Dose Rate (Point Source)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>Dose Rate = (Γ · A) / d²</pre>
+                </div>
+                <ul>
+                    <li><code>Γ</code> = Specific gamma-ray constant (e.g., in R·m²/hr·Ci)</li>
+                    <li><code>A</code> = Source activity (in Ci)</li>
+                    <li><code>d</code> = Distance from the source (in m)</li>
+                </ul>
+
+                <h4 className="italic mt-4">Gamma Shielding</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>D(x) = D₀ · B · (0.5)<sup>(x / HVL)</sup></pre>
+                </div>
+                <ul>
+                    <li><code>D(x)</code> = Dose rate after shielding</li>
+                    <li><code>D₀</code> = Initial dose rate</li>
+                    <li><code>B</code> = Buildup Factor, for scattered photons</li>
+                    <li><code>x</code> = Shield thickness</li>
+                    <li><code>HVL</code> = Half-Value Layer thickness for the material</li>
+                </ul>
+
+                {/* --- NEW FORMULA: Patient Release --- */}
+                <h4 className="italic mt-4">Patient Release TEDE (10 CFR 35.75)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>TEDE (rem) ≈ 1.443 · Γ · A₀ · T<sub>eff</sub> · Σ(tᵢ / dᵢ²)</pre>
+                </div>
+                <ul>
+                    <li><code>Γ</code> = Gamma constant (R·m²/hr·mCi)</li>
+                    <li><code>A₀</code> = Initial activity (mCi)</li>
+                    <li><code>T<sub>eff</sub></code> = Effective half-life (hours)</li>
+                    <li><code>tᵢ</code> = Occupancy time fraction for scenario i (hours/24)</li>
+                    <li><code>dᵢ</code> = Distance for scenario i (m)</li>
+                </ul>
+                
+                <h3 className="mt-6"><b>Operational HP Formulas</b></h3>
+                <h4 className="italic mt-4">Wipe / Leak Test Activity</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>Activity (µCi) = (CPM<sub>net</sub>) / (ε<sub>inst</sub> · ε<sub>smear</sub> · 2.22x10⁶)</pre>
+                </div>
+                <ul>
+                    <li><code>CPM<sub>net</sub></code> = Gross CPM - Background CPM</li>
+                    <li><code>ε<sub>inst</sub></code> = Instrument efficiency (as a fraction)</li>
+                    <li><code>ε<sub>smear</sub></code> = Smear/wipe efficiency (typically 0.1)</li>
+                    <li><code>2.22x10⁶</code> = DPM per µCi</li>
+                </ul>
+
+                <h4 className="italic mt-4">Airborne Concentration</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>C(t) = (A / V) · e<sup>(-ACH · t)</sup></pre>
+                </div>
+                <ul>
+                    <li><code>C(t)</code> = Concentration at time t</li>
+                    <li><code>A</code> = Released activity</li>
+                    <li><code>V</code> = Room volume</li>
+                    <li><code>ACH</code> = Air Changes per Hour</li>
+                    <li><code>t</code> = Time in hours</li>
+                </ul>
+
+                {/* --- NEW SECTION: Neutron Formulas --- */}
+                <h3 className="mt-6"><b>Neutron Formulas</b></h3>
+                <h4 className="italic mt-4">Thermal Neutron Activation</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>A(t) = N · σ · φ · (1 - e<sup>-λt</sup>)</pre>
+                </div>
+                <ul>
+                    <li><code>A(t)</code> = Activity of product at time t (Bq)</li>
+                    <li><code>N</code> = Number of target atoms</li>
+                    <li><code>σ</code> = Thermal neutron cross-section (cm²)</li>
+                    <li><code>φ</code> = Neutron flux (n/cm²·s)</li>
+                    <li><code>λ</code> = Decay constant of the product nuclide</li>
+                    <li><code>t</code> = Irradiation time (s)</li>
+                </ul>
+                
+                {/* --- NEW SECTION: MARSSIM Formulas --- */}
+                <h3 className="mt-6"><b>MARSSIM Formulas</b></h3>
+                <h4 className="italic mt-4">Static Count MDA (NUREG-1507)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>LLD (counts) = 2.71 + 4.65 · √(R<sub>b</sub> · t<sub>s</sub>)</pre>
+                </div>
+                <ul>
+                    <li><code>LLD</code> = Lower Limit of Detection (net counts)</li>
+                    <li><code>R<sub>b</sub></code> = Background count rate (cpm)</li>
+                    <li><code>t<sub>s</sub></code> = Sample count time (min)</li>
+                </ul>
+
+                <h4 className="italic mt-4">Scan MDC</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>Scan MDC = MDCR / (√(p) · ε<sub>total</sub>)</pre>
+                </div>
+                <ul>
+                    <li><code>MDCR</code> = Minimum Detectable Count Rate</li>
+                    <li><code>p</code> = Surveyor efficiency</li>
+                    <li><code>ε<sub>total</sub></code> = Total efficiency (instrument * surface)</li>
+                </ul>
+
+                <h4 className="italic mt-4">Number of Samples (WRS Test)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>N = (Z₁<sub>-α</sub> + Z₁<sub>-β</sub>)² / (3 · (Pᵣ - 0.5)²)</pre>
+                </div>
+                 <ul>
+                    <li><code>Z₁<sub>-α</sub></code>, <code>Z₁<sub>-β</sub></code> = Z-scores for Type I/II error rates</li>
+                    <li><code>Pᵣ</code> = Probability value from MARSSIM Table 5.2 based on Relative Shift</li>
+                </ul>
+
+                {/* --- NEW SECTION: Lab Stats Formulas --- */}
+                <h3 className="mt-6"><b>Lab Statistics Formulas</b></h3>
+                <h4 className="italic mt-4">Chi-Squared (χ²) Test</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>χ² = Σ((xᵢ - x̄)²) / x̄</pre>
+                </div>
+                 <ul>
+                    <li><code>xᵢ</code> = Individual count value</li>
+                    <li><code>x̄</code> = Mean of all count values</li>
+                </ul>
+
+                <h4 className="italic mt-4">Dead Time Correction</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>N = R / (1 - Rτ)</pre>
+                </div>
+                 <ul>
+                    <li><code>N</code> = True count rate (cps)</li>
+                    <li><code>R</code> = Observed count rate (cps)</li>
+                    <li><code>τ</code> = Detector dead time (seconds)</li>
+                </ul>
+
+                <h4 className="italic mt-4">Relative Percent Difference (RPD)</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>RPD (%) = |S₁ - S₂| / ((S₁ + S₂) / 2) · 100</pre>
+                </div>
+                <ul>
+                    <li><code>S₁</code>, <code>S₂</code> = Values for the two duplicate samples</li>
+                </ul>
+
+                <h4 className="italic mt-4">Energy Resolution</h4>
+                <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
+                    <pre>Resolution (%) = (FWHM / E) · 100</pre>
+                </div>
+                 <ul>
+                    <li><code>FWHM</code> = Full Width at Half Maximum of the peak (keV)</li>
+                    <li><code>E</code> = Peak centroid energy (keV)</li>
+                </ul>
+        
+                <hr className="my-4" />
+        
+                <h2 className="text-slate-900 dark:text-slate-100"><strong>Frequently Asked Questions (FAQ)</strong></h2>
+                <h4 className="italic mt-4">Where does the data come from?</h4>
+                <p>The data is aggregated from highly reliable, standard industry sources:</p>
+                <ul>
+                    <li><strong>Nuclear Data (Half-life, emissions, etc.):</strong> National Nuclear Data Center's (NNDC) NuDat 3 database.</li>
+                    <li><strong>Dosimetry Data (ALI, DAC):</strong> U.S. Nuclear Regulatory Commission, 10 CFR 20, Appendix B.</li>
+                    <li><strong>Gamma Constants & HVL Data:</strong> Standard, commonly-cited values from health physics texts (e.g. Radiological Health Handbook, Plexus-NSD).</li>
+                    <li><strong>MARSSIM Formulas:</strong> NUREG-1575 (MARSSIM), NUREG-1507.</li>
+                </ul>
+        
+                <h4 className="italic mt-4">Why doesn't a specific nuclide appear in a calculator?</h4>
+                <p>Calculators are populated only with nuclides that have the necessary data for that specific calculation. For example, the <strong>Dose Rate</strong>, <strong>Shielding</strong>, and <strong>Stay Time</strong> calculators all require a nuclide to have a defined "Gamma Constant" (Γ). Therefore, pure beta emitters (like Tritium or Carbon-14) or pure alpha emitters will not be available in those specific tools. Similarly, the **Activation Calculator** only lists target nuclides known to produce common activation products.</p>
+
+                {/* --- NEW CONTACT SECTION --- */}
+                <hr className="my-4" />
+                <h2 className="text-slate-900 dark:text-slate-100"><strong>Contact & Bug Reports</strong></h2>
+                <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <p className="mb-2"><strong>Found a bug or have a feature request?</strong></p>
+                    <p className="text-sm">
+                        This tool is actively maintained. Your feedback helps improve accuracy and usability.
+                        Please include the <strong>Browser/OS version</strong> and a <strong>description</strong> of the issue.
+                    </p>
+                    <div className="mt-4">
+                        <a 
+                            href="mailto:jough.donakowski@gmail.com?subject=Health Physics Toolbox - Bug Report"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-700 transition-colors"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Send Bug Report
+                        </a>
+                        <p className="text-xs text-slate-500 mt-2">
+                            Or email directly: <strong>jough.donakowski@gmail.com</strong>
+                        </p>
+                    </div>
+                </div>
+        
+                <h4 className="italic mt-4">Disclaimer</h4>
+                <p><strong>This tool is for informational and educational purposes only.</strong> The data and calculations have not been independently peer-reviewed or validated and may contain errors. It should not be used for radiation protection, safety-critical applications, operational decision-making, or for demonstrating regulatory compliance. All use of this tool is at your own risk.</p>
+            </div>
+        );
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-[5000] flex justify-center items-start p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                    <h2 className="text-xl font-bold">User Manual & FAQ</h2>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
+                        <Icon path={ICONS.clear} className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="overflow-y-auto">
+                    <ManualContent />
+                </div>
+            </div>
+        </div>
+    );
+};
          
-         // Internal component for the static content of the manual to keep JSX clean.
-         const ManualContent = () => {
-             return (
-                 <div className="prose prose-slate dark:prose-invert max-w-none p-6 text-slate-700 dark:text-slate-300">
-                     <h1 className="text-slate-900 dark:text-slate-100"><strong>User Manual & FAQ</strong></h1>
-                     <p>
-                         Welcome to the Health Physics Toolbox! This application is designed to be a comprehensive, all-in-one resource for students, health physicists, and nuclear professionals. Our philosophy is to centralize the essential data and calculations you need, removing the reliance on scattered spreadsheets, outdated software, or manual lookups. This guide will walk you through the various features to help you get the most out of the tool.
-                     </p>
-             
-                     <hr className="my-4" />
-             
-                     <h2 className="text-slate-900 dark:text-slate-100"><strong>Getting Started: Finding a Nuclide</strong></h2>
-                     <p>
-                         The primary function of the tool is to look up detailed information on a specific radionuclide. The search bar at the top of the page is your main entry point.
-                     </p>
-                     <h4 className="italic mt-4">Searching</h4>
-                     <p>
-                         You can search by either the nuclide's full name (e.g., <code>"Cesium-137"</code>) or its symbol (e.g., <code>"Cs-137"</code>). The search is flexible and ignores spaces or hyphens, so <code>"cs137"</code> will also work. As you type, a list of the top 10 suggestions will appear, prioritized by how common the nuclide is, to help you find what you're looking for faster.
-                     </p>
-                     <h4 className="italic mt-4">The Nuclide Card</h4>
-                     <p>
-                         Once you select a nuclide, its detailed information card is displayed. This card is a comprehensive summary, containing key data points grouped into logical sections like **Decay Properties**, **Physical Properties**, **Genealogy**, **Transportation Limits**, **Internal Dosimetry**, and **Principal Emissions**. You can add a nuclide to your persistent <strong>Favorites</strong> list by clicking the star icon in the top right, making it easily accessible from the home page.
-                     </p>
-             
-                     <hr className="my-4" />
-             
-                     <h2 className="text-slate-900 dark:text-slate-100"><strong>Core Features</strong></h2>
-                     <p>The main navigation bar provides access to all the specialized tools and views within the application.</p>
-             
-                     <h3 className="mt-6"><strong>Database & Compare</strong></h3>
-                     <ul>
-                         <li><strong>Database:</strong> This view is for discovery and exploration. It allows you to browse and sort the entire collection of radionuclides. The sidebar on the left provides a powerful set of filters to help you find nuclides with specific properties, such as category, emission type, half-life, and energy ranges. This is perfect for finding the right nuclide for a specific application.</li>
-                         <li><strong>Compare:</strong> This tool is designed for nuanced analysis, allowing you to view multiple nuclides in a side-by-side table. This is especially useful for comparing similar candidates for a task, such as different isotopes for brachytherapy or medical imaging. The table automatically highlights the minimum and maximum values in each numerical row and displays in-cell data bars to provide an immediate visual sense of magnitude. This view also includes an <strong>Export to CSV</strong> function.</li>
-                     </ul>
-             
-                     <h3 className="mt-6"><strong>Calculators</strong></h3>
-                     <p>The application includes a comprehensive suite of calculators for a wide range of radiological scenarios.</p>
-             
-                     <h4 className="italic mt-4">Decay Calculators</h4>
-                     <p>This group of tools handles the physics of radioactive decay over time.</p>
-                     <ul>
-                         <li><strong>Decay Tools:</strong> A multi-tool for fundamental decay calculations. The <strong>Standard</strong> tab solves the fundamental decay equation for any one variable (initial activity, remaining activity, or time). The <strong>Correction</strong> tab is a specialized tool for correcting a source's activity from its calibration date to a new date. The <strong>To Limit</strong> tab calculates the time required for a source to decay to a specific activity level, which is useful for waste management.</li>
-                         <li><strong>Series Decay:</strong> This advanced tool uses the full Bateman equations to model the activity of <em>every</em> nuclide in a long decay chain (like the Uranium or Thorium series) over time. It provides both a final activity table and an interactive chart showing the in-growth and decay of each progeny, which is essential for understanding complex decay dynamics.</li>
-                         <li><strong>Equilibrium:</strong> This calculator specifically analyzes a parent-daughter pair to determine their equilibrium relationship. It will automatically classify the relationship as <strong>Secular</strong> (parent half-life is much longer than daughter's) or <strong>Transient</strong> (parent half-life is longer, but not by a huge margin) and calculates important metrics like the time to maximum daughter activity.</li>
-                     </ul>
-                     
-                     <h4 className="italic mt-4">Dose & Shielding Calculators</h4>
-                     <p>These tools are for external dosimetry, helping to estimate radiation dose and the shielding required to reduce it.</p>
-                     <ul>
-                         <li><strong>Dose & Dose Rate:</strong> A versatile tool with multiple modes. <strong>Gamma</strong> mode models dose from Point, Line, and Area (Disk) geometries. <strong>Beta</strong> mode includes two sub-calculators: Skin Dose from surface contamination and Dose in Air from a point source. <strong>Bremsstrahlung</strong> mode estimates the secondary X-ray dose produced when beta particles are stopped by shielding. <strong>Internal</strong> mode calculates the Committed Effective Dose Equivalent (CEDE) from an intake using 10 CFR 20 ALI values.</li>
-                         <li><strong>Shielding:</strong> This calculator models the attenuation of radiation. The <strong>Gamma</strong> modes calculate the final dose rate after passing through a shield or the required shield thickness to reach a target dose rate. It includes an optional Buildup Factor correction for a more accurate result in broad beam geometries. The <strong>Beta Range</strong> mode calculates the thickness of low-Z material required to completely stop beta particles.</li>
-                         <li><strong>Stay Time:</strong> A practical tool for ALARA planning. It calculates the maximum time a person can stay in an area with a known dose rate before accumulating a specific dose limit.</li>
-                     </ul>
-             
-                     <h4 className="italic mt-4">Operational HP Tools</h4>
-                     <p>A suite of calculators designed for day-to-day radiation safety tasks and survey analysis.</p>
-                     <ul>
-                        <li><strong>Surface Contamination:</strong> A comprehensive tool that calculates both removable contamination (from a wipe test) and total contamination (from a static probe survey). It automatically compares the results against the standard limits found in both NRC Regulatory Guide 1.86 and ANSI N13.12.</li>
-                        <li><strong>Leak Test:</strong> A specialized version of the wipe survey calculator for evaluating sealed sources against the common 0.005 µCi regulatory limit for removable contamination.</li>
-                        <li><strong>Airborne Release:</strong> This tool models a theoretical airborne release in a room to calculate the initial concentration in DAC (Derived Air Concentration) units. It also estimates the time required for the room's ventilation system (in Air Changes per Hour) to reduce the concentration back down to 1 DAC.</li>
-                     </ul>
-                     
-                     <h4 className="italic mt-4">Neutron Tools</h4>
-                     <p>A set of specialized calculators for dealing with neutron radiation, a common consideration in reactor and accelerator facilities.</p>
-                     <ul>
-                        <li><strong>Fluence/Dose:</strong> Converts between neutron fluence (n/cm²) and dose equivalent (rem or Sv) for a given neutron energy. The conversion is performed using a log-log interpolation of the quality factors and fluence-per-rem data specified in 10 CFR 20.</li>
-                        <li><strong>Activation:</strong> Calculates the activity of a product nuclide created by irradiating a specific target material in a known thermal neutron flux for a given amount of time. It includes both a database of common (n,γ) reactions and a manual input mode for custom scenarios.</li>
-                        <li><strong>Composite Activation:</strong> Estimates the principal activation products from irradiating common composite materials like concrete or steel, which contain trace elements that can become significant activation products.</li>
-                        <li><strong>Shielding:</strong> Estimates the attenuation of fast or thermal neutrons through various common shielding materials using approximate Half-Value Layer (HVL) data.</li>
-                     </ul>
-                     
-                     <h4 className="italic mt-4">Medical Physics Tools</h4>
-                     <p>Calculators tailored to scenarios commonly found in a medical or hospital environment.</p>
-                     <ul>
-                        <li><strong>X-Ray Shielding:</strong> A screening tool to calculate the required thickness of lead, concrete, or drywall for diagnostic X-ray rooms. It is based on the NCRP Report No. 147 methodology, accounting for workload, use factor, occupancy, and distance.</li>
-                        <li><strong>Patient Release:</strong> This tool helps determine if a patient administered with a radiopharmaceutical can be released from the hospital based on the criteria in 10 CFR 35.75. It checks against activity-based limits, dose-rate limits, or a full public dose calculation (TEDE) based on occupancy scenarios.</li>
-                     </ul>
-             
-                     <h4 className="italic mt-4">MARSSIM Tools</h4>
-                     <p>A suite of tools dedicated to planning and evaluating final status surveys according to the Multi-Agency Radiation Survey and Site Investigation Manual.</p>
-                     <ul>
-                         <li><strong>MDA/MDC:</strong> Calculates key decision values for radiation counting instrumentation. It includes a mode for <strong>Static Count MDA</strong> (based on NUREG-1507) and <strong>Scan Survey MDC</strong> (based on MARSSIM formulas) to ensure your survey methods can detect contamination at the required levels.</li>
-                         <li><strong>Sample Design:</strong> A two-part suite. The <strong>Calculator</strong> determines the required number of statistical samples for a survey unit using the Wilcoxon Rank Sum (WRS) test methodology. The <strong>Drawing Tool</strong> provides an interactive map to draw survey unit boundaries and automatically generate sample locations in a square grid, triangular grid, or random pattern.</li>
-                         <li><strong>Statistical Tests:</strong> Performs the two primary MARSSIM statistical tests on a set of data. The <strong>WRS Test</strong> is used to compare a survey unit to a reference area to determine if it meets the release criteria. The <strong>EMC Sign Test</strong> is used for evaluating localized areas of elevated activity to ensure they are not a significant risk.</li>
-                     </ul>
-             
-                     <h4 className="italic mt-4">Lab Statistics & QA/QC</h4>
-                     <p>Tools for quality assurance and control of radiation counting equipment and laboratory processes.</p>
-                     <ul>
-                        <li><strong>Chi-Squared (χ²) Test:</strong> This is a key performance test for a counting system. It performs a chi-squared test on a set of repeated counts of a stable source to check if the observed variance is consistent with a random Poisson distribution, ensuring the detector is functioning properly.</li>
-                        <li><strong>Dead Time Correction:</strong> Corrects an observed count rate for counts that were missed due to detector dead time—the brief period after detecting a particle when the system is busy and cannot register another. This is crucial for accurate measurements at high count rates.</li>
-                        <li><strong>RPD:</strong> Calculates the Relative Percent Difference between two duplicate samples to evaluate measurement precision and the reproducibility of your lab processes.</li>
-                        <li><strong>FWHM / Resolution:</strong> Calculates a detector's Full Width at Half Maximum (FWHM) and energy resolution from a photopeak's properties (centroid and half-max energies). This is a fundamental measure of a gamma spectroscopy system's performance.</li>
-                     </ul>
-                     
-                     <h4 className="italic mt-4">Utility Tools</h4>
-                     <p>A collection of helpful tools to streamline your workflow.</p>
-                     <ul>
-                         <li><strong>Peak Identifier:</strong> An essential tool for spectroscopy. The <strong>Search</strong> tab finds matching radionuclides for a given peak energy and tolerance. It also analyzes for common spectral artifacts like Compton Edges, escape peaks, and lead X-rays. The <strong>Data Tables</strong> tab provides a comprehensive, sortable, and filterable list of all alpha, beta, and gamma emissions in the database.</li>
-                         <li><strong>Activity/Mass Tools:</strong> A three-in-one module. <strong>Mass ↔ Activity</strong> converts between a nuclide's mass and its activity using its specific activity. <strong>Activity from Dose</strong> calculates a source's activity based on a gamma dose rate measurement. <strong>Specific Activity</strong> is a first-principles calculator for determining a nuclide's SA (Bq/g) from its atomic weight and half-life.</li>
-                         <li><strong>Radon Tools:</strong> A three-part suite for radon analysis. <strong>Concentration</strong> converts between radon concentration units (e.g., pCi/L and Bq/m³) and estimates annual dose. <strong>Ingrowth</strong> calculates the Rn-222 activity from a given mass of its parent, Ra-226. <strong>Kusnetz (WL)</strong> determines the Working Level of radon progeny from air sampling data.</li>
-                         <li><strong>Transportation:</strong> Determines the required shipping package type (Excepted, Type A, or Type B) for a given radionuclide and activity, based on its IAEA A₁ (special form) and A₂ (normal form) values.</li>
-                         <li><strong>Converter:</strong> A general-purpose unit converter for activity, dose, dose rate, energy, concentration, and other common physical units.</li>
-                         <li><strong>Scratchpad & Sci. Calculator:</strong> Simple utility tools for jotting down notes or performing quick calculations. Both can be popped out into a separate window.</li>
-                     </ul>
-             
-                     <hr className="my-4" />
-             
-                     <h2 className="text-slate-900 dark:text-slate-100"><strong>Formulas & Equations Reference</strong></h2>
-             
-                     <h3 className="mt-6"><b>Decay & Activity Formulas</b></h3>
-                     <h4 className="italic mt-4">Radioactive Decay</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>A(t) = A₀ · e<sup>-λt</sup></pre>
-                     </div>
-                     <ul>
-                         <li><code>A(t)</code> = Activity at time t</li>
-                         <li><code>A₀</code> = Initial activity at t=0</li>
-                         <li><code>λ</code> = Decay constant (ln(2) / T<sub>1/2</sub>)</li>
-                         <li><code>t</code> = Elapsed time</li>
-                     </ul>
-         
-                     <h4 className="italic mt-4">Series (Bateman) Decay for a 2-step chain (A → B)</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>A₂(t) = [A₁(0)·λ₂/(λ₂-λ₁)]·[e<sup>-λ₁t</sup> - e<sup>-λ₂t</sup>] + A₂(0)e<sup>-λ₂t</sup></pre>
-                     </div>
-                      <ul>
-                         <li><code>A₂(t)</code> = Activity of the daughter at time t</li>
-                         <li><code>A₁(0)</code> = Initial activity of the parent</li>
-                         <li><code>A₂(0)</code> = Initial activity of the daughter</li>
-                         <li><code>λ₁</code>, <code>λ₂</code> = Decay constants for parent and daughter, respectively</li>
-                     </ul>
-         
-                     <h4 className="italic mt-4">Specific Activity (SA)</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>SA (Bq/g) = (Nₐ · λ) / Mₐ</pre>
-                     </div>
-                     <ul>
-                         <li><code>Nₐ</code> = Avogadro's Number (6.022 x 10²³ atoms/mol)</li>
-                         <li><code>Mₐ</code> = Molar mass of the radionuclide (g/mol)</li>
-                         <li><code>λ</code> = Decay constant in seconds⁻¹</li>
-                     </ul>
-             
-                     <h3 className="mt-6"><b>Dose & Shielding Formulas</b></h3>
-                     <h4 className="italic mt-4">Gamma Dose Rate (Point Source)</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>Dose Rate = (Γ · A) / d²</pre>
-                     </div>
-                     <ul>
-                         <li><code>Γ</code> = Specific gamma-ray constant (e.g., in R·m²/hr·Ci)</li>
-                         <li><code>A</code> = Source activity (in Ci)</li>
-                         <li><code>d</code> = Distance from the source (in m)</li>
-                     </ul>
-         
-                     <h4 className="italic mt-4">Gamma Shielding</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>D(x) = D₀ · B · (0.5)<sup>(x / HVL)</sup></pre>
-                     </div>
-                     <ul>
-                         <li><code>D(x)</code> = Dose rate after shielding</li>
-                         <li><code>D₀</code> = Initial dose rate</li>
-                         <li><code>B</code> = Buildup Factor, for scattered photons</li>
-                         <li><code>x</code> = Shield thickness</li>
-                         <li><code>HVL</code> = Half-Value Layer thickness for the material</li>
-                     </ul>
-         
-                     <h4 className="italic mt-4">X-Ray Shielding (NCRP-147)</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>B = (P · d²) / (K · W · U · T)</pre>
-                     </div>
-                     <ul>
-                         <li><code>B</code> = Required transmission factor</li>
-                         <li><code>P</code> = Weekly dose limit (in R/wk)</li>
-                         <li><code>d</code> = Distance from source to barrier (m)</li>
-                         <li><code>K</code> = Air kerma rate constant (R·m²/mA·min)</li>
-                         <li><code>W</code> = Workload (mA·min/wk)</li>
-                         <li><code>U</code> = Use Factor (fraction of time beam is on)</li>
-                         <li><code>T</code> = Occupancy Factor (fraction of time area is occupied)</li>
-                     </ul>
-         
-                     <h4 className="italic mt-4">Patient Release TEDE (10 CFR 35.75)</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>TEDE (rem) ≈ 1.443 · Γ · A₀ · T<sub>eff</sub> · Σ(tᵢ / dᵢ²)</pre>
-                     </div>
-                     <ul>
-                         <li><code>Γ</code> = Gamma constant (R·m²/hr·mCi)</li>
-                         <li><code>A₀</code> = Initial activity (mCi)</li>
-                         <li><code>T<sub>eff</sub></code> = Effective half-life (hours)</li>
-                         <li><code>tᵢ</code> = Occupancy time fraction for scenario i (hours/24)</li>
-                         <li><code>dᵢ</code> = Distance for scenario i (m)</li>
-                     </ul>
-                     
-                     <h3 className="mt-6"><b>Operational HP Formulas</b></h3>
-                     <h4 className="italic mt-4">Wipe / Leak Test Activity</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>Activity (µCi) = (CPM<sub>net</sub>) / (ε<sub>inst</sub> · ε<sub>smear</sub> · 2.22x10⁶)</pre>
-                     </div>
-                     <ul>
-                         <li><code>CPM<sub>net</sub></code> = Gross CPM - Background CPM</li>
-                         <li><code>ε<sub>inst</sub></code> = Instrument efficiency (as a fraction)</li>
-                         <li><code>ε<sub>smear</sub></code> = Smear/wipe efficiency (typically 0.1)</li>
-                         <li><code>2.22x10⁶</code> = DPM per µCi</li>
-                     </ul>
-         
-                     <h4 className="italic mt-4">Airborne Concentration</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>C(t) = (A / V) · e<sup>(-ACH · t)</sup></pre>
-                     </div>
-                     <ul>
-                         <li><code>C(t)</code> = Concentration at time t</li>
-                         <li><code>A</code> = Released activity</li>
-                         <li><code>V</code> = Room volume</li>
-                         <li><code>ACH</code> = Air Changes per Hour</li>
-                         <li><code>t</code> = Time in hours</li>
-                     </ul>
-         
-                     <h3 className="mt-6"><b>Neutron Formulas</b></h3>
-                     <h4 className="italic mt-4">Thermal Neutron Activation</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>A(t) = N · σ · φ · (1 - e<sup>-λt</sup>)</pre>
-                     </div>
-                     <ul>
-                         <li><code>A(t)</code> = Activity of product at time t (Bq)</li>
-                         <li><code>N</code> = Number of target atoms</li>
-                         <li><code>σ</code> = Thermal neutron cross-section (cm²)</li>
-                         <li><code>φ</code> = Neutron flux (n/cm²·s)</li>
-                         <li><code>λ</code> = Decay constant of the product nuclide</li>
-                         <li><code>t</code> = Irradiation time (s)</li>
-                     </ul>
-                     
-                     <h3 className="mt-6">MARSSIM Formulas</h3>
-         <h4 className="italic mt-4">Static Count MDA (NUREG-1507)</h4>
-         <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-         <pre>LLD (counts) = 2.71 + 4.65 · √(R<sub>b</sub> · t<sub>s</sub>)</pre>
-         </div>
-         <ul>
-         <li><code>LLD</code> = Lower Limit of Detection (net counts)</li>
-         <li><code>R<sub>b</sub></code> = Background count rate (cpm)</li>
-         <li><code>t<sub>s</sub></code> = Sample count time (min)</li>
-         </ul>
-                     <ul>
-                         <li><code>R<sub>b</sub></code> = Background count rate (cpm)</li>
-                         <li><code>t<sub>g</sub></code>, <code>t<sub>b</sub></code> = Gross (sample) and background count times (min)</li>
-                     </ul>
-         
-                     <h4 className="italic mt-4">Scan MDC</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>Scan MDC = MDCR / (√(p) · ε<sub>total</sub>)</pre>
-                     </div>
-                     <ul>
-                         <li><code>MDCR</code> = Minimum Detectable Count Rate</li>
-                         <li><code>p</code> = Surveyor efficiency</li>
-                         <li><code>ε<sub>total</sub></code> = Total efficiency (instrument * surface)</li>
-                     </ul>
-         
-                     <h4 className="italic mt-4">Number of Samples (WRS Test)</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>N = (Z₁<sub>-α</sub> + Z₁<sub>-β</sub>)² / (3 · (Pᵣ - 0.5)²)</pre>
-                     </div>
-                      <ul>
-                         <li><code>Z₁<sub>-α</sub></code>, <code>Z₁<sub>-β</sub></code> = Z-scores for Type I/II error rates</li>
-                         <li><code>Pᵣ</code> = Probability value from MARSSIM Table 5.2 based on Relative Shift</li>
-                     </ul>
-         
-                     <h3 className="mt-6"><b>Lab Statistics Formulas</b></h3>
-                     <h4 className="italic mt-4">Chi-Squared (χ²) Test</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>χ² = Σ((xᵢ - x̄)²) / x̄</pre>
-                     </div>
-                      <ul>
-                         <li><code>xᵢ</code> = Individual count value</li>
-                         <li><code>x̄</code> = Mean of all count values</li>
-                     </ul>
-         
-                     <h4 className="italic mt-4">Dead Time Correction</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>N = R / (1 - Rτ)</pre>
-                     </div>
-                      <ul>
-                         <li><code>N</code> = True count rate (cps)</li>
-                         <li><code>R</code> = Observed count rate (cps)</li>
-                         <li><code>τ</code> = Detector dead time (seconds)</li>
-                     </ul>
-         
-                     <h4 className="italic mt-4">Relative Percent Difference (RPD)</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>RPD (%) = |S₁ - S₂| / ((S₁ + S₂) / 2) · 100</pre>
-                     </div>
-                     <ul>
-                         <li><code>S₁</code>, <code>S₂</code> = Values for the two duplicate samples</li>
-                     </ul>
-         
-                     <h4 className="italic mt-4">Energy Resolution</h4>
-                     <div className="my-2 p-3 text-center text-lg font-mono rounded-md bg-slate-100 dark:bg-slate-800 overflow-x-auto">
-                         <pre>Resolution (%) = (FWHM / E) · 100</pre>
-                     </div>
-                      <ul>
-                         <li><code>FWHM</code> = Full Width at Half Maximum of the peak (keV)</li>
-                         <li><code>E</code> = Peak centroid energy (keV)</li>
-                     </ul>
-             
-                     <hr className="my-4" />
-             
-                     <h2 className="text-slate-900 dark:text-slate-100"><strong>Frequently Asked Questions (FAQ)</strong></h2>
-                     <h4 className="italic mt-4">Where does the data come from?</h4>
-                     <p>The data is aggregated from highly reliable, standard industry sources:</p>
-                     <ul>
-                         <li><strong>Nuclear Data (Half-life, emissions, etc.):</strong> National Nuclear Data Center's (NNDC) NuDat 3 database.</li>
-                         <li><strong>Dosimetry Data (ALI, DAC):</strong> U.S. Nuclear Regulatory Commission, 10 CFR 20, Appendix B.</li>
-                         <li><strong>Gamma Constants & HVL Data:</strong> Standard, commonly-cited values from health physics texts and publications from organizations like the Health Physics Society (HPS).</li>
-                         <li><strong>MARSSIM Formulas:</strong> NUREG-1575 (MARSSIM), NUREG-1507.</li>
-                     </ul>
-             
-                     <h4 className="italic mt-4">Why doesn't a specific nuclide appear in a calculator?</h4>
-                     <p>Calculators are populated only with nuclides that have the necessary data for that specific calculation. For example, the <strong>Dose Rate</strong>, <strong>Shielding</strong>, and <strong>Stay Time</strong> calculators all require a nuclide to have a defined "Gamma Constant" (Γ). Therefore, pure beta emitters (like Tritium or Carbon-14) or pure alpha emitters will not be available in those specific tools. Similarly, the **Activation Calculator** only lists target nuclides known to produce common activation products.</p>
-             
-                     <h4 className="italic mt-4">What is the disclaimer?</h4>
-                     <p><strong>This tool is for informational and educational purposes only.</strong> The data and calculations have not been independently peer-reviewed or validated and may contain errors. It should not be used for radiation protection, safety-critical applications, operational decision-making, or for demonstrating regulatory compliance. All use of this tool is at your own risk.</p>
-                 </div>
-             );
-         };
-         
-         return (
-             <div className="fixed inset-0 bg-black/60 z-[5000] flex justify-center items-start p-4" onClick={onClose}>
-                 <div className="bg-white dark:bg-slate-900 w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
-                     <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                         <h2 className="text-xl font-bold">User Manual & FAQ</h2>
-                         <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
-                             <Icon path={ICONS.clear} className="w-6 h-6" />
-                         </button>
-                     </div>
-                     <div className="overflow-y-auto">
-                         <ManualContent />
-                     </div>
-                 </div>
-             </div>
-         );
-         };         
               /**
               * @description React component for managing user settings and preferences.
               * This panel provides a user interface to configure various default units and modes
