@@ -1809,9 +1809,14 @@ function createDefaultPlayerState() {
         strengthBonus: 0,
         strengthBonusTurns: 0,
 
+        witsBonus: 0,
+        witsBonusTurns: 0,
+
         frostbiteTurns: 0,
         poisonTurns: 0,
         rootTurns: 0,
+
+        candlelightTurns: 0,
 
         isBoating: false,
 
@@ -2945,10 +2950,15 @@ const ITEM_DATA = {
             logMessage('You eat a Bluecap. (+1 Mana, +5 Hunger)');
         }
     },
+    '📒': {
+        name: 'Tome: Candlelight',
+        type: 'spellbook',
+        spellId: 'candlelight'
+    },
     '📖': {
         name: 'Spellbook: Lesser Heal',
         type: 'spellbook',
-        spellId: 'lesserHeal' // This links it to SPELL_DATA
+        spellId: 'lesserHeal'
     },
     '📚': {
         name: 'Spellbook: Magic Bolt',
@@ -3685,6 +3695,16 @@ const PLAYER_BACKGROUNDS = {
 };
 
 const SPELL_DATA = {
+    "candlelight": {
+        name: "Candlelight",
+        description: "Summons a floating light. Huge vision radius (+6) for a long time.",
+        cost: 15,
+        costType: "mana",
+        requiredLevel: 1, // Easy to learn
+        target: "self",
+        type: "buff",
+        duration: 100 // Lasts 100 turns!
+    },
     "chainLightning": {
         name: "Chain Lightning",
         description: "Strikes a target, then jumps to a nearby enemy.",
@@ -5453,6 +5473,7 @@ const renderStats = () => {
                     element.classList.add('hidden');
                     coreStatsPanel.classList.remove('show-stat-buttons');
                 }
+            
 
             } else if (statName === 'health') {
                 const max = gameState.player.maxHealth;
@@ -5469,7 +5490,7 @@ const renderStats = () => {
                 }
                 // Use innerHTML to render the span, and Math.ceil to avoid ugly decimals
                 element.innerHTML = healthString; 
-                // --- END NEW ---
+               
                 
                 // Update text and bar color
                 element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500'); // Clear old text colors
@@ -5496,6 +5517,15 @@ const renderStats = () => {
                 const percent = (value / max) * 100;
                 statBarElements.stamina.style.width = `${percent}%`;
                 element.textContent = `${label}: ${value}`;
+
+            } else if (statName === 'wits') {
+                let witsText = `${label}: ${value}`;
+                // Check for bonus
+                if (gameState.player.witsBonus > 0) {
+                    witsText += ` <span class="text-green-500">(+${gameState.player.witsBonus})</span>`;
+                }
+                // Use innerHTML to render the color span
+                element.innerHTML = witsText;
 
             } else if (statName === 'psyche') {
                 const max = gameState.player.maxPsyche;
@@ -7271,6 +7301,10 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     player[spellData.costType] -= spellData.cost;
     let hitSomething = false;
 
+    // --- CALCULATE DAMAGE WITH BONUS ---
+    const effectiveWits = player.wits + (player.witsBonus || 0);
+    const effectiveWill = player.willpower; // Add willpowerBonus here if you ever add that stat!
+
     // --- 2. Execute Spell Logic ---
     switch (spellId) {
 
@@ -7280,7 +7314,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         case 'frostBolt':
         case 'poisonBolt':
             { // <--- BRACE ADDED FOR SCOPE
-                const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast' || spellId === 'poisonBolt') ? player.willpower : player.wits;
+                const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast' || spellId === 'poisonBolt') ? effectiveWill : effectiveWits;
                 
                 const spellDamage = spellData.baseDamage + (damageStat * spellLevel);
                 
@@ -8452,6 +8486,25 @@ function castSpell(spellId) {
                 spellCastSuccessfully = true;
                 break;
 
+                case 'candlelight':
+                if (player.candlelightTurns > 0) {
+                    logMessage("You renew the magical light.");
+                } else {
+                    logMessage("A warm, floating orb of light appears above you.");
+                }
+                
+                player.candlelightTurns = spellData.duration;
+                
+                // Visual Flair
+                triggerStatAnimation(statDisplays.mana, 'stat-pulse-yellow');
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createFloatingText(player.x, player.y, "💡", "#facc15");
+                }
+                
+                updates.candlelightTurns = player.candlelightTurns;
+                spellCastSuccessfully = true;
+                break;
+
                 case 'divineLight':
                 player.health = player.maxHealth;
                 player.poisonTurns = 0;
@@ -8471,7 +8524,8 @@ function castSpell(spellId) {
                 break;
 
             case 'lesserHeal':
-                const healAmount = spellData.baseHeal + (player.wits * spellLevel);
+                const effectiveWits = player.wits + (player.witsBonus || 0); 
+                const healAmount = spellData.baseHeal + (effectiveWits * spellLevel);
                 const oldHealth = player.health;
                 player.health = Math.min(player.maxHealth, player.health + healAmount);
                 const healedFor = player.health - oldHealth;
@@ -8496,7 +8550,8 @@ function castSpell(spellId) {
                     break;
                 }
                 
-                const shieldAmount = spellData.baseShield + (player.wits * spellLevel);
+                const effWitsShield = player.wits + (player.witsBonus || 0); 
+                const shieldAmount = spellData.baseShield + (effWitsShield * spellLevel);
                 player.shieldValue = shieldAmount;
                 player.shieldTurns = spellData.duration;
 
@@ -8599,6 +8654,8 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
     // Shield Bash / Cleave hit adjacent (Range 1)
     const targetX = player.x + dirX;
     const targetY = player.y + dirY;
+
+    let enemiesToHit = [{ x: targetX, y: targetY }];
 
     // If Cleave, add side targets
     if (skillId === 'cleave') {
@@ -9251,32 +9308,39 @@ const render = () => {
     const hasTorch = gameState.player.inventory.some(item => item.name === 'Torch');
     const torchBonus = hasTorch ? 4 : 0; 
 
+    // --- NEW: Candlelight Bonus ---
+    // If the spell is active (turns > 0), add +6 to vision radius!
+    const candleBonus = (gameState.player.candlelightTurns > 0) ? 6 : 0; 
+    // -----------------------------
+
     if (gameState.mapMode === 'dungeon') {
         // --- CAVE VISION UPDATE ---
-        ambientLight = 1.0; // PITCH BLACK. You cannot see outside your radius.
+        ambientLight = 1.0; // PITCH BLACK
         
-        // Base is 3 (Very small). With Torch (+4), it becomes 7 (Standard view).
-        // Perception still helps slightly.
-        baseRadius = 3 + Math.floor(gameState.player.perception / 2) + torchBonus; 
-        // --------------------------
-    } else if (gameState.mapMode === 'castle') {
+        // Base 3 + Perception + Torch + Candlelight
+        baseRadius = 3 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus; 
+    } 
+    else if (gameState.mapMode === 'castle') {
         ambientLight = 0.2; 
-        baseRadius = 8 + torchBonus; 
-    } else {
+        // Base 10 (updated from 8) + Torch + Candlelight
+        baseRadius = 10 + torchBonus + candleBonus; 
+    } 
+    else {
         // Overworld Day/Night Cycle
         const hour = gameState.time.hour;
         if (hour >= 6 && hour < 18) ambientLight = 0.0; 
         else if (hour >= 18 && hour < 20) ambientLight = 0.3; 
         else if (hour >= 5 && hour < 6) ambientLight = 0.3; 
-        else ambientLight = 0.95; // Night is very dark now too
+        else ambientLight = 0.95; 
         
-        baseRadius = (ambientLight > 0.5) ? 5 + torchBonus : 20;
+        // Apply bonuses to overworld night/fog too!
+        baseRadius = (ambientLight > 0.5) ? 5 + torchBonus + candleBonus : 20;
 
         if (gameState.weather === 'fog') {
-            baseRadius = 3 + (hasTorch ? 2 : 0);
+            baseRadius = 3 + (hasTorch ? 2 : 0) + candleBonus; // Candlelight cuts through fog
             ambientLight = Math.max(ambientLight, 0.4); 
         } else if (gameState.weather === 'storm' || gameState.weather === 'rain') {
-            baseRadius = Math.max(baseRadius - 6, 4) + torchBonus; 
+            baseRadius = Math.max(baseRadius - 6, 4) + torchBonus + candleBonus; 
         }
     }
 
@@ -10483,6 +10547,19 @@ function endPlayerTurn() {
         renderEquipment(); // Update UI
     }
 
+    // --- WITS BONUS TIMER ---
+    if (player.witsBonusTurns > 0) {
+        player.witsBonusTurns--;
+        updates.witsBonusTurns = player.witsBonusTurns;
+
+        if (player.witsBonusTurns === 0) {
+            player.witsBonus = 0;
+            logMessage("The clarity of mind fades.");
+            updates.witsBonus = 0;
+        }
+        
+    }
+
     if (player.thornsTurns > 0) {
         player.thornsTurns--;
         updates.thornsTurns = player.thornsTurns;
@@ -10505,6 +10582,21 @@ function endPlayerTurn() {
         if (cooldownsChanged) {
             updates.cooldowns = player.cooldowns;
             renderHotbar(); // Update visuals
+        }
+    }
+
+    // --- CANDLELIGHT TIMER ---
+    if (player.candlelightTurns > 0) {
+        player.candlelightTurns--;
+        updates.candlelightTurns = player.candlelightTurns;
+        
+        // Warn when running low (optional, but helpful)
+        if (player.candlelightTurns === 5) {
+            logMessage("Your magical light is flickering...");
+        }
+        
+        if (player.candlelightTurns === 0) {
+            logMessage("Your Candlelight spell extinguishes.");
         }
     }
     
@@ -10560,8 +10652,8 @@ function endPlayerTurn() {
         renderStats(); // Update UI (to show new turn count or remove shield)
     }
 
-    // --- ENTITY LOGIC (Fixed Placement) ---
-    // These now run independently of your shield or buffs
+    // --- ENTITY LOGIC ---
+    // These run independently of your shield or buffs
     processFriendlyTurns(); // Moves castle guards
     runCompanionTurn();     // Moves your skeleton/pet
 
@@ -11438,30 +11530,42 @@ async function attemptMovePlayer(newX, newY) {
         }
 
         loreTitle.textContent = "An Ancient Shrine";
+        // UPDATED TEXT to reflect 500 turns
         loreContent.innerHTML = `
             <p>The shrine hums with a faint energy. You feel you can ask for one boon.</p>
-            <button id="shrineStr" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">Pray for Strength (+5 Str for 5 turns)</button>
-            <button id="shrineWits" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Pray for Wits (+5 Wits for 5 turns)</button>
+            <button id="shrineStr" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">Pray for Strength (+5 Str for 500 turns)</button>
+            <button id="shrineWits" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Pray for Wits (+5 Wits for 500 turns)</button>
         `;
         loreModal.classList.remove('hidden');
 
         document.getElementById('shrineStr').addEventListener('click', () => {
-            if (player.strengthBonusTurns > 0) {
-                logMessage("You are already under the effect of a similar boon!");
-            } else {
-                logMessage("You pray for Strength. You feel a surge of power!");
-                player.strengthBonus = 5;
-                player.strengthBonusTurns = 5;
-                playerRef.update({ strengthBonus: 5, strengthBonusTurns: 5 });
-                renderEquipment();
-                shrineUsed = true;
-            }
+            // We allow overwriting old buffs now since this is a "Major" buff
+            logMessage("You pray for Strength. You feel a surge of power that will last for days!");
+            player.strengthBonus = 5;
+            player.strengthBonusTurns = 500; // <--- UPDATED TO 500
+            
+            playerRef.update({ strengthBonus: 5, strengthBonusTurns: 500 });
+            renderEquipment();
+            shrineUsed = true;
+            
             if (shrineUsed) gameState.lootedTiles.add(tileId);
+            playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles) });
             loreModal.classList.add('hidden');
         }, { once: true });
 
         document.getElementById('shrineWits').addEventListener('click', () => {
-            logMessage("You pray for Wits... but nothing happens. (Wits buff not implemented)");
+            logMessage("You pray for Wits. Your mind expands with ancient knowledge!");
+            
+            // Apply the 500-turn buff
+            player.witsBonus = 5;
+            player.witsBonusTurns = 500;
+            
+            playerRef.update({ witsBonus: 5, witsBonusTurns: 500 });
+            renderStats(); // Update UI immediately
+            
+            shrineUsed = true;
+            if (shrineUsed) gameState.lootedTiles.add(tileId);
+            playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles) });
             loreModal.classList.add('hidden');
         }, { once: true });
         
@@ -13093,7 +13197,7 @@ auth.onAuthStateChanged((user) => {
         else if (prefersDark) applyTheme('dark');
         else applyTheme('light');
         
-        // --- CHANGED: Call initCharacterSelect instead of startGame ---
+        // --- Call initCharacterSelect instead of startGame ---
         initCharacterSelect(user); 
     } else {
         authContainer.classList.remove('hidden');
