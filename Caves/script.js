@@ -428,6 +428,21 @@ const SHOP_INVENTORY = [{
         name: 'Mana Orb',
         price: 20,
         stock: 10
+    },
+{
+        name: 'Bag of Flour', // NEW
+        price: 5,
+        stock: 20
+    },
+    {
+        name: 'Bird Egg', // NEW
+        price: 3,
+        stock: 10
+    },
+    {
+        name: 'Jar of Honey', // NEW
+        price: 10,
+        stock: 5
     }
 ];
 
@@ -485,6 +500,21 @@ const CASTLE_SHOP_INVENTORY = [{
         name: 'Silk Cowl',
         price: 200, // It's magical, so it's pricey
         stock: 1
+    },
+{
+        name: 'Bag of Flour', // NEW
+        price: 5,
+        stock: 20
+    },
+    {
+        name: 'Bird Egg', // NEW
+        price: 3,
+        stock: 10
+    },
+    {
+        name: 'Jar of Honey', // NEW
+        price: 10,
+        stock: 5
     }
 ];
 
@@ -782,6 +812,51 @@ const ENEMY_DATA = {
         xp: 10,
         loot: '🧣', // Red Bandana
         flavor: "He looks nervous, holding his dagger with shaking hands."
+    },
+
+    // --- DESERT WILDLIFE ---
+    '🦂s': { // Small Scorpion variant
+        name: 'Sand Scorpion',
+        maxHealth: 5, attack: 2, defense: 1, xp: 8,
+        loot: '🦷', 
+        inflicts: 'poison', inflictChance: 0.3,
+        flavor: "It burrows in the sand, waiting."
+    },
+    '🐍c': { // Cobra
+        name: 'King Cobra',
+        maxHealth: 15, attack: 5, defense: 0, xp: 30,
+        loot: '🦷',
+        inflicts: 'poison', inflictChance: 0.5,
+        flavor: "It rears up, hood flared, hissing loudly."
+    },
+
+    // --- SWAMP WILDLIFE ---
+    '🐸': {
+        name: 'Giant Toad',
+        maxHealth: 20, attack: 3, defense: 0, xp: 25,
+        loot: '🍖', // Drops meat!
+        flavor: "It looks at you with unblinking eyes."
+    },
+    '🦟': {
+        name: 'Blood Mosquito',
+        maxHealth: 2, attack: 1, defense: 5, // Hard to hit!
+        xp: 10,
+        loot: 'vd', 
+        flavor: "An annoying, high-pitched whine follows it."
+    },
+
+    // --- FOREST WILDLIFE ---
+    '🐻': {
+        name: 'Cave Bear',
+        maxHealth: 30, attack: 5, defense: 2, xp: 50,
+        loot: '❄️f', // Use Yeti Fur tile as generic fur
+        flavor: "A massive wall of muscle and fur."
+    },
+    '🦌': {
+        name: 'Stag',
+        maxHealth: 15, attack: 2, defense: 0, xp: 10,
+        loot: '🍖',
+        flavor: "It watches you warily."
     },
 
     // --- LEVEL 2-3 (Standard Threats) ---
@@ -2181,6 +2256,22 @@ const TERRAIN_COST = {
 };
 
 const COOKING_RECIPES = {
+    "Berry Pie": { 
+        materials: { "Wildberry": 3, "Bag of Flour": 1, "Jar of Honey": 1 }, 
+        xp: 40, level: 2 
+    },
+    "Traveler's Wrap": { 
+        materials: { "Steak": 1, "Hardtack": 1, "Cheese": 1 }, 
+        xp: 30, level: 2 
+    },
+    "Honey Glazed Ham": {
+        materials: { "Raw Meat": 2, "Jar of Honey": 1 },
+        xp: 35, level: 2
+    },
+    "Omelet": {
+        materials: { "Bird Egg": 2, "Cheese": 1 },
+        xp: 20, level: 1
+    },
     "Steak": { 
         materials: { "Raw Meat": 1 }, 
         xp: 10, level: 1 
@@ -2542,6 +2633,22 @@ const ITEM_DATA = {
         description: "Simple wood and string. Good for hunting."
     },
 
+    // --- CULINARY EXPANSION ---
+    '🧀': { name: 'Wheel of Cheese', type: 'consumable', description: "A pungent wheel of aged cheese. (+15 Hunger)", effect: (state) => { state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 15); logMessage("It tastes sharp and nutty."); } },
+    '🥚': { name: 'Bird Egg', type: 'junk', description: "A speckled egg found in a nest." },
+    '🌾': { name: 'Bag of Flour', type: 'junk', description: "Ground wheat. Essential for baking." },
+    '🍯': { name: 'Jar of Honey', type: 'consumable', description: "Sweet and sticky. (+10 Hunger, +5 Stamina)", effect: (state) => { state.player.stamina += 5; state.player.hunger += 10; logMessage("Sweet energy!"); triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow'); } },
+    '🥧': { name: 'Berry Pie', type: 'consumable', description: "A masterpiece of baking. (+50 Hunger, +10 Psyche)", effect: (state) => { state.player.hunger += 50; state.player.psyche += 10; logMessage("Warm, sweet, and comforting. You feel happier."); triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); } },
+    '🥙': { name: 'Traveler\'s Wrap', type: 'consumable', description: "Portable and filling. (+40 Hunger, +5 Health)", effect: (state) => { state.player.hunger += 40; state.player.health += 5; logMessage("A solid meal on the go."); triggerStatAnimation(statDisplays.health, 'stat-pulse-green'); } },
+
+    // --- TRADE GOODS ---
+    '🐚': { name: 'Rainbow Shell', type: 'junk', description: "It shimmers with every color. Collectors love these." }, // High value
+    '🕰️': { name: 'Golden Pocket Watch', type: 'junk', description: "It's stopped at 12:00. The casing is pure gold." },
+    '🗿': { name: 'Jade Idol', type: 'junk', description: "A heavy statue of a forgotten frog god." },
+    '📜m': { name: 'Merchant\'s Ledger', type: 'junk', description: "Detailed trade routes. Bandits would pay for this info." },
+    '🧵': { name: 'Spool of Silk', type: 'junk', description: "Fine material from the eastern lands." },
+    '💎b': { name: 'Black Pearl', type: 'junk', description: "Found only in the deepest abysses." },
+
     // --- SURVIVAL ITEMS ---
     '🫙': {
         name: 'Empty Bottle',
@@ -2729,6 +2836,7 @@ const ITEM_DATA = {
     },
 
     // --- COOKING INGREDIENTS ---
+    
     '🍖': {
         name: 'Raw Meat',
         type: 'junk',
@@ -4871,7 +4979,7 @@ generateCave(caveId) {
         });
     },
 
-    generateChunk(chunkX, chunkY) {
+generateChunk(chunkX, chunkY) {
         const chunkKey = `${chunkX},${chunkY}`;
         const random = Alea(stringToSeed(WORLD_SEED + ':' + chunkKey));
 
@@ -4900,7 +5008,7 @@ generateCave(caveId) {
                 const featureRoll = random();
 
                 // --- 1. LEGENDARY LANDMARKS (Unique, Very Rare) ---
-                if (tile === '.' && featureRoll < 0.0000005) { // 1 in 2M (Reduced)
+                if (tile === '.' && featureRoll < 0.0000005) { // 1 in 2M
                     this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
                 } 
@@ -4931,8 +5039,8 @@ generateCave(caveId) {
                     chunkData[y][x] = 'Ω';
                 }
 
-                // --- 3. COMMON FEATURES (Reduced Density) ---
-                else if (tile === '.' && featureRoll < 0.0005) { // General Features (Castles/Caves)
+                // --- 3. COMMON FEATURES ---
+                else if (tile === '.' && featureRoll < 0.0005) { 
                     let features = Object.keys(TILE_DATA);
                     features = features.filter(f => 
                         TILE_DATA[f].type !== 'dungeon_exit' &&
@@ -4945,12 +5053,12 @@ generateCave(caveId) {
                     chunkData[y][x] = featureTile;
                 }
                 
-                // --- 4. GENERIC STRUCTURES (Ruins/Camps) ---
-                else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0001) { // Ruins (Very Rare now)
+                // --- 4. GENERIC STRUCTURES ---
+                else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0001) { 
                     this.setWorldTile(worldX, worldY, '🏛️');
                     chunkData[y][x] = '🏛️';
                 } 
-                else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0002) { // Campsite (Rare now)
+                else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0002) { 
                     this.setWorldTile(worldX, worldY, '⛺');
                     chunkData[y][x] = '⛺';
                 }
@@ -4960,16 +5068,18 @@ generateCave(caveId) {
                     
                     // --- MOUNTAINS ---
                     if (tile === '^') { 
-                        if (dist > 300 && hostileRoll < 0.0002) chunkData[y][x] = 'Y'; // Yeti (Was 0.002)
-                        else if (dist > 150 && hostileRoll < 0.0003) chunkData[y][x] = 'Ø'; // Ogre (Was 0.003)
-                        else if (hostileRoll < 0.0003) chunkData[y][x] = 'g'; // Goblins (Was 0.003)
-                        else if (hostileRoll < 0.0005) chunkData[y][x] = '🦇'; // Giant Bat (Was 0.005)
+                        if (dist > 300 && hostileRoll < 0.0002) chunkData[y][x] = 'Y'; // Yeti
+                        else if (dist > 250 && hostileRoll < 0.0003) chunkData[y][x] = '🐲'; // Young Drake
+                        else if (dist > 150 && hostileRoll < 0.0003) chunkData[y][x] = 'Ø'; // Ogre
+                        else if (hostileRoll < 0.0004) chunkData[y][x] = '🗿'; // Stone Golem
+                        else if (hostileRoll < 0.0006) chunkData[y][x] = 'g'; // Goblins
+                        else if (hostileRoll < 0.0008) chunkData[y][x] = '🦇'; // Giant Bat
                         
-                        // Resources (Kept somewhat common so you can craft)
+                        // Resources
                         else if (hostileRoll < 0.007) { 
                             this.setWorldTile(worldX, worldY, '🏚'); 
                             chunkData[y][x] = '🏚'; 
-                        } 
+                        }
                         else if (dist > 200 && hostileRoll < 0.010) { 
                             this.setWorldTile(worldX, worldY, '💠'); 
                             chunkData[y][x] = '💠'; 
@@ -4977,12 +5087,14 @@ generateCave(caveId) {
                         else chunkData[y][x] = tile;
                     }
 
-                    // --- FORESTS ---
+                    // --- FORESTS (Updated with Wildlife) ---
                     else if (tile === 'F') {
-                        if (dist > 250 && hostileRoll < 0.0001) chunkData[y][x] = '🐺'; // Dire Wolf (Was 0.001)
-                        else if (hostileRoll < 0.0002) chunkData[y][x] = 'w'; // Wolf (Was 0.002)
-                        else if (hostileRoll < 0.0004) chunkData[y][x] = '🐗'; // Boar (Was 0.004)
-                        else if (hostileRoll < 0.0006) chunkData[y][x] = '🐍'; // Viper (Was 0.006)
+                        if (dist > 250 && hostileRoll < 0.0001) chunkData[y][x] = '🐺'; // Dire Wolf
+                        else if (hostileRoll < 0.0002) chunkData[y][x] = '🐻'; // Cave Bear (NEW)
+                        else if (hostileRoll < 0.0004) chunkData[y][x] = 'w'; // Wolf
+                        else if (hostileRoll < 0.0006) chunkData[y][x] = '🐗'; // Boar
+                        else if (hostileRoll < 0.0008) chunkData[y][x] = '🦌'; // Stag (NEW)
+                        else if (hostileRoll < 0.0010) chunkData[y][x] = '🐍'; // Viper
                         
                         // Resources
                         else if (hostileRoll < 0.009) { this.setWorldTile(worldX, worldY, '🌳'); chunkData[y][x] = '🌳'; } 
@@ -4991,46 +5103,41 @@ generateCave(caveId) {
                         else chunkData[y][x] = tile;
                     }
 
-                    // --- SWAMP ---
+                    // --- SWAMP (Updated with Wildlife) ---
                     else if (tile === '≈') {
-                        if (hostileRoll < 0.0003) chunkData[y][x] = 'l'; // Leech (Was 0.003)
-                        else if (hostileRoll < 0.0005) chunkData[y][x] = '🐍'; // Viper (Was 0.005)
+                        if (hostileRoll < 0.0003) chunkData[y][x] = 'l'; // Leech
+                        else if (hostileRoll < 0.0005) chunkData[y][x] = '🐍'; // Viper
+                        else if (hostileRoll < 0.0008) chunkData[y][x] = '🐸'; // Giant Toad (NEW)
+                        else if (hostileRoll < 0.0012) chunkData[y][x] = '🦟'; // Blood Mosquito (NEW)
+                        
                         else if (hostileRoll < 0.008) { this.setWorldTile(worldX, worldY, '🌿'); chunkData[y][x] = '🌿'; }
                         else chunkData[y][x] = tile;
                     }
 
                     // --- PLAINS ---
                     else if (tile === '.') {
-                        // Orcs: Only far out (unchanged)
-                        if (dist > 150 && hostileRoll < 0.0001) chunkData[y][x] = 'o'; 
-                        
-                        // Wolves: Now require distance > 120 (approx 6 screens away)
-                        else if (dist > 120 && hostileRoll < 0.0002) chunkData[y][x] = 'w'; 
-                        
-                        // Bandits: Now require distance > 80 (approx 4 screens away)
-                        else if (dist > 80 && hostileRoll < 0.0003) chunkData[y][x] = 'b'; 
-                        
-                        // Rats: Common everywhere
-                        else if (hostileRoll < 0.0005) chunkData[y][x] = 'r'; 
-                        
-                        // Bandit Recruits: Common everywhere (Weak, good for leveling)
-                        else if (hostileRoll < 0.0007) chunkData[y][x] = 'R'; 
-                        
+                        if (dist > 150 && hostileRoll < 0.0001) chunkData[y][x] = 'o'; // Orcs
+                        else if (dist > 120 && hostileRoll < 0.0002) chunkData[y][x] = 'w'; // Wolf
+                        else if (dist > 80 && hostileRoll < 0.0003) chunkData[y][x] = 'b'; // Bandit
+                        else if (hostileRoll < 0.0005) chunkData[y][x] = 'r'; // Rat
+                        else if (hostileRoll < 0.0007) chunkData[y][x] = 'R'; // Bandit Recruit
                         else chunkData[y][x] = tile;
                     }
 
                     // --- DEADLANDS ---
                     else if (tile === 'd') {
-                        if (dist > 400 && hostileRoll < 0.0001) chunkData[y][x] = 'D'; // Void Demon (Was 0.001)
-                        else if (hostileRoll < 0.0002) chunkData[y][x] = 's'; // Skeleton (Was 0.002)
-                        else if (hostileRoll < 0.0004) chunkData[y][x] = 'b'; // Bandit (Was 0.004)
+                        if (dist > 400 && hostileRoll < 0.0001) chunkData[y][x] = 'D'; // Void Demon
+                        else if (hostileRoll < 0.0002) chunkData[y][x] = 's'; // Skeleton
+                        else if (hostileRoll < 0.0004) chunkData[y][x] = 'b'; // Bandit
                         else chunkData[y][x] = tile;
                     }
 
-                    // --- DESERT ---
+                    // --- DESERT (Updated with Wildlife) ---
                     else if (tile === 'D') {
                         if (hostileRoll < 0.001) { this.setWorldTile(worldX, worldY, '🌵'); chunkData[y][x] = '🌵'; }
-                        else if (hostileRoll < 0.0003) chunkData[y][x] = '🦂'; // Scorpion (Was 0.003)
+                        else if (hostileRoll < 0.0003) chunkData[y][x] = '🦂'; // Giant Scorpion (Old)
+                        else if (hostileRoll < 0.0005) chunkData[y][x] = '🦂s'; // Sand Scorpion (NEW)
+                        else if (hostileRoll < 0.0007) chunkData[y][x] = '🐍c'; // King Cobra (NEW)
                         else chunkData[y][x] = tile;
                     }
                     
@@ -5041,18 +5148,17 @@ generateCave(caveId) {
             }
         }
 
-        // --- SMOOTHING PASS (The Fix) ---
-        // Iterate over the chunk (skipping the very edges to avoid complex cross-chunk math)
+        // --- SMOOTHING PASS ---
+        // Prevents 1-tile biome anomalies (The "Micro-Biome" Fix)
         for (let y = 1; y < this.CHUNK_SIZE - 1; y++) {
             for (let x = 1; x < this.CHUNK_SIZE - 1; x++) {
                 const currentTile = chunkData[y][x];
 
-                // 1. Only smooth "Natural" terrain. 
-                // We do NOT want to accidentally erase rare things like Shrines (⛩️), Rifts (Ω), or Entrances (⛰)
+                // Only smooth "Natural" terrain. 
                 const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈'];
                 if (!naturalTerrain.includes(currentTile)) continue; 
 
-                // 2. Check the 4 neighbors (North, South, West, East)
+                // Check 4 neighbors
                 const neighbors = [
                     chunkData[y - 1][x], // North
                     chunkData[y + 1][x], // South
@@ -5060,14 +5166,12 @@ generateCave(caveId) {
                     chunkData[y][x + 1]  // East
                 ];
 
-                // 3. Count neighbor types
-                // We want to see if we are surrounded by something else
                 const counts = {};
                 let maxCount = 0;
                 let dominantTile = null;
 
                 neighbors.forEach(n => {
-                    if (naturalTerrain.includes(n)) { // Only count natural neighbors
+                    if (naturalTerrain.includes(n)) {
                         counts[n] = (counts[n] || 0) + 1;
                         if (counts[n] > maxCount) {
                             maxCount = counts[n];
@@ -5076,8 +5180,7 @@ generateCave(caveId) {
                     }
                 });
 
-                // 4. The "Peer Pressure" Rule
-                // If 3 or more neighbors are the same type, and I am different... switch!
+                // The "Peer Pressure" Rule: If 3 or more neighbors differ, switch.
                 if (maxCount >= 3 && dominantTile !== currentTile) {
                     chunkData[y][x] = dominantTile;
                 }
@@ -7312,8 +7415,32 @@ async function executeAimedSpell(spellId, dirX, dirY) {
         case 'siphonLife':
         case 'psychicBlast':
         case 'frostBolt':
+
+        case 'entangle':
+            { 
+                logMessage("Vines burst from the ground!");
+                const entangleDmg = spellData.baseDamage + (player.intuition * spellLevel); // Scales with Intuition
+                
+                // Entangle hits a specific spot 3 tiles away (Sniper root)
+                // You can change '3' to 'i' in a loop if you want it to hit the first thing in line
+                for (let i = 1; i <= 3; i++) {
+                    const tx = player.x + (dirX * i);
+                    const ty = player.y + (dirY * i);
+                    
+                    // We await the result. If we hit something, stop.
+                    if (await applySpellDamage(tx, ty, entangleDmg, spellId)) {
+                        hitSomething = true;
+                        if (typeof ParticleSystem !== 'undefined') {
+                            ParticleSystem.createFloatingText(tx, ty, "ROOTED", "#22c55e");
+                        }
+                        break; 
+                    }
+                }
+            } 
+            break;
+
         case 'poisonBolt':
-            { // <--- BRACE ADDED FOR SCOPE
+            {
                 const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast' || spellId === 'poisonBolt') ? effectiveWill : effectiveWits;
                 
                 const spellDamage = spellData.baseDamage + (damageStat * spellLevel);
@@ -7326,7 +7453,6 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 if (spellId === 'poisonBolt') logMsg = "You hurl a bolt of acid!";
                 logMessage(logMsg);
 
-                // --- BUG FIX: CHANGED i=2 TO i=1 ---
                 // Now checks 1, 2, and 3 tiles away
                 for (let i = 1; i <= 3; i++) { 
                     const targetX = player.x + (dirX * i);
@@ -8475,6 +8601,20 @@ function castSpell(spellId) {
         // --- 3. Execute Spell Effect ---
         switch (spellId) {
 
+            case 'stoneSkin':
+                // Grants high defense for a short time
+                const skinBonus = 3 + Math.floor(player.constitution * 0.2);
+                player.defenseBonus = (player.defenseBonus || 0) + skinBonus;
+                player.defenseBonusTurns = spellData.duration;
+                
+                logMessage(`Your skin turns to granite! (+${skinBonus} Defense)`);
+                triggerStatAnimation(statDisplays.health, 'stat-pulse-gray'); // Gray for stone!
+                
+                updates.defenseBonus = player.defenseBonus;
+                updates.defenseBonusTurns = player.defenseBonusTurns;
+                spellCastSuccessfully = true;
+                break;
+
             case 'thornSkin':
                 const reflectAmount = spellData.baseReflect + (player.intuition * spellLevel);
                 player.thornsValue = reflectAmount;
@@ -9090,11 +9230,16 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                 enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
 
                 // --- 3. Luck Dodge Check ---
-                const luckDodgeChance = Math.min(player.luck * 0.002, 0.25); // Cap at 25%
-                if (Math.random() < luckDodgeChance) {
-                    logMessage(`The ${enemyData.name} attacks, but you luckily dodge!`);
-                    enemyDamageTaken = 0;
-                }
+                let dodgeChance = Math.min(player.luck * 0.002, 0.25);
+// Add Evasion Talent
+if (player.talents && player.talents.includes('evasion')) {
+    dodgeChance += 0.10; // Flat +10%
+}
+
+if (Math.random() < dodgeChance) {
+    logMessage(`The ${enemyData.name} attacks, but you dodge! (Evasion)`);
+    enemyDamageTaken = 0;
+}
             }
 
             // --- 4. Apply Final Damage & Reactives ---
@@ -10187,8 +10332,13 @@ function processEnemyTurns() {
             const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
             const totalDefense = baseDefense + armorDefense + buffDefense + talentDefense;
             
-            if (Math.random() < Math.min(player.luck * 0.002, 0.25)) {
-                logMessage(`The ${enemy.name} attacks, but you dodge!`);
+            let dodgeChance = Math.min(player.luck * 0.002, 0.25);
+                if (player.talents && player.talents.includes('evasion')) {
+                dodgeChance += 0.10;
+            }
+
+        if (Math.random() < dodgeChance) {
+            logMessage(`The ${enemy.name} attacks, but you dodge!`);
 
                 ParticleSystem.createFloatingText(player.x, player.y, "Dodge!", "#3b82f6");
 
@@ -11963,15 +12113,17 @@ async function attemptMovePlayer(newX, newY) {
             logMessage(tileData.flavor);
             let lootTable = tileData.lootTable; // Default table
             
-            // --- NEW: Dynamic Loot Table for Generic Chests ---
+            // --- Dynamic Loot Table for Generic Chests ---
             // If it's a generic chest (lootTable not strictly defined or is generic)
             // we inject scaling logic.
             if (!lootTable || tileData.name === 'Dusty Urn' || newTile === '📦') {
                 const dist = Math.sqrt(newX*newX + newY*newY);
                 if (dist > 250) {
-                    lootTable = ['$', '$', 'S', 'o', '+', '⚔️l', '⛓️', '💎', '🧪']; // High Tier
+                    // High Tier + New Trade Goods (Shells, Pearls, Idols)
+                    lootTable = ['$', '$', 'S', 'o', '+', '⚔️l', '⛓️', '💎', '🧪', '🐚', '💎b', '🗿']; 
                 } else {
-                    lootTable = ['$', '$', '(', '†', '+', '!', '[', '🛡️w']; // Low Tier
+                    // Low Tier + Common Trade Goods (Shells, Spools)
+                    lootTable = ['$', '$', '(', '†', '+', '!', '[', '🛡️w', '🐚', '🧵']; 
                 }
             }
             const seed = stringToSeed(tileId);
