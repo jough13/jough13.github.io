@@ -5020,6 +5020,50 @@ generateCave(caveId) {
                 }
             }
         }
+
+        // --- SMOOTHING PASS (The Fix) ---
+        // Iterate over the chunk (skipping the very edges to avoid complex cross-chunk math)
+        for (let y = 1; y < this.CHUNK_SIZE - 1; y++) {
+            for (let x = 1; x < this.CHUNK_SIZE - 1; x++) {
+                const currentTile = chunkData[y][x];
+
+                // 1. Only smooth "Natural" terrain. 
+                // We do NOT want to accidentally erase rare things like Shrines (⛩️), Rifts (Ω), or Entrances (⛰)
+                const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈'];
+                if (!naturalTerrain.includes(currentTile)) continue; 
+
+                // 2. Check the 4 neighbors (North, South, West, East)
+                const neighbors = [
+                    chunkData[y - 1][x], // North
+                    chunkData[y + 1][x], // South
+                    chunkData[y][x - 1], // West
+                    chunkData[y][x + 1]  // East
+                ];
+
+                // 3. Count neighbor types
+                // We want to see if we are surrounded by something else
+                const counts = {};
+                let maxCount = 0;
+                let dominantTile = null;
+
+                neighbors.forEach(n => {
+                    if (naturalTerrain.includes(n)) { // Only count natural neighbors
+                        counts[n] = (counts[n] || 0) + 1;
+                        if (counts[n] > maxCount) {
+                            maxCount = counts[n];
+                            dominantTile = n;
+                        }
+                    }
+                });
+
+                // 4. The "Peer Pressure" Rule
+                // If 3 or more neighbors are the same type, and I am different... switch!
+                if (maxCount >= 3 && dominantTile !== currentTile) {
+                    chunkData[y][x] = dominantTile;
+                }
+            }
+        }
+        
         this.loadedChunks[chunkKey] = chunkData;
     },
 
