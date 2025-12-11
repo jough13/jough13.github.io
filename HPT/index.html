@@ -263,8 +263,8 @@
       <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.css" />
       <script src="https://unpkg.com/leaflet-geosearch@3/dist/geosearch.umd.js"></script>
       <script>
+
          // When the document is ready, add the 'visible' class to the #root element
-         
          // to trigger our CSS transition.
          
          window.addEventListener('DOMContentLoaded', () => {
@@ -314,6 +314,7 @@ const RADIONUCLIDE_DATA = [
     sourceRef: {
       halfLife: 'nndc'
     },
+    dValue: 0.06,
     shipping: { A1: 0.8, A2: 0.006, unit: 'TBq' },
     dosimetry: {
       ALI: {
@@ -332,6 +333,7 @@ const RADIONUCLIDE_DATA = [
       },
       sourceRef: '10CFR20'
     },
+    gammaConstant: '0.191364 R·m²/hr·Ci',
     regGuideCategory: 'transuranics',
     ansiCategory: 'alpha_very_high'
   },
@@ -352,7 +354,7 @@ const RADIONUCLIDE_DATA = [
     },
     halfLife: '21.77 years',
     decayConstant: '0.0318 year⁻¹',
-    specificActivity: '9.7 x 10^11 Bq/g',
+    specificActivity: '2.68 x 10^12 Bq/g',
     parent: 'Protactinium-231',
     daughter: 'Thorium-227 (β) or Francium-223 (α)',
     commonUses: ['Actinium-225 generator (medical)', 'Research'],
@@ -464,7 +466,7 @@ const RADIONUCLIDE_DATA = [
       halfLife: 'nndc',
       gammaConstant: 'plexus_nsd'
     },
-    dValue: 0.6,
+    dValue: 0.06,
     dosimetry: {
       ALI: {
         ingestion: 0.8,
@@ -504,6 +506,7 @@ const RADIONUCLIDE_DATA = [
     sourceRef: {
       halfLife: 'nndc'
     },
+    dValue: 0.06,
     shipping: { A1: 0.6, A2: 0.6, unit: 'TBq' },
     gammaConstant: '1.06671 R·m²/hr·Ci',
     sourceRef: {
@@ -553,7 +556,7 @@ const RADIONUCLIDE_DATA = [
       halfLife: 'nndc'
     },
     shipping: { A1: 2, A2: 1, unit: 'TBq' },
-    dValue: 2,
+    dValue: 0.2,
     dosimetry: {
       ALI: {
         ingestion: 2000,
@@ -866,11 +869,11 @@ const RADIONUCLIDE_DATA = [
   },
   {
     name: 'Bismuth-210',
-    emissionType: ['Beta-minus', 'Alpha'],
+    emissionType: ['Beta-minus'],
     symbol: 'Bi-210',
     emissionEnergies: {
       beta: ['1.16 MeV (max)'],
-      alpha: ['5.03 MeV'],
+      alpha: [],
       gamma: []
     },
     avgBetaEnergy: '0.387 MeV',
@@ -1280,6 +1283,7 @@ const RADIONUCLIDE_DATA = [
     sourceRef: {
       halfLife: 'nndc'
     },
+    dValue: 100,
     shipping: {
       A1: 40,
       A2: 1,
@@ -1378,7 +1382,7 @@ const RADIONUCLIDE_DATA = [
       A2: 0.003,
       unit: 'TBq'
     },
-    dValue: 0.2,
+    dValue: 0.02,
     dosimetry: {
       ALI: {
         ingestion: 2,
@@ -1466,7 +1470,7 @@ const RADIONUCLIDE_DATA = [
       A2: 3,
       unit: 'TBq'
     },
-    dValue: 10,
+    dValue: 50,
     dosimetry: {
       ALI: {
         ingestion: 2000,
@@ -1609,6 +1613,7 @@ const RADIONUCLIDE_DATA = [
     sourceRef: {
       halfLife: 'nndc'
     },
+    dValue: 0.04,
     shipping: {
       A1: 0.7,
       A2: 0.7,
@@ -1652,7 +1657,7 @@ const RADIONUCLIDE_DATA = [
     halfLife: 'nndc',
     gammaConstant: 'plexus_nsd'
     },
-    dValue: 1,
+    dValue: 0.1,
     specificActivity: '3.21 x 10^12 Bq/g',
     parent: 'Uranium Fission',
     daughter: 'Barium-137m (IT) -> Barium-137 (stable)',
@@ -1686,6 +1691,36 @@ const RADIONUCLIDE_DATA = [
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
+{
+    name: 'Chlorine-36',
+    symbol: 'Cl-36',
+    emissionType: ['Beta-minus', 'Electron Capture'],
+    emissionEnergies: {
+      beta: ['0.709 MeV (max, 98%)'],
+      gamma: [],
+      alpha: []
+    },
+    avgBetaEnergy: '0.251 MeV',
+    halfLife: '301,000 years',
+    decayConstant: '2.30 x 10⁻⁶ year⁻¹',
+    specificActivity: '1.2 x 10^9 Bq/g',
+    parent: 'Chlorine-35 (n,γ)',
+    daughter: 'Argon-36 (stable) or Sulfur-36 (stable)',
+    commonUses: ['Beta calibration standard', 'Geological dating'],
+    category: 'Industrial',
+    commonality: 'Moderate',
+    commonalityReason: 'The standard long-lived reference source for calibrating beta detectors.',
+    sourceRef: { halfLife: 'nndc' },
+    shipping: { A1: 40, A2: 0.6, unit: 'TBq' },
+    dValue: 20, // IAEA EPR-D-Values
+    dosimetry: {
+      ALI: { ingestion: 2000, inhalation_W: 200 },
+      DAC: { inhalation_W: 1e-7 },
+      sourceRef: '10CFR20'
+    },
+    regGuideCategory: 'beta_gamma',
+    ansiCategory: 'beta_low_risk'
+  },
   {
     name: 'Cobalt-60',
     symbol: 'Co-60',
@@ -1703,7 +1738,7 @@ const RADIONUCLIDE_DATA = [
     halfLife: 'nndc',
     gammaConstant: 'plexus_nsd'
     },
-    dValue: 0.3,
+    dValue: 0.03,
     specificActivity: '4.18 x 10^13 Bq/g',
     parent: 'Cobalt-59 (n,γ)',
     daughter: 'Nickel-60 (stable)',
@@ -1857,6 +1892,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     sourceRef: {
       halfLife: 'nndc'
     },
+    dValue: 0.05,
     shipping: {
       A1: 20,
       A2: 0.002,
@@ -1950,7 +1986,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 1,
       unit: 'TBq'
     },
-     dValue: 0.6,
+     dValue: 0.06,
    gammaConstant: '0.74444 R·m²/hr·Ci',
     sourceRef: {
     halfLife: 'nndc',
@@ -2000,7 +2036,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.6,
       unit: 'TBq'
     },
-    dValue: 0.6,
+    dValue: 0.06,
     gammaConstant: '0.75554 R·m²/hr·Ci',
     sourceRef: {
     halfLife: 'nndc',
@@ -2050,6 +2086,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.6,
       unit: 'TBq'
     },
+    dValue: 0.06,
     dosimetry: {
       ALI: {
         ingestion: 50000,
@@ -2119,7 +2156,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 9,
       unit: 'TBq'
     },
-    dValue: 10,
+    dValue: 1,
     gammaConstant: '0.172383 R·m²/hr·Ci',
     sourceRef: {
       halfLife: 'nndc',
@@ -2213,6 +2250,8 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     sourceRef: {
       halfLife: 'nndc'
     },
+    gammaConstant: '0.11 R·m²/hr·Ci',
+    dValue: 0.3,
     shipping: {
       A1: 7,
       A2: 3,
@@ -2311,6 +2350,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     sourceRef: {
       halfLife: 'nndc'
     },
+    dValue: 0.007,
     shipping: {
       A1: 0.5,
       A2: 0.5,
@@ -2398,6 +2438,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       unit: 'TBq'
     },
     gammaConstant: '0.291634 R·m²/hr·Ci',
+    dValue: 0.2,
     sourceRef: {
       halfLife: 'nndc',
       gammaConstant: 'plexus_nsd'
@@ -2478,6 +2519,8 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       gamma: ['0.171 MeV', '0.245 MeV'],
       alpha: []
     },
+    gammaConstant: '0.33 R·m²/hr·Ci',
+    dValue: 0.3,
     halfLife: '2.80 days',
     decayConstant: '0.247 day⁻¹',
     specificActivity: '2.6 x 10^16 Bq/g',
@@ -2624,7 +2667,8 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 3,
       unit: 'TBq'
     },
-    dValue: 2,
+    gammaConstant: '0.16 R·m²/hr·Ci',
+    dValue: 0.2,
     dosimetry: {
       ALI: {
         ingestion: 3000,
@@ -2668,13 +2712,12 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 3,
       unit: 'TBq'
     },
-    dValue: 2,
+    dValue: 0.2,
     gammaConstant: '0.274984 R·m²/hr·Ci',
     sourceRef: {
       halfLife: 'nndc',
       gammaConstant: 'plexus_nsd'
     },
-    dValue: 4,
     dosimetry: {
       ALI: {
         ingestion: 40,
@@ -2714,6 +2757,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     sourceRef: {
       halfLife: 'nndc'
     },
+    dValue: 0.0,
     shipping: {
       A1: 'unlimited',
       A2: 'unlimited',
@@ -2805,7 +2849,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       halfLife: 'nndc',
       gammaConstant: 'plexus_nsd'
     },
-    dValue: 0.8,
+    dValue: 0.08,
     specificActivity: '3.41 x 10^14 Bq/g',
     parent: 'Iridium-191 (n,γ)',
     daughter: 'Platinum-192 (stable) / Osmium-192 (stable)',
@@ -2918,7 +2962,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 40,
       unit: 'TBq'
     },
-    dValue: 40,
+    dValue: 800,
     dosimetry: {
       ALI: {
         ingestion: 9000,
@@ -3486,6 +3530,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       halfLife: 'nndc',
       gammaConstant: 'hps'
     },
+    shipping: {
+      A1: 1,
+      A2: 1,
+      unit: 'TBq'
+    },
     dValue: 1,
     dosimetry: {
       ALI: {
@@ -3513,7 +3562,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     emissionType: ['Beta-minus', 'Gamma'],
     emissionEnergies: {
       beta: ['1.214 MeV (max)'],
-      gamma: ['0.739 MeV', '0.181 MeV'],
+      gamma: ['0.739 MeV', '0.181 MeV', '0.778 MeV'], // Added 778
       alpha: []
     },
     avgBetaEnergy: '0.405 MeV',
@@ -3538,7 +3587,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.6,
       unit: 'TBq'
     },
-    gammaConstant: '0.112924 R·m²/hr·Ci',
+    gammaConstant: '0.18 R·m²/hr·Ci', // CORRECTED from 0.11 (Source: Unger & Trubey)
     sourceRef: {
       halfLife: 'nndc',
       gammaConstant: 'plexus_nsd'
@@ -3917,7 +3966,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 40,
       unit: 'TBq'
     },
-    dValue: 50,
+    dValue: 90,
     dosimetry: {
       ALI: {
         ingestion: 6000,
@@ -3968,7 +4017,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.5,
       unit: 'TBq'
     },
-    dValue: 0.6,
+    dValue: 10,
     dosimetry: {
       ALI: {
         ingestion: 600,
@@ -4015,7 +4064,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.001,
       unit: 'TBq'
     },
-    dValue: 0.6,
+    dValue: 0.06,
     dosimetry: {
       ALI: {
         ingestion: 0.9,
@@ -4062,7 +4111,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.001,
       unit: 'TBq'
     },
-    dValue: 0.6,
+    dValue: 0.06,
     dosimetry: {
       ALI: {
         ingestion: 0.8,
@@ -4144,7 +4193,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.02,
       unit: 'TBq'
     },
-    dValue: 0.6,
+    dValue: 0.06,
     dosimetry: {
       ALI: {
         ingestion: 3,
@@ -4294,11 +4343,11 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
   },
   {
     name: 'Polonium-218',
-    emissionType: ['Alpha', 'Beta-minus'],
+    emissionType: ['Alpha'],
     symbol: 'Po-218',
     emissionEnergies: {
       alpha: ['6.002 MeV'],
-      beta: ['0.26 MeV (max)']
+      beta: []
     },
     avgBetaEnergy: '0.087 MeV',
     halfLife: '3.10 minutes',
@@ -4630,6 +4679,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     sourceRef: {
       halfLife: 'nndc'
     },
+    dValue: 0.07,
     shipping: {
       A1: 0.4,
       A2: 0.007,
@@ -4728,7 +4778,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.003,
       unit: 'TBq'
     },
-    dValue: 0.4,
+    dValue: 0.04,
     dosimetry: {
       ALI: {
         inhalation_W: 0.6,
@@ -4779,6 +4829,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.003,
       unit: 'TBq'
     },
+    dValue: 0.04,
     dosimetry: {
       ALI: {
         inhalation_W: 0.6,
@@ -5551,6 +5602,39 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
+{
+    name: 'Selenium-75',
+    symbol: 'Se-75',
+    emissionType: ['Electron Capture', 'Gamma'],
+    emissionEnergies: {
+      beta: [],
+      gamma: ['0.136 MeV', '0.265 MeV', '0.401 MeV'], // Main imaging lines
+      alpha: []
+    },
+    halfLife: '119.8 days',
+    decayConstant: '0.00578 day⁻¹',
+    specificActivity: '5.4 x 10^14 Bq/g',
+    parent: 'Germanium-74 (n,γ) -> Ge-75 -> As-75', // Simplified production
+    daughter: 'Arsenic-75 (stable)',
+    commonUses: ['Industrial radiography (small bore pipes)', 'NDT'],
+    category: 'Industrial',
+    commonality: 'Moderate',
+    commonalityReason: 'A popular radiography source for thinner steel sections where Ir-192 is too energetic.',
+    sourceRef: {
+      halfLife: 'nndc',
+      gammaConstant: 'plexus_nsd'
+    },
+    shipping: { A1: 3, A2: 3, unit: 'TBq' },
+    dValue: 0.2, // IAEA EPR-D-Values
+    gammaConstant: '0.85951 R·m²/hr·Ci',
+    dosimetry: {
+      ALI: { ingestion: 500, inhalation_W: 700 },
+      DAC: { inhalation_W: 3e-7 },
+      sourceRef: '10CFR20'
+    },
+    regGuideCategory: 'beta_gamma',
+    ansiCategory: 'beta_gamma'
+  },
     {
     name: 'Selenium-76',
     symbol: 'Se-76',
@@ -5646,6 +5730,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       unit: 'TBq'
     },
     gammaConstant: '1.65242 R·m²/hr·Ci',
+    dValue: 0.02,
     sourceRef: {
       halfLife: 'nndc',
       gammaConstant: 'plexus_nsd'
@@ -5706,7 +5791,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.5,
       unit: 'TBq'
     },
-    dValue: 0.4,
+    dValue: 0.03,
     dosimetry: {
       ALI: {
         ingestion: 400,
@@ -5766,6 +5851,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     sourceRef: {
       halfLife: 'nndc'
     },
+    dValue: 0.02,
     shipping: {
       A1: 0.2,
       A2: 0.2,
@@ -5866,6 +5952,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     sourceRef: {
       halfLife: 'nndc'
     },
+    dValue: 20,
     shipping: {
       A1: 0.6,
       A2: 0.6,
@@ -5985,6 +6072,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     sourceRef: {
       halfLife: 'nndc'
     },
+    dValue: 60,
     shipping: {
       A1: 40,
       A2: 3,
@@ -6322,6 +6410,8 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     sourceRef: {
       halfLife: 'nndc'
     },
+    gammaConstant: '0.045 R·m²/hr·Ci', // (Mostly X-rays)
+    dValue: 1,
     shipping: {
       A1: 10,
       A2: 4,
@@ -6371,7 +6461,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.7,
       unit: 'TBq'
     },
-     dValue: 2,
+     dValue: 20,
     dosimetry: {
       ALI: {
         ingestion: 2000,
@@ -6836,7 +6926,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.6,
       unit: 'TBq'
     },
-    dValue: 2,
+    dValue: 20,
     dosimetry: {
       ALI: {
         ingestion: 800,
@@ -6975,7 +7065,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 40,
       unit: 'TBq'
     },
-    dValue: 200,
+    dValue: 2000,
     dosimetry: {
       ALI: {
         ingestion: 80000,
@@ -7443,6 +7533,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     sourceRef: {
       halfLife: 'nndc'
     },
+    dValue: 200,
     shipping: {
       A1: 20,
       A2: 10,
@@ -7489,6 +7580,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 1,
       unit: 'TBq'
     },
+    dValue: 0.3,
     dosimetry: {
       ALI: {
         ingestion: 2000,
@@ -7536,7 +7628,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
       A2: 0.3,
       unit: 'TBq'
     },
-    dValue: 3,
+    dValue: 1,
     dosimetry: {
       ALI: {
         ingestion: 400,
@@ -7552,6 +7644,39 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
         inhalation_W: 2.13e-9,
         inhalation_Y: 2.28e-9
       },
+      sourceRef: '10CFR20'
+    },
+    regGuideCategory: 'beta_gamma',
+    ansiCategory: 'beta_gamma'
+  },
+{
+    name: 'Zinc-65',
+    symbol: 'Zn-65',
+    emissionType: ['Electron Capture', 'Positron Emission', 'Gamma'],
+    emissionEnergies: {
+      beta: ['0.329 MeV (Positron max, 1.4%)'],
+      gamma: ['1.115 MeV (50%)'],
+      alpha: []
+    },
+    halfLife: '244.3 days',
+    decayConstant: '0.00284 day⁻¹',
+    specificActivity: '3.0 x 10^14 Bq/g',
+    parent: 'Zinc-64 (n,γ)',
+    daughter: 'Copper-65 (stable)',
+    commonUses: ['Activation product', 'Tracer', 'Environmental monitor'],
+    category: 'Industrial',
+    commonality: 'Moderate',
+    commonalityReason: 'A common neutron activation product found in reactor components.',
+    sourceRef: {
+      halfLife: 'nndc',
+      gammaConstant: 'plexus_nsd'
+    },
+    shipping: { A1: 2, A2: 2, unit: 'TBq' },
+    dValue: 0.2, // IAEA EPR-D-Values
+    gammaConstant: '0.330188 R·m²/hr·Ci',
+    dosimetry: {
+      ALI: { ingestion: 400, inhalation_Y: 300 },
+      DAC: { inhalation_Y: 1e-7 },
       sourceRef: '10CFR20'
     },
     regGuideCategory: 'beta_gamma',
@@ -7719,8 +7844,8 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
               // --- APPLICATION METADATA & CONSTANTS
               //==============================================================================
               
-              const VERSION = '3.7';
-              const LAST_UPDATED = 'December 10th, 2025';
+              const VERSION = '3.7.1';
+              const LAST_UPDATED = 'December 11th, 2025';
               
               // NEW: A global constant for all navigation views
               
@@ -9105,7 +9230,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
               
               timeoutRef.current = setTimeout(() => {
               setTooltipState(prev => ({ ...prev, show: false }));
-              }, 2000);
+              }, 4000);
               }
               };
               
@@ -9867,203 +9992,414 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
          );
          };
               
-              /**
-              * @description React component for a multi-purpose scientific calculator.
-              * This component handles standard arithmetic, advanced functions (e.g., sin, log),
-              * unit conversions, and physical constants, specifically tailored for scientific
-              * and health physics applications.
-              *
-              * Key features:
-              * - Real-time expression evaluation using the `math.js` library.
-              * - Basic and scientific functions (trigonometry, logarithms, etc.).
-              * - Unit conversion buttons for common radiological units (e.g., Ci ↔ Bq).
-              * - Memory functions (M+, MR, MC).
-              * - History of recent calculations.
-              * - Support for keyboard input for a more fluid user experience.
-              */
-              
-         const ScientificCalculator = ({ calcState, setCalcState }) => {
-         const { addToast } = useToast();
-         
-         const handleButtonClick = React.useCallback((value) => {
-         // This function decides what to do based on the button's value
-         if (value === 'AC') {
-         handleClear();
-         } else if (value === 'DEL') {
-         handleBackspace();
-         } else if (value === 'π') {
-         handleInput('pi'); // Handle special cases like pi
-         } else {
-         // For all other buttons (numbers, operators), just use the standard input handler
-         handleInput(value);
-         }
-         }, [handleClear, handleBackspace, handleInput]); // Its dependencies are the other stable handlers
-         
-         const handleInput = React.useCallback((value) => {
-         setCalcState(currentState => {
-             const { expression, result } = currentState;
-             const newExpression = (expression === '' && result && !isNaN(parseFloat(result)) ? result : expression) + value;
-             return { ...currentState, expression: newExpression, result: '' };
-         });
-         }, [setCalcState]);
-         
-         
-         
-         
-         const handleCalculate = React.useCallback(() => {
-         setCalcState(currentState => {
-             if (!currentState.expression) return currentState;
-             try {
-                 const evalResult = math.evaluate(currentState.expression);
-                 const resultStr = math.format(evalResult, { precision: 6 });
-                 return {
-                     ...currentState,
-                     result: resultStr,
-                     history: [`${currentState.expression} = ${resultStr}`, ...currentState.history].slice(0, 5),
-                     expression: ''
-                 };
-             } catch (e) {
-                 const errorMessage = e.message || 'Invalid expression';
-                 addToast(errorMessage);
-                 return { ...currentState, result: 'Error', expression: '' };
-             }
-         });
-         }, [setCalcState, addToast]);
-         
-         const handleClear = React.useCallback(() => {
-         // This now resets everything to its initial state
-         setCalcState(currentState => ({ ...currentState, expression: '', result: '', history: [], memory: 0 }));
-         }, [setCalcState]);
-         
-         const handleBackspace = React.useCallback(() => {
-             setCalcState(currentState => ({ ...currentState, expression: currentState.expression.slice(0, -1) }));
-         }, [setCalcState]);
-         
-         const handleMemoryClear = React.useCallback(() => {
-             setCalcState(currentState => ({ ...currentState, memory: 0 }));
-             addToast('Memory cleared');
-         }, [setCalcState, addToast]);
-         
-         const handleMemoryRecall = React.useCallback(() => {
-             setCalcState(currentState => ({ ...currentState, expression: currentState.expression + currentState.memory.toString() }));
-         }, [setCalcState]);
-         
-         const handleMemoryAdd = React.useCallback(() => {
-             setCalcState(currentState => {
-                 try {
-                     const currentValue = parseFloat(currentState.expression || currentState.result || '0');
-                     if (isNaN(currentValue)) throw new Error();
-                     const newMemory = currentState.memory + currentValue;
-                     addToast(`Added to memory. New value: ${newMemory}`);
-                     return { ...currentState, memory: newMemory };
-                 } catch {
-                     addToast('Invalid value to add to memory');
-                     return currentState;
-                 }
-             });
-         }, [setCalcState, addToast]);
-         
-         const handleKeyDown = React.useCallback((event) => {
-             if ("1234567890+-*/.^()%=EnterBackspaceEscape".includes(event.key)) { event.preventDefault(); }
-             const { key } = event;
-             if (key >= '0' && key <= '9') { handleInput(key); }
-             if (['+', '-', '*', '/', '.', '%', '(', ')', '^'].includes(key)) { handleInput(key); }
-             if (key === 'Enter' || key === '=') { handleCalculate(); }
-             if (key === 'Backspace') { handleBackspace(); }
-             if (key === 'Escape') { handleClear(); }
-         }, [handleInput, handleCalculate, handleBackspace, handleClear]); // FIX 2 (cont.): Dependency array updated to the stable handler functions.
-         
-         // The rest of the component's JSX remains the same...
-         const { expression, result, history, memory } = calcState;
-         const allButtons = [ 'AC', 'DEL', '(', ')', 'sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '^', 'π', '7', '8', '9', '/', '4', '5', '6', '*', '1', '2', '3', '-', 'e', '0', '.', '+' ];
-         const constants = [ { name: 'Ci to Bq (3.7e10)', value: 3.7e10 }, { name: 'R to C/kg (2.58e-4)', value: 2.58e-4 }, { name: 'Avogadro (Na)', value: 6.02214076e23 }, { name: 'eV to Joules (e)', value: 1.60217663e-19 }, { name: 'Speed of Light (c)', value: 299792458 }, { name: 'Electron Charge (e)', value: 1.60217663e-19 }, { name: 'Electron Mass (MeV)', value: 0.511 } ];
-                  
-         const getButtonClass = (btn) => {
-             if (['/', '*', '-', '+', '^', '%'].includes(btn)) return 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600';
-             if (['sin(', 'cos(', 'tan(', 'log10(', 'ln(', 'sqrt(', '(', ')', 'π', 'e'].includes(btn)) return 'bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500';
-             return 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700';
-         };
-         
-         const handleConversion = (factor) => {
-             setCalcState(currentState => {
-                 try {
-                     const currentValue = parseFloat(currentState.expression || currentState.result || '0');
-                     if (isNaN(currentValue)) throw new Error();
-                     const convertedValue = currentValue * factor;
-                     return { ...currentState, expression: convertedValue.toString(), result: '' };
-                 } catch {
-                     addToast('Invalid value for conversion');
-                     return { ...currentState, result: 'Error', expression: '' };
-                 }
-             });
-         };
-         
-         const handleConstant = (name, value) => {
-             setCalcState(currentState => ({ ...currentState, expression: currentState.expression + value.toString() }));
-             addToast(`${name} added`);
-         };
-         
-         return (
-             <div 
-                onKeyDown={handleKeyDown} 
-                tabIndex="0" 
-                className="focus:outline-none focus:ring-2 focus:ring-sky-500/80 rounded-lg"
-             >
-                 <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-4 text-right mb-4">
-                     <div className="h-20 text-xs text-slate-400 space-y-1 overflow-y-auto text-right flex flex-col-reverse">
-                         {history.map((item, index) => <div key={index}>{item}</div>)}
-                     </div>
-                     <div className="text-slate-500 dark:text-slate-400 h-8 break-all font-semibold">{expression || '\u00A0'}</div>
-                     <div className="flex justify-end items-center h-10">
-                         <div className="text-3xl font-bold text-slate-800 dark:text-slate-100">{result}</div>
-                         {result && result !== 'Error' && <CopyButton textToCopy={result} />}
-                     </div>
-                 </div>
-                 <div className="grid grid-cols-5 gap-2 mb-2">
-                     <button onClick={() => handleConversion(3.7e10)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Ci → Bq</button>
-                     <button onClick={() => handleConversion(1 / 3.7e10)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Bq → Ci</button>
-                     <button onClick={() => handleConversion(0.01)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">rem → Sv</button>
-                     <button onClick={() => handleConversion(100)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">Sv → rem</button>
-                     <button onClick={handleCalculate} className="p-3 bg-sky-600 text-white font-bold rounded-lg hover:bg-sky-700 text-2xl row-span-2 flex items-center justify-center">=</button>
-                     <button onClick={handleMemoryClear} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">MC</button>
-                     <button onClick={handleMemoryRecall} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">MR</button>
-                     <button onClick={handleMemoryAdd} className="p-2 text-xs bg-amber-200 dark:bg-amber-800 font-bold rounded-lg hover:bg-amber-300 dark:hover:bg-amber-700">M+</button>
-                     <button onClick={() => handleInput('sqrt(')} className="p-2 text-xs bg-slate-200 dark:bg-slate-600 font-bold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500">√</button>
-                 </div>
-         
-         <div className="grid grid-cols-4 gap-2">
-         {allButtons.map(btn => {
-         // The class logic stays the same, as it's about appearance
-         let className = `p-3 font-bold rounded-lg transition-colors `;
-         if (btn === 'AC') className += 'bg-red-500 text-white hover:bg-red-600';
-         else if (btn === 'DEL') className += 'bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500';
-         else className += getButtonClass(btn);
-         
-         // The onClick logic is now much simpler for every button
-         return (
-            <button
-                key={btn}
-                onClick={() => handleButtonClick(btn)} // Every button calls the same handler
-                className={className}
-            >
-                {btn}
-            </button>
-         );
-         })}
-         </div>
-         
-         
-                 <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                     <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mb-2 text-center">Constants</p>
-                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                         {constants.map(c => <button key={c.name} onClick={() => handleConstant(c.name, c.value)} className="p-2 text-xs bg-slate-200 dark:bg-slate-700 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600">{c.name}</button>)}
-                     </div>
-                 </div>
-             </div>
-         );
-         };
-         
-              /**
+/**
+ * @description A professional-grade scientific calculator component.
+ * Features:
+ * - 'Ans' functionality & Smart Start.
+ * - Standard Memory (MC, MR, M+, M-).
+ * - Scientific notation (EXP).
+ * - DEG/RAD Toggle for trigonometry.
+ * - Factorial (!) and Inverse (1/x).
+ * - Robust history & error handling.
+ * - Custom Constants support.
+ * - UX Polish: Thousands separators, Clickable History, Copy Button, Keyboard Visuals.
+ * - FIX: Decimal point now automatically prefixes with '0' (e.g. "0." instead of ".").
+ */
+const ScientificCalculator = ({ calcState, setCalcState }) => {
+    const { addToast } = useToast();
+    const calculatorRef = React.useRef(null);
+
+    // --- State ---
+    const [customConstants, setCustomConstants] = React.useState(() => {
+        try { return JSON.parse(localStorage.getItem('user_calc_constants') || '[]'); }
+        catch { return []; }
+    });
+    const [isAddMode, setIsAddMode] = React.useState(false);
+    const [newConstName, setNewConstName] = React.useState('');
+    const [newConstVal, setNewConstVal] = React.useState('');
+    const [angleMode, setAngleMode] = React.useState('rad'); 
+    const [activeKey, setActiveKey] = React.useState(null); // For visual feedback
+
+    // Ensure state has new fields
+    React.useEffect(() => {
+        setCalcState(prev => ({
+            ...prev,
+            lastAnswer: prev.lastAnswer || 0,
+            memory: prev.memory || 0,
+            isError: false
+        }));
+    }, []);
+
+    // Save constants
+    React.useEffect(() => {
+        localStorage.setItem('user_calc_constants', JSON.stringify(customConstants));
+    }, [customConstants]);
+
+    const { expression, result, history, memory, lastAnswer, isError } = calcState;
+
+    // --- Helper: Format Display Number ---
+    const formatNumber = (numStr) => {
+        if (!numStr) return '';
+        if (numStr.includes('e') || isError) return numStr;
+        const num = parseFloat(numStr);
+        if (isNaN(num)) return numStr;
+        return num.toLocaleString('en-US', { maximumFractionDigits: 10 });
+    };
+
+    // --- Core Logic ---
+
+    // Updated safeEvaluate to accept context explicitly
+    const safeEvaluate = (expr, currentMode, currentAns) => {
+        try {
+            const scope = {
+                Ans: currentAns,
+                ...math,
+                sin: (x) => currentMode === 'deg' ? math.sin(math.unit(x, 'deg')) : math.sin(x),
+                cos: (x) => currentMode === 'deg' ? math.cos(math.unit(x, 'deg')) : math.cos(x),
+                tan: (x) => currentMode === 'deg' ? math.tan(math.unit(x, 'deg')) : math.tan(x),
+                asin: (x) => currentMode === 'deg' ? math.asin(x) * (180 / Math.PI) : math.asin(x),
+                acos: (x) => currentMode === 'deg' ? math.acos(x) * (180 / Math.PI) : math.acos(x),
+                atan: (x) => currentMode === 'deg' ? math.atan(x) * (180 / Math.PI) : math.atan(x),
+            };
+            
+            const evalResult = math.evaluate(expr, scope);
+            if (typeof evalResult === 'object' && evalResult.re) return evalResult.re; 
+            return evalResult;
+        } catch (e) {
+            throw new Error('Invalid Syntax');
+        }
+    };
+
+    const handleCalculate = React.useCallback(() => {
+        setCalcState(currentState => {
+            if (!currentState.expression) return currentState;
+            try {
+                // PASS currentState.lastAnswer directly here to avoid stale closures
+                const evalResult = safeEvaluate(currentState.expression, angleMode, currentState.lastAnswer);
+                
+                let resultStr;
+                if (Math.abs(evalResult) < 1e-6 || Math.abs(evalResult) > 1e9) {
+                    resultStr = evalResult.toExponential(6).replace('e+', 'e');
+                } else {
+                    resultStr = parseFloat(evalResult.toPrecision(12)).toString();
+                }
+                return {
+                    ...currentState,
+                    result: resultStr,
+                    lastAnswer: evalResult,
+                    history: [`${currentState.expression} = ${resultStr}`, ...currentState.history].slice(0, 50),
+                    expression: '', 
+                    isError: false
+                };
+            } catch (e) {
+                return { ...currentState, result: 'Error', isError: true };
+            }
+        });
+    }, [setCalcState, angleMode]);
+
+    const handleInput = React.useCallback((val) => {
+        setCalcState(currentState => {
+            if (currentState.isError) {
+                // If starting fresh from error, handle decimal correctly
+                const initExpr = val === '.' ? '0.' : val;
+                return { ...currentState, expression: initExpr, result: '', isError: false };
+            }
+            let newExpression = currentState.expression;
+            const isOperator = ['+', '-', '*', '/', '^', '%', '!', '^'].includes(val);
+            
+            // --- 1. Smart Decimal Checks ---
+            if (val === '.') {
+                // Prevent double decimals
+                const segments = newExpression.split(/[\+\-\*\/\^\%\(]/);
+                const currentSegment = segments[segments.length - 1];
+                if (currentSegment.includes('.')) return currentState;
+            }
+
+            // --- 2. Smart Start (Result Exists) ---
+            if (newExpression === '' && currentState.result !== '') {
+                if (isOperator) {
+                    newExpression = 'Ans';
+                } else if (val === 'e') {
+                    return { ...currentState, expression: 'Ans*10^', result: '' };
+                } else if (val === '.') {
+                    // FIX: Start fresh with "0." instead of just "."
+                    return { ...currentState, expression: '0.', result: '' };
+                }
+            }
+
+            // --- 3. Smart EXP ---
+            if (val === 'e' && newExpression.endsWith('Ans')) {
+                return { ...currentState, expression: newExpression + '*10^', result: '' };
+            }
+
+            // --- 4. Decimal Leading Zero Logic ---
+            // If typing "." and the expression is empty OR ends in an operator, prepend "0"
+            if (val === '.') {
+                if (newExpression === '' || /[\+\-\*\/\^\%\(]$/.test(newExpression)) {
+                     return { ...currentState, expression: newExpression + '0.', result: '' };
+                }
+            }
+            
+            return { ...currentState, expression: newExpression + val, result: '' };
+        });
+        
+        if (calculatorRef.current) calculatorRef.current.focus();
+
+    }, [setCalcState]);
+
+    const handleClear = () => setCalcState(s => ({ ...s, expression: '', result: '', isError: false }));
+    const handleBackspace = () => setCalcState(s => ({ ...s, expression: s.expression.slice(0, -1) }));
+    
+    // Memory
+    const memClear = () => { setCalcState(s => ({ ...s, memory: 0 })); addToast("Memory Cleared"); };
+    const memRecall = () => { setCalcState(s => ({ ...s, expression: s.expression + s.memory })); };
+    const memAdd = () => {
+        try {
+            const valToStore = calcState.expression ? safeEvaluate(calcState.expression, angleMode, lastAnswer) : (parseFloat(calcState.result) || 0);
+            setCalcState(s => ({ ...s, memory: s.memory + valToStore }));
+            addToast(`M+ (${(calcState.memory + valToStore).toPrecision(4)})`);
+        } catch { addToast("Invalid value"); }
+    };
+    const memSub = () => {
+        try {
+            const valToStore = calcState.expression ? safeEvaluate(calcState.expression, angleMode, lastAnswer) : (parseFloat(calcState.result) || 0);
+            setCalcState(s => ({ ...s, memory: s.memory - valToStore }));
+            addToast(`M- (${(calcState.memory - valToStore).toPrecision(4)})`);
+        } catch { addToast("Invalid value"); }
+    };
+
+    // --- Interactive Features ---
+    const handleHistoryClick = (histItem) => {
+        const val = histItem.split(' = ')[1];
+        handleInput(val);
+        addToast("Value inserted from history");
+    };
+
+    const copyResult = () => {
+        const textToCopy = result || expression;
+        if (textToCopy) {
+            navigator.clipboard.writeText(textToCopy);
+            addToast("Copied to clipboard");
+        }
+    };
+
+    const handleKeyDown = React.useCallback((event) => {
+        const { key } = event;
+        if (event.target.tagName === 'INPUT') return; 
+
+        let mappedKey = key;
+        if (key === 'Enter') mappedKey = '=';
+        if (key === 'Escape') mappedKey = 'AC';
+        if (key === 'Backspace' || key === 'Delete') mappedKey = 'DEL';
+        
+        setActiveKey(mappedKey);
+        setTimeout(() => setActiveKey(null), 150);
+
+        if (/[0-9+\-*/.^()%!]/.test(key)) { event.preventDefault(); handleInput(key); }
+        else if (key === 'Enter' || key === '=') { event.preventDefault(); handleCalculate(); }
+        else if (key === 'Backspace' || key === 'Delete') { event.preventDefault(); handleBackspace(); }
+        else if (key === 'Escape') { event.preventDefault(); handleClear(); }
+        else if (key === 'e' || key === 'E') { event.preventDefault(); handleInput('e'); }
+    }, [handleInput, handleCalculate, handleBackspace, handleClear]);
+
+    const insertConstant = (constVal, name) => {
+        handleInput(constVal);
+        addToast(`${name} inserted`);
+    };
+
+    const handleAddConstant = () => {
+        if (!newConstName || !newConstVal) { addToast("Name and Value required"); return; }
+        if (isNaN(parseFloat(newConstVal))) { addToast("Value must be a number"); return; }
+        setCustomConstants(prev => [...prev, { name: newConstName, value: newConstVal }]);
+        setNewConstName(''); setNewConstVal(''); setIsAddMode(false);
+        addToast("Constant Saved");
+    };
+
+    const handleDeleteConstant = (index, name) => {
+        setCustomConstants(prev => prev.filter((_, i) => i !== index));
+        addToast(`Deleted ${name}`);
+    };
+
+    const btnClass = "p-3 text-sm font-bold rounded-lg transition-all shadow-sm border-b-2 active:border-b-0 active:translate-y-[2px] active:brightness-90 duration-75 select-none";
+    const getBtnStyle = (baseStyle, keyVal) => {
+        const isActive = activeKey === keyVal;
+        return `${baseStyle} ${isActive ? 'brightness-90 border-b-0 translate-y-[2px]' : ''}`;
+    };
+
+    const styles = {
+        num: `${btnClass} bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700`,
+        op: `${btnClass} bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-slate-100 border-slate-400 dark:border-slate-900 hover:bg-slate-400 dark:hover:bg-slate-500`,
+        func: `${btnClass} bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs border-slate-300 dark:border-slate-900 hover:bg-slate-300 dark:hover:bg-slate-600`,
+        mem: `${btnClass} bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100 text-xs border-amber-300 dark:border-amber-900 hover:bg-amber-300 dark:hover:bg-amber-600`,
+        action: `${btnClass} bg-sky-600 text-white border-sky-800 hover:bg-sky-500`,
+        danger: `${btnClass} bg-red-500 text-white border-red-700 hover:bg-red-600`,
+        del: `${btnClass} bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-200 border-red-300 dark:border-red-900 hover:bg-red-300 dark:hover:bg-red-800`
+    };
+
+    return (
+        <div 
+            ref={calculatorRef}
+            onKeyDown={handleKeyDown} 
+            tabIndex="0" 
+            className="focus:outline-none rounded-2xl p-6 shadow-xl bg-sky-50 dark:bg-slate-900 border-2 border-sky-600 dark:border-sky-700 transition-colors"
+        >
+            {/* LCD Screen */}
+            <div className="bg-slate-100 dark:bg-black rounded-xl p-4 mb-4 border-4 border-slate-300 dark:border-slate-700 shadow-inner relative">
+                
+                {/* Header Row */}
+                <div className="flex justify-between items-start mb-2 h-6">
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => setAngleMode(prev => prev === 'rad' ? 'deg' : 'rad')}
+                            className="text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded shadow-sm hover:bg-slate-300 transition"
+                        >
+                            {angleMode.toUpperCase()}
+                        </button>
+                        {memory !== 0 && (
+                            <span className="text-[10px] font-bold bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100 px-1.5 py-0.5 rounded shadow-sm animate-pulse">M</span>
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        {(result || expression) && (
+                            <Tooltip text="Copy Result">
+                                <button onClick={copyResult} className="text-slate-400 hover:text-sky-600 transition">
+                                    <Icon path={ICONS.copy} className="w-3.5 h-3.5" />
+                                </button>
+                            </Tooltip>
+                        )}
+                        <Tooltip text="Shortcuts: 'e'=EXP, Backspace=DEL" position="left">
+                            <span className="text-slate-400 cursor-help"><Icon path={ICONS.help} className="w-3.5 h-3.5" /></span>
+                        </Tooltip>
+                    </div>
+                </div>
+
+                {/* History (Clickable) */}
+                <div className="h-16 overflow-y-auto flex flex-col-reverse text-right pr-1 custom-scrollbar">
+                    {history.map((h, i) => (
+                        <div 
+                            key={i} 
+                            onClick={() => handleHistoryClick(h)}
+                            className="text-[10px] text-slate-400 dark:text-slate-500 font-mono cursor-pointer hover:text-sky-600 dark:hover:text-sky-400 transition-colors py-0.5"
+                            title="Click to insert value"
+                        >
+                            {h}
+                        </div>
+                    ))}
+                </div>
+
+                {/* Current Expression */}
+                <div className="text-right h-6 overflow-hidden">
+                    <span className="text-sm font-mono text-slate-500 dark:text-slate-400 whitespace-pre">
+                        {expression || (result ? 'Ans' : '')}
+                    </span>
+                </div>
+
+                {/* Main Result */}
+                <div className="text-right">
+                    <span className={`text-3xl font-mono font-bold tracking-tight break-all ${isError ? 'text-red-500' : 'text-slate-800 dark:text-slate-100'}`}>
+                        {result ? formatNumber(result) : (expression || '0')}
+                    </span>
+                </div>
+            </div>
+
+            {/* Keypad */}
+            <div className="grid grid-cols-5 gap-2">
+                <button onClick={memClear} className={styles.mem}>MC</button>
+                <button onClick={memRecall} className={styles.mem}>MR</button>
+                <button onClick={memAdd} className={styles.mem}>M+</button>
+                <button onClick={memSub} className={styles.mem}>M-</button>
+                <button onClick={handleClear} className={getBtnStyle(styles.danger, 'AC')}>AC</button>
+
+                <button onClick={() => handleInput('sin(')} className={styles.func}>sin</button>
+                <button onClick={() => handleInput('cos(')} className={styles.func}>cos</button>
+                <button onClick={() => handleInput('tan(')} className={styles.func}>tan</button>
+                <button onClick={() => handleInput('log10(')} className={styles.func}>log</button>
+                <button onClick={() => handleInput('ln(')} className={styles.func}>ln</button>
+
+                <button onClick={() => handleInput('^2')} className={styles.func}>x²</button>
+                <button onClick={() => handleInput('^')} className={styles.func}>xʸ</button>
+                <button onClick={() => handleInput('sqrt(')} className={styles.func}>√</button>
+                <button onClick={() => handleInput('1/')} className={styles.func}>1/x</button>
+                <button onClick={() => handleInput('!')} className={styles.func}>n!</button>
+
+                <button onClick={() => handleInput('(')} className={styles.func}>(</button>
+                <button onClick={() => handleInput(')')} className={styles.func}>)</button>
+                <button onClick={() => handleInput('7')} className={getBtnStyle(styles.num, '7')}>7</button>
+                <button onClick={() => handleInput('8')} className={getBtnStyle(styles.num, '8')}>8</button>
+                <button onClick={() => handleInput('9')} className={getBtnStyle(styles.num, '9')}>9</button>
+
+                <button onClick={handleBackspace} className={getBtnStyle(styles.del, 'DEL')}>DEL</button>
+                <button onClick={() => handleInput('/')} className={getBtnStyle(styles.op, '/')}>÷</button>
+                <button onClick={() => handleInput('4')} className={getBtnStyle(styles.num, '4')}>4</button>
+                <button onClick={() => handleInput('5')} className={getBtnStyle(styles.num, '5')}>5</button>
+                <button onClick={() => handleInput('6')} className={getBtnStyle(styles.num, '6')}>6</button>
+
+                <button onClick={() => handleInput('*')} className={getBtnStyle(styles.op, '*')}>×</button>
+                <button onClick={() => handleInput('-')} className={getBtnStyle(styles.op, '-')}>-</button>
+                <button onClick={() => handleInput('1')} className={getBtnStyle(styles.num, '1')}>1</button>
+                <button onClick={() => handleInput('2')} className={getBtnStyle(styles.num, '2')}>2</button>
+                <button onClick={() => handleInput('3')} className={getBtnStyle(styles.num, '3')}>3</button>
+
+                <button onClick={() => handleInput('+')} className={getBtnStyle(styles.op, '+')}>+</button>
+                <Tooltip text="Scientific Notation (e.g., 5e6)">
+                    <button onClick={() => handleInput('e')} className={getBtnStyle(styles.func, 'e')}>EXP</button>
+                </Tooltip>
+                <button onClick={() => handleInput('0')} className={getBtnStyle(styles.num, '0')}>0</button>
+                <button onClick={() => handleInput('.')} className={getBtnStyle(styles.num, '.')}>.</button>
+                <Tooltip text="Insert previous answer">
+                    <button onClick={() => handleInput('Ans')} className={`${styles.func} font-bold text-sky-700`}>Ans</button>
+                </Tooltip>
+            </div>
+            
+            <button onClick={handleCalculate} className={`${getBtnStyle(styles.action, '=')} w-full mt-2 text-xl shadow-lg`}>=</button>
+
+            {/* Quick Constants */}
+            <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600">
+                <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Physics Constants</p>
+                    <button 
+                        onClick={() => setIsAddMode(!isAddMode)} 
+                        className="text-xs font-bold text-sky-600 hover:underline flex items-center gap-1"
+                    >
+                        {isAddMode ? 'Cancel' : '+ Add Custom'}
+                    </button>
+                </div>
+
+                {isAddMode && (
+                    <div className="mb-3 p-2 bg-white dark:bg-slate-800 rounded border border-sky-200 dark:border-sky-800 animate-fade-in flex gap-2 items-center">
+                        <input type="text" placeholder="Name" className="w-1/3 p-1 text-sm border rounded dark:bg-slate-700 dark:border-slate-600" value={newConstName} onChange={(e) => setNewConstName(e.target.value)} />
+                        <input type="text" placeholder="Value" className="w-1/3 p-1 text-sm border rounded dark:bg-slate-700 dark:border-slate-600" value={newConstVal} onChange={(e) => setNewConstVal(e.target.value)} />
+                        <button onClick={handleAddConstant} className="flex-1 p-1 bg-sky-600 text-white text-xs font-bold rounded hover:bg-sky-700">Save</button>
+                    </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 justify-center">
+                    <Tooltip text="Pi (approx. 3.14159)"><button onClick={() => insertConstant('3.14159265', 'π')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">π</button></Tooltip>
+                    <Tooltip text="Euler's Number (approx. 2.71828)"><button onClick={() => insertConstant('2.71828182', 'e')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">e</button></Tooltip>
+                    <Tooltip text="Curie (3.7e10 Bq)"><button onClick={() => insertConstant('3.7e10', 'Ci')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">Ci</button></Tooltip>
+                    <Tooltip text="Avogadro's Number (6.022e23)"><button onClick={() => insertConstant('6.022e23', 'Na')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">Nₐ</button></Tooltip>
+                    <Tooltip text="Elementary Charge (1.602e-19 C)"><button onClick={() => insertConstant('1.60217663e-19', 'e (charge)')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">qₑ</button></Tooltip>
+                    <Tooltip text="Planck's Constant (6.626e-34 J⋅s)"><button onClick={() => insertConstant('6.62607015e-34', 'h')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">h</button></Tooltip>
+                    <Tooltip text="Atomic Mass Unit (1.66e-27 kg)"><button onClick={() => insertConstant('1.66053906e-27', 'u')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">u</button></Tooltip>
+                    <Tooltip text="Roentgen to C/kg (2.58e-4)"><button onClick={() => insertConstant('2.58e-4', 'R -> C/kg')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">R</button></Tooltip>
+                    
+                    {customConstants.map((c, idx) => (
+                        <Tooltip key={idx} text={`Value: ${c.value} (Right-click to delete)`}>
+                            <button 
+                                onClick={() => insertConstant(c.value, c.name)} 
+                                onContextMenu={(e) => { e.preventDefault(); handleDeleteConstant(idx, c.name); }}
+                                className="px-3 py-1.5 text-xs bg-sky-100 dark:bg-sky-900 font-mono font-bold text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700 rounded hover:bg-sky-200 dark:hover:bg-sky-800 transition"
+                            >
+                                {c.name}
+                            </button>
+                        </Tooltip>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+	     /**
               * @description React component that serves as a static page for external links and references.
               * This component provides a curated list of authoritative resources relevant to the application's
               * domain, such as health physics, radiation safety, and nuclear data.
@@ -10274,7 +10610,20 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
                         <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Transportation & Security</h3>
                         {nuclide.shipping && <DataPoint label="A₁ Limit" value={`${nuclide.shipping.A1 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />}
                         {nuclide.shipping && <DataPoint label="A₂ Limit" value={`${nuclide.shipping.A2 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />}
-                        {nuclide.dValue && <DataPoint label="D-Value" value={`${nuclide.dValue}`} unit="TBq" iconPath={ICONS.transport} />}
+                        
+                        {/* UPDATED: D-Value with Tooltip context */}
+                        {nuclide.dValue && (
+                            <DataPoint 
+                                label={
+                                    <Tooltip text="Dangerous Quantity threshold. Values for common nuclides from IAEA RS-G-1.9; others calculated from IAEA EPR-D-VALUES 2006." widthClass="w-64">
+                                        <span className="cursor-help border-b border-dotted border-slate-400 hover:border-sky-500 transition-colors">D-Value</span>
+                                    </Tooltip>
+                                } 
+                                value={`${nuclide.dValue}`} 
+                                unit="TBq" 
+                                iconPath={ICONS.transport} 
+                            />
+                        )}
                     </div>
                 )}
             </div>
@@ -12521,7 +12870,7 @@ const OperationalHPCalculators = ({ radionuclides }) => {
               * based on the nuclide, activity, and form, according to DOT/IAEA A1/A2 values.
               */
          
-         const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
+const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     // --- 1. CONTEXT & DYNAMIC UNITS ---
     const { settings } = React.useContext(SettingsContext);
     const { addHistory } = useCalculationHistory();
@@ -12539,7 +12888,15 @@ const OperationalHPCalculators = ({ radionuclides }) => {
     const [formType, setFormType] = React.useState('A2');
     const [activity, setActivity] = React.useState('1');
     const [activityUnit, setActivityUnit] = React.useState(() => activityUnits[activityUnits.length - 1]); 
+    
+    // NEW STATE FOR TI ESTIMATION
+    const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
+    const [doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
+    const [surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
+    const [surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
+
     const [result, setResult] = React.useState(null);
+    const [labelResult, setLabelResult] = React.useState(null);
     const [error, setError] = React.useState('');
 
     // --- 3. useEffect HOOKS ---
@@ -12549,7 +12906,6 @@ const OperationalHPCalculators = ({ radionuclides }) => {
         }
     }, [activityUnits, activityUnit]);
 
-    // IMPROVED FILTER: Strictly checks that A1/A2 exist and are not null/undefined
     const transportNuclides = React.useMemo(() =>
         radionuclides.filter(n => 
             n.shipping && 
@@ -12576,32 +12932,37 @@ const OperationalHPCalculators = ({ radionuclides }) => {
         'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8
     };
 
+    // Helper to convert to mrem/h for TI Calculation
+    const toMremHr = (val, unit) => {
+        if (unit === 'mrem/hr') return val;
+        if (unit === 'rem/hr') return val * 1000;
+        if (unit === 'mSv/hr') return val * 100;
+        if (unit === 'µSv/hr') return val * 0.1;
+        return 0;
+    };
+
     const resultStyles = {
         EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
         TYPE_A: { container: 'bg-sky-100 dark:bg-sky-900/50', title: 'text-sky-600 dark:text-sky-400', display: 'Type A Package' },
         TYPE_B: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', display: 'Type B Package' }
     };
 
+    // Main Effect for Package Type
     React.useEffect(() => {
-        if (!selectedNuclide) {
-            setResult(null);
-            setError('');
-            return;
-        }
+        if (!selectedNuclide) { setResult(null); setError(''); return; }
+        
         const activityValue = parseFloat(activity);
         if (isNaN(activityValue) || activityValue < 0) {
             setError('Please enter a valid, non-negative activity.');
             setResult(null); return;
         }
         setError('');
+        
         const userActivityTBq = activityValue * activityFactorsTBq[activityUnit];
-
-        // --- ROBUST LIMIT HANDLING ---
         let rawLimit = selectedNuclide.shipping[formType];
         let limitTBq = 0;
         let isUnlimited = false;
 
-        // Handle "Unlimited" string (case insensitive)
         if (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) {
             limitTBq = Infinity;
             isUnlimited = true;
@@ -12615,12 +12976,8 @@ const OperationalHPCalculators = ({ radionuclides }) => {
             return;
         }
 
-        // Excepted package limits are usually 10^-3 A1 (Solid) or 10^-4 A1 (Liquid/Gas)
-        // Defaulting to 10^-4 (Liquid) for conservatism unless H-3
-        let exceptedLimitFactor = 1e-4;
-        
-        // H-3 specific handling (often treated differently in regulations, but standard A2 applies)
-        // The user logic for H-3 (0.02) was specific to instruments, sticking to conservative default here.
+        let exceptedLimitFactor = 1e-4; // Default Liquid
+        // Solid special case could be added here if we tracked physical state
         
         const exceptedLimitTBq = limitTBq === Infinity ? Infinity : exceptedLimitFactor * limitTBq;
 
@@ -12633,21 +12990,64 @@ const OperationalHPCalculators = ({ radionuclides }) => {
             classification = 'TYPE_B';
         }
 
-        // --- ANSI/HPS N43.6 Category Calculation ---
         let ansiCategory = null;
         if (selectedNuclide.dValue) {
             ansiCategory = calculateAnsiCategory(userActivityTBq, selectedNuclide.dValue);
         }
 
-        const newResult = {
+        setResult({
             classification,
             ansiCategory,
             userActivityTBq: userActivityTBq.toExponential(3),
             limitDisplay: isUnlimited ? 'Unlimited' : `${limitTBq} TBq`,
             exceptedDisplay: isUnlimited ? 'Unlimited' : `${exceptedLimitTBq.toExponential(3)} TBq`
-        };
-        setResult(newResult);
+        });
     }, [selectedNuclide, formType, activity, activityUnit]);
+
+    // Secondary Effect for Label Estimation
+    React.useEffect(() => {
+        if (!doseRateAt1m && !surfaceDoseRate) {
+            setLabelResult(null);
+            return;
+        }
+
+        const rate1m = parseFloat(doseRateAt1m);
+        const rateSurface = parseFloat(surfaceDoseRate);
+        
+        // TI is dimensionless, numerically equal to mrem/h at 1m.
+        // It is rounded up to the first decimal place.
+        let TI = 0;
+        if (!isNaN(rate1m) && rate1m > 0) {
+            let mremAt1m = toMremHr(rate1m, doseRateUnit);
+            TI = Math.ceil(mremAt1m * 10) / 10; // Round up to next 0.1
+        }
+
+        let labelCategory = "Unknown";
+        
+        // Logic per 49 CFR 172.403
+        // 1. White-I: Surface <= 0.5 mrem/h, TI = 0
+        // 2. Yellow-II: Surface > 0.5 & <= 50 mrem/h, OR TI > 0 & <= 1
+        // 3. Yellow-III: Surface > 50 & <= 200 mrem/h, OR TI > 1 & <= 10
+        // (Exclusive use required if Surface > 200 or TI > 10)
+
+        const surfMrem = !isNaN(rateSurface) ? toMremHr(rateSurface, surfaceDoseRateUnit) : 0;
+
+        if (surfMrem <= 0.5 && TI === 0) {
+            labelCategory = "White-I";
+        } else if (surfMrem <= 50 && TI <= 1) {
+            labelCategory = "Yellow-II";
+        } else if (surfMrem <= 200 && TI <= 10) {
+            labelCategory = "Yellow-III";
+        } else if (surfMrem > 200 || TI > 10) {
+            labelCategory = "Yellow-III (Exclusive Use)";
+        } else {
+            // Fallback for cases where input might be incomplete
+            labelCategory = "Check Limits"; 
+        }
+
+        setLabelResult({ TI, labelCategory });
+
+    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit]);
 
     // --- 5. HANDLERS ---
     const handleClearInputs = () => {
@@ -12655,18 +13055,22 @@ const OperationalHPCalculators = ({ radionuclides }) => {
         setFormType('A2');
         setActivity('1');
         setActivityUnit(activityUnits[activityUnits.length - 1]);
+        setDoseRateAt1m('');
+        setSurfaceDoseRate('');
         setResult(null);
+        setLabelResult(null);
         setError('');
     };
 
     const handleSaveToHistory = () => {
         if (result && selectedNuclide) {
+            const labelInfo = labelResult ? ` | ${labelResult.labelCategory} (TI: ${labelResult.TI})` : '';
             addHistory({
                 id: Date.now(),
                 type: 'Transportation',
                 icon: ICONS.transport,
-                inputs: `${activity} ${activityUnit} of ${selectedNuclide.symbol} (${formType})`,
-                result: resultStyles[result.classification].display,
+                inputs: `${activity} ${activityUnit} of ${selectedNuclide.symbol}`,
+                result: `${resultStyles[result.classification].display}${labelInfo}`,
                 view: VIEWS.TRANSPORTATION
             });
             addToast("Calculation saved to history!");
@@ -12699,24 +13103,56 @@ const OperationalHPCalculators = ({ radionuclides }) => {
                             )}
                         </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium">Material Form</label>
-                        <div className="mt-2 grid grid-cols-2 gap-2">
-                            <Tooltip text="Special Form: Non-dispersible solid material or an encapsulated source. (e.g., a sealed metal source)">
-                                <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A1' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A1" checked={formType === 'A1'} onChange={e => setFormType(e.target.value)} className="hidden" />Special Form (A1)</label>
-                            </Tooltip>
-                            <Tooltip text="Normal Form: Dispersible material. (e.g., liquids, powders, gases)">
-                                <label className={`flex items-center justify-center p-3 rounded-lg cursor-pointer ${formType === 'A2' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A2" checked={formType === 'A2'} onChange={e => setFormType(e.target.value)} className="hidden" />Normal Form (A2)</label>
-                            </Tooltip>
+                    
+                    {/* Classification Inputs */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                        <h3 className="font-bold text-sm text-slate-500 dark:text-slate-400 uppercase">Package Classification</h3>
+                        <div>
+                            <label className="block text-sm font-medium">Material Form</label>
+                            <div className="mt-2 grid grid-cols-2 gap-2">
+                                <Tooltip text="Special Form: Non-dispersible solid material or an encapsulated source.">
+                                    <label className={`flex items-center justify-center p-2 text-xs font-semibold rounded-lg cursor-pointer ${formType === 'A1' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A1" checked={formType === 'A1'} onChange={e => setFormType(e.target.value)} className="hidden" />Special Form (A1)</label>
+                                </Tooltip>
+                                <Tooltip text="Normal Form: Dispersible material (liquids, powders).">
+                                    <label className={`flex items-center justify-center p-2 text-xs font-semibold rounded-lg cursor-pointer ${formType === 'A2' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700'}`}><input type="radio" name="formType" value="A2" checked={formType === 'A2'} onChange={e => setFormType(e.target.value)} className="hidden" />Normal Form (A2)</label>
+                                </Tooltip>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium">Source Activity</label>
+                            <div className="flex">
+                                <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                                <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
+                                    {activityUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                                </select>
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium">Source Activity</label>
-                        <div className="flex">
-                            <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
-                            <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
-                                {activityUnits.map(u => <option key={u} value={u}>{u}</option>)}
-                            </select>
+
+                    {/* TI / Label Estimation Inputs */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                        <h3 className="font-bold text-sm text-slate-500 dark:text-slate-400 uppercase">Label Estimation (Optional)</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-medium">Max Dose Rate @ 1m</label>
+                                <div className="flex">
+                                    <input type="number" value={doseRateAt1m} onChange={e => setDoseRateAt1m(e.target.value)} placeholder="0" className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" />
+                                    <select value={doseRateUnit} onChange={e => setDoseRateUnit(e.target.value)} className="mt-1 p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
+                                        <option value="mrem/hr">mrem/h</option>
+                                        <option value="mSv/hr">mSv/h</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium">Max Surface Dose Rate</label>
+                                <div className="flex">
+                                    <input type="number" value={surfaceDoseRate} onChange={e => setSurfaceDoseRate(e.target.value)} placeholder="0" className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" />
+                                    <select value={surfaceDoseRateUnit} onChange={e => setSurfaceDoseRateUnit(e.target.value)} className="mt-1 p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
+                                        <option value="mrem/hr">mrem/h</option>
+                                        <option value="mSv/hr">mSv/h</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -12733,18 +13169,35 @@ const OperationalHPCalculators = ({ radionuclides }) => {
                                     </button>
                                 </Tooltip>
                             </div>
-                            <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-sm">
-                                <p>Your Activity:</p><p className="font-mono">{result.userActivityTBq} TBq</p>
-                                <p>{formType} Limit:</p><p className="font-mono">{result.limitDisplay}</p>
-                                <p>Excepted Limit:</p><p className="font-mono">≤ {result.exceptedDisplay}</p>
+                            
+                            {/* TI & Label Result */}
+                            {labelResult && (
+                                <div className="mb-3 p-2 bg-white/50 dark:bg-black/20 rounded-lg">
+                                    <div className="grid grid-cols-2 divide-x divide-slate-300 dark:divide-slate-600">
+                                        <div>
+                                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">Transport Index (TI)</p>
+                                            <p className="text-xl font-bold">{labelResult.TI.toFixed(1)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-300">Est. Label</p>
+                                            <p className="text-xl font-bold">{labelResult.labelCategory}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="mt-2 pt-2 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-xs text-left">
+                                <p>Activity:</p><p className="font-mono text-right">{result.userActivityTBq} TBq</p>
+                                <p>{formType} Limit:</p><p className="font-mono text-right">{result.limitDisplay}</p>
+                                <p>Excepted Limit:</p><p className="font-mono text-right">≤ {result.exceptedDisplay}</p>
                             </div>
 
                             {/* --- ANSI CATEGORY DISPLAY --- */}
                             {result.ansiCategory && (
-                                <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600">
-                                    <p className="font-semibold text-sm text-slate-500 dark:text-slate-400">ANSI/HPS N43.6 Category</p>
-                                    <p className="text-xl font-bold text-slate-700 dark:text-slate-200">Category {result.ansiCategory.category}</p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">({result.ansiCategory.description})</p>
+                                <div className="mt-2 pt-2 border-t border-slate-300 dark:border-slate-600">
+                                    <p className="font-semibold text-xs text-slate-500 dark:text-slate-400">ANSI/HPS N43.6 Category</p>
+                                    <p className="text-lg font-bold text-slate-700 dark:text-slate-200">Category {result.ansiCategory.category}</p>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400">({result.ansiCategory.description})</p>
                                 </div>
                             )}
                         </div>
@@ -13812,12 +14265,42 @@ const OperationalHPCalculators = ({ radionuclides }) => {
               * @param {{radionuclides: Array<object>}} props
               */
               
-         const MassActivityModule = ({ radionuclides, selectedNuclide, setSelectedNuclide, mass, setMass, massUnit, setMassUnit, activity, setActivity, activityUnit, setActivityUnit, error, setError, activityUnits }) => {
+const MassActivityModule = ({ radionuclides, selectedNuclide, setSelectedNuclide, mass, setMass, massUnit, setMassUnit, activity, setActivity, activityUnit, setActivityUnit, error, setError, activityUnits }) => {
              const { addHistory } = useCalculationHistory();
              const { addToast } = useToast();
              const massUnits = { 'g': 1, 'mg': 1e-3, 'µg': 1e-6, 'kg': 1000 };
              const activityFactorsBq = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4 };
-             const nuclidesWithSA = React.useMemo(() => radionuclides.filter(r => r.specificActivity && r.halfLife !== 'Stable').sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
+             
+             // --- HELPER: Calculate or Retrieve Specific Activity ---
+             const getOrCalculateSA = (nuclide) => {
+                 if (!nuclide) return { value: 0, isCalculated: false };
+
+                 // 1. Try hardcoded value first
+                 const parsedSA = parseSpecificActivity(nuclide.specificActivity);
+                 if (parsedSA > 0) return { value: parsedSA, isCalculated: false };
+
+                 // 2. Fallback: Calculate from First Principles
+                 const seconds = parseHalfLifeToSeconds(nuclide.halfLife);
+                 if (seconds === 0 || seconds === Infinity) return { value: 0, isCalculated: false };
+
+                 // Extract mass number (e.g., "Cs-137" -> 137)
+                 const match = nuclide.symbol.match(/-(\d+)/);
+                 if (!match) return { value: 0, isCalculated: false };
+
+                 const atomicMass = parseInt(match[1], 10);
+                 const avogadro = 6.02214076e23;
+                 // SA (Bq/g) = (ln(2) * Na) / (T1/2 * AtomicMass)
+                 const calculatedSA = (Math.log(2) * avogadro) / (seconds * atomicMass);
+                 
+                 return { value: calculatedSA, isCalculated: true };
+             };
+
+             // Filter to include any nuclide that has SA OR can be calculated (has half-life + formatted symbol)
+             const nuclidesWithSA = React.useMemo(() => radionuclides.filter(r => {
+                 if (r.halfLife === 'Stable') return false;
+                 if (r.specificActivity && parseSpecificActivity(r.specificActivity) > 0) return true;
+                 return r.symbol.match(/-(\d+)/); // Include if we can calculate it
+             }).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
              
              const handleNuclideSelect = React.useCallback((symbol) => {
                  const nuclideToSet = nuclidesWithSA.find(n => n.symbol === symbol);
@@ -13825,27 +14308,45 @@ const OperationalHPCalculators = ({ radionuclides }) => {
                  setMass(''); setActivity(''); setError('');
              }, [nuclidesWithSA, setSelectedNuclide, setMass, setActivity, setError]);
              
+             // Track if we are using an estimated value
+             const [isSaCalculated, setIsSaCalculated] = React.useState(false);
+
+             React.useEffect(() => {
+                 if (selectedNuclide) {
+                     const { isCalculated } = getOrCalculateSA(selectedNuclide);
+                     setIsSaCalculated(isCalculated);
+                 } else {
+                     setIsSaCalculated(false);
+                 }
+             }, [selectedNuclide]);
+
              const calculateActivity = (massValue, newMassUnit, newActivityUnit) => {
                  if (!selectedNuclide || isNaN(massValue) || massValue < 0) { setActivity(''); setError(''); return; }
-                 const saBqPerG = parseSpecificActivity(selectedNuclide.specificActivity);
+                 const { value: saBqPerG } = getOrCalculateSA(selectedNuclide);
+                 
                  if (saBqPerG > 0) {
                     const massInG = massValue * massUnits[newMassUnit];
                     const activityInBq = massInG * saBqPerG;
                     const finalActivity = activityInBq / activityFactorsBq[newActivityUnit];
                     setActivity(finalActivity.toPrecision(4));
                     setError('');
+                 } else {
+                    setError('Could not determine Specific Activity for this nuclide.');
                  }
              };
          
              const calculateMass = (activityValue, newActivityUnit, newMassUnit) => {
                  if (!selectedNuclide || isNaN(activityValue) || activityValue < 0) { setMass(''); setError(''); return; }
-                 const saBqPerG = parseSpecificActivity(selectedNuclide.specificActivity);
+                 const { value: saBqPerG } = getOrCalculateSA(selectedNuclide);
+                 
                  if (saBqPerG > 0) {
                     const activityInBq = activityValue * activityFactorsBq[newActivityUnit];
                     const massInG = activityInBq / saBqPerG;
                     const finalMass = massInG / massUnits[newMassUnit];
                     setMass(finalMass.toPrecision(4));
                     setError('');
+                 } else {
+                    setError('Could not determine Specific Activity for this nuclide.');
                  }
              };
              
@@ -13871,6 +14372,15 @@ const OperationalHPCalculators = ({ radionuclides }) => {
              return (
                  <div className="space-y-4">
                     <div className="min-h-[42px]">{selectedNuclide ? ( <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setSelectedNuclide(null)} /> ) : ( <SearchableSelect options={nuclidesWithSA} onSelect={handleNuclideSelect} placeholder="Search for a radionuclide..."/> )}</div>
+                    
+                    {/* INFO ALERT FOR CALCULATED VALUES */}
+                    {isSaCalculated && (
+                       <div className="p-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs rounded border border-amber-200 dark:border-amber-800 flex items-center gap-2 animate-fade-in">
+                           <Icon path={ICONS.help} className="w-4 h-4 flex-shrink-0" />
+                           <span>Specific Activity estimated from half-life and atomic mass (A).</span>
+                       </div>
+                    )}
+
                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                         <label className="text-md font-semibold">Mass</label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
@@ -13890,7 +14400,7 @@ const OperationalHPCalculators = ({ radionuclides }) => {
                     {selectedNuclide && mass && activity && ( <div className="mt-4"><button onClick={handleSaveToHistory} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition animate-fade-in">Save to Calculations</button></div> )}
                  </div>
              );
-         };         
+         };     
          
          
               /**
@@ -16567,12 +17077,18 @@ if (mainContentRef.current) {
         }
     }, [calcMode, intakeRoute, availableClasses, solubility]);
 
-    // --- 5. CALCULATION LOGIC ---
+// --- 5. CALCULATION LOGIC ---
     React.useEffect(() => {
         try {
             setError(''); setResult(null);
             const activityValue = parseFloat(activity);
             const distanceValue = parseFloat(distance);
+
+            // SAFETY CHECK: Prevent division by zero or negative distance
+            if (isNaN(distanceValue) || distanceValue <= 0) {
+                if (distance) setError("Distance must be a positive number greater than zero.");
+                return;
+            }
 
             switch (calcMode) {
                 case CALC_MODE_GAMMA: {
@@ -16588,7 +17104,9 @@ if (mainContentRef.current) {
 
                     let doseRateR_hr = 0;
                     const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
-                    if (isNaN(distanceValue) || distanceValue <= 0) { if (distance) setError("Invalid distance."); return; }
+                    
+                    // Double check distance in meters to be safe
+                    if (distanceInM <= 0) { setError("Distance is too small."); return; }
 
                     switch (geometryMode) {
                         case GEOMETRY_POINT: {
@@ -16603,7 +17121,9 @@ if (mainContentRef.current) {
                             if (isNaN(lineLengthValue) || lineLengthValue <= 0) { if (lineLength) setError("Invalid line length."); return; }
                             const activity_Ci_per_m = activityValue * linearActivityFactorsCi_per_m[linearActivityUnit];
                             const lineLength_m = lineLengthValue * distanceFactorsM[lineLengthUnit];
-                            doseRateR_hr = (gammaConstant * activity_Ci_per_m / distanceInM) * Math.atan(lineLength_m / (2 * distanceInM));
+                            
+                            // Corrected formula with factor of 2
+                            doseRateR_hr = (gammaConstant * activity_Ci_per_m / distanceInM) * 2 * Math.atan(lineLength_m / (2 * distanceInM));
                             break;
                         }
                         case GEOMETRY_AREA: {
@@ -16668,7 +17188,6 @@ if (mainContentRef.current) {
                         if (betaMode === BETA_MODE_SKIN) {
                             setResult({ type: 'beta_skin', rawDoseRate_mrem_hr: totalDoseRate_mrem_hr, e_max: primaryE_max, sourceNote: sourceNote });
                         } else {
-                            if (isNaN(distanceValue) || distanceValue <= 0) throw new Error('Invalid distance.');
                             const distance_cm = (distanceValue * distanceFactorsM[distanceUnit]) * 100;
                             let range_m;
                             if (primaryE_max > 0.8) { range_m = (542 * primaryE_max - 133) / (SHIELDING_MATERIALS['Water'].density * 1000); } 
@@ -16679,7 +17198,6 @@ if (mainContentRef.current) {
                             setResult({ type: 'beta_air', rawDoseRate_mrem_hr: finalDoseRate, e_max: primaryE_max, isBeyondRange: isBeyondRange, range_m: range_m.toPrecision(2), range_ft: (range_m * 3.28084).toPrecision(2), sourceNote: sourceNote });
                         }
                     } else {
-                        if (isNaN(distanceValue) || distanceValue <= 0) throw new Error('Invalid distance.');
                         const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
                         const finalDoseRate = totalDoseRate_mrem_hr / Math.pow(distanceInM, 2);
                         setResult({ type: 'bremsstrahlung', rawDoseRate_mrem_hr: finalDoseRate, bremsstrahlungFraction: (totalBremsstrahlungFraction * 100).toPrecision(2), sourceNote: sourceNote });
@@ -17130,7 +17648,7 @@ if (mainContentRef.current) {
               * 3. (Generic Rate) Calculates final OR initial dose rate from a user-inputted HVL.
               */
               
-         const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
+const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
              const MODE_FROM_SOURCE = 'fromSource';
              const MODE_FIND_THICKNESS = 'findThickness';
              const MODE_GENERIC = 'genericRate';
@@ -17280,14 +17798,13 @@ if (mainContentRef.current) {
                        else if (calcMode === MODE_GENERIC) { hvl_cm = HVL_DATA['Cs-137'][shieldMaterial]; } 
                        else if (nuclideSymbol) { const nuclide = shieldingNuclides.find(n => n.symbol === nuclideSymbol); if (!nuclide) return; 
 
-// ---  Guard Clause against missing HVL Data ---
-        if (!HVL_DATA[nuclide.symbol]) {
-            setError(`Shielding data (HVL) is not available for ${nuclide.name}. Please switch to "Manual Input" or choose a different nuclide.`);
-            setResult(null);
-            return;
-        }
+                        if (!HVL_DATA[nuclide.symbol]) {
+                            setError(`Shielding data (HVL) is not available for ${nuclide.name}. Please switch to "Manual Input" or choose a different nuclide.`);
+                            setResult(null);
+                            return;
+                        }
 
-hvl_cm = HVL_DATA[nuclide.symbol][shieldMaterial]; } 
+                        hvl_cm = HVL_DATA[nuclide.symbol][shieldMaterial]; } 
                        else { return; }
                        if (isNaN(hvl_cm) || hvl_cm <= 0) { setError('Please select a material or enter a valid HVL value.'); return; }
          
@@ -17319,11 +17836,22 @@ hvl_cm = HVL_DATA[nuclide.symbol][shieldMaterial]; }
                                const k = BUILDUP_K_FACTORS[shieldMaterial] || 0.1;
                                buildupFactor = 1 + (k * meanFreePaths);
                            }
+                           
+                           // --- UPDATED MATH BLOCK ---
                            if (calcMode === MODE_FROM_SOURCE) {
                               const shieldedRateR_hr = buildupFactor * unshieldedRateR_hr * Math.pow(0.5, thicknessInCm / hvl_cm);
                               const shielded_mrem_hr = shieldedRateR_hr * 1000;
-                              setResult({ type: 'doseRate', rawUnshielded_mrem_hr: unshielded_mrem_hr, rawShielded_mrem_hr: shielded_mrem_hr, buildup: buildupFactor.toFixed(2) });
-                          } else { // MODE_FIND_THICKNESS
+                              const numHVLs = thicknessInCm / hvl_cm; // Calculate number of HVLs
+                              setResult({ 
+                                  type: 'doseRate', 
+                                  rawUnshielded_mrem_hr: unshielded_mrem_hr, 
+                                  rawShielded_mrem_hr: shielded_mrem_hr, 
+                                  buildup: buildupFactor.toFixed(2),
+                                  numHVLs // Pass to result
+                              });
+                          } 
+                          // --------------------------
+                          else { // MODE_FIND_THICKNESS
                                const targetRateValue = parseFloat(targetDoseRate);
                                if (isNaN(targetRateValue) || targetRateValue <= 0) { setError('Please enter a valid, positive target dose rate.'); return; }
                                const targetRateR_hr = targetRateValue * (doseRateFactors_mrem_hr[targetDoseRateUnit] / 1000);
@@ -17515,7 +18043,12 @@ hvl_cm = HVL_DATA[nuclide.symbol][shieldMaterial]; }
                            {result && (
                                <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-2">
                                    <div className="flex justify-end -mt-2 -mr-2"><Tooltip text="Save to Recent Calculations" widthClass="w-auto"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5" /></button></Tooltip></div>
-                                   { result.type === 'doseRate' && (()=>{ const unshielded = formatDoseValue(result.rawUnshielded_mrem_hr, 'doseRate', settings); const shielded = formatDoseValue(result.rawShielded_mrem_hr, 'doseRate', settings); return <> <div className="-mt-4"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded Dose Rate</p><p className="text-xl font-bold text-slate-600 dark:text-slate-300">{unshielded.value} {unshielded.unit}</p></div> <div className="font-bold text-2xl">↓</div> <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded Dose Rate</p><div className="flex items-center justify-center"><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{shielded.value} {shielded.unit}</p><CopyButton textToCopy={shielded.value} /></div>{useBuildup && <p className="text-xs text-slate-500 dark:text-slate-400">(with Buildup Factor B = {result.buildup})</p>}</div> </>})()}
+                                   { result.type === 'doseRate' && (()=>{ const unshielded = formatDoseValue(result.rawUnshielded_mrem_hr, 'doseRate', settings); const shielded = formatDoseValue(result.rawShielded_mrem_hr, 'doseRate', settings); return <> <div className="-mt-4"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Unshielded Dose Rate</p><p className="text-xl font-bold text-slate-600 dark:text-slate-300">{unshielded.value} {unshielded.unit}</p></div> <div className="font-bold text-2xl">↓</div> <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Shielded Dose Rate</p><div className="flex items-center justify-center"><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{shielded.value} {shielded.unit}</p><CopyButton textToCopy={shielded.value} /></div>
+                                   
+                                   {/* --- NEW LINE: HVL Display --- */}
+                                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">({result.numHVLs.toFixed(2)} Half-Value Layers)</p>
+                                   
+                                   {useBuildup && <p className="text-xs text-slate-500 dark:text-slate-400">(with Buildup Factor B = {result.buildup})</p>}</div> </>})()}
                                    { result.type === 'thickness' && (()=>{ const unshielded = formatDoseValue(result.rawUnshielded_mrem_hr, 'doseRate', settings); const thickness = formatSensibleUnit(result.thickness_cm, 'distance'); return <> <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400 -mt-4">To reduce from {unshielded.value} {unshielded.unit} to {targetDoseRate} {targetDoseRateUnit}, you need:</p> <div className="flex items-center justify-center mt-2"><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{thickness.value} {thickness.unit}</p><CopyButton textToCopy={thickness.value} /></div> <p className="text-md font-medium text-slate-600 dark:text-slate-300">of {useManualHVL ? 'custom material' : shieldMaterial}</p> </>})()}
                                    { result.type === 'genericRateFinal' && (()=>{ const initial = formatDoseValue(result.rawInitial_mrem_hr, 'doseRate', settings); const final = formatDoseValue(result.rawFinal_mrem_hr, 'doseRate', settings); return <> <div className="-mt-4"><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Dose Rate</p><p className="text-xl font-bold text-slate-600 dark:text-slate-300">{initial.value} {initial.unit}</p></div> <div className="font-bold text-2xl">↓</div> <div><p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Final (Shielded) Dose Rate</p><div className="flex items-center justify-center"><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{final.value} {final.unit}</p><CopyButton textToCopy={final.value} /></div></div> </>})()}
                                    { result.type === 'beta' && (()=>{ const thickness = formatSensibleUnit(result.thickness_cm, 'distance'); return <> <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400 -mt-4">Required Beta Shield Thickness</p> <div className="flex items-center justify-center my-1"><p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{thickness.value} <span className="text-2xl opacity-75">{thickness.unit}</span></p><CopyButton textToCopy={thickness.value} /></div> <p className="text-md font-medium text-slate-600 dark:text-slate-300">of {shieldMaterial}</p> <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 text-xs text-amber-800 dark:text-amber-200 p-3 rounded-md bg-amber-100 dark:bg-amber-900/50"><p className="font-semibold">⚠️ Bremsstrahlung Warning</p><p>Approximately {result.bremsstrahlungFraction}% of the beta energy will be converted to X-rays in this shield. Always use the lowest-Z material practical for primary beta shielding.</p></div> </>})()}
@@ -17990,13 +18523,18 @@ hvl_cm = HVL_DATA[nuclide.symbol][shieldMaterial]; }
                 </div>
             )}
             <div className="space-y-4">
-                <div><label className="block text-sm font-medium">Target Mass</label><div className="flex"><input type="number" value={targetMass} onChange={e => setTargetMass(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                <div>
+    <Tooltip text="Important: Enter the mass of the specific isotope (e.g., mass of pure Fe-58), NOT the total mass of the element. This calculator does not automatically apply natural abundance factors.">
+        <label className="block text-sm font-medium cursor-help underline decoration-dotted decoration-slate-400 underline-offset-2">Target Mass</label>
+    </Tooltip>
+
+<div className="flex"><input type="number" value={targetMass} onChange={e => setTargetMass(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                 <div><label className="block text-sm font-medium">Thermal Neutron Flux (n/cm²·s)</label><input type="text" value={neutronFlux} onChange={e => setNeutronFlux(e.target.value)} placeholder="e.g., 1e12" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                 <div><label className="block text-sm font-medium">Irradiation Time</label><div className="flex"><input type="number" value={irradiationTime} onChange={e => setIrradiationTime(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
             </div>
             <ContextualNote>
-                <strong>Note:</strong> This calculation assumes a purely thermal neutron flux and uses the thermal capture cross-section. Results may vary for other neutron energy spectra.
-            </ContextualNote>
+    <strong>Note:</strong> This calculation assumes a purely thermal neutron flux. Ensure your "Target Mass" accounts for isotopic abundance (e.g., if using natural iron,  multiply total mass by the abundance of Fe-58).
+</ContextualNote>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             {result && (
                 <div className="text-center p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in">
