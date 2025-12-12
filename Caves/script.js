@@ -7916,7 +7916,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
             break;
 
         case 'fireball':
-            { // <--- BRACE ADDED FOR SCOPE
+            {
                 // This is an AoE spell. It hits a 3x3 area, 3 tiles away.
                 const fbDamage = spellData.baseDamage + (player.wits * spellLevel);
                 const radius = spellData.radius; // 1
@@ -7930,7 +7930,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                 for (let y = targetY - radius; y <= targetY + radius; y++) {
                     for (let x = targetX - radius; x <= targetX + radius; x++) {
 
-                        let tileAt;
+                        let tileAt; // <--- Declared ONCE here
                         
                         // 1. Get the tile based on map mode
                         if (gameState.mapMode === 'overworld') {
@@ -7958,24 +7958,20 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                             }
                             
                             // Deal extra damage to anything on this tile!
-                            // We use 'fireball' ID again to trigger appropriate particle effects
                             applySpellDamage(x, y, 15, 'fireball'); 
                         }
 
-                        let tileAt;
-                        if (gameState.mapMode === 'dungeon') {
+                        // 3. Check for Spider Webs (Using the SAME tileAt variable)
+                        if (gameState.mapMode === 'dungeon' && tileAt === '🕸') {
                             const map = chunkManager.caveMaps[gameState.currentCaveId];
-                            tileAt = (map && map[y]) ? map[y][x] : null;
-                            
-                            if (tileAt === '🕸') {
-                                const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                            const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                            if (map && map[y]) {
                                 map[y][x] = theme.floor; // Burn it away
                                 logMessage("The web catches fire and burns away!");
                             }
                         }
 
                         // Don't await in the AoE loop, just fire them all off
-                        // This feels more like a simultaneous explosion
                         applySpellDamage(x, y, fbDamage, spellId).then(hit => {
                             if (hit) hitSomething = true;
                         });
