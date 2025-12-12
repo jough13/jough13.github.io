@@ -186,6 +186,11 @@ const TILE_DATA = {
         spell: 'fireball', // Fireball can burn it
         flavor: "A thick, sticky web blocks the path."
     },
+    '🛢': {
+        type: 'barrel',
+        name: 'Oil Barrel',
+        flavor: "Filled with volatile oil. Highly flammable."
+    },
     '🏚': {
         type: 'obstacle',
         name: 'Cracked Wall',
@@ -418,6 +423,11 @@ const SHOP_INVENTORY = [{
         name: 'Healing Potion',
         price: 25,
         stock: 10 // How many the shop has
+    },
+    {
+        name: 'Fire Resistance Potion',
+        price: 50,
+        stock: 5
     },
     {
         name: 'Stamina Crystal',
@@ -1134,11 +1144,11 @@ const CAVE_THEMES = {
         name: 'A Volcanic Fissure',
         wall: '▓',
         secretWall: '▒',
-        floor: '.', // Use a standard floor tile
+        floor: '.', // REVERT to '.' (Safe ground)
         colors: {
             wall: '#450a0a',
-            floor: '#ef4444'
-        }, // The red color makes it look like lava
+            floor: '#ef4444' // The '.' will still be painted Red
+        }, 
         decorations: ['+', '$', '🔥', 'J'],
         enemies: ['b', 'C', 'o', 'm', '👺', 'f']
     },
@@ -1192,7 +1202,18 @@ const CAVE_THEMES = {
         decorations: ['💀', '🕸️', '🔥', 'Ω', '💎', '🕸'], // Omegas and Gems!
         enemies: ['o', 'm', 'Z', '👺', '🐺', 'scorpion', 'a'] // Only tough enemies
     },
-
+    SUNKEN: {
+        name: 'The Sunken Temple',
+        wall: '🧱', 
+        floor: '.', // REVERT to '.' (Wet Stone)
+        secretWall: '▒',
+        colors: {
+            wall: '#0e7490', // Cyan-Blue bricks
+            floor: '#1e3a8a'  // Deep Blue floor (looks like wet stone)
+        },
+        decorations: ['🐟', '🌿', '🗿', '🦀'], 
+        enemies: ['🐸', '🐍', 'l', '🦑'] 
+    },
     GROTTO: {
         name: 'A Sunken Grotto',
         wall: '▓', // Use standard 'rock' wall
@@ -2691,6 +2712,30 @@ const ITEM_DATA = {
             }
         }
     },
+    '🧪f': {
+        name: 'Fire Resistance Potion',
+        type: 'consumable',
+        tile: '🧪',
+        description: "Coats your throat in cooling frost. Immune to Lava/Fire for 50 turns.",
+        effect: (state) => {
+            state.player.fireResistTurns = 50; // We need to add this property logic below
+            logMessage("You feel an icy chill. You are immune to fire! (50 turns)");
+            // Trigger visual effect
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "❄️", "#67e8f9");
+        }
+    },
+    '🧪w': {
+        name: 'Gill Potion',
+        type: 'consumable',
+        tile: '🧪',
+        description: "Grow temporary gills. Allows swimming in Deep Water for 20 turns.",
+        effect: (state) => {
+            state.player.waterBreathingTurns = 20; 
+            logMessage("You sprout gills! You can dive into deep water. (20 turns)");
+            // Optional Visual
+            if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "🫧", "#3b82f6");
+        }
+    },
     // --- NEW CRAFTING MATERIALS ---
     '🐉': { name: 'Dragon Scale', type: 'junk', description: "Warm to the touch and harder than steel." },
     '💎': { name: 'Raw Diamond', type: 'junk', description: "Uncut, but incredibly sharp." },
@@ -3802,6 +3847,83 @@ const PLAYER_BACKGROUNDS = {
 
 };
 
+const EVOLUTION_DATA = {
+    'warrior': [
+        {
+            id: 'berserker',
+            name: 'Berserker',
+            icon: '👹', // New Character Sprite
+            description: "Gain Rage on hit. Deal double damage below 50% HP.",
+            stats: { strength: 4, constitution: 2 },
+            talent: 'blood_rage' 
+        },
+        {
+            id: 'paladin',
+            name: 'Paladin',
+            icon: '🛡️',
+            description: "Immune to Poison/Disease. Heals allies nearby.",
+            stats: { constitution: 4, willpower: 2 },
+            talent: 'holy_aura'
+        }
+    ],
+    'rogue': [
+        {
+            id: 'assassin',
+            name: 'Assassin',
+            icon: '🥷',
+            description: "Attacks from Stealth deal 4x damage.",
+            stats: { dexterity: 4, wits: 2 },
+            talent: 'shadow_strike'
+        },
+        {
+            id: 'ranger',
+            name: 'Ranger',
+            icon: '🏹',
+            description: "Can move through Forests without stamina cost.",
+            stats: { dexterity: 3, perception: 3 },
+            talent: 'pathfinder'
+        }
+    ],
+    'mage': [
+        {
+            id: 'archmage',
+            name: 'Archmage',
+            icon: '🧙‍♂️',
+            description: "Spells cost 20% less Mana.",
+            stats: { wits: 5, maxMana: 20 },
+            talent: 'mana_flow'
+        },
+        {
+            id: 'battlemage',
+            name: 'Battlemage',
+            icon: '🗡️',
+            description: "Can wear Heavy Armor without penalty.",
+            stats: { strength: 3, wits: 3 },
+            talent: 'arcane_steel'
+        }
+    ],
+    'necromancer': [
+        {
+            id: 'lich',
+            name: 'Lich',
+            icon: '💀',
+            description: "You no longer need food or water. You are Undead.",
+            stats: { wits: 4, willpower: 4 },
+            talent: 'undeath'
+        }
+    ],
+    'wretch': [
+        {
+            id: 'hero',
+            name: 'True Hero',
+            icon: '👑',
+            description: "Stats +5. You survived the darkness.",
+            stats: { strength: 5, dexterity: 5, wits: 5, constitution: 5 },
+            talent: 'legend'
+        }
+    ]
+};
+
 const SPELL_DATA = {
     "candlelight": {
         name: "Candlelight",
@@ -4631,6 +4753,51 @@ generateCave(caveId) {
                     }
                 }
             }
+        }
+
+        // --- 3b. THEME SPECIFIC TERRAIN GENERATION ---
+        
+        // VOLCANO: Generate Lava Pools (~30% of floor becomes Lava)
+        if (chosenThemeKey === 'FIRE') {
+            const lavaChance = 0.30;
+            for (let y = 1; y < CAVE_HEIGHT - 1; y++) {
+                for (let x = 1; x < CAVE_WIDTH - 1; x++) {
+                    if (map[y][x] === theme.floor && random() < lavaChance) {
+                        map[y][x] = '~'; // Turn floor into Lava
+                    }
+                }
+            }
+            // Ensure Start Area is safe
+            map[startPos.y][startPos.x] = '.';
+            map[startPos.y+1][startPos.x] = '.';
+            map[startPos.y-1][startPos.x] = '.';
+            map[startPos.y][startPos.x+1] = '.';
+            map[startPos.y][startPos.x-1] = '.';
+        }
+
+        // SUNKEN TEMPLE: Flood the ruins
+        if (chosenThemeKey === 'SUNKEN') {
+            const shallowChance = 0.40; // 40% Shallow Water (Drains Stamina)
+            const deepChance = 0.05;    // 5% Deep Water (Obstacle)
+            
+            for (let y = 1; y < CAVE_HEIGHT - 1; y++) {
+                for (let x = 1; x < CAVE_WIDTH - 1; x++) {
+                    if (map[y][x] === theme.floor) {
+                        const roll = random();
+                        if (roll < deepChance) {
+                            map[y][x] = '~'; // Deep Water (Block)
+                        } else if (roll < shallowChance + deepChance) {
+                            map[y][x] = '≈'; // Shallow Water (Stamina Drain)
+                        }
+                    }
+                }
+            }
+            // Ensure Start Area is safe
+            map[startPos.y][startPos.x] = '.';
+            map[startPos.y+1][startPos.x] = '.';
+            map[startPos.y-1][startPos.x] = '.';
+            map[startPos.y][startPos.x+1] = '.';
+            map[startPos.y][startPos.x-1] = '.';
         }
 
         // --- 4. Place procedural loot and decorations ---
@@ -6064,15 +6231,22 @@ function applyStatBonuses(item, operation) {
 
     for (const stat in item.statBonuses) {
         if (player.hasOwnProperty(stat)) {
-            const amount = item.statBonuses[stat] * operation;
-            player[stat] += amount;
+            let amount = item.statBonuses[stat];
 
-            // Log the change
+            // --- BATTLEMAGE: ARCANE STEEL ---
+            // If the item reduces Dexterity (Heavy Armor), and we are a Battlemage, ignore it.
+            if (stat === 'dexterity' && amount < 0 && player.talents && player.talents.includes('arcane_steel')) {
+                if (operation === 1) logMessage("Arcane Steel negates the armor's weight.");
+                continue; 
+            }
+
+            player[stat] += (amount * operation);
+
+            // (Keep your existing log/flash logic here)
             if (operation === 1) {
-                logMessage(`You feel ${stat} increase! (+${item.statBonuses[stat]})`);
+                logMessage(`You feel ${stat} increase! (+${amount})`);
                 triggerStatFlash(statDisplays[stat], true);
             } else {
-                logMessage(`You feel your ${stat} bonus fade...`);
                 triggerStatFlash(statDisplays[stat], false);
             }
         }
@@ -6101,6 +6275,10 @@ function grantXp(amount) {
 
         logMessage(`LEVEL UP! You are now level ${player.level}!`);
         ParticleSystem.createLevelUp(player.x, player.y);
+
+        if (player.level === 10 && !player.classEvolved) {
+            openEvolutionModal();
+        }
         
         // --- Award Talent Point every 3 levels ---
         if (player.level % 3 === 0) {
@@ -7051,10 +7229,17 @@ async function executeLunge(dirX, dirY) {
     let hit = false;
     
     // --- 2. Calculate Base Damage ---
-    // This is the player's total damage *before* the skill modifier
+
     const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
     const playerStrength = player.strength + (player.strengthBonus || 0);
-    const playerBaseDamage = playerStrength + weaponDamage;
+    
+    let rawPower = playerStrength + weaponDamage;
+
+    // --- APPLY PASSIVE MODIFIERS (Blood Rage) ---
+    rawPower = getPlayerDamageModifier(rawPower); 
+    // -------------------------------------------
+
+    const playerBaseDamage = rawPower;
 
     // Loop 2 and 3 tiles away
     for (let i = 2; i <= 3; i++) {
@@ -7076,9 +7261,23 @@ async function executeLunge(dirX, dirY) {
         const enemyData = ENEMY_DATA[tile];
 
         if (enemyData) {
+
             // Found a target!
+
+            if (player.stealthTurns > 0) {
+                player.stealthTurns = 0;
+                logMessage("You strike from the shadows!");
+                playerRef.update({ stealthTurns: 0 });
+            }
+
             logMessage(`You lunge and attack the ${enemyData.name}!`);
             hit = true;
+
+            if (player.stealthTurns > 0) {
+                player.stealthTurns = 0;
+                logMessage("You strike from the shadows!");
+                playerRef.update({ stealthTurns: 0 });
+            }
             
             // --- 3. Calculate Final Damage ---
             // Formula: ( (PlayerBaseDmg - EnemyDef) * Multiplier ) + (Strength * Level)
@@ -7134,6 +7333,77 @@ async function executeLunge(dirX, dirY) {
     triggerAbilityCooldown('lunge');
     endPlayerTurn(); // Always end turn, even if you miss
     render(); // Re-render to show enemy health change
+}
+
+const evolutionModal = document.getElementById('evolutionModal');
+const evolutionOptionsDiv = document.getElementById('evolutionOptions');
+
+function openEvolutionModal() {
+    // 1. Get player's base class (e.g., 'warrior')
+    // We stored this in 'player.background' in your save system
+    const baseClass = gameState.player.background; 
+    const options = EVOLUTION_DATA[baseClass];
+
+    if (!options) return; // Should not happen if data is correct
+
+    evolutionOptionsDiv.innerHTML = '';
+
+    options.forEach(evo => {
+        const div = document.createElement('div');
+        div.className = "panel p-4 rounded-xl border-2 hover:border-yellow-500 cursor-pointer transition-all";
+        div.onclick = () => selectEvolution(evo);
+        div.innerHTML = `
+            <div class="text-4xl mb-2">${evo.icon}</div>
+            <h3 class="text-xl font-bold text-highlight">${evo.name}</h3>
+            <p class="text-sm text-gray-500 mb-2">${evo.description}</p>
+            <div class="text-xs font-bold text-green-500">
+                ${Object.entries(evo.stats).map(([k,v]) => `+${v} ${k}`).join(', ')}
+            </div>
+        `;
+        evolutionOptionsDiv.appendChild(div);
+    });
+
+    evolutionModal.classList.remove('hidden');
+}
+
+function selectEvolution(evoData) {
+    const player = gameState.player;
+
+    // 1. Apply Stats
+    for (const stat in evoData.stats) {
+        if (player.hasOwnProperty(stat)) {
+            player[stat] += evoData.stats[stat];
+        }
+    }
+    
+    // 2. Apply Special Properties
+    player.character = evoData.icon; // Change sprite
+    player.classEvolved = true;
+    player.className = evoData.name; // Store the new class name
+    
+    // 3. Add Talent
+    if (!player.talents) player.talents = [];
+    player.talents.push(evoData.talent);
+
+    // 4. Update max health/mana if constitution/wits changed
+    if (evoData.stats.constitution) player.maxHealth += (evoData.stats.constitution * 5);
+    if (evoData.stats.wits) player.maxMana += (evoData.stats.wits * 5);
+    if (evoData.stats.maxMana) player.maxMana += evoData.stats.maxMana; // Direct mana buff
+
+    // 5. Full Heal on Evolve
+    player.health = player.maxHealth;
+    player.mana = player.maxMana;
+
+    // 6. Save & Close
+    logMessage(`You have evolved into a ${evoData.name}!`);
+    playerRef.update({
+        ...player, // Saves stats, character icon, talents
+        classEvolved: true
+    });
+
+    evolutionModal.classList.add('hidden');
+    renderStats();
+    render(); // Update sprite on screen
 }
 
 /**
@@ -7400,8 +7670,17 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     const spellLevel = player.spellbook[spellId] || 1;
 
     // --- 1. Deduct Cost ---
+    
     // The cost was already checked in castSpell. Now we deduct it.
-    player[spellData.costType] -= spellData.cost;
+
+    // --- ARCHMAGE: MANA FLOW ---
+    
+    let cost = spellData.cost;
+    if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
+        cost = Math.floor(cost * 0.8);
+    }
+    player[spellData.costType] -= cost;
+
     let hitSomething = false;
 
     // --- CALCULATE DAMAGE WITH BONUS ---
@@ -7652,6 +7931,38 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                     for (let x = targetX - radius; x <= targetX + radius; x++) {
 
                         let tileAt;
+                        
+                        // 1. Get the tile based on map mode
+                        if (gameState.mapMode === 'overworld') {
+                            tileAt = chunkManager.getTile(x, y);
+                        } else if (gameState.mapMode === 'dungeon') {
+                            const mapRef = chunkManager.caveMaps[gameState.currentCaveId];
+                            tileAt = (mapRef && mapRef[y]) ? mapRef[y][x] : null;
+                        } else if (gameState.mapMode === 'castle') {
+                            const mapRef = chunkManager.castleMaps[gameState.currentCastleId];
+                            tileAt = (mapRef && mapRef[y]) ? mapRef[y][x] : null;
+                        }
+
+                        // 2. Check for Barrel
+                        if (tileAt === '🛢') {
+                            logMessage("BOOM! An Oil Barrel explodes!");
+                            ParticleSystem.createExplosion(x, y, '#f97316', 12); 
+                            
+                            // Destroy the barrel (Handle Overworld vs Instanced)
+                            if (gameState.mapMode === 'overworld') {
+                                chunkManager.setWorldTile(x, y, '.');
+                            } else if (gameState.mapMode === 'dungeon') {
+                                chunkManager.caveMaps[gameState.currentCaveId][y][x] = '.';
+                            } else {
+                                chunkManager.castleMaps[gameState.currentCastleId][y][x] = '.';
+                            }
+                            
+                            // Deal extra damage to anything on this tile!
+                            // We use 'fireball' ID again to trigger appropriate particle effects
+                            applySpellDamage(x, y, 15, 'fireball'); 
+                        }
+
+                        let tileAt;
                         if (gameState.mapMode === 'dungeon') {
                             const map = chunkManager.caveMaps[gameState.currentCaveId];
                             tileAt = (map && map[y]) ? map[y][x] : null;
@@ -7670,7 +7981,7 @@ async function executeAimedSpell(spellId, dirX, dirY) {
                         });
                     }
                 }
-            } // <--- CLOSE BRACE
+            }
             break;
     }
 
@@ -8567,7 +8878,13 @@ function castSpell(spellId) {
     }
 
     // --- 1. Check Resource Cost ---
-    const cost = spellData.cost;
+    
+    let cost = spellData.cost;
+    // --- ARCHMAGE: MANA FLOW ---
+    if (spellData.costType === 'mana' && player.talents && player.talents.includes('mana_flow')) {
+        cost = Math.floor(cost * 0.8);
+    }
+
     const costType = spellData.costType;
 
     // --- MODIFIED COST CHECK ---
@@ -8787,7 +9104,14 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
     // Calculate Damage
     const weaponDamage = player.equipment.weapon ? player.equipment.weapon.damage : 0;
     const playerStrength = player.strength + (player.strengthBonus || 0);
-    const baseDmg = (playerStrength + weaponDamage) * skillData.baseDamageMultiplier;
+    
+    let rawPower = playerStrength + weaponDamage;
+
+    // --- APPLY PASSIVE MODIFIERS (Blood Rage) ---
+    rawPower = getPlayerDamageModifier(rawPower);
+
+    const baseDmg = rawPower * skillData.baseDamageMultiplier;
+
     const finalDmg = Math.max(1, Math.floor(baseDmg + (player.strength * 0.5 * skillLevel)));
 
     // Target Logic
@@ -8828,7 +9152,21 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
         const enemyData = ENEMY_DATA[tile];
         if (enemyData) {
+
+            if (player.stealthTurns > 0) {
+                player.stealthTurns = 0;
+                logMessage("You emerge from the shadows!");
+                playerRef.update({ stealthTurns: 0 });
+            }
+
             hit = true;
+
+            if (player.stealthTurns > 0) {
+                player.stealthTurns = 0;
+                logMessage("You strike from the shadows!");
+                playerRef.update({ stealthTurns: 0 });
+            }
+
             // Apply Damage
             if (gameState.mapMode === 'overworld') {
                 await handleOverworldCombat(coords.x, coords.y, enemyData, tile, finalDmg);
@@ -9184,15 +9522,22 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
         // --- Process Transaction Results ---
         const finalEnemyState = transactionResult.snapshot.val();
-            if (finalEnemyState === null) {
-                // Re-calculate for the log/xp since the DB entry is gone
-                const deadEnemyInfo = getScaledEnemy(enemyData, newX, newY);
-                logMessage(`The ${deadEnemyInfo.name} was vanquished!`);
-                grantXp(deadEnemyInfo.xp);
-            updateQuestProgress(newTile);
+        if (finalEnemyState === null) {
+            // Enemy Died
+            const deadEnemyInfo = getScaledEnemy(enemyData, newX, newY);
+            logMessage(`The ${deadEnemyInfo.name} was vanquished!`);
+            grantXp(deadEnemyInfo.xp);
+            updateQuestProgress(newTile); // Uses the original tile ID
 
-            const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
-            chunkManager.setWorldTile(newX, newY, droppedLoot);
+            const droppedLoot = generateEnemyLoot(player, enemyData);
+            
+            // SAFE LOOT DROP:
+            // We only set the tile if it's currently passable terrain.
+            // This prevents loot from overwriting a wall if an enemy somehow died inside one.
+            const currentTerrain = chunkManager.getTile(newX, newY);
+            if (currentTerrain === '.' || currentTerrain === 'd' || currentTerrain === 'D' || currentTerrain === 'F') {
+                 chunkManager.setWorldTile(newX, newY, droppedLoot);
+            }
 
         } else {
             // --- ENEMY SURVIVES AND ATTACKS ---
@@ -9712,52 +10057,60 @@ const render = () => {
                 }
             }
 
-            // --- ENTITY RENDERING ---
-            if (tileShadowOpacity < 0.95) {
-                // Health Bars
-                if (gameState.mapMode === 'overworld' && ENEMY_DATA[fgChar]) {
-                    const enemyId = `overworld:${mapX},${-mapY}`;
-                    const enemyHealthData = gameState.sharedEnemies[enemyId];
-                    if (enemyHealthData) {
-                        const healthPercent = enemyHealthData.health / enemyHealthData.maxHealth;
-                        ctx.fillStyle = '#333';
-                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE, 3);
-                        ctx.fillStyle = healthPercent > 0.5 ? '#4caf50' : '#ef4444';
-                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE * healthPercent, 3);
+            // --- ENTITY RENDERING (OVERLAY LAYER) ---
+            
+            // 1. Check for Shared/Overworld Enemies at this location
+            let overlayChar = null;
+            let overlayColor = null;
+            
+            if (gameState.mapMode === 'overworld') {
+                const enemyKey = `overworld:${mapX},${-mapY}`;
+                const sharedEnemy = gameState.sharedEnemies[enemyKey];
+                
+                if (sharedEnemy) {
+                    overlayChar = sharedEnemy.tile;
+                    
+                    // Draw Health Bar
+                    const healthPercent = sharedEnemy.health / sharedEnemy.maxHealth;
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE, 3);
+                    ctx.fillStyle = healthPercent > 0.5 ? '#4caf50' : '#ef4444';
+                    ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE * healthPercent, 3);
+                    
+                    // Handle Elite Colors
+                    if (sharedEnemy.isElite) {
+                        ctx.strokeStyle = sharedEnemy.color || '#facc15';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                        overlayColor = sharedEnemy.color || '#ef4444';
+                    } else {
+                        overlayColor = '#ef4444'; // Default Red
                     }
                 }
-
-                // Characters
-                if (fgChar) {
-                    ctx.fillStyle = fgColor; 
-                    if (ENEMY_DATA[fgChar]) {
-                        ctx.fillStyle = '#ef4444'; 
-                        let isElite = false;
-                        let eliteColor = null;
-
-                        // Check Elite Status
-                        if (gameState.mapMode === 'overworld') {
-                            const enemyData = gameState.sharedEnemies[`overworld:${mapX},${-mapY}`];
-                            if (enemyData && enemyData.isElite) { isElite = true; eliteColor = enemyData.color; }
-                        } else {
-                            const enemy = gameState.instancedEnemies.find(e => e.x === mapX && e.y === mapY);
-                            if (enemy && enemy.isElite) { isElite = true; eliteColor = enemy.color; }
-                        }
-
-                        if (isElite) {
-                            ctx.fillStyle = eliteColor || '#facc15';
-                            ctx.strokeStyle = eliteColor || '#facc15';
-                            ctx.lineWidth = 1;
-                            ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-                        }
-                    } 
-                    else if (fgChar === '$') ctx.fillStyle = '#ffd700';
-                    else if (fgChar === '✨') ctx.fillStyle = '#a855f7';
-                    else if (fgChar === 'B') ctx.fillStyle = '#fde047';
+            } 
+            // 2. Check for Instanced Enemies (Dungeon/Castle)
+            else {
+                const enemy = gameState.instancedEnemies.find(e => e.x === mapX && e.y === mapY);
+                if (enemy) {
+                    overlayChar = enemy.tile;
+                    overlayColor = enemy.color || '#ef4444';
                     
-                    ctx.font = isWideChar(fgChar) ? `${TILE_SIZE}px monospace` : `${TILE_SIZE}px monospace`;
-                    ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                    if (enemy.isElite) {
+                        ctx.strokeStyle = enemy.color || '#facc15';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    }
                 }
+            }
+
+            // 3. Draw the Overlay Character (If exists)
+            // Note: We check tileShadowOpacity so we don't draw enemies in pitch blackness
+            if (overlayChar && tileShadowOpacity < 0.95) {
+                ctx.fillStyle = overlayColor;
+                ctx.font = isWideChar(overlayChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(overlayChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
             }
 
             // --- 4. SHADOW & TORCH OVERLAY ---
@@ -10094,34 +10447,40 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-// --- Process all moves ---
+    // --- Process all moves ---
     for (const move of movesToMake) {
-        // 1. Move the enemy on the world map
-        
-        // Check if we have a saved state for this tile in the chunk manager first
-        // If not, revert to base procedural terrain.
-        // Note: This still has the "Bulldozer" issue for items, but ensures we don't
-        // accidentally delete biome data if you add complex biomes later.
-        const restoredTile = getBaseTerrain(move.oldX, move.oldY);
-        
-        chunkManager.setWorldTile(move.oldX, move.oldY, restoredTile);
-        chunkManager.setWorldTile(move.newX, move.newY, move.tile);
-
-        // 2. Define the database paths for its health data
+        // 1. Define the database paths
         const oldId = `overworld:${move.oldX},${-move.oldY}`;
         const newId = `overworld:${move.newX},${-move.newY}`;
         const oldRef = rtdb.ref(`worldEnemies/${oldId}`);
         const newRef = rtdb.ref(`worldEnemies/${newId}`);
 
-        // 3. Check if this enemy had any health data
-        const snapshot = await oldRef.once('value');
-        const healthData = snapshot.val();
+        // 2. Move data in RTDB (The Entity Layer)
+        // We do NOT touch chunkManager.setWorldTile here. 
+        // This prevents the "Bulldozer" effect. The terrain remains untouched.
+        
+        try {
+            const snapshot = await oldRef.once('value');
+            const healthData = snapshot.val();
 
-        if (healthData) {
-            // 4. It did! Move the data by setting it in the new spot...
-            await newRef.set(healthData);
-            // ...and removing it from the old one.
-            await oldRef.remove();
+            if (healthData) {
+                // Move the enemy data to the new coordinate key
+                await newRef.set(healthData);
+                // Remove from old coordinate key
+                await oldRef.remove();
+                
+                // If the static map currently has this enemy tile 'baked in' from generation,
+                // we can gently clean it. But we check first to ensure we don't delete an item.
+                const currentStaticTile = chunkManager.getTile(move.oldX, move.oldY);
+                if (currentStaticTile === move.tile) {
+                    // Only restore base terrain if the tile matches the enemy exactly.
+                    // This cleans up "ghost" enemies from the static map.
+                    const baseTerrain = getBaseTerrain(move.oldX, move.oldY);
+                    chunkManager.setWorldTile(move.oldX, move.oldY, baseTerrain);
+                }
+            }
+        } catch (err) {
+            console.error("Enemy move failed:", err);
         }
     }
 
@@ -10573,6 +10932,35 @@ async function runSharedAiTurns() {
     }
 }
 
+function getPlayerDamageModifier(baseDamage) {
+    const player = gameState.player;
+    let finalDamage = baseDamage;
+
+    // --- BERSERKER: BLOOD RAGE ---
+    // If Health is below 50%, deal double damage
+    if (player.talents && player.talents.includes('blood_rage')) {
+        if ((player.health / player.maxHealth) < 0.5) {
+            finalDamage = Math.floor(finalDamage * 2);
+            // 20% chance to show a message to avoid spam
+            if (Math.random() < 0.2) logMessage("Blood Rage fuels your strike!");
+        }
+    }
+
+    // --- ASSASSIN: SHADOW STRIKE ---
+    // If Stealth is active, deal 4x damage
+    if (player.talents && player.talents.includes('shadow_strike')) {
+        if (player.stealthTurns > 0) {
+            finalDamage = Math.floor(finalDamage * 4);
+            logMessage("Shadow Strike! (4x Damage)");
+            
+            // Breaking stealth is handled in the attack logic, 
+            // but the damage boost happens here.
+        }
+    }
+
+    return finalDamage;
+}
+
 function endPlayerTurn() {
 
 // --- LIGHT SURVIVAL MECHANICS ---
@@ -10588,8 +10976,48 @@ function endPlayerTurn() {
         thirstDrain = 0.01;
     }
 
-    player.hunger = Math.max(0, player.hunger - hungerDrain);
-    player.thirst = Math.max(0, player.thirst - thirstDrain);
+    // --- LICH: UNDEATH ---
+    if (!player.talents || !player.talents.includes('undeath')) {
+        player.hunger = Math.max(0, player.hunger - hungerDrain);
+        player.thirst = Math.max(0, player.thirst - thirstDrain);
+    }
+
+    // --- ENVIRONMENTAL HAZARDS ---
+    const currentTile = chunkManager.getTile(player.x, player.y);
+    const inDungeon = gameState.mapMode === 'dungeon';
+    const currentTheme = inDungeon ? CAVE_THEMES[gameState.currentCaveTheme] : null;
+
+    // 1. LAVA (Volcano Biome)
+    if (inDungeon && gameState.currentCaveTheme === 'FIRE' && (currentTile === '~' || currentTile === '≈')) {
+        
+        const hasArmor = player.equipment.armor && player.equipment.armor.name.includes('Dragonscale');
+        const hasPotion = player.fireResistTurns > 0; // Check potion buff
+
+        if (!hasArmor && !hasPotion) { // Check both
+            logMessage("The lava burns you! (2 Dmg)");
+            player.health -= 2;
+            triggerStatFlash(statDisplays.health, false);
+            ParticleSystem.createFloatingText(player.x, player.y, "BURN", "#ef4444");
+        }
+    }
+
+    // 2. DROWNING (Sunken Temple / Deep Water)
+    if (currentTile === '~') {
+        const hasGills = player.waterBreathingTurns > 0;
+
+        // If you are in Deep Water AND don't have gills...
+        if (!hasGills) {
+            logMessage("Your gills vanish. The water fills your lungs...");
+            logMessage("You have drowned.");
+            
+            // INSTANT DEATH
+            player.health = 0; 
+            
+            // Visuals
+            triggerStatFlash(statDisplays.health, false);
+            ParticleSystem.createFloatingText(player.x, player.y, "☠️", "#1e3a8a");
+        }
+    }
 
     // --- 1. THE BONUSES (Vitality) ---
     // If stats are high (>80%), you regenerate naturally!
@@ -10626,7 +11054,7 @@ function endPlayerTurn() {
 
     updateWeather();
 
-    // --- NEW: STORM LIGHTNING STRIKES ---
+    // --- STORM LIGHTNING STRIKES ---
     if (gameState.mapMode === 'overworld' && gameState.weather === 'storm') {
         // 15% chance of a lightning strike per turn
         if (Math.random() < 0.15) {
@@ -10673,6 +11101,12 @@ function endPlayerTurn() {
         }
     }
 
+    if (player.waterBreathingTurns > 0) {
+        player.waterBreathingTurns--;
+        updates.waterBreathingTurns = player.waterBreathingTurns;
+        if (player.waterBreathingTurns === 0) logMessage("Your gills disappear.");
+    }
+
     if (player.frostbiteTurns > 0) {
         player.frostbiteTurns--;
         player.stamina = Math.max(0, player.stamina - 2); // Frostbite drains 2 stamina
@@ -10697,6 +11131,21 @@ function endPlayerTurn() {
         renderEquipment(); // Update UI
     }
 
+    // --- GILL POTION TIMER ---
+    if (player.waterBreathingTurns > 0) {
+        player.waterBreathingTurns--;
+        updates.waterBreathingTurns = player.waterBreathingTurns;
+        
+        if (player.waterBreathingTurns === 3) {
+            logMessage("Warning: Your gills are starting to close up! (3 turns left)");
+        }
+        if (player.waterBreathingTurns === 0) {
+            // We don't need to kill them here; the drowning check at the 
+            // start of the NEXT turn will handle it if they are still in water.
+            logMessage("Your gills disappear.");
+        }
+    }
+
     // --- WITS BONUS TIMER ---
     if (player.witsBonusTurns > 0) {
         player.witsBonusTurns--;
@@ -10718,6 +11167,12 @@ function endPlayerTurn() {
             updates.thornsValue = 0;
             logMessage("Your thorny skin softens.");
         }
+    }
+
+    if (player.fireResistTurns > 0) {
+        player.fireResistTurns--;
+        updates.fireResistTurns = player.fireResistTurns;
+        if (player.fireResistTurns === 0) logMessage("Your fire resistance fades.");
     }
 
     // --- TICK COOLDOWNS ---
@@ -10816,6 +11271,20 @@ function endPlayerTurn() {
     // Save any status effect changes if buffs didn't already
     if (Object.keys(updates).length > 0) {
         playerRef.update(updates);
+    }
+
+    // --- PALADIN: HOLY AURA ---
+    if (player.talents && player.talents.includes('holy_aura')) {
+        // Heal Companion
+        if (player.companion && player.companion.hp < player.companion.maxHp) {
+            player.companion.hp = Math.min(player.companion.maxHp, player.companion.hp + 2);
+            if (Math.random() < 0.1) logMessage("Holy Aura heals your companion.");
+        }
+        // Small self-regen if critical (Last Stand)
+        if (player.health < player.maxHealth * 0.3) {
+             player.health += 1;
+             triggerStatFlash(statDisplays.health, true);
+        }
     }
 
     renderStats();
@@ -11462,6 +11931,19 @@ async function attemptMovePlayer(newX, newY) {
         newTile = chunkManager.getTile(newX, newY);
     }
 
+    // --- OVERLAY COLLISION CHECK ---
+    // If we are in the overworld, we must check if an enemy exists at these coordinates
+    // in the Shared Enemy database, even if the terrain says it's empty.
+    if (gameState.mapMode === 'overworld') {
+        const enemyKey = `overworld:${newX},${-newY}`;
+        const overlayEnemy = gameState.sharedEnemies[enemyKey];
+        
+        if (overlayEnemy) {
+            // We found an enemy! Temporarily override 'newTile' so the combat logic below triggers.
+            newTile = overlayEnemy.tile;
+        }
+    }
+
     const tileData = TILE_DATA[newTile];
 
     if (gameState.mapMode === 'castle' && gameState.friendlyNpcs) {
@@ -11518,6 +12000,22 @@ async function attemptMovePlayer(newX, newY) {
     const enemyData = ENEMY_DATA[newTile];
     if (enemyData) {
         
+        // 1. Calculate Player's Raw Attack Power
+        const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
+        const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
+        
+        let rawDamage = playerStrength + weaponDamage;
+
+        // --- APPLY TALENT MODIFIERS (Gets the 4x bonus based on CURRENT stealth) ---
+        rawDamage = getPlayerDamageModifier(rawDamage); 
+        
+        // --- NOW BREAK STEALTH (Safe to do so) ---
+        if (gameState.player.stealthTurns > 0) {
+            gameState.player.stealthTurns = 0;
+            logMessage("You emerge from the shadows.");
+            playerRef.update({ stealthTurns: 0 }); 
+        }
+        
         // 1. Calculate Player's Raw Attack Power (Shared Logic)
         const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
         const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
@@ -11540,8 +12038,12 @@ async function attemptMovePlayer(newX, newY) {
             let enemyId = enemy ? enemy.id : null;
 
             if (enemy) {
-                // Calculate Final Damage vs Enemy Defense
-                const playerDamage = Math.max(1, rawDamage - (enemy.defense || 0));
+
+                // --- APPLY TALENT MODIFIERS ---
+                
+                const boostedDamage = getPlayerDamageModifier(rawDamage);
+
+                const playerDamage = Math.max(1, boostedDamage - (enemy.defense || 0));
 
                 enemy.health -= playerDamage;
                 
@@ -11851,6 +12353,21 @@ async function attemptMovePlayer(newX, newY) {
 
     let moveCost = TERRAIN_COST[newTile] ?? 0;
 
+    // --- GILL POTION OVERRIDE ---
+    // If we have gills, Deep Water becomes easy to swim (Cost 1)
+    if (newTile === '~' && gameState.player.waterBreathingTurns > 0) {
+        moveCost = 1;
+    }
+
+    if ((newTile === '~' || newTile === '≈') && gameState.player.waterBreathingTurns > 0) {
+        moveCost = 0; // Swim effortlessly
+    }
+
+    if (newTile === 'F' && gameState.player.talents && gameState.player.talents.includes('pathfinder')) {
+        moveCost = 0;
+        if(Math.random() < 0.05) logMessage("You move swiftly through the trees.");
+    }
+
     // Entering a structure should never cost extra stamina
     if (['⛰', '🏰', 'V', '♛', '🕳️'].includes(newTile)) {
         moveCost = 0;
@@ -11955,6 +12472,25 @@ async function attemptMovePlayer(newX, newY) {
             loreTitle.textContent = tileData.title;
             loreContent.textContent = tileData.content;
             loreModal.classList.remove('hidden');
+            return;
+        }
+
+        if (tileData.type === 'barrel') {
+
+            // Let's keep it simple: Attacking it destroys it.
+            
+            logMessage("You smash the barrel open!");
+            if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '.');
+            else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = '.';
+            else chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
+            
+            // 30% chance to drop oil (fuel)
+            if (Math.random() < 0.3) {
+                 logMessage("You salvage some oil.");
+                 // Give lantern fuel/torch duration?
+                 player.candlelightTurns += 20; 
+            }
+            render();
             return;
         }
 
