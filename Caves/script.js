@@ -11997,6 +11997,7 @@ async function attemptMovePlayer(newX, newY) {
     if (enemyData) {
         
         // 1. Calculate Player's Raw Attack Power
+
         const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
         const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
         
@@ -12011,17 +12012,13 @@ async function attemptMovePlayer(newX, newY) {
             logMessage("You emerge from the shadows.");
             playerRef.update({ stealthTurns: 0 }); 
         }
-        
-        // 1. Calculate Player's Raw Attack Power (Shared Logic)
-        const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
-        const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
-        let rawDamage = playerStrength + weaponDamage;
 
         // 2. Critical Hit Check (5% base + 0.5% per Luck)
         const critChance = 0.05 + (gameState.player.luck * 0.005);
         let isCrit = false;
         
         if (Math.random() < critChance) {
+    
             // --- TALENT: BACKSTAB ---
             const mult = (gameState.player.talents && gameState.player.talents.includes('backstab')) ? 3.0 : 1.5;
             rawDamage = Math.floor(rawDamage * 1.5); // 1.5x Damage on Crit
