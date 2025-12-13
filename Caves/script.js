@@ -6133,6 +6133,9 @@ const MAP_SCALE = 2; // 2 pixels per tile (Low res but distinct)
 const CHUNK_SIZE = 16; 
 
 function openWorldMap() {
+
+    updateExploration();
+
     mapModal.classList.remove('hidden');
     renderWorldMap();
 }
@@ -14136,6 +14139,8 @@ async function enterGame(playerData) {
     
     logMessage(`Welcome back, ${playerData.background} of level ${gameState.player.level}.`);
     updateRegionDisplay();
+
+    updateExploration();
 
     loadingIndicator.classList.add('hidden');
     
