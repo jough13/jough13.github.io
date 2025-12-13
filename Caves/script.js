@@ -9490,8 +9490,14 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             updateQuestProgress(newTile); // Uses the original tile ID
 
             const droppedLoot = generateEnemyLoot(player, enemyData);
+
+            // Remove the enemy from local memory immediately so it vanishes 
+            // from the screen before the server listener catches up.
+            if (gameState.sharedEnemies[enemyId]) {
+                delete gameState.sharedEnemies[enemyId];
+            }
+            render(); // Force a re-draw to clear the sprite
             
-            // SAFE LOOT DROP:
             // We only set the tile if it's currently passable terrain.
             // This prevents loot from overwriting a wall if an enemy somehow died inside one.
             const currentTerrain = chunkManager.getTile(newX, newY);
@@ -11405,6 +11411,160 @@ function drinkFromSource() {
 
     } else {
         logMessage("There is no water nearby to drink.");
+    }
+}
+
+function handleChatCommand(message) {
+    // 1. Remove the leading '/' and split into parts
+    const raw = message.substring(1); // "give Rusty Sword 2"
+    const parts = raw.split(' ');     // ["give", "Rusty", "Sword", "2"]
+    const command = parts[0].toLowerCase();
+    const args = parts.slice(1);
+
+    // 2. Command Switch
+    switch (command) {
+        
+        case 'help':
+        case 'commands':
+            logMessage("--- Available Commands ---");
+            logMessage("/who : List online players");
+            logMessage("/stuck : Teleport to spawn (0,0)");
+            logMessage("/tp [x] [y] : Teleport to coordinates");
+            logMessage("/give [item name] [qty] : Spawn an item");
+            logMessage("/heal : Full restore (Cheat)");
+            logMessage("/god : Toggle God Mode (No hunger/thirst/damage)");
+            break;
+
+        case 'who':
+            let onlineList = ["You"];
+            for (const id in otherPlayers) {
+                const p = otherPlayers[id];
+                // Try to get name from email
+                const name = p.email ? p.email.split('@')[0] : "Unknown";
+                onlineList.push(`${name} (Lvl ${p.level || '?'})`);
+            }
+            logMessage(`Online Players (${onlineList.length}): ${onlineList.join(', ')}`);
+            break;
+
+        case 'stuck':
+            gameState.player.x = 0;
+            gameState.player.y = 0;
+            exitToOverworld("You force a teleport back to the village.");
+            break;
+
+        case 'god':
+            gameState.godMode = !gameState.godMode;
+            if (gameState.godMode) {
+                logMessage("God Mode ENABLED. You are immortal.");
+                // Prevent death in damage logic by adding a check for gameState.godMode
+            } else {
+                logMessage("God Mode DISABLED.");
+            }
+            break;
+
+        case 'heal':
+            gameState.player.health = gameState.player.maxHealth;
+            gameState.player.mana = gameState.player.maxMana;
+            gameState.player.stamina = gameState.player.maxStamina;
+            gameState.player.hunger = gameState.player.maxHunger;
+            gameState.player.thirst = gameState.player.maxThirst;
+            playerRef.update({
+                health: gameState.player.health,
+                mana: gameState.player.mana,
+                stamina: gameState.player.stamina,
+                hunger: gameState.player.hunger,
+                thirst: gameState.player.thirst
+            });
+            renderStats();
+            logMessage("Cheater! (Health fully restored)");
+            break;
+
+        case 'tp':
+            if (args.length < 2) {
+                logMessage("Usage: /tp [x] [y]");
+                return;
+            }
+            const tx = parseInt(args[0]);
+            const ty = parseInt(args[1]); // Remember y is usually inverted in display, but raw here
+            
+            if (isNaN(tx) || isNaN(ty)) {
+                logMessage("Invalid coordinates.");
+                return;
+            }
+
+            gameState.player.x = tx;
+            gameState.player.y = -ty; // Invert Y to match map display logic if needed, or keep raw
+            
+            // Handle visual updates
+            chunkManager.unloadOutOfRangeChunks(
+                Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE),
+                Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE)
+            );
+            
+            logMessage(`Teleported to ${tx}, ${ty}.`);
+            updateRegionDisplay();
+            render();
+            syncPlayerState();
+            
+            playerRef.update({ x: gameState.player.x, y: gameState.player.y });
+            break;
+
+        case 'give':
+            if (args.length < 1) {
+                logMessage("Usage: /give [item name] [quantity]");
+                return;
+            }
+
+            // Logic to handle multi-word items (e.g. "Rusty Sword")
+            // Check if the last argument is a number (quantity)
+            let quantity = 1;
+            let itemName = "";
+            
+            const lastArg = args[args.length - 1];
+            if (!isNaN(parseInt(lastArg))) {
+                quantity = parseInt(lastArg);
+                itemName = args.slice(0, -1).join(' '); // Join the rest as name
+            } else {
+                itemName = args.join(' '); // No number, assume name
+            }
+
+            // Case-insensitive search in ITEM_DATA
+            const targetKey = Object.keys(ITEM_DATA).find(k => 
+                ITEM_DATA[k].name.toLowerCase() === itemName.toLowerCase()
+            );
+
+            if (targetKey) {
+                const template = ITEM_DATA[targetKey];
+                
+                // Add to inventory
+                if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    gameState.player.inventory.push({
+                        name: template.name,
+                        type: template.type,
+                        quantity: quantity,
+                        tile: targetKey,
+                        // Copy properties if they exist
+                        damage: template.damage || null,
+                        defense: template.defense || null,
+                        slot: template.slot || null,
+                        statBonuses: template.statBonuses || null,
+                        effect: template.effect // Copy function ref
+                    });
+                    
+                    logMessage(`Spawned ${quantity}x ${template.name}.`);
+                    renderInventory();
+                    playerRef.update({ inventory: getSanitizedInventory() });
+                } else {
+                    logMessage("Inventory full!");
+                }
+            } else {
+                logMessage(`Item '${itemName}' not found.`);
+            }
+            break;
+
+        default:
+            logMessage(`Unknown command: /${command}. Type /help for list.`);
+            break;
     }
 }
 
@@ -13464,9 +13624,16 @@ chatInput.addEventListener('keydown', (event) => {
         event.preventDefault();
         return;
     }
+    
     if (event.key === 'Enter' && chatInput.value) {
-        const message = chatInput.value;
-        chatInput.value = '';
+        const message = chatInput.value.trim();
+        chatInput.value = ''; // Clear input immediately
+
+        if (message.startsWith('/')) {
+            handleChatCommand(message);
+            return; // Don't send commands to global chat
+        }
+
         const messageRef = rtdb.ref('chat').push();
         messageRef.set({
             senderId: player_id,
@@ -13795,6 +13962,8 @@ async function enterGame(playerData) {
     renderTime();
     resizeCanvas();
     render();
+
+    renderHotbar();
     
     canvas.style.visibility = 'visible';
     syncPlayerState();
