@@ -4403,6 +4403,29 @@ elevationNoise.init(WORLD_SEED + ':elevation');
 const moistureNoise = Object.create(Perlin);
 moistureNoise.init(WORLD_SEED + ':moisture');
 
+/**
+ * Returns a clean array of inventory items ready for Firebase storage.
+ * Removes functions (like 'effect') and ensures data consistency.
+ */
+function getSanitizedInventory() {
+    return gameState.player.inventory.map(item => ({
+        name: item.name,
+        type: item.type,
+        quantity: item.quantity,
+        tile: item.tile,
+        damage: item.damage || null,
+        slot: item.slot || null,
+        defense: item.defense || null,
+        statBonuses: item.statBonuses || null,
+        spellId: item.spellId || null,
+        skillId: item.skillId || null,
+        stat: item.stat || null,
+        isEquipped: item.isEquipped || false,
+        // When we add Durability later, we only need to add it HERE:
+        // durability: item.durability || null 
+    }));
+}
+
 const TileRenderer = {
     // Helper: Deterministic random based on WORLD coordinates
     getPseudoRandom: (x, y) => {
@@ -6018,8 +6041,7 @@ function handleItemDrop(event) {
         }));
     
         playerRef.update({
-        inventory: inventoryToSave
-    
+        inventory: getSanitizedInventory()
     }); // Save the clean version
 
     // 7. Exit drop mode
@@ -6367,25 +6389,9 @@ function handleBuyItem(itemName) {
         inventory: player.inventory
     });
 
-    const inventoryToSave = gameState.player.inventory.map(item => ({
-        name: item.name,
-        type: item.type,
-        quantity: item.quantity,
-        tile: item.tile,
-        damage: item.damage || null,
-        slot: item.slot || null,
-        defense: item.defense || null,
-        statBonuses: item.statBonuses || null,
-        spellId: item.spellId || null,
-        skillId: item.skillId || null,
-        stat: item.stat || null,
-        isEquipped: item.isEquipped || false
-    
-        }));
-    
     playerRef.update({
         coins: player.coins,
-        inventory: inventoryToSave // Save the clean version
+        inventory: getSanitizedInventory()
     });
 
     renderShop(); // Re-render the shop to show new gold and inventory
@@ -6505,25 +6511,11 @@ function handleSellItem(itemIndex) {
     }
 
     // 3. Update database and UI
-    const inventoryToSave = gameState.player.inventory.map(item => ({
-        name: item.name,
-        type: item.type,
-        quantity: item.quantity,
-        tile: item.tile,
-        damage: item.damage || null,
-        slot: item.slot || null,
-        defense: item.defense || null,
-        statBonuses: item.statBonuses || null,
-        spellId: item.spellId || null,
-        skillId: item.skillId || null,
-        stat: item.stat || null,
-        isEquipped: item.isEquipped || false
-    }));
-
     playerRef.update({
         coins: player.coins,
-        inventory: inventoryToSave 
+        inventory: getSanitizedInventory() 
     });
+
     renderShop();
     renderInventory();
     renderStats();
@@ -8191,21 +8183,7 @@ function turnInQuest(questId) {
     playerRef.update({
         quests: gameState.player.quests,
         coins: gameState.player.coins,
-        inventory: gameState.player.inventory.map(item => ({ 
-            name: item.name,
-            type: item.type,
-            quantity: item.quantity,
-            tile: item.tile,
-            damage: item.damage || null,
-            slot: item.slot || null,
-            defense: item.defense || null,
-    
-            statBonuses: item.statBonuses || null,
-            spellId: item.spellId || null,
-            skillId: item.skillId || null,
-            stat: item.stat || null,
-            isEquipped: item.isEquipped || false
-        }))
+        inventory: getSanitizedInventory()
     });
 
     renderBountyBoard(); // Re-render the modal
@@ -8624,23 +8602,9 @@ function handleCraftItem(recipeName) {
     }
 
     // 7. Update Database & UI
-    const inventoryToSave = gameState.player.inventory.map(item => ({
-        name: item.name,
-        type: item.type,
-        quantity: item.quantity,
-        tile: item.tile,
-        damage: item.damage || null,
-        slot: item.slot || null,
-        defense: item.defense || null,
-        statBonuses: item.statBonuses || null,
-        spellId: item.spellId || null,
-        skillId: item.skillId || null,
-        stat: item.stat || null,
-        isEquipped: item.isEquipped || false
-    }));
-    
+    // 7. Update Database & UI
     playerRef.update({ 
-        inventory: inventoryToSave,
+        inventory: getSanitizedInventory(),
         craftingLevel: player.craftingLevel,
         craftingXp: player.craftingXp,
         craftingXpToNext: player.craftingXpToNext
@@ -10350,7 +10314,9 @@ async function processOverworldEnemyTurns() {
     // A list to batch our updates for efficiency
     let movesToMake = [];
 
-    // --- NEW: Chance for an enemy to chase you ---
+    const movedEnemies = new Set();
+
+    // --- Chance for an enemy to chase you ---
     const CHASE_CHANCE = 0.5; // 50% chance to chase
 
     // 2. Loop through the search box
@@ -10363,6 +10329,9 @@ async function processOverworldEnemyTurns() {
 
             // 3. Is this tile an enemy?
             if (ENEMY_DATA[tile]) {
+
+                const enemyId = `overworld:${x},${-y}`; // Construct ID
+                if (movedEnemies.has(enemyId)) continue; // Skip if already moved
 
                 // 4. Try to move it (75% chance)
                 if (Math.random() < 0.75) {
@@ -10416,6 +10385,9 @@ async function processOverworldEnemyTurns() {
                             // Don't move the enemy, they used their turn to attack
                             continue; 
                         }
+
+                        const newEnemyId = `overworld:${newX},${-newY}`;
+                        movedEnemies.add(newEnemyId);
 
                         movesToMake.push({
                             oldX: x,
@@ -11837,7 +11809,11 @@ function useInventoryItem(itemIndex) {
             const tx = Math.floor(gameState.player.x + Math.cos(angle) * dist);
             const ty = Math.floor(gameState.player.y + Math.sin(angle) * dist);
             gameState.activeTreasure = { x: tx, y: ty };
+
+            playerRef.update({ activeTreasure: gameState.activeTreasure });
+
             logMessage(`The map reveals a hidden mark! Location: (${tx}, ${-ty}).`);
+            
         } else {
              logMessage(`The map marks a location at (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y}).`);
         }
@@ -11846,18 +11822,10 @@ function useInventoryItem(itemIndex) {
     } else {
         logMessage(`You can't use '${itemToUse.name}' right now.`);
     }
-
-    if (itemUsed) {
-        // Sanitize for DB
-        const inventoryToSave = gameState.player.inventory.map(item => ({
-            name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
-            damage: item.damage || null, slot: item.slot || null, defense: item.defense || null,
-            statBonuses: item.statBonuses || null, spellId: item.spellId || null,
-            skillId: item.skillId || null, stat: item.stat || null, isEquipped: item.isEquipped || false
-        }));
-
+    
+        if (itemUsed) {
         playerRef.update({
-            inventory: inventoryToSave,
+            inventory: getSanitizedInventory(),
             equipment: gameState.player.equipment,
             health: gameState.player.health,
             mana: gameState.player.mana,
@@ -11865,7 +11833,7 @@ function useInventoryItem(itemIndex) {
             psyche: gameState.player.psyche,
             strength: gameState.player.strength,
             wits: gameState.player.wits,
-            // ... (Other stats implied synced via object assign usually, but explict here is safe)
+
             strengthBonus: gameState.player.strengthBonus,
             strengthBonusTurns: gameState.player.strengthBonusTurns
         });
@@ -13432,16 +13400,12 @@ async function attemptMovePlayer(newX, newY) {
 
     let updates = {
         x: gameState.player.x, y: gameState.player.y, health: gameState.player.health,
-        stamina: gameState.player.stamina, coins: gameState.player.coins
+        stamina: gameState.player.stamina, coins: gameState.player.coins,
+        activeTreasure: gameState.activeTreasure
     };
 
     if (inventoryWasUpdated) {
-        updates.inventory = gameState.player.inventory.map(item => ({
-            name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
-            damage: item.damage || null, slot: item.slot || null, defense: item.defense || null,
-            statBonuses: item.statBonuses || null, spellId: item.spellId || null,
-            skillId: item.skillId || null, stat: item.stat || null, isEquipped: item.isEquipped || false
-        }));
+        updates.inventory = getSanitizedInventory();
         updates.lootedTiles = Array.from(gameState.lootedTiles);
         renderInventory(); 
     }
@@ -13567,20 +13531,7 @@ logoutButton.addEventListener('click', () => {
     // Create a clean version of the inventory before saving
 
     if (finalState.inventory) {
-        finalState.inventory = finalState.inventory.map(item => ({
-            name: item.name,
-            type: item.type,
-            quantity: item.quantity,
-            tile: item.tile,
-            damage: item.damage || null,
-            slot: item.slot || null,
-            defense: item.defense || null,
-            statBonuses: item.statBonuses || null,
-            spellId: item.spellId || null,
-            skillId: item.skillId || null,
-            stat: item.stat || null,
-            isEquipped: item.isEquipped || false
-        }));
+        finalState.inventory = getSanitizedInventory();
     }
 
     delete finalState.color;
@@ -13618,6 +13569,13 @@ async function enterGame(playerData) {
         ...playerData
     };
     Object.assign(gameState.player, fullPlayerData);
+
+    if (playerData.activeTreasure) {
+        gameState.activeTreasure = playerData.activeTreasure;
+        logMessage(`You recall a location marked on your map: (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y})`);
+    } else {
+        gameState.activeTreasure = null;
+    }
 
     gameState.mapMode = playerData.mapMode || 'overworld';
 
@@ -13674,20 +13632,7 @@ async function enterGame(playerData) {
                 };
 
                 if (finalState.inventory) {
-                    finalState.inventory = finalState.inventory.map(item => ({
-                        name: item.name,
-                        type: item.type,
-                        quantity: item.quantity,
-                        tile: item.tile,
-                        damage: item.damage || null,
-                        slot: item.slot || null,
-                        defense: item.defense || null,
-                        statBonuses: item.statBonuses || null,
-                        spellId: item.spellId || null,
-                        skillId: item.skillId || null,
-                        stat: item.stat || null,
-                        isEquipped: item.isEquipped || false
-                    }));
+                    finalState.inventory = getSanitizedInventory();
                 }
 
                 delete finalState.color;
