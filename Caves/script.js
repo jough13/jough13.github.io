@@ -4636,6 +4636,95 @@ const TileRenderer = {
     }
 };
 
+// --- MINIMAP SYSTEM ---
+const minimapCanvas = document.getElementById('minimapCanvas');
+const minimapCtx = minimapCanvas.getContext('2d');
+
+// Settings
+const MINIMAP_SCALE = 4; // Each tile is 4x4 pixels
+const MINIMAP_RANGE = 25; // Show 25 tiles in every direction (50x50 view)
+
+function getMinimapColor(tile, mapMode) {
+    // 1. Terrain & Biomes
+    if (tile === '.') return '#22c55e'; // Plains (Green)
+    if (tile === 'F') return '#14532d'; // Forest (Dark Green)
+    if (tile === '~') return '#3b82f6'; // Water (Blue)
+    if (tile === '≈') return '#422006'; // Swamp (Brown)
+    if (tile === '^') return '#57534e'; // Mountain (Grey)
+    if (tile === 'd') return '#2d2d2d'; // Deadlands (Dark Grey)
+    if (tile === 'D') return '#fde047'; // Desert (Yellow)
+    
+    // 2. Structures
+    if (tile === '🧱' || tile === '▓') return '#78716c'; // Walls
+    if (tile === '=' || tile === '+') return '#78350f'; // Wood/Floors
+    if (['V', '🏰', '♛'].includes(tile)) return '#a855f7'; // Purple (Landmarks)
+    if (['⛰', '🕳️', 'Ω'].includes(tile)) return '#000000'; // Black (Entrances)
+
+    // 3. Loot & Resources (Bright colors to stand out)
+    if (['$', '📦', '✨'].includes(tile)) return '#facc15'; // Gold
+    if (['🌿', '🍄', ':'].includes(tile)) return '#ef4444'; // Red
+
+    // 4. Dungeon Specifics
+    if (mapMode === 'dungeon') {
+        // Fallback to theme colors if available
+        const theme = CAVE_THEMES[gameState.currentCaveTheme];
+        if (theme) {
+            if (tile === theme.floor) return theme.colors.floor;
+            if (tile === theme.wall) return theme.colors.wall;
+        }
+    }
+    
+    return '#111827'; // Default Background
+}
+
+function renderMinimap() {
+    if (!minimapCanvas || !gameState.player) return;
+
+    // 1. Clear background
+    minimapCtx.fillStyle = '#000000';
+    minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+
+    const centerX = minimapCanvas.width / 2;
+    const centerY = minimapCanvas.height / 2;
+    const player = gameState.player;
+
+    // 2. Loop through visible range
+    for (let y = -MINIMAP_RANGE; y <= MINIMAP_RANGE; y++) {
+        for (let x = -MINIMAP_RANGE; x <= MINIMAP_RANGE; x++) {
+            const worldX = player.x + x;
+            const worldY = player.y + y;
+            
+            let tile = ' ';
+
+            // Fetch Tile based on Mode
+            if (gameState.mapMode === 'overworld') {
+                tile = chunkManager.getTile(worldX, worldY);
+            } else if (gameState.mapMode === 'dungeon') {
+                const map = chunkManager.caveMaps[gameState.currentCaveId];
+                if (map && map[worldY] && map[worldY][worldX]) tile = map[worldY][worldX];
+            } else if (gameState.mapMode === 'castle') {
+                const map = chunkManager.castleMaps[gameState.currentCastleId];
+                if (map && map[worldY] && map[worldY][worldX]) tile = map[worldY][worldX];
+            }
+
+            // Draw Pixel
+            minimapCtx.fillStyle = getMinimapColor(tile, gameState.mapMode);
+            minimapCtx.fillRect(
+                centerX + (x * MINIMAP_SCALE), 
+                centerY + (y * MINIMAP_SCALE), 
+                MINIMAP_SCALE, 
+                MINIMAP_SCALE
+            );
+        }
+    }
+
+    // 3. Draw Player Marker (White Dot in Center)
+    minimapCtx.fillStyle = '#ffffff';
+    minimapCtx.beginPath();
+    minimapCtx.arc(centerX + 2, centerY + 2, 3, 0, Math.PI * 2);
+    minimapCtx.fill();
+}
+
 const chunkManager = {
     CHUNK_SIZE: 16,
     loadedChunks: {},
@@ -6119,6 +6208,134 @@ function generateMagicItem(tier) {
 
     return newItem;
 }
+
+// --- WORLD MAP SYSTEM ---
+const mapModal = document.getElementById('mapModal');
+const worldMapCanvas = document.getElementById('worldMapCanvas');
+const worldMapCtx = worldMapCanvas.getContext('2d');
+const mapCoordsDisplay = document.getElementById('mapCoords');
+
+// Configuration
+const MAP_SCALE = 2; // 2 pixels per tile (Low res but distinct)
+const CHUNK_SIZE = 16; 
+
+function openWorldMap() {
+    mapModal.classList.remove('hidden');
+    renderWorldMap();
+}
+
+function closeWorldMap() {
+    mapModal.classList.add('hidden');
+}
+
+function renderWorldMap() {
+    if (!gameState.player.exploredChunks) return;
+
+    // 1. Determine Map Bounds based on exploration
+    // We scan all visited chunks to find the min/max X and Y
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    
+    // Default to player pos if empty
+    if (gameState.exploredChunks.size === 0) {
+        minX = Math.floor(gameState.player.x / CHUNK_SIZE);
+        maxX = minX;
+        minY = Math.floor(gameState.player.y / CHUNK_SIZE);
+        maxY = minY;
+    }
+
+    gameState.exploredChunks.forEach(chunkId => {
+        const [cx, cy] = chunkId.split(',').map(Number);
+        if (cx < minX) minX = cx;
+        if (cx > maxX) maxX = cx;
+        if (cy < minY) minY = cy;
+        if (cy > maxY) maxY = cy;
+    });
+
+    // Add padding (in chunks)
+    const padding = 2;
+    minX -= padding; maxX += padding;
+    minY -= padding; maxY += padding;
+
+    // 2. Resize Canvas
+    const widthChunks = (maxX - minX) + 1;
+    const heightChunks = (maxY - minY) + 1;
+    
+    worldMapCanvas.width = widthChunks * CHUNK_SIZE * MAP_SCALE;
+    worldMapCanvas.height = heightChunks * CHUNK_SIZE * MAP_SCALE;
+
+    // Fill Black (Unexplored)
+    worldMapCtx.fillStyle = '#000000';
+    worldMapCtx.fillRect(0, 0, worldMapCanvas.width, worldMapCanvas.height);
+
+    // 3. Draw Explored Chunks
+    gameState.exploredChunks.forEach(chunkId => {
+        const [cx, cy] = chunkId.split(',').map(Number);
+        
+        // Calculate where this chunk goes on the canvas
+        const canvasOffsetX = (cx - minX) * CHUNK_SIZE * MAP_SCALE;
+        const canvasOffsetY = (cy - minY) * CHUNK_SIZE * MAP_SCALE;
+
+        // Iterate tiles in this chunk
+        for (let y = 0; y < CHUNK_SIZE; y++) {
+            for (let x = 0; x < CHUNK_SIZE; x++) {
+                const worldX = cx * CHUNK_SIZE + x;
+                const worldY = cy * CHUNK_SIZE + y;
+
+                // --- FAST BIOME LOOKUP ---
+                // We use the noise functions directly. This is much faster than 
+                // loading the actual chunk data from the database.
+                const color = getBiomeColorForMap(worldX, worldY);
+
+                worldMapCtx.fillStyle = color;
+                worldMapCtx.fillRect(
+                    canvasOffsetX + (x * MAP_SCALE), 
+                    canvasOffsetY + (y * MAP_SCALE), 
+                    MAP_SCALE, 
+                    MAP_SCALE
+                );
+            }
+        }
+    });
+
+    // 4. Draw Player Marker
+    const pX = gameState.player.x;
+    const pY = gameState.player.y;
+    const pChunkX = Math.floor(pX / CHUNK_SIZE);
+    const pChunkY = Math.floor(pY / CHUNK_SIZE);
+
+    // Only draw if player is within the bounds (should always be true)
+    const playerCanvasX = ((pChunkX - minX) * CHUNK_SIZE + (pX % CHUNK_SIZE)) * MAP_SCALE;
+    const playerCanvasY = ((pChunkY - minY) * CHUNK_SIZE + (pY % CHUNK_SIZE)) * MAP_SCALE;
+
+    // Pulsing Red Dot
+    worldMapCtx.fillStyle = '#ef4444';
+    worldMapCtx.beginPath();
+    worldMapCtx.arc(playerCanvasX, playerCanvasY, 4, 0, Math.PI * 2);
+    worldMapCtx.fill();
+    worldMapCtx.strokeStyle = '#fff';
+    worldMapCtx.lineWidth = 2;
+    worldMapCtx.stroke();
+    
+    // Update Coords Text
+    mapCoordsDisplay.textContent = `Current Location: ${pX}, ${-pY}`;
+}
+
+// Helper to get color purely from math (Seed)
+function getBiomeColorForMap(x, y) {
+    const elev = elevationNoise.noise(x / 70, y / 70);
+    const moist = moistureNoise.noise(x / 50, y / 50);
+
+    if (elev < 0.35) return '#3b82f6'; // Water
+    if (elev < 0.4 && moist > 0.7) return '#422006'; // Swamp
+    if (elev > 0.8) return '#57534e'; // Mountain
+    if (elev > 0.6 && moist < 0.3) return '#2d2d2d'; // Deadlands
+    if (moist < 0.15) return '#fde047'; // Desert
+    if (moist > 0.55) return '#14532d'; // Forest
+    return '#22c55e'; // Plains
+}
+
+// Listeners
+document.getElementById('closeMapButton').addEventListener('click', closeWorldMap);
 
 /**
  * Generates loot when an enemy is defeated.
@@ -11504,6 +11721,7 @@ function handleChatCommand(message) {
             logMessage(`Teleported to ${tx}, ${ty}.`);
             updateRegionDisplay();
             render();
+            renderMinimap();
             syncPlayerState();
             
             playerRef.update({ x: gameState.player.x, y: gameState.player.y });
@@ -11670,7 +11888,12 @@ function handleInput(key) {
 
     // --- MENUS ---
     if (key === 'i' || key === 'I') { openInventoryModal(); return; }
-    if (key === 'm' || key === 'M') { openSpellbook(); return; }
+    if (key === 'm' || key === 'M') { openWorldMap(); return; }
+    if (key === 'b' || key === 'B') { openSpellbook(); return; }
+        event.preventDefault(); // Stop tab switching focus
+        openWorldMap(); 
+        return; 
+    }
     if (key === 'k' || key === 'K') { openSkillbook(); return; }
     if (key === 'c' || key === 'C') { openCollections(); return; }
     if (key === 'p' || key === 'P') { openTalentModal(); return; }
@@ -13555,6 +13778,7 @@ async function attemptMovePlayer(newX, newY) {
     passivePerceptionCheck();
     triggerAtmosphericFlavor(newTile);
     render();
+    
     updateRegionDisplay();
     syncPlayerState();
 
