@@ -1918,6 +1918,8 @@ function createDefaultPlayerState() {
 
         activeTreasure: null,
 
+        exploredChunks: [],
+
         quests: {},
 
         hotbar: [null, null, null, null, null], // 5 slots
@@ -6336,6 +6338,21 @@ function getBiomeColorForMap(x, y) {
 
 // Listeners
 document.getElementById('closeMapButton').addEventListener('click', closeWorldMap);
+
+function updateExploration() {
+    // Only track exploration in the Overworld
+    if (gameState.mapMode !== 'overworld') return false;
+
+    const chunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+    const chunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+    const chunkId = `${chunkX},${chunkY}`;
+
+    if (!gameState.exploredChunks.has(chunkId)) {
+        gameState.exploredChunks.add(chunkId);
+        return true; // Return true to signal that we need to save
+    }
+    return false;
+}
 
 /**
  * Generates loot when an enemy is defeated.
@@ -11887,13 +11904,10 @@ function handleInput(key) {
     }
 
     // --- MENUS ---
+    // --- MENUS ---
     if (key === 'i' || key === 'I') { openInventoryModal(); return; }
     if (key === 'm' || key === 'M') { openWorldMap(); return; }
     if (key === 'b' || key === 'B') { openSpellbook(); return; }
-        event.preventDefault(); // Stop tab switching focus
-        openWorldMap(); 
-        return; 
-    }
     if (key === 'k' || key === 'K') { openSkillbook(); return; }
     if (key === 'c' || key === 'C') { openCollections(); return; }
     if (key === 'p' || key === 'P') { openTalentModal(); return; }
@@ -13782,11 +13796,21 @@ async function attemptMovePlayer(newX, newY) {
     updateRegionDisplay();
     syncPlayerState();
 
+    const newExploration = updateExploration();
+
     let updates = {
-        x: gameState.player.x, y: gameState.player.y, health: gameState.player.health,
-        stamina: gameState.player.stamina, coins: gameState.player.coins,
+        x: gameState.player.x, 
+        y: gameState.player.y, 
+        health: gameState.player.health,
+        stamina: gameState.player.stamina, 
+        coins: gameState.player.coins,
         activeTreasure: gameState.activeTreasure
     };
+
+    // If we found a new chunk, add it to the save list
+    if (newExploration) {
+        updates.exploredChunks = Array.from(gameState.exploredChunks);
+    }
 
     if (inventoryWasUpdated) {
         updates.inventory = getSanitizedInventory();
@@ -13989,6 +14013,12 @@ async function enterGame(playerData) {
         gameState.lootedTiles = new Set();
     }
 
+    if (playerData.exploredChunks && Array.isArray(playerData.exploredChunks)) {
+        gameState.exploredChunks = new Set(playerData.exploredChunks);
+    } else {
+        gameState.exploredChunks = new Set();
+    }
+
     // --- 3. Check Background (Safety Check) ---
     if (!playerData.background) {
         // If no background, redirect to character creation
@@ -14019,7 +14049,8 @@ async function enterGame(playerData) {
                 // Prepare final save state on disconnect
                 const finalState = {
                     ...gameState.player,
-                    lootedTiles: Array.from(gameState.lootedTiles)
+                    lootedTiles: Array.from(gameState.lootedTiles),
+                    exploredChunks: Array.from(gameState.exploredChunks)
                 };
 
                 if (finalState.inventory) {
