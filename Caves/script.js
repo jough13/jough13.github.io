@@ -10453,12 +10453,6 @@ function getBaseTerrain(worldX, worldY) {
 async function processOverworldEnemyTurns() {
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
-
-    const enemyCount = Object.keys(gameState.sharedEnemies).length;
-    if (enemyCount > 0) {
-        console.log(`Processing ${enemyCount} enemies. Player at ${playerX}, ${playerY}`);
-    }
-
     const CHASE_RADIUS = 15; 
     const CHASE_RADIUS_SQ = CHASE_RADIUS * CHASE_RADIUS;
 
@@ -10468,117 +10462,126 @@ async function processOverworldEnemyTurns() {
     let movesToMake = [];
     const movedEnemies = new Set(); 
 
-    // Debug Counter
-    let enemiesFound = 0;
-    let enemiesMoved = 0;
-
+    // --- 1. DECISION PHASE ---
     for (const key in gameState.sharedEnemies) {
-        enemiesFound++;
         const enemy = gameState.sharedEnemies[key];
         
+        // Parse ID "overworld:x,y"
         const parts = key.split(':');
         if (parts.length < 2) continue;
         const coords = parts[1].split(',');
         const x = parseInt(coords[0]);
-        const y = -parseInt(coords[1]); 
+        const y = -parseInt(coords[1]); // Invert Y back to world space
 
         const distSq = Math.pow(x - playerX, 2) + Math.pow(y - playerY, 2);
         
-        // Debug: Print distance of first few enemies
-        // if (enemiesFound < 3) console.log(`Enemy at ${x},${y} Dist: ${Math.sqrt(distSq)}`);
-
         if (distSq > CHASE_RADIUS_SQ) continue;
         if (movedEnemies.has(key)) continue;
 
-        // FORCE MOVE: 100% chance for testing
-        if (true) { 
-            let dirX = 0, dirY = 0;
-            
-            // AGGRESSIVE CHASE (Always move towards player)
-            if (x < playerX) dirX = 1;
-            if (x > playerX) dirX = -1;
-            if (y < playerY) dirY = 1;
-            if (y > playerY) dirY = -1;
+        // Determine Direction
+        let dirX = 0, dirY = 0;
+        
+        // Simple Chase Logic
+        if (x < playerX) dirX = 1;
+        if (x > playerX) dirX = -1;
+        if (y < playerY) dirY = 1;
+        if (y > playerY) dirY = -1;
 
-            // Randomize axis if diagonal
-            if (dirX !== 0 && dirY !== 0) {
-                if (Math.random() < 0.5) dirX = 0;
-                else dirY = 0;
-            }
+        // Random Jitter (10%): Helps them get unstuck from corners/trees
+        if (Math.random() < 0.10) {
+            if (Math.random() < 0.5) dirX = Math.random() < 0.5 ? 1 : -1;
+            else dirY = Math.random() < 0.5 ? 1 : -1;
+        }
 
-            if (dirX === 0 && dirY === 0) continue;
+        if (dirX === 0 && dirY === 0) continue;
 
-            const newX = x + dirX;
-            const newY = y + dirY;
+        // Smart Pathing: Try Ideal -> Slide X -> Slide Y
+        const isValidMove = (checkX, checkY) => {
+            const tile = chunkManager.getTile(checkX, checkY);
+            // Allow basic terrain + custom biomes + existing enemy tiles
+            const passable = ['.', 'F', 'd', 'D', '^', '≈'].includes(tile) || ENEMY_DATA[tile];
+            if (!passable) return false;
 
-            // Check Terrain
-            const targetTile = chunkManager.getTile(newX, newY);
-            let canMove = false;
-            
-            // Allow movement on common terrain
-            if (['.', 'F', 'd', 'D'].includes(targetTile)) canMove = true;
-            
-            // Special case: "Ghost" tiles (if map thinks it's an enemy, it's walkable)
-            if (ENEMY_DATA[targetTile]) canMove = true; 
+            // Prevent stacking on Player
+            if (checkX === playerX && checkY === playerY) return false;
 
-            if (canMove) {
-                // Check Player Collision
-                if (newX === playerX && newY === playerY) {
-                    // Attack logic handled by client renderer/collision usually, 
-                    // but we can force a log here to prove they are trying.
-                    // logMessage(`Enemy at ${x},${y} bumps into you!`); 
-                    continue; 
-                }
+            // Prevent stacking on pending moves
+            const futureKey = `overworld:${checkX},${-checkY}`;
+            if (gameState.sharedEnemies[futureKey] || movedEnemies.has(futureKey)) return false;
 
-                // Check Enemy Collision
-                const newKey = `overworld:${newX},${-newY}`;
-                if (gameState.sharedEnemies[newKey] || movedEnemies.has(newKey)) {
-                    continue; 
-                }
+            return true;
+        };
 
-                movedEnemies.add(newKey);
-                movedEnemies.add(key);
+        let moveX = 0;
+        let moveY = 0;
+        let foundMove = false;
 
-                movesToMake.push({
-                    oldKey: key,
-                    newKey: newKey,
-                    data: enemy,
-                    oldX: x, oldY: y,
-                    tile: enemy.tile
-                });
-                enemiesMoved++;
+        // 1. Try Ideal Diagonal
+        if (dirX !== 0 && dirY !== 0 && isValidMove(x + dirX, y + dirY)) {
+            moveX = dirX; moveY = dirY; foundMove = true;
+        } 
+        // 2. Slide X
+        else if (dirX !== 0 && isValidMove(x + dirX, y)) {
+            moveX = dirX; moveY = 0; foundMove = true;
+        }
+        // 3. Slide Y
+        else if (dirY !== 0 && isValidMove(x, y + dirY)) {
+            moveX = 0; moveY = dirY; foundMove = true;
+        }
 
-                if (distSq < minDist) {
-                    minDist = distSq;
-                    nearestEnemyDir = { x: dirX, y: dirY };
-                }
+        if (foundMove) {
+            const newX = x + moveX;
+            const newY = y + moveY;
+            const newKey = `overworld:${newX},${-newY}`;
+
+            movedEnemies.add(newKey); // Reserve this spot so others don't take it
+            movedEnemies.add(key);    // Mark self as moved
+
+            movesToMake.push({
+                oldKey: key,
+                newKey: newKey,
+                data: enemy,
+                oldX: x, oldY: y,
+                tile: enemy.tile
+            });
+
+            if (distSq < minDist) {
+                minDist = distSq;
+                nearestEnemyDir = { x: moveX, y: moveY };
             }
         }
     }
 
-    if (enemiesMoved > 0) {
-        console.log(`🤖 AI Moving ${enemiesMoved} enemies.`);
+    // --- 2. EXECUTION PHASE ---
+    if (movesToMake.length > 0) {
+        console.log(`🤖 Moving ${movesToMake.length} enemies.`);
     }
 
-    // Execute Batch Moves
     for (const move of movesToMake) {
+        // A. Update Firebase (Async)
         const oldRef = rtdb.ref(`worldEnemies/${move.oldKey}`);
         const newRef = rtdb.ref(`worldEnemies/${move.newKey}`);
 
-        try {
-            await newRef.set(move.data);
-            await oldRef.remove();
+        // We don't await this. We let it happen in the background.
+        newRef.set(move.data).then(() => {
+            oldRef.remove();
+        }).catch(err => console.error("Move sync error:", err));
 
-            // Cleanup static map if needed
-            const currentStaticTile = chunkManager.getTile(move.oldX, move.oldY);
-            if (currentStaticTile === move.tile) {
-                const baseTerrain = getBaseTerrain(move.oldX, move.oldY);
-                chunkManager.setWorldTile(move.oldX, move.oldY, baseTerrain);
-            }
-        } catch (err) {
-            console.error("Enemy move failed:", err);
+        // B. Update Local State IMMEDIATELY (Predictive Movement)
+        // This makes the movement feel instant on your screen
+        delete gameState.sharedEnemies[move.oldKey];
+        gameState.sharedEnemies[move.newKey] = move.data;
+
+        // C. Clean up Static Map
+        // If the enemy moved off a tile that still visually shows a static 'r' or 'g', clear it to grass.
+        const currentStaticTile = chunkManager.getTile(move.oldX, move.oldY);
+        if (currentStaticTile === move.tile) {
+            chunkManager.setWorldTile(move.oldX, move.oldY, '.');
         }
     }
+    
+    // Force a re-render to show the local updates instantly
+    render();
 
     return nearestEnemyDir;
 }
