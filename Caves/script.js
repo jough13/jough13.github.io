@@ -5582,6 +5582,8 @@ const gameState = {
     lootedTiles: new Set(),
     discoveredRegions: new Set(),
 
+    activeTreasure: null,
+
     mapMode: null,
 
     currentCaveId: null,
@@ -5915,6 +5917,11 @@ async function wakeUpNearbyEnemies() {
                                 ...scaledStats,
                                 tile: tile // Ensure visual consistency
                             };
+
+                        gameState.sharedEnemies[enemyId] = newEnemy;
+                            
+                            return newEnemy;
+
                         }
                         return; // Already exists, do nothing
                     });
@@ -10430,6 +10437,12 @@ function getBaseTerrain(worldX, worldY) {
 async function processOverworldEnemyTurns() {
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
+
+    const enemyCount = Object.keys(gameState.sharedEnemies).length;
+    if (enemyCount > 0) {
+        console.log(`Processing ${enemyCount} enemies. Player at ${playerX}, ${playerY}`);
+    }
+
     const CHASE_RADIUS = 15; 
     const CHASE_RADIUS_SQ = CHASE_RADIUS * CHASE_RADIUS;
 
@@ -11290,11 +11303,13 @@ function endPlayerTurn() {
     processFriendlyTurns(); // Moves castle guards
     runCompanionTurn();     // Moves your skeleton/pet
 
-    if (gameState.playerTurnCount % 2 === 0) {
-        // Call our async AI wrapper function.
-        // We don't 'await' it; just let it run in the background.
-        runSharedAiTurns();
-    }
+    // --- ENTITY LOGIC ---
+    processFriendlyTurns(); 
+    runCompanionTurn();     
+
+    // FORCE MOVE: Run every turn for now to debug
+    // We removed the % 2 check so they are always active
+    runSharedAiTurns();
 
     // Save any status effect changes if buffs didn't already
     if (Object.keys(updates).length > 0) {
@@ -13631,7 +13646,7 @@ async function attemptMovePlayer(newX, newY) {
         health: gameState.player.health,
         stamina: gameState.player.stamina, 
         coins: gameState.player.coins,
-        activeTreasure: gameState.activeTreasure,
+        activeTreasure: gameState.activeTreasure || null,
 
         weather: gameState.weather || 'clear', // Safety fallback
 
