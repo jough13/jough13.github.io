@@ -5926,12 +5926,22 @@ async function wakeUpNearbyEnemies() {
             if (enemyData) {
                 const enemyId = `overworld:${x},${-y}`;
                 
-                // If it's not already alive...
-                if (!gameState.sharedEnemies[enemyId]) {
-                    
-                    // Mark as processing so we don't spam the DB
-                    wokenEnemyTiles.add(tileId);
+                // --- FIX PART 1: MARK AS PROCESSED IMMEDIATELY ---
+                // We add this to the "Ignore List" NOW. This prevents the code from
+                // trying to spawn this specific tile again during this session,
+                // even if the enemy moves away.
+                wokenEnemyTiles.add(tileId);
 
+                // Check if the enemy is already alive in the database
+                if (gameState.sharedEnemies[enemyId]) {
+                    // --- FIX PART 2: CLEANUP EXISTING ---
+                    // The enemy is already alive (from a previous session or refresh),
+                    // but the static map still shows a sprite. We must erase the static
+                    // sprite so it doesn't look like a duplicate "Ghost".
+                    chunkManager.setWorldTile(x, y, '.');
+                } 
+                else {
+                    // Enemy is NOT alive. Spawn it!
                     const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
                     
                     // Run the transaction
@@ -5951,11 +5961,8 @@ async function wakeUpNearbyEnemies() {
                         return; // Already exists
                     }).then((result) => {
                         if (result.committed) {
-                            // --- CRITICAL FIX: REMOVE THE STATIC TILE ---
-                            // We replace the static 'r' or 'g' with '.' (grass)
-                            // so you don't see a duplicate frozen enemy.
+                            // Remove the static tile so it becomes a dynamic entity
                             chunkManager.setWorldTile(x, y, '.');
-                            // ---------------------------------------------
                         }
                     });
                 }
