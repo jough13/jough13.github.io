@@ -10464,10 +10464,12 @@ function getBaseTerrain(worldX, worldY) {
 }
 
 async function processOverworldEnemyTurns() {
-    // 1. Search Area
-    const searchRadius = 25;
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
+    
+    // 1. Interaction Range
+    const searchRadius = 25; 
+    const searchDistSq = searchRadius * searchRadius;
 
     let nearestEnemyDir = null;
     let minDist = Infinity;
@@ -10475,115 +10477,133 @@ async function processOverworldEnemyTurns() {
 
     let movesToMake = [];
 
-    // Helper: Check if a move is valid
+    // --- MOVEMENT VALIDATOR ---
     const isValidMove = (tx, ty, enemyType) => {
-        const targetTile = chunkManager.getTile(tx, ty);
-        // Enemies can move on plains, or wolves in forests, etc.
-        if (targetTile === '.') return true; 
-        if (enemyType === 'w' && targetTile === 'F') return true; 
-        if (targetTile === 'd' || targetTile === 'D') return true; 
-        return false;
+        const t = chunkManager.getTile(tx, ty);
+        if (t === '~') return false; // Block water
+        if (['.', 'F', 'd', 'D', '≈'].includes(t)) return true; // Allow standard ground
+        if (t === '^') { // Mountains
+            const climbers = ['Y', '🐲', 'Ø', 'g', 'o', '🦇', '🦅'];
+            return climbers.includes(enemyType);
+        }
+        return false; 
     };
 
-    // 2. Iterate nearby area
-    for (let y = playerY - searchRadius; y <= playerY + searchRadius; y++) {
-        for (let x = playerX - searchRadius; x <= playerX + searchRadius; x++) {
-            if (x === playerX && y === playerY) continue;
+    // 2. Iterate ACTIVE ENEMIES (Not Map Tiles)
+    // We loop through the list of enemies that are already "awake"
+    const activeEnemies = Object.values(gameState.sharedEnemies);
 
-            // Check existing Live Enemies (Shared State)
-            const enemyId = `overworld:${x},${-y}`;
-            const enemy = gameState.sharedEnemies[enemyId];
+    for (const enemy of activeEnemies) {
+        
+        // Safety check for malformed data
+        if (typeof enemy.x !== 'number' || typeof enemy.y !== 'number') continue;
 
-            if (enemy) {
-                // Found an enemy!
-                const distSq = Math.pow(playerX - x, 2) + Math.pow(playerY - y, 2);
-                const dist = Math.sqrt(distSq);
+        // A. Distance Check
+        const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
+        
+        // Optimization: Ignore enemies that are too far away
+        if (distSq > searchDistSq) continue;
 
-                // --- 3. DYNAMIC CHASE LOGIC ---
-                let chaseChance = 0.15; 
-                if (dist < 18) chaseChance = 0.40; 
-                if (dist < 8) chaseChance = 0.90; 
+        const dist = Math.sqrt(distSq);
 
-                // 4. Activity Check (75% chance to act)
-                if (Math.random() < 0.75) {
+        // B. Calculate Logic
+        let chaseChance = 0.20; // Idle/Wander
+        if (dist < 20) chaseChance = 0.70; // On Screen
+        if (dist < 10) chaseChance = 1.00; // Close Combat
 
-                    let dirX = 0, dirY = 0;
-                    let isChasing = false;
+        // C. Activity Roll (75% chance to act)
+        if (Math.random() < 0.75) {
+            let dirX = 0, dirY = 0;
+            let isChasing = false;
 
-                    if (Math.random() < chaseChance) {
-                        // CHASE: Target player
-                        dirX = Math.sign(playerX - x);
-                        dirY = Math.sign(playerY - y);
-                        isChasing = true;
-                    } else {
-                        // WANDER: Random
-                        dirX = Math.floor(Math.random() * 3) - 1; 
-                        dirY = Math.floor(Math.random() * 3) - 1; 
-                    }
+            if (Math.random() < chaseChance) {
+                // CHASE
+                dirX = Math.sign(playerX - enemy.x);
+                dirY = Math.sign(playerY - enemy.y);
+                isChasing = true;
+            } else {
+                // WANDER
+                dirX = Math.floor(Math.random() * 3) - 1; 
+                dirY = Math.floor(Math.random() * 3) - 1; 
+            }
 
-                    if (dirX === 0 && dirY === 0) continue;
+            if (dirX === 0 && dirY === 0) continue;
 
-                    // --- 5. SMART PATHFINDING ---
-                    let finalX = x;
-                    let finalY = y;
-                    let canMove = false;
+            // D. Pathfinding (Slide Logic)
+            let finalX = enemy.x;
+            let finalY = enemy.y;
+            let canMove = false;
 
-                    // A. Try Ideal Move
-                    if (isValidMove(x + dirX, y + dirY, enemy.tile)) {
-                        finalX = x + dirX;
-                        finalY = y + dirY;
-                        canMove = true;
-                    } 
-                    // B. Slide Logic (If blocked & chasing)
-                    else if (isChasing) {
-                        if (dirX !== 0 && isValidMove(x + dirX, y, enemy.tile)) {
-                            finalX = x + dirX; finalY = y; canMove = true;
-                        } else if (dirY !== 0 && isValidMove(x, y + dirY, enemy.tile)) {
-                            finalX = x; finalY = y + dirY; canMove = true;
-                        }
-                    }
+            // Try Direct
+            if (isValidMove(enemy.x + dirX, enemy.y + dirY, enemy.tile)) {
+                finalX = enemy.x + dirX;
+                finalY = enemy.y + dirY;
+                canMove = true;
+            } 
+            // Try Slide
+            else if (isChasing) {
+                if (dirX !== 0 && isValidMove(enemy.x + dirX, enemy.y, enemy.tile)) {
+                    finalX = enemy.x + dirX; finalY = enemy.y; canMove = true;
+                } else if (dirY !== 0 && isValidMove(enemy.x, enemy.y + dirY, enemy.tile)) {
+                    finalX = enemy.x; finalY = enemy.y + dirY; canMove = true;
+                }
+            }
 
-                    if (canMove) { 
-                        // Attack Player
-                        if (finalX === playerX && finalY === playerY) {
-                            const dmg = Math.max(1, enemy.attack - (gameState.player.defenseBonus || 0));
-                            gameState.player.health -= dmg;
-                            logMessage(`The ${enemy.name} attacks you for ${dmg} damage!`);
-                            triggerStatFlash(statDisplays.health, false);
-                            continue; 
-                        }
+            if (canMove) { 
+                // Attack Player?
+                if (finalX === playerX && finalY === playerY) {
+                    const dmg = Math.max(1, enemy.attack - (gameState.player.defenseBonus || 0));
+                    gameState.player.health -= dmg;
+                    logMessage(`A ${enemy.name} attacks you for ${dmg} damage!`);
+                    triggerStatFlash(statDisplays.health, false);
+                    continue; 
+                }
 
-                        // Queue Move
-                        movesToMake.push({ oldX: x, oldY: y, newX: finalX, newY: finalY, enemyId: enemyId });
+                // Check collision with other enemies (Basic Check)
+                const isOccupied = activeEnemies.some(e => e.x === finalX && e.y === finalY);
+                if (isOccupied) continue;
 
-                        // Audio Hint
-                        if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
-                            minDist = distSq;
-                            nearestEnemyDir = { x: Math.sign(finalX - playerX), y: Math.sign(finalY - playerY) };
-                        }
-                    }
+                // Queue the Move
+                // Reconstruct the ID based on current position
+                const currentId = `overworld:${enemy.x},${-enemy.y}`;
+                movesToMake.push({ 
+                    oldId: currentId,
+                    newX: finalX, 
+                    newY: finalY, 
+                    enemyData: enemy 
+                });
+
+                // Audio Hint
+                if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
+                    minDist = distSq;
+                    nearestEnemyDir = { x: Math.sign(finalX - playerX), y: Math.sign(finalY - playerY) };
                 }
             }
         }
     }
 
-    // --- Execute Moves ---
+    // 3. Execute Moves (Batched)
     for (const move of movesToMake) {
-        const oldRef = rtdb.ref(`worldEnemies/${move.enemyId}`);
-        const newRef = rtdb.ref(`worldEnemies/overworld:${move.newX},${-move.newY}`);
+        const newId = `overworld:${move.newX},${-move.newY}`;
+        const oldRef = rtdb.ref(`worldEnemies/${move.oldId}`);
+        const newRef = rtdb.ref(`worldEnemies/${newId}`);
         
         try {
+            // Update the enemy data with new coordinates
+            const updatedEnemy = { ...move.enemyData, x: move.newX, y: move.newY };
+
+            // Atomic Move: Set New -> Remove Old
+            // We verify the old one still exists to prevent race conditions
             const snapshot = await oldRef.once('value');
-            const data = snapshot.val();
-            if (data) {
-                await newRef.set(data);
+            if (snapshot.exists()) {
+                await newRef.set(updatedEnemy);
                 await oldRef.remove();
                 
-                // Update Local State (Optimistic)
-                delete gameState.sharedEnemies[move.enemyId];
-                gameState.sharedEnemies[`overworld:${move.newX},${-move.newY}`] = data;
+                // Optimistic Local Update
+                delete gameState.sharedEnemies[move.oldId];
+                gameState.sharedEnemies[newId] = updatedEnemy;
             }
-        } catch (err) { }
+        } catch (err) { console.error("Enemy move failed:", err); }
     }
 
     return nearestEnemyDir;
