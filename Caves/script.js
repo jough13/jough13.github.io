@@ -25,6 +25,8 @@ let worldStateListeners = {};
 
 let activeShopInventory = [];
 
+const wokenEnemyTiles = new Set();
+
 const TILE_DATA = {
     '#': {
         type: 'lore',
@@ -5890,40 +5892,54 @@ const renderStats = () => {
 
 async function wakeUpNearbyEnemies() {
     const player = gameState.player;
-    const WAKE_RADIUS = 8; // Enemies within 8 tiles will start moving
+    const WAKE_RADIUS = 8; 
 
     for (let y = player.y - WAKE_RADIUS; y <= player.y + WAKE_RADIUS; y++) {
         for (let x = player.x - WAKE_RADIUS; x <= player.x + WAKE_RADIUS; x++) {
             
-            // 1. Check if this tile is an enemy type
+            // 1. Unique ID for this specific tile coordinate
+            const tileId = `${x},${y}`;
+
+            // Optimization: If we already woke this tile this session, skip it.
+            if (wokenEnemyTiles.has(tileId)) continue;
+
             const tile = chunkManager.getTile(x, y);
             const enemyData = ENEMY_DATA[tile];
             
             if (enemyData) {
-                // 2. Check if it is already "Awake" (in Firebase)
                 const enemyId = `overworld:${x},${-y}`;
+                
+                // If it's not already alive...
                 if (!gameState.sharedEnemies[enemyId]) {
                     
-                    // 3. Wake it up! (Create entry in DB)
-                    // We check DB first to avoid overwriting an existing one we just haven't synced yet
+                    // Mark as processing so we don't spam the DB
+                    wokenEnemyTiles.add(tileId);
+
                     const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
                     
+                    // Run the transaction
                     enemyRef.transaction(currentData => {
                         if (currentData === null) {
-                            // It doesn't exist in DB, so let's create the instance
-                            // utilizing your existing scaling logic
                             const scaledStats = getScaledEnemy(enemyData, x, y);
-                            return {
+                            const newEnemy = {
                                 ...scaledStats,
-                                tile: tile // Ensure visual consistency
+                                tile: tile 
                             };
-
-                        gameState.sharedEnemies[enemyId] = newEnemy;
+                            
+                            // Add to local state immediately for responsiveness
+                            gameState.sharedEnemies[enemyId] = newEnemy;
                             
                             return newEnemy;
-
                         }
-                        return; // Already exists, do nothing
+                        return; // Already exists
+                    }).then((result) => {
+                        if (result.committed) {
+                            // --- CRITICAL FIX: REMOVE THE STATIC TILE ---
+                            // We replace the static 'r' or 'g' with '.' (grass)
+                            // so you don't see a duplicate frozen enemy.
+                            chunkManager.setWorldTile(x, y, '.');
+                            // ---------------------------------------------
+                        }
                     });
                 }
             }
@@ -11500,6 +11516,34 @@ function handleChatCommand(message) {
             logMessage("/god : Toggle God Mode (No hunger/thirst/damage)");
             break;
 
+        case 'purge':
+            // 1. Clear local memory
+            chunkManager.loadedChunks = {};
+            chunkManager.worldState = {};
+            gameState.exploredChunks = new Set();
+            
+            // 2. Clear Firebase World State (This deletes ALL map data)
+            logMessage("Purging world map... (This may take a moment)");
+            const batch = db.batch();
+            // Note: Deleting collections client-side is hard in Firestore. 
+            // Instead, we will just force a re-render of the CURRENT chunk locally
+            // and overwrite it.
+            
+            chunkManager.loadedChunks = {}; // Clear local cache
+            chunkManager.worldState = {};   // Clear state buffer
+            
+            // Force regenerate current location
+            const cX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+            const cY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+            const chunkId = `${cX},${cY}`;
+            
+            // Delete the specific document for this chunk from Firebase
+            db.collection('worldState').doc(chunkId).delete().then(() => {
+                logMessage("Current chunk purged. Regenerating...");
+                render();
+            });
+            break;
+
         case 'who':
             let onlineList = ["You"];
             for (const id in otherPlayers) {
@@ -13765,6 +13809,8 @@ loginButton.addEventListener('click', async () => {
 function clearSessionState() {
     gameState.lootedTiles.clear();
     gameState.discoveredRegions.clear();
+
+    wokenEnemyTiles.clear();
 
     gameState.mapMode = null;
 
