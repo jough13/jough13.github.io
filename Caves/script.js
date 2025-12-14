@@ -5538,6 +5538,7 @@ const ParticleSystem = {
 };
 
 const gameState = {
+    weather: 'clear',
     player: {
         x: 0,
         y: 0,
@@ -13837,7 +13838,8 @@ async function attemptMovePlayer(newX, newY) {
         coins: gameState.player.coins,
         activeTreasure: gameState.activeTreasure,
 
-        weather: gameState.weather, // Save current weather type
+        weather: gameState.weather || 'clear', // Safety fallback
+        
         weatherState: gameState.player.weatherState,
         weatherIntensity: gameState.player.weatherIntensity,
         weatherDuration: gameState.player.weatherDuration
@@ -14027,6 +14029,8 @@ async function enterGame(playerData) {
     } else {
         gameState.activeTreasure = null;
     }
+
+    gameState.weather = playerData.weather || 'clear';
 
     gameState.mapMode = playerData.mapMode || 'overworld';
 
