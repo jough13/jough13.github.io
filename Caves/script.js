@@ -23,6 +23,10 @@ let otherPlayers = {};
 let unsubscribePlayerListener;
 let worldStateListeners = {};
 
+// --- INPUT THROTTLE ---
+let lastActionTime = 0;
+const ACTION_COOLDOWN = 150; // ms (limits speed to ~6 moves per second)
+
 // Track Listeners so we can turn them off
 let sharedEnemiesListener = null;
 let chatListener = null;
@@ -5927,43 +5931,50 @@ async function wakeUpNearbyEnemies() {
             const tileId = `${x},${y}`;
             const enemyId = `overworld:${x},${-y}`;
 
-            // Safety Checks
-            if (wokenEnemyTiles.has(tileId)) continue;
+            // 1. Get the current tile state
+            const tile = chunkManager.getTile(x, y);
+            const enemyData = ENEMY_DATA[tile];
+
+            // 2. CHECK: Has this tile already been processed?
+            if (wokenEnemyTiles.has(tileId)) {
+                // FIX: If the chunk reloaded, the static enemy might have reappeared.
+                // If we see a static enemy on a tile we ALREADY woke up, delete it again.
+                if (enemyData) {
+                     chunkManager.setWorldTile(x, y, '.'); 
+                }
+                continue; // Skip spawning (prevent duplicates)
+            }
+
+            // 3. CHECK: Is the enemy already alive in the DB?
             if (gameState.sharedEnemies[enemyId]) {
-                const currentTile = chunkManager.getTile(x, y);
-                if (ENEMY_DATA[currentTile]) {
+                // If alive but static tile exists, clear static tile
+                if (enemyData) {
                      chunkManager.setWorldTile(x, y, '.'); 
                 }
                 wokenEnemyTiles.add(tileId); 
                 continue;
             }
 
-            const tile = chunkManager.getTile(x, y);
-            const enemyData = ENEMY_DATA[tile];
-            
+            // 4. SPAWN: Found a new static enemy
             if (enemyData) {
-                // --- 1. Mark as Processed ---
-                wokenEnemyTiles.add(tileId);
+                wokenEnemyTiles.add(tileId); // Mark as processed
 
-                // --- 2. Create Data ---
                 const scaledStats = getScaledEnemy(enemyData, x, y);
                 const newEnemy = { ...scaledStats, tile: tile, x: x, y: y };
                 
-                // --- 3. PROTECT: Add to Pending Set ---
+                // Protect against "flicker"
                 pendingSpawns.add(enemyId);
 
-                // --- 4. Optimistic Local Update (Show it NOW) ---
+                // Optimistic Update
                 gameState.sharedEnemies[enemyId] = newEnemy; 
                 
-                // --- 5. Clear Static Map Tile ---
+                // Clear Static Tile
                 chunkManager.setWorldTile(x, y, '.');
 
-                // --- 6. Send to DB ---
+                // Send to DB
                 rtdb.ref(`worldEnemies/${enemyId}`).transaction(current => {
                     return current || newEnemy; 
                 }).then(() => {
-                    // --- 7. CLEANUP: Transaction confirmed, remove protection ---
-                    // The next listener update will contain the authoritative data
                     pendingSpawns.delete(enemyId);
                 });
             }
@@ -11841,7 +11852,6 @@ function handleInput(key) {
     }
 
     // --- MENUS ---
-    // --- MENUS ---
     if (key === 'i' || key === 'I') { openInventoryModal(); return; }
     if (key === 'm' || key === 'M') { openWorldMap(); return; }
     if (key === 'b' || key === 'B') { openSpellbook(); return; }
@@ -11849,22 +11859,38 @@ function handleInput(key) {
     if (key === 'c' || key === 'C') { openCollections(); return; }
     if (key === 'p' || key === 'P') { openTalentModal(); return; }
 
-    // --- MOVEMENT & REST ---
+    // 1. THROTTLE CHECK
+    // If we tried to move too soon after the last move, ignore it.
+    const now = Date.now();
+    if (now - lastActionTime < ACTION_COOLDOWN) {
+        // Exception: Allow rapid menu navigation if you want, 
+        // but for world movement, we block it.
+        return; 
+    }
+
     let newX = gameState.player.x;
     let newY = gameState.player.y;
     let moved = false;
+    let acted = false; // Track if we actually did something
 
     switch (key) {
-        case 'ArrowUp': case 'w': case 'W': newY--; moved = true; break;
-        case 'ArrowDown': case 's': case 'S': newY++; moved = true; break;
-        case 'ArrowLeft': case 'a': case 'A': newX--; moved = true; break;
-        case 'ArrowRight': case 'd': case 'D': newX++; moved = true; break;
+        case 'ArrowUp': case 'w': case 'W': newY--; moved = true; acted = true; break;
+        case 'ArrowDown': case 's': case 'S': newY++; moved = true; acted = true; break;
+        case 'ArrowLeft': case 'a': case 'A': newX--; moved = true; acted = true; break;
+        case 'ArrowRight': case 'd': case 'D': newX++; moved = true; acted = true; break;
         case 'r': case 'R': 
             restPlayer(); 
+            lastActionTime = now; // Update timer
+            return;
+        case ' ': // Spacebar to skip turn / wait
+            logMessage("You wait a moment.");
+            endPlayerTurn();
+            lastActionTime = now; // Update timer
             return;
     }
 
     if (moved) {
+        lastActionTime = now; // Update timer only if we actually move
         attemptMovePlayer(newX, newY);
     }
 }
