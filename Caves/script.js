@@ -10468,7 +10468,7 @@ function getBaseTerrain(worldX, worldY) {
 }
 
 async function processOverworldEnemyTurns() {
-    // 1. INCREASED Search Area (Was 15, now 25 to detect players earlier)
+    // 1. Search Area
     const searchRadius = 25;
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
@@ -10479,7 +10479,16 @@ async function processOverworldEnemyTurns() {
 
     let movesToMake = [];
 
-    // 2. Loop through the expanded search box
+    // Helper to check if a specific tile coord is valid for a specific enemy type
+    const isValidMove = (tx, ty, enemyType) => {
+        const targetTile = chunkManager.getTile(tx, ty);
+        if (targetTile === '.') return true; // Plains are always safe
+        if (enemyType === 'w' && targetTile === 'F') return true; // Wolves like forests
+        if (targetTile === 'd' || targetTile === 'D') return true; // Deserts/Deadlands usually safe
+        return false;
+    };
+
+    // 2. Loop through the search box
     for (let y = playerY - searchRadius; y <= playerY + searchRadius; y++) {
         for (let x = playerX - searchRadius; x <= playerX + searchRadius; x++) {
             if (x === playerX && y === playerY) continue;
@@ -10488,63 +10497,79 @@ async function processOverworldEnemyTurns() {
 
             if (ENEMY_DATA[tile]) {
                 
-                // Calculate Distance immediately for logic
+                // Calculate Distance
                 const distSq = Math.pow(playerX - x, 2) + Math.pow(playerY - y, 2);
                 const dist = Math.sqrt(distSq);
 
                 // --- 3. DYNAMIC CHASE LOGIC ---
-                // Default: They are wandering / unaware
-                let chaseChance = 0.15; // 15% chance to notice/chase if far away
-
-                // If player is moderately close (< 18 tiles), they get curious
+                let chaseChance = 0.15; 
                 if (dist < 18) chaseChance = 0.40; 
-
-                // If player is VERY close (< 8 tiles), they get AGGRESSIVE
                 if (dist < 8) chaseChance = 0.90; 
 
-                // 4. Try to move (75% chance to do ANYTHING this turn)
+                // 4. Activity Check (75% chance to act)
                 if (Math.random() < 0.75) {
 
-                    let dirX, dirY;
+                    let dirX = 0, dirY = 0;
+                    let isChasing = false;
 
-                    // Apply the Dynamic Chance
                     if (Math.random() < chaseChance) {
-                        // CHASE: Move directly towards the player
+                        // CHASE: Target player
                         dirX = Math.sign(playerX - x);
                         dirY = Math.sign(playerY - y);
+                        isChasing = true;
                     } else {
-                        // WANDER: Move randomly (The "lost interest" mechanic)
+                        // WANDER: Random
                         dirX = Math.floor(Math.random() * 3) - 1; 
                         dirY = Math.floor(Math.random() * 3) - 1; 
                     }
 
                     if (dirX === 0 && dirY === 0) continue;
 
-                    const newX = x + dirX;
-                    const newY = y + dirY;
-                    const targetTile = chunkManager.getTile(newX, newY);
-
+                    // --- 5. SMART PATHFINDING (The Fix) ---
+                    let finalX = x;
+                    let finalY = y;
                     let canMove = false;
-                    if (targetTile === '.') canMove = true; 
-                    if (tile === 'w' && targetTile === 'F') canMove = true; // Wolves in forests
+
+                    // A. Try the Ideal Move (Diagonal or Direct)
+                    if (isValidMove(x + dirX, y + dirY, tile)) {
+                        finalX = x + dirX;
+                        finalY = y + dirY;
+                        canMove = true;
+                    } 
+                    // B. If blocked & Chasing, Try sliding along axes
+                    else if (isChasing) {
+                        // Try X-axis only
+                        if (dirX !== 0 && isValidMove(x + dirX, y, tile)) {
+                            finalX = x + dirX;
+                            finalY = y;
+                            canMove = true;
+                        }
+                        // Try Y-axis only
+                        else if (dirY !== 0 && isValidMove(x, y + dirY, tile)) {
+                            finalX = x;
+                            finalY = y + dirY;
+                            canMove = true;
+                        }
+                    }
 
                     if (canMove) { 
-                        // Attack Player Logic
-                        if (newX === playerX && newY === playerY) {
+                        // Attack Check
+                        if (finalX === playerX && finalY === playerY) {
                             const enemyAtk = ENEMY_DATA[tile].attack;
                             const dmg = Math.max(1, enemyAtk - (gameState.player.defenseBonus || 0));
                             gameState.player.health -= dmg;
-                            logMessage(`A ${ENEMY_DATA[tile].name} moves in and attacks you for ${dmg} damage!`);
+                            logMessage(`A ${ENEMY_DATA[tile].name} attacks you for ${dmg} damage!`);
                             triggerStatFlash(statDisplays.health, false);
                             continue; 
                         }
 
-                        movesToMake.push({ oldX: x, oldY: y, newX: newX, newY: newY, tile: tile });
+                        // Queue the Move
+                        movesToMake.push({ oldX: x, oldY: y, newX: finalX, newY: finalY, tile: tile });
 
                         // Update Audio/Hint tracking
                         if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
                             minDist = distSq;
-                            nearestEnemyDir = { x: Math.sign(newX - playerX), y: Math.sign(newY - playerY) };
+                            nearestEnemyDir = { x: Math.sign(finalX - playerX), y: Math.sign(finalY - playerY) };
                         }
                     }
                 }
@@ -10552,7 +10577,7 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-    // --- Process all moves ---
+    // --- Process Moves ---
     for (const move of movesToMake) {
         const oldId = `overworld:${move.oldX},${-move.oldY}`;
         const newId = `overworld:${move.newX},${-move.newY}`;
@@ -10565,6 +10590,7 @@ async function processOverworldEnemyTurns() {
             if (healthData) {
                 await newRef.set(healthData);
                 await oldRef.remove();
+                // Clean up static tile if necessary
                 const currentStaticTile = chunkManager.getTile(move.oldX, move.oldY);
                 if (currentStaticTile === move.tile) {
                     const baseTerrain = getBaseTerrain(move.oldX, move.oldY);
