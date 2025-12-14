@@ -10125,32 +10125,62 @@ const render = () => {
             else { 
                 // Overworld
                 tile = chunkManager.getTile(mapX, mapY);
+
+                // 1. Determine the Base Biome at this location (even if an object is on top)
+                const baseTerrain = getBaseTerrain(mapX, mapY);
+                let bgColor = '#22c55e'; // Default Plains Green
+
+                if (baseTerrain === 'F') bgColor = '#14532d'; // Dark Forest Green
+                else if (baseTerrain === 'd') bgColor = '#2d2d2d'; // Dark Grey Deadlands
+                else if (baseTerrain === 'D') bgColor = '#fde047'; // Yellow Desert
+                else if (baseTerrain === '≈') bgColor = '#422006'; // Brown Swamp
+                else if (baseTerrain === '^') bgColor = '#57534e'; // Grey Mountain
+                else if (baseTerrain === '~') bgColor = '#1e3a8a'; // Blue Water
+
+                // 2. Draw the Background first
+                TileRenderer.drawBase(ctx, x, y, bgColor);
+
+                // 3. Draw the Specific Tile Feature
                 switch (tile) {
-                    case '.': TileRenderer.drawPlains(ctx, x, y, mapX, mapY, '#22c55e', '#15803d'); break;
-                    case 'F': TileRenderer.drawForest(ctx, x, y, mapX, mapY, '#14532d', '#166534'); break;
-                    case '^': TileRenderer.drawMountain(ctx, x, y, mapX, mapY, '#57534e', '#d6d3d1'); break;
-                    case '~': TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#1e3a8a', '#3b82f6'); break;
-                    case '≈': TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#422006', '#14532d'); break;
-                    case 'd': TileRenderer.drawDeadlands(ctx, x, y, mapX, mapY, '#2d2d2d', '#444'); break;
-                    case 'D': TileRenderer.drawDesert(ctx, x, y, mapX, mapY, '#fde047'); break;
+                    case '.': 
+                        TileRenderer.drawPlains(ctx, x, y, mapX, mapY, bgColor, '#15803d'); 
+                        break;
+                    case 'F': 
+                        TileRenderer.drawForest(ctx, x, y, mapX, mapY, bgColor, '#166534'); 
+                        break;
+                    case '^': 
+                        TileRenderer.drawMountain(ctx, x, y, mapX, mapY, bgColor, '#d6d3d1'); 
+                        break;
+                    case '~': 
+                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, bgColor, '#3b82f6'); 
+                        break;
+                    case '≈': 
+                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, bgColor, '#14532d'); 
+                        break;
+                    case 'd': 
+                        TileRenderer.drawDeadlands(ctx, x, y, mapX, mapY, bgColor, '#444'); 
+                        break;
+                    case 'D': 
+                        TileRenderer.drawDesert(ctx, x, y, mapX, mapY, bgColor); 
+                        break;
                     
-                    // Structures
+                    // Structures (No longer need custom backgrounds, they use baseTerrain!)
                     case '🧱': TileRenderer.drawWall(ctx, x, y, '#78716c', '#57534e'); break;
-                    case '=': TileRenderer.drawBase(ctx, x, y, '#78350f'); break;
-                    case '+': TileRenderer.drawBase(ctx, x, y, '#78350f'); fgChar = '+'; fgColor = '#fbbf24'; break;
-                    case '/': TileRenderer.drawBase(ctx, x, y, '#78350f'); fgChar = '/'; fgColor = '#000'; break;
+                    case '=': TileRenderer.drawBase(ctx, x, y, '#78350f'); break; // Wood floor overrides biome
+                    case '+': fgChar = '+'; fgColor = '#fbbf24'; break;
+                    case '/': fgChar = '/'; fgColor = '#000'; break;
                     
                     default: 
-                        TileRenderer.drawBase(ctx, x, y, '#22c55e'); 
+                        // Draw the character on top of the correct biome background
                         fgChar = tile; 
-
-                        // If this tile represents an enemy, use its specific color (or red default)
-        if (ENEMY_DATA[tile]) {
-            fgColor = ENEMY_DATA[tile].color || '#ef4444';
-        }
-
+                        
+                        // Color logic for enemies
+                        if (ENEMY_DATA[tile]) {
+                            fgColor = ENEMY_DATA[tile].color || '#ef4444';
+                        }
                         break;
                 }
+               
             }
 
             // --- B. DRAW ENTITIES (Enemies/Players) ---
