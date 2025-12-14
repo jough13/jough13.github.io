@@ -10245,7 +10245,8 @@ const render = () => {
                 const enemyKey = `overworld:${mapX},${-mapY}`;
                 const sharedEnemy = gameState.sharedEnemies[enemyKey];
                 
-                if (sharedEnemy) {
+                // FIX: Only render if it's a valid enemy in our data
+                if (sharedEnemy && ENEMY_DATA[sharedEnemy.tile]) {
                     overlayChar = sharedEnemy.tile;
                     
                     // Draw Health Bar
@@ -12271,15 +12272,22 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     // --- OVERLAY COLLISION CHECK ---
-    // If we are in the overworld, we must check if an enemy exists at these coordinates
-    // in the Shared Enemy database, even if the terrain says it's empty.
     if (gameState.mapMode === 'overworld') {
         const enemyKey = `overworld:${newX},${-newY}`;
         const overlayEnemy = gameState.sharedEnemies[enemyKey];
         
         if (overlayEnemy) {
-            // We found an enemy! Temporarily override 'newTile' so the combat logic below triggers.
-            newTile = overlayEnemy.tile;
+            // Check if this is a valid enemy
+            if (ENEMY_DATA[overlayEnemy.tile]) {
+                // Valid enemy: Override tile to trigger combat
+                newTile = overlayEnemy.tile;
+            } else {
+                // Invalid "Ghost" enemy (like 'F'): Delete it from DB
+                logMessage("Dissipating a phantom signal...");
+                rtdb.ref(`worldEnemies/${enemyKey}`).remove();
+                delete gameState.sharedEnemies[enemyKey];
+                // Don't override newTile; let the player walk there.
+            }
         }
     }
 
