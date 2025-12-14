@@ -10236,36 +10236,40 @@ const render = () => {
 
             // --- ENTITY RENDERING (OVERLAY LAYER) ---
             
-            // 1. Check for Shared/Overworld Enemies at this location
+            // --- B. DRAW ENTITIES (Enemies/Players) ---
             let overlayChar = null;
             let overlayColor = null;
             
+            // 1. Check Shared Enemies (Overworld)
             if (gameState.mapMode === 'overworld') {
                 const enemyKey = `overworld:${mapX},${-mapY}`;
                 const sharedEnemy = gameState.sharedEnemies[enemyKey];
                 
-                // FIX: Only render if it's a valid enemy in our data
-                if (sharedEnemy && ENEMY_DATA[sharedEnemy.tile]) {
-                    overlayChar = sharedEnemy.tile;
+                if (sharedEnemy) {
+                    // Fallback to '?' if tile is missing so it's never invisible
+                    overlayChar = sharedEnemy.tile || '?'; 
                     
+                    // Default Color
+                    overlayColor = sharedEnemy.color || '#ef4444';
+
                     // Draw Health Bar
-                    const healthPercent = sharedEnemy.health / sharedEnemy.maxHealth;
-                    ctx.fillStyle = '#333';
-                    ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE, 3);
-                    ctx.fillStyle = healthPercent > 0.5 ? '#4caf50' : '#ef4444';
-                    ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE * healthPercent, 3);
+                    if (sharedEnemy.maxHealth) {
+                        const healthPercent = Math.max(0, sharedEnemy.health / sharedEnemy.maxHealth);
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE, 3);
+                        ctx.fillStyle = healthPercent > 0.5 ? '#4caf50' : '#ef4444';
+                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE * healthPercent, 3);
+                    }
                     
-                    // Handle Elite Colors
+                    // Draw Elite Border
                     if (sharedEnemy.isElite) {
                         ctx.strokeStyle = sharedEnemy.color || '#facc15';
                         ctx.lineWidth = 1;
                         ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-                        overlayColor = sharedEnemy.color || '#ef4444';
-                    } else {
-                        overlayColor = '#ef4444'; // Default Red
                     }
                 }
-            } 
+            }
+             
             // 2. Check for Instanced Enemies (Dungeon/Castle)
             else {
                 const enemy = gameState.instancedEnemies.find(e => e.x === mapX && e.y === mapY);
@@ -10567,151 +10571,121 @@ function getBaseTerrain(worldX, worldY) {
 }
 
 async function processOverworldEnemyTurns() {
-    // 1. Define search area around player (e.g., 30x30 box)
-    const searchRadius = 15;
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
+    const CHASE_RADIUS = 15; // How far they can "see"
+    const CHASE_RADIUS_SQ = CHASE_RADIUS * CHASE_RADIUS;
 
     let nearestEnemyDir = null;
     let minDist = Infinity;
-    const HEARING_DISTANCE_SQ = 15 * 15; // "Hearing" range
 
-    // A list to batch our updates for efficiency
+    // A list to batch our updates
     let movesToMake = [];
+    const movedEnemies = new Set(); // Prevent double-moves
 
-    const movedEnemies = new Set();
+    // 1. Iterate through KNOWN Shared Enemies instead of scanning tiles
+    // This fixes the bug where enemies on "Forest" tiles were ignored
+    for (const key in gameState.sharedEnemies) {
+        const enemy = gameState.sharedEnemies[key];
+        
+        // Parse "overworld:x,y" to get coordinates
+        const parts = key.split(':');
+        if (parts.length < 2) continue;
+        const coords = parts[1].split(',');
+        const x = parseInt(coords[0]);
+        const y = -parseInt(coords[1]); // Remember Y is inverted in the key!
 
-    // --- Chance for an enemy to chase you ---
-    const CHASE_CHANCE = 0.5; // 50% chance to chase
+        // Skip if too far away (Optimization)
+        const distSq = Math.pow(x - playerX, 2) + Math.pow(y - playerY, 2);
+        if (distSq > CHASE_RADIUS_SQ) continue;
 
-    // 2. Loop through the search box
-    for (let y = playerY - searchRadius; y <= playerY + searchRadius; y++) {
-        for (let x = playerX - searchRadius; x <= playerX + searchRadius; x++) {
-            // Don't move the tile the player is on
-            if (x === playerX && y === playerY) continue;
+        // Skip if already moved this turn
+        if (movedEnemies.has(key)) continue;
 
-            const tile = chunkManager.getTile(x, y);
+        // 2. Logic: Try to move (75% chance)
+        if (Math.random() < 0.75) {
+            let dirX, dirY;
+            const CHASE_CHANCE = 0.5;
 
-            // 3. Is this tile an enemy?
-            if (ENEMY_DATA[tile]) {
+            // Chase or Wander?
+            if (Math.random() < CHASE_CHANCE) {
+                dirX = Math.sign(playerX - x);
+                dirY = Math.sign(playerY - y);
+            } else {
+                dirX = Math.floor(Math.random() * 3) - 1; 
+                dirY = Math.floor(Math.random() * 3) - 1; 
+            }
 
-                const enemyId = `overworld:${x},${-y}`; // Construct ID
-                if (movedEnemies.has(enemyId)) continue; // Skip if already moved
+            if (dirX === 0 && dirY === 0) continue;
 
-                // 4. Try to move it (75% chance)
-                if (Math.random() < 0.75) {
+            const newX = x + dirX;
+            const newY = y + dirY;
 
-                    let dirX, dirY;
+            // 3. Collision Check
+            // Check Terrain
+            const targetTile = chunkManager.getTile(newX, newY);
+            
+            // Allow movement on Plains, Floors, and Forests (for Wolves/Bears)
+            let canMove = false;
+            if (targetTile === '.') canMove = true;
+            if (targetTile === 'F' && ['w', '🐺', '🐻'].includes(enemy.tile)) canMove = true;
+            if (targetTile === 'd') canMove = true; // Deadlands
 
-                    // --- NEW CHASE LOGIC ---
-                    if (Math.random() < CHASE_CHANCE) {
-                        // CHASE: Move directly towards the player
-                        dirX = Math.sign(playerX - x);
-                        dirY = Math.sign(playerY - y);
-                    } else {
-                        // WANDER: Move randomly
-                        dirX = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-                        dirY = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-                    }
-                    // --- END NEW LOGIC ---
+            if (canMove) {
+                // Check Player Collision (Attack!)
+                if (newX === playerX && newY === playerY) {
+                    // Attack logic is handled client-side in the render loop usually,
+                    // but we can log it here or just let them bump. 
+                    // For safety in async, we usually just block the move.
+                    continue; 
+                }
 
-                    if (dirX === 0 && dirY === 0) continue;
+                // Check other Enemy Collision
+                const newKey = `overworld:${newX},${-newY}`;
+                if (gameState.sharedEnemies[newKey] || movedEnemies.has(newKey)) {
+                    continue; // Occupied
+                }
 
-                    const newX = x + dirX;
-                    const newY = y + dirY;
+                // Queue the Move
+                movedEnemies.add(newKey); // Mark destination as taken
+                movedEnemies.add(key);    // Mark source as processed
 
-                    // 5. Is the new spot valid?
-                    const targetTile = chunkManager.getTile(newX, newY);
+                movesToMake.push({
+                    oldKey: key,
+                    newKey: newKey,
+                    data: enemy,
+                    oldX: x, oldY: y,
+                    tile: enemy.tile // Pass tile for terrain cleanup
+                });
 
-                    let canMove = false;
-
-                    // 1. General Rule: Most enemies can only move on Plains ('.') or Dungeon Floors
-                    // Since this is overworld, we usually just check for '.'
-                    if (targetTile === '.') {
-                        canMove = true; 
-                    }
-
-                    // 2. Specific Overrides
-                    if (tile === 'w') { // Wolves
-                        // Wolves can ALSO move in forests
-                        if (targetTile === 'F') canMove = true;
-                    }
-
-                    if (canMove) { 
-
-                        // If the enemy tries to move ONTO the player, hit them instead!
-                        if (newX === playerX && newY === playerY) {
-                            const enemyAtk = ENEMY_DATA[tile].attack;
-                            const dmg = Math.max(1, enemyAtk - (gameState.player.defenseBonus || 0)); // Simple calc
-                            gameState.player.health -= dmg;
-                            logMessage(`A ${ENEMY_DATA[tile].name} moves in and attacks you for ${dmg} damage!`);
-                            triggerStatFlash(statDisplays.health, false);
-                            
-                            // Don't move the enemy, they used their turn to attack
-                            continue; 
-                        }
-
-                        const newEnemyId = `overworld:${newX},${-newY}`;
-                        movedEnemies.add(newEnemyId);
-
-                        movesToMake.push({
-                            oldX: x,
-                            oldY: y,
-                            newX: newX,
-                            newY: newY,
-                            tile: tile
-                        });
-
-                        const distSq = Math.pow(newX - playerX, 2) + Math.pow(newY - playerY, 2);
-                        if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
-                            minDist = distSq;
-                            const dirX = Math.sign(newX - playerX);
-                            const dirY = Math.sign(newY - playerY);
-                            nearestEnemyDir = { x: dirX, y: dirY };
-                        }
-
-                        // 8. Check if it's "nearby" for the log message
-                        const distY = Math.abs(newY - playerY);
-                        const distX = Math.abs(newX - playerX);
-                        
-                    }
+                // Update "Nearest Enemy" indicator
+                if (distSq < minDist) {
+                    minDist = distSq;
+                    nearestEnemyDir = { x: dirX, y: dirY };
                 }
             }
         }
     }
 
-    // --- Process all moves ---
+    // 4. Execute Batch Moves
     for (const move of movesToMake) {
-        // 1. Define the database paths
-        const oldId = `overworld:${move.oldX},${-move.oldY}`;
-        const newId = `overworld:${move.newX},${-move.newY}`;
-        const oldRef = rtdb.ref(`worldEnemies/${oldId}`);
-        const newRef = rtdb.ref(`worldEnemies/${newId}`);
+        const oldRef = rtdb.ref(`worldEnemies/${move.oldKey}`);
+        const newRef = rtdb.ref(`worldEnemies/${move.newKey}`);
 
-        // 2. Move data in RTDB (The Entity Layer)
-        // We do NOT touch chunkManager.setWorldTile here. 
-        // This prevents the "Bulldozer" effect. The terrain remains untouched.
-        
         try {
-            const snapshot = await oldRef.once('value');
-            const healthData = snapshot.val();
+            // Copy data to new spot
+            await newRef.set(move.data);
+            // Delete old spot
+            await oldRef.remove();
 
-            if (healthData) {
-                // Move the enemy data to the new coordinate key
-                await newRef.set(healthData);
-                // Remove from old coordinate key
-                await oldRef.remove();
-                
-                // If the static map currently has this enemy tile 'baked in' from generation,
-                // we can gently clean it. But we check first to ensure we don't delete an item.
-                const currentStaticTile = chunkManager.getTile(move.oldX, move.oldY);
-                if (currentStaticTile === move.tile) {
-                    // Only restore base terrain if the tile matches the enemy exactly.
-                    // This cleans up "ghost" enemies from the static map.
-                    const baseTerrain = getBaseTerrain(move.oldX, move.oldY);
-                    chunkManager.setWorldTile(move.oldX, move.oldY, baseTerrain);
-                }
+            // CLEANUP: If the static terrain map has this enemy baked in, clear it.
+            // This prevents "Ghost" tiles appearing if the server restarts.
+            const currentStaticTile = chunkManager.getTile(move.oldX, move.oldY);
+            if (currentStaticTile === move.tile) {
+                const baseTerrain = getBaseTerrain(move.oldX, move.oldY);
+                chunkManager.setWorldTile(move.oldX, move.oldY, baseTerrain);
             }
+
         } catch (err) {
             console.error("Enemy move failed:", err);
         }
@@ -13839,7 +13813,7 @@ async function attemptMovePlayer(newX, newY) {
         activeTreasure: gameState.activeTreasure,
 
         weather: gameState.weather || 'clear', // Safety fallback
-        
+
         weatherState: gameState.player.weatherState,
         weatherIntensity: gameState.player.weatherIntensity,
         weatherDuration: gameState.player.weatherDuration
