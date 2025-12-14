@@ -860,9 +860,12 @@ const ENEMY_DATA = {
     // --- FOREST WILDLIFE ---
     '🐻': {
         name: 'Cave Bear',
-        maxHealth: 30, attack: 5, defense: 2, xp: 50,
-        loot: '❄️f', // Use Yeti Fur tile as generic fur
-        flavor: "A massive wall of muscle and fur."
+        maxHealth: 14, // Reduced from 30 (Now doable in ~6-7 hits)
+        attack: 3,     // Reduced from 5 (Player survives ~4-5 hits)
+        defense: 1,    // Reduced from 2 (So basic weapons actually do damage)
+        xp: 25,        // Reduced from 50 to match new difficulty
+        loot: '❄️f',   // Yeti Fur (Generic Fur)
+        flavor: "A large bear. It looks hungry, but not invincible."
     },
     '🦌': {
         name: 'Stag',
@@ -5283,14 +5286,28 @@ generateChunk(chunkX, chunkY) {
 
                     // --- FORESTS (Updated with Wildlife) ---
                     else if (tile === 'F') {
-                        if (dist > 250 && hostileRoll < 0.0001) chunkData[y][x] = '🐺'; // Dire Wolf
-                        else if (hostileRoll < 0.0002) chunkData[y][x] = '🐻'; // Cave Bear (NEW)
-                        else if (hostileRoll < 0.0004) chunkData[y][x] = 'w'; // Wolf
-                        else if (hostileRoll < 0.0006) chunkData[y][x] = '🐗'; // Boar
-                        else if (hostileRoll < 0.0008) chunkData[y][x] = '🦌'; // Stag (NEW)
-                        else if (hostileRoll < 0.0010) chunkData[y][x] = '🐍'; // Viper
+                        // 1. Dire Wolf (Elite): Extremely rare, only appears far from spawn (> 250 tiles)
+                        if (dist > 250 && hostileRoll < 0.00005) chunkData[y][x] = '🐺'; 
                         
-                        // Resources
+                        // 2. Cave Bear: Rare Mini-Boss
+                        // Threshold 0.00015 (Effective Range: ~0.00015)
+                        else if (hostileRoll < 0.00015) chunkData[y][x] = '🐻'; 
+                        
+                        // 3. Wolf: The "Standard" Forest Enemy
+                        // Threshold 0.00090 (Effective Range: 0.00090 - 0.00015 = 0.00075)
+                        // MATH: 0.00075 is exactly 5x larger than the Bear's 0.00015 range.
+                        else if (hostileRoll < 0.00090) chunkData[y][x] = 'w'; 
+                        
+                        // 4. Wild Boar: Uncommon
+                        else if (hostileRoll < 0.00110) chunkData[y][x] = '🐗'; 
+                        
+                        // 5. Stag: Uncommon (Passive food source)
+                        else if (hostileRoll < 0.00130) chunkData[y][x] = '🦌'; 
+                        
+                        // 6. Viper: Uncommon
+                        else if (hostileRoll < 0.00150) chunkData[y][x] = '🐍'; 
+                        
+                        // Resources (Shifted slightly to accommodate the wider animal ranges)
                         else if (hostileRoll < 0.009) { this.setWorldTile(worldX, worldY, '🌳'); chunkData[y][x] = '🌳'; } 
                         else if (hostileRoll < 0.012) { this.setWorldTile(worldX, worldY, '🕸'); chunkData[y][x] = '🕸'; } 
                         else if (hostileRoll < 0.015) { this.setWorldTile(worldX, worldY, ':'); chunkData[y][x] = ':'; }
@@ -10451,137 +10468,111 @@ function getBaseTerrain(worldX, worldY) {
 }
 
 async function processOverworldEnemyTurns() {
+    // 1. INCREASED Search Area (Was 15, now 25 to detect players earlier)
+    const searchRadius = 25;
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
-    const CHASE_RADIUS = 15; 
-    const CHASE_RADIUS_SQ = CHASE_RADIUS * CHASE_RADIUS;
 
     let nearestEnemyDir = null;
     let minDist = Infinity;
+    const HEARING_DISTANCE_SQ = 15 * 15; 
 
     let movesToMake = [];
-    const movedEnemies = new Set(); 
 
-    // --- 1. DECISION PHASE ---
-    for (const key in gameState.sharedEnemies) {
-        const enemy = gameState.sharedEnemies[key];
-        
-        // Parse ID "overworld:x,y"
-        const parts = key.split(':');
-        if (parts.length < 2) continue;
-        const coords = parts[1].split(',');
-        const x = parseInt(coords[0]);
-        const y = -parseInt(coords[1]); // Invert Y back to world space
+    // 2. Loop through the expanded search box
+    for (let y = playerY - searchRadius; y <= playerY + searchRadius; y++) {
+        for (let x = playerX - searchRadius; x <= playerX + searchRadius; x++) {
+            if (x === playerX && y === playerY) continue;
 
-        const distSq = Math.pow(x - playerX, 2) + Math.pow(y - playerY, 2);
-        
-        if (distSq > CHASE_RADIUS_SQ) continue;
-        if (movedEnemies.has(key)) continue;
+            const tile = chunkManager.getTile(x, y);
 
-        // Determine Direction
-        let dirX = 0, dirY = 0;
-        
-        // Simple Chase Logic
-        if (x < playerX) dirX = 1;
-        if (x > playerX) dirX = -1;
-        if (y < playerY) dirY = 1;
-        if (y > playerY) dirY = -1;
+            if (ENEMY_DATA[tile]) {
+                
+                // Calculate Distance immediately for logic
+                const distSq = Math.pow(playerX - x, 2) + Math.pow(playerY - y, 2);
+                const dist = Math.sqrt(distSq);
 
-        // Random Jitter (10%): Helps them get unstuck from corners/trees
-        if (Math.random() < 0.10) {
-            if (Math.random() < 0.5) dirX = Math.random() < 0.5 ? 1 : -1;
-            else dirY = Math.random() < 0.5 ? 1 : -1;
-        }
+                // --- 3. DYNAMIC CHASE LOGIC ---
+                // Default: They are wandering / unaware
+                let chaseChance = 0.15; // 15% chance to notice/chase if far away
 
-        if (dirX === 0 && dirY === 0) continue;
+                // If player is moderately close (< 18 tiles), they get curious
+                if (dist < 18) chaseChance = 0.40; 
 
-        // Smart Pathing: Try Ideal -> Slide X -> Slide Y
-        const isValidMove = (checkX, checkY) => {
-            const tile = chunkManager.getTile(checkX, checkY);
-            // Allow basic terrain + custom biomes + existing enemy tiles
-            const passable = ['.', 'F', 'd', 'D', '^', '≈'].includes(tile) || ENEMY_DATA[tile];
-            if (!passable) return false;
+                // If player is VERY close (< 8 tiles), they get AGGRESSIVE
+                if (dist < 8) chaseChance = 0.90; 
 
-            // Prevent stacking on Player
-            if (checkX === playerX && checkY === playerY) return false;
+                // 4. Try to move (75% chance to do ANYTHING this turn)
+                if (Math.random() < 0.75) {
 
-            // Prevent stacking on pending moves
-            const futureKey = `overworld:${checkX},${-checkY}`;
-            if (gameState.sharedEnemies[futureKey] || movedEnemies.has(futureKey)) return false;
+                    let dirX, dirY;
 
-            return true;
-        };
+                    // Apply the Dynamic Chance
+                    if (Math.random() < chaseChance) {
+                        // CHASE: Move directly towards the player
+                        dirX = Math.sign(playerX - x);
+                        dirY = Math.sign(playerY - y);
+                    } else {
+                        // WANDER: Move randomly (The "lost interest" mechanic)
+                        dirX = Math.floor(Math.random() * 3) - 1; 
+                        dirY = Math.floor(Math.random() * 3) - 1; 
+                    }
 
-        let moveX = 0;
-        let moveY = 0;
-        let foundMove = false;
+                    if (dirX === 0 && dirY === 0) continue;
 
-        // 1. Try Ideal Diagonal
-        if (dirX !== 0 && dirY !== 0 && isValidMove(x + dirX, y + dirY)) {
-            moveX = dirX; moveY = dirY; foundMove = true;
-        } 
-        // 2. Slide X
-        else if (dirX !== 0 && isValidMove(x + dirX, y)) {
-            moveX = dirX; moveY = 0; foundMove = true;
-        }
-        // 3. Slide Y
-        else if (dirY !== 0 && isValidMove(x, y + dirY)) {
-            moveX = 0; moveY = dirY; foundMove = true;
-        }
+                    const newX = x + dirX;
+                    const newY = y + dirY;
+                    const targetTile = chunkManager.getTile(newX, newY);
 
-        if (foundMove) {
-            const newX = x + moveX;
-            const newY = y + moveY;
-            const newKey = `overworld:${newX},${-newY}`;
+                    let canMove = false;
+                    if (targetTile === '.') canMove = true; 
+                    if (tile === 'w' && targetTile === 'F') canMove = true; // Wolves in forests
 
-            movedEnemies.add(newKey); // Reserve this spot so others don't take it
-            movedEnemies.add(key);    // Mark self as moved
+                    if (canMove) { 
+                        // Attack Player Logic
+                        if (newX === playerX && newY === playerY) {
+                            const enemyAtk = ENEMY_DATA[tile].attack;
+                            const dmg = Math.max(1, enemyAtk - (gameState.player.defenseBonus || 0));
+                            gameState.player.health -= dmg;
+                            logMessage(`A ${ENEMY_DATA[tile].name} moves in and attacks you for ${dmg} damage!`);
+                            triggerStatFlash(statDisplays.health, false);
+                            continue; 
+                        }
 
-            movesToMake.push({
-                oldKey: key,
-                newKey: newKey,
-                data: enemy,
-                oldX: x, oldY: y,
-                tile: enemy.tile
-            });
+                        movesToMake.push({ oldX: x, oldY: y, newX: newX, newY: newY, tile: tile });
 
-            if (distSq < minDist) {
-                minDist = distSq;
-                nearestEnemyDir = { x: moveX, y: moveY };
+                        // Update Audio/Hint tracking
+                        if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
+                            minDist = distSq;
+                            nearestEnemyDir = { x: Math.sign(newX - playerX), y: Math.sign(newY - playerY) };
+                        }
+                    }
+                }
             }
         }
     }
 
-    // --- 2. EXECUTION PHASE ---
-    if (movesToMake.length > 0) {
-        console.log(`🤖 Moving ${movesToMake.length} enemies.`);
-    }
-
+    // --- Process all moves ---
     for (const move of movesToMake) {
-        // A. Update Firebase (Async)
-        const oldRef = rtdb.ref(`worldEnemies/${move.oldKey}`);
-        const newRef = rtdb.ref(`worldEnemies/${move.newKey}`);
-
-        // We don't await this. We let it happen in the background.
-        newRef.set(move.data).then(() => {
-            oldRef.remove();
-        }).catch(err => console.error("Move sync error:", err));
-
-        // B. Update Local State IMMEDIATELY (Predictive Movement)
-        // This makes the movement feel instant on your screen
-        delete gameState.sharedEnemies[move.oldKey];
-        gameState.sharedEnemies[move.newKey] = move.data;
-
-        // C. Clean up Static Map
-        // If the enemy moved off a tile that still visually shows a static 'r' or 'g', clear it to grass.
-        const currentStaticTile = chunkManager.getTile(move.oldX, move.oldY);
-        if (currentStaticTile === move.tile) {
-            chunkManager.setWorldTile(move.oldX, move.oldY, '.');
-        }
+        const oldId = `overworld:${move.oldX},${-move.oldY}`;
+        const newId = `overworld:${move.newX},${-move.newY}`;
+        const oldRef = rtdb.ref(`worldEnemies/${oldId}`);
+        const newRef = rtdb.ref(`worldEnemies/${newId}`);
+        
+        try {
+            const snapshot = await oldRef.once('value');
+            const healthData = snapshot.val();
+            if (healthData) {
+                await newRef.set(healthData);
+                await oldRef.remove();
+                const currentStaticTile = chunkManager.getTile(move.oldX, move.oldY);
+                if (currentStaticTile === move.tile) {
+                    const baseTerrain = getBaseTerrain(move.oldX, move.oldY);
+                    chunkManager.setWorldTile(move.oldX, move.oldY, baseTerrain);
+                }
+            }
+        } catch (err) { console.error("Enemy move failed:", err); }
     }
-    
-    // Force a re-render to show the local updates instantly
-    render();
 
     return nearestEnemyDir;
 }
@@ -10642,7 +10633,7 @@ function processEnemyTurns() {
     let nearestEnemyDir = null;
     let minDist = Infinity;
     const HEARING_DISTANCE_SQ = 15 * 15;
-    const player = gameState.player; // <--- This is the ONLY declaration of 'player'
+    const player = gameState.player;
 
     // Helper: Check if a tile is free
     const isWalkable = (tx, ty) => {
@@ -10690,15 +10681,48 @@ function processEnemyTurns() {
             return; // Turn Over
         }
 
-        // --- 3. BOSS & ELITE LOGIC ---
+        // --- 3. DAMAGE STATUS EFFECTS ---
+        if (enemy.frostbiteTurns > 0) {
+            enemy.frostbiteTurns--;
+            if (enemy.frostbiteTurns === 0) logMessage(`The ${enemy.name} is no longer frostbitten.`);
+            if (Math.random() < 0.25) {
+                logMessage(`The ${enemy.name} is frozen solid and skips its turn!`);
+                return;
+            }
+        }
+
+        if (enemy.poisonTurns > 0) {
+            enemy.poisonTurns--;
+            enemy.health -= 1;
+            logMessage(`The ${enemy.name} takes poison damage.`);
+            if (enemy.health <= 0) {
+                logMessage(`The ${enemy.name} succumbs to poison!`);
+                registerKill(enemy);
+                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                map[enemy.y][enemy.x] = generateEnemyLoot(player, enemy);
+                return; 
+            }
+            if (enemy.poisonTurns === 0) logMessage(`The ${enemy.name} is no longer poisoned.`);
+        }
+
+        // --- 4. CALCULATE DISTANCE ---
+        const dx = player.x - enemy.x;
+        const dy = player.y - enemy.y;
+        const distSq = dx*dx + dy*dy;
+        const dist = Math.sqrt(distSq);
+
+        // --- 5. DORMANT CHECK (New Optimization) ---
+        // If enemy is > 25 tiles away, they don't move/act.
+        if (dist > 25) return; 
+
+        // --- 6. BOSS & ELITE BEHAVIORS ---
         if (enemy.isBoss) {
             // Boss Immunity
             if ((enemy.poisonTurns > 0 || enemy.rootTurns > 0) && Math.random() < 0.5) {
                 enemy.poisonTurns = 0; enemy.rootTurns = 0;
                 logMessage(`The ${enemy.name} shrugs off your magic!`);
             }
-            // Boss Summon (20% chance)
-            const dist = Math.sqrt(Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2));
+            // Boss Summon (20% chance if close)
             if (dist < 10 && Math.random() < 0.20) {
                 const offsets = [[-1,0],[1,0],[0,-1],[0,1]];
                 for(let ofs of offsets) {
@@ -10733,7 +10757,6 @@ function processEnemyTurns() {
 
         // Void Stalker Teleport
         if (enemy.teleporter) {
-            const dist = Math.sqrt(Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2));
             if (dist > 1.5 && Math.random() < 0.20) {
                 const offsets = [[-1,0], [1,0], [0,-1], [0,1]];
                 const pick = offsets[Math.floor(Math.random() * offsets.length)];
@@ -10752,35 +10775,7 @@ function processEnemyTurns() {
             }
         }
 
-        // --- 4. DAMAGE STATUS EFFECTS ---
-        if (enemy.frostbiteTurns > 0) {
-            enemy.frostbiteTurns--;
-            if (enemy.frostbiteTurns === 0) logMessage(`The ${enemy.name} is no longer frostbitten.`);
-            if (Math.random() < 0.25) {
-                logMessage(`The ${enemy.name} is frozen solid and skips its turn!`);
-                return;
-            }
-        }
-
-        if (enemy.poisonTurns > 0) {
-            enemy.poisonTurns--;
-            enemy.health -= 1;
-            logMessage(`The ${enemy.name} takes poison damage.`);
-            if (enemy.health <= 0) {
-                logMessage(`The ${enemy.name} succumbs to poison!`);
-                registerKill(enemy);
-                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                map[enemy.y][enemy.x] = generateEnemyLoot(player, enemy);
-                return; 
-            }
-            if (enemy.poisonTurns === 0) logMessage(`The ${enemy.name} is no longer poisoned.`);
-        }
-
-        // --- 5. COMBAT LOGIC ---
-        const dx = player.x - enemy.x;
-        const dy = player.y - enemy.y;
-        const distSq = dx*dx + dy*dy;
-        const dist = Math.sqrt(distSq);
+        // --- 7. COMBAT LOGIC ---
 
         // Melee Attack (Range 1)
         if (distSq <= 2) {
@@ -10791,15 +10786,13 @@ function processEnemyTurns() {
             const totalDefense = baseDefense + armorDefense + buffDefense + talentDefense;
             
             let dodgeChance = Math.min(player.luck * 0.002, 0.25);
-                if (player.talents && player.talents.includes('evasion')) {
+            if (player.talents && player.talents.includes('evasion')) {
                 dodgeChance += 0.10;
             }
 
-        if (Math.random() < dodgeChance) {
-            logMessage(`The ${enemy.name} attacks, but you dodge!`);
-
+            if (Math.random() < dodgeChance) {
+                logMessage(`The ${enemy.name} attacks, but you dodge!`);
                 ParticleSystem.createFloatingText(player.x, player.y, "Dodge!", "#3b82f6");
-
             } else {
                 let dmg = Math.max(1, enemy.attack - totalDefense);
                 // Shield Absorb
@@ -10814,7 +10807,6 @@ function processEnemyTurns() {
                     player.health -= dmg;
                     triggerStatFlash(statDisplays.health, false);
                     logMessage(`The ${enemy.name} hits you for ${dmg} damage!`);
-
                     ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
                 }
                 // Thorns Reflect
@@ -10844,7 +10836,6 @@ function processEnemyTurns() {
         const castRangeSq = Math.pow(enemy.castRange || 6, 2);
         if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20) {
              const spellDmg = Math.max(1, enemy.spellDamage || 1);
-             
              let spellName = "spell";
              if (enemy.tile === 'm') spellName = "Arcane Bolt";
              if (enemy.tile === 'Z') spellName = "Frost Shard";
@@ -10880,18 +10871,28 @@ function processEnemyTurns() {
              return;
         }
 
-        // --- 6. NEW TACTICAL MOVEMENT ---
+        // --- 8. NEW DYNAMIC MOVEMENT LOGIC ---
         
         let desiredX = 0;
         let desiredY = 0;
-        let moveType = 'chase';
+        let moveType = 'wander';
 
-        // A. Fleeing Logic (Low Health + Not Undead)
+        // Calculate Chase Probability based on distance
+        let chaseChance = 0.20; // 20% Base chance (Wandering/Idle)
+        if (dist < 15) chaseChance = 0.50; // 50% if somewhat close
+        if (dist < 8) chaseChance = 0.95; // 95% Aggressive chase if very close
+
+        // Roll for Chase vs Wander
+        if (Math.random() < chaseChance) {
+            moveType = 'chase';
+        }
+
+        // Fleeing Override (Low Health + Not Fearless)
         const isFearless = ['s', 'Z', 'D', 'v', 'a', 'm'].includes(enemy.tile) || enemy.isBoss;
         if (!isFearless && (enemy.health < enemy.maxHealth * 0.25)) {
             moveType = 'flee';
         } 
-        // B. Kiting Logic (Casters stay at range 3-4)
+        // Kiting Logic (Casters stay at range 3-4)
         else if (enemy.caster && dist < 3.5) {
             moveType = 'flee'; 
         }
@@ -10901,9 +10902,13 @@ function processEnemyTurns() {
             desiredY = -Math.sign(dy);
             if (desiredX === 0) desiredX = Math.random() < 0.5 ? 1 : -1;
             if (desiredY === 0) desiredY = Math.random() < 0.5 ? 1 : -1;
-        } else {
+        } else if (moveType === 'chase') {
             desiredX = Math.sign(dx);
             desiredY = Math.sign(dy);
+        } else {
+            // Wander: Random direction
+            desiredX = Math.floor(Math.random() * 3) - 1;
+            desiredY = Math.floor(Math.random() * 3) - 1;
         }
 
         // Smart Pathing: Try Primary -> Secondary -> Slide
@@ -10953,7 +10958,8 @@ function processEnemyTurns() {
                 }
                 
                 if (moveType === 'flee') {
-                    logMessage(`The ${enemy.name} retreats!`);
+                    // Reduce log spam: only log flee occasionally
+                    if (Math.random() < 0.2) logMessage(`The ${enemy.name} retreats!`);
                 }
             }
         }
