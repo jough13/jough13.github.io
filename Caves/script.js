@@ -11301,11 +11301,7 @@ function endPlayerTurn() {
     // --- ENTITY LOGIC ---
     // These run independently of your shield or buffs
     processFriendlyTurns(); // Moves castle guards
-    runCompanionTurn();     // Moves your skeleton/pet
-
-    // --- ENTITY LOGIC ---
-    processFriendlyTurns(); 
-    runCompanionTurn();     
+    runCompanionTurn();     // Moves your skeleton/pet  
 
     // FORCE MOVE: Run every turn for now to debug
     // We removed the % 2 check so they are always active
@@ -13648,11 +13644,11 @@ async function attemptMovePlayer(newX, newY) {
         coins: gameState.player.coins,
         activeTreasure: gameState.activeTreasure || null,
 
-        weather: gameState.weather || 'clear', // Safety fallback
+        weather: gameState.weather || 'clear', 
 
-        weatherState: gameState.player.weatherState,
-        weatherIntensity: gameState.player.weatherIntensity,
-        weatherDuration: gameState.player.weatherDuration
+        weatherState: gameState.player.weatherState || 'calm', // Default to 'calm'
+        weatherIntensity: gameState.player.weatherIntensity || 0, // Default to 0
+        weatherDuration: gameState.player.weatherDuration || 0 // Default to 0
     };
 
     // If we found a new chunk, add it to the save list
