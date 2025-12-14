@@ -6207,26 +6207,6 @@ function fitMapCanvasToContainer() {
     }
 }
 
-function updateExploration() {
-    // Only track exploration in the Overworld
-    if (gameState.mapMode !== 'overworld') return false;
-
-    // Use consistent Math.floor for both positive and negative coordinates
-    const chunkX = Math.floor(gameState.player.x / MAP_CHUNK_SIZE);
-    const chunkY = Math.floor(gameState.player.y / MAP_CHUNK_SIZE);
-    const chunkId = `${chunkX},${chunkY}`;
-
-    // Ensure the Set exists
-    if (!gameState.exploredChunks) gameState.exploredChunks = new Set();
-
-    if (!gameState.exploredChunks.has(chunkId)) {
-        console.log(`[Map] Discovered new chunk: ${chunkId}`); // Debug Log
-        gameState.exploredChunks.add(chunkId);
-        return true; // Return true to signal that we need to save
-    }
-    return false;
-}
-
 function renderWorldMap() {
     if (!gameState.player.exploredChunks) return;
 
@@ -6360,10 +6340,24 @@ function updateExploration() {
     // Only track exploration in the Overworld
     if (gameState.mapMode !== 'overworld') return false;
 
-    const chunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
-    const chunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+    // --- SAFETY FIX START ---
+    // If the Set doesn't exist yet, create it.
+    if (!gameState.exploredChunks) {
+        // Try to recover data from the player object if it exists there
+        if (gameState.player && Array.isArray(gameState.player.exploredChunks)) {
+            gameState.exploredChunks = new Set(gameState.player.exploredChunks);
+        } else {
+            gameState.exploredChunks = new Set();
+        }
+    }
+    // --- SAFETY FIX END ---
+
+    // Calculate Chunk ID
+    const chunkX = Math.floor(gameState.player.x / MAP_CHUNK_SIZE);
+    const chunkY = Math.floor(gameState.player.y / MAP_CHUNK_SIZE);
     const chunkId = `${chunkX},${chunkY}`;
 
+    // Add to Set if new
     if (!gameState.exploredChunks.has(chunkId)) {
         gameState.exploredChunks.add(chunkId);
         return true; // Return true to signal that we need to save
