@@ -5232,8 +5232,10 @@ generateChunk(chunkX, chunkY) {
                 }
 
                 // --- 3. COMMON FEATURES (Dungeons, Castles, NPCs) ---
-                // ADJUSTED: 0.1% (Was 0.2%). Approx 1 feature every 4 chunks.
-                else if (['.', 'd', 'D'].includes(tile) && featureRoll < 0.001) { 
+
+                // This ensures you find roughly 1 Cave, Castle, or Village per chunk
+                // without increasing the enemy count!
+                else if (['.', 'd', 'D'].includes(tile) && featureRoll < 0.005) { 
                     let features = Object.keys(TILE_DATA);
                     features = features.filter(f => 
                         TILE_DATA[f].type !== 'dungeon_exit' &&
