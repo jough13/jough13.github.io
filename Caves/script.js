@@ -5886,6 +5886,44 @@ const renderStats = () => {
     }
 };
 
+async function wakeUpNearbyEnemies() {
+    const player = gameState.player;
+    const WAKE_RADIUS = 8; // Enemies within 8 tiles will start moving
+
+    for (let y = player.y - WAKE_RADIUS; y <= player.y + WAKE_RADIUS; y++) {
+        for (let x = player.x - WAKE_RADIUS; x <= player.x + WAKE_RADIUS; x++) {
+            
+            // 1. Check if this tile is an enemy type
+            const tile = chunkManager.getTile(x, y);
+            const enemyData = ENEMY_DATA[tile];
+            
+            if (enemyData) {
+                // 2. Check if it is already "Awake" (in Firebase)
+                const enemyId = `overworld:${x},${-y}`;
+                if (!gameState.sharedEnemies[enemyId]) {
+                    
+                    // 3. Wake it up! (Create entry in DB)
+                    // We check DB first to avoid overwriting an existing one we just haven't synced yet
+                    const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
+                    
+                    enemyRef.transaction(currentData => {
+                        if (currentData === null) {
+                            // It doesn't exist in DB, so let's create the instance
+                            // utilizing your existing scaling logic
+                            const scaledStats = getScaledEnemy(enemyData, x, y);
+                            return {
+                                ...scaledStats,
+                                tile: tile // Ensure visual consistency
+                            };
+                        }
+                        return; // Already exists, do nothing
+                    });
+                }
+            }
+        }
+    }
+}
+
 function handleStatAllocation(event) {
     // Only run if a stat button was clicked
     if (!event.target.classList.contains('stat-add-btn')) return;
@@ -9742,6 +9780,16 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             if (gameState.sharedEnemies[enemyId]) {
                 delete gameState.sharedEnemies[enemyId];
             }
+
+            // We allow the tile to be updated if it is standard terrain OR if it is the enemy that just died.
+const currentTerrain = chunkManager.getTile(newX, newY);
+const passableTerrain = ['.', 'd', 'D', 'F', '≈']; // Added swamp/etc
+
+// If the ground is passable OR the ground is currently the enemy we just killed
+if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
+     chunkManager.setWorldTile(newX, newY, droppedLoot);
+}
+
             render(); // Force a re-draw to clear the sprite
             
             // We only set the tile if it's currently passable terrain.
@@ -10101,6 +10149,12 @@ const render = () => {
                     default: 
                         TileRenderer.drawBase(ctx, x, y, '#22c55e'); 
                         fgChar = tile; 
+
+                        // If this tile represents an enemy, use its specific color (or red default)
+        if (ENEMY_DATA[tile]) {
+            fgColor = ENEMY_DATA[tile].color || '#ef4444';
+        }
+
                         break;
                 }
             }
@@ -10992,6 +11046,11 @@ function endPlayerTurn() {
     }
     if (player.thirst <= 0 && gameState.playerTurnCount % 10 === 0) {
         logMessage("Your throat is parched. You feel sluggish. (No Stamina Regen)");
+    }
+
+    // Only run this in the overworld to activate static mobs
+    if (gameState.mapMode === 'overworld') {
+        wakeUpNearbyEnemies();
     }
 
     gameState.playerTurnCount++; // Increment the player's turn
