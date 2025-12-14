@@ -23,6 +23,8 @@ let otherPlayers = {};
 let unsubscribePlayerListener;
 let worldStateListeners = {};
 
+let isProcessingAi = false;
+
 let activeShopInventory = [];
 
 const TILE_DATA = {
@@ -9491,7 +9493,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     attack: scaledStats.attack,
                     defense: enemyData.defense,
                     xp: scaledStats.xp,
-                    loot: enemyData.loot,
+                    loot: enemyData.loot || '$',
                     tile: newTile, // Store the original tile
                     name: scaledStats.name // Store the scaled name (e.g., "Feral Wolf")
                 };
@@ -10866,19 +10868,23 @@ function processEnemyTurns() {
  */
 
 async function runSharedAiTurns() {
+    // 1. Local Lock: Don't run if we are already running!
+    if (isProcessingAi) return;
+    
     let nearestEnemyDir = null;
 
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-        // Dungeons/castles are instanced, no lock needed.
+        // Instanced: No RTDB lock needed, just run it.
         nearestEnemyDir = processEnemyTurns();
-
         render();
 
     } else if (gameState.mapMode === 'overworld') {
-        // Overworld is shared. We need a lock.
+        // Shared: We need the RTDB lock.
+        isProcessingAi = true; // Set local lock
+        
         const lockRef = rtdb.ref('world/aiTurnLock');
         const now = Date.now();
-        const LOCK_DURATION_MS = 5000; // 5 second lock
+        const LOCK_DURATION_MS = 5000; 
 
         try {
             const transactionResult = await lockRef.transaction(currentLockTime => {
@@ -10887,42 +10893,36 @@ async function runSharedAiTurns() {
                     return now;
                 }
                 // Lock is held by someone else, abort.
-                return; // undefined aborts the transaction
+                return; 
             });
 
             if (transactionResult.committed) {
-                // We got the lock!
-                // console.log("Acquired AI lock, running overworld enemy turns...");
-
-                // We MUST await this so we hold the lock until the AI is done.
+                // We got the lock! Run the logic.
                 nearestEnemyDir = await processOverworldEnemyTurns();
 
-                // Release the lock so the next player can run it.
-                await lockRef.set(null);
-
-            } else {
-                // Someone else is running the AI. Do nothing.
-                // console.log("AI lock held by another player.");
-            }
-
+                // Release the lock
+                await lockRef.set(null); 
+            } 
         } catch (error) {
-            console.error("AI Lock transaction failed: ", error);
-            // If the transaction fails, release our lock just in case.
-            await lockRef.set(null);
+            // Ignore "set" errors, they are usually just aborted transactions due to contention
+            if (error.message !== 'set') {
+                console.error("AI Logic error:", error);
+            }
+            // Force release lock on error to prevent freezing
+            try { await lockRef.set(null); } catch (e) {}
+        } finally {
+            isProcessingAi = false; // Release local lock
         }
     }
 
     if (nearestEnemyDir) {
         const player = gameState.player;
-        // 0.5% chance per intuition point, max 50%
         const intuitChance = Math.min(player.intuition * 0.005, 0.5); 
 
         if (Math.random() < intuitChance) {
-            // Success! Give specific direction.
             const dirString = getDirectionString(nearestEnemyDir);
             logMessage(`You sense a hostile presence to the ${dirString}!`);
         } else if (Math.random() < 0.1) { 
-            // Fail. Only show vague message 10% of the time to reduce spam.
             logMessage("You hear a shuffle nearby...");
         }
     }
