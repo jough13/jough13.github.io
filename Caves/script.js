@@ -9602,6 +9602,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
  * @param {object} dir - An object with x and y properties (-1, 0, or 1)
  * @returns {string} A compass direction, e.g., "north-west".
  */
+
 function getDirectionString(dir) {
     if (!dir) return 'nearby';
 
@@ -10350,47 +10351,51 @@ function getBaseTerrain(worldX, worldY) {
 async function processOverworldEnemyTurns() {
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
-    const CHASE_RADIUS = 15; // How far they can "see"
+    const CHASE_RADIUS = 15; 
     const CHASE_RADIUS_SQ = CHASE_RADIUS * CHASE_RADIUS;
 
     let nearestEnemyDir = null;
     let minDist = Infinity;
 
-    // A list to batch our updates
     let movesToMake = [];
-    const movedEnemies = new Set(); // Prevent double-moves
+    const movedEnemies = new Set(); 
 
-    // 1. Iterate through KNOWN Shared Enemies instead of scanning tiles
-    // This fixes the bug where enemies on "Forest" tiles were ignored
+    // Debug Counter
+    let enemiesFound = 0;
+    let enemiesMoved = 0;
+
     for (const key in gameState.sharedEnemies) {
+        enemiesFound++;
         const enemy = gameState.sharedEnemies[key];
         
-        // Parse "overworld:x,y" to get coordinates
         const parts = key.split(':');
         if (parts.length < 2) continue;
         const coords = parts[1].split(',');
         const x = parseInt(coords[0]);
-        const y = -parseInt(coords[1]); // Remember Y is inverted in the key!
+        const y = -parseInt(coords[1]); 
 
-        // Skip if too far away (Optimization)
         const distSq = Math.pow(x - playerX, 2) + Math.pow(y - playerY, 2);
-        if (distSq > CHASE_RADIUS_SQ) continue;
+        
+        // Debug: Print distance of first few enemies
+        // if (enemiesFound < 3) console.log(`Enemy at ${x},${y} Dist: ${Math.sqrt(distSq)}`);
 
-        // Skip if already moved this turn
+        if (distSq > CHASE_RADIUS_SQ) continue;
         if (movedEnemies.has(key)) continue;
 
-        // 2. Logic: Try to move (75% chance)
-        if (Math.random() < 0.75) {
-            let dirX, dirY;
-            const CHASE_CHANCE = 0.5;
+        // FORCE MOVE: 100% chance for testing
+        if (true) { 
+            let dirX = 0, dirY = 0;
+            
+            // AGGRESSIVE CHASE (Always move towards player)
+            if (x < playerX) dirX = 1;
+            if (x > playerX) dirX = -1;
+            if (y < playerY) dirY = 1;
+            if (y > playerY) dirY = -1;
 
-            // Chase or Wander?
-            if (Math.random() < CHASE_CHANCE) {
-                dirX = Math.sign(playerX - x);
-                dirY = Math.sign(playerY - y);
-            } else {
-                dirX = Math.floor(Math.random() * 3) - 1; 
-                dirY = Math.floor(Math.random() * 3) - 1; 
+            // Randomize axis if diagonal
+            if (dirX !== 0 && dirY !== 0) {
+                if (Math.random() < 0.5) dirX = 0;
+                else dirY = 0;
             }
 
             if (dirX === 0 && dirY === 0) continue;
@@ -10398,44 +10403,43 @@ async function processOverworldEnemyTurns() {
             const newX = x + dirX;
             const newY = y + dirY;
 
-            // 3. Collision Check
             // Check Terrain
             const targetTile = chunkManager.getTile(newX, newY);
-            
-            // Allow movement on Plains, Floors, and Forests (for Wolves/Bears)
             let canMove = false;
-            if (targetTile === '.') canMove = true;
-            if (targetTile === 'F' && ['w', '🐺', '🐻'].includes(enemy.tile)) canMove = true;
-            if (targetTile === 'd') canMove = true; // Deadlands
+            
+            // Allow movement on common terrain
+            if (['.', 'F', 'd', 'D'].includes(targetTile)) canMove = true;
+            
+            // Special case: "Ghost" tiles (if map thinks it's an enemy, it's walkable)
+            if (ENEMY_DATA[targetTile]) canMove = true; 
 
             if (canMove) {
-                // Check Player Collision (Attack!)
+                // Check Player Collision
                 if (newX === playerX && newY === playerY) {
-                    // Attack logic is handled client-side in the render loop usually,
-                    // but we can log it here or just let them bump. 
-                    // For safety in async, we usually just block the move.
+                    // Attack logic handled by client renderer/collision usually, 
+                    // but we can force a log here to prove they are trying.
+                    // logMessage(`Enemy at ${x},${y} bumps into you!`); 
                     continue; 
                 }
 
-                // Check other Enemy Collision
+                // Check Enemy Collision
                 const newKey = `overworld:${newX},${-newY}`;
                 if (gameState.sharedEnemies[newKey] || movedEnemies.has(newKey)) {
-                    continue; // Occupied
+                    continue; 
                 }
 
-                // Queue the Move
-                movedEnemies.add(newKey); // Mark destination as taken
-                movedEnemies.add(key);    // Mark source as processed
+                movedEnemies.add(newKey);
+                movedEnemies.add(key);
 
                 movesToMake.push({
                     oldKey: key,
                     newKey: newKey,
                     data: enemy,
                     oldX: x, oldY: y,
-                    tile: enemy.tile // Pass tile for terrain cleanup
+                    tile: enemy.tile
                 });
+                enemiesMoved++;
 
-                // Update "Nearest Enemy" indicator
                 if (distSq < minDist) {
                     minDist = distSq;
                     nearestEnemyDir = { x: dirX, y: dirY };
@@ -10444,25 +10448,25 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-    // 4. Execute Batch Moves
+    if (enemiesMoved > 0) {
+        console.log(`🤖 AI Moving ${enemiesMoved} enemies.`);
+    }
+
+    // Execute Batch Moves
     for (const move of movesToMake) {
         const oldRef = rtdb.ref(`worldEnemies/${move.oldKey}`);
         const newRef = rtdb.ref(`worldEnemies/${move.newKey}`);
 
         try {
-            // Copy data to new spot
             await newRef.set(move.data);
-            // Delete old spot
             await oldRef.remove();
 
-            // CLEANUP: If the static terrain map has this enemy baked in, clear it.
-            // This prevents "Ghost" tiles appearing if the server restarts.
+            // Cleanup static map if needed
             const currentStaticTile = chunkManager.getTile(move.oldX, move.oldY);
             if (currentStaticTile === move.tile) {
                 const baseTerrain = getBaseTerrain(move.oldX, move.oldY);
                 chunkManager.setWorldTile(move.oldX, move.oldY, baseTerrain);
             }
-
         } catch (err) {
             console.error("Enemy move failed:", err);
         }
@@ -10854,63 +10858,19 @@ function processEnemyTurns() {
  */
 
 async function runSharedAiTurns() {
-    let nearestEnemyDir = null;
-
-    if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-        // Dungeons/castles are instanced, no lock needed.
-        nearestEnemyDir = processEnemyTurns();
-
-        render();
-
-    } else if (gameState.mapMode === 'overworld') {
-        // Overworld is shared. We need a lock.
-        const lockRef = rtdb.ref('world/aiTurnLock');
-        const now = Date.now();
-        const LOCK_DURATION_MS = 5000; // 5 second lock
-
-        try {
-            const transactionResult = await lockRef.transaction(currentLockTime => {
-                if (currentLockTime === null || currentLockTime < (now - LOCK_DURATION_MS)) {
-                    // Lock is free or expired, take it.
-                    return now;
-                }
-                // Lock is held by someone else, abort.
-                return; // undefined aborts the transaction
-            });
-
-            if (transactionResult.committed) {
-                // We got the lock!
-                // console.log("Acquired AI lock, running overworld enemy turns...");
-
-                // We MUST await this so we hold the lock until the AI is done.
-                nearestEnemyDir = await processOverworldEnemyTurns();
-
-                // Release the lock so the next player can run it.
-                await lockRef.set(null);
-
-            } else {
-                // Someone else is running the AI. Do nothing.
-                // console.log("AI lock held by another player.");
-            }
-
-        } catch (error) {
-            console.error("AI Lock transaction failed: ", error);
-            // If the transaction fails, release our lock just in case.
-            await lockRef.set(null);
-        }
-    }
+    console.log("🤖 AI Turn Started..."); // Uncomment to check browser console
+    
+    // Bypass the Lock System entirely for now
+    const nearestEnemyDir = await processOverworldEnemyTurns();
 
     if (nearestEnemyDir) {
         const player = gameState.player;
-        // 0.5% chance per intuition point, max 50%
         const intuitChance = Math.min(player.intuition * 0.005, 0.5); 
 
         if (Math.random() < intuitChance) {
-            // Success! Give specific direction.
             const dirString = getDirectionString(nearestEnemyDir);
             logMessage(`You sense a hostile presence to the ${dirString}!`);
         } else if (Math.random() < 0.1) { 
-            // Fail. Only show vague message 10% of the time to reduce spam.
             logMessage("You hear a shuffle nearby...");
         }
     }
