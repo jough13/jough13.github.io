@@ -6128,15 +6128,30 @@ const worldMapCanvas = document.getElementById('worldMapCanvas');
 const worldMapCtx = worldMapCanvas.getContext('2d');
 const mapCoordsDisplay = document.getElementById('mapCoords');
 
-// Configuration
-const MAP_SCALE = 2; // 2 pixels per tile (Low res but distinct)
+// Settings
+const MAP_SCALE = 4; 
 const CHUNK_SIZE = 16; 
 
+// Camera State
+let mapCamera = { x: 0, y: 0 };
+let isDraggingMap = false;
+let lastMouseX = 0;
+let lastMouseY = 0;
+
 function openWorldMap() {
-
-    updateExploration();
-
     mapModal.classList.remove('hidden');
+    
+    // 1. Force Exploration Update
+    updateExploration(); 
+
+    // 2. Center Camera on Player
+    mapCamera.x = gameState.player.x;
+    mapCamera.y = gameState.player.y;
+
+    // 3. Resize Canvas
+    fitMapCanvasToContainer();
+
+    // 4. Render
     renderWorldMap();
 }
 
@@ -6144,68 +6159,56 @@ function closeWorldMap() {
     mapModal.classList.add('hidden');
 }
 
+function fitMapCanvasToContainer() {
+    const container = worldMapCanvas.parentElement;
+    worldMapCanvas.width = container.clientWidth;
+    worldMapCanvas.height = container.clientHeight;
+}
+
 function renderWorldMap() {
     if (!gameState.player.exploredChunks) return;
 
-    // 1. Determine Map Bounds based on exploration
-    // We scan all visited chunks to find the min/max X and Y
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    
-    // Default to player pos if empty
-    if (gameState.exploredChunks.size === 0) {
-        minX = Math.floor(gameState.player.x / CHUNK_SIZE);
-        maxX = minX;
-        minY = Math.floor(gameState.player.y / CHUNK_SIZE);
-        maxY = minY;
-    }
-
-    gameState.exploredChunks.forEach(chunkId => {
-        const [cx, cy] = chunkId.split(',').map(Number);
-        if (cx < minX) minX = cx;
-        if (cx > maxX) maxX = cx;
-        if (cy < minY) minY = cy;
-        if (cy > maxY) maxY = cy;
-    });
-
-    // Add padding (in chunks)
-    const padding = 2;
-    minX -= padding; maxX += padding;
-    minY -= padding; maxY += padding;
-
-    // 2. Resize Canvas
-    const widthChunks = (maxX - minX) + 1;
-    const heightChunks = (maxY - minY) + 1;
-    
-    worldMapCanvas.width = widthChunks * CHUNK_SIZE * MAP_SCALE;
-    worldMapCanvas.height = heightChunks * CHUNK_SIZE * MAP_SCALE;
-
-    // Fill Black (Unexplored)
+    // 1. Clear Background
     worldMapCtx.fillStyle = '#000000';
     worldMapCtx.fillRect(0, 0, worldMapCanvas.width, worldMapCanvas.height);
 
-    // 3. Draw Explored Chunks
+    // 2. Calculate Screen Center
+    const centerX = worldMapCanvas.width / 2;
+    const centerY = worldMapCanvas.height / 2;
+
+    // 3. Iterate ONLY Explored Chunks
     gameState.exploredChunks.forEach(chunkId => {
         const [cx, cy] = chunkId.split(',').map(Number);
         
-        // Calculate where this chunk goes on the canvas
-        const canvasOffsetX = (cx - minX) * CHUNK_SIZE * MAP_SCALE;
-        const canvasOffsetY = (cy - minY) * CHUNK_SIZE * MAP_SCALE;
+        // Chunk's World Position (Top-Left of the chunk)
+        const chunkWorldX = cx * CHUNK_SIZE;
+        const chunkWorldY = cy * CHUNK_SIZE;
 
-        // Iterate tiles in this chunk
+        // Calculate Screen Position for this chunk
+        // Formula: (ChunkWorldPos - CameraPos) * Scale + CenterOffset
+        const screenX = Math.floor((chunkWorldX - mapCamera.x) * MAP_SCALE + centerX);
+        const screenY = Math.floor((chunkWorldY - mapCamera.y) * MAP_SCALE + centerY);
+
+        // Optimization: Skip drawing if completely off-screen
+        const chunkSizeOnScreen = CHUNK_SIZE * MAP_SCALE;
+        if (screenX + chunkSizeOnScreen < 0 || screenX > worldMapCanvas.width ||
+            screenY + chunkSizeOnScreen < 0 || screenY > worldMapCanvas.height) {
+            return;
+        }
+
+        // Draw Tiles in Chunk
         for (let y = 0; y < CHUNK_SIZE; y++) {
             for (let x = 0; x < CHUNK_SIZE; x++) {
-                const worldX = cx * CHUNK_SIZE + x;
-                const worldY = cy * CHUNK_SIZE + y;
+                const worldX = chunkWorldX + x;
+                const worldY = chunkWorldY + y;
 
-                // --- FAST BIOME LOOKUP ---
-                // We use the noise functions directly. This is much faster than 
-                // loading the actual chunk data from the database.
                 const color = getBiomeColorForMap(worldX, worldY);
-
+                
+                // Draw pixel relative to the chunk's screen position
                 worldMapCtx.fillStyle = color;
                 worldMapCtx.fillRect(
-                    canvasOffsetX + (x * MAP_SCALE), 
-                    canvasOffsetY + (y * MAP_SCALE), 
+                    screenX + (x * MAP_SCALE), 
+                    screenY + (y * MAP_SCALE), 
                     MAP_SCALE, 
                     MAP_SCALE
                 );
@@ -6214,29 +6217,54 @@ function renderWorldMap() {
     });
 
     // 4. Draw Player Marker
-    const pX = gameState.player.x;
-    const pY = gameState.player.y;
-    const pChunkX = Math.floor(pX / CHUNK_SIZE);
-    const pChunkY = Math.floor(pY / CHUNK_SIZE);
+    // Calculate player position relative to camera
+    // If camera is centered on player, this results in (0,0) + center = center of screen
+    const playerScreenX = (gameState.player.x - mapCamera.x) * MAP_SCALE + centerX;
+    const playerScreenY = (gameState.player.y - mapCamera.y) * MAP_SCALE + centerY;
 
-    // Only draw if player is within the bounds (should always be true)
-    const playerCanvasX = ((pChunkX - minX) * CHUNK_SIZE + (pX % CHUNK_SIZE)) * MAP_SCALE;
-    const playerCanvasY = ((pChunkY - minY) * CHUNK_SIZE + (pY % CHUNK_SIZE)) * MAP_SCALE;
-
-    // Pulsing Red Dot
+    // Draw Red Dot (with white border for visibility)
     worldMapCtx.fillStyle = '#ef4444';
     worldMapCtx.beginPath();
-    worldMapCtx.arc(playerCanvasX, playerCanvasY, 4, 0, Math.PI * 2);
+    worldMapCtx.arc(playerScreenX, playerScreenY, 4, 0, Math.PI * 2);
     worldMapCtx.fill();
-    worldMapCtx.strokeStyle = '#fff';
+    worldMapCtx.strokeStyle = '#ffffff';
     worldMapCtx.lineWidth = 2;
     worldMapCtx.stroke();
     
-    // Update Coords Text
-    mapCoordsDisplay.textContent = `Current Location: ${pX}, ${-pY}`;
+    // 5. Update Coordinates Text
+    mapCoordsDisplay.textContent = `Looking at: ${Math.floor(mapCamera.x)}, ${-Math.floor(mapCamera.y)}`;
 }
 
-// Helper to get color purely from math (Seed)
+// --- MAP CONTROLS (Panning) ---
+worldMapCanvas.addEventListener('mousedown', (e) => {
+    isDraggingMap = true;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+    worldMapCanvas.style.cursor = 'grabbing';
+});
+
+window.addEventListener('mouseup', () => {
+    isDraggingMap = false;
+    worldMapCanvas.style.cursor = 'grab';
+});
+
+window.addEventListener('mousemove', (e) => {
+    if (!isDraggingMap) return;
+    
+    const dx = e.clientX - lastMouseX;
+    const dy = e.clientY - lastMouseY;
+    
+    // Move camera opposite to drag (divided by scale for accuracy)
+    mapCamera.x -= dx / MAP_SCALE;
+    mapCamera.y -= dy / MAP_SCALE;
+    
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+    
+    renderWorldMap();
+});
+
+// Helper (Unchanged, but ensure it's here)
 function getBiomeColorForMap(x, y) {
     const elev = elevationNoise.noise(x / 70, y / 70);
     const moist = moistureNoise.noise(x / 50, y / 50);
@@ -6252,6 +6280,12 @@ function getBiomeColorForMap(x, y) {
 
 // Listeners
 document.getElementById('closeMapButton').addEventListener('click', closeWorldMap);
+window.addEventListener('resize', () => {
+    if (!mapModal.classList.contains('hidden')) {
+        fitMapCanvasToContainer();
+        renderWorldMap();
+    }
+});
 
 function updateExploration() {
     // Only track exploration in the Overworld
