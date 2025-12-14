@@ -23,6 +23,14 @@ let otherPlayers = {};
 let unsubscribePlayerListener;
 let worldStateListeners = {};
 
+// Track Listeners so we can turn them off
+let sharedEnemiesListener = null;
+let chatListener = null;
+let connectedListener = null;
+
+// Track enemies currently being spawned so they don't flicker
+let pendingSpawns = new Set();
+
 let activeShopInventory = [];
 
 const TILE_DATA = {
@@ -5911,20 +5919,17 @@ const wokenEnemyTiles = new Set();
 
 async function wakeUpNearbyEnemies() {
     const player = gameState.player;
-    const WAKE_RADIUS = 8; 
+    const WAKE_RADIUS = 9; 
 
     for (let y = player.y - WAKE_RADIUS; y <= player.y + WAKE_RADIUS; y++) {
         for (let x = player.x - WAKE_RADIUS; x <= player.x + WAKE_RADIUS; x++) {
             
-            const tileId = `${x},${y}`; // Unique key for this coordinate
-            const enemyId = `overworld:${x},${-y}`; // Database Key
+            const tileId = `${x},${y}`;
+            const enemyId = `overworld:${x},${-y}`;
 
-            // 1. SAFETY: Skip if we already processed this tile this session
+            // Safety Checks
             if (wokenEnemyTiles.has(tileId)) continue;
-
-            // 2. SAFETY: Skip if an enemy already exists alive here
             if (gameState.sharedEnemies[enemyId]) {
-                // If the enemy is alive but the map still shows a static sprite, clear it locally
                 const currentTile = chunkManager.getTile(x, y);
                 if (ENEMY_DATA[currentTile]) {
                      chunkManager.setWorldTile(x, y, '.'); 
@@ -5933,27 +5938,33 @@ async function wakeUpNearbyEnemies() {
                 continue;
             }
 
-            // 3. CHECK MAP for Static Enemies
             const tile = chunkManager.getTile(x, y);
             const enemyData = ENEMY_DATA[tile];
             
             if (enemyData) {
-                // Found a static enemy!
-                
-                // A. Mark processed IMMEDIATELY (Stops the loop)
+                // --- 1. Mark as Processed ---
                 wokenEnemyTiles.add(tileId);
 
-                // B. Create Optimistic Enemy (Stops race condition)
+                // --- 2. Create Data ---
                 const scaledStats = getScaledEnemy(enemyData, x, y);
                 const newEnemy = { ...scaledStats, tile: tile, x: x, y: y };
-                gameState.sharedEnemies[enemyId] = newEnemy; 
+                
+                // --- 3. PROTECT: Add to Pending Set ---
+                pendingSpawns.add(enemyId);
 
-                // C. Clear Static Tile IMMEDIATELY
+                // --- 4. Optimistic Local Update (Show it NOW) ---
+                gameState.sharedEnemies[enemyId] = newEnemy; 
+                
+                // --- 5. Clear Static Map Tile ---
                 chunkManager.setWorldTile(x, y, '.');
 
-                // D. Send to Database (Async)
+                // --- 6. Send to DB ---
                 rtdb.ref(`worldEnemies/${enemyId}`).transaction(current => {
-                    return current || newEnemy; // Only set if empty
+                    return current || newEnemy; 
+                }).then(() => {
+                    // --- 7. CLEANUP: Transaction confirmed, remove protection ---
+                    // The next listener update will contain the authoritative data
+                    pendingSpawns.delete(enemyId);
                 });
             }
         }
@@ -13860,15 +13871,14 @@ loginButton.addEventListener('click', async () => {
 function clearSessionState() {
     gameState.lootedTiles.clear();
     gameState.discoveredRegions.clear();
-
     wokenEnemyTiles.clear();
+    pendingSpawns.clear(); // Clear pending spawns
 
     gameState.mapMode = null;
 
-    // Reset session-based flags
     if (gameState.flags) {
         gameState.flags.hasSeenForestWarning = false;
-        gameState.flags.canoeEmbarkCount = 0; // <-- ADD THIS
+        gameState.flags.canoeEmbarkCount = 0;
     }
 
     chunkManager.caveMaps = {};
@@ -13876,6 +13886,18 @@ function clearSessionState() {
     chunkManager.caveEnemies = {};
     chunkManager.caveThemes = {};
     chunkManager.castleSpawnPoints = {};
+    
+    // --- LISTENER CLEANUP ---
+    if (sharedEnemiesListener) {
+        rtdb.ref('worldEnemies').off('value', sharedEnemiesListener);
+        sharedEnemiesListener = null;
+    }
+    if (chatListener) { // If you saved the chat listener reference
+        rtdb.ref('chat').off('child_added', chatListener);
+        chatListener = null;
+    }
+    // Also clear the local enemy list to prevent ghosts
+    gameState.sharedEnemies = {};
 }
 
 logoutButton.addEventListener('click', () => {
@@ -13971,6 +13993,11 @@ async function enterGame(playerData) {
     }
 
     // --- 4. Setup Listeners ---
+
+// Cleanup old listeners first (Safety check)
+    if (sharedEnemiesListener) rtdb.ref('worldEnemies').off('value', sharedEnemiesListener);
+    if (chatListener) rtdb.ref('chat').off('child_added', chatListener);
+
     // Note: player_id was set in selectSlot (it is currentUser.uid)
     onlinePlayerRef = rtdb.ref(`onlinePlayers/${player_id}`);
     const connectedRef = rtdb.ref('.info/connected');
@@ -14022,9 +14049,22 @@ async function enterGame(playerData) {
         render();
     });
 
-    const sharedEnemiesRef = rtdb.ref('worldEnemies');
-    sharedEnemiesRef.on('value', (snapshot) => {
-        gameState.sharedEnemies = snapshot.val() || {};
+const sharedEnemiesRef = rtdb.ref('worldEnemies');
+    sharedEnemiesListener = sharedEnemiesRef.on('value', (snapshot) => {
+        const serverData = snapshot.val() || {};
+        
+        // We take the server truth, BUT we inject our local "pending" enemies
+        // so they don't disappear while waiting for the server to confirm them.
+        const mergedEnemies = { ...serverData };
+        
+        pendingSpawns.forEach(pendingId => {
+            // If we have a local version of this pending enemy, force keep it
+            if (gameState.sharedEnemies[pendingId]) {
+                mergedEnemies[pendingId] = gameState.sharedEnemies[pendingId];
+            }
+        });
+
+        gameState.sharedEnemies = mergedEnemies;
         render(); // Re-render to show new health bars
     });
 
