@@ -23,9 +23,9 @@ let otherPlayers = {};
 let unsubscribePlayerListener;
 let worldStateListeners = {};
 
-let isProcessingAi = false;
-
 let activeShopInventory = [];
+
+const wokenEnemyTiles = new Set();
 
 const TILE_DATA = {
     '#': {
@@ -1919,6 +1919,8 @@ function createDefaultPlayerState() {
         isBoating: false,
 
         activeTreasure: null,
+
+        exploredChunks: [],
 
         quests: {},
 
@@ -4405,6 +4407,29 @@ elevationNoise.init(WORLD_SEED + ':elevation');
 const moistureNoise = Object.create(Perlin);
 moistureNoise.init(WORLD_SEED + ':moisture');
 
+/**
+ * Returns a clean array of inventory items ready for Firebase storage.
+ * Removes functions (like 'effect') and ensures data consistency.
+ */
+function getSanitizedInventory() {
+    return gameState.player.inventory.map(item => ({
+        name: item.name,
+        type: item.type,
+        quantity: item.quantity,
+        tile: item.tile,
+        damage: item.damage || null,
+        slot: item.slot || null,
+        defense: item.defense || null,
+        statBonuses: item.statBonuses || null,
+        spellId: item.spellId || null,
+        skillId: item.skillId || null,
+        stat: item.stat || null,
+        isEquipped: item.isEquipped || false,
+        // When we add Durability later, we only need to add it HERE:
+        // durability: item.durability || null 
+    }));
+}
+
 const TileRenderer = {
     // Helper: Deterministic random based on WORLD coordinates
     getPseudoRandom: (x, y) => {
@@ -5515,6 +5540,7 @@ const ParticleSystem = {
 };
 
 const gameState = {
+    weather: 'clear',
     player: {
         x: 0,
         y: 0,
@@ -5557,6 +5583,8 @@ const gameState = {
 
     lootedTiles: new Set(),
     discoveredRegions: new Set(),
+
+    activeTreasure: null,
 
     mapMode: null,
 
@@ -5647,42 +5675,80 @@ function triggerAtmosphericFlavor(tile) {
 }
 
 function updateWeather() {
-    // Only update weather every 10 turns to prevent flickering
-    if (gameState.playerTurnCount % 10 !== 0) return;
+    const player = gameState.player;
 
-    const x = gameState.player.x;
-    const y = gameState.player.y;
-    
-    // Use your existing noise generators, scaled for larger weather patterns
-    const temp = elevationNoise.noise(x / 200, y / 200); // Temperature pattern
-    const humid = moistureNoise.noise(x / 200 + 100, y / 200 + 100); // Humidity pattern (offset)
+    // 1. Initialize State if missing (Safety check for existing saves)
+    if (typeof player.weatherIntensity === 'undefined') player.weatherIntensity = 0;
+    if (typeof player.weatherState === 'undefined') player.weatherState = 'calm'; // calm, building, active, fading
+    if (typeof player.weatherDuration === 'undefined') player.weatherDuration = 0;
 
-    let newWeather = 'clear';
+    // 2. Determine Local Forecast (Where we are now)
+    // We expanded the noise scale to 300 so weather zones are larger/longer
+    const x = player.x;
+    const y = player.y;
+    const temp = elevationNoise.noise(x / 300, y / 300); 
+    const humid = moistureNoise.noise(x / 300 + 100, y / 300 + 100);
 
-    if (gameState.mapMode !== 'overworld') {
-        newWeather = 'clear'; // Indoors is always clear
-    } else {
+    let localForecast = 'clear';
+    // Overworld only
+    if (gameState.mapMode === 'overworld') {
         if (humid > 0.6) {
-            if (temp < 0.3) newWeather = 'snow';
-            else if (humid > 0.8) newWeather = 'storm';
-            else newWeather = 'rain';
+            if (temp < 0.3) localForecast = 'snow';
+            else if (humid > 0.8) localForecast = 'storm';
+            else localForecast = 'rain';
         } else if (humid > 0.4 && temp < 0.4) {
-            newWeather = 'fog';
+            localForecast = 'fog';
         }
     }
 
-    if (newWeather !== gameState.weather) {
-        gameState.weather = newWeather;
-        
-        let msg = "";
-        if (newWeather === 'rain') msg = "It starts to rain.";
-        if (newWeather === 'storm') msg = "Thunder rumbles. A storm is brewing.";
-        if (newWeather === 'snow') msg = "Snow begins to fall.";
-        if (newWeather === 'fog') msg = "A thick fog rolls in.";
-        if (newWeather === 'clear') msg = "The skies clear up.";
-        
-        if (msg) logMessage(msg);
-        render(); // Re-render to show effects
+    // 3. Weather State Machine
+    const TRANSITION_SPEED = 0.1; // Takes 10 turns to fade in/out fully
+
+    switch (player.weatherState) {
+        case 'calm':
+            // If the forecast calls for weather, start building it
+            if (localForecast !== 'clear') {
+                gameState.weather = localForecast; // Set the type
+                player.weatherState = 'building';
+                logMessage(`The sky darkens. It looks like ${localForecast} is coming.`);
+            }
+            break;
+
+        case 'building':
+            // Increase intensity
+            player.weatherIntensity += TRANSITION_SPEED;
+            if (player.weatherIntensity >= 1.0) {
+                player.weatherIntensity = 1.0;
+                player.weatherState = 'active';
+                player.weatherDuration = 50 + Math.floor(Math.random() * 50); // Lasts 50-100 turns
+                logMessage(`The ${gameState.weather} is fully upon you.`);
+            }
+            break;
+
+        case 'active':
+            player.weatherDuration--;
+            
+            // If we walked OUT of the bad weather zone, start fading early
+            if (localForecast === 'clear' && player.weatherDuration > 5) {
+                 player.weatherDuration = 5; 
+                 logMessage("The weather seems to be clearing up.");
+            }
+            
+            if (player.weatherDuration <= 0) {
+                player.weatherState = 'fading';
+            }
+            break;
+
+        case 'fading':
+            // Decrease intensity
+            player.weatherIntensity -= TRANSITION_SPEED;
+            if (player.weatherIntensity <= 0) {
+                player.weatherIntensity = 0;
+                player.weatherState = 'calm';
+                gameState.weather = 'clear';
+                logMessage("The skies are clear again.");
+            }
+            break;
     }
 }
 
@@ -5823,6 +5889,63 @@ const renderStats = () => {
         }
     }
 };
+
+async function wakeUpNearbyEnemies() {
+    const player = gameState.player;
+    const WAKE_RADIUS = 8; 
+
+    for (let y = player.y - WAKE_RADIUS; y <= player.y + WAKE_RADIUS; y++) {
+        for (let x = player.x - WAKE_RADIUS; x <= player.x + WAKE_RADIUS; x++) {
+            
+            // 1. Unique ID for this specific tile coordinate
+            const tileId = `${x},${y}`;
+
+            // Optimization: If we already woke this tile this session, skip it.
+            if (wokenEnemyTiles.has(tileId)) continue;
+
+            const tile = chunkManager.getTile(x, y);
+            const enemyData = ENEMY_DATA[tile];
+            
+            if (enemyData) {
+                const enemyId = `overworld:${x},${-y}`;
+                
+                // If it's not already alive...
+                if (!gameState.sharedEnemies[enemyId]) {
+                    
+                    // Mark as processing so we don't spam the DB
+                    wokenEnemyTiles.add(tileId);
+
+                    const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
+                    
+                    // Run the transaction
+                    enemyRef.transaction(currentData => {
+                        if (currentData === null) {
+                            const scaledStats = getScaledEnemy(enemyData, x, y);
+                            const newEnemy = {
+                                ...scaledStats,
+                                tile: tile 
+                            };
+                            
+                            // Add to local state immediately for responsiveness
+                            gameState.sharedEnemies[enemyId] = newEnemy;
+                            
+                            return newEnemy;
+                        }
+                        return; // Already exists
+                    }).then((result) => {
+                        if (result.committed) {
+                            // --- CRITICAL FIX: REMOVE THE STATIC TILE ---
+                            // We replace the static 'r' or 'g' with '.' (grass)
+                            // so you don't see a duplicate frozen enemy.
+                            chunkManager.setWorldTile(x, y, '.');
+                            // ---------------------------------------------
+                        }
+                    });
+                }
+            }
+        }
+    }
+}
 
 function handleStatAllocation(event) {
     // Only run if a stat button was clicked
@@ -6020,8 +6143,7 @@ function handleItemDrop(event) {
         }));
     
         playerRef.update({
-        inventory: inventoryToSave
-    
+        inventory: getSanitizedInventory()
     }); // Save the clean version
 
     // 7. Exit drop mode
@@ -6098,6 +6220,210 @@ function generateMagicItem(tier) {
     }
 
     return newItem;
+}
+
+// --- WORLD MAP SYSTEM ---
+const mapModal = document.getElementById('mapModal');
+const worldMapCanvas = document.getElementById('worldMapCanvas');
+const worldMapCtx = worldMapCanvas.getContext('2d');
+const mapCoordsDisplay = document.getElementById('mapCoords');
+
+// Settings
+const MAP_SCALE = 4; 
+const MAP_CHUNK_SIZE = 16; // Renamed to avoid conflicts, explicit constant
+
+// Camera State
+let mapCamera = { x: 0, y: 0 };
+let isDraggingMap = false;
+let lastMouseX = 0;
+let lastMouseY = 0;
+
+function openWorldMap() {
+    mapModal.classList.remove('hidden');
+    
+    // 1. Center Camera on Player immediately
+    mapCamera.x = gameState.player.x;
+    mapCamera.y = gameState.player.y;
+
+    // 2. Force Exploration of CURRENT tile immediately
+    // This ensures you are never standing in a "void" when you open the map
+    updateExploration(); 
+
+    // 3. Resize Canvas to fill the modal window
+    fitMapCanvasToContainer();
+
+    // 4. Render
+    renderWorldMap();
+}
+
+function closeWorldMap() {
+    mapModal.classList.add('hidden');
+}
+
+function fitMapCanvasToContainer() {
+    const container = worldMapCanvas.parentElement;
+    if (container.clientWidth > 0 && container.clientHeight > 0) {
+        worldMapCanvas.width = container.clientWidth;
+        worldMapCanvas.height = container.clientHeight;
+    }
+}
+
+function renderWorldMap() {
+    if (!gameState.player.exploredChunks) return;
+
+    // 1. Clear Background (Black Void)
+    worldMapCtx.fillStyle = '#000000';
+    worldMapCtx.fillRect(0, 0, worldMapCanvas.width, worldMapCanvas.height);
+
+    // 2. Calculate Screen Center
+    const centerX = Math.floor(worldMapCanvas.width / 2);
+    const centerY = Math.floor(worldMapCanvas.height / 2);
+
+    // 3. Iterate ONLY Explored Chunks
+    gameState.exploredChunks.forEach(chunkId => {
+        const [cx, cy] = chunkId.split(',').map(Number);
+        
+        if (isNaN(cx) || isNaN(cy)) return; // Safety check
+
+        // Chunk's World Position (Top-Left of the chunk)
+        const chunkWorldX = cx * MAP_CHUNK_SIZE;
+        const chunkWorldY = cy * MAP_CHUNK_SIZE;
+
+        // Calculate Screen Position for this chunk
+        // Formula: (ChunkWorldPos - CameraPos) * Scale + CenterOffset
+        const screenX = Math.floor((chunkWorldX - mapCamera.x) * MAP_SCALE + centerX);
+        const screenY = Math.floor((chunkWorldY - mapCamera.y) * MAP_SCALE + centerY);
+
+        // Optimization: Skip drawing if completely off-screen
+        const chunkSizeOnScreen = MAP_CHUNK_SIZE * MAP_SCALE;
+        if (screenX + chunkSizeOnScreen < 0 || screenX > worldMapCanvas.width ||
+            screenY + chunkSizeOnScreen < 0 || screenY > worldMapCanvas.height) {
+            return;
+        }
+
+        // Draw Tiles in Chunk
+        for (let y = 0; y < MAP_CHUNK_SIZE; y++) {
+            for (let x = 0; x < MAP_CHUNK_SIZE; x++) {
+                const worldX = chunkWorldX + x;
+                const worldY = chunkWorldY + y;
+
+                const color = getBiomeColorForMap(worldX, worldY);
+                
+                // Draw pixel
+                worldMapCtx.fillStyle = color;
+                worldMapCtx.fillRect(
+                    screenX + (x * MAP_SCALE), 
+                    screenY + (y * MAP_SCALE), 
+                    MAP_SCALE, 
+                    MAP_SCALE
+                );
+            }
+        }
+
+        // Debug: Draw faint outline around chunk to verify alignment
+        // worldMapCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        // worldMapCtx.lineWidth = 1;
+        // worldMapCtx.strokeRect(screenX, screenY, chunkSizeOnScreen, chunkSizeOnScreen);
+    });
+
+    // 4. Draw Player Marker
+    // The player is always at 'mapCamera' coordinates + center offset
+    // This assumes camera is locked to player unless dragged.
+    const playerScreenX = (gameState.player.x - mapCamera.x) * MAP_SCALE + centerX;
+    const playerScreenY = (gameState.player.y - mapCamera.y) * MAP_SCALE + centerY;
+
+    // Draw Red Dot (with white border for visibility)
+    worldMapCtx.fillStyle = '#ef4444';
+    worldMapCtx.beginPath();
+    worldMapCtx.arc(playerScreenX, playerScreenY, 4, 0, Math.PI * 2);
+    worldMapCtx.fill();
+    worldMapCtx.strokeStyle = '#ffffff';
+    worldMapCtx.lineWidth = 2;
+    worldMapCtx.stroke();
+    
+    // 5. Update Coordinates Text
+    mapCoordsDisplay.textContent = `Current Location: ${gameState.player.x}, ${-gameState.player.y}`;
+}
+
+// --- MAP CONTROLS (Panning) ---
+worldMapCanvas.addEventListener('mousedown', (e) => {
+    isDraggingMap = true;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+    worldMapCanvas.style.cursor = 'grabbing';
+});
+
+window.addEventListener('mouseup', () => {
+    isDraggingMap = false;
+    worldMapCanvas.style.cursor = 'grab';
+});
+
+window.addEventListener('mousemove', (e) => {
+    if (!isDraggingMap) return;
+    
+    const dx = e.clientX - lastMouseX;
+    const dy = e.clientY - lastMouseY;
+    
+    // Move camera opposite to drag
+    mapCamera.x -= dx / MAP_SCALE;
+    mapCamera.y -= dy / MAP_SCALE;
+    
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+    
+    renderWorldMap();
+});
+
+// Helper
+function getBiomeColorForMap(x, y) {
+    const elev = elevationNoise.noise(x / 70, y / 70);
+    const moist = moistureNoise.noise(x / 50, y / 50);
+
+    if (elev < 0.35) return '#3b82f6'; // Water
+    if (elev < 0.4 && moist > 0.7) return '#422006'; // Swamp
+    if (elev > 0.8) return '#57534e'; // Mountain
+    if (elev > 0.6 && moist < 0.3) return '#2d2d2d'; // Deadlands
+    if (moist < 0.15) return '#fde047'; // Desert
+    if (moist > 0.55) return '#14532d'; // Forest
+    return '#22c55e'; // Plains
+}
+
+// Listeners
+document.getElementById('closeMapButton').addEventListener('click', closeWorldMap);
+window.addEventListener('resize', () => {
+    if (!mapModal.classList.contains('hidden')) {
+        fitMapCanvasToContainer();
+        renderWorldMap();
+    }
+});
+
+function updateExploration() {
+    // Only track exploration in the Overworld
+    if (gameState.mapMode !== 'overworld') return false;
+
+    // --- SAFETY FIX START ---
+    // If the Set doesn't exist yet, create it.
+    if (!gameState.exploredChunks) {
+        // Try to recover data from the player object if it exists there
+        if (gameState.player && Array.isArray(gameState.player.exploredChunks)) {
+            gameState.exploredChunks = new Set(gameState.player.exploredChunks);
+        } else {
+            gameState.exploredChunks = new Set();
+        }
+    }
+    // --- SAFETY FIX END ---
+
+    // Calculate Chunk ID
+    const chunkX = Math.floor(gameState.player.x / MAP_CHUNK_SIZE);
+    const chunkY = Math.floor(gameState.player.y / MAP_CHUNK_SIZE);
+    const chunkId = `${chunkX},${chunkY}`;
+
+    // Add to Set if new
+    if (!gameState.exploredChunks.has(chunkId)) {
+        gameState.exploredChunks.add(chunkId);
+        return true; // Return true to signal that we need to save
+    }
+    return false;
 }
 
 /**
@@ -6369,25 +6695,9 @@ function handleBuyItem(itemName) {
         inventory: player.inventory
     });
 
-    const inventoryToSave = gameState.player.inventory.map(item => ({
-        name: item.name,
-        type: item.type,
-        quantity: item.quantity,
-        tile: item.tile,
-        damage: item.damage || null,
-        slot: item.slot || null,
-        defense: item.defense || null,
-        statBonuses: item.statBonuses || null,
-        spellId: item.spellId || null,
-        skillId: item.skillId || null,
-        stat: item.stat || null,
-        isEquipped: item.isEquipped || false
-    
-        }));
-    
     playerRef.update({
         coins: player.coins,
-        inventory: inventoryToSave // Save the clean version
+        inventory: getSanitizedInventory()
     });
 
     renderShop(); // Re-render the shop to show new gold and inventory
@@ -6507,25 +6817,11 @@ function handleSellItem(itemIndex) {
     }
 
     // 3. Update database and UI
-    const inventoryToSave = gameState.player.inventory.map(item => ({
-        name: item.name,
-        type: item.type,
-        quantity: item.quantity,
-        tile: item.tile,
-        damage: item.damage || null,
-        slot: item.slot || null,
-        defense: item.defense || null,
-        statBonuses: item.statBonuses || null,
-        spellId: item.spellId || null,
-        skillId: item.skillId || null,
-        stat: item.stat || null,
-        isEquipped: item.isEquipped || false
-    }));
-
     playerRef.update({
         coins: player.coins,
-        inventory: inventoryToSave 
+        inventory: getSanitizedInventory() 
     });
+
     renderShop();
     renderInventory();
     renderStats();
@@ -8193,21 +8489,7 @@ function turnInQuest(questId) {
     playerRef.update({
         quests: gameState.player.quests,
         coins: gameState.player.coins,
-        inventory: gameState.player.inventory.map(item => ({ 
-            name: item.name,
-            type: item.type,
-            quantity: item.quantity,
-            tile: item.tile,
-            damage: item.damage || null,
-            slot: item.slot || null,
-            defense: item.defense || null,
-    
-            statBonuses: item.statBonuses || null,
-            spellId: item.spellId || null,
-            skillId: item.skillId || null,
-            stat: item.stat || null,
-            isEquipped: item.isEquipped || false
-        }))
+        inventory: getSanitizedInventory()
     });
 
     renderBountyBoard(); // Re-render the modal
@@ -8626,23 +8908,9 @@ function handleCraftItem(recipeName) {
     }
 
     // 7. Update Database & UI
-    const inventoryToSave = gameState.player.inventory.map(item => ({
-        name: item.name,
-        type: item.type,
-        quantity: item.quantity,
-        tile: item.tile,
-        damage: item.damage || null,
-        slot: item.slot || null,
-        defense: item.defense || null,
-        statBonuses: item.statBonuses || null,
-        spellId: item.spellId || null,
-        skillId: item.skillId || null,
-        stat: item.stat || null,
-        isEquipped: item.isEquipped || false
-    }));
-    
+    // 7. Update Database & UI
     playerRef.update({ 
-        inventory: inventoryToSave,
+        inventory: getSanitizedInventory(),
         craftingLevel: player.craftingLevel,
         craftingXp: player.craftingXp,
         craftingXpToNext: player.craftingXpToNext
@@ -9395,6 +9663,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
  * @param {object} dir - An object with x and y properties (-1, 0, or 1)
  * @returns {string} A compass direction, e.g., "north-west".
  */
+
 function getDirectionString(dir) {
     if (!dir) return 'nearby';
 
@@ -9493,7 +9762,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     attack: scaledStats.attack,
                     defense: enemyData.defense,
                     xp: scaledStats.xp,
-                    loot: enemyData.loot || '$',
+                    loot: enemyData.loot,
                     tile: newTile, // Store the original tile
                     name: scaledStats.name // Store the scaled name (e.g., "Feral Wolf")
                 };
@@ -9520,6 +9789,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
         // --- Process Transaction Results ---
         const finalEnemyState = transactionResult.snapshot.val();
+        
         if (finalEnemyState === null) {
             // Enemy Died
             const deadEnemyInfo = getScaledEnemy(enemyData, newX, newY);
@@ -9528,16 +9798,25 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             updateQuestProgress(newTile); // Uses the original tile ID
 
             const droppedLoot = generateEnemyLoot(player, enemyData);
+
+            // Remove the enemy from local memory immediately so it vanishes 
+            // from the screen before the server listener catches up.
+            if (gameState.sharedEnemies[enemyId]) {
+                delete gameState.sharedEnemies[enemyId];
+            }
+            render(); // Force a re-draw to clear the sprite
             
-            // SAFE LOOT DROP:
-            // We only set the tile if it's currently passable terrain.
-            // This prevents loot from overwriting a wall if an enemy somehow died inside one.
+            // Check terrain to see if we can place loot. 
+            // We allow placement if it's normal terrain OR if it's the enemy tile we just killed.
             const currentTerrain = chunkManager.getTile(newX, newY);
-            if (currentTerrain === '.' || currentTerrain === 'd' || currentTerrain === 'D' || currentTerrain === 'F') {
+            const passableTerrain = ['.', 'd', 'D', 'F', '≈']; // Plains, Deadlands, Desert, Forest, Swamp
+
+            if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
                  chunkManager.setWorldTile(newX, newY, droppedLoot);
             }
 
         } else {
+
             // --- ENEMY SURVIVES AND ATTACKS ---
             enemyAttackedBack = true;
             const enemy = finalEnemyState;
@@ -9773,11 +10052,9 @@ const renderEquipment = () => {
 };
 
 const render = () => {
-
     if (!gameState.mapMode) return;
 
     // 1. Setup Canvas
-
     const style = getComputedStyle(document.documentElement);
     const canvasBg = style.getPropertyValue('--canvas-bg');
     ctx.fillStyle = canvasBg;
@@ -9788,99 +10065,71 @@ const render = () => {
     const startX = gameState.player.x - viewportCenterX;
     const startY = gameState.player.y - viewportCenterY;
 
-    // --- 1. LIGHTING SETUP ---
-    let ambientLight = 0.0; // 0.0 = bright, 1.0 = pitch black
-    let baseRadius = 4;
+    // --- 2. LIGHTING SETUP ---
+    let ambientLight = 0.0; 
+    let baseRadius = 10; 
 
-    // Check for Torch
+    // Check for Light Sources
     const hasTorch = gameState.player.inventory.some(item => item.name === 'Torch');
     const torchBonus = hasTorch ? 4 : 0; 
-
-    // --- NEW: Candlelight Bonus ---
-    // If the spell is active (turns > 0), add +6 to vision radius!
     const candleBonus = (gameState.player.candlelightTurns > 0) ? 6 : 0; 
-    // -----------------------------
 
     if (gameState.mapMode === 'dungeon') {
-        // --- CAVE VISION UPDATE ---
-        ambientLight = 1.0; // PITCH BLACK
-        
-        // Base 3 + Perception + Torch + Candlelight
+        ambientLight = 0.6; // Dim
         baseRadius = 3 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus; 
     } 
     else if (gameState.mapMode === 'castle') {
-        ambientLight = 0.2; 
-        // Base 10 (updated from 8) + Torch + Candlelight
+        ambientLight = 0.2; // Bright
         baseRadius = 10 + torchBonus + candleBonus; 
     } 
     else {
-        // Overworld Day/Night Cycle
+        // Overworld Day/Night
         const hour = gameState.time.hour;
-        if (hour >= 6 && hour < 18) ambientLight = 0.0; 
-        else if (hour >= 18 && hour < 20) ambientLight = 0.3; 
-        else if (hour >= 5 && hour < 6) ambientLight = 0.3; 
-        else ambientLight = 0.95; 
+        if (hour >= 6 && hour < 18) ambientLight = 0.0; // Day
+        else if (hour >= 18 && hour < 20) ambientLight = 0.3; // Dusk
+        else if (hour >= 5 && hour < 6) ambientLight = 0.3;   // Dawn
+        else ambientLight = 0.5; // Night
         
-        // Apply bonuses to overworld night/fog too!
-        baseRadius = (ambientLight > 0.5) ? 5 + torchBonus + candleBonus : 20;
-
-        if (gameState.weather === 'fog') {
-            baseRadius = 3 + (hasTorch ? 2 : 0) + candleBonus; // Candlelight cuts through fog
-            ambientLight = Math.max(ambientLight, 0.4); 
-        } else if (gameState.weather === 'storm' || gameState.weather === 'rain') {
-            baseRadius = Math.max(baseRadius - 6, 4) + torchBonus + candleBonus; 
-        }
+        baseRadius = (ambientLight > 0.3) ? 5 + torchBonus + candleBonus : 20;
     }
 
-    // --- 2. CALCULATE FLICKER (The "Alive" part) ---
-    // A sine wave based on time makes the light pulse gently
+    // Flicker Effect
     const now = Date.now();
     const torchFlicker = (Math.sin(now / 1000) * 0.2) + (Math.cos(now / 2500) * 0.1);
-    
-    // Apply flicker only if it's dark
-    const lightRadius = (ambientLight > 0.2) ? baseRadius + torchFlicker : baseRadius;
-    // ----------------------------------------------
+    const lightRadius = baseRadius + torchFlicker;
 
     const isWideChar = (char) => /\p{Extended_Pictographic}/u.test(char);
 
+    // --- 3. MAIN RENDER LOOP ---
     for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
             const mapY = startY + y;
             
-            // --- 3. TERRAIN DISTORTION (The "Shape" part) ---
-            // Use the terrain noise to warp the light radius for this specific tile
-            // This makes the light circle look jagged and organic
-            const terrainNoise = elevationNoise.noise(mapX / 5, mapY / 5) * 1.5;
-            const effectiveRadius = lightRadius + terrainNoise;
-
+            // --- FIX: Define effectiveRadius HERE so it's available for everything ---
             const distToPlayer = Math.sqrt(Math.pow(mapX - gameState.player.x, 2) + Math.pow(mapY - gameState.player.y, 2));
             
+            // Optional: Add noise to the light radius for jagged edges
+            // If elevationNoise isn't available in this scope, remove the noise part
+            let effectiveRadius = lightRadius; 
+            if (typeof elevationNoise !== 'undefined') {
+                 effectiveRadius += elevationNoise.noise(mapX / 5, mapY / 5) * 1.5;
+            }
+
+            // Calculate Shadow Opacity
             let tileShadowOpacity = ambientLight;
             
             if (distToPlayer < effectiveRadius) {
                 const edge = effectiveRadius - distToPlayer;
-                if (edge < 2) {
-                    // Soft edge
-                    tileShadowOpacity = ambientLight * (1 - (edge / 2)); 
-                } else {
-                    tileShadowOpacity = 0; // Fully lit
-                }
+                if (edge < 5) tileShadowOpacity = ambientLight * (1 - (edge / 5)); 
+                else tileShadowOpacity = 0; 
             }
-            
-            // Optimization: Skip drawing details if pitch black
-            if (tileShadowOpacity >= 0.95) {
-                ctx.fillStyle = '#000000';
-                ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                continue; 
-            }
-            // -----------------------------------------------
 
             let tile;
             let fgChar = null;
             let fgColor = '#FFFFFF';
 
-            // Get Tile Data
+            // --- A. DRAW TERRAIN (Base Layer) ---
             if (gameState.mapMode === 'dungeon') {
                 const map = chunkManager.caveMaps[gameState.currentCaveId];
                 tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
@@ -9897,227 +10146,103 @@ const render = () => {
                 else { TileRenderer.drawBase(ctx, x, y, '#a16207'); fgChar = tile; }
             } 
             else { 
+                // Overworld
                 tile = chunkManager.getTile(mapX, mapY);
+                
+                // --- FIX START: CONSISTENT BIOME BACKGROUNDS ---
+                // 1. Determine the Base Biome at this location (even if an object is on top)
+                const baseTerrain = getBaseTerrain(mapX, mapY);
+                let bgColor = '#22c55e'; // Default Plains Green
 
-                // --- PROCEDURAL OVERWORLD RENDERING ---
+                if (baseTerrain === 'F') bgColor = '#14532d'; // Dark Forest Green
+                else if (baseTerrain === 'd') bgColor = '#2d2d2d'; // Dark Grey Deadlands
+                else if (baseTerrain === 'D') bgColor = '#fde047'; // Yellow Desert
+                else if (baseTerrain === '≈') bgColor = '#422006'; // Brown Swamp
+                else if (baseTerrain === '^') bgColor = '#57534e'; // Grey Mountain
+                else if (baseTerrain === '~') bgColor = '#1e3a8a'; // Blue Water
 
+                // 2. Draw the Background first
+                TileRenderer.drawBase(ctx, x, y, bgColor);
+
+                // 3. Draw the Specific Tile Feature
                 switch (tile) {
-                    // --- HOMESTEAD TILES ---
-                    case '🧱': // Stone Wall
-                        TileRenderer.drawWall(ctx, x, y, '#78716c', '#57534e'); // Grey brick
+                    case '.': 
+                        TileRenderer.drawPlains(ctx, x, y, mapX, mapY, bgColor, '#15803d'); 
                         break;
-                    case '=': // Wood Floor
-                        TileRenderer.drawBase(ctx, x, y, '#78350f'); // Dark Wood
-                        // Optional: Draw plank lines
-                        ctx.strokeStyle = '#92400e';
-                        ctx.beginPath(); ctx.moveTo(x*TILE_SIZE, y*TILE_SIZE+10); ctx.lineTo(x*TILE_SIZE+20, y*TILE_SIZE+10); ctx.stroke();
-                        break;
-                    case '+': // Door (Closed)
-                        TileRenderer.drawBase(ctx, x, y, '#78350f'); // Wood background
-                        TileRenderer.drawWall(ctx, x, y, '#78350f', '#000'); // Door frame
-                        fgChar = '+'; fgColor = '#fbbf24'; // Gold handle/symbol
-                        break;
-                    case '/': // Door (Open)
-                        TileRenderer.drawBase(ctx, x, y, '#78350f');
-                        fgChar = '/'; fgColor = '#000';
-                        break;
-                    case '☒': // Stash
-                        TileRenderer.drawBase(ctx, x, y, '#78350f');
-                        fgChar = '☒'; fgColor = '#fbbf24'; // Gold Chest
-                        break;
-                    // --- BIOMES ---
-                    case '~':
-                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#1e3a8a', '#3b82f6');
-                        break;
-                    case '≈': // Swamp
-                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#422006', '#14532d'); 
-                        fgChar = ','; fgColor = '#4b5535';
-                        break;
-                    case '🔥': 
-                    case '⛺':
-                        const campMoist = moistureNoise.noise(mapX / 50, mapY / 50);
-                        let campBg = '#22c55e'; // Default: Plains Green
-                        
-                        // Check biome thresholds to match the ground
-                        if (campMoist > 0.55) campBg = '#14532d';      // Forest Green
-                        else if (campMoist < 0.15) campBg = '#fde047'; // Desert Sand
-                        
-                        if (tile === '🔥') {
-                            TileRenderer.drawFire(ctx, x, y, campBg);
-                        } else {
-                            TileRenderer.drawBase(ctx, x, y, campBg);
-                            fgChar = tile;
-                        }
-                        break;
-                    case '🏛️': 
-                    case '🕳️':
-                    case '📦':
-                        // Calculate exact biome color for this spot
-                        const smartElev = elevationNoise.noise(mapX / 70, mapY / 70);
-                        const smartMoist = moistureNoise.noise(mapX / 50, mapY / 50);
-                        let smartBg = '#22c55e'; // Default: Plains Green
-
-                        if (smartElev > 0.8) smartBg = '#57534e';        // Mountain
-                        else if (smartElev > 0.6 && smartMoist < 0.3) smartBg = '#2d2d2d'; // Deadlands
-                        else if (smartMoist < 0.15) smartBg = '#fde047'; // Desert
-                        else if (smartMoist > 0.55) smartBg = '#14532d'; // Forest
-                        
-                        TileRenderer.drawBase(ctx, x, y, smartBg);
-                        fgChar = tile;
-                        
-                        // Optional: Abyss should look dark/scary
-                        if (tile === '🕳️') fgColor = '#000'; 
-                        break;
-                    case 'Ω': // Void Rift
-                        TileRenderer.drawVoid(ctx, x, y);
+                    case 'F': 
+                        TileRenderer.drawForest(ctx, x, y, mapX, mapY, bgColor, '#166534'); 
                         break;
                     case '^': 
-                        const mtMoist = moistureNoise.noise(mapX / 50, mapY / 50);
-                        let mtBg = '#57534e'; // Default: Grey Rock
-                        
-                        // FIX: Lower threshold to 0.35 so mountains near forests blend in!
-                        if (mtMoist > 0.35) mtBg = '#14532d';      // High/Med Moisture: Forest Green
-                        else if (mtMoist > 0.15) mtBg = '#22c55e'; // Low Moisture: Plains Green
-                        
-                        TileRenderer.drawMountain(ctx, x, y, mapX, mapY, mtBg, '#d6d3d1');
+                        TileRenderer.drawMountain(ctx, x, y, mapX, mapY, bgColor, '#d6d3d1'); 
                         break;
-
-                    case '⛰': // Cave Entrance
-                        const caveMoist = moistureNoise.noise(mapX / 50, mapY / 50);
-                        let caveBg = '#57534e'; 
-                        
-                        // FIX: Lower threshold here too
-                        if (caveMoist > 0.35) caveBg = '#14532d';      
-                        else if (caveMoist > 0.15) caveBg = '#22c55e'; 
-                        
-                        TileRenderer.drawBase(ctx, x, y, caveBg);
+                    case '~': 
+                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, bgColor, '#3b82f6'); 
+                        break;
+                    case '≈': 
+                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, bgColor, '#14532d'); 
+                        break;
+                    case 'd': 
+                        TileRenderer.drawDeadlands(ctx, x, y, mapX, mapY, bgColor, '#444'); 
+                        break;
+                    case 'D': 
+                        TileRenderer.drawDesert(ctx, x, y, mapX, mapY, bgColor); 
+                        break;
+                    
+                    // Structures (No longer need custom backgrounds, they use baseTerrain!)
+                    case '🧱': TileRenderer.drawWall(ctx, x, y, '#78716c', '#57534e'); break;
+                    case '=': TileRenderer.drawBase(ctx, x, y, '#78350f'); break; // Wood floor overrides biome
+                    case '+': fgChar = '+'; fgColor = '#fbbf24'; break;
+                    case '/': fgChar = '/'; fgColor = '#000'; break;
+                    
+                    default: 
+                        // Draw the character on top of the correct biome background
                         fgChar = tile; 
-                        break;
-
-                    case 'F':
-                        TileRenderer.drawForest(ctx, x, y, mapX, mapY, '#14532d', '#166534');
-                        break;
-                    case '.':
-                        TileRenderer.drawPlains(ctx, x, y, mapX, mapY, '#22c55e', '#15803d');
-                        break;
-                    case 'd': // Deadlands
-                        TileRenderer.drawDeadlands(ctx, x, y, mapX, mapY, '#2d2d2d', '#444');
-                        break;
-                    case 'D': // Desert
-                        TileRenderer.drawDesert(ctx, x, y, mapX, mapY, '#fde047');
-                        break;
-
-                    // --- FOREST ITEMS (Dark Green Background) ---
-                    case ':': // Wildberry
-                        TileRenderer.drawBase(ctx, x, y, '#14532d'); 
-                        fgChar = tile; fgColor = '#f87171'; // Red Berries
-                        break;
-                    case '🕸': // Web
-                        TileRenderer.drawBase(ctx, x, y, '#14532d'); 
-                        fgChar = tile; fgColor = '#e5e7eb'; // White Web
-                        break;
-                    case '🌳': // Thicket
-                        TileRenderer.drawBase(ctx, x, y, '#14532d'); 
-                        fgChar = tile; fgColor = '#4ade80'; // Bright Green Thicket
-                        break;
-
-                    // --- SWAMP ITEMS (Swamp Water Background) ---
-                    case '🌿': // Herb
-                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#422006', '#14532d');
-                        fgChar = tile; fgColor = '#86efac'; // Light Green Herb
-                        break;
-                    case 'l': // Leech
-                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#422006', '#14532d');
-                        fgChar = tile; fgColor = '#a3a3a3'; // Grey Leech
-                        break;
-
-                    // --- MOUNTAIN ITEMS (Grey Stone Background) ---
-                    case '🏚': // Cracked Wall
-                        TileRenderer.drawBase(ctx, x, y, '#57534e');
-                        fgChar = tile; fgColor = '#d6d3d1'; // Light Grey Wall
-                        break;
-                    case '💠': // Mithril
-                        TileRenderer.drawBase(ctx, x, y, '#57534e');
-                        fgChar = tile; fgColor = '#67e8f9'; // Cyan Crystal
-                        break;
-
-                    // --- DESERT ITEMS (Sand Background) ---
-                    case '🌵': // Cactus
-                        TileRenderer.drawDesert(ctx, x, y, mapX, mapY, '#fde047');
-                        fgChar = tile; fgColor = '#15803d'; // Green Cactus
-                        break;
-
-                    // --- SMART DEFAULT (Matches Biome) ---
-                    default:
-                        // 1. Calculate noise to find the correct biome background
-                        const defElev = elevationNoise.noise(mapX / 70, mapY / 70);
-                        const defMoist = moistureNoise.noise(mapX / 50, mapY / 50);
                         
-                        let defBg = '#22c55e'; // Default: Plains Green
-
-                        // 2. Pick color based on generation rules
-                        if (defElev < 0.35) defBg = '#1e3a8a';           // Water (Deep Blue)
-                        else if (defElev < 0.4 && defMoist > 0.7) defBg = '#422006'; // Swamp (Dark Brown)
-                        else if (defElev > 0.8) defBg = '#57534e';       // Mountain (Grey)
-                        else if (defElev > 0.6 && defMoist < 0.3) defBg = '#2d2d2d'; // Deadlands (Dark Grey)
-                        else if (defMoist < 0.15) defBg = '#fde047';     // Desert (Yellow)
-                        else if (defMoist > 0.55) defBg = '#14532d';     // Forest (Dark Green)
-
-                        // 3. Draw the background
-                        TileRenderer.drawBase(ctx, x, y, defBg);
-                        
-                        // 4. Set the character to be drawn on top
-                        fgChar = tile;
+                        // Color logic for enemies
+                        if (ENEMY_DATA[tile]) {
+                            fgColor = ENEMY_DATA[tile].color || '#ef4444';
+                        }
                         break;
                 }
+               
             }
 
-            // This draws the static items and enemies ('w', 'g', '$', etc.)
-            if (fgChar) {
-                ctx.fillStyle = fgColor || '#FFFFFF';
-                // Adjust font weight for emojis vs text
-                ctx.font = isWideChar(fgChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
-                ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
-            }
-
-            // --- ENTITY RENDERING (OVERLAY LAYER) ---
-            
-            // 1. Check for Shared/Overworld Enemies at this location
+            // --- B. DRAW ENTITIES (Enemies/Players) ---
             let overlayChar = null;
             let overlayColor = null;
             
+            // 1. Check Shared Enemies (Overworld)
             if (gameState.mapMode === 'overworld') {
                 const enemyKey = `overworld:${mapX},${-mapY}`;
                 const sharedEnemy = gameState.sharedEnemies[enemyKey];
                 
                 if (sharedEnemy) {
-                    overlayChar = sharedEnemy.tile;
-                    
+                    overlayChar = sharedEnemy.tile || '?'; 
+                    // Default to Red if color is missing
+                    overlayColor = sharedEnemy.color || '#ef4444'; 
+
                     // Draw Health Bar
-                    const healthPercent = sharedEnemy.health / sharedEnemy.maxHealth;
-                    ctx.fillStyle = '#333';
-                    ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE, 3);
-                    ctx.fillStyle = healthPercent > 0.5 ? '#4caf50' : '#ef4444';
-                    ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE * healthPercent, 3);
+                    if (sharedEnemy.maxHealth > 0) {
+                        const healthPercent = Math.max(0, sharedEnemy.health / sharedEnemy.maxHealth);
+                        ctx.fillStyle = '#333';
+                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE, 3);
+                        ctx.fillStyle = healthPercent > 0.5 ? '#4caf50' : '#ef4444';
+                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE * healthPercent, 3);
+                    }
                     
-                    // Handle Elite Colors
                     if (sharedEnemy.isElite) {
                         ctx.strokeStyle = sharedEnemy.color || '#facc15';
                         ctx.lineWidth = 1;
                         ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-                        overlayColor = sharedEnemy.color || '#ef4444';
-                    } else {
-                        overlayColor = '#ef4444'; // Default Red
                     }
                 }
             } 
-            // 2. Check for Instanced Enemies (Dungeon/Castle)
+            // 2. Check Instanced Enemies
             else {
                 const enemy = gameState.instancedEnemies.find(e => e.x === mapX && e.y === mapY);
                 if (enemy) {
                     overlayChar = enemy.tile;
                     overlayColor = enemy.color || '#ef4444';
-                    
                     if (enemy.isElite) {
                         ctx.strokeStyle = enemy.color || '#facc15';
                         ctx.lineWidth = 1;
@@ -10126,66 +10251,45 @@ const render = () => {
                 }
             }
 
-            // 3. Draw the Overlay Character (If exists)
-            // Note: We check tileShadowOpacity so we don't draw enemies in pitch blackness
-            if (overlayChar && tileShadowOpacity < 0.95) {
+            // --- C. DRAW CHARACTERS (Layering) ---
+            if (fgChar && !overlayChar) {
+                ctx.fillStyle = fgColor;
+                ctx.font = isWideChar(fgChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
+                ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+            }
+
+            if (overlayChar) {
                 ctx.fillStyle = overlayColor;
                 ctx.font = isWideChar(overlayChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
                 ctx.fillText(overlayChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
             }
 
-            // --- 4. SHADOW & TORCH OVERLAY ---
+            // --- D. DRAW SHADOW & TINT (Top Layer) ---
             if (tileShadowOpacity > 0) {
-                if (gameState.mapMode === 'overworld') {
-                    const colorString = getInterpolatedDayCycleColor(gameState.time.hour, gameState.time.minute);
-                    const rgbMatch = colorString.match(/\d+, \d+, \d+/);
-                    const rgb = rgbMatch ? rgbMatch[0] : "0, 0, 0"; 
-                    ctx.fillStyle = `rgba(${rgb}, ${tileShadowOpacity})`;
-                } else {
-                    ctx.fillStyle = `rgba(0, 0, 0, ${tileShadowOpacity})`;
-                }
+                ctx.fillStyle = `rgba(0, 0, 0, ${tileShadowOpacity})`;
                 ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
 
-            // Warm Torch Tint (Only apply if we are visible and it's dark)
-            // --- DYNAMIC LIGHTING TINT ---
-            // Only apply tint if we are visible and it's somewhat dark
+            // --- THE FIX IS HERE: effectiveRadius is now defined! ---
             if (ambientLight > 0.3 && tileShadowOpacity < 0.5) {
                 
-                // 1. Determine Light Color based on Location
-                let r = 255, g = 180, b = 100; // Default Warm Orange (Torch)
+                let r = 255, g = 180, b = 100; // Default Warm Orange
 
                 if (gameState.mapMode === 'dungeon') {
                     const theme = chunkManager.caveThemes[gameState.currentCaveId];
-                    if (theme === 'ICE' || theme === 'CRYSTAL') {
-                        r = 100; g = 240; b = 255; // Cold Cyan ❄️
-                    } else if (theme === 'SWAMP' || theme === 'GROTTO') {
-                        r = 50; g = 255; b = 50;   // Eerie Green 🤢
-                    } else if (theme === 'FIRE') {
-                        r = 255; g = 80; b = 50;   // Angry Red 🔥
-                    } else if (theme === 'VOID' || theme === 'ABYSS') {
-                        r = 180; g = 50; b = 255;  // Dark Purple 🔮
-                    } else if (theme === 'CRYPT') {
-                        r = 150; g = 150; b = 200; // Ghostly Blue/Grey 👻
-                    }
+                    if (theme === 'ICE' || theme === 'CRYSTAL') { r = 100; g = 240; b = 255; }
+                    else if (theme === 'SWAMP' || theme === 'GROTTO') { r = 50; g = 255; b = 50; }
+                    else if (theme === 'FIRE') { r = 255; g = 80; b = 50; }
+                    else if (theme === 'VOID' || theme === 'ABYSS') { r = 180; g = 50; b = 255; }
+                    else if (theme === 'CRYPT') { r = 150; g = 150; b = 200; }
                 } 
                 else if (gameState.mapMode === 'overworld') {
-                    // Optional: Tint based on biome!
-                    // Check the tile under the player
                     const pTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
-                    if (pTile === '≈') { // Swamp
-                        r = 100; g = 200; b = 100; 
-                    } else if (pTile === 'd' || pTile === 'D') { // Deadlands/Desert
-                        r = 200; g = 200; b = 180; // Desaturated Dust
-                    } else if (gameState.weather === 'storm') {
-                        r = 100; g = 100; b = 150; // Stormy Blue
-                    }
+                    if (pTile === '≈') { r = 100; g = 200; b = 100; }
+                    else if (pTile === 'd' || pTile === 'D') { r = 200; g = 200; b = 180; }
+                    else if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
                 }
 
-                // 2. Apply the Tint
-                // Calculate intensity based on distance from center (brighter in center)
                 const tintStrength = (1 - (distToPlayer / effectiveRadius)) * 0.15;
                 
                 if (tintStrength > 0) {
@@ -10196,30 +10300,7 @@ const render = () => {
         }
     }
 
-    // --- Draw Characters/Particles (Overlay) ---
-    // (Keep the existing drawing logic for NPCs, Companion, Other Players, Self)
-    // ...
-    if (gameState.mapMode === 'castle' && gameState.friendlyNpcs) {
-        gameState.friendlyNpcs.forEach(npc => {
-            const screenX = (npc.x - startX) * TILE_SIZE;
-            const screenY = (npc.y - startY) * TILE_SIZE;
-            if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
-                ctx.fillStyle = '#FFFFFF'; 
-                ctx.fillText(npc.tile, screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
-            }
-        });
-    }
-
-    if (gameState.player.companion) {
-        const comp = gameState.player.companion;
-        const screenX = (comp.x - startX) * TILE_SIZE;
-        const screenY = (comp.y - startY) * TILE_SIZE;
-        if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
-            ctx.fillStyle = '#06b6d4'; 
-            ctx.fillText(comp.tile, screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
-        }
-    }
-
+    // --- 4. DRAW OTHER PLAYERS ---
     for (const id in otherPlayers) {
         if (otherPlayers[id].mapMode !== gameState.mapMode || otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
         const op = otherPlayers[id];
@@ -10228,65 +10309,70 @@ const render = () => {
         if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
             ctx.fillStyle = '#f97316';
             ctx.fillText('@', screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
-            if (op.email) {
-                ctx.font = '10px monospace';
-                ctx.fillStyle = '#fff';
-                ctx.fillText(op.email.split('@')[0], screenX + TILE_SIZE/2, screenY - 5);
-                ctx.font = `${TILE_SIZE}px monospace`;
-            }
         }
     }
 
+    // --- 5. DRAW SELF ---
     const playerChar = gameState.player.isBoating ? 'c' : gameState.player.character;
-    const style2 = getComputedStyle(document.documentElement);
-    const playerColor = style2.getPropertyValue('--player-color');
     ctx.font = `bold ${TILE_SIZE}px monospace`;
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 3;
     ctx.strokeText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
-    ctx.fillStyle = playerColor;
+    ctx.fillStyle = '#3b82f6';
     ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
-    ctx.font = `${TILE_SIZE}px monospace`;
 
-    // Weather Effects
-    if (gameState.weather === 'rain') {
-        ctx.fillStyle = 'rgba(0, 0, 100, 0.15)'; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = 'rgba(100, 100, 255, 0.4)';
-        ctx.lineWidth = 1;
-        for(let i=0; i<50; i++) {
-             const rx = Math.random() * canvas.width;
-             const ry = Math.random() * canvas.height;
-             ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + 10); ctx.stroke();
-        }
-    } else if (gameState.weather === 'snow') {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'white';
-        for(let i=0; i<50; i++) {
-             ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
-        }
-    } else if (gameState.weather === 'storm') {
-        ctx.fillStyle = 'rgba(20, 20, 40, 0.3)'; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else if (gameState.weather === 'fog') {
-        ctx.fillStyle = 'rgba(200, 200, 200, 0.3)'; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
+    // --- 6. WEATHER EFFECTS ---
+    const intensity = gameState.player.weatherIntensity || 0;
+    if (intensity > 0 && gameState.weather !== 'clear') {
+        ctx.save();
+        ctx.globalAlpha = intensity; 
 
-    if (gameState.mapMode === 'overworld') {
-        const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70);
-        const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50);
-        let tintColor = null;
-        if (elev > 0.6 && moist < 0.3) tintColor = 'rgba(50, 0, 0, 0.1)'; 
-        else if (moist < 0.15) tintColor = 'rgba(255, 100, 0, 0.05)'; 
-        else if (elev < 0.35 || (elev < 0.4 && moist > 0.7)) tintColor = 'rgba(0, 50, 0, 0.1)'; 
-        else if (elev > 0.8) tintColor = 'rgba(200, 200, 255, 0.1)'; 
-
-        if (tintColor) {
-            ctx.fillStyle = tintColor;
+        if (gameState.weather === 'rain') {
+            ctx.fillStyle = 'rgba(0, 0, 100, 0.2)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(120, 140, 255, 0.6)';
+            ctx.lineWidth = 1;
+            const dropCount = Math.floor(200 * intensity);
+            for(let i=0; i < dropCount; i++) {
+                 const rx = Math.random() * canvas.width;
+                 const ry = Math.random() * canvas.height;
+                 const len = 10 + Math.random() * 10;
+                 ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + len); ctx.stroke();
+            }
+        } 
+        else if (gameState.weather === 'snow') {
+            ctx.fillStyle = 'rgba(200, 200, 220, 0.15)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            const flakeCount = Math.floor(150 * intensity);
+            for(let i=0; i < flakeCount; i++) {
+                 const rx = Math.random() * canvas.width;
+                 const ry = Math.random() * canvas.height;
+                 const size = Math.random() * 2 + 1;
+                 ctx.fillRect(rx, ry, size, size);
+            }
+        } 
+        else if (gameState.weather === 'storm') {
+            ctx.fillStyle = 'rgba(10, 10, 30, 0.4)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = 'rgba(150, 150, 255, 0.5)';
+            ctx.lineWidth = 2;
+            const dropCount = Math.floor(300 * intensity);
+            for(let i=0; i < dropCount; i++) {
+                 const rx = Math.random() * canvas.width;
+                 const ry = Math.random() * canvas.height;
+                 ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 8, ry + 15); ctx.stroke();
+            }
+            if (Math.random() < 0.05 * intensity) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        } 
+        else if (gameState.weather === 'fog') {
+            ctx.fillStyle = `rgba(200, 200, 200, ${0.5 * intensity})`; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
+        ctx.restore();
     }
 
     if (typeof ParticleSystem !== 'undefined') {
@@ -10365,147 +10451,137 @@ function getBaseTerrain(worldX, worldY) {
 }
 
 async function processOverworldEnemyTurns() {
-    // 1. Define search area around player (e.g., 30x30 box)
-    const searchRadius = 15;
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
+    const CHASE_RADIUS = 15; 
+    const CHASE_RADIUS_SQ = CHASE_RADIUS * CHASE_RADIUS;
 
     let nearestEnemyDir = null;
     let minDist = Infinity;
-    const HEARING_DISTANCE_SQ = 15 * 15; // "Hearing" range
 
-    // A list to batch our updates for efficiency
     let movesToMake = [];
+    const movedEnemies = new Set(); 
 
-    // --- NEW: Chance for an enemy to chase you ---
-    const CHASE_CHANCE = 0.5; // 50% chance to chase
-
-    // 2. Loop through the search box
-    for (let y = playerY - searchRadius; y <= playerY + searchRadius; y++) {
-        for (let x = playerX - searchRadius; x <= playerX + searchRadius; x++) {
-            // Don't move the tile the player is on
-            if (x === playerX && y === playerY) continue;
-
-            const tile = chunkManager.getTile(x, y);
-
-            // 3. Is this tile an enemy?
-            if (ENEMY_DATA[tile]) {
-
-                // 4. Try to move it (75% chance)
-                if (Math.random() < 0.75) {
-
-                    let dirX, dirY;
-
-                    // --- NEW CHASE LOGIC ---
-                    if (Math.random() < CHASE_CHANCE) {
-                        // CHASE: Move directly towards the player
-                        dirX = Math.sign(playerX - x);
-                        dirY = Math.sign(playerY - y);
-                    } else {
-                        // WANDER: Move randomly
-                        dirX = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-                        dirY = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
-                    }
-                    // --- END NEW LOGIC ---
-
-                    if (dirX === 0 && dirY === 0) continue;
-
-                    const newX = x + dirX;
-                    const newY = y + dirY;
-
-                    // 5. Is the new spot valid?
-                    const targetTile = chunkManager.getTile(newX, newY);
-
-                    let canMove = false;
-
-                    // 1. General Rule: Most enemies can only move on Plains ('.') or Dungeon Floors
-                    // Since this is overworld, we usually just check for '.'
-                    if (targetTile === '.') {
-                        canMove = true; 
-                    }
-
-                    // 2. Specific Overrides
-                    if (tile === 'w') { // Wolves
-                        // Wolves can ALSO move in forests
-                        if (targetTile === 'F') canMove = true;
-                    }
-
-                    if (canMove) { 
-
-                        // If the enemy tries to move ONTO the player, hit them instead!
-                        if (newX === playerX && newY === playerY) {
-                            const enemyAtk = ENEMY_DATA[tile].attack;
-                            const dmg = Math.max(1, enemyAtk - (gameState.player.defenseBonus || 0)); // Simple calc
-                            gameState.player.health -= dmg;
-                            logMessage(`A ${ENEMY_DATA[tile].name} moves in and attacks you for ${dmg} damage!`);
-                            triggerStatFlash(statDisplays.health, false);
-                            
-                            // Don't move the enemy, they used their turn to attack
-                            continue; 
-                        }
-
-                        movesToMake.push({
-                            oldX: x,
-                            oldY: y,
-                            newX: newX,
-                            newY: newY,
-                            tile: tile
-                        });
-
-                        const distSq = Math.pow(newX - playerX, 2) + Math.pow(newY - playerY, 2);
-                        if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
-                            minDist = distSq;
-                            const dirX = Math.sign(newX - playerX);
-                            const dirY = Math.sign(newY - playerY);
-                            nearestEnemyDir = { x: dirX, y: dirY };
-                        }
-
-                        // 8. Check if it's "nearby" for the log message
-                        const distY = Math.abs(newY - playerY);
-                        const distX = Math.abs(newX - playerX);
-                        
-                    }
-                }
-            }
-        }
-    }
-
-    // --- Process all moves ---
-    for (const move of movesToMake) {
-        // 1. Define the database paths
-        const oldId = `overworld:${move.oldX},${-move.oldY}`;
-        const newId = `overworld:${move.newX},${-move.newY}`;
-        const oldRef = rtdb.ref(`worldEnemies/${oldId}`);
-        const newRef = rtdb.ref(`worldEnemies/${newId}`);
-
-        // 2. Move data in RTDB (The Entity Layer)
-        // We do NOT touch chunkManager.setWorldTile here. 
-        // This prevents the "Bulldozer" effect. The terrain remains untouched.
+    // --- 1. DECISION PHASE ---
+    for (const key in gameState.sharedEnemies) {
+        const enemy = gameState.sharedEnemies[key];
         
-        try {
-            const snapshot = await oldRef.once('value');
-            const healthData = snapshot.val();
+        // Parse ID "overworld:x,y"
+        const parts = key.split(':');
+        if (parts.length < 2) continue;
+        const coords = parts[1].split(',');
+        const x = parseInt(coords[0]);
+        const y = -parseInt(coords[1]); // Invert Y back to world space
 
-            if (healthData) {
-                // Move the enemy data to the new coordinate key
-                await newRef.set(healthData);
-                // Remove from old coordinate key
-                await oldRef.remove();
-                
-                // If the static map currently has this enemy tile 'baked in' from generation,
-                // we can gently clean it. But we check first to ensure we don't delete an item.
-                const currentStaticTile = chunkManager.getTile(move.oldX, move.oldY);
-                if (currentStaticTile === move.tile) {
-                    // Only restore base terrain if the tile matches the enemy exactly.
-                    // This cleans up "ghost" enemies from the static map.
-                    const baseTerrain = getBaseTerrain(move.oldX, move.oldY);
-                    chunkManager.setWorldTile(move.oldX, move.oldY, baseTerrain);
-                }
+        const distSq = Math.pow(x - playerX, 2) + Math.pow(y - playerY, 2);
+        
+        if (distSq > CHASE_RADIUS_SQ) continue;
+        if (movedEnemies.has(key)) continue;
+
+        // Determine Direction
+        let dirX = 0, dirY = 0;
+        
+        // Simple Chase Logic
+        if (x < playerX) dirX = 1;
+        if (x > playerX) dirX = -1;
+        if (y < playerY) dirY = 1;
+        if (y > playerY) dirY = -1;
+
+        // Random Jitter (10%): Helps them get unstuck from corners/trees
+        if (Math.random() < 0.10) {
+            if (Math.random() < 0.5) dirX = Math.random() < 0.5 ? 1 : -1;
+            else dirY = Math.random() < 0.5 ? 1 : -1;
+        }
+
+        if (dirX === 0 && dirY === 0) continue;
+
+        // Smart Pathing: Try Ideal -> Slide X -> Slide Y
+        const isValidMove = (checkX, checkY) => {
+            const tile = chunkManager.getTile(checkX, checkY);
+            // Allow basic terrain + custom biomes + existing enemy tiles
+            const passable = ['.', 'F', 'd', 'D', '^', '≈'].includes(tile) || ENEMY_DATA[tile];
+            if (!passable) return false;
+
+            // Prevent stacking on Player
+            if (checkX === playerX && checkY === playerY) return false;
+
+            // Prevent stacking on pending moves
+            const futureKey = `overworld:${checkX},${-checkY}`;
+            if (gameState.sharedEnemies[futureKey] || movedEnemies.has(futureKey)) return false;
+
+            return true;
+        };
+
+        let moveX = 0;
+        let moveY = 0;
+        let foundMove = false;
+
+        // 1. Try Ideal Diagonal
+        if (dirX !== 0 && dirY !== 0 && isValidMove(x + dirX, y + dirY)) {
+            moveX = dirX; moveY = dirY; foundMove = true;
+        } 
+        // 2. Slide X
+        else if (dirX !== 0 && isValidMove(x + dirX, y)) {
+            moveX = dirX; moveY = 0; foundMove = true;
+        }
+        // 3. Slide Y
+        else if (dirY !== 0 && isValidMove(x, y + dirY)) {
+            moveX = 0; moveY = dirY; foundMove = true;
+        }
+
+        if (foundMove) {
+            const newX = x + moveX;
+            const newY = y + moveY;
+            const newKey = `overworld:${newX},${-newY}`;
+
+            movedEnemies.add(newKey); // Reserve this spot so others don't take it
+            movedEnemies.add(key);    // Mark self as moved
+
+            movesToMake.push({
+                oldKey: key,
+                newKey: newKey,
+                data: enemy,
+                oldX: x, oldY: y,
+                tile: enemy.tile
+            });
+
+            if (distSq < minDist) {
+                minDist = distSq;
+                nearestEnemyDir = { x: moveX, y: moveY };
             }
-        } catch (err) {
-            console.error("Enemy move failed:", err);
         }
     }
+
+    // --- 2. EXECUTION PHASE ---
+    if (movesToMake.length > 0) {
+        console.log(`🤖 Moving ${movesToMake.length} enemies.`);
+    }
+
+    for (const move of movesToMake) {
+        // A. Update Firebase (Async)
+        const oldRef = rtdb.ref(`worldEnemies/${move.oldKey}`);
+        const newRef = rtdb.ref(`worldEnemies/${move.newKey}`);
+
+        // We don't await this. We let it happen in the background.
+        newRef.set(move.data).then(() => {
+            oldRef.remove();
+        }).catch(err => console.error("Move sync error:", err));
+
+        // B. Update Local State IMMEDIATELY (Predictive Movement)
+        // This makes the movement feel instant on your screen
+        delete gameState.sharedEnemies[move.oldKey];
+        gameState.sharedEnemies[move.newKey] = move.data;
+
+        // C. Clean up Static Map
+        // If the enemy moved off a tile that still visually shows a static 'r' or 'g', clear it to grass.
+        const currentStaticTile = chunkManager.getTile(move.oldX, move.oldY);
+        if (currentStaticTile === move.tile) {
+            chunkManager.setWorldTile(move.oldX, move.oldY, '.');
+        }
+    }
+    
+    // Force a re-render to show the local updates instantly
+    render();
 
     return nearestEnemyDir;
 }
@@ -10893,52 +10969,10 @@ function processEnemyTurns() {
  */
 
 async function runSharedAiTurns() {
-    // 1. Local Lock: Don't run if we are already running!
-    if (isProcessingAi) return;
+    console.log("🤖 AI Turn Started..."); // Uncomment to check browser console
     
-    let nearestEnemyDir = null;
-
-    if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-        // Instanced: No RTDB lock needed, just run it.
-        nearestEnemyDir = processEnemyTurns();
-        render();
-
-    } else if (gameState.mapMode === 'overworld') {
-        // Shared: We need the RTDB lock.
-        isProcessingAi = true; // Set local lock
-        
-        const lockRef = rtdb.ref('world/aiTurnLock');
-        const now = Date.now();
-        const LOCK_DURATION_MS = 5000; 
-
-        try {
-            const transactionResult = await lockRef.transaction(currentLockTime => {
-                if (currentLockTime === null || currentLockTime < (now - LOCK_DURATION_MS)) {
-                    // Lock is free or expired, take it.
-                    return now;
-                }
-                // Lock is held by someone else, abort.
-                return; 
-            });
-
-            if (transactionResult.committed) {
-                // We got the lock! Run the logic.
-                nearestEnemyDir = await processOverworldEnemyTurns();
-
-                // Release the lock
-                await lockRef.set(null); 
-            } 
-        } catch (error) {
-            // Ignore "set" errors, they are usually just aborted transactions due to contention
-            if (error.message !== 'set') {
-                console.error("AI Logic error:", error);
-            }
-            // Force release lock on error to prevent freezing
-            try { await lockRef.set(null); } catch (e) {}
-        } finally {
-            isProcessingAi = false; // Release local lock
-        }
-    }
+    // Bypass the Lock System entirely for now
+    const nearestEnemyDir = await processOverworldEnemyTurns();
 
     if (nearestEnemyDir) {
         const player = gameState.player;
@@ -11069,6 +11103,11 @@ function endPlayerTurn() {
     }
     if (player.thirst <= 0 && gameState.playerTurnCount % 10 === 0) {
         logMessage("Your throat is parched. You feel sluggish. (No Stamina Regen)");
+    }
+
+    // Only run this in the overworld to activate static mobs
+    if (gameState.mapMode === 'overworld') {
+        wakeUpNearbyEnemies();
     }
 
     gameState.playerTurnCount++; // Increment the player's turn
@@ -11281,13 +11320,11 @@ function endPlayerTurn() {
     // --- ENTITY LOGIC ---
     // These run independently of your shield or buffs
     processFriendlyTurns(); // Moves castle guards
-    runCompanionTurn();     // Moves your skeleton/pet
+    runCompanionTurn();     // Moves your skeleton/pet  
 
-    if (gameState.playerTurnCount % 2 === 0) {
-        // Call our async AI wrapper function.
-        // We don't 'await' it; just let it run in the background.
-        runSharedAiTurns();
-    }
+    // FORCE MOVE: Run every turn for now to debug
+    // We removed the % 2 check so they are always active
+    runSharedAiTurns();
 
     // Save any status effect changes if buffs didn't already
     if (Object.keys(updates).length > 0) {
@@ -11461,6 +11498,189 @@ function drinkFromSource() {
     }
 }
 
+function handleChatCommand(message) {
+    // 1. Remove the leading '/' and split into parts
+    const raw = message.substring(1); // "give Rusty Sword 2"
+    const parts = raw.split(' ');     // ["give", "Rusty", "Sword", "2"]
+    const command = parts[0].toLowerCase();
+    const args = parts.slice(1);
+
+    // 2. Command Switch
+    switch (command) {
+        
+        case 'help':
+        case 'commands':
+            logMessage("--- Available Commands ---");
+            logMessage("/who : List online players");
+            logMessage("/stuck : Teleport to spawn (0,0)");
+            logMessage("/tp [x] [y] : Teleport to coordinates");
+            logMessage("/give [item name] [qty] : Spawn an item");
+            logMessage("/heal : Full restore (Cheat)");
+            logMessage("/god : Toggle God Mode (No hunger/thirst/damage)");
+            break;
+
+        case 'purge':
+            // 1. Clear local memory
+            chunkManager.loadedChunks = {};
+            chunkManager.worldState = {};
+            gameState.exploredChunks = new Set();
+            
+            // 2. Clear Firebase World State (This deletes ALL map data)
+            logMessage("Purging world map... (This may take a moment)");
+            const batch = db.batch();
+            // Note: Deleting collections client-side is hard in Firestore. 
+            // Instead, we will just force a re-render of the CURRENT chunk locally
+            // and overwrite it.
+            
+            chunkManager.loadedChunks = {}; // Clear local cache
+            chunkManager.worldState = {};   // Clear state buffer
+            
+            // Force regenerate current location
+            const cX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+            const cY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+            const chunkId = `${cX},${cY}`;
+            
+            // Delete the specific document for this chunk from Firebase
+            db.collection('worldState').doc(chunkId).delete().then(() => {
+                logMessage("Current chunk purged. Regenerating...");
+                render();
+            });
+            break;
+
+        case 'who':
+            let onlineList = ["You"];
+            for (const id in otherPlayers) {
+                const p = otherPlayers[id];
+                // Try to get name from email
+                const name = p.email ? p.email.split('@')[0] : "Unknown";
+                onlineList.push(`${name} (Lvl ${p.level || '?'})`);
+            }
+            logMessage(`Online Players (${onlineList.length}): ${onlineList.join(', ')}`);
+            break;
+
+        case 'stuck':
+            gameState.player.x = 0;
+            gameState.player.y = 0;
+            exitToOverworld("You force a teleport back to the village.");
+            break;
+
+        case 'god':
+            gameState.godMode = !gameState.godMode;
+            if (gameState.godMode) {
+                logMessage("God Mode ENABLED. You are immortal.");
+                // Prevent death in damage logic by adding a check for gameState.godMode
+            } else {
+                logMessage("God Mode DISABLED.");
+            }
+            break;
+
+        case 'heal':
+            gameState.player.health = gameState.player.maxHealth;
+            gameState.player.mana = gameState.player.maxMana;
+            gameState.player.stamina = gameState.player.maxStamina;
+            gameState.player.hunger = gameState.player.maxHunger;
+            gameState.player.thirst = gameState.player.maxThirst;
+            playerRef.update({
+                health: gameState.player.health,
+                mana: gameState.player.mana,
+                stamina: gameState.player.stamina,
+                hunger: gameState.player.hunger,
+                thirst: gameState.player.thirst
+            });
+            renderStats();
+            logMessage("Cheater! (Health fully restored)");
+            break;
+
+        case 'tp':
+            if (args.length < 2) {
+                logMessage("Usage: /tp [x] [y]");
+                return;
+            }
+            const tx = parseInt(args[0]);
+            const ty = parseInt(args[1]); // Remember y is usually inverted in display, but raw here
+            
+            if (isNaN(tx) || isNaN(ty)) {
+                logMessage("Invalid coordinates.");
+                return;
+            }
+
+            gameState.player.x = tx;
+            gameState.player.y = -ty; // Invert Y to match map display logic if needed, or keep raw
+            
+            // Handle visual updates
+            chunkManager.unloadOutOfRangeChunks(
+                Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE),
+                Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE)
+            );
+            
+            logMessage(`Teleported to ${tx}, ${ty}.`);
+            updateRegionDisplay();
+            render();
+            renderMinimap();
+            syncPlayerState();
+            
+            playerRef.update({ x: gameState.player.x, y: gameState.player.y });
+            break;
+
+        case 'give':
+            if (args.length < 1) {
+                logMessage("Usage: /give [item name] [quantity]");
+                return;
+            }
+
+            // Logic to handle multi-word items (e.g. "Rusty Sword")
+            // Check if the last argument is a number (quantity)
+            let quantity = 1;
+            let itemName = "";
+            
+            const lastArg = args[args.length - 1];
+            if (!isNaN(parseInt(lastArg))) {
+                quantity = parseInt(lastArg);
+                itemName = args.slice(0, -1).join(' '); // Join the rest as name
+            } else {
+                itemName = args.join(' '); // No number, assume name
+            }
+
+            // Case-insensitive search in ITEM_DATA
+            const targetKey = Object.keys(ITEM_DATA).find(k => 
+                ITEM_DATA[k].name.toLowerCase() === itemName.toLowerCase()
+            );
+
+            if (targetKey) {
+                const template = ITEM_DATA[targetKey];
+                
+                // Add to inventory
+                if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    gameState.player.inventory.push({
+                        name: template.name,
+                        type: template.type,
+                        quantity: quantity,
+                        tile: targetKey,
+                        // Copy properties if they exist
+                        damage: template.damage || null,
+                        defense: template.defense || null,
+                        slot: template.slot || null,
+                        statBonuses: template.statBonuses || null,
+                        effect: template.effect // Copy function ref
+                    });
+                    
+                    logMessage(`Spawned ${quantity}x ${template.name}.`);
+                    renderInventory();
+                    playerRef.update({ inventory: getSanitizedInventory() });
+                } else {
+                    logMessage("Inventory full!");
+                }
+            } else {
+                logMessage(`Item '${itemName}' not found.`);
+            }
+            break;
+
+        default:
+            logMessage(`Unknown command: /${command}. Type /help for list.`);
+            break;
+    }
+}
+
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
     if (!player_id || gameState.player.health <= 0) return;
@@ -11562,8 +11782,10 @@ function handleInput(key) {
     }
 
     // --- MENUS ---
+    // --- MENUS ---
     if (key === 'i' || key === 'I') { openInventoryModal(); return; }
-    if (key === 'm' || key === 'M') { openSpellbook(); return; }
+    if (key === 'm' || key === 'M') { openWorldMap(); return; }
+    if (key === 'b' || key === 'B') { openSpellbook(); return; }
     if (key === 'k' || key === 'K') { openSkillbook(); return; }
     if (key === 'c' || key === 'C') { openCollections(); return; }
     if (key === 'p' || key === 'P') { openTalentModal(); return; }
@@ -11862,7 +12084,11 @@ function useInventoryItem(itemIndex) {
             const tx = Math.floor(gameState.player.x + Math.cos(angle) * dist);
             const ty = Math.floor(gameState.player.y + Math.sin(angle) * dist);
             gameState.activeTreasure = { x: tx, y: ty };
+
+            playerRef.update({ activeTreasure: gameState.activeTreasure });
+
             logMessage(`The map reveals a hidden mark! Location: (${tx}, ${-ty}).`);
+            
         } else {
              logMessage(`The map marks a location at (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y}).`);
         }
@@ -11871,18 +12097,10 @@ function useInventoryItem(itemIndex) {
     } else {
         logMessage(`You can't use '${itemToUse.name}' right now.`);
     }
-
-    if (itemUsed) {
-        // Sanitize for DB
-        const inventoryToSave = gameState.player.inventory.map(item => ({
-            name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
-            damage: item.damage || null, slot: item.slot || null, defense: item.defense || null,
-            statBonuses: item.statBonuses || null, spellId: item.spellId || null,
-            skillId: item.skillId || null, stat: item.stat || null, isEquipped: item.isEquipped || false
-        }));
-
+    
+        if (itemUsed) {
         playerRef.update({
-            inventory: inventoryToSave,
+            inventory: getSanitizedInventory(),
             equipment: gameState.player.equipment,
             health: gameState.player.health,
             mana: gameState.player.mana,
@@ -11890,7 +12108,7 @@ function useInventoryItem(itemIndex) {
             psyche: gameState.player.psyche,
             strength: gameState.player.strength,
             wits: gameState.player.wits,
-            // ... (Other stats implied synced via object assign usually, but explict here is safe)
+
             strengthBonus: gameState.player.strengthBonus,
             strengthBonusTurns: gameState.player.strengthBonusTurns
         });
@@ -11953,15 +12171,22 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     // --- OVERLAY COLLISION CHECK ---
-    // If we are in the overworld, we must check if an enemy exists at these coordinates
-    // in the Shared Enemy database, even if the terrain says it's empty.
     if (gameState.mapMode === 'overworld') {
         const enemyKey = `overworld:${newX},${-newY}`;
         const overlayEnemy = gameState.sharedEnemies[enemyKey];
         
         if (overlayEnemy) {
-            // We found an enemy! Temporarily override 'newTile' so the combat logic below triggers.
-            newTile = overlayEnemy.tile;
+            // Check if this is a valid enemy
+            if (ENEMY_DATA[overlayEnemy.tile]) {
+                // Valid enemy: Override tile to trigger combat
+                newTile = overlayEnemy.tile;
+            } else {
+                // Invalid "Ghost" enemy (like 'F'): Delete it from DB
+                logMessage("Dissipating a phantom signal...");
+                rtdb.ref(`worldEnemies/${enemyKey}`).remove();
+                delete gameState.sharedEnemies[enemyKey];
+                // Don't override newTile; let the player walk there.
+            }
         }
     }
 
@@ -13452,21 +13677,34 @@ async function attemptMovePlayer(newX, newY) {
     passivePerceptionCheck();
     triggerAtmosphericFlavor(newTile);
     render();
+    
     updateRegionDisplay();
     syncPlayerState();
 
+    const newExploration = updateExploration();
+
     let updates = {
-        x: gameState.player.x, y: gameState.player.y, health: gameState.player.health,
-        stamina: gameState.player.stamina, coins: gameState.player.coins
+        x: gameState.player.x, 
+        y: gameState.player.y, 
+        health: gameState.player.health,
+        stamina: gameState.player.stamina, 
+        coins: gameState.player.coins,
+        activeTreasure: gameState.activeTreasure || null,
+
+        weather: gameState.weather || 'clear', 
+
+        weatherState: gameState.player.weatherState || 'calm', // Default to 'calm'
+        weatherIntensity: gameState.player.weatherIntensity || 0, // Default to 0
+        weatherDuration: gameState.player.weatherDuration || 0 // Default to 0
     };
 
+    // If we found a new chunk, add it to the save list
+    if (newExploration) {
+        updates.exploredChunks = Array.from(gameState.exploredChunks);
+    }
+
     if (inventoryWasUpdated) {
-        updates.inventory = gameState.player.inventory.map(item => ({
-            name: item.name, type: item.type, quantity: item.quantity, tile: item.tile,
-            damage: item.damage || null, slot: item.slot || null, defense: item.defense || null,
-            statBonuses: item.statBonuses || null, spellId: item.spellId || null,
-            skillId: item.skillId || null, stat: item.stat || null, isEquipped: item.isEquipped || false
-        }));
+        updates.inventory = getSanitizedInventory();
         updates.lootedTiles = Array.from(gameState.lootedTiles);
         renderInventory(); 
     }
@@ -13525,9 +13763,16 @@ chatInput.addEventListener('keydown', (event) => {
         event.preventDefault();
         return;
     }
+    
     if (event.key === 'Enter' && chatInput.value) {
-        const message = chatInput.value;
-        chatInput.value = '';
+        const message = chatInput.value.trim();
+        chatInput.value = ''; // Clear input immediately
+
+        if (message.startsWith('/')) {
+            handleChatCommand(message);
+            return; // Don't send commands to global chat
+        }
+
         const messageRef = rtdb.ref('chat').push();
         messageRef.set({
             senderId: player_id,
@@ -13568,6 +13813,8 @@ function clearSessionState() {
     gameState.lootedTiles.clear();
     gameState.discoveredRegions.clear();
 
+    wokenEnemyTiles.clear();
+
     gameState.mapMode = null;
 
     // Reset session-based flags
@@ -13592,20 +13839,7 @@ logoutButton.addEventListener('click', () => {
     // Create a clean version of the inventory before saving
 
     if (finalState.inventory) {
-        finalState.inventory = finalState.inventory.map(item => ({
-            name: item.name,
-            type: item.type,
-            quantity: item.quantity,
-            tile: item.tile,
-            damage: item.damage || null,
-            slot: item.slot || null,
-            defense: item.defense || null,
-            statBonuses: item.statBonuses || null,
-            spellId: item.spellId || null,
-            skillId: item.skillId || null,
-            stat: item.stat || null,
-            isEquipped: item.isEquipped || false
-        }));
+        finalState.inventory = getSanitizedInventory();
     }
 
     delete finalState.color;
@@ -13644,6 +13878,15 @@ async function enterGame(playerData) {
     };
     Object.assign(gameState.player, fullPlayerData);
 
+    if (playerData.activeTreasure) {
+        gameState.activeTreasure = playerData.activeTreasure;
+        logMessage(`You recall a location marked on your map: (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y})`);
+    } else {
+        gameState.activeTreasure = null;
+    }
+
+    gameState.weather = playerData.weather || 'clear';
+
     gameState.mapMode = playerData.mapMode || 'overworld';
 
     // --- 2. Restore Sets (Discovery/Lore/Loot) ---
@@ -13663,6 +13906,12 @@ async function enterGame(playerData) {
         gameState.lootedTiles = new Set(playerData.lootedTiles);
     } else {
         gameState.lootedTiles = new Set();
+    }
+
+    if (playerData.exploredChunks && Array.isArray(playerData.exploredChunks)) {
+        gameState.exploredChunks = new Set(playerData.exploredChunks);
+    } else {
+        gameState.exploredChunks = new Set();
     }
 
     // --- 3. Check Background (Safety Check) ---
@@ -13695,24 +13944,12 @@ async function enterGame(playerData) {
                 // Prepare final save state on disconnect
                 const finalState = {
                     ...gameState.player,
-                    lootedTiles: Array.from(gameState.lootedTiles)
+                    lootedTiles: Array.from(gameState.lootedTiles),
+                    exploredChunks: Array.from(gameState.exploredChunks)
                 };
 
                 if (finalState.inventory) {
-                    finalState.inventory = finalState.inventory.map(item => ({
-                        name: item.name,
-                        type: item.type,
-                        quantity: item.quantity,
-                        tile: item.tile,
-                        damage: item.damage || null,
-                        slot: item.slot || null,
-                        defense: item.defense || null,
-                        statBonuses: item.statBonuses || null,
-                        spellId: item.spellId || null,
-                        skillId: item.skillId || null,
-                        stat: item.stat || null,
-                        isEquipped: item.isEquipped || false
-                    }));
+                    finalState.inventory = getSanitizedInventory();
                 }
 
                 delete finalState.color;
@@ -13875,12 +14112,16 @@ async function enterGame(playerData) {
     renderTime();
     resizeCanvas();
     render();
+
+    renderHotbar();
     
     canvas.style.visibility = 'visible';
     syncPlayerState();
     
     logMessage(`Welcome back, ${playerData.background} of level ${gameState.player.level}.`);
     updateRegionDisplay();
+
+    updateExploration();
 
     loadingIndicator.classList.add('hidden');
     
