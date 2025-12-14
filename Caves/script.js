@@ -9766,6 +9766,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
         // --- Process Transaction Results ---
         const finalEnemyState = transactionResult.snapshot.val();
+        
         if (finalEnemyState === null) {
             // Enemy Died
             const deadEnemyInfo = getScaledEnemy(enemyData, newX, newY);
@@ -9780,26 +9781,19 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             if (gameState.sharedEnemies[enemyId]) {
                 delete gameState.sharedEnemies[enemyId];
             }
-
-            // We allow the tile to be updated if it is standard terrain OR if it is the enemy that just died.
-const currentTerrain = chunkManager.getTile(newX, newY);
-const passableTerrain = ['.', 'd', 'D', 'F', '≈']; // Added swamp/etc
-
-// If the ground is passable OR the ground is currently the enemy we just killed
-if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
-     chunkManager.setWorldTile(newX, newY, droppedLoot);
-}
-
             render(); // Force a re-draw to clear the sprite
             
-            // We only set the tile if it's currently passable terrain.
-            // This prevents loot from overwriting a wall if an enemy somehow died inside one.
+            // Check terrain to see if we can place loot. 
+            // We allow placement if it's normal terrain OR if it's the enemy tile we just killed.
             const currentTerrain = chunkManager.getTile(newX, newY);
-            if (currentTerrain === '.' || currentTerrain === 'd' || currentTerrain === 'D' || currentTerrain === 'F') {
+            const passableTerrain = ['.', 'd', 'D', 'F', '≈']; // Plains, Deadlands, Desert, Forest, Swamp
+
+            if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
                  chunkManager.setWorldTile(newX, newY, droppedLoot);
             }
 
         } else {
+
             // --- ENEMY SURVIVES AND ATTACKS ---
             enemyAttackedBack = true;
             const enemy = finalEnemyState;
