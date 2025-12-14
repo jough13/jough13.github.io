@@ -5670,42 +5670,80 @@ function triggerAtmosphericFlavor(tile) {
 }
 
 function updateWeather() {
-    // Only update weather every 10 turns to prevent flickering
-    if (gameState.playerTurnCount % 10 !== 0) return;
+    const player = gameState.player;
 
-    const x = gameState.player.x;
-    const y = gameState.player.y;
-    
-    // Use your existing noise generators, scaled for larger weather patterns
-    const temp = elevationNoise.noise(x / 200, y / 200); // Temperature pattern
-    const humid = moistureNoise.noise(x / 200 + 100, y / 200 + 100); // Humidity pattern (offset)
+    // 1. Initialize State if missing (Safety check for existing saves)
+    if (typeof player.weatherIntensity === 'undefined') player.weatherIntensity = 0;
+    if (typeof player.weatherState === 'undefined') player.weatherState = 'calm'; // calm, building, active, fading
+    if (typeof player.weatherDuration === 'undefined') player.weatherDuration = 0;
 
-    let newWeather = 'clear';
+    // 2. Determine Local Forecast (Where we are now)
+    // We expanded the noise scale to 300 so weather zones are larger/longer
+    const x = player.x;
+    const y = player.y;
+    const temp = elevationNoise.noise(x / 300, y / 300); 
+    const humid = moistureNoise.noise(x / 300 + 100, y / 300 + 100);
 
-    if (gameState.mapMode !== 'overworld') {
-        newWeather = 'clear'; // Indoors is always clear
-    } else {
+    let localForecast = 'clear';
+    // Overworld only
+    if (gameState.mapMode === 'overworld') {
         if (humid > 0.6) {
-            if (temp < 0.3) newWeather = 'snow';
-            else if (humid > 0.8) newWeather = 'storm';
-            else newWeather = 'rain';
+            if (temp < 0.3) localForecast = 'snow';
+            else if (humid > 0.8) localForecast = 'storm';
+            else localForecast = 'rain';
         } else if (humid > 0.4 && temp < 0.4) {
-            newWeather = 'fog';
+            localForecast = 'fog';
         }
     }
 
-    if (newWeather !== gameState.weather) {
-        gameState.weather = newWeather;
-        
-        let msg = "";
-        if (newWeather === 'rain') msg = "It starts to rain.";
-        if (newWeather === 'storm') msg = "Thunder rumbles. A storm is brewing.";
-        if (newWeather === 'snow') msg = "Snow begins to fall.";
-        if (newWeather === 'fog') msg = "A thick fog rolls in.";
-        if (newWeather === 'clear') msg = "The skies clear up.";
-        
-        if (msg) logMessage(msg);
-        render(); // Re-render to show effects
+    // 3. Weather State Machine
+    const TRANSITION_SPEED = 0.1; // Takes 10 turns to fade in/out fully
+
+    switch (player.weatherState) {
+        case 'calm':
+            // If the forecast calls for weather, start building it
+            if (localForecast !== 'clear') {
+                gameState.weather = localForecast; // Set the type
+                player.weatherState = 'building';
+                logMessage(`The sky darkens. It looks like ${localForecast} is coming.`);
+            }
+            break;
+
+        case 'building':
+            // Increase intensity
+            player.weatherIntensity += TRANSITION_SPEED;
+            if (player.weatherIntensity >= 1.0) {
+                player.weatherIntensity = 1.0;
+                player.weatherState = 'active';
+                player.weatherDuration = 50 + Math.floor(Math.random() * 50); // Lasts 50-100 turns
+                logMessage(`The ${gameState.weather} is fully upon you.`);
+            }
+            break;
+
+        case 'active':
+            player.weatherDuration--;
+            
+            // If we walked OUT of the bad weather zone, start fading early
+            if (localForecast === 'clear' && player.weatherDuration > 5) {
+                 player.weatherDuration = 5; 
+                 logMessage("The weather seems to be clearing up.");
+            }
+            
+            if (player.weatherDuration <= 0) {
+                player.weatherState = 'fading';
+            }
+            break;
+
+        case 'fading':
+            // Decrease intensity
+            player.weatherIntensity -= TRANSITION_SPEED;
+            if (player.weatherIntensity <= 0) {
+                player.weatherIntensity = 0;
+                player.weatherState = 'calm';
+                gameState.weather = 'clear';
+                logMessage("The skies are clear again.");
+            }
+            break;
     }
 }
 
@@ -9957,7 +9995,6 @@ const render = () => {
     if (!gameState.mapMode) return;
 
     // 1. Setup Canvas
-
     const style = getComputedStyle(document.documentElement);
     const canvasBg = style.getPropertyValue('--canvas-bg');
     ctx.fillStyle = canvasBg;
@@ -9968,58 +10005,31 @@ const render = () => {
     const startX = gameState.player.x - viewportCenterX;
     const startY = gameState.player.y - viewportCenterY;
 
-    // --- 1. LIGHTING SETUP ---
-    let ambientLight = 0.0; // 0.0 = bright, 1.0 = pitch black
-    let baseRadius = 4;
-
-    // Check for Torch
-    const hasTorch = gameState.player.inventory.some(item => item.name === 'Torch');
-    const torchBonus = hasTorch ? 4 : 0; 
-
-    // --- NEW: Candlelight Bonus ---
-    // If the spell is active (turns > 0), add +6 to vision radius!
-    const candleBonus = (gameState.player.candlelightTurns > 0) ? 6 : 0; 
-    // -----------------------------
+    // --- 1. LIGHTING SETUP (RELAXED) ---
+    // Instead of Pitch Black (1.0), we cap darkness at 0.6 (Dim)
+    // This allows you to see everything, just slightly darker.
+    let ambientLight = 0.0; 
+    let baseRadius = 10; // Increased base radius for better atmosphere
 
     if (gameState.mapMode === 'dungeon') {
-        // --- CAVE VISION UPDATE ---
-        ambientLight = 1.0; // PITCH BLACK
-        
-        // Base 3 + Perception + Torch + Candlelight
-        baseRadius = 3 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus; 
+        ambientLight = 0.6; // Dungeon is Dim, not Black
     } 
     else if (gameState.mapMode === 'castle') {
-        ambientLight = 0.2; 
-        // Base 10 (updated from 8) + Torch + Candlelight
-        baseRadius = 10 + torchBonus + candleBonus; 
+        ambientLight = 0.2; // Castle is well lit
     } 
     else {
-        // Overworld Day/Night Cycle
+        // Overworld Day/Night
         const hour = gameState.time.hour;
         if (hour >= 6 && hour < 18) ambientLight = 0.0; 
-        else if (hour >= 18 && hour < 20) ambientLight = 0.3; 
-        else if (hour >= 5 && hour < 6) ambientLight = 0.3; 
-        else ambientLight = 0.95; 
-        
-        // Apply bonuses to overworld night/fog too!
-        baseRadius = (ambientLight > 0.5) ? 5 + torchBonus + candleBonus : 20;
-
-        if (gameState.weather === 'fog') {
-            baseRadius = 3 + (hasTorch ? 2 : 0) + candleBonus; // Candlelight cuts through fog
-            ambientLight = Math.max(ambientLight, 0.4); 
-        } else if (gameState.weather === 'storm' || gameState.weather === 'rain') {
-            baseRadius = Math.max(baseRadius - 6, 4) + torchBonus + candleBonus; 
-        }
+        else if (hour >= 18 && hour < 20) ambientLight = 0.3; // Dusk
+        else if (hour >= 5 && hour < 6) ambientLight = 0.3;   // Dawn
+        else ambientLight = 0.5; // Night is Dim, not Black
     }
 
-    // --- 2. CALCULATE FLICKER (The "Alive" part) ---
-    // A sine wave based on time makes the light pulse gently
+    // --- 2. CALCULATE FLICKER ---
     const now = Date.now();
     const torchFlicker = (Math.sin(now / 1000) * 0.2) + (Math.cos(now / 2500) * 0.1);
-    
-    // Apply flicker only if it's dark
-    const lightRadius = (ambientLight > 0.2) ? baseRadius + torchFlicker : baseRadius;
-    // ----------------------------------------------
+    const lightRadius = baseRadius + torchFlicker;
 
     const isWideChar = (char) => /\p{Extended_Pictographic}/u.test(char);
 
@@ -10028,33 +10038,21 @@ const render = () => {
             const mapX = startX + x;
             const mapY = startY + y;
             
-            // --- 3. TERRAIN DISTORTION (The "Shape" part) ---
-            // Use the terrain noise to warp the light radius for this specific tile
-            // This makes the light circle look jagged and organic
-            const terrainNoise = elevationNoise.noise(mapX / 5, mapY / 5) * 1.5;
-            const effectiveRadius = lightRadius + terrainNoise;
-
+            // --- 3. SHADOW CALCULATION ---
             const distToPlayer = Math.sqrt(Math.pow(mapX - gameState.player.x, 2) + Math.pow(mapY - gameState.player.y, 2));
             
             let tileShadowOpacity = ambientLight;
             
-            if (distToPlayer < effectiveRadius) {
-                const edge = effectiveRadius - distToPlayer;
-                if (edge < 2) {
-                    // Soft edge
-                    tileShadowOpacity = ambientLight * (1 - (edge / 2)); 
+            // Create a "Light Circle" around player where it's fully bright
+            if (distToPlayer < lightRadius) {
+                // Smooth fade from bright center to dim edge
+                const edge = lightRadius - distToPlayer;
+                if (edge < 5) {
+                    tileShadowOpacity = ambientLight * (1 - (edge / 5)); 
                 } else {
-                    tileShadowOpacity = 0; // Fully lit
+                    tileShadowOpacity = 0; // Fully bright
                 }
             }
-            
-            // Optimization: Skip drawing details if pitch black
-            if (tileShadowOpacity >= 0.95) {
-                ctx.fillStyle = '#000000';
-                ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                continue; 
-            }
-            // -----------------------------------------------
 
             let tile;
             let fgChar = null;
@@ -10404,30 +10402,77 @@ const render = () => {
     ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
     ctx.font = `${TILE_SIZE}px monospace`;
 
-    // Weather Effects
-    if (gameState.weather === 'rain') {
-        ctx.fillStyle = 'rgba(0, 0, 100, 0.15)'; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = 'rgba(100, 100, 255, 0.4)';
-        ctx.lineWidth = 1;
-        for(let i=0; i<50; i++) {
-             const rx = Math.random() * canvas.width;
-             const ry = Math.random() * canvas.height;
-             ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + 10); ctx.stroke();
+    // --- WEATHER RENDERING ---
+    const intensity = gameState.player.weatherIntensity || 0;
+    
+    if (intensity > 0 && gameState.weather !== 'clear') {
+        
+        ctx.save(); // Save canvas state to safely use transparency
+        ctx.globalAlpha = intensity; // Master fader for weather effects
+
+        if (gameState.weather === 'rain') {
+            // Darken sky
+            ctx.fillStyle = 'rgba(0, 0, 100, 0.2)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Raindrops
+            ctx.strokeStyle = 'rgba(120, 140, 255, 0.6)';
+            ctx.lineWidth = 1;
+            const dropCount = Math.floor(200 * intensity); // Up to 200 drops
+            
+            for(let i=0; i < dropCount; i++) {
+                 const rx = Math.random() * canvas.width;
+                 const ry = Math.random() * canvas.height;
+                 const len = 10 + Math.random() * 10;
+                 ctx.beginPath(); 
+                 ctx.moveTo(rx, ry); 
+                 ctx.lineTo(rx - 5, ry + len); // Angled rain
+                 ctx.stroke();
+            }
+        } 
+        else if (gameState.weather === 'snow') {
+            // Whiteout effect
+            ctx.fillStyle = 'rgba(200, 200, 220, 0.15)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = 'white';
+            const flakeCount = Math.floor(150 * intensity);
+            
+            for(let i=0; i < flakeCount; i++) {
+                 const rx = Math.random() * canvas.width;
+                 const ry = Math.random() * canvas.height;
+                 const size = Math.random() * 2 + 1;
+                 ctx.fillRect(rx, ry, size, size);
+            }
+        } 
+        else if (gameState.weather === 'storm') {
+            // Dark Storm
+            ctx.fillStyle = 'rgba(10, 10, 30, 0.4)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Heavy Rain
+            ctx.strokeStyle = 'rgba(150, 150, 255, 0.5)';
+            ctx.lineWidth = 2;
+            const dropCount = Math.floor(300 * intensity);
+            
+            for(let i=0; i < dropCount; i++) {
+                 const rx = Math.random() * canvas.width;
+                 const ry = Math.random() * canvas.height;
+                 ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 8, ry + 15); ctx.stroke();
+            }
+            
+            // Random Lightning Flash (Visual only)
+            if (Math.random() < 0.05 * intensity) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        } 
+        else if (gameState.weather === 'fog') {
+            ctx.fillStyle = `rgba(200, 200, 200, ${0.5 * intensity})`; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
-    } else if (gameState.weather === 'snow') {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'white';
-        for(let i=0; i<50; i++) {
-             ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
-        }
-    } else if (gameState.weather === 'storm') {
-        ctx.fillStyle = 'rgba(20, 20, 40, 0.3)'; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else if (gameState.weather === 'fog') {
-        ctx.fillStyle = 'rgba(200, 200, 200, 0.3)'; 
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.restore(); // Restore opacity for UI/Text
     }
 
     if (gameState.mapMode === 'overworld') {
@@ -13790,7 +13835,12 @@ async function attemptMovePlayer(newX, newY) {
         health: gameState.player.health,
         stamina: gameState.player.stamina, 
         coins: gameState.player.coins,
-        activeTreasure: gameState.activeTreasure
+        activeTreasure: gameState.activeTreasure,
+
+        weather: gameState.weather, // Save current weather type
+        weatherState: gameState.player.weatherState,
+        weatherIntensity: gameState.player.weatherIntensity,
+        weatherDuration: gameState.player.weatherDuration
     };
 
     // If we found a new chunk, add it to the save list
