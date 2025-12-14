@@ -5199,43 +5199,43 @@ generateChunk(chunkX, chunkY) {
 
                 const featureRoll = random();
 
-                // --- 1. LEGENDARY LANDMARKS (Very Rare - Unchanged) ---
-                if (tile === '.' && featureRoll < 0.000005) { 
+                // --- 1. LEGENDARY LANDMARKS (One in a Million) ---
+                if (tile === '.' && featureRoll < 0.000002) { 
                     this.setWorldTile(worldX, worldY, '♛');
                     chunkData[y][x] = '♛';
                 } 
-                else if ((tile === 'd' || tile === '^') && featureRoll < 0.00001) { 
+                else if ((tile === 'd' || tile === '^') && featureRoll < 0.000005) { 
                     this.setWorldTile(worldX, worldY, '🕳️');
                     chunkData[y][x] = '🕳️';
                 }
                 
-                // --- 2. RARE STRUCTURES (Rare) ---
-                else if (tile === '.' && featureRoll < 0.0001) { 
+                // --- 2. RARE STRUCTURES (Very Sparse) ---
+                else if (tile === '.' && featureRoll < 0.00005) { 
                     this.setWorldTile(worldX, worldY, 'V');
                     chunkData[y][x] = 'V';
                 } 
-                else if (tile === '.' && featureRoll < 0.0005) { 
+                else if (tile === '.' && featureRoll < 0.0002) { 
                     this.setWorldTile(worldX, worldY, '⛩️');
                     chunkData[y][x] = '⛩️';
                 } 
-                else if (tile === '.' && featureRoll < 0.0006) { 
+                else if (tile === '.' && featureRoll < 0.0003) { 
                     this.setWorldTile(worldX, worldY, '|');
                     chunkData[y][x] = '|';
                 } 
-                else if (tile === '.' && featureRoll < 0.0008) { 
+                else if (tile === '.' && featureRoll < 0.0004) { 
                     this.setWorldTile(worldX, worldY, '⛲');
                     chunkData[y][x] = '⛲';
                 } 
-                else if ((tile === 'd' || tile === 'D') && featureRoll < 0.0001) { 
+                else if ((tile === 'd' || tile === 'D') && featureRoll < 0.00005) { 
                     this.setWorldTile(worldX, worldY, 'Ω');
                     chunkData[y][x] = 'Ω';
                 }
 
                 // --- 3. COMMON FEATURES (Dungeons, Castles, NPCs) ---
-
-                // This ensures you find roughly 1 Cave, Castle, or Village per chunk
-                // without increasing the enemy count!
-                else if (['.', 'd', 'D'].includes(tile) && featureRoll < 0.005) { 
+                // AGGRESSIVE REDUCTION: 0.0008 (0.08%). 
+                // Math: 256 tiles * 0.0008 = 0.2 features per chunk.
+                // Result: You will find a cave/castle roughly every 5 chunks (screens).
+                else if (['.', 'd', 'D'].includes(tile) && featureRoll < 0.0008) { 
                     let features = Object.keys(TILE_DATA);
                     features = features.filter(f => 
                         TILE_DATA[f].type !== 'dungeon_exit' &&
@@ -5249,12 +5249,12 @@ generateChunk(chunkX, chunkY) {
                 }
                 
                 // --- 4. GENERIC STRUCTURES (Ruins, Camps) ---
-                // ADJUSTED: 0.05% (Was 0.1%). Very sparse ruins.
-                else if (['.', 'F', 'D'].includes(tile) && featureRoll < 0.0005) { 
+                // REDUCED: 0.0003 (0.03%). 1 per 10 chunks.
+                else if (['.', 'F', 'D'].includes(tile) && featureRoll < 0.0003) { 
                     this.setWorldTile(worldX, worldY, '🏛️');
                     chunkData[y][x] = '🏛️';
                 } 
-                else if (['.', 'F', '^'].includes(tile) && featureRoll < 0.001) { 
+                else if (['.', 'F', '^'].includes(tile) && featureRoll < 0.0005) { 
                     this.setWorldTile(worldX, worldY, '⛺');
                     chunkData[y][x] = '⛺';
                 }
@@ -5265,21 +5265,21 @@ generateChunk(chunkX, chunkY) {
                     // --- MOUNTAINS ---
                     if (tile === '^') { 
                         // Rare/Elite
-                        if (dist > 300 && hostileRoll < 0.0005) chunkData[y][x] = 'Y'; // Yeti
-                        else if (dist > 250 && hostileRoll < 0.001) chunkData[y][x] = '🐲'; // Drake
-                        else if (dist > 150 && hostileRoll < 0.002) chunkData[y][x] = 'Ø'; // Ogre
-                        else if (hostileRoll < 0.003) chunkData[y][x] = '🗿'; // Golem
+                        if (dist > 300 && hostileRoll < 0.0002) chunkData[y][x] = 'Y'; // Yeti
+                        else if (dist > 250 && hostileRoll < 0.0005) chunkData[y][x] = '🐲'; // Drake
+                        else if (dist > 150 && hostileRoll < 0.001) chunkData[y][x] = 'Ø'; // Ogre
+                        else if (hostileRoll < 0.0015) chunkData[y][x] = '🗿'; // Golem
                         
-                        // Commons (Total ~0.8%)
-                        else if (hostileRoll < 0.006) chunkData[y][x] = 'g'; // Goblins
-                        else if (hostileRoll < 0.008) chunkData[y][x] = '🦇'; // Bats
+                        // Commons (Total ~0.3% -> 1 per chunk max)
+                        else if (hostileRoll < 0.003) chunkData[y][x] = 'g'; // Goblins
+                        else if (hostileRoll < 0.005) chunkData[y][x] = '🦇'; // Bats
                         
-                        // Resources (Kept somewhat high for mining utility)
-                        else if (hostileRoll < 0.05) { 
+                        // Resources (Kept moderately high for utility)
+                        else if (hostileRoll < 0.04) { 
                             this.setWorldTile(worldX, worldY, '🏚'); 
                             chunkData[y][x] = '🏚'; 
                         }
-                        else if (dist > 200 && hostileRoll < 0.06) { 
+                        else if (dist > 200 && hostileRoll < 0.05) { 
                             this.setWorldTile(worldX, worldY, '💠'); 
                             chunkData[y][x] = '💠'; 
                         } 
@@ -5289,61 +5289,61 @@ generateChunk(chunkX, chunkY) {
                     // --- FORESTS ---
                     else if (tile === 'F') {
                         // Rare/Elite
-                        if (dist > 250 && hostileRoll < 0.0005) chunkData[y][x] = '🐺'; // Dire Wolf
-                        else if (hostileRoll < 0.001) chunkData[y][x] = '🐻'; // Bear
+                        if (dist > 250 && hostileRoll < 0.0002) chunkData[y][x] = '🐺'; // Dire Wolf
+                        else if (hostileRoll < 0.0005) chunkData[y][x] = '🐻'; // Bear
                         
-                        // Commons (Total ~0.8%)
-                        else if (hostileRoll < 0.003) chunkData[y][x] = 'w'; // Wolf
-                        else if (hostileRoll < 0.005) chunkData[y][x] = '🐗'; // Boar
-                        else if (hostileRoll < 0.007) chunkData[y][x] = '🦌'; // Stag
-                        else if (hostileRoll < 0.009) chunkData[y][x] = '🐍'; // Viper
+                        // Commons (Total ~0.3%)
+                        else if (hostileRoll < 0.0015) chunkData[y][x] = 'w'; // Wolf
+                        else if (hostileRoll < 0.0025) chunkData[y][x] = '🐗'; // Boar
+                        else if (hostileRoll < 0.0035) chunkData[y][x] = '🦌'; // Stag
+                        else if (hostileRoll < 0.0045) chunkData[y][x] = '🐍'; // Viper
                         
-                        // Resources (High density for forests is good, keeps them lush)
-                        else if (hostileRoll < 0.15) { this.setWorldTile(worldX, worldY, '🌳'); chunkData[y][x] = '🌳'; } 
-                        else if (hostileRoll < 0.18) { this.setWorldTile(worldX, worldY, '🕸'); chunkData[y][x] = '🕸'; } 
-                        else if (hostileRoll < 0.22) { this.setWorldTile(worldX, worldY, ':'); chunkData[y][x] = ':'; }
+                        // Resources (Lush, but not blocking path)
+                        else if (hostileRoll < 0.10) { this.setWorldTile(worldX, worldY, '🌳'); chunkData[y][x] = '🌳'; } 
+                        else if (hostileRoll < 0.12) { this.setWorldTile(worldX, worldY, '🕸'); chunkData[y][x] = '🕸'; } 
+                        else if (hostileRoll < 0.15) { this.setWorldTile(worldX, worldY, ':'); chunkData[y][x] = ':'; }
                         else chunkData[y][x] = tile;
                     }
 
                     // --- SWAMP ---
                     else if (tile === '≈') {
-                        // Commons (Total ~0.8%)
-                        if (hostileRoll < 0.002) chunkData[y][x] = 'l'; // Leech
-                        else if (hostileRoll < 0.004) chunkData[y][x] = '🐍'; // Viper
-                        else if (hostileRoll < 0.006) chunkData[y][x] = '🐸'; // Toad
-                        else if (hostileRoll < 0.008) chunkData[y][x] = '🦟'; // Mosquito
+                        // Commons (Total ~0.3%)
+                        if (hostileRoll < 0.001) chunkData[y][x] = 'l'; // Leech
+                        else if (hostileRoll < 0.002) chunkData[y][x] = '🐍'; // Viper
+                        else if (hostileRoll < 0.003) chunkData[y][x] = '🐸'; // Toad
+                        else if (hostileRoll < 0.004) chunkData[y][x] = '🦟'; // Mosquito
                         
-                        else if (hostileRoll < 0.10) { this.setWorldTile(worldX, worldY, '🌿'); chunkData[y][x] = '🌿'; }
+                        else if (hostileRoll < 0.05) { this.setWorldTile(worldX, worldY, '🌿'); chunkData[y][x] = '🌿'; }
                         else chunkData[y][x] = tile;
                     }
 
                     // --- PLAINS ---
                     else if (tile === '.') {
                         // Rare
-                        if (dist > 150 && hostileRoll < 0.001) chunkData[y][x] = 'o'; // Orcs
-                        else if (dist > 120 && hostileRoll < 0.002) chunkData[y][x] = 'w'; // Wolf
-                        else if (dist > 80 && hostileRoll < 0.003) chunkData[y][x] = 'b'; // Bandit
+                        if (dist > 150 && hostileRoll < 0.0005) chunkData[y][x] = 'o'; // Orcs
+                        else if (dist > 120 && hostileRoll < 0.001) chunkData[y][x] = 'w'; // Wolf
+                        else if (dist > 80 && hostileRoll < 0.0015) chunkData[y][x] = 'b'; // Bandit
                         
-                        // Commons (Total ~0.6%)
-                        else if (hostileRoll < 0.006) chunkData[y][x] = 'r'; // Rat (0.3%)
-                        else if (hostileRoll < 0.009) chunkData[y][x] = 'R'; // Recruit (0.3%)
+                        // Commons (Total ~0.2%) - VERY SAFE
+                        else if (hostileRoll < 0.002) chunkData[y][x] = 'r'; // Rat (0.2%)
+                        else if (hostileRoll < 0.004) chunkData[y][x] = 'R'; // Recruit (0.2%)
                         else chunkData[y][x] = tile;
                     }
 
                     // --- DEADLANDS ---
                     else if (tile === 'd') {
-                        if (dist > 400 && hostileRoll < 0.001) chunkData[y][x] = 'D'; // Demon
-                        else if (hostileRoll < 0.005) chunkData[y][x] = 's'; // Skeleton
-                        else if (hostileRoll < 0.010) chunkData[y][x] = 'b'; // Bandit
+                        if (dist > 400 && hostileRoll < 0.0005) chunkData[y][x] = 'D'; // Demon
+                        else if (hostileRoll < 0.002) chunkData[y][x] = 's'; // Skeleton
+                        else if (hostileRoll < 0.004) chunkData[y][x] = 'b'; // Bandit
                         else chunkData[y][x] = tile;
                     }
 
                     // --- DESERT ---
                     else if (tile === 'D') {
-                        if (hostileRoll < 0.015) { this.setWorldTile(worldX, worldY, '🌵'); chunkData[y][x] = '🌵'; }
-                        else if (hostileRoll < 0.005) chunkData[y][x] = '🦂'; // Giant Scorpion
-                        else if (hostileRoll < 0.008) chunkData[y][x] = '🦂s'; // Sand Scorpion
-                        else if (hostileRoll < 0.010) chunkData[y][x] = '🐍c'; // Cobra
+                        if (hostileRoll < 0.01) { this.setWorldTile(worldX, worldY, '🌵'); chunkData[y][x] = '🌵'; }
+                        else if (hostileRoll < 0.002) chunkData[y][x] = '🦂'; // Giant Scorpion
+                        else if (hostileRoll < 0.003) chunkData[y][x] = '🦂s'; // Sand Scorpion
+                        else if (hostileRoll < 0.004) chunkData[y][x] = '🐍c'; // Cobra
                         else chunkData[y][x] = tile;
                     }
                     
