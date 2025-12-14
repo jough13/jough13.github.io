@@ -10047,12 +10047,37 @@ const render = () => {
                         fgChar = tile; fgColor = '#15803d'; // Green Cactus
                         break;
 
-                    // --- DEFAULT (Plains Green) ---
+                    // --- SMART DEFAULT (Matches Biome) ---
                     default:
-                        TileRenderer.drawBase(ctx, x, y, '#22c55e');
+                        // 1. Calculate noise to find the correct biome background
+                        const defElev = elevationNoise.noise(mapX / 70, mapY / 70);
+                        const defMoist = moistureNoise.noise(mapX / 50, mapY / 50);
+                        
+                        let defBg = '#22c55e'; // Default: Plains Green
+
+                        // 2. Pick color based on generation rules
+                        if (defElev < 0.35) defBg = '#1e3a8a';           // Water (Deep Blue)
+                        else if (defElev < 0.4 && defMoist > 0.7) defBg = '#422006'; // Swamp (Dark Brown)
+                        else if (defElev > 0.8) defBg = '#57534e';       // Mountain (Grey)
+                        else if (defElev > 0.6 && defMoist < 0.3) defBg = '#2d2d2d'; // Deadlands (Dark Grey)
+                        else if (defMoist < 0.15) defBg = '#fde047';     // Desert (Yellow)
+                        else if (defMoist > 0.55) defBg = '#14532d';     // Forest (Dark Green)
+
+                        // 3. Draw the background
+                        TileRenderer.drawBase(ctx, x, y, defBg);
+                        
+                        // 4. Set the character to be drawn on top
                         fgChar = tile;
                         break;
                 }
+            }
+
+            // This draws the static items and enemies ('w', 'g', '$', etc.)
+            if (fgChar) {
+                ctx.fillStyle = fgColor || '#FFFFFF';
+                // Adjust font weight for emojis vs text
+                ctx.font = isWideChar(fgChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
+                ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
             }
 
             // --- ENTITY RENDERING (OVERLAY LAYER) ---
