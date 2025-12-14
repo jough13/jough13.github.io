@@ -9992,7 +9992,6 @@ const renderEquipment = () => {
 };
 
 const render = () => {
-
     if (!gameState.mapMode) return;
 
     // 1. Setup Canvas
@@ -10006,60 +10005,71 @@ const render = () => {
     const startX = gameState.player.x - viewportCenterX;
     const startY = gameState.player.y - viewportCenterY;
 
-    // --- 1. LIGHTING SETUP (RELAXED) ---
-    // Instead of Pitch Black (1.0), we cap darkness at 0.6 (Dim)
-    // This allows you to see everything, just slightly darker.
+    // --- 2. LIGHTING SETUP ---
     let ambientLight = 0.0; 
-    let baseRadius = 10; // Increased base radius for better atmosphere
+    let baseRadius = 10; 
+
+    // Check for Light Sources
+    const hasTorch = gameState.player.inventory.some(item => item.name === 'Torch');
+    const torchBonus = hasTorch ? 4 : 0; 
+    const candleBonus = (gameState.player.candlelightTurns > 0) ? 6 : 0; 
 
     if (gameState.mapMode === 'dungeon') {
-        ambientLight = 0.6; // Dungeon is Dim, not Black
+        ambientLight = 0.6; // Dim
+        baseRadius = 3 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus; 
     } 
     else if (gameState.mapMode === 'castle') {
-        ambientLight = 0.2; // Castle is well lit
+        ambientLight = 0.2; // Bright
+        baseRadius = 10 + torchBonus + candleBonus; 
     } 
     else {
         // Overworld Day/Night
         const hour = gameState.time.hour;
-        if (hour >= 6 && hour < 18) ambientLight = 0.0; 
+        if (hour >= 6 && hour < 18) ambientLight = 0.0; // Day
         else if (hour >= 18 && hour < 20) ambientLight = 0.3; // Dusk
         else if (hour >= 5 && hour < 6) ambientLight = 0.3;   // Dawn
-        else ambientLight = 0.5; // Night is Dim, not Black
+        else ambientLight = 0.5; // Night
+        
+        baseRadius = (ambientLight > 0.3) ? 5 + torchBonus + candleBonus : 20;
     }
 
-    // --- 2. CALCULATE FLICKER ---
+    // Flicker Effect
     const now = Date.now();
     const torchFlicker = (Math.sin(now / 1000) * 0.2) + (Math.cos(now / 2500) * 0.1);
     const lightRadius = baseRadius + torchFlicker;
 
     const isWideChar = (char) => /\p{Extended_Pictographic}/u.test(char);
 
+    // --- 3. MAIN RENDER LOOP ---
     for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
             const mapY = startY + y;
             
-            // --- 3. SHADOW CALCULATION ---
+            // --- FIX: Define effectiveRadius HERE so it's available for everything ---
             const distToPlayer = Math.sqrt(Math.pow(mapX - gameState.player.x, 2) + Math.pow(mapY - gameState.player.y, 2));
             
+            // Optional: Add noise to the light radius for jagged edges
+            // If elevationNoise isn't available in this scope, remove the noise part
+            let effectiveRadius = lightRadius; 
+            if (typeof elevationNoise !== 'undefined') {
+                 effectiveRadius += elevationNoise.noise(mapX / 5, mapY / 5) * 1.5;
+            }
+
+            // Calculate Shadow Opacity
             let tileShadowOpacity = ambientLight;
             
-            // Create a "Light Circle" around player where it's fully bright
-            if (distToPlayer < lightRadius) {
-                // Smooth fade from bright center to dim edge
-                const edge = lightRadius - distToPlayer;
-                if (edge < 5) {
-                    tileShadowOpacity = ambientLight * (1 - (edge / 5)); 
-                } else {
-                    tileShadowOpacity = 0; // Fully bright
-                }
+            if (distToPlayer < effectiveRadius) {
+                const edge = effectiveRadius - distToPlayer;
+                if (edge < 5) tileShadowOpacity = ambientLight * (1 - (edge / 5)); 
+                else tileShadowOpacity = 0; 
             }
 
             let tile;
             let fgChar = null;
             let fgColor = '#FFFFFF';
 
-            // Get Tile Data
+            // --- A. DRAW TERRAIN (Base Layer) ---
             if (gameState.mapMode === 'dungeon') {
                 const map = chunkManager.caveMaps[gameState.currentCaveId];
                 tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
@@ -10076,166 +10086,30 @@ const render = () => {
                 else { TileRenderer.drawBase(ctx, x, y, '#a16207'); fgChar = tile; }
             } 
             else { 
+                // Overworld
                 tile = chunkManager.getTile(mapX, mapY);
-
-                // --- PROCEDURAL OVERWORLD RENDERING ---
-
                 switch (tile) {
-                    // --- HOMESTEAD TILES ---
-                    case '🧱': // Stone Wall
-                        TileRenderer.drawWall(ctx, x, y, '#78716c', '#57534e'); // Grey brick
-                        break;
-                    case '=': // Wood Floor
-                        TileRenderer.drawBase(ctx, x, y, '#78350f'); // Dark Wood
-                        // Optional: Draw plank lines
-                        ctx.strokeStyle = '#92400e';
-                        ctx.beginPath(); ctx.moveTo(x*TILE_SIZE, y*TILE_SIZE+10); ctx.lineTo(x*TILE_SIZE+20, y*TILE_SIZE+10); ctx.stroke();
-                        break;
-                    case '+': // Door (Closed)
-                        TileRenderer.drawBase(ctx, x, y, '#78350f'); // Wood background
-                        TileRenderer.drawWall(ctx, x, y, '#78350f', '#000'); // Door frame
-                        fgChar = '+'; fgColor = '#fbbf24'; // Gold handle/symbol
-                        break;
-                    case '/': // Door (Open)
-                        TileRenderer.drawBase(ctx, x, y, '#78350f');
-                        fgChar = '/'; fgColor = '#000';
-                        break;
-                    case '☒': // Stash
-                        TileRenderer.drawBase(ctx, x, y, '#78350f');
-                        fgChar = '☒'; fgColor = '#fbbf24'; // Gold Chest
-                        break;
-                    // --- BIOMES ---
-                    case '~':
-                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#1e3a8a', '#3b82f6');
-                        break;
-                    case '≈': // Swamp
-                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#422006', '#14532d'); 
-                        fgChar = ','; fgColor = '#4b5535';
-                        break;
-                    case '🔥': 
-                    case '⛺':
-                        const campMoist = moistureNoise.noise(mapX / 50, mapY / 50);
-                        let campBg = '#22c55e'; // Default: Plains Green
-                        
-                        // Check biome thresholds to match the ground
-                        if (campMoist > 0.55) campBg = '#14532d';      // Forest Green
-                        else if (campMoist < 0.15) campBg = '#fde047'; // Desert Sand
-                        
-                        if (tile === '🔥') {
-                            TileRenderer.drawFire(ctx, x, y, campBg);
-                        } else {
-                            TileRenderer.drawBase(ctx, x, y, campBg);
-                            fgChar = tile;
-                        }
-                        break;
-                    case '🏛️': 
-                    case '🕳️':
-                    case '📦':
-                        // Calculate exact biome color for this spot
-                        const smartElev = elevationNoise.noise(mapX / 70, mapY / 70);
-                        const smartMoist = moistureNoise.noise(mapX / 50, mapY / 50);
-                        let smartBg = '#22c55e'; // Default: Plains Green
-
-                        if (smartElev > 0.8) smartBg = '#57534e';        // Mountain
-                        else if (smartElev > 0.6 && smartMoist < 0.3) smartBg = '#2d2d2d'; // Deadlands
-                        else if (smartMoist < 0.15) smartBg = '#fde047'; // Desert
-                        else if (smartMoist > 0.55) smartBg = '#14532d'; // Forest
-                        
-                        TileRenderer.drawBase(ctx, x, y, smartBg);
-                        fgChar = tile;
-                        
-                        // Optional: Abyss should look dark/scary
-                        if (tile === '🕳️') fgColor = '#000'; 
-                        break;
-                    case 'Ω': // Void Rift
-                        TileRenderer.drawVoid(ctx, x, y);
-                        break;
-                    case '^': 
-                        const mtMoist = moistureNoise.noise(mapX / 50, mapY / 50);
-                        let mtBg = '#57534e'; // Default: Grey Rock
-                        
-                        // FIX: Lower threshold to 0.35 so mountains near forests blend in!
-                        if (mtMoist > 0.35) mtBg = '#14532d';      // High/Med Moisture: Forest Green
-                        else if (mtMoist > 0.15) mtBg = '#22c55e'; // Low Moisture: Plains Green
-                        
-                        TileRenderer.drawMountain(ctx, x, y, mapX, mapY, mtBg, '#d6d3d1');
-                        break;
-
-                    case '⛰': // Cave Entrance
-                        const caveMoist = moistureNoise.noise(mapX / 50, mapY / 50);
-                        let caveBg = '#57534e'; 
-                        
-                        // FIX: Lower threshold here too
-                        if (caveMoist > 0.35) caveBg = '#14532d';      
-                        else if (caveMoist > 0.15) caveBg = '#22c55e'; 
-                        
-                        TileRenderer.drawBase(ctx, x, y, caveBg);
+                    case '.': TileRenderer.drawPlains(ctx, x, y, mapX, mapY, '#22c55e', '#15803d'); break;
+                    case 'F': TileRenderer.drawForest(ctx, x, y, mapX, mapY, '#14532d', '#166534'); break;
+                    case '^': TileRenderer.drawMountain(ctx, x, y, mapX, mapY, '#57534e', '#d6d3d1'); break;
+                    case '~': TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#1e3a8a', '#3b82f6'); break;
+                    case '≈': TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#422006', '#14532d'); break;
+                    case 'd': TileRenderer.drawDeadlands(ctx, x, y, mapX, mapY, '#2d2d2d', '#444'); break;
+                    case 'D': TileRenderer.drawDesert(ctx, x, y, mapX, mapY, '#fde047'); break;
+                    
+                    // Structures
+                    case '🧱': TileRenderer.drawWall(ctx, x, y, '#78716c', '#57534e'); break;
+                    case '=': TileRenderer.drawBase(ctx, x, y, '#78350f'); break;
+                    case '+': TileRenderer.drawBase(ctx, x, y, '#78350f'); fgChar = '+'; fgColor = '#fbbf24'; break;
+                    case '/': TileRenderer.drawBase(ctx, x, y, '#78350f'); fgChar = '/'; fgColor = '#000'; break;
+                    
+                    default: 
+                        TileRenderer.drawBase(ctx, x, y, '#22c55e'); 
                         fgChar = tile; 
-                        break;
-
-                    case 'F':
-                        TileRenderer.drawForest(ctx, x, y, mapX, mapY, '#14532d', '#166534');
-                        break;
-                    case '.':
-                        TileRenderer.drawPlains(ctx, x, y, mapX, mapY, '#22c55e', '#15803d');
-                        break;
-                    case 'd': // Deadlands
-                        TileRenderer.drawDeadlands(ctx, x, y, mapX, mapY, '#2d2d2d', '#444');
-                        break;
-                    case 'D': // Desert
-                        TileRenderer.drawDesert(ctx, x, y, mapX, mapY, '#fde047');
-                        break;
-
-                    // --- FOREST ITEMS (Dark Green Background) ---
-                    case ':': // Wildberry
-                        TileRenderer.drawBase(ctx, x, y, '#14532d'); 
-                        fgChar = tile; fgColor = '#f87171'; // Red Berries
-                        break;
-                    case '🕸': // Web
-                        TileRenderer.drawBase(ctx, x, y, '#14532d'); 
-                        fgChar = tile; fgColor = '#e5e7eb'; // White Web
-                        break;
-                    case '🌳': // Thicket
-                        TileRenderer.drawBase(ctx, x, y, '#14532d'); 
-                        fgChar = tile; fgColor = '#4ade80'; // Bright Green Thicket
-                        break;
-
-                    // --- SWAMP ITEMS (Swamp Water Background) ---
-                    case '🌿': // Herb
-                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#422006', '#14532d');
-                        fgChar = tile; fgColor = '#86efac'; // Light Green Herb
-                        break;
-                    case 'l': // Leech
-                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, '#422006', '#14532d');
-                        fgChar = tile; fgColor = '#a3a3a3'; // Grey Leech
-                        break;
-
-                    // --- MOUNTAIN ITEMS (Grey Stone Background) ---
-                    case '🏚': // Cracked Wall
-                        TileRenderer.drawBase(ctx, x, y, '#57534e');
-                        fgChar = tile; fgColor = '#d6d3d1'; // Light Grey Wall
-                        break;
-                    case '💠': // Mithril
-                        TileRenderer.drawBase(ctx, x, y, '#57534e');
-                        fgChar = tile; fgColor = '#67e8f9'; // Cyan Crystal
-                        break;
-
-                    // --- DESERT ITEMS (Sand Background) ---
-                    case '🌵': // Cactus
-                        TileRenderer.drawDesert(ctx, x, y, mapX, mapY, '#fde047');
-                        fgChar = tile; fgColor = '#15803d'; // Green Cactus
-                        break;
-
-                    // --- DEFAULT (Plains Green) ---
-                    default:
-                        TileRenderer.drawBase(ctx, x, y, '#22c55e');
-                        fgChar = tile;
                         break;
                 }
             }
 
-            // --- ENTITY RENDERING (OVERLAY LAYER) ---
-            
             // --- B. DRAW ENTITIES (Enemies/Players) ---
             let overlayChar = null;
             let overlayColor = null;
@@ -10246,14 +10120,12 @@ const render = () => {
                 const sharedEnemy = gameState.sharedEnemies[enemyKey];
                 
                 if (sharedEnemy) {
-                    // Fallback to '?' if tile is missing so it's never invisible
                     overlayChar = sharedEnemy.tile || '?'; 
-                    
-                    // Default Color
-                    overlayColor = sharedEnemy.color || '#ef4444';
+                    // Default to Red if color is missing
+                    overlayColor = sharedEnemy.color || '#ef4444'; 
 
                     // Draw Health Bar
-                    if (sharedEnemy.maxHealth) {
+                    if (sharedEnemy.maxHealth > 0) {
                         const healthPercent = Math.max(0, sharedEnemy.health / sharedEnemy.maxHealth);
                         ctx.fillStyle = '#333';
                         ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE, 3);
@@ -10261,22 +10133,19 @@ const render = () => {
                         ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE * healthPercent, 3);
                     }
                     
-                    // Draw Elite Border
                     if (sharedEnemy.isElite) {
                         ctx.strokeStyle = sharedEnemy.color || '#facc15';
                         ctx.lineWidth = 1;
                         ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
                     }
                 }
-            }
-             
-            // 2. Check for Instanced Enemies (Dungeon/Castle)
+            } 
+            // 2. Check Instanced Enemies
             else {
                 const enemy = gameState.instancedEnemies.find(e => e.x === mapX && e.y === mapY);
                 if (enemy) {
                     overlayChar = enemy.tile;
                     overlayColor = enemy.color || '#ef4444';
-                    
                     if (enemy.isElite) {
                         ctx.strokeStyle = enemy.color || '#facc15';
                         ctx.lineWidth = 1;
@@ -10285,66 +10154,45 @@ const render = () => {
                 }
             }
 
-            // 3. Draw the Overlay Character (If exists)
-            // Note: We check tileShadowOpacity so we don't draw enemies in pitch blackness
-            if (overlayChar && tileShadowOpacity < 0.95) {
+            // --- C. DRAW CHARACTERS (Layering) ---
+            if (fgChar && !overlayChar) {
+                ctx.fillStyle = fgColor;
+                ctx.font = isWideChar(fgChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
+                ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+            }
+
+            if (overlayChar) {
                 ctx.fillStyle = overlayColor;
                 ctx.font = isWideChar(overlayChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
                 ctx.fillText(overlayChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
             }
 
-            // --- 4. SHADOW & TORCH OVERLAY ---
+            // --- D. DRAW SHADOW & TINT (Top Layer) ---
             if (tileShadowOpacity > 0) {
-                if (gameState.mapMode === 'overworld') {
-                    const colorString = getInterpolatedDayCycleColor(gameState.time.hour, gameState.time.minute);
-                    const rgbMatch = colorString.match(/\d+, \d+, \d+/);
-                    const rgb = rgbMatch ? rgbMatch[0] : "0, 0, 0"; 
-                    ctx.fillStyle = `rgba(${rgb}, ${tileShadowOpacity})`;
-                } else {
-                    ctx.fillStyle = `rgba(0, 0, 0, ${tileShadowOpacity})`;
-                }
+                ctx.fillStyle = `rgba(0, 0, 0, ${tileShadowOpacity})`;
                 ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
 
-            // Warm Torch Tint (Only apply if we are visible and it's dark)
-            // --- DYNAMIC LIGHTING TINT ---
-            // Only apply tint if we are visible and it's somewhat dark
+            // --- THE FIX IS HERE: effectiveRadius is now defined! ---
             if (ambientLight > 0.3 && tileShadowOpacity < 0.5) {
                 
-                // 1. Determine Light Color based on Location
-                let r = 255, g = 180, b = 100; // Default Warm Orange (Torch)
+                let r = 255, g = 180, b = 100; // Default Warm Orange
 
                 if (gameState.mapMode === 'dungeon') {
                     const theme = chunkManager.caveThemes[gameState.currentCaveId];
-                    if (theme === 'ICE' || theme === 'CRYSTAL') {
-                        r = 100; g = 240; b = 255; // Cold Cyan ❄️
-                    } else if (theme === 'SWAMP' || theme === 'GROTTO') {
-                        r = 50; g = 255; b = 50;   // Eerie Green 🤢
-                    } else if (theme === 'FIRE') {
-                        r = 255; g = 80; b = 50;   // Angry Red 🔥
-                    } else if (theme === 'VOID' || theme === 'ABYSS') {
-                        r = 180; g = 50; b = 255;  // Dark Purple 🔮
-                    } else if (theme === 'CRYPT') {
-                        r = 150; g = 150; b = 200; // Ghostly Blue/Grey 👻
-                    }
+                    if (theme === 'ICE' || theme === 'CRYSTAL') { r = 100; g = 240; b = 255; }
+                    else if (theme === 'SWAMP' || theme === 'GROTTO') { r = 50; g = 255; b = 50; }
+                    else if (theme === 'FIRE') { r = 255; g = 80; b = 50; }
+                    else if (theme === 'VOID' || theme === 'ABYSS') { r = 180; g = 50; b = 255; }
+                    else if (theme === 'CRYPT') { r = 150; g = 150; b = 200; }
                 } 
                 else if (gameState.mapMode === 'overworld') {
-                    // Optional: Tint based on biome!
-                    // Check the tile under the player
                     const pTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
-                    if (pTile === '≈') { // Swamp
-                        r = 100; g = 200; b = 100; 
-                    } else if (pTile === 'd' || pTile === 'D') { // Deadlands/Desert
-                        r = 200; g = 200; b = 180; // Desaturated Dust
-                    } else if (gameState.weather === 'storm') {
-                        r = 100; g = 100; b = 150; // Stormy Blue
-                    }
+                    if (pTile === '≈') { r = 100; g = 200; b = 100; }
+                    else if (pTile === 'd' || pTile === 'D') { r = 200; g = 200; b = 180; }
+                    else if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
                 }
 
-                // 2. Apply the Tint
-                // Calculate intensity based on distance from center (brighter in center)
                 const tintStrength = (1 - (distToPlayer / effectiveRadius)) * 0.15;
                 
                 if (tintStrength > 0) {
@@ -10355,30 +10203,7 @@ const render = () => {
         }
     }
 
-    // --- Draw Characters/Particles (Overlay) ---
-    // (Keep the existing drawing logic for NPCs, Companion, Other Players, Self)
-    // ...
-    if (gameState.mapMode === 'castle' && gameState.friendlyNpcs) {
-        gameState.friendlyNpcs.forEach(npc => {
-            const screenX = (npc.x - startX) * TILE_SIZE;
-            const screenY = (npc.y - startY) * TILE_SIZE;
-            if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
-                ctx.fillStyle = '#FFFFFF'; 
-                ctx.fillText(npc.tile, screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
-            }
-        });
-    }
-
-    if (gameState.player.companion) {
-        const comp = gameState.player.companion;
-        const screenX = (comp.x - startX) * TILE_SIZE;
-        const screenY = (comp.y - startY) * TILE_SIZE;
-        if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
-            ctx.fillStyle = '#06b6d4'; 
-            ctx.fillText(comp.tile, screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
-        }
-    }
-
+    // --- 4. DRAW OTHER PLAYERS ---
     for (const id in otherPlayers) {
         if (otherPlayers[id].mapMode !== gameState.mapMode || otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
         const op = otherPlayers[id];
@@ -10387,62 +10212,42 @@ const render = () => {
         if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
             ctx.fillStyle = '#f97316';
             ctx.fillText('@', screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
-            if (op.email) {
-                ctx.font = '10px monospace';
-                ctx.fillStyle = '#fff';
-                ctx.fillText(op.email.split('@')[0], screenX + TILE_SIZE/2, screenY - 5);
-                ctx.font = `${TILE_SIZE}px monospace`;
-            }
         }
     }
 
+    // --- 5. DRAW SELF ---
     const playerChar = gameState.player.isBoating ? 'c' : gameState.player.character;
-    const style2 = getComputedStyle(document.documentElement);
-    const playerColor = style2.getPropertyValue('--player-color');
     ctx.font = `bold ${TILE_SIZE}px monospace`;
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 3;
     ctx.strokeText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
-    ctx.fillStyle = playerColor;
+    ctx.fillStyle = '#3b82f6';
     ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
-    ctx.font = `${TILE_SIZE}px monospace`;
 
-    // --- WEATHER RENDERING ---
+    // --- 6. WEATHER EFFECTS ---
     const intensity = gameState.player.weatherIntensity || 0;
-    
     if (intensity > 0 && gameState.weather !== 'clear') {
-        
-        ctx.save(); // Save canvas state to safely use transparency
-        ctx.globalAlpha = intensity; // Master fader for weather effects
+        ctx.save();
+        ctx.globalAlpha = intensity; 
 
         if (gameState.weather === 'rain') {
-            // Darken sky
             ctx.fillStyle = 'rgba(0, 0, 100, 0.2)'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Raindrops
             ctx.strokeStyle = 'rgba(120, 140, 255, 0.6)';
             ctx.lineWidth = 1;
-            const dropCount = Math.floor(200 * intensity); // Up to 200 drops
-            
+            const dropCount = Math.floor(200 * intensity);
             for(let i=0; i < dropCount; i++) {
                  const rx = Math.random() * canvas.width;
                  const ry = Math.random() * canvas.height;
                  const len = 10 + Math.random() * 10;
-                 ctx.beginPath(); 
-                 ctx.moveTo(rx, ry); 
-                 ctx.lineTo(rx - 5, ry + len); // Angled rain
-                 ctx.stroke();
+                 ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + len); ctx.stroke();
             }
         } 
         else if (gameState.weather === 'snow') {
-            // Whiteout effect
             ctx.fillStyle = 'rgba(200, 200, 220, 0.15)'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
             ctx.fillStyle = 'white';
             const flakeCount = Math.floor(150 * intensity);
-            
             for(let i=0; i < flakeCount; i++) {
                  const rx = Math.random() * canvas.width;
                  const ry = Math.random() * canvas.height;
@@ -10451,22 +10256,16 @@ const render = () => {
             }
         } 
         else if (gameState.weather === 'storm') {
-            // Dark Storm
             ctx.fillStyle = 'rgba(10, 10, 30, 0.4)'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Heavy Rain
             ctx.strokeStyle = 'rgba(150, 150, 255, 0.5)';
             ctx.lineWidth = 2;
             const dropCount = Math.floor(300 * intensity);
-            
             for(let i=0; i < dropCount; i++) {
                  const rx = Math.random() * canvas.width;
                  const ry = Math.random() * canvas.height;
                  ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 8, ry + 15); ctx.stroke();
             }
-            
-            // Random Lightning Flash (Visual only)
             if (Math.random() < 0.05 * intensity) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -10476,23 +10275,7 @@ const render = () => {
             ctx.fillStyle = `rgba(200, 200, 200, ${0.5 * intensity})`; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
-
-        ctx.restore(); // Restore opacity for UI/Text
-    }
-
-    if (gameState.mapMode === 'overworld') {
-        const elev = elevationNoise.noise(gameState.player.x / 70, gameState.player.y / 70);
-        const moist = moistureNoise.noise(gameState.player.x / 50, gameState.player.y / 50);
-        let tintColor = null;
-        if (elev > 0.6 && moist < 0.3) tintColor = 'rgba(50, 0, 0, 0.1)'; 
-        else if (moist < 0.15) tintColor = 'rgba(255, 100, 0, 0.05)'; 
-        else if (elev < 0.35 || (elev < 0.4 && moist > 0.7)) tintColor = 'rgba(0, 50, 0, 0.1)'; 
-        else if (elev > 0.8) tintColor = 'rgba(200, 200, 255, 0.1)'; 
-
-        if (tintColor) {
-            ctx.fillStyle = tintColor;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
+        ctx.restore();
     }
 
     if (typeof ParticleSystem !== 'undefined') {
