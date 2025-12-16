@@ -2073,57 +2073,36 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+{
     name: 'Fluorine-18',
     symbol: 'F-18',
-    emissionType: ['Positron Emission'],
+    emissionType: ['Positron Emission', 'Annihilation Photons'],
     emissionEnergies: {
-      beta: ['0.6335 MeV (max)'],
-      gamma: ['0.511 MeV (annihilation)'],
+      beta: ['0.634 MeV (max)'],
+      gamma: ['0.511 MeV (200% yield)'], // Crucial detail
       alpha: []
     },
-    avgBetaEnergy: '0.211 MeV',
-    halfLife: '109.7 minutes',
-    decayConstant: '0.00632 min⁻¹',
-    specificActivity: '3.5 x 10^18 Bq/g',
+    avgBetaEnergy: '0.250 MeV',
+    halfLife: '109.77 minutes',
+    decayConstant: '0.006315 min⁻¹',
+    specificActivity: '3.52 x 10^18 Bq/g',
+    // Gamma Constant: ~5.7 R-cm2/mCi-hr  =>  0.57 R-m2/Ci-hr
+    gammaConstant: '0.57 R·m²/hr·Ci', 
     parent: 'Oxygen-18 (p,n)',
     daughter: 'Oxygen-18 (stable)',
-    commonUses: ['PET imaging (Positron Emission Tomography)', 'Most common PET radioisotope, particularly for FDG (Fluorodeoxyglucose) scans'],
+    commonUses: ['PET imaging (FDG)', 'Bone scans (NaF)'],
     category: 'Medical',
     commonality: 'Common',
-    commonalityReason: 'The most widely used radioisotope for PET scans, especially when labeled to FDG for cancer imaging.',
-    sourceRef: {
-      halfLife: 'nndc'
-    },
-    shipping: {
-      A1: 1,
-      A2: 0.6,
-      unit: 'TBq'
-    },
-    dValue: 0.06,
+    commonalityReason: 'The standard workhorse isotope for PET imaging.',
+    sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' },
+    shipping: { A1: 1, A2: 0.6, unit: 'TBq' },
+    // 10 CFR 20 Appendix B values
     dosimetry: {
-      ALI: {
-        ingestion: 50000,
-        inhalation_D: 70000,
-        inhalation_W: 90000,
-        inhalation_Y: 80000
-      },
-      DAC: {
-        inhalation_D: 3e-5,
-        inhalation_W: 4e-5,
-        inhalation_Y: 3e-5
-      },
-      DCF: {
-        ingestion: 0,
-        inhalation_D: 2.26e-11,
-        inhalation_W: 2.01e-11,
-        inhalation_Y: 2.11e-11
-      },
-      sourceRef: '10CFR20'
-    },
-    regGuideCategory: 'beta_gamma',
-    ansiCategory: 'beta_gamma'
-  },
+        ALI: { ingestion: 50000, inhalation_D: 70000, inhalation_W: 90000, inhalation_Y: 80000 },
+        DAC: { inhalation_D: 3e-5, inhalation_W: 4e-5, inhalation_Y: 3e-5 },
+        sourceRef: '10CFR20'
+    }
+},
   {
     name: 'Fluorine-19',
     symbol: 'F-19',
@@ -2291,53 +2270,34 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     regGuideCategory: 'beta_gamma',
     ansiCategory: 'beta_gamma'
   },
-  {
+{
     name: 'Gallium-68',
     symbol: 'Ga-68',
-    emissionType: ['Positron Emission', 'Gamma'],
+    emissionType: ['Positron Emission', 'Annihilation Photons'],
     emissionEnergies: {
       beta: ['1.90 MeV (max)'],
-      gamma: ['0.511 MeV (annihilation)'],
+      gamma: ['0.511 MeV (178% yield)', '1.077 MeV (3%)'],
       alpha: []
     },
-    avgBetaEnergy: '0.633 MeV',
+    avgBetaEnergy: '0.830 MeV',
     halfLife: '67.71 minutes',
     decayConstant: '0.0102 min⁻¹',
-    specificActivity: '1.45 x 10^17 Bq/g',
+    specificActivity: '1.51 x 10^18 Bq/g',
+    // Gamma Constant: ~5.4 R-cm2/mCi-hr => 0.54 R-m2/Ci-hr
+    gammaConstant: '0.54 R·m²/hr·Ci',
     parent: 'Germanium-68',
     daughter: 'Zinc-68 (stable)',
-    commonUses: ['PET imaging, especially with DOTATATE/DOTATOC for neuroendocrine tumors'],
+    commonUses: ['PET imaging (Neuroendocrine tumors)', 'Prostate cancer imaging (PSMA)'],
     category: 'Medical',
     commonality: 'Common',
-    commonalityReason: 'A major PET imaging isotope, especially for neuroendocrine tumors, often produced from a Ge-68 generator.',
-    sourceRef: {
-      halfLife: 'nndc'
-    },
-    shipping: {
-      A1: 0.5,
-      A2: 0.5,
-      unit: 'TBq'
-    },
+    sourceRef: { halfLife: 'nndc', gammaConstant: 'hps' },
+    shipping: { A1: 0.5, A2: 0.5, unit: 'TBq' },
     dosimetry: {
-      ALI: {
-        ingestion: 20000,
-        inhalation_D: 40000,
-        inhalation_W: 50000
-      },
-      DAC: {
-        inhalation_D: 2e-5,
-        inhalation_W: 2e-5
-      },
-      DCF: {
-        ingestion: 0,
-        inhalation_D: 3.74e-11,
-        inhalation_W: 3.07e-11
-      },
-      sourceRef: '10CFR20'
-    },
-    regGuideCategory: 'beta_gamma',
-    ansiCategory: 'beta_gamma'
-  },
+        ALI: { ingestion: 20000, inhalation_D: 40000, inhalation_W: 50000 },
+        DAC: { inhalation_D: 2e-5, inhalation_W: 2e-5 },
+        sourceRef: '10CFR20'
+    }
+},
   {
     name: 'Germanium-68',
     symbol: 'Ge-68',
@@ -2806,7 +2766,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     avgBetaEnergy: '0.202 MeV',
     halfLife: '8.02 days',
     decayConstant: '0.0864 day⁻¹',
-    gammaConstant: '0.282939 R·m²/hr·Ci',
+    gammaConstant: '0.22 R·m²/hr·Ci',
     sourceRef: {
       halfLife: 'nndc',
       decayConstant: 'nndc',
@@ -2858,7 +2818,7 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
     avgBetaEnergy: '0.224 MeV',
     halfLife: '73.83 days',
     decayConstant: '0.00939 day⁻¹',
-    gammaConstant: '0.59163 R·m²/hr·Ci',
+    gammaConstant: '0.48 R·m²/hr·Ci',
     sourceRef: {
       halfLife: 'nndc',
       gammaConstant: 'plexus_nsd'
@@ -8115,25 +8075,37 @@ shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
                * Source: Approximate values from various health physics resources.
                */
               
-              const HVL_DATA = {
-              'Am-241': { 'Lead': 0.02, 'Steel': 0.8, 'Concrete': 2.3, 'Aluminum': 1.5, 'Water': 4.2, sourceRef: 'rse' },
-              'Au-198': { 'Lead': 0.33, 'Steel': 1.4, 'Concrete': 4.7, 'Aluminum': 2.5, 'Water': 6.8, sourceRef: 'rse' },
-              'Ba-133': { 'Lead': 0.29, 'Steel': 1.2, 'Concrete': 4.1, 'Aluminum': 2.2, 'Water': 5.8, sourceRef: 'rse' },
-              'Co-60':  { 'Lead': 1.2, 'Tungsten': 0.7, 'Steel': 2.1, 'Concrete': 6.0, 'Aluminum': 4.8, 'Water': 11.0, sourceRef: 'rse' },
-              'Cs-137': { 'Lead': 0.65, 'Steel': 1.6, 'Concrete': 4.8, 'Aluminum': 3.0, 'Water': 8.0, sourceRef: 'rse' },
-              'Eu-152': { 'Lead': 1.0,  'Steel': 2.0, 'Concrete': 5.8, 'Aluminum': 4.5, 'Water': 10.5, sourceRef: 'rse' },
-              'Ga-67':  { 'Lead': 0.07, 'Steel': 0.8, 'Concrete': 3.0, 'Aluminum': 1.5, 'Water': 4.8, sourceRef: 'rse' },
-              'I-125':  { 'Lead': 0.002,'Steel': 0.1, 'Concrete': 1.9, 'Aluminum': 0.6, 'Water': 1.8, sourceRef: 'rse' },
-              'I-131':  { 'Lead': 0.3,  'Steel': 1.2, 'Concrete': 4.0, 'Aluminum': 2.2, 'Water': 6.0, sourceRef: 'rse' },
-              'Ir-192': { 'Lead': 0.33, 'Steel': 1.3, 'Concrete': 4.3, 'Aluminum': 2.1, 'Water': 6.1, sourceRef: 'rse' },
-              'Mn-54':  { 'Lead': 0.8,  'Steel': 1.8, 'Concrete': 5.2, 'Aluminum': 3.6, 'Water': 9.0, sourceRef: 'rse' },
-              'Mo-99':  { 'Lead': 0.7,  'Steel': 1.7, 'Concrete': 5.0, 'Aluminum': 3.1, 'Water': 8.2, sourceRef: 'rse' },
-              'Na-22':  { 'Lead': 1.1,  'Steel': 2.0, 'Concrete': 5.8, 'Aluminum': 4.5, 'Water': 10.2, sourceRef: 'rse' },
-              'Na-24':  { 'Lead': 1.5,  'Steel': 2.5, 'Concrete': 7.2, 'Aluminum': 6.1, 'Water': 14.5, sourceRef: 'rse' },
-              'Ra-226': { 'Lead': 1.4, 'Steel': 2.3, 'Concrete': 6.9, 'Aluminum': 5.5, 'Water': 13.0, sourceRef: 'rse' },
-              'Sc-46':  { 'Lead': 1.0,  'Steel': 2.0, 'Concrete': 5.9, 'Aluminum': 4.2, 'Water': 10.0, sourceRef: 'rse' },
-              'Tc-99m': { 'Lead': 0.03, 'Steel': 0.3, 'Concrete': 2.2, 'Aluminum': 0.8, 'Water': 4.6, sourceRef: 'rse' }
-              };
+const HVL_DATA = {
+    'Am-241': { 'Lead': 0.02, 'Steel': 0.8, 'Concrete': 2.3, 'Aluminum': 1.5, 'Water': 4.2, sourceRef: 'rse' },
+    'Au-198': { 'Lead': 0.33, 'Steel': 1.4, 'Concrete': 4.7, 'Aluminum': 2.5, 'Water': 6.8, sourceRef: 'rse' },
+    'Ba-133': { 'Lead': 0.29, 'Steel': 1.2, 'Concrete': 4.1, 'Aluminum': 2.2, 'Water': 5.8, sourceRef: 'rse' },
+    
+    'C-11':   { 'Lead': 0.40, 'Steel': 1.1, 'Concrete': 3.4, 'Aluminum': 3.0, 'Water': 7.1, sourceRef: 'rse' },
+    
+    'Co-60':  { 'Lead': 1.2, 'Tungsten': 0.7, 'Steel': 2.1, 'Concrete': 6.0, 'Aluminum': 4.8, 'Water': 11.0, sourceRef: 'rse' },
+    'Cs-137': { 'Lead': 0.65, 'Steel': 1.6, 'Concrete': 4.8, 'Aluminum': 3.0, 'Water': 8.0, sourceRef: 'rse' },
+    'Eu-152': { 'Lead': 1.0,  'Steel': 2.0, 'Concrete': 5.8, 'Aluminum': 4.5, 'Water': 10.5, sourceRef: 'rse' },
+    
+    'F-18':   { 'Lead': 0.40, 'Steel': 1.1, 'Concrete': 3.4, 'Aluminum': 3.0, 'Water': 7.1, sourceRef: 'rse' },
+    
+    'Ga-67':  { 'Lead': 0.07, 'Steel': 0.8, 'Concrete': 3.0, 'Aluminum': 1.5, 'Water': 4.8, sourceRef: 'rse' },
+    
+    'Ga-68':  { 'Lead': 0.41, 'Steel': 1.2, 'Concrete': 3.6, 'Aluminum': 3.2, 'Water': 7.5, sourceRef: 'rse' },
+    
+    'I-125':  { 'Lead': 0.002,'Steel': 0.1, 'Concrete': 1.9, 'Aluminum': 0.6, 'Water': 1.8, sourceRef: 'rse' },
+    'I-131':  { 'Lead': 0.3,  'Steel': 1.2, 'Concrete': 4.0, 'Aluminum': 2.2, 'Water': 6.0, sourceRef: 'rse' },
+    'Ir-192': { 'Lead': 0.33, 'Steel': 1.3, 'Concrete': 4.3, 'Aluminum': 2.1, 'Water': 6.1, sourceRef: 'rse' },
+    'Mn-54':  { 'Lead': 0.8,  'Steel': 1.8, 'Concrete': 5.2, 'Aluminum': 3.6, 'Water': 9.0, sourceRef: 'rse' },
+    'Mo-99':  { 'Lead': 0.7,  'Steel': 1.7, 'Concrete': 5.0, 'Aluminum': 3.1, 'Water': 8.2, sourceRef: 'rse' },
+    
+    'N-13':   { 'Lead': 0.40, 'Steel': 1.1, 'Concrete': 3.4, 'Aluminum': 3.0, 'Water': 7.1, sourceRef: 'rse' },
+    
+    'Na-22':  { 'Lead': 1.1,  'Steel': 2.0, 'Concrete': 5.8, 'Aluminum': 4.5, 'Water': 10.2, sourceRef: 'rse' },
+    'Na-24':  { 'Lead': 1.5,  'Steel': 2.5, 'Concrete': 7.2, 'Aluminum': 6.1, 'Water': 14.5, sourceRef: 'rse' },
+    'Ra-226': { 'Lead': 1.4, 'Steel': 2.3, 'Concrete': 6.9, 'Aluminum': 5.5, 'Water': 13.0, sourceRef: 'rse' },
+    'Sc-46':  { 'Lead': 1.0,  'Steel': 2.0, 'Concrete': 5.9, 'Aluminum': 4.2, 'Water': 10.0, sourceRef: 'rse' },
+    'Tc-99m': { 'Lead': 0.03, 'Steel': 0.3, 'Concrete': 2.2, 'Aluminum': 0.8, 'Water': 4.6, sourceRef: 'rse' }
+};
               
               // New constant for Buildup Factor approximations
               
@@ -12612,9 +12584,10 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
 
 /**
  * @description A calculator to estimate detector response (cpm) from source activity.
- * Includes shielding attenuation and multi-particle summation for GM probes.
+ * Includes shielding attenuation, multi-particle summation, and energy-dependent efficiency corrections.
  */
-const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, activity, setActivity, activityUnit, setActivityUnit, distance, setDistance, distanceUnit, setDistanceUnit, detectorType, setDetectorType, shieldMaterial, setShieldMaterial, shieldThickness, setShieldThickness, shieldThicknessUnit, setShieldThicknessUnit, result, setResult, error, setError }) => {
+
+const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, activity, setActivity, activityUnit, setActivityUnit, distance, setDistance, distanceUnit, setDistanceUnit, detectorType, setDetectorType, shieldMaterial, setShieldMaterial, shieldThickness, setShieldThickness, shieldThicknessUnit, setShieldThicknessUnit, surfaceEff, setSurfaceEff, result, setResult, error, setError }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
     
@@ -12622,15 +12595,24 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
     const DETECTORS = {
         'nai_1x1': { label: '1" x 1" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 175 },
         'nai_2x2': { label: '2" x 2" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 900 },
-        // GM: 20% Beta (4pi), ~15% Alpha (4pi), 3.3 cpm/uR/hr Gamma
-        'gm_pancake': { label: 'Pancake GM (e.g., Ludlum 44-9)', type: 'mix', betaEff: 0.20, alphaEff: 0.15, gammaCpmPerMicroR: 3.3 },
-        'zns_alpha': { label: 'ZnS(Ag) Scintillator', type: 'alpha_only', alphaEff: 0.20 }
+        'gm_pancake': { 
+            label: 'Pancake GM (e.g., Ludlum 44-9)', 
+            type: 'mix', 
+            refBetaEff: 0.40, // 20% 4pi
+            alphaEff: 0.30,   // 15% 4pi
+            gammaCpmPerMicroR: 3.3 
+        },
+        'zns_alpha': { 
+            label: 'ZnS(Ag) Scintillator', 
+            type: 'alpha_only', 
+            alphaEff: 0.50 // 25% 4pi
+        }
     };
 
     const SHIELD_PROPS = {
         'None': { density: 0 },
-        'Paper/Clothing': { density: 0.8, isPorous: true }, // Stops Alpha
-        'Plastic/Lucite': { density: 1.18, mapTo: 'Water' }, // Stops Beta
+        'Paper/Clothing': { density: 0.8, isPorous: true },
+        'Plastic/Lucite': { density: 1.18, mapTo: 'Water' },
         'Wood': { density: 0.6, mapTo: 'Water' },
         'Soil': { density: 1.6, mapTo: 'Concrete' },
         'Concrete': { density: 2.35, mapTo: 'Concrete' },
@@ -12643,12 +12625,20 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
     const distanceFactorsM = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
     const thicknessFactorsCm = { 'mm': 0.1, 'cm': 1, 'in': 2.54 };
 
-    // Filter relevant nuclides
+    // Helper: Parse energy string "662 keV" -> 0.662
+    const parseE = (str) => {
+        if(!str) return 0;
+        const parts = str.split(' ');
+        let val = parseFloat(parts[0]);
+        if(str.toLowerCase().includes('kev')) val /= 1000;
+        return val;
+    };
+
     const availableNuclides = React.useMemo(() => {
         const det = DETECTORS[detectorType];
         if (det.type === 'alpha_only') return radionuclides.filter(n => n.emissionEnergies?.alpha?.length > 0);
         if (det.type === 'gamma_only') return radionuclides.filter(n => n.gammaConstant);
-        return radionuclides; // Mix detectors (GM) show all
+        return radionuclides; 
     }, [radionuclides, detectorType]);
 
     const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
@@ -12661,13 +12651,14 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             const A_val = parseFloat(activity);
             const d_val = parseFloat(distance);
             const t_val = shieldMaterial === 'None' ? 0 : parseFloat(shieldThickness);
+            const eff_surf_pct = parseFloat(surfaceEff);
 
             if (isNaN(A_val) || isNaN(d_val) || A_val <= 0 || d_val <= 0) {
                 if(activity && distance) setError("Inputs must be valid positive numbers.");
                 setResult(null); return;
             }
-            if (shieldMaterial !== 'None' && (isNaN(t_val) || t_val < 0)) {
-                setError("Shield thickness must be a valid number.");
+            if (isNaN(eff_surf_pct) || eff_surf_pct < 0 || eff_surf_pct > 100) {
+                setError("Surface efficiency must be between 0 and 100.");
                 setResult(null); return;
             }
 
@@ -12676,6 +12667,7 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             const d_m = d_val * distanceFactorsM[distanceUnit];
             const t_cm = t_val * thicknessFactorsCm[shieldThicknessUnit];
             const shieldDensity = SHIELD_PROPS[shieldMaterial].density;
+            const eff_surf = eff_surf_pct / 100.0; // Decimal form for calc
 
             let cpmGamma = 0;
             let cpmBeta = 0;
@@ -12686,113 +12678,115 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             if (detInfo.type !== 'alpha_only' && selectedNuclide.gammaConstant) {
                 const gamma = parseFloat(selectedNuclide.gammaConstant || 0);
                 if (gamma > 0) {
-                    // Unshielded Rate
                     const doseRate_uR_hr = ((gamma * A_Ci) / Math.pow(d_m, 2)) * 1e6;
                     
-                    // Apply Shielding
                     let transmission = 1;
                     if (shieldMaterial !== 'None' && t_cm > 0) {
-                        // Look for direct HVL data, or map to proxy (e.g. Soil -> Concrete)
                         const mapMaterial = SHIELD_PROPS[shieldMaterial].mapTo;
                         let hvl = null;
                         
                         if (HVL_DATA[selectedNuclide.symbol] && HVL_DATA[selectedNuclide.symbol][mapMaterial]) {
-                            // We have data for the mapped material
                             const refHvl = HVL_DATA[selectedNuclide.symbol][mapMaterial];
                             const refDensity = SHIELD_PROPS[mapMaterial].density;
-                            // Scale HVL by density ratio: HVL_soil = HVL_conc * (Rho_conc / Rho_soil)
                             hvl = refHvl * (refDensity / shieldDensity);
                         } else if (HVL_DATA['Cs-137'][mapMaterial]) {
-                            // Fallback to Cs-137 if specific nuclide data missing
                             const refHvl = HVL_DATA['Cs-137'][mapMaterial];
                             const refDensity = SHIELD_PROPS[mapMaterial].density;
                             hvl = refHvl * (refDensity / shieldDensity);
                             attenuationMsg.push("Gamma approximated using Cs-137 data.");
                         }
 
-                        if (hvl) {
-                            transmission = Math.pow(0.5, t_cm / hvl);
-                        }
+                        if (hvl) transmission = Math.pow(0.5, t_cm / hvl);
+                    }
+
+                    let energyResponseFactor = 1.0;
+                    const primaryE = parseE(selectedNuclide.emissionEnergies?.gamma?.[0]);
+                    
+                    if (detectorType.startsWith('nai')) {
+                        if (primaryE > 0 && primaryE < 0.15) energyResponseFactor = 3.5; 
+                        else if (primaryE >= 0.15 && primaryE < 0.4) energyResponseFactor = 1.5;
                     }
 
                     const responseFactor = detInfo.refCpmPerMicroR || detInfo.gammaCpmPerMicroR;
-                    cpmGamma = doseRate_uR_hr * transmission * responseFactor;
+                    // Note: Surface Efficiency usually NOT applied to gamma (penetrating)
+                    cpmGamma = doseRate_uR_hr * transmission * responseFactor * energyResponseFactor;
                 }
             }
 
-            // --- 2. ALPHA/BETA GEOMETRY & SHIELDING ---
+            // --- 2. BETA / ALPHA GEOMETRY ---
             if (detInfo.type === 'mix' || detInfo.type === 'alpha_only') {
                 const r_det_cm = 2.2; 
                 const d_cm = d_m * 100;
-                // Simple geometry factor
                 const geoEff = 0.5 * (1 - (d_cm / Math.sqrt(Math.pow(d_cm, 2) + Math.pow(r_det_cm, 2))));
                 const A_dpm = A_Ci * 2.22e12;
 
                 // --- BETA ---
                 if (detInfo.type === 'mix' && selectedNuclide.emissionEnergies?.beta?.length > 0) {
                     let isBlocked = false;
-                    
+                    const eMaxStr = selectedNuclide.emissionEnergies.beta[0]; 
+                    const eMax = parseE(eMaxStr); 
+
                     // Range Check
                     if (shieldMaterial !== 'None' && t_cm > 0) {
-                        // Max Beta Energy
-                        const eMaxStr = selectedNuclide.emissionEnergies.beta[0]; 
-                        const eMax = parseFloat(eMaxStr.split(' ')[0]); // Approx
-                        // Feather's Rule for Range (g/cm^2)
                         const range_g_cm2 = eMax > 0.8 ? (0.542 * eMax - 0.133) : (0.407 * Math.pow(eMax, 1.38));
                         const range_cm_in_material = range_g_cm2 / shieldDensity;
-                        
                         if (t_cm >= range_cm_in_material) {
                             isBlocked = true;
                             attenuationMsg.push(`Betas shielded by ${shieldMaterial}.`);
                         }
                     }
-
-                    // Air Attenuation Check (Rough) - Range in air ~ meters. 
-                    // If distance is > 1m, neglect beta for simple handheld estimates.
                     if (d_m > 1) isBlocked = true;
 
+                    if (eMax < 0.05) { 
+                        isBlocked = true;
+                        if(shieldMaterial === 'None' && d_m < 0.05) attenuationMsg.push("Beta energy too low for window (e.g. H-3).");
+                    }
+
                     if (!isBlocked) {
-                        cpmBeta = A_dpm * geoEff * detInfo.betaEff;
+                        let effBeta = detInfo.refBetaEff || 0.20; 
+                        if (eMax < 0.10) effBeta = 0.005;      
+                        else if (eMax < 0.25) effBeta = 0.08; 
+                        else if (eMax < 0.50) effBeta = 0.15; 
+                        
+                        // Apply Surface Efficiency to Beta
+                        cpmBeta = A_dpm * geoEff * effBeta * eff_surf;
                     }
                 }
 
                 // --- ALPHA ---
                 if (detInfo.alphaEff && selectedNuclide.emissionEnergies?.alpha?.length > 0) {
                     let isBlocked = false;
-                    
-                    // Alpha is blocked by ANY solid shield or significant air gap
                     if (shieldMaterial !== 'None' && t_cm > 0) {
                         isBlocked = true;
                         attenuationMsg.push(`Alphas shielded by ${shieldMaterial}.`);
                     }
-                    if (d_m > 0.05) { // Alphas die in ~5cm of air
+                    if (d_m > 0.05) { 
                         isBlocked = true;
                         if(shieldMaterial === 'None') attenuationMsg.push("Alphas attenuated by air gap.");
                     }
-
                     if (!isBlocked) {
-                        cpmAlpha = A_dpm * geoEff * detInfo.alphaEff;
+                        // Apply Surface Efficiency to Alpha
+                        cpmAlpha = A_dpm * geoEff * detInfo.alphaEff * eff_surf;
                     }
                 }
             }
 
             const totalCpm = cpmGamma + cpmBeta + cpmAlpha;
             
-            // Format breakdown string
             let breakdown = [];
-            if (cpmGamma > 1) breakdown.push(`γ: ${cpmGamma.toPrecision(3)}`);
-            if (cpmBeta > 1) breakdown.push(`β: ${cpmBeta.toPrecision(3)}`);
-            if (cpmAlpha > 1) breakdown.push(`α: ${cpmAlpha.toPrecision(3)}`);
+            if (cpmGamma > 10) breakdown.push(`γ: ${cpmGamma.toExponential(2)}`);
+            if (cpmBeta > 10) breakdown.push(`β: ${cpmBeta.toExponential(2)}`);
+            if (cpmAlpha > 10) breakdown.push(`α: ${cpmAlpha.toExponential(2)}`);
 
             setResult({ 
-                cpm: totalCpm.toPrecision(3), 
+                cpm: totalCpm > 10000 ? totalCpm.toExponential(3) : Math.round(totalCpm).toLocaleString(), 
                 detLabel: detInfo.label,
                 breakdown: breakdown.join(', '),
                 notes: attenuationMsg 
             });
 
         } catch (e) { setError(e.message); setResult(null); }
-    }, [nuclideSymbol, activity, activityUnit, distance, distanceUnit, detectorType, shieldMaterial, shieldThickness, shieldThicknessUnit]);
+    }, [nuclideSymbol, activity, activityUnit, distance, distanceUnit, detectorType, shieldMaterial, shieldThickness, shieldThicknessUnit, surfaceEff]);
 
     const handleSave = () => {
         if(result) {
@@ -12804,7 +12798,9 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
 
     return (
         <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Estimate instrument response with shielding considerations.</p>
+            <ContextualNote type="info">
+                <strong>Physics Update:</strong> Estimates response based on 4π intrinsic efficiency and solid angle geometry. Includes energy-dependent efficiency corrections.
+            </ContextualNote>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                 <div className="md:col-span-2">
@@ -12833,6 +12829,15 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                         <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{['cm', 'm', 'in', 'ft'].map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                 </div>
+
+                {/* NEW: Surface Efficiency Input */}
+                <div>
+                    <Tooltip text="Efficiency of the source surface (self-absorption). Standard: 50% (0.5) for Beta, 25% (0.25) for Alpha, 100% (1.0) for Gamma/Active Source.">
+                        <label className="block text-sm font-medium cursor-help underline decoration-dotted">Surface Efficiency (%)</label>
+                    </Tooltip>
+                    <input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} min="0" max="100" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                </div>
+
                 <div>
                     <label className="block text-sm font-medium">Shielding Material</label>
                     <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
@@ -12841,7 +12846,7 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     </select>
                 </div>
                 {shieldMaterial !== 'None' && (
-                    <div className="animate-fade-in">
+                    <div className="animate-fade-in md:col-span-2">
                         <label className="block text-sm font-medium">Shield Thickness</label>
                         <div className="flex">
                             <input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
@@ -12886,7 +12891,7 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
         </div>
     );
 };
-         
+        
 const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
     // Initialize state with the prop (or default to surfaceContam)
     const [activeCalculator, setActiveCalculator] = React.useState(initialTab || 'surfaceContam');
@@ -12928,7 +12933,7 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
     const [ac_result, setAc_result] = React.useState(null);
     const [ac_error, setAc_error] = React.useState('');
 
-    // State for DetectorResponseCalculator (NEW)
+    // State for DetectorResponseCalculator
     const [resp_nuclideSymbol, setResp_nuclideSymbol] = React.useState('');
     const [resp_activity, setResp_activity] = React.useState('1');
     const [resp_activityUnit, setResp_activityUnit] = React.useState('µCi');
@@ -12938,6 +12943,8 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
     const [resp_shieldMaterial, setResp_shieldMaterial] = React.useState('None');
     const [resp_shieldThickness, setResp_shieldThickness] = React.useState('1');
     const [resp_shieldThicknessUnit, setResp_shieldThicknessUnit] = React.useState('cm');
+    // NEW: Surface Efficiency State
+    const [resp_surfaceEff, setResp_surfaceEff] = React.useState('100'); 
     const [resp_result, setResp_result] = React.useState(null);
     const [resp_error, setResp_error] = React.useState('');
 
@@ -12968,6 +12975,7 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
         setResp_nuclideSymbol(''); setResp_activity('1'); setResp_activityUnit('µCi');
         setResp_distance('30'); setResp_distanceUnit('cm'); setResp_detectorType('nai_2x2');
         setResp_shieldMaterial('None'); setResp_shieldThickness('1');
+        setResp_surfaceEff('100'); // Reset to 100%
         setResp_result(null); setResp_error('');
     };
 
@@ -13038,6 +13046,8 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
                 shieldMaterial={resp_shieldMaterial} setShieldMaterial={setResp_shieldMaterial}
                 shieldThickness={resp_shieldThickness} setShieldThickness={setResp_shieldThickness}
                 shieldThicknessUnit={resp_shieldThicknessUnit} setShieldThicknessUnit={setResp_shieldThicknessUnit}
+                // NEW PROPS PASSED DOWN
+                surfaceEff={resp_surfaceEff} setSurfaceEff={setResp_surfaceEff}
                 result={resp_result} setResult={setResp_result}
                 error={resp_error} setError={setResp_error}
             />
@@ -13052,7 +13062,6 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
                     <ClearButton onClick={handleClearActiveCalculator} />
                 </div>
                 
-                {/* 2x2 Grid Layout for Navigation with consistent styling */}
                 <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6">
                     {Object.entries(calculatorViews).map(([key, { label, icon }]) => (
                         <button 
@@ -13076,9 +13085,9 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
             </div>
         </div>
     );
-};        
+};
               
-              /**
+             /**
               * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B)
               * based on the nuclide, activity, and form, according to DOT/IAEA A1/A2 values.
               */
@@ -14764,25 +14773,25 @@ const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, 
     );
 };
 
-// 3. Updated SpecificActivityModule (Adds Auto-Fill from DB)
+// 3. Updated SpecificActivityModule (Robust Mass Parsing)
 const SpecificActivityModule = ({ radionuclides, atomicWeight, setAtomicWeight, halfLifeValue, setHalfLifeValue, halfLifeUnit, setHalfLifeUnit, result, setResult, error, setError }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
+    const { settings } = React.useContext(SettingsContext);
     const unitMultipliers = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
     
     // Auto-fill logic
     const handleNuclideSelect = (symbol) => {
         const nuclide = radionuclides.find(n => n.symbol === symbol);
         if (nuclide && nuclide.halfLife !== 'Stable') {
-            // Estimate Atomic Weight from Symbol (e.g. U-238 -> 238)
-            const massMatch = symbol.match(/-(\d+)/);
+            // Robust Regex: Matches first sequence of digits (e.g., "Ag-110m" -> "110", "U-235" -> "235")
+            const massMatch = symbol.match(/(\d+)/);
             if (massMatch) setAtomicWeight(massMatch[1]);
             
             // Parse Half Life
             const hlSeconds = parseHalfLifeToSeconds(nuclide.halfLife);
             if (hlSeconds !== Infinity && hlSeconds > 0) {
                  const bestUnit = getBestHalfLifeUnit(hlSeconds);
-                 // Convert seconds to best unit
                  const conversion = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 }[bestUnit] || 1;
                  setHalfLifeValue((hlSeconds / conversion).toPrecision(4));
                  setHalfLifeUnit(bestUnit);
@@ -14800,7 +14809,7 @@ const SpecificActivityModule = ({ radionuclides, atomicWeight, setAtomicWeight, 
         const A = parseFloat(atomicWeight);
         const T_val = parseFloat(halfLifeValue);
         if (isNaN(A) || A <= 0 || isNaN(T_val) || T_val <= 0) {
-           if (atomicWeight && halfLifeValue) setError('Atomic weight and half-life must be positive numbers.');
+           if(atomicWeight && halfLifeValue) setError('Atomic weight and half-life must be positive numbers.');
            setResult(null); return;
         }
         setError('');
@@ -14808,9 +14817,19 @@ const SpecificActivityModule = ({ radionuclides, atomicWeight, setAtomicWeight, 
         const lambda = Math.log(2) / T_seconds;
         const Na = 6.02214076e23;
         const sa_bq_per_g = (lambda * Na) / A;
+        
+        // Format for display based on User Settings
+        const configKey = settings.unitSystem === 'si' ? 'activity_si' : 'activity_conventional';
+        // Base for SA is Bq/g. formatSensibleUnit expects Bq for SI, but for conventional we often want Ci/g.
+        // We will manually format two outputs.
+        
         const sa_ci_per_g = sa_bq_per_g / 3.7e10;
-        setResult({ bq: sa_bq_per_g.toPrecision(4), ci: sa_ci_per_g.toPrecision(4) });
-    }, [atomicWeight, halfLifeValue, halfLifeUnit, setResult, setError]);
+        
+        setResult({ 
+            bq: sa_bq_per_g.toExponential(4), 
+            ci: sa_ci_per_g.toExponential(4) 
+        });
+    }, [atomicWeight, halfLifeValue, halfLifeUnit, setResult, setError, settings.unitSystem]);
 
     const handleSaveToHistory = () => {
         if (result) {
@@ -14845,7 +14864,7 @@ const SpecificActivityModule = ({ radionuclides, atomicWeight, setAtomicWeight, 
                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Half-life</label>
                    <div className="flex gap-2 mt-1">
                        <input type="number" value={halfLifeValue} onChange={e => setHalfLifeValue(e.target.value)} placeholder="e.g., 5.27" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
-                       <select value={halfLifeUnit} onChange={e => setHalfLifeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700">{longTimeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                       <select value={halfLifeUnit} onChange={e => setHalfLifeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(unitMultipliers).map(u => <option key={u} value={u}>{u}</option>)}</select>
                    </div>
                </div>
            </div>
@@ -14861,7 +14880,15 @@ const SpecificActivityModule = ({ radionuclides, atomicWeight, setAtomicWeight, 
                        </button>
                    </Tooltip>
                </div>
-               {result ? ( <> <p className="text-lg font-bold">{result.bq} Bq/g</p><p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.ci} Ci/g)</p> </> ) : ( <p className="text-sm italic text-slate-400 dark:text-slate-500 mt-2">Enter values above to see the result.</p> )}
+               {result ? ( 
+                    <div className="mt-2">
+                        <div className="flex items-center justify-center gap-2">
+                            <p className="text-xl font-bold">{result.bq} Bq/g</p>
+                            <CopyButton textToCopy={result.bq} />
+                        </div>
+                        <p className="text-md font-medium text-slate-600 dark:text-slate-300">({result.ci} Ci/g)</p>
+                    </div>
+               ) : ( <p className="text-sm italic text-slate-400 dark:text-slate-500 mt-2">Enter values above to see the result.</p> )}
            </div>
         </div>
     );
