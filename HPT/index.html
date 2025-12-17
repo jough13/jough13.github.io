@@ -9974,115 +9974,139 @@ const CalculationHistoryPanel = ({ onNavClick }) => {
     );
 };
               
-         /**
-         * @description A simple note-taking component. This is a "controlled component"
-         * that receives its state and update function via props to ensure real-time
-         * synchronization between the main app view and any pop-out windows.
-         *
-         * @param {{notes: string, setNotes: (notes: string) => void}} props
-         */
-         const Scratchpad = ({ notes, setNotes }) => {
-         // --- State for the confirmation modal is still managed locally ---
-         const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
-         const { addToast } = useToast();
-         
-         // The useEffect that saved notes to localStorage has been REMOVED.
-         // This logic is now handled in the parent `App` component where the state lives.
-         
-         const handleCopyAll = () => {
-         if (notes) {
-           navigator.clipboard.writeText(notes);
-           addToast('Notes copied to clipboard!');
-         }
-         };
-         
-         const handleExport = () => {
-         const blob = new Blob([notes], { type: 'text/plain;charset=utf-8' });
-         const link = document.createElement('a');
-         link.href = URL.createObjectURL(blob);
-         link.download = 'scratchpad-notes.txt';
-         document.body.appendChild(link);
-         link.click();
-         document.body.removeChild(link);
-         };
-         
-         const handleInsertTimestamp = () => {
-         const timestamp = new Date().toLocaleString();
-         // It now calls the `setNotes` function from props
-         setNotes(prev => prev + `\n--- ${timestamp} ---\n`);
-         addToast('Timestamp inserted!');
-         };
-         
-         const handleConfirmClear = () => {
-         // It now calls the `setNotes` function from props
-         setNotes('');
-         setIsClearModalOpen(false);
-         addToast('Scratchpad cleared.');
-         };
-         
-         const characterCount = notes.length;
-         const wordCount = notes.trim().split(/\s+/).filter(Boolean).length;
-         
-         return (
-         // The JSX remains the same, but the <textarea> is now controlled by props.
-         <>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                Your notes are automatically saved in your browser's local storage.
-            </p>
+/**
+ * @description A robust note-taking component with Markdown preview support.
+ * * @param {{notes: string, setNotes: (notes: string) => void}} props
+ */
+const Scratchpad = ({ notes, setNotes }) => {
+    const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
+    const [viewMode, setViewMode] = React.useState('edit'); // 'edit' or 'preview'
+    const { addToast } = useToast();
+    
+    const handleCopyAll = () => {
+        if (notes) {
+            navigator.clipboard.writeText(notes);
+            addToast('Notes copied to clipboard!');
+        }
+    };
+    
+    const handleExport = () => {
+        const blob = new Blob([notes], { type: 'text/plain;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'radcalc-notes.txt';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+    
+    const handleInsertTimestamp = () => {
+        const timestamp = new Date().toLocaleString();
+        setNotes(prev => prev + `\n**[${timestamp}]**\n`);
+        addToast('Timestamp inserted!');
+    };
+    
+    const handleConfirmClear = () => {
+        setNotes('');
+        setIsClearModalOpen(false);
+        addToast('Scratchpad cleared.');
+    };
+    
+    // Stats
+    const characterCount = notes.replace(/\s/g, '').length; // Count non-whitespace chars
+    const wordCount = notes.trim() === '' ? 0 : notes.trim().split(/\s+/).filter(Boolean).length;
+    
+    // Simple Markdown Parser (for Preview)
+    const renderMarkdown = (text) => {
+        if (!text) return <p className="text-slate-400 italic">Nothing to preview...</p>;
+        
+        return text.split('\n').map((line, i) => {
+            // Headers
+            if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold mt-2 mb-1">{line.slice(4)}</h3>;
+            if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold mt-3 mb-2 border-b border-slate-200 dark:border-slate-700 pb-1">{line.slice(3)}</h2>;
+            if (line.startsWith('# ')) return <h1 key={i} className="text-2xl font-extrabold mt-4 mb-2">{line.slice(2)}</h1>;
             
-            <div className="flex flex-wrap items-center gap-2 mb-2 p-2 bg-slate-100 dark:bg-slate-700/50 rounded-t-md border-b border-slate-200 dark:border-slate-700">
-                <button onClick={handleCopyAll} className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold flex items-center gap-2">
-                    <Icon path={ICONS.copy} className="w-4 h-4" />
-                    Copy All
+            // Lists
+            if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc">{line.slice(2)}</li>;
+            
+            // Bold (Simple regex for **text**)
+            const parts = line.split(/(\*\*.*?\*\*)/g);
+            return (
+                <p key={i} className="min-h-[1.2em] mb-1">
+                    {parts.map((part, j) => {
+                        if (part.startsWith('**') && part.endsWith('**')) {
+                            return <strong key={j}>{part.slice(2, -2)}</strong>;
+                        }
+                        return part;
+                    })}
+                </p>
+            );
+        });
+    };
+    
+    return (
+        <>
+            <div className="flex justify-between items-end mb-2">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Auto-saved to local storage. Supports basic Markdown.
+                </p>
+                {/* View Toggle */}
+                <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1">
+                    <button onClick={() => setViewMode('edit')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === 'edit' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Edit</button>
+                    <button onClick={() => setViewMode('preview')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === 'preview' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Preview</button>
+                </div>
+            </div>
+            
+            <div className="bg-slate-100 dark:bg-slate-700/50 rounded-t-md border-b border-slate-200 dark:border-slate-700 p-2 flex flex-wrap items-center gap-2">
+                <button onClick={handleInsertTimestamp} className="px-3 py-1.5 text-xs bg-white dark:bg-slate-600 border border-slate-300 dark:border-slate-500 rounded hover:bg-slate-50 dark:hover:bg-slate-500 transition font-medium flex items-center gap-1">
+                    <Icon path={ICONS.stopwatch} className="w-3 h-3" /> Timestamp
                 </button>
-                <button onClick={handleExport} className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold flex items-center gap-2">
-                    <Icon path={ICONS.database} className="w-4 h-4" />
-                    Export as .txt
+                <button onClick={handleCopyAll} className="px-3 py-1.5 text-xs bg-white dark:bg-slate-600 border border-slate-300 dark:border-slate-500 rounded hover:bg-slate-50 dark:hover:bg-slate-500 transition font-medium flex items-center gap-1">
+                    <Icon path={ICONS.copy} className="w-3 h-3" /> Copy
                 </button>
-                <button onClick={handleInsertTimestamp} className="px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold flex items-center gap-2">
-                    <Icon path={ICONS.stopwatch} className="w-4 h-4" />
-                    Insert Timestamp
+                <button onClick={handleExport} className="px-3 py-1.5 text-xs bg-white dark:bg-slate-600 border border-slate-300 dark:border-slate-500 rounded hover:bg-slate-50 dark:hover:bg-slate-500 transition font-medium flex items-center gap-1">
+                    <Icon path={ICONS.database} className="w-3 h-3" /> Save .txt
                 </button>
-                <div className="flex-grow"></div> {/* Spacer */}
-                <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Notes
+                <div className="flex-grow"></div>
+                <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-red-500 hover:text-red-700 font-bold flex items-center gap-1 px-2">
+                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear
                 </button>
             </div>
-            <textarea
-                value={notes} // The value now comes directly from props
-                onChange={(e) => setNotes(e.target.value)} // onChange calls the function from props
-                placeholder="Jot down your notes and calculations here..."
-                className="w-full h-96 p-4 rounded-b-md bg-slate-50 dark:bg-slate-900 font-mono text-sm border-x border-b border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-            />
-            <div className="text-right text-xs text-slate-400 dark:text-slate-500 mt-2 pr-1">
-                <span>{characterCount.toLocaleString()} Characters</span>
-                <span className="mx-2">|</span>
-                <span>{wordCount.toLocaleString()} Words</span>
+
+            {viewMode === 'edit' ? (
+                <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="# Project Notes\n- Alpha survey complete\n- Background: 50 cpm"
+                    className="w-full h-96 p-4 rounded-b-md bg-white dark:bg-slate-900 font-mono text-sm border-x border-b border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-sky-500 focus:outline-none resize-none"
+                />
+            ) : (
+                <div className="w-full h-96 p-6 rounded-b-md bg-white dark:bg-slate-900 overflow-y-auto border-x border-b border-slate-200 dark:border-slate-700 prose dark:prose-invert max-w-none text-sm">
+                    {renderMarkdown(notes)}
+                </div>
+            )}
+            
+            <div className="flex justify-between items-center mt-2 px-1">
+                <span className="text-[10px] text-slate-400">Markdown supported: # Header, **Bold**, - List</span>
+                <div className="text-right text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    <span className="font-bold">{wordCount}</span> words <span className="mx-1 opacity-30">|</span> <span className="font-bold">{characterCount}</span> chars
+                </div>
             </div>
+
             <ConfirmationModal
                 isOpen={isClearModalOpen}
                 onClose={() => setIsClearModalOpen(false)}
                 onConfirm={handleConfirmClear}
                 title="Clear Scratchpad?"
             >
-                <p>Are you sure you want to permanently delete all notes from the scratchpad? This action cannot be undone.</p>
+                <p>Are you sure you want to delete all notes? This cannot be undone.</p>
             </ConfirmationModal>
-         </>
-         );
-         };
-              
+        </>
+    );
+};
+
 /**
  * @description A professional-grade scientific calculator component.
- * Features:
- * - 'Ans' functionality & Smart Start.
- * - Standard Memory (MC, MR, M+, M-).
- * - Scientific notation (EXP).
- * - DEG/RAD Toggle for trigonometry.
- * - Factorial (!) and Inverse (1/x).
- * - Robust history & error handling.
- * - Custom Constants support.
- * - UX Polish: Thousands separators, Clickable History, Copy Button, Keyboard Visuals.
- * - FIX: Decimal point now automatically prefixes with '0' (e.g. "0." instead of ".").
  */
 const ScientificCalculator = ({ calcState, setCalcState }) => {
     const { addToast } = useToast();
@@ -10096,8 +10120,8 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
     const [isAddMode, setIsAddMode] = React.useState(false);
     const [newConstName, setNewConstName] = React.useState('');
     const [newConstVal, setNewConstVal] = React.useState('');
-    const [angleMode, setAngleMode] = React.useState('rad'); 
-    const [activeKey, setActiveKey] = React.useState(null); // For visual feedback
+    const [angleMode, setAngleMode] = React.useState('deg'); // Default to DEG (more common for techs)
+    const [activeKey, setActiveKey] = React.useState(null);
 
     // Ensure state has new fields
     React.useEffect(() => {
@@ -10107,7 +10131,7 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
             memory: prev.memory || 0,
             isError: false
         }));
-    }, []);
+    }, [setCalcState]);
 
     // Save constants
     React.useEffect(() => {
@@ -10122,17 +10146,20 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
         if (numStr.includes('e') || isError) return numStr;
         const num = parseFloat(numStr);
         if (isNaN(num)) return numStr;
-        return num.toLocaleString('en-US', { maximumFractionDigits: 10 });
+        // Limit precision to fit screen, but keep decimals
+        return num.toLocaleString('en-US', { maximumFractionDigits: 10, maximumSignificantDigits: 12 });
     };
 
     // --- Core Logic ---
-
-    // Updated safeEvaluate to accept context explicitly
     const safeEvaluate = (expr, currentMode, currentAns) => {
         try {
+            // Clean up visual operators for mathjs
+            let cleanExpr = expr.replace(/×/g, '*').replace(/÷/g, '/');
+            
             const scope = {
                 Ans: currentAns,
                 ...math,
+                // Trig overrides for DEG mode
                 sin: (x) => currentMode === 'deg' ? math.sin(math.unit(x, 'deg')) : math.sin(x),
                 cos: (x) => currentMode === 'deg' ? math.cos(math.unit(x, 'deg')) : math.cos(x),
                 tan: (x) => currentMode === 'deg' ? math.tan(math.unit(x, 'deg')) : math.tan(x),
@@ -10141,7 +10168,7 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
                 atan: (x) => currentMode === 'deg' ? math.atan(x) * (180 / Math.PI) : math.atan(x),
             };
             
-            const evalResult = math.evaluate(expr, scope);
+            const evalResult = math.evaluate(cleanExpr, scope);
             if (typeof evalResult === 'object' && evalResult.re) return evalResult.re; 
             return evalResult;
         } catch (e) {
@@ -10153,20 +10180,24 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
         setCalcState(currentState => {
             if (!currentState.expression) return currentState;
             try {
-                // PASS currentState.lastAnswer directly here to avoid stale closures
                 const evalResult = safeEvaluate(currentState.expression, angleMode, currentState.lastAnswer);
                 
                 let resultStr;
-                if (Math.abs(evalResult) < 1e-6 || Math.abs(evalResult) > 1e9) {
+                if (Math.abs(evalResult) < 1e-9 || Math.abs(evalResult) > 1e12) {
                     resultStr = evalResult.toExponential(6).replace('e+', 'e');
                 } else {
-                    resultStr = parseFloat(evalResult.toPrecision(12)).toString();
+                    resultStr = parseFloat(evalResult.toPrecision(12)).toString(); // Clean trailing zeros
                 }
+                
+                // Add to history (Limit to 50 items)
+                const newHistoryItem = { expr: currentState.expression, res: resultStr };
+                const newHistory = [newHistoryItem, ...(currentState.history || [])].slice(0, 50);
+
                 return {
                     ...currentState,
                     result: resultStr,
                     lastAnswer: evalResult,
-                    history: [`${currentState.expression} = ${resultStr}`, ...currentState.history].slice(0, 50),
+                    history: newHistory,
                     expression: '', 
                     isError: false
                 };
@@ -10179,44 +10210,39 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
     const handleInput = React.useCallback((val) => {
         setCalcState(currentState => {
             if (currentState.isError) {
-                // If starting fresh from error, handle decimal correctly
                 const initExpr = val === '.' ? '0.' : val;
                 return { ...currentState, expression: initExpr, result: '', isError: false };
             }
-            let newExpression = currentState.expression;
-            const isOperator = ['+', '-', '*', '/', '^', '%', '!', '^'].includes(val);
             
-            // --- 1. Smart Decimal Checks ---
+            let newExpression = currentState.expression;
+            const isOperator = ['+', '-', '*', '/', '^', '%', '!', '^', '×', '÷'].includes(val);
+            
+            // Smart Decimal: Prefix "0." if empty or after operator
             if (val === '.') {
-                // Prevent double decimals
-                const segments = newExpression.split(/[\+\-\*\/\^\%\(]/);
+                const segments = newExpression.split(/[\+\-\*\/\^\%\(\)×÷]/);
                 const currentSegment = segments[segments.length - 1];
-                if (currentSegment.includes('.')) return currentState;
+                if (currentSegment.includes('.')) return currentState; // Prevent 1.2.3
+                if (newExpression === '' || /[\+\-\*\/\^\%\(×÷]$/.test(newExpression)) {
+                     return { ...currentState, expression: newExpression + '0.', result: '' };
+                }
             }
 
-            // --- 2. Smart Start (Result Exists) ---
+            // Smart Start: If result exists and typing operator, use Ans
             if (newExpression === '' && currentState.result !== '') {
                 if (isOperator) {
                     newExpression = 'Ans';
-                } else if (val === 'e') {
+                } else if (val === 'e') { // EXP shortcut
                     return { ...currentState, expression: 'Ans*10^', result: '' };
-                } else if (val === '.') {
-                    // FIX: Start fresh with "0." instead of just "."
-                    return { ...currentState, expression: '0.', result: '' };
+                } else if (!isNaN(parseInt(val)) || val === '.') {
+                    // Typing number overwrites result (implicit AC)
+                    const startVal = val === '.' ? '0.' : val;
+                    return { ...currentState, expression: startVal, result: '' };
                 }
             }
 
-            // --- 3. Smart EXP ---
+            // Smart EXP key
             if (val === 'e' && newExpression.endsWith('Ans')) {
                 return { ...currentState, expression: newExpression + '*10^', result: '' };
-            }
-
-            // --- 4. Decimal Leading Zero Logic ---
-            // If typing "." and the expression is empty OR ends in an operator, prepend "0"
-            if (val === '.') {
-                if (newExpression === '' || /[\+\-\*\/\^\%\(]$/.test(newExpression)) {
-                     return { ...currentState, expression: newExpression + '0.', result: '' };
-                }
             }
             
             return { ...currentState, expression: newExpression + val, result: '' };
@@ -10247,10 +10273,8 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
         } catch { addToast("Invalid value"); }
     };
 
-    // --- Interactive Features ---
     const handleHistoryClick = (histItem) => {
-        const val = histItem.split(' = ')[1];
-        handleInput(val);
+        handleInput(histItem.res); // Insert the result
         addToast("Value inserted from history");
     };
 
@@ -10352,22 +10376,23 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
                     </div>
                 </div>
 
-                {/* History (Clickable) */}
-                <div className="h-16 overflow-y-auto flex flex-col-reverse text-right pr-1 custom-scrollbar">
+                {/* History (Paper Tape Style) */}
+                <div className="h-24 overflow-y-auto flex flex-col-reverse pr-1 custom-scrollbar gap-1">
                     {history.map((h, i) => (
                         <div 
                             key={i} 
                             onClick={() => handleHistoryClick(h)}
-                            className="text-[10px] text-slate-400 dark:text-slate-500 font-mono cursor-pointer hover:text-sky-600 dark:hover:text-sky-400 transition-colors py-0.5"
+                            className="flex justify-between items-center text-[10px] font-mono cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 px-1 rounded transition-colors group"
                             title="Click to insert value"
                         >
-                            {h}
+                            <span className="text-slate-400 dark:text-slate-500 truncate max-w-[60%]">{h.expr}</span>
+                            <span className="text-slate-600 dark:text-slate-300 font-bold group-hover:text-sky-600 dark:group-hover:text-sky-400">= {h.res}</span>
                         </div>
                     ))}
                 </div>
 
                 {/* Current Expression */}
-                <div className="text-right h-6 overflow-hidden">
+                <div className="text-right h-8 overflow-hidden flex items-end justify-end mt-1">
                     <span className="text-sm font-mono text-slate-500 dark:text-slate-400 whitespace-pre">
                         {expression || (result ? 'Ans' : '')}
                     </span>
@@ -10478,6 +10503,7 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
         </div>
     );
 };
+
 	     /**
               * @description React component that serves as a static page for external links and references.
               * This component provides a curated list of authoritative resources relevant to the application's
@@ -10557,8 +10583,6 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
                * @param {string} [props.displayHalfLifeUnit] - The unit to display the half-life in for the detailed card.
                */
               
-         
-         
          
          const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator, onAddToCompare, showBackButton, onBackClick }) => {
               
@@ -11209,190 +11233,178 @@ const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisi
                * various radiological and physical units, such as activity, dose, and energy.
                */
              
-         const UnitConverter = () => {
-         const [value, setValue] = React.useState('');
-         const [fromUnit, setFromUnit] = React.useState('Gy');
-         const [toUnit, setToUnit] = React.useState('auto'); // Default to the new 'auto' mode
-         const [result, setResult] = React.useState(null); // Result can now be an object or a string
-         const [error, setError] = React.useState('');
-         const { addHistory } = useCalculationHistory();
-         const { addToast } = useToast();
-         
-         // --- Data Definitions (Units, Factors, and Sensible Unit Config) ---
-         const units = {
-         'Activity': ['Bq', 'kBq', 'MBq', 'GBq', 'TBq', 'µCi', 'mCi', 'Ci', 'dps', 'dpm'],
-         'Radiation Dose': ['mrem', 'rem', 'µSv', 'mSv', 'Sv', 'rad', 'cGy', 'Gy', 'R'],
-         'Dose Rate': ['µSv/hr', 'mSv/hr', 'Sv/hr', 'mrem/hr', 'rem/hr'],
-         'Energy': ['eV', 'keV', 'MeV', 'J'],
-         'Concentration': ['pCi/L', 'Bq/L', 'Bq/m³', 'µCi/mL'],
-         'Length': ['mm', 'cm', 'm', 'km', 'in', 'ft'],
-         'Area': ['cm²', 'm²', 'in²', 'ft²', 'barn'],
-         'Mass': ['µg', 'mg', 'g', 'kg', 'oz', 'lb'],
-         };
-         
-         const factors = {
-         'Bq': { base: 'activity', factor: 1 }, 'kBq': { base: 'activity', factor: 1e3 }, 'MBq': { base: 'activity', factor: 1e6 }, 'GBq': { base: 'activity', factor: 1e9 }, 'TBq': { base: 'activity', factor: 1e12 }, 'Ci': { base: 'activity', factor: 3.7e10 }, 'mCi': { base: 'activity', factor: 3.7e7 }, 'µCi': { base: 'activity', factor: 3.7e4 }, 'dps': { base: 'activity', factor: 1 }, 'dpm': { base: 'activity', factor: 1/60 },
-         'rem': { base: 'dose', factor: 1 }, 'mrem': { base: 'dose', factor: 1e-3 }, 'Sv': { base: 'dose', factor: 100 }, 'mSv': { base: 'dose', factor: 0.1 }, 'µSv': { base: 'dose', factor: 1e-4 }, 'Gy': { base: 'dose', factor: 100 }, 'cGy': { base: 'dose', factor: 1 }, 'rad': { base: 'dose', factor: 1 }, 'R': { base: 'dose', factor: 0.96 },
-         'rem/hr': { base: 'doseRate', factor: 1 }, 'mrem/hr': { base: 'doseRate', factor: 1e-3 }, 'Sv/hr': { base: 'doseRate', factor: 100 }, 'mSv/hr': { base: 'doseRate', factor: 0.1 }, 'µSv/hr': { base: 'doseRate', factor: 1e-4 },
-         'J': { base: 'energy', factor: 1 }, 'eV': { base: 'energy', factor: 1.602e-19 }, 'keV': { base: 'energy', factor: 1.602e-16 }, 'MeV': { base: 'energy', factor: 1.602e-13 },
-         'Bq/L': { base: 'concentration', factor: 1 }, 'µCi/mL': { base: 'concentration', factor: 3.7e7 }, 'pCi/L': { base: 'concentration', factor: 0.037 }, 'Bq/m³': { base: 'concentration', factor: 0.001 },
-         'm': { base: 'length', factor: 1 }, 'cm': { base: 'length', factor: 0.01 }, 'mm': { base: 'length', factor: 0.001 }, 'km': { base: 'length', factor: 1000 }, 'in': { base: 'length', factor: 0.0254 }, 'ft': { base: 'length', factor: 0.3048 },
-         'm²': { base: 'area', factor: 1 }, 'cm²': { base: 'area', factor: 1e-4 }, 'in²': { base: 'area', factor: 6.4516e-4 }, 'ft²': { base: 'area', factor: 0.0929 }, 'barn': { base: 'area', factor: 1e-28 },
-         'g': { base: 'mass', factor: 1 }, 'kg': { base: 'mass', factor: 1000 }, 'mg': { base: 'mass', factor: 1e-3 }, 'µg': { base: 'mass', factor: 1e-6 }, 'lb': { base: 'mass', factor: 453.592 }, 'oz': { base: 'mass', factor: 28.35 },
-         };
-         
-         const sensibleUnitConfig = {
-         activity: { baseUnit: 'Bq', units: [ { unit: 'Bq', threshold: 1e3, factor: 1 }, { unit: 'kBq', threshold: 1e3, factor: 1e3 }, { unit: 'MBq', threshold: 1e3, factor: 1e6 }, { unit: 'GBq', threshold: 1e3, factor: 1e9 }, { unit: 'TBq', threshold: Infinity, factor: 1e12 } ]},
-         dose: { baseUnit: 'rem', units: [ { unit: 'mrem', threshold: 1e3, factor: 1e-3 }, { unit: 'rem', threshold: 1e3, factor: 1 }, { unit: 'krem', threshold: Infinity, factor: 1e3 } ]},
-         doseRate: { baseUnit: 'rem/hr', units: [ { unit: 'mrem/hr', threshold: 1e3, factor: 1e-3 }, { unit: 'rem/hr', threshold: 1e3, factor: 1 }, { unit: 'krem/hr', threshold: Infinity, factor: 1e3 } ]},
-         energy: { baseUnit: 'J', units: [ { unit: 'eV', threshold: 1e3, factor: 1.602e-19 }, { unit: 'keV', threshold: 1e3, factor: 1.602e-16 }, { unit: 'MeV', threshold: Infinity, factor: 1.602e-13 } ]},
-         concentration: { baseUnit: 'Bq/L', units: [ { unit: 'Bq/L', threshold: 1e3, factor: 1 }, { unit: 'kBq/L', threshold: Infinity, factor: 1e3 } ]},
-         length: { baseUnit: 'm', units: [ { unit: 'mm', threshold: 1e3, factor: 1e-3 }, { unit: 'cm', threshold: 100, factor: 0.01 }, { unit: 'm', threshold: 1e3, factor: 1 }, { unit: 'km', threshold: Infinity, factor: 1e3 } ]},
-         area: { baseUnit: 'm²', units: [ { unit: 'cm²', threshold: 1e4, factor: 1e-4 }, { unit: 'm²', threshold: Infinity, factor: 1 } ]},
-         mass: { baseUnit: 'g', units: [ { unit: 'mg', threshold: 1e3, factor: 1e-3 }, { unit: 'g', threshold: 1e3, factor: 1 }, { unit: 'kg', threshold: Infinity, factor: 1e3 } ]},
-         };
-         
-         // --- Calculation and State Logic ---
-         React.useEffect(() => {
-         const fromBase = factors[fromUnit]?.base;
-         const toBase = factors[toUnit]?.base;
-         if (fromBase && toUnit !== 'auto' && fromBase !== toBase) {
-            const newCategoryArray = Object.values(units).find(arr => arr.includes(fromUnit));
-            if (newCategoryArray?.length > 0) {
-                let newToUnit = newCategoryArray.find(u => u !== fromUnit) || newCategoryArray[0];
-                setToUnit(newToUnit);
-            }
-         }
-         }, [fromUnit]);
-         
-         const handleConvert = React.useCallback(() => {
-         const val = parseFloat(value);
-         if (isNaN(val)) {
-            if (value) setError("Invalid input value.");
-            setResult(null); return;
-         }
-         const from = factors[fromUnit];
-         if (!from) {
-            setError("Invalid 'From' unit.");
-            setResult(null); return;
-         }
-         
-         // Step 1: Convert the input value to its fundamental base unit (e.g., rem, Bq, m).
-         const valueInBaseUnit = val * from.factor;
-         
-         // Step 2: Decide what to do with the base value.
-         if (toUnit === 'auto') {
-            const config = sensibleUnitConfig[from.base];
-            if (config) {
-                let sensibleResult = { value: 'N/A', unit: '' };
-                for (const unitInfo of config.units) {
-                    if (Math.abs(valueInBaseUnit / unitInfo.factor) < unitInfo.threshold) {
-                        sensibleResult = { value: (valueInBaseUnit / unitInfo.factor).toPrecision(4), unit: unitInfo.unit };
-                        break;
-                    }
-                }
-                // If it's larger than any threshold, use the largest unit.
-                if (sensibleResult.unit === '') {
-                    const largestUnit = config.units[config.units.length - 1];
-                    sensibleResult = { value: (valueInBaseUnit / largestUnit.factor).toPrecision(4), unit: largestUnit.unit };
-                }
-                setResult(sensibleResult);
-            } else {
-                setError(`"Auto" is not configured for this unit type.`);
-                setResult(null);
-            }
-         } else { // Standard conversion to a specific unit
-            const to = factors[toUnit];
-            if (!to || from.base !== to.base) {
-                setError("Cannot convert between these units.");
-                setResult(null); return;
-            }
-            const convertedVal = valueInBaseUnit / to.factor;
-            setResult(convertedVal.toPrecision(4));
-         }
-         setError('');
-         }, [value, fromUnit, toUnit, factors, sensibleUnitConfig]);
-         
-         React.useEffect(() => {
-         handleConvert();
-         }, [value, fromUnit, toUnit, handleConvert]);
-         
-         const handleSaveToHistory = () => {
-         if (result && value) {
-            const resultValue = typeof result === 'object' ? result.value : result;
-            const resultUnit = typeof result === 'object' ? result.unit : toUnit;
-            addHistory({ id: Date.now(), type: 'Unit Conversion', icon: ICONS.converter, inputs: `${value} ${fromUnit}`, result: `${resultValue} ${resultUnit}`, view: VIEWS.CONVERTER });
-            addToast("Calculation saved to history!");
-         }
-         };
-         
-         // --- UI and Render Logic ---
-         const handleSwap = () => {
-         if (toUnit !== 'auto' && factors[fromUnit]?.base === factors[toUnit]?.base) {
-            setFromUnit(toUnit); setToUnit(fromUnit);
-         } else { addToast("Cannot swap incompatible units or 'Auto' mode."); }
-         };
-         
-         const currentBase = factors[fromUnit]?.base;
-         const compatibleUnits = Object.fromEntries(Object.entries(units).map(([group, list]) => [group, list.filter(u => factors[u]?.base === currentBase)]).filter(([_, list]) => list.length > 0));
-         
-         return (
-         <div className="p-4 animate-fade-in">
+const UnitConverter = () => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    // --- 1. DEFINITIONS (Unchanged) ---
+    const CATEGORIES = {
+        'Activity': { base: 'Bq', units: { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 37000, 'nCi': 37, 'pCi': 0.037, 'dpm': 1/60, 'dps': 1 } },
+        'Dose Equivalent': { base: 'Sv', units: { 'Sv': 1, 'mSv': 1e-3, 'µSv': 1e-6, 'rem': 0.01, 'mrem': 1e-5, 'µrem': 1e-8 } },
+        'Absorbed Dose': { base: 'Gy', units: { 'Gy': 1, 'mGy': 1e-3, 'µGy': 1e-6, 'rad': 0.01, 'mrad': 1e-5 } },
+        'Exposure': { base: 'C/kg', units: { 'C/kg': 1, 'R': 2.58e-4, 'mR': 2.58e-7, 'µR': 2.58e-10 } },
+        'Contamination': { base: 'Bq/cm²', units: { 'Bq/cm²': 1, 'kBq/m²': 0.1, 'dpm/100cm²': 1/6000, 'µCi/cm²': 37000, 'µCi/m²': 3.7, 'pCi/100cm²': 0.037/100 } },
+        'Length': { base: 'm', units: { 'm': 1, 'cm': 0.01, 'mm': 0.001, 'µm': 1e-6, 'in': 0.0254, 'ft': 0.3048, 'yd': 0.9144, 'mi': 1609.34 } },
+        'Mass': { base: 'g', units: { 'g': 1, 'kg': 1000, 'mg': 1e-3, 'µg': 1e-6, 'lb': 453.592, 'oz': 28.3495 } },
+        'Time': { base: 's', units: { 's': 1, 'min': 60, 'hr': 3600, 'day': 86400, 'yr': 31536000 } }
+    };
+
+    // --- 2. STATE ---
+    const [category, setCategory] = React.useState('Activity');
+    const [fromVal, setFromVal] = React.useState('1');
+    const [fromUnit, setFromUnit] = React.useState('Ci');
+    const [toUnit, setToUnit] = React.useState('GBq');
+    
+    // Auto-update units when category changes
+    React.useEffect(() => {
+        const units = Object.keys(CATEGORIES[category].units);
+        if (category === 'Activity') { setFromUnit('Ci'); setToUnit('GBq'); }
+        else if (category === 'Dose Equivalent') { setFromUnit('mrem'); setToUnit('µSv'); }
+        else if (category === 'Contamination') { setFromUnit('dpm/100cm²'); setToUnit('Bq/cm²'); }
+        else { setFromUnit(units[0]); setToUnit(units[1] || units[0]); }
+    }, [category]);
+
+    // --- 3. CALCULATION ---
+    const result = React.useMemo(() => {
+        const val = parseFloat(fromVal);
+        if (isNaN(val)) return '---';
+        const catData = CATEGORIES[category];
+        const baseFactorFrom = catData.units[fromUnit];
+        const baseFactorTo = catData.units[toUnit];
+        if (!baseFactorFrom || !baseFactorTo) return '---';
+        const inBase = val * baseFactorFrom;
+        const final = inBase / baseFactorTo;
+        if (final === 0) return '0';
+        if (Math.abs(final) < 1e-3 || Math.abs(final) > 1e6) return final.toExponential(4);
+        return parseFloat(final.toPrecision(6)).toString();
+    }, [category, fromVal, fromUnit, toUnit]);
+
+    const factorDisplay = React.useMemo(() => {
+        const catData = CATEGORIES[category];
+        const baseFactorFrom = catData.units[fromUnit];
+        const baseFactorTo = catData.units[toUnit];
+        if (!baseFactorFrom || !baseFactorTo) return null;
+        const factor = baseFactorFrom / baseFactorTo;
+        return `1 ${fromUnit} ≈ ${factor < 1e-3 || factor > 1e4 ? factor.toExponential(3) : parseFloat(factor.toPrecision(4))} ${toUnit}`;
+    }, [category, fromUnit, toUnit]);
+
+    // --- 4. HANDLERS ---
+    const handleSwap = () => {
+        setFromUnit(toUnit);
+        setToUnit(fromUnit);
+    };
+
+    const handleSave = () => {
+        if (result !== '---') {
+            addHistory({ id: Date.now(), type: 'Conversion', icon: ICONS.refresh, inputs: `${fromVal} ${fromUnit}`, result: `${result} ${toUnit}`, view: VIEWS.CONVERTER });
+            addToast("Saved to history!");
+        }
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
             <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Unit Converter</h2>
-                    <ClearButton onClick={() => { setValue(''); setFromUnit('Gy'); setToUnit('auto'); setResult(null); setError(''); }} />
+                    <button onClick={() => { setFromVal('1'); }} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                        Clear
+                    </button>
                 </div>
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Value</label>
-                        <input type="number" value={value} onChange={e => setValue(e.target.value)} placeholder="Enter a value" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-4 items-end">
-                        <div className="w-full sm:flex-1">
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">From</label>
-                            <select value={fromUnit} onChange={e => setFromUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                {Object.entries(units).map(([group, list]) => <optgroup label={group} key={group}>{list.map(u => <option key={u} value={u}>{u}</option>)}</optgroup>)}
-                            </select>
-                        </div>
-                        <div className="flex-shrink-0 pb-1">
-                            <button onClick={handleSwap} className="p-2 rounded-full bg-slate-200 dark:bg-slate-600 hover:bg-sky-200 dark:hover:bg-sky-700 transition" aria-label="Swap units">
-                                <Icon path={ICONS.converter} className="w-5 h-5 text-slate-600 dark:text-slate-200" />
-                            </button>
-                        </div>
-                        <div className="w-full sm:flex-1">
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">To</label>
-                            <select value={toUnit} onChange={e => setToUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                <option value="auto">Auto (Sensible Unit)</option>
-                                {Object.entries(compatibleUnits).map(([group, list]) => <optgroup label={group} key={group}>{list.map(u => <option key={u} value={u}>{u}</option>)}</optgroup>)}
-                            </select>
-                        </div>
-                    </div>
-                    <div className="text-center p-3 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 min-h-[6rem] flex items-center justify-center">
-                        {error ? ( <p className="text-red-500 text-sm">{error}</p> ) : result ? (
-                            <div className="flex items-center justify-center gap-2 w-full">
-                                <div className="flex-grow text-center">
-                                    <p className="text-lg font-bold">
-                                        {value} {fromUnit} = {typeof result === 'object' ? result.value : result} {typeof result === 'object' ? result.unit : toUnit}
-                                    </p>
-                                </div>
-                                <div className="flex flex-shrink-0">
-                                    <CopyButton textToCopy={typeof result === 'object' ? result.value : result} />
-                                    <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                                        <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                                            <Icon path={ICONS.notepad} className="w-5 h-5" />
-                                        </button>
-                                    </Tooltip>
+
+                {/* Category Grid (No Scrollbar) */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-8">
+                    {Object.keys(CATEGORIES).map(cat => (
+                        <button 
+                            key={cat} 
+                            onClick={() => setCategory(cat)}
+                            className={`px-2 py-2 rounded-lg text-xs font-bold transition-all duration-200 border
+                                ${category === cat 
+                                    ? 'bg-sky-50 dark:bg-sky-900/30 border-sky-500 text-sky-700 dark:text-sky-300 shadow-sm ring-1 ring-sky-500' 
+                                    : 'bg-slate-50 dark:bg-slate-700/50 border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                }`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Converter Core */}
+                <div className="space-y-2">
+                    
+                    {/* FROM Input Box */}
+                    <div className="relative group bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700 transition-all focus-within:ring-2 focus-within:ring-sky-500 focus-within:border-transparent">
+                        <div className="px-4 pt-3 pb-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">From</label>
+                            <div className="flex items-center">
+                                <input 
+                                    type="number" 
+                                    value={fromVal} 
+                                    onChange={e => setFromVal(e.target.value)} 
+                                    className="flex-1 bg-transparent text-2xl font-bold text-slate-800 dark:text-white focus:outline-none placeholder-slate-300"
+                                    placeholder="0"
+                                />
+                                <div className="ml-2 pl-2 border-l border-slate-200 dark:border-slate-600">
+                                    <select 
+                                        value={fromUnit} 
+                                        onChange={e => setFromUnit(e.target.value)}
+                                        className="bg-transparent font-bold text-sm text-slate-600 dark:text-slate-300 focus:outline-none cursor-pointer hover:text-sky-600"
+                                    >
+                                        {Object.keys(CATEGORIES[category].units).map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select>
                                 </div>
                             </div>
-                        ) : ( <p className="text-sm italic text-slate-400 dark:text-slate-500">Enter a value to see the conversion.</p> )}
+                        </div>
                     </div>
+
+                    {/* Swap Button (Floating Overlay) */}
+                    <div className="h-4 relative z-10 flex justify-center">
+                        <button 
+                            onClick={handleSwap}
+                            className="absolute -top-4 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sky-600 rounded-full p-1.5 shadow-sm hover:scale-110 hover:shadow-md transition-all duration-200"
+                            title="Swap Units"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* TO Input Box (Read Only Style) */}
+                    <div className="relative group bg-sky-50 dark:bg-sky-900/10 rounded-xl border border-sky-100 dark:border-sky-800/50 transition-all">
+                        <div className="px-4 pt-3 pb-1">
+                            <div className="flex justify-between items-center">
+                                <label className="text-[10px] font-bold text-sky-600/70 dark:text-sky-400/70 uppercase tracking-wider block">To</label>
+                                <button onClick={handleSave} className="text-sky-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-4 h-4"/></button>
+                            </div>
+                            <div className="flex items-center">
+                                <div className="flex-1 text-2xl font-bold text-sky-700 dark:text-sky-400 truncate py-1">
+                                    {result}
+                                </div>
+                                <div className="ml-2 pl-2 border-l border-sky-200 dark:border-sky-800">
+                                    <select 
+                                        value={toUnit} 
+                                        onChange={e => setToUnit(e.target.value)}
+                                        className="bg-transparent font-bold text-sm text-sky-700 dark:text-sky-300 focus:outline-none cursor-pointer hover:text-sky-900"
+                                    >
+                                        {Object.keys(CATEGORIES[category].units).map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Factor Display */}
+                    <div className="px-2 flex justify-between text-[10px] text-slate-400 font-medium">
+                        <span>{factorDisplay}</span>
+                        <CopyButton textToCopy={result} label="Copy Result" />
+                    </div>
+
                 </div>
             </div>
-         </div>
-         );
-         };
-              
+        </div>
+    );
+};              
               /**
               * @description A component that displays a prominent header for the selected nuclide
               * along with the detailed context display for use in calculators. It includes a clear button.
@@ -12176,96 +12188,7 @@ const StandardDecayCalculator = ({ radionuclides, preselectedNuclide, selectedNu
         </div>
     );
 };
-         
-const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroundCpm, instrumentEff, setInstrumentEff, result, setResult, error, setError }) => {
-    const { addHistory } = useCalculationHistory();
-    const { addToast } = useToast();
-    const LEAK_TEST_LIMIT_UCI = 0.005;
-    const DPM_PER_UCI = 2.22e6;
-    
-    React.useEffect(() => {
-    localStorage.setItem('leakTest_grossCpm', grossCpm);
-    localStorage.setItem('leakTest_backgroundCpm', backgroundCpm);
-    localStorage.setItem('leakTest_instrumentEff', instrumentEff);
-    }, [grossCpm, backgroundCpm, instrumentEff]);
-    
-    React.useEffect(() => {
-    try {
-       setError('');
-       const gross = parseFloat(grossCpm);
-       const bkg = parseFloat(backgroundCpm);
-       const eff = parseFloat(instrumentEff);
-    
-       if (isNaN(gross) || isNaN(bkg) || isNaN(eff)) {
-           if (grossCpm || backgroundCpm || instrumentEff) setError("All inputs must be valid numbers.");
-           setResult(null); return;
-       }
-       if (gross < bkg) throw new Error("Gross CPM cannot be less than background.");
-       if (eff <= 0 || eff > 100) throw new Error("Efficiency must be between 0 and 100.");
-    
-       const netCpm = gross - bkg;
-       const dpm = netCpm / (eff / 100.0);
-       const activity_uCi = dpm / DPM_PER_UCI;
-       const pass = activity_uCi < LEAK_TEST_LIMIT_UCI;
-    
-       setResult({ activity: activity_uCi.toExponential(2), pass: pass, netCpm: netCpm.toFixed(0) });
-    } catch (e) {
-       setError(e.message);
-       setResult(null);
-    }
-    }, [grossCpm, backgroundCpm, instrumentEff, setResult, setError]);
-    
-    const handleSaveToHistory = () => {
-        if (result) {
-            addHistory({ 
-                id: Date.now(), 
-                type: 'Leak Test', 
-                icon: ICONS.check, 
-                inputs: `${grossCpm} cpm / ${backgroundCpm} cpm`, 
-                result: `${result.activity} µCi`, 
-                view: VIEWS.OPERATIONAL_HP 
-            });
-            addToast("Calculation saved to history!");
-        }
-    };
-    
-    return (
-    <div className="space-y-4 max-w-md mx-auto">
-       <p className="text-sm text-slate-600 dark:text-slate-400">
-           Evaluates a sealed source wipe against the 0.005 µCi limit.
-       </p>
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <div><label className="block text-sm font-medium">Gross CPM</label><input type="number" value={grossCpm} onChange={e => setGrossCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-           <div><label className="block text-sm font-medium">Background CPM</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-       </div>
-       <div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-    
-       {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-       {result && (
-           <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-               <div className="flex justify-between items-center -mt-2 -mb-2">
-                    <div></div> {/* Spacer */}
-                    <p className={`text-3xl font-extrabold ${result.pass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.pass ? 'PASS' : 'FAIL'}</p>
-                    <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                       <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                           <Icon path={ICONS.notepad} className="w-5 h-5" />
-                       </button>
-                    </Tooltip>
-               </div>
-    
-               <div className="flex items-center justify-center mt-2">
-                   <p className="text-xl font-bold">{result.activity} µCi</p>
-                   <CopyButton textToCopy={result.activity} />
-               </div>
-    
-               <p className={`text-xs font-semibold ${result.pass ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                   (Net: {result.netCpm} cpm | Limit: {LEAK_TEST_LIMIT_UCI} µCi)
-               </p>
-           </div>
-       )}
-    </div>
-    );
-};
+
               
               /**
               * @description React component for a static surface contamination survey calculator.
@@ -13482,10 +13405,13 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
               * @prop {array} radionuclides - A comprehensive array of radionuclide data used by the patient release calculator.
               */
               
-// 5. Updated MedicalCalculator (Patient Attenuation Fix)
 const MedicalCalculator = ({ radionuclides }) => {
     const [activeTab, setActiveTab] = React.useState('xrayShielding');
     const { settings } = React.useContext(SettingsContext);
+
+    // --- SHARED STATE & DATA ---
+    // FIX: Defined locally to prevent "undefined" crashes
+    const COMMON_THERAPY_ISOTOPES = ['I-131', 'Lu-177', 'Y-90', 'In-111', 'Tc-99m', 'Ra-223', 'Sm-153'];
 
     // State for XRayShieldingCalculator
     const [xray_kvp, setXray_kvp] = React.useState('100');
@@ -13504,11 +13430,17 @@ const MedicalCalculator = ({ radionuclides }) => {
     const [pr_activityUnit, setPr_activityUnit] = React.useState(settings.unitSystem === 'si' ? 'GBq' : 'mCi');
     const [pr_occupancyFactor, setPr_occupancyFactor] = React.useState('0.25');
     const [pr_distance, setPr_distance] = React.useState('1');
-    const [pr_attenuation, setPr_attenuation] = React.useState('0.8'); // NEW: Default to 0.8
+    const [pr_attenuation, setPr_attenuation] = React.useState('0.8'); 
     const [pr_effectiveHalfLife, setPr_effectiveHalfLife] = React.useState('');
     const [pr_effectiveHalfLifeUnit, setPr_effectiveHalfLifeUnit] = React.useState('hours');
     const [pr_result, setPr_result] = React.useState(null);
     const [pr_error, setPr_error] = React.useState('');
+
+    // NEW: State for DecayInStorageCalculator
+    const [dis_nuclideSymbol, setDis_nuclideSymbol] = React.useState('');
+    const [dis_currentRate, setDis_currentRate] = React.useState('5.0'); // mR/hr
+    const [dis_limit, setDis_limit] = React.useState('0.02'); // Background
+    const [dis_result, setDis_result] = React.useState(null);
 
     // Dynamic Units
     const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
@@ -13520,31 +13452,24 @@ const MedicalCalculator = ({ radionuclides }) => {
     // Auto-set Attenuation for I-131
     React.useEffect(() => {
         if (pr_nuclideSymbol === 'I-131') {
-            setPr_attenuation('0.8'); // Standard AAPM TG-155 / NUREG assumption
+            setPr_attenuation('0.8'); 
         } else {
-            setPr_attenuation('1.0'); // Conservative default
+            setPr_attenuation('1.0'); 
         }
     }, [pr_nuclideSymbol]);
 
-    const handleXRayClear = () => {
-        setXray_kvp('100'); setXray_workload('200'); setXray_useFactor('1');
-        setXray_occupancyFactor('1'); setXray_distance('2.1'); setXray_doseLimit('0.02');
-        setXray_shieldMaterial('Lead'); setXray_result(null); setXray_error('');
-    };
-
-    const handlePatientReleaseClear = () => {
-        setPr_nuclideSymbol(''); setPr_activity('30'); 
-        setPr_activityUnit(activityUnits[1]);
-        setPr_occupancyFactor('0.25');
-        setPr_distance('1');
-        setPr_attenuation('0.8');
-        setPr_effectiveHalfLife(''); setPr_effectiveHalfLifeUnit('hours');
-        setPr_result(null); setPr_error('');
-    };
-
     const handleClearActiveCalculator = () => {
-        if (activeTab === 'xrayShielding') handleXRayClear();
-        else handlePatientReleaseClear();
+        if (activeTab === 'xrayShielding') {
+            setXray_kvp('100'); setXray_workload('200'); setXray_useFactor('1');
+            setXray_occupancyFactor('1'); setXray_distance('2.1'); setXray_doseLimit('0.02');
+            setXray_shieldMaterial('Lead'); setXray_result(null); setXray_error('');
+        } else if (activeTab === 'patientRelease') {
+            setPr_nuclideSymbol(''); setPr_activity('30'); 
+            setPr_occupancyFactor('0.25'); setPr_distance('1'); setPr_attenuation('0.8');
+            setPr_effectiveHalfLife(''); setPr_result(null); setPr_error('');
+        } else if (activeTab === 'decayStorage') {
+            setDis_nuclideSymbol(''); setDis_currentRate('5.0'); setDis_result(null);
+        }
     };
 
     return (
@@ -13554,38 +13479,52 @@ const MedicalCalculator = ({ radionuclides }) => {
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Medical Physics Tools</h2>
                     <ClearButton onClick={handleClearActiveCalculator} />
                 </div>
-                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg my-4">
-                    <button onClick={() => setActiveTab('xrayShielding')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'xrayShielding' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>X-Ray Shielding</button>
-                    <button onClick={() => setActiveTab('patientRelease')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'patientRelease' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Patient Release</button>
+                
+                {/* 3-Way Navigation Tab */}
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg my-4 gap-1">
+                    {['xrayShielding', 'patientRelease', 'decayStorage'].map(tab => (
+                        <button key={tab} onClick={() => setActiveTab(tab)} 
+                            className={`flex-1 p-2 rounded-md text-xs font-bold transition-colors uppercase ${activeTab === tab ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>
+                            {tab === 'xrayShielding' ? 'X-Ray' : tab === 'patientRelease' ? 'Pt Release' : 'Waste'}
+                        </button>
+                    ))}
                 </div>
-                {activeTab === 'xrayShielding' ?
-                    <XRayShieldingCalculator
-                        kvp={xray_kvp} setKvp={setXray_kvp}
-                        workload={xray_workload} setWorkload={setXray_workload}
-                        useFactor={xray_useFactor} setUseFactor={setXray_useFactor}
-                        occupancyFactor={xray_occupancyFactor} setOccupancyFactor={setXray_occupancyFactor}
-                        distance={xray_distance} setDistance={setXray_distance}
-                        doseLimit={xray_doseLimit} setDoseLimit={setXray_doseLimit}
-                        shieldMaterial={xray_shieldMaterial} setShieldMaterial={setXray_shieldMaterial}
-                        result={xray_result} setResult={setXray_result}
-                        error={xray_error} setError={setXray_error}
-                    /> :
-                    <PatientReleaseCalculator
-                        radionuclides={radionuclides}
-                        nuclideSymbol={pr_nuclideSymbol} setNuclideSymbol={setPr_nuclideSymbol}
-                        activity={pr_activity} setActivity={setPr_activity}
-                        activityUnit={pr_activityUnit} setActivityUnit={setPr_activityUnit}
-                        activityUnits={activityUnits}
-                        occupancyFactor={pr_occupancyFactor} setOccupancyFactor={setPr_occupancyFactor}
-                        distance={pr_distance} setDistance={setPr_distance}
-                        attenuation={pr_attenuation} setAttenuation={setPr_attenuation}
-                        effectiveHalfLife={pr_effectiveHalfLife} setEffectiveHalfLife={setPr_effectiveHalfLife}
-                        effectiveHalfLifeUnit={pr_effectiveHalfLifeUnit} setEffectiveHalfLifeUnit={setPr_effectiveHalfLifeUnit}
-                        result={pr_result} setResult={setPr_result}
-                        error={pr_error} setError={setPr_error}
-                        settings={settings}
-                    />
-                }
+
+                {activeTab === 'xrayShielding' && <XRayShieldingCalculator
+                    kvp={xray_kvp} setKvp={setXray_kvp}
+                    workload={xray_workload} setWorkload={setXray_workload}
+                    useFactor={xray_useFactor} setUseFactor={setXray_useFactor}
+                    occupancyFactor={xray_occupancyFactor} setOccupancyFactor={setXray_occupancyFactor}
+                    distance={xray_distance} setDistance={setXray_distance}
+                    doseLimit={xray_doseLimit} setDoseLimit={setXray_doseLimit}
+                    shieldMaterial={xray_shieldMaterial} setShieldMaterial={setXray_shieldMaterial}
+                    result={xray_result} setResult={setXray_result}
+                    error={xray_error} setError={setXray_error}
+                />}
+                
+                {activeTab === 'patientRelease' && <PatientReleaseCalculator
+                    radionuclides={radionuclides} therapyList={COMMON_THERAPY_ISOTOPES}
+                    nuclideSymbol={pr_nuclideSymbol} setNuclideSymbol={setPr_nuclideSymbol}
+                    activity={pr_activity} setActivity={setPr_activity}
+                    activityUnit={pr_activityUnit} setActivityUnit={setPr_activityUnit}
+                    activityUnits={activityUnits}
+                    occupancyFactor={pr_occupancyFactor} setOccupancyFactor={setPr_occupancyFactor}
+                    distance={pr_distance} setDistance={setPr_distance}
+                    attenuation={pr_attenuation} setAttenuation={setPr_attenuation}
+                    effectiveHalfLife={pr_effectiveHalfLife} setEffectiveHalfLife={setPr_effectiveHalfLife}
+                    effectiveHalfLifeUnit={pr_effectiveHalfLifeUnit} setEffectiveHalfLifeUnit={setPr_effectiveHalfLifeUnit}
+                    result={pr_result} setResult={setPr_result}
+                    error={pr_error} setError={setPr_error}
+                    settings={settings}
+                />}
+
+                {activeTab === 'decayStorage' && <DecayInStorageCalculator 
+                    radionuclides={radionuclides}
+                    nuclideSymbol={dis_nuclideSymbol} setNuclideSymbol={setDis_nuclideSymbol}
+                    currentRate={dis_currentRate} setCurrentRate={setDis_currentRate}
+                    limit={dis_limit} setLimit={setDis_limit}
+                    result={dis_result} setResult={setDis_result}
+                />}
             </div>
         </div>
     );
@@ -13614,7 +13553,7 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
             const K_unshielded = (K_output * W * U * T) / Math.pow(d, 2);
             const B = P / K_unshielded;
 
-            if (B >= 1) { setResult({ thickness: 0, tvls: 0, transmission: B > 1 ? '>1' : B.toExponential(2) }); return; }
+            if (B >= 1) { setResult({ thickness: 0, tvls: 0, transmission: '>1' }); return; }
             
             const n_tvl = -Math.log10(B);
             const { TVL1, TVLe } = TVL_DATA[shieldMaterial][kvp];
@@ -13626,563 +13565,504 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
     
     const handleSaveToHistory = () => {
         if (result) {
-            addHistory({ id: Date.now(), type: 'X-Ray Shielding', icon: ICONS.medical, inputs: `${workload} mA-min/wk @ ${kvp} kVp`, result: `${result.thickness} ${shieldMaterial === 'Lead' ? 'mm' : 'cm'} ${shieldMaterial}`, view: VIEWS.MEDICAL });
-            addToast("Calculation saved to history!");
+            addHistory({ id: Date.now(), type: 'X-Ray Shielding', icon: ICONS.medical, inputs: `${workload} mA-min/wk @ ${kvp} kVp`, result: `${result.thickness} ${shieldMaterial === 'Lead' ? 'mm' : 'cm'}`, view: VIEWS.MEDICAL });
+            addToast("Saved!");
         }
     };
     
-    const useFactorOptions = [ { value: 1, label: '1 (Floors, full-time control rooms)' }, { value: 0.25, label: '1/4 (Doors, walls)' }, { value: 0.0625, label: '1/16 (Ceilings)' } ];
-    const occupancyOptions = [ { value: 1, label: '1 (Work areas, offices, labs)' }, { value: 0.2, label: '1/5 (Corridors, patient rooms)' }, { value: 0.05, label: '1/20 (Public restrooms, waiting rooms)' }, { value: 0.025, label: '1/40 (Outdoors, closets)' } ];
+    const useFactorOptions = [ { value: 1, label: '1 (Floors, full-time)' }, { value: 0.25, label: '1/4 (Doors, walls)' }, { value: 0.0625, label: '1/16 (Ceilings)' } ];
+    const occupancyOptions = [ { value: 1, label: '1 (Offices, labs)' }, { value: 0.2, label: '1/5 (Corridors)' }, { value: 0.05, label: '1/20 (Restrooms)' }, { value: 0.025, label: '1/40 (Outdoors)' } ];
     const doseLimitOptions = [ { value: 0.1, label: '0.1 mGy/wk (Controlled)' }, { value: 0.02, label: '0.02 mGy/wk (Uncontrolled)' } ];
     
     return (
         <div className="space-y-4">
-            <ContextualNote type="info">
-                <strong>Primary Barrier Calculator:</strong> Uses NCRP 147 methodology for the primary beam only. Assumes high-frequency generator output.
-            </ContextualNote>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium">Tube Potential (kVp)</label><select value={kvp} onChange={e => setKvp(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(K_FACTORS).map(k => <option key={k} value={k}>{k} kVp</option>)}</select></div>
-                <div><label className="block text-sm font-medium">Workload (mA-min/week)</label><input type="number" value={workload} onChange={e => setWorkload(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Use Factor (U)</label><select value={useFactor} onChange={e => setUseFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{useFactorOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
-                <div><label className="block text-sm font-medium">Occupancy Factor (T)</label><select value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{occupancyOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
-                <div><label className="block text-sm font-medium">Distance from Source (m)</label><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Design Goal (Air Kerma)</label><select value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{doseLimitOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
-                <div className="md:col-span-2"><label className="block text-sm font-medium">Shielding Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="Lead">Lead</option><option value="Concrete">Concrete</option><option value="Drywall">Drywall</option></select></div>
+                <div><label className="block text-xs font-bold mb-1">Tube Potential</label><select value={kvp} onChange={e => setKvp(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm">{Object.keys(K_FACTORS).map(k => <option key={k} value={k}>{k} kVp</option>)}</select></div>
+                <div><label className="block text-xs font-bold mb-1">Workload (mA-min/wk)</label><input type="number" value={workload} onChange={e => setWorkload(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="block text-xs font-bold mb-1">Use Factor (U)</label><select value={useFactor} onChange={e => setUseFactor(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm">{useFactorOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
+                <div><label className="block text-xs font-bold mb-1">Occupancy (T)</label><select value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm">{occupancyOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
+                <div><label className="block text-xs font-bold mb-1">Distance (m)</label><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="block text-xs font-bold mb-1">Limit (Air Kerma)</label><select value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm">{doseLimitOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
+                <div className="md:col-span-2"><label className="block text-xs font-bold mb-1">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"><option value="Lead">Lead (mm)</option><option value="Concrete">Concrete (cm)</option><option value="Drywall">Drywall (cm)</option></select></div>
             </div>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             {result && (
-                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
-                    <div className="flex justify-end -mt-2 -mr-2">
-                        <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                            <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                                <Icon path={ICONS.notepad} className="w-5 h-5" />
-                            </button>
-                        </Tooltip>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm -mt-4"><p>Required Transmission (B):</p><p className="font-mono">{result.transmission}</p><p>Required TVLs:</p><p className="font-mono">{result.tvls}</p></div>
-                    <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
-                        <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Required Shield Thickness</p>
-                        <div className="flex items-center justify-center">
-                            <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.thickness}<span className="text-2xl ml-2 opacity-75">{shieldMaterial === 'Lead' ? 'mm' : 'cm'}</span></p>
-                            <CopyButton textToCopy={result.thickness} />
-                        </div>
-                    </div>
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in relative">
+                    <div className="absolute top-2 right-2"><button onClick={handleSaveToHistory}><Icon path={ICONS.notepad} className="w-5 h-5 text-slate-400 hover:text-sky-500"/></button></div>
+                    <p className="text-sm text-slate-500 uppercase font-bold">Required Shielding</p>
+                    <p className="text-4xl font-extrabold text-sky-600 dark:text-sky-400 my-2">{result.thickness} <span className="text-xl text-slate-500">{shieldMaterial === 'Lead' ? 'mm' : 'cm'}</span></p>
+                    <p className="text-xs text-slate-400">TVLs needed: {result.tvls}</p>
                 </div>
             )}
         </div>
     );
 };
 
-const PatientReleaseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, activity, setActivity, activityUnit, setActivityUnit, activityUnits, occupancyFactor, setOccupancyFactor, distance, setDistance, attenuation, setAttenuation, effectiveHalfLife, setEffectiveHalfLife, effectiveHalfLifeUnit, setEffectiveHalfLifeUnit, result, setResult, error, setError, settings }) => {
+const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, setNuclideSymbol, activity, setActivity, activityUnit, setActivityUnit, activityUnits, occupancyFactor, setOccupancyFactor, distance, setDistance, attenuation, setAttenuation, effectiveHalfLife, setEffectiveHalfLife, effectiveHalfLifeUnit, setEffectiveHalfLifeUnit, result, setResult, error, setError, settings }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
     
-    // Regulatory Limits (10 CFR 35.75)
-    const TEDE_LIMIT_MREM = 500; // 5 mSv
-    const I131_ACTIVITY_LIMIT_MCI = 33; // From NUREG 1556 Vol 9
-
-    // Conversion factors to base units (mCi)
+    // Limits
+    const TEDE_LIMIT_MREM = 500; 
+    const I131_ACTIVITY_LIMIT_MCI = 33; 
     const actToMci = { 'µCi': 1e-3, 'mCi': 1, 'Ci': 1000, 'MBq': 1/37, 'GBq': 1000/37, 'TBq': 1e6/37 };
 
-    const therapyNuclides = React.useMemo(() => radionuclides.filter(n => THERAPY_NUCLIDES.includes(n.symbol) && n.gammaConstant).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
+    // FIX: Use passed therapyList to filter safely
+    const therapyNuclides = React.useMemo(() => radionuclides.filter(n => therapyList.includes(n.symbol) && n.gammaConstant).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides, therapyList]);
     const selectedNuclide = React.useMemo(() => therapyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, therapyNuclides]);
 
     React.useEffect(() => {
-        if (!selectedNuclide) { setResult(null); setError('Please select a radionuclide.'); return; }
+        if (!selectedNuclide) { setResult(null); return; }
         try {
             setError('');
-            // 1. Convert input activity to mCi for calculation
             const A0_mCi = parseFloat(activity) * actToMci[activityUnit];
-            if (isNaN(A0_mCi) || A0_mCi <= 0) throw new Error("Invalid administered activity.");
+            if (isNaN(A0_mCi) || A0_mCi <= 0) throw new Error("Invalid activity.");
 
-            // --- TIER 1 CHECK: ACTIVITY LIMIT (I-131 ONLY) ---
-            if (selectedNuclide.symbol.includes('I-131')) {
-                if (A0_mCi <= I131_ACTIVITY_LIMIT_MCI) {
-                    setResult({ 
-                        title: 'PASS (Activity Limit)', 
-                        pass: true, 
-                        details: [`Activity is ≤ ${I131_ACTIVITY_LIMIT_MCI} mCi. Release permitted by 10 CFR 35.75 default limits.`]
-                    });
-                    return;
-                }
+            // 1. Tier 1 Check
+            if (selectedNuclide.symbol.includes('I-131') && A0_mCi <= I131_ACTIVITY_LIMIT_MCI) {
+                setResult({ title: 'PASS (Tier 1)', pass: true, details: [`Activity ≤ ${I131_ACTIVITY_LIMIT_MCI} mCi. Release permitted.`] });
+                return;
             }
 
-            // 2. Determine Effective Half-Life (Hours)
+            // 2. Calc Effective Half Life
             let T_half_hours_eff;
             const T_half_hours_phys = parseHalfLifeToSeconds(selectedNuclide.halfLife) / 3600;
-            const effectiveHL_val = parseFloat(effectiveHalfLife);
+            const effHL = parseFloat(effectiveHalfLife);
             
-            if (!isNaN(effectiveHL_val) && effectiveHL_val > 0) {
-                const unitFactors = { 'hours': 1, 'days': 24 };
-                T_half_hours_eff = effectiveHL_val * unitFactors[effectiveHalfLifeUnit];
-                if (T_half_hours_eff > T_half_hours_phys) throw new Error("Effective half-life cannot be longer than the physical half-life.");
-            } else { 
-                T_half_hours_eff = T_half_hours_phys; 
-            }
+            if (!isNaN(effHL) && effHL > 0) {
+                const factors = { 'hours': 1, 'days': 24 };
+                T_half_hours_eff = effHL * factors[effectiveHalfLifeUnit];
+                if (T_half_hours_eff > T_half_hours_phys) throw new Error("Effective T½ > Physical T½");
+            } else { T_half_hours_eff = T_half_hours_phys; }
 
-            // 3. Get Gamma Constant
-            const gamma_app_units = parseFloat(selectedNuclide.gammaConstant); // R·m²/hr·Ci
-            const gamma_nureg_units = gamma_app_units * 10; // R·cm²/hr·mCi
+            // 3. Dose Calc
+            const gamma_app = parseFloat(selectedNuclide.gammaConstant); // R·m²/hr·Ci
+            const gamma_nureg = gamma_app * 10; // Convert to R·cm²/hr·mCi
+            const d_cm = parseFloat(distance) * 100;
+            const E = parseFloat(occupancyFactor);
+            const att = parseFloat(attenuation);
 
-            // 4. Calculate Integrated Dose to Infinity
-            const dist_cm = parseFloat(distance) * 100;
-            const occ_factor = parseFloat(occupancyFactor);
-            const att_factor = parseFloat(attenuation);
+            if ([d_cm, E, att].some(isNaN) || d_cm <= 0) throw new Error("Invalid inputs.");
 
-            if (isNaN(dist_cm) || isNaN(occ_factor) || isNaN(att_factor) || dist_cm <= 0 || occ_factor < 0 || occ_factor > 1 || att_factor <= 0 || att_factor > 1) {
-                throw new Error("Invalid inputs for calculation.");
-            }
-
-            // Initial Dose Rate at distance d (R/hr)
-            // Include Patient Attenuation Factor
-            const initial_rate_R_hr = (gamma_nureg_units * A0_mCi * att_factor) / Math.pow(dist_cm, 2);
+            const rate_R_hr = (gamma_nureg * A0_mCi * att) / Math.pow(d_cm, 2);
+            const total_dose_R = (rate_R_hr * E) * (T_half_hours_eff * 1.443);
+            const dose_mrem = total_dose_R * 1000;
             
-            // Occupancy adjusted rate
-            const effective_rate_R_hr = initial_rate_R_hr * occ_factor;
-            
-            // Integrate to infinity (Mean Life = T_eff * 1.443)
-            const total_dose_R = effective_rate_R_hr * (T_half_hours_eff * 1.443);
-            
-            // Convert to mrem
-            const totalDose_mrem = total_dose_R * 1000;
-
-            const pass = totalDose_mrem <= TEDE_LIMIT_MREM;
-            
-            // Formatting results
-            const displayDose = formatDoseValue(totalDose_mrem, 'dose', settings);
-            const displayLimit = formatDoseValue(TEDE_LIMIT_MREM, 'dose', settings);
-
             setResult({
-                title: pass ? 'PASS (Dose Calc)' : 'FAIL (Dose Calc)',
-                pass: pass,
-                details: [
-                    `Total Integrated Dose (∞): ${displayDose.value} ${displayDose.unit}`,
-                    `(Limit: ${displayLimit.value} ${displayLimit.unit})`
-                ],
-                rawDose: totalDose_mrem, 
-                halfLifeUsed_hr: T_half_hours_eff.toFixed(2),
-                isEffective: T_half_hours_eff !== T_half_hours_phys,
+                title: dose_mrem <= TEDE_LIMIT_MREM ? 'PASS (Tier 2)' : 'FAIL',
+                pass: dose_mrem <= TEDE_LIMIT_MREM,
+                details: [`Total Dose: ${formatDoseValue(dose_mrem, 'dose', settings).value} ${formatDoseValue(dose_mrem, 'dose', settings).unit}`, `(Limit: 500 mrem)`],
+                rawDose: dose_mrem
             });
 
         } catch (e) { setResult(null); setError(e.message); }
     }, [selectedNuclide, activity, activityUnit, occupancyFactor, distance, attenuation, effectiveHalfLife, effectiveHalfLifeUnit, settings.unitSystem]);
 
-    const handleSaveToHistory = () => {
+    const handleSave = () => {
         if (result && selectedNuclide) {
-            addHistory({ id: Date.now(), type: 'Patient Release', icon: ICONS.medical, inputs: `${activity} ${activityUnit} of ${selectedNuclide.symbol}`, result: result.title, view: VIEWS.MEDICAL });
-            addToast("Calculation saved to history!");
+            addHistory({ id: Date.now(), type: 'Patient Release', icon: ICONS.medical, inputs: `${activity} ${activityUnit} ${selectedNuclide.symbol}`, result: result.title, view: VIEWS.MEDICAL });
+            addToast("Saved!");
         }
     };
 
     return (
         <div className="space-y-4">
-            <ContextualNote type="info">
-                <strong>Calculation Method:</strong> Calculates TEDE integrated to infinity (10 CFR 35.75). Includes default patient attenuation factor (0.8 for I-131).
-            </ContextualNote>
-            
-            <div><label className="text-sm font-medium">Radionuclide</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={therapyNuclides} onSelect={setNuclideSymbol} placeholder="Select a therapy nuclide..." />}</div></div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-2">
-                    <label className="text-sm font-medium">Administered Activity</label>
-                    <div className="flex">
-                        <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
-                        <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
-                            {activityUnits.map(u => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                    </div>
-                     {selectedNuclide && (<div className="animate-fade-in pt-2"><Tooltip text="Enter the effective half-life. If left blank, physical half-life is used."><label className="text-sm font-medium">Effective Half-Life (Optional)</label></Tooltip><div className="flex"><input type="number" value={effectiveHalfLife} onChange={e => setEffectiveHalfLife(e.target.value)} placeholder={`e.g., ${(parseHalfLifeToSeconds(selectedNuclide.halfLife) / 3600).toPrecision(3)}`} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" /><select value={effectiveHalfLifeUnit} onChange={e => setEffectiveHalfLifeUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-sm"><option value="hours">hours</option><option value="days">days</option></select></div></div>)}
-                </div>
-                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
-                    <label className="text-sm font-medium">Exposure Parameters</label>
-                    <div>
-                        <Tooltip text="Fraction of time the exposed individual is near the patient. Default 0.25 (NUREG 1556).">
-                            <label className="block text-xs font-medium cursor-help underline decoration-dotted mb-1">Occupancy Factor (E)</label>
-                        </Tooltip>
-                        <input type="number" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} step="0.05" min="0" max="1" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                        <div>
-                            <label className="block text-xs font-medium mb-1">Distance (m)</label>
-                            <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
-                        </div>
-                        <div>
-                            <Tooltip text="Factor to account for shielding by patient's body (0-1). 0.8 is standard for I-131.">
-                                <label className="block text-xs font-medium cursor-help underline decoration-dotted mb-1">Patient Attenuation</label>
-                            </Tooltip>
-                            <input type="number" value={attenuation} onChange={e => setAttenuation(e.target.value)} step="0.1" min="0" max="1" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
-                        </div>
-                    </div>
-                </div>
+            <div><label className="text-xs font-bold mb-1 block">Isotope</label>{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={therapyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide..." />}</div>
+            <div className="grid grid-cols-2 gap-4">
+                <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                <div><label className="text-xs font-bold mb-1 block">Occupancy (E)</label><input type="number" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} step="0.05" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
             </div>
-            
+            <div className="grid grid-cols-2 gap-4">
+                <div><label className="text-xs font-bold mb-1 block">Distance (m)</label><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="text-xs font-bold mb-1 block">Attenuation</label><input type="number" value={attenuation} onChange={e => setAttenuation(e.target.value)} step="0.1" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+            </div>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            
             {result && (
-                <div className={`p-4 rounded-lg text-center ${result.pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                    <div className="flex justify-between items-center -mt-2">
-                        <div></div>
-                        <p className={`text-2xl font-extrabold ${result.pass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.title}</p>
-                        <Tooltip text="Save to Recent Calculations" widthClass="w-auto"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5" /></button></Tooltip>
-                    </div>
-                    <div className="mt-2 text-sm">
-                        {result.details.map((line, i) => (
-                             <div key={i} className="flex items-center justify-center"><p className={result.pass ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}>{line}</p></div>
-                        ))}
-                    </div>
-                    {result.halfLifeUsed_hr && (<p className="text-xs italic text-slate-500 dark:text-slate-400 mt-2">Based on {result.isEffective ? 'effective' : 'physical'} half-life of {result.halfLifeUsed_hr} hours.</p>)}
+                <div className={`p-4 rounded-lg text-center mt-4 relative ${result.pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                    <div className="absolute top-2 right-2"><button onClick={handleSave}><Icon path={ICONS.notepad} className="w-5 h-5 text-slate-500 hover:text-black"/></button></div>
+                    <p className={`text-2xl font-extrabold ${result.pass ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{result.title}</p>
+                    <div className="mt-2 text-sm font-medium text-slate-700 dark:text-slate-300">{result.details.map((d,i) => <p key={i}>{d}</p>)}</div>
                 </div>
             )}
         </div>
     );
 };
-              
-         /**
-         * @description A component to display sortable and filterable data tables of all radionuclide emissions.
-         * It parses and flattens the entire radionuclide dataset into sortable lists for
-         * gamma, alpha, and beta emissions, and allows for CSV export.
-         */
 
-         const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
-         const [activeTable, setActiveTable] = React.useState('alpha');
-         const [sortConfig, setSortConfig] = React.useState({ key: 'energyMeV', direction: 'ascending' });
-         // State to hold the filter text
-         const [filterText, setFilterText] = React.useState('');
-         
-         const parseEnergy = React.useCallback((energyStr) => {
-             if (!energyStr) return null;
-             const energyRegex = /([\d.]+)\s*(MeV|keV)/i;
-             const energyMatch = energyStr.match(energyRegex);
-             if (!energyMatch) return null;
-             let energyMeV = parseFloat(energyMatch[1]);
-             if (energyMatch[2].toLowerCase() === 'kev') {
-                 energyMeV /= 1000;
-             }
-             return { energyMeV, displayEnergy: energyStr };
-         }, []);
-         
-         const flattenedData = React.useMemo(() => {
-             const data = { gamma: [], alpha: [], beta: [] };
-             radionuclides.forEach(nuclide => {
-                 Object.keys(data).forEach(type => {
-                     nuclide.emissionEnergies?.[type]?.forEach(energyStr => {
-                         const parsed = parseEnergy(energyStr);
-                         if (parsed) {
-                             data[type].push({ nuclideSymbol: nuclide.symbol, nuclideName: nuclide.name, category: nuclide.category, ...parsed });
-                         }
-                     });
-                 });
-                 if (nuclide.daughterEmissions) {
-                      const daughterNuclide = radionuclides.find(n => n.symbol === nuclide.daughterEmissions.from);
-                      const daughterCategory = daughterNuclide ? daughterNuclide.category : 'N/A';
-                      Object.keys(data).forEach(type => {
-                         nuclide.daughterEmissions?.[type]?.forEach(energyStr => {
-                             const parsed = parseEnergy(energyStr);
-                             if (parsed) {
-                                 const daughterName = `${nuclide.daughterEmissions.from} (from ${nuclide.symbol})`;
-                                 data[type].push({ nuclideSymbol: nuclide.daughterEmissions.from, nuclideName: daughterName, category: daughterCategory, ...parsed });
-                             }
-                         });
-                     });
-                 }
-             });
-             return data;
-         }, [radionuclides, parseEnergy]);
-         
-         // UPDATED: This memoized value now filters the data before sorting it.
-         const sortedAndFilteredData = React.useMemo(() => {
-             let dataToProcess = [...flattenedData[activeTable]];
-         
-             // Apply filtering if filterText is not empty
-             if (filterText) {
-                 dataToProcess = dataToProcess.filter(item =>
-                     item.nuclideName.toLowerCase().includes(filterText.toLowerCase())
-                 );
-             }
-             
-             // Apply sorting to the filtered data
-             if (sortConfig.key !== null) {
-                 dataToProcess.sort((a, b) => {
-                     const valA = a[sortConfig.key] || '';
-                     const valB = b[sortConfig.key] || '';
-                     if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
-                     if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
-                     return 0;
-                 });
-             }
-             return dataToProcess;
-         }, [flattenedData, activeTable, sortConfig, filterText]); // Added filterText as a dependency
-         
-         const requestSort = (key) => {
-             let direction = 'ascending';
-             if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-                 direction = 'descending';
-             }
-             setSortConfig({ key, direction });
-         };
-         
-         const getSortIndicator = (key) => {
-             if (sortConfig.key !== key) return '↕';
-             return sortConfig.direction === 'ascending' ? '▲' : '▼';
-         };
-         
-         // NEW: Handler to export the current view to a CSV file.
-         const handleExportCSV = () => {
-             if (sortedAndFilteredData.length === 0) return;
-             const headers = ['Nuclide', 'Energy', 'Category'];
-             const rows = sortedAndFilteredData.map(item => [
-                 `"${item.nuclideName}"`, // Enclose in quotes to handle potential commas
-                 item.displayEnergy,
-                 item.category
-             ].join(','));
-             const csvContent = [headers.join(','), ...rows].join('\n');
-             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-             const link = document.createElement("a");
-             link.setAttribute("href", URL.createObjectURL(blob));
-             link.setAttribute("download", `${activeTable}_emissions_data.csv`);
-             document.body.appendChild(link);
-             link.click();
-             document.body.removeChild(link);
-         };
-         
-         return (
-             <div className="animate-fade-in">
-                 <div className="flex w-full p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg mb-4 border border-slate-200 dark:border-slate-700">
-                     <button onClick={() => setActiveTable('alpha')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTable === 'alpha' ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>α Alpha</button>
-                     <button onClick={() => setActiveTable('beta')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTable === 'beta' ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>β Beta</button>
-                     <button onClick={() => setActiveTable('gamma')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTable === 'gamma' ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>γ Gamma</button>
-                 </div>
-                 
-                 {/* NEW: Filter and Export controls */}
-                 <div className="flex justify-between items-center mb-2 gap-4">
-                     <div className="relative flex-grow">
-                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                             <Icon path={ICONS.search} className="w-4 h-4 text-slate-400" />
-                         </div>
-                         <input
-                             type="text"
-                             placeholder={`Filter by nuclide name...`}
-                             value={filterText}
-                             onChange={(e) => setFilterText(e.target.value)}
-                             className="w-full p-2 pl-9 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm"
-                         />
-                     </div>
-                     <button
-                         onClick={handleExportCSV}
-                         className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2 flex-shrink-0"
-                     >
-                         <Icon path={ICONS.database} className="w-4 h-4" />
-                         Export CSV
-                     </button>
-                 </div>
-         
-                 <div className="overflow-y-auto max-h-[55vh] border border-slate-200 dark:border-slate-700 rounded-lg">
-                     <table className="w-full text-sm text-left">
-                         <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
-                             <tr>
-                                 <th className="p-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort('nuclideName')}>Nuclide {getSortIndicator('nuclideName')}</th>
-                                 <th className="p-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort('energyMeV')}>Energy {getSortIndicator('energyMeV')}</th>
-                                 <th className="p-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort('category')}>Category {getSortIndicator('category')}</th>
-                             </tr>
-                         </thead>
-                         <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                             {sortedAndFilteredData.map((item, index) => {
-                                 const categoryStyle = CATEGORY_STYLES[item.category] || CATEGORY_STYLES['default'];
-                                 const bgColor = categoryStyle.border.replace('border-l-', 'bg-').replace('-400', '-100').replace('-600', '-900/50');
-                                 const textColor = categoryStyle.border.replace('border-l-', 'text-').replace('-400', '-700').replace('-600', '-300');
-         
-                                 return (
-                                     <tr key={`${item.nuclideSymbol}-${item.displayEnergy}-${index}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                         <td className="p-3 font-medium">
-                                             <button onClick={() => { const nuclideToFind = radionuclides.find(n => n.symbol === item.nuclideSymbol); if (nuclideToFind) onNuclideClick(nuclideToFind);}} className="text-sky-600 dark:text-sky-400 hover:underline">
-                                                 {item.nuclideName}
-                                             </button>
-                                         </td>
-                                         <td className="p-3 font-mono">{item.displayEnergy}</td>
-                                         <td className="p-3">
-                                             <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${bgColor} ${textColor}`}>
-                                                 {item.category || 'N/A'}
-                                             </span>
-                                         </td>
-                                     </tr>
-                                 );
-                             })}
-                         </tbody>
-                     </table>
-                 </div>
-             </div>
-         );
-         };
-         
-         /**
-              * @description A calculator to identify radionuclides and analyze common spectroscopic artifacts
-              * by matching a gamma or alpha peak energy against the database. Now includes sortable data tables.
-              */
-              const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
-                  // NEW: State to manage the view between Search and Data Tables
-                  const [peakIdMode, setPeakIdMode] = React.useState('search'); 
-              
-                  // Existing state for the search tool
-                  const [searchMode, setSearchMode] = React.useState('gamma');
-                  const [targetEnergy, setTargetEnergy] = React.useState('662');
-                  const [tolerance, setTolerance] = React.useState('2');
-                  const [energyUnit, setEnergyUnit] = React.useState('keV');
-                  const [results, setResults] = React.useState([]);
-                  const [analysis, setAnalysis] = React.useState(null);
-                  const [error, setError] = React.useState('');
-              
-                  const LEAD_XRAYS = [
-                      { name: 'Pb K-α2', energy: 0.07280 },
-                      { name: 'Pb K-α1', energy: 0.07497 },
-                      { name: 'Pb K-β3', energy: 0.08445 },
-                      { name: 'Pb K-β1', energy: 0.08494 },
-                      { name: 'Pb K-β2', energy: 0.08736 },
-                  ];
-              
-                  const parseSingleEnergyToMeV = (energyStr) => {
-                      if (!energyStr || typeof energyStr !== 'string') return null;
-                      const parts = energyStr.trim().split(' ');
-                      let value = parseFloat(parts[0]);
-                      if (isNaN(value)) return null;
-                      const unit = parts[1]?.toLowerCase();
-                      if (unit && unit.includes('kev')) return value / 1000;
-                      return value;
-                  };
-              
-                  // UPDATED: handleClearInputs now resets the view mode as well
-                  const handleClearInputs = () => {
-                      setPeakIdMode('search'); // Go back to search view
-                      setSearchMode('gamma');
-                      setTargetEnergy('662');
-                      setTolerance('2');
-                      setEnergyUnit('keV');
-                      setResults([]);
-                      setAnalysis(null);
-                      setError('');
-                  };
-                  
-                  React.useEffect(() => {
-                      if (searchMode === 'gamma') {
-                          setTargetEnergy('662'); setTolerance('2'); setEnergyUnit('keV');
-                      } else {
-                          setTargetEnergy('5.486'); setTolerance('0.05'); setEnergyUnit('MeV');
-                      }
-                  }, [searchMode]);
-              
-                  React.useEffect(() => {
-                      try {
-                          setError('');
-                          const target = parseFloat(targetEnergy); const tol = parseFloat(tolerance);
-                          if (isNaN(target) || isNaN(tol) || target <= 0 || tol < 0) {
-                              if (targetEnergy || tolerance) setError('Energy and tolerance must be positive numbers.');
-                              setResults([]); setAnalysis(null); return;
-                          }
-                          const targetMeV = energyUnit === 'keV' ? target / 1000 : target;
-                          const toleranceMeV = energyUnit === 'keV' ? tol / 1000 : tol;
-                          const minEnergy = targetMeV - toleranceMeV; const maxEnergy = targetMeV + toleranceMeV;
-                          
-                          const matches = [];
-                          const emissionKey = searchMode === 'gamma' ? 'gamma' : 'alpha';
-                          
-                          radionuclides.forEach(nuclide => {
-                              const emissions = nuclide.emissionEnergies?.[emissionKey];
-                              if (emissions && emissions.length > 0) {
-                                  emissions.forEach(emissionStr => {
-                                      const peakMeV = parseSingleEnergyToMeV(emissionStr);
-                                      if (peakMeV !== null && peakMeV >= minEnergy && peakMeV <= maxEnergy) {
-                                          // MODIFIED: Store more detailed match information
-                                          matches.push({ 
-                                              nuclide, 
-                                              matchedEnergy: emissionStr.split(' (')[0], // Get just the energy string
-                                              diff: Math.abs(peakMeV - targetMeV) * 1000 // Difference in keV
-                                          });
-                                      }
-                                  });
-                              }
-                          });
-         
-                          // Sort matches by how close they are to the target energy
-                          matches.sort((a, b) => a.diff - b.diff);
-         
-                          setResults(matches);
-                          
-                          if (searchMode === 'gamma') {
-                              const mc2 = 0.511;
-                              const comptonEdge = targetMeV / (1 + (mc2 / (2 * targetMeV)));
-                              const singleEscape = targetMeV > 1.022 ? targetMeV - 0.511 : null;
-                              const doubleEscape = targetMeV > 1.022 ? targetMeV - 1.022 : null;
-                              const leadXrayMatch = LEAD_XRAYS.find(xray => Math.abs(xray.energy - targetMeV) <= toleranceMeV);
-                              setAnalysis({
-                                  comptonEdge: comptonEdge.toFixed(3),
-                                  singleEscape: singleEscape ? singleEscape.toFixed(3) : null,
-                                  doubleEscape: doubleEscape ? doubleEscape.toFixed(3) : null,
-                                  isLeadXray: leadXrayMatch ? leadXrayMatch.name : null,
-                              });
-                          } else { setAnalysis(null); }
-                      } catch (e) {
-                          setError('An error occurred during search.'); setResults([]); setAnalysis(null);
-                      }
-                  }, [targetEnergy, tolerance, energyUnit, searchMode, radionuclides]);
-              
-                  return (
-                      <div className="p-4 animate-fade-in">
-                          <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                              <div className="flex justify-between items-center mb-4">
-                                  <h2 className="text-xl font-bold text-slate-800 dark:text-white">Peak Identifier</h2>
-                                  <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                                      <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-                                  </button>
-                              </div>
-                              
-                              {/* NEW: Main tabs to switch between Search and Data Tables */}
-                              <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                                  <button onClick={() => setPeakIdMode('search')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${peakIdMode === 'search' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Search</button>
-                                  <button onClick={() => setPeakIdMode('tables')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${peakIdMode === 'tables' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Data Tables</button>
-                              </div>
-              
-                              {/* NEW: Conditional rendering based on the selected mode */}
-                              {peakIdMode === 'search' ? (
-                                  <div className="animate-fade-in">
-                                      <div className="flex w-full p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg mb-4 border border-slate-200 dark:border-slate-700">
-                                          <button onClick={() => setSearchMode('gamma')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${searchMode === 'gamma' ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Gamma Spec</button>
-                                          <button onClick={() => setSearchMode('alpha')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${searchMode === 'alpha' ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Alpha Spec</button>
-                                      </div>
-                                      <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                              <div><label className="block text-sm font-medium">Peak Energy</label><input type="number" value={targetEnergy} onChange={e => setTargetEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                                              <div><label className="block text-sm font-medium">Tolerance (±)</label><input type="number" value={tolerance} onChange={e => setTolerance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                                          </div>
-                                          <div><label className="block text-sm font-medium">Energy Unit</label><select value={energyUnit} onChange={e => setEnergyUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="keV">keV</option><option value="MeV">MeV</option></select></div>
-                                      </div>
-                                      {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
-                                      {analysis && ( <div className="mt-6 p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg animate-fade-in"><h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">Spectrum Analysis</h3><div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm"><div><Tooltip text="The maximum energy a gamma can impart to an electron in a single Compton scattering event. Expect a sharp drop-off in the continuum here."><p className="font-semibold text-slate-500 dark:text-slate-400">Compton Edge</p></Tooltip><p className="font-mono text-slate-800 dark:text-slate-100">{analysis.comptonEdge} MeV</p></div>{analysis.singleEscape && (<div><Tooltip text="A peak seen at 511 keV below the full energy peak, caused by one annihilation photon escaping the detector after pair production. (E > 1.022 MeV)"><p className="font-semibold text-slate-500 dark:text-slate-400">Single Escape</p></Tooltip><p className="font-mono text-slate-800 dark:text-slate-100">{analysis.singleEscape} MeV</p></div>)}{analysis.doubleEscape && (<div><Tooltip text="A peak seen at 1022 keV below the full energy peak, caused by both annihilation photons escaping the detector after pair production. (E > 1.022 MeV)"><p className="font-semibold text-slate-500 dark:text-slate-400">Double Escape</p></Tooltip><p className="font-mono text-slate-800 dark:text-slate-100">{analysis.doubleEscape} MeV</p></div>)}{analysis.isLeadXray && (<div className="col-span-2 md:col-span-3 mt-2 pt-2 border-t border-slate-300 dark:border-slate-600"><p className="font-semibold text-amber-600 dark:text-amber-400"><Icon path={ICONS.help} className="w-4 h-4 inline-block mr-1" />This energy is consistent with a {analysis.isLeadXray} X-ray, often seen from lead shielding.</p></div>)}</div></div> )}
-                                      <div className="mt-6">
-                                          <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">Matching Radionuclides ({results.length})</h3>
-                                          <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
-                                              {results.length > 0 ? ( 
-                                                  results.map(({ nuclide, matchedEnergy, diff }, index) => ( 
-                                                      <div key={`${nuclide.symbol}-${index}`} onClick={() => onNuclideClick(nuclide)} className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-150">
-                                                          <div className="flex justify-between items-start">
-                                                              <p className="font-bold text-sky-600 dark:text-sky-400">{nuclide.name} ({nuclide.symbol})</p>
-                                                              <span className="text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">Δ = {diff.toFixed(2)} keV</span>
-                                                          </div>
-                                                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Matched Peak: <span className="font-semibold text-slate-700 dark:text-slate-200">{matchedEnergy}</span></p>
-                                                      </div> 
-                                                  )) 
-                                              ) : ( 
-                                                  <p className="text-center text-slate-500 dark:text-slate-400 py-4">{targetEnergy && tolerance ? "No matches found." : "Enter an energy to begin."}</p> 
-                                              )}
-                                          </div>
-                                      </div>
-                                  </div>
-                              ) : (
-                                  <PeakDataTables radionuclides={radionuclides} onNuclideClick={onNuclideClick} />
-                              )}
-                          </div>
-                      </div>
-                  );
-              };
-              
+// NEW: Missing Tool Added
+const DecayInStorageCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, currentRate, setCurrentRate, limit, setLimit, result, setResult }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+
+    React.useEffect(() => {
+        const n = radionuclides?.find(r => r.symbol === nuclideSymbol);
+        const R_curr = parseFloat(currentRate);
+        const R_lim = parseFloat(limit);
+
+        if (!n || isNaN(R_curr) || isNaN(R_lim) || R_curr <= R_lim) { 
+            setResult(null); 
+            if (R_curr <= R_lim && R_curr > 0) setResult({ days: 0, date: 'Now' });
+            return; 
+        }
+
+        const hlSeconds = parseHalfLifeToSeconds(n.halfLife);
+        const hlDays = hlSeconds / 86400;
+        if (hlDays === 0) return;
+
+        // Formula: T = -ln(R_lim/R_curr) / lambda
+        const lambda = Math.log(2) / hlDays;
+        const timeDays = -Math.log(R_lim / R_curr) / lambda;
+        
+        const releaseDate = new Date();
+        releaseDate.setDate(releaseDate.getDate() + Math.ceil(timeDays));
+
+        setResult({ days: Math.ceil(timeDays), date: releaseDate.toLocaleDateString(), hl: hlDays });
+    }, [nuclideSymbol, currentRate, limit, radionuclides]);
+
+    const handleSave = () => {
+        if (result) {
+            addHistory({ id: Date.now(), type: 'Waste Storage', icon: ICONS.trash, inputs: `${nuclideSymbol} @ ${currentRate} mR/hr`, result: `Hold ${result.days} days`, view: VIEWS.MEDICAL });
+            addToast("Saved!");
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div><label className="text-xs font-bold mb-1 block">Waste Isotope</label>{nuclideSymbol ? <CalculatorNuclideInfo nuclide={radionuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={radionuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide..." />}</div>
+            <div className="grid grid-cols-2 gap-4">
+                <div><label className="text-xs font-bold mb-1 block">Current Rate (mR/hr)</label><input type="number" value={currentRate} onChange={e => setCurrentRate(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="text-xs font-bold mb-1 block">Release Limit</label><input type="number" value={limit} onChange={e => setLimit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+            </div>
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in relative">
+                    <div className="absolute top-2 right-2"><button onClick={handleSave}><Icon path={ICONS.notepad} className="w-5 h-5 text-slate-400 hover:text-sky-500"/></button></div>
+                    <p className="text-xs uppercase font-bold text-slate-500">Hold For</p>
+                    <p className="text-4xl font-extrabold text-sky-600 dark:text-sky-400 my-1">{result.days} <span className="text-xl text-slate-500">Days</span></p>
+                    <div className="mt-2 border-t border-slate-300 dark:border-slate-600 pt-2">
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Release Date: {result.date}</p>
+                        <p className="text-xs text-slate-400">({(result.days / result.hl).toFixed(1)} Half-Lives)</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+/**
+ * @description A component to display sortable and filterable data tables of all radionuclide emissions.
+ */
+const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
+    const [activeTable, setActiveTable] = React.useState('gamma');
+    const [sortConfig, setSortConfig] = React.useState({ key: 'energyMeV', direction: 'ascending' });
+    const [filterText, setFilterText] = React.useState('');
+    
+    const parseEnergy = React.useCallback((energyStr) => {
+        if (!energyStr) return null;
+        const energyRegex = /([\d.]+)\s*(MeV|keV)/i;
+        const energyMatch = energyStr.match(energyRegex);
+        if (!energyMatch) return null;
+        let energyMeV = parseFloat(energyMatch[1]);
+        if (energyMatch[2].toLowerCase() === 'kev') energyMeV /= 1000;
+        return { energyMeV, displayEnergy: energyStr };
+    }, []);
+    
+    const flattenedData = React.useMemo(() => {
+        const data = { gamma: [], alpha: [], beta: [] };
+        radionuclides.forEach(nuclide => {
+            Object.keys(data).forEach(type => {
+                nuclide.emissionEnergies?.[type]?.forEach(energyStr => {
+                    const parsed = parseEnergy(energyStr);
+                    if (parsed) data[type].push({ nuclideSymbol: nuclide.symbol, nuclideName: nuclide.name, category: nuclide.category, ...parsed });
+                });
+            });
+            if (nuclide.daughterEmissions) {
+                const daughterNuclide = radionuclides.find(n => n.symbol === nuclide.daughterEmissions.from);
+                const daughterCategory = daughterNuclide ? daughterNuclide.category : 'N/A';
+                Object.keys(data).forEach(type => {
+                    nuclide.daughterEmissions?.[type]?.forEach(energyStr => {
+                        const parsed = parseEnergy(energyStr);
+                        if (parsed) {
+                            const daughterName = `${nuclide.daughterEmissions.from} (from ${nuclide.symbol})`;
+                            data[type].push({ nuclideSymbol: nuclide.daughterEmissions.from, nuclideName: daughterName, category: daughterCategory, ...parsed });
+                        }
+                    });
+                });
+            }
+        });
+        return data;
+    }, [radionuclides, parseEnergy]);
+    
+    const sortedAndFilteredData = React.useMemo(() => {
+        let dataToProcess = [...flattenedData[activeTable]];
+        if (filterText) {
+            dataToProcess = dataToProcess.filter(item => item.nuclideName.toLowerCase().includes(filterText.toLowerCase()));
+        }
+        if (sortConfig.key !== null) {
+            dataToProcess.sort((a, b) => {
+                const valA = a[sortConfig.key] || '';
+                const valB = b[sortConfig.key] || '';
+                if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
+                return 0;
+            });
+        }
+        return dataToProcess;
+    }, [flattenedData, activeTable, sortConfig, filterText]);
+    
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') direction = 'descending';
+        setSortConfig({ key, direction });
+    };
+    
+    const getSortIndicator = (key) => (sortConfig.key !== key ? '↕' : sortConfig.direction === 'ascending' ? '▲' : '▼');
+    
+    const handleExportCSV = () => {
+        if (sortedAndFilteredData.length === 0) return;
+        const headers = ['Nuclide', 'Energy', 'Category'];
+        const rows = sortedAndFilteredData.map(item => [`"${item.nuclideName}"`, item.displayEnergy, item.category].join(','));
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.setAttribute("href", URL.createObjectURL(blob));
+        link.setAttribute("download", `${activeTable}_emissions_data.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+    
+    return (
+        <div className="animate-fade-in">
+            <div className="flex w-full p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg mb-4 border border-slate-200 dark:border-slate-700">
+                {['alpha', 'beta', 'gamma'].map(type => (
+                    <button key={type} onClick={() => setActiveTable(type)} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors capitalize ${activeTable === type ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>
+                        {type === 'gamma' ? 'γ' : type === 'beta' ? 'β' : 'α'} {type}
+                    </button>
+                ))}
+            </div>
+            
+            <div className="flex justify-between items-center mb-2 gap-4">
+                <div className="relative flex-grow">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Icon path={ICONS.search} className="w-4 h-4 text-slate-400" /></div>
+                    <input type="text" placeholder={`Filter by nuclide name...`} value={filterText} onChange={(e) => setFilterText(e.target.value)} className="w-full p-2 pl-9 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm" />
+                </div>
+                <button onClick={handleExportCSV} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2 flex-shrink-0">
+                    <Icon path={ICONS.database} className="w-4 h-4" /> Export CSV
+                </button>
+            </div>
+    
+            <div className="overflow-y-auto max-h-[55vh] border border-slate-200 dark:border-slate-700 rounded-lg">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
+                        <tr>
+                            <th className="p-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort('nuclideName')}>Nuclide {getSortIndicator('nuclideName')}</th>
+                            <th className="p-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort('energyMeV')}>Energy {getSortIndicator('energyMeV')}</th>
+                            <th className="p-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort('category')}>Category {getSortIndicator('category')}</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                        {sortedAndFilteredData.map((item, index) => {
+                            const categoryStyle = CATEGORY_STYLES[item.category] || CATEGORY_STYLES['default'];
+                            const bgColor = categoryStyle.border.replace('border-l-', 'bg-').replace('-400', '-100').replace('-600', '-900/50');
+                            const textColor = categoryStyle.border.replace('border-l-', 'text-').replace('-400', '-700').replace('-600', '-300');
+    
+                            return (
+                                <tr key={`${item.nuclideSymbol}-${item.displayEnergy}-${index}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                    <td className="p-3 font-medium">
+                                        <button onClick={() => { const nuclideToFind = radionuclides.find(n => n.symbol === item.nuclideSymbol); if (nuclideToFind) onNuclideClick(nuclideToFind);}} className="text-sky-600 dark:text-sky-400 hover:underline">
+                                            {item.nuclideName}
+                                        </button>
+                                    </td>
+                                    <td className="p-3 font-mono">{item.displayEnergy}</td>
+                                    <td className="p-3"><span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${bgColor} ${textColor}`}>{item.category || 'N/A'}</span></td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+/**
+ * @description Integrated Peak Identifier module. Combines a smart search tool (with fingerprinting) and data tables.
+ */
+const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    const [peakIdMode, setPeakIdMode] = React.useState('search'); 
+    
+    // Search Tool State
+    const [searchEnergy, setSearchEnergy] = React.useState('');
+    const [resolution, setResolution] = React.useState('low'); // 'high' (HPGe) or 'low' (NaI)
+    const [minYield, setMinYield] = React.useState('1');
+    const [matches, setMatches] = React.useState([]);
+    const [analysis, setAnalysis] = React.useState(null);
+
+    // --- LIBRARY GENERATION (Integrated) ---
+    const PEAK_LIBRARY = React.useMemo(() => {
+        const lib = [];
+        // A. Ingest from DB
+        if (radionuclides) {
+            radionuclides.forEach(n => {
+                if (n.gammaPeaks) {
+                    n.gammaPeaks.forEach(p => {
+                        lib.push({ symbol: n.symbol, name: n.name, energy: p.energy, yield: p.yield, confirm: null });
+                    });
+                }
+            });
+        }
+        // B. Fallback/Enrichment
+        const COMMON_ISOTOPES = [
+            { symbol: 'Cs-137', name: 'Cesium-137', energy: 661.7, yield: 85.1, confirm: 'Single Peak' },
+            { symbol: 'Co-60', name: 'Cobalt-60', energy: 1173.2, yield: 99.8, confirm: 'Look for 1332.5 keV' },
+            { symbol: 'Co-60', name: 'Cobalt-60', energy: 1332.5, yield: 99.9, confirm: 'Look for 1173.2 keV' },
+            { symbol: 'Am-241', name: 'Americium-241', energy: 59.5, yield: 35.9, confirm: 'Check for Alpha' },
+            { symbol: 'I-131', name: 'Iodine-131', energy: 364.5, yield: 81.2, confirm: 'Look for 284, 637 keV' },
+            { symbol: 'Tc-99m', name: 'Technetium-99m', energy: 140.5, yield: 89.0, confirm: 'Medical Short-lived' },
+            { symbol: 'K-40', name: 'Potassium-40', energy: 1460.8, yield: 10.7, confirm: 'Background NORM' },
+            { symbol: 'Ra-226', name: 'Radium-226', energy: 186.2, yield: 3.6, confirm: 'Check for 351, 609 keV' },
+            { symbol: 'U-235', name: 'Uranium-235', energy: 185.7, yield: 57.2, confirm: 'Look for 143, 163, 205 keV' },
+            { symbol: 'Ir-192', name: 'Iridium-192', energy: 316.5, yield: 82.7, confirm: 'Look for 468, 308 keV' },
+            { symbol: 'Ir-192', name: 'Iridium-192', energy: 468.1, yield: 47.8, confirm: 'Look for 316, 308 keV' },
+        ];
+        
+        COMMON_ISOTOPES.forEach(iso => {
+            const exists = lib.some(l => l.symbol === iso.symbol && Math.abs(l.energy - iso.energy) < 1);
+            if (!exists) lib.push(iso);
+            else {
+                const match = lib.find(l => l.symbol === iso.symbol && Math.abs(l.energy - iso.energy) < 1);
+                if(match && !match.confirm) match.confirm = iso.confirm;
+            }
+        });
+        return lib;
+    }, [radionuclides]);
+
+    const LEAD_XRAYS = [
+        { name: 'Pb K-α2', energy: 72.80 },
+        { name: 'Pb K-α1', energy: 74.97 },
+        { name: 'Pb K-β3', energy: 84.45 },
+        { name: 'Pb K-β1', energy: 84.94 },
+        { name: 'Pb K-β2', energy: 87.36 },
+    ];
+
+    // --- SEARCH LOGIC ---
+    React.useEffect(() => {
+        const energyVal = parseFloat(searchEnergy);
+        if (!searchEnergy || isNaN(energyVal)) { setMatches([]); setAnalysis(null); return; }
+
+        let tolerance = resolution === 'high' ? Math.max(2.0, energyVal * 0.01) : Math.max(20.0, energyVal * 0.07);
+        const yieldCutoff = parseFloat(minYield) || 0;
+
+        const results = PEAK_LIBRARY.filter(iso => {
+            const delta = Math.abs(iso.energy - energyVal);
+            return delta <= tolerance && iso.yield >= yieldCutoff;
+        });
+
+        results.sort((a, b) => {
+            if (Math.abs(b.yield - a.yield) > 20) return b.yield - a.yield; 
+            return Math.abs(a.energy - energyVal) - Math.abs(b.energy - energyVal);
+        });
+
+        setMatches(results);
+
+        // Analyze artifacts
+        const targetMeV = energyVal / 1000;
+        const mc2 = 0.511;
+        const comptonEdge = targetMeV / (1 + (mc2 / (2 * targetMeV)));
+        const singleEscape = targetMeV > 1.022 ? targetMeV - 0.511 : null;
+        const doubleEscape = targetMeV > 1.022 ? targetMeV - 1.022 : null;
+        const leadXrayMatch = LEAD_XRAYS.find(xray => Math.abs(xray.energy - energyVal) <= tolerance);
+
+        setAnalysis({
+            comptonEdge: (comptonEdge * 1000).toFixed(1), // Convert back to keV for display if preferred, or keep MeV
+            singleEscape: singleEscape ? (singleEscape * 1000).toFixed(1) : null,
+            doubleEscape: doubleEscape ? (doubleEscape * 1000).toFixed(1) : null,
+            isLeadXray: leadXrayMatch ? leadXrayMatch.name : null,
+        });
+
+    }, [searchEnergy, resolution, minYield, PEAK_LIBRARY]);
+
+    const handleSave = () => {
+        if (matches.length > 0) {
+            addHistory({ id: Date.now(), type: 'Peak ID', icon: ICONS.gammaSpec, inputs: `${searchEnergy} keV (${resolution})`, result: `Match: ${matches[0].symbol}`, view: VIEWS.GAMMA_SPEC });
+            addToast("Saved!");
+        }
+    };
+
+    const handleClearInputs = () => {
+        setSearchEnergy(''); setResolution('low'); setMinYield('1'); setMatches([]); setAnalysis(null);
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Peak Identifier</h2>
+                    <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                        <Icon path={ICONS.clear} className="w-3 h-3"/> Clear
+                    </button>
+                </div>
+                
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                    <button onClick={() => setPeakIdMode('search')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${peakIdMode === 'search' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Search</button>
+                    <button onClick={() => setPeakIdMode('tables')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${peakIdMode === 'tables' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Data Tables</button>
+                </div>
+
+                {peakIdMode === 'search' ? (
+                    <div className="animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div><label className="block text-sm font-medium">Peak Energy (keV)</label><input type="number" value={searchEnergy} onChange={e => setSearchEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-bold text-lg" autoFocus/></div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div><label className="block text-sm font-medium">Min Yield %</label><input type="number" value={minYield} onChange={e => setMinYield(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                                <div><label className="block text-sm font-medium">Detector</label><select value={resolution} onChange={e => setResolution(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="low">NaI (Low)</option><option value="high">HPGe (High)</option></select></div>
+                            </div>
+                        </div>
+
+                        {analysis && ( 
+                            <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Artifact Analysis</h3>
+                                <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                                    <div><p className="text-xs text-slate-400">Compton Edge</p><p className="font-mono">{analysis.comptonEdge} keV</p></div>
+                                    {analysis.singleEscape && <div><p className="text-xs text-slate-400">Single Esc.</p><p className="font-mono">{analysis.singleEscape} keV</p></div>}
+                                    {analysis.doubleEscape && <div><p className="text-xs text-slate-400">Double Esc.</p><p className="font-mono">{analysis.doubleEscape} keV</p></div>}
+                                </div>
+                                {analysis.isLeadXray && <p className="mt-2 text-xs font-bold text-amber-600 text-center">Consistent with {analysis.isLeadXray} X-ray (Shielding)</p>}
+                            </div> 
+                        )}
+
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                            {matches.length > 0 ? (
+                                matches.map((m, idx) => (
+                                    <div key={idx} onClick={() => { if(m.symbol) { const n = radionuclides.find(r => r.symbol === m.symbol); if(n) onNuclideClick(n); } }} className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-sky-200 cursor-pointer transition-all">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className="font-bold text-sky-600 dark:text-sky-400">{m.name} ({m.symbol})</p>
+                                                <div className="flex gap-2 text-xs mt-1">
+                                                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{m.energy.toFixed(1)} keV</span>
+                                                    <span className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-slate-600 dark:text-slate-300">Y: {m.yield}%</span>
+                                                </div>
+                                                {m.confirm && <p className="text-xs text-amber-600 mt-1 italic"><Icon path={ICONS.gammaSpec} className="w-3 h-3 inline mr-1"/>{m.confirm}</p>}
+                                            </div>
+                                            <span className={`text-xs px-2 py-1 rounded-full font-bold ${Math.abs(m.energy - parseFloat(searchEnergy)) < 1 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>Δ {Math.abs(m.energy - parseFloat(searchEnergy)).toFixed(1)}</span>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-center text-slate-400 py-4">{searchEnergy ? "No matches found." : "Enter energy to search."}</p>
+                            )}
+                        </div>
+                        {matches.length > 0 && <div className="mt-4 flex justify-center"><button onClick={handleSave} className="text-sm font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1"><Icon path={ICONS.notepad} className="w-4 h-4"/> Save Top Match</button></div>}
+                    </div>
+                ) : (
+                    <PeakDataTables radionuclides={radionuclides} onNuclideClick={onNuclideClick} />
+                )}
+            </div>
+        </div>
+    );
+};
+
               /**
                * @description A calculator that uses the Bateman equations to model the activity of every
                * nuclide in a full decay series over time.
@@ -20746,464 +20626,8 @@ const MARSSIM_SampleDesign = () => {
         </div>
     );
 };
-              
-              /**
-              * @file ChiSquaredCalculator.jsx
-              * @description React component for a Chi-Squared (χ²) Test calculator.
-              * This tool is used in health physics and other fields to check the stability
-              * of a counting system by comparing the variance of repeated measurements
-              * to the expected variance of a Poisson distribution.
-              *
-              * It calculates the χ² value, compares it against critical values for a
-              * given significance level (α), and determines if the system 'PASSES' or
-              * 'FAILS' the test for stability.
-              *
-              * @prop {string} chiSquaredData - String of raw, separated count data.
-              * @prop {function} setChiSquaredData - State setter for the count data.
-              * @prop {string} alpha - The significance level (e.g., '0.05').
-              * @prop {function} setAlpha - State setter for the significance level.
-              * @prop {object} result - Object containing the test result and details.
-              * @prop {function} setResult - State setter for the test result.
-              * @prop {string} error - Any error message to display.
-              * @prop {function} setError - State setter for error messages.
-              */
-              
-         const ChiSquaredCalculator = ({ chiSquaredData, setChiSquaredData, alpha, setAlpha, result, setResult, error, setError }) => {
-         const { addHistory } = useCalculationHistory();
-         const { addToast } = useToast();
-         const CHI_SQUARED_CRITICAL_VALUES = { '0.10': { lowerP: 0.05, upperP: 0.95, 1: 0.004, 2: 0.103, 3: 0.352, 4: 0.711, 5: 1.145, 6: 1.635, 7: 2.167, 8: 2.733, 9: 3.325, 10: 3.940, 11: 4.575, 12: 5.226, 13: 5.892, 14: 6.571, 15: 7.261, 16: 7.962, 17: 8.672, 18: 9.390, 19: 10.117, 20: 10.851, 21: 11.591, 22: 12.338, 23: 13.091, 24: 13.848, 25: 14.611, 26: 15.379, 27: 16.151, 28: 16.928, 29: 17.708, 30: 18.493, 40: 26.509 }, '0.05': { lowerP: 0.025, upperP: 0.975, 1: 0.001, 2: 0.051, 3: 0.216, 4: 0.484, 5: 0.831, 6: 1.237, 7: 1.690, 8: 2.180, 9: 2.700, 10: 3.247, 11: 3.816, 12: 4.404, 13: 5.009, 14: 5.629, 15: 6.262, 16: 6.908, 17: 7.564, 18: 8.231, 19: 8.907, 20: 9.591, 21: 10.283, 22: 10.982, 23: 11.689, 24: 12.401, 25: 13.120, 26: 13.844, 27: 14.573, 28: 15.308, 29: 16.047, 30: 16.791, 40: 24.433 }, '0.01': { lowerP: 0.005, upperP: 0.995, 1: 0.000, 2: 0.010, 3: 0.072, 4: 0.207, 5: 0.412, 6: 0.676, 7: 0.989, 8: 1.344, 9: 1.735, 10: 2.156, 11: 2.603, 12: 3.074, 13: 3.565, 14: 4.075, 15: 4.601, 16: 5.142, 17: 5.697, 18: 6.265, 19: 6.844, 20: 7.434, 21: 8.034, 22: 8.643, 23: 9.260, 24: 9.886, 25: 10.520, 26: 11.160, 27: 11.808, 28: 12.461, 29: 13.121, 30: 13.787, 40: 20.707 } };
-         const UPPER_BOUNDS = { '0.10': { 1: 3.841, 2: 5.991, 3: 7.815, 4: 9.488, 5: 11.070, 6: 12.592, 7: 14.067, 8: 15.507, 9: 16.919, 10: 18.307, 11: 19.675, 12: 21.026, 13: 22.362, 14: 23.685, 15: 24.996, 16: 26.296, 17: 27.587, 18: 28.869, 19: 30.144, 20: 31.410, 21: 32.671, 22: 33.924, 23: 35.172, 24: 36.415, 25: 37.652, 26: 38.885, 27: 40.113, 28: 41.337, 29: 42.557, 30: 43.773, 40: 55.758 }, '0.05': { 1: 5.024, 2: 7.378, 3: 9.348, 4: 11.143, 5: 12.833, 6: 14.449, 7: 16.013, 8: 17.535, 9: 19.023, 10: 20.483, 11: 21.920, 12: 23.337, 13: 24.736, 14: 26.119, 15: 27.488, 16: 28.845, 17: 30.191, 18: 31.526, 19: 32.852, 20: 34.170, 21: 35.479, 22: 36.781, 23: 38.076, 24: 39.364, 25: 40.646, 26: 41.923, 27: 43.195, 28: 44.461, 29: 45.722, 30: 46.979, 40: 59.342 }, '0.01': { 1: 7.879, 2: 10.597, 3: 12.838, 4: 14.860, 5: 16.750, 6: 18.548, 7: 20.278, 8: 21.955, 9: 23.589, 10: 25.188, 11: 26.757, 12: 28.300, 13: 29.819, 14: 31.319, 15: 32.801, 16: 34.267, 17: 35.718, 18: 37.156, 19: 38.582, 20: 39.997, 21: 41.401, 22: 42.796, 23: 44.181, 24: 45.559, 25: 46.928, 26: 48.290, 27: 49.645, 28: 50.993, 29: 52.336, 30: 53.672, 40: 66.766 } };
-         const resultStyles = { PASS: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', text: 'text-green-800 dark:text-green-200' }, FAIL: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', text: 'text-red-800 dark:text-red-200' } };
-         
-         const parseData = (dataString) => dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
-         
-// --- ROBUST CALCULATION LOGIC (Wilson-Hilferty Approximation) ---
-  React.useEffect(() => {
-    try {
-      setError('');
-      
-      // 1. Parse Data
-      const dataPoints = chiSquaredData.split(/[\s,]+/).filter(v => v.trim() !== '').map(Number);
 
-      if (dataPoints.some(isNaN)) {
-        if (chiSquaredData.trim().length > 0) setError("Data contains non-numeric values.");
-        setResult(null);
-        return;
-      }
-
-      const n = dataPoints.length;
-      if (n < 2) {
-        setResult(null); 
-        return;
-      }
-
-      // 2. Calculate Chi-Squared Statistic
-      const mean = dataPoints.reduce((sum, val) => sum + val, 0) / n;
-      const chiSquared = dataPoints.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / mean;
-      const df = n - 1;
-
-      // 3. Determine Critical Values
-      let lowerCrit, upperCrit;
-      
-      // Z-Scores: 0.10->1.645, 0.05->1.960, 0.01->2.576
-      const zScoreMap = { '0.10': 1.64485, '0.05': 1.95996, '0.01': 2.57583 };
-      const z = zScoreMap[alpha];
-
-      const tableRow = CHI_SQUARED_CRITICAL_VALUES?.[alpha];
-      
-      // Try Table Lookup
-      if (tableRow && tableRow[df] !== undefined) {
-        if (Array.isArray(tableRow[df])) {
-             [lowerCrit, upperCrit] = tableRow[df];
-        } else {
-             lowerCrit = undefined; 
-        }
-      }
-
-      // 4. Large Sample Approximation (Wilson-Hilferty) if table lookup fails
-      if (lowerCrit === undefined || upperCrit === undefined) {
-        const term1 = 2 / (9 * df);
-        const term2 = z * Math.sqrt(term1);
-        lowerCrit = df * Math.pow(1 - term1 - term2, 3);
-        upperCrit = df * Math.pow(1 - term1 + term2, 3);
-      }
-
-      // 5. Conclusion
-      const pass = chiSquared >= lowerCrit && chiSquared <= upperCrit;
-
-      setResult({
-        n: n,
-        df: df,
-        mean: mean.toFixed(2),
-        chiSquared: chiSquared.toFixed(4),
-        lowerBound: lowerCrit.toFixed(3),
-        upperBound: upperCrit.toFixed(3),
-        conclusion: pass ? 'PASS' : 'FAIL'
-      });
-
-    } catch (e) {
-      console.error(e);
-      setError("An error occurred during calculation.");
-      setResult(null);
-    }
-  }, [chiSquaredData, alpha]);
-         
-         const handleSaveToHistory = () => {
-             if (result) {
-                 addHistory({ id: Date.now(), type: 'χ² Test', icon: ICONS.labStats, inputs: `N=${result.n}, α=${alpha}`, result: `χ²=${result.chiSquared}, ${result.conclusion}`, view: VIEWS.LAB_STATS });
-                 addToast("Calculation saved to history!");
-             }
-         };
-         
-         return (
-         <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Checks if a counting system is statistically stable.</p>
-            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                <div>
-                    <div className="flex justify-between items-center"><label className="block text-sm font-medium">Repeated Count Data</label><button onClick={() => setChiSquaredData('')} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">Clear</button></div>
-                    <textarea value={chiSquaredData} onChange={e => setChiSquaredData(e.target.value)} rows="8" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated count values..."></textarea>
-                </div>
-                <div>
-                    <label className="block text-sm font-medium">Significance Level (α)</label>
-                    <select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="0.10">0.10</option><option value="0.05">0.05</option><option value="0.01">0.01</option></select>
-                </div>
-            </div>
-            <button onClick={handleSaveToHistory} disabled={!result} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition disabled:bg-slate-400 dark:disabled:bg-slate-600 disabled:cursor-not-allowed">Save to Calculations</button>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {result && (
-                 <div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${resultStyles[result.conclusion].container}`}>
-                    <p className={`text-3xl font-extrabold ${resultStyles[result.conclusion].title}`}>SYSTEM {result.conclusion}ES</p>
-                    <p className={`mt-2 text-sm ${resultStyles[result.conclusion].text}`}>The observed variance is {result.conclusion === 'PASS' ? 'consistent with' : 'not consistent with'} a random Poisson distribution.</p>
-                    <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 text-sm">
-                        <p>Calculated χ² of <strong>{result.chiSquared}</strong> is {result.conclusion === 'PASS' ? 'within' : 'outside'} the acceptable range of <strong>{result.lowerBound}</strong> to <strong>{result.upperBound}</strong>.</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(for N={result.n}, df={result.df}, α={alpha})</p>
-                    </div>
-                </div>
-            )}
-         </div>
-         );
-         };
-              
-              /**
-              * @description React component for a Dead Time Correction calculator.
-              * This tool calculates the true count rate of a radiation detector, accounting
-              * for the "dead time"—the brief period after a count is registered during which
-              * the detector cannot detect another particle.
-              *
-              * It uses the formula:
-              * N = R / (1 - R * τ)
-              * where:
-              * N = true count rate
-              * R = observed count rate
-              * τ = detector dead time
-              *
-              * This component takes observed counts per minute (CPM) and dead time in microseconds (µs)
-              * as inputs and provides the corrected CPM and the percentage of counts lost due to dead time.
-              * The calculation is automatically updated whenever the input values change.
-              *
-              * @prop {string} observedCpm - Observed counts per minute.
-              * @prop {function} setObservedCpm - State setter for observed CPM.
-              * @prop {string} deadTime - Dead time in microseconds.
-              * @prop {function} setDeadTime - State setter for dead time.
-              * @prop {object} result - Object containing the corrected rate and lost percentage.
-              * @prop {function} setResult - State setter for the result.
-              * @prop {string} error - Any error message to display.
-              * @prop {function} setError - State setter for error messages.
-              */
-              
-         const DeadTimeCorrector = ({ observedCpm, setObservedCpm, deadTime, setDeadTime, result, setResult, error, setError }) => {
-         const { addHistory } = useCalculationHistory();
-         const { addToast } = useToast();
-         
-         React.useEffect(() => {
-         try {
-            setError('');
-            const R = parseFloat(observedCpm);
-            const tau_us = parseFloat(deadTime);
-            if (isNaN(R) || isNaN(tau_us) || R < 0 || tau_us < 0) {
-                if(observedCpm || deadTime) setError("Inputs must be positive numbers.");
-                setResult(null); return;
-            }
-            const R_cps = R / 60.0;
-            const tau_s = tau_us / 1e6;
-            const denominator = 1 - (R_cps * tau_s);
-            if (denominator <= 0) { throw new Error("Count rate is too high for this dead time; detector is saturated."); }
-            const N_cps = R_cps / denominator;
-            const N_cpm = N_cps * 60;
-            const lossPercent = (1 - (R / N_cpm)) * 100;
-            setResult({ trueCpm: N_cpm, lossPercent });
-         } catch(e) { setError(e.message); setResult(null); }
-         }, [observedCpm, deadTime, setResult, setError]);
-         
-         const handleSaveToHistory = () => {
-             if (result) {
-                addHistory({ id: Date.now(), type: 'Dead Time Correction', icon: ICONS.stopwatch, inputs: `Obs: ${observedCpm} cpm, τ: ${deadTime} µs`, result: `True: ${Math.round(result.trueCpm)} cpm`, view: VIEWS.LAB_STATS });
-                addToast("Calculation saved to history!");
-             }
-         };
-         
-         return (
-         <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Corrects for counts missed at high rates.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium">Observed Count Rate (CPM)</label><input type="number" value={observedCpm} onChange={e => setObservedCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Detector Dead Time (µs)</label><input type="number" value={deadTime} onChange={e => setDeadTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            </div>
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            {result && (
-                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-                     <div className="flex justify-between items-center -mt-2 -mb-2">
-                         <div></div> {/* Spacer */}
-                         <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Corrected (True) Count Rate</p>
-                         <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                            <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                                <Icon path={ICONS.notepad} className="w-5 h-5" />
-                            </button>
-                         </Tooltip>
-                     </div>
-                    <div className="flex items-center justify-center">
-                        <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{Math.round(result.trueCpm).toLocaleString()}</p>
-                        <CopyButton textToCopy={Math.round(result.trueCpm)} />
-                    </div>
-         
-                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">CPM</p>
-                    <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600">
-                        <p className={`font-semibold text-lg ${result.lossPercent > 20 ? 'text-red-500' : result.lossPercent > 10 ? 'text-amber-500' : 'text-slate-600 dark:text-slate-300'}`}>{result.lossPercent.toFixed(1)}% Counts Lost</p>
-                    </div>
-                </div>
-            )}
-         </div>
-         );
-         };
-              
-              
-         const RpdCalculator = ({ sample1, setSample1, sample2, setSample2, result, setResult }) => {
-         const { addHistory } = useCalculationHistory();
-         const { addToast } = useToast();
-         
-         React.useEffect(() => {
-         const s1 = parseFloat(sample1);
-         const s2 = parseFloat(sample2);
-         if (!isNaN(s1) && !isNaN(s2) && (s1 + s2 > 0)) {
-            const rpd = Math.abs(s1 - s2) / ((s1 + s2) / 2) * 100;
-            setResult({ rpd: rpd.toFixed(2), isGood: rpd <= 20 });
-         } else { setResult(null); }
-         }, [sample1, sample2, setResult]);
-         
-         const handleSaveToHistory = () => {
-             if (result) {
-                addHistory({ id: Date.now(), type: 'RPD', icon: ICONS.compare, inputs: `S1: ${sample1}, S2: ${sample2}`, result: `${result.rpd}%`, view: VIEWS.LAB_STATS });
-                addToast("Calculation saved to history!");
-             }
-         };
-         
-         return (
-         <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Compares duplicate samples for precision.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium">Sample 1 Value</label><input type="number" value={sample1} onChange={e => setSample1(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Sample 2 (Duplicate) Value</label><input type="number" value={sample2} onChange={e => setSample2(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            </div>
-            {result && (
-                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-                     <div className="flex justify-between items-center -mt-2 -mb-2">
-                         <div></div> {/* Spacer */}
-                         <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Relative Percent Difference (RPD)</p>
-                         <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                            <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                                <Icon path={ICONS.notepad} className="w-5 h-5" />
-                            </button>
-                         </Tooltip>
-                     </div>
-                    <div className="flex items-center justify-center">
-                        <p className={`text-3xl font-bold ${result.isGood ? 'text-sky-600 dark:text-sky-400' : 'text-amber-500'}`}>{result.rpd}%</p>
-                        <CopyButton textToCopy={result.rpd} />
-                    </div>
-           
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">(A difference of ≤ 20% is often acceptable)</p>
-                </div>
-            )}
-         </div>
-         );
-         };
-              
-         const FwhmCalculator = ({ centroid, setCentroid, lower, setLower, upper, setUpper, result, setResult }) => {
-         const { addHistory } = useCalculationHistory();
-         const { addToast } = useToast();
-         
-         React.useEffect(() => {
-         const c = parseFloat(centroid); const l = parseFloat(lower); const u = parseFloat(upper);
-         if (!isNaN(c) && !isNaN(l) && !isNaN(u) && c > 0 && u > l) {
-            const fwhm = u - l; const resolution = (fwhm / c) * 100;
-            setResult({ fwhm: fwhm.toFixed(2), resolution: resolution.toFixed(2) });
-         } else { setResult(null); }
-         }, [centroid, lower, upper, setResult]);
-         
-         const handleSaveToHistory = () => {
-             if (result) {
-                addHistory({ id: Date.now(), type: 'FWHM / Resolution', icon: ICONS.gammaSpec, inputs: `Centroid: ${centroid} keV`, result: `${result.resolution}% Resolution`, view: VIEWS.LAB_STATS });
-                addToast("Calculation saved to history!");
-             }
-         };
-         
-         return (
-         <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">Calculates detector energy resolution.</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div><label className="block text-sm font-medium">Peak Centroid (keV)</label><input type="number" value={centroid} onChange={e => setCentroid(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Lower Energy @ ½ Max (keV)</label><input type="number" value={lower} onChange={e => setLower(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Upper Energy @ ½ Max (keV)</label><input type="number" value={upper} onChange={e => setUpper(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            </div>
-            {result && (
-                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in">
-                     <div className="flex justify-end -mt-2 -mr-2">
-                         <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                            <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                                <Icon path={ICONS.notepad} className="w-5 h-5" />
-                            </button>
-                         </Tooltip>
-                     </div>
-                     <div className="grid grid-cols-2 gap-4 -mt-2">
-                         <div className="text-center">
-                             <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">FWHM</p>
-                             <div className="flex items-center justify-center">
-                                 <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.fwhm} <span className="text-xl opacity-75">keV</span></p>
-                                 <CopyButton textToCopy={result.fwhm} />
-                             </div>
-                         </div>
-                         <div className="text-center">
-                             <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Resolution</p>
-                             <div className="flex items-center justify-center">
-                                 <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.resolution}%</p>
-                                 <CopyButton textToCopy={result.resolution} />
-                             </div>
-                         </div>
-                     </div>
-                </div>
-            )}
-         </div>
-         );
-         };
-              
-              const LabStatistics = () => {
-              const [activeCalculator, setActiveCalculator] = React.useState('chiSquared');
-              
-              // State for ChiSquaredCalculator (Lifted)
-              const [chi_chiSquaredData, setChi_chiSquaredData] = React.useState('');
-              const [chi_alpha, setChi_alpha] = React.useState('0.05');
-              const [chi_result, setChi_result] = React.useState(null);
-              const [chi_error, setChi_error] = React.useState('');
-              
-              // State for DeadTimeCorrector (Lifted)
-              const [dt_observedCpm, setDt_observedCpm] = React.useState('50000');
-              const [dt_deadTime, setDt_deadTime] = React.useState('100');
-              const [dt_result, setDt_result] = React.useState(null);
-              const [dt_error, setDt_error] = React.useState('');
-              
-              // State for RpdCalculator (Lifted)
-              const [rpd_sample1, setRpd_sample1] = React.useState('1250');
-              const [rpd_sample2, setRpd_sample2] = React.useState('1180');
-              const [rpd_result, setRpd_result] = React.useState(null);
-              
-              // State for FwhmCalculator (Lifted)
-              const [fwhm_centroid, setFwhm_centroid] = React.useState('661.7');
-              const [fwhm_lower, setFwhm_lower] = React.useState('658.2');
-              const [fwhm_upper, setFwhm_upper] = React.useState('665.2');
-              const [fwhm_result, setFwhm_result] = React.useState(null);
-              
-              // Clear Logic (Lifted)
-              const handleChiClear = () => {
-              setChi_chiSquaredData(''); setChi_alpha('0.05');
-              setChi_result(null); setChi_error('');
-              };
-              const handleDeadTimeClear = () => {
-              setDt_observedCpm('50000'); setDt_deadTime('100');
-              setDt_result(null); setDt_error('');
-              };
-              const handleRpdClear = () => {
-              setRpd_sample1('1250'); setRpd_sample2('1180');
-              setRpd_result(null);
-              };
-              const handleFwhmClear = () => {
-              setFwhm_centroid('661.7'); setFwhm_lower('658.2'); setFwhm_upper('665.2');
-              setFwhm_result(null);
-              };
-              
-              const handleClearActiveCalculator = () => {
-              switch (activeCalculator) {
-                 case 'chiSquared': handleChiClear(); break;
-                 case 'deadTime': handleDeadTimeClear(); break;
-                 case 'rpd': handleRpdClear(); break;
-                 case 'fwhm': handleFwhmClear(); break;
-                 default: break;
-              }
-              };
-              
-              const calculatorViews = {
-              chiSquared: { 
-                 label: 'χ² Test', 
-                 component: <ChiSquaredCalculator 
-                     chiSquaredData={chi_chiSquaredData} setChiSquaredData={setChi_chiSquaredData}
-                     alpha={chi_alpha} setAlpha={setChi_alpha}
-                     result={chi_result} setResult={setChi_result}
-                     error={chi_error} setError={setChi_error}
-                 /> 
-              },
-              deadTime: { 
-                 label: 'Dead Time', 
-                 component: <DeadTimeCorrector 
-                     observedCpm={dt_observedCpm} setObservedCpm={setDt_observedCpm}
-                     deadTime={dt_deadTime} setDeadTime={setDt_deadTime}
-                     result={dt_result} setResult={setDt_result}
-                     error={dt_error} setError={setDt_error}
-                 /> 
-              },
-              rpd: { 
-                 label: 'RPD', 
-                 component: <RpdCalculator 
-                     sample1={rpd_sample1} setSample1={setRpd_sample1}
-                     sample2={rpd_sample2} setSample2={setRpd_sample2}
-                     result={rpd_result} setResult={setRpd_result}
-                 /> 
-              },
-              fwhm: { 
-                 label: 'FWHM', 
-                 component: <FwhmCalculator 
-                     centroid={fwhm_centroid} setCentroid={setFwhm_centroid}
-                     lower={fwhm_lower} setLower={setFwhm_lower}
-                     upper={fwhm_upper} setUpper={setFwhm_upper}
-                     result={fwhm_result} setResult={setFwhm_result}
-                 /> 
-              },
-              };
-              
-              return (
-              <div className="p-4 animate-fade-in">
-                 <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                     <div className="flex justify-between items-center mb-4">
-                         <h2 className="text-xl font-bold text-slate-800 dark:text-white">Lab Statistics & QA/QC</h2>
-                         <ClearButton onClick={handleClearActiveCalculator} />
-                     </div>
-                     <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6 overflow-x-auto">
-                         {Object.entries(calculatorViews).map(([key, { label }]) => (
-                             <button
-                                 key={key}
-                                 onClick={() => setActiveCalculator(key)}
-                                 className={`flex-shrink-0 w-1/4 p-2 rounded-md text-sm font-semibold transition-colors ${ activeCalculator === key ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}
-                             >
-                                 {label}
-                             </button>
-                         ))}
-                     </div>
-                     <div className="mt-4">
-                         {calculatorViews[activeCalculator].component}
-                     </div>
-                 </div>
-              </div>
-              );
-              };
-              
-              // This component provides a user interface for performing two statistical tests from the Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM): the Wilcoxon Rank Sum (WRS) test for survey units and the Elevated Measurement Comparison (EMC) Sign Test for localized areas.
+// This component provides a user interface for performing two statistical tests from the Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM): the Wilcoxon Rank Sum (WRS) test for survey units and the Elevated Measurement Comparison (EMC) Sign Test for localized areas.
               
 // 1. : Parent Component
 const MARSSIM_Statistical_Tests = () => {
@@ -21695,7 +21119,421 @@ const EMC_Evaluation_Calculator = ({ dcglw, setDcglw, areaFactor, setAreaFactor,
             )}
         </div>
     );
-};           
+};
+
+// 1. NEW: MDA Calculator (Currie Equation)
+const MdaCalculator = ({ bkgCounts, setBkgCounts, countTime, setCountTime, bkgTime, setBkgTime, efficiency, setEfficiency, effUnit, setEffUnit, probeArea, setProbeArea, result, setResult }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+
+    React.useEffect(() => {
+        try {
+            const Rb = parseFloat(bkgCounts) / parseFloat(bkgTime); // Rate Bkg
+            const Ts = parseFloat(countTime);
+            const Tb = parseFloat(bkgTime);
+            const effVal = parseFloat(efficiency);
+            const area = parseFloat(probeArea);
+
+            if (isNaN(Rb) || isNaN(Ts) || isNaN(Tb) || isNaN(effVal) || Ts <= 0 || Tb <= 0) { setResult(null); return; }
+
+            // Efficiency -> Decimal
+            const effDec = effUnit === '%' ? effVal / 100 : effVal;
+            if (effDec <= 0) { setResult(null); return; }
+
+            // Currie Equation (Paired vs Unpaired)
+            // Lc = Critical Level (Is it real?)
+            // Ld = Detection Limit (Can I see it?)
+            let Lc, Ld;
+
+            if (Math.abs(Ts - Tb) < 0.01) {
+                // Paired Observations (Ts = Tb) -> Simplified Currie
+                // Ld = 2.71 + 4.65 * sqrt(BkgCounts)
+                const B = Rb * Tb;
+                Lc = 2.33 * Math.sqrt(B);
+                Ld = 2.71 + 4.65 * Math.sqrt(B);
+            } else {
+                // Unpaired (Different times) -> NUREG-1507 exact formulation
+                // Ld (rate) = (2.71/Ts) + 3.29 * sqrt( Rb * (1/Ts + 1/Tb) )
+                const term1 = 2.71 / Ts;
+                const term2 = 3.29 * Math.sqrt(Rb * (1/Ts + 1/Tb));
+                const Ld_rate = term1 + term2;
+                Ld = Ld_rate * Ts; // Convert back to counts for display consistency
+                
+                // Lc (rate) = 1.645 * sqrt( Rb * (1/Ts + 1/Tb) )
+                const Lc_rate = 1.645 * Math.sqrt(Rb * (1/Ts + 1/Tb));
+                Lc = Lc_rate * Ts;
+            }
+
+            // Calculate MDA (Activity)
+            // MDA = Ld / (T * Eff * Yield * 2.22) -> Yield assumed 1 for now
+            // Result in dpm = Ld / (T * Eff) if T is min
+            const Ld_rate_cpm = Ld / Ts;
+            const mda_dpm = Ld_rate_cpm / effDec;
+            const mda_pCi = mda_dpm / 2.22;
+            const mdc_dpm_100cm2 = (mda_dpm / area) * 100;
+
+            setResult({ Lc: Math.round(Lc), Ld: Math.round(Ld), mda_dpm, mda_pCi, mdc: mdc_dpm_100cm2 });
+
+        } catch (e) { setResult(null); }
+    }, [bkgCounts, countTime, bkgTime, efficiency, effUnit, probeArea]);
+
+    const handleSave = () => {
+        if (result) {
+            addHistory({ id: Date.now(), type: 'MDA Calc', icon: ICONS.microscope, inputs: `Bkg: ${bkgCounts}c/${bkgTime}m`, result: `MDA: ${result.mda_dpm.toFixed(1)} dpm`, view: VIEWS.LAB_STATS });
+            addToast("Saved!");
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <ContextualNote type="info"><strong>Currie Equation:</strong> Calculates the <i>a priori</i> detection limit (Ld) ensuring 95% confidence of detection.</ContextualNote>
+            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                    <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" value={countTime} onChange={e => setCountTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                    <div>
+                        <label className="block text-sm font-medium">Efficiency</label>
+                        <div className="flex">
+                            <input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                            <select value={effUnit} onChange={e => setEffUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs"><option>%</option><option>dec</option></select>
+                        </div>
+                    </div>
+                </div>
+                <div><label className="block text-sm font-medium">Probe Area (cm²) <span className="text-xs text-slate-400 font-normal">(For MDC)</span></label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            </div>
+
+            {result && (
+                <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in shadow-sm">
+                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
+                    
+                    <div className="text-center mb-4">
+                        <p className="text-xs uppercase font-bold text-slate-500">Minimum Detectable Activity</p>
+                        <div className="flex items-center justify-center gap-2">
+                            <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.mda_dpm.toFixed(1)}</span>
+                            <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">dpm</span>
+                        </div>
+                        <p className="text-xs text-slate-500">({result.mda_pCi.toFixed(2)} pCi)</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 text-center border-t border-slate-200 dark:border-slate-600 pt-4">
+                        <div>
+                            <p className="text-xs text-slate-500">Critical Level (Lc)</p>
+                            <p className="font-mono font-bold">{result.Lc} counts</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-500">Detection Limit (Ld)</p>
+                            <p className="font-mono font-bold">{result.Ld} counts</p>
+                        </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600 text-center">
+                        <p className="text-xs text-slate-500">Surface MDC</p>
+                        <p className="font-bold text-slate-700 dark:text-slate-200">{result.mdc.toFixed(0)} dpm/100cm²</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// 2. UPDATED: ChiSquaredCalculator (Visual Polish)
+const ChiSquaredCalculator = ({ chiSquaredData, setChiSquaredData, alpha, setAlpha, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    // (Keep your existing CRITICAL_VALUES and UPPER_BOUNDS constants here...)
+    const CHI_SQUARED_CRITICAL_VALUES = { '0.10': { lowerP: 0.05, upperP: 0.95, 1: 0.004, 2: 0.103, 3: 0.352, 4: 0.711, 5: 1.145, 6: 1.635, 7: 2.167, 8: 2.733, 9: 3.325, 10: 3.940, 11: 4.575, 12: 5.226, 13: 5.892, 14: 6.571, 15: 7.261, 16: 7.962, 17: 8.672, 18: 9.390, 19: 10.117, 20: 10.851, 21: 11.591, 22: 12.338, 23: 13.091, 24: 13.848, 25: 14.611, 26: 15.379, 27: 16.151, 28: 16.928, 29: 17.708, 30: 18.493, 40: 26.509 }, '0.05': { lowerP: 0.025, upperP: 0.975, 1: 0.001, 2: 0.051, 3: 0.216, 4: 0.484, 5: 0.831, 6: 1.237, 7: 1.690, 8: 2.180, 9: 2.700, 10: 3.247, 11: 3.816, 12: 4.404, 13: 5.009, 14: 5.629, 15: 6.262, 16: 6.908, 17: 7.564, 18: 8.231, 19: 8.907, 20: 9.591, 21: 10.283, 22: 10.982, 23: 11.689, 24: 12.401, 25: 13.120, 26: 13.844, 27: 14.573, 28: 15.308, 29: 16.047, 30: 16.791, 40: 24.433 }, '0.01': { lowerP: 0.005, upperP: 0.995, 1: 0.000, 2: 0.010, 3: 0.072, 4: 0.207, 5: 0.412, 6: 0.676, 7: 0.989, 8: 1.344, 9: 1.735, 10: 2.156, 11: 2.603, 12: 3.074, 13: 3.565, 14: 4.075, 15: 4.601, 16: 5.142, 17: 5.697, 18: 6.265, 19: 6.844, 20: 7.434, 21: 8.034, 22: 8.643, 23: 9.260, 24: 9.886, 25: 10.520, 26: 11.160, 27: 11.808, 28: 12.461, 29: 13.121, 30: 13.787, 40: 20.707 } };
+    const UPPER_BOUNDS = { '0.10': { 1: 3.841, 2: 5.991, 3: 7.815, 4: 9.488, 5: 11.070, 6: 12.592, 7: 14.067, 8: 15.507, 9: 16.919, 10: 18.307, 11: 19.675, 12: 21.026, 13: 22.362, 14: 23.685, 15: 24.996, 16: 26.296, 17: 27.587, 18: 28.869, 19: 30.144, 20: 31.410, 21: 32.671, 22: 33.924, 23: 35.172, 24: 36.415, 25: 37.652, 26: 38.885, 27: 40.113, 28: 41.337, 29: 42.557, 30: 43.773, 40: 55.758 }, '0.05': { 1: 5.024, 2: 7.378, 3: 9.348, 4: 11.143, 5: 12.833, 6: 14.449, 7: 16.013, 8: 17.535, 9: 19.023, 10: 20.483, 11: 21.920, 12: 23.337, 13: 24.736, 14: 26.119, 15: 27.488, 16: 28.845, 17: 30.191, 18: 31.526, 19: 32.852, 20: 34.170, 21: 35.479, 22: 36.781, 23: 38.076, 24: 39.364, 25: 40.646, 26: 41.923, 27: 43.195, 28: 44.461, 29: 45.722, 30: 46.979, 40: 59.342 }, '0.01': { 1: 7.879, 2: 10.597, 3: 12.838, 4: 14.860, 5: 16.750, 6: 18.548, 7: 20.278, 8: 21.955, 9: 23.589, 10: 25.188, 11: 26.757, 12: 28.300, 13: 29.819, 14: 31.319, 15: 32.801, 16: 34.267, 17: 35.718, 18: 37.156, 19: 38.582, 20: 39.997, 21: 41.401, 22: 42.796, 23: 44.181, 24: 45.559, 25: 46.928, 26: 48.290, 27: 49.645, 28: 50.993, 29: 52.336, 30: 53.672, 40: 66.766 } };
+
+    React.useEffect(() => {
+        try {
+            setError('');
+            const dataPoints = chiSquaredData.split(/[\s,]+/).filter(v => v.trim() !== '').map(Number);
+            if (dataPoints.some(isNaN)) { if (chiSquaredData.trim().length > 0) setError("Data contains non-numeric values."); setResult(null); return; }
+            
+            const n = dataPoints.length;
+            if (n < 2) { setResult(null); return; }
+
+            const mean = dataPoints.reduce((sum, val) => sum + val, 0) / n;
+            const chiSquared = dataPoints.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / mean;
+            const df = n - 1;
+
+            let lowerCrit, upperCrit;
+            const tableRow = CHI_SQUARED_CRITICAL_VALUES?.[alpha];
+            if (tableRow && tableRow[df] !== undefined) {
+                if (Array.isArray(tableRow[df])) [lowerCrit, upperCrit] = tableRow[df];
+                else { lowerCrit = tableRow[df]; upperCrit = UPPER_BOUNDS[alpha][df]; } // Handle your logic
+            } else {
+                // Wilson-Hilferty approx
+                const zScoreMap = { '0.10': 1.645, '0.05': 1.960, '0.01': 2.576 };
+                const z = zScoreMap[alpha];
+                const term1 = 2 / (9 * df);
+                lowerCrit = df * Math.pow(1 - term1 - z * Math.sqrt(term1), 3);
+                upperCrit = df * Math.pow(1 - term1 + z * Math.sqrt(term1), 3);
+            }
+
+            const pass = chiSquared >= lowerCrit && chiSquared <= upperCrit;
+            setResult({ n, df, mean: mean.toFixed(2), chiSquared: chiSquared.toFixed(4), lowerBound: lowerCrit.toFixed(3), upperBound: upperCrit.toFixed(3), conclusion: pass ? 'PASS' : 'FAIL' });
+        } catch (e) { setError("Calculation Error"); setResult(null); }
+    }, [chiSquaredData, alpha]);
+
+    const handleSave = () => {
+        if (result) {
+            addHistory({ id: Date.now(), type: 'χ² Test', icon: ICONS.labStats, inputs: `N=${result.n}, α=${alpha}`, result: `χ²=${result.chiSquared} (${result.conclusion})`, view: VIEWS.LAB_STATS });
+            addToast("Saved!");
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                <div><label className="block text-sm font-medium">Count Data</label><textarea value={chiSquaredData} onChange={e => setChiSquaredData(e.target.value)} rows="5" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste counts..."></textarea></div>
+                <div><label className="block text-sm font-medium">Significance Level (α)</label><select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="0.10">0.10 (90%)</option><option value="0.05">0.05 (95%)</option><option value="0.01">0.01 (99%)</option></select></div>
+            </div>
+            
+            {result && (
+                <div className={`p-5 rounded-lg mt-4 text-center animate-fade-in shadow-sm ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                    <div className="flex justify-end -mt-3 -mr-3 mb-1"><button onClick={handleSave} className="text-slate-500 hover:text-black dark:hover:text-white"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
+                    <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>SYSTEM {result.conclusion}ES</p>
+                    <div className="mt-4 grid grid-cols-3 gap-2 text-sm border-t border-black/10 pt-4">
+                        <div><p className="text-xs text-slate-500">Lower Limit</p><p className="font-mono font-bold">{result.lowerBound}</p></div>
+                        <div><p className="text-xs text-slate-500">Calculated χ²</p><p className="font-mono font-bold text-lg">{result.chiSquared}</p></div>
+                        <div><p className="text-xs text-slate-500">Upper Limit</p><p className="font-mono font-bold">{result.upperBound}</p></div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// 3. UPDATED: DeadTimeCorrector (Visual Polish)
+const DeadTimeCorrector = ({ observedCpm, setObservedCpm, deadTime, setDeadTime, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    React.useEffect(() => {
+        try {
+            setError('');
+            const R = parseFloat(observedCpm); const tau = parseFloat(deadTime);
+            if (isNaN(R) || isNaN(tau) || R < 0 || tau < 0) { setResult(null); return; }
+            
+            const R_cps = R / 60.0;
+            const tau_s = tau / 1e6;
+            const denom = 1 - (R_cps * tau_s);
+            if (denom <= 0) throw new Error("Detector Saturated!");
+            
+            const N_cpm = (R_cps / denom) * 60;
+            setResult({ trueCpm: N_cpm, loss: (1 - R/N_cpm)*100 });
+        } catch(e) { setError(e.message); setResult(null); }
+    }, [observedCpm, deadTime]);
+
+    const handleSave = () => {
+        if (result) {
+            addHistory({ id: Date.now(), type: 'Dead Time', icon: ICONS.stopwatch, inputs: `Obs: ${observedCpm}, τ: ${deadTime}µs`, result: `True: ${Math.round(result.trueCpm)} cpm`, view: VIEWS.LAB_STATS });
+            addToast("Saved!");
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <div><label className="block text-sm font-medium">Observed CPM</label><input type="number" value={observedCpm} onChange={e => setObservedCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Dead Time (µs)</label><input type="number" value={deadTime} onChange={e => setDeadTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            </div>
+            {error && <p className="text-red-500 text-center text-sm">{error}</p>}
+            {result && (
+                <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg text-center shadow-sm">
+                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
+                    <p className="text-xs uppercase font-bold text-slate-500">True Count Rate</p>
+                    <p className="text-3xl font-extrabold text-sky-600 dark:text-sky-400 my-1">{Math.round(result.trueCpm).toLocaleString()}</p>
+                    <p className="text-sm text-slate-500 font-medium">cpm</p>
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
+                        <p className={`font-bold ${result.loss > 10 ? 'text-amber-500' : 'text-slate-600 dark:text-slate-300'}`}>{result.loss.toFixed(2)}% Loss</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// 4. UPDATED: RpdCalculator (Visual Polish)
+const RpdCalculator = ({ sample1, setSample1, sample2, setSample2, result, setResult }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    React.useEffect(() => {
+        const s1 = parseFloat(sample1); const s2 = parseFloat(sample2);
+        if (!isNaN(s1) && !isNaN(s2) && (s1+s2 > 0)) {
+            const rpd = Math.abs(s1 - s2) / ((s1 + s2)/2) * 100;
+            setResult({ rpd: rpd.toFixed(2), pass: rpd <= 20 });
+        } else { setResult(null); }
+    }, [sample1, sample2]);
+
+    const handleSave = () => {
+        if (result) {
+            addHistory({ id: Date.now(), type: 'RPD', icon: ICONS.compare, inputs: `${sample1} vs ${sample2}`, result: `${result.rpd}%`, view: VIEWS.LAB_STATS });
+            addToast("Saved!");
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <div><label className="block text-sm font-medium">Sample 1</label><input type="number" value={sample1} onChange={e => setSample1(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Sample 2</label><input type="number" value={sample2} onChange={e => setSample2(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            </div>
+            {result && (
+                <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg text-center shadow-sm">
+                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
+                    <p className="text-xs uppercase font-bold text-slate-500">Relative Percent Difference</p>
+                    <p className={`text-4xl font-extrabold my-2 ${result.pass ? 'text-sky-600 dark:text-sky-400' : 'text-amber-500'}`}>{result.rpd}%</p>
+                    {result.pass ? <p className="text-green-600 font-bold text-sm">Acceptable (≤ 20%)</p> : <p className="text-amber-600 font-bold text-sm">Investigate (> 20%)</p>}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// 5. UPDATED: FwhmCalculator (Visual Polish)
+const FwhmCalculator = ({ centroid, setCentroid, lower, setLower, upper, setUpper, result, setResult }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    React.useEffect(() => {
+        const c = parseFloat(centroid); const l = parseFloat(lower); const u = parseFloat(upper);
+        if (!isNaN(c) && !isNaN(l) && !isNaN(u) && c > 0) {
+            const fwhm = u - l;
+            setResult({ fwhm: fwhm.toFixed(2), res: (fwhm/c)*100 });
+        } else { setResult(null); }
+    }, [centroid, lower, upper]);
+
+    const handleSave = () => {
+        if (result) {
+            addHistory({ id: Date.now(), type: 'Resolution', icon: ICONS.gammaSpec, inputs: `Peak: ${centroid}`, result: `${result.res.toFixed(2)}%`, view: VIEWS.LAB_STATS });
+            addToast("Saved!");
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-2 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <div><label className="block text-xs font-bold mb-1">Centroid</label><input type="number" value={centroid} onChange={e => setCentroid(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="block text-xs font-bold mb-1">Lower ½</label><input type="number" value={lower} onChange={e => setLower(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="block text-xs font-bold mb-1">Upper ½</label><input type="number" value={upper} onChange={e => setUpper(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+            </div>
+            {result && (
+                <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg text-center shadow-sm">
+                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><p className="text-xs uppercase font-bold text-slate-500">FWHM</p><p className="text-2xl font-bold text-slate-700 dark:text-slate-200">{result.fwhm}</p></div>
+                        <div><p className="text-xs uppercase font-bold text-slate-500">Resolution</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.res.toFixed(2)}%</p></div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// 6. MAIN CONTAINER: LabStatistics
+const LabStatistics = () => {
+    const [activeTab, setActiveTab] = React.useState('mda');
+    
+    // MDA State
+    const [mda_bkgCounts, setMda_bkgCounts] = React.useState('50');
+    const [mda_countTime, setMda_countTime] = React.useState('1');
+    const [mda_bkgTime, setMda_bkgTime] = React.useState('1');
+    const [mda_eff, setMda_eff] = React.useState('10');
+    const [mda_effUnit, setMda_effUnit] = React.useState('%');
+    const [mda_area, setMda_area] = React.useState('100');
+    const [mda_result, setMda_result] = React.useState(null);
+
+    // ChiSq State
+    const [chi_data, setChi_data] = React.useState('');
+    const [chi_alpha, setChi_alpha] = React.useState('0.05');
+    const [chi_result, setChi_result] = React.useState(null);
+    const [chi_error, setChi_error] = React.useState('');
+
+    // DeadTime State
+    const [dt_obs, setDt_obs] = React.useState('50000');
+    const [dt_tau, setDt_tau] = React.useState('100');
+    const [dt_result, setDt_result] = React.useState(null);
+    const [dt_error, setDt_error] = React.useState('');
+
+    // RPD State
+    const [rpd_s1, setRpd_s1] = React.useState('1250');
+    const [rpd_s2, setRpd_s2] = React.useState('1180');
+    const [rpd_result, setRpd_result] = React.useState(null);
+
+    // FWHM State
+    const [fw_cent, setFw_cent] = React.useState('661.7');
+    const [fw_low, setFw_low] = React.useState('658.2');
+    const [fw_up, setFw_up] = React.useState('665.2');
+    const [fw_result, setFw_result] = React.useState(null);
+
+    const handleClear = () => {
+        if(activeTab === 'mda') { setMda_bkgCounts('50'); setMda_result(null); }
+        if(activeTab === 'chi') { setChi_data(''); setChi_result(null); }
+        if(activeTab === 'dt') { setDt_obs('50000'); setDt_result(null); }
+        if(activeTab === 'rpd') { setRpd_s1(''); setRpd_result(null); }
+        if(activeTab === 'fwhm') { setFw_cent(''); setFw_result(null); }
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Lab Statistics</h2>
+                    <ClearButton onClick={handleClear} />
+                </div>
+
+                {/* UPDATED: Centered Tabs using flex-1 and text-center */}
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6 overflow-x-auto no-scrollbar gap-1">
+                    {['mda', 'chi', 'dt', 'rpd', 'fwhm'].map(id => {
+                        const labels = { mda: 'MDA/MDC', chi: 'Chi-Sq', dt: 'Dead Time', rpd: 'RPD', fwhm: 'Resolution' };
+                        return (
+                            <button key={id} onClick={() => setActiveTab(id)} 
+                                className={`flex-1 min-w-fit px-2 py-2 rounded-md text-sm font-bold text-center whitespace-nowrap transition-all duration-200 
+                                ${activeTab === id 
+                                    ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm ring-1 ring-black/5 dark:ring-white/10' 
+                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-600'
+                                }`}>
+                                {labels[id]}
+                            </button>
+                        )
+                    })}
+                </div>
+
+                <div className="mt-2">
+                    {activeTab === 'mda' && <MdaCalculator 
+                        bkgCounts={mda_bkgCounts} setBkgCounts={setMda_bkgCounts} countTime={mda_countTime} setCountTime={setMda_countTime} 
+                        bkgTime={mda_bkgTime} setBkgTime={setMda_bkgTime} efficiency={mda_eff} setEfficiency={setMda_eff} 
+                        effUnit={mda_effUnit} setEffUnit={setMda_effUnit} probeArea={mda_area} setProbeArea={setMda_area} 
+                        result={mda_result} setResult={setMda_result} 
+                    />}
+                    {activeTab === 'chi' && <ChiSquaredCalculator 
+                        chiSquaredData={chi_data} setChiSquaredData={setChi_data} alpha={chi_alpha} setAlpha={setChi_alpha} 
+                        result={chi_result} setResult={setChi_result} error={chi_error} setError={setChi_error} 
+                    />}
+                    {activeTab === 'dt' && <DeadTimeCorrector 
+                        observedCpm={dt_obs} setObservedCpm={setDt_obs} deadTime={dt_tau} setDeadTime={setDt_tau} 
+                        result={dt_result} setResult={setDt_result} error={dt_error} setError={setDt_error} 
+                    />}
+                    {activeTab === 'rpd' && <RpdCalculator 
+                        sample1={rpd_s1} setSample1={setRpd_s1} sample2={rpd_s2} setSample2={setRpd_s2} 
+                        result={rpd_result} setResult={setRpd_result} 
+                    />}
+                    {activeTab === 'fwhm' && <FwhmCalculator 
+                        centroid={fw_cent} setCentroid={setFw_cent} lower={fw_low} setLower={setFw_low} upper={fw_up} setUpper={setFw_up} 
+                        result={fw_result} setResult={setFw_result} 
+                    />}
+                </div>
+            </div>
+        </div>
+    );
+};                       
+
+ 
               /**
               * @description A React component that renders a line chart for simple radioactive decay using Chart.js.
               * It can display the decay of a parent nuclide and the in-growth and decay of a single daughter nuclide.
