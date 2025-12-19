@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RadFlow v14.1 | Operations Manager</title>
+    <title>RadFlow v14.2 | Polished</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         /* --- VISUAL THEME (LIGHT MODE DEFAULT) --- */
@@ -151,7 +151,7 @@
 <body>
 
 <div class="sidebar">
-    <div class="brand"><i class="fa-solid fa-atom"></i> RadFlow v14.1</div>
+    <div class="brand"><i class="fa-solid fa-atom"></i> RadFlow v14.2</div>
     
     <div style="display:flex; flex-wrap:wrap; gap:5px; width:100%; margin-bottom: 1rem;">
         <div class="nav-item active" id="nav-dash" onclick="nav('dashboard')"><i class="fa-solid fa-gauge-high"></i> Dash</div>
@@ -191,7 +191,11 @@
             <div class="widget"><div class="widget-head"><span>Active Projects</span><span style="font-size:0.8rem; cursor:pointer; color:var(--accent);" onclick="nav('projects')">View All &rarr;</span></div><div id="dash-projects"></div></div>
             <div class="widget"><div class="widget-head"><span>Pending Actions</span><i class="fa-solid fa-bolt" style="color:var(--warning)"></i></div><div id="dash-tasks"></div></div>
             <div class="widget"><div class="widget-head">Inventory Snapshot</div><div id="dash-inv"></div></div>
-            <div class="widget" style="background: linear-gradient(145deg, var(--bg-panel), #2a1e38);"><div class="widget-head" style="color:white;">Financial Snapshot</div><div id="dash-fin"></div></div>
+            
+            <div class="widget">
+                <div class="widget-head">Financial Snapshot</div>
+                <div id="dash-fin"></div>
+            </div>
         </div>
     </div>
 
@@ -278,7 +282,7 @@
             {id: 3, projId: 104, desc: "Lead Shielding", amount: 8000, date: "2025-12-10", status: "Paid"},
             {id: 4, projId: 105, desc: "Excavator Deposit", amount: 12000, date: "2025-12-15", status: "Paid"}
         ],
-        chat: [{user: "System", time: "08:00 AM", text: "RadFlow v14.1 Ready."}]
+        chat: [{user: "System", time: "08:00 AM", text: "RadFlow v14.2 Ready."}]
     };
 
     // --- STATE ---
@@ -346,7 +350,7 @@
         
         // PROJECTS
         const pList = document.getElementById('dash-projects');
-        if(projects.length === 0) pList.innerHTML = '<div style="color:var(--text-muted); font-size:0.8rem; padding:10px;">No Active Projects</div>';
+        if(projects.length === 0) pList.innerHTML = '<div style="color:#64748b; font-size:0.8rem; padding:10px;">No Active Projects</div>';
         else pList.innerHTML = projects.map(p => {
             if(p.status === 'Complete') return '';
             const pct = p.tasks.length ? Math.round((p.tasks.filter(t=>t.done).length/p.tasks.length)*100) : 0;
@@ -357,12 +361,17 @@
         const tList = document.getElementById('dash-tasks');
         let tHtml = '';
         projects.forEach(p => { if(p.status!=='Complete') p.tasks.forEach(t => { if(!t.done) tHtml += `<div class="list-item" style="border-left-color:var(--warning)" onclick="viewProject(${p.id})"><span>${t.text}</span><span style="font-size:0.7rem; color:var(--text-muted)">${p.title}</span></div>`; }); });
-        tList.innerHTML = tHtml || '<div style="color:var(--text-muted); font-size:0.8rem; padding:10px;">No Pending Actions</div>';
+        tList.innerHTML = tHtml || '<div style="color:#64748b; font-size:0.8rem; padding:10px;">No Pending Actions</div>';
 
-        // FINANCE DASH
+        // FINANCE DASH (UPDATED: Clean Design)
         const totalBudg = projects.reduce((sum, p) => sum + (parseFloat(p.cost)||0), 0);
         const totalSpent = expenses.reduce((sum, e) => sum + (parseFloat(e.amount)||0), 0);
-        document.getElementById('dash-fin').innerHTML = `<div style="text-align:center; padding:10px;"><div style="color:var(--text-muted); font-size:0.8rem;">TOTAL SPENT</div><div style="font-size:1.5rem; font-weight:bold; color:var(--warning);">$${totalSpent.toLocaleString()}</div><div style="color:var(--text-muted); font-size:0.7rem; color:white;">Budget: $${totalBudg.toLocaleString()}</div><div style="margin-top:10px; cursor:pointer; color:var(--accent); font-size:0.8rem;" onclick="nav('finance')">Open Cost Tracker &rarr;</div></div>`;
+        document.getElementById('dash-fin').innerHTML = `<div style="text-align:center; padding:10px;">
+            <div style="color:var(--text-muted); font-size:0.8rem; margin-bottom:5px;">TOTAL SPENT</div>
+            <div style="font-size:1.5rem; font-weight:bold; color:var(--warning);">$${totalSpent.toLocaleString()}</div>
+            <div style="color:var(--text-muted); font-size:0.7rem; margin-top:5px;">Budget: $${totalBudg.toLocaleString()}</div>
+            <div style="margin-top:10px; cursor:pointer; color:var(--accent); font-size:0.8rem;" onclick="nav('finance')">Open Cost Tracker &rarr;</div>
+        </div>`;
 
         // FINANCE VIEW
         document.getElementById('fin-total-budget').innerText = "$" + totalBudg.toLocaleString();
@@ -373,7 +382,7 @@
         }).join('');
 
         // INV & OTHERS
-        document.getElementById('dash-inv').innerHTML = inventory.length === 0 ? '<div style="color:var(--text-muted); padding:10px;">Empty</div>' : inventory.slice(0,3).map(i => `<div class="list-item"><span>${i.id} (${i.iso})</span><span>${i.dose} mR/hr</span></div>`).join('');
+        document.getElementById('dash-inv').innerHTML = inventory.length === 0 ? '<div style="color:#64748b; padding:10px;">Empty</div>' : inventory.slice(0,3).map(i => `<div class="list-item"><span>${i.id} (${i.iso})</span><span>${i.dose} mR/hr</span></div>`).join('');
         document.getElementById('full-inv-list').innerHTML = inventory.map(i => `<tr><td>${i.id}</td><td style="color:var(--rad)">${i.iso}</td><td>${i.act}</td><td>${i.dose}</td><td>${i.status}</td></tr>`).join('');
         document.getElementById('full-project-list').innerHTML = projects.map(p => `<div class="list-item" onclick="viewProject(${p.id})"><span>${p.title}</span> <span>Due: ${p.due}</span></div>`).join('');
         document.getElementById('chatFeed').innerHTML = chatLog.map(c => `<div class="msg"><div class="msg-meta"><span>${c.user}</span><span>${c.time}</span></div><div>${c.text}</div></div>`).join('');
@@ -391,7 +400,7 @@
             <div class="header"><button class="btn-sync" style="width:auto" onclick="nav('dashboard')">&larr; Back</button> <button class="btn" style="background:var(--danger)" onclick="delProj(${p.id})">Delete</button></div>
             <div class="widget"><h1 style="margin:0;">${p.title}</h1><p style="color:var(--text-muted); border-bottom:1px solid var(--border); padding-bottom:10px;">${p.desc}</p>
             <div class="input-grid"><div><label style="font-size:0.7rem; color:var(--text-muted)">STATUS</label><select class="form-control" style="margin:0;" onchange="updStatus(${p.id},this.value)"><option ${p.status==='Planning'?'selected':''}>Planning</option><option ${p.status==='Active'?'selected':''}>Active</option><option ${p.status==='Review'?'selected':''}>Review</option><option ${p.status==='Complete'?'selected':''}>Complete</option></select></div><div><label style="font-size:0.7rem; color:var(--text-muted)">DUE DATE</label><div style="font-size:1.1rem; padding:8px 0;">${p.due}</div></div></div>
-            <div style="background:var(--bg-card); padding:15px; border-radius:8px; margin:20px 0; border:1px solid var(--border);"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span style="font-size:0.8rem; font-weight:bold;">BUDGET: $${budget.toLocaleString()}</span><span style="font-size:0.8rem; color:var(--warning);">SPENT: $${spent.toLocaleString()}</span></div><div class="progress-bar" style="width:100%; background:#1e293b;"><div class="progress-fill" style="width:${burn}%; background:var(--warning);"></div></div></div>
+            <div style="background:var(--bg-card); padding:15px; border-radius:8px; margin:20px 0; border:1px solid var(--border);"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span style="font-size:0.8rem; font-weight:bold;">BUDGET: $${budget.toLocaleString()}</span><span style="font-size:0.8rem; color:var(--warning);">SPENT: $${spent.toLocaleString()}</span></div><div class="progress-bar" style="width:100%; background:var(--bg-input);"><div class="progress-fill" style="width:${burn}%; background:var(--warning);"></div></div></div>
             <h3>Action Items</h3><div style="display:flex; gap:10px; margin-bottom:10px;"><input id="newT" class="form-control" style="margin:0" placeholder="New task..."><button class="btn" onclick="addTask(${p.id})">Add</button></div><div>${tHtml}</div></div>`;
         nav('project-detail');
     }
