@@ -3,121 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RadFlow v15.2 | Light Mode Fixed</title>
+    <title>RadFlow v23.0 | Clarity Update</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* --- VISUAL THEME (LIGHT MODE DEFAULT) --- */
+        /* --- VISUAL THEME --- */
         :root {
-            /* Light Mode Variables (Now the Default) */
-            --bg-body: #f8fafc;
-            --bg-sidebar: #ffffff;
-            --bg-panel: #ffffff;
-            --bg-card: #f1f5f9;
-            --bg-input: #e2e8f0;
-            --border: #cbd5e1;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
+            --bg-body: #f8fafc; --bg-sidebar: #ffffff; --bg-panel: #ffffff; --bg-card: #f1f5f9;
+            --bg-input: #e2e8f0; --border: #cbd5e1; --text-main: #0f172a; --text-muted: #64748b;
+            --accent: #059669; --accent-dim: rgba(5, 150, 105, 0.1);
+            --danger: #dc2626; --warning: #d97706; --info: #2563eb; --rad: #9333ea; --money: #059669;
+            --plan: #7c3aed; --comp: #475569; /* Darker gray for visibility */
             
-            /* Accents */
-            --accent: #059669; /* Emerald Green */
-            --accent-dim: rgba(5, 150, 105, 0.1);
-            --danger: #dc2626; 
-            --warning: #d97706; 
-            --info: #2563eb; 
-            --rad: #9333ea; 
-            --money: #059669;
-            --plan: #7c3aed;
-            --comp: #64748b;
+            /* Kanban Column Backgrounds (Pale) */
+            --col-plan: #f3f4f6; --col-act: #ecfdf5; --col-rev: #eff6ff; --col-comp: #e2e8f0;
         }
-
         [data-theme="dark"] {
-            /* Dark Mode Overrides */
-            --bg-body: #0f172a;
-            --bg-sidebar: #1e293b;
-            --bg-panel: #1e293b;
-            --bg-card: #334155;
-            --bg-input: #020617;
-            --border: #475569;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            
-            --accent: #10b981; 
-            --accent-dim: rgba(16, 185, 129, 0.15);
-            --danger: #ef4444; 
-            --warning: #f59e0b; 
-            --info: #3b82f6; 
-            --rad: #d946ef; 
-            --money: #34d399;
-            --plan: #8b5cf6;
-            --comp: #94a3b8;
+            --bg-body: #0f172a; --bg-sidebar: #1e293b; --bg-panel: #1e293b; --bg-card: #334155;
+            --bg-input: #020617; --border: #475569; --text-main: #f8fafc; --text-muted: #94a3b8;
+            --accent: #10b981; --accent-dim: rgba(16, 185, 129, 0.15);
+            --danger: #ef4444; --warning: #f59e0b; --info: #3b82f6; --rad: #d946ef; --money: #34d399;
+            --plan: #8b5cf6; --comp: #94a3b8;
+            --col-plan: #1e293b; --col-act: #064e3b; --col-rev: #1e3a8a; --col-comp: #334155;
         }
-
         * { box-sizing: border-box; outline: none; transition: background 0.2s, color 0.2s; }
-        
-        /* --- LAYOUT --- */
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: var(--bg-body); color: var(--text-main); display: grid; grid-template-columns: 240px 1fr 300px; grid-template-rows: 100vh; overflow: hidden; }
 
+        /* Responsive */
         @media (max-width: 1100px) { body { grid-template-columns: 200px 1fr; grid-template-rows: 1fr auto; } .chat-panel { grid-column: 2; grid-row: 2; border-left: none; border-top: 1px solid var(--border); height: 300px; } .main { grid-column: 2; grid-row: 1; } }
         @media (max-width: 768px) { body { display: block; height: auto; overflow-y: auto; } .sidebar { width: 100%; height: auto; border-right: none; flex-direction: row; flex-wrap: wrap; } .main { padding: 1rem; height: auto; overflow: visible; } .chat-panel { height: 400px; border-top: 4px solid var(--border); } }
+        @media print { .sidebar, .chat-panel, .btn, .btn-sync, .btn-toggle, .header button, .sync-box { display: none !important; } .main { padding: 0; width: 100%; } .widget { border: 1px solid #ccc; break-inside: avoid; background: white; color: black; box-shadow: none; margin-bottom: 20px; } :root { --text-main: black; --text-muted: #555; } }
 
-        @media print {
-            body { display: block; background: white; color: black; height: auto; overflow: visible; }
-            .sidebar, .chat-panel, .btn, .btn-sync, .btn-toggle, .header button, .sync-box { display: none !important; }
-            .main { padding: 0; margin: 0; width: 100%; }
-            .widget { border: 1px solid #ccc; break-inside: avoid; background: white; color: black; box-shadow: none; margin-bottom: 20px; }
-            .widget-head { border-bottom: 1px solid #000; color: black; }
-            .sci-table th { color: black; border-bottom: 1px solid #000; }
-            .sci-table td { border-bottom: 1px solid #ccc; color: black; }
-            .list-item { background: white; border: 1px solid #eee; color: black; }
-            :root { --text-main: black; --text-muted: #555; --bg-card: white; --bg-panel: white; }
-        }
-
-        /* --- COMPONENTS --- */
+        /* Sidebar & Buttons */
         .sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; z-index: 10; overflow-y: auto; }
-        .brand { font-size: 1.2rem; font-weight: 800; color: var(--accent); display: flex; align-items: center; gap: 10px; margin-bottom: 2rem; }
-        .nav-item { padding: 0.8rem 1rem; margin-bottom: 0.5rem; border-radius: 8px; cursor: pointer; color: var(--text-muted); font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 12px; transition: background 0.2s; }
+        .nav-item { padding: 0.8rem 0.5rem; margin-bottom: 0.5rem; border-radius: 8px; cursor: pointer; color: var(--text-muted); font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s; }
         .nav-item:hover { background: var(--bg-card); color: var(--text-main); }
         .nav-item.active { background: var(--accent-dim); color: var(--accent); }
-
-        .sync-box { margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
-        .btn-sync { width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-main); cursor: pointer; font-size: 0.8rem; font-weight: bold; text-align: left; display: flex; align-items: center; gap: 10px; justify-content: center; }
-        .btn-sync:hover { background: var(--accent); color: white; border-color: var(--accent); }
-        .btn-toggle { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 0.5rem; border-radius: 6px; cursor: pointer; font-weight: bold; text-align: center; margin-bottom: 10px; }
-
+        
+        .btn-sync, .btn-toggle { width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-main); cursor: pointer; font-size: 0.8rem; font-weight: bold; text-align: left; display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 8px; }
+        .btn-sync:hover, .btn-toggle:hover { background: var(--accent); color: white; border-color: var(--accent); }
+        
+        /* Layout */
         .main { padding: 2rem; overflow-y: auto; display: flex; flex-direction: column; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 10px; }
-        
         .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
         .widget { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; margin-bottom: 1.5rem; }
         .widget-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-        
         .list-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); padding: 0.8rem; border-radius: 6px; margin-bottom: 5px; cursor: pointer; border-left: 3px solid transparent; font-size: 0.9rem; transition: transform 0.2s; }
         .list-item:hover { border-left-color: var(--accent); transform: translateX(3px); background: var(--bg-input); }
-        .list-item.urgent { border-left-color: var(--danger); }
         
+        /* Elements */
+        .rag-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
         .chart-container { display: flex; height: 20px; border-radius: 4px; overflow: hidden; background: var(--bg-input); margin-top: 10px; }
         .chart-seg { height: 100%; transition: width 0.5s; position: relative; }
         .chart-legend { display: flex; gap: 15px; margin-top: 5px; font-size: 0.7rem; color: var(--text-muted); flex-wrap: wrap; }
         .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-
         .progress-bar { height: 6px; background: var(--bg-input); border-radius: 3px; width: 100px; overflow: hidden; margin-top: 5px; }
         .progress-fill { height: 100%; background: var(--accent); }
+        .tag { font-size:0.65rem; padding:2px 6px; border-radius:4px; background:var(--bg-body); border:1px solid var(--border); color:var(--text-muted); margin-left:5px; }
 
-        .fin-card { padding: 1.5rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border); text-align: center; }
-        .fin-val { font-size: 1.8rem; font-weight: bold; color: var(--money); margin-top: 5px; }
-        .fin-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        /* Kanban - UPDATED COLORS */
+        .kanban-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: start; }
+        .kanban-col { background: var(--bg-input); border-radius: 8px; padding: 10px; min-height: 200px; }
+        .kanban-head { font-weight: 800; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 10px; text-align: center; padding-bottom: 5px; border-bottom: 2px solid; }
+        .kanban-card { background: var(--bg-panel); padding: 10px; border-radius: 6px; margin-bottom: 8px; border: 1px solid var(--border); cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .kanban-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+        .kanban-card.over-budget { border-color: var(--danger); border-left: 3px solid var(--danger); }
 
+        /* Finance */
+        .fin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+        .fin-card { padding: 1rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+        .fin-val { font-size: 1.2rem; font-weight: bold; color: var(--text-main); margin-top: 5px; white-space: nowrap; }
+        .fin-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        .mini-fin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .mini-fin-box { background: var(--bg-input); padding: 10px; border-radius: 6px; text-align: center; }
+        .mini-fin-val { font-weight: bold; font-size: 1rem; }
+        .mini-fin-lbl { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; }
+
+        /* Chat */
         .chat-panel { background: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
         .chat-header { padding: 1.5rem; border-bottom: 1px solid var(--border); font-weight: bold; color: var(--text-muted); }
         .chat-feed { flex: 1; overflow-y: auto; padding: 1rem; }
         .chat-input-area { padding: 1rem; border-top: 1px solid var(--border); background: var(--bg-sidebar); }
         .msg { background: var(--bg-card); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.85rem; border: 1px solid var(--border); }
         .msg-meta { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.7rem; color: var(--text-muted); }
-        
+
+        /* Inputs */
         .form-control { width: 100%; padding: 0.7rem; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; margin-bottom: 1rem; }
         .search-bar { width: 300px; border-radius: 20px; padding: 0.5rem 1rem; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-main); }
-        
         .btn { padding: 0.6rem 1.2rem; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; background: var(--accent); color: white; white-space: nowrap; }
+        
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; }
         .modal-overlay.active { display: flex; }
         .modal { background: var(--bg-panel); padding: 2rem; border-radius: 12px; width: 90%; max-width: 500px; border: 1px solid var(--border); max-height: 90vh; overflow-y: auto; }
@@ -125,47 +99,65 @@
         .view-section { display: none; }
         .view-section.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        
+
+        /* Tables & Edit */
         .sci-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-        .sci-table td, .sci-table th { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; }
-        .task-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-        .task-chk { cursor: pointer; font-size: 1.2rem; color: var(--text-muted); }
+        .sci-table td, .sci-table th { padding: 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+        .sci-table th { cursor: pointer; }
+        .sci-table th:hover { color: var(--accent); }
+        .live-edit { background: transparent; border: 1px solid transparent; width: 100%; padding: 4px; color: inherit; font-family: inherit; font-size: inherit; border-radius: 4px; }
+        .live-edit:hover { border-color: var(--border); background: var(--bg-input); }
+        .live-edit:focus { border-color: var(--accent); background: var(--bg-card); outline: none; }
+        .edit-h1 { font-size: 1.6rem; font-weight: bold; background: transparent; border: 1px solid transparent; width: 100%; color: var(--text-main); margin-bottom: 0.5rem; }
+        .edit-h1:hover { border-color: var(--border); }
+        .edit-p { width: 100%; background: transparent; border: 1px solid transparent; color: var(--text-muted); font-size: 1rem; resize: vertical; min-height: 60px; font-family: inherit; }
+        .edit-p:hover { border-color: var(--border); }
+
+        .task-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+        .task-chk { cursor: pointer; font-size: 1.2rem; color: var(--text-muted); margin-right: 10px; }
         .task-chk.checked { color: var(--accent); }
         .task-txt.checked { text-decoration: line-through; color: var(--text-muted); }
-        
+        .task-input { flex: 1; border: none; background: transparent; color: inherit; font-family: inherit; }
+        .assign-select { font-size: 0.7rem; background: var(--bg-input); padding: 2px; border-radius: 4px; color: var(--text-muted); border: 1px solid var(--border); width: 60px; }
+        .date-input-mini { font-size: 0.7rem; background: var(--bg-input); padding: 2px; border-radius: 4px; color: var(--text-muted); border: 1px solid var(--border); width: 90px; margin-left:5px; }
+        .date-overdue { color: var(--danger); font-weight: bold; border-color: var(--danger); }
+
+        .prio-flag { cursor: pointer; margin-right: 8px; font-size: 0.8rem; }
+        .prio-high { color: var(--danger); }
+        .prio-med { color: var(--warning); }
+        .prio-low { color: var(--info); }
+        .prio-none { color: var(--border); }
+        .link-row { display: flex; align-items: center; gap: 10px; padding: 5px; background: var(--bg-input); border-radius: 4px; margin-bottom: 5px; font-size: 0.85rem; }
+        .link-row a { color: var(--info); text-decoration: none; overflow: hidden; text-overflow: ellipsis; }
         .input-grid { display: flex; gap: 10px; flex-wrap: wrap; }
         .input-grid > * { flex: 1 1 150px; } 
-
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 1rem; overflow-x: auto; min-width: 300px; }
-        .cal-day { background: var(--bg-card); min-height: 80px; padding: 5px; border-radius: 4px; border: 1px solid var(--border); font-size: 0.8rem; }
-        .cal-day.today { border-color: var(--accent); background: var(--accent-dim); }
-        .cal-day-header { text-align: center; font-size: 0.7rem; color: var(--text-muted); font-weight: bold; }
-        .cal-event { font-size: 0.7rem; background: var(--info); color: white; padding: 2px 4px; border-radius: 3px; margin-top: 2px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .cal-event.due { background: var(--danger); }
     </style>
 </head>
 <body>
 
 <div class="sidebar">
-    <div class="brand"><i class="fa-solid fa-atom"></i> RadFlow v15.2</div>
+    <div style="font-size:1.2rem; font-weight:800; color:var(--accent); margin-bottom:2rem; display:flex; align-items:center; gap:10px;">
+        <i class="fa-solid fa-atom"></i> RadFlow v23.0
+    </div>
     
-    <div style="display:flex; flex-wrap:wrap; gap:5px; width:100%; margin-bottom: 1rem;">
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; width:100%; margin-bottom: 1rem;">
         <div class="nav-item active" id="nav-dash" onclick="nav('dashboard')"><i class="fa-solid fa-gauge-high"></i> Dash</div>
         <div class="nav-item" id="nav-proj" onclick="nav('projects')"><i class="fa-solid fa-list-check"></i> Proj</div>
         <div class="nav-item" id="nav-fin" onclick="nav('finance')"><i class="fa-solid fa-sack-dollar"></i> Cost</div>
         <div class="nav-item" id="nav-inv" onclick="nav('inventory')"><i class="fa-solid fa-boxes-stacked"></i> Inv</div>
         <div class="nav-item" id="nav-hp" onclick="nav('hp')"><i class="fa-solid fa-calculator"></i> HP</div>
+        <div class="nav-item" id="nav-log" onclick="nav('logbook')"><i class="fa-solid fa-book-open"></i> Log</div>
     </div>
 
-    <button class="btn-toggle" onclick="toggleTheme()"><i class="fa-solid fa-circle-half-stroke"></i> Toggle Dark Mode</button>
-    <button class="btn-toggle" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Report</button>
+    <button class="btn-toggle" onclick="toggleTheme()"><i class="fa-solid fa-circle-half-stroke"></i> Theme</button>
+    <button class="btn-toggle" onclick="window.print()"><i class="fa-solid fa-print"></i> Report</button>
+    <button class="btn-toggle" onclick="openModal('settingsModal')"><i class="fa-solid fa-users"></i> Settings</button>
 
     <div class="sync-box">
-        <button class="btn-sync" onclick="exportData()"><i class="fa-solid fa-download"></i> Save Data</button>
-        <button class="btn-sync" onclick="document.getElementById('fileInput').click()"><i class="fa-solid fa-upload"></i> Load Data</button>
-        <input type="file" id="fileInput" style="display:none" onchange="importData(this)">
-        <button class="btn-sync" style="color:var(--danger); border-color:var(--danger);" onclick="clearData()">Clear All Data</button>
-        <button class="btn-sync" style="color:var(--text-muted); border:none; background:transparent;" onclick="resetData()">Reset to Examples</button>
+        <button class="btn-sync" onclick="openExportModal()"><i class="fa-solid fa-copy"></i> Export</button>
+        <button class="btn-sync" onclick="openImportModal()"><i class="fa-solid fa-paste"></i> Import</button>
+        <button class="btn-sync" style="color:var(--danger); border-color:var(--danger);" onclick="clearData()">Clear All</button>
+        <button class="btn-sync" style="color:var(--text-muted); border:none; background:transparent;" onclick="resetData()">Reset Data</button>
     </div>
 </div>
 
@@ -173,25 +165,22 @@
     <div id="view-dashboard" class="view-section active">
         <div class="header">
             <div><h1 style="margin:0;">Command Center</h1><p style="margin:0; color:var(--text-muted);" id="todayDate">Loading...</p></div>
-            <input type="text" class="search-bar" placeholder="Search Projects & Inventory..." onkeyup="render(this.value)">
-            <button class="btn" onclick="openModal('projectModal')">+ Quick Project</button>
+            <input type="text" class="search-bar" placeholder="Search..." onkeyup="render(this.value)">
+            <button class="btn" onclick="openModal('projectModal')">+ Project</button>
         </div>
         
         <div class="widget">
             <div class="widget-head">Operational Analytics</div>
             <div class="dashboard-grid">
                 <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">PROJECT STATUS OVERVIEW</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">PROJECT STATUS</div>
                     <div id="chart-proj" class="chart-container"></div>
                     <div id="legend-proj" class="chart-legend"></div>
                 </div>
                 <div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">GLOBAL BUDGET UTILIZATION</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">BUDGET UTILIZATION</div>
                     <div id="chart-money" class="chart-container"></div>
-                    <div class="chart-legend">
-                        <div><span class="legend-dot" style="background:var(--money)"></span>Spent</div>
-                        <div><span class="legend-dot" style="background:var(--bg-input)"></span>Remaining</div>
-                    </div>
+                    <div class="chart-legend"><div><span class="legend-dot" style="background:var(--money)"></span>Spent</div><div><span class="legend-dot" style="background:var(--bg-input)"></span>Remaining</div></div>
                 </div>
             </div>
         </div>
@@ -205,20 +194,34 @@
     </div>
 
     <div id="view-project-detail" class="view-section"></div>
-    <div id="view-projects" class="view-section"><div class="header"><h1>All Projects</h1><input type="text" class="search-bar" placeholder="Filter..." onkeyup="render(this.value)"></div><div class="widget"><div id="full-project-list"></div></div></div>
+    <div id="view-projects" class="view-section">
+        <div class="header">
+            <h1>All Projects</h1>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-toggle" style="margin:0" onclick="toggleProjView()"><i class="fa-solid fa-table-columns"></i> View</button>
+                <button id="btnShowComp" class="btn-toggle" style="margin:0" onclick="toggleShowComp()"><i class="fa-solid fa-eye"></i> Show Done</button>
+                <input type="text" class="search-bar" style="width:200px;" placeholder="Filter..." onkeyup="render(this.value)">
+            </div>
+        </div>
+        <div class="widget"><div id="full-project-list"></div></div>
+    </div>
     
     <div id="view-finance" class="view-section">
         <div class="header"><h1>Cost Tracker</h1><button class="btn" onclick="openModal('expenseModal')">+ Log Expense</button></div>
-        <div class="dashboard-grid" style="margin-bottom:2rem;">
-            <div class="fin-card"><div class="fin-label">Total Anticipated</div><div class="fin-val" id="fin-total-budget">$0.00</div></div>
+        <div class="fin-grid">
+            <div class="fin-card"><div class="fin-label">Total Budget</div><div class="fin-val" style="color:var(--info);" id="fin-total-budget">$0.00</div></div>
             <div class="fin-card"><div class="fin-label">Total Spent</div><div class="fin-val" style="color:var(--warning);" id="fin-total-spent">$0.00</div></div>
+            <div class="fin-card"><div class="fin-label">Remaining Funds</div><div class="fin-val" id="fin-total-rem">$0.00</div></div>
+            <div class="fin-card"><div class="fin-label">Active Spenders</div><div class="fin-val" style="color:var(--rad);" id="fin-proj-count">0</div></div>
         </div>
-        <div class="widget"><div class="widget-head">Expense Log</div><div style="overflow-x:auto;"><table class="sci-table"><thead><tr><th>Date</th><th>Project</th><th>Description</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody id="expense-list"></tbody></table></div></div>
+        <div class="widget"><div class="widget-head">Expense Log (Live Edit)</div><div style="overflow-x:auto;"><table class="sci-table" id="table-exp"><thead><tr><th onclick="sortTable('table-exp',0)">Date</th><th onclick="sortTable('table-exp',1)">Project</th><th onclick="sortTable('table-exp',2)">Description</th><th onclick="sortTable('table-exp',3)">Amount</th><th>Status</th><th></th></tr></thead><tbody id="expense-list"></tbody></table></div></div>
     </div>
 
-    <div id="view-hp" class="view-section"><div class="header"><h1>HP Tools</h1></div><div class="widget"><div class="dashboard-grid"><div><label style="color:var(--text-muted); font-size:0.8rem;">Isotope</label><select id="calc-iso" class="form-control"><option value="Co-60" data-hl="5.27">Co-60</option><option value="Cs-137" data-hl="30.17">Cs-137</option><option value="Ir-192" data-hl="0.202">Ir-192</option></select><label style="color:var(--text-muted); font-size:0.8rem;">Initial (mCi)</label><input type="number" id="calc-a0" class="form-control" placeholder="100"><label style="color:var(--text-muted); font-size:0.8rem;">Date</label><input type="date" id="calc-date" class="form-control"><button class="btn" onclick="calculateDecay()" style="width:100%; background:var(--rad);">Calculate</button></div><div style="text-align:center; background:var(--bg-card); padding:20px; border-radius:10px;"><div style="color:var(--text-muted);">Current Activity</div><div id="calc-result" style="font-size:2.5rem; color:var(--rad); font-weight:bold; margin:10px 0;">---</div></div></div></div></div>
+    <div id="view-hp" class="view-section"><div class="header"><h1>HP Tools</h1></div><div class="widget"><div class="dashboard-grid"><div><label style="color:var(--text-muted); font-size:0.8rem;">Isotope</label><select id="calc-iso" class="form-control" onchange="saveHPState()"><option value="Co-60" data-hl="5.27">Co-60</option><option value="Cs-137" data-hl="30.17">Cs-137</option><option value="Ir-192" data-hl="0.202">Ir-192</option></select><label style="color:var(--text-muted); font-size:0.8rem;">Initial (mCi)</label><input type="number" id="calc-a0" class="form-control" placeholder="100" onchange="saveHPState()"><label style="color:var(--text-muted); font-size:0.8rem;">Date</label><input type="date" id="calc-date" class="form-control" onchange="saveHPState()"><button class="btn" onclick="calculateDecay()" style="width:100%; background:var(--rad);">Calculate</button></div><div style="text-align:center; background:var(--bg-card); padding:20px; border-radius:10px;"><div style="color:var(--text-muted);">Current Activity</div><div id="calc-result" style="font-size:2.5rem; color:var(--rad); font-weight:bold; margin:10px 0;">---</div></div></div></div></div>
 
-    <div id="view-inventory" class="view-section"><div class="header"><h1>Inventory</h1><button class="btn" onclick="openModal('invModal')">+ Add Item</button></div><div class="widget"><div style="overflow-x:auto;"><table class="sci-table"><thead><tr><th>ID</th><th>Isotope</th><th>Activity</th><th>Dose</th><th>Status</th></tr></thead><tbody id="full-inv-list"></tbody></table></div></div></div>
+    <div id="view-logbook" class="view-section"><div class="header"><h1>Logbook & Notes</h1></div><div class="widget" style="height: calc(100vh - 150px);"><textarea id="wiki-text" class="live-edit" style="width:100%; height:100%; resize:none; font-family:monospace; padding:15px;" placeholder="Type your persistent notes here..." onchange="saveWiki()"></textarea></div></div>
+
+    <div id="view-inventory" class="view-section"><div class="header"><h1>Inventory</h1><button class="btn" onclick="openModal('invModal')">+ Add Item</button></div><div class="widget"><div style="overflow-x:auto;"><table class="sci-table" id="table-inv"><thead><tr><th onclick="sortTable('table-inv',0)">ID</th><th onclick="sortTable('table-inv',1)">Isotope</th><th onclick="sortTable('table-inv',2)">Activity</th><th onclick="sortTable('table-inv',3)">Dose</th><th onclick="sortTable('table-inv',4)">Fill %</th><th>Status</th></tr></thead><tbody id="full-inv-list"></tbody></table></div></div></div>
 </div>
 
 <div class="chat-panel">
@@ -227,122 +230,96 @@
     <div class="chat-input-area"><input type="text" id="chatInput" class="form-control" placeholder="Update team..." onkeypress="handleChat(event)"></div>
 </div>
 
-<div id="projectModal" class="modal-overlay">
-    <div class="modal">
-        <h3>New Project</h3>
-        <input id="pTitle" class="form-control" placeholder="Project Name">
-        <input id="pDesc" class="form-control" placeholder="Brief Description">
-        <div class="input-grid"><div><label style="font-size:0.7rem; color:var(--text-muted);">DUE DATE</label><input id="pDate" type="date" class="form-control"></div><div><label style="font-size:0.7rem; color:var(--text-muted);">BUDGET ($)</label><input id="pCost" type="number" class="form-control" placeholder="0.00"></div></div>
-        <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('projectModal')">Cancel</button><button class="btn" onclick="addProject()">Save</button></div>
-    </div>
-</div>
-
-<div id="expenseModal" class="modal-overlay">
-    <div class="modal">
-        <h3>Log Expense</h3>
-        <label style="font-size:0.7rem; color:var(--text-muted);">PROJECT</label><select id="expProj" class="form-control"></select>
-        <input id="expDesc" class="form-control" placeholder="Description">
-        <div class="input-grid"><input id="expAmt" type="number" class="form-control" placeholder="Amount ($)"><input id="expDate" type="date" class="form-control"></div>
-        <select id="expStatus" class="form-control"><option>Invoiced</option><option>Paid</option><option>Encumbered</option></select>
-        <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('expenseModal')">Cancel</button><button class="btn" onclick="addExpense()">Add</button></div>
-    </div>
-</div>
-
-<div id="invModal" class="modal-overlay">
-    <div class="modal">
-        <h3>Log Container</h3>
-        <div class="input-grid"><input id="invId" class="form-control" placeholder="ID"><input id="invIso" class="form-control" placeholder="Isotope"></div>
-        <div class="input-grid"><input id="invAct" class="form-control" placeholder="Activity"><input id="invDose" type="number" class="form-control" placeholder="Dose (mR/hr)"></div>
-        <select id="invStatus" class="form-control"><option>Stored</option><option>Staged</option><option>Shipped</option></select>
-        <div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('invModal')">Cancel</button><button class="btn" onclick="addInventory()">Log</button></div>
-    </div>
-</div>
+<div id="settingsModal" class="modal-overlay"><div class="modal"><h3>Team Settings</h3><div id="teamList" style="margin-bottom:10px;"></div><div style="display:flex; gap:10px;"><input id="newMember" class="form-control" style="margin:0" placeholder="Name/Initials"><button class="btn" onclick="addTeamMember()">Add</button></div><div style="text-align:right; margin-top:20px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('settingsModal')">Done</button></div></div></div>
+<div id="projectModal" class="modal-overlay"><div class="modal"><h3>New Project</h3><input id="pTitle" class="form-control" placeholder="Project Name"><input id="pDesc" class="form-control" placeholder="Brief Description"><div class="input-grid"><div><label style="font-size:0.7rem; color:var(--text-muted);">DUE DATE</label><input id="pDate" type="date" class="form-control"></div><div><label style="font-size:0.7rem; color:var(--text-muted);">BUDGET ($)</label><input id="pCost" type="number" class="form-control" placeholder="0.00"></div></div><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('projectModal')">Cancel</button><button class="btn" onclick="addProject()">Save</button></div></div></div>
+<div id="expenseModal" class="modal-overlay"><div class="modal"><h3>Log Expense</h3><label style="font-size:0.7rem; color:var(--text-muted);">PROJECT</label><select id="expProj" class="form-control"></select><input id="expDesc" class="form-control" placeholder="Description"><div class="input-grid"><input id="expAmt" type="number" class="form-control" placeholder="Amount ($)"><input id="expDate" type="date" class="form-control"></div><select id="expStatus" class="form-control"><option>Invoiced</option><option>Paid</option><option>Encumbered</option></select><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('expenseModal')">Cancel</button><button class="btn" onclick="addExpense()">Add</button></div></div></div>
+<div id="invModal" class="modal-overlay"><div class="modal"><h3>Log Container</h3><div class="input-grid"><input id="invId" class="form-control" placeholder="ID"><input id="invIso" class="form-control" placeholder="Isotope"></div><div class="input-grid"><input id="invAct" class="form-control" placeholder="Activity"><input id="invDose" type="number" class="form-control" placeholder="Dose (mR/hr)"></div><div style="margin:10px 0;"><label style="font-size:0.7rem; color:var(--text-muted);">FILL LEVEL (%)</label><input id="invFill" type="range" min="0" max="100" value="0" style="width:100%"></div><select id="invStatus" class="form-control"><option>Stored</option><option>Staged</option><option>Shipped</option></select><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('invModal')">Cancel</button><button class="btn" onclick="addInventory()">Log</button></div></div></div>
+<div id="exportModal" class="modal-overlay"><div class="modal"><h3>Export Data</h3><p style="color:var(--text-muted);">Copy this code.</p><textarea id="exportText" class="form-control" style="height:200px; font-size:0.8rem;"></textarea><div style="text-align:right; margin-top:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('exportModal')">Close</button><button class="btn" onclick="copyExport()">Copy</button></div></div></div>
+<div id="importModal" class="modal-overlay"><div class="modal"><h3>Import Data</h3><p style="color:var(--text-muted);">Paste data code.</p><textarea id="importText" class="form-control" style="height:200px; font-size:0.8rem;"></textarea><div style="text-align:right; margin-top:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('importModal')">Cancel</button><button class="btn" onclick="runImport()">Load</button></div></div></div>
 
 <script>
     // --- STARTER DATA ---
     const STARTER_DATA = {
         projects: [
-            { id: 101, title: "Class B Resin Shipment", status: "Active", due: "2025-12-30", cost: 85000, desc: "Transport of CNS 8-120B Cask.", tasks: [{id: 1, text: "Verify Cask Cert", done: true}, {id: 2, text: "Notify Broker", done: true}, {id: 3, text: "Schedule 100-ton Crane", done: false}] },
-            { id: 102, title: "Lab 4 Cleanout", status: "Planning", due: "2026-02-15", cost: 12000, desc: "Volume reduction of DAW.", tasks: [{id: 1, text: "Order 10 B-25 Boxes", done: false}] },
-            { id: 103, title: "Q4 NRC Waste Report", status: "Review", due: "2025-12-28", cost: 0, desc: "Urgent review required.", tasks: [{id: 1, text: "Compile Isotopes Table", done: true}, {id: 2, text: "RSO Sign-off", done: false}] },
-            { id: 104, title: "Filter Bank 2B Changeout", status: "Active", due: "2026-01-10", cost: 45000, desc: "ALARA plan required.", tasks: [{id: 1, text: "Approve ALARA Plan", done: true}, {id: 2, text: "Stage Lead Shielding", done: false}] },
-            { id: 105, title: "Soil Remediation: Sector 7", status: "Planning", due: "2026-03-01", cost: 150000, desc: "Excavation of contaminated soil.", tasks: [{id: 1, text: "Soil Sampling Plan", done: false}, {id: 2, text: "Intermodal Container Rental", done: false}] }
+            { id: 101, title: "Class B Resin Shipment", status: "Active", health: "green", due: "2025-12-30", cost: 85000, desc: "Transport of CNS 8-120B Cask.", links:[], tasks: [{id: 1, text: "Verify Cask Cert", done: true, assign: "JD", prio: "high"}, {id: 2, text: "Notify Broker", done: true, assign: "AS", prio: "med"}, {id: 3, text: "Schedule 100-ton Crane", done: false, assign: "JD", prio: "high"}] },
+            { id: 102, title: "Lab 4 Cleanout", status: "Planning", health: "yellow", due: "2026-02-15", cost: 12000, desc: "Volume reduction of DAW.", links:[], tasks: [{id: 1, text: "Order 10 B-25 Boxes", done: false, assign: "AS", prio: "low"}] }
         ],
-        inventory: [
-            {id: "HIC-24-01", iso: "Co-60, Cs-137", act: "35 Ci", dose: 4500, status: "Staged"},
-            {id: "LINER-8-120", iso: "Activation", act: "120 Ci", dose: 15000, status: "Staged"},
-            {id: "DRM-24-55", iso: "H-3", act: "15 mCi", dose: 0.5, status: "Stored"},
-            {id: "BOX-24-10", iso: "Mixed DAW", act: "100 mCi", dose: 12, status: "Stored"},
-            {id: "SRC-IR-99", iso: "Ir-192", act: "5 Ci", dose: 2500, status: "Shipped"}
-        ],
-        expenses: [
-            {id: 1, projId: 101, desc: "Cask Rental Fee", amount: 15000, date: "2025-11-01", status: "Paid"},
-            {id: 2, projId: 101, desc: "Broker Surcharge", amount: 5000, date: "2025-11-05", status: "Invoiced"},
-            {id: 3, projId: 104, desc: "Lead Shielding", amount: 8000, date: "2025-12-10", status: "Paid"},
-            {id: 4, projId: 105, desc: "Excavator Deposit", amount: 12000, date: "2025-12-15", status: "Paid"}
-        ],
-        chat: [{user: "System", time: "08:00 AM", text: "RadFlow v15.2 initialized."}]
+        inventory: [{id: "HIC-24-01", iso: "Co-60", act: "35 Ci", dose: 4500, fill: 95, status: "Staged"}, {id: "DRM-24-55", iso: "H-3", act: "15 mCi", dose: 0.5, fill: 40, status: "Stored"}],
+        expenses: [{id: 1, projId: 101, desc: "Cask Rental", amount: 15000, date: "2025-11-01", status: "Paid"}],
+        team: ["JD", "AS", "Admin"],
+        chat: [{user: "System", time: "08:00 AM", text: "RadFlow v23.0 initialized."}],
+        wiki: "LOGBOOK:\n- Use this space for daily operational notes."
     };
 
-    let projects = []; let inventory = []; let expenses = []; let chatLog = [];
+    let projects = []; let inventory = []; let expenses = []; let chatLog = []; let team = []; let wikiText = "";
+    let showComplete = false; let viewMode = 'list'; let hpState = {iso:'Co-60', a0:'', date:''};
+    const esc = (t) => t ? t.toString().replace(/"/g, '&quot;') : '';
 
-    // --- RENDER & LOGIC ---
     function render(filter = "") {
         filter = filter.toLowerCase();
         document.getElementById('todayDate').innerText = new Date().toDateString();
+        document.getElementById('btnShowComp').innerHTML = showComplete ? '<i class="fa-solid fa-eye-slash"></i> Hide Done' : '<i class="fa-solid fa-eye"></i> Show Done';
         
-        // 1. FILTER DATA
-        const filteredProjs = projects.filter(p => p.title.toLowerCase().includes(filter) || p.desc.toLowerCase().includes(filter));
-        const filteredInv = inventory.filter(i => i.id.toLowerCase().includes(filter) || i.iso.toLowerCase().includes(filter));
-        const filteredExp = expenses.filter(e => e.desc.toLowerCase().includes(filter));
+        let filteredProjs = projects.filter(p => p.title.toLowerCase().includes(filter) || p.desc.toLowerCase().includes(filter));
+        if (!showComplete) filteredProjs = filteredProjs.filter(p => p.status !== 'Complete'); 
 
-        // 2. DASHBOARD LISTS
-        const pList = document.getElementById('dash-projects');
-        pList.innerHTML = filteredProjs.length ? filteredProjs.map(p => {
-            if(p.status === 'Complete') return '';
+        const filteredInv = inventory.filter(i => i.id.toLowerCase().includes(filter));
+        
+        // DASHBOARD
+        document.getElementById('dash-projects').innerHTML = filteredProjs.length ? filteredProjs.slice(0,5).map(p => {
             const pct = p.tasks.length ? Math.round((p.tasks.filter(t=>t.done).length/p.tasks.length)*100) : 0;
-            return `<div class="list-item" onclick="viewProject(${p.id})"><div style="flex:1;"><div style="display:flex; justify-content:space-between;"><span>${p.title}</span><span style="font-size:0.7rem; color:var(--text-muted)">${p.status}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div></div></div>`;
+            return `<div class="list-item" onclick="viewProject(${p.id})"><div style="flex:1;"><div style="display:flex; justify-content:space-between; align-items:center;"><div><span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span>${p.title}</div><span style="font-size:0.7rem; color:var(--text-muted)">${p.status}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div></div></div>`;
         }).join('') : '<div style="color:var(--text-muted); padding:10px;">No Matches</div>';
 
-        const tList = document.getElementById('dash-tasks');
         let tHtml = '';
-        filteredProjs.forEach(p => { if(p.status!=='Complete') p.tasks.forEach(t => { if(!t.done && t.text.toLowerCase().includes(filter)) tHtml += `<div class="list-item" style="border-left-color:var(--warning)" onclick="viewProject(${p.id})"><span>${t.text}</span><span style="font-size:0.7rem; color:var(--text-muted)">${p.title}</span></div>`; }); });
-        tList.innerHTML = tHtml || '<div style="color:var(--text-muted); padding:10px;">No Pending Actions</div>';
+        filteredProjs.forEach(p => { p.tasks.forEach(t => { if(!t.done && t.text.toLowerCase().includes(filter)) 
+            tHtml += `<div class="list-item" style="border-left-color:var(--warning)" onclick="viewProject(${p.id})"><span>${t.text} <span class="assign-tag">${t.assign||'?'}</span></span><span style="font-size:0.7rem; color:var(--text-muted)">${p.title}</span></div>`; 
+        }); });
+        document.getElementById('dash-tasks').innerHTML = tHtml || '<div style="color:var(--text-muted); padding:10px;">No Actions</div>';
+        document.getElementById('dash-inv').innerHTML = filteredInv.slice(0,3).map(i => `<div class="list-item"><span>${i.id} (${i.fill||0}%)</span><span>${i.dose} mR/hr</span></div>`).join('');
 
-        const iDash = document.getElementById('dash-inv');
-        iDash.innerHTML = filteredInv.length ? filteredInv.slice(0,3).map(i => `<div class="list-item"><span>${i.id} (${i.iso})</span><span>${i.dose} mR/hr</span></div>`).join('') : '<div style="color:var(--text-muted); padding:10px;">Empty</div>';
+        // MAIN LISTS
+        const projContainer = document.getElementById('full-project-list');
+        if (viewMode === 'list') {
+            projContainer.innerHTML = filteredProjs.map(p => `<div class="list-item" onclick="viewProject(${p.id})"><span><span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span>${p.title} ${p.tag?`<span class="tag">${p.tag}</span>`:''}</span><span>${p.status} | Due: ${p.due}</span></div>`).join('');
+        } else {
+            const cols = { 'Planning': [], 'Active': [], 'Review': [], 'Complete': [] };
+            filteredProjs.forEach(p => { if (cols[p.status]) cols[p.status].push(p); });
+            // UPDATED KANBAN HEADERS (BETTER CONTRAST)
+            const hCols = { 'Planning': 'var(--plan)', 'Active': 'var(--accent)', 'Review': 'var(--info)', 'Complete': 'var(--comp)' };
+            projContainer.innerHTML = `<div class="kanban-board">${Object.keys(cols).map(status => `<div class="kanban-col"><div class="kanban-head" style="color:${hCols[status]}; border-bottom-color:${hCols[status]}">${status} (${cols[status].length})</div>${cols[status].map(p => { const spent = expenses.filter(e => e.projId == p.id).reduce((s, e) => s + parseFloat(e.amount), 0); const isOver = spent > (parseFloat(p.cost)||0) && (parseFloat(p.cost)||0) > 0; return `<div class="kanban-card ${isOver?'over-budget':''}" onclick="viewProject(${p.id})"><div style="font-weight:bold; font-size:0.9rem; margin-bottom:5px;">${p.title} ${p.tag?`<span class="tag">${p.tag}</span>`:''}</div><div style="display:flex; justify-content:space-between; align-items:center;"><span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span><span class="k-tag">${p.tasks.filter(t=>!t.done).length} open tasks</span></div></div>`; }).join('')}</div>`).join('')}</div>`;
+        }
 
-        // 3. ANALYTICS (PROJECT STATUS)
-        const statuses = { 'Planning': 0, 'Active': 0, 'Review': 0, 'Complete': 0 };
-        projects.forEach(p => { if (statuses[p.status] !== undefined) statuses[p.status]++; });
-        
-        const totalProjs = projects.length || 1;
-        const statusColors = { 'Planning': 'var(--plan)', 'Active': 'var(--accent)', 'Review': 'var(--info)', 'Complete': 'var(--comp)' };
-        
-        document.getElementById('chart-proj').innerHTML = Object.keys(statuses).map(k => {
-            const pct = (statuses[k] / totalProjs) * 100;
-            return pct > 0 ? `<div class="chart-seg" style="width:${pct}%; background:${statusColors[k]}" title="${k}: ${statuses[k]}"></div>` : '';
-        }).join('');
-        
-        document.getElementById('legend-proj').innerHTML = Object.keys(statuses).map(k => statuses[k] > 0 ? `<div><span class="legend-dot" style="background:${statusColors[k]}"></span>${k} (${statuses[k]})</div>` : '').join('');
-
-        // Budget Breakdown
+        // FINANCE & OTHER
         const totalBudg = projects.reduce((s, p) => s + (parseFloat(p.cost)||0), 0);
         const totalSpent = expenses.reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
-        const spentPct = totalBudg > 0 ? Math.min((totalSpent/totalBudg)*100, 100) : 0;
-        document.getElementById('chart-money').innerHTML = `<div class="chart-seg" style="width:${spentPct}%; background:var(--money);"></div>`;
-        document.getElementById('dash-fin').innerHTML = `<div style="text-align:center; padding:10px;"><div style="color:var(--text-muted); font-size:0.8rem;">TOTAL SPENT</div><div style="font-size:1.5rem; font-weight:bold; color:var(--warning);">$${totalSpent.toLocaleString()}</div><div style="color:var(--text-muted); font-size:0.7rem;">Budget: $${totalBudg.toLocaleString()}</div></div>`;
-
-        // 4. SUB-PAGES
+        const remaining = totalBudg - totalSpent;
+        const activeSpenders = new Set(expenses.map(e => e.projId)).size;
+        
+        document.getElementById('dash-fin').innerHTML = `<div class="mini-fin-grid"><div class="mini-fin-box"><div class="mini-fin-val" style="color:var(--info);">$${totalBudg.toLocaleString()}</div><div class="mini-fin-lbl">Budget</div></div><div class="mini-fin-box"><div class="mini-fin-val" style="color:var(--warning);">$${totalSpent.toLocaleString()}</div><div class="mini-fin-lbl">Spent</div></div><div class="mini-fin-box"><div class="mini-fin-val" style="color:${remaining<0?'var(--danger)':'var(--money)'};">$${remaining.toLocaleString()}</div><div class="mini-fin-lbl">Rem.</div></div><div class="mini-fin-box"><div class="mini-fin-val" style="color:var(--rad);">${activeSpenders}</div><div class="mini-fin-lbl">Active</div></div></div><div style="margin-top:10px; text-align:center; font-size:0.7rem; color:var(--accent); cursor:pointer;" onclick="nav('finance')">View Full Details &rarr;</div>`;
         document.getElementById('fin-total-budget').innerText = "$" + totalBudg.toLocaleString();
         document.getElementById('fin-total-spent').innerText = "$" + totalSpent.toLocaleString();
-        document.getElementById('expense-list').innerHTML = filteredExp.map(e => `<tr><td>${e.date}</td><td>${projects.find(p => p.id == e.projId)?.title || "General"}</td><td>${e.desc}</td><td>$${e.amount.toLocaleString()}</td><td>${e.status}</td><td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delExpense(${e.id})"></i></td></tr>`).join('');
-        document.getElementById('full-inv-list').innerHTML = filteredInv.map(i => `<tr><td>${i.id}</td><td style="color:var(--rad)">${i.iso}</td><td>${i.act}</td><td>${i.dose}</td><td>${i.status}</td></tr>`).join('');
-        document.getElementById('full-project-list').innerHTML = filteredProjs.map(p => `<div class="list-item" onclick="viewProject(${p.id})"><span>${p.title}</span> <span>Due: ${p.due}</span></div>`).join('');
+        document.getElementById('fin-total-rem').innerText = "$" + remaining.toLocaleString();
+        document.getElementById('fin-total-rem').style.color = remaining < 0 ? "var(--danger)" : "var(--money)";
+        document.getElementById('fin-proj-count').innerText = activeSpenders;
+
+        // ANALYTICS (RESTORED PROJECT STATUS)
+        const statuses = { 'Planning': 0, 'Active': 0, 'Review': 0, 'Complete': 0 };
+        projects.forEach(p => { if (statuses[p.status] !== undefined) statuses[p.status]++; });
+        const totalProjs = projects.length || 1;
+        const sColors = { 'Planning': 'var(--plan)', 'Active': 'var(--accent)', 'Review': 'var(--info)', 'Complete': 'var(--comp)' };
+        document.getElementById('chart-proj').innerHTML = Object.keys(statuses).map(k => { const pct = (statuses[k] / totalProjs) * 100; return pct > 0 ? `<div class="chart-seg" style="width:${pct}%; background:${sColors[k]}" title="${k}: ${statuses[k]}"></div>` : ''; }).join('');
+        document.getElementById('legend-proj').innerHTML = Object.keys(statuses).map(k => statuses[k] > 0 ? `<div><span class="legend-dot" style="background:${sColors[k]}"></span>${k} (${statuses[k]})</div>` : '').join('');
+        const spentPct = totalBudg > 0 ? Math.min((totalSpent/totalBudg)*100, 100) : 0;
+        document.getElementById('chart-money').innerHTML = `<div class="chart-seg" style="width:${spentPct}%; background:var(--money);"></div>`;
+
+        // TABLES
+        document.getElementById('expense-list').innerHTML = expenses.map(e => `<tr><td><input class="live-edit" type="date" value="${e.date}" onchange="updItem('expense', ${e.id}, 'date', this.value)"></td><td>${projects.find(p => p.id == e.projId)?.title || "General"}</td><td><input class="live-edit" value="${esc(e.desc)}" onchange="updItem('expense', ${e.id}, 'desc', this.value)"></td><td><input class="live-edit" type="number" value="${e.amount}" onchange="updItem('expense', ${e.id}, 'amount', this.value)"></td><td><select class="live-edit" onchange="updItem('expense', ${e.id}, 'status', this.value)"><option ${e.status==='Invoiced'?'selected':''}>Invoiced</option><option ${e.status==='Paid'?'selected':''}>Paid</option><option ${e.status==='Encumbered'?'selected':''}>Encumbered</option></select></td><td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delExpense(${e.id})"></i></td></tr>`).join('');
+        document.getElementById('full-inv-list').innerHTML = filteredInv.map(i => `<tr><td><input class="live-edit" value="${esc(i.id)}" onchange="updItem('inventory', '${i.id}', 'id', this.value)"></td><td><input class="live-edit" value="${esc(i.iso)}" onchange="updItem('inventory', '${i.id}', 'iso', this.value)"></td><td><input class="live-edit" value="${esc(i.act)}" onchange="updItem('inventory', '${i.id}', 'act', this.value)"></td><td><input class="live-edit" type="number" value="${i.dose}" onchange="updItem('inventory', '${i.id}', 'dose', this.value)"></td><td style="width:100px;"><div class="progress-bar"><div class="progress-fill" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':'var(--info)'}"></div></div></td><td><select class="live-edit" onchange="updItem('inventory', '${i.id}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td></tr>`).join('');
         
-        const chat = document.getElementById('chatFeed');
-        chat.innerHTML = chatLog.map(c => `<div class="msg"><div class="msg-meta"><span>${c.user}</span><span>${c.time}</span></div><div>${c.text}</div></div>`).join('');
-        chat.scrollTop = chat.scrollHeight;
+        document.getElementById('chatFeed').innerHTML = chatLog.map(c => `<div class="msg"><div class="msg-meta"><span>${c.user}</span><span>${c.time}</span></div><div>${c.text}</div></div>`).join('');
+        document.getElementById('chatFeed').scrollTop = 9999;
+        document.getElementById('wiki-text').value = wikiText;
     }
 
     function viewProject(id) {
@@ -350,63 +327,117 @@
         const spent = expenses.filter(e => e.projId == id).reduce((s, e) => s + parseFloat(e.amount), 0);
         const budget = parseFloat(p.cost) || 0;
         const burn = budget > 0 ? Math.min((spent/budget)*100, 100) : 0;
-        const tHtml = p.tasks.map(t => `<div class="task-row"><div style="display:flex; gap:10px; align-items:center;"><i class="fa-solid ${t.done?'fa-square-check checked':'fa-square'} task-chk" onclick="togTask(${p.id},${t.id})"></i><span class="task-txt ${t.done?'checked':''}">${t.text}</span></div><i class="fa-solid fa-trash" style="margin-left:auto; cursor:pointer; color:var(--danger)" onclick="delTask(${p.id},${t.id})"></i></div>`).join('');
+        const teamOpts = team.map(m => `<option value="${m}">${m}</option>`).join('');
+
+        const tHtml = p.tasks.map(t => `
+            <div class="task-row">
+                <div style="display:flex; align-items:center; gap:10px; width:100%;">
+                    <i class="fa-solid fa-fire prio-flag ${t.prio==='high'?'prio-high':(t.prio==='med'?'prio-med':(t.prio==='low'?'prio-low':'prio-none'))}" onclick="cycPrio(${p.id}, ${t.id})"></i>
+                    <i class="fa-solid ${t.done?'fa-square-check checked':'fa-square'} task-chk" onclick="togTask(${p.id},${t.id})"></i>
+                    <input class="task-input" value="${esc(t.text)}" onchange="updTask(${p.id}, ${t.id}, 'text', this.value)">
+                    <select class="assign-select" onchange="updTask(${p.id}, ${t.id}, 'assign', this.value)"><option value="">--</option>${team.map(m => `<option value="${m}" ${t.assign===m?'selected':''}>${m}</option>`).join('')}</select>
+                </div>
+                <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger); margin-left:10px;" onclick="delTask(${p.id},${t.id})"></i>
+            </div>`).join('');
+
+        const lHtml = (p.links || []).map((l, i) => `<div class="link-row"><i class="fa-solid fa-link"></i> <a href="${l.url}" target="_blank">${l.name}</a> <i class="fa-solid fa-trash" style="margin-left:auto; cursor:pointer; font-size:0.8rem; color:var(--text-muted);" onclick="delLink(${p.id}, ${i})"></i></div>`).join('');
         
-        document.getElementById('view-project-detail').innerHTML = `
-            <div class="header"><button class="btn-sync" style="width:auto" onclick="nav('dashboard')">&larr; Back</button> <div style="display:flex; gap:10px;"><button class="btn" style="background:var(--info)" onclick="cloneProject(${p.id})">Clone</button><button class="btn" style="background:var(--danger)" onclick="delProj(${p.id})">Delete</button></div></div>
-            <div class="widget"><h1 style="margin:0;">${p.title}</h1><p style="color:var(--text-muted); border-bottom:1px solid var(--border); padding-bottom:10px;">${p.desc}</p>
-            <div class="input-grid"><div><label style="font-size:0.7rem; color:var(--text-muted)">STATUS</label><select class="form-control" style="margin:0;" onchange="updStatus(${p.id},this.value)"><option ${p.status==='Planning'?'selected':''}>Planning</option><option ${p.status==='Active'?'selected':''}>Active</option><option ${p.status==='Review'?'selected':''}>Review</option><option ${p.status==='Complete'?'selected':''}>Complete</option></select></div><div><label style="font-size:0.7rem; color:var(--text-muted)">DUE DATE</label><div style="font-size:1.1rem; padding:8px 0;">${p.due}</div></div></div>
-            <div style="background:var(--bg-card); padding:15px; border-radius:8px; margin:20px 0; border:1px solid var(--border);"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span style="font-size:0.8rem; font-weight:bold;">BUDGET: $${budget.toLocaleString()}</span><span style="font-size:0.8rem; color:var(--warning);">SPENT: $${spent.toLocaleString()}</span></div><div class="progress-bar" style="width:100%; background:#1e293b;"><div class="progress-fill" style="width:${burn}%; background:var(--warning);"></div></div></div>
-            <h3>Action Items</h3><div style="display:flex; gap:10px; margin-bottom:10px;"><input id="newT" class="form-control" style="margin:0" placeholder="New task..."><button class="btn" onclick="addTask(${p.id})">Add</button></div><div>${tHtml}</div></div>`;
+        document.getElementById('view-project-detail').innerHTML = `<div class="header"><button class="btn-sync" style="width:auto" onclick="nav('dashboard')">&larr; Back</button> <div style="display:flex; gap:10px;"><button class="btn" style="background:var(--info)" onclick="cloneProject(${p.id})">Clone</button><button class="btn" style="background:var(--danger)" onclick="delProj(${p.id})">Delete</button></div></div><div class="widget"><input class="edit-h1" value="${esc(p.title)}" onchange="updItem('project', ${p.id}, 'title', this.value)"><textarea class="edit-p" onchange="updItem('project', ${p.id}, 'desc', this.value)">${p.desc}</textarea><div class="input-grid"><div><label style="font-size:0.7rem; color:var(--text-muted)">STATUS</label><select class="form-control" style="margin:0;" onchange="updItem('project', ${p.id},'status',this.value)"><option ${p.status==='Planning'?'selected':''}>Planning</option><option ${p.status==='Active'?'selected':''}>Active</option><option ${p.status==='Review'?'selected':''}>Review</option><option ${p.status==='Complete'?'selected':''}>Complete</option></select></div><div><label style="font-size:0.7rem; color:var(--text-muted)">HEALTH</label><select class="form-control" style="margin:0;" onchange="updItem('project', ${p.id},'health',this.value)"><option value="green" ${p.health==='green'?'selected':''}>🟢 On Track</option><option value="yellow" ${p.health==='yellow'?'selected':''}>🟡 Risk</option><option value="red" ${p.health==='red'?'selected':''}>🔴 Critical</option></select></div><div><label style="font-size:0.7rem; color:var(--text-muted)">DUE DATE</label><input type="date" class="form-control" style="margin:0;" value="${p.due}" onchange="updItem('project', ${p.id}, 'due', this.value)"></div></div><div style="background:var(--bg-card); padding:15px; border-radius:8px; margin:20px 0; border:1px solid var(--border);"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span style="font-size:0.8rem; font-weight:bold;">BUDGET: $<input type="number" class="live-edit" style="width:100px; display:inline-block;" value="${budget}" onchange="updItem('project', ${p.id}, 'cost', this.value)"></span><span style="font-size:0.8rem; color:${spent>budget?'var(--danger)':'var(--warning)'};">SPENT: $${spent.toLocaleString()}</span></div><div class="progress-bar" style="width:100%; background:#1e293b;"><div class="progress-fill" style="width:${burn}%; background:${spent>budget?'var(--danger)':'var(--warning)'};"></div></div></div><h3>The Digital Binder</h3><div style="margin-bottom:20px;"><div style="display:flex; gap:10px; margin-bottom:10px;"><input id="newLinkName" class="form-control" style="margin:0" placeholder="Name"><input id="newLinkUrl" class="form-control" style="margin:0" placeholder="URL / Path"><button class="btn" onclick="addLink(${p.id})">Link</button></div><div>${lHtml}</div></div><h3>Action Items</h3><div style="display:flex; gap:10px; margin-bottom:10px;"><input id="newT" class="form-control" style="margin:0" placeholder="Task"><select id="newTA" class="form-control" style="margin:0; width:100px;"><option value="">Assign</option>${teamOpts}</select><button class="btn" onclick="addTask(${p.id})">Add</button></div><div>${tHtml}</div></div>`;
         nav('project-detail');
     }
 
-    // --- ACTIONS ---
-    function cloneProject(id) {
-        const original = projects.find(x => x.id === id);
-        const copy = JSON.parse(JSON.stringify(original));
-        copy.id = Date.now();
-        copy.title = "Copy of " + copy.title;
-        copy.status = "Planning";
-        copy.tasks.forEach(t => t.done = false); // Reset tasks
-        projects.push(copy);
-        saveLocally();
-        viewProject(copy.id);
-        alert("Project Cloned!");
+    // --- SORTING ---
+    let sortDir = 1;
+    function sortTable(tableId, col) {
+        const table = document.getElementById(tableId); const tbody = table.querySelector('tbody'); const rows = Array.from(tbody.querySelectorAll('tr'));
+        rows.sort((a, b) => {
+            let valA = a.cells[col].querySelector('input') ? a.cells[col].querySelector('input').value : a.cells[col].innerText;
+            let valB = b.cells[col].querySelector('input') ? b.cells[col].querySelector('input').value : b.cells[col].innerText;
+            valA = valA.replace('$','').replace(/,/g,'').toLowerCase(); valB = valB.replace('$','').replace(/,/g,'').toLowerCase();
+            if (!isNaN(valA) && !isNaN(valB)) { valA = parseFloat(valA); valB = parseFloat(valB); }
+            return valA > valB ? (1 * sortDir) : (-1 * sortDir);
+        });
+        sortDir *= -1; rows.forEach(row => tbody.appendChild(row));
     }
 
+    // --- ACTIONS ---
+    function updItem(type, id, key, val) { if (type === 'project') projects.find(x => x.id === id)[key] = val; if (type === 'inventory') inventory.find(x => x.id == id)[key] = val; if (type === 'expense') expenses.find(x => x.id === id)[key] = val; saveLocally(); render(); }
+    function updTask(pId, tId, key, val) { projects.find(x => x.id === pId).tasks.find(x => x.id === tId)[key] = val; saveLocally(); }
+    function cycPrio(pId, tId) { const t = projects.find(x=>x.id===pId).tasks.find(x=>x.id===tId); const m = {'high':'low','med':'high','low':'med','undefined':'med'}; t.prio = m[t.prio] || 'med'; saveLocally(); viewProject(pId); }
+    function cloneProject(id) { const original = projects.find(x => x.id === id); const copy = JSON.parse(JSON.stringify(original)); copy.id = Date.now(); copy.title = "Copy of " + copy.title; copy.status = "Planning"; copy.health = "green"; copy.tasks.forEach(t => t.done = false); projects.push(copy); saveLocally(); viewProject(copy.id); alert("Cloned!"); }
     function togTask(pId, tId) { projects.find(x=>x.id===pId).tasks.find(x=>x.id===tId).done ^= true; saveLocally(); viewProject(pId); }
-    function addTask(pId) { const t = document.getElementById('newT').value; if(t) { projects.find(x=>x.id===pId).tasks.push({id:Date.now(), text:t, done:false}); saveLocally(); viewProject(pId); } }
+    function addTask(pId) { const t = document.getElementById('newT').value; const a = document.getElementById('newTA').value; if(t) { projects.find(x=>x.id===pId).tasks.push({id:Date.now(), text:t, done:false, assign:a, prio:'med'}); saveLocally(); viewProject(pId); } }
     function delTask(pId, tId) { const p = projects.find(x=>x.id===pId); p.tasks = p.tasks.filter(x=>x.id!==tId); saveLocally(); viewProject(pId); }
     function updStatus(pId, s) { projects.find(x=>x.id===pId).status = s; saveLocally(); }
     function delProj(id) { if(confirm("Delete?")) { projects = projects.filter(x=>x.id!==id); saveLocally(); nav('dashboard'); } }
-    function addProject() { const t=document.getElementById('pTitle').value; const d=document.getElementById('pDesc').value; const dt=document.getElementById('pDate').value; const c=document.getElementById('pCost').value; if(t) { projects.push({id:Date.now(), title:t, desc:d, due:dt, cost:c, status:"Planning", tasks:[]}); saveLocally(); closeModal('projectModal'); render(); } }
+    function addProject() { const t=document.getElementById('pTitle').value; const d=document.getElementById('pDesc').value; const dt=document.getElementById('pDate').value; const c=document.getElementById('pCost').value; if(t) { projects.push({id:Date.now(), title:t, desc:d, due:dt, cost:c, status:"Planning", health:"green", tasks:[], links:[]}); saveLocally(); closeModal('projectModal'); render(); } }
     function addExpense() { const pid=document.getElementById('expProj').value; const desc=document.getElementById('expDesc').value; const amt=document.getElementById('expAmt').value; const dt=document.getElementById('expDate').value; const st=document.getElementById('expStatus').value; if(desc && amt) { expenses.push({id:Date.now(), projId:pid, desc:desc, amount:parseFloat(amt), date:dt, status:st}); saveLocally(); closeModal('expenseModal'); render(); } }
     function delExpense(id) { if(confirm("Remove?")) { expenses = expenses.filter(x=>x.id!==id); saveLocally(); render(); } }
-    function addInventory() { const id=document.getElementById('invId').value; const iso=document.getElementById('invIso').value; const act=document.getElementById('invAct').value; const dose=document.getElementById('invDose').value; const stat=document.getElementById('invStatus').value; if(id) { inventory.push({id, iso, act, dose, status:stat}); saveLocally(); closeModal('invModal'); render(); } }
+    function addInventory() { const id=document.getElementById('invId').value; const iso=document.getElementById('invIso').value; const act=document.getElementById('invAct').value; const dose=document.getElementById('invDose').value; const fill=document.getElementById('invFill').value; const stat=document.getElementById('invStatus').value; if(id) { inventory.push({id, iso, act, dose, fill, status:stat}); saveLocally(); closeModal('invModal'); render(); } }
+    function addLink(pId) { const n = document.getElementById('newLinkName').value; const u = document.getElementById('newLinkUrl').value; if(n && u) { const p = projects.find(x=>x.id===pId); if(!p.links) p.links=[]; p.links.push({name:n, url:u}); saveLocally(); viewProject(pId); } }
+    function delLink(pId, idx) { const p = projects.find(x=>x.id===pId); p.links.splice(idx, 1); saveLocally(); viewProject(pId); }
+    function renderTeamSettings() { document.getElementById('teamList').innerHTML = team.map(m => `<div style="display:flex; justify-content:space-between; margin-bottom:5px; background:var(--bg-input); padding:5px; border-radius:4px;">${m} <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="remTeam('${m}')"></i></div>`).join(''); }
+    function addTeamMember() { const m = document.getElementById('newMember').value; if(m) { team.push(m); saveLocally(); renderTeamSettings(); document.getElementById('newMember').value=''; } }
+    function remTeam(m) { team = team.filter(x => x !== m); saveLocally(); renderTeamSettings(); }
+    
+    function toggleProjView() { viewMode = viewMode === 'list' ? 'board' : 'list'; saveLocally(); render(); }
+    function toggleShowComp() { showComplete = !showComplete; saveLocally(); render(); }
+    
     function calculateDecay() { const iso=document.getElementById('calc-iso'); const hl=parseFloat(iso.options[iso.selectedIndex].getAttribute('data-hl')); const a0=parseFloat(document.getElementById('calc-a0').value); const d=new Date(document.getElementById('calc-date').value); if(!a0 || isNaN(d.getTime())) return; const y=(new Date()-d)/(1000*60*60*24*365.25); const act=a0*Math.exp(-(Math.log(2)/hl)*y); document.getElementById('calc-result').innerText=act.toFixed(3)+" mCi"; }
+    function saveHPState() { hpState.iso = document.getElementById('calc-iso').value; hpState.a0 = document.getElementById('calc-a0').value; hpState.date = document.getElementById('calc-date').value; saveLocally(); }
+    function saveWiki() { wikiText = document.getElementById('wiki-text').value; saveLocally(); }
     function handleChat(e) { if(e.key==='Enter'){ const t=document.getElementById('chatInput').value; if(t){ chatLog.push({user:"User", time:new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), text:t}); document.getElementById('chatInput').value=''; saveLocally(); render(); }}}
     function nav(id) { document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active')); document.getElementById('view-'+id).classList.add('active'); document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active')); }
-    function openModal(id) { document.getElementById(id).classList.add('active'); if(id === 'expenseModal') { const sel = document.getElementById('expProj'); sel.innerHTML = '<option value="">-- General --</option>'; projects.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.title}</option>`); } }
+    function openModal(id) { document.getElementById(id).classList.add('active'); if(id === 'expenseModal') { const sel = document.getElementById('expProj'); sel.innerHTML = '<option value="">-- General --</option>'; projects.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.title}</option>`); } else if (id === 'settingsModal') { renderTeamSettings(); } }
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
     
-    // --- IO ---
-    function exportData() { const a=document.createElement('a'); a.href="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify({projects,inventory,expenses,chat:chatLog})); a.download="radflow_data.json"; a.click(); }
-    function importData(input) { const f=input.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{setTimeout(()=>{try{const d=JSON.parse(e.target.result); projects=d.projects||[]; inventory=d.inventory||[]; expenses=d.expenses||[]; chatLog=d.chat||[]; saveLocally(); render(); alert("Data Loaded!");}catch(e){alert("Error");}},100)}; r.readAsText(f); input.value=''; }
-    function saveLocally() { localStorage.setItem('rad151_data', JSON.stringify({projects,inventory,expenses,chat:chatLog})); }
-    function loadLocally() { const d=JSON.parse(localStorage.getItem('rad151_data')); if(d) { projects=d.projects; inventory=d.inventory; expenses=d.expenses||[]; chatLog=d.chat; } else resetData(false); render(); }
-    function resetData(ask=true) { if(!ask || confirm("Restore Examples?")) { projects=JSON.parse(JSON.stringify(STARTER_DATA.projects)); inventory=JSON.parse(JSON.stringify(STARTER_DATA.inventory)); expenses=JSON.parse(JSON.stringify(STARTER_DATA.expenses)); chatLog=JSON.parse(JSON.stringify(STARTER_DATA.chat)); saveLocally(); if(ask)location.reload(); } }
-    function clearData() { if(confirm("Clear All?")) { projects=[]; inventory=[]; expenses=[]; chatLog=[]; saveLocally(); render(); } }
-    function toggleTheme() {
-        const b = document.body;
-        // If current attribute is 'dark', removing it reverts to default (light). 
-        // If it is null (default), set it to 'dark'.
-        if (b.getAttribute('data-theme') === 'dark') {
-            b.removeAttribute('data-theme');
-        } else {
-            b.setAttribute('data-theme', 'dark');
-        }
+    // IO
+    function openExportModal() { 
+        const data = JSON.stringify({projects,inventory,expenses,chat:chatLog, team, wiki:wikiText, hpState, viewMode, showComplete});
+        document.getElementById('exportText').value = data;
+        openModal('exportModal');
     }
+    function copyExport() {
+        const copyText = document.getElementById("exportText");
+        copyText.select();
+        document.execCommand("copy");
+        alert("Copied! Paste into a text file or email.");
+    }
+    function openImportModal() {
+        document.getElementById('importText').value = '';
+        openModal('importModal');
+    }
+    function runImport() {
+        try {
+            const raw = document.getElementById('importText').value;
+            const d = JSON.parse(raw);
+            projects=d.projects||[]; inventory=d.inventory||[]; expenses=d.expenses||[]; chatLog=d.chat||[]; team=d.team||[]; wikiText=d.wiki||""; hpState=d.hpState||{}; viewMode=d.viewMode||'list'; showComplete=d.showComplete||false; 
+            saveLocally(); render(); loadHPState();
+            closeModal('importModal');
+            alert("Data Loaded Successfully!");
+        } catch(e) { alert("Invalid Data Code."); }
+    }
+
+    function saveLocally() { localStorage.setItem('rad23_data', JSON.stringify({projects,inventory,expenses,chat:chatLog,team,wiki:wikiText,hpState,viewMode,showComplete})); }
+    
+    function loadHPState() {
+        if(hpState.iso) document.getElementById('calc-iso').value = hpState.iso;
+        if(hpState.a0) document.getElementById('calc-a0').value = hpState.a0;
+        if(hpState.date) document.getElementById('calc-date').value = hpState.date;
+    }
+
+    function loadLocally() { 
+        const theme = localStorage.getItem('rad_theme'); 
+        if (theme === 'dark') document.body.setAttribute('data-theme', 'dark'); 
+        const d = JSON.parse(localStorage.getItem('rad23_data')); 
+        if(d) { projects=d.projects; inventory=d.inventory; expenses=d.expenses||[]; chatLog=d.chat; team=d.team||[]; wikiText=d.wiki||""; hpState=d.hpState||{}; viewMode=d.viewMode||'list'; showComplete=d.showComplete||false; } 
+        else resetData(false); 
+        render(); loadHPState();
+    }
+    
+    function resetData(ask=true) { if(!ask || confirm("Restore Examples?")) { projects=JSON.parse(JSON.stringify(STARTER_DATA.projects)); inventory=JSON.parse(JSON.stringify(STARTER_DATA.inventory)); expenses=JSON.parse(JSON.stringify(STARTER_DATA.expenses)); chatLog=JSON.parse(JSON.stringify(STARTER_DATA.chat)); team=STARTER_DATA.team; wikiText=STARTER_DATA.wiki; saveLocally(); if(ask)location.reload(); } }
+    function clearData() { if(confirm("Clear All?")) { projects=[]; inventory=[]; expenses=[]; chatLog=[]; team=[]; wikiText=""; hpState={}; saveLocally(); render(); } }
+    function toggleTheme() { const b=document.body; const newTheme = b.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; if(newTheme === 'dark') b.setAttribute('data-theme', 'dark'); else b.removeAttribute('data-theme'); localStorage.setItem('rad_theme', newTheme); }
 
     // Init
     loadLocally();
