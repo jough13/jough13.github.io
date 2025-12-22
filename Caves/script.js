@@ -700,7 +700,8 @@ function getScaledEnemy(enemyTemplate, x, y) {
     const multiplier = 1 + (zoneLevel * 0.10);
     
     enemy.maxHealth = Math.floor(enemy.maxHealth * multiplier);
-    enemy.attack = Math.floor(enemy.attack * multiplier);
+    enemy.attack = Math.floor(enemy.attack * multiplier) + Math.floor(zoneLevel / 3); 
+    // This ensures that even "Weak" enemies eventually hit harder as you go further out.
     enemy.xp = Math.floor(enemy.xp * multiplier);
 
     // 4. Apply Zone Name (Cosmetic)
@@ -9394,6 +9395,22 @@ function castSpell(spellId) {
     }
 }
 
+function calculateHitChance(player, enemy) {
+    // Base 80% accuracy
+    let chance = 0.80; 
+    
+    // Add 2% per point of Perception or Dexterity
+    chance += (player.perception * 0.02);
+    
+    // Level Grace: +5% hit chance for every level under 5
+    if (player.level < 5) {
+        chance += (5 - player.level) * 0.05;
+    }
+
+    // Cap it at 98% (rarely miss) and floor at 50%
+    return Math.max(0.5, Math.min(0.98, chance));
+}
+
 async function executeMeleeSkill(skillId, dirX, dirY) {
     const player = gameState.player;
     const skillData = SKILL_DATA[skillId];
@@ -9876,7 +9893,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             } else {
                 // --- 2. Calculate Potential Damage ---
                 const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
-                const baseDefense = Math.floor(player.dexterity / 5);
+                const baseDefense = Math.floor(player.dexterity / 3);
                 const buffDefense = player.defenseBonus || 0;
 
                 // --- TALENT: IRON SKIN ---
@@ -10066,14 +10083,14 @@ const renderEquipment = () => {
     const armor = player.equipment.armor || { name: 'Simple Tunic', defense: 0 };
 
     // Calculate total defense
-    const baseDefense = Math.floor(player.dexterity / 5); 
+    const baseDefense = Math.floor(player.dexterity / 3); 
     const armorDefense = armor.defense || 0;
     const buffDefense = player.defenseBonus || 0; 
 
     // --- TALENT: IRON SKIN ---
     const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
 
-    const totalDefense = baseDefense + armorDefense + buffDefense;
+    const totalDefense = baseDefense + armorDefense + buffDefense + (player.constitution * 0.1);
 
     // Update the display
     let armorString = `Armor: ${armor.name} (+${armorDefense} Def)`;
@@ -10834,10 +10851,10 @@ function processEnemyTurns() {
         // Melee Attack (Range 1)
         if (distSq <= 2) {
             const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
-            const baseDefense = Math.floor(player.dexterity / 5);
+            const baseDefense = Math.floor(player.dexterity / 3);
             const buffDefense = player.defenseBonus || 0;
             const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
-            const totalDefense = baseDefense + armorDefense + buffDefense + talentDefense;
+            const totalDefense = baseDefense + armorDefense + buffDefense + (player.constitution * 0.1);
             
             let dodgeChance = Math.min(player.luck * 0.002, 0.25);
             if (player.talents && player.talents.includes('evasion')) {
@@ -12330,6 +12347,14 @@ async function attemptMovePlayer(newX, newY) {
     // --- COMBAT CHECK ---
     const enemyData = ENEMY_DATA[newTile];
     if (enemyData) {
+    const hitChance = calculateHitChance(gameState.player, enemyData);
+    
+    if (Math.random() > hitChance) {
+        logMessage(`You swing at the ${enemyData.name} but miss!`);
+        // We still end the turn so the enemy can move/attack
+        endPlayerTurn(); 
+        return; 
+    }
         
         // 1. Calculate Player's Raw Attack Power
 
@@ -12371,7 +12396,13 @@ async function attemptMovePlayer(newX, newY) {
                 
                 const boostedDamage = getPlayerDamageModifier(rawDamage);
 
-                const playerDamage = Math.max(1, boostedDamage - (enemy.defense || 0));
+
+let playerDamage = Math.max(1, boostedDamage - (enemy.defense || 0));
+
+if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
+    const graceFloor = Math.ceil(gameState.player.strength / 2); 
+    playerDamage = Math.max(playerDamage, graceFloor);
+}
 
                 enemy.health -= playerDamage;
                 
@@ -12415,7 +12446,7 @@ async function attemptMovePlayer(newX, newY) {
                 } else {
                     // ENEMY ATTACKS BACK
                     const armorDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
-                    const baseDefense = Math.floor(gameState.player.dexterity / 5);
+                    const baseDefense = Math.floor(gameState.player.dexterity / 3);
                     const buffDefense = gameState.player.defenseBonus || 0;
                     const playerDefense = baseDefense + armorDefense + buffDefense;
                     
@@ -12482,7 +12513,12 @@ async function attemptMovePlayer(newX, newY) {
         } else if (gameState.mapMode === 'overworld') {
             // --- SHARED COMBAT ---
             // Calculate Final Damage vs Base Enemy Defense
-            const playerDamage = Math.max(1, rawDamage - (enemyData.defense || 0));
+            let playerDamage = Math.max(1, rawDamage - (enemyData.defense || 0));
+
+if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
+    const graceFloor = Math.ceil(gameState.player.strength / 2); 
+    playerDamage = Math.max(playerDamage, graceFloor);
+}
 
             // Log before calling handleOverworldCombat (which handles the enemy reaction log)
             if (isCrit) {
