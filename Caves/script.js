@@ -6424,6 +6424,47 @@ function getBiomeColorForMap(x, y) {
     return '#22c55e'; // Plains
 }
 
+// --- HELPER: DRAW FANCY MOUNTAIN ---
+function drawMountain(ctx, x, y, size) {
+    // Get colors from CSS variables for theme support
+    const style = getComputedStyle(document.documentElement);
+    const baseColor = style.getPropertyValue('--mtn-base').trim();
+    const shadowColor = style.getPropertyValue('--mtn-shadow').trim();
+    const capColor = style.getPropertyValue('--mtn-cap').trim();
+
+    // 1. Draw the main mountain body
+    ctx.fillStyle = baseColor;
+    ctx.beginPath();
+    ctx.moveTo(x, y + size); // Bottom-left
+    ctx.lineTo(x + size / 2, y + size * 0.1); // Peak (with slight top padding)
+    ctx.lineTo(x + size, y + size); // Bottom-right
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Draw the shadow on the right face for depth
+    ctx.fillStyle = shadowColor;
+    ctx.beginPath();
+    ctx.moveTo(x + size / 2, y + size * 0.1); // Peak
+    ctx.lineTo(x + size, y + size); // Bottom-right
+    ctx.lineTo(x + size / 2, y + size); // Bottom-center
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Draw the snow cap
+    ctx.fillStyle = capColor;
+    ctx.beginPath();
+    // Jagged bottom edge for the snow
+    ctx.moveTo(x + size * 0.25, y + size * 0.5); 
+    ctx.lineTo(x + size * 0.35, y + size * 0.4);
+    ctx.lineTo(x + size * 0.5, y + size * 0.55);
+    ctx.lineTo(x + size * 0.65, y + size * 0.4);
+    ctx.lineTo(x + size * 0.75, y + size * 0.5);
+    // Go up to the peak
+    ctx.lineTo(x + size / 2, y + size * 0.1);
+    ctx.closePath();
+    ctx.fill();
+}
+
 // Listeners
 document.getElementById('closeMapButton').addEventListener('click', closeWorldMap);
 window.addEventListener('resize', () => {
@@ -10109,6 +10150,11 @@ const render = () => {
     // 1. Setup Canvas
     const style = getComputedStyle(document.documentElement);
     const canvasBg = style.getPropertyValue('--canvas-bg');
+
+    const mtnBase = style.getPropertyValue('--mtn-base').trim() || '#57534e';
+    const mtnShadow = style.getPropertyValue('--mtn-shadow').trim() || '#44403c';
+    const mtnCap = style.getPropertyValue('--mtn-cap').trim() || '#f9fafb';
+
     ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -10305,9 +10351,35 @@ const render = () => {
 
             // --- C. DRAW CHARACTERS (Layering) ---
             if (fgChar && !overlayChar) {
-                ctx.fillStyle = fgColor;
-                ctx.font = isWideChar(fgChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
-                ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                // Check for Mountain ('^') or Dungeon Entrance ('⛰')
+                if (fgChar === '^' || fgChar === '⛰') {
+                    // Use our fancy vector drawer
+                    drawMountain(
+                        ctx, 
+                        x * TILE_SIZE, 
+                        y * TILE_SIZE, 
+                        TILE_SIZE, 
+                        mtnBase, 
+                        mtnShadow, 
+                        mtnCap
+                    );
+                    
+                    // If it's a Dungeon Entrance, draw a little door on top
+                    if (fgChar === '⛰') {
+                        ctx.fillStyle = '#1f2937'; // Dark door color
+                        ctx.fillRect(
+                            (x * TILE_SIZE) + (TILE_SIZE * 0.4), 
+                            (y * TILE_SIZE) + (TILE_SIZE * 0.7), 
+                            TILE_SIZE * 0.2, 
+                            TILE_SIZE * 0.3
+                        );
+                    }
+                } else {
+                    // Standard Text Drawing
+                    ctx.fillStyle = fgColor;
+                    ctx.font = isWideChar(fgChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
+                    ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                }
             }
 
             if (overlayChar) {
