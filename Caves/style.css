@@ -12,6 +12,10 @@
 	--player-color: #1e40af;
 	/* MODIFIED: Darker Blue */
 	--terrain-color: #374151;
+
+	--mtn-base: #57534e;   /* Warm grey */
+    --mtn-shadow: #44403c; /* Darker grey for depth */
+    --mtn-cap: #f9fafb;    /* Bright snow */
 }
 
 [data-theme="dark"] {
@@ -28,6 +32,10 @@
 	--player-color: #3b82f6;
 	/* MODIFIED: Darker, richer blue for dark mode */
 	--terrain-color: #d1d5db;
+
+	--mtn-base: #374151;   /* Darker base */
+    --mtn-shadow: #1f2937; /* Deep shadow */
+    --mtn-cap: #e5e7eb;    /* Muted snow */
 }
 
 body {
@@ -732,3 +740,4 @@ kbd {
     transform: translateX(4px);
     border-color: var(--text-highlight);
 }
+
