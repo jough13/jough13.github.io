@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
   <head>
@@ -37,6 +38,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/display/placeholder.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
 
     <link
       rel="stylesheet"
@@ -456,6 +459,13 @@
             </div>
           </div>
           <div class="flex flex-col pt-4 flex-shrink-0">
+            <div class="flex items-center gap-2 mb-2 px-1">
+                <label class="flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-gray-200 cursor-pointer select-none">
+                    <input type="checkbox" id="includeContextToggle" checked class="rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-500">
+                    <span>Include Open Files in Context</span>
+                </label>
+            </div>
+            
             <textarea
               id="promptInput"
               class="code-editor w-full"
@@ -476,6 +486,7 @@
               </button>
             </div>
           </div>
+          
         </div>
 
         <div id="resizer" class="resizer mx-1"></div>
@@ -485,7 +496,7 @@
           class="flex flex-col flex-1 code-editor-view overflow-hidden"
         >
           <div class="flex-shrink-0 flex items-center border-b border-base">
-            <div id="code-tabs-container" class="flex items-center pl-4"></div>
+            <div id="code-tabs-container" class="flex items-center pl-4 overflow-x-auto whitespace-nowrap" style="scrollbar-width: none; -ms-overflow-style: none;"></div>
             <button
               id="add-code-tab-btn"
               class="ml-2 px-3 text-lg font-semibold text-gray-400 hover:text-white transition-colors"
@@ -671,9 +682,21 @@
               ];
 
               const showContextMenu = (e) => {
-                  contextMenu.style.display = 'block';
-                  contextMenu.style.left = `${e.clientX + 5}px`;
-                  contextMenu.style.top = `${e.clientY + 5}px`;
+    contextMenu.style.display = 'block';
+    
+    // Calculate positions
+    let x = e.clientX + 5;
+    let y = e.clientY + 5;
+    
+    // Check boundaries
+    const menuWidth = 200; // approx
+    const menuHeight = 200; // approx
+    
+    if (x + menuWidth > window.innerWidth) x = e.clientX - menuWidth;
+    if (y + menuHeight > window.innerHeight) y = e.clientY - menuHeight;
+
+    contextMenu.style.left = `${x}px`;
+    contextMenu.style.top = `${y}px`;
 
                   const menuList = contextMenu.querySelector('ul');
                   menuList.innerHTML = '';
@@ -797,17 +820,37 @@
               };
 
               const resize = (e) => {
-                  const mainContent = document.getElementById('main-content');
-                  const totalWidth = mainContent.offsetWidth;
-                  const newChatWidth = e.clientX - mainContent.offsetLeft;
-                  const newCodeWidth = totalWidth - newChatWidth - resizer.offsetWidth;
+    const mainContent = document.getElementById('main-content');
+    const isMobile = window.innerWidth < 768; // Tailwind md breakpoint
 
-                  if (newChatWidth > 100 && newCodeWidth > 100) {
-                      const chatPercentage = (newChatWidth / totalWidth) * 100;
-                      chatPane.style.width = `${chatPercentage}%`;
-                      localStorage.setItem(PANE_POSITION_LS_KEY, chatPercentage);
-                  }
-              };
+    if (!isMobile) {
+        // Horizontal Resize
+        const totalWidth = mainContent.offsetWidth;
+        const newChatWidth = e.clientX - mainContent.offsetLeft;
+        const newCodeWidth = totalWidth - newChatWidth - resizer.offsetWidth;
+        
+        if (newChatWidth > 100 && newCodeWidth > 100) {
+            const chatPercentage = (newChatWidth / totalWidth) * 100;
+            chatPane.style.width = `${chatPercentage}%`;
+            chatPane.style.height = '100%'; // Reset height
+            codePane.style.width = ''; // Let flex handle the rest
+            codePane.style.height = '100%'; // Reset height
+            localStorage.setItem(PANE_POSITION_LS_KEY, chatPercentage);
+        }
+    } else {
+        // Vertical Resize (Mobile)
+        const totalHeight = mainContent.offsetHeight;
+        // Calculate height based on Y position relative to main container
+        const newChatHeight = e.clientY - mainContent.offsetTop; 
+        
+        if (newChatHeight > 100 && (totalHeight - newChatHeight) > 100) {
+             // In column mode, we set height, not width
+            chatPane.style.width = '100%';
+            chatPane.style.height = `${newChatHeight}px`;
+            // Code pane takes remaining space via flex-1, but we can enforce strictness if needed
+        }
+    }
+};
 
               const stopResize = () => {
                   window.removeEventListener('mousemove', resize);
@@ -971,12 +1014,15 @@
               const getLanguageModeFromFilename = (filename) => {
                   const extension = filename.split('.').pop().toLowerCase();
                   const modeMap = {
-                      'js': 'javascript', 'mjs': 'javascript',
+                      'js': 'javascript', 'mjs': 'javascript', 'jsx': 'javascript',
+                      'ts': 'javascript', 'tsx': 'javascript',
                       'py': 'python',
                       'cpp': 'text/x-c++src', 'cxx': 'text/x-c++src', 'h': 'text/x-c++src',
                       'html': 'text/html', 'htm': 'text/html',
                       'css': 'css',
-                      'sql': 'sql'
+                      'sql': 'sql',
+                      'json': 'application/json',
+                      'md': 'markdown'
                   };
                   return modeMap[extension] || 'javascript';
               };
@@ -1192,11 +1238,11 @@
 
               // --- Code Formatting ---
               const formatCode = async () => {
-                  if (!codeMirrorEditor || typeof prettier === 'undefined' || typeof prettierPlugins === 'undefined') {
-                      console.error("Editor or Prettier library not available.");
-                      alert("Formatting library not loaded.");
-                      return;
-                  }
+    // Check if variables exist
+    if (!codeMirrorEditor || typeof prettier === 'undefined' || typeof prettierPlugins === 'undefined') {
+        alert("Formatting engine is still loading or failed. Try again in a moment.");
+        return;
+    }
                   const activeTab = codeTabs.find(t => t.id === activeCodeTabId);
                   if (!activeTab) return;
                   const code = codeMirrorEditor.getValue();
@@ -1311,16 +1357,40 @@
               // --- Gemini API and Multi-Step Logic ---
 
               const buildMasterPrompt = (prompt) => {
-                  let projectContext = "Here is the full context of the user's project with all open files:\n\n";
-                  if (codeTabs.length > 0) {
-                      codeTabs.forEach(tab => {
-                          projectContext += `--- FILE: ${tab.name} ---\n`;
-                          projectContext += `${tab.content}\n\n`;
-                      });
-                  } else {
-                      projectContext += "There are no open files.\n\n";
+                  const includeContext = document.getElementById('includeContextToggle').checked;
+                  let projectContext = "";
+
+                  if (includeContext) {
+                      projectContext += "Here is the full context of the user's project with all open files:\n\n";
+                      if (codeTabs.length > 0) {
+                          codeTabs.forEach(tab => {
+                              projectContext += `--- FILE: ${tab.name} ---\n`;
+                              projectContext += `${tab.content}\n\n`;
+                          });
+                      } else {
+                          projectContext += "There are no open files.\n\n";
+                      }
+                      projectContext += "--- END OF CONTEXT ---\n\n";
                   }
-                  projectContext += "--- END OF CONTEXT ---\n\nNow, based on the full project context, please fulfill the user's request:\n\n";
+
+                  // --- ADDED HISTORY LOGIC ---
+                  let historyContext = "\n--- CONVERSATION HISTORY ---\n";
+                  const relevantHistory = chatHistory.slice(0, -2); 
+                  
+                  relevantHistory.forEach(msg => {
+                      historyContext += `${msg.role === 'user' ? 'USER' : 'MODEL'}: ${msg.parts[0].text}\n`;
+                  });
+                  historyContext += "--- END OF HISTORY ---\n\n";
+                  // ---------------------------
+
+                  projectContext += historyContext;
+                  
+                  if (includeContext) {
+                      projectContext += "Now, based on the full project context and history, please fulfill the user's request:\n\n";
+                  } else {
+                      projectContext += "Now, based on the conversation history, please fulfill the user's request:\n\n";
+                  }
+                  
                   return projectContext + prompt;
               };
 
