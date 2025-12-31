@@ -95,6 +95,13 @@
         .project-link.bg-red-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(220, 38, 38, 0.25), 0 6px 6px rgba(220, 38, 38, 0.2); }
         .project-link.bg-yellow-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(146, 64, 14, 0.25), 0 6px 6px rgba(146, 64, 14, 0.2); }
         .bg-clip-text { -webkit-background-clip: text; }
+
+        @media (max-width: 768px) {
+    #interactive-header-canvas {
+        display: none !important;
+    }
+}
+        
     </style>
 </head>
 <body class="text-slate-800 dark:text-slate-300 antialiased">
@@ -330,114 +337,125 @@ function initPage() {
         const interactiveHeader = { canvas: null, ctx: null, resize: () => {} };
 
         function setupInteractiveHeader() {
-            interactiveHeader.canvas = document.getElementById('interactive-header-canvas');
-            if (!interactiveHeader.canvas) return;
+    interactiveHeader.canvas = document.getElementById('interactive-header-canvas');
+    if (!interactiveHeader.canvas) return;
 
-            interactiveHeader.ctx = interactiveHeader.canvas.getContext('2d');
-            let particles = [];
-            const mouse = { x: undefined, y: undefined };
-            let isEffectActive = false;
-            let effectTimeout;
-            const dustTrigger = document.getElementById('dust-trigger');
+    interactiveHeader.ctx = interactiveHeader.canvas.getContext('2d');
+    let particles = [];
+    const mouse = { x: undefined, y: undefined };
+    let isEffectActive = false;
+    let effectTimeout;
+    const dustTrigger = document.getElementById('dust-trigger');
 
-            interactiveHeader.resize = () => {
-                const dpr = window.devicePixelRatio || 1;
-                const rect = { width: window.innerWidth, height: window.innerHeight };
-                interactiveHeader.canvas.width = rect.width * dpr;
-                interactiveHeader.canvas.height = rect.height * dpr;
-                interactiveHeader.ctx.scale(dpr, dpr);
-            };
+    interactiveHeader.resize = () => {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = { width: window.innerWidth, height: window.innerHeight };
+        
+        interactiveHeader.canvas.width = rect.width * dpr;
+        interactiveHeader.canvas.height = rect.height * dpr;
+        
+        // Normalize coordinate system to use css pixels.
+        interactiveHeader.ctx.scale(dpr, dpr);
+    };
 
-            window.addEventListener('resize', interactiveHeader.resize);
+    window.addEventListener('resize', interactiveHeader.resize);
 
-            document.addEventListener('mousemove', (event) => {
-                if (isEffectActive) {
-                    mouse.x = event.clientX;
-                    mouse.y = event.clientY;
-                }
-            });
-
-            document.addEventListener('mouseleave', () => {
-                mouse.x = undefined;
-                mouse.y = undefined;
-            });
-
-            if (dustTrigger) {
-                dustTrigger.addEventListener('mouseover', () => {
-                    isEffectActive = true;
-                    clearTimeout(effectTimeout);
-                    effectTimeout = setTimeout(() => {
-                        isEffectActive = false;
-                    }, 5000);
-                });
-            }
-
-            class Particle {
-                constructor() {
-                    this.x = mouse.x;
-                    this.y = mouse.y;
-                    this.speedX = Math.random() * 0.5 - 0.25;
-                    this.speedY = Math.random() * 0.5 - 0.25;
-                    this.initialLife = this.life = Math.random() * 30 + 30;
-                    this.radius = Math.random() * 1.5 + 0.5;
-                    this.color = document.documentElement.classList.contains('dark') 
-                        ? 'rgba(107, 224, 255, 1)' 
-                        : 'rgba(0, 149, 255, 1)';
-                }
-
-                update() {
-                    this.life--;
-                    this.x += this.speedX;
-                    this.y += this.speedY;
-                }
-
-                draw() {
-                    const opacity = Math.max(0, this.life / this.initialLife);
-                    const ctx = interactiveHeader.ctx;
-                    
-                    ctx.shadowBlur = 8;
-                    ctx.shadowColor = this.color.replace(', 1)', `, ${opacity})`);
-                    
-                    ctx.fillStyle = this.color.replace(', 1)', `, ${opacity})`);
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                    ctx.fill();
-
-                    ctx.shadowBlur = 0;
-                }
-            }
-
-            function animate() {
-                const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                if (prefersReducedMotion) {
-                    // Clear the canvas once and stop the animation loop
-                    interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
-                    return; 
-                }
-
-                interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
-
-                if (isEffectActive && mouse.x !== undefined) {
-                     for (let i = 0; i < 3; i++) {
-                        particles.push(new Particle());
-                    }
-                }
-                
-                for (let i = particles.length - 1; i >= 0; i--) {
-                    const p = particles[i];
-                    p.update();
-                    p.draw();
-                    if (p.life <= 0) {
-                        particles.splice(i, 1);
-                    }
-                }
-                
-                requestAnimationFrame(animate);
-            }
-
-            interactiveHeader.resize();
-            animate();
+    document.addEventListener('mousemove', (event) => {
+        if (isEffectActive) {
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
         }
+    });
+
+    document.addEventListener('mouseleave', () => {
+        mouse.x = undefined;
+        mouse.y = undefined;
+    });
+
+    if (dustTrigger) {
+        dustTrigger.addEventListener('mouseover', () => {
+            isEffectActive = true;
+            clearTimeout(effectTimeout);
+            effectTimeout = setTimeout(() => {
+                isEffectActive = false;
+            }, 5000);
+        });
+    }
+
+    class Particle {
+        constructor() {
+            this.x = mouse.x;
+            this.y = mouse.y;
+            this.speedX = Math.random() * 0.5 - 0.25;
+            this.speedY = Math.random() * 0.5 - 0.25;
+            this.initialLife = this.life = Math.random() * 30 + 30;
+            this.radius = Math.random() * 1.5 + 0.5;
+            this.color = document.documentElement.classList.contains('dark') 
+                ? 'rgba(107, 224, 255, 1)' 
+                : 'rgba(0, 149, 255, 1)';
+        }
+
+        update() {
+            this.life--;
+            this.x += this.speedX;
+            this.y += this.speedY;
+        }
+
+        draw() {
+            const opacity = Math.max(0, this.life / this.initialLife);
+            const ctx = interactiveHeader.ctx;
+            
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = this.color.replace(', 1)', `, ${opacity})`);
+            
+            ctx.fillStyle = this.color.replace(', 1)', `, ${opacity})`);
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    function animate() {
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReducedMotion) {
+            interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
+            return; 
+        }
+
+        // --- THE FIX IS HERE ---
+        // 1. Save the current context state (with the dpr scale)
+        interactiveHeader.ctx.save();
+        // 2. Reset the transform to identity (1:1 pixel mapping)
+        interactiveHeader.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        // 3. Clear the full physical canvas safely
+        interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
+        // 4. Restore the context to the previous state (with dpr scale) for drawing
+        interactiveHeader.ctx.restore();
+        // -----------------------
+
+        if (isEffectActive && mouse.x !== undefined) {
+             for (let i = 0; i < 3; i++) {
+                particles.push(new Particle());
+            }
+        }
+        
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.update();
+            p.draw();
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+        
+        requestAnimationFrame(animate);
+    }
+
+    interactiveHeader.resize();
+    animate();
+}
 
 function setupLikeButtons() {
     // Helper function to get liked posts from localStorage
