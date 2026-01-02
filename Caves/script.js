@@ -6617,44 +6617,55 @@ function initSettingsListeners() {
     const closeBtn = document.getElementById('closeSettingsButton');
     const openBtn = document.getElementById('settingsButton');
 
-    // Checkboxes
+    // Audio Checkboxes
     const cbMaster = document.getElementById('settingMaster');
     const cbSteps = document.getElementById('settingSteps');
     const cbCombat = document.getElementById('settingCombat');
     const cbMagic = document.getElementById('settingMagic');
     const cbUI = document.getElementById('settingUI');
+    
+    // Visual Checkboxes
+    const cbCRT = document.getElementById('settingCRT');
 
     // 1. Sync UI with current state
     const syncUI = () => {
+        // Audio
         cbMaster.checked = AudioSystem.settings.master;
         cbSteps.checked = AudioSystem.settings.steps;
         cbCombat.checked = AudioSystem.settings.combat;
         cbMagic.checked = AudioSystem.settings.magic;
         cbUI.checked = AudioSystem.settings.ui;
         
+        // Visuals
+        if(cbCRT) cbCRT.checked = crtEnabled;
+        
         // Disable sub-options if master is off
         [cbSteps, cbCombat, cbMagic, cbUI].forEach(cb => cb.disabled = !cbMaster.checked);
     };
 
     // 2. Open Modal
-    openBtn.addEventListener('click', () => {
-        syncUI();
-        modal.classList.remove('hidden');
-    });
+    if (openBtn) {
+        openBtn.addEventListener('click', () => {
+            syncUI();
+            modal.classList.remove('hidden');
+        });
+    }
 
     // 3. Close Modal
-    closeBtn.addEventListener('click', () => {
-        modal.classList.add('hidden');
-    });
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+    }
 
-    // 4. Handle Toggles
+    // 4. Handle Audio Toggles
     const handleToggle = (key, element) => {
+        if (!element) return;
         element.addEventListener('change', (e) => {
             AudioSystem.settings[key] = e.target.checked;
             AudioSystem.saveSettings();
-            if (key === 'master') syncUI(); // Re-evaluate disabled states
+            if (key === 'master') syncUI(); 
             
-            // Play a test sound if turning ON
             if (e.target.checked) {
                 if (key === 'steps') AudioSystem.playStep();
                 else AudioSystem.playCoin();
@@ -6667,6 +6678,16 @@ function initSettingsListeners() {
     handleToggle('combat', cbCombat);
     handleToggle('magic', cbMagic);
     handleToggle('ui', cbUI);
+
+    // 5. Handle CRT Toggle
+    if (cbCRT) {
+        cbCRT.addEventListener('change', (e) => {
+            crtEnabled = e.target.checked;
+            localStorage.setItem('crtSetting', crtEnabled);
+            applyVisualSettings();
+            if (crtEnabled) AudioSystem.playMagic(); 
+        });
+    }
 }
 
 function renderWorldMap() {
