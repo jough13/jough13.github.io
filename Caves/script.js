@@ -4566,7 +4566,7 @@ const TileRenderer = {
         ctx.fill();
     },
 
-    // ⛰ Improved "Low Poly" Mountains with Variations
+    // ⛰ Improved "Low Poly" Mountains with Valleys
     drawMountain: (ctx, x, y, mapX, mapY, baseColor) => {
         // 1. Deterministic Random Seed
         const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
@@ -4578,6 +4578,21 @@ const TileRenderer = {
         // 2. Draw Ground (Matches biome to hide gaps)
         ctx.fillStyle = baseColor;
         ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+
+        // --- 3. NEGATIVE SPACE (The Valley) ---
+        // 15% chance to be a flat valley tile.
+        // This breaks up the "wall" of mountains.
+        if (rand > 0.85) {
+            // Draw a tiny pebble so it looks intentional, not like a glitch
+            ctx.fillStyle = '#44403c'; // Dark grey pebble
+            ctx.beginPath();
+            // Randomize pebble position slightly based on seed
+            const pX = tx + (TILE_SIZE * 0.3) + (rand * 5);
+            const pY = ty + (TILE_SIZE * 0.3) + (rand * 5);
+            ctx.arc(pX, pY, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            return; // Stop here! Don't draw a peak.
+        }
 
         // --- HELPER: Draw a single peak ---
         const drawPeak = (offsetX, offsetY, scaleW, scaleH) => {
@@ -4623,27 +4638,24 @@ const TileRenderer = {
             }
         };
 
-        // --- 3. CHOOSE VARIATION (Simplified) ---
+        // --- 4. CHOOSE PEAK VARIATION ---
+        // Adjusted probabilities since top 15% is now Valley
         
-        if (rand < 0.50) {
-            // VARIATION A: The Titan (50% Chance)
-            // One large, dominant peak. Keeps the map readable.
+        if (rand < 0.45) {
+            // VARIATION A: The Titan (45% Chance)
+            // One large, dominant peak.
             drawPeak(0, 0, 1.2, 1.0);
         } 
-        else if (rand < 0.85) {
-            // VARIATION B: The Ridge (35% Chance)
+        else if (rand < 0.75) {
+            // VARIATION B: The Ridge (30% Chance)
             // One main peak with a small "shoulder" peak attached.
-            // Adds that angular look without adding too many objects.
-            const side = (rand < 0.65) ? -1 : 1; // Shoulder on left or right?
-            
-            // Draw shoulder first (behind)
+            const side = (rand < 0.60) ? -1 : 1;
             drawPeak(side * 5, 4, 0.7, 0.6); 
-            // Draw main peak
             drawPeak(0, 0, 1.1, 1.0);
         } 
         else {
-            // VARIATION C: Twin Peaks (15% Chance)
-            // Two distinct peaks. Rare enough to be a nice detail.
+            // VARIATION C: Twin Peaks (10% Chance)
+            // Two distinct peaks.
             drawPeak(-3, 3, 0.7, 0.8);
             drawPeak(4, 5, 0.6, 0.6);
         }
