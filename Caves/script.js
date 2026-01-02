@@ -10348,8 +10348,10 @@ const render = () => {
                         TileRenderer.drawForest(ctx, x, y, mapX, mapY, bgColor, '#166534'); 
                         break;
                     case '^': 
-                        TileRenderer.drawMountain(ctx, x, y, mapX, mapY, bgColor, '#d6d3d1'); 
-                        break;
+    // We no longer need 'neighbors' or 'accentColor' for this style
+    // We pass bgColor so the base blends with the ground
+    TileRenderer.drawMountain(ctx, x, y, mapX, mapY, bgColor); 
+    break;
                     case '~': 
                         TileRenderer.drawWater(ctx, x, y, mapX, mapY, bgColor, '#3b82f6'); 
                         break;
