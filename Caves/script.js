@@ -4425,6 +4425,35 @@ elevationNoise.init(WORLD_SEED + ':elevation');
 const moistureNoise = Object.create(Perlin);
 moistureNoise.init(WORLD_SEED + ':moisture');
 
+function getSanitizedEquipment() {
+    const equip = gameState.player.equipment;
+    
+    // Helper to clean a single item
+    const sanitize = (item) => {
+        if (!item) return null;
+        return {
+            name: item.name,
+            type: item.type,
+            quantity: item.quantity || 1,
+            tile: item.tile,
+            damage: item.damage || null,
+            defense: item.defense || null,
+            slot: item.slot || null,
+            statBonuses: item.statBonuses || null,
+            spellId: item.spellId || null,
+            skillId: item.skillId || null,
+            stat: item.stat || null,
+            isEquipped: true 
+            // Note: We intentionally exclude 'effect' here to prevent the undefined error
+        };
+    };
+
+    return {
+        weapon: sanitize(equip.weapon) || { name: 'Fists', damage: 0 },
+        armor: sanitize(equip.armor) || { name: 'Simple Tunic', defense: 0 }
+    };
+}
+
 /**
  * Returns a clean array of inventory items ready for Firebase storage.
  * Removes functions (like 'effect') and ensures data consistency.
@@ -8999,7 +9028,7 @@ function handleCraftItem(recipeName) {
             defense: itemTemplate.defense || null,
             slot: itemTemplate.slot || null,
             statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
-            effect: itemTemplate.effect // CRITICAL: Copy the food effect!
+            effect: itemTemplate.effect || null 
         };
         playerInventory.push(newItem);
     }
@@ -12332,7 +12361,7 @@ function useInventoryItem(itemIndex) {
         if (itemUsed) {
         playerRef.update({
             inventory: getSanitizedInventory(),
-            equipment: gameState.player.equipment,
+            equipment: getSanitizedEquipment(), // <--- CHANGED THIS LINE
             health: gameState.player.health,
             mana: gameState.player.mana,
             stamina: gameState.player.stamina,
