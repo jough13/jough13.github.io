@@ -4575,13 +4575,16 @@ const TileRenderer = {
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
 
-        // 2. Draw Ground (Matches biome)
+        // 2. Draw Ground (Matches biome to hide gaps)
         ctx.fillStyle = baseColor;
         ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
 
         // --- HELPER: Draw a single peak ---
-        const drawPeak = (offsetX, offsetY, scaleW, scaleH, shiftColor) => {
-            const peakX = tx + (TILE_SIZE / 2) + offsetX;
+        const drawPeak = (offsetX, offsetY, scaleW, scaleH) => {
+            // Randomize peak tip slightly based on seed
+            const jitterX = (rand - 0.5) * 4; 
+            
+            const peakX = tx + (TILE_SIZE / 2) + offsetX + jitterX;
             const peakY = ty + (TILE_SIZE * 0.1) + offsetY;
             
             const width = TILE_SIZE * scaleW;
@@ -4591,20 +4594,16 @@ const TileRenderer = {
             const baseRight = peakX + (width / 2);
             const baseBottom = ty + TILE_SIZE;
 
-            // Colors: Slight random shift to break up the "brown wall"
-            const lightColor = shiftColor ? '#a8a29e' : '#78716c'; // Stone vs Warm Grey
-            const darkColor = shiftColor ? '#57534e' : '#44403c';  // Dark Stone vs Dark Warm
-
-            // Shadow Side (Right)
-            ctx.fillStyle = darkColor;
+            // Shadow Side (Right) - Warm Dark Grey
+            ctx.fillStyle = '#44403c'; 
             ctx.beginPath();
             ctx.moveTo(peakX, peakY);
             ctx.lineTo(baseRight, baseBottom);
             ctx.lineTo(peakX, baseBottom);
             ctx.fill();
 
-            // Sunlit Side (Left)
-            ctx.fillStyle = lightColor;
+            // Sunlit Side (Left) - Warm Medium Grey
+            ctx.fillStyle = '#78716c'; 
             ctx.beginPath();
             ctx.moveTo(peakX, peakY);
             ctx.lineTo(peakX, baseBottom);
@@ -4612,41 +4611,41 @@ const TileRenderer = {
             ctx.fill();
 
             // Snow Cap (Only on tall peaks)
-            if (scaleH > 0.8) {
-                const snowLine = peakY + (height * 0.3);
-                ctx.fillStyle = '#f3f4f6';
+            if (scaleH > 0.85) {
+                const snowLine = peakY + (height * 0.25);
+                ctx.fillStyle = '#f3f4f6'; // White
                 ctx.beginPath();
                 ctx.moveTo(peakX, peakY);
-                ctx.lineTo(peakX + (width * 0.15), snowLine);
-                ctx.lineTo(peakX, snowLine - 2); // Jagged dip
-                ctx.lineTo(peakX - (width * 0.15), snowLine);
+                ctx.lineTo(peakX + (width * 0.2), snowLine + 2);
+                ctx.lineTo(peakX, snowLine - 1); // Slight jagged dip
+                ctx.lineTo(peakX - (width * 0.2), snowLine + 2);
                 ctx.fill();
             }
         };
 
-        // --- 3. CHOOSE VARIATION ---
+        // --- 3. CHOOSE VARIATION (Simplified) ---
         
-        if (rand < 0.4) {
-            // VARIATION A: The Titan (One large, slightly offset peak)
-            // Shift X slightly (-5px to +5px)
-            const shiftX = (rand - 0.2) * 10; 
-            drawPeak(shiftX, 0, 1.2, 1.0, false);
+        if (rand < 0.50) {
+            // VARIATION A: The Titan (50% Chance)
+            // One large, dominant peak. Keeps the map readable.
+            drawPeak(0, 0, 1.2, 1.0);
         } 
-        else if (rand < 0.7) {
-            // VARIATION B: The Twins (One back left, one front right)
-            // Draw back one first (darker/smaller)
-            drawPeak(-4, 4, 0.8, 0.7, true); 
-            // Draw front one
-            drawPeak(6, 0, 0.9, 0.9, false);
+        else if (rand < 0.85) {
+            // VARIATION B: The Ridge (35% Chance)
+            // One main peak with a small "shoulder" peak attached.
+            // Adds that angular look without adding too many objects.
+            const side = (rand < 0.65) ? -1 : 1; // Shoulder on left or right?
+            
+            // Draw shoulder first (behind)
+            drawPeak(side * 5, 4, 0.7, 0.6); 
+            // Draw main peak
+            drawPeak(0, 0, 1.1, 1.0);
         } 
         else {
-            // VARIATION C: The Range (Three jagged spikes)
-            // Back center
-            drawPeak(0, 2, 1.4, 0.8, true);
-            // Left small
-            drawPeak(-6, 6, 0.6, 0.6, false);
-            // Right small
-            drawPeak(6, 8, 0.5, 0.5, false);
+            // VARIATION C: Twin Peaks (15% Chance)
+            // Two distinct peaks. Rare enough to be a nice detail.
+            drawPeak(-3, 3, 0.7, 0.8);
+            drawPeak(4, 5, 0.6, 0.6);
         }
     },
 
