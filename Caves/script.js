@@ -6649,8 +6649,10 @@ function generateEnemyLoot(player, enemy) {
  * @param {number} operation - 1 to add, -1 to subtract.
  */
 function applyStatBonuses(item, operation) {
+    // --- FIX: Safety Check ---
+    // If item is null, or has no statBonuses (is null/undefined), stop immediately.
     if (!item || !item.statBonuses) {
-        return; // Item has no bonuses, do nothing
+        return; 
     }
 
     const player = gameState.player;
@@ -6677,7 +6679,6 @@ function applyStatBonuses(item, operation) {
             }
         }
     }
-    // We don't need to renderStats() here, the equip logic will do it.
 }
 
 function grantXp(amount) {
