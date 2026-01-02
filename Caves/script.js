@@ -7466,48 +7466,54 @@ function useSkill(skillId) {
                 break;
 
             // --- NEW SKILL: WHIRLWIND ---
-            case 'whirlwind':
+             case 'whirlwind':
                 logMessage("You spin in a deadly vortex!");
                 let hitCount = 0;
                 // Stronger scaling: Str + Dex
-                const baseDmg = (player.strength + player.dexterity) * skillLevel; 
-                
+                const baseDmg = (player.strength + player.dexterity) * skillLevel;
+
                 // Attack all adjacent tiles (-1 to 1)
                 for (let y = -1; y <= 1; y++) {
-    for (let x = -1; x <= 1; x++) {
-        if (x === 0 && y === 0) continue;
-        const tx = player.x + x;
-        const ty = player.y + y;
+                    for (let x = -1; x <= 1; x++) {
+                        if (x === 0 && y === 0) continue; // Skip self
+                        const tx = player.x + x;
+                        const ty = player.y + y;
 
-        if (gameState.mapMode === 'overworld') {
-            // Check for tile data to get enemy stats
-            const tile = chunkManager.getTile(tx, ty);
-            const enemyData = ENEMY_DATA[tile];
-            if (enemyData) {
-                // Use the shared combat handler
-                // Note: You need to make useSkill async or handle the promise if you want to wait
-                handleOverworldCombat(tx, ty, enemyData, tile, baseDmg);
-                hitCount++;
-            }
-        } else {
-            // Existing Instanced Logic
-            let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
-                        if (enemy) {
-                            enemy.health -= baseDmg;
-                            logMessage(`Whirlwind hits ${enemy.name} for ${baseDmg}!`);
-                            hitCount++;
-                            
-                            if (enemy.health <= 0) {
-                                logMessage(`${enemy.name} is slain!`);
-                               
-                                registerKill(enemy);
-                                
-                                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                                // Note: Not generating loot for AoE to keep it simple, or add it if you want
+                        // --- FIX START: Handle Overworld vs Instanced ---
+                        if (gameState.mapMode === 'overworld') {
+                            const tile = chunkManager.getTile(tx, ty);
+                            const enemyData = ENEMY_DATA[tile];
+                            if (enemyData) {
+                                // Calculate damage (simplified for AoE)
+                                const finalDmg = Math.max(1, baseDmg - (enemyData.defense || 0));
+                                // Call the async handler (fire and forget)
+                                handleOverworldCombat(tx, ty, enemyData, tile, finalDmg);
+                                hitCount++;
+                            }
+                        } else {
+                            // Existing Instanced Logic
+                            let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
+                            if (enemy) {
+                                enemy.health -= baseDmg;
+                                logMessage(`Whirlwind hits ${enemy.name} for ${baseDmg}!`);
+                                hitCount++;
+
+                                if (enemy.health <= 0) {
+                                    logMessage(`${enemy.name} is slain!`);
+                                    registerKill(enemy);
+                                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+
+                                    // Update persistent dungeon state
+                                    if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+                                        chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+                                    }
+                                }
                             }
                         }
+                        // --- FIX END ---
                     }
                 }
+                
                 if (hitCount === 0) logMessage("You whirl through empty air.");
                 skillUsedSuccessfully = true;
                 break;
