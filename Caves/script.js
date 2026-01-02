@@ -4566,22 +4566,88 @@ const TileRenderer = {
         ctx.fill();
     },
 
-    // ⛰ Mountains
-    drawMountain: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
-        TileRenderer.drawBase(ctx, x, y, baseColor);
-        // Reduced frequency: 10% chance (was 50%)
-        if (TileRenderer.getPseudoRandom(mapX, mapY) < 0.1) {
-            TileRenderer.drawPebble(ctx, x, y, '#78716c', mapX, mapY);
-        }
-        
-        ctx.fillStyle = accentColor;
+    // ⛰ Improved "Low Poly" Mountains with Variations
+    drawMountain: (ctx, x, y, mapX, mapY, baseColor) => {
+        // 1. Deterministic Random Seed
+        const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
+        const rand = seed - Math.floor(seed); // 0.0 to 1.0
+
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
-        ctx.beginPath();
-        ctx.moveTo(tx + TILE_SIZE * 0.5, ty + TILE_SIZE * 0.1);
-        ctx.lineTo(tx + TILE_SIZE * 0.9, ty + TILE_SIZE * 0.9);
-        ctx.lineTo(tx + TILE_SIZE * 0.1, ty + TILE_SIZE * 0.9);
-        ctx.fill();
+
+        // 2. Draw Ground (Matches biome)
+        ctx.fillStyle = baseColor;
+        ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+
+        // --- HELPER: Draw a single peak ---
+        const drawPeak = (offsetX, offsetY, scaleW, scaleH, shiftColor) => {
+            const peakX = tx + (TILE_SIZE / 2) + offsetX;
+            const peakY = ty + (TILE_SIZE * 0.1) + offsetY;
+            
+            const width = TILE_SIZE * scaleW;
+            const height = TILE_SIZE * scaleH;
+
+            const baseLeft = peakX - (width / 2);
+            const baseRight = peakX + (width / 2);
+            const baseBottom = ty + TILE_SIZE;
+
+            // Colors: Slight random shift to break up the "brown wall"
+            const lightColor = shiftColor ? '#a8a29e' : '#78716c'; // Stone vs Warm Grey
+            const darkColor = shiftColor ? '#57534e' : '#44403c';  // Dark Stone vs Dark Warm
+
+            // Shadow Side (Right)
+            ctx.fillStyle = darkColor;
+            ctx.beginPath();
+            ctx.moveTo(peakX, peakY);
+            ctx.lineTo(baseRight, baseBottom);
+            ctx.lineTo(peakX, baseBottom);
+            ctx.fill();
+
+            // Sunlit Side (Left)
+            ctx.fillStyle = lightColor;
+            ctx.beginPath();
+            ctx.moveTo(peakX, peakY);
+            ctx.lineTo(peakX, baseBottom);
+            ctx.lineTo(baseLeft, baseBottom);
+            ctx.fill();
+
+            // Snow Cap (Only on tall peaks)
+            if (scaleH > 0.8) {
+                const snowLine = peakY + (height * 0.3);
+                ctx.fillStyle = '#f3f4f6';
+                ctx.beginPath();
+                ctx.moveTo(peakX, peakY);
+                ctx.lineTo(peakX + (width * 0.15), snowLine);
+                ctx.lineTo(peakX, snowLine - 2); // Jagged dip
+                ctx.lineTo(peakX - (width * 0.15), snowLine);
+                ctx.fill();
+            }
+        };
+
+        // --- 3. CHOOSE VARIATION ---
+        
+        if (rand < 0.4) {
+            // VARIATION A: The Titan (One large, slightly offset peak)
+            // Shift X slightly (-5px to +5px)
+            const shiftX = (rand - 0.2) * 10; 
+            drawPeak(shiftX, 0, 1.2, 1.0, false);
+        } 
+        else if (rand < 0.7) {
+            // VARIATION B: The Twins (One back left, one front right)
+            // Draw back one first (darker/smaller)
+            drawPeak(-4, 4, 0.8, 0.7, true); 
+            // Draw front one
+            drawPeak(6, 0, 0.9, 0.9, false);
+        } 
+        else {
+            // VARIATION C: The Range (Three jagged spikes)
+            // Back center
+            drawPeak(0, 2, 1.4, 0.8, true);
+            // Left small
+            drawPeak(-6, 6, 0.6, 0.6, false);
+            // Right small
+            drawPeak(6, 8, 0.5, 0.5, false);
+        }
     },
 
     // . Plains
