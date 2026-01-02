@@ -741,3 +741,26 @@ kbd {
     border-color: var(--text-highlight);
 }
 
+/* CRT Effect Overlay */
+.game-container {
+    position: relative;
+    overflow: hidden; /* Keep scanlines inside */
+}
+
+.game-container::after {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(
+        to bottom,
+        rgba(18, 16, 16, 0) 50%,
+        rgba(0, 0, 0, 0.1) 50%
+    );
+    background-size: 100% 4px; /* Size of scanlines */
+    z-index: 10;
+    pointer-events: none; /* Let clicks pass through */
+}
