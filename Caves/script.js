@@ -10407,6 +10407,7 @@ const render = () => {
     const style = getComputedStyle(document.documentElement);
     const canvasBg = style.getPropertyValue('--canvas-bg');
 
+    // Mountain Colors
     const mtnBase = style.getPropertyValue('--mtn-base').trim() || '#57534e';
     const mtnShadow = style.getPropertyValue('--mtn-shadow').trim() || '#44403c';
     const mtnCap = style.getPropertyValue('--mtn-cap').trim() || '#f9fafb';
@@ -10414,6 +10415,7 @@ const render = () => {
     ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // --- SCREEN SHAKE ---
     let shakeX = 0;
     let shakeY = 0;
     if (gameState.screenShake > 0) {
@@ -10466,16 +10468,15 @@ const render = () => {
 
     const isWideChar = (char) => /\p{Extended_Pictographic}/u.test(char);
 
-// --- 3. MAIN RENDER LOOP ---
+    // --- 3. MAIN RENDER LOOP ---
     for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
             const mapY = startY + y;
             
-            // --- FIX: Define effectiveRadius HERE so it's available for everything ---
             const distToPlayer = Math.sqrt(Math.pow(mapX - gameState.player.x, 2) + Math.pow(mapY - gameState.player.y, 2));
             
-            // Optional: Add noise to the light radius for jagged edges
+            // Add noise to the light radius for jagged edges
             let effectiveRadius = lightRadius; 
             if (typeof elevationNoise !== 'undefined') {
                  effectiveRadius += elevationNoise.noise(mapX / 5, mapY / 5) * 1.5;
@@ -10484,7 +10485,18 @@ const render = () => {
             // Calculate Shadow Opacity
             let tileShadowOpacity = ambientLight;
             
-            if (distToPlayer < effectiveRadius) {
+            // Dungeon Fog Logic
+            if (gameState.mapMode === 'dungeon') {
+                if (distToPlayer > effectiveRadius) {
+                    tileShadowOpacity = 1.0; // Total darkness
+                } else {
+                    const edge = effectiveRadius - distToPlayer;
+                    if (edge < 3) tileShadowOpacity = 1.0 - (edge / 3); 
+                    else tileShadowOpacity = 0.0;
+                }
+            }
+            // Overworld Day/Night Logic
+            else if (distToPlayer < effectiveRadius) {
                 const edge = effectiveRadius - distToPlayer;
                 if (edge < 5) tileShadowOpacity = ambientLight * (1 - (edge / 5)); 
                 else tileShadowOpacity = 0; 
@@ -10514,7 +10526,7 @@ const render = () => {
                 // Overworld
                 tile = chunkManager.getTile(mapX, mapY);
                 
-                // --- FIX START: CONSISTENT BIOME BACKGROUNDS ---
+                // Determine Base Biome
                 const baseTerrain = getBaseTerrain(mapX, mapY);
                 let bgColor = '#22c55e'; // Default Plains Green
 
@@ -10525,13 +10537,13 @@ const render = () => {
                 else if (baseTerrain === '^') bgColor = '#57534e'; // Grey Mountain
                 else if (baseTerrain === '~') bgColor = '#1e3a8a'; // Blue Water
 
-                // 2. Draw the Background first
+                // Draw Background
                 TileRenderer.drawBase(ctx, x, y, bgColor);
 
-                // --- ANIMATED TILES LOGIC (MOVED HERE) ---
+                // --- ANIMATED TILES LOGIC ---
                 const time = Date.now();
                 
-                // 1. Water Ripples (~ and ≈ swap every 500ms)
+                // 1. Water Ripples
                 if (tile === '~' || tile === '≈') {
                     if (Math.floor((time + (x * 100)) / 500) % 2 === 0) {
                         fgChar = '~';
@@ -10540,7 +10552,7 @@ const render = () => {
                     }
                     fgColor = '#3b82f6'; // Bright Blue
                 }
-                // 2. Fire/Lava Flicker (Color Pulse)
+                // 2. Fire/Lava Flicker
                 else if (tile === '🔥' || tile === 'D') {
                     const flicker = Math.floor(time / 100) % 3;
                     if (flicker === 0) fgColor = '#ef4444'; 
@@ -10560,7 +10572,6 @@ const render = () => {
                 }
 
                 // --- DRAWING LOGIC ---
-                // Only use the default switch if we haven't already set an animated char
                 if (!fgChar) {
                     switch (tile) {
                         case '.': 
@@ -10570,7 +10581,6 @@ const render = () => {
                             TileRenderer.drawForest(ctx, x, y, mapX, mapY, bgColor); 
                             break;
                         case '^': 
-                            // This now correctly calls the mountain renderer
                             TileRenderer.drawMountain(ctx, x, y, mapX, mapY, bgColor); 
                             break;
                         case '~': 
@@ -10649,11 +10659,8 @@ const render = () => {
             if (fgChar && !overlayChar) {
                 // Check for Mountain ('^') or Dungeon Entrance ('⛰')
                 if (fgChar === '^' || fgChar === '⛰') {
-                    // Use our fancy vector drawer
-                    // Note: If it's an entrance, we draw the mountain first
                     TileRenderer.drawMountain(ctx, x, y, mapX, mapY, bgColor || '#22c55e');
                     
-                    // If it's a Dungeon Entrance, draw a little door on top
                     if (fgChar === '⛰') {
                         ctx.fillStyle = '#1f2937'; // Dark door color
                         ctx.fillRect(
@@ -10672,18 +10679,10 @@ const render = () => {
             }
 
             if (overlayChar) {
-                // List of "Humanoid" tiles that should use the new renderer
-                const humanoids = ['g', 'o', 'b', 'R', 'C', 'm', 'a', 'z', 'c', 'N', 'G', 'H', '§', 'K', 'T', 'S'];
-                
-                if (humanoids.includes(overlayChar)) {
-                    // Draw Vector Humanoid
-                    TileRenderer.drawHumanoid(ctx, x, y, overlayColor, 1.0, true); 
-                } else {
-                    // Draw Standard Text (Monsters/Animals)
-                    ctx.fillStyle = overlayColor;
-                    ctx.font = isWideChar(overlayChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
-                    ctx.fillText(overlayChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
-                }
+                // Draw Standard Text for Enemies (Restored Retro Style)
+                ctx.fillStyle = overlayColor;
+                ctx.font = isWideChar(overlayChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
+                ctx.fillText(overlayChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
             }
 
             // --- D. DRAW SHADOW & TINT (Top Layer) ---
@@ -10725,28 +10724,26 @@ const render = () => {
     for (const id in otherPlayers) {
         if (otherPlayers[id].mapMode !== gameState.mapMode || otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
         const op = otherPlayers[id];
-        const screenX = (op.x - startX); 
-        const screenY = (op.y - startY);
-        
-        if (screenX >= 0 && screenX < VIEWPORT_WIDTH && screenY >= 0 && screenY < VIEWPORT_HEIGHT) {
-            TileRenderer.drawHumanoid(ctx, screenX, screenY, '#f97316', 1.0, true);
+        const screenX = (op.x - startX) * TILE_SIZE;
+        const screenY = (op.y - startY) * TILE_SIZE;
+        if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
+            // Restored Text Drawing for Other Players
+            ctx.fillStyle = '#f97316'; // Orange
+            ctx.font = `bold ${TILE_SIZE}px monospace`;
+            ctx.fillText('@', screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
         }
     }
 
     // --- 5. DRAW SELF ---
     const playerChar = gameState.player.isBoating ? 'c' : gameState.player.character;
     
-    if (playerChar === '@' || gameState.player.classEvolved) {
-        TileRenderer.drawHumanoid(ctx, viewportCenterX, viewportCenterY, '#3b82f6', 1.0, true);
-    } else {
-        // Fallback for Boat 'c' or other states
-        ctx.font = `bold ${TILE_SIZE}px monospace`;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 3;
-        ctx.strokeText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
-        ctx.fillStyle = '#3b82f6';
-        ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
-    }
+    // Restored Text Drawing for Self
+    ctx.font = `bold ${TILE_SIZE}px monospace`;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.strokeText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+    ctx.fillStyle = '#3b82f6';
+    ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
 
     // --- 6. WEATHER EFFECTS ---
     const intensity = gameState.player.weatherIntensity || 0;
