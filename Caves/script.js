@@ -23,6 +23,8 @@ let otherPlayers = {};
 let unsubscribePlayerListener;
 let worldStateListeners = {};
 
+let areGlobalListenersInitialized = false;
+
 // --- INPUT THROTTLE ---
 let lastActionTime = 0;
 const ACTION_COOLDOWN = 150; // ms (limits speed to ~6 moves per second)
@@ -4195,7 +4197,7 @@ const SKILL_DATA = {
         target: "aimed",
         baseDamageMultiplier: 0.2, // Very low damage
         cooldown: 8,
-        // You need to handle the stun logic in 'executeMeleeSkill' similar to shieldBash
+    
     },
     "vanish": {
         name: "Vanish",
@@ -4719,7 +4721,9 @@ generateCave(caveId) {
 
         // --- 3. STAMP THEMED ROOMS ---
         // Initialize the enemy list here
-        this.caveEnemies[caveId] = [];
+        if (!this.caveEnemies[caveId]) {
+    this.caveEnemies[caveId] = [];
+}
         
         const roomTemplates = Object.values(CAVE_ROOM_TEMPLATES);
         const roomAttempts = 5; // Try to place 5 rooms
@@ -6718,18 +6722,17 @@ function handleBuyItem(itemName) {
         return;
     }
 
-    // --- NEW CHARISMA LOGIC ---
+    // --- CHARISMA LOGIC ---
     const basePrice = shopItem.price;
     // 0.5% discount per point of Charisma
     const discountPercent = player.charisma * 0.005; 
-    // Cap the discount at 50% (at 100 Charisma)
-    const finalDiscount = Math.min(discountPercent, 0.5); 
+    // Cap the discount at 25% (at 100 Charisma)
+    const finalDiscount = Math.min(discountPercent, 0.25); 
     const finalBuyPrice = Math.floor(basePrice * (1.0 - finalDiscount));
-    // --- END NEW LOGIC ---
 
 
     // 1. Check if player has enough gold
-    if (player.coins < finalBuyPrice) { // <-- Use new variable
+    if (player.coins < finalBuyPrice) { 
         logMessage("You don't have enough gold for that.");
         return;
     }
@@ -6864,9 +6867,9 @@ function handleSellItem(itemIndex) {
     const regionMult = getRegionalPriceMultiplier(itemToSell.type, itemToSell.name);
     
     const sellBonusPercent = player.charisma * 0.005;
-    const finalSellBonus = Math.min(sellBonusPercent, 0.5);
+    const finalSellBonus = Math.min(sellBonusPercent, 0.25);
     
-    // --- BUG FIX: ECONOMY CAP ---
+    // --- ECONOMY CAP ---
     // Calculate raw sell price
     let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
     
@@ -7471,13 +7474,24 @@ function useSkill(skillId) {
                 
                 // Attack all adjacent tiles (-1 to 1)
                 for (let y = -1; y <= 1; y++) {
-                    for (let x = -1; x <= 1; x++) {
-                        if (x === 0 && y === 0) continue; // Skip self
-                        const tx = player.x + x;
-                        const ty = player.y + y;
-                        
-                        // Check for instanced enemies
-                        let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
+    for (let x = -1; x <= 1; x++) {
+        if (x === 0 && y === 0) continue;
+        const tx = player.x + x;
+        const ty = player.y + y;
+
+        if (gameState.mapMode === 'overworld') {
+            // Check for tile data to get enemy stats
+            const tile = chunkManager.getTile(tx, ty);
+            const enemyData = ENEMY_DATA[tile];
+            if (enemyData) {
+                // Use the shared combat handler
+                // Note: You need to make useSkill async or handle the promise if you want to wait
+                handleOverworldCombat(tx, ty, enemyData, tile, baseDmg);
+                hitCount++;
+            }
+        } else {
+            // Existing Instanced Logic
+            let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
                         if (enemy) {
                             enemy.health -= baseDmg;
                             logMessage(`Whirlwind hits ${enemy.name} for ${baseDmg}!`);
@@ -7577,7 +7591,11 @@ async function runCompanionTurn() {
                                 logMessage(`Your ${companion.name} vanquished the ${enemyData.name}!`);
                                 grantXp(Math.floor(enemyData.xp / 2));
                                 // Visual cleanup handled by listener, but we can update local chunk tile
-                                chunkManager.setWorldTile(tx, ty, '.'); // Clear enemy tile locally
+                                        chunkManager.setWorldTile(tx, ty, '.'); 
+        if (gameState.sharedEnemies[enemyId]) {
+            delete gameState.sharedEnemies[enemyId];
+        }
+        render(); // Force update
                             } else {
                                 // Enemy survived
                                 logMessage(`Your ${companion.name} hits the ${enemyData.name}!`);
@@ -12990,6 +13008,11 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
                 else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = floorTile;
                 else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
 
+                        playerRef.update({ 
+            inventory: getSanitizedInventory() 
+        });
+        renderInventory();
+
                 render();
                 return;
             } else {
@@ -14126,11 +14149,34 @@ async function enterGame(playerData) {
         return;
     }
 
-    // --- 4. Setup Listeners ---
-
-// Cleanup old listeners first (Safety check)
+// --- 4. Setup Listeners ---
+    // Cleanup old listeners first (Safety check)
     if (sharedEnemiesListener) rtdb.ref('worldEnemies').off('value', sharedEnemiesListener);
     if (chatListener) rtdb.ref('chat').off('child_added', chatListener);
+
+    // [FIX] Only initialize static UI listeners ONCE per session
+    if (!areGlobalListenersInitialized) {
+        console.log("Initializing Global UI Listeners...");
+        
+        // These attach to static DOM elements (Buttons, Lists)
+        // We must NOT run these again on re-login
+        if (typeof initQuestListeners === 'function') initQuestListeners();
+        if (typeof initCraftingListeners === 'function') initCraftingListeners(); 
+        if (typeof initSkillTrainerListeners === 'function') initSkillTrainerListeners();
+        
+        initShopListeners();
+        initSpellbookListeners();
+        initSkillbookListeners();
+        initInventoryListeners();
+        initMobileControls();
+
+        areGlobalListenersInitialized = true;
+    } else {
+        console.log("UI Listeners already active. Skipping.");
+        // Ensure Mobile Controls are visible if they were hidden
+        const mobileContainer = document.getElementById('mobileControls');
+        if (mobileContainer) mobileContainer.classList.remove('hidden');
+    }
 
     // Note: player_id was set in selectSlot (it is currentUser.uid)
     onlinePlayerRef = rtdb.ref(`onlinePlayers/${player_id}`);
@@ -14348,14 +14394,25 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
     loadingIndicator.classList.add('hidden');
     
     // Initialize all UI listeners
-    initShopListeners();
-    initSpellbookListeners();
-    initInventoryListeners();
-    initSkillbookListeners();
-    initQuestListeners();
-    initCraftingListeners();
-    initSkillTrainerListeners();
-    initMobileControls();
+    // Only attach these listeners once per page load!
+    if (!areGlobalListenersInitialized) {
+        console.log("Initializing Global UI Listeners...");
+        initShopListeners();
+        initSpellbookListeners();
+        initInventoryListeners();
+        initSkillbookListeners();
+        initQuestListeners();
+        initCraftingListeners();
+        initSkillTrainerListeners();
+        initMobileControls();
+        
+        areGlobalListenersInitialized = true; // Mark as done
+    } else {
+        console.log("UI Listeners already active. Skipping.");
+        // Ensure Mobile Controls are visible if they were hidden
+        const mobileContainer = document.getElementById('mobileControls');
+        if (mobileContainer) mobileContainer.classList.remove('hidden');
+    }
 }
 
 auth.onAuthStateChanged((user) => {
