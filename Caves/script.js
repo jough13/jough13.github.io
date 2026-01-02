@@ -6613,9 +6613,16 @@ function applyVisualSettings() {
 }
 
 function initSettingsListeners() {
+    console.log("⚙️ Initializing Settings Listeners...");
+
     const modal = document.getElementById('settingsModal');
     const closeBtn = document.getElementById('closeSettingsButton');
     const openBtn = document.getElementById('settingsButton');
+
+    if (!modal || !openBtn || !closeBtn) {
+        console.error("❌ Critical Settings UI elements missing from HTML!");
+        return;
+    }
 
     // Audio Checkboxes
     const cbMaster = document.getElementById('settingMaster');
@@ -6629,39 +6636,41 @@ function initSettingsListeners() {
 
     // 1. Sync UI with current state
     const syncUI = () => {
-        // Audio
-        cbMaster.checked = AudioSystem.settings.master;
-        cbSteps.checked = AudioSystem.settings.steps;
-        cbCombat.checked = AudioSystem.settings.combat;
-        cbMagic.checked = AudioSystem.settings.magic;
-        cbUI.checked = AudioSystem.settings.ui;
+        if (cbMaster) cbMaster.checked = AudioSystem.settings.master;
+        if (cbSteps) cbSteps.checked = AudioSystem.settings.steps;
+        if (cbCombat) cbCombat.checked = AudioSystem.settings.combat;
+        if (cbMagic) cbMagic.checked = AudioSystem.settings.magic;
+        if (cbUI) cbUI.checked = AudioSystem.settings.ui;
         
         // Visuals
-        if(cbCRT) cbCRT.checked = crtEnabled;
+        if (cbCRT) cbCRT.checked = crtEnabled;
         
         // Disable sub-options if master is off
-        [cbSteps, cbCombat, cbMagic, cbUI].forEach(cb => cb.disabled = !cbMaster.checked);
+        if (cbMaster) {
+            [cbSteps, cbCombat, cbMagic, cbUI].forEach(cb => {
+                if (cb) cb.disabled = !cbMaster.checked;
+            });
+        }
     };
 
     // 2. Open Modal
-    if (openBtn) {
-        openBtn.addEventListener('click', () => {
-            syncUI();
-            modal.classList.remove('hidden');
-        });
-    }
+    openBtn.onclick = (e) => {
+        e.preventDefault(); // Prevent any default button behavior
+        console.log("⚙️ Settings Button Clicked");
+        syncUI();
+        modal.classList.remove('hidden');
+    };
 
     // 3. Close Modal
-    if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-            modal.classList.add('hidden');
-        });
-    }
+    closeBtn.onclick = (e) => {
+        e.preventDefault();
+        modal.classList.add('hidden');
+    };
 
     // 4. Handle Audio Toggles
     const handleToggle = (key, element) => {
-        if (!element) return;
-        element.addEventListener('change', (e) => {
+        if (!element) return; // Safety check
+        element.onchange = (e) => {
             AudioSystem.settings[key] = e.target.checked;
             AudioSystem.saveSettings();
             if (key === 'master') syncUI(); 
@@ -6670,7 +6679,7 @@ function initSettingsListeners() {
                 if (key === 'steps') AudioSystem.playStep();
                 else AudioSystem.playCoin();
             }
-        });
+        };
     };
 
     handleToggle('master', cbMaster);
@@ -6681,13 +6690,15 @@ function initSettingsListeners() {
 
     // 5. Handle CRT Toggle
     if (cbCRT) {
-        cbCRT.addEventListener('change', (e) => {
+        cbCRT.onchange = (e) => {
             crtEnabled = e.target.checked;
             localStorage.setItem('crtSetting', crtEnabled);
             applyVisualSettings();
             if (crtEnabled) AudioSystem.playMagic(); 
-        });
+        };
     }
+    
+    console.log("✅ Settings Listeners Attached Successfully.");
 }
 
 function renderWorldMap() {
@@ -14639,30 +14650,6 @@ async function enterGame(playerData) {
     // Cleanup old listeners first (Safety check)
     if (sharedEnemiesListener) rtdb.ref('worldEnemies').off('value', sharedEnemiesListener);
     if (chatListener) rtdb.ref('chat').off('child_added', chatListener);
-
-    // [FIX] Only initialize static UI listeners ONCE per session
-    if (!areGlobalListenersInitialized) {
-        console.log("Initializing Global UI Listeners...");
-        
-        // These attach to static DOM elements (Buttons, Lists)
-        // We must NOT run these again on re-login
-        if (typeof initQuestListeners === 'function') initQuestListeners();
-        if (typeof initCraftingListeners === 'function') initCraftingListeners(); 
-        if (typeof initSkillTrainerListeners === 'function') initSkillTrainerListeners();
-        
-        initShopListeners();
-        initSpellbookListeners();
-        initSkillbookListeners();
-        initInventoryListeners();
-        initMobileControls();
-
-        areGlobalListenersInitialized = true;
-    } else {
-        console.log("UI Listeners already active. Skipping.");
-        // Ensure Mobile Controls are visible if they were hidden
-        const mobileContainer = document.getElementById('mobileControls');
-        if (mobileContainer) mobileContainer.classList.remove('hidden');
-    }
 
     // Note: player_id was set in selectSlot (it is currentUser.uid)
     onlinePlayerRef = rtdb.ref(`onlinePlayers/${player_id}`);
