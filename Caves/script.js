@@ -5625,50 +5625,52 @@ generateChunk(chunkX, chunkY) {
 const ParticleSystem = {
     particles: [],
     
-    // Creates a spray of "dust" or "blood"
+    // 🩸 Blood/Sparks (Physics based)
     createExplosion: (x, y, color, count = 8) => {
         for (let i = 0; i < count; i++) {
             ParticleSystem.particles.push({
-                x: x + 0.5, // Center of tile
+                x: x + 0.5, 
                 y: y + 0.5,
-                vx: (Math.random() - 0.5) * 0.15, // Random velocity
-                vy: (Math.random() - 0.5) * 0.15,
+                vx: (Math.random() - 0.5) * 0.2, // Explode out
+                vy: (Math.random() - 0.5) * 0.2,
                 life: 1.0,
                 color: color,
                 type: 'dust',
-                size: Math.random() * 4 + 2
+                size: Math.random() * 3 + 2,
+                gravity: 0.01 // Gravity pulls particles down
             });
         }
     },
 
-    // Creates floating numbers floating UP
+    // 💬 Floating Text (Drifts up)
     createFloatingText: (x, y, text, color) => {
         ParticleSystem.particles.push({
             x: x + 0.5,
-            y: y, // Start at top of tile
+            y: y, 
             vx: 0,
-            vy: -0.05, // Float upwards
-            life: 2.0, // Lasts 2 seconds
+            vy: -0.02, // Float up slowly
+            life: 1.0, // 1 second duration
             color: color,
             text: text,
             type: 'text',
-            size: 16
+            size: 14 // Start size
         });
     },
 
-    // Confetti for Level Up
+    // 🎉 Level Up (Confetti)
     createLevelUp: (x, y) => {
-        for (let i = 0; i < 40; i++) {
-            const colors = ['#facc15', '#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
+        for (let i = 0; i < 30; i++) {
+            const colors = ['#facc15', '#ef4444', '#3b82f6', '#22c55e'];
             ParticleSystem.particles.push({
                 x: x + 0.5,
                 y: y + 0.5,
                 vx: (Math.random() - 0.5) * 0.3,
-                vy: (Math.random() - 0.5) * 0.3,
-                life: 3.0,
+                vy: (Math.random() * -0.3) - 0.1, // Pop UP
+                life: 2.0,
                 color: colors[Math.floor(Math.random() * colors.length)],
                 type: 'dust',
-                size: Math.random() * 5 + 3
+                size: 4,
+                gravity: 0.015
             });
         }
         ParticleSystem.createFloatingText(x, y, "LEVEL UP!", "#facc15");
@@ -5677,9 +5679,15 @@ const ParticleSystem = {
     update: () => {
         for (let i = ParticleSystem.particles.length - 1; i >= 0; i--) {
             const p = ParticleSystem.particles[i];
+            
             p.x += p.vx;
             p.y += p.vy;
-            p.life -= 0.02; // Decay
+            p.life -= 0.02;
+
+            // Apply Gravity to dust/blood
+            if (p.gravity) {
+                p.vy += p.gravity;
+            }
 
             if (p.life <= 0) {
                 ParticleSystem.particles.splice(i, 1);
@@ -5688,12 +5696,11 @@ const ParticleSystem = {
     },
 
     draw: (ctx, startX, startY) => {
-        // Draw relative to viewport (TILE_SIZE is global)
         ParticleSystem.particles.forEach(p => {
             const screenX = (p.x - startX) * TILE_SIZE;
             const screenY = (p.y - startY) * TILE_SIZE;
 
-            // Optimization: Don't draw off-screen
+            // Optimization: Off-screen check
             if (screenX < -TILE_SIZE || screenX > ctx.canvas.width ||
                 screenY < -TILE_SIZE || screenY > ctx.canvas.height) return;
 
@@ -5702,7 +5709,11 @@ const ParticleSystem = {
             
             if (p.type === 'text') {
                 ctx.fillStyle = p.color;
-                ctx.font = `bold ${p.size}px monospace`;
+                // Text pops up (scales) then fades
+                const scale = 1 + (Math.sin(p.life * Math.PI) * 0.5); 
+                ctx.font = `bold ${p.size * scale}px monospace`;
+                
+                // Outline for readability
                 ctx.strokeStyle = 'black';
                 ctx.lineWidth = 3;
                 ctx.strokeText(p.text, screenX, screenY);
@@ -6090,7 +6101,7 @@ const AudioSystem = {
     },
 
     // 🦶 Footstep (Low, short noise-like)
-    playStep: () => AudioSystem.playTone(100, 'triangle', 0.05, 0.05),
+    playStep: () => AudioSystem.playTone(120, 'square', 0.05, 0.15),
     
     // ⚔️ Attack (High pitch slide)
     playAttack: () => {
@@ -10455,7 +10466,7 @@ const render = () => {
 
     const isWideChar = (char) => /\p{Extended_Pictographic}/u.test(char);
 
-    // --- 3. MAIN RENDER LOOP ---
+// --- 3. MAIN RENDER LOOP ---
     for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
@@ -10465,7 +10476,6 @@ const render = () => {
             const distToPlayer = Math.sqrt(Math.pow(mapX - gameState.player.x, 2) + Math.pow(mapY - gameState.player.y, 2));
             
             // Optional: Add noise to the light radius for jagged edges
-            // If elevationNoise isn't available in this scope, remove the noise part
             let effectiveRadius = lightRadius; 
             if (typeof elevationNoise !== 'undefined') {
                  effectiveRadius += elevationNoise.noise(mapX / 5, mapY / 5) * 1.5;
@@ -10505,7 +10515,6 @@ const render = () => {
                 tile = chunkManager.getTile(mapX, mapY);
                 
                 // --- FIX START: CONSISTENT BIOME BACKGROUNDS ---
-                // 1. Determine the Base Biome at this location (even if an object is on top)
                 const baseTerrain = getBaseTerrain(mapX, mapY);
                 let bgColor = '#22c55e'; // Default Plains Green
 
@@ -10519,49 +10528,78 @@ const render = () => {
                 // 2. Draw the Background first
                 TileRenderer.drawBase(ctx, x, y, bgColor);
 
-                // 3. Draw the Specific Tile Feature
-                switch (tile) {
-                    case '.': 
-                        TileRenderer.drawPlains(ctx, x, y, mapX, mapY, bgColor, '#15803d'); 
-                        break;
-                    case 'F': 
-                        TileRenderer.drawForest(ctx, x, y, mapX, mapY, bgColor); 
-                        break;
-                    case '^': 
-    // We no longer need 'neighbors' or 'accentColor' for this style
-    // We pass bgColor so the base blends with the ground
-    TileRenderer.drawMountain(ctx, x, y, mapX, mapY, bgColor); 
-    break;
-                    case '~': 
-                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, bgColor, '#3b82f6'); 
-                        break;
-                    case '≈': 
-                        TileRenderer.drawWater(ctx, x, y, mapX, mapY, bgColor, '#14532d'); 
-                        break;
-                    case 'd': 
-                        TileRenderer.drawDeadlands(ctx, x, y, mapX, mapY, bgColor, '#444'); 
-                        break;
-                    case 'D': 
-                        TileRenderer.drawDesert(ctx, x, y, mapX, mapY, bgColor); 
-                        break;
-                    
-                    // Structures (No longer need custom backgrounds, they use baseTerrain!)
-                    case '🧱': TileRenderer.drawWall(ctx, x, y, '#78716c', '#57534e'); break;
-                    case '=': TileRenderer.drawBase(ctx, x, y, '#78350f'); break; // Wood floor overrides biome
-                    case '+': fgChar = '+'; fgColor = '#fbbf24'; break;
-                    case '/': fgChar = '/'; fgColor = '#000'; break;
-                    
-                    default: 
-                        // Draw the character on top of the correct biome background
-                        fgChar = tile; 
-                        
-                        // Color logic for enemies
-                        if (ENEMY_DATA[tile]) {
-                            fgColor = ENEMY_DATA[tile].color || '#ef4444';
-                        }
-                        break;
+                // --- ANIMATED TILES LOGIC (MOVED HERE) ---
+                const time = Date.now();
+                
+                // 1. Water Ripples (~ and ≈ swap every 500ms)
+                if (tile === '~' || tile === '≈') {
+                    if (Math.floor((time + (x * 100)) / 500) % 2 === 0) {
+                        fgChar = '~';
+                    } else {
+                        fgChar = '≈';
+                    }
+                    fgColor = '#3b82f6'; // Bright Blue
                 }
-               
+                // 2. Fire/Lava Flicker (Color Pulse)
+                else if (tile === '🔥' || tile === 'D') {
+                    const flicker = Math.floor(time / 100) % 3;
+                    if (flicker === 0) fgColor = '#ef4444'; 
+                    else if (flicker === 1) fgColor = '#f97316'; 
+                    else fgColor = '#facc15'; 
+                    
+                    if (tile === 'D' && gameState.currentCaveTheme === 'FIRE') {
+                        fgChar = flicker === 0 ? '▓' : '▒';
+                    }
+                }
+                // 3. Void Rift Pulse
+                else if (tile === 'Ω') {
+                    const spin = Math.floor(time / 150) % 4;
+                    const chars = ['Ω', 'C', 'U', '∩']; 
+                    fgChar = chars[spin];
+                    fgColor = '#a855f7'; 
+                }
+
+                // --- DRAWING LOGIC ---
+                // Only use the default switch if we haven't already set an animated char
+                if (!fgChar) {
+                    switch (tile) {
+                        case '.': 
+                            TileRenderer.drawPlains(ctx, x, y, mapX, mapY, bgColor, '#15803d'); 
+                            break;
+                        case 'F': 
+                            TileRenderer.drawForest(ctx, x, y, mapX, mapY, bgColor); 
+                            break;
+                        case '^': 
+                            // This now correctly calls the mountain renderer
+                            TileRenderer.drawMountain(ctx, x, y, mapX, mapY, bgColor); 
+                            break;
+                        case '~': 
+                            TileRenderer.drawWater(ctx, x, y, mapX, mapY, bgColor, '#3b82f6'); 
+                            break;
+                        case '≈': 
+                            TileRenderer.drawWater(ctx, x, y, mapX, mapY, bgColor, '#14532d'); 
+                            break;
+                        case 'd': 
+                            TileRenderer.drawDeadlands(ctx, x, y, mapX, mapY, bgColor, '#444'); 
+                            break;
+                        case 'D': 
+                            TileRenderer.drawDesert(ctx, x, y, mapX, mapY, bgColor); 
+                            break;
+                        
+                        // Structures
+                        case '🧱': TileRenderer.drawWall(ctx, x, y, '#78716c', '#57534e'); break;
+                        case '=': TileRenderer.drawBase(ctx, x, y, '#78350f'); break; 
+                        case '+': fgChar = '+'; fgColor = '#fbbf24'; break;
+                        case '/': fgChar = '/'; fgColor = '#000'; break;
+                        
+                        default: 
+                            fgChar = tile; 
+                            if (ENEMY_DATA[tile]) {
+                                fgColor = ENEMY_DATA[tile].color || '#ef4444';
+                            }
+                            break;
+                    }
+                }
             }
 
             // --- B. DRAW ENTITIES (Enemies/Players) ---
@@ -10575,7 +10613,6 @@ const render = () => {
                 
                 if (sharedEnemy) {
                     overlayChar = sharedEnemy.tile || '?'; 
-                    // Default to Red if color is missing
                     overlayColor = sharedEnemy.color || '#ef4444'; 
 
                     // Draw Health Bar
@@ -10613,15 +10650,8 @@ const render = () => {
                 // Check for Mountain ('^') or Dungeon Entrance ('⛰')
                 if (fgChar === '^' || fgChar === '⛰') {
                     // Use our fancy vector drawer
-                    drawMountain(
-                        ctx, 
-                        x * TILE_SIZE, 
-                        y * TILE_SIZE, 
-                        TILE_SIZE, 
-                        mtnBase, 
-                        mtnShadow, 
-                        mtnCap
-                    );
+                    // Note: If it's an entrance, we draw the mountain first
+                    TileRenderer.drawMountain(ctx, x, y, mapX, mapY, bgColor || '#22c55e');
                     
                     // If it's a Dungeon Entrance, draw a little door on top
                     if (fgChar === '⛰') {
@@ -10642,9 +10672,18 @@ const render = () => {
             }
 
             if (overlayChar) {
-                ctx.fillStyle = overlayColor;
-                ctx.font = isWideChar(overlayChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
-                ctx.fillText(overlayChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                // List of "Humanoid" tiles that should use the new renderer
+                const humanoids = ['g', 'o', 'b', 'R', 'C', 'm', 'a', 'z', 'c', 'N', 'G', 'H', '§', 'K', 'T', 'S'];
+                
+                if (humanoids.includes(overlayChar)) {
+                    // Draw Vector Humanoid
+                    TileRenderer.drawHumanoid(ctx, x, y, overlayColor, 1.0, true); 
+                } else {
+                    // Draw Standard Text (Monsters/Animals)
+                    ctx.fillStyle = overlayColor;
+                    ctx.font = isWideChar(overlayChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
+                    ctx.fillText(overlayChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                }
             }
 
             // --- D. DRAW SHADOW & TINT (Top Layer) ---
@@ -10653,7 +10692,6 @@ const render = () => {
                 ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
 
-            // --- THE FIX IS HERE: effectiveRadius is now defined! ---
             if (ambientLight > 0.3 && tileShadowOpacity < 0.5) {
                 
                 let r = 255, g = 180, b = 100; // Default Warm Orange
@@ -10687,22 +10725,28 @@ const render = () => {
     for (const id in otherPlayers) {
         if (otherPlayers[id].mapMode !== gameState.mapMode || otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
         const op = otherPlayers[id];
-        const screenX = (op.x - startX) * TILE_SIZE;
-        const screenY = (op.y - startY) * TILE_SIZE;
-        if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
-            ctx.fillStyle = '#f97316';
-            ctx.fillText('@', screenX + TILE_SIZE/2, screenY + TILE_SIZE/2);
+        const screenX = (op.x - startX); 
+        const screenY = (op.y - startY);
+        
+        if (screenX >= 0 && screenX < VIEWPORT_WIDTH && screenY >= 0 && screenY < VIEWPORT_HEIGHT) {
+            TileRenderer.drawHumanoid(ctx, screenX, screenY, '#f97316', 1.0, true);
         }
     }
 
     // --- 5. DRAW SELF ---
     const playerChar = gameState.player.isBoating ? 'c' : gameState.player.character;
-    ctx.font = `bold ${TILE_SIZE}px monospace`;
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 3;
-    ctx.strokeText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
-    ctx.fillStyle = '#3b82f6';
-    ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+    
+    if (playerChar === '@' || gameState.player.classEvolved) {
+        TileRenderer.drawHumanoid(ctx, viewportCenterX, viewportCenterY, '#3b82f6', 1.0, true);
+    } else {
+        // Fallback for Boat 'c' or other states
+        ctx.font = `bold ${TILE_SIZE}px monospace`;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 3;
+        ctx.strokeText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+    }
 
     // --- 6. WEATHER EFFECTS ---
     const intensity = gameState.player.weatherIntensity || 0;
@@ -10763,43 +10807,37 @@ const render = () => {
     }
 
     // --- BOSS HEALTH BAR UI ---
-    // Check if there is an active boss in the current instance
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
         const activeBoss = gameState.instancedEnemies.find(e => e.isBoss);
         
         if (activeBoss) {
-            const barWidth = canvas.width * 0.6; // 60% of screen width
+            const barWidth = canvas.width * 0.6; 
             const barHeight = 20;
-            const barX = (canvas.width - barWidth) / 2; // Center it
-            const barY = 40; // Near the top
+            const barX = (canvas.width - barWidth) / 2; 
+            const barY = 40; 
 
-            // 1. Draw Name
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 16px monospace';
             ctx.textAlign = 'center';
             ctx.fillText(activeBoss.name, canvas.width / 2, barY - 10);
 
-            // 2. Draw Background (Black)
             ctx.fillStyle = '#000000';
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 2;
             ctx.fillRect(barX, barY, barWidth, barHeight);
             ctx.strokeRect(barX, barY, barWidth, barHeight);
 
-            // 3. Draw Health (Red)
             const healthPercent = Math.max(0, activeBoss.health / activeBoss.maxHealth);
-            ctx.fillStyle = '#dc2626'; // Deep Red
+            ctx.fillStyle = '#dc2626'; 
             ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * healthPercent, barHeight - 4);
 
-            // 4. Draw Text (HP / Max)
             ctx.fillStyle = '#ffffff';
             ctx.font = '12px monospace';
             ctx.fillText(`${activeBoss.health} / ${activeBoss.maxHealth}`, canvas.width / 2, barY + 14);
         }
     }
 
-ctx.restore(); // Restore context so UI doesn't shake if drawn later
-
+    ctx.restore(); // Restore context so UI doesn't shake if drawn later
 };
 
 function syncPlayerState() {
@@ -13409,7 +13447,7 @@ AudioSystem.playAttack();
                     gameState.player.coins += amount;
 
                     AudioSystem.playCoin();
-                    
+
                     logMessage(`You found ${amount} gold coins.`);
                     continue;
                 }
