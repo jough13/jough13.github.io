@@ -741,13 +741,8 @@ kbd {
     border-color: var(--text-highlight);
 }
 
-/* CRT Effect Overlay */
-.game-container {
-    position: relative;
-    overflow: hidden; /* Keep scanlines inside */
-}
-
-.game-container::after {
+/* CRT Effect Overlay - Only active when .crt class is present on the wrapper */
+#gameCanvasWrapper.crt::after {
     content: " ";
     display: block;
     position: absolute;
@@ -758,9 +753,10 @@ kbd {
     background: linear-gradient(
         to bottom,
         rgba(18, 16, 16, 0) 50%,
-        rgba(0, 0, 0, 0.1) 50%
+        rgba(0, 0, 0, 0.15) 50% /* Increased opacity slightly for visibility on map */
     );
-    background-size: 100% 4px; /* Size of scanlines */
+    background-size: 100% 4px;
     z-index: 10;
-    pointer-events: none; /* Let clicks pass through */
+    pointer-events: none; /* Ensures clicks pass through to the canvas */
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5); /* Adds a nice vignette inside the frame */
 }
