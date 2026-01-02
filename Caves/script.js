@@ -12,6 +12,13 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+
+// This prevents FILE_ERROR_NO_SPACE by deleting old data 
+// once the cache hits 10 MB (Default is 40MB).
+db.settings({
+    cacheSizeBytes: 10485760 // 10 MB
+});
+
 const auth = firebase.auth();
 const rtdb = firebase.database();
 
@@ -9055,7 +9062,6 @@ function handleCraftItem(recipeName) {
         triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
     }
 
-    // 7. Update Database & UI
     // 7. Update Database & UI
     playerRef.update({ 
         inventory: getSanitizedInventory(),
