@@ -6080,15 +6080,71 @@ const renderStats = () => {
     }
 };
 
+// --- ADVANCED AUDIO SYSTEM ---
 const AudioSystem = {
     ctx: new (window.AudioContext || window.webkitAudioContext)(),
     
-    // Helper to generate a beep/boop
+    // Settings State (Loaded from LocalStorage if available)
+    settings: JSON.parse(localStorage.getItem('audioSettings')) || {
+        master: true,
+        steps: true,
+        combat: true,
+        magic: true,
+        ui: true
+    },
+
+    saveSettings: () => {
+        localStorage.setItem('audioSettings', JSON.stringify(AudioSystem.settings));
+    },
+
+    // Helper: Generate White Noise (for footsteps/explosions)
+    createNoiseBuffer: () => {
+        if (!AudioSystem.ctx) return null;
+        const bufferSize = AudioSystem.ctx.sampleRate * 2.0; // 2 seconds buffer
+        const buffer = AudioSystem.ctx.createBuffer(1, bufferSize, AudioSystem.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+        return buffer;
+    },
+
+    // Helper: Play Noise with Filter
+    playNoise: (duration, vol = 0.1, filterFreq = 1000) => {
+        if (AudioSystem.ctx.state === 'suspended') AudioSystem.ctx.resume();
+        if (!AudioSystem.settings.master) return;
+
+        const noiseBuffer = AudioSystem.createNoiseBuffer();
+        if (!noiseBuffer) return;
+
+        const src = AudioSystem.ctx.createBufferSource();
+        src.buffer = noiseBuffer;
+
+        // Filter (Lowpass makes it sound like a thud/shuffle instead of static)
+        const filter = AudioSystem.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = filterFreq;
+
+        const gain = AudioSystem.ctx.createGain();
+        gain.gain.setValueAtTime(vol, AudioSystem.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, AudioSystem.ctx.currentTime + duration);
+
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(AudioSystem.ctx.destination);
+
+        src.start();
+        src.stop(AudioSystem.ctx.currentTime + duration);
+    },
+    
+    // Helper: Play Tonal Sound (Beeps/Chimes)
     playTone: (freq, type, duration, vol = 0.1) => {
         if (AudioSystem.ctx.state === 'suspended') AudioSystem.ctx.resume();
+        if (!AudioSystem.settings.master) return;
+
         const osc = AudioSystem.ctx.createOscillator();
         const gain = AudioSystem.ctx.createGain();
-        osc.type = type; // 'sine', 'square', 'sawtooth', 'triangle'
+        osc.type = type; 
         osc.frequency.setValueAtTime(freq, AudioSystem.ctx.currentTime);
         
         gain.gain.setValueAtTime(vol, AudioSystem.ctx.currentTime);
@@ -6100,11 +6156,17 @@ const AudioSystem = {
         osc.stop(AudioSystem.ctx.currentTime + duration);
     },
 
-    // 🦶 Footstep (Low, short noise-like)
-    playStep: () => AudioSystem.playTone(120, 'square', 0.05, 0.15),
+    // 🦶 Footstep (The Shuffle)
+    // Uses filtered noise. Very short duration, low volume, low frequency filter.
+    playStep: () => {
+        if (!AudioSystem.settings.steps) return;
+        // Duration: 0.08s, Vol: 0.05 (Very Quiet), Filter: 600Hz (Muffled)
+        AudioSystem.playNoise(0.08, 0.05, 600); 
+    },
     
     // ⚔️ Attack (High pitch slide)
     playAttack: () => {
+        if (!AudioSystem.settings.combat) return;
         if (AudioSystem.ctx.state === 'suspended') AudioSystem.ctx.resume();
         const osc = AudioSystem.ctx.createOscillator();
         const gain = AudioSystem.ctx.createGain();
@@ -6119,13 +6181,22 @@ const AudioSystem = {
     },
 
     // 🤕 Hit/Damage (Crunchy square wave)
-    playHit: () => AudioSystem.playTone(80, 'square', 0.15, 0.1),
+    playHit: () => {
+        if (!AudioSystem.settings.combat) return;
+        AudioSystem.playTone(80, 'square', 0.15, 0.1);
+    },
 
     // ✨ Magic (Chime)
-    playMagic: () => AudioSystem.playTone(600, 'sine', 0.3, 0.05),
+    playMagic: () => {
+        if (!AudioSystem.settings.magic) return;
+        AudioSystem.playTone(600, 'sine', 0.3, 0.05);
+    },
     
-    // 💰 Gold (High ping)
-    playCoin: () => AudioSystem.playTone(1200, 'sine', 0.1, 0.05)
+    // 💰 Gold/Loot (High ping)
+    playCoin: () => {
+        if (!AudioSystem.settings.ui) return;
+        AudioSystem.playTone(1200, 'sine', 0.1, 0.05);
+    }
 };
 
 // Global set to track processed tiles this session
@@ -6523,6 +6594,63 @@ function fitMapCanvasToContainer() {
         worldMapCanvas.width = container.clientWidth;
         worldMapCanvas.height = container.clientHeight;
     }
+}
+
+function initSettingsListeners() {
+    const modal = document.getElementById('settingsModal');
+    const closeBtn = document.getElementById('closeSettingsButton');
+    const openBtn = document.getElementById('settingsButton');
+
+    // Checkboxes
+    const cbMaster = document.getElementById('settingMaster');
+    const cbSteps = document.getElementById('settingSteps');
+    const cbCombat = document.getElementById('settingCombat');
+    const cbMagic = document.getElementById('settingMagic');
+    const cbUI = document.getElementById('settingUI');
+
+    // 1. Sync UI with current state
+    const syncUI = () => {
+        cbMaster.checked = AudioSystem.settings.master;
+        cbSteps.checked = AudioSystem.settings.steps;
+        cbCombat.checked = AudioSystem.settings.combat;
+        cbMagic.checked = AudioSystem.settings.magic;
+        cbUI.checked = AudioSystem.settings.ui;
+        
+        // Disable sub-options if master is off
+        [cbSteps, cbCombat, cbMagic, cbUI].forEach(cb => cb.disabled = !cbMaster.checked);
+    };
+
+    // 2. Open Modal
+    openBtn.addEventListener('click', () => {
+        syncUI();
+        modal.classList.remove('hidden');
+    });
+
+    // 3. Close Modal
+    closeBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    // 4. Handle Toggles
+    const handleToggle = (key, element) => {
+        element.addEventListener('change', (e) => {
+            AudioSystem.settings[key] = e.target.checked;
+            AudioSystem.saveSettings();
+            if (key === 'master') syncUI(); // Re-evaluate disabled states
+            
+            // Play a test sound if turning ON
+            if (e.target.checked) {
+                if (key === 'steps') AudioSystem.playStep();
+                else AudioSystem.playCoin();
+            }
+        });
+    };
+
+    handleToggle('master', cbMaster);
+    handleToggle('steps', cbSteps);
+    handleToggle('combat', cbCombat);
+    handleToggle('magic', cbMagic);
+    handleToggle('ui', cbUI);
 }
 
 function renderWorldMap() {
@@ -14723,6 +14851,8 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         initCraftingListeners();
         initSkillTrainerListeners();
         initMobileControls();
+
+        initSettingsListeners(); 
         
         areGlobalListenersInitialized = true; // Mark as done
     } else {
