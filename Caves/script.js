@@ -9809,7 +9809,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 }
             
                 // Calculate actual damage
-                damageDealt = Math.max(1, finalDamage);
+                damageDealt = Math.max(1, playerDamage); 
                 enemy.health -= damageDealt;
 
                 let color = '#3b82f6'; // Blue for magic
@@ -10269,13 +10269,19 @@ const renderEquipment = () => {
     if (player.strengthBonus > 0) { // <-- ADDED THIS BLOCK
         weaponString += ` <span class="text-green-500">[Strong +${player.strengthBonus} (${player.strengthBonusTurns}t)]</span>`;
     }
-    equippedWeaponDisplay.innerHTML = weaponString; // <-- CHANGED to innerHTML
+    equippedWeaponDisplay.innerHTML = weaponString; 
     
     // Update the strength display to show the total damage
     statDisplays.strength.textContent = `Strength: ${player.strength} (Dmg: ${totalDamage})`;
 
     // --- ARMOR & DEFENSE ---
     const armor = player.equipment.armor || { name: 'Simple Tunic', defense: 0 };
+
+    const weaponIcon = document.getElementById('slotWeaponIcon');
+    const armorIcon = document.getElementById('slotArmorIcon');
+    
+    if (weaponIcon) weaponIcon.textContent = weapon.tile || '👊';
+    if (armorIcon) armorIcon.textContent = armor.tile || '👕';
 
     // Calculate total defense
     const baseDefense = Math.floor(player.dexterity / 3); 
@@ -13132,6 +13138,11 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
                 if (toolName === 'Pickaxe') triggerStatFlash(statDisplays.strength, true);
                 if (toolName === 'Machete') triggerStatFlash(statDisplays.dexterity, true);
 
+                playerRef.update({ 
+                    inventory: getSanitizedInventory() 
+                });
+                renderInventory();
+
                 if (newTile === '🏚') { 
                     const roll = Math.random();
                     let drop = null;
@@ -13160,11 +13171,6 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
                 if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, floorTile);
                 else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = floorTile;
                 else if (gameState.mapMode === 'castle') chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
-
-                        playerRef.update({ 
-            inventory: getSanitizedInventory() 
-        });
-        renderInventory();
 
                 render();
                 return;
