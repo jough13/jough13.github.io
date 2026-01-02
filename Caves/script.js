@@ -23,6 +23,8 @@ let otherPlayers = {};
 let unsubscribePlayerListener;
 let worldStateListeners = {};
 
+const processingSpawnTiles = new Set(); 
+
 let areGlobalListenersInitialized = false;
 
 // --- INPUT THROTTLE ---
@@ -5280,10 +5282,14 @@ generateChunk(chunkX, chunkY) {
                     
                     // --- MOUNTAINS ---
                     if (tile === '^') { 
-                        if (dist > 300 && hostileRoll < 0.0002) chunkData[y][x] = 'Y'; // Yeti
-                        else if (dist > 250 && hostileRoll < 0.0003) chunkData[y][x] = '🐲'; // Young Drake
-                        else if (dist > 150 && hostileRoll < 0.0003) chunkData[y][x] = 'Ø'; // Ogre
-                        else if (hostileRoll < 0.0004) chunkData[y][x] = '🗿'; // Stone Golem
+                        // BALANCING FIX: Pushed high-level mobs much further out
+                        if (dist > 600 && hostileRoll < 0.0002) chunkData[y][x] = 'Y'; // Yeti (Was 300)
+                        else if (dist > 500 && hostileRoll < 0.0003) chunkData[y][x] = '🐲'; // Young Drake (Was 250)
+                        else if (dist > 400 && hostileRoll < 0.0003) chunkData[y][x] = 'Ø'; // Ogre (Was 150 - Too close!)
+                        
+                        // Stone Golems are tanky, don't spawn them at start (Added dist check)
+                        else if (dist > 200 && hostileRoll < 0.0004) chunkData[y][x] = '🗿'; // Stone Golem
+                        
                         else if (hostileRoll < 0.0006) chunkData[y][x] = 'g'; // Goblins
                         else if (hostileRoll < 0.0008) chunkData[y][x] = '🦇'; // Giant Bat
                         
@@ -5934,25 +5940,28 @@ async function wakeUpNearbyEnemies() {
         for (let x = player.x - WAKE_RADIUS; x <= player.x + WAKE_RADIUS; x++) {
             
             const tileId = `${x},${y}`;
+            
+            // 1. FAST LOCK: If we are currently processing this specific tile, skip it.
+            // This prevents rapid movement from triggering the same tile twice.
+            if (processingSpawnTiles.has(tileId)) continue;
+
             const enemyId = `overworld:${x},${-y}`;
 
-            // 1. Get the current tile state
+            // 2. Get the current tile state
             const tile = chunkManager.getTile(x, y);
             const enemyData = ENEMY_DATA[tile];
 
-            // 2. CHECK: Has this tile already been processed?
+            // 3. HISTORY CHECK: Has this tile already been processed this session?
             if (wokenEnemyTiles.has(tileId)) {
-                // FIX: If the chunk reloaded, the static enemy might have reappeared.
-                // If we see a static enemy on a tile we ALREADY woke up, delete it again.
+                // Cleanup: If visual tile still exists but we know we woke it, clear it locally.
                 if (enemyData) {
                      chunkManager.setWorldTile(x, y, '.'); 
                 }
-                continue; // Skip spawning (prevent duplicates)
+                continue; 
             }
 
-            // 3. CHECK: Is the enemy already alive in the DB?
+            // 4. EXISTENCE CHECK: Is the destination occupied by a live enemy?
             if (gameState.sharedEnemies[enemyId]) {
-                // If alive but static tile exists, clear static tile
                 if (enemyData) {
                      chunkManager.setWorldTile(x, y, '.'); 
                 }
@@ -5960,27 +5969,35 @@ async function wakeUpNearbyEnemies() {
                 continue;
             }
 
-            // 4. SPAWN: Found a new static enemy
+            // 5. SPAWN: Found a new static enemy
             if (enemyData) {
-                wokenEnemyTiles.add(tileId); // Mark as processed
+                // --- CRITICAL: LOCK & CLEAR IMMEDIATELY ---
+                processingSpawnTiles.add(tileId); // Lock this coordinate
+                wokenEnemyTiles.add(tileId);      // Mark as done for history
+                
+                // Remove visual tile IMMEDIATELY from local cache. 
+                // This ensures the next frame sees dirt '.', not a goblin 'g'.
+                chunkManager.setWorldTile(x, y, '.');
 
                 const scaledStats = getScaledEnemy(enemyData, x, y);
                 const newEnemy = { ...scaledStats, tile: tile, x: x, y: y };
                 
-                // Protect against "flicker"
+                // Protect against flicker (Destination lock)
                 pendingSpawns.add(enemyId);
 
-                // Optimistic Update
+                // Optimistic Update (Show enemy immediately)
                 gameState.sharedEnemies[enemyId] = newEnemy; 
                 
-                // Clear Static Tile
-                chunkManager.setWorldTile(x, y, '.');
-
                 // Send to DB
                 rtdb.ref(`worldEnemies/${enemyId}`).transaction(current => {
                     return current || newEnemy; 
                 }).then(() => {
+                    // Transaction complete
                     pendingSpawns.delete(enemyId);
+                    processingSpawnTiles.delete(tileId); // Release the lock
+                }).catch(err => {
+                    console.error("Spawn failed", err);
+                    processingSpawnTiles.delete(tileId); // Release lock on error
                 });
             }
         }
@@ -7457,7 +7474,7 @@ function useSkill(skillId) {
                 skillUsedSuccessfully = true;
                 break;
 
-            // --- NEW SKILL: STEALTH ---
+            // NEW SKILL: STEALTH ---
             case 'stealth':
                 player.stealthTurns = skillData.duration;
                 logMessage("You fade into the shadows... (Invisible)");
@@ -7465,7 +7482,7 @@ function useSkill(skillId) {
                 skillUsedSuccessfully = true;
                 break;
 
-            // --- NEW SKILL: WHIRLWIND ---
+            // WHIRLWIND ---
              case 'whirlwind':
                 logMessage("You spin in a deadly vortex!");
                 let hitCount = 0;
@@ -7479,7 +7496,7 @@ function useSkill(skillId) {
                         const tx = player.x + x;
                         const ty = player.y + y;
 
-                        // --- FIX START: Handle Overworld vs Instanced ---
+                        // --- Handle Overworld vs Instanced ---
                         if (gameState.mapMode === 'overworld') {
                             const tile = chunkManager.getTile(tx, ty);
                             const enemyData = ENEMY_DATA[tile];
@@ -7510,7 +7527,7 @@ function useSkill(skillId) {
                                 }
                             }
                         }
-                        // --- FIX END ---
+
                     }
                 }
                 
@@ -10691,6 +10708,21 @@ async function processOverworldEnemyTurns() {
                     gameState.player.health -= dmg;
                     logMessage(`A ${enemy.name} attacks you for ${dmg} damage!`);
                     triggerStatFlash(statDisplays.health, false);
+                    
+                    // --- IMMEDIATE DEATH CHECK ---
+                    if (gameState.player.health <= 0) {
+                        gameState.player.health = 0;
+                        logMessage("You have perished!");
+                        
+                        // Force UI update immediately so the user sees 0, not -3
+                        renderStats(); 
+                        
+                        syncPlayerState();
+                        document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
+                        document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
+                        gameOverModal.classList.remove('hidden');
+                    }
+
                     continue; 
                 }
 
