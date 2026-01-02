@@ -6596,6 +6596,22 @@ function fitMapCanvasToContainer() {
     }
 }
 
+// Visual Settings State
+let crtEnabled = localStorage.getItem('crtSetting') !== 'false'; // Default to true
+
+function applyVisualSettings() {
+
+    const container = document.getElementById('gameCanvasWrapper');
+    
+    if (container) {
+        if (crtEnabled) {
+            container.classList.add('crt');
+        } else {
+            container.classList.remove('crt');
+        }
+    }
+}
+
 function initSettingsListeners() {
     const modal = document.getElementById('settingsModal');
     const closeBtn = document.getElementById('closeSettingsButton');
@@ -14530,6 +14546,9 @@ logoutButton.addEventListener('click', () => {
 
 async function enterGame(playerData) {
     gameContainer.classList.remove('hidden');
+
+    applyVisualSettings(); 
+
     const loadingIndicator = document.getElementById('loadingIndicator');
     canvas.style.visibility = 'hidden';
 
