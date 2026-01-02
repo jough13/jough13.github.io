@@ -108,6 +108,7 @@
             <header class="relative">
                <h1 class="text-4xl font-bold text-center mb-4">Caves and Castles</h1>
                <nav class="absolute top-0 right-0 flex items-center gap-2">
+                  <button id="settingsButton" class="p-2 text-sm font-bold highlight-text">⚙️</button> <!-- NEW -->
                   <button id="helpButton" class="p-2 text-sm font-bold highlight-text">Help</button>
                   <button id="logoutButton" class="p-2 text-sm font-bold highlight-text">Logout</button>
                   <button id="darkModeToggle" class="p-2 text-2xl" title="Toggle Dark Mode">🌙</button>
@@ -135,12 +136,30 @@
                </div>
                <div class="lg:col-span-1 flex flex-col gap-4 mt-4 lg:mt-0">
                   
-                  <div id="equipmentPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-2">
-                     <h2 class="text-lg font-bold mb-1">Equipment</h2>
-                     <div class="flex flex-col"> <span id="equippedWeaponDisplay" class="font-bold highlight-text">Weapon: Fists (+0 Dmg)</span>
-                        <span id="equippedArmorDisplay" class="font-bold highlight-text">Armor: Simple Tunic (+0 Def)</span>
-                     </div>
-                  </div>
+                 <div id="equipmentPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-2">
+    <h2 class="text-lg font-bold mb-2">Equipment</h2>
+    <div class="flex justify-center gap-4">
+        <!-- Main Hand -->
+        <div class="flex flex-col items-center">
+            <div class="w-12 h-12 border-2 border-gray-500 rounded bg-gray-800 flex items-center justify-center text-2xl" id="slotWeaponIcon">
+                👊
+            </div>
+            <span class="text-xs mt-1 text-gray-400">Main Hand</span>
+        </div>
+        
+        <!-- Chest -->
+        <div class="flex flex-col items-center">
+            <div class="w-12 h-12 border-2 border-gray-500 rounded bg-gray-800 flex items-center justify-center text-2xl" id="slotArmorIcon">
+                👕
+            </div>
+            <span class="text-xs mt-1 text-gray-400">Body</span>
+        </div>
+    </div>
+    <div class="text-xs text-center mt-2">
+        <p id="equippedWeaponDisplay" class="highlight-text">Fists</p>
+        <p id="equippedArmorDisplay" class="highlight-text">Simple Tunic</p>
+    </div>
+</div>
                   <div id="statusPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-2">
                      <div>
                         <span id="healthDisplay" class="font-bold">Health: 10</span>
@@ -269,6 +288,41 @@
                <p><strong class="highlight-text">Exploration:</strong> Look for landmarks like signposts (<span class="font-bold">☗</span>), castles (<span class="font-bold">🏰</span>), caves (<span class="font-bold">⛰</span>), and even secret passages!</p>
             </div>
             <button id="closeHelpButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
+         </div>
+      </div>
+      <div id="settingsModal" class="modal-overlay hidden">
+         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
+            <h2 class="text-2xl font-bold mb-4">Game Settings</h2>
+            
+            <div class="space-y-4">
+                <h3 class="font-bold border-b border-gray-500 pb-1">Audio</h3>
+                
+                <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
+                    <span>🔊 Master Volume</span>
+                    <input type="checkbox" id="settingMaster" class="form-checkbox h-5 w-5 text-blue-600">
+                </label>
+
+                <div class="pl-4 space-y-2">
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-sm muted-text">🦶 Footsteps</span>
+                        <input type="checkbox" id="settingSteps" class="form-checkbox h-4 w-4 text-blue-600">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-sm muted-text">⚔️ Combat</span>
+                        <input type="checkbox" id="settingCombat" class="form-checkbox h-4 w-4 text-blue-600">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-sm muted-text">✨ Magic</span>
+                        <input type="checkbox" id="settingMagic" class="form-checkbox h-4 w-4 text-blue-600">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="text-sm muted-text">💰 Loot & UI</span>
+                        <input type="checkbox" id="settingUI" class="form-checkbox h-4 w-4 text-blue-600">
+                    </label>
+                </div>
+            </div>
+
+            <button id="closeSettingsButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
       <div id="fastTravelModal" class="modal-overlay hidden">
