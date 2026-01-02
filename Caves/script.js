@@ -4542,28 +4542,55 @@ const TileRenderer = {
 
     // --- BIOME RENDERERS (Now accepting mapX/mapY) ---
 
-    // 🌲 Forests
-    drawForest: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
-        TileRenderer.drawBase(ctx, x, y, baseColor);
-        
-        // Reduced frequency: 5% chance (was 20%)
-        if (TileRenderer.getPseudoRandom(mapX, mapY) < 0.05) {
-            const tx = x * TILE_SIZE + 10;
-            const ty = y * TILE_SIZE + 14;
-            ctx.fillStyle = '#fca5a5'; 
-            ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI, true); ctx.fill(); 
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(tx - 1, ty, 2, 4); 
-        }
+// 🌲 Procedural Pine Forests
+    drawForest: (ctx, x, y, mapX, mapY, baseColor) => {
+        // 1. Draw Ground
+        ctx.fillStyle = baseColor;
+        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
-        ctx.fillStyle = accentColor;
-        const cx = x * TILE_SIZE + TILE_SIZE / 2;
-        const cy = y * TILE_SIZE + TILE_SIZE / 2;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - TILE_SIZE * 0.4);
-        ctx.lineTo(cx + TILE_SIZE * 0.3, cy + TILE_SIZE * 0.3);
-        ctx.lineTo(cx - TILE_SIZE * 0.3, cy + TILE_SIZE * 0.3);
-        ctx.fill();
+        // 2. Deterministic Random
+        const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
+        const rand = seed - Math.floor(seed); 
+
+        // 3. Determine Tree Properties
+        // Some tiles have 1 big tree, others have 2 smaller ones
+        const treeCount = rand > 0.7 ? 2 : 1;
+        
+        for (let i = 0; i < treeCount; i++) {
+            // Offset logic for multiple trees
+            const offsetX = (i === 0) ? (TILE_SIZE/2) : (TILE_SIZE/2) + ((rand - 0.5) * 10);
+            const offsetY = (i === 0) ? (TILE_SIZE) : (TILE_SIZE) - ((rand) * 5);
+            
+            const tx = (x * TILE_SIZE) + offsetX;
+            const ty = (y * TILE_SIZE) + offsetY;
+
+            // Height variation
+            const height = (TILE_SIZE * 0.8) + (rand * (TILE_SIZE * 0.4)) - (i * 5);
+            const width = height * 0.6;
+
+            // Trunk
+            ctx.fillStyle = '#451a03'; // Dark Wood
+            ctx.fillRect(tx - 2, ty - (height * 0.2), 4, height * 0.2);
+
+            // Foliage (Triangle)
+            // We use two shades of green for "lighting"
+            const treeColor = (mapX + mapY) % 2 === 0 ? '#166534' : '#15803d'; // Varying greens
+            
+            ctx.fillStyle = treeColor;
+            ctx.beginPath();
+            ctx.moveTo(tx, ty - height); // Top
+            ctx.lineTo(tx + (width/2), ty - (height * 0.2)); // Bottom Right
+            ctx.lineTo(tx - (width/2), ty - (height * 0.2)); // Bottom Left
+            ctx.fill();
+            
+            // Shadow (Right side of tree for 3D effect)
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath();
+            ctx.moveTo(tx, ty - height);
+            ctx.lineTo(tx + (width/2), ty - (height * 0.2));
+            ctx.lineTo(tx, ty - (height * 0.2));
+            ctx.fill();
+        }
     },
 
     // ⛰ Improved "Low Poly" Mountains with Valleys
@@ -5691,6 +5718,7 @@ const ParticleSystem = {
 };
 
 const gameState = {
+    screenShake: 0, 
     weather: 'clear',
     player: {
         x: 0,
@@ -6039,6 +6067,54 @@ const renderStats = () => {
             }
         }
     }
+};
+
+const AudioSystem = {
+    ctx: new (window.AudioContext || window.webkitAudioContext)(),
+    
+    // Helper to generate a beep/boop
+    playTone: (freq, type, duration, vol = 0.1) => {
+        if (AudioSystem.ctx.state === 'suspended') AudioSystem.ctx.resume();
+        const osc = AudioSystem.ctx.createOscillator();
+        const gain = AudioSystem.ctx.createGain();
+        osc.type = type; // 'sine', 'square', 'sawtooth', 'triangle'
+        osc.frequency.setValueAtTime(freq, AudioSystem.ctx.currentTime);
+        
+        gain.gain.setValueAtTime(vol, AudioSystem.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, AudioSystem.ctx.currentTime + duration);
+        
+        osc.connect(gain);
+        gain.connect(AudioSystem.ctx.destination);
+        osc.start();
+        osc.stop(AudioSystem.ctx.currentTime + duration);
+    },
+
+    // 🦶 Footstep (Low, short noise-like)
+    playStep: () => AudioSystem.playTone(100, 'triangle', 0.05, 0.05),
+    
+    // ⚔️ Attack (High pitch slide)
+    playAttack: () => {
+        if (AudioSystem.ctx.state === 'suspended') AudioSystem.ctx.resume();
+        const osc = AudioSystem.ctx.createOscillator();
+        const gain = AudioSystem.ctx.createGain();
+        osc.frequency.setValueAtTime(300, AudioSystem.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, AudioSystem.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.1, AudioSystem.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, AudioSystem.ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(AudioSystem.ctx.destination);
+        osc.start();
+        osc.stop(AudioSystem.ctx.currentTime + 0.1);
+    },
+
+    // 🤕 Hit/Damage (Crunchy square wave)
+    playHit: () => AudioSystem.playTone(80, 'square', 0.15, 0.1),
+
+    // ✨ Magic (Chime)
+    playMagic: () => AudioSystem.playTone(600, 'sine', 0.3, 0.05),
+    
+    // 💰 Gold (High ping)
+    playCoin: () => AudioSystem.playTone(1200, 'sine', 0.1, 0.05)
 };
 
 // Global set to track processed tiles this session
@@ -8211,6 +8287,8 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     }
     player[spellData.costType] -= cost;
 
+    AudioSystem.playMagic();
+
     let hitSomething = false;
 
     // --- CALCULATE DAMAGE WITH BONUS ---
@@ -9575,6 +9653,9 @@ function castSpell(spellId) {
 
         // --- 4. Finalize Self-Cast Turn ---
         if (spellCastSuccessfully) {
+
+            AudioSystem.playMagic();
+
             updates[costType] = player[costType]; // Add the resource cost (mana/psyche/health)
             playerRef.update(updates); // Send all updates at once
             spellModal.classList.add('hidden');
@@ -10155,6 +10236,7 @@ if (Math.random() < dodgeChance) {
                 // -- Apply Final Health Damage --
                 if (damageToApply > 0) {
                     player.health -= damageToApply;
+                    gameState.screenShake = 10; // Shake intensity
                 }
             }
         }
@@ -10168,6 +10250,9 @@ if (Math.random() < dodgeChance) {
     // --- Handle Post-Combat Player State ---
     if (enemyAttackedBack && enemyDamageTaken > 0) { 
         triggerStatFlash(statDisplays.health, false); // Flash health red
+
+        AudioSystem.playHit();
+
         logMessage(`The ${enemyData.name} hits you for ${enemyDamageTaken} damage!`);   
 
         ParticleSystem.createFloatingText(player.x, player.y, `-${enemyDamageTaken}`, '#ef4444');
@@ -10318,6 +10403,18 @@ const render = () => {
     ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    let shakeX = 0;
+    let shakeY = 0;
+    if (gameState.screenShake > 0) {
+        shakeX = (Math.random() - 0.5) * gameState.screenShake;
+        shakeY = (Math.random() - 0.5) * gameState.screenShake;
+        gameState.screenShake *= 0.9; // Decay shake
+        if (gameState.screenShake < 0.5) gameState.screenShake = 0;
+    }
+
+    ctx.save(); // Save context state
+    ctx.translate(shakeX, shakeY); // Move the whole world
+
     const viewportCenterX = Math.floor(VIEWPORT_WIDTH / 2);
     const viewportCenterY = Math.floor(VIEWPORT_HEIGHT / 2);
     const startX = gameState.player.x - viewportCenterX;
@@ -10428,7 +10525,7 @@ const render = () => {
                         TileRenderer.drawPlains(ctx, x, y, mapX, mapY, bgColor, '#15803d'); 
                         break;
                     case 'F': 
-                        TileRenderer.drawForest(ctx, x, y, mapX, mapY, bgColor, '#166534'); 
+                        TileRenderer.drawForest(ctx, x, y, mapX, mapY, bgColor); 
                         break;
                     case '^': 
     // We no longer need 'neighbors' or 'accentColor' for this style
@@ -10700,6 +10797,9 @@ const render = () => {
             ctx.fillText(`${activeBoss.health} / ${activeBoss.maxHealth}`, canvas.width / 2, barY + 14);
         }
     }
+
+ctx.restore(); // Restore context so UI doesn't shake if drawn later
+
 };
 
 function syncPlayerState() {
@@ -10715,6 +10815,7 @@ function syncPlayerState() {
         };
         onlinePlayerRef.set(stateToSync);
     }
+
 }
 
 /**
@@ -10827,6 +10928,7 @@ async function processOverworldEnemyTurns() {
                 if (finalX === playerX && finalY === playerY) {
                     const dmg = Math.max(1, enemy.attack - (gameState.player.defenseBonus || 0));
                     gameState.player.health -= dmg;
+                    gameState.screenShake = 10; // Shake intensity
                     logMessage(`A ${enemy.name} attacks you for ${dmg} damage!`);
                     triggerStatFlash(statDisplays.health, false);
                     
@@ -11125,6 +11227,7 @@ function processEnemyTurns() {
                 }
                 if (dmg > 0) {
                     player.health -= dmg;
+                    gameState.screenShake = 10; // Shake intensity
                     triggerStatFlash(statDisplays.health, false);
                     logMessage(`The ${enemy.name} hits you for ${dmg} damage!`);
                     ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
@@ -11173,6 +11276,7 @@ function processEnemyTurns() {
                  }
                  if (dmg > 0) {
                      player.health -= dmg;
+                     gameState.screenShake = 10; // Shake intensity
                      triggerStatFlash(statDisplays.health, false);
                      logMessage(`The ${enemy.name} casts ${spellName} for ${dmg} damage!`);
                      
@@ -11181,6 +11285,7 @@ function processEnemyTurns() {
                  }
              }
              if (player.health <= 0) {
+                gameState.screenShake = 10; // Shake intensity
                 player.health = 0;
                 logMessage("You have perished!");
                 syncPlayerState();
@@ -11377,6 +11482,7 @@ function endPlayerTurn() {
         if (!hasArmor && !hasPotion) { // Check both
             logMessage("The lava burns you! (2 Dmg)");
             player.health -= 2;
+            gameState.screenShake = 10; // Shake intensity
             triggerStatFlash(statDisplays.health, false);
             ParticleSystem.createFloatingText(player.x, player.y, "BURN", "#ef4444");
         }
@@ -11458,6 +11564,7 @@ function endPlayerTurn() {
             if (rx === gameState.player.x && ry === gameState.player.y) {
                 logMessage("You were struck by lightning!! (10 Dmg)");
                 gameState.player.health -= 10;
+                gameState.screenShake = 10; // Shake intensity
                 triggerStatFlash(statDisplays.health, false);
             } 
             else {
@@ -11475,6 +11582,7 @@ function endPlayerTurn() {
     if (player.poisonTurns > 0) {
         player.poisonTurns--;
         player.health -= 1; // Poison deals 1 damage
+        gameState.screenShake = 10; // Shake intensity
         logMessage("You take 1 poison damage...");
         triggerStatFlash(statDisplays.health, false);
 
@@ -12452,7 +12560,7 @@ function useInventoryItem(itemIndex) {
         if (itemUsed) {
         playerRef.update({
             inventory: getSanitizedInventory(),
-            equipment: getSanitizedEquipment(), // <--- CHANGED THIS LINE
+            equipment: getSanitizedEquipment(),
             health: gameState.player.health,
             mana: gameState.player.mana,
             stamina: gameState.player.stamina,
@@ -12654,6 +12762,8 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
 }
 
                 enemy.health -= playerDamage;
+
+                AudioSystem.playAttack();
                 
                 // Log & Effects
                 if (isCrit) {
@@ -12719,6 +12829,9 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
 
                         if (damageToApply > 0) {
                             gameState.player.health -= damageToApply;
+
+                            AudioSystem.playHit();
+
                             if (typeof ParticleSystem !== 'undefined') {
                                 ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444'); 
                                 ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, `-${damageToApply}`, '#ef4444');
@@ -12768,6 +12881,8 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
     const graceFloor = Math.ceil(gameState.player.strength / 2); 
     playerDamage = Math.max(playerDamage, graceFloor);
 }
+
+AudioSystem.playAttack();
 
             // Log before calling handleOverworldCombat (which handles the enemy reaction log)
             if (isCrit) {
@@ -12872,6 +12987,7 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
     if (newTile === '🌵') {
         logMessage("Ouch! The thorns prick you, but you grab a fruit.");
         gameState.player.health -= 1;
+        gameState.screenShake = 10; // Shake intensity
         triggerStatFlash(statDisplays.health, false);
         if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                 gameState.player.inventory.push({
@@ -12908,6 +13024,7 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
             // Trigger combat immediately? Or let the player attack next turn?
             // Let's force a hit from the mimic immediately for surprise!
             gameState.player.health -= 3;
+            gameState.screenShake = 10; // Shake intensity
             triggerStatFlash(statDisplays.health, false);
             logMessage("The Mimic bites you for 3 damage!");
             render();
@@ -12958,6 +13075,7 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
                 logMessage("You step right on a spike trap! Ouch!");
                 const trapDamage = 3;
                 player.health -= trapDamage;
+                gameState.screenShake = 10; // Shake intensity
                 triggerStatFlash(statDisplays.health, false);
                 gameState.lootedTiles.add(tileId);
             }
@@ -13289,6 +13407,9 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
                 if (itemKey === '$') {
                     const amount = 5 + Math.floor(random() * 15);
                     gameState.player.coins += amount;
+
+                    AudioSystem.playCoin();
+                    
                     logMessage(`You found ${amount} gold coins.`);
                     continue;
                 }
@@ -13982,6 +14103,8 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
     gameState.player.x = newX;
     gameState.player.y = newY;
 
+    AudioSystem.playStep(); 
+
     if (gameState.player.companion) {
         gameState.player.companion.x = prevX;
         gameState.player.companion.y = prevY;
@@ -13992,6 +14115,7 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
     } else {
         gameState.player.stamina = 0;
         gameState.player.health -= staminaDeficit;
+        gameState.screenShake = 10; // Shake intensity
         triggerStatFlash(statDisplays.health, false);
         logMessage(`You push yourself to the limit, costing ${staminaDeficit} health!`);
     }
