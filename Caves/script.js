@@ -5402,7 +5402,7 @@ generateCave(caveId) {
         return map;
     },
 
-    listenToChunkState(chunkX, chunkY, onInitialLoad = null) { // Added callback param
+listenToChunkState(chunkX, chunkY, onInitialLoad = null) { // Added callback param
         const chunkId = `${chunkX},${chunkY}`;
         
         // If we are already listening, just fire the callback immediately
@@ -5438,6 +5438,92 @@ generateCave(caveId) {
         db.collection('worldState').doc(chunkId).set(this.worldState[chunkId], {
             merge: true
         });
+    },
+
+// Helper: Determine enemy spawn based on Biome and Distance
+    getEnemySpawn(biome, dist, random) {
+        // --- CONFIGURATION ---
+        // Define the distance caps for each Tier.
+        // Tier 0: 0 to 250
+        // Tier 1: 251 to 600
+        // Tier 2: 601 to 1000
+        // Tier 3: 1001 to 2500
+        // Tier 4: 2501+ (The "Deep World")
+        const TIER_THRESHOLDS = [250, 600, 1000, 2500]; 
+
+        // 1. Calculate Tier dynamically
+        let tier = 0;
+        for (let i = 0; i < TIER_THRESHOLDS.length; i++) {
+            if (dist > TIER_THRESHOLDS[i]) {
+                tier = i + 1;
+            } else {
+                break; 
+            }
+        }
+
+        // 2. Define Spawn Tables
+        // You can now add keys '3', '4', '5' etc. as you expand.
+        const spawns = {
+            '.': { // Plains
+                0: ['r', 'R', 'b'],
+                1: ['b', 'w', 'o'],
+                2: ['o', 'C', '🐺'],
+                3: ['o', '🐺', 'Ø'],
+                4: ['Ø', '🐲', 'Titan'] // Example Tier 4
+            },
+            'F': { // Forest
+                0: ['🐍', '🦌', '🐗'],
+                1: ['w', '🐗', '🐻'],
+                2: ['🐻', '🐺', '🕸'],
+                3: ['🐺', '🐻', '🌲'],
+                4: ['🌲', '🐲', 'Ancient']
+            },
+            '^': { // Mountain
+                0: ['🦇', 'g', 'R'],
+                1: ['g', 's', '🦅'],
+                2: ['s', '🗿', 'Y'],
+                3: ['Y', 'Ø', '🐲'],
+                4: ['🐲', 'Demon', 'God']
+            },
+            '≈': { // Swamp
+                0: ['🦟', '🐸', '🐍'],
+                1: ['🐍', 'l', 'Z'],
+                2: ['Z', 'l', '💀'],
+                3: ['Z', '💀', 'Hydra'],
+                4: ['Hydra', 'Kraken', 'Lich']
+            },
+            'D': { // Desert
+                0: ['🦂s', '🐍', '🌵'],
+                1: ['🦂', '🐍c', '🌵'],
+                2: ['🦂', 'm', '💀'],
+                3: ['m', '💀', 'Efreet'],
+                4: ['Efreet', 'SandWorm', 'Djinn']
+            },
+            'd': { // Deadlands
+                0: ['s', 'b', 'R'],
+                1: ['s', 'Z', 'a'],
+                2: ['Z', 'a', 'D'],
+                3: ['D', 'v', '🧙'],
+                4: ['🧙', 'VoidLord', 'Entropy']
+            }
+        };
+
+        // 3. Select Enemy (Safety Check)
+        const table = spawns[biome];
+        if (!table) return null;
+
+        // If we are in Tier 10 but only defined up to Tier 4, fallback to the highest defined tier
+        const maxDefinedTier = Math.max(...Object.keys(table).map(Number));
+        const safeTier = Math.min(tier, maxDefinedTier);
+
+        const tierList = table[safeTier];
+        if (!tierList) return null;
+
+        // Weighted Random
+        const roll = random();
+        if (roll < 0.60) return tierList[0];
+        if (roll < 0.90) return tierList[1];
+        return tierList[2];
     },
 
 generateChunk(chunkX, chunkY) {
@@ -5525,107 +5611,50 @@ generateChunk(chunkX, chunkY) {
                 }
 
                 else {
+                    // --- ENEMY & RESOURCE SPAWNING ---
                     const hostileRoll = random();
                     
-                    // --- MOUNTAINS ---
-                    if (tile === '^') { 
-                        // BALANCING FIX: Pushed high-level mobs much further out
-                        if (dist > 600 && hostileRoll < 0.0002) chunkData[y][x] = 'Y'; // Yeti (Was 300)
-                        else if (dist > 500 && hostileRoll < 0.0003) chunkData[y][x] = '🐲'; // Young Drake (Was 250)
-                        else if (dist > 400 && hostileRoll < 0.0003) chunkData[y][x] = 'Ø'; // Ogre (Was 150 - Too close!)
+                    // Base Spawn Chance (Adjust density here)
+                    // 1.5% chance per tile generally
+                    let spawnChance = 0.015; 
+
+                    // Biome Modifiers
+                    if (tile === 'F') spawnChance = 0.020; // Forests are dense
+                    if (tile === 'd') spawnChance = 0.025; // Deadlands are dangerous
+                    if (tile === '^') spawnChance = 0.012; // Mountains are sparse
+
+                    if (hostileRoll < spawnChance) {
+                        // Use the new Tiered System
+                        const enemyTile = this.getEnemySpawn(tile, dist, random);
                         
-                        // Stone Golems are tanky, don't spawn them at start (Added dist check)
-                        else if (dist > 200 && hostileRoll < 0.0004) chunkData[y][x] = '🗿'; // Stone Golem
-                        
-                        else if (hostileRoll < 0.0006) chunkData[y][x] = 'g'; // Goblins
-                        else if (hostileRoll < 0.0008) chunkData[y][x] = '🦇'; // Giant Bat
-                        
-                        // Resources
-                        else if (hostileRoll < 0.007) { 
-                            this.setWorldTile(worldX, worldY, '🏚'); 
-                            chunkData[y][x] = '🏚'; 
+                        // Fallback: If the helper returned a placeholder or null, keep the terrain
+                        // Also check if it returned a resource (like Cactus '🌵') which is valid
+                        if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
+                            chunkData[y][x] = enemyTile;
+                            
+                            // Special Case: If we spawned a resource/obstacle (like Web/Cactus), 
+                            // we need to register it in worldState immediately if it's interactive
+                            if (TILE_DATA[enemyTile]) {
+                                this.setWorldTile(worldX, worldY, enemyTile);
+                            }
+                        } else {
+                            chunkData[y][x] = tile;
                         }
-                        else if (dist > 200 && hostileRoll < 0.010) { 
-                            this.setWorldTile(worldX, worldY, '💠'); 
-                            chunkData[y][x] = '💠'; 
-                        } 
-                        else chunkData[y][x] = tile;
+                    } 
+                    // --- RESOURCE FALLBACKS (Mining/Foraging) ---
+                    // If no enemy spawned, small chance for static resources
+                    else if (tile === '^' && hostileRoll < 0.03) {
+                        this.setWorldTile(worldX, worldY, '🏚'); // Cracked Wall
+                        chunkData[y][x] = '🏚';
                     }
-
-                    // --- FORESTS (Updated with Wildlife) ---
-                    else if (tile === 'F') {
-                        // 1. Dire Wolf (Elite): Extremely rare, only appears far from spawn (> 250 tiles)
-                        if (dist > 250 && hostileRoll < 0.00005) chunkData[y][x] = '🐺'; 
-                        
-                        // 2. Cave Bear: Rare Mini-Boss
-                        // Threshold 0.00015 (Effective Range: ~0.00015)
-                        else if (hostileRoll < 0.00015) chunkData[y][x] = '🐻'; 
-                        
-                        // 3. Wolf: The "Standard" Forest Enemy
-                        // Threshold 0.00090 (Effective Range: 0.00090 - 0.00015 = 0.00075)
-                        // MATH: 0.00075 is exactly 5x larger than the Bear's 0.00015 range.
-                        else if (hostileRoll < 0.00090) chunkData[y][x] = 'w'; 
-                        
-                        // 4. Wild Boar: Uncommon
-                        else if (hostileRoll < 0.00110) chunkData[y][x] = '🐗'; 
-                        
-                        // 5. Stag: Uncommon (Passive food source)
-                        else if (hostileRoll < 0.00130) chunkData[y][x] = '🦌'; 
-                        
-                        // 6. Viper: Uncommon
-                        else if (hostileRoll < 0.00150) chunkData[y][x] = '🐍'; 
-                        
-                        // Resources (Shifted slightly to accommodate the wider animal ranges)
-                        else if (hostileRoll < 0.009) { this.setWorldTile(worldX, worldY, '🌳'); chunkData[y][x] = '🌳'; } 
-                        else if (hostileRoll < 0.012) { this.setWorldTile(worldX, worldY, '🕸'); chunkData[y][x] = '🕸'; } 
-                        else if (hostileRoll < 0.015) { this.setWorldTile(worldX, worldY, ':'); chunkData[y][x] = ':'; }
-                        else chunkData[y][x] = tile;
+                    else if (tile === 'F' && hostileRoll < 0.03) {
+                        this.setWorldTile(worldX, worldY, '🌳'); // Thicket
+                        chunkData[y][x] = '🌳';
                     }
-
-                    // --- SWAMP (Updated with Wildlife) ---
-                    else if (tile === '≈') {
-                        if (hostileRoll < 0.0003) chunkData[y][x] = 'l'; // Leech
-                        else if (hostileRoll < 0.0005) chunkData[y][x] = '🐍'; // Viper
-                        else if (hostileRoll < 0.0008) chunkData[y][x] = '🐸'; // Giant Toad (NEW)
-                        else if (hostileRoll < 0.0012) chunkData[y][x] = '🦟'; // Blood Mosquito (NEW)
-                        
-                        else if (hostileRoll < 0.008) { this.setWorldTile(worldX, worldY, '🌿'); chunkData[y][x] = '🌿'; }
-                        else chunkData[y][x] = tile;
-                    }
-
-                    // --- PLAINS ---
-                    else if (tile === '.') {
-                        if (dist > 150 && hostileRoll < 0.0001) chunkData[y][x] = 'o'; // Orcs
-                        else if (dist > 120 && hostileRoll < 0.0002) chunkData[y][x] = 'w'; // Wolf
-                        else if (dist > 80 && hostileRoll < 0.0003) chunkData[y][x] = 'b'; // Bandit
-                        else if (hostileRoll < 0.0005) chunkData[y][x] = 'r'; // Rat
-                        else if (hostileRoll < 0.0007) chunkData[y][x] = 'R'; // Bandit Recruit
-                        else chunkData[y][x] = tile;
-                    }
-
-                    // --- DEADLANDS ---
-                    else if (tile === 'd') {
-                        if (dist > 400 && hostileRoll < 0.0001) chunkData[y][x] = 'D'; // Void Demon
-                        else if (hostileRoll < 0.0002) chunkData[y][x] = 's'; // Skeleton
-                        else if (hostileRoll < 0.0004) chunkData[y][x] = 'b'; // Bandit
-                        else chunkData[y][x] = tile;
-                    }
-
-                    // --- DESERT (Updated with Wildlife) ---
-                    else if (tile === 'D') {
-                        if (hostileRoll < 0.001) { this.setWorldTile(worldX, worldY, '🌵'); chunkData[y][x] = '🌵'; }
-                        else if (hostileRoll < 0.0003) chunkData[y][x] = '🦂'; // Giant Scorpion (Old)
-                        else if (hostileRoll < 0.0005) chunkData[y][x] = '🦂s'; // Sand Scorpion (NEW)
-                        else if (hostileRoll < 0.0007) chunkData[y][x] = '🐍c'; // King Cobra (NEW)
-                        else chunkData[y][x] = tile;
-                    }
-                    
                     else {
                         chunkData[y][x] = tile;
                     }
                 }
-            }
-        }
 
         // --- SMOOTHING PASS ---
         // Prevents 1-tile biome anomalies (The "Micro-Biome" Fix)
