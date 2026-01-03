@@ -5822,6 +5822,7 @@ const ParticleSystem = {
 };
 
 const gameState = {
+    initialEnemiesLoaded: false, 
     screenShake: 0, 
     weather: 'clear',
     player: {
@@ -6257,10 +6258,15 @@ const AudioSystem = {
         AudioSystem.playNoise(0.08, 0.05, 600); 
     },
     
-    // ⚔️ Attack (High pitch slide)
+// ⚔️ Attack (High pitch slide)
     playAttack: () => {
+        // --- Check Master Volume first! ---
+        if (!AudioSystem.settings.master) return; 
+        
         if (!AudioSystem.settings.combat) return;
+        
         if (AudioSystem.ctx.state === 'suspended') AudioSystem.ctx.resume();
+        
         const osc = AudioSystem.ctx.createOscillator();
         const gain = AudioSystem.ctx.createGain();
         osc.frequency.setValueAtTime(300, AudioSystem.ctx.currentTime);
@@ -6297,6 +6303,9 @@ const AudioSystem = {
 const wokenEnemyTiles = new Set(); 
 
 async function wakeUpNearbyEnemies() {
+
+ if (!gameState.initialEnemiesLoaded) return; 
+ 
     const player = gameState.player;
     const WAKE_RADIUS = 9; 
 
@@ -14936,19 +14945,36 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
     sharedEnemiesListener = sharedEnemiesRef.on('value', (snapshot) => {
         const serverData = snapshot.val() || {};
         
-        // We take the server truth, BUT we inject our local "pending" enemies
-        // so they don't disappear while waiting for the server to confirm them.
+        // 1. Mark initial load as complete
+        gameState.initialEnemiesLoaded = true;
+
+        // 2. Cleanup Static Tiles
+        // If the server says "There is a Goblin at 10,10", we must ensure 
+        // the local map doesn't ALSO show a static 'g' at 10,10.
+        Object.values(serverData).forEach(enemy => {
+            // Check if there is a static tile here that needs removing
+            // We only remove it if it looks like an enemy spawn point
+            // (This prevents removing floor tiles)
+            if (gameState.mapMode === 'overworld') {
+                const currentTile = chunkManager.getTile(enemy.x, enemy.y);
+                if (ENEMY_DATA[currentTile]) {
+                    // It's a static enemy tile, but a live enemy exists here.
+                    // Clear the static tile to prevent duplicates/flicker.
+                    chunkManager.setWorldTile(enemy.x, enemy.y, '.');
+                }
+            }
+        });
+
+        // 3. Merge Pending Spawns (Your existing logic)
         const mergedEnemies = { ...serverData };
-        
         pendingSpawns.forEach(pendingId => {
-            // If we have a local version of this pending enemy, force keep it
             if (gameState.sharedEnemies[pendingId]) {
                 mergedEnemies[pendingId] = gameState.sharedEnemies[pendingId];
             }
         });
 
         gameState.sharedEnemies = mergedEnemies;
-        render(); // Re-render to show new health bars
+        render(); 
     });
 
     unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
