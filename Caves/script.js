@@ -2354,6 +2354,10 @@ const CRAFTING_RECIPES = {
         materials: { "Stick": 2 }, 
         xp: 5, level: 1 
     },
+    "Fishing Rod": {
+    materials: { "Stick": 2, "Spider Silk": 1 },
+    xp: 15, level: 1
+},
     "Quarterstaff": { 
         materials: { "Stick": 4 }, 
         xp: 10, level: 1 
@@ -2557,6 +2561,25 @@ const CRAFTING_RECIPES = {
 
 const ITEM_DATA = {
     // --- RESOURCES ---
+    '🎣': {
+    name: 'Fishing Rod',
+    type: 'tool',
+    tile: '🎣',
+    description: "Use on water to catch fish or... other things."
+},
+'🐟': { // Update existing Raw Fish to be cookable
+    name: 'Raw Fish',
+    type: 'junk', // Change to 'ingredient' if you add that type, or keep junk
+    description: "Slimy. Can be cooked at a fire.",
+    tile: '🐟'
+},
+'👢': { // Joke item
+    name: 'Soggy Boot',
+    type: 'junk',
+    description: "Someone lost this a long time ago.",
+    tile: '👢'
+},
+
     '🍞': {
         name: 'Hardtack',
         type: 'consumable',
@@ -5655,6 +5678,8 @@ generateChunk(chunkX, chunkY) {
                         chunkData[y][x] = tile;
                     }
                 }
+            }
+        }
 
         // --- SMOOTHING PASS ---
         // Prevents 1-tile biome anomalies (The "Micro-Biome" Fix)
@@ -10603,10 +10628,68 @@ if (Math.random() < dodgeChance) {
         if (player.health <= 0) {
             player.health = 0;
             logMessage("You have perished!");
-            syncPlayerState();
-            document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
-            document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
-            gameOverModal.classList.remove('hidden');
+
+            // --- CORPSE SCATTER LOGIC ---
+            const deathX = player.x;
+            const deathY = player.y;
+            let droppedCount = 0;
+
+            // 1. Iterate through inventory
+            // We iterate backwards so we can splice safely
+            for (let i = player.inventory.length - 1; i >= 0; i--) {
+                const item = player.inventory[i];
+                
+                // 50% chance to drop an item (keeps some punishment, but recoverable)
+                // Or make it 100% for a "Hardcore" feel. Let's do 100% for now.
+                if (true) { 
+                    // Find a valid spot nearby (Spiral out)
+                    let placed = false;
+                    for (let r = 0; r <= 2 && !placed; r++) { // Radius 2
+                        for (let dy = -r; dy <= r && !placed; dy++) {
+                            for (let dx = -r; dx <= r && !placed; dx++) {
+                                const tx = deathX + dx;
+                                const ty = deathY + dy;
+                                
+                                // Check if tile is empty ('.')
+                                const tile = chunkManager.getTile(tx, ty);
+                                if (tile === '.') {
+                                    // Place item on map
+                                    chunkManager.setWorldTile(tx, ty, item.tile);
+                                    placed = true;
+                                    droppedCount++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Clear Inventory & Stats
+            player.inventory = [
+                { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
+            ];
+            player.equipment = { 
+                weapon: { name: 'Fists', damage: 0 }, 
+                armor: { name: 'Tattered Rags', defense: 0 } 
+            };
+            player.coins = Math.floor(player.coins / 2); // Lose half gold
+            
+            // 3. Respawn at 0,0 (Village)
+            player.x = 0;
+            player.y = 0;
+            player.health = player.maxHealth;
+            player.stamina = player.maxStamina;
+            player.hunger = 50;
+            player.thirst = 50;
+
+            logMessage(`You wake up in the village, aching. You dropped ${droppedCount} items where you fell.`);
+            
+            // 4. Save & Sync
+            playerRef.set(player); // Full overwrite
+            
+            // Force reload to clear local state/enemies
+            setTimeout(() => location.reload(), 2000); 
+            return; // Stop execution
         }
     }
 
@@ -11643,13 +11726,71 @@ function processEnemyTurns() {
             
             // Check Player Death
             if (player.health <= 0) {
-                player.health = 0;
-                logMessage("You have perished!");
-                syncPlayerState();
-                document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
-                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
-                gameOverModal.classList.remove('hidden');
+            player.health = 0;
+            logMessage("You have perished!");
+
+            // --- CORPSE SCATTER LOGIC ---
+            const deathX = player.x;
+            const deathY = player.y;
+            let droppedCount = 0;
+
+            // 1. Iterate through inventory
+            // We iterate backwards so we can splice safely
+            for (let i = player.inventory.length - 1; i >= 0; i--) {
+                const item = player.inventory[i];
+                
+                // 50% chance to drop an item (keeps some punishment, but recoverable)
+                // Or make it 100% for a "Hardcore" feel. Let's do 100% for now.
+                if (true) { 
+                    // Find a valid spot nearby (Spiral out)
+                    let placed = false;
+                    for (let r = 0; r <= 2 && !placed; r++) { // Radius 2
+                        for (let dy = -r; dy <= r && !placed; dy++) {
+                            for (let dx = -r; dx <= r && !placed; dx++) {
+                                const tx = deathX + dx;
+                                const ty = deathY + dy;
+                                
+                                // Check if tile is empty ('.')
+                                const tile = chunkManager.getTile(tx, ty);
+                                if (tile === '.') {
+                                    // Place item on map
+                                    chunkManager.setWorldTile(tx, ty, item.tile);
+                                    placed = true;
+                                    droppedCount++;
+                                }
+                            }
+                        }
+                    }
+                }
             }
+
+            // 2. Clear Inventory & Stats
+            player.inventory = [
+                { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
+            ];
+            player.equipment = { 
+                weapon: { name: 'Fists', damage: 0 }, 
+                armor: { name: 'Tattered Rags', defense: 0 } 
+            };
+            player.coins = Math.floor(player.coins / 2); // Lose half gold
+            
+            // 3. Respawn at 0,0 (Village)
+            player.x = 0;
+            player.y = 0;
+            player.health = player.maxHealth;
+            player.stamina = player.maxStamina;
+            player.hunger = 50;
+            player.thirst = 50;
+
+            logMessage(`You wake up in the village, aching. You dropped ${droppedCount} items where you fell.`);
+            
+            // 4. Save & Sync
+            playerRef.set(player); // Full overwrite
+            
+            // Force reload to clear local state/enemies
+            setTimeout(() => location.reload(), 2000); 
+            return; // Stop execution
+        }
             
             return; // Turn ends after firing
         }
@@ -11733,13 +11874,71 @@ function processEnemyTurns() {
             }
             // Check Death
             if (player.health <= 0) {
-                player.health = 0;
-                logMessage("You have perished!");
-                syncPlayerState();
-                document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
-                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
-                gameOverModal.classList.remove('hidden');
+            player.health = 0;
+            logMessage("You have perished!");
+
+            // --- CORPSE SCATTER LOGIC ---
+            const deathX = player.x;
+            const deathY = player.y;
+            let droppedCount = 0;
+
+            // 1. Iterate through inventory
+            // We iterate backwards so we can splice safely
+            for (let i = player.inventory.length - 1; i >= 0; i--) {
+                const item = player.inventory[i];
+                
+                // 50% chance to drop an item (keeps some punishment, but recoverable)
+                // Or make it 100% for a "Hardcore" feel. Let's do 100% for now.
+                if (true) { 
+                    // Find a valid spot nearby (Spiral out)
+                    let placed = false;
+                    for (let r = 0; r <= 2 && !placed; r++) { // Radius 2
+                        for (let dy = -r; dy <= r && !placed; dy++) {
+                            for (let dx = -r; dx <= r && !placed; dx++) {
+                                const tx = deathX + dx;
+                                const ty = deathY + dy;
+                                
+                                // Check if tile is empty ('.')
+                                const tile = chunkManager.getTile(tx, ty);
+                                if (tile === '.') {
+                                    // Place item on map
+                                    chunkManager.setWorldTile(tx, ty, item.tile);
+                                    placed = true;
+                                    droppedCount++;
+                                }
+                            }
+                        }
+                    }
+                }
             }
+
+            // 2. Clear Inventory & Stats
+            player.inventory = [
+                { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
+            ];
+            player.equipment = { 
+                weapon: { name: 'Fists', damage: 0 }, 
+                armor: { name: 'Tattered Rags', defense: 0 } 
+            };
+            player.coins = Math.floor(player.coins / 2); // Lose half gold
+            
+            // 3. Respawn at 0,0 (Village)
+            player.x = 0;
+            player.y = 0;
+            player.health = player.maxHealth;
+            player.stamina = player.maxStamina;
+            player.hunger = 50;
+            player.thirst = 50;
+
+            logMessage(`You wake up in the village, aching. You dropped ${droppedCount} items where you fell.`);
+            
+            // 4. Save & Sync
+            playerRef.set(player); // Full overwrite
+            
+            // Force reload to clear local state/enemies
+            setTimeout(() => location.reload(), 2000); 
+            return; // Stop execution
+        }
             return; // Turn Over
         }
 
@@ -11773,14 +11972,71 @@ function processEnemyTurns() {
                  }
              }
              if (player.health <= 0) {
-                gameState.screenShake = 10; // Shake intensity
-                player.health = 0;
-                logMessage("You have perished!");
-                syncPlayerState();
-                document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
-                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
-                gameOverModal.classList.remove('hidden');
+            player.health = 0;
+            logMessage("You have perished!");
+
+            // --- CORPSE SCATTER LOGIC ---
+            const deathX = player.x;
+            const deathY = player.y;
+            let droppedCount = 0;
+
+            // 1. Iterate through inventory
+            // We iterate backwards so we can splice safely
+            for (let i = player.inventory.length - 1; i >= 0; i--) {
+                const item = player.inventory[i];
+                
+                // 50% chance to drop an item (keeps some punishment, but recoverable)
+                // Or make it 100% for a "Hardcore" feel. Let's do 100% for now.
+                if (true) { 
+                    // Find a valid spot nearby (Spiral out)
+                    let placed = false;
+                    for (let r = 0; r <= 2 && !placed; r++) { // Radius 2
+                        for (let dy = -r; dy <= r && !placed; dy++) {
+                            for (let dx = -r; dx <= r && !placed; dx++) {
+                                const tx = deathX + dx;
+                                const ty = deathY + dy;
+                                
+                                // Check if tile is empty ('.')
+                                const tile = chunkManager.getTile(tx, ty);
+                                if (tile === '.') {
+                                    // Place item on map
+                                    chunkManager.setWorldTile(tx, ty, item.tile);
+                                    placed = true;
+                                    droppedCount++;
+                                }
+                            }
+                        }
+                    }
+                }
             }
+
+            // 2. Clear Inventory & Stats
+            player.inventory = [
+                { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
+            ];
+            player.equipment = { 
+                weapon: { name: 'Fists', damage: 0 }, 
+                armor: { name: 'Tattered Rags', defense: 0 } 
+            };
+            player.coins = Math.floor(player.coins / 2); // Lose half gold
+            
+            // 3. Respawn at 0,0 (Village)
+            player.x = 0;
+            player.y = 0;
+            player.health = player.maxHealth;
+            player.stamina = player.maxStamina;
+            player.hunger = 50;
+            player.thirst = 50;
+
+            logMessage(`You wake up in the village, aching. You dropped ${droppedCount} items where you fell.`);
+            
+            // 4. Save & Sync
+            playerRef.set(player); // Full overwrite
+            
+            // Force reload to clear local state/enemies
+            setTimeout(() => location.reload(), 2000); 
+            return; // Stop execution
+        }
              return;
         }
 
@@ -12818,6 +13074,89 @@ function useInventoryItem(itemIndex) {
             logMessage("You can't build a fire here.");
             return;
         }
+    }
+
+    // --- FISHING LOGIC ---
+    else if (itemToUse.name === 'Fishing Rod') {
+        const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
+        
+        // Check if standing on water (Deep Water or Swamp)
+        if (currentTile !== '~' && currentTile !== '≈') {
+            logMessage("You need to be standing in water to fish.");
+            return;
+        }
+
+        // 1. Stamina Check
+        if (gameState.player.stamina < 2) {
+            logMessage("You are too tired to fish.");
+            return;
+        }
+        gameState.player.stamina -= 2;
+
+        // 2. Calculate Success
+        // Base 40% + 2% per Dexterity + 2% per Luck
+        const chance = 0.40 + (gameState.player.dexterity * 0.02) + (gameState.player.luck * 0.02);
+        
+        logMessage("You cast your line...");
+        
+        if (Math.random() < chance) {
+            // 3. Loot Table
+            const roll = Math.random();
+            let catchName = 'Raw Fish';
+            let catchTile = '🐟';
+            
+            // Rare Treasures (5%)
+            if (roll > 0.95) {
+                const treasures = [
+                    {n: 'Ring of Regeneration', t: '💍r'},
+                    {n: 'Ancient Coin', t: '🪙'},
+                    {n: 'Empty Bottle', t: '🫙'}
+                ];
+                const t = treasures[Math.floor(Math.random() * treasures.length)];
+                catchName = t.n;
+                catchTile = t.t;
+                logMessage(`You pull up something heavy... It's a ${catchName}!`);
+                grantXp(20);
+            } 
+            // Junk (15%)
+            else if (roll < 0.15) {
+                catchName = 'Soggy Boot';
+                catchTile = '👢';
+                logMessage("Ugh, just an old boot.");
+            } 
+            // Fish (80%)
+            else {
+                logMessage("You caught a fish!");
+                grantXp(5);
+            }
+
+            // Add to Inventory
+            if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                // Find template to get full data
+                const template = Object.values(ITEM_DATA).find(i => i.name === catchName);
+                gameState.player.inventory.push({
+                    name: catchName,
+                    type: template.type || 'junk',
+                    quantity: 1,
+                    tile: catchTile,
+                    // Copy stats if it's equipment
+                    defense: template.defense,
+                    statBonuses: template.statBonuses
+                });
+            } else {
+                logMessage("...but you have no room to keep it, so you throw it back.");
+            }
+        } else {
+            logMessage("...not even a nibble.");
+        }
+
+        playerRef.update({ 
+            stamina: gameState.player.stamina,
+            inventory: getSanitizedInventory()
+        });
+        renderStats();
+        renderInventory();
+        itemUsed = true; // Consumes a turn
     }
 
     else if (itemToUse.type === 'constructible') {
