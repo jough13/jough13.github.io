@@ -7512,16 +7512,25 @@ window.handleStashTransfer = function(action, index) {
             logMessage("Your inventory is full!");
             return;
         }
-        // Check if item exists in inventory
-        const invItem = player.inventory.find(i => i.name === item.name);
-        if (invItem) {
-            invItem.quantity += item.quantity;
-        } else {
-            player.inventory.push(JSON.parse(JSON.stringify(item)));
-        }
-        player.bank.splice(index, 1);
-        logMessage(`Withdrew ${item.name}.`);
+    // Deep copy
+    let withdrawnItem = JSON.parse(JSON.stringify(item));
+
+    // RE-BIND EFFECT LOGIC
+    const template = Object.values(ITEM_DATA).find(i => i.name === withdrawnItem.name);
+    if (template && template.effect) {
+        withdrawnItem.effect = template.effect;
     }
+
+    // Check if item exists in inventory
+    const invItem = player.inventory.find(i => i.name === item.name);
+    if (invItem) {
+        invItem.quantity += item.quantity;
+    } else {
+        player.inventory.push(withdrawnItem); // Push the re-bound item
+    }
+    player.bank.splice(index, 1);
+    logMessage(`Withdrew ${item.name}.`);
+}
 
     // Save and Render
     playerRef.update({ inventory: player.inventory, bank: player.bank });
@@ -10077,7 +10086,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 }
             
                 // Calculate actual damage
-                damageDealt = Math.max(1, playerDamage); 
+                damageDealt = Math.max(1, damage);
                 enemy.health -= damageDealt;
 
                 let color = '#3b82f6'; // Blue for magic
@@ -10290,9 +10299,6 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             // We now use the damage value passed into the function!
             enemy.health -= playerDamage; 
 
-            ParticleSystem.createExplosion(newX, newY, '#ef4444'); // Red blood
-            ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
-
             if (enemy.health <= 0) {
                 // Enemy is dead. Return 'null' to delete it from RTDB.
                 return null;
@@ -10304,6 +10310,11 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
         // --- Process Transaction Results ---
         const finalEnemyState = transactionResult.snapshot.val();
+
+        if (transactionResult.committed) {
+            ParticleSystem.createExplosion(newX, newY, '#ef4444'); 
+            ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
+            }
         
         if (finalEnemyState === null) {
             // Enemy Died
@@ -12338,6 +12349,11 @@ function handleChatCommand(message) {
 
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
+
+    if (AudioSystem.ctx && AudioSystem.ctx.state === 'suspended') {
+        AudioSystem.ctx.resume();
+    }
+
     if (!player_id || gameState.player.health <= 0) return;
 
     // --- ESCAPE / CANCEL LOGIC ---
