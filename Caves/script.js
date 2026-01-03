@@ -5402,12 +5402,26 @@ generateCave(caveId) {
         return map;
     },
 
-    listenToChunkState(chunkX, chunkY) {
+    listenToChunkState(chunkX, chunkY, onInitialLoad = null) { // Added callback param
         const chunkId = `${chunkX},${chunkY}`;
-        if (worldStateListeners[chunkId]) return;
+        
+        // If we are already listening, just fire the callback immediately
+        if (worldStateListeners[chunkId]) {
+            if (onInitialLoad) onInitialLoad();
+            return;
+        }
+
         const docRef = db.collection('worldState').doc(chunkId);
+        
         worldStateListeners[chunkId] = docRef.onSnapshot(doc => {
             this.worldState[chunkId] = doc.exists ? doc.data() : {};
+            
+            // If this is the first time data arrived, fire the callback
+            if (onInitialLoad) {
+                onInitialLoad();
+                onInitialLoad = null; // Ensure it only runs once
+            }
+            
             render();
         });
     },
@@ -6305,7 +6319,7 @@ const wokenEnemyTiles = new Set();
 async function wakeUpNearbyEnemies() {
 
  if (!gameState.initialEnemiesLoaded) return; 
- 
+
     const player = gameState.player;
     const WAKE_RADIUS = 9; 
 
@@ -15103,47 +15117,69 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 
-    // --- 5. Final Render & Initialization ---
-    renderStats();
-    renderEquipment();
-    renderTime();
-    resizeCanvas();
-    render();
-
-    renderHotbar();
+    // --- 5. Final Render & Initialization (UPDATED) ---
     
-    canvas.style.visibility = 'visible';
-    syncPlayerState();
-    
-    logMessage(`Welcome back, ${playerData.background} of level ${gameState.player.level}.`);
-    updateRegionDisplay();
+    // We wrap the startup in a Promise to wait for data
+    const waitForWorldData = new Promise((resolve) => {
+        if (gameState.mapMode === 'overworld') {
+            const cX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+            const cY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+            
+            // Wait for the chunk changes (dead static enemies) to load
+            chunkManager.listenToChunkState(cX, cY, () => {
+                resolve();
+            });
+        } else {
+            // Dungeons/Castles don't use worldState in the same way, resolve immediately
+            resolve();
+        }
+    });
 
-    updateExploration();
+    // Wait for BOTH World Data and Live Enemies before dropping the loading screen
+    Promise.all([waitForWorldData]).then(() => {
+        // A small safety timeout to ensure the enemy listener (sharedEnemiesListener) 
+        // has had a split second to populate gameState.sharedEnemies
+        setTimeout(() => {
+            renderStats();
+            renderEquipment();
+            renderTime();
+            resizeCanvas();
+            
+            // Force a sync to ensure UI is perfect
+            renderHotbar();
+            renderInventory();
+            
+            // NOW we render the map, ensuring static wolves are gone before the user sees them
+            render(); 
+            
+            canvas.style.visibility = 'visible';
+            syncPlayerState();
+            
+            logMessage(`Welcome back, ${playerData.background} of level ${gameState.player.level}.`);
+            updateRegionDisplay();
+            updateExploration();
 
-    loadingIndicator.classList.add('hidden');
-    
-    // Initialize all UI listeners
-    // Only attach these listeners once per page load!
-    if (!areGlobalListenersInitialized) {
-        console.log("Initializing Global UI Listeners...");
-        initShopListeners();
-        initSpellbookListeners();
-        initInventoryListeners();
-        initSkillbookListeners();
-        initQuestListeners();
-        initCraftingListeners();
-        initSkillTrainerListeners();
-        initMobileControls();
-
-        initSettingsListeners(); 
-        
-        areGlobalListenersInitialized = true; // Mark as done
-    } else {
-        console.log("UI Listeners already active. Skipping.");
-        // Ensure Mobile Controls are visible if they were hidden
-        const mobileContainer = document.getElementById('mobileControls');
-        if (mobileContainer) mobileContainer.classList.remove('hidden');
-    }
+            loadingIndicator.classList.add('hidden'); // <--- Reveal game here
+            
+            // Initialize UI Listeners (One time only)
+            if (!areGlobalListenersInitialized) {
+                console.log("Initializing Global UI Listeners...");
+                initShopListeners();
+                initSpellbookListeners();
+                initInventoryListeners();
+                initSkillbookListeners();
+                initQuestListeners();
+                initCraftingListeners();
+                initSkillTrainerListeners();
+                initMobileControls();
+                initSettingsListeners();
+                areGlobalListenersInitialized = true;
+            } else {
+                const mobileContainer = document.getElementById('mobileControls');
+                if (mobileContainer) mobileContainer.classList.remove('hidden');
+            }
+        }, 200); // 200ms buffer for smoothness
+    });
 }
 
 auth.onAuthStateChanged((user) => {
