@@ -5609,6 +5609,35 @@ generateChunk(chunkX, chunkY) {
                     chunkData[y][x] = 'Ω';
                 }
 
+                                // --- 2.5 MAJOR STRUCTURES (Explicit Spawn Rates) ---
+                
+                // Caves in Mountains (High Density: 1 in 125 tiles)
+                // Previously, mountains had NO structure generation!
+                else if (tile === '^' && featureRoll < 0.008) { 
+                    this.setWorldTile(worldX, worldY, '⛰');
+                    chunkData[y][x] = '⛰';
+                }
+                
+                // Caves in Deadlands (Medium Density: 1 in 250 tiles)
+                else if (tile === 'd' && featureRoll < 0.004) { 
+                    this.setWorldTile(worldX, worldY, '⛰');
+                    chunkData[y][x] = '⛰';
+                }
+
+                // Castles in Plains & Forests (1 in 1000 tiles)
+                // We use a range (> 0.0005) so we don't overwrite the "Common Features" 
+                // bucket below (which uses < 0.0005).
+                else if ((tile === '.' || tile === 'F') && featureRoll > 0.0005 && featureRoll < 0.0015) {
+                    this.setWorldTile(worldX, worldY, '🏰');
+                    chunkData[y][x] = '🏰';
+                }
+
+                // Occasional Caves in Plains/Forests (1 in 2000 tiles)
+                else if ((tile === '.' || tile === 'F') && featureRoll > 0.0015 && featureRoll < 0.0020) {
+                    this.setWorldTile(worldX, worldY, '⛰');
+                    chunkData[y][x] = '⛰';
+                }
+
                 // --- 3. COMMON FEATURES ---
                 else if (tile === '.' && featureRoll < 0.0005) { 
                     let features = Object.keys(TILE_DATA);
