@@ -13583,20 +13583,7 @@ function restPlayer() {
 async function attemptMovePlayer(newX, newY) {
     if (newX === gameState.player.x && newY === gameState.player.y) return;
 
-    const obsoleteTiles = [];
-    const tileAtDestination = chunkManager.getTile(newX, newY);
-    if (obsoleteTiles.includes(tileAtDestination)) {
-        logMessage("You clear away remnants of an older age.");
-        chunkManager.setWorldTile(newX, newY, '.');
-    }
-
-    const tileData = TILE_DATA[newTile];
-    if (tileData && tileData.type === 'obstacle') {
-        logMessage(`You can't go that way.`);
-    return; // Stop the move
-    }
-
-    // 1. Determine the destination tile
+    // 1. Determine the destination tile FIRST
     let newTile;
     if (gameState.mapMode === 'dungeon') {
         const map = chunkManager.caveMaps[gameState.currentCaveId];
@@ -13608,7 +13595,23 @@ async function attemptMovePlayer(newX, newY) {
         newTile = chunkManager.getTile(newX, newY);
     }
 
-    // --- OVERLAY COLLISION CHECK ---
+    // 2. Define tileData (Use 'let' so we can update it if needed)
+    let tileData = TILE_DATA[newTile];
+
+    // 3. Obstacle Check (The Fix)
+    if (tileData && tileData.type === 'obstacle') {
+        logMessage(`You can't go that way.`);
+        return; // Stop the move
+    }
+
+    // 4. Obsolete Tile Cleanup
+    const obsoleteTiles = [];
+    if (obsoleteTiles.includes(newTile)) {
+        logMessage("You clear away remnants of an older age.");
+        chunkManager.setWorldTile(newX, newY, '.');
+    }
+
+    // 5. Overlay Collision Check
     if (gameState.mapMode === 'overworld') {
         const enemyKey = `overworld:${newX},${-newY}`;
         const overlayEnemy = gameState.sharedEnemies[enemyKey];
@@ -13618,17 +13621,18 @@ async function attemptMovePlayer(newX, newY) {
             if (ENEMY_DATA[overlayEnemy.tile]) {
                 // Valid enemy: Override tile to trigger combat
                 newTile = overlayEnemy.tile;
+                // Update tileData in case the enemy tile has interaction data (rare, but safe)
+                tileData = TILE_DATA[newTile]; 
             } else {
-                // Invalid "Ghost" enemy (like 'F'): Delete it from DB
+                // Invalid "Ghost" enemy: Delete it from DB
                 logMessage("Dissipating a phantom signal...");
                 rtdb.ref(`worldEnemies/${enemyKey}`).remove();
                 delete gameState.sharedEnemies[enemyKey];
-                // Don't override newTile; let the player walk there.
             }
         }
     }
 
-    const tileData = TILE_DATA[newTile];
+    // --- INTERACTION LOGIC ---
 
     if (gameState.mapMode === 'castle' && gameState.friendlyNpcs) {
         const npc = gameState.friendlyNpcs.find(n => n.x === newX && n.y === newY);
@@ -13683,41 +13687,38 @@ async function attemptMovePlayer(newX, newY) {
     // --- COMBAT CHECK ---
     const enemyData = ENEMY_DATA[newTile];
     if (enemyData) {
-    const hitChance = calculateHitChance(gameState.player, enemyData);
-    
-    if (Math.random() > hitChance) {
-        logMessage(`You swing at the ${enemyData.name} but miss!`);
-        // We still end the turn so the enemy can move/attack
-        endPlayerTurn(); 
-        return; 
-    }
+        const hitChance = calculateHitChance(gameState.player, enemyData);
+        
+        if (Math.random() > hitChance) {
+            logMessage(`You swing at the ${enemyData.name} but miss!`);
+            // We still end the turn so the enemy can move/attack
+            endPlayerTurn(); 
+            return; 
+        }
         
         // 1. Calculate Player's Raw Attack Power
-
         const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
         const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
         
         let rawDamage = playerStrength + weaponDamage;
 
-        // --- APPLY TALENT MODIFIERS (Gets the 4x bonus based on CURRENT stealth) ---
+        // --- APPLY TALENT MODIFIERS ---
         rawDamage = getPlayerDamageModifier(rawDamage); 
         
-        // --- NOW BREAK STEALTH (Safe to do so) ---
+        // --- BREAK STEALTH ---
         if (gameState.player.stealthTurns > 0) {
             gameState.player.stealthTurns = 0;
             logMessage("You emerge from the shadows.");
             playerRef.update({ stealthTurns: 0 }); 
         }
 
-        // 2. Critical Hit Check (5% base + 0.5% per Luck)
+        // 2. Critical Hit Check
         const critChance = 0.05 + (gameState.player.luck * 0.005);
         let isCrit = false;
         
         if (Math.random() < critChance) {
-    
-            // --- TALENT: BACKSTAB ---
             const mult = (gameState.player.talents && gameState.player.talents.includes('backstab')) ? 3.0 : 1.5;
-            rawDamage = Math.floor(rawDamage * 1.5); // 1.5x Damage on Crit
+            rawDamage = Math.floor(rawDamage * mult); 
             isCrit = true;
         }
 
@@ -13727,28 +13728,22 @@ async function attemptMovePlayer(newX, newY) {
             let enemyId = enemy ? enemy.id : null;
 
             if (enemy) {
-
-                // --- APPLY TALENT MODIFIERS ---
-                
                 const boostedDamage = getPlayerDamageModifier(rawDamage);
+                let playerDamage = Math.max(1, boostedDamage - (enemy.defense || 0));
 
-
-let playerDamage = Math.max(1, boostedDamage - (enemy.defense || 0));
-
-if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
-    const graceFloor = Math.ceil(gameState.player.strength / 2); 
-    playerDamage = Math.max(playerDamage, graceFloor);
-}
+                if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
+                    const graceFloor = Math.ceil(gameState.player.strength / 2); 
+                    playerDamage = Math.max(playerDamage, graceFloor);
+                }
 
                 enemy.health -= playerDamage;
-
                 AudioSystem.playAttack();
                 
                 // Log & Effects
                 if (isCrit) {
                     logMessage(`CRITICAL HIT! You strike the ${enemy.name} for ${playerDamage} damage!`);
                     if (typeof ParticleSystem !== 'undefined') {
-                        ParticleSystem.createExplosion(newX, newY, '#facc15'); // Yellow sparks
+                        ParticleSystem.createExplosion(newX, newY, '#facc15'); 
                         ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
                     }
                 } else {
@@ -13769,7 +13764,6 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
                 // Enemy Death Logic
                 if (enemy.health <= 0) {
                     logMessage(`You defeated the ${enemy.name}!`);
-                    
                     registerKill(enemy);
 
                     const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
@@ -13789,7 +13783,6 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
                     const playerDefense = baseDefense + armorDefense + buffDefense;
                     
                     const enemyDamage = Math.max(1, enemy.attack - playerDefense);
-
                     const luckDodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
                     
                     if (Math.random() < luckDodgeChance) {
@@ -13808,7 +13801,6 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
 
                         if (damageToApply > 0) {
                             gameState.player.health -= damageToApply;
-
                             AudioSystem.playHit();
 
                             if (typeof ParticleSystem !== 'undefined') {
@@ -13825,9 +13817,7 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
                             logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} damage from your thorns!`);
                             if (enemy.health <= 0) {
                                 logMessage(`The ${enemy.name} is killed by your thorns!`);
-                                
                                 registerKill(enemy);
-
                                 const droppedLoot = generateEnemyLoot(gameState.player, enemy);
                                 gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
                                 if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
@@ -13853,17 +13843,15 @@ if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
 
         } else if (gameState.mapMode === 'overworld') {
             // --- SHARED COMBAT ---
-            // Calculate Final Damage vs Base Enemy Defense
             let playerDamage = Math.max(1, rawDamage - (enemyData.defense || 0));
 
-if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
-    const graceFloor = Math.ceil(gameState.player.strength / 2); 
-    playerDamage = Math.max(playerDamage, graceFloor);
-}
+            if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
+                const graceFloor = Math.ceil(gameState.player.strength / 2); 
+                playerDamage = Math.max(playerDamage, graceFloor);
+            }
 
-AudioSystem.playAttack();
+            AudioSystem.playAttack();
 
-            // Log before calling handleOverworldCombat (which handles the enemy reaction log)
             if (isCrit) {
                 logMessage(`CRITICAL HIT! You strike the ${enemyData.name} for ${playerDamage} damage!`);
                 if (typeof ParticleSystem !== 'undefined') {
@@ -13889,7 +13877,6 @@ AudioSystem.playAttack();
         }
 
         loreTitle.textContent = "An Ancient Shrine";
-        // UPDATED TEXT to reflect 500 turns
         loreContent.innerHTML = `
             <p>The shrine hums with a faint energy. You feel you can ask for one boon.</p>
             <button id="shrineStr" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">Pray for Strength (+5 Str for 500 turns)</button>
@@ -13898,10 +13885,9 @@ AudioSystem.playAttack();
         loreModal.classList.remove('hidden');
 
         document.getElementById('shrineStr').addEventListener('click', () => {
-            // We allow overwriting old buffs now since this is a "Major" buff
             logMessage("You pray for Strength. You feel a surge of power that will last for days!");
             player.strengthBonus = 5;
-            player.strengthBonusTurns = 500; // <--- UPDATED TO 500
+            player.strengthBonusTurns = 500; 
             
             playerRef.update({ strengthBonus: 5, strengthBonusTurns: 500 });
             renderEquipment();
@@ -13914,13 +13900,11 @@ AudioSystem.playAttack();
 
         document.getElementById('shrineWits').addEventListener('click', () => {
             logMessage("You pray for Wits. Your mind expands with ancient knowledge!");
-            
-            // Apply the 500-turn buff
             player.witsBonus = 5;
             player.witsBonusTurns = 500;
             
             playerRef.update({ witsBonus: 5, witsBonusTurns: 500 });
-            renderStats(); // Update UI immediately
+            renderStats(); 
             
             shrineUsed = true;
             if (shrineUsed) gameState.lootedTiles.add(tileId);
@@ -13959,8 +13943,6 @@ AudioSystem.playAttack();
     if (newTile === 'Ω') {
         logMessage("A tear in reality. It is unstable.");
         logMessage("You need a Void Key to stabilize the passage.");
-        // We allow the player to walk ONTO it, so they can use the key.
-        // We do NOT return here, allowing the movement to complete.
     }
 
     if (newTile === '🌵') {
@@ -13987,11 +13969,9 @@ AudioSystem.playAttack();
     else if (tileData && tileData.type === 'loot_chest') {
 
     // --- MIMIC CHECK ---
-        // 10% Chance to be a Mimic
         if (Math.random() < 0.10) {
             logMessage("The chest lurches open... It has teeth! IT'S A MIMIC!");
             
-            // Transform the tile into a Mimic
             if (gameState.mapMode === 'overworld') {
                 chunkManager.setWorldTile(newX, newY, 'M');
             } else if (gameState.mapMode === 'dungeon') {
@@ -14000,10 +13980,8 @@ AudioSystem.playAttack();
                 chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = 'M';
             }
             
-            // Trigger combat immediately? Or let the player attack next turn?
-            // Let's force a hit from the mimic immediately for surprise!
             gameState.player.health -= 3;
-            gameState.screenShake = 10; // Shake intensity
+            gameState.screenShake = 10; 
             triggerStatFlash(statDisplays.health, false);
             logMessage("The Mimic bites you for 3 damage!");
             render();
@@ -14054,7 +14032,7 @@ AudioSystem.playAttack();
                 logMessage("You step right on a spike trap! Ouch!");
                 const trapDamage = 3;
                 player.health -= trapDamage;
-                gameState.screenShake = 10; // Shake intensity
+                gameState.screenShake = 10; 
                 triggerStatFlash(statDisplays.health, false);
                 gameState.lootedTiles.add(tileId);
             }
@@ -14064,7 +14042,6 @@ AudioSystem.playAttack();
     let moveCost = TERRAIN_COST[newTile] ?? 0;
 
     // --- GILL POTION OVERRIDE ---
-    // If we have gills, Deep Water becomes easy to swim (Cost 1)
     if (newTile === '~' && gameState.player.waterBreathingTurns > 0) {
         moveCost = 1;
     }
@@ -14078,7 +14055,6 @@ AudioSystem.playAttack();
         if(Math.random() < 0.05) logMessage("You move swiftly through the trees.");
     }
 
-    // Entering a structure should never cost extra stamina
     if (['⛰', '🏰', 'V', '♛', '🕳️'].includes(newTile)) {
         moveCost = 0;
     }
@@ -14156,9 +14132,7 @@ AudioSystem.playAttack();
         return; // Spend turn opening
     }
     if (newTile === '/') {
-        // Auto-close logic? Or just walk through. Let's just walk through for now.
-        // If you want to close it, maybe Ctrl+Click or specific command later.
-        // For now, it's just walkable.
+        // Just walk through
     }
 
     // --- STASH LOGIC ---
@@ -14186,9 +14160,6 @@ AudioSystem.playAttack();
         }
 
         if (tileData.type === 'barrel') {
-
-            // Let's keep it simple: Attacking it destroys it.
-            
             logMessage("You smash the barrel open!");
             if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '.');
             else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = '.';
@@ -14197,7 +14168,6 @@ AudioSystem.playAttack();
             // 30% chance to drop oil (fuel)
             if (Math.random() < 0.3) {
                  logMessage("You salvage some oil.");
-                 // Give lantern fuel/torch duration?
                  player.candlelightTurns += 20; 
             }
             render();
@@ -14222,7 +14192,6 @@ AudioSystem.playAttack();
                         logMessage("Inventory full! The wood is lost.");
                     }
                 } 
-                // Only grant Stone if using a Pickaxe on a generic obstacle (like Cracked Wall)
                 else if (toolName === 'Pickaxe') {
                      if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                         const existingStone = playerInventory.find(i => i.name === 'Stone');
@@ -14365,8 +14334,6 @@ AudioSystem.playAttack();
             let lootTable = tileData.lootTable; // Default table
             
             // --- Dynamic Loot Table for Generic Chests ---
-            // If it's a generic chest (lootTable not strictly defined or is generic)
-            // we inject scaling logic.
             if (!lootTable || tileData.name === 'Dusty Urn' || newTile === '📦') {
                 const dist = Math.sqrt(newX*newX + newY*newY);
                 if (dist > 250) {
@@ -15503,7 +15470,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         });
 
         gameState.sharedEnemies = mergedEnemies;
-        render(); 
+        render(); // Re-render to show new health bars
     });
 
     unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
@@ -15687,9 +15654,13 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
                 initCraftingListeners();
                 initSkillTrainerListeners();
                 initMobileControls();
-                initSettingsListeners();
-                areGlobalListenersInitialized = true;
+
+                initSettingsListeners(); 
+                
+                areGlobalListenersInitialized = true; // Mark as done
             } else {
+                console.log("UI Listeners already active. Skipping.");
+                // Ensure Mobile Controls are visible if they were hidden
                 const mobileContainer = document.getElementById('mobileControls');
                 if (mobileContainer) mobileContainer.classList.remove('hidden');
             }
