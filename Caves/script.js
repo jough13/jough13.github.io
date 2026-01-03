@@ -2589,6 +2589,7 @@ const ITEM_DATA = {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 30);
             logMessage("You gnaw on the rock-hard bread. (+30 Hunger)");
             triggerStatAnimation(document.getElementById('hungerDisplay'), 'stat-pulse-green');
+            return true; 
         }
     },
     '💧f': { 
@@ -2600,6 +2601,7 @@ const ITEM_DATA = {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 30);
             logMessage("Refreshing. (+30 Thirst)");
             triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+            return true; 
         }
     },
     '🪵': {
@@ -2620,12 +2622,32 @@ const ITEM_DATA = {
     },
     '⛺k': {
         name: 'Campfire Kit',
-        type: 'consumable', // It's "consumed" when placed
-        tile: '🔥', // Looks like fire in inventory
+        type: 'consumable',
+        tile: '🔥',
         description: "Contains flint, tinder, and dry wood. Creates a cooking fire.",
         effect: (state) => {
-            // Logic handled in useInventoryItem to place it on the map
-            logMessage("Use this item to place a fire on the ground.");
+            const currentTile = chunkManager.getTile(state.player.x, state.player.y);
+            
+            // Only place on flat ground or dungeon floors
+            let valid = false;
+            if (state.mapMode === 'overworld' && (currentTile === '.' || currentTile === 'd' || currentTile === 'D')) valid = true;
+            if (state.mapMode === 'dungeon') valid = true; // Assume dungeon floor is stone
+
+            if (valid) {
+                logMessage("You arrange the stones and light the fire.");
+                
+                if (state.mapMode === 'overworld') {
+                    chunkManager.setWorldTile(state.player.x, state.player.y, '🔥');
+                } else if (state.mapMode === 'dungeon') {
+                    chunkManager.caveMaps[state.currentCaveId][state.player.y][state.player.x] = '🔥';
+                }
+                
+                render(); // Force immediate render
+                return true; // CONSUME ITEM
+            } else {
+                logMessage("You can't build a fire here.");
+                return false; // DO NOT CONSUME
+            }
         }
     },
     '👢': {
@@ -2707,12 +2729,12 @@ const ITEM_DATA = {
     },
 
     // --- CULINARY EXPANSION ---
-    '🧀': { name: 'Wheel of Cheese', type: 'consumable', description: "A pungent wheel of aged cheese. (+15 Hunger)", effect: (state) => { state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 15); logMessage("It tastes sharp and nutty."); } },
+    '🧀': { name: 'Wheel of Cheese', type: 'consumable', description: "A pungent wheel of aged cheese. (+15 Hunger)", effect: (state) => { state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 15); logMessage("It tastes sharp and nutty."); return true; } },
     '🥚': { name: 'Bird Egg', type: 'junk', description: "A speckled egg found in a nest." },
     '🌾': { name: 'Bag of Flour', type: 'junk', description: "Ground wheat. Essential for baking." },
-    '🍯': { name: 'Jar of Honey', type: 'consumable', description: "Sweet and sticky. (+10 Hunger, +5 Stamina)", effect: (state) => { state.player.stamina += 5; state.player.hunger += 10; logMessage("Sweet energy!"); triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow'); } },
-    '🥧': { name: 'Berry Pie', type: 'consumable', description: "A masterpiece of baking. (+50 Hunger, +10 Psyche)", effect: (state) => { state.player.hunger += 50; state.player.psyche += 10; logMessage("Warm, sweet, and comforting. You feel happier."); triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); } },
-    '🥙': { name: 'Traveler\'s Wrap', type: 'consumable', description: "Portable and filling. (+40 Hunger, +5 Health)", effect: (state) => { state.player.hunger += 40; state.player.health += 5; logMessage("A solid meal on the go."); triggerStatAnimation(statDisplays.health, 'stat-pulse-green'); } },
+    '🍯': { name: 'Jar of Honey', type: 'consumable', description: "Sweet and sticky. (+10 Hunger, +5 Stamina)", effect: (state) => { state.player.stamina += 5; state.player.hunger += 10; logMessage("Sweet energy!"); triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow'); return true; } },
+    '🥧': { name: 'Berry Pie', type: 'consumable', description: "A masterpiece of baking. (+50 Hunger, +10 Psyche)", effect: (state) => { state.player.hunger += 50; state.player.psyche += 10; logMessage("Warm, sweet, and comforting. You feel happier."); triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); return true; } },
+    '🥙': { name: 'Traveler\'s Wrap', type: 'consumable', description: "Portable and filling. (+40 Hunger, +5 Health)", effect: (state) => { state.player.hunger += 40; state.player.health += 5; logMessage("A solid meal on the go."); triggerStatAnimation(statDisplays.health, 'stat-pulse-green'); return true; } },
 
     // --- TRADE GOODS ---
     '🐚': { name: 'Rainbow Shell', type: 'junk', description: "It shimmers with every color. Collectors love these." }, // High value
@@ -2727,7 +2749,29 @@ const ITEM_DATA = {
         name: 'Empty Bottle',
         type: 'consumable', 
         description: "Use on water (~/≈) to fill.",
-        tile: '🫙'
+        tile: '🫙',
+        effect: (state) => {
+            const currentTile = chunkManager.getTile(state.player.x, state.player.y);
+            
+            if (currentTile === '~' || currentTile === '≈' || currentTile === '⛲') {
+                logMessage("You fill the bottle.");
+                
+                // Add Dirty Water
+                const dirtyWater = { name: 'Dirty Water', type: 'consumable', quantity: 1, tile: '🤢', effect: ITEM_DATA['🤢'].effect };
+                
+                // Check for existing stack
+                const existingDirty = state.player.inventory.find(i => i.name === 'Dirty Water');
+                if (existingDirty) existingDirty.quantity++;
+                else state.player.inventory.push(dirtyWater);
+                
+                // We return true to consume the Empty Bottle
+                // The inventory UI update happens in the main function
+                return true; 
+            } else {
+                logMessage("Stand on water (~/≈) to fill this.");
+                return false;
+            }
+        }
     },
     '💧': {
         name: 'Clean Water',
@@ -2774,6 +2818,7 @@ const ITEM_DATA = {
             logMessage("You feel an icy chill. You are immune to fire! (50 turns)");
             // Trigger visual effect
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "❄️", "#67e8f9");
+            return true; 
         }
     },
     '🧪w': {
@@ -2786,6 +2831,7 @@ const ITEM_DATA = {
             logMessage("You sprout gills! You can dive into deep water. (20 turns)");
             // Optional Visual
             if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(state.player.x, state.player.y, "🫧", "#3b82f6");
+            return true; 
         }
     },
     // --- NEW CRAFTING MATERIALS ---
@@ -2863,6 +2909,7 @@ const ITEM_DATA = {
             // hits all adjacent enemies.
             logMessage("The explosion blasts everything nearby!");
             // (You would add AoE logic here similar to Whirlwind)
+        return true; 
         }
     },
 
@@ -2954,6 +3001,7 @@ const ITEM_DATA = {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 40);
             logMessage("Savory! (+40 Hunger, +5 HP)");
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+            return true; 
         }
     },
     '🍣': { 
@@ -2966,6 +3014,7 @@ const ITEM_DATA = {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10);
             logMessage("Tasty! (+30 Hunger, +10 Thirst)");
             triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+            return true; 
         }
     },
     '🥤': { 
@@ -2977,6 +3026,7 @@ const ITEM_DATA = {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); // <-- NEW
             logMessage("Refreshing! (+20 Thirst, +3 Mana)");
             triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+            return true; 
         }
     },
     '🍲': {
@@ -2990,6 +3040,7 @@ const ITEM_DATA = {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); // <-- NEW
             logMessage("Hearty and spicy! (+30 Hunger, +20 Thirst)");
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+            return true; 
         }
     },
     '🥘': {
@@ -3007,6 +3058,7 @@ const ITEM_DATA = {
             logMessage("You feel invincible! (Full Restore + Well Fed)");
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
             playerRef.update({ defenseBonus: 1, defenseBonusTurns: 20 });
+            return true; 
         }
     },
 
@@ -3049,6 +3101,7 @@ const ITEM_DATA = {
             state.player.thirst = state.player.maxThirst; // <-- NEW
             logMessage("You eat the Golden Apple. You feel revitalized! (Full Restore)");
             triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+            return true; 
         }
     },
     '+': {
@@ -3061,6 +3114,7 @@ const ITEM_DATA = {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 10); // <-- NEW: Hydration
             if (state.player.health > oldHealth) {
                 triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+                return true; 
             }
             logMessage(`Used a Healing Potion. (+HP, +10 Thirst)`);
         }
@@ -3074,6 +3128,7 @@ const ITEM_DATA = {
             state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT);
             if (state.player.mana > oldMana) {
                 triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue'); // USE NEW FUNCTION
+                return true; 
             }
             logMessage('Used a Mana Orb. Restored mana!');
         },
@@ -3089,6 +3144,7 @@ const ITEM_DATA = {
             if (state.player.stamina > oldStamina) {
             
                 triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+                return true; 
             }
             logMessage(`Used a Stamina Crystal. Restored ${STAMINA_RESTORE_AMOUNT} stamina!`);
         },
@@ -3103,6 +3159,7 @@ const ITEM_DATA = {
             state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT);
             if (state.player.psyche > oldPsyche) {
                 triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); // USE NEW FUNCTION
+                return true; 
             }
             logMessage('Used a Psyche Shard. Restored psyche.');
         }
@@ -3129,6 +3186,7 @@ const ITEM_DATA = {
             logMessage("The Guard salutes. 'I will watch your back.'");
             // Save immediately
             playerRef.update({ companion: state.player.companion });
+            return true; 
         }
     },
         ':': {
@@ -3140,6 +3198,7 @@ const ITEM_DATA = {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 5);
             logMessage('Sweet! (+5 Hunger/Thirst, +1 HP)');
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+            return true; 
         }
     },
     '🍄': {
@@ -3151,6 +3210,7 @@ const ITEM_DATA = {
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 5); // <-- NEW: Small snack
             if (state.player.mana > oldMana) {
                 triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                return true; 
             }
             logMessage('You eat a Bluecap. (+1 Mana, +5 Hunger)');
         }
@@ -3632,6 +3692,7 @@ const ITEM_DATA = {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); // <-- NEW
             logMessage("You drink the thick red liquid. (+Max HP, +20 Thirst)");
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+            return true; 
         }
     },
     '🧪': { 
@@ -3643,6 +3704,7 @@ const ITEM_DATA = {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 20); // <-- NEW
             logMessage("You drink the glowing blue liquid. (+Max Mana, +20 Thirst)");
             triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+            return true; 
         }
     },
 
@@ -3659,11 +3721,43 @@ const ITEM_DATA = {
     },
     '🗝️v': {
         name: 'Void Key',
-        type: 'consumable', // It is consumed upon use
+        type: 'consumable',
         tile: '🗝️',
         description: "It vibrates violently. Unlocks a Void Rift.",
         effect: (state) => {
-            logMessage("Stand on a Void Rift (Ω) and use this to enter.");
+            const currentTile = chunkManager.getTile(state.player.x, state.player.y);
+            
+            if (currentTile === 'Ω') {
+                logMessage("You insert the key into the rift...");
+                logMessage("REALITY SHATTERS.");
+
+                // --- TELEPORT TO VOID ---
+                state.mapMode = 'dungeon';
+                state.currentCaveId = `void_${state.player.x}_${state.player.y}`;
+                state.overworldExit = { x: state.player.x, y: state.player.y };
+                
+                // Generate the Void
+                const voidMap = chunkManager.generateCave(state.currentCaveId);
+                state.currentCaveTheme = 'VOID';
+                
+                // Find entrance ('>')
+                for (let y = 0; y < voidMap.length; y++) {
+                    const x = voidMap[y].indexOf('>');
+                    if (x !== -1) { state.player.x = x; state.player.y = y; break; }
+                }
+                
+                // Setup enemies
+                const baseEnemies = chunkManager.caveEnemies[state.currentCaveId] || [];
+                state.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
+                
+                updateRegionDisplay();
+                render();
+                syncPlayerState();
+                return true; // Consume Key
+            } else {
+                logMessage("You must be standing on a Void Rift (Ω) to use this.");
+                return false;
+            }
         }
     },
     // --- ELITE LOOT ---
@@ -3689,6 +3783,7 @@ const ITEM_DATA = {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 15); // <-- NEW
             logMessage('Juicy! (+10 Hunger, +15 Thirst, +5 Stamina)');
             triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
+            return true; 
         }
     },
     'x': {
@@ -3793,6 +3888,7 @@ const ITEM_DATA = {
                 logMessage("You chew the bitter herb. (+2 HP)");
             }
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+            return true; 
         }
     },
     '✨': {
@@ -3809,6 +3905,7 @@ const ITEM_DATA = {
         effect: (state) => {
             // Logic is handled in the main useInventoryItem function
             logMessage("Stand on a Void Rift (Ω) and use this to enter.");
+            return true; 
         }
     },
     'vd': {
@@ -7357,7 +7454,8 @@ function handleBuyItem(itemName) {
             name: itemTemplate.name,
             type: itemTemplate.type,
             quantity: 1,
-            tile: itemKey || '?'
+            tile: itemKey || '?',
+            effect: itemTemplate.effect || null 
         });
     }
 
@@ -7531,6 +7629,76 @@ function resizeCanvas() {
     render();
 }
 
+function handleSellAllItems() {
+    const player = gameState.player;
+    let itemsSold = 0;
+    let goldGained = 0;
+
+    // Iterate backwards so we can remove items safely while looping
+    for (let i = player.inventory.length - 1; i >= 0; i--) {
+        const item = player.inventory[i];
+        
+        // 1. CRITICAL: Skip equipped items
+        if (item.isEquipped) continue;
+
+        // 2. Filter: Only sell 'junk' (Loot) and 'consumable' (Food/Potions)
+        // We skip 'weapon', 'armor', 'tool', 'spellbook', etc. to be safe.
+        if (item.type === 'junk' || item.type === 'consumable') {
+            
+            // --- Price Calculation Logic (Matches handleSellItem) ---
+            const shopItem = activeShopInventory.find(sItem => sItem.name === item.name);
+            let basePrice = 2; 
+            
+            if (shopItem) {
+                basePrice = shopItem.price;
+            } else {
+                // Relic/Special Prices
+                if (item.name === 'Shattered Crown') basePrice = 200;
+                else if (item.name === 'Signet Ring') basePrice = 80;
+                else if (item.name === 'Pouch of Gold Dust') basePrice = 50;
+                else if (item.name === 'Ancient Coin') basePrice = 25;
+                else if (item.name === 'Alpha Pelt') basePrice = 60;
+            }
+
+            const regionMult = getRegionalPriceMultiplier(item.type, item.name);
+            const sellBonusPercent = player.charisma * 0.005;
+            const finalSellBonus = Math.min(sellBonusPercent, 0.25);
+            
+            let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
+            
+            // Economy Cap logic
+            const maxSellPrice = Math.floor(basePrice * 0.8);
+            const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
+            // -------------------------------------------------------
+
+            // 3. Execute Sale
+            const totalValue = sellPrice * item.quantity;
+            player.coins += totalValue;
+            goldGained += totalValue;
+            itemsSold += item.quantity;
+            
+            // Remove from inventory
+            player.inventory.splice(i, 1);
+        }
+    }
+
+    if (itemsSold > 0) {
+        logMessage(`Sold ${itemsSold} items for ${goldGained} gold.`);
+        AudioSystem.playCoin();
+        
+        // Save and Update UI
+        playerRef.update({ 
+            coins: player.coins, 
+            inventory: getSanitizedInventory() 
+        });
+        renderShop();
+        renderInventory();
+        renderStats();
+    } else {
+        logMessage("You have no unequipped junk or consumables to sell.");
+    }
+}
+
 function renderShop() {
     // 1. Clear old lists
     shopBuyList.innerHTML = '';
@@ -7608,6 +7776,24 @@ function renderShop() {
             `;
             shopSellList.appendChild(li);
         });
+    }
+
+    // --- NEW: Inject Sell All Button into the Header ---
+    const sellListContainer = shopSellList.parentElement;
+    const header = sellListContainer.querySelector('h3');
+    
+    if (header) {
+        // Only inject if we haven't already (prevents duplicates on re-render)
+        if (!header.querySelector('#sellAllBtn')) {
+            header.innerHTML = `
+                <div class="flex justify-between items-center w-full">
+                    <span>Your Inventory</span>
+                    <button id="sellAllBtn" class="text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded transition-colors">Sell All Junk</button>
+                </div>
+            `;
+            // Bind the click event
+            document.getElementById('sellAllBtn').onclick = handleSellAllItems;
+        }
     }
 }
 
@@ -10948,12 +11134,15 @@ const render = () => {
             let tile;
             let fgChar = null;
             let fgColor = '#FFFFFF';
+            let bgColor = null;
 
             // --- A. DRAW TERRAIN (Base Layer) ---
             if (gameState.mapMode === 'dungeon') {
                 const map = chunkManager.caveMaps[gameState.currentCaveId];
                 tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
                 const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                
+                bgColor = theme.colors.floor; // <--- Set it here
                 
                 if (tile === theme.wall) TileRenderer.drawWall(ctx, x, y, theme.colors.wall, '#00000033');
                 else if (tile === theme.floor) TileRenderer.drawBase(ctx, x, y, theme.colors.floor);
@@ -10962,6 +11151,9 @@ const render = () => {
             else if (gameState.mapMode === 'castle') {
                 const map = chunkManager.castleMaps[gameState.currentCastleId];
                 tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
+                
+                bgColor = '#a16207'; // <--- Set default floor color here
+                
                 if (tile === '▓' || tile === '▒') TileRenderer.drawWall(ctx, x, y, '#422006', '#2d1b0e');
                 else { TileRenderer.drawBase(ctx, x, y, '#a16207'); fgChar = tile; }
             } 
@@ -10971,7 +11163,7 @@ const render = () => {
                 
                 // Determine Base Biome
                 const baseTerrain = getBaseTerrain(mapX, mapY);
-                let bgColor = '#22c55e'; // Default Plains Green
+                bgColor = '#22c55e'; // Default Plains Green
 
                 if (baseTerrain === 'F') bgColor = '#14532d'; // Dark Forest Green
                 else if (baseTerrain === 'd') bgColor = '#2d2d2d'; // Dark Grey Deadlands
@@ -11116,7 +11308,7 @@ const render = () => {
             if (fgChar && !overlayChar) {
                 // Check for Mountain ('^') or Dungeon Entrance ('⛰')
                 if (fgChar === '^' || fgChar === '⛰') {
-                    TileRenderer.drawMountain(ctx, x, y, mapX, mapY, bgColor || '#22c55e');
+                    TileRenderer.drawMountain(ctx, x, y, mapX, mapY, bgColor || '#22c55e'); 
                     
                     if (fgChar === '⛰') {
                         ctx.fillStyle = '#1f2937'; // Dark door color
@@ -13072,40 +13264,8 @@ function useInventoryItem(itemIndex) {
 
     let itemUsed = false;
 
-    // --- CAMPFIRE LOGIC ---
-    if (itemToUse.name === 'Campfire Kit') {
-        const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
-        
-        // Only place on flat ground (Plains, Desert, Deadlands)
-        // or dungeon floors
-        let valid = false;
-        if (gameState.mapMode === 'overworld' && (currentTile === '.' || currentTile === 'd' || currentTile === 'D')) valid = true;
-        if (gameState.mapMode === 'dungeon') valid = true; // Assume dungeon floor is stone
-
-        if (valid) {
-            logMessage("You arrange the stones and light the fire.");
-            
-            if (gameState.mapMode === 'overworld') {
-                chunkManager.setWorldTile(gameState.player.x, gameState.player.y, '🔥');
-            } else if (gameState.mapMode === 'dungeon') {
-                chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] = '🔥';
-            }
-            
-            // Consume item
-            itemToUse.quantity--;
-            if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
-            itemUsed = true;
-            
-            // Force immediate render to show the fire
-            render();
-        } else {
-            logMessage("You can't build a fire here.");
-            return;
-        }
-    }
-
     // --- FISHING LOGIC ---
-    else if (itemToUse.name === 'Fishing Rod') {
+    if (itemToUse.name === 'Fishing Rod') {
         const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
         
         // Check if standing on water (Deep Water or Swamp)
@@ -13164,12 +13324,14 @@ function useInventoryItem(itemIndex) {
                 const template = Object.values(ITEM_DATA).find(i => i.name === catchName);
                 gameState.player.inventory.push({
                     name: catchName,
-                    type: template.type || 'junk',
+                    type: template ? (template.type || 'junk') : 'junk',
                     quantity: 1,
                     tile: catchTile,
                     // Copy stats if it's equipment
-                    defense: template.defense,
-                    statBonuses: template.statBonuses
+                    defense: template ? template.defense : null,
+                    statBonuses: template ? template.statBonuses : null,
+
+                    effect: template ? template.effect : null 
                 });
             } else {
                 logMessage("...but you have no room to keep it, so you throw it back.");
@@ -13177,16 +13339,12 @@ function useInventoryItem(itemIndex) {
         } else {
             logMessage("...not even a nibble.");
         }
-
-        playerRef.update({ 
-            stamina: gameState.player.stamina,
-            inventory: getSanitizedInventory()
-        });
-        renderStats();
-        renderInventory();
-        itemUsed = true; // Consumes a turn
+        
+        // Fishing always consumes a turn/stamina, so we mark it used to trigger updates
+        itemUsed = true; 
     }
 
+    // --- CONSTRUCTIBLES (Walls, Floors) ---
     else if (itemToUse.type === 'constructible') {
         const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
         
@@ -13213,82 +13371,24 @@ function useInventoryItem(itemIndex) {
         render();
     }
 
-    // --- BOTTLE FILLING LOGIC ---
-    if (itemToUse.name === 'Empty Bottle') {
-        const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
-        
-        if (currentTile === '~' || currentTile === '≈' || currentTile === '⛲') {
-            logMessage("You fill the bottle.");
-            
-            itemToUse.quantity--;
-            if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
-            
-            const dirtyWater = { name: 'Dirty Water', type: 'consumable', quantity: 1, tile: '🤢', effect: ITEM_DATA['🤢'].effect };
-            
-            // Stack logic
-            const existingDirty = gameState.player.inventory.find(i => i.name === 'Dirty Water');
-            if (existingDirty) existingDirty.quantity++;
-            else gameState.player.inventory.push(dirtyWater);
-            
-            renderInventory();
-            return;
-        } else {
-            logMessage("Stand on water (~/≈) to fill this.");
-            return;
-        }
-    }
-
-    // --- VOID KEY LOGIC ---
-    else if (itemToUse.name === 'Void Key') {
-        const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
-        
-        if (currentTile === 'Ω') {
-            logMessage("You insert the key into the rift...");
-            logMessage("REALITY SHATTERS.");
-            
-            // Consume key
-            itemToUse.quantity--;
-            if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
-            itemUsed = true;
-
-            // --- TELEPORT TO VOID ---
-            gameState.mapMode = 'dungeon';
-            // Create a unique ID for this specific rift instance
-            gameState.currentCaveId = `void_${gameState.player.x}_${gameState.player.y}`;
-            gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
-            
-            // Generate the Void
-            const voidMap = chunkManager.generateCave(gameState.currentCaveId);
-            gameState.currentCaveTheme = 'VOID'; // Force the theme
-            
-            // Find entrance ('>')
-            for (let y = 0; y < voidMap.length; y++) {
-                const x = voidMap[y].indexOf('>');
-                if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
-            }
-            
-            // Setup enemies
-            const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
-            gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
-            
-            updateRegionDisplay();
-            render();
-            syncPlayerState();
-            return; // Stop processing other logic
-        } else {
-            logMessage("You must be standing on a Void Rift (Ω) to use this.");
-            return;
-        }
-    }
-
+    // --- CONSUMABLES (Refactored Logic) ---
     else if (itemToUse.type === 'consumable') {
-        if (itemToUse.effect) itemToUse.effect(gameState);
-        itemToUse.quantity--;
-        logMessage(`You used a ${itemToUse.name}.`);
-        if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
-        itemUsed = true;
+        if (itemToUse.effect) {
+            // Execute the effect and check if it was successful (returns true)
+            const consumed = itemToUse.effect(gameState);
+            
+            if (consumed) {
+                itemToUse.quantity--;
+                if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
+                itemUsed = true;
+            }
+        } else {
+            logMessage(`You can't use the ${itemToUse.name} right now.`);
+        }
+    } 
 
-    } else if (itemToUse.type === 'weapon') {
+    // --- WEAPONS ---
+    else if (itemToUse.type === 'weapon') {
         const currentWeapon = gameState.player.inventory.find(i => i.type === 'weapon' && i.isEquipped);
         if (currentWeapon) {
             applyStatBonuses(currentWeapon, -1);
@@ -13305,6 +13405,7 @@ function useInventoryItem(itemIndex) {
         }
         itemUsed = true;
 
+    // --- ARMOR ---
     } else if (itemToUse.type === 'armor') {
         const currentArmor = gameState.player.inventory.find(i => i.type === 'armor' && i.isEquipped);
         if (currentArmor) {
@@ -13322,34 +13423,39 @@ function useInventoryItem(itemIndex) {
         }
         itemUsed = true;
 
+    // --- SPELLBOOKS, SKILLBOOKS, TOOLS ---
     } else if (itemToUse.type === 'spellbook' || itemToUse.type === 'skillbook' || itemToUse.type === 'tool') {
-        // Logic for Books and Tools (handled similarly in your code)
         const player = gameState.player;
         let data = null;
         let learned = false;
 
         if (itemToUse.type === 'spellbook') {
             data = SPELL_DATA[itemToUse.spellId];
-            if (!data) { logMessage("Dud item."); }
-            else if (player.level < data.requiredLevel) { logMessage(`Requires Level ${data.requiredLevel}.`); }
-            else {
+            if (!data) { 
+                logMessage("Dud item."); 
+            } else if (player.level < data.requiredLevel) { 
+                logMessage(`Requires Level ${data.requiredLevel}.`); 
+            } else {
                 player.spellbook[itemToUse.spellId] = (player.spellbook[itemToUse.spellId] || 0) + 1;
                 logMessage(player.spellbook[itemToUse.spellId] === 1 ? `Learned ${data.name}!` : `Upgraded ${data.name}!`);
                 learned = true;
             }
         } else if (itemToUse.type === 'skillbook') {
             data = SKILL_DATA[itemToUse.skillId];
-            if (!data) { logMessage("Dud item."); }
-            else if (player.level < data.requiredLevel) { logMessage(`Requires Level ${data.requiredLevel}.`); }
-            else {
+            if (!data) { 
+                logMessage("Dud item."); 
+            } else if (player.level < data.requiredLevel) { 
+                logMessage(`Requires Level ${data.requiredLevel}.`); 
+            } else {
                 player.skillbook[itemToUse.skillId] = (player.skillbook[itemToUse.skillId] || 0) + 1;
                 logMessage(player.skillbook[itemToUse.skillId] === 1 ? `Learned ${data.name}!` : `Upgraded ${data.name}!`);
                 learned = true;
             }
         } else {
-            // Tools just exist
-            logMessage(`You picked up the ${itemToUse.name}.`);
-            learned = true; // Technically 'used' to move to inventory
+            // Tools (like Machete/Pickaxe) just exist in inventory
+            logMessage(`You examine the ${itemToUse.name}. It looks useful.`);
+            // Tools aren't "consumed" on use in the inventory menu
+            learned = false; 
         }
 
         if (learned) {
@@ -13358,6 +13464,7 @@ function useInventoryItem(itemIndex) {
             itemUsed = true;
         }
 
+    // --- TOMES (Stat Boosts) ---
     } else if (itemToUse.type === 'tome') {
         const stat = itemToUse.stat;
         if (stat && gameState.player.hasOwnProperty(stat)) {
@@ -13371,6 +13478,7 @@ function useInventoryItem(itemIndex) {
             logMessage("This tome seems to be a dud.");
         }
 
+    // --- BUFF POTIONS ---
     } else if (itemToUse.type === 'buff_potion') {
         const player = gameState.player;
         const template = ITEM_DATA[Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === itemToUse.name)];
@@ -13387,6 +13495,7 @@ function useInventoryItem(itemIndex) {
             itemUsed = true;
         }
 
+    // --- TELEPORT SCROLLS ---
     } else if (itemToUse.type === 'teleport') {
         logMessage("Space warps around you...");
         gameState.player.x = 0;
@@ -13396,6 +13505,7 @@ function useInventoryItem(itemIndex) {
         if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
         itemUsed = true;
 
+    // --- TREASURE MAPS ---
     } else if (itemToUse.type === 'treasure_map') {
         if (!gameState.activeTreasure) {
             const dist = 50 + Math.floor(Math.random() * 100);
@@ -13407,17 +13517,20 @@ function useInventoryItem(itemIndex) {
             playerRef.update({ activeTreasure: gameState.activeTreasure });
 
             logMessage(`The map reveals a hidden mark! Location: (${tx}, ${-ty}).`);
+            // Maps are not consumed until the treasure is found (handled in movement logic)
+            itemUsed = true; 
             
         } else {
              logMessage(`The map marks a location at (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y}).`);
         }
-        itemUsed = false; 
 
+    // --- JUNK / UNKNOWN ---
     } else {
         logMessage(`You can't use '${itemToUse.name}' right now.`);
     }
     
-        if (itemUsed) {
+    // --- FINAL SAVE & RENDER ---
+    if (itemUsed) {
         playerRef.update({
             inventory: getSanitizedInventory(),
             equipment: getSanitizedEquipment(),
@@ -13475,6 +13588,12 @@ async function attemptMovePlayer(newX, newY) {
     if (obsoleteTiles.includes(tileAtDestination)) {
         logMessage("You clear away remnants of an older age.");
         chunkManager.setWorldTile(newX, newY, '.');
+    }
+
+    const tileData = TILE_DATA[newTile];
+    if (tileData && tileData.type === 'obstacle') {
+        logMessage(`You can't go that way.`);
+    return; // Stop the move
     }
 
     // 1. Determine the destination tile
@@ -14885,7 +15004,7 @@ AudioSystem.playAttack();
                     inventoryWasUpdated = true;
                     clearLootTile(); 
                 } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile };
+                    const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile, effect: itemData.effect || null  };
                     gameState.player.inventory.push(itemForDb);
                     logMessage(`You picked up a ${itemData.name}.`);
                     inventoryWasUpdated = true;
