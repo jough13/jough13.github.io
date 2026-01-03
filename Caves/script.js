@@ -4740,19 +4740,29 @@ const TileRenderer = {
         }
     },
 
-    // 🌊 Water (Animated)
+    // 🌊 Water (Animated - Organic Flow)
     drawWater: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
         TileRenderer.drawBase(ctx, x, y, baseColor);
         ctx.strokeStyle = accentColor;
         ctx.lineWidth = 1;
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
-        // Use mapX for consistent wave position
-        const timeOffset = Math.sin(Date.now() / 1500 + mapX); 
-        const yOffset = timeOffset * 2;
+        
+        // Slower time factor (2000 instead of 1500)
+        // Mix mapX and mapY to create diagonal drift instead of vertical bouncing
+        const time = Date.now() / 2000;
+        const wavePhase = time + (mapX * 0.2) + (mapY * 0.1);
+        
+        const yOffset = Math.sin(wavePhase) * 3; 
+
         ctx.beginPath();
+        // Draw a slight curve instead of a straight line
         ctx.moveTo(tx + 2, ty + TILE_SIZE/2 + yOffset);
-        ctx.lineTo(tx + TILE_SIZE - 2, ty + TILE_SIZE/2 + yOffset);
+        ctx.bezierCurveTo(
+            tx + 8, ty + TILE_SIZE/2 + yOffset - 2,
+            tx + 12, ty + TILE_SIZE/2 + yOffset + 2,
+            tx + TILE_SIZE - 2, ty + TILE_SIZE/2 + yOffset
+        );
         ctx.stroke();
     },
     
@@ -10790,13 +10800,20 @@ const render = () => {
                 
                 // 1. Water Ripples
                 if (tile === '~' || tile === '≈') {
-                    if (Math.floor((time + (x * 100)) / 500) % 2 === 0) {
+                    // Slower speed (1500ms divisor)
+                    // "Broken" flow: We mix mapX, mapY, and a Sine wave of Y.
+                    // This prevents vertical alignment and makes it look like drifting patches.
+                    const waveVal = (time / 1500) + (mapX * 0.3) + (mapY * 0.2) + Math.sin(mapY * 0.5);
+                    
+                    // Use Math.sin to oscillate smoothly between the two chars
+                    if (Math.sin(waveVal) > 0) {
                         fgChar = '~';
                     } else {
                         fgChar = '≈';
                     }
                     fgColor = '#3b82f6'; // Bright Blue
                 }
+
                 // 2. Fire/Lava Flicker
                 else if (tile === '🔥' || tile === 'D') {
                     const flicker = Math.floor(time / 100) % 3;
