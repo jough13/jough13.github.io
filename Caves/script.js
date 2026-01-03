@@ -5638,25 +5638,24 @@ generateChunk(chunkX, chunkY) {
                     const hostileRoll = random();
                     
                     // Base Spawn Chance (Adjust density here)
-                    // 1.5% chance per tile generally
-                    let spawnChance = 0.015; 
+                    // WAS: 0.015 (1.5%) -> NOW: 0.0015 (0.15%)
+                    // This results in roughly 1-2 enemies per screen instead of 20.
+                    let spawnChance = 0.0015; 
 
                     // Biome Modifiers
-                    if (tile === 'F') spawnChance = 0.020; // Forests are dense
-                    if (tile === 'd') spawnChance = 0.025; // Deadlands are dangerous
-                    if (tile === '^') spawnChance = 0.012; // Mountains are sparse
+                    if (tile === 'F') spawnChance = 0.0025; // Forests: ~2-3 per screen
+                    if (tile === 'd') spawnChance = 0.0040; // Deadlands: ~4 per screen (Dangerous)
+                    if (tile === '^') spawnChance = 0.0020; // Mountains: ~2 per screen
 
                     if (hostileRoll < spawnChance) {
                         // Use the new Tiered System
                         const enemyTile = this.getEnemySpawn(tile, dist, random);
                         
                         // Fallback: If the helper returned a placeholder or null, keep the terrain
-                        // Also check if it returned a resource (like Cactus '🌵') which is valid
                         if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
                             chunkData[y][x] = enemyTile;
                             
-                            // Special Case: If we spawned a resource/obstacle (like Web/Cactus), 
-                            // we need to register it in worldState immediately if it's interactive
+                            // Special Case: Resources/Obstacles register immediately
                             if (TILE_DATA[enemyTile]) {
                                 this.setWorldTile(worldX, worldY, enemyTile);
                             }
