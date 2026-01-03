@@ -4542,6 +4542,31 @@ const TileRenderer = {
 
     // --- BIOME RENDERERS (Now accepting mapX/mapY) ---
 
+// 🐊 Swamp (Static - Stagnant Muck)
+    drawSwamp: (ctx, x, y, mapX, mapY, baseColor, accentColor) => {
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        
+        // Deterministic random (so the muck doesn't move when you walk)
+        const seed = Math.sin(mapX * 12.9898 + mapY * 78.233) * 43758.5453;
+        const rand = seed - Math.floor(seed); 
+
+        ctx.fillStyle = accentColor;
+        
+        // Draw random horizontal "scum" patches or reeds
+        if (rand > 0.6) {
+            ctx.fillRect((x * TILE_SIZE) + 3, (y * TILE_SIZE) + 6, 8, 2);
+        }
+        if (rand < 0.4) {
+            ctx.fillRect((x * TILE_SIZE) + 10, (y * TILE_SIZE) + 14, 6, 2);
+        }
+        // Occasional bubble
+        if (rand > 0.9) {
+            ctx.beginPath();
+            ctx.arc((x * TILE_SIZE) + 15, (y * TILE_SIZE) + 5, 1.5, 0, Math.PI*2);
+            ctx.fill();
+        }
+    },
+
 // 🌲 Procedural Pine Forests
     drawForest: (ctx, x, y, mapX, mapY, baseColor) => {
         // 1. Draw Ground
@@ -10798,20 +10823,22 @@ const render = () => {
                 // --- ANIMATED TILES LOGIC ---
                 const time = Date.now();
                 
-                // 1. Water Ripples
-                if (tile === '~' || tile === '≈') {
+                // 1. Water Ripples (ONLY for Deep Water now)
+                if (tile === '~') { // <--- REMOVED "|| tile === '≈'"
                     // Slower speed (1500ms divisor)
-                    // "Broken" flow: We mix mapX, mapY, and a Sine wave of Y.
-                    // This prevents vertical alignment and makes it look like drifting patches.
                     const waveVal = (time / 1500) + (mapX * 0.3) + (mapY * 0.2) + Math.sin(mapY * 0.5);
                     
-                    // Use Math.sin to oscillate smoothly between the two chars
                     if (Math.sin(waveVal) > 0) {
                         fgChar = '~';
                     } else {
-                        fgChar = '≈';
+                        fgChar = '≈'; // We still swap chars for deep water to show motion
                     }
                     fgColor = '#3b82f6'; // Bright Blue
+                }
+                // 2. Swamp (Static Color)
+                else if (tile === '≈') {
+                    fgChar = '≈';
+                    fgColor = '#65a30d'; // Swampy Lime/Green text
                 }
 
                 // 2. Fire/Lava Flicker
@@ -10847,6 +10874,10 @@ const render = () => {
                             break;
                         case '~': 
                             TileRenderer.drawWater(ctx, x, y, mapX, mapY, bgColor, '#3b82f6'); 
+                            break;
+                        case '≈': 
+                            // Use drawSwamp with a dark green accent
+                            TileRenderer.drawSwamp(ctx, x, y, mapX, mapY, bgColor, '#1a2e05'); 
                             break;
                         case '≈': 
                             TileRenderer.drawWater(ctx, x, y, mapX, mapY, bgColor, '#14532d'); 
