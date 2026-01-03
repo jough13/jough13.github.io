@@ -1141,6 +1141,49 @@ const ENEMY_DATA = {
         inflictChance: 0.3,
         flavor: "Smoke curls from its nostrils."
     },
+    // --- TIER 4 (The Deep Wilds - 2500+ Distance) ---
+    '🦖': {
+        name: 'Ancient Rex',
+        maxHealth: 150,
+        attack: 12,
+        defense: 5,
+        xp: 500,
+        loot: '🦖', // T-Rex Tooth (Junk/Trophy)
+        flavor: "The earth shakes with every step."
+    },
+    '🧛': {
+        name: 'Vampire Lord',
+        maxHealth: 80,
+        attack: 10,
+        defense: 3,
+        xp: 600,
+        loot: '🩸', // Vial of Blood
+        caster: true,
+        castRange: 5,
+        spellDamage: 8,
+        inflicts: 'siphon', // We can reuse siphon logic or just high damage
+        flavor: "He moves faster than your eyes can follow."
+    },
+    '👾': {
+        name: 'Eldritch Horror',
+        maxHealth: 200,
+        attack: 15,
+        defense: 0, // Soft but massive HP
+        xp: 800,
+        loot: 'vd',
+        inflicts: 'madness',
+        inflictChance: 0.5,
+        flavor: "To look at it is to invite insanity."
+    },
+    '🤖': {
+        name: 'Clockwork Guardian',
+        maxHealth: 100,
+        attack: 8,
+        defense: 10, // Insane defense, needs magic/piercing
+        xp: 500,
+        loot: '⚙️', // Gear
+        flavor: "A relic of a lost civilization, still patrolling."
+    },
 };
 
 const CAVE_THEMES = {
@@ -3263,6 +3306,57 @@ const ITEM_DATA = {
     '😈': { name: 'Demon Horn', type: 'junk', description: "Vibrates with dark energy." },
     '👁️': { name: 'Basilisk Eye', type: 'junk', description: "Don't look directly at it." },
     '💠': { name: 'Mithril Ore', type: 'junk', tile: '💠', description: "Lighter than steel, harder than dragon bone." },
+
+    '⚔️k': {
+        name: 'Blade of the Fallen King',
+        type: 'weapon',
+        tile: '⚔️',
+        damage: 10,
+        slot: 'weapon',
+        statBonuses: { strength: 5, luck: 5 }, // Massive stats
+        description: "The blade hums with a sorrowful song. It thirsts for redemption."
+    },
+    '🛡️a': {
+        name: 'Aegis of the Ancients',
+        type: 'armor',
+        tile: '🛡️',
+        defense: 8,
+        slot: 'armor',
+        blockChance: 0.50, // 50% Block Chance!
+        statBonuses: { constitution: 5 },
+        description: "A shield forged by giants. It feels immovable."
+    },
+    '👢w': {
+        name: 'Windstrider Boots',
+        type: 'armor',
+        tile: '👢',
+        defense: 2,
+        slot: 'armor',
+        statBonuses: { dexterity: 10, endurance: 10 },
+        description: "You feel lighter than air. Movement costs almost nothing."
+    },
+    '👑v': {
+        name: 'Crown of the Void',
+        type: 'armor',
+        tile: '👑',
+        defense: 3,
+        slot: 'armor',
+        statBonuses: { wits: 10, maxMana: 50 },
+        description: "The whispers of the void are clear to you now."
+    },
+    '🍎g': {
+        name: 'Ambrosia',
+        type: 'consumable',
+        tile: '🍎',
+        description: "Food of the gods. Permanently increases Max Health by 1.",
+        effect: (state) => {
+            state.player.maxHealth += 1;
+            state.player.health = state.player.maxHealth;
+            logMessage("You feel divine power course through you! (+1 Max HP)");
+            triggerStatAnimation(document.getElementById('healthDisplay'), 'stat-pulse-green');
+            return true;
+        }
+    },
 
     // --- TIER 5 EQUIPMENT (Mithril) ---
     '⚔️m': {
@@ -5563,12 +5657,7 @@ listenToChunkState(chunkX, chunkY, onInitialLoad = null) { // Added callback par
 // Helper: Determine enemy spawn based on Biome and Distance
     getEnemySpawn(biome, dist, random) {
         // --- CONFIGURATION ---
-        // Define the distance caps for each Tier.
-        // Tier 0: 0 to 250
-        // Tier 1: 251 to 600
-        // Tier 2: 601 to 1000
-        // Tier 3: 1001 to 2500
-        // Tier 4: 2501+ (The "Deep World")
+        // Tier 0: 0-250, Tier 1: 250-600, Tier 2: 600-1000, Tier 3: 1000-2500, Tier 4: 2500+
         const TIER_THRESHOLDS = [250, 600, 1000, 2500]; 
 
         // 1. Calculate Tier dynamically
@@ -5582,64 +5671,61 @@ listenToChunkState(chunkX, chunkY, onInitialLoad = null) { // Added callback par
         }
 
         // 2. Define Spawn Tables
-        // You can now add keys '3', '4', '5' etc. as you expand.
         const spawns = {
             '.': { // Plains
                 0: ['r', 'R', 'b'],
                 1: ['b', 'w', 'o'],
                 2: ['o', 'C', '🐺'],
                 3: ['o', '🐺', 'Ø'],
-                4: ['Ø', '🐲', 'Titan'] // Example Tier 4
+                4: ['Ø', '🦖', '🤖'] // Rex, Guardian
             },
             'F': { // Forest
                 0: ['🐍', '🦌', '🐗'],
                 1: ['w', '🐗', '🐻'],
                 2: ['🐻', '🐺', '🕸'],
                 3: ['🐺', '🐻', '🌲'],
-                4: ['🌲', '🐲', 'Ancient']
+                4: ['🌲', '🧛', '👾'] // Vampire, Horror
             },
             '^': { // Mountain
                 0: ['🦇', 'g', 'R'],
                 1: ['g', 's', '🦅'],
                 2: ['s', '🗿', 'Y'],
                 3: ['Y', 'Ø', '🐲'],
-                4: ['🐲', 'Demon', 'God']
+                4: ['🐲', '🦖', '🤖'] // Dragon, Rex, Guardian
             },
             '≈': { // Swamp
                 0: ['🦟', '🐸', '🐍'],
                 1: ['🐍', 'l', 'Z'],
                 2: ['Z', 'l', '💀'],
                 3: ['Z', '💀', 'Hydra'],
-                4: ['Hydra', 'Kraken', 'Lich']
+                4: ['Hydra', '👾', '🧛'] // Horror, Vampire
             },
             'D': { // Desert
                 0: ['🦂s', '🐍', '🌵'],
                 1: ['🦂', '🐍c', '🌵'],
                 2: ['🦂', 'm', '💀'],
                 3: ['m', '💀', 'Efreet'],
-                4: ['Efreet', 'SandWorm', 'Djinn']
+                4: ['Efreet', '🦖', '🤖'] // Rex, Guardian
             },
             'd': { // Deadlands
                 0: ['s', 'b', 'R'],
                 1: ['s', 'Z', 'a'],
                 2: ['Z', 'a', 'D'],
                 3: ['D', 'v', '🧙'],
-                4: ['🧙', 'VoidLord', 'Entropy']
+                4: ['🧙', '👾', '🧛'] // Necro, Horror, Vampire
             }
         };
 
-        // 3. Select Enemy (Safety Check)
+        // 3. Select Enemy
         const table = spawns[biome];
         if (!table) return null;
 
-        // If we are in Tier 10 but only defined up to Tier 4, fallback to the highest defined tier
         const maxDefinedTier = Math.max(...Object.keys(table).map(Number));
         const safeTier = Math.min(tier, maxDefinedTier);
 
         const tierList = table[safeTier];
         if (!tierList) return null;
 
-        // Weighted Random
         const roll = random();
         if (roll < 0.60) return tierList[0];
         if (roll < 0.90) return tierList[1];
@@ -7261,6 +7347,24 @@ function generateEnemyLoot(player, enemy) {
 
     if (Math.random() < magicChance) {
         return '✨'; // Drop Unidentified Magic Item!
+    }
+
+    // --- 4.5 LEGENDARY DROPS (Tier 4 Only) ---
+    // If we are in the Deep Wilds (> 2500) and it's a Rare enemy (10% spawn chance)
+    // Give a small chance for a Legendary.
+    if (dist > 2500 && Math.random() < 0.05) { // 5% chance per kill in deep wilds
+        const legendaries = ['⚔️k', '🛡️a', '👢w', '👑v', '🍎g'];
+        const drop = legendaries[Math.floor(Math.random() * legendaries.length)];
+        
+        const item = ITEM_DATA[drop];
+        logMessage(`The enemy dropped a Legendary Artifact: ${item.name}!`);
+        
+        // Visual fanfare
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createLevelUp(player.x, player.y); // Reuse confetti
+        }
+        
+        return drop;
     }
 
     // --- 5. Standard Equipment Drops ---
