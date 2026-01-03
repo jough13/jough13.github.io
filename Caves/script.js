@@ -4795,6 +4795,64 @@ const TileRenderer = {
         const ty = y * TILE_SIZE;
         ctx.beginPath(); ctx.moveTo(tx, ty + TILE_SIZE/2); ctx.lineTo(tx + TILE_SIZE, ty + TILE_SIZE/2); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(tx + TILE_SIZE/2, ty); ctx.lineTo(tx + TILE_SIZE/2, ty + TILE_SIZE/2); ctx.stroke();
+    },
+
+        // 1. NEW: Visual Warning Zone
+    drawTelegraph: (ctx, x, y) => {
+        const tx = x * TILE_SIZE;
+        const ty = y * TILE_SIZE;
+        
+        // Pulsing Red Overlay
+        const alpha = 0.3 + (Math.sin(Date.now() / 150) * 0.15); // Fast pulse
+        
+        ctx.save();
+        ctx.fillStyle = `rgba(220, 38, 38, ${alpha})`; // Red
+        ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+        
+        // Warning Border with Cross
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(tx, ty, TILE_SIZE, TILE_SIZE);
+        
+        // Draw an 'X' to make it colorblind friendly
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(tx + TILE_SIZE, ty + TILE_SIZE);
+        ctx.moveTo(tx + TILE_SIZE, ty);
+        ctx.lineTo(tx, ty + TILE_SIZE);
+        ctx.globalAlpha = 0.5;
+        ctx.stroke();
+        
+        ctx.restore();
+    },
+
+    // 2. NEW: Universal Health Bar Helper
+    drawHealthBar: (ctx, x, y, current, max) => {
+        if (max <= 0) return;
+        const percent = Math.max(0, current / max);
+        
+        const tx = x * TILE_SIZE;
+        const ty = y * TILE_SIZE;
+        
+        // Bar Container (Black background)
+        const barHeight = 4;
+        const yOffset = TILE_SIZE - barHeight; // Bottom of tile
+        
+        ctx.fillStyle = '#1f2937'; // Dark Gray
+        ctx.fillRect(tx, ty + yOffset, TILE_SIZE, barHeight);
+        
+        // Health Color (Green -> Yellow -> Red)
+        let color = '#22c55e'; // Green
+        if (percent < 0.5) color = '#eab308'; // Yellow
+        if (percent < 0.25) color = '#ef4444'; // Red
+        
+        ctx.fillStyle = color;
+        ctx.fillRect(tx, ty + yOffset, TILE_SIZE * percent, barHeight);
+        
+        // Border for clarity
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(tx, ty + yOffset, TILE_SIZE, barHeight);
     }
 };
 
@@ -10799,50 +10857,51 @@ const render = () => {
                 }
             }
 
-            // --- B. DRAW ENTITIES (Enemies/Players) ---
-            let overlayChar = null;
-            let overlayColor = null;
-            
-            // 1. Check Shared Enemies (Overworld)
-            if (gameState.mapMode === 'overworld') {
-                const enemyKey = `overworld:${mapX},${-mapY}`;
-                const sharedEnemy = gameState.sharedEnemies[enemyKey];
-                
-                if (sharedEnemy) {
-                    overlayChar = sharedEnemy.tile || '?'; 
-                    overlayColor = sharedEnemy.color || '#ef4444'; 
-
-                    // Draw Health Bar
-                    if (sharedEnemy.maxHealth > 0) {
-                        const healthPercent = Math.max(0, sharedEnemy.health / sharedEnemy.maxHealth);
-                        ctx.fillStyle = '#333';
-                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE, 3);
-                        ctx.fillStyle = healthPercent > 0.5 ? '#4caf50' : '#ef4444';
-                        ctx.fillRect(x * TILE_SIZE, (y * TILE_SIZE) + TILE_SIZE - 4, TILE_SIZE * healthPercent, 3);
+// --- B. DRAW TELEGRAPHS (Layer 1: Under Units) ---
+    // Check Instanced Enemies (Dungeons)
+    if (gameState.instancedEnemies) {
+        gameState.instancedEnemies.forEach(enemy => {
+            if (enemy.pendingAttacks) {
+                enemy.pendingAttacks.forEach(t => {
+                    // Calculate screen position relative to viewport
+                    const screenX = t.x - startX;
+                    const screenY = t.y - startY;
+                    // Draw if on screen
+                    if (screenX >= 0 && screenX < VIEWPORT_WIDTH && screenY >= 0 && screenY < VIEWPORT_HEIGHT) {
+                        TileRenderer.drawTelegraph(ctx, screenX, screenY);
                     }
-                    
-                    if (sharedEnemy.isElite) {
-                        ctx.strokeStyle = sharedEnemy.color || '#facc15';
-                        ctx.lineWidth = 1;
-                        ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-                    }
-                }
-            } 
-            // 2. Check Instanced Enemies
-            else {
-                const enemy = gameState.instancedEnemies.find(e => e.x === mapX && e.y === mapY);
-                if (enemy) {
-                    overlayChar = enemy.tile;
-                    overlayColor = enemy.color || '#ef4444';
-                    if (enemy.isElite) {
-                        ctx.strokeStyle = enemy.color || '#facc15';
-                        ctx.lineWidth = 1;
-                        ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-                    }
-                }
+                });
             }
+        });
+    }
 
-            // --- C. DRAW CHARACTERS (Layering) ---
+    // --- C. DRAW ENTITIES & HEALTH BARS (Layer 2) ---
+    let overlayChar = null;
+    let overlayColor = null;
+    let entityForHealthBar = null; // Store reference to draw bar later
+
+    // 1. Check Shared Enemies (Overworld)
+    if (gameState.mapMode === 'overworld') {
+        const enemyKey = `overworld:${mapX},${-mapY}`;
+        const sharedEnemy = gameState.sharedEnemies[enemyKey];
+        
+        if (sharedEnemy) {
+            overlayChar = sharedEnemy.tile || '?'; 
+            overlayColor = sharedEnemy.color || '#ef4444'; 
+            entityForHealthBar = sharedEnemy; // Capture for drawing
+        }
+    } 
+    // 2. Check Instanced Enemies (Dungeons/Castles)
+    else {
+        const enemy = gameState.instancedEnemies.find(e => e.x === mapX && e.y === mapY);
+        if (enemy) {
+            overlayChar = enemy.tile;
+            overlayColor = enemy.color || '#ef4444';
+            entityForHealthBar = enemy; // Capture for drawing
+        }
+    }
+
+            // --- D. DRAW CHARACTERS (Layering) ---
             if (fgChar && !overlayChar) {
                 // Check for Mountain ('^') or Dungeon Entrance ('⛰')
                 if (fgChar === '^' || fgChar === '⛰') {
@@ -10865,14 +10924,26 @@ const render = () => {
                 }
             }
 
-            if (overlayChar) {
-                // Draw Standard Text for Enemies (Restored Retro Style)
-                ctx.fillStyle = overlayColor;
-                ctx.font = isWideChar(overlayChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
-                ctx.fillText(overlayChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
-            }
+              if (overlayChar) {
+        // Draw Entity Sprite
+        ctx.fillStyle = overlayColor;
+        ctx.font = isWideChar(overlayChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
+        ctx.fillText(overlayChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+        
+        // Elite Border
+        if (entityForHealthBar && entityForHealthBar.isElite) {
+            ctx.strokeStyle = entityForHealthBar.color || '#facc15';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        }
 
-            // --- D. DRAW SHADOW & TINT (Top Layer) ---
+        // NEW: Draw Health Bar for EVERYONE
+        if (entityForHealthBar) {
+            TileRenderer.drawHealthBar(ctx, x, y, entityForHealthBar.health, entityForHealthBar.maxHealth);
+        }
+    }
+
+            // --- E. DRAW SHADOW & TINT (Top Layer) ---
             if (tileShadowOpacity > 0) {
                 ctx.fillStyle = `rgba(0, 0, 0, ${tileShadowOpacity})`;
                 ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -10992,32 +11063,53 @@ const render = () => {
 
     // --- BOSS HEALTH BAR UI ---
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-        const activeBoss = gameState.instancedEnemies.find(e => e.isBoss);
+        // Find all bosses
+        const bosses = gameState.instancedEnemies.filter(e => e.isBoss);
         
-        if (activeBoss) {
-            const barWidth = canvas.width * 0.6; 
-            const barHeight = 20;
-            const barX = (canvas.width - barWidth) / 2; 
-            const barY = 40; 
+        if (bosses.length > 0) {
+            // Find closest boss
+            let activeBoss = bosses[0];
+            let minDist = Infinity;
+            
+            bosses.forEach(b => {
+                const d = Math.sqrt(Math.pow(b.x - gameState.player.x, 2) + Math.pow(b.y - gameState.player.y, 2));
+                if (d < minDist) {
+                    minDist = d;
+                    activeBoss = b;
+                }
+            });
 
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 16px monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText(activeBoss.name, canvas.width / 2, barY - 10);
+            // Only show if reasonably close (e.g., within 20 tiles) or if it's the only one
+            if (minDist < 20 || bosses.length === 1) {
+                const barWidth = canvas.width * 0.6; 
+                const barHeight = 20;
+                const barX = (canvas.width - barWidth) / 2; 
+                const barY = 40; 
 
-            ctx.fillStyle = '#000000';
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.fillRect(barX, barY, barWidth, barHeight);
-            ctx.strokeRect(barX, barY, barWidth, barHeight);
+                // Name Background
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(barX, barY - 20, barWidth, barHeight + 20);
 
-            const healthPercent = Math.max(0, activeBoss.health / activeBoss.maxHealth);
-            ctx.fillStyle = '#dc2626'; 
-            ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * healthPercent, barHeight - 4);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(activeBoss.name, canvas.width / 2, barY - 5);
 
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '12px monospace';
-            ctx.fillText(`${activeBoss.health} / ${activeBoss.maxHealth}`, canvas.width / 2, barY + 14);
+                // Bar Border
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+                // Health Fill
+                const healthPercent = Math.max(0, activeBoss.health / activeBoss.maxHealth);
+                ctx.fillStyle = '#dc2626'; 
+                ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * healthPercent, barHeight - 4);
+
+                // Text Overlay
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '12px monospace';
+                ctx.fillText(`${activeBoss.health} / ${activeBoss.maxHealth}`, canvas.width / 2, barY + 14);
+            }
         }
     }
 
@@ -11417,6 +11509,80 @@ function processEnemyTurns() {
                     }
                 }
             }
+        }
+
+        // --- 6.5 TELEGRAPH MECHANIC (Bosses & Casters) ---
+        
+        // A. EXECUTE PENDING ATTACKS (The Boom)
+        if (enemy.pendingAttacks && enemy.pendingAttacks.length > 0) {
+            let hitPlayer = false;
+            
+            enemy.pendingAttacks.forEach(tile => {
+                // Visual explosion
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createExplosion(tile.x, tile.y, '#ef4444', 8);
+                }
+
+                // Check collision with player
+                if (tile.x === player.x && tile.y === player.y) {
+                    const dmg = Math.floor(enemy.attack * 1.5); // 150% Damage
+                    player.health -= dmg;
+                    gameState.screenShake = 15;
+                    triggerStatFlash(statDisplays.health, false);
+                    logMessage(`You are caught in the ${enemy.name}'s blast! (-${dmg} HP)`);
+                    hitPlayer = true;
+                }
+            });
+
+            if (!hitPlayer) {
+                logMessage(`The ${enemy.name}'s attack strikes the ground!`);
+            }
+
+            // Clear attacks and consume turn
+            enemy.pendingAttacks = null;
+            
+            // Check Player Death
+            if (player.health <= 0) {
+                player.health = 0;
+                logMessage("You have perished!");
+                syncPlayerState();
+                document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
+                document.getElementById('finalCoinsDisplay').textContent = `Gold: ${player.coins}`;
+                gameOverModal.classList.remove('hidden');
+            }
+            
+            return; // Turn ends after firing
+        }
+
+        // B. PREPARE NEW ATTACK (The Warning)
+        // 20% chance for Bosses/Mages to start a telegraph if player is in range
+        const canTelegraph = enemy.isBoss || enemy.tile === 'm' || enemy.tile === 'D' || enemy.tile === '🐲';
+        
+        if (canTelegraph && dist < 6 && Math.random() < 0.20) {
+            enemy.pendingAttacks = [];
+            
+            // Pattern 1: The "Cross" (Mages/Demons)
+            if (enemy.tile === 'm' || enemy.tile === 'D') {
+                logMessage(`The ${enemy.name} gathers dark energy...`);
+                // Target player's current spot + adjacent
+                enemy.pendingAttacks.push({x: player.x, y: player.y});
+                enemy.pendingAttacks.push({x: player.x+1, y: player.y});
+                enemy.pendingAttacks.push({x: player.x-1, y: player.y});
+                enemy.pendingAttacks.push({x: player.x, y: player.y+1});
+                enemy.pendingAttacks.push({x: player.x, y: player.y-1});
+            }
+            // Pattern 2: The "Breath" (Dragons/Bosses)
+            else {
+                logMessage(`The ${enemy.name} takes a deep breath!`);
+                // 3x3 area centered on player
+                for(let ty = -1; ty <= 1; ty++) {
+                    for(let tx = -1; tx <= 1; tx++) {
+                        enemy.pendingAttacks.push({x: player.x + tx, y: player.y + ty});
+                    }
+                }
+            }
+            
+            return; // Turn ends (Charging up)
         }
 
         // --- 7. COMBAT LOGIC ---
