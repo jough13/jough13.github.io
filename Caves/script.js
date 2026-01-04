@@ -5943,6 +5943,7 @@ generateChunk(chunkX, chunkY) {
                 // Calculate Distance from Spawn (0,0)
                 const dist = Math.sqrt(worldX * worldX + worldY * worldY);
 
+                // --- BIOME GENERATION ---
                 const elev = elevationNoise.noise(worldX / 70, worldY / 70);
                 const moist = moistureNoise.noise(worldX / 50, worldY / 50);
 
@@ -5954,6 +5955,11 @@ generateChunk(chunkX, chunkY) {
                 else if (moist < 0.15) tile = 'D';
                 else if (moist > 0.55) tile = 'F'; 
                 else tile = '.'; 
+
+                // --- SAFETY OVERRIDE: SPAWN IS ALWAYS SAFE ---
+                if (Math.abs(worldX) < 3 && Math.abs(worldY) < 3) {
+                    tile = '.';
+                }
 
                 const featureRoll = random();
 
@@ -5967,7 +5973,7 @@ generateChunk(chunkX, chunkY) {
                     chunkData[y][x] = '🕳️';
                 }
 
-                // --- 1.5 BIOME ANOMALIES (Very Rare) ---
+                // --- 2. BIOME ANOMALIES (Very Rare) ---
                 else if (tile === 'F' && featureRoll < 0.0001) { 
                     this.setWorldTile(worldX, worldY, '🌳e');
                     chunkData[y][x] = '🌳e';
@@ -5981,7 +5987,7 @@ generateChunk(chunkX, chunkY) {
                     chunkData[y][x] = '🦴d';
                 }
                 
-                // --- 2. RARE STRUCTURES (Scaled by Distance) ---
+                // --- 3. RARE STRUCTURES (Scaled by Distance) ---
                 else if (tile === '.' && featureRoll < 0.000005) { // Safe Haven
                     this.setWorldTile(worldX, worldY, 'V');
                     chunkData[y][x] = 'V';
@@ -6003,36 +6009,25 @@ generateChunk(chunkX, chunkY) {
                     chunkData[y][x] = 'Ω';
                 }
 
-                 // --- 2.5 MAJOR STRUCTURES (Explicit Spawn Rates) ---
-                
-                // Caves in Mountains (High Density: 1 in 125 tiles)
-                // Previously, mountains had NO structure generation!
+                 // --- 4. MAJOR STRUCTURES (Explicit Spawn Rates) ---
                 else if (tile === '^' && featureRoll < 0.008) { 
                     this.setWorldTile(worldX, worldY, '⛰');
                     chunkData[y][x] = '⛰';
                 }
-                
-                // Caves in Deadlands (Medium Density: 1 in 250 tiles)
                 else if (tile === 'd' && featureRoll < 0.004) { 
                     this.setWorldTile(worldX, worldY, '⛰');
                     chunkData[y][x] = '⛰';
                 }
-
-                // Castles in Plains & Forests (1 in 1000 tiles)
-                // We use a range (> 0.0005) so we don't overwrite the "Common Features" 
-                // bucket below (which uses < 0.0005).
                 else if ((tile === '.' || tile === 'F') && featureRoll > 0.0005 && featureRoll < 0.0015) {
                     this.setWorldTile(worldX, worldY, '🏰');
                     chunkData[y][x] = '🏰';
                 }
-
-                // Occasional Caves in Plains/Forests (1 in 2000 tiles)
                 else if ((tile === '.' || tile === 'F') && featureRoll > 0.0015 && featureRoll < 0.0020) {
                     this.setWorldTile(worldX, worldY, '⛰');
                     chunkData[y][x] = '⛰';
                 }
 
-                // --- 3. COMMON FEATURES ---
+                // --- 5. COMMON FEATURES ---
                 else if (tile === '.' && featureRoll < 0.0005) { 
                     let features = Object.keys(TILE_DATA);
                     features = features.filter(f => 
@@ -6046,12 +6041,13 @@ generateChunk(chunkX, chunkY) {
                     chunkData[y][x] = featureTile;
                 }
 
-                else if (tile === '.' && featureRoll < 0.00008) { // Rare!
-                    this.setWorldTile(worldX, worldY, '?'); // '?' is the Riddle Statue
+                // --- 6. RIDDLE STATUES ---
+                else if (tile === '.' && featureRoll < 0.00008) { 
+                    this.setWorldTile(worldX, worldY, '?'); 
                     chunkData[y][x] = '?';
                 }
                 
-                // --- 4. GENERIC STRUCTURES ---
+                // --- 7. GENERIC STRUCTURES ---
                 else if (tile !== '~' && tile !== '≈' && featureRoll < 0.0001) { 
                     this.setWorldTile(worldX, worldY, '🏛️');
                     chunkData[y][x] = '🏛️';
@@ -6061,29 +6057,30 @@ generateChunk(chunkX, chunkY) {
                     chunkData[y][x] = '⛺';
                 }
 
+                // --- 8. ARCHAEOLOGY SPOTS (The Fix!) ---
+                // We check this BEFORE enemies so you don't get a goblin standing on a dig spot
+                else if (['.', 'd', 'D', 'F'].includes(tile) && featureRoll < (tile === 'd' || tile === 'D' ? 0.0015 : 0.0005)) {
+                    this.setWorldTile(worldX, worldY, '∴');
+                    chunkData[y][x] = '∴';
+                }
+
                 else {
-                    // --- ENEMY & RESOURCE SPAWNING ---
+                    // --- 9. ENEMY & RESOURCE SPAWNING ---
                     const hostileRoll = random();
                     
-                    // Base Spawn Chance (Adjust density here)
-                    // WAS: 0.015 (1.5%) -> NOW: 0.0015 (0.15%)
-                    // This results in roughly 1-2 enemies per screen instead of 20.
+                    // Base Spawn Chance
                     let spawnChance = 0.0015; 
 
                     // Biome Modifiers
-                    if (tile === 'F') spawnChance = 0.0025; // Forests: ~2-3 per screen
-                    if (tile === 'd') spawnChance = 0.0040; // Deadlands: ~4 per screen (Dangerous)
-                    if (tile === '^') spawnChance = 0.0020; // Mountains: ~2 per screen
+                    if (tile === 'F') spawnChance = 0.0025; 
+                    if (tile === 'd') spawnChance = 0.0040; 
+                    if (tile === '^') spawnChance = 0.0020; 
 
                     if (hostileRoll < spawnChance) {
-                        // Use the new Tiered System
                         const enemyTile = this.getEnemySpawn(tile, dist, random);
                         
-                        // Fallback: If the helper returned a placeholder or null, keep the terrain
                         if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
                             chunkData[y][x] = enemyTile;
-                            
-                            // Special Case: Resources/Obstacles register immediately
                             if (TILE_DATA[enemyTile]) {
                                 this.setWorldTile(worldX, worldY, enemyTile);
                             }
@@ -6091,14 +6088,13 @@ generateChunk(chunkX, chunkY) {
                             chunkData[y][x] = tile;
                         }
                     } 
-                    // --- RESOURCE FALLBACKS (Mining/Foraging) ---
-                    // If no enemy spawned, small chance for static resources
+                    // --- 10. RESOURCE FALLBACKS ---
                     else if (tile === '^' && hostileRoll < 0.03) {
-                        this.setWorldTile(worldX, worldY, '🏚'); // Cracked Wall
+                        this.setWorldTile(worldX, worldY, '🏚'); 
                         chunkData[y][x] = '🏚';
                     }
                     else if (tile === 'F' && hostileRoll < 0.03) {
-                        this.setWorldTile(worldX, worldY, '🌳'); // Thicket
+                        this.setWorldTile(worldX, worldY, '🌳'); 
                         chunkData[y][x] = '🌳';
                     }
                     else {
@@ -6108,32 +6104,16 @@ generateChunk(chunkX, chunkY) {
             }
         }
 
-                        // --- ARCHAEOLOGY SPOTS ---
-                // Higher chance in Deadlands and Deserts
-                let digChance = 0.0005;
-                if (tile === 'd' || tile === 'D') digChance = 0.0015;
-
-                if (['.', 'd', 'D', 'F'].includes(tile) && featureRoll < digChance) {
-                    this.setWorldTile(worldX, worldY, '∴');
-                    chunkData[y][x] = '∴';
-                }
-
         // --- SMOOTHING PASS ---
-        // Prevents 1-tile biome anomalies (The "Micro-Biome" Fix)
         for (let y = 1; y < this.CHUNK_SIZE - 1; y++) {
             for (let x = 1; x < this.CHUNK_SIZE - 1; x++) {
                 const currentTile = chunkData[y][x];
-
-                // Only smooth "Natural" terrain. 
                 const naturalTerrain = ['.', 'F', 'd', 'D', '^', '~', '≈'];
                 if (!naturalTerrain.includes(currentTile)) continue; 
 
-                // Check 4 neighbors
                 const neighbors = [
-                    chunkData[y - 1][x], // North
-                    chunkData[y + 1][x], // South
-                    chunkData[y][x - 1], // West
-                    chunkData[y][x + 1]  // East
+                    chunkData[y - 1][x], chunkData[y + 1][x],
+                    chunkData[y][x - 1], chunkData[y][x + 1]
                 ];
 
                 const counts = {};
@@ -6150,7 +6130,6 @@ generateChunk(chunkX, chunkY) {
                     }
                 });
 
-                // The "Peer Pressure" Rule: If 3 or more neighbors differ, switch.
                 if (maxCount >= 3 && dominantTile !== currentTile) {
                     chunkData[y][x] = dominantTile;
                 }
