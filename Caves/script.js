@@ -164,6 +164,11 @@ const TILE_DATA = {
         getCaveId: (x, y) => `void_${x}_${y}`, // Creates a unique ID starting with "void_"
         flavor: "The reality tears open here. You hear whispers from the other side."
     },
+    '∴': {
+        type: 'dig_spot',
+        name: 'Loose Soil',
+        flavor: "The earth here looks disturbed recently..."
+    },
     'T': {
         type: 'decoration', // Dead Tree
     },
@@ -228,6 +233,21 @@ const TILE_DATA = {
         name: 'Thicket',
         tool: 'Machete',
         flavor: "A dense wall of thorny vines."
+    },
+    '🌳e': {
+        type: 'anomaly',
+        name: 'Elder Tree',
+        flavor: "A massive tree with silver bark. It hums with life."
+    },
+    '🗿k': {
+        type: 'anomaly',
+        name: 'Petrified Giant',
+        flavor: "A boulder shaped like a weeping giant. Moss covers its eyes."
+    },
+    '🦴d': { // Reusing bone icon for map tile
+        type: 'anomaly',
+        name: 'Dragon Skeleton',
+        flavor: "The bleached ribs of a colossal beast rise from the sand."
     },
 };
 
@@ -2864,6 +2884,32 @@ const ITEM_DATA = {
         description: "Cold to the touch. (25% chance to cast Frost Bolt on hit)",
         onHit: 'frostBolt',
         procChance: 0.25
+    },
+
+    // --- ARCHAEOLOGY TOOLS & LOOT ---
+    '🥄': { // Using spoon/shovel icon representation
+        name: 'Shovel',
+        type: 'tool',
+        tile: '🥄',
+        description: "Used to dig up Loose Soil (∴)."
+    },
+    '🏺a': {
+        name: 'Ancient Vase',
+        type: 'junk',
+        description: "Intact pottery from the First Age. Museums would pay well.",
+        tile: '🏺'
+    },
+    '🗿h': {
+        name: 'Stone Head',
+        type: 'junk',
+        description: "The head of a statue. It looks surprisingly like the King.",
+        tile: '🗿'
+    },
+    '🦴d': {
+        name: 'Fossilized Bone',
+        type: 'junk',
+        description: "A bone from a creature larger than any dragon today.",
+        tile: '🦴'
     },
 
     // --- QUEST RELICS ---
@@ -5920,6 +5966,20 @@ generateChunk(chunkX, chunkY) {
                     this.setWorldTile(worldX, worldY, '🕳️');
                     chunkData[y][x] = '🕳️';
                 }
+
+                // --- 1.5 BIOME ANOMALIES (Very Rare) ---
+                else if (tile === 'F' && featureRoll < 0.0001) { 
+                    this.setWorldTile(worldX, worldY, '🌳e');
+                    chunkData[y][x] = '🌳e';
+                }
+                else if (tile === '^' && featureRoll < 0.0001) { 
+                    this.setWorldTile(worldX, worldY, '🗿k');
+                    chunkData[y][x] = '🗿k';
+                }
+                else if (tile === 'D' && featureRoll < 0.0001) { 
+                    this.setWorldTile(worldX, worldY, '🦴d');
+                    chunkData[y][x] = '🦴d';
+                }
                 
                 // --- 2. RARE STRUCTURES (Scaled by Distance) ---
                 else if (tile === '.' && featureRoll < 0.000005) { // Safe Haven
@@ -6047,6 +6107,16 @@ generateChunk(chunkX, chunkY) {
                 }
             }
         }
+
+                        // --- ARCHAEOLOGY SPOTS ---
+                // Higher chance in Deadlands and Deserts
+                let digChance = 0.0005;
+                if (tile === 'd' || tile === 'D') digChance = 0.0015;
+
+                if (['.', 'd', 'D', 'F'].includes(tile) && featureRoll < digChance) {
+                    this.setWorldTile(worldX, worldY, '∴');
+                    chunkData[y][x] = '∴';
+                }
 
         // --- SMOOTHING PASS ---
         // Prevents 1-tile biome anomalies (The "Micro-Biome" Fix)
@@ -14004,6 +14074,148 @@ async function attemptMovePlayer(newX, newY) {
                 rtdb.ref(`worldEnemies/${enemyKey}`).remove();
                 delete gameState.sharedEnemies[enemyKey];
             }
+        }
+    }
+
+    // --- ANOMALY INTERACTIONS ---
+    if (newTile === '🌳e') {
+        const tileId = `${newX},${-newY}`;
+        if (!gameState.lootedTiles.has(tileId)) {
+            logMessage("You touch the Elder Tree. Warmth flows into you.");
+            logMessage("Permanent Effect: +2 Max Health.");
+            gameState.player.maxHealth += 2;
+            gameState.player.health = gameState.player.maxHealth; // Full heal
+            
+            triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
+            ParticleSystem.createLevelUp(newX, newY); // Confetti!
+            
+            gameState.lootedTiles.add(tileId);
+            playerRef.update({ 
+                maxHealth: gameState.player.maxHealth, 
+                health: gameState.player.health,
+                lootedTiles: Array.from(gameState.lootedTiles) 
+            });
+            renderStats();
+        } else {
+            logMessage("The Elder Tree stands silent and majestic.");
+        }
+        return;
+    }
+
+    if (newTile === '🗿k') {
+        const tileId = `${newX},${-newY}`;
+        if (!gameState.lootedTiles.has(tileId)) {
+            logMessage("You clear the moss from the Giant's eyes.");
+            logMessage("You feel heavier, sturdier. (Permanent +1 Defense)");
+            
+            // We don't have a base defense stat, so we give a permanent passive trait
+            if (!gameState.player.talents) gameState.player.talents = [];
+            if (!gameState.player.talents.includes('iron_skin')) {
+                gameState.player.talents.push('iron_skin');
+                logMessage("You gained the Iron Skin talent!");
+            } else {
+                logMessage("You feel a kinship with the stone. (+500 XP)");
+                grantXp(500);
+            }
+
+            gameState.lootedTiles.add(tileId);
+            playerRef.update({ 
+                talents: gameState.player.talents,
+                lootedTiles: Array.from(gameState.lootedTiles) 
+            });
+        } else {
+            logMessage("The Giant sleeps.");
+        }
+        return;
+    }
+
+    if (newTile === '🦴d') {
+        const tileId = `${newX},${-newY}`;
+        if (!gameState.lootedTiles.has(tileId)) {
+            logMessage("You search the Dragon's ribs...");
+            // High tier loot
+            if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                const loot = generateMagicItem(4); // Tier 4 Item!
+                gameState.player.inventory.push(loot);
+                logMessage(`You found a ${loot.name} buried in the sand!`);
+            } else {
+                logMessage("You found treasure, but your inventory is full!");
+                return;
+            }
+            
+            gameState.lootedTiles.add(tileId);
+            playerRef.update({ 
+                inventory: getSanitizedInventory(),
+                lootedTiles: Array.from(gameState.lootedTiles) 
+            });
+            renderInventory();
+        } else {
+            logMessage("Only bleached bones remain.");
+        }
+        return;
+    }
+
+    // --- ARCHAEOLOGY LOGIC ---
+    if (newTile === '∴') {
+        const hasShovel = gameState.player.inventory.some(i => i.name === 'Shovel');
+        
+        if (hasShovel) {
+            logMessage("You dig into the loose soil...");
+            
+            // 1. Stamina Cost
+            gameState.player.stamina = Math.max(0, gameState.player.stamina - 2);
+            triggerStatFlash(statDisplays.stamina, false);
+
+            // 2. Loot Table
+            const roll = Math.random();
+            let foundItem = null;
+
+            if (roll < 0.15) {
+                // 15% Chance: Trap/Enemy!
+                logMessage("You disturbed a grave! A Skeleton crawls out!");
+                chunkManager.setWorldTile(newX, newY, 's'); // Spawn Skeleton
+                
+                // Create enemy in memory immediately so it can fight
+                const enemyData = ENEMY_DATA['s'];
+                const enemyId = `overworld:${newX},${-newY}`;
+                const scaledStats = getScaledEnemy(enemyData, newX, newY);
+                gameState.sharedEnemies[enemyId] = { ...scaledStats, tile: 's', x: newX, y: newY };
+                
+                render();
+                return; // Stop movement, fight starts next turn
+            } 
+            else if (roll < 0.50) {
+                // 35% Chance: Artifact
+                const artifacts = ['🏺a', '🗿h', '🦴d', 'ancient_coin', 'gold_dust'];
+                const key = artifacts[Math.floor(Math.random() * artifacts.length)];
+                const template = ITEM_DATA[key];
+                
+                if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    gameState.player.inventory.push({ 
+                        name: template.name, 
+                        type: template.type, 
+                        quantity: 1, 
+                        tile: template.tile || key 
+                    });
+                    logMessage(`You unearthed a ${template.name}!`);
+                    grantXp(25); // Discovery XP
+                } else {
+                    logMessage(`You found a ${template.name}, but your inventory is full.`);
+                }
+            } 
+            else {
+                // 50% Chance: Just dirt/worms
+                logMessage("Just dirt and rocks.");
+            }
+
+            // Clear the tile
+            chunkManager.setWorldTile(newX, newY, '.');
+            playerRef.update({ inventory: getSanitizedInventory() });
+            renderInventory();
+            render();
+            return; // Digging takes a turn
+        } else {
+            logMessage("The soil is loose here. If only you had a Shovel...");
         }
     }
 
