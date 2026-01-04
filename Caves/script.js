@@ -11182,72 +11182,7 @@ if (Math.random() < dodgeChance) {
 
         ParticleSystem.createFloatingText(player.x, player.y, `-${enemyDamageTaken}`, '#ef4444');
 
-        if (player.health <= 0) {
-            player.health = 0;
-            logMessage("You have perished!");
-
-            // --- CORPSE SCATTER LOGIC ---
-            const deathX = player.x;
-            const deathY = player.y;
-            let droppedCount = 0;
-
-            // 1. Iterate through inventory
-            // We iterate backwards so we can splice safely
-            for (let i = player.inventory.length - 1; i >= 0; i--) {
-                const item = player.inventory[i];
-                
-                // 50% chance to drop an item (keeps some punishment, but recoverable)
-                // Or make it 100% for a "Hardcore" feel. Let's do 100% for now.
-                if (true) { 
-                    // Find a valid spot nearby (Spiral out)
-                    let placed = false;
-                    for (let r = 0; r <= 2 && !placed; r++) { // Radius 2
-                        for (let dy = -r; dy <= r && !placed; dy++) {
-                            for (let dx = -r; dx <= r && !placed; dx++) {
-                                const tx = deathX + dx;
-                                const ty = deathY + dy;
-                                
-                                // Check if tile is empty ('.')
-                                const tile = chunkManager.getTile(tx, ty);
-                                if (tile === '.') {
-                                    // Place item on map
-                                    chunkManager.setWorldTile(tx, ty, item.tile);
-                                    placed = true;
-                                    droppedCount++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 2. Clear Inventory & Stats
-            player.inventory = [
-                { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
-            ];
-            player.equipment = { 
-                weapon: { name: 'Fists', damage: 0 }, 
-                armor: { name: 'Tattered Rags', defense: 0 } 
-            };
-            player.coins = Math.floor(player.coins / 2); // Lose half gold
-            
-            // 3. Respawn at 0,0 (Village)
-            player.x = 0;
-            player.y = 0;
-            player.health = player.maxHealth;
-            player.stamina = player.maxStamina;
-            player.hunger = 50;
-            player.thirst = 50;
-
-            logMessage(`You wake up in the village, aching. You dropped ${droppedCount} items where you fell.`);
-            
-            // 4. Save & Sync
-            playerRef.set(player); // Full overwrite
-            
-            // Force reload to clear local state/enemies
-            setTimeout(() => location.reload(), 2000); 
-            return; // Stop execution
-        }
+         if (handlePlayerDeath()) return;
     }
 
     endPlayerTurn();
@@ -12218,84 +12153,82 @@ function processEnemyTurns() {
         const distSq = dx*dx + dy*dy;
         const dist = Math.sqrt(distSq);
 
-        // --- 5. DORMANT CHECK (New Optimization) ---
-        // If enemy is > 20 tiles away, they don't move/act.
-        if (dist > 20) return; 
+        // --- 5. DORMANT CHECK ---
+        // If enemy is > 25 tiles away, they don't move/act.
+        if (dist > 25) return; 
 
         // --- 6. BOSS & ELITE BEHAVIORS ---
-
-        // --- BOSS ENRAGE PHASES ---
-        if (enemy.isBoss && enemy.health < enemy.maxHealth * 0.5 && !enemy.hasEnraged) {
-            enemy.hasEnraged = true; // Ensure it only happens once
-            
-            // 1. NECROMANCER LORD: Army of the Dead
-            if (enemy.name.includes("Necromancer")) {
-                logMessage(`The ${enemy.name} screams! "ARISE, MY SERVANTS!"`);
-                gameState.screenShake = 20;
-                
-                // Spawn 3 Skeletons around him
-                const offsets = [[-1,-1], [1,-1], [0,1], [-1,1], [1,1]];
-                let spawned = 0;
-                for(let ofs of offsets) {
-                    if (spawned >= 3) break;
-                    const sx = enemy.x + ofs[0];
-                    const sy = enemy.y + ofs[1];
-                    if (isWalkable(sx, sy)) {
-                        map[sy][sx] = 's';
-                        const t = ENEMY_DATA['s'];
-                        // Create scaled minion
-                        gameState.instancedEnemies.push({
-                            id: `${gameState.currentCaveId}:minion_${Date.now()}_${spawned}`,
-                            x: sx, y: sy, tile: 's', name: "Enraged Skeleton",
-                            health: t.maxHealth, maxHealth: t.maxHealth, 
-                            attack: t.attack + 1, defense: t.defense, xp: 5
-                        });
-                        ParticleSystem.createExplosion(sx, sy, '#a855f7'); // Purple smoke
-                        spawned++;
-                    }
-                }
-            }
-            
-            // 2. VOID DEMON: Reality Shift
-            else if (enemy.name.includes("Demon") || enemy.tile === 'D') {
-                logMessage(`The ${enemy.name} roars and shatters reality!`);
-                gameState.screenShake = 30;
-                
-                // Teleport PLAYER to a random spot in the room
-                // (Simple range: +/- 5 tiles from current spot, ensuring it's walkable)
-                let teleported = false;
-                for(let i=0; i<10; i++) {
-                    const tx = player.x + (Math.floor(Math.random()*10)-5);
-                    const ty = player.y + (Math.floor(Math.random()*10)-5);
-                    if (isWalkable(tx, ty)) {
-                        player.x = tx;
-                        player.y = ty;
-                        teleported = true;
-                        break;
-                    }
-                }
-                
-                if (teleported) {
-                    logMessage("You are thrown through the void!");
-                    ParticleSystem.createExplosion(player.x, player.y, '#a855f7');
-                    // Disorient: Lose target lock
-                    gameState.isAiming = false;
-                }
-                
-                // Buff the Demon
-                enemy.attack += 2;
-                logMessage(`The ${enemy.name} grows stronger!`);
-            }
-            
-            return; // Enrage consumes the turn
-        }
-
         if (enemy.isBoss) {
             // Boss Immunity
             if ((enemy.poisonTurns > 0 || enemy.rootTurns > 0) && Math.random() < 0.5) {
                 enemy.poisonTurns = 0; enemy.rootTurns = 0;
                 logMessage(`The ${enemy.name} shrugs off your magic!`);
             }
+            
+            // --- BOSS ENRAGE PHASES ---
+            if (enemy.health < enemy.maxHealth * 0.5 && !enemy.hasEnraged) {
+                enemy.hasEnraged = true; // Ensure it only happens once
+                
+                // 1. NECROMANCER LORD: Army of the Dead
+                if (enemy.name.includes("Necromancer")) {
+                    logMessage(`The ${enemy.name} screams! "ARISE, MY SERVANTS!"`);
+                    gameState.screenShake = 20;
+                    
+                    // Spawn 3 Skeletons around him
+                    const offsets = [[-1,-1], [1,-1], [0,1], [-1,1], [1,1]];
+                    let spawned = 0;
+                    for(let ofs of offsets) {
+                        if (spawned >= 3) break;
+                        const sx = enemy.x + ofs[0];
+                        const sy = enemy.y + ofs[1];
+                        if (isWalkable(sx, sy)) {
+                            map[sy][sx] = 's';
+                            const t = ENEMY_DATA['s'];
+                            // Create scaled minion
+                            gameState.instancedEnemies.push({
+                                id: `${gameState.currentCaveId}:minion_${Date.now()}_${spawned}`,
+                                x: sx, y: sy, tile: 's', name: "Enraged Skeleton",
+                                health: t.maxHealth, maxHealth: t.maxHealth, 
+                                attack: t.attack + 1, defense: t.defense, xp: 5
+                            });
+                            ParticleSystem.createExplosion(sx, sy, '#a855f7'); // Purple smoke
+                            spawned++;
+                        }
+                    }
+                }
+                
+                // 2. VOID DEMON: Reality Shift
+                else if (enemy.name.includes("Demon") || enemy.tile === 'D') {
+                    logMessage(`The ${enemy.name} roars and shatters reality!`);
+                    gameState.screenShake = 30;
+                    
+                    // Teleport PLAYER to a random spot in the room
+                    let teleported = false;
+                    for(let i=0; i<10; i++) {
+                        const tx = player.x + (Math.floor(Math.random()*10)-5);
+                        const ty = player.y + (Math.floor(Math.random()*10)-5);
+                        if (isWalkable(tx, ty)) {
+                            player.x = tx;
+                            player.y = ty;
+                            teleported = true;
+                            break;
+                        }
+                    }
+                    
+                    if (teleported) {
+                        logMessage("You are thrown through the void!");
+                        ParticleSystem.createExplosion(player.x, player.y, '#a855f7');
+                        gameState.isAiming = false;
+                    }
+                    
+                    // Buff the Demon
+                    enemy.attack += 2;
+                    logMessage(`The ${enemy.name} grows stronger!`);
+                }
+                
+                return; // Enrage consumes the turn
+            }
+
             // Boss Summon (20% chance if close)
             if (dist < 10 && Math.random() < 0.20) {
                 const offsets = [[-1,0],[1,0],[0,-1],[0,1]];
@@ -12316,7 +12249,7 @@ function processEnemyTurns() {
                 }
             }
             // Boss Panic Teleport
-            if (enemy.health < enemy.maxHealth * 0.5 && Math.random() < 0.25) {
+            if (enemy.health < enemy.maxHealth * 0.25 && Math.random() < 0.25) {
                 const tx = Math.max(1, Math.min(map[0].length - 2, enemy.x + (Math.floor(Math.random()*10)-5)));
                 const ty = Math.max(1, Math.min(map.length - 2, enemy.y + (Math.floor(Math.random()*10)-5)));
                 if (isWalkable(tx, ty)) {
@@ -12379,73 +12312,8 @@ function processEnemyTurns() {
             // Clear attacks and consume turn
             enemy.pendingAttacks = null;
             
-            // Check Player Death
-            if (player.health <= 0) {
-            player.health = 0;
-            logMessage("You have perished!");
-
-            // --- CORPSE SCATTER LOGIC ---
-            const deathX = player.x;
-            const deathY = player.y;
-            let droppedCount = 0;
-
-            // 1. Iterate through inventory
-            // We iterate backwards so we can splice safely
-            for (let i = player.inventory.length - 1; i >= 0; i--) {
-                const item = player.inventory[i];
-                
-                // 50% chance to drop an item (keeps some punishment, but recoverable)
-                // Or make it 100% for a "Hardcore" feel. Let's do 100% for now.
-                if (true) { 
-                    // Find a valid spot nearby (Spiral out)
-                    let placed = false;
-                    for (let r = 0; r <= 2 && !placed; r++) { // Radius 2
-                        for (let dy = -r; dy <= r && !placed; dy++) {
-                            for (let dx = -r; dx <= r && !placed; dx++) {
-                                const tx = deathX + dx;
-                                const ty = deathY + dy;
-                                
-                                // Check if tile is empty ('.')
-                                const tile = chunkManager.getTile(tx, ty);
-                                if (tile === '.') {
-                                    // Place item on map
-                                    chunkManager.setWorldTile(tx, ty, item.tile);
-                                    placed = true;
-                                    droppedCount++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 2. Clear Inventory & Stats
-            player.inventory = [
-                { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
-            ];
-            player.equipment = { 
-                weapon: { name: 'Fists', damage: 0 }, 
-                armor: { name: 'Tattered Rags', defense: 0 } 
-            };
-            player.coins = Math.floor(player.coins / 2); // Lose half gold
-            
-            // 3. Respawn at 0,0 (Village)
-            player.x = 0;
-            player.y = 0;
-            player.health = player.maxHealth;
-            player.stamina = player.maxStamina;
-            player.hunger = 50;
-            player.thirst = 50;
-
-            logMessage(`You wake up in the village, aching. You dropped ${droppedCount} items where you fell.`);
-            
-            // 4. Save & Sync
-            playerRef.set(player); // Full overwrite
-            
-            // Force reload to clear local state/enemies
-            setTimeout(() => location.reload(), 2000); 
-            return; // Stop execution
-        }
+            // --- DEATH CHECK ---
+            if (handlePlayerDeath()) return; 
             
             return; // Turn ends after firing
         }
@@ -12513,8 +12381,11 @@ function processEnemyTurns() {
                     player.health -= dmg;
                     gameState.screenShake = 10; // Shake intensity
                     triggerStatFlash(statDisplays.health, false);
-                    logMessage(`The ${enemy.name} hits you for {red:${damageToApply}} damage!`);
+                    logMessage(`The ${enemy.name} hits you for {red:${dmg}} damage!`);
                     ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
+                    
+                    // --- DEATH CHECK ---
+                    if (handlePlayerDeath()) return;
                 }
                 // Thorns Reflect
                 if (player.thornsValue > 0) {
@@ -12527,73 +12398,6 @@ function processEnemyTurns() {
                     }
                 }
             }
-            // Check Death
-            if (player.health <= 0) {
-            player.health = 0;
-            logMessage("You have perished!");
-
-            // --- CORPSE SCATTER LOGIC ---
-            const deathX = player.x;
-            const deathY = player.y;
-            let droppedCount = 0;
-
-            // 1. Iterate through inventory
-            // We iterate backwards so we can splice safely
-            for (let i = player.inventory.length - 1; i >= 0; i--) {
-                const item = player.inventory[i];
-                
-                // 50% chance to drop an item (keeps some punishment, but recoverable)
-                // Or make it 100% for a "Hardcore" feel. Let's do 100% for now.
-                if (true) { 
-                    // Find a valid spot nearby (Spiral out)
-                    let placed = false;
-                    for (let r = 0; r <= 2 && !placed; r++) { // Radius 2
-                        for (let dy = -r; dy <= r && !placed; dy++) {
-                            for (let dx = -r; dx <= r && !placed; dx++) {
-                                const tx = deathX + dx;
-                                const ty = deathY + dy;
-                                
-                                // Check if tile is empty ('.')
-                                const tile = chunkManager.getTile(tx, ty);
-                                if (tile === '.') {
-                                    // Place item on map
-                                    chunkManager.setWorldTile(tx, ty, item.tile);
-                                    placed = true;
-                                    droppedCount++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 2. Clear Inventory & Stats
-            player.inventory = [
-                { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
-            ];
-            player.equipment = { 
-                weapon: { name: 'Fists', damage: 0 }, 
-                armor: { name: 'Tattered Rags', defense: 0 } 
-            };
-            player.coins = Math.floor(player.coins / 2); // Lose half gold
-            
-            // 3. Respawn at 0,0 (Village)
-            player.x = 0;
-            player.y = 0;
-            player.health = player.maxHealth;
-            player.stamina = player.maxStamina;
-            player.hunger = 50;
-            player.thirst = 50;
-
-            logMessage(`You wake up in the village, aching. You dropped ${droppedCount} items where you fell.`);
-            
-            // 4. Save & Sync
-            playerRef.set(player); // Full overwrite
-            
-            // Force reload to clear local state/enemies
-            setTimeout(() => location.reload(), 2000); 
-            return; // Stop execution
-        }
             return; // Turn Over
         }
 
@@ -12620,90 +12424,25 @@ function processEnemyTurns() {
                      player.health -= dmg;
                      gameState.screenShake = 10; // Shake intensity
                      triggerStatFlash(statDisplays.health, false);
-                     logMessage(`The ${enemy.name} casts ${spellName} for ${dmg} damage!`);
+                     logMessage(`The ${enemy.name} casts ${spellName} for {red:${dmg}} damage!`);
                      
                      if (enemy.inflicts === 'frostbite') player.frostbiteTurns = 5;
                      if (enemy.inflicts === 'poison') player.poisonTurns = 5;
+
+                     // --- DEATH CHECK ---
+                     if (handlePlayerDeath()) return;
                  }
              }
-             if (player.health <= 0) {
-            player.health = 0;
-            logMessage("You have perished!");
-
-            // --- CORPSE SCATTER LOGIC ---
-            const deathX = player.x;
-            const deathY = player.y;
-            let droppedCount = 0;
-
-            // 1. Iterate through inventory
-            // We iterate backwards so we can splice safely
-            for (let i = player.inventory.length - 1; i >= 0; i--) {
-                const item = player.inventory[i];
-                
-                // 50% chance to drop an item (keeps some punishment, but recoverable)
-                // Or make it 100% for a "Hardcore" feel. Let's do 100% for now.
-                if (true) { 
-                    // Find a valid spot nearby (Spiral out)
-                    let placed = false;
-                    for (let r = 0; r <= 2 && !placed; r++) { // Radius 2
-                        for (let dy = -r; dy <= r && !placed; dy++) {
-                            for (let dx = -r; dx <= r && !placed; dx++) {
-                                const tx = deathX + dx;
-                                const ty = deathY + dy;
-                                
-                                // Check if tile is empty ('.')
-                                const tile = chunkManager.getTile(tx, ty);
-                                if (tile === '.') {
-                                    // Place item on map
-                                    chunkManager.setWorldTile(tx, ty, item.tile);
-                                    placed = true;
-                                    droppedCount++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 2. Clear Inventory & Stats
-            player.inventory = [
-                { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
-            ];
-            player.equipment = { 
-                weapon: { name: 'Fists', damage: 0 }, 
-                armor: { name: 'Tattered Rags', defense: 0 } 
-            };
-            player.coins = Math.floor(player.coins / 2); // Lose half gold
-            
-            // 3. Respawn at 0,0 (Village)
-            player.x = 0;
-            player.y = 0;
-            player.health = player.maxHealth;
-            player.stamina = player.maxStamina;
-            player.hunger = 50;
-            player.thirst = 50;
-
-            logMessage(`You wake up in the village, aching. You dropped ${droppedCount} items where you fell.`);
-            
-            // 4. Save & Sync
-            playerRef.set(player); // Full overwrite
-            
-            // Force reload to clear local state/enemies
-            setTimeout(() => location.reload(), 2000); 
-            return; // Stop execution
-        }
              return;
         }
 
-        // --- 8. NEW DYNAMIC MOVEMENT LOGIC ---
+        // --- 8. NEW DYNAMIC MOVEMENT LOGIC (AI) ---
         
         let desiredX = 0;
         let desiredY = 0;
         let moveType = 'wander';
 
         // A. KITING LOGIC (For Casters/Ranged)
-        // If I am a caster, and I am too close (dist < 3), I should flee.
-        // If I am at good range (3 < dist < 6), I should stand still and shoot.
         if (enemy.caster) {
             if (dist < 3) {
                 moveType = 'flee'; // Too close! Run!
@@ -12862,6 +12601,100 @@ function getPlayerDamageModifier(baseDamage) {
     return finalDamage;
 }
 
+function handlePlayerDeath() {
+    if (gameState.player.health > 0) return false; // Not dead
+
+    // 1. Clamp health
+    gameState.player.health = 0;
+    
+    // 2. Visuals
+    logMessage("You have perished!");
+    triggerStatFlash(statDisplays.health, false);
+    
+    // --- CORPSE SCATTER LOGIC (Restored) ---
+    const player = gameState.player;
+    const deathX = player.x;
+    const deathY = player.y;
+    let droppedCount = 0;
+
+    // Iterate backwards to safely remove items
+    for (let i = player.inventory.length - 1; i >= 0; i--) {
+        const item = player.inventory[i];
+        
+        // 100% chance to drop items (Hardcore style)
+        // Find a valid spot nearby (Spiral out)
+        let placed = false;
+        for (let r = 0; r <= 2 && !placed; r++) { // Radius 2
+            for (let dy = -r; dy <= r && !placed; dy++) {
+                for (let dx = -r; dx <= r && !placed; dx++) {
+                    const tx = deathX + dx;
+                    const ty = deathY + dy;
+                    
+                    // Check if tile is empty ('.')
+                    // We use the context-aware tile check here
+                    let tile;
+                    if (gameState.mapMode === 'overworld') tile = chunkManager.getTile(tx, ty);
+                    else if (gameState.mapMode === 'dungeon') {
+                        const map = chunkManager.caveMaps[gameState.currentCaveId];
+                        tile = (map && map[ty]) ? map[ty][tx] : null;
+                    } else {
+                        const map = chunkManager.castleMaps[gameState.currentCastleId];
+                        tile = (map && map[ty]) ? map[ty][tx] : null;
+                    }
+
+                    if (tile === '.') {
+                        // Place item on map
+                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(tx, ty, item.tile);
+                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = item.tile;
+                        else chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = item.tile;
+                        
+                        placed = true;
+                        droppedCount++;
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Clear Inventory & Stats
+    player.inventory = [
+        { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
+    ];
+    player.equipment = { 
+        weapon: { name: 'Fists', damage: 0 }, 
+        armor: { name: 'Tattered Rags', defense: 0 } 
+    };
+    player.coins = Math.floor(player.coins / 2); // Lose half gold
+    
+    // 4. Respawn at 0,0 (Village)
+    player.x = 0;
+    player.y = 0;
+    player.health = player.maxHealth;
+    player.stamina = player.maxStamina;
+    player.hunger = 50;
+    player.thirst = 50;
+
+    logMessage(`You wake up in the village, aching. You dropped ${droppedCount} items where you fell.`);
+
+    // 5. Update Death Modal UI
+    const levelDisplay = document.getElementById('finalLevelDisplay');
+    const coinsDisplay = document.getElementById('finalCoinsDisplay');
+    if (levelDisplay) levelDisplay.textContent = `Level: ${gameState.player.level}`;
+    if (coinsDisplay) coinsDisplay.textContent = `Gold: ${gameState.player.coins}`;
+    
+    // 6. Show Modal
+    if (gameOverModal) gameOverModal.classList.remove('hidden');
+    
+    // 7. Sync final state to DB
+    syncPlayerState();
+    playerRef.set(player); // Full overwrite to ensure inventory is cleared on server
+    
+    // Force reload to clear local state/enemies after a short delay
+    setTimeout(() => location.reload(), 2000); 
+    
+    return true; // Signal that death occurred
+}
+
 function endPlayerTurn() {
 
 // --- LIGHT SURVIVAL MECHANICS ---
@@ -12884,40 +12717,61 @@ function endPlayerTurn() {
     }
 
     // --- ENVIRONMENTAL HAZARDS ---
-    const currentTile = chunkManager.getTile(player.x, player.y);
+    
+    // --- DETERMINE CURRENT TILE (Context Aware) ---
+    let currentTile;
+    if (gameState.mapMode === 'dungeon') {
+        const map = chunkManager.caveMaps[gameState.currentCaveId];
+        // Safety check: if map isn't ready, assume safe floor '.'
+        currentTile = (map && map[player.y]) ? map[player.y][player.x] : '.';
+    } 
+    else if (gameState.mapMode === 'castle') {
+        const map = chunkManager.castleMaps[gameState.currentCastleId];
+        currentTile = (map && map[player.y]) ? map[player.y][player.x] : '.';
+    } 
+    else {
+        // Overworld
+        currentTile = chunkManager.getTile(player.x, player.y);
+    }
+
     const inDungeon = gameState.mapMode === 'dungeon';
     const currentTheme = inDungeon ? CAVE_THEMES[gameState.currentCaveTheme] : null;
 
     // 1. LAVA (Volcano Biome)
     if (inDungeon && gameState.currentCaveTheme === 'FIRE' && (currentTile === '~' || currentTile === '≈')) {
-        
         const hasArmor = player.equipment.armor && player.equipment.armor.name.includes('Dragonscale');
-        const hasPotion = player.fireResistTurns > 0; // Check potion buff
+        const hasPotion = player.fireResistTurns > 0;
 
-        if (!hasArmor && !hasPotion) { // Check both
+        if (!hasArmor && !hasPotion) { 
             logMessage("The lava burns you! (2 Dmg)");
             player.health -= 2;
-            gameState.screenShake = 10; // Shake intensity
+            gameState.screenShake = 10;
             triggerStatFlash(statDisplays.health, false);
             ParticleSystem.createFloatingText(player.x, player.y, "BURN", "#ef4444");
+            
+            // --- IMMEDIATE DEATH CHECK ---
+            if (handlePlayerDeath()) return; 
         }
     }
 
     // 2. DROWNING (Sunken Temple / Deep Water)
     if (currentTile === '~') {
         const hasGills = player.waterBreathingTurns > 0;
+        const isBoating = player.isBoating; 
 
-        // If you are in Deep Water AND don't have gills...
-        if (!hasGills) {
-            logMessage("Your gills vanish. The water fills your lungs...");
+        if (!hasGills && !isBoating) {
+            if (player.waterBreathingTurns === 0 && updates.waterBreathingTurns === 0) {
+                 logMessage("Your magical gills fade away...");
+            }
+            logMessage("The deep water swallows you whole!");
             logMessage("You have drowned.");
             
-            // INSTANT DEATH
             player.health = 0; 
-            
-            // Visuals
-            triggerStatFlash(statDisplays.health, false);
             ParticleSystem.createFloatingText(player.x, player.y, "☠️", "#1e3a8a");
+            
+            // --- IMMEDIATE DEATH CHECK ---
+            handlePlayerDeath(); 
+            return; // Stop the turn immediately
         }
     }
 
@@ -14717,6 +14571,9 @@ async function attemptMovePlayer(newX, newY) {
         gameState.player.health -= 1;
         gameState.screenShake = 10; // Shake intensity
         triggerStatFlash(statDisplays.health, false);
+
+        if (handlePlayerDeath()) return; 
+
         if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                 gameState.player.inventory.push({
                 name: 'Cactus Fruit',
@@ -14802,6 +14659,8 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.screenShake = 10; 
                 triggerStatFlash(statDisplays.health, false);
                 gameState.lootedTiles.add(tileId);
+
+                if (handlePlayerDeath()) return; 
             }
         }
     }
