@@ -355,9 +355,16 @@
       </div>
       <div id="loreModal" class="modal-overlay hidden">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <h2 id="loreTitle" class="text-2xl font-bold mb-4">A Faded Journal</h2>
-            <div id="loreContent" class="space-y-2 text-sm whitespace-pre-wrap"></div>
-            <button id="closeLoreButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
+            <h2 id="loreTitle" class="text-2xl font-bold mb-4">Title</h2>
+            <div id="loreContent" class="space-y-2 text-sm whitespace-pre-wrap mb-4"></div>
+            
+            <!-- NEW: Riddle Input Section (Hidden by default) -->
+            <div id="riddleContainer" class="hidden mb-4">
+                <input type="text" id="riddleInput" class="themed-input w-full p-2 border rounded mb-2" placeholder="Your answer...">
+                <button id="submitRiddle" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded w-full">Speak</button>
+            </div>
+
+            <button id="closeLoreButton" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
       <div id="shopModal" class="modal-overlay hidden">
