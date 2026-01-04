@@ -1197,7 +1197,7 @@ const CAVE_THEMES = {
             wall: '#422006',
             floor: '#a16207'
         },
-        decorations: ['+', 'o', '$', '📖', 'K', '🏚'],
+        decorations: ['+', '🔮', '$', '📖', 'K', '🏚'],
         enemies: ['g', 's', '@']
     },
     ICE: {
@@ -1246,7 +1246,7 @@ const CAVE_THEMES = {
             wall: '#67e8f9', // Bright Cyan
             floor: '#22d3ee' // Darker Cyan
         },
-        decorations: ['Y', 'o', '$', 'K'],
+        decorations: ['Y', '🔮', '$', 'K'],
         enemies: ['g']
     },
     VOID: {
@@ -1294,7 +1294,7 @@ const CAVE_THEMES = {
             wall: '#14532d', // Dark Green
             floor: '#16a34a' // Bright Green
         },
-        decorations: ['+', 'S', 'o', '☣️', '🕸'],
+        decorations: ['+', 'S', '🔮', '☣️', '🕸'],
         enemies: ['g', 'w', '@']
     }
 };
@@ -3164,14 +3164,14 @@ const ITEM_DATA = {
         }
     },
 
-    'o': {
+    '🔮': { // Was 'o'
         name: 'Mana Orb',
         type: 'consumable',
         effect: (state) => {
             const oldMana = state.player.mana;
             state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT);
             if (state.player.mana > oldMana) {
-                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue'); // USE NEW FUNCTION
+                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue'); 
                 return true; 
             }
             logMessage('Used a Mana Orb. Restored mana!');
@@ -5036,15 +5036,42 @@ const TileRenderer = {
         ctx.beginPath(); ctx.arc(tx, ty, size/2, 0, Math.PI * 2); ctx.fill();
     },
 
-    // 🧱 Walls (Standard)
-    drawWall: (ctx, x, y, baseColor, accentColor) => {
-        TileRenderer.drawBase(ctx, x, y, baseColor);
-        ctx.strokeStyle = accentColor;
-        ctx.lineWidth = 1;
+    // 🧱 Enhanced Wall Renderer
+    drawWall: (ctx, x, y, baseColor, accentColor, style = 'rough') => {
         const tx = x * TILE_SIZE;
         const ty = y * TILE_SIZE;
-        ctx.beginPath(); ctx.moveTo(tx, ty + TILE_SIZE/2); ctx.lineTo(tx + TILE_SIZE, ty + TILE_SIZE/2); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(tx + TILE_SIZE/2, ty); ctx.lineTo(tx + TILE_SIZE/2, ty + TILE_SIZE/2); ctx.stroke();
+
+        // Draw Base
+        TileRenderer.drawBase(ctx, x, y, baseColor);
+        ctx.fillStyle = accentColor;
+
+        if (style === 'brick') {
+            // CASTLE STYLE: Clean Bricks
+            const brickH = TILE_SIZE / 4;
+            // Row 1
+            ctx.fillRect(tx, ty, TILE_SIZE, 1); 
+            ctx.fillRect(tx + TILE_SIZE/2, ty, 1, brickH);
+            // Row 2
+            ctx.fillRect(tx, ty + brickH, TILE_SIZE, 1);
+            ctx.fillRect(tx + TILE_SIZE/4, ty + brickH, 1, brickH);
+            ctx.fillRect(tx + (TILE_SIZE*0.75), ty + brickH, 1, brickH);
+            // Row 3
+            ctx.fillRect(tx, ty + (brickH*2), TILE_SIZE, 1);
+            ctx.fillRect(tx + TILE_SIZE/2, ty + (brickH*2), 1, brickH);
+        } else {
+            // CAVE STYLE: Rough Stone (Noise)
+            // Deterministic random based on position
+            const seed = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+            const rand = seed - Math.floor(seed);
+            
+            // Draw random cracks/texture
+            ctx.fillRect(tx + (rand * 10), ty + (rand * 5), 4, 4);
+            ctx.fillRect(tx + ((1-rand) * 10), ty + ((1-rand) * 10) + 5, 3, 3);
+            
+            // Border shadow for depth
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(tx, ty + TILE_SIZE - 2, TILE_SIZE, 2); // Bottom shadow
+        }
     },
 
         // 1. NEW: Visual Warning Zone
@@ -5297,7 +5324,7 @@ generateCave(caveId) {
 
         // --- 4. Place procedural loot and decorations ---
 
-        const CAVE_LOOT_TABLE = ['+', 'o', 'Y', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
+        const CAVE_LOOT_TABLE = ['+', '🔮', 'Y', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
         const lootQuantity = Math.floor(random() * 4);
 
         for (let i = 0; i < lootQuantity; i++) {
@@ -8544,7 +8571,6 @@ async function executeLunge(dirX, dirY) {
         const targetX = player.x + (dirX * i);
         const targetY = player.y + (dirY * i);
 
-        // ... (rest of the tile-checking logic is the same) ...
         let tile;
         if (gameState.mapMode === 'dungeon') {
             const map = chunkManager.caveMaps[gameState.currentCaveId];
@@ -11257,21 +11283,27 @@ const render = () => {
                 tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
                 const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
                 
-                bgColor = theme.colors.floor; // <--- Set it here
+                bgColor = theme.colors.floor; 
                 
-                if (tile === theme.wall) TileRenderer.drawWall(ctx, x, y, theme.colors.wall, '#00000033');
+                if (tile === theme.wall) {
+                    // Use 'rough' style for caves
+                    TileRenderer.drawWall(ctx, x, y, theme.colors.wall, 'rgba(0,0,0,0.2)', 'rough');
+                }
                 else if (tile === theme.floor) TileRenderer.drawBase(ctx, x, y, theme.colors.floor);
                 else { TileRenderer.drawBase(ctx, x, y, theme.colors.floor); fgChar = tile; }
-            } 
+            }
             else if (gameState.mapMode === 'castle') {
                 const map = chunkManager.castleMaps[gameState.currentCastleId];
                 tile = (map && map[mapY] && map[mapY][mapX]) ? map[mapY][mapX] : ' ';
                 
-                bgColor = '#a16207'; // <--- Set default floor color here
+                bgColor = '#a16207'; 
                 
-                if (tile === '▓' || tile === '▒') TileRenderer.drawWall(ctx, x, y, '#422006', '#2d1b0e');
+                if (tile === '▓' || tile === '▒') {
+                    // Use 'brick' style for castles
+                    TileRenderer.drawWall(ctx, x, y, '#78350f', '#451a03', 'brick'); 
+                }
                 else { TileRenderer.drawBase(ctx, x, y, '#a16207'); fgChar = tile; }
-            } 
+            }
             else { 
                 // Overworld
                 tile = chunkManager.getTile(mapX, mapY);
@@ -12381,29 +12413,45 @@ function processEnemyTurns() {
         let desiredY = 0;
         let moveType = 'wander';
 
-        // Calculate Chase Probability based on distance
-        let chaseChance = 0.20; // 20% Base chance (Wandering/Idle)
-        if (dist < 15) chaseChance = 0.50; // 50% if somewhat close
-        if (dist < 8) chaseChance = 0.95; // 95% Aggressive chase if very close
+        // A. KITING LOGIC (For Casters/Ranged)
+        // If I am a caster, and I am too close (dist < 3), I should flee.
+        // If I am at good range (3 < dist < 6), I should stand still and shoot.
+        if (enemy.caster) {
+            if (dist < 3) {
+                moveType = 'flee'; // Too close! Run!
+            } else if (dist < 6) {
+                moveType = 'idle'; // Good range. Stand ground and cast.
+            } else {
+                moveType = 'chase'; // Too far. Get closer.
+            }
+        } 
+        // B. STANDARD MELEE LOGIC
+        else {
+            // Calculate Chase Probability based on distance
+            let chaseChance = 0.20; // 20% Base chance (Wandering/Idle)
+            if (dist < 15) chaseChance = 0.50; // 50% if somewhat close
+            if (dist < 8) chaseChance = 0.95; // 95% Aggressive chase if very close
 
-        // Roll for Chase vs Wander
-        if (Math.random() < chaseChance) {
-            moveType = 'chase';
+            if (Math.random() < chaseChance) {
+                moveType = 'chase';
+            }
         }
 
+        // C. FEAR LOGIC (Overrides everything)
         // Fleeing Override (Low Health + Not Fearless)
         const isFearless = ['s', 'Z', 'D', 'v', 'a', 'm'].includes(enemy.tile) || enemy.isBoss;
         if (!isFearless && (enemy.health < enemy.maxHealth * 0.25)) {
             moveType = 'flee';
         } 
-        // Kiting Logic (Casters stay at range 3-4)
-        else if (enemy.caster && dist < 3.5) {
-            moveType = 'flee'; 
-        }
 
-        if (moveType === 'flee') {
+        // --- EXECUTE MOVE TYPE ---
+        if (moveType === 'idle') {
+            // Do nothing, just wait for combat turn
+            return; 
+        } else if (moveType === 'flee') {
             desiredX = -Math.sign(dx);
             desiredY = -Math.sign(dy);
+            // If directly inline, pick a diagonal escape to avoid getting stuck in corners
             if (desiredX === 0) desiredX = Math.random() < 0.5 ? 1 : -1;
             if (desiredY === 0) desiredY = Math.random() < 0.5 ? 1 : -1;
         } else if (moveType === 'chase') {
@@ -14453,7 +14501,7 @@ async function attemptMovePlayer(newX, newY) {
                 const dist = Math.sqrt(newX*newX + newY*newY);
                 if (dist > 250) {
                     // High Tier + New Trade Goods (Shells, Pearls, Idols)
-                    lootTable = ['$', '$', 'S', 'o', '+', '⚔️l', '⛓️', '💎', '🧪', '🐚', '💎b', '🗿']; 
+                    lootTable = ['$', '$', 'S', '🔮', '+', '⚔️l', '⛓️', '💎', '🧪', '🐚', '💎b', '🗿']; 
                 } else {
                     // Low Tier + Common Trade Goods (Shells, Spools)
                     lootTable = ['$', '$', '(', '†', '+', '!', '[', '🛡️w', '🐚', '🧵']; 
