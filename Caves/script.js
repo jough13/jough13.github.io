@@ -561,6 +561,37 @@ const CASTLE_SHOP_INVENTORY = [{
     }
 ];
 
+const RIDDLE_DATA = [
+    {
+        id: "fire",
+        question: "I have no mouth, but I always consume. I have no life, but I must be fed. What am I?",
+        answers: ["fire", "flame", "campfire"],
+        reward: "strength", // Grants +1 Strength
+        message: "The statue's eyes glow red. You feel a surge of heat."
+    },
+    {
+        id: "shadow",
+        question: "The more of me there is, the less you see. What am I?",
+        answers: ["darkness", "dark", "shadow", "night"],
+        reward: "wits", // Grants +1 Wits
+        message: "The statue seems to vanish for a moment. Your mind sharpens."
+    },
+    {
+        id: "echo",
+        question: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
+        answers: ["echo"],
+        reward: "psyche", // Grants +1 Psyche
+        message: "A whisper surrounds you. Your will is strengthened."
+    },
+    {
+        id: "silence",
+        question: "I am so fragile that if you say my name, you break me. What am I?",
+        answers: ["silence"],
+        reward: "dexterity", // Grants +1 Dex (Stealth theme)
+        message: "The world goes quiet. You feel lighter."
+    }
+];
+
 const QUEST_DATA = {
     "healerSupply": {
         title: "Herbal Remedies",
@@ -2702,6 +2733,12 @@ const ITEM_DATA = {
                 return false; // DO NOT CONSUME
             }
         }
+    },
+    '👻s': {
+        name: 'Memory Shard',
+        type: 'junk', // Tradeable
+        tile: '👻',
+        description: "A crystallized fragment of a forgotten memory. The Historian might want this."
     },
     '👢': {
         name: 'Traveler\'s Boots',
@@ -5906,7 +5943,7 @@ generateChunk(chunkX, chunkY) {
                     chunkData[y][x] = 'Ω';
                 }
 
-                                // --- 2.5 MAJOR STRUCTURES (Explicit Spawn Rates) ---
+                 // --- 2.5 MAJOR STRUCTURES (Explicit Spawn Rates) ---
                 
                 // Caves in Mountains (High Density: 1 in 125 tiles)
                 // Previously, mountains had NO structure generation!
@@ -5947,6 +5984,11 @@ generateChunk(chunkX, chunkY) {
                     const featureTile = features[Math.floor(random() * features.length)]; 
                     this.setWorldTile(worldX, worldY, featureTile);
                     chunkData[y][x] = featureTile;
+                }
+
+                else if (tile === '.' && featureRoll < 0.00008) { // Rare!
+                    this.setWorldTile(worldX, worldY, '?'); // '?' is the Riddle Statue
+                    chunkData[y][x] = '?';
                 }
                 
                 // --- 4. GENERIC STRUCTURES ---
@@ -11878,6 +11920,22 @@ async function processOverworldEnemyTurns() {
 
     let movesToMake = [];
 
+    // --- ECHO SPAWNING (Night Only: 8 PM to 5 AM) ---
+    const hour = gameState.time.hour;
+    const isNight = hour >= 20 || hour < 5;
+    
+    // 1% chance per turn at night to spawn an Echo near player
+    if (isNight && gameState.mapMode === 'overworld' && Math.random() < 0.01) {
+        // Find a spot
+        const ex = playerX + (Math.floor(Math.random() * 10) - 5);
+        const ey = playerY + (Math.floor(Math.random() * 10) - 5);
+        
+        if (chunkManager.getTile(ex, ey) === '.') {
+            chunkManager.setWorldTile(ex, ey, '👻');
+            logMessage("A spectral figure flickers into existence nearby...");
+        }
+    }
+
     // --- MOVEMENT VALIDATOR ---
     const isValidMove = (tx, ty, enemyType) => {
         const t = chunkManager.getTile(tx, ty);
@@ -14114,71 +14172,227 @@ async function attemptMovePlayer(newX, newY) {
     if (newTile === 'R') {
         const player = gameState.player;
         const inv = player.inventory;
-        
-        // Define the Quest State
-        // 0: Not Started, 1: Finding Sun, 2: Finding Moon, 3: Finding Void, 4: Done
+
+        // Initialize Quest Stage if missing
         player.relicQuestStage = player.relicQuestStage || 0;
 
         loreTitle.textContent = "Royal Historian";
-        
+        let dialogueHtml = "";
+
+        // --- 1. MAIN QUEST LOGIC ---
         if (player.relicQuestStage === 0) {
-            loreContent.innerHTML = `<p>"Ah, a traveler! I am researching the fall of the Old King. Legend says his power was sealed in three gems."</p><p>"Bring me the <b>Sun Shard</b> from the deserts to the south. I will reward you."</p>`;
+            dialogueHtml = `<p>"Ah, a traveler! I am researching the fall of the Old King. Legend says his power was sealed in three gems."</p><p>"Bring me the <b>Sun Shard</b> from the deserts to the south. I will reward you."</p>`;
             player.relicQuestStage = 1;
-        } 
+        }
         else if (player.relicQuestStage === 1) {
-            const hasShard = inv.findIndex(i => i.name === 'Sun Shard');
-            if (hasShard > -1) {
-                inv.splice(hasShard, 1);
+            const hasShardIndex = inv.findIndex(i => i.name === 'Sun Shard');
+            if (hasShardIndex > -1) {
+                inv.splice(hasShardIndex, 1);
                 player.relicQuestStage = 2;
                 grantXp(200);
-                loreContent.innerHTML = `<p>"Magnificent! It is warm to the touch. Next, seek the <b>Moon Tear</b>. It is said to be lost in the deep swamps."</p>`;
+                dialogueHtml = `<p>"Magnificent! It is warm to the touch. Next, seek the <b>Moon Tear</b>. It is said to be lost in the deep swamps."</p>`;
             } else {
-                loreContent.innerHTML = `<p>"The <b>Sun Shard</b> is hidden in the scorching sands of the Desert. Please hurry."</p>`;
+                dialogueHtml = `<p>"The <b>Sun Shard</b> is hidden in the scorching sands of the Desert. Please hurry."</p>`;
             }
         }
         else if (player.relicQuestStage === 2) {
-            const hasShard = inv.findIndex(i => i.name === 'Moon Tear');
-            if (hasShard > -1) {
-                inv.splice(hasShard, 1);
+            const hasShardIndex = inv.findIndex(i => i.name === 'Moon Tear');
+            if (hasShardIndex > -1) {
+                inv.splice(hasShardIndex, 1);
                 player.relicQuestStage = 3;
                 grantXp(300);
-                loreContent.innerHTML = `<p>"Incredible. One remains. The <b>Void Crystal</b>. It lies in the highest peaks of the Mountains, guarded by ancient beasts."</p>`;
+                dialogueHtml = `<p>"Incredible. One remains. The <b>Void Crystal</b>. It lies in the highest peaks of the Mountains, guarded by ancient beasts."</p>`;
             } else {
-                loreContent.innerHTML = `<p>"The <b>Moon Tear</b> is in the Swamp. Beware the poison."</p>`;
+                dialogueHtml = `<p>"The <b>Moon Tear</b> is in the Swamp. Beware the poison."</p>`;
             }
         }
         else if (player.relicQuestStage === 3) {
-            const hasShard = inv.findIndex(i => i.name === 'Void Crystal');
-            if (hasShard > -1) {
-                inv.splice(hasShard, 1);
-                player.relicQuestStage = 4;
-                grantXp(500);
-                
-                // REWARD: Stormbringer
+            const hasShardIndex = inv.findIndex(i => i.name === 'Void Crystal');
+            if (hasShardIndex > -1) {
+                // Check space before taking
                 if (inv.length < MAX_INVENTORY_SLOTS) {
-                    const reward = ITEM_DATA['⚡'];
+                    inv.splice(hasShardIndex, 1);
+                    player.relicQuestStage = 4;
+                    grantXp(500);
+                    const reward = ITEM_DATA['⚡']; // Stormbringer
                     inv.push({ ...reward, quantity: 1 });
-                    loreContent.innerHTML = `<p>"You have done it! The trinity is restored. As promised, take this... The King's own blade, <b>Stormbringer</b>."</p>`;
+                    dialogueHtml = `<p>"You have done it! The trinity is restored. As promised, take this... The King's own blade, <b>Stormbringer</b>."</p>`;
                 } else {
-                    loreContent.innerHTML = `<p>"I have your reward, but your pack is full!"</p>`;
-                    // Don't advance stage if full, let them come back
-                    player.relicQuestStage = 3; 
-                    // Add item back to inv logic handled by not splicing if we did (but we spliced above). 
-                    // Correction: We spliced already. Let's just drop it on the ground or force push.
-                    // Ideally, check space BEFORE splicing. For simplicity, let's just force push or drop.
-                    chunkManager.setWorldTile(newX, newY, '⚡'); // Drop at feet
+                    dialogueHtml = `<p>"I have your reward, but your pack is full! Make space and return to me."</p>`;
                 }
             } else {
-                loreContent.innerHTML = `<p>"The <b>Void Crystal</b> is in the Mountains. It is the most dangerous journey."</p>`;
+                dialogueHtml = `<p>"The <b>Void Crystal</b> is in the Mountains. It is the most dangerous journey."</p>`;
             }
         }
         else {
-            loreContent.innerHTML = `<p>"The history books will remember your name, hero."</p>`;
+            dialogueHtml = `<p>"The history books will remember your name, hero."</p>`;
         }
 
+        // --- 2. MEMORY SHARD TRADE LOGIC ---
+        const shardIndex = inv.findIndex(i => i.name === 'Memory Shard');
+        let tradeHtml = "";
+        
+        if (shardIndex > -1) {
+            const shardCount = inv[shardIndex].quantity;
+            tradeHtml = `
+                <hr class="my-4 border-gray-500">
+                <p class="text-sm italic">"I see you have found <b>${shardCount} Memory Shards</b>. I can trade for them."</p>
+                <button id="tradeShardXP" class="mt-2 bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded w-full">Trade 1 Shard for 100 XP</button>
+                <button id="tradeShardStat" class="mt-2 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded w-full">Trade 3 Shards for Stat Tome</button>
+            `;
+        }
+
+        // --- 3. RENDER UI ---
+        loreContent.innerHTML = dialogueHtml + tradeHtml;
+        loreModal.classList.remove('hidden');
+
+        // --- 4. BIND BUTTONS (If they exist) ---
+        if (shardIndex > -1) {
+            setTimeout(() => { // Timeout ensures DOM is updated before we grab elements
+                const btnXP = document.getElementById('tradeShardXP');
+                const btnStat = document.getElementById('tradeShardStat');
+
+                if (btnXP) {
+                    btnXP.onclick = () => {
+                        // Re-check inventory to be safe
+                        const currentShardIdx = gameState.player.inventory.findIndex(i => i.name === 'Memory Shard');
+                        if (currentShardIdx > -1) {
+                            gameState.player.inventory[currentShardIdx].quantity--;
+                            if (gameState.player.inventory[currentShardIdx].quantity <= 0) gameState.player.inventory.splice(currentShardIdx, 1);
+                            
+                            grantXp(100);
+                            logMessage("The Historian shares ancient secrets with you.");
+                            loreModal.classList.add('hidden');
+                            playerRef.update({ inventory: getSanitizedInventory() });
+                            renderInventory();
+                        }
+                    };
+                }
+
+                if (btnStat) {
+                    btnStat.onclick = () => {
+                        const currentShardIdx = gameState.player.inventory.findIndex(i => i.name === 'Memory Shard');
+                        if (currentShardIdx > -1 && gameState.player.inventory[currentShardIdx].quantity >= 3) {
+                            gameState.player.inventory[currentShardIdx].quantity -= 3;
+                            if (gameState.player.inventory[currentShardIdx].quantity <= 0) gameState.player.inventory.splice(currentShardIdx, 1);
+
+                            if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                                // Random Stat Tome
+                                const stats = ['strength', 'wits', 'constitution', 'dexterity', 'luck'];
+                                const rndStat = stats[Math.floor(Math.random() * stats.length)];
+                                // Create a dynamic tome based on the random stat
+                                const tomeItem = { 
+                                    name: `Tome of ${rndStat.charAt(0).toUpperCase() + rndStat.slice(1)}`, 
+                                    type: 'tome', 
+                                    quantity: 1, 
+                                    tile: '📖', // Using generic book icon
+                                    stat: rndStat 
+                                };
+                                gameState.player.inventory.push(tomeItem);
+                                logMessage(`Received ${tomeItem.name}!`);
+                            } else {
+                                logMessage("Inventory full! Shards returned.");
+                                gameState.player.inventory[currentShardIdx].quantity += 3; // Refund
+                            }
+
+                            loreModal.classList.add('hidden');
+                            playerRef.update({ inventory: getSanitizedInventory() });
+                            renderInventory();
+                        } else {
+                            logMessage("Not enough shards.");
+                        }
+                    };
+                }
+            }, 0);
+        }
+
+        // Save progress
         playerRef.update({ relicQuestStage: player.relicQuestStage, inventory: getSanitizedInventory() });
         renderInventory();
+        return;
+    }
+
+    if (newTile === '👻') {
+        const echoes = [
+            "I saw the King... his eyes were black as the void.",
+            "We sealed the doors, but the shadows came through the walls.",
+            "The mages promised power. They only brought ruin.",
+            "My sword passed right through them. We never stood a chance.",
+            "Run... while you still can."
+        ];
+        const msg = echoes[Math.floor(Math.random() * echoes.length)];
+        
+        logMessage(`The ghost whispers: "${msg}"`);
+        logMessage("It fades away, leaving a Memory Shard.");
+        
+        // Give Item
+        if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+            gameState.player.inventory.push({ name: 'Memory Shard', type: 'junk', quantity: 1, tile: '👻' });
+        } else {
+            logMessage("Your inventory is full, the shard falls to the ground.");
+            // Logic to leave it on ground is handled by not clearing tile if full? 
+            // Actually, let's just clear it and say it's lost to keep it simple, or drop it.
+        }
+        
+        chunkManager.setWorldTile(newX, newY, '.'); // Remove ghost
+        playerRef.update({ inventory: getSanitizedInventory() });
+        renderInventory();
+        return;
+    }
+
+    if (newTile === '?') {
+        const tileId = `${newX},${-newY}`;
+        
+        // Check if already solved
+        if (gameState.lootedTiles.has(tileId)) {
+            logMessage("The statue stands silent. Its riddle is solved.");
+            return;
+        }
+
+        // Pick a riddle based on location hash
+        const seed = stringToSeed(tileId);
+        const riddleIndex = Math.abs(seed) % RIDDLE_DATA.length;
+        const riddle = RIDDLE_DATA[riddleIndex];
+
+        // Setup UI
+        loreTitle.textContent = "The Whispering Statue";
+        loreContent.textContent = `A voice echoes in your mind:\n\n"${riddle.question}"`;
+        
+        const riddleContainer = document.getElementById('riddleContainer');
+        const riddleInput = document.getElementById('riddleInput');
+        const submitBtn = document.getElementById('submitRiddle');
+        
+        riddleContainer.classList.remove('hidden');
+        riddleInput.value = ''; // Clear old input
         loreModal.classList.remove('hidden');
+
+        // Handle Submit (One-time event listener wrapper)
+        submitBtn.onclick = () => {
+            const answer = riddleInput.value.toLowerCase().trim();
+            if (riddle.answers.includes(answer)) {
+                // Correct!
+                logMessage(riddle.message);
+                gameState.player[riddle.reward]++; // Give Stat
+                triggerStatAnimation(statDisplays[riddle.reward], 'stat-pulse-green');
+                
+                // Mark solved
+                gameState.lootedTiles.add(tileId);
+                playerRef.update({ 
+                    lootedTiles: Array.from(gameState.lootedTiles),
+                    [riddle.reward]: gameState.player[riddle.reward]
+                });
+                
+                loreModal.classList.add('hidden');
+                renderStats();
+            } else {
+                // Wrong
+                logMessage("The statue remains silent. That is not the answer.");
+                gameState.player.health -= 2; // Punishment
+                triggerStatFlash(statDisplays.health, false);
+                loreModal.classList.add('hidden');
+                renderStats();
+            }
+        };
         return;
     }
 
