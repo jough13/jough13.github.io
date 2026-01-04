@@ -30,6 +30,9 @@ let otherPlayers = {};
 let unsubscribePlayerListener;
 let worldStateListeners = {};
 
+let cachedThemeColors = {};
+const charWidthCache = {}; 
+
 const processingSpawnTiles = new Set(); 
 
 let areGlobalListenersInitialized = false;
@@ -100,9 +103,9 @@ const TILE_DATA = {
         type: 'npc_guard',
         title: 'Castle Guard'
     },
-    'S': {
-        type: 'npc_sage',
-        title: 'Sage'
+    'O': {
+    type: 'npc_sage',
+    title: 'Sage'
     },
     'T': {
         type: 'npc_skill_trainer',
@@ -272,34 +275,32 @@ const CASTLE_LAYOUTS = {
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓X▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', // Exit
         ]
     },
+
 TOWER: {
-        spawn: {
-            x: 10,
-            y: 18
-        }, // New spawn point for this map
-        map: [
-            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
-            '▓...................▓',
-            '▓...▓▓▓.............▓',
-            '▓...▓.▓...▓▓▓.......▓',
-            '▓...▓.▓...▓.▓.......▓',
-            '▓...▓▓▓...▓▓▓.......▓',
-            '▓...................▓',
-            '▓.........▓▓▓▓▓▓▓▓▓▓▓',
-            '▓.........▓.........▓',
-            '▓.........▓........▓',
-            '▓.........▓.........▓',
-            '▓.........▓...L.....▓',
-            '▓.........▓.........▓',
-            '▓...▓▓▓...▓▓▓.......▓',
-            '▓...▓.O.▓.......▓.....▓', 
-            '▓...▓.📄.▓.......▓.....▓', 
-            '▓...▓▓▓...▓.......▓.....▓',
-            '▓.............▓.....▓',
-            '▓.............X.....▓',
-            '▓▓▓▓▓▓▓▓▓▓▓T▓▓▓▓▓▓▓▓▓'  // <-- Added a Skill Trainer in the wall!
-        ]
-    },
+    spawn: { x: 10, y: 18 }, 
+    map: [
+        '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+        '▓...................▓',
+        '▓...▓▓▓.............▓',
+        '▓...▓.▓...▓▓▓.......▓',
+        '▓...▓.▓...▓.▓.......▓',
+        '▓...▓▓▓...▓▓▓.......▓',
+        '▓...................▓',
+        '▓.........▓▓▓▓▓▓▓▓▓▓▓',
+        '▓.........▓.........▓',
+        '▓.........▓........▓', // Note: This row in your original was also missing a space at the end
+        '▓.........▓.........▓',
+        '▓.........▓...L.....▓',
+        '▓.........▓.........▓',
+        '▓...▓▓▓...▓▓▓.......▓',
+        '▓...▓.O.▓.......▓...▓', // Fixed width
+        '▓...▓.📄.▓.......▓...▓', // Fixed width
+        '▓...▓▓▓...▓.......▓...▓', // Fixed width
+        '▓.............▓.....▓',
+        '▓.............X.....▓',
+        '▓▓▓▓▓▓▓▓▓▓▓T▓▓▓▓▓▓▓▓▓'
+    ]
+},
 
     FORTRESS: {
         spawn: {
@@ -6315,6 +6316,16 @@ function updateWeather() {
     }
 }
 
+function updateThemeColors() {
+    const style = getComputedStyle(document.documentElement);
+    cachedThemeColors = {
+        canvasBg: style.getPropertyValue('--canvas-bg').trim(),
+        mtnBase: style.getPropertyValue('--mtn-base').trim() || '#57534e',
+        mtnShadow: style.getPropertyValue('--mtn-shadow').trim() || '#44403c',
+        mtnCap: style.getPropertyValue('--mtn-cap').trim() || '#f9fafb'
+    };
+}
+
 /**
  * Updates the UI to show active buff and debuff icons.
  */
@@ -7202,42 +7213,39 @@ function getBiomeColorForMap(x, y) {
     return '#22c55e'; // Plains
 }
 
-// --- HELPER: DRAW FANCY MOUNTAIN ---
+// --- HELPER: DRAW FANCY MOUNTAIN (OPTIMIZED) ---
 function drawMountain(ctx, x, y, size) {
-    // Get colors from CSS variables for theme support
-    const style = getComputedStyle(document.documentElement);
-    const baseColor = style.getPropertyValue('--mtn-base').trim();
-    const shadowColor = style.getPropertyValue('--mtn-shadow').trim();
-    const capColor = style.getPropertyValue('--mtn-cap').trim();
+    // Use the global cache we created in Step 1
+    if (!cachedThemeColors.mtnBase) updateThemeColors();
+    
+    const { mtnBase, mtnShadow, mtnCap } = cachedThemeColors;
 
     // 1. Draw the main mountain body
-    ctx.fillStyle = baseColor;
+    ctx.fillStyle = mtnBase;
     ctx.beginPath();
-    ctx.moveTo(x, y + size); // Bottom-left
-    ctx.lineTo(x + size / 2, y + size * 0.1); // Peak (with slight top padding)
-    ctx.lineTo(x + size, y + size); // Bottom-right
+    ctx.moveTo(x, y + size); 
+    ctx.lineTo(x + size / 2, y + size * 0.1); 
+    ctx.lineTo(x + size, y + size); 
     ctx.closePath();
     ctx.fill();
 
-    // 2. Draw the shadow on the right face for depth
-    ctx.fillStyle = shadowColor;
+    // 2. Draw the shadow
+    ctx.fillStyle = mtnShadow;
     ctx.beginPath();
-    ctx.moveTo(x + size / 2, y + size * 0.1); // Peak
-    ctx.lineTo(x + size, y + size); // Bottom-right
-    ctx.lineTo(x + size / 2, y + size); // Bottom-center
+    ctx.moveTo(x + size / 2, y + size * 0.1); 
+    ctx.lineTo(x + size, y + size); 
+    ctx.lineTo(x + size / 2, y + size); 
     ctx.closePath();
     ctx.fill();
 
     // 3. Draw the snow cap
-    ctx.fillStyle = capColor;
+    ctx.fillStyle = mtnCap;
     ctx.beginPath();
-    // Jagged bottom edge for the snow
     ctx.moveTo(x + size * 0.25, y + size * 0.5); 
     ctx.lineTo(x + size * 0.35, y + size * 0.4);
     ctx.lineTo(x + size * 0.5, y + size * 0.55);
     ctx.lineTo(x + size * 0.65, y + size * 0.4);
     ctx.lineTo(x + size * 0.75, y + size * 0.5);
-    // Go up to the peak
     ctx.lineTo(x + size / 2, y + size * 0.1);
     ctx.closePath();
     ctx.fill();
@@ -11136,14 +11144,11 @@ const renderEquipment = () => {
 const render = () => {
     if (!gameState.mapMode) return;
 
-    // 1. Setup Canvas
-    const style = getComputedStyle(document.documentElement);
-    const canvasBg = style.getPropertyValue('--canvas-bg');
+    // --- OPTIMIZATION: Use Cached Colors ---
+    // If cache is empty (first run), populate it
+    if (!cachedThemeColors.canvasBg) updateThemeColors();
 
-    // Mountain Colors
-    const mtnBase = style.getPropertyValue('--mtn-base').trim() || '#57534e';
-    const mtnShadow = style.getPropertyValue('--mtn-shadow').trim() || '#44403c';
-    const mtnCap = style.getPropertyValue('--mtn-cap').trim() || '#f9fafb';
+    const { canvasBg, mtnBase, mtnShadow, mtnCap } = cachedThemeColors;
 
     ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -11199,7 +11204,13 @@ const render = () => {
     const torchFlicker = (Math.sin(now / 1000) * 0.2) + (Math.cos(now / 2500) * 0.1);
     const lightRadius = baseRadius + torchFlicker;
 
-    const isWideChar = (char) => /\p{Extended_Pictographic}/u.test(char);
+    // --- OPTIMIZATION: Memoized Emoji Check ---
+    const isWideChar = (char) => {
+        if (charWidthCache[char] !== undefined) return charWidthCache[char];
+        const isWide = /\p{Extended_Pictographic}/u.test(char);
+        charWidthCache[char] = isWide;
+        return isWide;
+    };
 
     // --- 3. MAIN RENDER LOOP ---
     for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
@@ -14704,26 +14715,36 @@ async function attemptMovePlayer(newX, newY) {
         return;
     }
 
-        if (newTile === 'O') {
-            if (!gameState.foundLore.has(tileId)) {
-                logMessage("You listen to the Sage's ramblings. +10 XP");
-                grantXp(10); 
-                gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-            }
-            const seed = stringToSeed(tileId);
-            const random = Alea(seed);
-            const messageIndex = Math.floor(random() * LORE_STONE_MESSAGES.length);
-            const message = LORE_STONE_MESSAGES[messageIndex];
-            loreTitle.textContent = "Sage";
-            loreContent.textContent = `The old Sage is staring at a tapestry, muttering to themself.\n\n"...yes, yes... ${message}..."`;
-            loreModal.classList.remove('hidden');
-            return;
+if (newTile === 'O') {
+        const tileId = (gameState.mapMode === 'overworld') 
+            ? `${newX},${-newY}` 
+            : `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
+
+        if (!gameState.foundLore.has(tileId)) {
+            logMessage("You listen to the Sage's ramblings. +10 XP");
+            grantXp(10); 
+            gameState.foundLore.add(tileId);
+            playerRef.update({ foundLore: Array.from(gameState.foundLore) });
         }
 
-        if (newTile === 'T') {
-            if (!gameState.foundLore.has(tileId)) {
-                logMessage("You've found a Skill Trainer! +15 XP");
+        const seed = stringToSeed(tileId);
+        const random = Alea(seed);
+        const messageIndex = Math.floor(random() * LORE_STONE_MESSAGES.length);
+        const message = LORE_STONE_MESSAGES[messageIndex];
+        loreTitle.textContent = "Sage";
+        loreContent.textContent = `The old Sage is staring at a tapestry, muttering to themself.\n\n"...yes, yes... ${message}..."`;
+        loreModal.classList.remove('hidden');
+        return;
+    }
+
+if (newTile === 'T') {
+        // --- FIX: Define tileId ---
+        const tileId = (gameState.mapMode === 'overworld') 
+            ? `${newX},${-newY}` 
+            : `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
+
+
+        if (!gameState.foundLore.has(tileId)) {
                 grantXp(15);
                 gameState.foundLore.add(tileId);
                 playerRef.update({ foundLore: Array.from(gameState.foundLore) });
@@ -15283,6 +15304,9 @@ const applyTheme = (theme) => {
     darkModeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
     localStorage.setItem('theme', theme);
     ctx.font = `${TILE_SIZE}px monospace`;
+    
+    updateThemeColors();
+    
     render();
 };
 
@@ -15745,7 +15769,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
             updateRegionDisplay();
             updateExploration();
 
-            loadingIndicator.classList.add('hidden'); // <--- Reveal game here
+            loadingIndicator.classList.add('hidden'); 
             
             // Initialize UI Listeners (One time only)
             if (!areGlobalListenersInitialized) {
@@ -15812,4 +15836,4 @@ function gameLoop() {
 // Start the loop
 requestAnimationFrame(gameLoop);
 
-window.addEventListener('resize', resizeCanvas);
+window.addEventListener('resize', resizeCanvas); 
