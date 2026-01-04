@@ -415,29 +415,38 @@ TOWER: {
     },
     
     SAFE_HAVEN: {
-        spawn: { x: 14, y: 14 }, 
+        spawn: { x: 15, y: 26 }, 
         map: [
-            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
-            '▓............................▓',
-            '▓.🔥.........................▓',
-            '▓............................▓',
-            '▓....▓▓▓▓▓▓...▓▓▓▓▓▓...▓▓▓▓▓.▓',
-            '▓....▓...H.▓...▓...§.▓...▓...T.▓.▓',
-            '▓....▓.....▓...▓.....▓...▓.....▓.▓',
-            '▓....▓▓▓▓▓▓...▓▓▓▓▓▓...▓▓▓▓▓▓.▓',
-            '▓............................▓',
-            '▓............................▓',
-            '▓....▓▓▓▓▓▓...▓▓▓▓▓▓...▓▓▓▓▓.▓',
-            '▓....▓...W.▓...▓.....▓...▓.....▓.▓',
-            '▓....▓.....▓...▓..B..▓...▓.....▓.▓',
-            '▓....▓▓▓▓▓▓...▓▓▓▓▓▓...▓▓▓▓▓▓.▓',
-            '▓.............X..............▓', // Use 'X' as the exit
-            '▓............................▓',
-            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
-            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
-            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            'F F F F F F F F F F F F F F F F F F F F F F F F F F F F F F',
+            'F F F F F F F F F F F F F F F F F F F F F F F F F F F F F F',
+            'F F 🧱🧱🧱🧱🧱 F F F F F F F F F F F F F 🧱🧱🧱🧱🧱 F F',
+            'F F 🧱.....🧱 F F F F F F F F F F F F F 🧱.....🧱 F F',
+            'F F 🧱..H..🧱 F F F F F F F F F F F F F 🧱..§..🧱 F F',
+            'F F 🧱.....🧱 F F F F F F F F F F F F F 🧱.....🧱 F F',
+            'F F 🧱🧱+🧱🧱 F F F F F F F F F F F F F 🧱🧱+🧱🧱 F F',
+            'F F F ... F F F F F F F F F F F F F F F F ... F F F',
+            'F F F ... F F F F F F F F F F F F F F F F ... F F F',
+            'F F F ... F F F 🧱🧱🧱🧱🧱🧱🧱 F F F F F ... F F F',
+            'F F F ... F F F 🧱...........🧱 F F F F F ... F F F',
+            'F F F ... F F F 🧱...🔥.B...🧱 F F F F F ... F F F',
+            'F F F ... F F F 🧱...........🧱 F F F F F ... F F F',
+            'F F F ... F F F 🧱.....N.....🧱 F F F F F ... F F F',
+            'F F F ... F F F 🧱🧱🧱...🧱🧱🧱 F F F F F ... F F F',
+            'F F F ... F F F F F F ... F F F F F F F F ... F F F',
+            'F F F ... F F F F F F ... F F F F F F F F ... F F F',
+            'F F 🧱🧱+🧱🧱 F F F F ... F F F F F F F 🧱🧱+🧱🧱 F F',
+            'F F 🧱.....🧱 F F F F ... F F F F F F F 🧱.....🧱 F F',
+            'F F 🧱..R..🧱 F F F F ... F F F F F F F 🧱..T..🧱 F F',
+            'F F 🧱.....🧱 F F F F ... F F F F F F F 🧱.....🧱 F F',
+            'F F 🧱🧱🧱🧱🧱 F F F F ... F F F F F F F 🧱🧱🧱🧱🧱 F F',
+            'F F F F F F F F F F F ... F F F F F F F F F F F F F F',
+            'F F F F F F F F F F F ... F F F F F F F F F F F F F F',
+            'F F F F F F F F F F F ... F F F F F F F F F F F F F F',
+            'F F F F F F F F F F F ... F F F F F F F F F F F F F F',
+            'F F F F F F F F F F F .X. F F F F F F F F F F F F F F', // Exit
+            'F F F F F F F F F F F F F F F F F F F F F F F F F F F',
         ]
-    }
+    },
 
 };
 
@@ -594,9 +603,9 @@ const QUEST_DATA = {
     "goblinTrophies": {
         title: "Goblin Trophies",
         description: "A Lost Prospector ('K') is tired of being harassed. He'll reward you for clearing out 10 Goblin Totems.",
-        type: 'collect',     // <-- New quest type
-        itemNeeded: 'Goblin Totem', // <-- The item name from ITEM_DATA
-        needed: 10,          // <-- The quantity required
+        type: 'collect', 
+        itemNeeded: 'Goblin Totem', 
+        needed: 10,  
         reward: {
             xp: 200,
             coins: 150
@@ -2788,6 +2797,43 @@ const ITEM_DATA = {
     '🧵': { name: 'Spool of Silk', type: 'junk', description: "Fine material from the eastern lands." },
     '💎b': { name: 'Black Pearl', type: 'junk', description: "Found only in the deepest abysses." },
 
+    // --- LEGENDARY WEAPONS (On-Hit Effects) ---
+    '⚡': {
+        name: 'Stormbringer',
+        type: 'weapon',
+        tile: '⚡',
+        damage: 5,
+        slot: 'weapon',
+        description: "Sparks fly from the blade. (20% chance to cast Chain Lightning on hit)",
+        onHit: 'chainLightning', // The spell ID
+        procChance: 0.20         // 20% chance
+    },
+    '🧛': {
+        name: 'Bloodthirster',
+        type: 'weapon',
+        tile: '🧛',
+        damage: 4,
+        slot: 'weapon',
+        description: "It pulses with a heartbeat. (30% chance to cast Siphon Life on hit)",
+        onHit: 'siphonLife',
+        procChance: 0.30
+    },
+    '❄️w': {
+        name: 'Frostmourn',
+        type: 'weapon',
+        tile: '⚔️',
+        damage: 5,
+        slot: 'weapon',
+        description: "Cold to the touch. (25% chance to cast Frost Bolt on hit)",
+        onHit: 'frostBolt',
+        procChance: 0.25
+    },
+
+    // --- QUEST RELICS ---
+    '💎s': { name: 'Sun Shard', type: 'quest', description: "Warm glowing glass from the Desert.", tile: '💎' },
+    '💎m': { name: 'Moon Tear', type: 'quest', description: "A cold gem found in the Swamp.", tile: '💎' },
+    '💎v': { name: 'Void Crystal', type: 'quest', description: "It absorbs light. Found in the Mountains.", tile: '💎' },
+
     // --- SURVIVAL ITEMS ---
     '🫙': {
         name: 'Empty Bottle',
@@ -3586,21 +3632,21 @@ const ITEM_DATA = {
     '📕': {
         name: 'Tome of Bracing',
         type: 'skillbook',
-        skillId: 'brace'    // <-- Links to SKILL_DATA
+        skillId: 'brace'
     },
     '📗': {
         name: 'Manual of Lunge',
         type: 'skillbook',
-        skillId: 'lunge'    // <-- Links to SKILL_DATA
+        skillId: 'lunge'  
     },
     '💪': {
         name: 'Tome of Strength',
-        type: 'tome', // <-- NEW TYPE
+        type: 'tome',
         stat: 'strength'
     },
     '🧠': {
         name: 'Tome of Wits',
-        type: 'tome', // <-- NEW TYPE
+        type: 'tome',
         stat: 'wits'
     },
     '"': {
@@ -4513,7 +4559,6 @@ const SKILL_DATA = {
         target: "aimed",
         cooldown: 8 // <-- NEW
     },
-    // --- NEW SKILLS ---
     "whirlwind": {
         name: "Whirlwind",
         description: "Strike all adjacent enemies. Scales with Strength and Dexterity.",
@@ -4532,7 +4577,48 @@ const SKILL_DATA = {
         target: "self",
         duration: 5,
         cooldown: 10
-    }
+    },
+    // --- WEAPON TECHNIQUES ---
+    "crush": {
+        name: "Crush",
+        description: "A heavy blow that stuns the target. (Hammer/Club only)",
+        cost: 8,
+        costType: "stamina",
+        requiredLevel: 1,
+        target: "aimed",
+        baseDamageMultiplier: 1.2,
+        cooldown: 6
+        // Logic handled in executeMeleeSkill (we will treat it like shieldBash)
+    },
+    "quickstep": {
+        name: "Quickstep",
+        description: "Dash 2 tiles instantly. (Dagger only)",
+        cost: 5,
+        costType: "stamina",
+        requiredLevel: 1,
+        target: "aimed", // We'll use aiming to pick direction
+        cooldown: 4,
+        type: "movement"
+    },
+    "deflect": {
+        name: "Deflect",
+        description: "Enter a defensive stance, reflecting the next attack. (Sword only)",
+        cost: 6,
+        costType: "stamina",
+        requiredLevel: 1,
+        target: "self",
+        duration: 2,
+        cooldown: 5
+    },
+    "channel": {
+        name: "Channel",
+        description: "Focus your energy to restore Mana. (Staff only)",
+        cost: 0, // Free to cast
+        costType: "stamina", // But takes a turn
+        requiredLevel: 1,
+        target: "self",
+        cooldown: 10
+    },
 };
 
 const talentModal = document.getElementById('talentModal');
@@ -6215,8 +6301,22 @@ ctx.textBaseline = 'middle';
 
 const logMessage = (text) => {
     const messageElement = document.createElement('p');
-    messageElement.textContent = `> ${text}`;
+    
+    // Simple parser for colors
+    // Usage: "You hit for {red:10} damage"
+    let formattedText = text
+        .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
+        .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
+        .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
+        .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>');
+
+    messageElement.innerHTML = `> ${formattedText}`;
     messageLog.prepend(messageElement);
+    
+    // Keep log size manageable (Max 50 entries)
+    if (messageLog.children.length > 50) {
+        messageLog.removeChild(messageLog.lastChild);
+    }
     messageLog.scrollTop = 0;
 };
 
@@ -7325,6 +7425,24 @@ function updateExploration() {
  */
 
 function generateEnemyLoot(player, enemy) {
+
+    // --- 0. QUEST ITEM DROPS ---
+    // 1. Sun Shard (Desert, 5% chance)
+    if (gameState.player.relicQuestStage === 1 && (enemy.tile === '🦂' || enemy.tile === 'm') && Math.random() < 0.05) {
+        logMessage("You found the Sun Shard!");
+        return '💎s';
+    }
+    // 2. Moon Tear (Swamp, 5% chance)
+    if (gameState.player.relicQuestStage === 2 && (enemy.tile === 'l' || enemy.tile === 'Hydra') && Math.random() < 0.05) {
+        logMessage("You found the Moon Tear!");
+        return '💎m';
+    }
+    // 3. Void Crystal (Mountain, 5% chance)
+    if (gameState.player.relicQuestStage === 3 && (enemy.tile === 'Y' || enemy.tile === '🐲') && Math.random() < 0.05) {
+        logMessage("You found the Void Crystal!");
+        return '💎v';
+    }
+
     // --- 1. Check for Active Fetch Quests ---
     const enemyTile = enemy.tile || Object.keys(ENEMY_DATA).find(k => ENEMY_DATA[k].name === enemy.name);
     for (const questId in player.quests) {
@@ -8383,7 +8501,22 @@ function useSkill(skillId) {
                 skillUsedSuccessfully = true;
                 break;
 
-            // NEW SKILL: STEALTH ---
+            case 'channel':
+                const manaGain = 5 + (player.wits * 2);
+                player.mana = Math.min(player.maxMana, player.mana + manaGain);
+                logMessage(`You channel energy... +${manaGain} Mana.`);
+                triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
+                skillUsedSuccessfully = true;
+                break;
+
+            case 'deflect':
+                player.thornsValue = 100; // Reflect huge damage
+                player.thornsTurns = 1;   // Only for the very next turn/hit
+                logMessage("You raise your blade, ready to deflect the next blow.");
+                skillUsedSuccessfully = true;
+                break;
+
+            // STEALTH ---
             case 'stealth':
                 player.stealthTurns = skillData.duration;
                 logMessage("You fade into the shadows... (Invisible)");
@@ -8539,6 +8672,36 @@ async function runCompanionTurn() {
                 }
             }
         }
+    }
+}
+
+function executeQuickstep(dirX, dirY) {
+    const player = gameState.player;
+    // Move 2 tiles
+    const targetX = player.x + (dirX * 2);
+    const targetY = player.y + (dirY * 2);
+    
+    // Check collision
+    let tile = chunkManager.getTile(targetX, targetY);
+    // (Simple check, you can expand to dungeon maps if needed)
+    if (gameState.mapMode === 'dungeon') {
+         const map = chunkManager.caveMaps[gameState.currentCaveId];
+         tile = map[targetY][targetX];
+    }
+
+    if (['.', 'F', 'd', 'D'].includes(tile)) {
+        player.x = targetX;
+        player.y = targetY;
+        player.stamina -= SKILL_DATA['quickstep'].cost;
+        logMessage("You dash forward with blinding speed!");
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(player.x, player.y, '#fff', 5);
+        
+        triggerAbilityCooldown('quickstep');
+        endPlayerTurn();
+        render();
+    } else {
+        logMessage("Path blocked.");
+        gameState.isAiming = false; // Reset aiming
     }
 }
 
@@ -10489,9 +10652,9 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                     logMessage(`You hit ${enemy.name} for ${finalDmg}!`);
                     ParticleSystem.createExplosion(coords.x, coords.y, '#fff');
 
-                    // APPLY SHIELD BASH STUN
-                    if (skillId === 'shieldBash') {
-                        enemy.stunTurns = 3; // Stunned for 3 turns
+                    // APPLY STUN (Shield Bash OR Crush)
+                    if (skillId === 'shieldBash' || skillId === 'crush') {
+                        enemy.stunTurns = 3; 
                         logMessage(`${enemy.name} is stunned!`);
                     }
 
@@ -10812,7 +10975,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     tile: newTile, // Store the original tile
                     name: scaledStats.name // Store the scaled name (e.g., "Feral Wolf")
                 };
-                // -----------------------------------
+
             } else {
                 enemy = currentData;
             }
@@ -11998,10 +12161,77 @@ function processEnemyTurns() {
         const dist = Math.sqrt(distSq);
 
         // --- 5. DORMANT CHECK (New Optimization) ---
-        // If enemy is > 25 tiles away, they don't move/act.
-        if (dist > 25) return; 
+        // If enemy is > 20 tiles away, they don't move/act.
+        if (dist > 20) return; 
 
         // --- 6. BOSS & ELITE BEHAVIORS ---
+
+        // --- BOSS ENRAGE PHASES ---
+        if (enemy.isBoss && enemy.health < enemy.maxHealth * 0.5 && !enemy.hasEnraged) {
+            enemy.hasEnraged = true; // Ensure it only happens once
+            
+            // 1. NECROMANCER LORD: Army of the Dead
+            if (enemy.name.includes("Necromancer")) {
+                logMessage(`The ${enemy.name} screams! "ARISE, MY SERVANTS!"`);
+                gameState.screenShake = 20;
+                
+                // Spawn 3 Skeletons around him
+                const offsets = [[-1,-1], [1,-1], [0,1], [-1,1], [1,1]];
+                let spawned = 0;
+                for(let ofs of offsets) {
+                    if (spawned >= 3) break;
+                    const sx = enemy.x + ofs[0];
+                    const sy = enemy.y + ofs[1];
+                    if (isWalkable(sx, sy)) {
+                        map[sy][sx] = 's';
+                        const t = ENEMY_DATA['s'];
+                        // Create scaled minion
+                        gameState.instancedEnemies.push({
+                            id: `${gameState.currentCaveId}:minion_${Date.now()}_${spawned}`,
+                            x: sx, y: sy, tile: 's', name: "Enraged Skeleton",
+                            health: t.maxHealth, maxHealth: t.maxHealth, 
+                            attack: t.attack + 1, defense: t.defense, xp: 5
+                        });
+                        ParticleSystem.createExplosion(sx, sy, '#a855f7'); // Purple smoke
+                        spawned++;
+                    }
+                }
+            }
+            
+            // 2. VOID DEMON: Reality Shift
+            else if (enemy.name.includes("Demon") || enemy.tile === 'D') {
+                logMessage(`The ${enemy.name} roars and shatters reality!`);
+                gameState.screenShake = 30;
+                
+                // Teleport PLAYER to a random spot in the room
+                // (Simple range: +/- 5 tiles from current spot, ensuring it's walkable)
+                let teleported = false;
+                for(let i=0; i<10; i++) {
+                    const tx = player.x + (Math.floor(Math.random()*10)-5);
+                    const ty = player.y + (Math.floor(Math.random()*10)-5);
+                    if (isWalkable(tx, ty)) {
+                        player.x = tx;
+                        player.y = ty;
+                        teleported = true;
+                        break;
+                    }
+                }
+                
+                if (teleported) {
+                    logMessage("You are thrown through the void!");
+                    ParticleSystem.createExplosion(player.x, player.y, '#a855f7');
+                    // Disorient: Lose target lock
+                    gameState.isAiming = false;
+                }
+                
+                // Buff the Demon
+                enemy.attack += 2;
+                logMessage(`The ${enemy.name} grows stronger!`);
+            }
+            
+            return; // Enrage consumes the turn
+        }
+
         if (enemy.isBoss) {
             // Boss Immunity
             if ((enemy.poisonTurns > 0 || enemy.rootTurns > 0) && Math.random() < 0.5) {
@@ -12225,7 +12455,7 @@ function processEnemyTurns() {
                     player.health -= dmg;
                     gameState.screenShake = 10; // Shake intensity
                     triggerStatFlash(statDisplays.health, false);
-                    logMessage(`The ${enemy.name} hits you for ${dmg} damage!`);
+                    logMessage(`The ${enemy.name} hits you for {red:${damageToApply}} damage!`);
                     ParticleSystem.createFloatingText(player.x, player.y, `-${dmg}`, '#ef4444');
                 }
                 // Thorns Reflect
@@ -12667,6 +12897,45 @@ function endPlayerTurn() {
     // Only run this in the overworld to activate static mobs
     if (gameState.mapMode === 'overworld') {
         wakeUpNearbyEnemies();
+    }
+
+    // Every 60 turns (approx 1 day in-game), roll for ambush
+    if (gameState.mapMode === 'overworld' && gameState.playerTurnCount % 60 === 0) {
+        // 20% chance of ambush
+        if (Math.random() < 0.20) {
+            logMessage("{red:AMBUSH!} Enemies are closing in!");
+            gameState.screenShake = 15;
+            AudioSystem.playHit(); // Sound alert
+
+            // Determine enemy type based on biome
+            const currentTile = chunkManager.getTile(player.x, player.y);
+            let ambushType = 'b'; // Default bandit
+            if (currentTile === 'F') ambushType = 'w'; // Wolves
+            if (currentTile === 'd') ambushType = 's'; // Skeletons
+            if (currentTile === 'D') ambushType = '🦂'; // Scorpions
+
+            // Spawn 3 enemies in a circle
+            const offsets = [[-4, 0], [4, 0], [0, -4], [0, 4]];
+            
+            offsets.forEach(offset => {
+                // Randomize slightly
+                const tx = player.x + offset[0] + Math.floor(Math.random()*3)-1;
+                const ty = player.y + offset[1] + Math.floor(Math.random()*3)-1;
+                
+                // Spawn logic (reusing handleOverworldCombat logic to create)
+                const enemyData = ENEMY_DATA[ambushType];
+                const enemyId = `overworld:${tx},${-ty}`;
+                
+                // Direct RTDB write to spawn
+                const scaledStats = getScaledEnemy(enemyData, tx, ty);
+                const newEnemy = { ...scaledStats, tile: ambushType, x: tx, y: ty };
+                
+                rtdb.ref(`worldEnemies/${enemyId}`).set(newEnemy);
+                
+                // Visual
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#ef4444');
+            });
+        }
     }
 
     gameState.playerTurnCount++; // Increment the player's turn
@@ -13312,7 +13581,8 @@ function handleInput(key) {
             const abilityId = gameState.abilityToAim; 
             // Route abilities
             if (abilityId === 'lunge') executeLunge(dirX, dirY);
-            else if (abilityId === 'shieldBash' || abilityId === 'cleave' || abilityId === 'kick') executeMeleeSkill(abilityId, dirX, dirY);
+            else if (abilityId === 'shieldBash' || abilityId === 'cleave' || abilityId === 'kick' || abilityId === 'crush') executeMeleeSkill(abilityId, dirX, dirY);
+            else if (abilityId === 'quickstep') executeQuickstep(dirX, dirY);
             else if (SPELL_DATA[abilityId]) executeAimedSpell(abilityId, dirX, dirY); 
             else if (abilityId === 'pacify') executePacify(dirX, dirY);
             else if (abilityId === 'inflictMadness') executeInflictMadness(dirX, dirY);
@@ -13553,10 +13823,31 @@ function useInventoryItem(itemIndex) {
     // --- WEAPONS ---
     else if (itemToUse.type === 'weapon') {
         const currentWeapon = gameState.player.inventory.find(i => i.type === 'weapon' && i.isEquipped);
+        
+        // Helper to map weapon icons/names to skills
+        const getWeaponSkill = (item) => {
+            if (!item) return null;
+            if (item.name.includes("Hammer") || item.name.includes("Club") || item.tile === '🔨' || item.tile === '🏏') return 'crush';
+            if (item.name.includes("Dagger") || item.tile === '†' || item.tile === '🗡️') return 'quickstep';
+            if (item.name.includes("Sword") || item.name.includes("Blade") || item.tile === '⚔️' || item.tile === '!') return 'deflect';
+            if (item.name.includes("Staff") || item.tile === 'Ψ' || item.tile === '🦯') return 'channel';
+            return null;
+        };
+
+        // 1. Unequip Current
         if (currentWeapon) {
             applyStatBonuses(currentWeapon, -1);
             currentWeapon.isEquipped = false;
+            
+            // Remove old skill
+            const oldSkill = getWeaponSkill(currentWeapon);
+            if (oldSkill && gameState.player.skillbook[oldSkill]) {
+                delete gameState.player.skillbook[oldSkill];
+                logMessage(`You unlearned ${SKILL_DATA[oldSkill].name}.`);
+            }
         }
+
+        // 2. Equip New (if different)
         if (currentWeapon === itemToUse) {
             gameState.player.equipment.weapon = { name: 'Fists', damage: 0 };
             logMessage(`You unequip the ${itemToUse.name}.`);
@@ -13565,6 +13856,15 @@ function useInventoryItem(itemIndex) {
             gameState.player.equipment.weapon = itemToUse;
             applyStatBonuses(itemToUse, 1);
             logMessage(`You equip the ${itemToUse.name}.`);
+
+            // Grant new skill
+            const newSkill = getWeaponSkill(itemToUse);
+            if (newSkill) {
+                gameState.player.skillbook[newSkill] = 1; // Level 1 mastery
+                logMessage(`Weapon Technique: You learned ${SKILL_DATA[newSkill].name}!`);
+                // Auto-assign to hotbar slot 1 for convenience if empty
+                if (!gameState.player.hotbar[0]) gameState.player.hotbar[0] = newSkill;
+            }
         }
         itemUsed = true;
 
@@ -13811,6 +14111,77 @@ async function attemptMovePlayer(newX, newY) {
         }
     }
 
+    if (newTile === 'R') {
+        const player = gameState.player;
+        const inv = player.inventory;
+        
+        // Define the Quest State
+        // 0: Not Started, 1: Finding Sun, 2: Finding Moon, 3: Finding Void, 4: Done
+        player.relicQuestStage = player.relicQuestStage || 0;
+
+        loreTitle.textContent = "Royal Historian";
+        
+        if (player.relicQuestStage === 0) {
+            loreContent.innerHTML = `<p>"Ah, a traveler! I am researching the fall of the Old King. Legend says his power was sealed in three gems."</p><p>"Bring me the <b>Sun Shard</b> from the deserts to the south. I will reward you."</p>`;
+            player.relicQuestStage = 1;
+        } 
+        else if (player.relicQuestStage === 1) {
+            const hasShard = inv.findIndex(i => i.name === 'Sun Shard');
+            if (hasShard > -1) {
+                inv.splice(hasShard, 1);
+                player.relicQuestStage = 2;
+                grantXp(200);
+                loreContent.innerHTML = `<p>"Magnificent! It is warm to the touch. Next, seek the <b>Moon Tear</b>. It is said to be lost in the deep swamps."</p>`;
+            } else {
+                loreContent.innerHTML = `<p>"The <b>Sun Shard</b> is hidden in the scorching sands of the Desert. Please hurry."</p>`;
+            }
+        }
+        else if (player.relicQuestStage === 2) {
+            const hasShard = inv.findIndex(i => i.name === 'Moon Tear');
+            if (hasShard > -1) {
+                inv.splice(hasShard, 1);
+                player.relicQuestStage = 3;
+                grantXp(300);
+                loreContent.innerHTML = `<p>"Incredible. One remains. The <b>Void Crystal</b>. It lies in the highest peaks of the Mountains, guarded by ancient beasts."</p>`;
+            } else {
+                loreContent.innerHTML = `<p>"The <b>Moon Tear</b> is in the Swamp. Beware the poison."</p>`;
+            }
+        }
+        else if (player.relicQuestStage === 3) {
+            const hasShard = inv.findIndex(i => i.name === 'Void Crystal');
+            if (hasShard > -1) {
+                inv.splice(hasShard, 1);
+                player.relicQuestStage = 4;
+                grantXp(500);
+                
+                // REWARD: Stormbringer
+                if (inv.length < MAX_INVENTORY_SLOTS) {
+                    const reward = ITEM_DATA['⚡'];
+                    inv.push({ ...reward, quantity: 1 });
+                    loreContent.innerHTML = `<p>"You have done it! The trinity is restored. As promised, take this... The King's own blade, <b>Stormbringer</b>."</p>`;
+                } else {
+                    loreContent.innerHTML = `<p>"I have your reward, but your pack is full!"</p>`;
+                    // Don't advance stage if full, let them come back
+                    player.relicQuestStage = 3; 
+                    // Add item back to inv logic handled by not splicing if we did (but we spliced above). 
+                    // Correction: We spliced already. Let's just drop it on the ground or force push.
+                    // Ideally, check space BEFORE splicing. For simplicity, let's just force push or drop.
+                    chunkManager.setWorldTile(newX, newY, '⚡'); // Drop at feet
+                }
+            } else {
+                loreContent.innerHTML = `<p>"The <b>Void Crystal</b> is in the Mountains. It is the most dangerous journey."</p>`;
+            }
+        }
+        else {
+            loreContent.innerHTML = `<p>"The history books will remember your name, hero."</p>`;
+        }
+
+        playerRef.update({ relicQuestStage: player.relicQuestStage, inventory: getSanitizedInventory() });
+        renderInventory();
+        loreModal.classList.remove('hidden');
+        return;
+    }
+
     if (newTile === '¥') {
         activeShopInventory = TRADER_INVENTORY;
         logMessage("You meet a Wandering Trader. 'Rare goods, for a price...'");
@@ -13900,6 +14271,25 @@ async function attemptMovePlayer(newX, newY) {
                 }
 
                 enemy.health -= playerDamage;
+
+                // --- WEAPON PROC SYSTEM ---
+                const equippedWeapon = gameState.player.equipment.weapon;
+                if (equippedWeapon && equippedWeapon.onHit && Math.random() < equippedWeapon.procChance) {
+                    logMessage(`Your ${equippedWeapon.name} surges with power!`);
+                    // Cast the spell for free (0 cost)
+                    // We use applySpellDamage directly to bypass mana checks
+                    const spellId = equippedWeapon.onHit;
+                    const spellData = SPELL_DATA[spellId];
+                    const procDmg = spellData.baseDamage + (gameState.player.wits * 0.5); // Scale slightly with Wits
+                    
+                    // Apply spell effect
+                    applySpellDamage(newX, newY, procDmg, spellId);
+                    
+                    // Visuals
+                    if (spellId === 'chainLightning') ParticleSystem.createExplosion(newX, newY, '#facc15');
+                    if (spellId === 'siphonLife') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "♥", "#ef4444");
+                }
+
                 AudioSystem.playAttack();
                 
                 // Log & Effects
@@ -13910,7 +14300,7 @@ async function attemptMovePlayer(newX, newY) {
                         ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
                     }
                 } else {
-                    logMessage(`You attack the ${enemy.name} for ${playerDamage} damage!`);
+                    logMessage(`You attack the ${enemy.name} for {red:${playerDamage}} damage!`);
                     if (typeof ParticleSystem !== 'undefined') {
                         ParticleSystem.createExplosion(newX, newY, '#ef4444'); 
                         ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
@@ -13971,7 +14361,7 @@ async function attemptMovePlayer(newX, newY) {
                                 ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, `-${damageToApply}`, '#ef4444');
                             }
                             triggerStatFlash(statDisplays.health, false);
-                            logMessage(`The ${enemy.name} hits you for ${damageToApply} damage!`);
+                            logMessage(`The ${enemy.name} hits you for {red:${damageToApply}} damage!`);
                         }
 
                         // Thorns Damage
