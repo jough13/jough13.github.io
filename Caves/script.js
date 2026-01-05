@@ -49,6 +49,8 @@ let connectedListener = null;
 // Track enemies currently being spawned so they don't flicker
 let pendingSpawns = new Set();
 
+let pendingSpawnData = {}; 
+
 let activeShopInventory = [];
 
 const TILE_DATA = {
@@ -6875,10 +6877,16 @@ async function wakeUpNearbyEnemies() {
                 }).then(() => {
                     // Transaction complete
                     pendingSpawns.delete(enemyId);
-                    processingSpawnTiles.delete(tileId); // Release the lock
+                    // REMOVED: delete pendingSpawnData[enemyId]; <--- We keep this until the listener confirms it!
+                    processingSpawnTiles.delete(tileId); 
                 }).catch(err => {
                     console.error("Spawn failed", err);
-                    processingSpawnTiles.delete(tileId); // Release lock on error
+                    pendingSpawns.delete(enemyId);
+                    delete pendingSpawnData[enemyId]; // Keep this: If it failed, clear it so we can try again
+                    processingSpawnTiles.delete(tileId); 
+                    // Optional: Restore the tile if spawn failed
+                    chunkManager.setWorldTile(x, y, enemyData.tile || 'r');
+                    wokenEnemyTiles.delete(tileId);
                 });
             }
         }
@@ -16271,36 +16279,31 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
     sharedEnemiesListener = sharedEnemiesRef.on('value', (snapshot) => {
         const serverData = snapshot.val() || {};
         
-        // 1. Mark initial load as complete
         gameState.initialEnemiesLoaded = true;
 
-        // 2. Cleanup Static Tiles
-        // If the server says "There is a Goblin at 10,10", we must ensure 
-        // the local map doesn't ALSO show a static 'g' at 10,10.
+        // 1. Cleanup Static Tiles (Keep existing logic)
         Object.values(serverData).forEach(enemy => {
-            // Check if there is a static tile here that needs removing
-            // We only remove it if it looks like an enemy spawn point
-            // (This prevents removing floor tiles)
             if (gameState.mapMode === 'overworld') {
                 const currentTile = chunkManager.getTile(enemy.x, enemy.y);
                 if (ENEMY_DATA[currentTile]) {
-                    // It's a static enemy tile, but a live enemy exists here.
-                    // Clear the static tile to prevent duplicates/flicker.
                     chunkManager.setWorldTile(enemy.x, enemy.y, '.');
                 }
             }
         });
 
-        // 3. Merge Pending Spawns (Your existing logic)
-        const mergedEnemies = { ...serverData };
-        pendingSpawns.forEach(pendingId => {
-            if (gameState.sharedEnemies[pendingId]) {
-                mergedEnemies[pendingId] = gameState.sharedEnemies[pendingId];
+        // 2. CLEANUP PENDING DATA (The Fix)
+        // If the server now has the enemy, we don't need to hold it in pending anymore.
+        Object.keys(serverData).forEach(serverKey => {
+            if (pendingSpawnData[serverKey]) {
+                delete pendingSpawnData[serverKey];
             }
         });
 
+        // 3. MERGE: Combine Server Data + Remaining Local Pending Data
+        const mergedEnemies = { ...serverData, ...pendingSpawnData };
+
         gameState.sharedEnemies = mergedEnemies;
-        render(); // Re-render to show new health bars
+        render(); 
     });
 
     unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
