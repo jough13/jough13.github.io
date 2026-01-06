@@ -13,7 +13,9 @@
             --accent: #059669; --accent-dim: rgba(5, 150, 105, 0.1);
             --danger: #dc2626; --warning: #d97706; --info: #2563eb; --rad: #9333ea; --money: #059669;
             --plan: #7c3aed; --comp: #475569;
-            --navy: #1e40af; --cmd: #7e22ce; --other: #475569;
+            --navy: #1e40af; --navy-dim: #dbeafe;
+            --cmd: #7e22ce; --cmd-dim: #f3e8ff; 
+            --other: #475569; --other-dim: #f1f5f9;
             --col-plan: #f3f4f6; --col-act: #ecfdf5; --col-rev: #eff6ff; --col-comp: #e2e8f0;
         }
         [data-theme="dark"] {
@@ -22,7 +24,9 @@
             --accent: #10b981; --accent-dim: rgba(16, 185, 129, 0.15);
             --danger: #ef4444; --warning: #f59e0b; --info: #3b82f6; --rad: #d946ef; --money: #34d399;
             --plan: #8b5cf6; --comp: #94a3b8;
-            --navy: #60a5fa; --cmd: #c084fc; --other: #94a3b8;
+            --navy: #60a5fa; --navy-dim: #1e3a8a;
+            --cmd: #c084fc; --cmd-dim: #581c87;
+            --other: #94a3b8; --other-dim: #334155;
             --col-plan: #1e293b; --col-act: #064e3b; --col-rev: #1e3a8a; --col-comp: #334155;
         }
         * { box-sizing: border-box; outline: none; transition: background 0.2s, color 0.2s; }
@@ -43,7 +47,7 @@
             ::-webkit-scrollbar { display: none; }
             .view-section { display: none; }
             .view-section.active { display: block; }
-            .search-bar, .modal-overlay, #btnShowComp, .quick-actions, .est-input-row { display: none !important; }
+            .search-bar, .modal-overlay, #btnShowComp, .quick-actions, .est-input-row, .date-adder { display: none !important; }
             table { width: 100% !important; border-collapse: collapse; }
             th, td { border: 1px solid #ddd !important; color: black !important; }
             :root { --bg-body: white; --bg-panel: white; --text-main: black; --text-muted: #444; }
@@ -69,13 +73,60 @@
         .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
         .widget { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; margin-bottom: 1.5rem; }
         .widget-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-        .list-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); padding: 0.8rem; border-radius: 6px; margin-bottom: 5px; cursor: pointer; border-left: 3px solid transparent; font-size: 0.9rem; transition: transform 0.2s; position: relative; }
+        
+/* Updated List Item for better spacing */
+        .list-item { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            background: var(--bg-card); 
+            padding: 0.8rem; 
+            padding-right: 1rem; /* Ensure space */
+            border-radius: 6px; 
+            margin-bottom: 5px; 
+            cursor: pointer; 
+            border-left: 3px solid transparent; 
+            font-size: 0.9rem; 
+            transition: transform 0.2s; 
+            position: relative; 
+            overflow: hidden; /* Keeps the overlay inside the rounded corners */
+        }
+
         .list-item:hover { border-left-color: var(--accent); transform: translateX(3px); background: var(--bg-input); }
         
-        .quick-actions { display: none; gap: 5px; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); }
+        /* New Quick Actions Toolbar Style */
+        .quick-actions { 
+            display: none; 
+            position: absolute; 
+            right: 0; top: 0; bottom: 0; /* Stretch full height */
+            align-items: center; 
+            gap: 8px; 
+            padding-right: 10px; 
+            padding-left: 20px;
+            /* Gradient fade so it blends in smoothly */
+            background: linear-gradient(to right, transparent, var(--bg-input) 20%);
+            z-index: 5;
+        }
         .list-item:hover .quick-actions { display: flex; }
-        .qa-btn { font-size: 0.7rem; padding: 4px 8px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; color: var(--text-muted); }
-        .qa-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+        
+        /* Better Looking Action Buttons */
+        .qa-btn { 
+            width: 30px; height: 30px; /* Fixed square size */
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem; 
+            background: var(--bg-panel); 
+            border: 1px solid var(--border); 
+            border-radius: 50%; /* Circle buttons look cleaner */
+            cursor: pointer; 
+            color: var(--text-muted); 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        .qa-btn:hover { transform: scale(1.1); color: white; border-color: transparent; }
+        
+        /* Color coding the buttons */
+        .qa-btn.qa-task:hover { background: var(--accent); } /* Green for Task */
+        .qa-btn.qa-exp:hover { background: var(--money); }   /* Money Green/Teal for Expense */
 
         /* Elements */
         .rag-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
@@ -89,12 +140,144 @@
         .proj-link { color:var(--info); font-weight:bold; cursor:pointer; text-decoration:none; }
         .proj-link:hover { text-decoration:underline; color:var(--accent); }
 
-        /* Bar Chart */
-        .bar-chart-v { display: flex; align-items: flex-end; gap: 8px; height: 120px; padding-top: 15px; }
-        .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
-        .bar-v { width: 100%; background: var(--money); border-radius: 3px 3px 0 0; min-height: 2px; transition: height 0.3s; opacity: 0.8; }
+/* New Small Rectangle Button */
+        .btn-rect {
+            appearance: none;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 4px; /* Rectangle with slight curve */
+            padding: 0 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: 24px; /* Match sort-select height */
+            transition: all 0.2s;
+        }
+        .btn-rect:hover {
+            border-color: var(--accent);
+            background: var(--bg-card);
+        }
+
+/* New Sort Dropdown Style */
+        .sort-select {
+            appearance: none;
+            -webkit-appearance: none; 
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 2px 8px;
+            padding-right: 18px; /* Space for arrow */
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-align: center;
+            outline: none;
+            transition: all 0.2s;
+            height: 24px; 
+            line-height: 1;
+            
+            /* Custom Arrow Icon */
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 5px center;
+            background-size: 8px auto;
+        }
+
+        /* FIX: Added :focus so it stays green when menu is open */
+        .sort-select:hover, .sort-select:focus {
+            background: var(--bg-card);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        /* Clean up the dropdown options */
+        option {
+            background: var(--bg-panel);
+            color: var(--text-main);
+            padding: 4px;
+        }
+
+.chart-wrapper { 
+    display: flex; 
+    gap: 10px; 
+    height: 180px; 
+    width: 100%; 
+    border: 1px solid var(--border); 
+    background: var(--bg-card); 
+    padding: 10px; 
+    border-radius: 8px; 
+}
+        /* Fixed Y-Axis Column */
+        .chart-y-axis { 
+            display: flex; flex-direction: column; justify-content: space-between; 
+            height: 100%; padding-bottom: 25px; /* Align with bars */
+            padding-top: 15px;
+            min-width: 50px; text-align: right; border-right: 1px dashed var(--border); 
+            font-size: 0.65rem; color: var(--text-muted); font-weight: bold;
+        }
+
+        /* Scrollable Bar Area */
+        .bar-chart-v { 
+            display: flex; gap: 12px; height: 100%; width: 100%;
+            padding-top: 20px; /* Space for labels */
+            overflow-x: auto; overflow-y: hidden;
+            scrollbar-width: thin; scrollbar-color: var(--accent) var(--bg-input);
+        }
+
+        /* Bars & Labels */
+        .bar-col { 
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end; 
+            height: 100%; flex-shrink: 0; 
+            min-width: 80px; /* Increased buffer spacing */
+            position: relative; 
+        }
+        
+        .bar-v { 
+            width: 100%; background: var(--money); border-radius: 4px 4px 0 0; 
+            min-height: 2px; transition: height 0.3s; opacity: 0.85; position: relative;
+        }
         .bar-v:hover { opacity: 1; background: var(--accent); }
-        .bar-lbl { font-size: 0.6rem; color: var(--text-muted); margin-top: 5px; transform: rotate(-45deg); white-space: nowrap; transform-origin: top center; }
+
+        /* The Dollar Amount on Top */
+        .bar-top-lbl {
+            position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+            font-size: 0.6rem; font-weight: bold; color: var(--text-main);
+            margin-bottom: 4px; white-space: nowrap;
+        }
+
+        .bar-lbl { 
+            font-size: 0.7rem; 
+            color: var(--text-main); 
+            font-weight: bold; 
+            margin-top: 10px; 
+            white-space: nowrap; 
+            text-align: center; 
+            width: 100%;
+            /* Removed rotation/writing-mode for horizontal text */
+        }
+
+	.modal .chart-wrapper {
+            height: 100% !important; 
+            border: none;
+            padding: 20px;
+        }
+
+        /* --- UPGRADED FUNDING CARDS --- */
+        .fund-card {
+            background: var(--bg-input); border-radius: 6px; padding: 12px; margin-bottom: 10px;
+            border-left: 4px solid var(--text-muted); transition: transform 0.2s;
+        }
+        .fund-card:hover { transform: translateX(5px); background: var(--bg-card); border: 1px solid var(--border); border-left-width: 4px; }
+        .fund-head { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; }
+        .fund-meta { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 8px; }
+        .fund-bar-bg { height: 8px; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden; }
+        .fund-bar-fill { height: 100%; border-radius: 4px; }
 
         /* Kanban */
         .kanban-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: start; }
@@ -188,6 +371,7 @@
         <div class="nav-item" id="nav-fin" onclick="nav('finance')"><i class="fa-solid fa-sack-dollar"></i> Cost</div>
         <div class="nav-item" id="nav-est" onclick="nav('estimator')"><i class="fa-solid fa-file-invoice-dollar"></i> Est.</div>
         <div class="nav-item" id="nav-inv" onclick="nav('inventory')"><i class="fa-solid fa-boxes-stacked"></i> Inv</div>
+        <div class="nav-item" id="nav-exempt" onclick="nav('exempt')"><i class="fa-solid fa-recycle"></i> Exempt</div>
         <div class="nav-item" id="nav-hp" onclick="nav('hp')"><i class="fa-solid fa-calculator"></i> HP</div>
         <div class="nav-item" id="nav-log" onclick="nav('logbook')"><i class="fa-solid fa-book-open"></i> Log</div>
     </div>
@@ -249,14 +433,38 @@
         <div class="widget"><div id="full-project-list"></div></div>
     </div>
     
-    <div id="view-finance" class="view-section">
-        <div class="header"><h1>Cost Tracker</h1>
-            <div style="display:flex; gap:10px;">
+<div id="view-finance" class="view-section">
+        <div class="header">
+            <div>
+                <h1 style="margin:0;">Cost Tracker</h1>
+                <div style="display:flex; gap:8px; align-items:center; margin-top:5px; font-size:0.8rem; color:var(--text-muted);">
+                    <span><i class="fa-solid fa-filter"></i> Period:</span>
+                    
+                    <input type="date" id="fin-start" class="form-control" style="width:auto; padding:2px 5px; margin:0; height:auto;">
+                    <span>to</span>
+                    <input type="date" id="fin-end" class="form-control" style="width:auto; padding:2px 5px; margin:0; height:auto;">
+                    
+                    <button class="qa-btn" onclick="applyFinFilter()" title="Apply" style="background:var(--accent); color:white;">
+                        <i class="fa-solid fa-check"></i>
+                    </button>
+                    <button class="qa-btn" onclick="clearFinFilter()" title="Clear">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                
+                    <div style="border-left:1px solid var(--border); padding-left:8px; margin-left:4px;">
+                        <button id="btn-budget-scope" class="btn-rect" onclick="toggleBudgetScope()" style="width:110px; background:var(--navy); color:white;">
+                            <i class="fa-solid fa-infinity"></i> Lifetime
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
                 <button class="btn" onclick="openModal('allocModal')">+ Funding</button>
                 <button class="btn" onclick="openModal('expenseModal')">- Expense</button>
                 <button class="btn-toggle" style="margin:0" onclick="downloadCSV()"><i class="fa-solid fa-file-csv"></i> to Excel</button>
             </div>
         </div>
+        
         <div class="fin-grid">
             <div class="fin-card interactive" onclick="openBudgetManager()"><div class="fin-label">Total Budget <i class="fa-solid fa-pen" style="font-size:0.7rem; margin-left:5px;"></i></div><div class="fin-val" style="color:var(--info);" id="fin-total-budget">$0.00</div></div>
             <div class="fin-card"><div class="fin-label">Total Spent</div><div class="fin-val" style="color:var(--warning);" id="fin-total-spent">$0.00</div></div>
@@ -272,12 +480,22 @@
 
         <div class="widget">
             <div id="fin-tab-overview">
-                <div style="margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:20px;">
-                    <div class="widget-head">Monthly Spending Trend</div>
-                    <div id="monthly-spend-chart" class="bar-chart-v"></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="widget-head" style="margin:0;">Spending Trend</div>
+                        <button class="qa-btn" onclick="expandChart()" title="Fullscreen"><i class="fa-solid fa-expand"></i></button>
+                    </div>
+                    <div style="display:flex; gap:5px; background:var(--bg-input); padding:3px; border-radius:6px;">
+                        <button class="qa-btn" onclick="setChartScale('week')" id="btn-scale-week">Wk</button>
+                        <button class="qa-btn" onclick="setChartScale('month')" id="btn-scale-month" style="background:var(--accent); color:white;">Mo</button>
+                        <button class="qa-btn" onclick="setChartScale('quarter')" id="btn-scale-quarter">Qr</button>
+                        <button class="qa-btn" onclick="setChartScale('year')" id="btn-scale-year">Yr</button>
+                    </div>
                 </div>
+                
+                <div id="monthly-spend-chart" class="bar-chart-v"></div>
 
-                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px;">
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px; margin-top: 20px;">
                     <div>
                         <div class="widget-head">Budget Rollup & Performance</div>
                         <div style="overflow-x:auto;">
@@ -305,17 +523,18 @@
                     </div>
                 </div>
             </div>
+
             <div id="fin-tab-exp" style="display:none;">
                 <div class="widget-head">Expense Log (Live Edit)</div>
                 <div style="overflow-x:auto;"><table class="sci-table" id="table-exp"><thead><tr><th onclick="sortTable('table-exp',0)">Date <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-exp',1)">Project <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-exp',2)">Funding Source <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-exp',3)">Description <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-exp',4)">Amount <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th>Status</th><th></th></tr></thead><tbody id="expense-list"></tbody></table></div>
             </div>
+            
             <div id="fin-tab-alloc" style="display:none;">
                 <div class="widget-head">Funding Allocations</div>
                 <div style="overflow-x:auto;"><table class="sci-table" id="table-alloc"><thead><tr><th onclick="sortTable('table-alloc',0)">Date <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-alloc',1)">Project <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-alloc',2)">Source <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-alloc',3)">Description <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-alloc',4)">Amount <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th></th></tr></thead><tbody id="alloc-list"></tbody></table></div>
             </div>
         </div>
     </div>
-
     <div id="view-estimator" class="view-section">
         <div class="header"><h1>Cost Estimator</h1>
             <div style="display:flex; gap:10px;">
@@ -324,7 +543,10 @@
                     <option>Navy General Fund</option><option>Command Funded</option><option>Other</option>
                 </select>
                 <button class="btn-sync" style="width:auto; margin:0;" onclick="clearEstimate()"><i class="fa-solid fa-trash"></i></button>
-                <button class="btn" onclick="saveEstimateAsBudget()">Save as Budget</button>
+                
+                <button class="btn" style="background:var(--text-muted)" onclick="saveEstimateAction('estimate')" title="Save as line item (No budget impact)">As Estimate</button>
+                <button class="btn" style="background:var(--money)" onclick="saveEstimateAction('funding')" title="Add to Project Funding">As Funding</button>
+                <button class="btn" style="background:var(--danger)" onclick="saveEstimateAction('expense')" title="Submit as Expense">As Cost</button>
             </div>
         </div>
         <div class="widget">
@@ -350,6 +572,39 @@
                         <tr style="font-size:1.1rem; color:var(--accent); border-top:2px solid var(--border);"><td colspan="4" style="text-align:right">ESTIMATE TOTAL (<span id="est-count">0</span> items):</td><td style="text-align:right" id="est-grand-total">$0.00</td><td></td></tr>
                     </tfoot>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-exempt" class="view-section">
+        <div class="header">
+            <h1>Exempt Material Disposal Log</h1>
+            <div style="display:flex; gap:10px;">
+                <input type="text" class="search-bar" style="width:200px;" placeholder="Search Log..." onkeyup="render(this.value)">
+                <button class="btn-toggle" style="margin:0" onclick="downloadExemptCSV()"><i class="fa-solid fa-file-csv"></i> Export Log</button>
+                <button class="btn" onclick="openModal('exemptModal')">+ Add Entry</button>
+            </div>
+        </div>
+        <div class="widget">
+            <div style="overflow-x:auto;">
+    <table class="sci-table" id="table-exempt">
+    <thead>
+        <tr>
+            <th onclick="sortTable('table-exempt', 0)">Log # <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
+            <th onclick="sortTable('table-exempt', 1)">Date Rec'd <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th> 
+            <th onclick="sortTable('table-exempt', 2)">Command <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
+            <th onclick="sortTable('table-exempt', 3)">Description <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
+            <th onclick="sortTable('table-exempt', 4)">Nuclide <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
+            <th onclick="sortTable('table-exempt', 5)">Activity <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
+            <th onclick="sortTable('table-exempt', 6)">Basis <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
+            <th onclick="sortTable('table-exempt', 7)">Pathway <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
+            <th onclick="sortTable('table-exempt', 8)">Auth Date <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th> 
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody id="exempt-list"></tbody>
+</table>
             </div>
         </div>
     </div>
@@ -383,14 +638,25 @@
                 <div class="widget-head">Isotope Decay</div>
                 <div class="dashboard-grid">
                     <div>
-                        <label style="color:var(--text-muted); font-size:0.8rem;">Isotope</label>
-                        <select id="calc-iso" class="form-control" onchange="saveHPState()"></select>
-                        <label style="color:var(--text-muted); font-size:0.8rem;">Initial (mCi)</label>
-                        <input type="number" id="calc-a0" class="form-control" placeholder="100" onchange="saveHPState()">
-                        <label style="color:var(--text-muted); font-size:0.8rem;">Date</label>
-                        <input type="date" id="calc-date" class="form-control" onchange="saveHPState()">
-                        <button class="btn" onclick="calculateDecay()" style="width:100%; background:var(--rad);">Calculate</button>
-                    </div>
+    <label style="color:var(--text-muted); font-size:0.8rem;">Isotope</label>
+    <select id="calc-iso" class="form-control" onchange="saveHPState()"></select>
+    
+    <label style="color:var(--text-muted); font-size:0.8rem;">Initial Activity (mCi)</label>
+    <input type="number" id="calc-a0" class="form-control" placeholder="100" onchange="saveHPState()">
+    
+    <div style="display:flex; gap:10px;">
+        <div style="flex:1;">
+            <label style="color:var(--text-muted); font-size:0.8rem;">Reference Date</label>
+            <input type="date" id="calc-date" class="form-control" onchange="saveHPState()">
+        </div>
+        <div style="flex:1;">
+            <label style="color:var(--text-muted); font-size:0.8rem;">Target Date (Default: Now)</label>
+            <input type="date" id="calc-target-date" class="form-control" onchange="saveHPState()">
+        </div>
+    </div>
+
+    <button class="btn" onclick="calculateDecay()" style="width:100%; background:var(--rad);">Calculate</button>
+</div>
                     <div style="text-align:center; background:var(--bg-card); padding:20px; border-radius:10px; display:flex; flex-direction:column; justify-content:center;">
                         <div style="color:var(--text-muted);">Current Activity</div>
                         <div id="calc-result" style="font-size:2.5rem; color:var(--rad); font-weight:bold; margin:10px 0;">---</div>
@@ -408,9 +674,9 @@
                 </div>
                 <div class="dashboard-grid">
                     <div>
-                        <label style="color:var(--text-muted); font-size:0.8rem;">Dose Rate (mR/hr)</label><input type="number" id="dist-d1" class="form-control" placeholder="Rate at source" onchange="saveHPState()">
-                        <label style="color:var(--text-muted); font-size:0.8rem;">Distance 1 (ft/m)</label><input type="number" id="dist-r1" class="form-control" placeholder="Initial Dist (e.g. 1)" onchange="saveHPState()">
-                        <label style="color:var(--text-muted); font-size:0.8rem;">Target Distance (ft/m)</label><input type="number" id="dist-r2" class="form-control" placeholder="New Dist" onchange="saveHPState()">
+                        <label style="color:var(--text-muted); font-size:0.8rem;">Dose Rate (mR/hr)</label><input type="number" id="dist-d1" class="form-control" placeholder="Rate at source">
+                        <label style="color:var(--text-muted); font-size:0.8rem;">Distance 1 (ft/m)</label><input type="number" id="dist-r1" class="form-control" placeholder="Initial Dist (e.g. 1)">
+                        <label style="color:var(--text-muted); font-size:0.8rem;">Target Distance (ft/m)</label><input type="number" id="dist-r2" class="form-control" placeholder="New Dist">
                         <button class="btn" onclick="calcInverseSquare()" style="width:100%; background:var(--info);">Calculate New Rate</button>
                     </div>
                     <div style="text-align:center; background:var(--bg-card); padding:20px; border-radius:10px; display:flex; flex-direction:column; justify-content:center;">
@@ -425,11 +691,11 @@
                 <div class="dashboard-grid">
                     <div>
                         <div class="input-grid">
-                            <div><label style="color:var(--text-muted); font-size:0.8rem;">Isotope (Data available for: Co-60, Cs-137, Ir-192)</label><select id="shield-iso" class="form-control" onchange="saveHPState()"><option value="Co-60">Co-60</option><option value="Cs-137">Cs-137</option><option value="Ir-192">Ir-192</option></select></div>
-                            <div><label style="color:var(--text-muted); font-size:0.8rem;">Material</label><select id="shield-mat" class="form-control" onchange="saveHPState()"><option value="Pb">Lead (Pb)</option><option value="Fe">Iron (Fe)</option><option value="Conc">Concrete</option></select></div>
+                            <div><label style="color:var(--text-muted); font-size:0.8rem;">Isotope (Data available for: Co-60, Cs-137, Ir-192)</label><select id="shield-iso" class="form-control"><option value="Co-60">Co-60</option><option value="Cs-137">Cs-137</option><option value="Ir-192">Ir-192</option></select></div>
+                            <div><label style="color:var(--text-muted); font-size:0.8rem;">Material</label><select id="shield-mat" class="form-control"><option value="Pb">Lead (Pb)</option><option value="Fe">Iron (Fe)</option><option value="Conc">Concrete</option></select></div>
                         </div>
-                        <label style="color:var(--text-muted); font-size:0.8rem;">Initial Dose Rate (mR/hr)</label><input type="number" id="shield-i0" class="form-control" placeholder="1000" onchange="saveHPState()">
-                        <label style="color:var(--text-muted); font-size:0.8rem;">Shield Thickness (cm)</label><input type="number" id="shield-x" class="form-control" placeholder="1.0" onchange="saveHPState()">
+                        <label style="color:var(--text-muted); font-size:0.8rem;">Initial Dose Rate (mR/hr)</label><input type="number" id="shield-i0" class="form-control" placeholder="1000">
+                        <label style="color:var(--text-muted); font-size:0.8rem;">Shield Thickness (cm)</label><input type="number" id="shield-x" class="form-control" placeholder="1.0">
                         <button class="btn" onclick="calcShielding()" style="width:100%; background:var(--comp);">Calculate Shielding</button>
                     </div>
                     <div style="text-align:center; background:var(--bg-card); padding:20px; border-radius:10px; display:flex; flex-direction:column; justify-content:center;">
@@ -444,9 +710,9 @@
                 <div class="dashboard-grid">
                     <div>
                         <label style="color:var(--text-muted); font-size:0.8rem;">Field Dose Rate (mR/hr)</label>
-                        <input type="number" id="stay-rate" class="form-control" placeholder="500" onchange="saveHPState()">
+                        <input type="number" id="stay-rate" class="form-control" placeholder="500">
                         <label style="color:var(--text-muted); font-size:0.8rem;">Available Dose Margin (mR)</label>
-                        <input type="number" id="stay-limit" class="form-control" placeholder="100" onchange="saveHPState()">
+                        <input type="number" id="stay-limit" class="form-control" placeholder="100">
                         <button class="btn" onclick="calcStayTime()" style="width:100%; background:var(--navy);">Calculate Time</button>
                     </div>
                     <div style="text-align:center; background:var(--bg-card); padding:20px; border-radius:10px; display:flex; flex-direction:column; justify-content:center;">
@@ -461,11 +727,11 @@
                 <div class="dashboard-grid">
                     <div>
                         <div class="input-grid">
-                            <div><label style="color:var(--text-muted); font-size:0.8rem;">Dose Rate (mR/hr)</label><input type="number" id="alara-rate" class="form-control" placeholder="100" onchange="saveHPState()"></div>
-                            <div><label style="color:var(--text-muted); font-size:0.8rem;">Crew Size</label><input type="number" id="alara-crew" class="form-control" placeholder="3" onchange="saveHPState()"></div>
+                            <div><label style="color:var(--text-muted); font-size:0.8rem;">Dose Rate (mR/hr)</label><input type="number" id="alara-rate" class="form-control" placeholder="100"></div>
+                            <div><label style="color:var(--text-muted); font-size:0.8rem;">Crew Size</label><input type="number" id="alara-crew" class="form-control" placeholder="3"></div>
                         </div>
                         <label style="color:var(--text-muted); font-size:0.8rem;">Job Duration (Minutes)</label>
-                        <input type="number" id="alara-time" class="form-control" placeholder="60" onchange="saveHPState()">
+                        <input type="number" id="alara-time" class="form-control" placeholder="60">
                         <button class="btn" onclick="calcAlara()" style="width:100%; background:var(--rad);">Estimate Collective Dose</button>
                     </div>
                     <div style="text-align:center; background:var(--bg-card); padding:20px; border-radius:10px; display:flex; flex-direction:column; justify-content:center;">
@@ -498,16 +764,124 @@
 </div>
 
 <div id="settingsModal" class="modal-overlay"><div class="modal"><h3>Team Settings</h3><div id="teamList" style="margin-bottom:10px;"></div><div style="display:flex; gap:10px;"><input id="newMember" class="form-control" style="margin:0" placeholder="Name/Initials"><button class="btn" onclick="addTeamMember()">Add</button></div><div style="text-align:right; margin-top:20px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('settingsModal')">Done</button></div></div></div>
-<div id="projectModal" class="modal-overlay"><div class="modal"><h3>New Project</h3><input id="pTitle" class="form-control" placeholder="Project Name"><input id="pDesc" class="form-control" placeholder="Brief Description"><div class="input-grid"><div><label style="font-size:0.7rem; color:var(--text-muted);">DUE DATE</label><input id="pDate" type="date" class="form-control"></div><div><label style="font-size:0.7rem; color:var(--text-muted);">INITIAL BUDGET ($)</label><input id="pCost" type="number" class="form-control" placeholder="0.00"></div></div><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('projectModal')">Cancel</button><button class="btn" onclick="addProject()">Save</button></div></div></div>
+
+<div id="estimateViewModal" class="modal-overlay">
+    <div class="modal" style="max-width:600px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3><i class="fa-solid fa-file-invoice"></i> Estimate Details</h3>
+            <div id="ige-dl-btn-container"></div> </div>
+        <div style="background:var(--bg-input); padding:10px; border-radius:6px; margin-bottom:15px; font-size:0.8rem; color:var(--text-muted);">
+            <div id="ige-meta-desc" style="font-weight:bold; color:var(--text-main); margin-bottom:5px;"></div>
+            <div id="ige-meta-date"></div>
+        </div>
+        <div style="max-height:300px; overflow-y:auto; border:1px solid var(--border); border-radius:4px;">
+            <table class="sci-table">
+                <thead>
+                    <tr style="background:var(--bg-card); position:sticky; top:0;">
+                        <th>Category</th><th>Item</th><th style="text-align:right">Rate</th><th style="text-align:right">Qty</th><th style="text-align:right">Total</th>
+                    </tr>
+                </thead>
+                <tbody id="ige-view-list"></tbody>
+            </table>
+        </div>
+        <div style="text-align:right; margin-top:10px;">
+            <div style="font-weight:bold; font-size:1.1rem; color:var(--money);">Total: <span id="ige-view-total"></span></div>
+        </div>
+        <div style="text-align:right; margin-top:20px;">
+            <button class="btn-sync" style="width:auto;" onclick="closeModal('estimateViewModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="chartModal" class="modal-overlay">
+    <div class="modal" style="width:95%; max-width:1200px; height:80vh; display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3>Financial Analysis</h3>
+            <button class="btn-sync" style="width:auto;" onclick="closeModal('chartModal')"><i class="fa-solid fa-xmark"></i> Close</button>
+        </div>
+        <div id="large-chart-container" style="flex:1; width:100%; overflow:hidden; display:flex; flex-direction:column;"></div>
+    </div>
+</div>
+
+<div id="projectModal" class="modal-overlay">
+    <div class="modal">
+        <h3>New Project</h3>
+        <input id="pTitle" class="form-control" placeholder="Project Name">
+        <input id="pDesc" class="form-control" placeholder="Brief Description">
+        <div class="input-grid">
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">UIC</label><input id="pUic" class="form-control" placeholder="N00000"></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">LOCATION</label><input id="pLoc" class="form-control" placeholder="City, ST"></div>
+        </div>
+        <div class="input-grid">
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">DUE DATE</label><input id="pDate" type="date" class="form-control"></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">INITIAL BUDGET ($)</label><input id="pCost" type="number" class="form-control" placeholder="0.00"></div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn-sync" style="width:auto;" onclick="closeModal('projectModal')">Cancel</button>
+            <button class="btn" onclick="addProject()">Save</button>
+        </div>
+    </div>
+</div>
+
 <div id="expenseModal" class="modal-overlay"><div class="modal"><h3>Log Expense</h3><label style="font-size:0.7rem; color:var(--text-muted);">PROJECT</label><select id="expProj" class="form-control"></select><input id="expDesc" class="form-control" placeholder="Description"><div class="input-grid"><div style="flex:2;"><label style="font-size:0.7rem; color:var(--text-muted);">FUNDING SOURCE</label><select id="expFund" class="form-control"><option>Navy General Fund</option><option>Command Funded</option><option>Other</option></select></div><div style="flex:1;"><label style="font-size:0.7rem; color:var(--text-muted);">AMOUNT</label><input id="expAmt" type="number" class="form-control" placeholder="0.00"></div></div><div style="margin-bottom:10px;"><label style="font-size:0.7rem; color:var(--text-muted);">DATE</label><input id="expDate" type="date" class="form-control"></div><select id="expStatus" class="form-control"><option>Invoiced</option><option>Paid</option><option>Encumbered</option></select><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('expenseModal')">Cancel</button><button class="btn" onclick="addExpense()">Add</button></div></div></div>
 <div id="allocModal" class="modal-overlay"><div class="modal"><h3>Add Funding Allocation</h3><label style="font-size:0.7rem; color:var(--text-muted);">PROJECT</label><select id="allocProj" class="form-control"></select><div class="input-grid"><div style="flex:2;"><label style="font-size:0.7rem; color:var(--text-muted);">SOURCE</label><select id="allocFund" class="form-control"><option>Navy General Fund</option><option>Command Funded</option><option>Other</option></select></div><div style="flex:1;"><label style="font-size:0.7rem; color:var(--text-muted);">AMOUNT</label><input id="allocAmt" type="number" class="form-control" placeholder="0.00"></div></div><input id="allocDesc" class="form-control" placeholder="Description (e.g. Q3 Top-up)"><div style="margin-bottom:10px;"><label style="font-size:0.7rem; color:var(--text-muted);">DATE</label><input id="allocDate" type="date" class="form-control"></div><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('allocModal')">Cancel</button><button class="btn" onclick="addAllocation()">Add Funds</button></div></div></div>
 <div id="budgetModal" class="modal-overlay"><div class="modal"><h3>Base Budget Manager</h3><p style="color:var(--text-muted); font-size:0.8rem;">Edit the <b>Initial Budget</b> for projects below.</p><div id="budgetManagerList" style="max-height:300px; overflow-y:auto; margin-bottom:15px;"></div><div style="background:var(--bg-input); padding:10px; border-radius:6px; font-size:0.75rem; color:var(--warning); margin-bottom:15px;"><i class="fa-solid fa-triangle-exclamation"></i> <b>Note:</b> Editing values here modifies the historical "Initial Budget" record. Default source is Navy General Fund. For specific sources, use "+ Funding".</div><div style="text-align:right;"><button class="btn-sync" style="width:auto;" onclick="closeModal('budgetModal')">Done</button></div></div></div>
-<div id="invModal" class="modal-overlay"><div class="modal"><h3>Log Container</h3><div class="input-grid"><input id="invId" class="form-control" placeholder="ID"><select id="invIso" class="form-control"></select></div><div class="input-grid"><input id="invAct" class="form-control" placeholder="Activity"><input id="invDose" type="number" class="form-control" placeholder="Dose (mR/hr)"></div><div style="margin:10px 0;"><label style="font-size:0.7rem; color:var(--text-muted);">FILL LEVEL: <span id="invFillLabel" style="font-weight:bold; color:var(--accent);">0%</span></label><input id="invFill" type="range" min="0" max="100" value="0" style="width:100%" oninput="document.getElementById('invFillLabel').innerText = this.value + '%'"></div><label style="font-size:0.7rem; color:var(--text-muted);">ASSIGN TO PROJECT</label><select id="invProj" class="form-control"></select><select id="invStatus" class="form-control"><option>Stored</option><option>Staged</option><option>Shipped</option></select><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('invModal')">Cancel</button><button class="btn" onclick="addInventory()">Log</button></div></div></div>
+<div id="invModal" class="modal-overlay"><div class="modal"><h3>Log Container</h3><div class="input-grid">
+    <input id="invId" class="form-control" placeholder="ID">
+    <select id="invIso" class="form-control"></select>
+    <input id="invDate" type="date" class="form-control" title="Date Measured/Received">
+</div><div class="input-grid"><input id="invAct" class="form-control" placeholder="Activity"><input id="invDose" type="number" class="form-control" placeholder="Dose (mR/hr)"></div><div style="margin:10px 0;"><label style="font-size:0.7rem; color:var(--text-muted);">FILL LEVEL: <span id="invFillLabel" style="font-weight:bold; color:var(--accent);">0%</span></label><input id="invFill" type="range" min="0" max="100" value="0" style="width:100%" oninput="document.getElementById('invFillLabel').innerText = this.value + '%'"></div><label style="font-size:0.7rem; color:var(--text-muted);">ASSIGN TO PROJECT</label><select id="invProj" class="form-control"></select><select id="invStatus" class="form-control"><option>Stored</option><option>Staged</option><option>Shipped</option></select><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('invModal')">Cancel</button><button class="btn" onclick="addInventory()">Log</button></div></div></div>
 <div id="exportModal" class="modal-overlay"><div class="modal"><h3>Export Data</h3><p style="color:var(--text-muted);">Copy this code.</p><textarea id="exportText" class="form-control" style="height:200px; font-size:0.8rem;"></textarea><div style="text-align:right; margin-top:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('exportModal')">Close</button><button class="btn" onclick="copyExport()">Copy</button></div></div></div>
 <div id="importModal" class="modal-overlay"><div class="modal"><h3>Import Data</h3><p style="color:var(--text-muted);">Paste data code.</p><textarea id="importText" class="form-control" style="height:200px; font-size:0.8rem;"></textarea><div style="text-align:right; margin-top:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('importModal')">Cancel</button><button class="btn" onclick="runImport()">Load</button></div></div></div>
 
+<div id="exemptModal" class="modal-overlay">
+    <div class="modal">
+        <h3>Log Exempt Disposal</h3>
+        <div class="input-grid">
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">LOG ID (Optional)</label><input id="exLogId" class="form-control" placeholder="Auto-generate"></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">DATE REC'D</label><input id="exDate" type="date" class="form-control"></div>
+        </div>
+        <label style="font-size:0.7rem; color:var(--text-muted)">GENERATING COMMAND</label>
+        <input id="exCmd" class="form-control" placeholder="Command Name">
+        <label style="font-size:0.7rem; color:var(--text-muted)">DESCRIPTION / ITEM</label>
+        <input id="exDesc" class="form-control" placeholder="Item Description">
+        <div class="input-grid">
+            <input id="exQty" class="form-control" placeholder="Qty">
+            <input id="exIso" class="form-control" placeholder="Isotope">
+            <input id="exAct" class="form-control" placeholder="Activity">
+        </div>
+        <label style="font-size:0.7rem; color:var(--text-muted)">REGULATORY BASIS</label>
+        <select id="exBasis" class="form-control">
+            <option>10 CFR § 30.15</option>
+            <option>10 CFR § 30.19</option>
+            <option>10 CFR § 40.13</option>
+            <option>Other</option>
+        </select>
+        <label style="font-size:0.7rem; color:var(--text-muted)">DISPOSAL PATHWAY</label>
+        <select id="exPath" class="form-control">
+            <option>E-Waste Recycling</option>
+            <option>Scrap Metal</option>
+            <option>Municipal Trash</option>
+            <option>Transfer</option>
+        </select>
+        <div class="input-grid">
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">REVIEWER</label><input id="exRev" class="form-control" placeholder="Initials"></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">AUTH DATE</label><input id="exAuthDate" type="date" class="form-control"></div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn-sync" style="width:auto;" onclick="closeModal('exemptModal')">Cancel</button>
+            <button class="btn" onclick="addExemptEntry()">Save Entry</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    const APP_VER = "RadFlow v25.3";
+    const APP_VER = "RadFlow v25.7";
+
+    const toastBox = document.createElement('div');
+    toastBox.className = 'toast-container';
+    document.body.appendChild(toastBox);
+
     document.title = APP_VER;
     document.getElementById('app-title-display').innerText = APP_VER;
 
@@ -566,31 +940,293 @@
         return new Date(d.getTime() - offset).toISOString().split('T')[0];
     };
 
-    const STARTER_DATA = {
+const STARTER_DATA = {
         projects: [
-            { id: 101, title: "Class B Resin Shipment", status: "Active", health: "green", due: "2025-12-30", desc: "Transport of CNS 8-120B Cask.", links:[], tasks: [{id: 1, text: "Verify Cask Cert", done: true, assign: "JD", prio: "high"}, {id: 2, text: "Notify Broker", done: true, assign: "AS", prio: "med"}, {id: 3, text: "Schedule 100-ton Crane", done: false, assign: "JD", prio: "high"}] },
-            { id: 102, title: "Lab 4 Cleanout", status: "Planning", health: "yellow", due: "2026-02-15", desc: "Volume reduction of DAW.", links:[], tasks: [{id: 1, text: "Order 10 B-25 Boxes", done: false, assign: "AS", prio: "low"}] }
+            { 
+                id: 101, 
+                title: "Class B Resin Shipment", 
+                uic: "N00014", 
+                location: "Norfolk, VA", 
+                region: "East", 
+                reqDate: "2025-06-15", 
+                jmcId: "2025-045", 
+                rcn: "25-0012", 
+                pickupStatus: "Scheduled", 
+                status: "Active", 
+                health: "green", 
+                due: "2025-12-30", 
+                desc: "Transport of CNS 8-120B Cask containing exhausted resin liners.", 
+                links:[], 
+                tasks: [
+                    {id: 1, text: "Verify Cask Cert", done: true, assign: "JD", prio: "high"}, 
+                    {id: 2, text: "Notify Broker", done: true, assign: "AS", prio: "med"}, 
+                    {id: 3, text: "Schedule 100-ton Crane", done: false, assign: "JD", prio: "high"}
+                ],
+                updatesSent: ["2025-10-01"]
+            },
+            { 
+                id: 102, 
+                title: "Lab 4 Cleanout", 
+                uic: "N66001", 
+                location: "San Diego, CA", 
+                region: "West", 
+                reqDate: "2025-08-01", 
+                jmcId: "2025-099", 
+                rcn: "25-0104", 
+                pickupStatus: "Requested", 
+                status: "Planning", 
+                health: "yellow", 
+                due: "2026-02-15", 
+                desc: "Volume reduction and segregation of legacy Dry Active Waste (DAW).", 
+                links:[], 
+                tasks: [
+                    {id: 1, text: "Order 10 B-25 Boxes", done: false, assign: "AS", prio: "low"},
+                    {id: 2, text: "Survey Lab Corners", done: true, assign: "JD", prio: "med"}
+                ],
+                updatesSent: []
+            },
+            { 
+                id: 103, 
+                title: "Building 5 Decommissioning", 
+                uic: "N4523A", 
+                location: "Bremerton, WA", 
+                region: "West", 
+                reqDate: "2025-04-10", 
+                jmcId: "2025-012", 
+                rcn: "25-0003", 
+                pickupStatus: "Shipped", 
+                status: "Active", 
+                health: "green", 
+                due: "2025-11-20", 
+                desc: "Large scale D&D of former radiography bay. Concrete scabbling required.", 
+                links: [
+                    {name: "Survey Map", url: "file:///S:/RadSafety/B5_Map.pdf"},
+                    {name: "MARSSIM Plan", url: "https://www.nrc.gov/marssim"}
+                ], 
+                tasks: [
+                    {id: 1, text: "Hire Scabbling Contractor", done: true, assign: "Admin", prio: "high"},
+                    {id: 2, text: "Final Status Survey (FSS)", done: false, assign: "AS", prio: "high"},
+                    {id: 3, text: "Dispose of Rubble", done: false, assign: "JD", prio: "med"}
+                ],
+                updatesSent: ["2025-09-15", "2025-08-01"]
+            },
+            { 
+                id: 104, 
+                title: "Quarterly Source Roundup", 
+                uic: "N00014", 
+                location: "Washington, DC", 
+                region: "East", 
+                reqDate: "2025-01-10", 
+                jmcId: "2025-001", 
+                rcn: "25-0001", 
+                pickupStatus: "Complete", 
+                status: "Complete", 
+                health: "green", 
+                due: "2025-03-01", 
+                desc: "Consolidation of unwanted check sources from R&D labs.", 
+                links:[], 
+                tasks: [
+                    {id: 1, text: "Collect Pu-239 sources", done: true, assign: "JD", prio: "high"}
+                ],
+                updatesSent: []
+            },
+            { 
+                id: 105, 
+                title: "Yokosuka Emergency Support", 
+                uic: "N62742", 
+                location: "Yokosuka, Japan", 
+                region: "Far-East", 
+                reqDate: "2025-11-01", 
+                jmcId: "2025-200", 
+                rcn: "25-0400", 
+                pickupStatus: "Pending", 
+                status: "Review", 
+                health: "red", 
+                due: "2025-12-01", 
+                desc: "Emergency technical support for detection anomaly. Funding critical.", 
+                links:[], 
+                tasks: [
+                    {id: 1, text: "Secure Travel Orders", done: true, assign: "Admin", prio: "high"},
+                    {id: 2, text: "Ship Equipment", done: false, assign: "AS", prio: "high"}
+                ],
+                updatesSent: ["2025-10-20"]
+            },
+            { 
+                id: 106, 
+                title: "Base-wide Tritium Sign Disposal", 
+                uic: "N00250", 
+                location: "Rota, Spain", 
+                region: "Europe", 
+                reqDate: "2025-09-01", 
+                jmcId: "2025-088", 
+                rcn: "25-0210", 
+                pickupStatus: "Staged", 
+                status: "Active", 
+                health: "green", 
+                due: "2026-01-15", 
+                desc: "Consolidation of expired H-3 exit signs from barracks renovation.", 
+                links:[], 
+                tasks: [
+                    {id: 1, text: "Wipe Test 150 Signs", done: false, assign: "M. Scott", prio: "med"},
+                    {id: 2, text: "Package into Tri-walls", done: false, assign: "M. Scott", prio: "low"}
+                ],
+                updatesSent: []
+            },
+            { 
+                id: 107, 
+                title: "NDT Source Exchange (SSN-774)", 
+                uic: "N4523A", 
+                location: "Pearl Harbor, HI", 
+                region: "Far-East", 
+                reqDate: "2025-02-14", 
+                jmcId: "2025-030", 
+                rcn: "25-0055", 
+                pickupStatus: "Shipped", 
+                status: "Complete", 
+                health: "green", 
+                due: "2025-02-28", 
+                desc: "Urgent exchange of decayed Ir-192 radiography camera source.", 
+                links: [
+                   {name: "Source Cert (New)", url: "file:///S:/Certs/Ir192_New.pdf"}
+                ], 
+                tasks: [
+                    {id: 1, text: "Receive New Source", done: true, assign: "JD", prio: "high"},
+                    {id: 2, text: "Return Old Source", done: true, assign: "JD", prio: "high"}
+                ],
+                updatesSent: ["2025-02-20"]
+            },
+            { 
+                id: 108, 
+                title: "Medical Irradiator Decomm", 
+                uic: "N00014", 
+                location: "Bethesda, MD", 
+                region: "East", 
+                reqDate: "2025-07-01", 
+                jmcId: "2025-110", 
+                rcn: "25-0500", 
+                pickupStatus: "Planning", 
+                status: "Planning", 
+                health: "yellow", 
+                due: "2026-06-30", 
+                desc: "Removal of legacy Cs-137 blood irradiator. Security escort required.", 
+                links:[], 
+                tasks: [
+                    {id: 1, text: "Submit security plan", done: false, assign: "Admin", prio: "high"},
+                    {id: 2, text: "Hire riggers", done: false, assign: "AS", prio: "med"}
+                ],
+                updatesSent: []
+            }
         ],
         allocations: [
             { id: 1, projId: 101, date: "2025-01-01", amount: 85000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" },
-            { id: 2, projId: 102, date: "2025-01-10", amount: 12000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" }
+            { id: 2, projId: 102, date: "2025-01-10", amount: 12000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" },
+            { id: 3, projId: 103, date: "2025-02-01", amount: 150000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" },
+            { id: 4, projId: 103, date: "2025-06-01", amount: 50000, desc: "Command Top-up", type: 'adj', fundSource: "Command Funded" },
+            { id: 5, projId: 104, date: "2025-01-05", amount: 5000, desc: "Initial Budget", type: 'base', fundSource: "Other" },
+            { id: 6, projId: 105, date: "2025-10-15", amount: 25000, desc: "Emergency Auth", type: 'base', fundSource: "Navy General Fund" },
+            { id: 7, projId: 106, date: "2025-08-01", amount: 8000, desc: "Initial Budget", type: 'base', fundSource: "Command Funded" },
+            { id: 8, projId: 107, date: "2025-01-20", amount: 3500, desc: "Exchange Fee", type: 'base', fundSource: "Navy General Fund" },
+            { id: 9, projId: 108, date: "2025-06-15", amount: 250000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" }
         ],
-        inventory: [{id: "HIC-24-01", iso: "Co-60", act: "35 Ci", dose: 4500, fill: 95, status: "Staged", projId: 101, logDate: "2025-01-01"}, {id: "DRM-24-55", iso: "H-3", act: "15 mCi", dose: 0.5, fill: 40, status: "Stored", projId: null, logDate: "2025-01-15"}],
-        expenses: [{id: 1, projId: 101, desc: "Cask Rental", amount: 15000, date: "2025-11-01", status: "Paid", fundSource: "Navy General Fund"}],
-        team: ["JD", "AS", "Admin"],
-        chat: [{user: "System", time: "01/01 08:00 AM", text: `${APP_VER} initialized.`}],
-        wiki: "LOGBOOK:\n- Use this space for daily operational notes."
+        inventory: [
+            {id: "HIC-24-01", iso: "Co-60", act: "35 Ci", dose: 4500, fill: 95, status: "Staged", projId: 101, logDate: "2025-01-01"}, 
+            {id: "DRM-24-55", iso: "H-3", act: "15 mCi", dose: 0.5, fill: 40, status: "Stored", projId: null, logDate: "2025-01-15"},
+            {id: "BOX-25-01", iso: "Cs-137", act: "200 mCi", dose: 150, fill: 100, status: "Shipped", projId: 103, logDate: "2025-03-10"},
+            {id: "BOX-25-02", iso: "Cs-137", act: "180 mCi", dose: 140, fill: 100, status: "Shipped", projId: 103, logDate: "2025-03-12"},
+            {id: "DRM-25-10", iso: "Am-241", act: "50 uCi", dose: 0.1, fill: 10, status: "Stored", projId: 102, logDate: "2025-08-05"},
+            {id: "BOX-25-88", iso: "H-3", act: "5 Ci", dose: 1.2, fill: 85, status: "Staged", projId: 106, logDate: "2025-09-10"},
+            {id: "CAM-774-A", iso: "Ir-192", act: "85 Ci", dose: 6500, fill: 100, status: "Shipped", projId: 107, logDate: "2025-02-15"},
+            {id: "IRR-01-X", iso: "Cs-137", act: "1200 Ci", dose: 85000, fill: 100, status: "Stored", projId: 108, logDate: "2025-07-10"}
+        ],
+        expenses: [
+            {id: 1, projId: 101, desc: "Cask Rental", amount: 15000, date: "2025-11-01", status: "Paid", fundSource: "Navy General Fund"},
+            {id: 2, projId: 103, desc: "Contract Labor (Week 1)", amount: 12500, date: "2025-04-15", status: "Invoiced", fundSource: "Navy General Fund"},
+            {id: 3, projId: 103, desc: "Contract Labor (Week 2)", amount: 12500, date: "2025-04-22", status: "Invoiced", fundSource: "Navy General Fund"},
+            {id: 4, projId: 103, desc: "Specialized Tooling", amount: 8400, date: "2025-05-01", status: "Paid", fundSource: "Command Funded"},
+            {id: 5, projId: 104, desc: "FedEx Shipping", amount: 450, date: "2025-02-15", status: "Paid", fundSource: "Other"},
+            {id: 6, projId: 105, desc: "Last Minute Airfare", amount: 4200, date: "2025-10-25", status: "Encumbered", fundSource: "Navy General Fund"},
+            {id: 7, projId: 107, desc: "Source Exchange Fee", amount: 3200, date: "2025-02-28", status: "Paid", fundSource: "Navy General Fund"}
+        ],
+        exemptLog: [
+            {id: "2025-001", date: "2025-03-14", cmd: "PSNS & IMF", desc: "Electron Tube, JAN-CTL-6551", qty: "12", iso: "Kr-85", act: "30 µCi", basis: "10 CFR § 30.15", path: "E-Waste Recycling", rev: "J. Doe", authDate: "2025-07-25"},
+            {id: "2025-002", date: "2025-05-07", cmd: "NAVSTA NORFOLK", desc: "Lensatic Compass", qty: "1", iso: "H-3", act: "120 mCi", basis: "10 CFR § 30.19", path: "Transfer", rev: "A. Smith", authDate: ""},
+            {id: "2025-003", date: "2025-06-12", cmd: "NSWCDD", desc: "Smoke Detectors (Expired)", qty: "50", iso: "Am-241", act: "50 uCi", basis: "10 CFR § 30.20", path: "Municipal Trash", rev: "J. Doe", authDate: "2025-06-15"},
+            {id: "2025-004", date: "2025-08-22", cmd: "NAS JAX", desc: "Gas Chromatograph Foil", qty: "2", iso: "Ni-63", act: "15 mCi", basis: "10 CFR § 31.5", path: "Transfer", rev: "AS", authDate: "2025-09-01"},
+            {id: "2025-005", date: "2025-09-05", cmd: "FRC WEST", desc: "Thoriated Welding Rods", qty: "5 lbs", iso: "Th-232", act: "0.5 uCi", basis: "10 CFR § 40.13", path: "Scrap Metal", rev: "JD", authDate: "2025-09-10"},
+            {id: "2025-006", date: "2025-10-12", cmd: "NAVSEA", desc: "Spark Gaps (F-18)", qty: "8", iso: "Kr-85", act: "2 mCi", basis: "10 CFR § 30.15", path: "Transfer", rev: "AS", authDate: ""},
+            {id: "2025-007", date: "2025-11-01", cmd: "BUMED", desc: "LSC Vials (Deregulated)", qty: "10 gal", iso: "H-3/C-14", act: "<0.05 uCi/g", basis: "10 CFR § 20.2005", path: "Incineration", rev: "JD", authDate: "2025-11-05"},
+            {id: "2025-008", date: "2025-11-15", cmd: "NUWC DIV", desc: "Static Eliminators (Brushes)", qty: "2", iso: "Po-210", act: "500 uCi", basis: "10 CFR § 31.3", path: "Transfer", rev: "Admin", authDate: ""}
+        ],
+        team: ["JD", "AS", "Admin", "M. Scott", "D. Schrute"],
+        chat: [
+            {user: "System", time: "01/01 08:00 AM", text: `${APP_VER} initialized.`},
+            {user: "Admin", time: "01/01 09:15 AM", text: "Welcome to the new fiscal year tracker. Please update your project statuses."},
+            {user: "JD", time: "01/02 10:00 AM", text: "Working on the Cask shipment. Crane is scheduled tentatively."},
+            {user: "System", time: "03/10 02:30 PM", text: "Project <b>Building 5 Decommissioning</b> moved to Active."},
+            {user: "AS", time: "04/05 11:45 AM", text: "Heads up: Medical Irradiator project is coming down the pipe. Big budget item."}
+        ],
+        wiki: "LOGBOOK:\n- Use this space for daily operational notes.\n- 01/15: Annual calibration due for meter SN: 44521.\n- 02/20: Updated waste acceptance criteria received from WCS.\n- 09/01: Tritium exit sign project approved for Rota."
     };
 
     let projects = []; let inventory = []; let expenses = []; let allocations = []; let chatLog = []; let team = []; let wikiText = "";
-    let estItems = []; 
+    let estItems = []; let exemptLog = [];
     let showComplete = false; let viewMode = 'list'; let hpState = {iso:'Co-60', a0:'', date:''};
 
+// Dashboard Widget States ---
+    let dashTaskSort = 'prio';   // Options: 'prio', 'oldest', 'newest'
+    let dashInvSort = 'dose';    // Options: 'dose', 'fill', 'recent'
+
+    let dashProjSort = 'newest'; 
+
+    function setDashSort(type, mode) {
+        if(type === 'task') dashTaskSort = mode;
+        if(type === 'inv') dashInvSort = mode;
+        
+        // NEW: Handle Project Sort
+        if(type === 'proj') dashProjSort = mode; 
+        
+        render(); 
+    }
+
     const esc = (t) => {
-        if (t === null || t === undefined) return '';
-        return t.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-    };
-    const jsEsc = (t) => t.replace(/'/g, "\\'");
+    if (t === null || t === undefined) return '';
+    return t.toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+};
+
+    let budgetScope = 'all'; // 'range' or 'all'
+
+    function toggleBudgetScope() {
+        budgetScope = budgetScope === 'range' ? 'all' : 'range';
+        render(); // Re-render to update the table numbers
+    }
+
+let finStart = "";
+    let finEnd = "";
+
+    function applyFinFilter() {
+        finStart = document.getElementById('fin-start').value;
+        finEnd = document.getElementById('fin-end').value;
+        render(); // Re-render the dashboard with new filters
+    }
+
+    function clearFinFilter() {
+        finStart = "";
+        finEnd = "";
+        document.getElementById('fin-start').value = "";
+        document.getElementById('fin-end').value = "";
+        render();
+    }
+
+// Escapes characters that break JavaScript strings inside HTML attributes
+const jsEsc = (t) => {
+    if (t === null || t === undefined) return '';
+    return t.toString().replace(/['"\\]/g, '\\$&');
+};
     
     function formatLink(url) {
         let clean = url.trim().replace(/^"|"$/g, '');
@@ -620,6 +1256,49 @@
         render(); 
     }
 
+    function generateLogId() {
+        const yr = new Date().getFullYear();
+        const count = exemptLog.length + 1;
+        return `${yr}-${count.toString().padStart(3, '0')}`;
+    }
+
+    function addExemptEntry() {
+        const entry = {
+            id: document.getElementById('exLogId').value || generateLogId(),
+            date: document.getElementById('exDate').value,
+            cmd: document.getElementById('exCmd').value,
+            desc: document.getElementById('exDesc').value,
+            qty: document.getElementById('exQty').value,
+            iso: document.getElementById('exIso').value,
+            act: document.getElementById('exAct').value,
+            basis: document.getElementById('exBasis').value,
+            path: document.getElementById('exPath').value,
+            rev: document.getElementById('exRev').value,
+            authDate: document.getElementById('exAuthDate').value
+        };
+        exemptLog.push(entry);
+        saveLocally();
+        render();
+        closeModal('exemptModal');
+        showToast("Log Entry Added");
+    }
+    
+    function downloadExemptCSV() {
+        let csv = "Log #,Date Received,Command,Description,Qty,Nuclide,Activity,Basis,Pathway,Reviewer,Date Authorized\n";
+        exemptLog.forEach(e => {
+            const cleanDesc = `"${(e.desc||'').replace(/"/g, '""')}"`;
+            csv += `${e.id},${e.date},"${e.cmd}",${cleanDesc},${e.qty},${e.iso},"${e.act}","${e.basis}","${e.path}","${e.rev}",${e.authDate}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `exempt_log_${getTodayStr()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
     function getProjectBudget(pid) {
         return allocations.filter(a => a.projId === pid).reduce((sum, a) => sum + (parseFloat(a.amount)||0), 0);
     }
@@ -643,6 +1322,65 @@
         return 'OTH';
     }
 
+function expandChart() {
+        // 1. Open the modal
+        openModal('chartModal');
+        
+        // 2. Temporarily point the chart logic to the large container
+        const originalContainer = document.getElementById('monthly-spend-chart');
+        const largeContainer = document.getElementById('large-chart-container');
+        
+        // We create a temporary div ID for the render function to find
+        largeContainer.innerHTML = '<div id="temp-large-chart" class="bar-chart-v" style="height:100%"></div>';
+        
+        // 3. Hijack the render function logic slightly
+        // We need to pass the target ID to renderMonthlyChart. 
+        // Since we can't easily change the function signature everywhere, 
+        // we'll copy the logic specifically for this view or modify renderMonthlyChart.
+        
+        // EASIER WAY: Modify renderMonthlyChart to accept a targetID
+        renderMonthlyChart(null, 'temp-large-chart'); 
+    }
+
+function calculateDecay() {
+    const iso = document.getElementById('calc-iso').value;
+    const a0 = parseFloat(document.getElementById('calc-a0').value);
+    const dStr = document.getElementById('calc-date').value;
+    
+    // --- FIX: Define tStr so the math below works ---
+    const tStr = document.getElementById('calc-target-date').value; 
+    
+    if(!iso || !a0 || !dStr) {
+        document.getElementById('calc-result').innerText = "---";
+        return;
+    }
+
+    const hl = ISOTOPE_DB[iso].hl; 
+    const d1 = new Date(dStr);
+    
+    // This line works now because tStr is defined above
+    const d2 = tStr ? new Date(tStr) : new Date();
+    
+    const years = (d2 - d1) / (1000 * 60 * 60 * 24 * 365.25);
+    
+    const lambda = Math.log(2) / hl;
+    const at = a0 * Math.exp(-lambda * years);
+    
+    document.getElementById('calc-result').innerText = at < 1 ? at.toFixed(4) : at.toFixed(2);
+    
+    const timeLabel = years < 0 ? "years prior" : "years decay";
+    showToast(`Calculated: ${Math.abs(years).toFixed(2)} ${timeLabel}`);
+}
+
+    // Clear Estimate
+    function clearEstimate() {
+        if(confirm("Clear current estimate line items?")) {
+            estItems = [];
+            calcEstimate();
+            showToast("Estimate Cleared");
+        }
+    }
+
     function getDominantSource(pid) {
         const allocs = allocations.filter(a => a.projId === pid);
         if(!allocs.length) return { name: "Unfunded", short: "---", color: "var(--text-muted)" };
@@ -657,14 +1395,21 @@
     }
 
     function getDueStatus(dateStr) {
-        if(!dateStr) return { text: "No Date", color: "var(--text-muted)" };
-        const today = new Date(); today.setHours(0,0,0,0);
-        const due = new Date(dateStr); due.setHours(0,0,0,0);
-        const diff = (due - today) / (1000 * 60 * 60 * 24);
-        if(diff < 0) return { text: `${Math.abs(Math.floor(diff))} Days Overdue`, color: "var(--danger)" };
-        if(diff === 0) return { text: "Due Today", color: "var(--warning)" };
-        return { text: `${Math.floor(diff)} Days Left`, color: "var(--info)" };
-    }
+    if(!dateStr) return { text: "No Date", color: "var(--text-muted)" };
+    
+    // --- FIX: Compare "YYYY-MM-DD" strings directly to avoid Timezone math ---
+    const todayStr = getTodayStr(); // Uses local time already
+    
+    if (dateStr === todayStr) return { text: "Due Today", color: "var(--warning)" };
+    if (dateStr < todayStr) return { text: "Overdue", color: "var(--danger)" };
+    
+    // Calculate days left for future only
+    const d1 = new Date(dateStr);
+    const d2 = new Date(todayStr);
+    const diff = (d1 - d2) / (1000 * 60 * 60 * 24);
+    
+    return { text: `${Math.ceil(diff)} Days Left`, color: "var(--info)" };
+}
 
     function updateEstItems() {
         const cat = document.getElementById('est-cat').value;
@@ -688,9 +1433,7 @@
         const itemKey = document.getElementById('est-item').value;
         const qty = parseFloat(document.getElementById('est-qty').value);
         const rate = parseFloat(document.getElementById('est-rate').value);
-        
         if(!qty || !rate) return;
-        
         const itemData = COST_DB[cat][itemKey];
         estItems.push({
             id: Date.now(),
@@ -701,16 +1444,20 @@
             total: rate * qty
         });
         document.getElementById('est-qty').value = '';
+
+	saveLocally();
+
         calcEstimate();
     }
     function removeEstItem(id) {
         if(confirm("Remove this line item?")) {
             estItems = estItems.filter(i => i.id !== id);
+
+	    saveLocally();
+
             calcEstimate();
         }
     }
-    
-    // FIX: Completely rewritten to use estItems array
     function calcEstimate() {
         let itemsTotal = 0;
         const tbody = document.getElementById('est-list');
@@ -718,63 +1465,259 @@
             itemsTotal += i.total;
             return `<tr><td>${i.cat}</td><td>${i.name}</td><td style="text-align:right">$${i.rate.toFixed(2)}</td><td style="text-align:right">${i.qty}</td><td style="text-align:right">$${i.total.toFixed(2)}</td><td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="removeEstItem(${i.id})"></i></td></tr>`;
         }).join('');
-
         document.getElementById('est-grand-total').innerText = "$" + itemsTotal.toLocaleString(undefined, {minimumFractionDigits:2});
-        // Added Count
         document.getElementById('est-count').innerText = estItems.length;
         window.currentEstTotal = itemsTotal;
     }
     
-    function clearEstimate() {
-        if(confirm("Clear current estimate?")) {
-            estItems = [];
-            calcEstimate();
-            showToast("Estimate Cleared");
-        }
-    }
-    
-    function saveEstimateAsBudget() {
-        const pid = document.getElementById('est-proj-select').value;
+function saveEstimateAction(mode) {
+        const pidVal = document.getElementById('est-proj-select').value;
         const fund = document.getElementById('est-fund-select').value;
-        if(!pid) { showToast("Select a project first", "error"); return; }
-        if(!window.currentEstTotal || window.currentEstTotal <= 0) { showToast("Calculate an estimate first", "error"); return; }
         
-        allocations.push({
-            id: Date.now(),
-            projId: parseInt(pid),
-            date: getTodayStr(),
-            amount: window.currentEstTotal,
-            desc: "Estimated Budget",
-            type: "base",
-            fundSource: fund
-        });
+        if(!pidVal) { showToast("Select a project first", "error"); return; }
+        const pid = parseInt(pidVal);
+
+        let currentTotal = estItems.reduce((acc, item) => acc + item.total, 0);
+        if(currentTotal <= 0) { showToast("Calculate an estimate first", "error"); return; }
+
+        // CAPTURE THE DATA SNAPSHOT (The IGE)
+        const estimateSnapshot = JSON.parse(JSON.stringify(estItems));
+
+        if (mode === 'funding') {
+            allocations.push({
+                id: Date.now(),
+                projId: pid,
+                date: getTodayStr(),
+                amount: currentTotal,
+                desc: "Estimated Budget Added", // UPDATED: Specific name requested
+                type: "adj",
+                fundSource: fund,
+                details: estimateSnapshot // Attach the IGE data
+            });
+            showToast("Added to Project Funding");
+        } 
+        else if (mode === 'expense') {
+            expenses.push({
+                id: Date.now(),
+                projId: pid,
+                desc: "Estimated Cost",
+                amount: currentTotal,
+                date: getTodayStr(),
+                status: "Encumbered", 
+                fundSource: fund,
+                details: estimateSnapshot // Attach the IGE data
+            });
+            showToast("Posted as Expense");
+        } 
+        else if (mode === 'estimate') {
+            expenses.push({
+                id: Date.now(),
+                projId: pid,
+                desc: "Cost Estimate (Draft)",
+                amount: currentTotal,
+                date: getTodayStr(),
+                status: "Estimate", 
+                fundSource: fund,
+                details: estimateSnapshot // Attach the IGE data
+            });
+            showToast("Saved as Draft Estimate");
+        }
+        
+        // WIPE THE TOOL
+        resetEstimator();
+
         saveLocally();
+        render(); 
         nav('finance');
-        showToast("Estimate saved to Project Budget");
+        if(mode === 'funding') switchFinTab('alloc');
+        else switchFinTab('exp');
     }
 
-    function renderMonthlyChart() {
-        const months = {};
-        let maxVal = 0;
-        expenses.forEach(e => {
-            if(!e.date) return;
-            const d = new Date(e.date);
-            const key = d.getFullYear() + '-' + (d.getMonth()+1).toString().padStart(2,'0'); 
-            const lbl = d.toLocaleString('default', { month: 'short' }) + "'" + d.getFullYear().toString().substr(2);
-            if(!months[key]) months[key] = { val: 0, label: lbl };
-            months[key].val += parseFloat(e.amount);
-            if(months[key].val > maxVal) maxVal = months[key].val;
+    // NEW: Helper to clean up the estimator after use
+    function resetEstimator() {
+        estItems = [];
+        document.getElementById('est-proj-select').value = ""; // Clear Project
+        document.getElementById('est-qty').value = "";
+        calcEstimate(); // Clears the table UI
+    }
+
+// --- NEW GLOBAL STATE ---
+    let chartScale = 'month'; 
+
+    function setChartScale(s) {
+        chartScale = s;
+        // Update Button Styles
+        ['week','month','quarter','year'].forEach(k => {
+            const btn = document.getElementById('btn-scale-'+k);
+            if(k === s) { btn.style.background = 'var(--accent)'; btn.style.color = 'white'; }
+            else { btn.style.background = 'transparent'; btn.style.color = 'var(--text-muted)'; }
         });
-        const sortedKeys = Object.keys(months).sort();
-        if(sortedKeys.length === 0) {
-            document.getElementById('monthly-spend-chart').innerHTML = '<div style="width:100%; text-align:center; color:var(--text-muted); align-self:center;">No expenses recorded yet.</div>';
+        render(); // Re-render the whole view
+    }
+
+// NEW: Open the IGE Viewer Modal
+    function viewEstimate(id, type) {
+        // Find the record
+        const list = type === 'alloc' ? allocations : expenses;
+        const rec = list.find(x => x.id === id);
+        if(!rec || !rec.details) { showToast("No details attached", "error"); return; }
+
+        // Populate Metadata
+        document.getElementById('ige-meta-desc').innerText = rec.desc;
+        document.getElementById('ige-meta-date').innerText = `Date: ${rec.date} | Source: ${rec.fundSource || 'N/A'}`;
+        document.getElementById('ige-view-total').innerText = "$" + rec.amount.toLocaleString(undefined, {minimumFractionDigits:2});
+
+        // Populate Table
+        const tbody = document.getElementById('ige-view-list');
+        tbody.innerHTML = rec.details.map(d => `
+            <tr>
+                <td>${esc(d.cat)}</td>
+                <td>${esc(d.name)}</td>
+                <td style="text-align:right">$${d.rate}</td>
+                <td style="text-align:right">${d.qty}</td>
+                <td style="text-align:right">$${d.total.toFixed(2)}</td>
+            </tr>
+        `).join('');
+
+        // Setup Download Button
+        const btnContainer = document.getElementById('ige-dl-btn-container');
+        btnContainer.innerHTML = `<button class="btn" style="padding:4px 10px; font-size:0.8rem;" onclick="downloadIGE(${id}, '${type}')"><i class="fa-solid fa-file-excel"></i> Download IGE</button>`;
+
+        openModal('estimateViewModal');
+    }
+
+    // NEW: Generate CSV from attached details
+    function downloadIGE(id, type) {
+        const list = type === 'alloc' ? allocations : expenses;
+        const rec = list.find(x => x.id === id);
+        if(!rec || !rec.details) return;
+
+        let csv = "Category,Item,Rate,Quantity,Total Cost\n";
+        rec.details.forEach(d => {
+            csv += `"${d.cat}","${d.name}",${d.rate},${d.qty},${d.total}\n`;
+        });
+        
+        // Add footer totals
+        csv += `,,,TOTAL,${rec.amount}\n`;
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `IGE_${rec.date}_${type}_${id}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
+        let chartData = data;
+        
+        // Handle fallback data if null passed
+        if(!chartData) {
+            const isDateInScope = (dateStr) => {
+                if (!finStart && !finEnd) return true;
+                if (finStart && dateStr < finStart) return false;
+                if (finEnd && dateStr > finEnd) return false;
+                return true;
+            };
+            chartData = expenses.filter(e => isDateInScope(e.date) && e.status !== 'Estimate');
+        } else {
+             // If data WAS passed (like from render function), make sure we filter it too
+             chartData = chartData.filter(e => e.status !== 'Estimate');
+        }
+
+        const container = document.getElementById(targetId);
+        
+        if(chartData.length === 0) {
+            container.innerHTML = '<div style="width:100%; text-align:center; color:var(--text-muted); padding:40px;">No activity in this period.</div>';
             return;
         }
-        document.getElementById('monthly-spend-chart').innerHTML = sortedKeys.map(k => {
-            const m = months[k];
-            const h = maxVal > 0 ? (m.val / maxVal) * 100 : 0;
-            return `<div class="bar-col"><div class="bar-v" style="height:${h}%" title="$${m.val.toLocaleString()}"></div><div class="bar-lbl">${m.label}</div></div>`;
-        }).join('');
+
+        const timestamps = chartData.map(e => new Date(e.date + 'T12:00:00').getTime());
+        if(finStart) timestamps.push(new Date(finStart + 'T12:00:00').getTime());
+        if(finEnd) timestamps.push(new Date(finEnd + 'T12:00:00').getTime());
+        
+        const minDate = new Date(Math.min(...timestamps));
+        const maxDate = new Date(Math.max(...timestamps));
+
+        const timeline = [];
+        let maxVal = 0;
+        
+        let current = new Date(minDate); 
+        // Snap start date based on scale
+        if(chartScale === 'month') current.setDate(1); 
+        if(chartScale === 'year') { current.setMonth(0); current.setDate(1); }
+        if(chartScale === 'week') { 
+            const day = current.getDay(); 
+            const diff = current.getDate() - day + (day == 0 ? -6 : 1); 
+            current.setDate(diff);
+        }
+
+        while(current <= maxDate) {
+            let lbl, nextDate;
+            const y = current.getFullYear();
+            
+            if(chartScale === 'week') {
+                const start = new Date(current);
+                nextDate = new Date(current); nextDate.setDate(nextDate.getDate() + 7);
+                lbl = `${start.getMonth()+1}/${start.getDate()}`;
+            } 
+            else if(chartScale === 'quarter') {
+                const q = Math.floor(current.getMonth() / 3) + 1;
+                lbl = `Q${q} ${y}`;
+                nextDate = new Date(current); nextDate.setMonth(nextDate.getMonth() + 3);
+            } 
+            else if(chartScale === 'year') {
+                lbl = `${y}`;
+                nextDate = new Date(current); nextDate.setFullYear(nextDate.getFullYear() + 1);
+            } 
+            else { 
+                const m = current.getMonth();
+                lbl = current.toLocaleString('default', { month: 'short' }) + " '" + y.toString().substr(2);
+                nextDate = new Date(current); nextDate.setMonth(nextDate.getMonth() + 1);
+            }
+
+            // FIX: Summing logic now uses Math.abs() to fix the "Negative Bar" glitch
+            const bucketVal = chartData.reduce((acc, e) => {
+                const d = new Date(e.date + 'T12:00:00');
+                return (d >= current && d < nextDate) ? acc + Math.abs(parseFloat(e.amount)||0) : acc;
+            }, 0);
+
+            if(bucketVal > maxVal) maxVal = bucketVal;
+            timeline.push({ label: lbl, val: bucketVal });
+
+            current = nextDate; 
+        }
+
+        if(maxVal === 0) maxVal = 100;
+        const fmt = (n) => n >= 1000 ? (n/1000).toFixed(1) + 'k' : n;
+
+        const axisHtml = `
+            <div class="chart-y-axis">
+                <div>$${fmt(maxVal)}</div>
+                <div>$${fmt(maxVal/2)}</div>
+                <div>$0</div>
+            </div>`;
+
+        const barsHtml = `<div class="bar-chart-v" id="inner-chart-scroll-${targetId}">` + timeline.map(item => {
+            const h = (item.val / maxVal) * 100;
+            const opacity = item.val > 0 ? '1' : '0.3'; 
+            const bg = item.val > 0 ? 'var(--money)' : 'var(--bg-input)';
+            const valLbl = item.val > 0 ? `<div class="bar-top-lbl">$${fmt(item.val)}</div>` : '';
+            
+            return `<div class="bar-col">
+                        <div class="bar-v" style="height:${h}%; background:${bg}; opacity:${opacity};">${valLbl}</div>
+                        <div class="bar-lbl">${item.label}</div>
+                    </div>`;
+        }).join('') + `</div>`;
+
+        container.innerHTML = `<div class="chart-wrapper" style="height:100%">${axisHtml}${barsHtml}</div>`;
+
+        setTimeout(() => {
+            const scroller = document.getElementById(`inner-chart-scroll-${targetId}`);
+            if(scroller) scroller.scrollLeft = scroller.scrollWidth; 
+        }, 50);
     }
 
     function quickAdd(type, pid) {
@@ -788,11 +1731,31 @@
         }
     }
 
+    // NEW: Helper for Updates Date List
+    function addUpdateDate(pid, val) {
+        if(!val) return;
+        const p = projects.find(x => x.id === pid);
+        if(!p.updatesSent) p.updatesSent = [];
+        p.updatesSent.push(val);
+        // Sort dates descending
+        p.updatesSent.sort().reverse();
+        saveLocally();
+        viewProject(pid);
+    }
+    
+    function removeUpdateDate(pid, idx) {
+        const p = projects.find(x => x.id === pid);
+        p.updatesSent.splice(idx, 1);
+        saveLocally();
+        viewProject(pid);
+    }
+
     function render(filter = "") {
         filter = filter.toLowerCase();
         document.getElementById('todayDate').innerText = new Date().toDateString();
         document.getElementById('btnShowComp').innerHTML = showComplete ? '<i class="fa-solid fa-eye-slash"></i> Hide Done' : '<i class="fa-solid fa-eye"></i> Show Done';
         
+        // --- 1. PROJECT FILTERING (Global) ---
         let filteredProjs = projects.filter(p => p.title.toLowerCase().includes(filter) || p.desc.toLowerCase().includes(filter));
         if (!showComplete) filteredProjs = filteredProjs.filter(p => p.status !== 'Complete'); 
 
@@ -801,27 +1764,64 @@
         const dashProjDiv = document.getElementById('dash-projects');
         const projContainer = document.getElementById('full-project-list');
         
-        if (projects.length === 0) {
-            dashProjDiv.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-muted); border: 2px dashed var(--border); border-radius:8px;"><i class="fa-solid fa-clipboard-list" style="font-size:2rem; margin-bottom:10px; opacity:0.5;"></i><div>No Active Projects</div><button class="btn" style="margin-top:10px;" onclick="openModal('projectModal')">Start One</button></div>`;
-        } else {
-            dashProjDiv.innerHTML = filteredProjs.length ? filteredProjs.slice(0,5).map(p => {
-                const pct = p.tasks && p.tasks.length ? Math.round((p.tasks.filter(t=>t.done).length/p.tasks.length)*100) : 0;
-                return `<div class="list-item" onclick="viewProject(${p.id})">
-                    <div style="flex:1;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div><span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span>${esc(p.title)}</div>
-                            <span style="font-size:0.7rem; color:var(--text-muted)">${p.status}</span>
-                        </div>
-                        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-                    </div>
-                    <div class="quick-actions">
-                        <div class="qa-btn" onclick="event.stopPropagation(); quickAdd('task', ${p.id})" title="Add Task"><i class="fa-solid fa-check"></i></div>
-                        <div class="qa-btn" onclick="event.stopPropagation(); quickAdd('expense', ${p.id})" title="Add Expense"><i class="fa-solid fa-dollar-sign"></i></div>
-                    </div>
-                </div>`;
-            }).join('') : '<div style="color:var(--text-muted); padding:10px;">No Matches</div>';
+        // --- 2. DASHBOARD WIDGETS (Active Projects with Sorting) ---
+        
+        let displayProjs = [...filteredProjs]; 
+
+        if(dashProjSort === 'newest') { displayProjs.reverse(); } 
+        else if (dashProjSort === 'health') {
+            const hMap = { 'red': 0, 'yellow': 1, 'green': 2 };
+            displayProjs.sort((a,b) => (hMap[a.health]||2) - (hMap[b.health]||2));
+        }
+        else if (dashProjSort === 'status') {
+             const sMap = { 'Active': 0, 'Review': 1, 'Planning': 2, 'Complete': 3 };
+             displayProjs.sort((a,b) => (sMap[a.status]||4) - (sMap[b.status]||4));
         }
 
+        const recentProjs = displayProjs.slice(0, 10);
+
+        // UPDATED HEADER HTML: Tighter gap on left, more buffer on right
+        const projHeaderHtml = `
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span>Active Projects</span>
+                    <select class="sort-select" onchange="setDashSort('proj', this.value)">
+                        <option value="newest" ${dashProjSort==='newest'?'selected':''}>Newest</option>
+                        <option value="oldest" ${dashProjSort==='oldest'?'selected':''}>Oldest</option>
+                        <option value="health" ${dashProjSort==='health'?'selected':''}>Health</option>
+                        <option value="status" ${dashProjSort==='status'?'selected':''}>Status</option>
+                    </select>
+                </div>
+                <span style="font-size:0.75rem; cursor:pointer; color:var(--accent); font-weight:bold; white-space:nowrap; margin-left:15px;" onclick="nav('projects')">View All &rarr;</span>
+            </div>`;
+
+        const projListHtml = recentProjs.length ? recentProjs.map(p => {
+            const pct = p.tasks && p.tasks.length ? Math.round((p.tasks.filter(t=>t.done).length/p.tasks.length)*100) : 0;
+            return `
+            <div class="list-item" onclick="viewProject(${p.id})">
+                <div style="flex:1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="font-weight:600;">
+                            <span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span>
+                            ${esc(p.title)}
+                        </div>
+                        <span style="font-size:0.7rem; color:var(--text-muted); margin-right:10px;">${p.status}</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+                </div>
+                <div class="quick-actions">
+                    <div class="qa-btn qa-task" onclick="event.stopPropagation(); quickAdd('task', ${p.id})" title="Add Task"><i class="fa-solid fa-check"></i></div>
+                    <div class="qa-btn qa-exp" onclick="event.stopPropagation(); quickAdd('expense', ${p.id})" title="Add Expense"><i class="fa-solid fa-dollar-sign"></i></div>
+                </div>
+            </div>`;
+        }).join('') : '<div style="color:var(--text-muted); padding:10px;">No Matches</div>';
+
+        // 6. Inject into DOM
+        const projWidget = document.getElementById('dash-projects').parentElement;
+        projWidget.querySelector('.widget-head').innerHTML = projHeaderHtml; 
+        document.getElementById('dash-projects').innerHTML = projListHtml;
+
+        // --- 3. PROJECT VIEW (List vs Kanban) ---
         if (viewMode === 'list') {
             projContainer.innerHTML = filteredProjs.map(p => {
                 const src = getDominantSource(p.id);
@@ -848,66 +1848,264 @@
                 </div>`).join('')}</div>`;
         }
 
-        let tHtml = '';
-        filteredProjs.forEach(p => { (p.tasks||[]).forEach(t => { if(!t.done && t.text.toLowerCase().includes(filter)) 
-            tHtml += `<div class="list-item" style="border-left-color:var(--warning)" onclick="viewProject(${p.id})"><span>${esc(t.text)} <span class="tag">${esc(t.assign||'?')}</span></span><span style="font-size:0.7rem; color:var(--text-muted)">${esc(p.title)}</span></div>`; 
-        }); });
-        document.getElementById('dash-tasks').innerHTML = tHtml || '<div style="color:var(--text-muted); padding:10px;">No Actions</div>';
-        document.getElementById('dash-inv').innerHTML = filteredInv.slice(0,3).map(i => `<div class="list-item"><span>${esc(i.id)} (${i.fill||0}%)</span><span>${i.dose} mR/hr</span></div>`).join('');
+        // --- 4. TASKS & INVENTORY WIDGETS (Dynamic Sorting) ---
+        
+        // A. PREPARE TASKS
+        let allTasks = [];
+        filteredProjs.forEach(p => { 
+            if(p.tasks) {
+                p.tasks.forEach(t => { 
+                    if(!t.done && t.text.toLowerCase().includes(filter)) {
+                        allTasks.push({ task: t, proj: p });
+                    }
+                });
+            }
+        });
 
-        const totalBudg = allocations.reduce((s, a) => s + (parseFloat(a.amount)||0), 0);
-        const totalSpent = expenses.reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
-        const remaining = totalBudg - totalSpent;
-        const activeSpenders = new Set(expenses.map(e => e.projId)).size;
+        if(dashTaskSort === 'prio') {
+            const pMap = {'high':0, 'med':1, 'low':2};
+            allTasks.sort((a,b) => (pMap[a.task.prio]||1) - (pMap[b.task.prio]||1));
+        } else if (dashTaskSort === 'oldest') {
+            allTasks.sort((a,b) => a.task.id - b.task.id); 
+        } else if (dashTaskSort === 'newest') {
+            allTasks.sort((a,b) => b.task.id - a.task.id);
+        }
+
+        // UPDATED TASK HEADER
+        const taskHeaderHtml = `
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <span>Pending Actions</span>
+                <select class="sort-select" onchange="setDashSort('task', this.value)">
+                    <option value="prio" ${dashTaskSort==='prio'?'selected':''}>Highest Prio</option>
+                    <option value="newest" ${dashTaskSort==='newest'?'selected':''}>Newest</option>
+                    <option value="oldest" ${dashTaskSort==='oldest'?'selected':''}>Oldest</option>
+                </select>
+            </div>`;
+
+        const taskListHtml = allTasks.slice(0, 10).map(item => {
+            const t = item.task;
+            const p = item.proj;
+            let borderCol = 'var(--border)';
+            if(t.prio === 'high') borderCol = 'var(--danger)';
+            if(t.prio === 'med') borderCol = 'var(--warning)';
+
+            return `<div class="list-item" style="border-left-color:${borderCol}" onclick="viewProject(${p.id})">
+                        <span>${esc(t.text)} <span class="tag">${esc(t.assign||'?')}</span></span>
+                        <span style="font-size:0.7rem; color:var(--text-muted)">${esc(p.title)}</span>
+                    </div>`; 
+        }).join('') || '<div style="color:var(--text-muted); padding:10px;">No Pending Actions</div>';
+        
+        const taskWidget = document.getElementById('dash-tasks').parentElement;
+        taskWidget.querySelector('.widget-head').innerHTML = taskHeaderHtml;
+        document.getElementById('dash-tasks').innerHTML = taskListHtml;
+
+
+        // B. PREPARE INVENTORY
+        if(dashInvSort === 'dose') { filteredInv.sort((a,b) => b.dose - a.dose); } 
+        else if (dashInvSort === 'fill') { filteredInv.sort((a,b) => (b.fill||0) - (a.fill||0)); } 
+        else if (dashInvSort === 'recent') { filteredInv.sort((a,b) => (b.logDate || "").localeCompare(a.logDate || "")); }
+
+        // UPDATED INVENTORY HEADER
+        const invHeaderHtml = `
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <span>Inventory</span>
+                <select class="sort-select" onchange="setDashSort('inv', this.value)">
+                    <option value="dose" ${dashInvSort==='dose'?'selected':''}>Highest Dose</option>
+                    <option value="fill" ${dashInvSort==='fill'?'selected':''}>Fullest</option>
+                    <option value="recent" ${dashInvSort==='recent'?'selected':''}>Newest</option>
+                </select>
+            </div>`;
+
+        const invListHtml = filteredInv.slice(0, 10).map(i => {
+            let valDisplay = `${i.dose} mR/hr`;
+            if(dashInvSort === 'fill') valDisplay = `${i.fill||0}% Full`;
+            if(dashInvSort === 'recent') valDisplay = i.logDate || 'No Date';
+
+            const isHighDose = i.dose >= 1000; 
+            const rowStyle = isHighDose ? 'color:var(--danger); font-weight:bold;' : '';
+
+            return `<div class="list-item">
+                <span style="${rowStyle}">${esc(i.id)} <span style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">(${i.iso})</span></span>
+                <span>${valDisplay}</span>
+            </div>`;
+        }).join('') || '<div style="color:var(--text-muted); padding:10px;">No Inventory</div>';
+
+        const invWidget = document.getElementById('dash-inv').parentElement;
+        invWidget.querySelector('.widget-head').innerHTML = invHeaderHtml;
+        document.getElementById('dash-inv').innerHTML = invListHtml;
+
+        // --- 5. GLOBAL FINANCIALS (For Dashboard Widget ONLY) ---
+        // We use global 'allocations' and 'expenses' here for the "Snapshot"
+        const globalBudg = allocations.reduce((s, a) => s + (parseFloat(a.amount)||0), 0);
+        const globalSpent = expenses.filter(e => e.status !== 'Estimate').reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
+        const globalRem = globalBudg - globalSpent;
+        const globalActive = new Set(expenses.map(e => e.projId)).size;
         
         const dashSources = {};
         expenses.forEach(e => { const s = e.fundSource || 'Other'; dashSources[s] = (dashSources[s]||0) + parseFloat(e.amount); });
         const dashSourceHtml = Object.keys(dashSources).map(k => `<div style="font-size:0.7rem; display:flex; justify-content:space-between; color:var(--text-muted);"><span><span class="legend-dot" style="background:${getFundColor(k)}"></span>${k}</span><span>$${dashSources[k].toLocaleString()}</span></div>`).join('');
 
-        document.getElementById('dash-fin').innerHTML = `<div class="mini-fin-grid"><div class="mini-fin-box"><div class="mini-fin-val" style="color:var(--info);">$${totalBudg.toLocaleString()}</div><div class="mini-fin-lbl">Budget</div></div><div class="mini-fin-box"><div class="mini-fin-val" style="color:var(--warning);">$${totalSpent.toLocaleString()}</div><div class="mini-fin-lbl">Spent</div></div><div class="mini-fin-box"><div class="mini-fin-val" style="color:${remaining<0?'var(--danger)':'var(--money)'};">$${remaining.toLocaleString()}</div><div class="mini-fin-lbl">Rem.</div></div><div class="mini-fin-box"><div class="mini-fin-val" style="color:var(--rad);">${activeSpenders}</div><div class="mini-fin-lbl">Active</div></div></div><div style="margin-top:10px; padding-top:5px; border-top:1px dashed var(--border);">${dashSourceHtml || '<span style="font-size:0.7rem; color:var(--text-muted)">No data</span>'}</div>`;
-        document.getElementById('fin-total-budget').innerText = "$" + totalBudg.toLocaleString();
-        document.getElementById('fin-total-spent').innerText = "$" + totalSpent.toLocaleString();
-        document.getElementById('fin-total-rem').innerText = "$" + remaining.toLocaleString();
-        document.getElementById('fin-total-rem').style.color = remaining < 0 ? "var(--danger)" : "var(--money)";
-        document.getElementById('fin-proj-count').innerText = activeSpenders;
+        document.getElementById('dash-fin').innerHTML = `<div class="mini-fin-grid"><div class="mini-fin-box"><div class="mini-fin-val" style="color:var(--info);">$${globalBudg.toLocaleString()}</div><div class="mini-fin-lbl">Budget</div></div><div class="mini-fin-box"><div class="mini-fin-val" style="color:var(--warning);">$${globalSpent.toLocaleString()}</div><div class="mini-fin-lbl">Spent</div></div><div class="mini-fin-box"><div class="mini-fin-val" style="color:${globalRem<0?'var(--danger)':'var(--money)'};">$${globalRem.toLocaleString()}</div><div class="mini-fin-lbl">Rem.</div></div><div class="mini-fin-box"><div class="mini-fin-val" style="color:var(--rad);">${globalActive}</div><div class="mini-fin-lbl">Active</div></div></div><div style="margin-top:10px; padding-top:5px; border-top:1px dashed var(--border);">${dashSourceHtml || '<span style="font-size:0.7rem; color:var(--text-muted)">No data</span>'}</div>`;
 
+        // --- 6. CHARTS (Project Status & Budget) ---
         const statuses = { 'Planning': 0, 'Active': 0, 'Review': 0, 'Complete': 0 };
         projects.forEach(p => { if (statuses[p.status] !== undefined) statuses[p.status]++; });
         const totalProjs = projects.length || 1;
         const sColors = { 'Planning': 'var(--plan)', 'Active': 'var(--accent)', 'Review': 'var(--info)', 'Complete': 'var(--comp)' };
         document.getElementById('chart-proj').innerHTML = Object.keys(statuses).map(k => { const pct = (statuses[k] / totalProjs) * 100; return pct > 0 ? `<div class="chart-seg" style="width:${pct}%; background:${sColors[k]}" title="${k}: ${statuses[k]}"></div>` : ''; }).join('');
         document.getElementById('legend-proj').innerHTML = Object.keys(statuses).map(k => statuses[k] > 0 ? `<div><span class="legend-dot" style="background:${sColors[k]}"></span>${k} (${statuses[k]})</div>` : '').join('');
-        const spentPct = totalBudg > 0 ? Math.min((totalSpent/totalBudg)*100, 100) : 0;
+        const spentPct = globalBudg > 0 ? Math.min((globalSpent/globalBudg)*100, 100) : 0;
         document.getElementById('chart-money').innerHTML = `<div class="chart-seg" style="width:${spentPct}%; background:var(--money);"></div>`;
 
-        renderMonthlyChart(); 
 
-        document.getElementById('expense-list').innerHTML = expenses.map(e => {
+        // ============================================================
+        //  NEW: FINANCE VIEW LOGIC (WITH DATE FILTERS)
+        // ============================================================
+        
+        // 1. Define Filter Function
+        const isDateInScope = (dateStr) => {
+            if (!dateStr) return false;
+            // If user hasn't set filters, show everything
+            if (!finStart && !finEnd) return true;
+            
+            // Compare string dates "YYYY-MM-DD" directly
+            if (finStart && dateStr < finStart) return false;
+            if (finEnd && dateStr > finEnd) return false;
+            return true;
+        };
+
+        // 2. Create FILTERED lists
+        const finExps = expenses.filter(e => isDateInScope(e.date));
+        const finAllocs = allocations.filter(a => isDateInScope(a.date));
+
+        // 3. Calculate Totals based on FILTERED data
+        const finTotalBudg = finAllocs.reduce((s, a) => s + (parseFloat(a.amount)||0), 0);
+        const finTotalSpent = finExps.filter(e => e.status !== 'Estimate').reduce((s, e) => s + Math.abs(parseFloat(e.amount)||0), 0);
+        const finRemaining = finTotalBudg - finTotalSpent;
+        const finActiveSpenders = new Set(finExps.map(e => e.projId)).size;
+        
+        // 4. Update Finance View Top Cards
+        document.getElementById('fin-total-budget').innerText = "$" + finTotalBudg.toLocaleString();
+        document.getElementById('fin-total-spent').innerText = "$" + finTotalSpent.toLocaleString();
+        document.getElementById('fin-total-rem').innerText = "$" + finRemaining.toLocaleString();
+        document.getElementById('fin-total-rem').style.color = finRemaining < 0 ? "var(--danger)" : "var(--money)";
+        document.getElementById('fin-proj-count').innerText = finActiveSpenders;
+
+        // 5. Update Monthly Chart (Pass filtered data!)
+        renderMonthlyChart(finExps);
+
+        // 6. Update Source Breakdown (Visualization Upgrade)
+        const finSources = {};
+        finExps.forEach(e => { const s = e.fundSource || 'Other'; finSources[s] = (finSources[s]||0) + parseFloat(e.amount); });
+
+        document.getElementById('finance-source-breakdown').innerHTML = Object.keys(finSources).map(k => {
+            const amt = finSources[k];
+            const pct = finTotalSpent > 0 ? Math.round((amt / finTotalSpent) * 100) : 0;
+            const color = getFundColor(k);
+            
+            // Choose icon based on source type
+            let icon = 'fa-coins';
+            if(k.includes('Navy')) icon = 'fa-anchor';
+            if(k.includes('Command')) icon = 'fa-building-shield';
+
+            return `
+            <div class="fund-card" style="border-left-color:${color}">
+                <div class="fund-head">
+                    <span style="color:${color}"><i class="fa-solid ${icon}"></i> ${esc(k)}</span>
+                    <span>${pct}%</span>
+                </div>
+                <div class="fund-meta">
+                    <span>Total Spent</span>
+                    <span style="font-weight:bold; color:var(--text-main);">$${amt.toLocaleString()}</span>
+                </div>
+                <div class="fund-bar-bg">
+                    <div class="fund-bar-fill" style="width:${pct}%; background:${color}"></div>
+                </div>
+            </div>`;
+        }).join('') || '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:20px;">No expenses recorded in this period.</div>';
+
+        // 7. Update Expense Table (Filtered)
+        document.getElementById('expense-list').innerHTML = finExps.map(e => {
             const fund = e.fundSource || 'Other';
             let fundStyle = 'background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1';
             if(fund.includes('Navy')) fundStyle = 'background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe';
             if(fund.includes('Command')) fundStyle = 'background:#f3e8ff; color:#6b21a8; border:1px solid #e9d5ff';
             const pTitle = projects.find(p => p.id === e.projId)?.title || "General";
-            return `<tr><td><input class="live-edit" type="date" value="${e.date}" onchange="updItem('expense', ${e.id}, 'date', this.value)"></td>
-            <td><span class="proj-link" onclick="viewProject(${e.projId})">${esc(pTitle)}</span></td>
-            <td><div class="tag" style="font-size:0.75rem; padding:4px 8px; border-radius:12px; display:inline-block; ${fundStyle}">${esc(fund)}</div></td><td><input class="live-edit" value="${esc(e.desc)}" onchange="updItem('expense', ${e.id}, 'desc', this.value, this)"></td><td><input class="live-edit" type="number" value="${e.amount}" onchange="updItem('expense', ${e.id}, 'amount', this.value)"></td><td><select class="live-edit" onchange="updItem('expense', ${e.id}, 'status', this.value)"><option ${e.status==='Invoiced'?'selected':''}>Invoiced</option><option ${e.status==='Paid'?'selected':''}>Paid</option><option ${e.status==='Encumbered'?'selected':''}>Encumbered</option></select></td><td><div style="display:flex; gap:10px;"><i class="fa-solid fa-copy" style="cursor:pointer; color:var(--info)" onclick="cloneExpense(${e.id})" title="Duplicate"></i> <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delExpense(${e.id})" title="Delete"></i></div></td></tr>`;
+            
+            const isEst = e.status === 'Estimate';
+            const rowStyle = isEst ? 'font-style:italic; opacity:0.7;' : '';
+
+            // NEW: Check if IGE details exist
+            const igeIcon = e.details 
+                ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:8px;" onclick="viewEstimate(${e.id}, 'expense')" title="View Estimate Details"></i>` 
+                : '';
+
+            return `<tr style="${rowStyle}">
+                <td><input class="live-edit" type="date" value="${e.date}" onchange="updItem('expense', ${e.id}, 'date', this.value)"></td>
+                <td><span class="proj-link" onclick="viewProject(${e.projId})">${esc(pTitle)}</span></td>
+                <td><div class="tag" style="font-size:0.75rem; padding:4px 8px; border-radius:12px; display:inline-block; ${fundStyle}">${esc(fund)}</div></td>
+                <td style="display:flex; align-items:center;"><input class="live-edit" value="${esc(e.desc)}" onchange="updItem('expense', ${e.id}, 'desc', this.value, this)"> ${igeIcon}</td>
+                <td><input class="live-edit" type="number" value="${e.amount}" onchange="updItem('expense', ${e.id}, 'amount', this.value)"></td>
+                <td>
+                    <select class="live-edit" onchange="updItem('expense', ${e.id}, 'status', this.value)">
+                        <option ${e.status==='Invoiced'?'selected':''}>Invoiced</option>
+                        <option ${e.status==='Paid'?'selected':''}>Paid</option>
+                        <option ${e.status==='Encumbered'?'selected':''}>Encumbered</option>
+                        <option ${e.status==='Estimate'?'selected':''}>Estimate</option>
+                    </select>
+                </td>
+                <td><div style="display:flex; gap:10px;"><i class="fa-solid fa-copy" style="cursor:pointer; color:var(--info)" onclick="cloneExpense(${e.id})" title="Duplicate"></i> <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delExpense(${e.id})" title="Delete"></i></div></td>
+            </tr>`;
         }).join('');
         
-        document.getElementById('alloc-list').innerHTML = allocations.map(a => {
+        // 8. Update Allocation Table (Filtered)
+        document.getElementById('alloc-list').innerHTML = finAllocs.map(a => {
             const fund = a.fundSource || 'Navy General Fund';
             const pTitle = projects.find(p => p.id === a.projId)?.title || "General";
-            return `<tr><td><input class="live-edit" type="date" value="${a.date}" onchange="updItem('alloc', ${a.id}, 'date', this.value)"></td>
-            <td><span class="proj-link" onclick="viewProject(${a.projId})">${esc(pTitle)}</span></td>
-            <td><div class="tag">${esc(fund)}</div></td><td><input class="live-edit" value="${esc(a.desc)}" onchange="updItem('alloc', ${a.id}, 'desc', this.value, this)"></td><td><input class="live-edit" type="number" value="${a.amount}" onchange="updItem('alloc', ${a.id}, 'amount', this.value)"></td><td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delAlloc(${a.id})"></i></td></tr>`;
+            
+            // NEW: Check if IGE details exist
+            const igeIcon = a.details 
+                ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:8px;" onclick="viewEstimate(${a.id}, 'alloc')" title="View Estimate Details"></i>` 
+                : '';
+
+            return `<tr>
+                <td><input class="live-edit" type="date" value="${a.date}" onchange="updItem('alloc', ${a.id}, 'date', this.value)"></td>
+                <td><span class="proj-link" onclick="viewProject(${a.projId})">${esc(pTitle)}</span></td>
+                <td><div class="tag">${esc(fund)}</div></td>
+                <td style="display:flex; align-items:center;"><input class="live-edit" value="${esc(a.desc)}" onchange="updItem('alloc', ${a.id}, 'desc', this.value, this)"> ${igeIcon}</td>
+                <td><input class="live-edit" type="number" value="${a.amount}" onchange="updItem('alloc', ${a.id}, 'amount', this.value)"></td>
+                <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delAlloc(${a.id})"></i></td>
+            </tr>`;
         }).join('');
 
+        // 9. Update Budget Rollup Logic (Filtered vs Lifetime)
         let grandInit = 0, grandAdj = 0, grandTot = 0, grandSpent = 0;
+        
+        // UPDATE: Toggle Button State
+        const btnScope = document.getElementById('btn-budget-scope');
+        if(btnScope) {
+            btnScope.innerHTML = budgetScope === 'range' ? '<i class="fa-solid fa-filter"></i> In Range' : '<i class="fa-solid fa-infinity"></i> Lifetime';
+            
+            // Changed 'transparent' to 'var(--bg-input)' to match the rectangle button style
+            btnScope.style.background = budgetScope === 'range' ? 'var(--bg-input)' : 'var(--navy)';
+            btnScope.style.color = budgetScope === 'range' ? 'var(--text-muted)' : 'white';
+            btnScope.style.borderColor = budgetScope === 'range' ? 'var(--border)' : 'var(--navy)';
+        }
+
+        // UPDATE: Helper now chooses data source based on Toggle
         const getProjStats = (pid) => {
-            const pAllocs = allocations.filter(a => a.projId === pid);
-            const pExps = expenses.filter(e => e.projId === pid);
+            // If Scope is 'all', use global data. If 'range', use filtered data.
+            const sourceAllocs = budgetScope === 'all' ? allocations : finAllocs;
+            const sourceExps   = budgetScope === 'all' ? expenses    : finExps;
+
+            const pAllocs = sourceAllocs.filter(a => a.projId === pid);
+            const pExps = sourceExps.filter(e => e.projId === pid);
+            
             const init = pAllocs.filter(a => a.type === 'base' || (!a.type && a.desc.toLowerCase().includes('initial'))).reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
             const adj = pAllocs.filter(a => a.type !== 'base' && (a.type || !a.desc.toLowerCase().includes('initial'))).reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
-            const spent = pExps.reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+            
+            const spent = pExps.filter(e => e.status !== 'Estimate').reduce((s,e)=>s+Math.abs(parseFloat(e.amount)||0),0);
+            
             return { init, adj, total: init+adj, spent, rem: (init+adj)-spent };
         };
 
@@ -915,11 +2113,29 @@
             const s = getProjStats(p.id);
             const src = getDominantSource(p.id);
             grandInit += s.init; grandAdj += s.adj; grandTot += s.total; grandSpent += s.spent;
-            const burn = s.total > 0 ? Math.round((s.spent / s.total) * 100) : 0;
+            
+            let burn = 0;
+            if(s.total > 0) burn = Math.round((s.spent / s.total) * 100);
+            else if(s.spent > 0) burn = 100;
+
+            // Burn Color Logic
+            let burnBg = 'var(--col-act)';       
+            let burnColor = 'var(--accent)';     
+            let burnBorder = 'var(--accent)';    
+
+            if(burn > 100) { 
+                burnBg = 'var(--danger)'; burnColor = 'white'; burnBorder = 'var(--danger)';
+            } else if (burn > 80) { 
+                burnBg = 'var(--warning)'; burnColor = 'white'; burnBorder = 'var(--warning)';
+            }
+
             return `<tr>
             <td><span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span><span class="proj-link" onclick="viewProject(${p.id})">${esc(p.title)}</span></td>
             <td style="text-align:center"><div class="tag" style="background:${src.color}; color:white; border:none;">${src.short}</div></td>
-            <td style="text-align:right; color:var(--text-muted);">$${s.init.toLocaleString()}</td><td style="text-align:right; color:${s.adj>=0?'var(--info)':'var(--warning)'}">${s.adj>0?'+':''}${s.adj.toLocaleString()}</td><td style="text-align:right; font-weight:bold;">$${s.total.toLocaleString()}</td><td style="text-align:right; color:var(--warning);">$${s.spent.toLocaleString()}</td><td style="text-align:right; font-weight:bold; color:${s.rem<0?'var(--danger)':'var(--money)'}">$${s.rem.toLocaleString()}</td><td style="text-align:center"><div class="tag" style="width:40px; text-align:center; display:inline-block; background:${burn>100?'var(--danger)':(burn>80?'var(--warning)':'var(--col-act)')}">${burn}%</div></td></tr>`;
+            <td style="text-align:right; color:var(--text-muted);">$${s.init.toLocaleString()}</td><td style="text-align:right; color:${s.adj>=0?'var(--info)':'var(--warning)'}">${s.adj>0?'+':''}${s.adj.toLocaleString()}</td><td style="text-align:right; font-weight:bold;">$${s.total.toLocaleString()}</td><td style="text-align:right; color:var(--warning);">$${s.spent.toLocaleString()}</td><td style="text-align:right; font-weight:bold; color:${s.rem<0?'var(--danger)':'var(--money)'}">$${s.rem.toLocaleString()}</td>
+            <td style="text-align:center">
+                <div class="tag" style="width:45px; text-align:center; display:inline-block; background:${burnBg}; color:${burnColor}; border-color:${burnBorder}; font-weight:bold;">${burn}%</div>
+            </td></tr>`;
         }).join('');
 
         const genStats = getProjStats(null);
@@ -928,61 +2144,128 @@
             const genRem = genStats.total - genStats.spent;
             rollupHtml += `<tr style="background:var(--bg-body);"><td><i>General / Overhead</i></td><td style="text-align:center">-</td><td style="text-align:right; color:var(--text-muted);">$${genStats.init.toLocaleString()}</td><td style="text-align:right;">${genStats.adj.toLocaleString()}</td><td style="text-align:right; font-weight:bold;">$${genStats.total.toLocaleString()}</td><td style="text-align:right; color:var(--warning);">$${genStats.spent.toLocaleString()}</td><td style="text-align:right; font-weight:bold; color:${genRem<0?'var(--danger)':'var(--money)'}">$${genRem.toLocaleString()}</td><td style="text-align:center">-</td></tr>`;
         }
-        document.getElementById('budget-rollup-list').innerHTML = rollupHtml || '<tr><td colspan="7" style="text-align:center; padding:10px; color:var(--text-muted)">No financial data found.</td></tr>';
+        document.getElementById('budget-rollup-list').innerHTML = rollupHtml || '<tr><td colspan="7" style="text-align:center; padding:10px; color:var(--text-muted)">No financial data found in this period.</td></tr>';
         
         const grandRem = grandTot - grandSpent;
         const grandBurn = grandTot > 0 ? Math.round((grandSpent/grandTot)*100) : 0;
         document.getElementById('budget-rollup-foot').innerHTML = `<tr><td>TOTALS</td><td></td><td style="text-align:right">$${grandInit.toLocaleString()}</td><td style="text-align:right">$${grandAdj.toLocaleString()}</td><td style="text-align:right">$${grandTot.toLocaleString()}</td><td style="text-align:right">$${grandSpent.toLocaleString()}</td><td style="text-align:right; color:${grandRem<0?'var(--danger)':'var(--money)'}">$${grandRem.toLocaleString()}</td><td style="text-align:center">${grandBurn}%</td></tr>`;
 
-        document.getElementById('finance-source-breakdown').innerHTML = Object.keys(dashSources).map(k => {
-            const pct = totalSpent > 0 ? Math.round((dashSources[k] / totalSpent) * 100) : 0;
-            const barColor = getFundColor(k);
-            return `<div style="margin-bottom:12px;">
-                <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:2px;">
-                    <span style="font-weight:bold; color:var(--text-muted)">${k}</span>
-                    <span>$${dashSources[k].toLocaleString()} (${pct}%)</span>
-                </div>
-                <div class="progress-bar"><div class="progress-fill" style="width:${pct}%; background:${barColor}"></div></div>
-            </div>`;
-        }).join('') || '<div style="color:var(--text-muted); font-size:0.8rem;">No expenses logged.</div>';
+        // ============================================================
+        //  END FINANCE LOGIC
+        // ============================================================
+
+
+        // --- 7. EXEMPT LOG & INVENTORY TABLES ---
+        document.getElementById('exempt-list').innerHTML = exemptLog.map(e => {
+            const isAuth = e.authDate && e.authDate.trim() !== "";
+            const statusBadge = isAuth 
+                ? '<span class="tag" style="background:var(--accent); color:white; border:none;">Authorized</span>' 
+                : '<span class="tag" style="background:var(--warning); color:white; border:none;">Pending</span>';
+            
+            return `<tr>
+                <td>${esc(e.id)}</td>
+                <td><input class="live-edit" type="date" value="${e.date}" onchange="updItem('exempt', '${e.id}', 'date', this.value)"></td>
+                <td><input class="live-edit" value="${esc(e.cmd)}" onchange="updItem('exempt', '${e.id}', 'cmd', this.value, this)"></td>
+                <td><input class="live-edit" value="${esc(e.desc)}" onchange="updItem('exempt', '${e.id}', 'desc', this.value, this)"></td>
+                <td><input class="live-edit" value="${esc(e.iso)}" onchange="updItem('exempt', '${e.id}', 'iso', this.value, this)"></td>
+                <td><input class="live-edit" value="${esc(e.act)}" onchange="updItem('exempt', '${e.id}', 'act', this.value, this)"></td>
+                <td><input class="live-edit" value="${esc(e.basis)}" onchange="updItem('exempt', '${e.id}', 'basis', this.value, this)"></td>
+                <td><input class="live-edit" value="${esc(e.path)}" onchange="updItem('exempt', '${e.id}', 'path', this.value, this)"></td>
+                <td><input class="live-edit" type="date" value="${e.authDate||''}" onchange="updItem('exempt', '${e.id}', 'authDate', this.value)"></td>
+                <td style="text-align:center;" id="ex-status-${e.id}">${statusBadge}</td>
+                <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delExempt('${e.id}')"></i></td>
+            </tr>`;
+        }).join('');
 
         document.getElementById('full-inv-list').innerHTML = filteredInv.map(i => {
             const pOptions = '<option value="">-- None --</option>' + projects.map(p => `<option value="${p.id}" ${i.projId===p.id?'selected':''}>${esc(p.title)}</option>`).join('');
             const linkIcon = i.projId ? `<i class="fa-solid fa-arrow-up-right-from-square" style="cursor:pointer; color:var(--info)" onclick="viewProject(${i.projId})" title="Go to Project"></i>` : '';
-            return `<tr><td><input class="live-edit" value="${esc(i.id)}" onchange="updItem('inventory', '${jsEsc(i.id)}', 'id', this.value, this)"></td>
-            <td><input class="live-edit" value="${esc(i.iso)}" onchange="updItem('inventory', '${jsEsc(i.id)}', 'iso', this.value, this)"></td>
-            <td><input class="live-edit" value="${esc(i.act)}" onchange="updItem('inventory', '${jsEsc(i.id)}', 'act', this.value, this)"></td>
-            <td><input class="live-edit" type="number" value="${i.dose}" onchange="updItem('inventory', '${jsEsc(i.id)}', 'dose', this.value)"></td>
-            <td style="width:100px;"><div class="progress-bar"><div class="progress-fill" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':'var(--info)'}"></div></div></td>
-            <td><div style="display:flex; align-items:center; gap:8px;"><select class="live-edit" onchange="updItem('inventory', '${jsEsc(i.id)}', 'projId', this.value)">${pOptions}</select>${linkIcon}</div></td>
-            <td><select class="live-edit" onchange="updItem('inventory', '${jsEsc(i.id)}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td></tr>`;
+            const safeId = jsEsc(i.id);
+
+            return `<tr>
+                <td><input class="live-edit" value="${esc(i.id)}" onchange="updItem('inventory', '${safeId}', 'id', this.value, this)"></td>
+                <td><input class="live-edit" value="${esc(i.iso)}" onchange="updItem('inventory', '${safeId}', 'iso', this.value, this)"></td>
+                <td><input class="live-edit" value="${esc(i.act)}" onchange="updItem('inventory', '${safeId}', 'act', this.value, this)"></td>
+                <td><input class="live-edit" type="number" value="${i.dose}" onchange="updItem('inventory', '${safeId}', 'dose', this.value)"></td>
+                <td style="width:100px;">
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <input type="number" class="live-edit" style="width:50px; text-align:right;" min="0" max="100" value="${i.fill||0}" onchange="updItem('inventory', '${safeId}', 'fill', this.value)">
+                        <span style="font-size:0.7rem;">%</span>
+                    </div>
+                    <div class="progress-bar" style="height:4px; margin-top:2px;"><div class="progress-fill" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':'var(--info)'}"></div></div>
+                </td>
+                <td><div style="display:flex; align-items:center; gap:8px;"><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'projId', this.value)">${pOptions}</select>${linkIcon}</div></td>
+                <td><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td>
+            </tr>`;
         }).join('');
         
-        document.getElementById('chatFeed').innerHTML = chatLog.map(c => `<div class="msg"><div class="msg-meta"><span>${esc(c.user)}</span><span>${c.time}</span></div><div>${esc(c.text)}</div></div>`).join('');
+        document.getElementById('chatFeed').innerHTML = chatLog.map(c => 
+            `<div class="msg"><div class="msg-meta"><span>${esc(c.user)}</span><span>${c.time}</span></div><div>${c.user === 'System' ? c.text : esc(c.text)}</div></div>`
+        ).join('');
+
         document.getElementById('chatFeed').scrollTop = 9999;
         document.getElementById('wiki-text').value = wikiText;
     }
 
-    function viewProject(id) {
+function viewProject(id) {
         const p = projects.find(x => x.id === id); if(!p) return;
         
-        const projExp = expenses.filter(e => e.projId === id);
-        const spent = projExp.reduce((s, e) => s + parseFloat(e.amount), 0);
+        // 1. Navigation Logic
+        const activeEl = document.querySelector('.view-section.active');
+        const currentView = activeEl ? activeEl.id.replace('view-', '') : 'dashboard';
+        if(currentView !== 'project-detail') window.lastView = currentView;
+        const backDest = window.lastView || 'dashboard';
         
-        const sourceSplit = {};
-        projExp.forEach(e => { const s = e.fundSource || 'Other'; sourceSplit[s] = (sourceSplit[s]||0) + parseFloat(e.amount); });
-        const splitHtml = Object.keys(sourceSplit).map(k => `<span class="tag" style="background:${getFundColor(k)}; color:white; border:none;">${k}: $${sourceSplit[k].toLocaleString()}</span>`).join('');
+        // 2. Financial Math (FIXED: Ignore Estimates)
+        const projExp = expenses.filter(e => e.projId === id);
+        let spentNavy = 0, spentCmd = 0, spentOther = 0;
+        
+        projExp.forEach(e => {
+            if(e.status === 'Estimate') return; // <-- FIX: Don't count drafts as spent!
+            
+            const val = Math.abs(parseFloat(e.amount)||0);
+            const src = (e.fundSource||'');
+            if(src.includes('Navy')) spentNavy += val;
+            else if(src.includes('Command')) spentCmd += val;
+            else spentOther += val;
+        });
+        
+        const projAllocs = allocations.filter(a => a.projId === id);
+        let budgetNavy = 0, budgetCmd = 0, budgetOther = 0;
+        projAllocs.forEach(a => {
+            const val = parseFloat(a.amount)||0;
+            const src = (a.fundSource||'');
+            if(src.includes('Navy')) budgetNavy += val;
+            else if(src.includes('Command')) budgetCmd += val;
+            else budgetOther += val;
+        });
 
-        const budget = getProjectBudget(id);
-        const burn = budget > 0 ? Math.min((spent/budget)*100, 100) : 0;
+        // 3. Generate Lists
         const teamOpts = team.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
         
         const assignedItems = inventory.filter(i => i.projId === id);
         const assetsHtml = assignedItems.length ? assignedItems.map(i => `<div class="list-item" style="font-size:0.8rem;"><span><i class="fa-solid fa-box"></i> ${esc(i.id)} (${esc(i.iso)})</span><span>${i.dose} mR/hr</span></div>`).join('') : '<div style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">No assets assigned.</div>';
 
-        const projAllocs = allocations.filter(a => a.projId === id);
-        const allocHtml = projAllocs.length ? projAllocs.map(a => `<div style="display:flex; justify-content:space-between; font-size:0.8rem; padding:4px 0; border-bottom:1px solid var(--border);"><span>${esc(a.desc)} <span class="tag">${esc(a.fundSource||'Navy General Fund')}</span></span><span>$${a.amount.toLocaleString()}</span></div>`).join('') : '<div style="font-style:italic; font-size:0.8rem; color:var(--text-muted)">No funding records.</div>';
+        // Funding History (FIXED: Add IGE Icon)
+        const allocHtml = projAllocs.length ? projAllocs.map(a => {
+            const igeIcon = a.details ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:5px;" onclick="viewEstimate(${a.id}, 'alloc')" title="View IGE"></i>` : '';
+            return `<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:4px 0; border-bottom:1px solid var(--border);">
+                <span>${esc(a.desc)} ${igeIcon} <span class="tag">${esc(a.fundSource||'Navy General Fund')}</span></span>
+                <span>$${a.amount.toLocaleString()}</span>
+            </div>`;
+        }).join('') : '<div style="font-style:italic; font-size:0.8rem; color:var(--text-muted)">No funding records.</div>';
 
+        // NEW: Pending Estimates List
+        const estimates = projExp.filter(e => e.status === 'Estimate');
+        const estHtml = estimates.length ? estimates.map(e => {
+            const igeIcon = e.details ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:5px;" onclick="viewEstimate(${e.id}, 'expense')" title="View IGE"></i>` : '';
+            return `<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:4px 0; border-bottom:1px solid var(--border); color:var(--text-muted); font-style:italic;">
+                <span>${esc(e.desc)} ${igeIcon} <span class="tag" style="background:var(--bg-input); color:var(--text-muted); border:1px solid var(--border);">Draft</span></span>
+                <span>$${e.amount.toLocaleString()}</span>
+            </div>`;
+        }).join('') : '';
+
+        // Tasks & Links
         const sortedTasks = (p.tasks||[]).sort((a,b) => {
             if(a.done !== b.done) return a.done ? 1 : -1;
             const pMap = {'high':0, 'med':1, 'low':2};
@@ -1009,10 +2292,18 @@
         
         const status = getDueStatus(p.due);
         const dueBadge = `<span class="tag" style="background:${status.color}; color:white; border:none; font-weight:bold;">${status.text}</span>`;
+        
+        const updatesListHtml = (p.updatesSent || []).map((date, idx) => 
+            `<span class="tag" style="border:1px solid var(--border); color:var(--text-main);">${date} <i class="fa-solid fa-xmark" style="cursor:pointer; margin-left:5px; color:var(--danger)" onclick="removeUpdateDate(${p.id}, ${idx})"></i></span>`
+        ).join(' ');
+
+        const navyPct = budgetNavy > 0 ? Math.min((spentNavy/budgetNavy)*100, 100) : 0;
+        const cmdPct = budgetCmd > 0 ? Math.min((spentCmd/budgetCmd)*100, 100) : 0;
+        const otherPct = budgetOther > 0 ? Math.min((spentOther/budgetOther)*100, 100) : 0;
 
         document.getElementById('view-project-detail').innerHTML = `
         <div class="header">
-            <button class="btn-sync" style="width:auto" onclick="nav('dashboard')">&larr; Back</button> 
+            <button class="btn-sync" style="width:auto" onclick="nav('${backDest}')">&larr; Back</button> 
             <div style="display:flex; gap:10px;">
                 <button class="btn" style="background:var(--info)" onclick="cloneProject(${p.id})">Clone</button>
                 <button class="btn" style="background:var(--danger)" onclick="delProj(${p.id})">Delete</button>
@@ -1021,38 +2312,88 @@
         <div class="widget">
             <input class="edit-h1" value="${esc(p.title)}" onchange="updItem('project', ${p.id}, 'title', this.value, this)">
             <textarea class="edit-p" onchange="updItem('project', ${p.id}, 'desc', this.value, this)">${esc(p.desc)}</textarea>
+            
             <div class="input-grid">
-                <div>
-                    <label style="font-size:0.7rem; color:var(--text-muted)">STATUS</label>
-                    <select class="form-control" style="margin:0;" onchange="updItem('project', ${p.id},'status',this.value)"><option ${p.status==='Planning'?'selected':''}>Planning</option><option ${p.status==='Active'?'selected':''}>Active</option><option ${p.status==='Review'?'selected':''}>Review</option><option ${p.status==='Complete'?'selected':''}>Complete</option></select>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">STATUS</label><select class="form-control" style="margin:0;" onchange="updItem('project', ${p.id},'status',this.value)"><option ${p.status==='Planning'?'selected':''}>Planning</option><option ${p.status==='Active'?'selected':''}>Active</option><option ${p.status==='Review'?'selected':''}>Review</option><option ${p.status==='Complete'?'selected':''}>Complete</option></select></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">HEALTH</label><select class="form-control" style="margin:0;" onchange="updItem('project', ${p.id},'health',this.value)"><option value="green" ${p.health==='green'?'selected':''}>🟢 On Track</option><option value="yellow" ${p.health==='yellow'?'selected':''}>🟡 Risk</option><option value="red" ${p.health==='red'?'selected':''}>🔴 Critical</option></select></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">DUE DATE ${dueBadge}</label><input type="date" class="form-control" style="margin:0;" value="${p.due}" onchange="updItem('project', ${p.id}, 'due', this.value)"></div>
+            </div>
+
+            <div style="border:1px solid var(--border); padding:15px; border-radius:8px; margin:20px 0; background:transparent;">
+                <div style="font-size:0.85rem; font-weight:bold; color:var(--text-main); text-transform:uppercase; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:5px;">Status and Logistics</div>
+                <div class="input-grid" style="margin-bottom:10px;">
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">UIC / COMMAND</label><input class="form-control" value="${esc(p.uic||'')}" onchange="updItem('project', ${p.id}, 'uic', this.value)"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">LOCATION</label><input class="form-control" value="${esc(p.location||'')}" onchange="updItem('project', ${p.id}, 'location', this.value)"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">LLRW REGION</label><select class="form-control" onchange="updItem('project', ${p.id}, 'region', this.value)"><option value="">--</option><option ${p.region==='East'?'selected':''}>East</option><option ${p.region==='West'?'selected':''}>West</option><option ${p.region==='Far-East'?'selected':''}>Far-East</option><option ${p.region==='Europe'?'selected':''}>Europe</option></select></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">SHIPMENT TYPE</label><select class="form-control" onchange="updItem('project', ${p.id}, 'shipType', this.value)"><option value="">--</option><option ${p.shipType==='Level 1'?'selected':''}>Level 1</option><option ${p.shipType==='Level 2'?'selected':''}>Level 2</option><option ${p.shipType==='Level 3'?'selected':''}>Level 3</option></select></div>
                 </div>
-                <div>
-                    <label style="font-size:0.7rem; color:var(--text-muted)">HEALTH</label>
-                    <select class="form-control" style="margin:0;" onchange="updItem('project', ${p.id},'health',this.value)"><option value="green" ${p.health==='green'?'selected':''}>🟢 On Track</option><option value="yellow" ${p.health==='yellow'?'selected':''}>🟡 Risk</option><option value="red" ${p.health==='red'?'selected':''}>🔴 Critical</option></select>
+                <div class="input-grid" style="margin-bottom:10px;">
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">JMC PROJECT #</label><input class="form-control" value="${esc(p.jmcId||'')}" onchange="updItem('project', ${p.id}, 'jmcId', this.value)"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">RCN</label><input class="form-control" value="${esc(p.rcn||'')}" onchange="updItem('project', ${p.id}, 'rcn', this.value)"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">PLANNING STATUS</label><input class="form-control" value="${esc(p.planStatus||'')}" onchange="updItem('project', ${p.id}, 'planStatus', this.value)"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">PICKUP STATUS</label><input class="form-control" value="${esc(p.pickupStatus||'')}" onchange="updItem('project', ${p.id}, 'pickupStatus', this.value)"></div>
                 </div>
-                <div>
-                    <label style="font-size:0.7rem; color:var(--text-muted)">DUE DATE ${dueBadge}</label>
-                    <input type="date" class="form-control" style="margin:0;" value="${p.due}" onchange="updItem('project', ${p.id}, 'due', this.value)">
+                <div class="input-grid">
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">REQ DATE</label><input type="date" class="form-control" value="${p.reqDate||''}" onchange="updItem('project', ${p.id}, 'reqDate', this.value)"></div>
+                    <div style="flex:2;">
+                        <label style="font-size:0.7rem; color:var(--text-muted)">UPDATES SENT</label>
+                        <div style="display:flex; gap:5px; margin-bottom:5px; align-items:center;">
+                            <input type="date" id="newUpdateDate_${p.id}" class="form-control" style="margin:0; width:130px;">
+                            <button class="qa-btn" onclick="addUpdateDate(${p.id}, document.getElementById('newUpdateDate_${p.id}').value)">Add</button>
+                        </div>
+                        <div style="display:flex; flex-wrap:wrap; gap:5px;">${updatesListHtml}</div>
+                    </div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">FWD TO JMC</label><input type="date" class="form-control" value="${p.jmcDate||''}" onchange="updItem('project', ${p.id}, 'jmcDate', this.value)"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">DISP REC REC'D</label><input type="date" class="form-control" value="${p.dispRecDate||''}" onchange="updItem('project', ${p.id}, 'dispRecDate', this.value)"></div>
+                </div>
+                <div style="margin-top:10px;">
+                    <label style="font-size:0.7rem; color:var(--text-muted)">LOGISTICS NOTES</label>
+                    <textarea class="form-control" style="height:60px; resize:vertical;" onchange="updItem('project', ${p.id}, 'logisticsNotes', this.value)">${esc(p.logisticsNotes||'')}</textarea>
                 </div>
             </div>
+
             <div style="background:var(--bg-card); padding:15px; border-radius:8px; margin:20px 0; border:1px solid var(--border);">
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                    <span style="font-size:0.8rem; font-weight:bold;">BUDGET: $${budget.toLocaleString()} <i class="fa-solid fa-circle-plus" style="cursor:pointer; color:var(--accent); margin-left:5px;" onclick="openModal('allocModal')"></i></span>
-                    <span style="font-size:0.8rem; color:${spent>budget?'var(--danger)':'var(--warning)'};">SPENT: $${spent.toLocaleString()}</span>
+                <div style="margin-bottom:15px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span style="font-size:0.8rem; font-weight:bold; color:var(--navy);">Navy General Fund ($${budgetNavy.toLocaleString()})</span>
+                        <span style="font-size:0.8rem; color:${spentNavy>budgetNavy?'var(--danger)':'var(--text-muted)'};">$${spentNavy.toLocaleString()} Spent</span>
+                    </div>
+                    <div class="progress-bar" style="background:var(--navy-dim);">
+                        <div class="progress-fill" style="width:${navyPct}%; background:var(--navy);"></div>
+                    </div>
                 </div>
-                <div class="progress-bar" style="width:100%; background:#1e293b;">
-                    <div class="progress-fill" style="width:${burn}%; background:${spent>budget?'var(--danger)':'var(--warning)'};"></div>
+
+                <div style="margin-bottom:15px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span style="font-size:0.8rem; font-weight:bold; color:var(--cmd);">Command Funded ($${budgetCmd.toLocaleString()})</span>
+                        <span style="font-size:0.8rem; color:${spentCmd>budgetCmd?'var(--danger)':'var(--text-muted)'};">$${spentCmd.toLocaleString()} Spent</span>
+                    </div>
+                    <div class="progress-bar" style="background:var(--cmd-dim);">
+                        <div class="progress-fill" style="width:${cmdPct}%; background:var(--cmd);"></div>
+                    </div>
                 </div>
-                <div style="margin-top:10px;">${splitHtml}</div>
+
+                <div style="margin-bottom:15px; ${budgetOther === 0 && spentOther === 0 ? 'display:none' : ''}">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                        <span style="font-size:0.8rem; font-weight:bold; color:var(--text-muted);">Other Funding ($${budgetOther.toLocaleString()})</span>
+                        <span style="font-size:0.8rem; color:${spentOther>budgetOther?'var(--danger)':'var(--text-muted)'};">$${spentOther.toLocaleString()} Spent</span>
+                    </div>
+                    <div class="progress-bar" style="background:var(--other-dim);">
+                        <div class="progress-fill" style="width:${otherPct}%; background:var(--other);"></div>
+                    </div>
+                </div>
+                
                 <div style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--border);">
                     <div style="font-size:0.7rem; font-weight:bold; color:var(--text-muted); margin-bottom:5px;">FUNDING HISTORY</div>
                     ${allocHtml}
+                    ${estHtml ? '<div style="margin-top:10px; font-size:0.7rem; font-weight:bold; color:var(--text-muted); margin-bottom:5px;">PENDING ESTIMATES (DRAFT)</div>' + estHtml : ''}
                 </div>
             </div>
+
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
                 <div>
                     <h3>Action Items</h3>
-                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
                         <input id="newT" class="form-control" style="margin:0" placeholder="Task">
                         <select id="newTA" class="form-control" style="margin:0; width:100px;"><option value="">Assign</option>${teamOpts}</select>
                         <button class="btn" onclick="addTask(${p.id})">Add</button>
@@ -1063,9 +2404,9 @@
                     <h3>Assigned Assets</h3>
                     <div style="margin-bottom:15px;">${assetsHtml}</div>
                     <h3>Digital Binder</h3>
-                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
                         <input id="newLinkName" class="form-control" style="margin:0" placeholder="Name">
-                        <input id="newLinkUrl" class="form-control" style="margin:0" placeholder="URL or C:\Path\To\File">
+                        <input id="newLinkUrl" class="form-control" style="margin:0" placeholder="URL or C:\\Path\\To\\File">
                         <button class="btn" onclick="addLink(${p.id})">Link</button>
                     </div>
                     <div>${lHtml}</div>
@@ -1213,7 +2554,9 @@
     }
 
     function updateBaseAlloc(pid, val) {
-        const amount = parseFloat(val) || 0;
+        // FIX: Add "|| 0" to handle empty strings/NaN
+        const amount = parseFloat(val) || 0; 
+        
         const existing = allocations.find(a => a.projId === pid && (a.type === 'base' || a.desc === "Initial Budget"));
         if(existing) {
             existing.amount = amount;
@@ -1273,25 +2616,80 @@
         sortDir *= -1; rows.forEach(row => tbody.appendChild(row));
     }
 
-    function updItem(type, id, key, val, elem) { 
-        if (type === 'project') { const p = projects.find(x => x.id === id); p[key] = val; }
-        if (type === 'inventory') { const i = inventory.find(x => x.id == id); if(key === 'dose') val = parseFloat(val); if(key === 'projId') val = val ? parseInt(val) : null; i[key] = val; }
-        if (type === 'expense') { const e = expenses.find(x => x.id === id); if(key === 'amount') val = parseFloat(val); e[key] = val; }
-        if (type === 'alloc') { const a = allocations.find(x => x.id === id); if(key === 'amount') val = parseFloat(val); a[key] = val; }
-        
-        saveLocally(); 
-        if(elem) {
-            const oldBorder = elem.style.borderColor;
-            elem.style.borderColor = 'var(--accent)';
-            setTimeout(() => elem.style.borderColor = oldBorder, 500);
+function updItem(type, id, key, val, elem) { 
+    // 1. Update the Data Model
+    if (type === 'project') { const p = projects.find(x => x.id === id); p[key] = val; }
+    
+    if (type === 'inventory') { 
+        const i = inventory.find(x => x.id == id); 
+        if(key === 'fill') {
+            val = parseInt(val);
+            if(isNaN(val)) val = 0;
+            if(val < 0) val = 0; if(val > 100) val = 100;
         }
-        if(key !== 'desc' && key !== 'title' && key !== 'id' && key !== 'text' && key !== 'iso' && key !== 'act') {
+        if(key === 'dose') val = parseFloat(val); 
+        if(key === 'projId') val = val ? parseInt(val) : null; 
+        i[key] = val; 
+    }
+
+    if (type === 'expense') { const e = expenses.find(x => x.id === id); if(key === 'amount') val = parseFloat(val); e[key] = val; }
+    if (type === 'alloc') { const a = allocations.find(x => x.id === id); if(key === 'amount') val = parseFloat(val); a[key] = val; }
+    if (type === 'exempt') { const ex = exemptLog.find(x => x.id === id); ex[key] = val; }
+    
+    saveLocally(); 
+    
+    // 2. Visual Feedback (Flash border)
+    if(elem) {
+        const oldBorder = elem.style.borderColor;
+        elem.style.borderColor = 'var(--accent)';
+        setTimeout(() => elem.style.borderColor = oldBorder, 500);
+    }
+
+    // --- Surgical DOM Updates ---
+    
+    // Special Case: Exempt Log Auth Date
+    // If updating Auth Date, we update ONLY the badge and STOP (return) to prevent re-render
+    if (type === 'exempt' && key === 'authDate') {
+        const isAuth = val && val.trim() !== "";
+        const badge = isAuth 
+            ? '<span class="tag" style="background:var(--accent); color:white; border:none;">Authorized</span>' 
+            : '<span class="tag" style="background:var(--warning); color:white; border:none;">Pending</span>';
+        const cell = document.getElementById(`ex-status-${id}`);
+        if(cell) cell.innerHTML = badge;
+        return; 
+    }
+
+    // 3. General Render Logic
+    // Fields that should NOT trigger a re-render (to prevent losing focus while typing)
+    const skipRenderFields = ['desc', 'text', 'iso', 'act', 'basis', 'path', 'cmd', 'logisticsNotes', 'date', 'qty', 'rev', 'amount', 'dose', 'fill'];
+    
+    if(!skipRenderFields.includes(key)) {
+        render();
+    }
+}
+    
+    function delExempt(id) {
+        if(confirm("Delete Log Entry?")) {
+            exemptLog = exemptLog.filter(x => x.id !== id);
+            saveLocally();
             render();
+            showToast("Entry Deleted");
         }
     }
     
-    function updTask(pId, tId, key, val) { projects.find(x => x.id === pId).tasks.find(x => x.id === tId)[key] = val; saveLocally(); }
-    function cycPrio(pId, tId) { const t = projects.find(x=>x.id===pId).tasks.find(x=>x.id===tId); const m = {'high':'low','med':'high','low':'med','undefined':'med'}; t.prio = m[t.prio] || 'med'; saveLocally(); viewProject(pId); }
+    function updTask(pId, tId, key, val) { 
+        const p = projects.find(x => x.id === pId);
+        const t = p.tasks.find(x => x.id === tId);
+        t[key] = val; 
+        
+        if(key === 'assign' && val) {
+            logSystemAction(`Task <b>${esc(t.text)}</b> assigned to <b>${esc(val)}</b> in <b>${esc(p.title)}</b>.`);
+        }
+
+        saveLocally(); 
+    }
+    
+function cycPrio(pId, tId) { const t = projects.find(x=>x.id===pId).tasks.find(x=>x.id===tId); const m = {'high':'low','med':'high','low':'med','undefined':'med'}; t.prio = m[t.prio] || 'med'; saveLocally(); viewProject(pId); }
     
     function cloneProject(id) { 
         const original = projects.find(x => x.id === id); 
@@ -1300,7 +2698,10 @@
         copy.title = "Copy of " + copy.title; 
         copy.status = "Planning"; 
         copy.health = "green"; 
+        copy.updatesSent = []; 
+        copy.links = [];
         copy.tasks.forEach(t => t.done = false); 
+        
         projects.push(copy); 
         
         const base = allocations.find(a => a.projId === id && (a.type === 'base' || a.desc === 'Initial Budget'));
@@ -1308,26 +2709,66 @@
             allocations.push({ id: Date.now() + 5, projId: copy.id, date: getTodayStr(), amount: base.amount, desc: "Initial Budget", type: 'base', fundSource: base.fundSource });
         }
 
+        logSystemAction(`Project <b>${esc(original.title)}</b> cloned to <b>${esc(copy.title)}</b>.`);
+
         saveLocally(); viewProject(copy.id); showToast("Project Cloned"); 
     }
     
-    function togTask(pId, tId) { projects.find(x=>x.id===pId).tasks.find(x=>x.id===tId).done ^= true; saveLocally(); viewProject(pId); }
-    function addTask(pId) { const t = document.getElementById('newT').value; const a = document.getElementById('newTA').value; if(t) { projects.find(x=>x.id===pId).tasks.push({id:Date.now(), text:t, done:false, assign:a, prio:'med'}); saveLocally(); viewProject(pId); } }
-    function delTask(pId, tId) { const p = projects.find(x=>x.id===pId); p.tasks = p.tasks.filter(x=>x.id!==tId); saveLocally(); viewProject(pId); }
+    function togTask(pId, tId) { 
+        const p = projects.find(x=>x.id===pId);
+        const t = p.tasks.find(x=>x.id===tId);
+        t.done = !t.done; 
+        
+        const status = t.done ? "completed" : "re-opened";
+        logSystemAction(`Task <b>${esc(t.text)}</b> marked ${status} in <b>${esc(p.title)}</b>.`);
+
+        saveLocally(); viewProject(pId); 
+    }
+    
+function addTask(pId) { 
+        const t = document.getElementById('newT').value; 
+        const a = document.getElementById('newTA').value; 
+        if(t) { 
+            const p = projects.find(x=>x.id===pId);
+            p.tasks.push({id:Date.now(), text:t, done:false, assign:a, prio:'med'}); 
+            
+            logSystemAction(`Task <b>${esc(t)}</b> added to <b>${esc(p.title)}</b>.`);
+
+            saveLocally(); viewProject(pId); 
+        } 
+    }
+    
+function delTask(pId, tId) { 
+        const p = projects.find(x=>x.id===pId);
+        const t = p.tasks.find(x=>x.id===tId);
+        
+        if(t) {
+
+            logSystemAction(`Task <b>${esc(t.text)}</b> deleted from <b>${esc(p.title)}</b>.`);
+            
+            p.tasks = p.tasks.filter(x=>x.id!==tId); 
+            saveLocally(); viewProject(pId); 
+        }
+    }
     
     function delProj(id) { 
-        if(confirm("Delete Project and all associated expenses?")) { 
+        const p = projects.find(x => x.id === id);
+        if(p && confirm("Delete Project and all associated expenses?")) { 
+
+            logSystemAction(`Project <b>${esc(p.title)}</b> deleted.`);
+
             projects = projects.filter(x=>x.id!==id); 
             expenses = expenses.filter(x=>x.projId!==id); 
             allocations = allocations.filter(x=>x.projId!==id);
             inventory.forEach(i => { if(i.projId === id) i.projId = null; });
+            
             saveLocally(); 
             nav('dashboard'); 
             showToast("Project Deleted", "error");
         } 
     }
     
-    // FIX: Using sanitizer in addLink
+    // Using sanitizer in addLink
     function addLink(pId) { 
         const n = document.getElementById('newLinkName').value; 
         let u = document.getElementById('newLinkUrl').value; 
@@ -1342,35 +2783,84 @@
         } 
     }
     
-    function addProject() { 
+function addProject() { 
         const t=document.getElementById('pTitle').value; 
         const d=document.getElementById('pDesc').value; 
         const dt=document.getElementById('pDate').value; 
         const c=parseFloat(document.getElementById('pCost').value)||0; 
+        const uic = document.getElementById('pUic').value;
+        const loc = document.getElementById('pLoc').value;
+
         if(t) { 
             const pid = Date.now();
-            projects.push({id:pid, title:t, desc:d, due:dt, status:"Planning", health:"green", tasks:[], links:[]}); 
+            projects.push({
+                id: pid, 
+                title: t, 
+                desc: d, 
+                due: dt, 
+                status: "Planning", 
+                health: "green", 
+                uic: uic, 
+                location: loc, 
+                tasks: [], 
+                links: []
+            }); 
             if(c > 0) {
                 allocations.push({id: Date.now()+1, projId: pid, date: dt || getTodayStr(), amount: c, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund"});
             }
+            
+            logSystemAction(`Project <b>${esc(t)}</b> created.`);
+
             saveLocally(); closeModal('projectModal'); render(); showToast("Project Created"); 
         } 
     }
     
-    function addExpense() { 
+function addExpense() { 
         const pidVal = document.getElementById('expProj').value; 
         const pid = pidVal === "" ? null : parseInt(pidVal); 
         const desc = document.getElementById('expDesc').value; 
         const amt = document.getElementById('expAmt').value; 
         const dt = document.getElementById('expDate').value; 
         const st = document.getElementById('expStatus').value; 
-        const fund = document.getElementById('expFund').value;
-        if(desc && amt) { 
-            expenses.push({id:Date.now(), projId:pid, desc:desc, amount:parseFloat(amt), date:dt, status:st, fundSource:fund}); 
-            logSystemAction(`Expense <b>$${amt}</b> added to ${pid ? "Project" : "General"}.`);
-            showToast("Expense Logged");
-            saveLocally(); closeModal('expenseModal'); render(); 
-        } 
+        const fund = document.getElementById('expFund').value || "Other";
+
+        // VALIDATION CHECK
+        if(!desc || !amt || !dt) {
+            showToast("Please fill in Description, Amount, and Date.", "error");
+            return; 
+        }
+
+        expenses.push({
+            id: Date.now(), 
+            projId: pid, 
+            desc: desc, 
+            amount: parseFloat(amt), 
+            date: dt, 
+            status: st, 
+            fundSource: fund
+        }); 
+
+        // --- NEW: Smart Project Naming ---
+        const p = projects.find(x => x.id === pid);
+        const pName = p ? p.title : "General Overhead"; // If no PID, call it Overhead
+        
+        logSystemAction(`Expense <b>$${amt}</b> added to <b>${esc(pName)}</b>.`);
+        // ---------------------------------
+
+        showToast("Expense Logged");
+        saveLocally(); 
+        
+        // CLEAR FORM DATA
+        document.getElementById('expDesc').value = '';
+        document.getElementById('expAmt').value = '';
+        document.getElementById('expDate').value = getTodayStr(); 
+
+        closeModal('expenseModal'); 
+        render(); 
+
+        if(pid && document.getElementById('view-project-detail').classList.contains('active')) {
+            viewProject(pid);
+        }
     }
     
     function addAllocation() {
@@ -1380,12 +2870,38 @@
         const amt = document.getElementById('allocAmt').value;
         const dt = document.getElementById('allocDate').value;
         const fund = document.getElementById('allocFund').value;
-        if(desc && amt) {
-            allocations.push({id:Date.now(), projId:pid, desc:desc, amount:parseFloat(amt), date:dt, type: 'adj', fundSource: fund});
-            logSystemAction(`Funding <b>$${amt}</b> added.`);
-            showToast("Funding Added");
-            saveLocally(); closeModal('allocModal'); render();
+
+        if(!desc || !amt || !dt) {
+            showToast("Missing Description, Amount, or Date.", "error");
+            return;
         }
+
+        allocations.push({
+            id:Date.now(), 
+            projId:pid, 
+            desc:desc, 
+            amount:parseFloat(amt), 
+            date:dt, 
+            type: 'adj', 
+            fundSource: fund
+        });
+
+        // --- NEW: Smart Project Naming ---
+        const p = projects.find(x => x.id === pid);
+        const pName = p ? p.title : "General Overhead";
+        
+        logSystemAction(`Funding <b>$${amt}</b> allocated to <b>${esc(pName)}</b>.`);
+        // ---------------------------------
+
+        showToast("Funding Added");
+        saveLocally(); 
+        
+        document.getElementById('allocDesc').value = '';
+        document.getElementById('allocAmt').value = '';
+        document.getElementById('allocDate').value = getTodayStr();
+
+        closeModal('allocModal'); 
+        render();
     }
     
     function delExpense(id) { if(confirm("Remove?")) { expenses = expenses.filter(x=>x.id!==id); saveLocally(); render(); showToast("Expense Removed"); } }
@@ -1401,13 +2917,60 @@
         const pidVal = document.getElementById('invProj').value;
         const pid = pidVal === "" ? null : parseInt(pidVal);
 
-        if(id) { 
-            inventory.push({id, iso, act, dose:parseFloat(dose)||0, fill, status:stat, projId: pid, logDate: getTodayStr()}); 
-            logSystemAction(`Inventory <b>${esc(id)}</b> (${iso}) added.`);
-            showToast("Item Added");
-            saveLocally(); closeModal('invModal'); render(); 
-        } 
+	const dateVal = document.getElementById('invDate').value || getTodayStr();
+
+if(inventory.some(i => i.id === id)) {
+        showToast("Error: Item ID already exists", "error");
+        return;
     }
+
+        if(id) { 
+        inventory.push({
+            id, iso, act, dose:parseFloat(dose)||0, fill, status:stat, projId: pid, 
+            logDate: dateVal // <--- Was getTodayStr()
+        }); 
+        logSystemAction(`Inventory <b>${esc(id)}</b> (${iso}) added.`);
+        showToast("Item Added");
+        saveLocally(); closeModal('invModal'); render(); 
+    }
+}
+
+function decayInventory() {
+    if(!confirm("Permanently update all inventory activities to current date?")) return;
+    let count = 0;
+    inventory.forEach(i => {
+        if(ISOTOPE_DB[i.iso] && i.logDate) {
+            const hl = ISOTOPE_DB[i.iso].hl;
+            
+            // --- FIX: Updated Regex ---
+            // 1. Allows scientific notation (e.g. 1.2e-5)
+            // 2. Allows missing space between number and unit
+            const match = i.act.match(/^([\d\.]+(?:[eE][-+]?\d+)?)\s*([a-zA-Z]+)$/);
+            
+            if(match) {
+                let val = parseFloat(match[1]);
+                const unit = match[2]; 
+                
+                const d1 = new Date(i.logDate);
+                const d2 = new Date();
+                const years = (d2 - d1) / (1000 * 60 * 60 * 24 * 365.25);
+                
+                if(years > 0) {
+                    const lambda = Math.log(2) / hl;
+                    const newAct = val * Math.exp(-lambda * years);
+                    
+                    // Formatting: Use exponential if very small
+                    i.act = (newAct < 0.001 ? newAct.toExponential(2) : newAct.toFixed(3)) + " " + unit;
+                    i.logDate = getTodayStr(); 
+                    count++;
+                }
+            }
+        }
+    });
+    saveLocally(); 
+    render(); 
+    showToast(`Updated ${count} items for decay.`);
+}
     
     function delLink(pId, idx) { const p = projects.find(x=>x.id===pId); p.links.splice(idx, 1); saveLocally(); viewProject(pId); }
     
@@ -1456,24 +3019,40 @@
     
     function openModal(id) { 
         document.getElementById(id).classList.add('active'); 
+        
+        // Clear New Project inputs when opening
+        if(id === 'projectModal') {
+            document.getElementById('pTitle').value = '';
+            document.getElementById('pDesc').value = '';
+            document.getElementById('pDate').value = '';
+            document.getElementById('pCost').value = '';
+            // Ensure the new fields added earlier are also cleared
+            if(document.getElementById('pUic')) document.getElementById('pUic').value = '';
+            if(document.getElementById('pLoc')) document.getElementById('pLoc').value = '';
+        }
+
         if(id === 'expenseModal' || id === 'allocModal') { 
             const sel = document.getElementById(id === 'expenseModal' ? 'expProj' : 'allocProj'); 
             sel.innerHTML = '<option value="">-- General --</option>'; 
             projects.forEach(p => sel.innerHTML += `<option value="${p.id}">${esc(p.title)}</option>`); 
-        } else if (id === 'invModal') {
-            const sel = document.getElementById('invProj'); sel.innerHTML = '<option value="">-- None --</option>';
-            projects.forEach(p => sel.innerHTML += `<option value="${p.id}">${esc(p.title)}</option>`);
-            // Fix slider reset
-            document.getElementById('invFill').value = 0;
-            document.getElementById('invFillLabel').innerText = "0%";
-        } else if (id === 'settingsModal') { 
-            renderTeamSettings(); 
-        } 
+            
+            // NEW: Clear inputs on open to prevent stale data
+            if(id === 'expenseModal') {
+                document.getElementById('expDesc').value = '';
+                document.getElementById('expAmt').value = '';
+                document.getElementById('expDate').value = getTodayStr(); // Nice touch: default to today
+            } else {
+                document.getElementById('allocDesc').value = '';
+                document.getElementById('allocAmt').value = '';
+                document.getElementById('allocDate').value = getTodayStr();
+            }
+        }
     }
+
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
     
     function openExportModal() { 
-        const data = JSON.stringify({projects,inventory,expenses,allocations,chat:chatLog, team, wiki:wikiText, hpState, viewMode, showComplete, estItems}); // Added estItems to backup
+        const data = JSON.stringify({projects,inventory,expenses,allocations,chat:chatLog, team, wiki:wikiText, hpState, viewMode, showComplete, estItems, exemptLog}); 
         document.getElementById('exportText').value = data;
         openModal('exportModal');
     }
@@ -1493,14 +3072,25 @@
             const d = JSON.parse(raw);
             projects=d.projects||[]; inventory=d.inventory||[]; expenses=d.expenses||[]; allocations=d.allocations||[]; chatLog=d.chat||[]; team=d.team||[]; wikiText=d.wiki||""; 
             hpState=d.hpState||{}; viewMode=d.viewMode||'list'; showComplete=d.showComplete||false; 
-            estItems=d.estItems||[]; // Load estimator items
+            estItems=d.estItems||[]; exemptLog=d.exemptLog||[]; 
+            // Data Migration for Updates
+            projects.forEach(p => {
+                if(!p.updatesSent) {
+                    p.updatesSent = [];
+                    // Migrate old single date if exists
+                    if(p.updatesDate) {
+                        p.updatesSent.push(p.updatesDate);
+                        delete p.updatesDate;
+                    }
+                }
+            });
             saveLocally(); render(); loadHPState();
             closeModal('importModal');
             showToast("Data Loaded Successfully");
         } catch(e) { alert("Invalid Data Code."); }
     }
 
-    function saveLocally() { localStorage.setItem('rad25_3_data', JSON.stringify({projects,inventory,expenses,allocations,chat:chatLog,team,wiki:wikiText,hpState,viewMode,showComplete,estItems})); }
+    function saveLocally() { localStorage.setItem('rad25_7_data', JSON.stringify({projects,inventory,expenses,allocations,chat:chatLog,team,wiki:wikiText,hpState,viewMode,showComplete,estItems,exemptLog})); }
     
     function loadHPState() {
         // Updated state loader
@@ -1518,37 +3108,72 @@
     }
 
     function loadLocally() { 
-        populateIsoSelects(); 
-        const theme = localStorage.getItem('rad_theme'); 
-        if (theme === 'dark') document.body.setAttribute('data-theme', 'dark'); 
-        const d = JSON.parse(localStorage.getItem('rad25_3_data')); // bumped storage key for safety
-        if(d) { 
-            projects=d.projects||[]; inventory=d.inventory||[]; expenses=d.expenses||[]; allocations=d.allocations||[]; chatLog=d.chat||[]; team=d.team||[]; wikiText=d.wiki||""; 
-            hpState=d.hpState||{}; viewMode=d.viewMode||'list'; showComplete=d.showComplete||false; 
-            estItems=d.estItems||[]; // Restore estimator items
-            
-            // Migrations/Cleanup
-            allocations.forEach(a => { if(!a.type && a.desc.toLowerCase().includes('initial')) a.type = 'base'; });
-            projects.forEach(p => {
-                if(p.cost && !allocations.find(a => a.projId === p.id)) {
-                    allocations.push({id: Date.now() + Math.random(), projId: p.id, date: p.due, amount: parseFloat(p.cost), desc: "Initial Budget", type: 'base'});
-                    delete p.cost;
-                }
-            });
-        } 
-        else resetData(false); 
-        render(); loadHPState();
-        updateEstItems(); 
-        calcEstimate(); // Ensure totals show up
+    populateIsoSelects(); 
+    const theme = localStorage.getItem('rad_theme'); 
+    if (theme === 'dark') document.body.setAttribute('data-theme', 'dark'); 
+    
+    const d = JSON.parse(localStorage.getItem('rad25_7_data')); 
+    
+    // --- FIX: Check initialization flag ---
+    const hasInitialized = localStorage.getItem('rad_init_flag');
+
+    if(d) { 
+        projects=d.projects||[]; inventory=d.inventory||[]; expenses=d.expenses||[]; allocations=d.allocations||[]; chatLog=d.chat||[]; team=d.team||[]; wikiText=d.wiki||""; 
+        hpState=d.hpState||{}; viewMode=d.viewMode||'list'; showComplete=d.showComplete||false; 
+        estItems=d.estItems||[]; exemptLog=d.exemptLog||[];
+        
+        // Migrations
+        allocations.forEach(a => { if(!a.type && a.desc.toLowerCase().includes('initial')) a.type = 'base'; });
+        projects.forEach(p => {
+            if(p.cost && !allocations.find(a => a.projId === p.id)) {
+                allocations.push({id: Date.now() + Math.random(), projId: p.id, date: p.due, amount: parseFloat(p.cost), desc: "Initial Budget", type: 'base'});
+                delete p.cost;
+            }
+            if(!p.updatesSent) {
+                p.updatesSent = [];
+                if(p.updatesDate) { p.updatesSent.push(p.updatesDate); delete p.updatesDate; }
+            }
+        });
+    } 
+    else {
+        // Only load starter data if we have NEVER initialized before
+        if(!hasInitialized) {
+            resetData(false); 
+            localStorage.setItem('rad_init_flag', 'true');
+        } else {
+            // User presumably cleared data intentionally. Start clean.
+            projects=[]; inventory=[]; expenses=[]; allocations=[]; chatLog=[]; team=[]; estItems=[]; exemptLog=[];
+        }
     }
     
-    function resetData(ask=true) { if(!ask || confirm("Restore Examples?")) { projects=JSON.parse(JSON.stringify(STARTER_DATA.projects)); inventory=JSON.parse(JSON.stringify(STARTER_DATA.inventory)); expenses=JSON.parse(JSON.stringify(STARTER_DATA.expenses)); allocations=JSON.parse(JSON.stringify(STARTER_DATA.allocations)); chatLog=JSON.parse(JSON.stringify(STARTER_DATA.chat)); team=STARTER_DATA.team; wikiText=STARTER_DATA.wiki; saveLocally(); if(ask)location.reload(); } }
-    function clearData() { if(confirm("Clear All?")) { projects=[]; inventory=[]; expenses=[]; allocations=[]; chatLog=[]; team=[]; wikiText=""; hpState={}; estItems=[]; saveLocally(); render(); } }
+    render(); 
+    loadHPState();
+    updateEstItems(); 
+    calcEstimate(); 
+}
+    
+function resetData(ask=true) { 
+        if(!ask || confirm("Restore Examples?")) { 
+            projects = JSON.parse(JSON.stringify(STARTER_DATA.projects)); 
+            inventory = JSON.parse(JSON.stringify(STARTER_DATA.inventory)); 
+            expenses = JSON.parse(JSON.stringify(STARTER_DATA.expenses)); 
+            allocations = JSON.parse(JSON.stringify(STARTER_DATA.allocations)); 
+            chatLog = JSON.parse(JSON.stringify(STARTER_DATA.chat)); 
+            team = STARTER_DATA.team; 
+            wikiText = STARTER_DATA.wiki; 
+            
+            // FIX: This line was missing, so the log was always resetting to empty
+            exemptLog = JSON.parse(JSON.stringify(STARTER_DATA.exemptLog || []));
+            
+            saveLocally(); 
+            if(ask) location.reload(); 
+        } 
+    }
+
+    function clearData() { if(confirm("Clear All?")) { projects=[]; inventory=[]; expenses=[]; allocations=[]; chatLog=[]; team=[]; wikiText=""; hpState={}; estItems=[]; exemptLog=[]; saveLocally(); render(); } }
     function toggleTheme() { const b=document.body; const newTheme = b.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; if(newTheme === 'dark') b.setAttribute('data-theme', 'dark'); else b.removeAttribute('data-theme'); localStorage.setItem('rad_theme', newTheme); }
 
-    const toastBox = document.createElement('div');
-    toastBox.className = 'toast-container';
-    document.body.appendChild(toastBox);
+    
     loadLocally();
 </script>
 </body>
