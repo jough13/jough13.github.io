@@ -32,6 +32,15 @@
         * { box-sizing: border-box; outline: none; transition: background 0.2s, color 0.2s; }
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: var(--bg-body); color: var(--text-main); display: grid; grid-template-columns: 240px 1fr 300px; grid-template-rows: 100vh; overflow: hidden; }
 
+/* Sticky Table Headers */
+.sci-table th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-panel); /* Matches theme (Dark/Light) */
+    z-index: 5;
+    box-shadow: 0 1px 0 var(--border); /* subtle border line */
+}
+
         /* Responsive */
         @media (max-width: 1100px) { body { grid-template-columns: 200px 1fr; grid-template-rows: 1fr auto; } .chat-panel { grid-column: 2; grid-row: 2; border-left: none; border-top: 1px solid var(--border); height: 300px; } .main { grid-column: 2; grid-row: 1; } }
         @media (max-width: 768px) { body { display: block; height: auto; overflow-y: auto; } .sidebar { width: 100%; height: auto; border-right: none; flex-direction: row; flex-wrap: wrap; } .main { padding: 1rem; height: auto; overflow: visible; } .chat-panel { height: 400px; border-top: 4px solid var(--border); } }
@@ -503,7 +512,9 @@
                                 <thead>
                                     <tr>
                                         <th onclick="sortTable('table-budget', 0)">Project <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
-                                        <th style="width:50px;">Source</th>
+                                        <th onclick="sortTable('table-budget', 1)" style="width:50px; cursor:pointer;">
+    Source <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i>
+</th>
                                         <th onclick="sortTable('table-budget', 2)" style="text-align:right">Initial Budget <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
                                         <th onclick="sortTable('table-budget', 3)" style="text-align:right">Adjustments <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
                                         <th onclick="sortTable('table-budget', 4)" style="text-align:right">Total Funding <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
@@ -744,7 +755,11 @@
         </div>
     </div>
 
-    <div id="view-logbook" class="view-section"><div class="header"><h1>Logbook & Notes</h1></div><div class="widget" style="height: calc(100vh - 150px);"><textarea id="wiki-text" class="live-edit" style="width:100%; height:100%; resize:none; font-family:monospace; padding:15px;" placeholder="Type your persistent notes here..." onchange="saveWiki()"></textarea></div></div>
+    <div id="view-logbook" class="view-section"><div class="header"><h1>Logbook & Notes</h1></div><div class="widget" style="height: calc(100vh - 150px);">
+
+<textarea id="wiki-text" class="live-edit" style="width:100%; height:100%; resize:none; font-family:monospace; padding:15px;" placeholder="Type your persistent notes here..." oninput="saveWiki()"></textarea>
+
+</div></div>
 
     <div id="view-inventory" class="view-section">
         <div class="header"><h1>Inventory</h1>
@@ -753,7 +768,12 @@
                 <button class="btn" onclick="openModal('invModal')" style="margin:0;">+ Add Item</button>
             </div>
         </div>
-        <div class="widget"><div style="overflow-x:auto;"><table class="sci-table" id="table-inv"><thead><tr><th onclick="sortTable('table-inv',0)">ID <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',1)">Isotope <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',2)">Activity <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',3)">Dose <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',4)">Fill % <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th>Project</th><th>Status</th></tr></thead><tbody id="full-inv-list"></tbody></table></div></div>
+        <div class="widget"><div style="overflow-x:auto;"><table class="sci-table" id="table-inv"><thead><tr><th onclick="sortTable('table-inv',0)">ID <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',1)">Isotope <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',2)">Activity <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',3)">Dose <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',4)">Fill % <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
+
+<th>Project</th><th>Status</th><th></th></tr></thead>
+
+<tbody id="full-inv-list"></tbody></table></div></div>
+
     </div>
 </div>
 
@@ -826,12 +846,53 @@
 <div id="expenseModal" class="modal-overlay"><div class="modal"><h3>Log Expense</h3><label style="font-size:0.7rem; color:var(--text-muted);">PROJECT</label><select id="expProj" class="form-control"></select><input id="expDesc" class="form-control" placeholder="Description"><div class="input-grid"><div style="flex:2;"><label style="font-size:0.7rem; color:var(--text-muted);">FUNDING SOURCE</label><select id="expFund" class="form-control"><option>Navy General Fund</option><option>Command Funded</option><option>Other</option></select></div><div style="flex:1;"><label style="font-size:0.7rem; color:var(--text-muted);">AMOUNT</label><input id="expAmt" type="number" class="form-control" placeholder="0.00"></div></div><div style="margin-bottom:10px;"><label style="font-size:0.7rem; color:var(--text-muted);">DATE</label><input id="expDate" type="date" class="form-control"></div><select id="expStatus" class="form-control"><option>Invoiced</option><option>Paid</option><option>Encumbered</option></select><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('expenseModal')">Cancel</button><button class="btn" onclick="addExpense()">Add</button></div></div></div>
 <div id="allocModal" class="modal-overlay"><div class="modal"><h3>Add Funding Allocation</h3><label style="font-size:0.7rem; color:var(--text-muted);">PROJECT</label><select id="allocProj" class="form-control"></select><div class="input-grid"><div style="flex:2;"><label style="font-size:0.7rem; color:var(--text-muted);">SOURCE</label><select id="allocFund" class="form-control"><option>Navy General Fund</option><option>Command Funded</option><option>Other</option></select></div><div style="flex:1;"><label style="font-size:0.7rem; color:var(--text-muted);">AMOUNT</label><input id="allocAmt" type="number" class="form-control" placeholder="0.00"></div></div><input id="allocDesc" class="form-control" placeholder="Description (e.g. Q3 Top-up)"><div style="margin-bottom:10px;"><label style="font-size:0.7rem; color:var(--text-muted);">DATE</label><input id="allocDate" type="date" class="form-control"></div><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('allocModal')">Cancel</button><button class="btn" onclick="addAllocation()">Add Funds</button></div></div></div>
 <div id="budgetModal" class="modal-overlay"><div class="modal"><h3>Base Budget Manager</h3><p style="color:var(--text-muted); font-size:0.8rem;">Edit the <b>Initial Budget</b> for projects below.</p><div id="budgetManagerList" style="max-height:300px; overflow-y:auto; margin-bottom:15px;"></div><div style="background:var(--bg-input); padding:10px; border-radius:6px; font-size:0.75rem; color:var(--warning); margin-bottom:15px;"><i class="fa-solid fa-triangle-exclamation"></i> <b>Note:</b> Editing values here modifies the historical "Initial Budget" record. Default source is Navy General Fund. For specific sources, use "+ Funding".</div><div style="text-align:right;"><button class="btn-sync" style="width:auto;" onclick="closeModal('budgetModal')">Done</button></div></div></div>
-<div id="invModal" class="modal-overlay"><div class="modal"><h3>Log Container</h3><div class="input-grid">
-    <input id="invId" class="form-control" placeholder="ID">
-    <select id="invIso" class="form-control"></select>
-    <input id="invDate" type="date" class="form-control" title="Date Measured/Received">
-</div><div class="input-grid"><input id="invAct" class="form-control" placeholder="Activity"><input id="invDose" type="number" class="form-control" placeholder="Dose (mR/hr)"></div><div style="margin:10px 0;"><label style="font-size:0.7rem; color:var(--text-muted);">FILL LEVEL: <span id="invFillLabel" style="font-weight:bold; color:var(--accent);">0%</span></label><input id="invFill" type="range" min="0" max="100" value="0" style="width:100%" oninput="document.getElementById('invFillLabel').innerText = this.value + '%'"></div><label style="font-size:0.7rem; color:var(--text-muted);">ASSIGN TO PROJECT</label><select id="invProj" class="form-control"></select><select id="invStatus" class="form-control"><option>Stored</option><option>Staged</option><option>Shipped</option></select><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('invModal')">Cancel</button><button class="btn" onclick="addInventory()">Log</button></div></div></div>
-<div id="exportModal" class="modal-overlay"><div class="modal"><h3>Export Data</h3><p style="color:var(--text-muted);">Copy this code.</p><textarea id="exportText" class="form-control" style="height:200px; font-size:0.8rem;"></textarea><div style="text-align:right; margin-top:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('exportModal')">Close</button><button class="btn" onclick="copyExport()">Copy</button></div></div></div>
+
+<div id="invModal" class="modal-overlay">
+    <div class="modal">
+        <h3>Log Container</h3>
+
+        <div class="input-grid">
+            <input id="invId" class="form-control" placeholder="ID">
+            
+            <div style="display:flex; flex-direction:column; gap:5px;">
+                <select id="invIso" class="form-control" style="margin:0;" onchange="toggleCustomIso(this.value)"></select>
+                <input id="invIsoCustom" class="form-control" style="margin:0; display:none;" placeholder="Enter Isotope (e.g. Pu-239)">
+            </div>
+            
+            <input id="invDate" type="date" class="form-control" title="Date Measured/Received">
+        </div>
+
+        <div class="input-grid">
+            <input id="invAct" class="form-control" placeholder="Activity (e.g. 10 mCi or Unknown)">
+            <input id="invDose" type="text" class="form-control" placeholder="Dose Rate (e.g. 5 or Unknown)">
+        </div>
+
+        <div style="margin:10px 0;">
+            <label style="font-size:0.7rem; color:var(--text-muted);">FILL LEVEL: <span id="invFillLabel" style="font-weight:bold; color:var(--accent);">0%</span></label>
+            <input id="invFill" type="range" min="0" max="100" value="0" style="width:100%" oninput="document.getElementById('invFillLabel').innerText = this.value + '%'">
+        </div>
+
+        <label style="font-size:0.7rem; color:var(--text-muted);">ASSIGN TO PROJECT</label>
+        <select id="invProj" class="form-control"></select>
+        
+        <select id="invStatus" class="form-control">
+            <option>Stored</option>
+            <option>Staged</option>
+            <option>Shipped</option>
+        </select>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn-sync" style="width:auto;" onclick="closeModal('invModal')">Cancel</button>
+            <button class="btn" onclick="addInventory()">Log</button>
+        </div>
+    </div>
+</div>
+
+<div id="exportModal" class="modal-overlay"><div class="modal"><h3>Export Data</h3><p style="color:var(--text-muted);">Copy this code.</p><textarea id="exportText" class="form-control" style="height:200px; font-size:0.8rem;"></textarea><div style="text-align:right; margin-top:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('exportModal')">Close</button>
+
+<button class="btn" onclick="copyExport()">Copy Text</button>
+<button class="btn" style="background:var(--navy)" onclick="downloadBackup()">Download File</button>
+
 <div id="importModal" class="modal-overlay"><div class="modal"><h3>Import Data</h3><p style="color:var(--text-muted);">Paste data code.</p><textarea id="importText" class="form-control" style="height:200px; font-size:0.8rem;"></textarea><div style="text-align:right; margin-top:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('importModal')">Cancel</button><button class="btn" onclick="runImport()">Load</button></div></div></div>
 
 <div id="exemptModal" class="modal-overlay">
@@ -924,15 +985,22 @@
     };
 
     const ISOTOPE_DB = {
-        'Co-60': { hl: 5.27, name: 'Cobalt-60' },
-        'Cs-137': { hl: 30.17, name: 'Cesium-137' },
-        'Ir-192': { hl: 0.202, name: 'Iridium-192' },
-        'Am-241': { hl: 432.2, name: 'Americium-241' },
-        'Sr-90':  { hl: 28.79, name: 'Strontium-90' },
-        'H-3':    { hl: 12.32, name: 'Tritium' },
-        'C-14':   { hl: 5730, name: 'Carbon-14' },
-        'Ni-63':  { hl: 100.1, name: 'Nickel-63' }
-    };
+    'Co-60': { hl: 5.27, name: 'Cobalt-60' },
+    'Cs-137': { hl: 30.17, name: 'Cesium-137' },
+    'Ir-192': { hl: 0.202, name: 'Iridium-192' },
+    'Am-241': { hl: 432.2, name: 'Americium-241' },
+    'Sr-90':  { hl: 28.79, name: 'Strontium-90' },
+    'H-3':    { hl: 12.32, name: 'Tritium' },
+    'C-14':   { hl: 5730, name: 'Carbon-14' },
+    'Ni-63':  { hl: 100.1, name: 'Nickel-63' },
+    'Ra-226': { hl: 1600, name: 'Radium-226' },
+    'Th-232': { hl: 1.405e10, name: 'Thorium-232' },
+    'U-238':  { hl: 4.468e9, name: 'Uranium-238' },
+    'I-131':  { hl: 0.022, name: 'Iodine-131' }, 
+    'Tc-99m': { hl: 0.00068, name: 'Technetium-99m' },
+    'Cf-252': { hl: 2.645, name: 'Californium-252' },
+    'Unknown': { hl: 0, name: 'Unknown / Mixed' } // Safe fallback
+};
 
     const getTodayStr = () => {
         const d = new Date();
@@ -1172,6 +1240,8 @@ const STARTER_DATA = {
     let estItems = []; let exemptLog = [];
     let showComplete = false; let viewMode = 'list'; let hpState = {iso:'Co-60', a0:'', date:''};
 
+let sortState = { table: '', col: 0, dir: 1 };
+
 // Dashboard Widget States ---
     let dashTaskSort = 'prio';   // Options: 'prio', 'oldest', 'newest'
     let dashInvSort = 'dose';    // Options: 'dose', 'fill', 'recent'
@@ -1302,12 +1372,28 @@ const jsEsc = (t) => {
     function getProjectBudget(pid) {
         return allocations.filter(a => a.projId === pid).reduce((sum, a) => sum + (parseFloat(a.amount)||0), 0);
     }
+
+function toggleCustomIso(val) {
+    const input = document.getElementById('invIsoCustom');
+    if (val === 'Custom') {
+        input.style.display = 'block';
+        input.focus();
+    } else {
+        input.style.display = 'none';
+        input.value = ''; // Clear it if they switch back
+    }
+}
     
     function populateIsoSelects() {
-        const opts = Object.keys(ISOTOPE_DB).map(k => `<option value="${k}">${ISOTOPE_DB[k].name}</option>`).join('');
-        document.getElementById('calc-iso').innerHTML = opts;
-        document.getElementById('invIso').innerHTML = opts;
-    }
+    // Generate the list from DB
+    let opts = Object.keys(ISOTOPE_DB).map(k => `<option value="${k}">${ISOTOPE_DB[k].name}</option>`).join('');
+    
+    // Add the Custom option at the end
+    opts += `<option value="Custom">-- Custom / Other --</option>`;
+
+    document.getElementById('calc-iso').innerHTML = opts;
+    document.getElementById('invIso').innerHTML = opts;
+}
 
     function getFundColor(f) {
         if(!f) return 'var(--text-muted)';
@@ -1476,6 +1562,8 @@ function saveEstimateAction(mode) {
         
         if(!pidVal) { showToast("Select a project first", "error"); return; }
         const pid = parseInt(pidVal);
+        const p = projects.find(x => x.id === pid);
+        const pName = p ? p.title : "Unknown Project";
 
         let currentTotal = estItems.reduce((acc, item) => acc + item.total, 0);
         if(currentTotal <= 0) { showToast("Calculate an estimate first", "error"); return; }
@@ -1489,11 +1577,13 @@ function saveEstimateAction(mode) {
                 projId: pid,
                 date: getTodayStr(),
                 amount: currentTotal,
-                desc: "Estimated Budget Added", // UPDATED: Specific name requested
+                desc: "Estimated Budget Added",
                 type: "adj",
                 fundSource: fund,
-                details: estimateSnapshot // Attach the IGE data
+                details: estimateSnapshot
             });
+            // --- NEW: Smart Log ---
+            logSystemAction(`Funding Estimate <b>$${currentTotal.toLocaleString()}</b> added to <b>${esc(pName)}</b>.`);
             showToast("Added to Project Funding");
         } 
         else if (mode === 'expense') {
@@ -1505,8 +1595,10 @@ function saveEstimateAction(mode) {
                 date: getTodayStr(),
                 status: "Encumbered", 
                 fundSource: fund,
-                details: estimateSnapshot // Attach the IGE data
+                details: estimateSnapshot
             });
+            // --- NEW: Smart Log ---
+            logSystemAction(`Cost Estimate <b>$${currentTotal.toLocaleString()}</b> posted to <b>${esc(pName)}</b>.`);
             showToast("Posted as Expense");
         } 
         else if (mode === 'estimate') {
@@ -1518,8 +1610,10 @@ function saveEstimateAction(mode) {
                 date: getTodayStr(),
                 status: "Estimate", 
                 fundSource: fund,
-                details: estimateSnapshot // Attach the IGE data
+                details: estimateSnapshot
             });
+            // --- NEW: Smart Log ---
+            logSystemAction(`Draft Estimate <b>$${currentTotal.toLocaleString()}</b> saved for <b>${esc(pName)}</b>.`);
             showToast("Saved as Draft Estimate");
         }
         
@@ -1742,6 +1836,19 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
         saveLocally();
         viewProject(pid);
     }
+
+// --- HELPER: Normalize Isotope Name ---
+// Turns "co-60" -> "Co-60", "cs137" -> "Cs-137"
+function normalizeIso(input) {
+    if(!input) return "";
+    
+    // 1. Try to find a direct match in the DB (case-insensitive)
+    const dbKey = Object.keys(ISOTOPE_DB).find(k => k.toLowerCase() === input.toLowerCase());
+    if(dbKey) return dbKey;
+
+    // 2. Formatting Fallback: Capitalize first letter (e.g., "am-241" -> "Am-241")
+    return input.charAt(0).toUpperCase() + input.slice(1);
+}
     
     function removeUpdateDate(pid, idx) {
         const p = projects.find(x => x.id === pid);
@@ -2025,7 +2132,9 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
         }).join('') || '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:20px;">No expenses recorded in this period.</div>';
 
         // 7. Update Expense Table (Filtered)
-        document.getElementById('expense-list').innerHTML = finExps.map(e => {
+        const sortedExps = getSortedData(finExps, 'table-exp');
+
+	document.getElementById('expense-list').innerHTML = sortedExps.map(e => {
             const fund = e.fundSource || 'Other';
             let fundStyle = 'background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1';
             if(fund.includes('Navy')) fundStyle = 'background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe';
@@ -2059,7 +2168,8 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
         }).join('');
         
         // 8. Update Allocation Table (Filtered)
-        document.getElementById('alloc-list').innerHTML = finAllocs.map(a => {
+        const sortedAllocs = getSortedData(finAllocs, 'table-alloc');
+	document.getElementById('alloc-list').innerHTML = sortedAllocs.map(a => {
             const fund = a.fundSource || 'Navy General Fund';
             const pTitle = projects.find(p => p.id === a.projId)?.title || "General";
             
@@ -2078,65 +2188,85 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
             </tr>`;
         }).join('');
 
-        // 9. Update Budget Rollup Logic (Filtered vs Lifetime)
-        let grandInit = 0, grandAdj = 0, grandTot = 0, grandSpent = 0;
+        // 9. Update Budget Rollup Logic (With Sorting!)
+let grandInit = 0, grandAdj = 0, grandTot = 0, grandSpent = 0;
+
+// A. Update the Scope Toggle Button
+const btnScope = document.getElementById('btn-budget-scope');
+if(btnScope) {
+    btnScope.innerHTML = budgetScope === 'range' ? '<i class="fa-solid fa-filter"></i> In Range' : '<i class="fa-solid fa-infinity"></i> Lifetime';
+    btnScope.style.background = budgetScope === 'range' ? 'var(--bg-input)' : 'var(--navy)';
+    btnScope.style.color = budgetScope === 'range' ? 'var(--text-muted)' : 'white';
+    btnScope.style.borderColor = budgetScope === 'range' ? 'var(--border)' : 'var(--navy)';
+}
+
+// B. Define Stats Helper
+const getProjStats = (pid) => {
+    const sourceAllocs = budgetScope === 'all' ? allocations : finAllocs;
+    const sourceExps   = budgetScope === 'all' ? expenses    : finExps;
+    const pAllocs = sourceAllocs.filter(a => a.projId === pid);
+    const pExps = sourceExps.filter(e => e.projId === pid);
+    
+    const init = pAllocs.filter(a => a.type === 'base' || (!a.type && a.desc.toLowerCase().includes('initial'))).reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
+    const adj = pAllocs.filter(a => a.type !== 'base' && (a.type || !a.desc.toLowerCase().includes('initial'))).reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
+    const spent = pExps.filter(e => e.status !== 'Estimate').reduce((s,e)=>s+Math.abs(parseFloat(e.amount)||0),0);
+    
+    return { init, adj, total: init+adj, spent, rem: (init+adj)-spent };
+};
+
+// C. BUILD DATA ARRAY FIRST (Don't draw HTML yet)
+let budgetData = projects.map(p => {
+    const s = getProjStats(p.id);
+    const src = getDominantSource(p.id);
+    let burn = 0;
+    if(s.total > 0) burn = Math.round((s.spent / s.total) * 100);
+    else if(s.spent > 0) burn = 100;
+    
+    // Return a clean object we can sort
+    return { 
+        id: p.id, title: p.title, health: p.health, 
+        srcName: src.short, srcColor: src.color,
+        init: s.init, adj: s.adj, total: s.total, spent: s.spent, rem: s.rem, burn: burn 
+    };
+});
+
+// D. SORT THE ARRAY (If table-budget is active)
+if (sortState.table === 'table-budget') {
+    budgetData.sort((a, b) => {
+        // Map column index to our new object keys
+        const keys = ['title', 'srcName', 'init', 'adj', 'total', 'spent', 'rem', 'burn'];
+        const k = keys[sortState.col];
         
-        // UPDATE: Toggle Button State
-        const btnScope = document.getElementById('btn-budget-scope');
-        if(btnScope) {
-            btnScope.innerHTML = budgetScope === 'range' ? '<i class="fa-solid fa-filter"></i> In Range' : '<i class="fa-solid fa-infinity"></i> Lifetime';
-            
-            // Changed 'transparent' to 'var(--bg-input)' to match the rectangle button style
-            btnScope.style.background = budgetScope === 'range' ? 'var(--bg-input)' : 'var(--navy)';
-            btnScope.style.color = budgetScope === 'range' ? 'var(--text-muted)' : 'white';
-            btnScope.style.borderColor = budgetScope === 'range' ? 'var(--border)' : 'var(--navy)';
+        let valA = a[k], valB = b[k];
+        
+        if (typeof valA === 'string') {
+            return valA.localeCompare(valB) * sortState.dir;
         }
+        return (valA - valB) * sortState.dir;
+    });
+}
 
-        // UPDATE: Helper now chooses data source based on Toggle
-        const getProjStats = (pid) => {
-            // If Scope is 'all', use global data. If 'range', use filtered data.
-            const sourceAllocs = budgetScope === 'all' ? allocations : finAllocs;
-            const sourceExps   = budgetScope === 'all' ? expenses    : finExps;
+// E. CALCULATE TOTALS & GENERATE HTML
+let rollupHtml = budgetData.map(row => {
+    // Accumulate Grands (Order doesn't matter for totals)
+    grandInit += row.init; grandAdj += row.adj; grandTot += row.total; grandSpent += row.spent;
 
-            const pAllocs = sourceAllocs.filter(a => a.projId === pid);
-            const pExps = sourceExps.filter(e => e.projId === pid);
-            
-            const init = pAllocs.filter(a => a.type === 'base' || (!a.type && a.desc.toLowerCase().includes('initial'))).reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
-            const adj = pAllocs.filter(a => a.type !== 'base' && (a.type || !a.desc.toLowerCase().includes('initial'))).reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
-            
-            const spent = pExps.filter(e => e.status !== 'Estimate').reduce((s,e)=>s+Math.abs(parseFloat(e.amount)||0),0);
-            
-            return { init, adj, total: init+adj, spent, rem: (init+adj)-spent };
-        };
+    // Burn Color Logic
+    let burnBg = 'var(--col-act)'; let burnColor = 'var(--accent)'; let burnBorder = 'var(--accent)';    
+    if(row.burn > 100) { burnBg = 'var(--danger)'; burnColor = 'white'; burnBorder = 'var(--danger)'; }
+    else if (row.burn > 80) { burnBg = 'var(--warning)'; burnColor = 'white'; burnBorder = 'var(--warning)'; }
 
-        let rollupHtml = projects.map(p => {
-            const s = getProjStats(p.id);
-            const src = getDominantSource(p.id);
-            grandInit += s.init; grandAdj += s.adj; grandTot += s.total; grandSpent += s.spent;
-            
-            let burn = 0;
-            if(s.total > 0) burn = Math.round((s.spent / s.total) * 100);
-            else if(s.spent > 0) burn = 100;
-
-            // Burn Color Logic
-            let burnBg = 'var(--col-act)';       
-            let burnColor = 'var(--accent)';     
-            let burnBorder = 'var(--accent)';    
-
-            if(burn > 100) { 
-                burnBg = 'var(--danger)'; burnColor = 'white'; burnBorder = 'var(--danger)';
-            } else if (burn > 80) { 
-                burnBg = 'var(--warning)'; burnColor = 'white'; burnBorder = 'var(--warning)';
-            }
-
-            return `<tr>
-            <td><span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span><span class="proj-link" onclick="viewProject(${p.id})">${esc(p.title)}</span></td>
-            <td style="text-align:center"><div class="tag" style="background:${src.color}; color:white; border:none;">${src.short}</div></td>
-            <td style="text-align:right; color:var(--text-muted);">$${s.init.toLocaleString()}</td><td style="text-align:right; color:${s.adj>=0?'var(--info)':'var(--warning)'}">${s.adj>0?'+':''}${s.adj.toLocaleString()}</td><td style="text-align:right; font-weight:bold;">$${s.total.toLocaleString()}</td><td style="text-align:right; color:var(--warning);">$${s.spent.toLocaleString()}</td><td style="text-align:right; font-weight:bold; color:${s.rem<0?'var(--danger)':'var(--money)'}">$${s.rem.toLocaleString()}</td>
-            <td style="text-align:center">
-                <div class="tag" style="width:45px; text-align:center; display:inline-block; background:${burnBg}; color:${burnColor}; border-color:${burnBorder}; font-weight:bold;">${burn}%</div>
-            </td></tr>`;
-        }).join('');
+    return `<tr>
+    <td><span class="rag-dot" style="background:${row.health==='red'?'var(--danger)':(row.health==='yellow'?'var(--warning)':'var(--accent)')}"></span><span class="proj-link" onclick="viewProject(${row.id})">${esc(row.title)}</span></td>
+    <td style="text-align:center"><div class="tag" style="background:${row.srcColor}; color:white; border:none;">${row.srcName}</div></td>
+    <td style="text-align:right; color:var(--text-muted);">$${row.init.toLocaleString()}</td>
+    <td style="text-align:right; color:${row.adj>=0?'var(--info)':'var(--warning)'}">${row.adj>0?'+':''}${row.adj.toLocaleString()}</td>
+    <td style="text-align:right; font-weight:bold;">$${row.total.toLocaleString()}</td>
+    <td style="text-align:right; color:var(--warning);">$${row.spent.toLocaleString()}</td>
+    <td style="text-align:right; font-weight:bold; color:${row.rem<0?'var(--danger)':'var(--money)'}">$${row.rem.toLocaleString()}</td>
+    <td style="text-align:center"><div class="tag" style="width:45px; text-align:center; display:inline-block; background:${burnBg}; color:${burnColor}; border-color:${burnBorder}; font-weight:bold;">${row.burn}%</div></td>
+    </tr>`;
+}).join('');
 
         const genStats = getProjStats(null);
         if(genStats.total !== 0 || genStats.spent !== 0) {
@@ -2156,7 +2286,8 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
 
 
         // --- 7. EXEMPT LOG & INVENTORY TABLES ---
-        document.getElementById('exempt-list').innerHTML = exemptLog.map(e => {
+        const sortedExempt = getSortedData(exemptLog, 'table-exempt');
+	document.getElementById('exempt-list').innerHTML = sortedExempt.map(e => {
             const isAuth = e.authDate && e.authDate.trim() !== "";
             const statusBadge = isAuth 
                 ? '<span class="tag" style="background:var(--accent); color:white; border:none;">Authorized</span>' 
@@ -2177,7 +2308,8 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
             </tr>`;
         }).join('');
 
-        document.getElementById('full-inv-list').innerHTML = filteredInv.map(i => {
+const sortedInv = getSortedData(filteredInv, 'table-inv');
+        document.getElementById('full-inv-list').innerHTML = sortedInv.map(i => {
             const pOptions = '<option value="">-- None --</option>' + projects.map(p => `<option value="${p.id}" ${i.projId===p.id?'selected':''}>${esc(p.title)}</option>`).join('');
             const linkIcon = i.projId ? `<i class="fa-solid fa-arrow-up-right-from-square" style="cursor:pointer; color:var(--info)" onclick="viewProject(${i.projId})" title="Go to Project"></i>` : '';
             const safeId = jsEsc(i.id);
@@ -2186,7 +2318,9 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
                 <td><input class="live-edit" value="${esc(i.id)}" onchange="updItem('inventory', '${safeId}', 'id', this.value, this)"></td>
                 <td><input class="live-edit" value="${esc(i.iso)}" onchange="updItem('inventory', '${safeId}', 'iso', this.value, this)"></td>
                 <td><input class="live-edit" value="${esc(i.act)}" onchange="updItem('inventory', '${safeId}', 'act', this.value, this)"></td>
-                <td><input class="live-edit" type="number" value="${i.dose}" onchange="updItem('inventory', '${safeId}', 'dose', this.value)"></td>
+                
+                <td><input class="live-edit" type="text" value="${i.dose}" onchange="updItem('inventory', '${safeId}', 'dose', this.value)"></td>
+                
                 <td style="width:100px;">
                     <div style="display:flex; align-items:center; gap:5px;">
                         <input type="number" class="live-edit" style="width:50px; text-align:right;" min="0" max="100" value="${i.fill||0}" onchange="updItem('inventory', '${safeId}', 'fill', this.value)">
@@ -2196,6 +2330,8 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
                 </td>
                 <td><div style="display:flex; align-items:center; gap:8px;"><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'projId', this.value)">${pOptions}</select>${linkIcon}</div></td>
                 <td><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td>
+                
+                <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delInventory('${safeId}')"></i></td>
             </tr>`;
         }).join('');
         
@@ -2207,214 +2343,274 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
         document.getElementById('wiki-text').value = wikiText;
     }
 
+function downloadBackup() {
+    const data = JSON.stringify({
+        projects, inventory, expenses, allocations, 
+        chat: chatLog, team, wiki: wikiText, 
+        hpState, viewMode, showComplete, estItems, exemptLog
+    }, null, 2); // Pretty print for readability
+
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `RadFlow_Backup_${getTodayStr()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Backup Downloaded");
+}
+
+// --- HELPER: Parse Radioactivity ---
+// Converts "10 mCi", "5 Ci", "500 uCi" into a comparable number (Curies)
+function getActValue(str) {
+    if (!str) return 0;
+    
+    // Handle "Unknown" or "N/A"
+    const s = str.toString().toLowerCase();
+    if (s.includes('unknown') || s.includes('n/a') || s.includes('tbd')) return -1;
+
+    const match = str.toString().match(/([\d\.]+(?:[eE][-+]?\d+)?)\s*([a-zA-Z]+)/);
+    if (!match) return 0;
+    
+    const val = parseFloat(match[1]);
+    const unit = match[2].toLowerCase();
+    
+    if (unit === 'ci') return val;
+    if (unit === 'mci') return val * 1e-3;
+    if (unit === 'uci') return val * 1e-6;
+    if (unit === 'nci') return val * 1e-9;
+    if (unit === 'gbq') return val / 37;
+    if (unit === 'mbq') return (val / 37) * 1e-3;
+    
+    return val;
+}
+
 function viewProject(id) {
-        const p = projects.find(x => x.id === id); if(!p) return;
+    const p = projects.find(x => x.id === id); 
+    if(!p) return;
+    
+    // 1. Update Browser Title (Context-Aware)
+    document.title = `${p.title} | ${APP_VER}`;
+    
+    // 2. Navigation Logic (Remember where we came from)
+    const activeEl = document.querySelector('.view-section.active');
+    const currentView = activeEl ? activeEl.id.replace('view-', '') : 'dashboard';
+    if(currentView !== 'project-detail') window.lastView = currentView;
+    const backDest = window.lastView || 'dashboard';
+    
+    // 3. Financial Math (Excluding Draft Estimates)
+    const projExp = expenses.filter(e => e.projId === id);
+    let spentNavy = 0, spentCmd = 0, spentOther = 0;
+    
+    projExp.forEach(e => {
+        // CRITICAL FIX: Don't count drafts as actual spending
+        if(e.status === 'Estimate') return; 
         
-        // 1. Navigation Logic
-        const activeEl = document.querySelector('.view-section.active');
-        const currentView = activeEl ? activeEl.id.replace('view-', '') : 'dashboard';
-        if(currentView !== 'project-detail') window.lastView = currentView;
-        const backDest = window.lastView || 'dashboard';
-        
-        // 2. Financial Math (FIXED: Ignore Estimates)
-        const projExp = expenses.filter(e => e.projId === id);
-        let spentNavy = 0, spentCmd = 0, spentOther = 0;
-        
-        projExp.forEach(e => {
-            if(e.status === 'Estimate') return; // <-- FIX: Don't count drafts as spent!
-            
-            const val = Math.abs(parseFloat(e.amount)||0);
-            const src = (e.fundSource||'');
-            if(src.includes('Navy')) spentNavy += val;
-            else if(src.includes('Command')) spentCmd += val;
-            else spentOther += val;
-        });
-        
-        const projAllocs = allocations.filter(a => a.projId === id);
-        let budgetNavy = 0, budgetCmd = 0, budgetOther = 0;
-        projAllocs.forEach(a => {
-            const val = parseFloat(a.amount)||0;
-            const src = (a.fundSource||'');
-            if(src.includes('Navy')) budgetNavy += val;
-            else if(src.includes('Command')) budgetCmd += val;
-            else budgetOther += val;
-        });
+        const val = Math.abs(parseFloat(e.amount)||0);
+        const src = (e.fundSource||'');
+        if(src.includes('Navy')) spentNavy += val;
+        else if(src.includes('Command')) spentCmd += val;
+        else spentOther += val;
+    });
+    
+    const projAllocs = allocations.filter(a => a.projId === id);
+    let budgetNavy = 0, budgetCmd = 0, budgetOther = 0;
+    projAllocs.forEach(a => {
+        const val = parseFloat(a.amount)||0;
+        const src = (a.fundSource||'');
+        if(src.includes('Navy')) budgetNavy += val;
+        else if(src.includes('Command')) budgetCmd += val;
+        else budgetOther += val;
+    });
 
-        // 3. Generate Lists
-        const teamOpts = team.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+    // 4. Generate Lists
+    const teamOpts = team.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+    
+    // Inventory Assets
+    const assignedItems = inventory.filter(i => i.projId === id);
+    const assetsHtml = assignedItems.length ? assignedItems.map(i => `<div class="list-item" style="font-size:0.8rem;"><span><i class="fa-solid fa-box"></i> ${esc(i.id)} (${esc(i.iso)})</span><span>${i.dose} mR/hr</span></div>`).join('') : '<div style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">No assets assigned.</div>';
+
+    // Funding History (Allocations) with IGE Icon check
+    const allocHtml = projAllocs.length ? projAllocs.map(a => {
+        const igeIcon = a.details ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:5px;" onclick="viewEstimate(${a.id}, 'alloc')" title="View IGE"></i>` : '';
+        return `<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:4px 0; border-bottom:1px solid var(--border);">
+            <span>${esc(a.desc)} ${igeIcon} <span class="tag">${esc(a.fundSource||'Navy General Fund')}</span></span>
+            <span>$${a.amount.toLocaleString()}</span>
+        </div>`;
+    }).join('') : '<div style="font-style:italic; font-size:0.8rem; color:var(--text-muted)">No funding records.</div>';
+
+    // Pending Estimates (Drafts) List
+    const estimates = projExp.filter(e => e.status === 'Estimate');
+    const estHtml = estimates.length ? estimates.map(e => {
+        const igeIcon = e.details ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:5px;" onclick="viewEstimate(${e.id}, 'expense')" title="View IGE"></i>` : '';
         
-        const assignedItems = inventory.filter(i => i.projId === id);
-        const assetsHtml = assignedItems.length ? assignedItems.map(i => `<div class="list-item" style="font-size:0.8rem;"><span><i class="fa-solid fa-box"></i> ${esc(i.id)} (${esc(i.iso)})</span><span>${i.dose} mR/hr</span></div>`).join('') : '<div style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">No assets assigned.</div>';
-
-        // Funding History (FIXED: Add IGE Icon)
-        const allocHtml = projAllocs.length ? projAllocs.map(a => {
-            const igeIcon = a.details ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:5px;" onclick="viewEstimate(${a.id}, 'alloc')" title="View IGE"></i>` : '';
-            return `<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:4px 0; border-bottom:1px solid var(--border);">
-                <span>${esc(a.desc)} ${igeIcon} <span class="tag">${esc(a.fundSource||'Navy General Fund')}</span></span>
-                <span>$${a.amount.toLocaleString()}</span>
-            </div>`;
-        }).join('') : '<div style="font-style:italic; font-size:0.8rem; color:var(--text-muted)">No funding records.</div>';
-
-        // NEW: Pending Estimates List
-        const estimates = projExp.filter(e => e.status === 'Estimate');
-        const estHtml = estimates.length ? estimates.map(e => {
-            const igeIcon = e.details ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:5px;" onclick="viewEstimate(${e.id}, 'expense')" title="View IGE"></i>` : '';
-            return `<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:4px 0; border-bottom:1px solid var(--border); color:var(--text-muted); font-style:italic;">
-                <span>${esc(e.desc)} ${igeIcon} <span class="tag" style="background:var(--bg-input); color:var(--text-muted); border:1px solid var(--border);">Draft</span></span>
+        return `<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:4px 0; border-bottom:1px solid var(--border); color:var(--text-muted); font-style:italic;">
+            <span>${esc(e.desc)} ${igeIcon} <span class="tag" style="background:var(--bg-input); color:var(--text-muted); border:1px solid var(--border);">Draft</span></span>
+            <div style="display:flex; align-items:center; gap:10px;">
                 <span>$${e.amount.toLocaleString()}</span>
-            </div>`;
-        }).join('') : '';
-
-        // Tasks & Links
-        const sortedTasks = (p.tasks||[]).sort((a,b) => {
-            if(a.done !== b.done) return a.done ? 1 : -1;
-            const pMap = {'high':0, 'med':1, 'low':2};
-            return (pMap[a.prio]||1) - (pMap[b.prio]||1);
-        });
-
-        const tHtml = sortedTasks.map(t => `
-            <div class="task-row">
-                <div style="display:flex; align-items:center; gap:10px; width:100%;">
-                    <i class="fa-solid fa-fire prio-flag ${t.prio==='high'?'prio-high':(t.prio==='med'?'prio-med':(t.prio==='low'?'prio-low':'prio-none'))}" onclick="cycPrio(${p.id}, ${t.id})"></i>
-                    <i class="fa-solid ${t.done?'fa-square-check checked':'fa-square'} task-chk" onclick="togTask(${p.id},${t.id})"></i>
-                    <input class="task-input ${t.done?'checked':''}" value="${esc(t.text)}" onchange="updTask(${p.id}, ${t.id}, 'text', this.value)">
-                    <select class="assign-select" onchange="updTask(${p.id}, ${t.id}, 'assign', this.value)"><option value="">--</option>${team.map(m => `<option value="${esc(m)}" ${t.assign===m?'selected':''}>${esc(m)}</option>`).join('')}</select>
-                </div>
-                <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger); margin-left:10px;" onclick="delTask(${p.id},${t.id})"></i>
-            </div>`).join('');
-
-        const lHtml = (p.links || []).map((l, i) => `
-            <div class="link-row">
-                <i class="fa-solid fa-link"></i> 
-                <a href="${formatLink(l.url)}" target="_blank">${esc(l.name)}</a> 
-                <i class="fa-solid fa-trash" style="margin-left:auto; cursor:pointer; font-size:0.8rem; color:var(--text-muted);" onclick="delLink(${p.id}, ${i})"></i>
-            </div>`).join('');
-        
-        const status = getDueStatus(p.due);
-        const dueBadge = `<span class="tag" style="background:${status.color}; color:white; border:none; font-weight:bold;">${status.text}</span>`;
-        
-        const updatesListHtml = (p.updatesSent || []).map((date, idx) => 
-            `<span class="tag" style="border:1px solid var(--border); color:var(--text-main);">${date} <i class="fa-solid fa-xmark" style="cursor:pointer; margin-left:5px; color:var(--danger)" onclick="removeUpdateDate(${p.id}, ${idx})"></i></span>`
-        ).join(' ');
-
-        const navyPct = budgetNavy > 0 ? Math.min((spentNavy/budgetNavy)*100, 100) : 0;
-        const cmdPct = budgetCmd > 0 ? Math.min((spentCmd/budgetCmd)*100, 100) : 0;
-        const otherPct = budgetOther > 0 ? Math.min((spentOther/budgetOther)*100, 100) : 0;
-
-        document.getElementById('view-project-detail').innerHTML = `
-        <div class="header">
-            <button class="btn-sync" style="width:auto" onclick="nav('${backDest}')">&larr; Back</button> 
-            <div style="display:flex; gap:10px;">
-                <button class="btn" style="background:var(--info)" onclick="cloneProject(${p.id})">Clone</button>
-                <button class="btn" style="background:var(--danger)" onclick="delProj(${p.id})">Delete</button>
-            </div>
-        </div>
-        <div class="widget">
-            <input class="edit-h1" value="${esc(p.title)}" onchange="updItem('project', ${p.id}, 'title', this.value, this)">
-            <textarea class="edit-p" onchange="updItem('project', ${p.id}, 'desc', this.value, this)">${esc(p.desc)}</textarea>
-            
-            <div class="input-grid">
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">STATUS</label><select class="form-control" style="margin:0;" onchange="updItem('project', ${p.id},'status',this.value)"><option ${p.status==='Planning'?'selected':''}>Planning</option><option ${p.status==='Active'?'selected':''}>Active</option><option ${p.status==='Review'?'selected':''}>Review</option><option ${p.status==='Complete'?'selected':''}>Complete</option></select></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">HEALTH</label><select class="form-control" style="margin:0;" onchange="updItem('project', ${p.id},'health',this.value)"><option value="green" ${p.health==='green'?'selected':''}>🟢 On Track</option><option value="yellow" ${p.health==='yellow'?'selected':''}>🟡 Risk</option><option value="red" ${p.health==='red'?'selected':''}>🔴 Critical</option></select></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">DUE DATE ${dueBadge}</label><input type="date" class="form-control" style="margin:0;" value="${p.due}" onchange="updItem('project', ${p.id}, 'due', this.value)"></div>
-            </div>
-
-            <div style="border:1px solid var(--border); padding:15px; border-radius:8px; margin:20px 0; background:transparent;">
-                <div style="font-size:0.85rem; font-weight:bold; color:var(--text-main); text-transform:uppercase; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:5px;">Status and Logistics</div>
-                <div class="input-grid" style="margin-bottom:10px;">
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">UIC / COMMAND</label><input class="form-control" value="${esc(p.uic||'')}" onchange="updItem('project', ${p.id}, 'uic', this.value)"></div>
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">LOCATION</label><input class="form-control" value="${esc(p.location||'')}" onchange="updItem('project', ${p.id}, 'location', this.value)"></div>
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">LLRW REGION</label><select class="form-control" onchange="updItem('project', ${p.id}, 'region', this.value)"><option value="">--</option><option ${p.region==='East'?'selected':''}>East</option><option ${p.region==='West'?'selected':''}>West</option><option ${p.region==='Far-East'?'selected':''}>Far-East</option><option ${p.region==='Europe'?'selected':''}>Europe</option></select></div>
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">SHIPMENT TYPE</label><select class="form-control" onchange="updItem('project', ${p.id}, 'shipType', this.value)"><option value="">--</option><option ${p.shipType==='Level 1'?'selected':''}>Level 1</option><option ${p.shipType==='Level 2'?'selected':''}>Level 2</option><option ${p.shipType==='Level 3'?'selected':''}>Level 3</option></select></div>
-                </div>
-                <div class="input-grid" style="margin-bottom:10px;">
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">JMC PROJECT #</label><input class="form-control" value="${esc(p.jmcId||'')}" onchange="updItem('project', ${p.id}, 'jmcId', this.value)"></div>
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">RCN</label><input class="form-control" value="${esc(p.rcn||'')}" onchange="updItem('project', ${p.id}, 'rcn', this.value)"></div>
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">PLANNING STATUS</label><input class="form-control" value="${esc(p.planStatus||'')}" onchange="updItem('project', ${p.id}, 'planStatus', this.value)"></div>
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">PICKUP STATUS</label><input class="form-control" value="${esc(p.pickupStatus||'')}" onchange="updItem('project', ${p.id}, 'pickupStatus', this.value)"></div>
-                </div>
-                <div class="input-grid">
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">REQ DATE</label><input type="date" class="form-control" value="${p.reqDate||''}" onchange="updItem('project', ${p.id}, 'reqDate', this.value)"></div>
-                    <div style="flex:2;">
-                        <label style="font-size:0.7rem; color:var(--text-muted)">UPDATES SENT</label>
-                        <div style="display:flex; gap:5px; margin-bottom:5px; align-items:center;">
-                            <input type="date" id="newUpdateDate_${p.id}" class="form-control" style="margin:0; width:130px;">
-                            <button class="qa-btn" onclick="addUpdateDate(${p.id}, document.getElementById('newUpdateDate_${p.id}').value)">Add</button>
-                        </div>
-                        <div style="display:flex; flex-wrap:wrap; gap:5px;">${updatesListHtml}</div>
-                    </div>
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">FWD TO JMC</label><input type="date" class="form-control" value="${p.jmcDate||''}" onchange="updItem('project', ${p.id}, 'jmcDate', this.value)"></div>
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">DISP REC REC'D</label><input type="date" class="form-control" value="${p.dispRecDate||''}" onchange="updItem('project', ${p.id}, 'dispRecDate', this.value)"></div>
-                </div>
-                <div style="margin-top:10px;">
-                    <label style="font-size:0.7rem; color:var(--text-muted)">LOGISTICS NOTES</label>
-                    <textarea class="form-control" style="height:60px; resize:vertical;" onchange="updItem('project', ${p.id}, 'logisticsNotes', this.value)">${esc(p.logisticsNotes||'')}</textarea>
-                </div>
-            </div>
-
-            <div style="background:var(--bg-card); padding:15px; border-radius:8px; margin:20px 0; border:1px solid var(--border);">
-                <div style="margin-bottom:15px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <span style="font-size:0.8rem; font-weight:bold; color:var(--navy);">Navy General Fund ($${budgetNavy.toLocaleString()})</span>
-                        <span style="font-size:0.8rem; color:${spentNavy>budgetNavy?'var(--danger)':'var(--text-muted)'};">$${spentNavy.toLocaleString()} Spent</span>
-                    </div>
-                    <div class="progress-bar" style="background:var(--navy-dim);">
-                        <div class="progress-fill" style="width:${navyPct}%; background:var(--navy);"></div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom:15px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <span style="font-size:0.8rem; font-weight:bold; color:var(--cmd);">Command Funded ($${budgetCmd.toLocaleString()})</span>
-                        <span style="font-size:0.8rem; color:${spentCmd>budgetCmd?'var(--danger)':'var(--text-muted)'};">$${spentCmd.toLocaleString()} Spent</span>
-                    </div>
-                    <div class="progress-bar" style="background:var(--cmd-dim);">
-                        <div class="progress-fill" style="width:${cmdPct}%; background:var(--cmd);"></div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom:15px; ${budgetOther === 0 && spentOther === 0 ? 'display:none' : ''}">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <span style="font-size:0.8rem; font-weight:bold; color:var(--text-muted);">Other Funding ($${budgetOther.toLocaleString()})</span>
-                        <span style="font-size:0.8rem; color:${spentOther>budgetOther?'var(--danger)':'var(--text-muted)'};">$${spentOther.toLocaleString()} Spent</span>
-                    </div>
-                    <div class="progress-bar" style="background:var(--other-dim);">
-                        <div class="progress-fill" style="width:${otherPct}%; background:var(--other);"></div>
-                    </div>
-                </div>
-                
-                <div style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--border);">
-                    <div style="font-size:0.7rem; font-weight:bold; color:var(--text-muted); margin-bottom:5px;">FUNDING HISTORY</div>
-                    ${allocHtml}
-                    ${estHtml ? '<div style="margin-top:10px; font-size:0.7rem; font-weight:bold; color:var(--text-muted); margin-bottom:5px;">PENDING ESTIMATES (DRAFT)</div>' + estHtml : ''}
-                </div>
-            </div>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                <div>
-                    <h3>Action Items</h3>
-                    <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
-                        <input id="newT" class="form-control" style="margin:0" placeholder="Task">
-                        <select id="newTA" class="form-control" style="margin:0; width:100px;"><option value="">Assign</option>${teamOpts}</select>
-                        <button class="btn" onclick="addTask(${p.id})">Add</button>
-                    </div>
-                    <div>${tHtml}</div>
-                </div>
-                <div>
-                    <h3>Assigned Assets</h3>
-                    <div style="margin-bottom:15px;">${assetsHtml}</div>
-                    <h3>Digital Binder</h3>
-                    <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
-                        <input id="newLinkName" class="form-control" style="margin:0" placeholder="Name">
-                        <input id="newLinkUrl" class="form-control" style="margin:0" placeholder="URL or C:\\Path\\To\\File">
-                        <button class="btn" onclick="addLink(${p.id})">Link</button>
-                    </div>
-                    <div>${lHtml}</div>
-                </div>
+                <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--text-muted);" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-muted)'" onclick="delExpense(${e.id})" title="Delete Estimate"></i>
             </div>
         </div>`;
-        nav('project-detail');
-    }
+    }).join('') : '';
+
+    // Tasks (Sorted by Done state then Priority)
+    const sortedTasks = (p.tasks||[]).sort((a,b) => {
+        if(a.done !== b.done) return a.done ? 1 : -1;
+        const pMap = {'high':0, 'med':1, 'low':2};
+        return (pMap[a.prio]||1) - (pMap[b.prio]||1);
+    });
+
+    const tHtml = sortedTasks.map(t => `
+        <div class="task-row">
+            <div style="display:flex; align-items:center; gap:10px; width:100%;">
+                <i class="fa-solid fa-fire prio-flag ${t.prio==='high'?'prio-high':(t.prio==='med'?'prio-med':(t.prio==='low'?'prio-low':'prio-none'))}" onclick="cycPrio(${p.id}, ${t.id})"></i>
+                <i class="fa-solid ${t.done?'fa-square-check checked':'fa-square'} task-chk" onclick="togTask(${p.id},${t.id})"></i>
+                <input class="task-input ${t.done?'checked':''}" value="${esc(t.text)}" onchange="updTask(${p.id}, ${t.id}, 'text', this.value)">
+                <select class="assign-select" onchange="updTask(${p.id}, ${t.id}, 'assign', this.value)"><option value="">--</option>${team.map(m => `<option value="${esc(m)}" ${t.assign===m?'selected':''}>${esc(m)}</option>`).join('')}</select>
+            </div>
+            <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger); margin-left:10px;" onclick="delTask(${p.id},${t.id})"></i>
+        </div>`).join('');
+
+    // Digital Binder Links
+    const lHtml = (p.links || []).map((l, i) => `
+        <div class="link-row">
+            <i class="fa-solid fa-link"></i> 
+            <a href="${formatLink(l.url)}" target="_blank">${esc(l.name)}</a> 
+            <i class="fa-solid fa-trash" style="margin-left:auto; cursor:pointer; font-size:0.8rem; color:var(--text-muted);" onclick="delLink(${p.id}, ${i})"></i>
+        </div>`).join('');
+    
+    // Due Date Status Badge
+    const status = getDueStatus(p.due);
+    const dueBadge = `<span class="tag" style="background:${status.color}; color:white; border:none; font-weight:bold;">${status.text}</span>`;
+    
+    // Updates Sent Tags
+    const updatesListHtml = (p.updatesSent || []).map((date, idx) => 
+        `<span class="tag" style="border:1px solid var(--border); color:var(--text-main);">${date} <i class="fa-solid fa-xmark" style="cursor:pointer; margin-left:5px; color:var(--danger)" onclick="removeUpdateDate(${p.id}, ${idx})"></i></span>`
+    ).join(' ');
+
+    // Progress Bar Percentages
+    const navyPct = budgetNavy > 0 ? Math.min((spentNavy/budgetNavy)*100, 100) : 0;
+    const cmdPct = budgetCmd > 0 ? Math.min((spentCmd/budgetCmd)*100, 100) : 0;
+    const otherPct = budgetOther > 0 ? Math.min((spentOther/budgetOther)*100, 100) : 0;
+
+    // 5. Inject HTML
+    document.getElementById('view-project-detail').innerHTML = `
+    <div class="header">
+        <button class="btn-sync" style="width:auto" onclick="nav('${backDest}')">&larr; Back</button> 
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="background:var(--info)" onclick="cloneProject(${p.id})">Clone</button>
+            <button class="btn" style="background:var(--danger)" onclick="delProj(${p.id})">Delete</button>
+        </div>
+    </div>
+    <div class="widget">
+        <input class="edit-h1" value="${esc(p.title)}" onchange="updItem('project', ${p.id}, 'title', this.value, this)">
+        <textarea class="edit-p" onchange="updItem('project', ${p.id}, 'desc', this.value, this)">${esc(p.desc)}</textarea>
+        
+        <div class="input-grid">
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">STATUS</label><select class="form-control" style="margin:0;" onchange="updItem('project', ${p.id},'status',this.value)"><option ${p.status==='Planning'?'selected':''}>Planning</option><option ${p.status==='Active'?'selected':''}>Active</option><option ${p.status==='Review'?'selected':''}>Review</option><option ${p.status==='Complete'?'selected':''}>Complete</option></select></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">HEALTH</label><select class="form-control" style="margin:0;" onchange="updItem('project', ${p.id},'health',this.value)"><option value="green" ${p.health==='green'?'selected':''}>🟢 On Track</option><option value="yellow" ${p.health==='yellow'?'selected':''}>🟡 Risk</option><option value="red" ${p.health==='red'?'selected':''}>🔴 Critical</option></select></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">DUE DATE ${dueBadge}</label><input type="date" class="form-control" style="margin:0;" value="${p.due}" onchange="updItem('project', ${p.id}, 'due', this.value)"></div>
+        </div>
+
+        <div style="border:1px solid var(--border); padding:15px; border-radius:8px; margin:20px 0; background:transparent;">
+            <div style="font-size:0.85rem; font-weight:bold; color:var(--text-main); text-transform:uppercase; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:5px;">Status and Logistics</div>
+            <div class="input-grid" style="margin-bottom:10px;">
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">UIC / COMMAND</label><input class="form-control" value="${esc(p.uic||'')}" onchange="updItem('project', ${p.id}, 'uic', this.value)"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">LOCATION</label><input class="form-control" value="${esc(p.location||'')}" onchange="updItem('project', ${p.id}, 'location', this.value)"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">LLRW REGION</label><select class="form-control" onchange="updItem('project', ${p.id}, 'region', this.value)"><option value="">--</option><option ${p.region==='East'?'selected':''}>East</option><option ${p.region==='West'?'selected':''}>West</option><option ${p.region==='Far-East'?'selected':''}>Far-East</option><option ${p.region==='Europe'?'selected':''}>Europe</option></select></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">SHIPMENT TYPE</label><select class="form-control" onchange="updItem('project', ${p.id}, 'shipType', this.value)"><option value="">--</option><option ${p.shipType==='Level 1'?'selected':''}>Level 1</option><option ${p.shipType==='Level 2'?'selected':''}>Level 2</option><option ${p.shipType==='Level 3'?'selected':''}>Level 3</option></select></div>
+            </div>
+            <div class="input-grid" style="margin-bottom:10px;">
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">JMC PROJECT #</label><input class="form-control" value="${esc(p.jmcId||'')}" onchange="updItem('project', ${p.id}, 'jmcId', this.value)"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">RCN</label><input class="form-control" value="${esc(p.rcn||'')}" onchange="updItem('project', ${p.id}, 'rcn', this.value)"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">PLANNING STATUS</label><input class="form-control" value="${esc(p.planStatus||'')}" onchange="updItem('project', ${p.id}, 'planStatus', this.value)"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">PICKUP STATUS</label><input class="form-control" value="${esc(p.pickupStatus||'')}" onchange="updItem('project', ${p.id}, 'pickupStatus', this.value)"></div>
+            </div>
+            <div class="input-grid">
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">REQ DATE</label><input type="date" class="form-control" value="${p.reqDate||''}" onchange="updItem('project', ${p.id}, 'reqDate', this.value)"></div>
+                <div style="flex:2;">
+                    <label style="font-size:0.7rem; color:var(--text-muted)">UPDATES SENT</label>
+                    <div style="display:flex; gap:5px; margin-bottom:5px; align-items:center;">
+                        <input type="date" id="newUpdateDate_${p.id}" class="form-control" style="margin:0; width:130px;">
+                        <button class="qa-btn" onclick="addUpdateDate(${p.id}, document.getElementById('newUpdateDate_${p.id}').value)">Add</button>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:5px;">${updatesListHtml}</div>
+                </div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">FWD TO JMC</label><input type="date" class="form-control" value="${p.jmcDate||''}" onchange="updItem('project', ${p.id}, 'jmcDate', this.value)"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">DISP REC REC'D</label><input type="date" class="form-control" value="${p.dispRecDate||''}" onchange="updItem('project', ${p.id}, 'dispRecDate', this.value)"></div>
+            </div>
+            <div style="margin-top:10px;">
+                <label style="font-size:0.7rem; color:var(--text-muted)">LOGISTICS NOTES</label>
+                <textarea class="form-control" style="height:60px; resize:vertical;" onchange="updItem('project', ${p.id}, 'logisticsNotes', this.value)">${esc(p.logisticsNotes||'')}</textarea>
+            </div>
+        </div>
+
+        <div style="background:var(--bg-card); padding:15px; border-radius:8px; margin:20px 0; border:1px solid var(--border);">
+            <div style="margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="font-size:0.8rem; font-weight:bold; color:var(--navy);">Navy General Fund ($${budgetNavy.toLocaleString()})</span>
+                    <span style="font-size:0.8rem; color:${spentNavy>budgetNavy?'var(--danger)':'var(--text-muted)'};">$${spentNavy.toLocaleString()} Spent</span>
+                </div>
+                <div class="progress-bar" style="background:var(--navy-dim);">
+                    <div class="progress-fill" style="width:${navyPct}%; background:var(--navy);"></div>
+                </div>
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="font-size:0.8rem; font-weight:bold; color:var(--cmd);">Command Funded ($${budgetCmd.toLocaleString()})</span>
+                    <span style="font-size:0.8rem; color:${spentCmd>budgetCmd?'var(--danger)':'var(--text-muted)'};">$${spentCmd.toLocaleString()} Spent</span>
+                </div>
+                <div class="progress-bar" style="background:var(--cmd-dim);">
+                    <div class="progress-fill" style="width:${cmdPct}%; background:var(--cmd);"></div>
+                </div>
+            </div>
+
+            <div style="margin-bottom:15px; ${budgetOther === 0 && spentOther === 0 ? 'display:none' : ''}">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="font-size:0.8rem; font-weight:bold; color:var(--text-muted);">Other Funding ($${budgetOther.toLocaleString()})</span>
+                    <span style="font-size:0.8rem; color:${spentOther>budgetOther?'var(--danger)':'var(--text-muted)'};">$${spentOther.toLocaleString()} Spent</span>
+                </div>
+                <div class="progress-bar" style="background:var(--other-dim);">
+                    <div class="progress-fill" style="width:${otherPct}%; background:var(--other);"></div>
+                </div>
+            </div>
+            
+            <div style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--border);">
+                <div style="font-size:0.7rem; font-weight:bold; color:var(--text-muted); margin-bottom:5px;">FUNDING HISTORY</div>
+                ${allocHtml}
+                ${estHtml ? '<div style="margin-top:10px; font-size:0.7rem; font-weight:bold; color:var(--text-muted); margin-bottom:5px;">PENDING ESTIMATES (DRAFT)</div>' + estHtml : ''}
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <div>
+                <h3>Action Items</h3>
+                <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                    <input id="newT" class="form-control" style="margin:0" placeholder="Task">
+                    <select id="newTA" class="form-control" style="margin:0; width:100px;"><option value="">Assign</option>${teamOpts}</select>
+                    <button class="btn" onclick="addTask(${p.id})">Add</button>
+                </div>
+                <div>${tHtml}</div>
+            </div>
+            <div>
+                <h3>Assigned Assets</h3>
+                <div style="margin-bottom:15px;">${assetsHtml}</div>
+                <h3>Digital Binder</h3>
+                <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                    <input id="newLinkName" class="form-control" style="margin:0" placeholder="Name">
+                    <input id="newLinkUrl" class="form-control" style="margin:0" placeholder="URL or C:\\Path\\To\\File">
+                    <button class="btn" onclick="addLink(${p.id})">Link</button>
+                </div>
+                <div>${lHtml}</div>
+            </div>
+        </div>
+    </div>`;
+    
+    // 6. Switch View
+    nav('project-detail');
+}
 
     function drag(ev, id) { ev.dataTransfer.setData("text", id); ev.target.classList.add('dragging'); }
     function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
@@ -2589,39 +2785,116 @@ function viewProject(id) {
 
     let sortDir = 1;
     function sortTable(tableId, col) {
-        const table = document.getElementById(tableId); 
-        const tbody = table.querySelector('tbody'); 
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        rows.sort((a, b) => {
-            const getVal = (row) => {
-                const cell = row.cells[col];
-                const input = cell.querySelector('input, select');
-                const tag = cell.querySelector('.tag');
-                if(tag) return tag.innerText;
-                if(input && input.tagName === 'SELECT') return input.options[input.selectedIndex].text;
-                return input ? input.value : cell.innerText;
-            };
-            let valA = getVal(a).toLowerCase().trim();
-            let valB = getVal(b).toLowerCase().trim();
-
-            const dateReg = /^\d{4}-\d{2}-\d{2}$/;
-            if(dateReg.test(valA) && dateReg.test(valB)) return valA > valB ? (1 * sortDir) : (-1 * sortDir);
-
-            const numA = parseFloat(valA.replace(/[$,%]/g, ''));
-            const numB = parseFloat(valB.replace(/[$,%]/g, ''));
-            if (!isNaN(numA) && !isNaN(numB) && !valA.includes('-')) return numA > numB ? (1 * sortDir) : (-1 * sortDir);
-
-            return valA > valB ? (1 * sortDir) : (-1 * sortDir);
-        });
-        sortDir *= -1; rows.forEach(row => tbody.appendChild(row));
+    // If clicking the same column, flip direction. Otherwise, reset to ascending (1).
+    if (sortState.table === tableId && sortState.col === col) {
+        sortState.dir *= -1;
+    } else {
+        sortState.table = tableId;
+        sortState.col = col;
+        sortState.dir = 1;
     }
+    render(); // Re-draw the view with the new sort order applied
+}
+
+// --- HELPER: SORT DATA ARRAY ---
+function getSortedData(data, tableId) {
+    // If this table isn't the one currently being sorted, return data as-is
+    if (sortState.table !== tableId) return data;
+
+    // Create a shallow copy so we don't mutate the original ID order permanently
+    return [...data].sort((a, b) => {
+        let valA, valB;
+
+        // MAP COLUMN INDEX TO DATA FIELDS
+        // We have to map the visual column index (0, 1, 2) to the data key ('date', 'amount', etc)
+        // Adjust these maps based on your specific table layouts in HTML
+        if (tableId === 'table-exp') {
+            const keys = ['date', 'projId', 'fundSource', 'desc', 'amount', 'status'];
+            valA = a[keys[sortState.col]];
+            valB = b[keys[sortState.col]];
+            
+            // Special handling for Project Name lookup
+            if(sortState.col === 1) { 
+                valA = projects.find(p => p.id === valA)?.title || '';
+                valB = projects.find(p => p.id === valB)?.title || '';
+            }
+        } 
+        else if (tableId === 'table-alloc') {
+            const keys = ['date', 'projId', 'fundSource', 'desc', 'amount'];
+            valA = a[keys[sortState.col]];
+            valB = b[keys[sortState.col]];
+            if(sortState.col === 1) { 
+                valA = projects.find(p => p.id === valA)?.title || '';
+                valB = projects.find(p => p.id === valB)?.title || '';
+            }
+        }
+        else if (tableId === 'table-inv') {
+        const keys = ['id', 'iso', 'act', 'dose', 'fill', 'projId', 'status'];
+        
+        // Special Sort: Activity (Physics aware)
+        if (sortState.col === 2) {
+            const numA = getActValue(a.act);
+            const numB = getActValue(b.act);
+            return (numA - numB) * sortState.dir;
+        }
+
+        // Special Sort: Dose (Handle "Unknown")
+        if (sortState.col === 3) {
+            // Helper: Convert to number, or -1 if "Unknown"
+            const val = (v) => {
+                if (typeof v === 'number') return v;
+                const f = parseFloat(v);
+                return isNaN(f) ? -1 : f;
+            };
+            return (val(a.dose) - val(b.dose)) * sortState.dir;
+        }
+        
+        valA = a[keys[sortState.col]];
+        valB = b[keys[sortState.col]];
+    }
+
+        else if (tableId === 'table-exempt') {
+            const keys = ['id', 'date', 'cmd', 'desc', 'iso', 'act', 'basis', 'path', 'authDate'];
+            valA = a[keys[sortState.col]];
+            valB = b[keys[sortState.col]];
+        }
+        // Fallback for budget rollup or other tables if needed
+        else { return 0; }
+
+        // GENERIC COMPARISON
+        // Handle nulls/undefined
+        if (valA == null) valA = '';
+        if (valB == null) valB = '';
+
+        // Check for Numbers
+        const numA = parseFloat(valA);
+        const numB = parseFloat(valB);
+        
+        // Use number comparison if both are valid numbers and not just strings that look like numbers
+        if (!isNaN(numA) && !isNaN(numB) && typeof valA !== 'string') {
+            return (numA - numB) * sortState.dir;
+        }
+
+        // String Comparison (Case insensitive)
+        const strA = valA.toString().toLowerCase();
+        const strB = valB.toString().toLowerCase();
+        if (strA < strB) return -1 * sortState.dir;
+        if (strA > strB) return 1 * sortState.dir;
+        return 0;
+    });
+}
 
 function updItem(type, id, key, val, elem) { 
     // 1. Update the Data Model
     if (type === 'project') { const p = projects.find(x => x.id === id); p[key] = val; }
     
     if (type === 'inventory') { 
-        const i = inventory.find(x => x.id == id); 
+    const i = inventory.find(x => x.id == id); 
+    
+    if(key === 'iso') {
+        // Auto-correct the casing using our DB
+        val = normalizeIso(val);
+    } 
         if(key === 'fill') {
             val = parseInt(val);
             if(isNaN(val)) val = 0;
@@ -2691,28 +2964,47 @@ function updItem(type, id, key, val, elem) {
     
 function cycPrio(pId, tId) { const t = projects.find(x=>x.id===pId).tasks.find(x=>x.id===tId); const m = {'high':'low','med':'high','low':'med','undefined':'med'}; t.prio = m[t.prio] || 'med'; saveLocally(); viewProject(pId); }
     
-    function cloneProject(id) { 
-        const original = projects.find(x => x.id === id); 
-        const copy = JSON.parse(JSON.stringify(original)); 
-        copy.id = Date.now(); 
-        copy.title = "Copy of " + copy.title; 
-        copy.status = "Planning"; 
-        copy.health = "green"; 
-        copy.updatesSent = []; 
-        copy.links = [];
-        copy.tasks.forEach(t => t.done = false); 
-        
-        projects.push(copy); 
-        
-        const base = allocations.find(a => a.projId === id && (a.type === 'base' || a.desc === 'Initial Budget'));
-        if (base) {
-            allocations.push({ id: Date.now() + 5, projId: copy.id, date: getTodayStr(), amount: base.amount, desc: "Initial Budget", type: 'base', fundSource: base.fundSource });
-        }
+function cloneProject(id) { 
+    const original = projects.find(x => x.id === id); 
+    const copy = JSON.parse(JSON.stringify(original)); 
+    
+    copy.id = Date.now(); 
+    copy.title = "Copy of " + copy.title; 
+    copy.status = "Planning"; 
+    copy.health = "green"; 
+    
+    // --- FIX: RESET DATES & IDs ---
+    copy.due = "";         // Don't inherit old deadlines
+    copy.jmcId = "";       // Clear unique tracking IDs
+    copy.rcn = "";
+    copy.updatesSent = []; 
+    // ------------------------------
 
-        logSystemAction(`Project <b>${esc(original.title)}</b> cloned to <b>${esc(copy.title)}</b>.`);
-
-        saveLocally(); viewProject(copy.id); showToast("Project Cloned"); 
+    copy.links = [];
+    copy.tasks.forEach(t => t.done = false); 
+    
+    projects.push(copy); 
+    
+    // Copy the Initial Budget if it exists
+    const base = allocations.find(a => a.projId === id && (a.type === 'base' || a.desc === 'Initial Budget'));
+    if (base) {
+        allocations.push({ 
+            id: Date.now() + 5, 
+            projId: copy.id, 
+            date: getTodayStr(), 
+            amount: base.amount, 
+            desc: "Initial Budget", 
+            type: 'base', 
+            fundSource: base.fundSource 
+        });
     }
+
+    logSystemAction(`Project <b>${esc(original.title)}</b> cloned to <b>${esc(copy.title)}</b>.`);
+
+    saveLocally(); 
+    viewProject(copy.id); 
+    showToast("Project Cloned"); 
+}
     
     function togTask(pId, tId) { 
         const p = projects.find(x=>x.id===pId);
@@ -2904,47 +3196,137 @@ function addExpense() {
         render();
     }
     
-    function delExpense(id) { if(confirm("Remove?")) { expenses = expenses.filter(x=>x.id!==id); saveLocally(); render(); showToast("Expense Removed"); } }
-    function delAlloc(id) { if(confirm("Remove Funding Record?")) { allocations = allocations.filter(x=>x.id!==id); saveLocally(); render(); showToast("Funding Removed"); } }
+    function delExpense(id) { 
+        const e = expenses.find(x => x.id === id);
+        
+        if(e && confirm("Remove this item?")) { 
+            // 1. Log the Action
+            const p = projects.find(x => x.id === e.projId);
+            const pName = p ? p.title : "General";
+            const typeLabel = e.status === 'Estimate' ? "Draft Estimate" : "Expense";
+            
+            logSystemAction(`${typeLabel} <b>$${e.amount.toLocaleString()}</b> deleted from <b>${esc(pName)}</b>.`);
+
+            // 2. Delete
+            expenses = expenses.filter(x => x.id !== id); 
+            
+            saveLocally(); 
+            render(); 
+            showToast("Item Removed"); 
+            
+            // 3. Smart Refresh: If we are looking at the project, update that view too
+            if(e.projId && document.getElementById('view-project-detail').classList.contains('active')) {
+                viewProject(e.projId);
+            }
+        } 
+    }
+
+    function delAlloc(id) { 
+        const a = allocations.find(x => x.id === id);
+        
+        if(a && confirm("Remove Funding Record?")) { 
+            // 1. Log the Action
+            const p = projects.find(x => x.id === a.projId);
+            const pName = p ? p.title : "General";
+            
+            logSystemAction(`Funding <b>$${a.amount.toLocaleString()}</b> deleted from <b>${esc(pName)}</b>.`);
+
+            // 2. Delete
+            allocations = allocations.filter(x => x.id !== id); 
+            
+            saveLocally(); 
+            render(); 
+            showToast("Funding Removed");
+
+            // 3. Smart Refresh
+            if(a.projId && document.getElementById('view-project-detail').classList.contains('active')) {
+                viewProject(a.projId);
+            }
+        } 
+    }
     
-    function addInventory() { 
-        const id=document.getElementById('invId').value; 
-        const iso=document.getElementById('invIso').value; 
-        const act=document.getElementById('invAct').value; 
-        const dose=document.getElementById('invDose').value; 
-        const fill=document.getElementById('invFill').value; 
-        const stat=document.getElementById('invStatus').value; 
-        const pidVal = document.getElementById('invProj').value;
-        const pid = pidVal === "" ? null : parseInt(pidVal);
+function addInventory() { 
+    const id = document.getElementById('invId').value; 
+    let iso = document.getElementById('invIso').value;
+    
+    // 1. Handle Custom Isotope
+    if (iso === 'Custom') {
+        iso = document.getElementById('invIsoCustom').value;
+        if (!iso) { showToast("Please enter a custom isotope name", "error"); return; }
+    }
+    iso = normalizeIso(iso);
 
-	const dateVal = document.getElementById('invDate').value || getTodayStr();
+    // 2. Handle Activity (Default to Unknown if empty)
+    const act = document.getElementById('invAct').value || "Unknown"; 
 
-if(inventory.some(i => i.id === id)) {
+    // 3. Handle Dose (Accept Text OR Number)
+    let doseInput = document.getElementById('invDose').value;
+    let dose;
+    
+    // If it looks like a number, save as number. Otherwise, save as text (or "Unknown" if empty).
+    if(doseInput !== '' && !isNaN(parseFloat(doseInput)) && isFinite(doseInput)) {
+        dose = parseFloat(doseInput);
+    } else {
+        dose = doseInput || "Unknown";
+    }
+
+    const fill = document.getElementById('invFill').value; 
+    const stat = document.getElementById('invStatus').value; 
+    const pidVal = document.getElementById('invProj').value;
+    const pid = pidVal === "" ? null : parseInt(pidVal);
+    const dateVal = document.getElementById('invDate').value || getTodayStr();
+
+    if(inventory.some(i => i.id === id)) {
         showToast("Error: Item ID already exists", "error");
         return;
     }
 
-        if(id) { 
+    if(id) { 
         inventory.push({
-            id, iso, act, dose:parseFloat(dose)||0, fill, status:stat, projId: pid, 
-            logDate: dateVal // <--- Was getTodayStr()
+            id, iso, act, dose, fill, status:stat, projId: pid, logDate: dateVal
         }); 
+        
         logSystemAction(`Inventory <b>${esc(id)}</b> (${iso}) added.`);
         showToast("Item Added");
-        saveLocally(); closeModal('invModal'); render(); 
+        
+        toggleCustomIso('reset'); 
+        saveLocally(); 
+        closeModal('invModal'); 
+        render(); 
+    }
+}
+
+function delInventory(id) {
+    if(confirm("Permanently delete this inventory item?")) {
+        // Log the deletion for the team
+        const i = inventory.find(x => x.id == id);
+        if(i) logSystemAction(`Inventory <b>${esc(i.id)}</b> (${esc(i.iso)}) deleted.`);
+
+        // Filter it out
+        inventory = inventory.filter(x => x.id != id);
+        
+        saveLocally();
+        render();
+        showToast("Item Deleted");
     }
 }
 
 function decayInventory() {
     if(!confirm("Permanently update all inventory activities to current date?")) return;
+    
     let count = 0;
+    let skipped = 0;
+
     inventory.forEach(i => {
-        if(ISOTOPE_DB[i.iso] && i.logDate) {
-            const hl = ISOTOPE_DB[i.iso].hl;
+        // 1. SAFE LOOKUP: Find the matching DB key regardless of case
+        const dbKey = Object.keys(ISOTOPE_DB).find(k => k.toLowerCase() === (i.iso || "").toLowerCase());
+        
+        // Only proceed if we found a match AND have a date
+        if(dbKey && i.logDate) {
+            const hl = ISOTOPE_DB[dbKey].hl;
             
-            // --- FIX: Updated Regex ---
-            // 1. Allows scientific notation (e.g. 1.2e-5)
-            // 2. Allows missing space between number and unit
+            // 2. PARSE ACTIVITY (Using the helper we added in the previous step)
+            // If you haven't added 'getActValue' yet, standard regex match works too
             const match = i.act.match(/^([\d\.]+(?:[eE][-+]?\d+)?)\s*([a-zA-Z]+)$/);
             
             if(match) {
@@ -2959,17 +3341,30 @@ function decayInventory() {
                     const lambda = Math.log(2) / hl;
                     const newAct = val * Math.exp(-lambda * years);
                     
-                    // Formatting: Use exponential if very small
+                    // Update the item
                     i.act = (newAct < 0.001 ? newAct.toExponential(2) : newAct.toFixed(3)) + " " + unit;
                     i.logDate = getTodayStr(); 
+                    
+                    // Optional: Fix the casing in the record while we are here
+                    i.iso = dbKey; 
+                    
                     count++;
                 }
+            } else {
+                skipped++; // Format error (e.g. "10 bananas")
             }
+        } else {
+            skipped++; // Isotope not in DB
         }
     });
+
     saveLocally(); 
     render(); 
-    showToast(`Updated ${count} items for decay.`);
+    
+    let msg = `Updated ${count} items.`;
+    if(skipped > 0) msg += ` (Skipped ${skipped} items - check spelling)`;
+    
+    showToast(msg, skipped > 0 ? "warning" : "success");
 }
     
     function delLink(pId, idx) { const p = projects.find(x=>x.id===pId); p.links.splice(idx, 1); saveLocally(); viewProject(pId); }
@@ -2993,61 +3388,99 @@ function decayInventory() {
     
     function saveWiki() { wikiText = document.getElementById('wiki-text').value; saveLocally(); }
     function handleChat(e) { if(e.key==='Enter'){ const t=document.getElementById('chatInput').value; if(t){ chatLog.push({user:"User", time:new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), text:t}); document.getElementById('chatInput').value=''; saveLocally(); render(); }}}
-    function nav(id) { 
-        sortDir = 1; 
-        document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active')); 
-        document.getElementById('view-'+id).classList.add('active'); 
-        document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active')); 
-        const btn = document.getElementById('nav-'+(id==='project-detail'?'proj':id));
-        if(btn) btn.classList.add('active');
-        if(id === 'hp') {
-            switchHpTab('decay');
-            loadHPState(); // Ensure state is restored
-        }
-        if(id === 'finance') switchFinTab('overview');
-        if(id === 'estimator') {
-             const sel = document.getElementById('est-proj-select');
-             const currentVal = sel.value; 
-             let html = '<option value="">-- Select Project --</option>';
-             projects.forEach(p => html += `<option value="${p.id}">${esc(p.title)}</option>`);
-             sel.innerHTML = html;
-             if(currentVal) sel.value = currentVal; 
-             updateEstItems(); 
-             calcEstimate(); // Ensure table shows items
-        }
+
+function nav(id) { 
+    // 1. Reset Sort Direction (optional, keeps default behavior consistent)
+    sortDir = 1; 
+
+    // 2. Switch the Main View
+    document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active')); 
+    document.getElementById('view-' + id).classList.add('active'); 
+
+    // 3. Highlight the Sidebar Button
+    document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active')); 
+    const btn = document.getElementById('nav-' + (id === 'project-detail' ? 'proj' : id));
+    if(btn) btn.classList.add('active');
+
+    // 4. Specific Tool Initialization logic
+    if(id === 'hp') {
+        switchHpTab('decay');
+        loadHPState(); // Ensure inputs are restored from state
     }
+
+    if(id === 'finance') {
+        switchFinTab('overview');
+    }
+
+    if(id === 'estimator') {
+         // Refresh the Project Dropdown in the Estimator
+         const sel = document.getElementById('est-proj-select');
+         const currentVal = sel.value; 
+         let html = '<option value="">-- Select Project --</option>';
+         projects.forEach(p => html += `<option value="${p.id}">${esc(p.title)}</option>`);
+         sel.innerHTML = html;
+         
+         // Restore previous selection if it still exists
+         if(currentVal) sel.value = currentVal; 
+         
+         updateEstItems(); 
+         calcEstimate(); 
+    }
+
+    // 5. Update Browser Tab Title (Context-Aware)
+    let title = APP_VER;
+    switch(id) {
+        case 'dashboard': title = "Dash | " + APP_VER; break;
+        case 'projects': title = "Projects | " + APP_VER; break;
+        case 'finance': title = "Cost | " + APP_VER; break;
+        case 'estimator': title = "Estimator | " + APP_VER; break;
+        case 'inventory': title = "Inv | " + APP_VER; break;
+        case 'hp': title = "HP Tools | " + APP_VER; break;
+        case 'exempt': title = "Exempt Log | " + APP_VER; break;
+        case 'logbook': title = "Logbook | " + APP_VER; break;
+    }
+    document.title = title;
+}
     
     function openModal(id) { 
-        document.getElementById(id).classList.add('active'); 
-        
-        // Clear New Project inputs when opening
-        if(id === 'projectModal') {
-            document.getElementById('pTitle').value = '';
-            document.getElementById('pDesc').value = '';
-            document.getElementById('pDate').value = '';
-            document.getElementById('pCost').value = '';
-            // Ensure the new fields added earlier are also cleared
-            if(document.getElementById('pUic')) document.getElementById('pUic').value = '';
-            if(document.getElementById('pLoc')) document.getElementById('pLoc').value = '';
-        }
+    document.getElementById(id).classList.add('active'); 
+    
+    // Clear New Project inputs when opening
+    if(id === 'projectModal') {
+        document.getElementById('pTitle').value = '';
+        document.getElementById('pDesc').value = '';
+        document.getElementById('pDate').value = '';
+        document.getElementById('pCost').value = '';
+        if(document.getElementById('pUic')) document.getElementById('pUic').value = '';
+        if(document.getElementById('pLoc')) document.getElementById('pLoc').value = '';
+    }
 
-        if(id === 'expenseModal' || id === 'allocModal') { 
-            const sel = document.getElementById(id === 'expenseModal' ? 'expProj' : 'allocProj'); 
-            sel.innerHTML = '<option value="">-- General --</option>'; 
-            projects.forEach(p => sel.innerHTML += `<option value="${p.id}">${esc(p.title)}</option>`); 
-            
-            // NEW: Clear inputs on open to prevent stale data
-            if(id === 'expenseModal') {
-                document.getElementById('expDesc').value = '';
-                document.getElementById('expAmt').value = '';
-                document.getElementById('expDate').value = getTodayStr(); // Nice touch: default to today
-            } else {
-                document.getElementById('allocDesc').value = '';
-                document.getElementById('allocAmt').value = '';
-                document.getElementById('allocDate').value = getTodayStr();
-            }
+    // --- FIX: POPULATE INVENTORY MODAL PROJECTS ---
+    if(id === 'invModal') {
+        const sel = document.getElementById('invProj');
+        sel.innerHTML = '<option value="">-- None --</option>'; 
+        projects.forEach(p => {
+            sel.innerHTML += `<option value="${p.id}">${esc(p.title)}</option>`;
+        });
+    }
+    // ----------------------------------------------
+
+    if(id === 'expenseModal' || id === 'allocModal') { 
+        const sel = document.getElementById(id === 'expenseModal' ? 'expProj' : 'allocProj'); 
+        sel.innerHTML = '<option value="">-- General --</option>'; 
+        projects.forEach(p => sel.innerHTML += `<option value="${p.id}">${esc(p.title)}</option>`); 
+        
+        if(id === 'expenseModal') {
+            document.getElementById('expDesc').value = '';
+            document.getElementById('expAmt').value = '';
+            document.getElementById('expDate').value = getTodayStr(); 
+        } else {
+            document.getElementById('allocDesc').value = '';
+            document.getElementById('allocAmt').value = '';
+            document.getElementById('allocDate').value = getTodayStr();
         }
     }
+}
 
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
     
@@ -3173,6 +3606,22 @@ function resetData(ask=true) {
     function clearData() { if(confirm("Clear All?")) { projects=[]; inventory=[]; expenses=[]; allocations=[]; chatLog=[]; team=[]; wikiText=""; hpState={}; estItems=[]; exemptLog=[]; saveLocally(); render(); } }
     function toggleTheme() { const b=document.body; const newTheme = b.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; if(newTheme === 'dark') b.setAttribute('data-theme', 'dark'); else b.removeAttribute('data-theme'); localStorage.setItem('rad_theme', newTheme); }
 
+// --- GLOBAL SHORTCUTS & BEHAVIOR ---
+
+// 1. Close Modals on "Escape" key
+document.addEventListener('keydown', (e) => {
+    if (e.key === "Escape") {
+        const active = document.querySelector('.modal-overlay.active');
+        if (active) closeModal(active.id);
+    }
+});
+
+// 2. Close Modals on Click Outside
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeModal(overlay.id);
+    });
+});
     
     loadLocally();
 </script>
