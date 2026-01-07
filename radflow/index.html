@@ -2566,7 +2566,18 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
             return;
         }
 
-        const timestamps = chartData.map(e => new Date(e.date + 'T12:00:00').getTime());
+        // 1. Filter: Ensure date string exists AND parses to a valid number
+        const validData = chartData.filter(e => e.date && !isNaN(new Date(e.date).getTime()));
+
+        // 2. Safety Check: If filtering leaves us with nothing, show "No Activity" to prevent crash
+        if(validData.length === 0) {
+            container.innerHTML = '<div style="width:100%; text-align:center; color:var(--text-muted); padding:40px;">No valid dates found in this period.</div>';
+            return;
+        }
+
+        // 3. Map: Now it is safe to create timestamps
+        const timestamps = validData.map(e => new Date(e.date + 'T12:00:00').getTime());
+
         if(finStart) timestamps.push(new Date(finStart + 'T12:00:00').getTime());
         if(finEnd) timestamps.push(new Date(finEnd + 'T12:00:00').getTime());
         
@@ -2672,6 +2683,9 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
         p.updatesSent.push(val);
         // Sort dates descending
         p.updatesSent.sort().reverse();
+
+        p.updated = Date.now();
+
         saveLocally();
         viewProject(pid);
     }
@@ -2701,6 +2715,9 @@ function normalizeIso(input) {
     function removeUpdateDate(pid, idx) {
         const p = projects.find(x => x.id === pid);
         p.updatesSent.splice(idx, 1);
+
+        p.updated = Date.now();
+
         saveLocally();
         viewProject(pid);
     }
@@ -3687,6 +3704,9 @@ function viewProject(id) {
         if(existing) {
             existing.amount = amount;
             existing.type = 'base';
+
+            existing.updated = Date.now();
+
         } else {
             allocations.push({ id: Date.now(), projId: pid, date: getTodayStr(), amount: amount, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" });
         }
@@ -3858,8 +3878,8 @@ function updItem(type, id, key, val, elem) {
             
             if(key === 'amount') {
                 // 1. Clean the input for data storage
-                const cleanVal = val.toString().replace(/[^0-9.-]+/g,"");
-                let numVal = parseFloat(cleanVal);
+                const cleanVal = val.toString().replace(/[^0-9.-]/g,"");
+                let numVal = parseFloat(cleanVal) || 0;
                 if(isNaN(numVal)) numVal = 0;
                 
                 item[key] = numVal; // Save clean number
@@ -3928,6 +3948,8 @@ function updItem(type, id, key, val, elem) {
         const p = projects.find(x => x.id === pId);
         const t = p.tasks.find(x => x.id === tId);
         t[key] = val; 
+
+        p.updated = Date.now();
         
         if(key === 'assign' && val) {
             logSystemAction(`Task <b>${esc(t.text)}</b> assigned to <b>${esc(val)}</b> in <b>${esc(p.title)}</b>.`);
@@ -3936,7 +3958,16 @@ function updItem(type, id, key, val, elem) {
         saveLocally(); 
     }
     
-function cycPrio(pId, tId) { const t = projects.find(x=>x.id===pId).tasks.find(x=>x.id===tId); const m = {'high':'low','med':'high','low':'med','undefined':'med'}; t.prio = m[t.prio] || 'med'; saveLocally(); viewProject(pId); }
+function cycPrio(pId, tId) { 
+        const p = projects.find(x=>x.id===pId); 
+        const t = p.tasks.find(x=>x.id===tId); 
+        const m = {'high':'low','med':'high','low':'med','undefined':'med'}; 
+        t.prio = m[t.prio] || 'med'; 
+        
+        p.updated = Date.now(); 
+        
+        saveLocally(); viewProject(pId); 
+    }
     
 function cloneProject(id) { 
     const original = projects.find(x => x.id === id); 
@@ -3972,7 +4003,8 @@ function cloneProject(id) {
             amount: base.amount, 
             desc: "Initial Budget", 
             type: 'base', 
-            fundSource: base.fundSource 
+            fundSource: base.fundSource,
+            updated: Date.now()
         });
     }
 
@@ -3990,6 +4022,8 @@ function cloneProject(id) {
         const p = projects.find(x=>x.id===pId);
         const t = p.tasks.find(x=>x.id===tId);
         t.done = !t.done; 
+
+        p.updated = Date.now();
         
         const status = t.done ? "completed" : "re-opened";
         logSystemAction(`Task <b>${esc(t.text)}</b> marked ${status} in <b>${esc(p.title)}</b>.`);
@@ -4003,6 +4037,8 @@ function addTask(pId) {
         if(t) { 
             const p = projects.find(x=>x.id===pId);
             p.tasks.push({id:Date.now(), text:t, done:false, assign:a, prio:'med'}); 
+
+            p.updated = Date.now();
             
             logSystemAction(`Task <b>${esc(t)}</b> added to <b>${esc(p.title)}</b>.`);
 
@@ -4015,6 +4051,8 @@ function delTask(pId, tId) {
         const t = p.tasks.find(x=>x.id===tId);
         
         if(t) {
+
+            p.updated = Date.now();
 
             logSystemAction(`Task <b>${esc(t.text)}</b> deleted from <b>${esc(p.title)}</b>.`);
             
@@ -4062,6 +4100,9 @@ function delTask(pId, tId) {
             // Sanitize input before saving
             u = formatLink(u);
             const p = projects.find(x=>x.id===pId); 
+
+            p.updated = Date.now();
+
             if(!p.links) p.links=[]; 
             p.links.push({name:n, url:u}); 
             saveLocally(); 
@@ -4131,7 +4172,8 @@ function addProject() {
                     amount: c, 
                     desc: "Initial Budget", 
                     type: 'base', 
-                    fundSource: "Navy General Fund"
+                    fundSource: "Navy General Fund",
+                    updated: Date.now()
                 });
             }
             
@@ -4331,7 +4373,10 @@ function addInventory() {
         logSystemAction(`Inventory <b>${esc(id)}</b> (${iso}) added.`);
         showToast("Item Added");
         
-        toggleCustomIso('reset'); 
+        document.getElementById('invIso').value = 'Co-60'; // or first option
+        document.getElementById('invIsoCustom').style.display = 'none';
+        document.getElementById('invIsoCustom').value = '';
+
         saveLocally(); 
         closeModal('invModal'); 
         render(); 
@@ -4415,7 +4460,11 @@ function setCurrentUser(val) {
         showToast(`Identity set to: ${currentUser}`);
     }
     
-    function delLink(pId, idx) { const p = projects.find(x=>x.id===pId); p.links.splice(idx, 1); saveLocally(); viewProject(pId); }
+    function delLink(pId, idx) { const p = projects.find(x=>x.id===pId);
+        
+        p.updated = Date.now();
+
+        p.links.splice(idx, 1); saveLocally(); viewProject(pId); }
     
     function renderTeamSettings() { 
         // 1. Render the Delete List
@@ -4713,6 +4762,11 @@ let searchDebounce;
             if(!raw) throw new Error("No data pasted.");
 
             const d = JSON.parse(raw);
+
+            d.exemptLog = d.exemptLog || [];
+            d.tombstones = d.tombstones || [];
+            d.references = d.references || []; 
+            d.estItems = d.estItems || [];
             
             // SECURITY: Basic Schema Validation
             if(!Array.isArray(d.projects) || !Array.isArray(d.inventory) || !Array.isArray(d.expenses)) {
@@ -4794,6 +4848,27 @@ let searchDebounce;
             if(d.wiki && d.wiki !== wikiText && !wikiText.includes(d.wiki)) {
                 wikiText += "\n\n--- IMPORTED NOTES ---\n" + d.wiki;
             }
+
+            // We have merged the incoming Tombstones. Now we must apply them to OUR data.
+            // If we still have an item that the import says is deleted, we must remove it.
+            const applyGraves = (list) => {
+                return list.filter(item => {
+                    const grave = tombstones.find(t => t.id === item.id);
+                    // If a grave exists AND the grave is newer than the item's last update...
+                    if(grave && grave.date > (item.updated || 0)) {
+                        console.log(`Reaper: Removing ${item.id} based on imported tombstone.`);
+                        return false; // DELETE IT
+                    }
+                    return true; // KEEP IT
+                });
+            };
+
+            projects = applyGraves(projects);
+            inventory = applyGraves(inventory);
+            expenses = applyGraves(expenses);
+            allocations = applyGraves(allocations);
+            exemptLog = applyGraves(exemptLog);
+            references = applyGraves(references);
 
             // Cleanup
             inventory.forEach(i => { if(i.iso) i.iso = normalizeIso(i.iso); });
