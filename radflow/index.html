@@ -633,6 +633,14 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
             <i class="fa-solid fa-book-open"></i> <span class="nav-text">Log</span>
         </div>
 
+        <div class="nav-item" id="nav-refs" onclick="nav('references')">
+            <i class="fa-solid fa-book-bookmark"></i> <span class="nav-text">Refs</span>
+        </div>
+
+        <div class="nav-item" onclick="openModal('guideModal')">
+            <i class="fa-solid fa-circle-question"></i> <span class="nav-text">Guide</span>
+        </div>
+
         <div class="nav-item mobile-only" id="nav-chat" onclick="nav('chat')">
             <i class="fa-solid fa-comments"></i> <span class="nav-text">Chat</span>
         </div>
@@ -750,10 +758,10 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
                         <button class="qa-btn" onclick="expandChart()" title="Fullscreen"><i class="fa-solid fa-expand"></i></button>
                     </div>
                     <div style="display:flex; gap:5px; background:var(--bg-input); padding:3px; border-radius:6px;">
-                        <button class="qa-btn" onclick="setChartScale('week')" id="btn-scale-week">Wk</button>
-                        <button class="qa-btn" onclick="setChartScale('month')" id="btn-scale-month" style="background:var(--accent); color:white;">Mo</button>
-                        <button class="qa-btn" onclick="setChartScale('quarter')" id="btn-scale-quarter">Qr</button>
-                        <button class="qa-btn" onclick="setChartScale('year')" id="btn-scale-year">Yr</button>
+                        <button class="btn-rect" onclick="setChartScale('week')" id="btn-scale-week" style="width:auto;">Wk</button>
+                        <button class="btn-rect" onclick="setChartScale('month')" id="btn-scale-month" style="width:auto; background:var(--accent); color:white;">Mo</button>
+                        <button class="btn-rect" onclick="setChartScale('quarter')" id="btn-scale-quarter" style="width:auto;">Qr</button>
+                        <button class="btn-rect" onclick="setChartScale('year')" id="btn-scale-year" style="width:auto;">Yr</button>
                     </div>
                 </div>
                 
@@ -829,7 +837,7 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
                 <select id="est-item" class="form-control" style="margin:0; width:200px;" onchange="updateEstUnit()"></select>
                 <div style="display:flex; align-items:center; gap:5px;">
                     <span style="font-size:0.8rem; color:var(--text-muted);">Rate: $</span>
-                    <input id="est-rate" type="number" class="form-control" style="margin:0; width:100px;" placeholder="0.00">
+                    <input id="est-rate" type="number" step="0.01" class="form-control" style="margin:0; width:100px;" placeholder="0.00">
                 </div>
                 <div style="display:flex; align-items:center; gap:5px;">
                     <input id="est-qty" type="number" class="form-control" style="margin:0; width:80px;" placeholder="0">
@@ -1023,6 +1031,60 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
 
 </div></div>
 
+<div id="view-references" class="view-section">
+        <div class="header">
+            <h1>Reference Library</h1>
+            <div style="display:flex; gap:10px;">
+                <input type="text" class="search-bar" style="width:200px;" placeholder="Search Library..." onkeyup="handleSearch(this.value)">
+                <button class="btn" onclick="openModal('refModal')">+ Add Link</button>
+            </div>
+        </div>
+        
+        <div class="widget">
+            <div style="display:flex; gap:10px; margin-bottom:15px; overflow-x:auto; padding-bottom:5px;">
+                <button class="btn-rect" onclick="filterRefs('all')" id="btn-ref-all" style="background:var(--accent); color:white; border:none;">All</button>
+                <button class="btn-rect" onclick="filterRefs('Reg')" id="btn-ref-Reg">Regulations</button>
+                <button class="btn-rect" onclick="filterRefs('Trans')" id="btn-ref-Trans">Transport</button>
+                <button class="btn-rect" onclick="filterRefs('Form')" id="btn-ref-Form">Forms</button>
+                <button class="btn-rect" onclick="filterRefs('Site')" id="btn-ref-Site">Site Docs</button>
+            </div>
+            
+            <div id="ref-grid" class="dashboard-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));"></div>
+        </div>
+    </div>
+
+    <div id="refModal" class="modal-overlay">
+        <div class="modal">
+            <h3>Add Reference Link</h3>
+            <label style="font-size:0.7rem; color:var(--text-muted)">TITLE</label>
+            <input id="refTitle" class="form-control" placeholder="e.g. Site Emergency Plan">
+            
+            <label style="font-size:0.7rem; color:var(--text-muted)">DESCRIPTION</label>
+            <input id="refDesc" class="form-control" placeholder="Brief description...">
+            
+            <div class="input-grid">
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">CATEGORY</label>
+                    <select id="refType" class="form-control">
+                        <option value="Site">Site Doc</option>
+                        <option value="Reg">Regulation</option>
+                        <option value="Trans">Transport</option>
+                        <option value="Form">Form</option>
+                        <option value="Tool">Tool/Other</option>
+                    </select>
+                </div>
+            </div>
+            
+            <label style="font-size:0.7rem; color:var(--text-muted)">URL / FILE PATH</label>
+            <input id="refUrl" class="form-control" placeholder="https://... or file:///S:/...">
+            
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+                <button class="btn-sync" style="width:auto;" onclick="closeModal('refModal')">Cancel</button>
+                <button class="btn" onclick="addReference()">Save Reference</button>
+            </div>
+        </div>
+    </div>
+
     <div id="view-inventory" class="view-section">
         <div class="header"><h1>Inventory</h1>
             <div>
@@ -1137,14 +1199,22 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
         <h3>New Project</h3>
         <input id="pTitle" class="form-control" placeholder="Project Name">
         <input id="pDesc" class="form-control" placeholder="Brief Description">
+        
         <div class="input-grid">
             <div><label style="font-size:0.7rem; color:var(--text-muted)">UIC</label><input id="pUic" class="form-control" placeholder="N00000"></div>
             <div><label style="font-size:0.7rem; color:var(--text-muted)">LOCATION</label><input id="pLoc" class="form-control" placeholder="City, ST"></div>
         </div>
+        
+        <div class="input-grid">
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">MIPR #</label><input id="pMipr" class="form-control" placeholder="N000..."></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">CONTRACTOR</label><input id="pCont" class="form-control" placeholder="Vendor Name"></div>
+        </div>
+
         <div class="input-grid">
             <div><label style="font-size:0.7rem; color:var(--text-muted)">DUE DATE</label><input id="pDate" type="date" class="form-control"></div>
-            <div><label style="font-size:0.7rem; color:var(--text-muted)">INITIAL BUDGET ($)</label><input id="pCost" type="number" class="form-control" placeholder="0.00"></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">INITIAL BUDGET ($)</label><input id="pCost" type="number" step="0.01" class="form-control" placeholder="0.00"></div>
         </div>
+        
         <div style="display:flex; justify-content:flex-end; gap:10px;">
             <button class="btn-sync" style="width:auto;" onclick="closeModal('projectModal')">Cancel</button>
             <button class="btn" onclick="addProject()">Save</button>
@@ -1152,8 +1222,12 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     </div>
 </div>
 
-<div id="expenseModal" class="modal-overlay"><div class="modal"><h3>Log Expense</h3><label style="font-size:0.7rem; color:var(--text-muted);">PROJECT</label><select id="expProj" class="form-control"></select><input id="expDesc" class="form-control" placeholder="Description"><div class="input-grid"><div style="flex:2;"><label style="font-size:0.7rem; color:var(--text-muted);">FUNDING SOURCE</label><select id="expFund" class="form-control"><option>Navy General Fund</option><option>Command Funded</option><option>Other</option></select></div><div style="flex:1;"><label style="font-size:0.7rem; color:var(--text-muted);">AMOUNT</label><input id="expAmt" type="number" class="form-control" placeholder="0.00"></div></div><div style="margin-bottom:10px;"><label style="font-size:0.7rem; color:var(--text-muted);">DATE</label><input id="expDate" type="date" class="form-control"></div><select id="expStatus" class="form-control"><option>Invoiced</option><option>Paid</option><option>Encumbered</option></select><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('expenseModal')">Cancel</button><button class="btn" onclick="addExpense()">Add</button></div></div></div>
-<div id="allocModal" class="modal-overlay"><div class="modal"><h3>Add Funding Allocation</h3><label style="font-size:0.7rem; color:var(--text-muted);">PROJECT</label><select id="allocProj" class="form-control"></select><div class="input-grid"><div style="flex:2;"><label style="font-size:0.7rem; color:var(--text-muted);">SOURCE</label><select id="allocFund" class="form-control"><option>Navy General Fund</option><option>Command Funded</option><option>Other</option></select></div><div style="flex:1;"><label style="font-size:0.7rem; color:var(--text-muted);">AMOUNT</label><input id="allocAmt" type="number" class="form-control" placeholder="0.00"></div></div><input id="allocDesc" class="form-control" placeholder="Description (e.g. Q3 Top-up)"><div style="margin-bottom:10px;"><label style="font-size:0.7rem; color:var(--text-muted);">DATE</label><input id="allocDate" type="date" class="form-control"></div><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('allocModal')">Cancel</button><button class="btn" onclick="addAllocation()">Add Funds</button></div></div></div>
+<div id="expenseModal" class="modal-overlay"><div class="modal"><h3>Log Expense</h3><label style="font-size:0.7rem; color:var(--text-muted);">PROJECT</label><select id="expProj" class="form-control"></select><input id="expDesc" class="form-control" placeholder="Description"><div class="input-grid"><div style="flex:2;"><label style="font-size:0.7rem; color:var(--text-muted);">FUNDING SOURCE</label><select id="expFund" class="form-control"><option>Navy General Fund</option><option>Command Funded</option><option>Other</option></select></div><div style="flex:1;"><label style="font-size:0.7rem; color:var(--text-muted);">AMOUNT</label>
+    <input id="expAmt" type="number" step="0.01" class="form-control" placeholder="0.00">
+</div></div><div style="margin-bottom:10px;"><label style="font-size:0.7rem; color:var(--text-muted);">DATE</label><input id="expDate" type="date" class="form-control"></div><select id="expStatus" class="form-control"><option>Invoiced</option><option>Paid</option><option>Encumbered</option></select><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('expenseModal')">Cancel</button><button class="btn" onclick="addExpense()">Add</button></div></div></div>
+<div id="allocModal" class="modal-overlay"><div class="modal"><h3>Add Funding Allocation</h3><label style="font-size:0.7rem; color:var(--text-muted);">PROJECT</label><select id="allocProj" class="form-control"></select><div class="input-grid"><div style="flex:2;"><label style="font-size:0.7rem; color:var(--text-muted);">SOURCE</label><select id="allocFund" class="form-control"><option>Navy General Fund</option><option>Command Funded</option><option>Other</option></select></div><div style="flex:1;"><label style="font-size:0.7rem; color:var(--text-muted);">AMOUNT</label>
+    <input id="allocAmt" type="number" step="0.01" class="form-control" placeholder="0.00">
+</div></div><input id="allocDesc" class="form-control" placeholder="Description (e.g. Q3 Top-up)"><div style="margin-bottom:10px;"><label style="font-size:0.7rem; color:var(--text-muted);">DATE</label><input id="allocDate" type="date" class="form-control"></div><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('allocModal')">Cancel</button><button class="btn" onclick="addAllocation()">Add Funds</button></div></div></div>
 <div id="budgetModal" class="modal-overlay"><div class="modal"><h3>Base Budget Manager</h3><p style="color:var(--text-muted); font-size:0.8rem;">Edit the <b>Initial Budget</b> for projects below.</p><div id="budgetManagerList" style="max-height:300px; overflow-y:auto; margin-bottom:15px;"></div><div style="background:var(--bg-input); padding:10px; border-radius:6px; font-size:0.75rem; color:var(--warning); margin-bottom:15px;"><i class="fa-solid fa-triangle-exclamation"></i> <b>Note:</b> Editing values here modifies the historical "Initial Budget" record. Default source is Navy General Fund. For specific sources, use "+ Funding".</div><div style="text-align:right;"><button class="btn-sync" style="width:auto;" onclick="closeModal('budgetModal')">Done</button></div></div></div>
 
 <div id="invModal" class="modal-overlay">
@@ -1272,6 +1346,252 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     </div>
 </div>
 
+<div id="guideModal" class="modal-overlay">
+    <div class="modal" style="max-width:1000px; height:95vh; display:flex; flex-direction:column; padding:0; overflow:hidden;">
+        
+        <div style="background:var(--bg-sidebar); border-bottom:1px solid var(--border); padding:20px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <div style="width:50px; height:50px; background:var(--accent); color:white; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.8rem; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
+                    <i class="fa-solid fa-book-atlas"></i>
+                </div>
+                <div>
+                    <h2 style="margin:0; font-size:1.6rem; letter-spacing:-0.5px;">RadFlow Operational Manual</h2>
+                    <div style="display:flex; gap:15px; font-size:0.8rem; color:var(--text-muted); margin-top:5px;">
+                        <span><i class="fa-solid fa-code-branch"></i> v25.7 Platinum</span>
+                        <span><i class="fa-solid fa-shield-halved"></i> For Official Use Only</span>
+                        <span><i class="fa-solid fa-server"></i> Local Storage Mode</span>
+                    </div>
+                </div>
+            </div>
+            <button class="btn-sync" style="width:auto; height:40px;" onclick="closeModal('guideModal')"><i class="fa-solid fa-xmark"></i> Close Guide</button>
+        </div>
+
+        <div style="display:flex; flex:1; overflow:hidden;">
+            
+            <div style="width:240px; background:var(--bg-input); border-right:1px solid var(--border); overflow-y:auto; padding:15px; display:none; flex-direction:column; gap:8px;" id="guide-toc">
+                <style> @media(min-width:800px) { #guide-toc { display:flex !important; } } </style>
+                <div style="font-weight:bold; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase; margin-bottom:5px; margin-top:10px;">Navigation</div>
+                
+                <a href="#g-1" class="btn-rect" style="text-align:left; justify-content:flex-start; border:none; background:transparent; font-size:0.9rem;">1. Critical Protocols</a>
+                <a href="#g-2" class="btn-rect" style="text-align:left; justify-content:flex-start; border:none; background:transparent; font-size:0.9rem;">2. Command Center</a>
+                <a href="#g-3" class="btn-rect" style="text-align:left; justify-content:flex-start; border:none; background:transparent; font-size:0.9rem;">3. Project Lifecycle</a>
+                <a href="#g-4" class="btn-rect" style="text-align:left; justify-content:flex-start; border:none; background:transparent; font-size:0.9rem;">4. Financial Ops</a>
+                <a href="#g-5" class="btn-rect" style="text-align:left; justify-content:flex-start; border:none; background:transparent; font-size:0.9rem;">5. HP & Inventory</a>
+                <a href="#g-6" class="btn-rect" style="text-align:left; justify-content:flex-start; border:none; background:transparent; font-size:0.9rem;">6. Administration</a>
+            </div>
+
+            <div style="flex:1; overflow-y:auto; padding:30px; scroll-behavior:smooth;">
+                
+                <div id="g-1" style="margin-bottom:40px;">
+                    <h3 style="color:var(--danger); border-bottom:2px solid var(--border); padding-bottom:10px; margin-top:0;">
+                        <span style="background:var(--danger); color:white; padding:2px 8px; border-radius:4px; font-size:0.8rem; vertical-align:middle; margin-right:10px;">CH 1</span>
+                        Critical Data Protocols
+                    </h3>
+                    
+                    <div style="background:var(--bg-card); border-left:4px solid var(--danger); padding:20px; border-radius:0 4px 4px 0; margin-bottom:20px;">
+                        <h4 style="margin-top:0; color:var(--danger);"><i class="fa-solid fa-database"></i> The "Zero-Cloud" Architecture</h4>
+                        <p style="font-size:0.9rem;">
+                            RadFlow operates entirely in your browser's memory. <b>IT DOES NOT SAVE TO A SERVER.</b>
+                            <br>If you clear your cache, re-image your machine, or switch browsers, your data will be gone unless you have a backup.
+                        </p>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                        <div style="border:1px solid var(--border); padding:15px; border-radius:8px;">
+                            <h4 style="margin-top:0;"><i class="fa-solid fa-file-export"></i> Backup Procedure (SOP-01)</h4>
+                            <ol style="font-size:0.9rem; padding-left:20px;">
+                                <li>Click <b>Settings</b> or the <b>Export</b> button in the sidebar.</li>
+                                <li>Click <b>"Download File"</b>.</li>
+                                <li>Save the <code>.json</code> file to a secure, backed-up network location (e.g., S: Drive or OneDrive).</li>
+                                <li><b>Frequency:</b> Every Friday at 1500 or after major data entry.</li>
+                            </ol>
+                        </div>
+                        <div style="border:1px solid var(--border); padding:15px; border-radius:8px;">
+                            <h4 style="margin-top:0;"><i class="fa-solid fa-file-import"></i> Restoration Procedure</h4>
+                            <ol style="font-size:0.9rem; padding-left:20px;">
+                                <li>Click <b>Import Data</b> in the sidebar.</li>
+                                <li>Open your saved <code>.json</code> file in Notepad.</li>
+                                <li>Copy the <b>entire text</b> (Ctrl+A, Ctrl+C).</li>
+                                <li>Paste into the Import box and click <b>Load</b>.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="g-2" style="margin-bottom:40px;">
+                    <h3 style="color:var(--accent); border-bottom:2px solid var(--border); padding-bottom:10px;">
+                        <span style="background:var(--accent); color:white; padding:2px 8px; border-radius:4px; font-size:0.8rem; vertical-align:middle; margin-right:10px;">CH 2</span>
+                        The Command Center
+                    </h3>
+                    <p style="font-size:0.9rem;">The Dashboard is your morning brief. It aggregates data from all modules.</p>
+                    
+                    <ul style="font-size:0.9rem; line-height:1.8;">
+                        <li><b>Operational Analytics:</b> Two charts showing Project Status (Pie) and Budget Utilization (Bar). If the budget bar is full, you are out of money.</li>
+                        <li><b>Active Projects Widget:</b>
+                            <ul>
+                                <li><i>Sorting:</i> Use the dropdown to sort by <b>Health</b> (Red first) or <b>Status</b>.</li>
+                                <li><i>Quick Actions:</i> Hover over a project row to reveal the <i class="fa-solid fa-check"></i> (Task) and <i class="fa-solid fa-dollar-sign"></i> (Expense) shortcuts.</li>
+                            </ul>
+                        </li>
+                        <li><b>Pending Actions:</b> Shows tasks across all projects. Use the sort menu to prioritize <b>"Highest Prio"</b> tasks first.</li>
+                        <li><b>Financial Snapshot:</b> A high-level view of Total Budget vs. Total Spent across the entire program.</li>
+                    </ul>
+                </div>
+
+                <div id="g-3" style="margin-bottom:40px;">
+                    <h3 style="color:var(--text-main); border-bottom:2px solid var(--border); padding-bottom:10px;">
+                        <span style="background:var(--text-muted); color:white; padding:2px 8px; border-radius:4px; font-size:0.8rem; vertical-align:middle; margin-right:10px;">CH 3</span>
+                        Project Lifecycle Management
+                    </h3>
+                    
+                    <div style="margin-bottom:20px;">
+                        <h4 style="border-bottom:1px solid var(--border);">1. Creating & Setting Up</h4>
+                        <p style="font-size:0.9rem;">
+                            Click <span class="tag">+ Project</span>. Essential fields include <b>UIC</b> (Who owns it), <b>MIPR</b> (Funding document), and <b>Due Date</b>. 
+                            <br><i>Tip:</i> You can set an "Initial Budget" here, which creates your first Allocation record automatically.
+                        </p>
+                    </div>
+
+                    <div style="margin-bottom:20px;">
+                        <h4 style="border-bottom:1px solid var(--border);">2. The Detail View</h4>
+                        <table class="sci-table" style="font-size:0.85rem;">
+                            <tr><td style="width:150px; font-weight:bold;">Health Stoplight</td><td>Manually set this to Green/Yellow/Red. This is your signal to leadership about risk.</td></tr>
+                            <tr><td style="font-weight:bold;">Logistics</td><td>Track Contractor, Contract Status (Pre-Prop vs On Contract), and JMC IDs.</td></tr>
+                            <tr><td style="font-weight:bold;">Updates Sent</td><td>Use the "Add" button next to Updates Sent to log when you sent a status report. Keeps a history.</td></tr>
+                            <tr><td style="font-weight:bold;">Digital Binder</td><td>Paste links to local files (e.g., <code>S:\Projects\2025\Plan.pdf</code>). The system formats them as clickable links.</td></tr>
+                        </table>
+                    </div>
+
+                    <div style="background:var(--bg-input); padding:15px; border-radius:6px; font-size:0.9rem;">
+                        <b><i class="fa-solid fa-clone"></i> Workflow: Cloning a Project</b>
+                        <br>For recurring work (e.g., "Quarterly Source Inventory"):
+                        1. Open the previous completed project.
+                        2. Click <b>Clone</b>.
+                        3. The system copies the Title, Desc, and Tasks.
+                        4. It <b>resets</b> the financial data and dates to ensure a clean slate.
+                    </div>
+                </div>
+
+                <div id="g-4" style="margin-bottom:40px;">
+                    <h3 style="color:var(--money); border-bottom:2px solid var(--border); padding-bottom:10px;">
+                        <span style="background:var(--money); color:white; padding:2px 8px; border-radius:4px; font-size:0.8rem; vertical-align:middle; margin-right:10px;">CH 4</span>
+                        Financial Operations
+                    </h3>
+                    
+                    <p style="font-size:0.9rem;">The Finance module is built on the <b>Bucket Principle</b>: Money flows IN (Allocations) and OUT (Expenses).</p>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+                        <div>
+                            <h4 style="color:var(--navy);">Money In (Allocations)</h4>
+                            <ul style="font-size:0.9rem;">
+                                <li><b>Base Budget:</b> The initial funding. Edited via the "Total Budget" card.</li>
+                                <li><b>Adjustments:</b> Use <span class="tag">+ Funding</span> to add "Top-ups" or specific command funding.</li>
+                                <li><b>Sources:</b> You can track "Navy General Fund" vs "Command Funded" separately.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color:var(--danger);">Money Out (Expenses)</h4>
+                            <ul style="font-size:0.9rem;">
+                                <li><b>Encumbered:</b> Money reserved (e.g., PR submitted). Counts as "Spent".</li>
+                                <li><b>Invoiced/Paid:</b> Finalized costs.</li>
+                                <li><b>Estimate:</b> Draft costs. <u>Does not</u> count against the budget.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div style="border:1px solid var(--accent); border-radius:8px; overflow:hidden;">
+                        <div style="background:var(--accent); color:white; padding:10px 15px; font-weight:bold;">
+                            <i class="fa-solid fa-calculator"></i> The Estimator Workflow
+                        </div>
+                        <div style="padding:15px; font-size:0.9rem;">
+                            The <b>Est.</b> tab allows you to build detailed Independent Government Estimates (IGEs).
+                            <br><br>
+                            <b>Step 1:</b> Select Project & Funding Source.<br>
+                            <b>Step 2:</b> Add line items (Labor, Disposal, Transport). Rates are pre-loaded.<br>
+                            <b>Step 3:</b> Choose your save method:
+                            <ul style="margin-bottom:0;">
+                                <li><span class="tag" style="background:var(--money); color:white">As Funding</span> &rarr; Increases Project Budget.</li>
+                                <li><span class="tag" style="background:var(--danger); color:white">As Cost</span> &rarr; Enters as an "Encumbered" Expense.</li>
+                                <li><span class="tag" style="background:var(--text-muted); color:white">As Estimate</span> &rarr; Saves as a Draft (Reference only).</li>
+                            </ul>
+                            <br>
+                            <b>Pro Tip:</b> If an expense has an attached estimate, a <i class="fa-solid fa-file-invoice"></i> icon will appear in the expense table. Click it to view or edit the breakdown.
+                        </div>
+                    </div>
+                </div>
+
+                <div id="g-5" style="margin-bottom:40px;">
+                    <h3 style="color:var(--rad); border-bottom:2px solid var(--border); padding-bottom:10px;">
+                        <span style="background:var(--rad); color:white; padding:2px 8px; border-radius:4px; font-size:0.8rem; vertical-align:middle; margin-right:10px;">CH 5</span>
+                        Radiation Safety Operations
+                    </h3>
+
+                    <h4 style="border-bottom:1px solid var(--border);">1. Inventory Management</h4>
+                    <p style="font-size:0.9rem;">
+                        Track sources and waste. 
+                        <br><b>Decay Correction:</b> Clicking <span class="tag"><i class="fa-solid fa-clock-rotate-left"></i> Decay Correct</span> automatically updates the activity of all known isotopes (Co-60, Cs-137, etc.) based on the date difference.
+                        <br><b>Container Fill:</b> Use the slider to track waste drum capacity (0-100%).
+                    </p>
+
+                    <h4 style="border-bottom:1px solid var(--border); margin-top:20px;">2. HP Tools Methodology</h4>
+                    <table class="sci-table" style="font-size:0.85rem;">
+                        <thead><tr><th>Tool</th><th>Formula</th><th>Notes</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td><b>Decay</b></td>
+                                <td><pre style="margin:0; font-family:monospace; background:transparent; padding:0; border:none;">A = A0 * e^(-λt)</pre></td>
+                                <td>Calculates remaining activity. Can solve for "Past" or "Future" dates.</td>
+                            </tr>
+                            <tr>
+                                <td><b>Distance</b></td>
+                                <td><pre style="margin:0; font-family:monospace; background:transparent; padding:0; border:none;">I1 * (d1)^2 = I2 * (d2)^2</pre></td>
+                                <td>Inverse Square Law. Point source assumption. Includes a "Load from Inventory" button to quickly grab source data.</td>
+                            </tr>
+                            <tr>
+                                <td><b>Shielding</b></td>
+                                <td><pre style="margin:0; font-family:monospace; background:transparent; padding:0; border:none;">I = I0 * (0.5)^(x/HVL)</pre></td>
+                                <td>Linear attenuation. HVL (Half Value Layer) data is stored for Lead, Iron, and Concrete.</td>
+                            </tr>
+                            <tr>
+                                <td><b>Stay Time</b></td>
+                                <td><pre style="margin:0; font-family:monospace; background:transparent; padding:0; border:none;">T = Limit / Rate</pre></td>
+                                <td>Calculates max time allowed in a field to stay under a dose limit.</td>
+                            </tr>
+                            <tr>
+                                <td><b>ALARA</b></td>
+                                <td><pre style="margin:0; font-family:monospace; background:transparent; padding:0; border:none;">D_coll = Rate * Time * Crew</pre></td>
+                                <td>Collective Dose planning for job evolutions.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4 style="border-bottom:1px solid var(--border); margin-top:20px;">3. Exempt Log</h4>
+                    <p style="font-size:0.9rem;">
+                        Used for consumer product disposal (10 CFR 30.15/19).
+                        <br>Entries start as <span class="tag" style="background:var(--warning); color:white">Pending</span>. They only become <span class="tag" style="background:var(--accent); color:white">Authorized</span> when you edit the entry and add an "Auth Date" and Reviewer Initials.
+                    </p>
+                </div>
+
+                <div id="g-6" style="margin-bottom:20px;">
+                    <h3 style="color:var(--navy); border-bottom:2px solid var(--border); padding-bottom:10px;">
+                        <span style="background:var(--navy); color:white; padding:2px 8px; border-radius:4px; font-size:0.8rem; vertical-align:middle; margin-right:10px;">CH 6</span>
+                        System Administration
+                    </h3>
+                    
+                    <ul style="font-size:0.9rem; line-height:1.8;">
+                        <li><b>Identity:</b> Go to Settings to change your "User". This affects the name attached to Chat logs and Task Assignments.</li>
+                        <li><b>Team List:</b> You can add/remove team members in Settings. (Note: You cannot delete the user you are currently logged in as).</li>
+                        <li><b>Theme:</b> Toggle Dark/Light mode in Settings. This preference is saved to your browser.</li>
+                        <li><b>Live Editing:</b> Most tables (Expenses, Inventory, Logbook) support "Click-to-Edit". Changes are saved instantly.</li>
+                        <li><b>Reset:</b> "Reset to Defaults" loads the example training data. "Clear All" wipes the database clean.</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     const APP_VER = "RadFlow v25.7";
 
@@ -1360,14 +1680,16 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     'Sr-90':  { hl: 28.79, name: 'Strontium-90' },
     'H-3':    { hl: 12.32, name: 'Tritium' },
     'C-14':   { hl: 5730, name: 'Carbon-14' },
-    'Ni-63':  { hl: 100.1, name: 'Nickel-63' },
+    'Ni-63':  { hl: 100.1, name: 'Nickel-63' }, 
+    'Kr-85':  { hl: 10.756, name: 'Krypton-85' }, 
+    'Po-210': { hl: 0.379, name: 'Polonium-210' }, 
     'Ra-226': { hl: 1600, name: 'Radium-226' },
     'Th-232': { hl: 1.405e10, name: 'Thorium-232' },
     'U-238':  { hl: 4.468e9, name: 'Uranium-238' },
     'I-131':  { hl: 0.022, name: 'Iodine-131' }, 
     'Tc-99m': { hl: 0.00068, name: 'Technetium-99m' },
     'Cf-252': { hl: 2.645, name: 'Californium-252' },
-    'Unknown': { hl: 0, name: 'Unknown / Mixed' } // Safe fallback
+    'Unknown': { hl: 0, name: 'Unknown / Mixed' }
 };
 
     const getTodayStr = () => {
@@ -1593,6 +1915,34 @@ const STARTER_DATA = {
             {id: "2025-007", date: "2025-11-01", cmd: "BUMED", desc: "LSC Vials (Deregulated)", qty: "10 gal", iso: "H-3/C-14", act: "<0.05 uCi/g", basis: "10 CFR § 20.2005", path: "Incineration", rev: "JD", authDate: "2025-11-05"},
             {id: "2025-008", date: "2025-11-15", cmd: "NUWC DIV", desc: "Static Eliminators (Brushes)", qty: "2", iso: "Po-210", act: "500 uCi", basis: "10 CFR § 31.3", path: "Transfer", rev: "Admin", authDate: ""}
         ],
+
+        references: [
+            // --- NRC ---
+            { id: 1, title: "10 CFR Part 20", desc: "Standards for Protection Against Radiation", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/cfr/part020/index.html", locked: true },
+            { id: 2, title: "10 CFR Part 61", desc: "Licensing Requirements for Land Disposal", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/cfr/part061/index.html", locked: true },
+            { id: 3, title: "10 CFR Part 71", desc: "Packaging and Transportation of Radioactive Material", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/cfr/part071/index.html", locked: true },
+
+            // --- DOT ---
+            { id: 4, title: "49 CFR § 173.403", desc: "Class 7 (Radioactive) Definitions", type: "Trans", url: "https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.403", locked: true },
+            { id: 5, title: "49 CFR Part 172", desc: "Hazmat Tables, Marking, Labeling & Placarding", type: "Trans", url: "https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-172", locked: true },
+
+            // --- NAVY & DoD ---
+            { id: 6, title: "OPNAV M-5090.1", desc: "Environmental Readiness Program Manual", type: "Site", url: "https://www.navsea.navy.mil/Portals/103/Documents/SUPSALV/Environmental/5090.1.pdf", locked: true },
+            
+            // UPDATED TITLE HERE:
+            { id: 7, title: "DoD Low-Level Radioactive Waste (LLRW) Program", desc: "DoDI 4715.27 - Management of LLRW", type: "Site", url: "https://www.esd.whs.mil/Portals/54/Documents/DD/issuances/dodi/471527p.pdf?ver=2019-04-12-075155-183", locked: true },
+            
+            { id: 8, title: "DoDI 4715.06", desc: "Environmental Compliance in the DoD", type: "Site", url: "https://www.esd.whs.mil/Portals/54/Documents/DD/issuances/dodi/471506p.pdf", locked: true },
+
+            // --- EPA / NRC GENERAL ---
+            { id: 9, title: "EPA RCRA Manual", desc: "Resource Conservation and Recovery Act Orientation", type: "Reg", url: "https://www.epa.gov/hwgenerators/resource-conservation-and-recovery-act-rcra-orientation-manual", locked: true },
+            { id: 10, title: "NRC Fact Sheets", desc: "Library of NRC Fact Sheets and Backgrounders", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/fact-sheets/index.html", locked: true },
+
+            // --- FORMS & TOOLS ---
+            { id: 11, title: "NRC Form 540", desc: "Uniform Low-Level Radioactive Waste Manifest", type: "Form", url: "https://www.nrc.gov/reading-rm/doc-collections/forms/nrc540info.html", locked: true },
+            { id: 12, title: "Rad Pro Calculator", desc: "Online decay and shielding calculator", type: "Tool", url: "http://www.radprocalculator.com/", locked: true }
+        ],
+
         team: ["JD", "AS", "Admin", "M. Scott", "D. Schrute"],
         chat: [
             {user: "System", time: "01/01 08:00 AM", text: `${APP_VER} initialized.`},
@@ -1605,15 +1955,18 @@ const STARTER_DATA = {
     };
 
     let projects = []; let inventory = []; let expenses = []; let allocations = []; let chatLog = []; let team = []; let wikiText = "";
+
+    let references = [];
+
     let estItems = []; let exemptLog = [];
     let showComplete = false; let viewMode = 'list'; let hpState = {iso:'Co-60', a0:'', date:''};
 
     // Try to load the saved user, or default to the first team member (or "Admin")
     let currentUser = localStorage.getItem('rad_curr_user') || 'Admin';
 
-let sortState = { table: '', col: 0, dir: 1 };
+    let sortState = { table: '', col: 0, dir: 1 };
 
-// Dashboard Widget States ---
+    // Dashboard Widget States ---
     let dashTaskSort = 'prio';   // Options: 'prio', 'oldest', 'newest'
     let dashInvSort = 'dose';    // Options: 'dose', 'fill', 'recent'
 
@@ -2217,11 +2570,12 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
                 nextDate = new Date(current); nextDate.setMonth(nextDate.getMonth() + 1);
             }
 
-            // FIX: Summing logic now uses Math.abs() to fix the "Negative Bar" glitch
+            
             const bucketVal = chartData.reduce((acc, e) => {
-                const d = new Date(e.date + 'T12:00:00');
-                return (d >= current && d < nextDate) ? acc + Math.abs(parseFloat(e.amount)||0) : acc;
-            }, 0);
+    const d = new Date(e.date + 'T12:00:00');
+    
+    return (d >= current && d < nextDate) ? acc + (parseFloat(e.amount)||0) : acc;
+}, 0);
 
             if(bucketVal > maxVal) maxVal = bucketVal;
             timeline.push({ label: lbl, val: bucketVal });
@@ -2283,16 +2637,25 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
     }
 
 // --- HELPER: Normalize Isotope Name ---
-// Turns "co-60" -> "Co-60", "cs137" -> "Cs-137"
+// This ensures that "ni-63" or "Ni63" correctly maps to "Ni-63" for the DB lookup
 function normalizeIso(input) {
     if(!input) return "";
+    let clean = input.trim();
     
-    // 1. Try to find a direct match in the DB (case-insensitive)
-    const dbKey = Object.keys(ISOTOPE_DB).find(k => k.toLowerCase() === input.toLowerCase());
+    // Check direct DB match (case insensitive)
+    const dbKey = Object.keys(ISOTOPE_DB).find(k => k.toLowerCase() === clean.toLowerCase());
     if(dbKey) return dbKey;
 
-    // 2. Formatting Fallback: Capitalize first letter (e.g., "am-241" -> "Am-241")
-    return input.charAt(0).toUpperCase() + input.slice(1);
+    // Check if user forgot the hyphen (e.g. "Co60")
+    // This inserts a hyphen between letters and numbers if missing
+    if(/^[a-zA-Z]+\d+$/.test(clean)) {
+        clean = clean.replace(/([a-zA-Z]+)(\d+)/, '$1-$2');
+        const retryKey = Object.keys(ISOTOPE_DB).find(k => k.toLowerCase() === clean.toLowerCase());
+        if(retryKey) return retryKey;
+    }
+
+    // Formatting Fallback: Capitalize first letter
+    return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
     
     function removeUpdateDate(pid, idx) {
@@ -2822,6 +3185,37 @@ const sortedInv = getSortedData(filteredInv, 'table-inv');
 
         document.getElementById('chatFeed').scrollTop = 9999;
         document.getElementById('wiki-text').value = wikiText;
+
+        // --- 8. REFERENCE LIBRARY RENDER ---
+        const refGrid = document.getElementById('ref-grid');
+        if(refGrid) {
+            let filteredRefs = references.filter(r => 
+                (r.title.toLowerCase().includes(filter) || r.desc.toLowerCase().includes(filter))
+            );
+            
+            if(refFilter !== 'all') {
+                filteredRefs = filteredRefs.filter(r => r.type === refFilter);
+            }
+
+            refGrid.innerHTML = filteredRefs.map(r => {
+                const typeColors = { 'Reg': 'var(--navy)', 'Trans': 'var(--warning)', 'Form': 'var(--rad)', 'Site': 'var(--accent)', 'Tool': 'var(--comp)' };
+                const color = typeColors[r.type] || 'var(--text-muted)';
+                const icon = r.locked ? '<i class="fa-solid fa-lock" title="System Link"></i>' : `<i class="fa-solid fa-trash" style="cursor:pointer; color:var(--text-muted)" onclick="delReference(${r.id})" title="Remove"></i>`;
+
+                return `
+                <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:15px; display:flex; flex-direction:column; position:relative; transition:transform 0.2s; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                    <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:10px;">
+                        <span class="tag" style="background:${color}; color:white; border:none; margin:0;">${r.type}</span>
+                        <div style="font-size:0.8rem;">${icon}</div>
+                    </div>
+                    <div style="font-weight:bold; color:var(--text-main); margin-bottom:5px;">${esc(r.title)}</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px; flex:1;">${esc(r.desc)}</div>
+                    <a href="${r.url}" target="_blank" class="btn" style="text-align:center; text-decoration:none; background:var(--bg-input); color:var(--text-main); border:1px solid var(--border);">
+                        <i class="fa-solid fa-external-link-alt"></i> Open
+                    </a>
+                </div>`;
+            }).join('') || '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-muted);">No references found.</div>';
+        }
     }
 
 function downloadBackup() {
@@ -2851,7 +3245,8 @@ function getActValue(str) {
     const s = str.toString().toLowerCase();
     if (s.includes('unknown') || s.includes('n/a') || s.includes('tbd')) return -1;
 
-    const match = str.toString().match(/([\d\.]+(?:[eE][-+]?\d+)?)\s*([a-zA-Z]+)/);
+    // Improved Regex: Allow zero or more spaces \s*
+const match = str.toString().match(/^([\d\.]+(?:[eE][-+]?\d+)?)\s*([a-zA-Z]+)$/);
     if (!match) return 0;
     
     const val = parseFloat(match[1]);
@@ -2995,34 +3390,40 @@ function viewProject(id) {
         </div>
 
         <div style="border:1px solid var(--border); padding:15px; border-radius:8px; margin:20px 0; background:transparent;">
-            <div style="font-size:0.85rem; font-weight:bold; color:var(--text-main); text-transform:uppercase; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:5px;">Status and Logistics</div>
+            <div style="font-size:0.85rem; font-weight:bold; color:var(--text-main); text-transform:uppercase; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:5px;">
+                <i class="fa-solid fa-truck-fast"></i> Logistics & Contracting
+            </div>
+            
             <div class="input-grid" style="margin-bottom:10px;">
                 <div><label style="font-size:0.7rem; color:var(--text-muted)">UIC / COMMAND</label><input class="form-control" value="${esc(p.uic||'')}" onchange="updItem('project', ${p.id}, 'uic', this.value)"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">POINT OF CONTACT</label><input class="form-control" value="${esc(p.poc||'')}" placeholder="Officer/Civilian" onchange="updItem('project', ${p.id}, 'poc', this.value)"></div>
                 <div><label style="font-size:0.7rem; color:var(--text-muted)">LOCATION</label><input class="form-control" value="${esc(p.location||'')}" onchange="updItem('project', ${p.id}, 'location', this.value)"></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">LLRW REGION</label><select class="form-control" onchange="updItem('project', ${p.id}, 'region', this.value)"><option value="">--</option><option ${p.region==='East'?'selected':''}>East</option><option ${p.region==='West'?'selected':''}>West</option><option ${p.region==='Far-East'?'selected':''}>Far-East</option><option ${p.region==='Europe'?'selected':''}>Europe</option></select></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">SHIPMENT TYPE</label><select class="form-control" onchange="updItem('project', ${p.id}, 'shipType', this.value)"><option value="">--</option><option ${p.shipType==='Level 1'?'selected':''}>Level 1</option><option ${p.shipType==='Level 2'?'selected':''}>Level 2</option><option ${p.shipType==='Level 3'?'selected':''}>Level 3</option></select></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">REGION</label><select class="form-control" onchange="updItem('project', ${p.id}, 'region', this.value)"><option value="">--</option><option ${p.region==='East'?'selected':''}>East</option><option ${p.region==='West'?'selected':''}>West</option><option ${p.region==='Far-East'?'selected':''}>Far-East</option><option ${p.region==='Europe'?'selected':''}>Europe</option></select></div>
             </div>
+
             <div class="input-grid" style="margin-bottom:10px;">
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">CONTRACTOR</label><input class="form-control" value="${esc(p.contractor||'')}" placeholder="Vendor Name" onchange="updItem('project', ${p.id}, 'contractor', this.value)"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">MIPR #</label><input class="form-control" value="${esc(p.mipr||'')}" placeholder="N000..." onchange="updItem('project', ${p.id}, 'mipr', this.value)"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">CONTRACT STATUS</label><select class="form-control" onchange="updItem('project', ${p.id}, 'contractStatus', this.value)"><option ${p.contractStatus==='Pre-Prop'?'selected':''}>Pre-Prop</option><option ${p.contractStatus==='Out for Prop'?'selected':''}>Out for Prop</option><option ${p.contractStatus==='On Contract'?'selected':''}>On Contract</option><option ${p.contractStatus==='Closed'?'selected':''}>Closed</option></select></div>
                 <div><label style="font-size:0.7rem; color:var(--text-muted)">JMC PROJECT #</label><input class="form-control" value="${esc(p.jmcId||'')}" onchange="updItem('project', ${p.id}, 'jmcId', this.value)"></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">RCN</label><input class="form-control" value="${esc(p.rcn||'')}" onchange="updItem('project', ${p.id}, 'rcn', this.value)"></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">PLANNING STATUS</label><input class="form-control" value="${esc(p.planStatus||'')}" onchange="updItem('project', ${p.id}, 'planStatus', this.value)"></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">PICKUP STATUS</label><input class="form-control" value="${esc(p.pickupStatus||'')}" onchange="updItem('project', ${p.id}, 'pickupStatus', this.value)"></div>
             </div>
+            
             <div class="input-grid">
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">REQ DATE</label><input type="date" class="form-control" value="${p.reqDate||''}" onchange="updItem('project', ${p.id}, 'reqDate', this.value)"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">POP START</label><input type="date" class="form-control" value="${p.popStart||''}" onchange="updItem('project', ${p.id}, 'popStart', this.value)"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">POP END</label><input type="date" class="form-control" value="${p.popEnd||''}" onchange="updItem('project', ${p.id}, 'popEnd', this.value)"></div>
+                
                 <div style="flex:2;">
                     <label style="font-size:0.7rem; color:var(--text-muted)">UPDATES SENT</label>
                     <div style="display:flex; gap:5px; margin-bottom:5px; align-items:center;">
                         <input type="date" id="newUpdateDate_${p.id}" class="form-control" style="margin:0; width:130px;">
-                        <button class="qa-btn" onclick="addUpdateDate(${p.id}, document.getElementById('newUpdateDate_${p.id}').value)">Add</button>
+                        <button class="btn-rect" style="background:var(--accent); color:white; border:none;" onclick="addUpdateDate(${p.id}, document.getElementById('newUpdateDate_${p.id}').value)">Add</button>
                     </div>
                     <div style="display:flex; flex-wrap:wrap; gap:5px;">${updatesListHtml}</div>
                 </div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">FWD TO JMC</label><input type="date" class="form-control" value="${p.jmcDate||''}" onchange="updItem('project', ${p.id}, 'jmcDate', this.value)"></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">DISP REC REC'D</label><input type="date" class="form-control" value="${p.dispRecDate||''}" onchange="updItem('project', ${p.id}, 'dispRecDate', this.value)"></div>
             </div>
+
             <div style="margin-top:10px;">
-                <label style="font-size:0.7rem; color:var(--text-muted)">LOGISTICS NOTES</label>
+                <label style="font-size:0.7rem; color:var(--text-muted)">LOGISTICS NOTES / COMMENTS</label>
                 <textarea class="form-control" style="height:60px; resize:vertical;" onchange="updItem('project', ${p.id}, 'logisticsNotes', this.value)">${esc(p.logisticsNotes||'')}</textarea>
             </div>
         </div>
@@ -3124,7 +3525,7 @@ function viewProject(id) {
     }
     function calcInverseSquare() {
         const i1 = parseFloat(document.getElementById('dist-d1').value);
-        const d1 = parseFloat(document.getElementById('dist-r1').value);
+        const d1 = parseFloat(document.getElementById('dist-r1').value) || 1; // Default to 1 if empty
         const d2 = parseFloat(document.getElementById('dist-r2').value);
         if(i1 && d1 && d2) {
             if (d2 <= 0) { showToast("Target distance must be > 0", "error"); return; }
@@ -3223,7 +3624,7 @@ function viewProject(id) {
                 
                 const row = document.createElement('div');
                 row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center'; row.style.padding = '8px'; row.style.borderBottom = '1px solid var(--border)';
-                row.innerHTML = `<span style="font-weight:bold; font-size:0.9rem;">${esc(p.title)}</span><input type="number" class="form-control" style="width:120px; margin:0;" value="${val}" onchange="updateBaseAlloc(${p.id}, this.value)">`;
+                row.innerHTML = `<span style="font-weight:bold; font-size:0.9rem;">${esc(p.title)}</span><input type="number" step="0.01" class="form-control" style="width:120px; margin:0;" value="${val}" onchange="updateBaseAlloc(${p.id}, this.value)">`;
                 list.appendChild(row);
             });
         }
@@ -3600,12 +4001,16 @@ function delTask(pId, tId) {
     }
     
 function addProject() { 
-        const t=document.getElementById('pTitle').value; 
-        const d=document.getElementById('pDesc').value; 
-        const dt=document.getElementById('pDate').value; 
-        const c=parseFloat(document.getElementById('pCost').value)||0; 
+        const t = document.getElementById('pTitle').value; 
+        const d = document.getElementById('pDesc').value; 
+        const dt = document.getElementById('pDate').value; 
+        const c = parseFloat(document.getElementById('pCost').value)||0; 
         const uic = document.getElementById('pUic').value;
         const loc = document.getElementById('pLoc').value;
+        
+        // NEW FIELDS
+        const mipr = document.getElementById('pMipr').value;
+        const cont = document.getElementById('pCont').value;
 
         if(t) { 
             const pid = Date.now();
@@ -3617,10 +4022,20 @@ function addProject() {
                 status: "Planning", 
                 health: "green", 
                 uic: uic, 
-                location: loc, 
+                location: loc,
+                
+                // Save new fields
+                mipr: mipr,
+                contractor: cont,
+                contractStatus: "Pre-Prop", // Default
+                poc: "",
+                popStart: "",
+                popEnd: "",
+
                 tasks: [], 
                 links: []
             }); 
+            
             if(c > 0) {
                 allocations.push({id: Date.now()+1, projId: pid, date: dt || getTodayStr(), amount: c, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund"});
             }
@@ -3940,6 +4355,58 @@ function setCurrentUser(val) {
             "Remove User"
         );
     }
+
+    let refFilter = 'all';
+
+    function filterRefs(type) {
+        refFilter = type;
+        // Update Button Styles
+        ['all','Reg','Trans','Form','Site'].forEach(t => {
+            const btn = document.getElementById('btn-ref-'+t);
+            if(btn) {
+                if(t === type) { btn.style.background = 'var(--accent)'; btn.style.color = 'white'; btn.style.border = 'none'; }
+                else { btn.style.background = 'var(--bg-input)'; btn.style.color = 'var(--text-muted)'; btn.style.border = '1px solid var(--border)'; }
+            }
+        });
+        render();
+    }
+
+    function addReference() {
+        const t = document.getElementById('refTitle').value;
+        const u = document.getElementById('refUrl').value;
+        const d = document.getElementById('refDesc').value;
+        const cat = document.getElementById('refType').value;
+
+        if(!t || !u) { showToast("Title and URL required", "error"); return; }
+
+        references.push({
+            id: Date.now(),
+            title: t,
+            url: formatLink(u), // Use existing sanitizer
+            desc: d,
+            type: cat,
+            locked: false // User created items are unlocked
+        });
+
+        saveLocally();
+        closeModal('refModal');
+        render();
+        showToast("Reference Added");
+        
+        // Clear inputs
+        document.getElementById('refTitle').value = '';
+        document.getElementById('refUrl').value = '';
+        document.getElementById('refDesc').value = '';
+    }
+
+    function delReference(id) {
+        showConfirm("Remove this reference link?", () => {
+            references = references.filter(r => r.id !== id);
+            saveLocally();
+            render();
+            showToast("Reference Removed");
+        }, "Remove Link");
+    }
     
     function toggleProjView() { viewMode = viewMode === 'list' ? 'board' : 'list'; saveLocally(); render(); }
     function toggleShowComp() { showComplete = !showComplete; saveLocally(); render(); }
@@ -4043,6 +4510,7 @@ function nav(id, force=false) {
             case 'hp': title = "HP Tools | " + APP_VER; break;
             case 'exempt': title = "Exempt Log | " + APP_VER; break;
             case 'logbook': title = "Logbook | " + APP_VER; break;
+            case 'references': title = "Library | " + APP_VER; break;
         }
         document.title = title;
     }
@@ -4130,8 +4598,9 @@ let searchDebounce;
             const d = JSON.parse(raw);
             
             // SECURITY: Basic Schema Validation
-            if(!Array.isArray(d.projects) || !Array.isArray(d.inventory)) {
-                throw new Error("Invalid Data Structure: Missing core arrays.");
+
+            if(!Array.isArray(d.projects) || !Array.isArray(d.inventory) || !Array.isArray(d.expenses)) {
+                throw new Error("Invalid Data Structure: Core lists must be arrays.");
             }
 
             // Backup current data before overwriting in case of partial failure
@@ -4178,51 +4647,71 @@ let searchDebounce;
     }
 
     function loadLocally() { 
-    populateIsoSelects(); 
-    const theme = localStorage.getItem('rad_theme'); 
-    if (theme === 'dark') document.body.setAttribute('data-theme', 'dark'); 
-    
-    const d = JSON.parse(localStorage.getItem('rad25_7_data')); 
-    
-    // --- FIX: Check initialization flag ---
-    const hasInitialized = localStorage.getItem('rad_init_flag');
-
-    if(d) { 
-        projects=d.projects||[]; inventory=d.inventory||[]; expenses=d.expenses||[]; allocations=d.allocations||[]; chatLog=d.chat||[]; team=d.team||[]; wikiText=d.wiki||""; 
-        hpState=d.hpState||{}; viewMode=d.viewMode||'list'; showComplete=d.showComplete||false; 
-        estItems=d.estItems||[]; exemptLog=d.exemptLog||[];
+        populateIsoSelects(); 
         
-        // Migrations
-        allocations.forEach(a => { if(!a.type && a.desc.toLowerCase().includes('initial')) a.type = 'base'; });
-        projects.forEach(p => {
-            if(p.cost && !allocations.find(a => a.projId === p.id)) {
-                allocations.push({id: Date.now() + Math.random(), projId: p.id, date: p.due, amount: parseFloat(p.cost), desc: "Initial Budget", type: 'base'});
-                delete p.cost;
-            }
-            if(!p.updatesSent) {
-                p.updatesSent = [];
-                if(p.updatesDate) { p.updatesSent.push(p.updatesDate); delete p.updatesDate; }
-            }
-        });
-    } 
-    else {
-        // Only load starter data if we have NEVER initialized before
-        if(!hasInitialized) {
-            resetData(false); 
-            localStorage.setItem('rad_init_flag', 'true');
-        } else {
-            // User presumably cleared data intentionally. Start clean.
-            projects=[]; inventory=[]; expenses=[]; allocations=[]; chatLog=[]; team=[]; estItems=[]; exemptLog=[];
-        }
-    }
-    
-    render(); 
-    loadHPState();
-    updateEstItems(); 
-    calcEstimate(); 
+        // 1. Load Theme
+        const theme = localStorage.getItem('rad_theme'); 
+        if (theme === 'dark') document.body.setAttribute('data-theme', 'dark'); 
+        
+        // 2. Load Data
+        const d = JSON.parse(localStorage.getItem('rad25_7_data')); 
+        const hasInitialized = localStorage.getItem('rad_init_flag');
 
-    document.getElementById('sidebar-user-display').innerText = currentUser;
-}
+        if(d) { 
+            // Load standard arrays
+            projects=d.projects||[]; inventory=d.inventory||[]; 
+            expenses=d.expenses||[]; allocations=d.allocations||[]; 
+            chatLog=d.chat||[]; team=d.team||[]; 
+            wikiText=d.wiki||""; hpState=d.hpState||{}; 
+            estItems=d.estItems||[]; exemptLog=d.exemptLog||[];
+            viewMode=d.viewMode||'list'; showComplete=d.showComplete||false; 
+
+            // Load User References
+            references = d.references || [];
+
+            // Create a Set of existing IDs to quickly check what the user already has
+            const currentRefIds = new Set(references.map(r => r.id));
+            
+            STARTER_DATA.references.forEach(starterRef => {
+                // If the user is missing a "starter" reference, add it now.
+                // This allows you to push new links in future updates.
+                if (!currentRefIds.has(starterRef.id)) {
+                    references.push(starterRef);
+                    // Optional: Sort by ID so new ones don't just appear randomly at the end
+                    references.sort((a,b) => a.id - b.id);
+                }
+            });
+            
+            // Migrations (Legacy data cleanup)
+            allocations.forEach(a => { if(!a.type && a.desc.toLowerCase().includes('initial')) a.type = 'base'; });
+            projects.forEach(p => {
+                if(p.cost && !allocations.find(a => a.projId === p.id)) {
+                    allocations.push({id: Date.now() + Math.random(), projId: p.id, date: p.due, amount: parseFloat(p.cost), desc: "Initial Budget", type: 'base'});
+                    delete p.cost;
+                }
+                if(!p.updatesSent) {
+                    p.updatesSent = [];
+                    if(p.updatesDate) { p.updatesSent.push(p.updatesDate); delete p.updatesDate; }
+                }
+            });
+        } 
+        else {
+            // First time load logic
+            if(!hasInitialized) {
+                resetData(false); 
+                localStorage.setItem('rad_init_flag', 'true');
+            } else {
+                projects=[]; inventory=[]; expenses=[]; allocations=[]; chatLog=[]; team=[]; estItems=[]; exemptLog=[];
+            }
+        }
+        
+        render(); 
+        loadHPState();
+        updateEstItems(); 
+        calcEstimate(); 
+
+        document.getElementById('sidebar-user-display').innerText = currentUser;
+    }
     
 function resetData(ask=true) { 
         // Helper function that performs the actual reset
@@ -4230,6 +4719,7 @@ function resetData(ask=true) {
             projects = JSON.parse(JSON.stringify(STARTER_DATA.projects)); 
             inventory = JSON.parse(JSON.stringify(STARTER_DATA.inventory)); 
             expenses = JSON.parse(JSON.stringify(STARTER_DATA.expenses)); 
+            references = JSON.parse(JSON.stringify(STARTER_DATA.references));
             allocations = JSON.parse(JSON.stringify(STARTER_DATA.allocations)); 
             chatLog = JSON.parse(JSON.stringify(STARTER_DATA.chat)); 
             team = STARTER_DATA.team; 
