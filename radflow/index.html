@@ -693,10 +693,13 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     </div>
 
     <div id="view-project-detail" class="view-section"></div>
+
     <div id="view-projects" class="view-section">
         <div class="header">
             <h1>All Projects</h1>
             <div style="display:flex; gap:10px;">
+                <button class="btn" onclick="openModal('projectModal')">+ Project</button>
+                
                 <button class="btn-toggle" style="margin:0" onclick="toggleProjView()"><i class="fa-solid fa-table-columns"></i> View</button>
                 <button id="btnShowComp" class="btn-toggle" style="margin:0" onclick="toggleShowComp()"><i class="fa-solid fa-eye"></i> Show Done</button>
                 <input type="text" class="search-bar" style="width:200px;" placeholder="Filter..." onkeyup="handleSearch(this.value)">
@@ -1092,9 +1095,12 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
                 <button class="btn" onclick="openModal('invModal')" style="margin:0;">+ Add Item</button>
             </div>
         </div>
-        <div class="widget"><div style="overflow-x:auto;"><table class="sci-table" id="table-inv"><thead><tr><th onclick="sortTable('table-inv',0)">ID <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',1)">Isotope <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',2)">Activity <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',3)">Dose <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',4)">Fill % <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
-
-<th>Project</th><th>Status</th><th></th></tr></thead>
+        <div class="widget"><div style="overflow-x:auto;"><table class="sci-table" id="table-inv"><thead><tr><th onclick="sortTable('table-inv',0)">ID <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',1)">Isotope <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',2)">Activity <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',3)">Dose <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
+            
+            <th onclick="sortTable('table-inv',4)">Fill % <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
+<th onclick="sortTable('table-inv',5)">Project <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
+<th onclick="sortTable('table-inv',6)">Status <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
+<th></th></tr></thead>
 
 <tbody id="full-inv-list"></tbody></table></div></div>
 
@@ -1195,29 +1201,54 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
 </div>
 
 <div id="projectModal" class="modal-overlay">
-    <div class="modal">
-        <h3>New Project</h3>
-        <input id="pTitle" class="form-control" placeholder="Project Name">
+    <div class="modal" style="max-width:600px;"> <h3>New Project</h3>
+        <input id="pTitle" class="form-control" placeholder="Project Name (e.g. Lab 4 Cleanout)">
         <input id="pDesc" class="form-control" placeholder="Brief Description">
         
         <div class="input-grid">
             <div><label style="font-size:0.7rem; color:var(--text-muted)">UIC</label><input id="pUic" class="form-control" placeholder="N00000"></div>
             <div><label style="font-size:0.7rem; color:var(--text-muted)">LOCATION</label><input id="pLoc" class="form-control" placeholder="City, ST"></div>
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">REGION</label>
+                <select id="pRegion" class="form-control">
+                    <option value="">--</option>
+                    <option>East</option><option>West</option><option>Far-East</option><option>Europe</option>
+                </select>
+            </div>
         </div>
         
         <div class="input-grid">
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">POC</label><input id="pPoc" class="form-control" placeholder="Name/Code"></div>
             <div><label style="font-size:0.7rem; color:var(--text-muted)">MIPR #</label><input id="pMipr" class="form-control" placeholder="N000..."></div>
-            <div><label style="font-size:0.7rem; color:var(--text-muted)">CONTRACTOR</label><input id="pCont" class="form-control" placeholder="Vendor Name"></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">JMC ID</label><input id="pJmc" class="form-control" placeholder="Tracking #"></div>
         </div>
 
         <div class="input-grid">
-            <div><label style="font-size:0.7rem; color:var(--text-muted)">DUE DATE</label><input id="pDate" type="date" class="form-control"></div>
-            <div><label style="font-size:0.7rem; color:var(--text-muted)">INITIAL BUDGET ($)</label><input id="pCost" type="number" step="0.01" class="form-control" placeholder="0.00"></div>
+            <div style="flex:2;"><label style="font-size:0.7rem; color:var(--text-muted)">CONTRACTOR</label><input id="pCont" class="form-control" placeholder="Vendor Name"></div>
+            <div style="flex:1;">
+                <label style="font-size:0.7rem; color:var(--text-muted)">STATUS</label>
+                <select id="pContStat" class="form-control">
+                    <option>Pre-Prop</option><option>Out for Prop</option><option>On Contract</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="border-top:1px dashed var(--border); margin-top:10px; padding-top:10px;">
+            <div class="input-grid">
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">POP START</label><input id="pPopStart" type="date" class="form-control"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">POP END</label><input id="pPopEnd" type="date" class="form-control"></div>
+                <div><label style="font-size:0.7rem; color:var(--text-muted)">DUE DATE</label><input id="pDate" type="date" class="form-control"></div>
+            </div>
         </div>
         
-        <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <div style="margin-top:10px;">
+            <label style="font-size:0.7rem; color:var(--text-muted)">INITIAL BUDGET ($)</label>
+            <input id="pCost" type="number" step="0.01" class="form-control" placeholder="0.00">
+        </div>
+        
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
             <button class="btn-sync" style="width:auto;" onclick="closeModal('projectModal')">Cancel</button>
-            <button class="btn" onclick="addProject()">Save</button>
+            <button class="btn" onclick="addProject()">Save Project</button>
         </div>
     </div>
 </div>
@@ -1959,6 +1990,10 @@ const STARTER_DATA = {
     let references = [];
 
     let estItems = []; let exemptLog = [];
+
+    // The Graveyard
+    let tombstones = [];
+
     let showComplete = false; let viewMode = 'list'; let hpState = {iso:'Co-60', a0:'', date:''};
 
     // Try to load the saved user, or default to the first team member (or "Admin")
@@ -2056,7 +2091,10 @@ const jsEsc = (t) => {
         const now = new Date();
         const dateStr = (now.getMonth()+1).toString().padStart(2,'0') + '/' + now.getDate().toString().padStart(2,'0');
         const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        chatLog.push({user: "System", time: `${dateStr} ${timeStr}`, text: msg});
+        
+        const finalMsg = `${msg} <span style="opacity:0.6; font-size:0.85em;">by ${esc(currentUser)}</span>`;
+
+        chatLog.push({user: "System", time: `${dateStr} ${timeStr}`, text: finalMsg});
         saveLocally();
         render(); 
     }
@@ -2099,7 +2137,8 @@ const jsEsc = (t) => {
             basis: document.getElementById('exBasis').value,
             path: document.getElementById('exPath').value,
             rev: document.getElementById('exRev').value,
-            authDate: document.getElementById('exAuthDate').value
+            authDate: document.getElementById('exAuthDate').value,
+            updated: Date.now()
         };
         exemptLog.push(entry);
         saveLocally();
@@ -2217,6 +2256,7 @@ function calculateDecay() {
     function clearEstimate() {
         showConfirm("Clear all current estimator line items?", () => {
             estItems = [];
+            saveLocally();
             calcEstimate();
             showToast("Estimate Cleared");
         }, "Clear Workspace");
@@ -2681,7 +2721,7 @@ function normalizeIso(input) {
         document.getElementById('btnShowComp').innerHTML = showComplete ? '<i class="fa-solid fa-eye-slash"></i> Hide Done' : '<i class="fa-solid fa-eye"></i> Show Done';
         
         // --- 1. PROJECT FILTERING (Global) ---
-        let filteredProjs = projects.filter(p => p.title.toLowerCase().includes(filter) || p.desc.toLowerCase().includes(filter));
+        let filteredProjs = projects.filter(p => p.title.toLowerCase().includes(filter) || (p.desc||"").toLowerCase().includes(filter));
         if (!showComplete) filteredProjs = filteredProjs.filter(p => p.status !== 'Complete'); 
 
         const filteredInv = inventory.filter(i => i.id.toLowerCase().includes(filter));
@@ -3479,6 +3519,7 @@ function viewProject(id) {
             <div>
                 <h3>Assigned Assets</h3>
                 <div style="margin-bottom:15px;">${assetsHtml}</div>
+                
                 <h3>Digital Binder</h3>
                 <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
                     <input id="newLinkName" class="form-control" style="margin:0" placeholder="Name">
@@ -3490,8 +3531,12 @@ function viewProject(id) {
         </div>
     </div>`;
     
-    // 6. Switch View
-    nav('project-detail');
+    // 6. Switch View 
+    // Only navigate (and scroll) if we aren't already there. 
+    // This prevents the "Jump to Top" glitch when checking tasks.
+    if (!document.getElementById('view-project-detail').classList.contains('active')) {
+        nav('project-detail');
+    }
 }
 
     function drag(ev, id) { ev.dataTransfer.setData("text", id); ev.target.classList.add('dragging'); }
@@ -3583,6 +3628,9 @@ function viewProject(id) {
         if(original) {
             const copy = JSON.parse(JSON.stringify(original));
             copy.id = Date.now();
+
+            copy.updated = Date.now();
+
             copy.date = getTodayStr(); 
             copy.desc = copy.desc + " (Copy)";
             copy.status = "Invoiced"; 
@@ -3768,6 +3816,19 @@ function getSortedData(data, tableId) {
 
 function updItem(type, id, key, val, elem) { 
         // 1. Update the Data Model
+        
+        // --- ROBUST TIMESTAMPING ---
+        // Find the item first to attach the timestamp
+        let targetItem;
+        if (type === 'project') targetItem = projects.find(x => x.id === id);
+        else if (type === 'inventory') targetItem = inventory.find(x => x.id == id); // Loose equality for ID strings
+        else if (type === 'expense') targetItem = expenses.find(x => x.id === id);
+        else if (type === 'alloc') targetItem = allocations.find(x => x.id === id);
+        else if (type === 'exempt') targetItem = exemptLog.find(x => x.id === id);
+
+        // Stamp the time of modification
+        if(targetItem) targetItem.updated = Date.now();
+
         if (type === 'project') { const p = projects.find(x => x.id === id); p[key] = val; }
         
         if (type === 'inventory') { 
@@ -3778,7 +3839,7 @@ function updItem(type, id, key, val, elem) {
                 if(isNaN(val)) val = 0;
                 if(val < 0) val = 0; if(val > 100) val = 100;
                 
-                // VISUAL FIX: Update the bar width immediately
+                // Update the bar width immediately
                 const bar = document.getElementById(`bar-fill-${id}`);
                 if(bar) {
                     bar.style.width = val + '%';
@@ -3853,6 +3914,9 @@ function updItem(type, id, key, val, elem) {
     
     function delExempt(id) {
         showConfirm("Delete this exempt log entry?", () => {
+
+            registerDeletion(id);
+
             exemptLog = exemptLog.filter(x => x.id !== id);
             saveLocally();
             render();
@@ -3880,6 +3944,9 @@ function cloneProject(id) {
     
     copy.id = Date.now(); 
     copy.title = "Copy of " + copy.title; 
+
+    copy.updated = Date.now();
+
     copy.status = "Planning"; 
     copy.health = "green"; 
     
@@ -3964,6 +4031,8 @@ function delTask(pId, tId) {
             `Permanently delete project <b>${esc(p.title)}</b>?<br>This will remove all associated expenses and funding records.`,
             () => {
                 logSystemAction(`Project <b>${esc(p.title)}</b> deleted.`);
+
+                registerDeletion(id);
                 
                 // 1. Remove data from all arrays
                 projects = projects.filter(x=>x.id!==id); 
@@ -4001,16 +4070,27 @@ function delTask(pId, tId) {
     }
     
 function addProject() { 
+        // 1. Get Basic Info
         const t = document.getElementById('pTitle').value; 
         const d = document.getElementById('pDesc').value; 
         const dt = document.getElementById('pDate').value; 
         const c = parseFloat(document.getElementById('pCost').value)||0; 
+        
+        // 2. Get Logistics
         const uic = document.getElementById('pUic').value;
         const loc = document.getElementById('pLoc').value;
-        
-        // NEW FIELDS
+        const reg = document.getElementById('pRegion').value;
+        const poc = document.getElementById('pPoc').value;
+
+        // 3. Get Contract Info
         const mipr = document.getElementById('pMipr').value;
+        const jmc = document.getElementById('pJmc').value;
         const cont = document.getElementById('pCont').value;
+        const stat = document.getElementById('pContStat').value;
+        
+        // 4. Get POP Dates
+        const popS = document.getElementById('pPopStart').value;
+        const popE = document.getElementById('pPopEnd').value;
 
         if(t) { 
             const pid = Date.now();
@@ -4021,29 +4101,52 @@ function addProject() {
                 due: dt, 
                 status: "Planning", 
                 health: "green", 
+                
+                // New Fields Mapped Here
                 uic: uic, 
                 location: loc,
+                region: reg,
+                poc: poc,
                 
-                // Save new fields
                 mipr: mipr,
+                jmcId: jmc,
                 contractor: cont,
-                contractStatus: "Pre-Prop", // Default
-                poc: "",
-                popStart: "",
-                popEnd: "",
+                contractStatus: stat,
+                
+                popStart: popS,
+                popEnd: popE,
+
+                updated: Date.now(),
 
                 tasks: [], 
                 links: []
             }); 
             
+            // Create Initial Budget Allocation if cost > 0
             if(c > 0) {
-                allocations.push({id: Date.now()+1, projId: pid, date: dt || getTodayStr(), amount: c, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund"});
+                allocations.push({
+                    id: Date.now()+1, 
+                    projId: pid, 
+                    date: dt || getTodayStr(), 
+                    amount: c, 
+                    desc: "Initial Budget", 
+                    type: 'base', 
+                    fundSource: "Navy General Fund"
+                });
             }
             
             logSystemAction(`Project <b>${esc(t)}</b> created.`);
 
-            saveLocally(); closeModal('projectModal'); render(); showToast("Project Created"); 
-        } 
+            saveLocally(); 
+            closeModal('projectModal'); 
+            render(); 
+            showToast("Project Created"); 
+            
+            // Optional: Immediately open the new project to verify details
+            // viewProject(pid); 
+        } else {
+            showToast("Project Title is required", "error");
+        }
     }
     
 function addExpense() { 
@@ -4068,6 +4171,7 @@ function addExpense() {
             amount: parseFloat(amt), 
             date: dt, 
             status: st, 
+            updated: Date.now(),
             fundSource: fund
         }); 
 
@@ -4113,6 +4217,7 @@ function addExpense() {
             desc:desc, 
             amount:parseFloat(amt), 
             date:dt, 
+            updated: Date.now(),
             type: 'adj', 
             fundSource: fund
         });
@@ -4143,6 +4248,8 @@ function addExpense() {
             const p = projects.find(x => x.id === e.projId);
             const pName = p ? p.title : "General";
             logSystemAction(`Expense <b>$${e.amount.toLocaleString()}</b> deleted from <b>${esc(pName)}</b>.`);
+
+            registerDeletion(id);
             
             expenses = expenses.filter(x => x.id !== id); 
             saveLocally(); 
@@ -4164,6 +4271,8 @@ function addExpense() {
             const p = projects.find(x => x.id === a.projId);
             const pName = p ? p.title : "General";
             logSystemAction(`Funding <b>$${a.amount.toLocaleString()}</b> deleted from <b>${esc(pName)}</b>.`);
+
+            registerDeletion(id);
 
             allocations = allocations.filter(x => x.id !== id); 
             saveLocally(); 
@@ -4215,7 +4324,8 @@ function addInventory() {
 
     if(id) { 
         inventory.push({
-            id, iso, act, dose, fill, status:stat, projId: pid, logDate: dateVal
+            id, iso, act, dose, fill, status:stat, projId: pid, logDate: dateVal,
+            updated: Date.now()
         }); 
         
         logSystemAction(`Inventory <b>${esc(id)}</b> (${iso}) added.`);
@@ -4232,6 +4342,9 @@ function delInventory(id) {
         showConfirm(`Permanently delete item <b>${id}</b> from inventory?`, () => {
             const i = inventory.find(x => x.id == id);
             if(i) logSystemAction(`Inventory <b>${esc(i.id)}</b> (${esc(i.iso)}) deleted.`);
+
+            registerDeletion(id);
+
             inventory = inventory.filter(x => x.id != id);
             saveLocally();
             render();
@@ -4385,6 +4498,7 @@ function setCurrentUser(val) {
             url: formatLink(u), // Use existing sanitizer
             desc: d,
             type: cat,
+            updated: Date.now(),
             locked: false // User created items are unlocked
         });
 
@@ -4401,6 +4515,9 @@ function setCurrentUser(val) {
 
     function delReference(id) {
         showConfirm("Remove this reference link?", () => {
+
+            registerDeletion(id);
+
             references = references.filter(r => r.id !== id);
             saveLocally();
             render();
@@ -4598,39 +4715,111 @@ let searchDebounce;
             const d = JSON.parse(raw);
             
             // SECURITY: Basic Schema Validation
-
             if(!Array.isArray(d.projects) || !Array.isArray(d.inventory) || !Array.isArray(d.expenses)) {
                 throw new Error("Invalid Data Structure: Core lists must be arrays.");
             }
 
-            // Backup current data before overwriting in case of partial failure
-            const backup = localStorage.getItem('rad25_7_data');
-            
-            try {
-                projects=d.projects||[]; inventory=d.inventory||[]; expenses=d.expenses||[]; 
-                allocations=d.allocations||[]; chatLog=d.chat||[]; team=d.team||[]; 
-                wikiText=d.wiki||""; hpState=d.hpState||{}; 
-                estItems=d.estItems||[]; exemptLog=d.exemptLog||[]; 
+            // --- CONFLICT-AWARE MERGE ENGINE (WITH TOMBSTONES) ---
+            const mergeList = (currentList, importedList) => {
+                if(!importedList) return currentList;
                 
-                saveLocally(); 
-                render(); 
-                loadHPState();
-                closeModal('importModal');
-                showToast("Data Imported Successfully");
-            } catch (innerErr) {
-                // Restore backup if something went wrong during assignment/render
-                if(backup) localStorage.setItem('rad25_7_data', backup);
-                throw innerErr;
+                let updates = 0;
+                let adds = 0;
+                let zombies = 0;
+
+                importedList.forEach(importItem => {
+                    // 1. CHECK GRAVEYARD
+                    const stone = tombstones.find(t => t.id === importItem.id);
+                    const tImport = importItem.updated || 0;
+
+                    if (stone) {
+                        // If the import is OLDER than the deletion, it's a Zombie. Block it.
+                        if (stone.date > tImport) {
+                            zombies++;
+                            return; // SKIP this item
+                        }
+                        // If import is NEWER than deletion, it's a Restoration. Allow it.
+                    }
+
+                    // 2. STANDARD MERGE LOGIC
+                    const idx = currentList.findIndex(x => x.id === importItem.id);
+                    
+                    if(idx > -1) {
+                        const local = currentList[idx];
+                        const tLocal = local.updated || 0;
+
+                        if(tImport > tLocal) {
+                            currentList[idx] = importItem;
+                            updates++;
+                        }
+                    } else {
+                        currentList.push(importItem);
+                        adds++;
+                    }
+                });
+                console.log(`Merge Stats: ${adds} added, ${updates} updated, ${zombies} zombies blocked.`);
+                return currentList;
+            };
+            
+            // Note: We also need to merge the tombstones themselves!
+            // If your peer deleted something, you need to know about it too.
+            if(d.tombstones) {
+                d.tombstones.forEach(t => {
+                    const exists = tombstones.find(local => local.id === t.id);
+                    if(!exists) tombstones.push(t);
+                    else if(t.date > exists.date) exists.date = t.date;
+                });
             }
 
+            // Execute Merges
+            mergeList(projects, d.projects);
+            mergeList(inventory, d.inventory);
+            mergeList(expenses, d.expenses);
+            mergeList(allocations, d.allocations);
+            mergeList(exemptLog, d.exemptLog);
+
+            mergeList(references, d.references);
+
+            // Simple Lists (Append Only)
+            if(d.chat) {
+                d.chat.forEach(c => {
+                    const exists = chatLog.some(x => x.time === c.time && x.text === c.text);
+                    if(!exists) chatLog.push(c);
+                });
+                chatLog.sort((a,b) => new Date(a.time) - new Date(b.time));
+            }
+            if(d.team) {
+                d.team.forEach(m => { if(!team.includes(m)) team.push(m); });
+            }
+            if(d.wiki && d.wiki !== wikiText && !wikiText.includes(d.wiki)) {
+                wikiText += "\n\n--- IMPORTED NOTES ---\n" + d.wiki;
+            }
+
+            // Cleanup
+            inventory.forEach(i => { if(i.iso) i.iso = normalizeIso(i.iso); });
+
+            saveLocally(); 
+            render(); 
+            loadHPState();
+            closeModal('importModal');
+            
+            // Feedback
+            showToast("Data Merged (Newer versions kept)");
+
         } catch(e) { 
-            // Use custom alert instead of browser alert
             showAlert("<b>Import Failed:</b><br>" + e.message, "Error");
         }
     }
 
-    function saveLocally() { localStorage.setItem('rad25_7_data', JSON.stringify({projects,inventory,expenses,allocations,chat:chatLog,team,wiki:wikiText,hpState,viewMode,showComplete,estItems,exemptLog})); }
-    
+    function saveLocally() { 
+    localStorage.setItem('rad25_7_data', JSON.stringify({
+        projects, inventory, expenses, allocations, 
+        chat: chatLog, team, wiki: wikiText, 
+        hpState, viewMode, showComplete, estItems, exemptLog,
+        tombstones
+    })); 
+}
+
     function loadHPState() {
         // Updated state loader
         if(!hpState) return;
@@ -4664,6 +4853,10 @@ let searchDebounce;
             chatLog=d.chat||[]; team=d.team||[]; 
             wikiText=d.wiki||""; hpState=d.hpState||{}; 
             estItems=d.estItems||[]; exemptLog=d.exemptLog||[];
+
+            // Load Tombstones
+            tombstones = d.tombstones || [];
+
             viewMode=d.viewMode||'list'; showComplete=d.showComplete||false; 
 
             // Load User References
@@ -4712,6 +4905,17 @@ let searchDebounce;
 
         document.getElementById('sidebar-user-display').innerText = currentUser;
     }
+
+    function registerDeletion(id) {
+    // Check if already tombstoned to avoid duplicates
+    const exists = tombstones.find(t => t.id === id);
+    if(!exists) {
+        tombstones.push({ id: id, date: Date.now() });
+    } else {
+        // Update timestamp if deleted again (rare but possible)
+        exists.date = Date.now();
+    }
+}
     
 function resetData(ask=true) { 
         // Helper function that performs the actual reset
