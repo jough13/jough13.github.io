@@ -32,6 +32,9 @@
         * { box-sizing: border-box; outline: none; transition: background 0.2s, color 0.2s; }
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; background: var(--bg-body); color: var(--text-main); display: grid; grid-template-columns: 240px 1fr 300px; grid-template-rows: 100vh; overflow: hidden; }
 
+.live-edit { min-width: 60px; } /* Prevent total collapse */
+td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force description to be readable */
+
 /* Sticky Table Headers */
 .sci-table th {
     position: sticky;
@@ -43,8 +46,109 @@
 
         /* Responsive */
         @media (max-width: 1100px) { body { grid-template-columns: 200px 1fr; grid-template-rows: 1fr auto; } .chat-panel { grid-column: 2; grid-row: 2; border-left: none; border-top: 1px solid var(--border); height: 300px; } .main { grid-column: 2; grid-row: 1; } }
-        @media (max-width: 768px) { body { display: block; height: auto; overflow-y: auto; } .sidebar { width: 100%; height: auto; border-right: none; flex-direction: row; flex-wrap: wrap; } .main { padding: 1rem; height: auto; overflow: visible; } .chat-panel { height: 400px; border-top: 4px solid var(--border); } }
+
+        /* --- MOBILE OPTIMIZATION --- */
+    @media (max-width: 768px) { 
+        body { 
+            display: block; 
+            height: auto; 
+            overflow-y: auto; 
+            /* Prevent iOS rubber-banding on the whole body */
+            overscroll-behavior-y: none; 
+        } 
+
+        /* Turn Sidebar into Bottom Nav Bar */
+        .sidebar { 
+            position: fixed; 
+            bottom: 0; left: 0; 
+            width: 100%; 
+            height: 65px; 
+            z-index: 999; 
+            flex-direction: row; 
+            flex-wrap: nowrap; /* No wrapping, horizontal scroll if needed */
+            overflow-x: auto; 
+            padding: 0; 
+            background: var(--bg-panel); 
+            border-top: 1px solid var(--border);
+            border-right: none;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            /* Hide the extra buttons to save space */
+        }
+
+        /* Hide "Desktop" sidebar elements */
+        .sidebar .btn-toggle, .sidebar .sync-box, .sidebar #app-title-display, .sidebar > div:first-child { 
+            display: none !important; 
+        }
+
+        /* Style the Nav Icons */
+        .sidebar > div {
+            display: flex !important;
+            width: 100%; 
+            justify-content: space-between; 
+            margin: 0 !important;
+        }
+
+        .nav-item { 
+            flex-direction: column; 
+            justify-content: center; 
+            font-size: 0.65rem; 
+            padding: 5px 0; 
+            flex: 1; 
+            border-radius: 0;
+            margin: 0;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .nav-item i { 
+            font-size: 1.2rem; 
+            margin-bottom: 2px; 
+        }
+
+        /* Main Content Adjustments */
+        .main { 
+            padding: 10px; 
+            padding-bottom: 80px; /* Space for bottom nav */
+            height: auto; 
+            overflow: visible; 
+            width: 100%;
+        }
+
+        /* Full Screen Modals */
+        .modal { 
+            width: 100% !important; 
+            height: 100% !important; 
+            max-height: 100% !important; 
+            border-radius: 0; 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column;
+        }
+
+        /* Force Single Column Grids */
+        .dashboard-grid, .input-grid, .mini-fin-grid { 
+            grid-template-columns: 1fr !important; 
+            gap: 10px;
+        }
+
+        /* Fix Tables */
+        .widget { padding: 10px; overflow-x: hidden; } /* Prevent widget explosion */
+        div[style*="overflow-x:auto"] { -webkit-overflow-scrolling: touch; } /* Smooth scroll */
         
+        /* Larger Touch Targets */
+        .btn, .btn-sync, select, input { 
+            min-height: 44px; /* Apple Human Interface Guidelines */
+        }
+        
+        /* Prevent Auto-Zoom on inputs (Font size must be 16px) */
+        input, select, textarea { font-size: 16px !important; }
+
+        /* Hide Chat on Mobile (Optional, or make it a separate view) */
+        .chat-panel { display: none; }
+    }
+
+.mobile-only { display: none !important; }
+@media (max-width: 768px) { .mobile-only { display: flex !important; } }
+
         /* Print Optimization */
         @media print { 
             body { display: block; background: white; color: black; height: auto; overflow: visible; }
@@ -82,7 +186,36 @@
         .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
         .widget { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; margin-bottom: 1.5rem; }
         .widget-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-        
+
+/* --- CUSTOM ALERT & CONFIRM MODALS --- */
+.custom-modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6); z-index: 2000; /* Higher than normal modals */
+    display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(2px);
+}
+.custom-modal-box {
+    background: var(--bg-panel); border: 1px solid var(--border);
+    width: 90%; max-width: 400px;
+    border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    overflow: hidden; animation: popIn 0.2s ease-out;
+}
+.cm-head {
+    padding: 15px 20px; background: var(--bg-card); 
+    border-bottom: 1px solid var(--border);
+    font-weight: bold; font-size: 1rem; color: var(--text-main);
+    display: flex; align-items: center; gap: 10px;
+}
+.cm-body { padding: 20px; color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; }
+.cm-foot {
+    padding: 10px 15px; background: var(--bg-input);
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: flex-end; gap: 10px;
+}
+.btn-sec { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+.btn-sec:hover { background: var(--bg-card); color: var(--text-main); }
+@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
 /* Updated List Item for better spacing */
         .list-item { 
             display: flex; 
@@ -374,26 +507,53 @@
         <i class="fa-solid fa-atom"></i> <span id="app-title-display">RadFlow</span>
     </div>
     
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; width:100%; margin-bottom: 1rem;">
-        <div class="nav-item active" id="nav-dash" onclick="nav('dashboard')"><i class="fa-solid fa-gauge-high"></i> Dash</div>
-        <div class="nav-item" id="nav-proj" onclick="nav('projects')"><i class="fa-solid fa-list-check"></i> Proj</div>
-        <div class="nav-item" id="nav-fin" onclick="nav('finance')"><i class="fa-solid fa-sack-dollar"></i> Cost</div>
-        <div class="nav-item" id="nav-est" onclick="nav('estimator')"><i class="fa-solid fa-file-invoice-dollar"></i> Est.</div>
-        <div class="nav-item" id="nav-inv" onclick="nav('inventory')"><i class="fa-solid fa-boxes-stacked"></i> Inv</div>
-        <div class="nav-item" id="nav-exempt" onclick="nav('exempt')"><i class="fa-solid fa-recycle"></i> Exempt</div>
-        <div class="nav-item" id="nav-hp" onclick="nav('hp')"><i class="fa-solid fa-calculator"></i> HP</div>
-        <div class="nav-item" id="nav-log" onclick="nav('logbook')"><i class="fa-solid fa-book-open"></i> Log</div>
-    </div>
+    <div id="mobile-nav-wrapper" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; width:100%; margin-bottom: 1rem;">
+        
+        <div class="nav-item active" id="nav-dash" onclick="nav('dashboard')">
+            <i class="fa-solid fa-gauge-high"></i> <span class="nav-text">Dash</span>
+        </div>
+        
+        <div class="nav-item" id="nav-proj" onclick="nav('projects')">
+            <i class="fa-solid fa-list-check"></i> <span class="nav-text">Proj</span>
+        </div>
+        
+        <div class="nav-item" id="nav-fin" onclick="nav('finance')">
+            <i class="fa-solid fa-sack-dollar"></i> <span class="nav-text">Cost</span>
+        </div>
+        
+        <div class="nav-item" id="nav-est" onclick="nav('estimator')">
+            <i class="fa-solid fa-file-invoice-dollar"></i> <span class="nav-text">Est.</span>
+        </div>
+        
+        <div class="nav-item" id="nav-inv" onclick="nav('inventory')">
+            <i class="fa-solid fa-boxes-stacked"></i> <span class="nav-text">Inv</span>
+        </div>
+        
+        <div class="nav-item" id="nav-exempt" onclick="nav('exempt')">
+            <i class="fa-solid fa-recycle"></i> <span class="nav-text">Exempt</span>
+        </div>
+        
+        <div class="nav-item" id="nav-hp" onclick="nav('hp')">
+            <i class="fa-solid fa-calculator"></i> <span class="nav-text">HP</span>
+        </div>
+        
+        <div class="nav-item" id="nav-log" onclick="nav('logbook')">
+            <i class="fa-solid fa-book-open"></i> <span class="nav-text">Log</span>
+        </div>
 
-    <button class="btn-toggle" onclick="toggleTheme()"><i class="fa-solid fa-circle-half-stroke"></i> Theme</button>
+        <div class="nav-item mobile-only" onclick="openModal('settingsModal')">
+            <i class="fa-solid fa-bars"></i> <span class="nav-text">Menu</span>
+        </div>
+
+        </div>
+
     <button class="btn-toggle" onclick="window.print()"><i class="fa-solid fa-print"></i> Report</button>
-    <button class="btn-toggle" onclick="openModal('settingsModal')"><i class="fa-solid fa-users"></i> Settings</button>
+    <button class="btn-toggle" onclick="openImportModal()"><i class="fa-solid fa-paste"></i> Import Data</button>
+    <button class="btn-toggle" onclick="openExportModal()"><i class="fa-solid fa-copy"></i> Export Data</button>
+    <button class="btn-toggle" onclick="openModal('settingsModal')"><i class="fa-solid fa-gear"></i> Settings</button>
 
-    <div class="sync-box">
-        <button class="btn-sync" onclick="openExportModal()"><i class="fa-solid fa-copy"></i> Export</button>
-        <button class="btn-sync" onclick="openImportModal()"><i class="fa-solid fa-paste"></i> Import</button>
-        <button class="btn-sync btn-danger" onclick="clearData()">Clear All</button>
-        <button class="btn-sync btn-ghost" onclick="resetData()">Reset Data</button>
+    <div style="margin-top:auto; font-size:0.8rem; color:var(--text-muted); text-align:center; padding-top:10px; border-top:1px solid var(--border);">
+        Logged in as: <b id="sidebar-user-display">...</b>
     </div>
 </div>
 
@@ -401,7 +561,7 @@
     <div id="view-dashboard" class="view-section active">
         <div class="header">
             <div><h1 style="margin:0;">Command Center</h1><p style="margin:0; color:var(--text-muted);" id="todayDate">Loading...</p></div>
-            <input type="text" class="search-bar" placeholder="Search..." onkeyup="render(this.value)">
+            <input type="text" class="search-bar" placeholder="Search..." onkeyup="handleSearch(this.value)">
             <button class="btn" onclick="openModal('projectModal')">+ Project</button>
         </div>
         
@@ -436,7 +596,7 @@
             <div style="display:flex; gap:10px;">
                 <button class="btn-toggle" style="margin:0" onclick="toggleProjView()"><i class="fa-solid fa-table-columns"></i> View</button>
                 <button id="btnShowComp" class="btn-toggle" style="margin:0" onclick="toggleShowComp()"><i class="fa-solid fa-eye"></i> Show Done</button>
-                <input type="text" class="search-bar" style="width:200px;" placeholder="Filter..." onkeyup="render(this.value)">
+                <input type="text" class="search-bar" style="width:200px;" placeholder="Filter..." onkeyup="handleSearch(this.value)">
             </div>
         </div>
         <div class="widget"><div id="full-project-list"></div></div>
@@ -547,7 +707,14 @@
         </div>
     </div>
     <div id="view-estimator" class="view-section">
-        <div class="header"><h1>Cost Estimator</h1>
+        <div class="header">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <button class="btn-sync" onclick="nav('dashboard')" style="width:auto; margin:0; padding: 5px 12px;" title="Discard & Exit">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <h1 style="margin:0;">Cost Estimator</h1>
+            </div>
+
             <div style="display:flex; gap:10px;">
                 <select id="est-proj-select" class="form-control" style="width:200px; margin:0;" onchange="saveLocally()"><option value="">-- Select Project --</option></select>
                 <select id="est-fund-select" class="form-control" style="width:180px; margin:0;">
@@ -591,7 +758,7 @@
         <div class="header">
             <h1>Exempt Material Disposal Log</h1>
             <div style="display:flex; gap:10px;">
-                <input type="text" class="search-bar" style="width:200px;" placeholder="Search Log..." onkeyup="render(this.value)">
+                <input type="text" class="search-bar" style="width:200px;" placeholder="Search Log..." onkeyup="handleSearch(this.value)">
                 <button class="btn-toggle" style="margin:0" onclick="downloadExemptCSV()"><i class="fa-solid fa-file-csv"></i> Export Log</button>
                 <button class="btn" onclick="openModal('exemptModal')">+ Add Entry</button>
             </div>
@@ -783,7 +950,54 @@
     <div class="chat-input-area"><input type="text" id="chatInput" class="form-control" placeholder="Update team..." onkeypress="handleChat(event)"></div>
 </div>
 
-<div id="settingsModal" class="modal-overlay"><div class="modal"><h3>Team Settings</h3><div id="teamList" style="margin-bottom:10px;"></div><div style="display:flex; gap:10px;"><input id="newMember" class="form-control" style="margin:0" placeholder="Name/Initials"><button class="btn" onclick="addTeamMember()">Add</button></div><div style="text-align:right; margin-top:20px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('settingsModal')">Done</button></div></div></div>
+<div id="settingsModal" class="modal-overlay">
+    <div class="modal">
+        <h3>System Settings</h3>
+        
+        <div style="margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:15px;">
+            <h4 style="margin-bottom:10px; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">Actions & Reports</h4>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <button class="btn-toggle" onclick="window.print()" style="margin:0; justify-content:center;"><i class="fa-solid fa-print"></i> Report</button>
+                <button class="btn-toggle" onclick="closeModal('settingsModal'); openExportModal()" style="margin:0; justify-content:center;"><i class="fa-solid fa-copy"></i> Export</button>
+                <button class="btn-toggle" onclick="closeModal('settingsModal'); openImportModal()" style="margin:0; justify-content:center;"><i class="fa-solid fa-paste"></i> Import</button>
+            </div>
+        </div>
+
+        <div style="margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:15px;">
+            <h4 style="margin-bottom:10px; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">Appearance</h4>
+            <button class="btn-toggle" onclick="toggleTheme()" style="margin:0;"><i class="fa-solid fa-circle-half-stroke"></i> Toggle Dark/Light Mode</button>
+        </div>
+
+        <div style="margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:15px;">
+             <h4 style="margin-bottom:10px; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">User Identity</h4>
+             
+             <div style="display:flex; gap:10px; align-items:center; margin-bottom:15px; background:var(--bg-input); padding:10px; border-radius:6px;">
+                 <div style="font-size:0.9rem;">I am:</div>
+                 <select id="userIdentitySelect" class="form-control" style="margin:0; flex:1;" onchange="setCurrentUser(this.value)">
+                     </select>
+             </div>
+
+             <h4 style="margin-bottom:10px; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">Edit Team List</h4>
+             <div id="teamList" style="margin-bottom:10px; max-height:150px; overflow-y:auto;"></div>
+             <div style="display:flex; gap:10px;">
+                <input id="newMember" class="form-control" style="margin:0" placeholder="New Name/Initials">
+                <button class="btn" onclick="addTeamMember()">Add</button>
+             </div>
+        </div>
+
+        <div>
+            <h4 style="margin-bottom:10px; color:var(--danger); font-size:0.8rem; text-transform:uppercase;">Danger Zone</h4>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-sync btn-danger" style="width:auto;" onclick="closeModal('settingsModal'); clearData();">Clear All Data</button>
+                <button class="btn-sync btn-ghost" style="width:auto;" onclick="closeModal('settingsModal'); resetData();">Reset to Defaults</button>
+            </div>
+        </div>
+
+        <div style="text-align:right; margin-top:20px;">
+            <button class="btn-sync" style="width:auto;" onclick="closeModal('settingsModal')">Close</button>
+        </div>
+    </div>
+</div>
 
 <div id="estimateViewModal" class="modal-overlay">
     <div class="modal" style="max-width:600px;">
@@ -888,12 +1102,30 @@
     </div>
 </div>
 
-<div id="exportModal" class="modal-overlay"><div class="modal"><h3>Export Data</h3><p style="color:var(--text-muted);">Copy this code.</p><textarea id="exportText" class="form-control" style="height:200px; font-size:0.8rem;"></textarea><div style="text-align:right; margin-top:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('exportModal')">Close</button>
+<div id="exportModal" class="modal-overlay">
+    <div class="modal">
+        <h3>Export Data</h3>
+        <p style="color:var(--text-muted);">Copy this code.</p>
+        <textarea id="exportText" class="form-control" style="height:200px; font-size:0.8rem;"></textarea>
+        <div style="text-align:right; margin-top:10px;">
+            <button class="btn-sync" style="width:auto;" onclick="closeModal('exportModal')">Close</button>
+            <button class="btn" onclick="copyExport()">Copy Text</button>
+            <button class="btn" style="background:var(--navy)" onclick="downloadBackup()">Download File</button>
+        </div>
+    </div>
+</div>
 
-<button class="btn" onclick="copyExport()">Copy Text</button>
-<button class="btn" style="background:var(--navy)" onclick="downloadBackup()">Download File</button>
-
-<div id="importModal" class="modal-overlay"><div class="modal"><h3>Import Data</h3><p style="color:var(--text-muted);">Paste data code.</p><textarea id="importText" class="form-control" style="height:200px; font-size:0.8rem;"></textarea><div style="text-align:right; margin-top:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('importModal')">Cancel</button><button class="btn" onclick="runImport()">Load</button></div></div></div>
+<div id="importModal" class="modal-overlay">
+    <div class="modal">
+        <h3>Import Data</h3>
+        <p style="color:var(--text-muted);">Paste data code.</p>
+        <textarea id="importText" class="form-control" style="height:200px; font-size:0.8rem;"></textarea>
+        <div style="text-align:right; margin-top:10px;">
+            <button class="btn-sync" style="width:auto;" onclick="closeModal('importModal')">Cancel</button>
+            <button class="btn" onclick="runImport()">Load</button>
+        </div>
+    </div>
+</div>
 
 <div id="exemptModal" class="modal-overlay">
     <div class="modal">
@@ -936,8 +1168,49 @@
     </div>
 </div>
 
+<div id="customAlertOverlay" class="custom-modal-overlay">
+    <div class="custom-modal-box">
+        <div class="cm-head" id="cmHead"><i class="fa-solid fa-circle-exclamation"></i> <span>Alert</span></div>
+        <div class="cm-body" id="cmBody">Message goes here...</div>
+        <div class="cm-foot" id="cmFoot">
+            </div>
+    </div>
+</div>
+
 <script>
     const APP_VER = "RadFlow v25.7";
+
+    // --- CUSTOM UI HELPERS ---
+    
+    function showAlert(msg, title="System Alert") {
+        document.getElementById('cmHead').innerHTML = `<i class="fa-solid fa-circle-info" style="color:var(--info)"></i> <span>${title}</span>`;
+        document.getElementById('cmBody').innerHTML = msg;
+        document.getElementById('cmFoot').innerHTML = `<button class="btn" onclick="closeCustomAlert()">OK</button>`;
+        document.getElementById('customAlertOverlay').style.display = 'flex';
+    }
+
+    function showConfirm(msg, onYes, title="Confirmation Required", isDanger=false) {
+        document.getElementById('cmHead').innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:${isDanger?'var(--danger)':'var(--warning)'}"></i> <span>${title}</span>`;
+        document.getElementById('cmBody').innerHTML = msg;
+        
+        // We attach the 'onYes' function to the Confirm button dynamically
+        const btnColor = isDanger ? 'background:var(--danger)' : 'background:var(--accent)';
+        const yesBtn = `<button class="btn" id="btnConfirmYes" style="${btnColor}">Confirm</button>`;
+        const noBtn = `<button class="btn btn-sec" onclick="closeCustomAlert()">Cancel</button>`;
+        
+        document.getElementById('cmFoot').innerHTML = noBtn + yesBtn;
+        document.getElementById('customAlertOverlay').style.display = 'flex';
+
+        // Bind the click event
+        document.getElementById('btnConfirmYes').onclick = function() {
+            closeCustomAlert();
+            if(onYes) onYes();
+        };
+    }
+
+    function closeCustomAlert() {
+        document.getElementById('customAlertOverlay').style.display = 'none';
+    }
 
     const toastBox = document.createElement('div');
     toastBox.className = 'toast-container';
@@ -1240,6 +1513,9 @@ const STARTER_DATA = {
     let estItems = []; let exemptLog = [];
     let showComplete = false; let viewMode = 'list'; let hpState = {iso:'Co-60', a0:'', date:''};
 
+    // Try to load the saved user, or default to the first team member (or "Admin")
+    let currentUser = localStorage.getItem('rad_curr_user') || 'Admin';
+
 let sortState = { table: '', col: 0, dir: 1 };
 
 // Dashboard Widget States ---
@@ -1300,12 +1576,23 @@ const jsEsc = (t) => {
     
     function formatLink(url) {
         let clean = url.trim().replace(/^"|"$/g, '');
+        
+        // SECURITY FIX: Block javascript: protocols to prevent XSS
+        if (/^javascript:/i.test(clean)) {
+            console.warn("Blocked malicious link protocol");
+            return 'about:blank'; 
+        }
+
+        // Handle local file paths (e.g. C:\Users\...)
         if (/^[a-zA-Z]:\\/.test(clean) || /^[a-zA-Z]:\//.test(clean)) {
             return 'file:///' + clean;
         }
+        
+        // Add https protocol if missing
         if (!clean.startsWith('http') && !clean.startsWith('file:') && !clean.startsWith('//')) {
              if (clean.startsWith('www.')) return 'https://' + clean;
         }
+        
         return clean;
     }
 
@@ -1328,8 +1615,28 @@ const jsEsc = (t) => {
 
     function generateLogId() {
         const yr = new Date().getFullYear();
-        const count = exemptLog.length + 1;
-        return `${yr}-${count.toString().padStart(3, '0')}`;
+        
+        // 1. Filter: Find only IDs that belong to the current year
+        const currentYearIds = exemptLog.filter(x => x.id && x.id.toString().startsWith(yr.toString()));
+        
+        let max = 0;
+        
+        // 2. Scan: Loop through them to find the highest sequence number
+        currentYearIds.forEach(x => {
+            // Assuming format "YYYY-NNN", split by '-'
+            const parts = x.id.split('-');
+            
+            // Check if we have a second part and it is a number
+            if(parts.length > 1) {
+                const num = parseInt(parts[1], 10);
+                if(!isNaN(num) && num > max) {
+                    max = num;
+                }
+            }
+        });
+
+        // 3. Increment: Add 1 to the highest number found
+        return `${yr}-${(max + 1).toString().padStart(3, '0')}`;
     }
 
     function addExemptEntry() {
@@ -1460,11 +1767,11 @@ function calculateDecay() {
 
     // Clear Estimate
     function clearEstimate() {
-        if(confirm("Clear current estimate line items?")) {
+        showConfirm("Clear all current estimator line items?", () => {
             estItems = [];
             calcEstimate();
             showToast("Estimate Cleared");
-        }
+        }, "Clear Workspace");
     }
 
     function getDominantSource(pid) {
@@ -1576,13 +1883,13 @@ function saveEstimateAction(mode) {
                 id: Date.now(),
                 projId: pid,
                 date: getTodayStr(),
-                amount: currentTotal,
+                amount: parseFloat(currentTotal.toFixed(2)),
                 desc: "Estimated Budget Added",
                 type: "adj",
                 fundSource: fund,
                 details: estimateSnapshot
             });
-            // --- NEW: Smart Log ---
+            // --- Smart Log ---
             logSystemAction(`Funding Estimate <b>$${currentTotal.toLocaleString()}</b> added to <b>${esc(pName)}</b>.`);
             showToast("Added to Project Funding");
         } 
@@ -1591,13 +1898,13 @@ function saveEstimateAction(mode) {
                 id: Date.now(),
                 projId: pid,
                 desc: "Estimated Cost",
-                amount: currentTotal,
+                amount: parseFloat(currentTotal.toFixed(2)),
                 date: getTodayStr(),
                 status: "Encumbered", 
                 fundSource: fund,
                 details: estimateSnapshot
             });
-            // --- NEW: Smart Log ---
+            // --- Smart Log ---
             logSystemAction(`Cost Estimate <b>$${currentTotal.toLocaleString()}</b> posted to <b>${esc(pName)}</b>.`);
             showToast("Posted as Expense");
         } 
@@ -1606,13 +1913,13 @@ function saveEstimateAction(mode) {
                 id: Date.now(),
                 projId: pid,
                 desc: "Cost Estimate (Draft)",
-                amount: currentTotal,
+                amount: parseFloat(currentTotal.toFixed(2)),
                 date: getTodayStr(),
                 status: "Estimate", 
                 fundSource: fund,
                 details: estimateSnapshot
             });
-            // --- NEW: Smart Log ---
+            // --- Smart Log ---
             logSystemAction(`Draft Estimate <b>$${currentTotal.toLocaleString()}</b> saved for <b>${esc(pName)}</b>.`);
             showToast("Saved as Draft Estimate");
         }
@@ -1627,7 +1934,7 @@ function saveEstimateAction(mode) {
         else switchFinTab('exp');
     }
 
-    // NEW: Helper to clean up the estimator after use
+    // Helper to clean up the estimator after use
     function resetEstimator() {
         estItems = [];
         document.getElementById('est-proj-select').value = ""; // Clear Project
@@ -1635,7 +1942,40 @@ function saveEstimateAction(mode) {
         calcEstimate(); // Clears the table UI
     }
 
-// --- NEW GLOBAL STATE ---
+    function loadEstimateToEditor(id, type) {
+        // 1. Safety Check: Don't accidentally wipe current work
+        if(estItems.length > 0) {
+            if(!confirm("Overwrite your current estimator items with this saved data?")) return;
+        }
+
+        // 2. Find the Data
+        const list = type === 'alloc' ? allocations : expenses;
+        const rec = list.find(x => x.id === id);
+        
+        if(!rec || !rec.details) return;
+
+        // 3. Load Data into Global State (Deep Copy)
+        estItems = JSON.parse(JSON.stringify(rec.details));
+        
+        // 4. Set the Dropdowns
+        if(rec.projId) {
+            // We set this BEFORE navigation so nav('estimator') picks it up
+            const projSelect = document.getElementById('est-proj-select');
+            if(projSelect) projSelect.value = rec.projId;
+        }
+        if(rec.fundSource) {
+            const fundSelect = document.getElementById('est-fund-select');
+            if(fundSelect) fundSelect.value = rec.fundSource;
+        }
+
+        // 5. Switch View and Save
+        closeModal('estimateViewModal');
+        nav('estimator'); // This will re-render the estimator table with our new data
+        saveLocally();
+        
+        showToast("Estimate loaded into editor");
+    }
+
     let chartScale = 'month'; 
 
     function setChartScale(s) {
@@ -1649,7 +1989,8 @@ function saveEstimateAction(mode) {
         render(); // Re-render the whole view
     }
 
-// NEW: Open the IGE Viewer Modal
+    // Open the IGE Viewer Modal
+
     function viewEstimate(id, type) {
         // Find the record
         const list = type === 'alloc' ? allocations : expenses;
@@ -1673,9 +2014,18 @@ function saveEstimateAction(mode) {
             </tr>
         `).join('');
 
-        // Setup Download Button
+        // --- Setup Buttons (Download AND Load) ---
         const btnContainer = document.getElementById('ige-dl-btn-container');
-        btnContainer.innerHTML = `<button class="btn" style="padding:4px 10px; font-size:0.8rem;" onclick="downloadIGE(${id}, '${type}')"><i class="fa-solid fa-file-excel"></i> Download IGE</button>`;
+        
+        let buttonsHtml = `
+            <button class="btn" style="padding:4px 10px; font-size:0.8rem; margin-right:5px;" onclick="downloadIGE(${id}, '${type}')">
+                <i class="fa-solid fa-file-excel"></i> CSV
+            </button>
+            <button class="btn" style="padding:4px 10px; font-size:0.8rem; background:var(--warning); color:var(--text-main);" onclick="loadEstimateToEditor(${id}, '${type}')">
+                <i class="fa-solid fa-pen-to-square"></i> Edit/Load
+            </button>`;
+        
+        btnContainer.innerHTML = buttonsHtml;
 
         openModal('estimateViewModal');
     }
@@ -1858,6 +2208,16 @@ function normalizeIso(input) {
     }
 
     function render(filter = "") {
+        // 1. Auto-detect filter if not provided (Preserves search context after delete/edit)
+        if (!filter) {
+            // Find the visible search bar
+            const activeView = document.querySelector('.view-section.active');
+            if (activeView) {
+                const searchInput = activeView.querySelector('.search-bar');
+                if (searchInput) filter = searchInput.value;
+            }
+        }
+        
         filter = filter.toLowerCase();
         document.getElementById('todayDate').innerText = new Date().toDateString();
         document.getElementById('btnShowComp').innerHTML = showComplete ? '<i class="fa-solid fa-eye-slash"></i> Hide Done' : '<i class="fa-solid fa-eye"></i> Show Done';
@@ -2061,12 +2421,16 @@ function normalizeIso(input) {
         const sColors = { 'Planning': 'var(--plan)', 'Active': 'var(--accent)', 'Review': 'var(--info)', 'Complete': 'var(--comp)' };
         document.getElementById('chart-proj').innerHTML = Object.keys(statuses).map(k => { const pct = (statuses[k] / totalProjs) * 100; return pct > 0 ? `<div class="chart-seg" style="width:${pct}%; background:${sColors[k]}" title="${k}: ${statuses[k]}"></div>` : ''; }).join('');
         document.getElementById('legend-proj').innerHTML = Object.keys(statuses).map(k => statuses[k] > 0 ? `<div><span class="legend-dot" style="background:${sColors[k]}"></span>${k} (${statuses[k]})</div>` : '').join('');
-        const spentPct = globalBudg > 0 ? Math.min((globalSpent/globalBudg)*100, 100) : 0;
+        
+        // If budget is 0 but we spent money, show 100% (Full bar)
+        const spentPct = globalBudg > 0 
+            ? Math.min((globalSpent/globalBudg)*100, 100) 
+            : (globalSpent > 0 ? 100 : 0);
+
         document.getElementById('chart-money').innerHTML = `<div class="chart-seg" style="width:${spentPct}%; background:var(--money);"></div>`;
 
-
         // ============================================================
-        //  NEW: FINANCE VIEW LOGIC (WITH DATE FILTERS)
+        //  FINANCE VIEW LOGIC (WITH DATE FILTERS)
         // ============================================================
         
         // 1. Define Filter Function
@@ -2087,7 +2451,7 @@ function normalizeIso(input) {
 
         // 3. Calculate Totals based on FILTERED data
         const finTotalBudg = finAllocs.reduce((s, a) => s + (parseFloat(a.amount)||0), 0);
-        const finTotalSpent = finExps.filter(e => e.status !== 'Estimate').reduce((s, e) => s + Math.abs(parseFloat(e.amount)||0), 0);
+        const finTotalSpent = finExps.filter(e => e.status !== 'Estimate').reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
         const finRemaining = finTotalBudg - finTotalSpent;
         const finActiveSpenders = new Set(finExps.map(e => e.projId)).size;
         
@@ -2134,7 +2498,7 @@ function normalizeIso(input) {
         // 7. Update Expense Table (Filtered)
         const sortedExps = getSortedData(finExps, 'table-exp');
 
-	document.getElementById('expense-list').innerHTML = sortedExps.map(e => {
+        document.getElementById('expense-list').innerHTML = sortedExps.map(e => {
             const fund = e.fundSource || 'Other';
             let fundStyle = 'background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1';
             if(fund.includes('Navy')) fundStyle = 'background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe';
@@ -2143,18 +2507,28 @@ function normalizeIso(input) {
             
             const isEst = e.status === 'Estimate';
             const rowStyle = isEst ? 'font-style:italic; opacity:0.7;' : '';
-
-            // NEW: Check if IGE details exist
             const igeIcon = e.details 
                 ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:8px;" onclick="viewEstimate(${e.id}, 'expense')" title="View Estimate Details"></i>` 
                 : '';
+
+            const fmtAmount = e.amount.toLocaleString('en-US', {style:'currency', currency:'USD'});
 
             return `<tr style="${rowStyle}">
                 <td><input class="live-edit" type="date" value="${e.date}" onchange="updItem('expense', ${e.id}, 'date', this.value)"></td>
                 <td><span class="proj-link" onclick="viewProject(${e.projId})">${esc(pTitle)}</span></td>
                 <td><div class="tag" style="font-size:0.75rem; padding:4px 8px; border-radius:12px; display:inline-block; ${fundStyle}">${esc(fund)}</div></td>
-                <td style="display:flex; align-items:center;"><input class="live-edit" value="${esc(e.desc)}" onchange="updItem('expense', ${e.id}, 'desc', this.value, this)"> ${igeIcon}</td>
-                <td><input class="live-edit" type="number" value="${e.amount}" onchange="updItem('expense', ${e.id}, 'amount', this.value)"></td>
+                
+                <td>
+                    <div style="display:flex; align-items:center; width:100%;">
+                        <input class="live-edit" style="flex:1; min-width:0;" value="${esc(e.desc)}" onchange="updItem('expense', ${e.id}, 'desc', this.value, this)"> 
+                        ${igeIcon}
+                    </div>
+                </td>
+                
+                <td>
+                    <input class="live-edit" type="text" style="text-align:right;" value="${fmtAmount}" onchange="updItem('expense', ${e.id}, 'amount', this.value)">
+                </td>
+                
                 <td>
                     <select class="live-edit" onchange="updItem('expense', ${e.id}, 'status', this.value)">
                         <option ${e.status==='Invoiced'?'selected':''}>Invoiced</option>
@@ -2169,21 +2543,31 @@ function normalizeIso(input) {
         
         // 8. Update Allocation Table (Filtered)
         const sortedAllocs = getSortedData(finAllocs, 'table-alloc');
-	document.getElementById('alloc-list').innerHTML = sortedAllocs.map(a => {
+        document.getElementById('alloc-list').innerHTML = sortedAllocs.map(a => {
             const fund = a.fundSource || 'Navy General Fund';
             const pTitle = projects.find(p => p.id === a.projId)?.title || "General";
-            
-            // NEW: Check if IGE details exist
             const igeIcon = a.details 
                 ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:8px;" onclick="viewEstimate(${a.id}, 'alloc')" title="View Estimate Details"></i>` 
                 : '';
+
+            const fmtAmount = a.amount.toLocaleString('en-US', {style:'currency', currency:'USD'});
 
             return `<tr>
                 <td><input class="live-edit" type="date" value="${a.date}" onchange="updItem('alloc', ${a.id}, 'date', this.value)"></td>
                 <td><span class="proj-link" onclick="viewProject(${a.projId})">${esc(pTitle)}</span></td>
                 <td><div class="tag">${esc(fund)}</div></td>
-                <td style="display:flex; align-items:center;"><input class="live-edit" value="${esc(a.desc)}" onchange="updItem('alloc', ${a.id}, 'desc', this.value, this)"> ${igeIcon}</td>
-                <td><input class="live-edit" type="number" value="${a.amount}" onchange="updItem('alloc', ${a.id}, 'amount', this.value)"></td>
+                
+                <td>
+                    <div style="display:flex; align-items:center; width:100%;">
+                        <input class="live-edit" style="flex:1; min-width:0;" value="${esc(a.desc)}" onchange="updItem('alloc', ${a.id}, 'desc', this.value, this)"> 
+                        ${igeIcon}
+                    </div>
+                </td>
+
+                <td>
+                    <input class="live-edit" type="text" style="text-align:right;" value="${fmtAmount}" onchange="updItem('alloc', ${a.id}, 'amount', this.value)">
+                </td>
+
                 <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delAlloc(${a.id})"></i></td>
             </tr>`;
         }).join('');
@@ -2209,7 +2593,7 @@ const getProjStats = (pid) => {
     
     const init = pAllocs.filter(a => a.type === 'base' || (!a.type && a.desc.toLowerCase().includes('initial'))).reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
     const adj = pAllocs.filter(a => a.type !== 'base' && (a.type || !a.desc.toLowerCase().includes('initial'))).reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
-    const spent = pExps.filter(e => e.status !== 'Estimate').reduce((s,e)=>s+Math.abs(parseFloat(e.amount)||0),0);
+    const spent = pExps.filter(e => e.status !== 'Estimate').reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
     
     return { init, adj, total: init+adj, spent, rem: (init+adj)-spent };
 };
@@ -2326,7 +2710,9 @@ const sortedInv = getSortedData(filteredInv, 'table-inv');
                         <input type="number" class="live-edit" style="width:50px; text-align:right;" min="0" max="100" value="${i.fill||0}" onchange="updItem('inventory', '${safeId}', 'fill', this.value)">
                         <span style="font-size:0.7rem;">%</span>
                     </div>
-                    <div class="progress-bar" style="height:4px; margin-top:2px;"><div class="progress-fill" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':'var(--info)'}"></div></div>
+                    <div class="progress-bar" style="height:4px; margin-top:2px;">
+                        <div id="bar-fill-${safeId}" class="progress-fill" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':'var(--info)'}"></div>
+                    </div>
                 </td>
                 <td><div style="display:flex; align-items:center; gap:8px;"><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'projId', this.value)">${pOptions}</select>${linkIcon}</div></td>
                 <td><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td>
@@ -2885,69 +3271,97 @@ function getSortedData(data, tableId) {
 }
 
 function updItem(type, id, key, val, elem) { 
-    // 1. Update the Data Model
-    if (type === 'project') { const p = projects.find(x => x.id === id); p[key] = val; }
-    
-    if (type === 'inventory') { 
-    const i = inventory.find(x => x.id == id); 
-    
-    if(key === 'iso') {
-        // Auto-correct the casing using our DB
-        val = normalizeIso(val);
-    } 
-        if(key === 'fill') {
-            val = parseInt(val);
-            if(isNaN(val)) val = 0;
-            if(val < 0) val = 0; if(val > 100) val = 100;
+        // 1. Update the Data Model
+        if (type === 'project') { const p = projects.find(x => x.id === id); p[key] = val; }
+        
+        if (type === 'inventory') { 
+            const i = inventory.find(x => x.id == id); 
+            if(key === 'iso') val = normalizeIso(val);
+            if(key === 'fill') {
+                val = parseInt(val);
+                if(isNaN(val)) val = 0;
+                if(val < 0) val = 0; if(val > 100) val = 100;
+                
+                // VISUAL FIX: Update the bar width immediately
+                const bar = document.getElementById(`bar-fill-${id}`);
+                if(bar) {
+                    bar.style.width = val + '%';
+                    bar.style.background = val > 90 ? 'var(--danger)' : 'var(--info)';
+                }
+            }
+            if(key === 'dose') val = parseFloat(val); 
+            if(key === 'projId') val = val ? parseInt(val) : null; 
+            i[key] = val; 
         }
-        if(key === 'dose') val = parseFloat(val); 
-        if(key === 'projId') val = val ? parseInt(val) : null; 
-        i[key] = val; 
-    }
 
-    if (type === 'expense') { const e = expenses.find(x => x.id === id); if(key === 'amount') val = parseFloat(val); e[key] = val; }
-    if (type === 'alloc') { const a = allocations.find(x => x.id === id); if(key === 'amount') val = parseFloat(val); a[key] = val; }
-    if (type === 'exempt') { const ex = exemptLog.find(x => x.id === id); ex[key] = val; }
-    
-    saveLocally(); 
-    
-    // 2. Visual Feedback (Flash border)
-    if(elem) {
-        const oldBorder = elem.style.borderColor;
-        elem.style.borderColor = 'var(--accent)';
-        setTimeout(() => elem.style.borderColor = oldBorder, 500);
-    }
+        // --- Smart Currency Parsing & Focus Preservation ---
+        if (type === 'expense' || type === 'alloc') { 
+            const list = type === 'expense' ? expenses : allocations;
+            const item = list.find(x => x.id === id);
+            
+            if(key === 'amount') {
+                // 1. Clean the input for data storage
+                const cleanVal = val.toString().replace(/[^0-9.-]+/g,"");
+                let numVal = parseFloat(cleanVal);
+                if(isNaN(numVal)) numVal = 0;
+                
+                item[key] = numVal; // Save clean number
 
-    // --- Surgical DOM Updates ---
-    
-    // Special Case: Exempt Log Auth Date
-    // If updating Auth Date, we update ONLY the badge and STOP (return) to prevent re-render
-    if (type === 'exempt' && key === 'authDate') {
-        const isAuth = val && val.trim() !== "";
-        const badge = isAuth 
-            ? '<span class="tag" style="background:var(--accent); color:white; border:none;">Authorized</span>' 
-            : '<span class="tag" style="background:var(--warning); color:white; border:none;">Pending</span>';
-        const cell = document.getElementById(`ex-status-${id}`);
-        if(cell) cell.innerHTML = badge;
-        return; 
-    }
+                // 2. Direct DOM update (Preserves Focus/Tab flow)
+                // We DO NOT call render() here. We just prettify the specific input.
+                if(elem) {
+                    elem.value = numVal.toLocaleString('en-US', {style:'currency', currency:'USD'});
+                }
+                
+                saveLocally();
+                return; // EXIT FUNCTION HERE so we don't trigger the generic render() below
+            }
+            
+            item[key] = val; 
+        }
+        
+        if (type === 'exempt') { 
+            const ex = exemptLog.find(x => x.id === id); 
+            ex[key] = val; 
+            
+            // SPECIAL VISUAL FIX: Update Status Badge immediately without re-rendering
+            if(key === 'authDate') {
+                const badgeCell = document.getElementById(`ex-status-${id}`);
+                if(badgeCell) {
+                    const isAuth = val && val.trim() !== "";
+                    badgeCell.innerHTML = isAuth 
+                        ? '<span class="tag" style="background:var(--accent); color:white; border:none;">Authorized</span>' 
+                        : '<span class="tag" style="background:var(--warning); color:white; border:none;">Pending</span>';
+                }
+            }
+        }
+        
+        saveLocally(); 
+        
+        // 2. Visual Feedback
+        if(elem) {
+            const oldBorder = elem.style.borderColor;
+            elem.style.borderColor = 'var(--accent)';
+            setTimeout(() => elem.style.borderColor = oldBorder, 500);
+        }
 
-    // 3. General Render Logic
-    // Fields that should NOT trigger a re-render (to prevent losing focus while typing)
-    const skipRenderFields = ['desc', 'text', 'iso', 'act', 'basis', 'path', 'cmd', 'logisticsNotes', 'date', 'qty', 'rev', 'amount', 'dose', 'fill'];
-    
-    if(!skipRenderFields.includes(key)) {
-        render();
+        // 3. Render Logic
+        // Special: If we just updated 'amount', FORCE a re-render so the 
+        // user immediately sees their text turn back into formatted currency (e.g. they type 5000 -> it becomes $5,000.00)
+        const skipRenderFields = ['desc', 'text', 'iso', 'act', 'basis', 'path', 'cmd', 'logisticsNotes', 'date', 'qty', 'rev', 'dose', 'fill', 'authDate'];
+        
+        if(!skipRenderFields.includes(key)) {
+            render();
+        }
     }
-}
     
     function delExempt(id) {
-        if(confirm("Delete Log Entry?")) {
+        showConfirm("Delete this exempt log entry?", () => {
             exemptLog = exemptLog.filter(x => x.id !== id);
             saveLocally();
             render();
             showToast("Entry Deleted");
-        }
+        }, "Delete Entry", true);
     }
     
     function updTask(pId, tId, key, val) { 
@@ -3002,6 +3416,9 @@ function cloneProject(id) {
     logSystemAction(`Project <b>${esc(original.title)}</b> cloned to <b>${esc(copy.title)}</b>.`);
 
     saveLocally(); 
+
+    render();
+
     viewProject(copy.id); 
     showToast("Project Cloned"); 
 }
@@ -3045,19 +3462,31 @@ function delTask(pId, tId) {
     
     function delProj(id) { 
         const p = projects.find(x => x.id === id);
-        if(p && confirm("Delete Project and all associated expenses?")) { 
-
-            logSystemAction(`Project <b>${esc(p.title)}</b> deleted.`);
-
-            projects = projects.filter(x=>x.id!==id); 
-            expenses = expenses.filter(x=>x.projId!==id); 
-            allocations = allocations.filter(x=>x.projId!==id);
-            inventory.forEach(i => { if(i.projId === id) i.projId = null; });
-            
-            saveLocally(); 
-            nav('dashboard'); 
-            showToast("Project Deleted", "error");
-        } 
+        if(!p) return;
+        
+        showConfirm(
+            `Permanently delete project <b>${esc(p.title)}</b>?<br>This will remove all associated expenses and funding records.`,
+            () => {
+                logSystemAction(`Project <b>${esc(p.title)}</b> deleted.`);
+                
+                // 1. Remove data from all arrays
+                projects = projects.filter(x=>x.id!==id); 
+                expenses = expenses.filter(x=>x.projId!==id); 
+                allocations = allocations.filter(x=>x.projId!==id);
+                inventory.forEach(i => { if(i.projId === id) i.projId = null; });
+                
+                saveLocally(); 
+                
+                // 2. Re-render the app so the list updates immediately
+                render(); 
+                
+                // 3. Go back to Dashboard
+                nav('dashboard'); 
+                showToast("Project Deleted", "error");
+            },
+            "Delete Project",
+            true // Danger Red
+        );
     }
     
     // Using sanitizer in addLink
@@ -3178,7 +3607,7 @@ function addExpense() {
             fundSource: fund
         });
 
-        // --- NEW: Smart Project Naming ---
+        // --- Smart Project Naming ---
         const p = projects.find(x => x.id === pid);
         const pName = p ? p.title : "General Overhead";
         
@@ -3198,51 +3627,44 @@ function addExpense() {
     
     function delExpense(id) { 
         const e = expenses.find(x => x.id === id);
-        
-        if(e && confirm("Remove this item?")) { 
-            // 1. Log the Action
+        if(!e) return;
+
+        showConfirm("Remove this expense record?", () => {
             const p = projects.find(x => x.id === e.projId);
             const pName = p ? p.title : "General";
-            const typeLabel = e.status === 'Estimate' ? "Draft Estimate" : "Expense";
+            logSystemAction(`Expense <b>$${e.amount.toLocaleString()}</b> deleted from <b>${esc(pName)}</b>.`);
             
-            logSystemAction(`${typeLabel} <b>$${e.amount.toLocaleString()}</b> deleted from <b>${esc(pName)}</b>.`);
-
-            // 2. Delete
             expenses = expenses.filter(x => x.id !== id); 
-            
             saveLocally(); 
             render(); 
             showToast("Item Removed"); 
             
-            // 3. Smart Refresh: If we are looking at the project, update that view too
+            // Smart Refresh: If looking at the project, refresh it
             if(e.projId && document.getElementById('view-project-detail').classList.contains('active')) {
                 viewProject(e.projId);
             }
-        } 
+        }, "Confirm Deletion", true);
     }
 
     function delAlloc(id) { 
         const a = allocations.find(x => x.id === id);
-        
-        if(a && confirm("Remove Funding Record?")) { 
-            // 1. Log the Action
+        if(!a) return;
+
+        showConfirm("Remove this funding allocation?", () => {
             const p = projects.find(x => x.id === a.projId);
             const pName = p ? p.title : "General";
-            
             logSystemAction(`Funding <b>$${a.amount.toLocaleString()}</b> deleted from <b>${esc(pName)}</b>.`);
 
-            // 2. Delete
             allocations = allocations.filter(x => x.id !== id); 
-            
             saveLocally(); 
             render(); 
             showToast("Funding Removed");
-
-            // 3. Smart Refresh
+            
+            // Smart Refresh
             if(a.projId && document.getElementById('view-project-detail').classList.contains('active')) {
                 viewProject(a.projId);
             }
-        } 
+        }, "Confirm Deletion", true);
     }
     
 function addInventory() { 
@@ -3297,19 +3719,15 @@ function addInventory() {
 }
 
 function delInventory(id) {
-    if(confirm("Permanently delete this inventory item?")) {
-        // Log the deletion for the team
-        const i = inventory.find(x => x.id == id);
-        if(i) logSystemAction(`Inventory <b>${esc(i.id)}</b> (${esc(i.iso)}) deleted.`);
-
-        // Filter it out
-        inventory = inventory.filter(x => x.id != id);
-        
-        saveLocally();
-        render();
-        showToast("Item Deleted");
+        showConfirm(`Permanently delete item <b>${id}</b> from inventory?`, () => {
+            const i = inventory.find(x => x.id == id);
+            if(i) logSystemAction(`Inventory <b>${esc(i.id)}</b> (${esc(i.iso)}) deleted.`);
+            inventory = inventory.filter(x => x.id != id);
+            saveLocally();
+            render();
+            showToast("Item Deleted");
+        }, "Delete Item", true);
     }
-}
 
 function decayInventory() {
     if(!confirm("Permanently update all inventory activities to current date?")) return;
@@ -3366,12 +3784,67 @@ function decayInventory() {
     
     showToast(msg, skipped > 0 ? "warning" : "success");
 }
+
+function setCurrentUser(val) {
+        currentUser = val;
+        localStorage.setItem('rad_curr_user', currentUser);
+        document.getElementById('sidebar-user-display').innerText = currentUser;
+        showToast(`Identity set to: ${currentUser}`);
+    }
     
     function delLink(pId, idx) { const p = projects.find(x=>x.id===pId); p.links.splice(idx, 1); saveLocally(); viewProject(pId); }
     
-    function renderTeamSettings() { document.getElementById('teamList').innerHTML = team.map((m, i) => `<div style="display:flex; justify-content:space-between; margin-bottom:5px; background:var(--bg-input); padding:5px; border-radius:4px;">${esc(m)} <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="remTeam(${i})"></i></div>`).join(''); }
-    function addTeamMember() { const m = document.getElementById('newMember').value; if(m) { team.push(m); saveLocally(); renderTeamSettings(); document.getElementById('newMember').value=''; } }
-    function remTeam(idx) { team.splice(idx, 1); saveLocally(); renderTeamSettings(); }
+    function renderTeamSettings() { 
+        // 1. Render the Delete List
+        document.getElementById('teamList').innerHTML = team.map((m, i) => 
+            `<div style="display:flex; justify-content:space-between; margin-bottom:5px; background:var(--bg-input); padding:5px; border-radius:4px;">
+                ${esc(m)} 
+                <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="remTeam(${i})"></i>
+            </div>`
+        ).join(''); 
+
+        // 2. Render the "Who am I?" Dropdown
+        const sel = document.getElementById('userIdentitySelect');
+        if(sel) {
+            sel.innerHTML = team.map(m => `<option value="${esc(m)}" ${currentUser===m?'selected':''}>${esc(m)}</option>`).join('');
+        }
+        
+        // 3. Update Sidebar Display
+        document.getElementById('sidebar-user-display').innerText = currentUser;
+    }
+
+    function addTeamMember() { 
+        const m = document.getElementById('newMember').value; 
+        if(m) { 
+            team.push(m); 
+            saveLocally(); 
+            renderTeamSettings(); 
+            document.getElementById('newMember').value=''; 
+            showToast("User added");
+        } 
+    }
+
+    function remTeam(idx) { 
+        const userToDelete = team[idx];
+        
+        // Safety Check: Prevent deleting the user you are currently logged in as
+        if(userToDelete === currentUser) {
+            showAlert("You cannot delete the user you are currently acting as.<br>Switch identity first.", "Action Blocked");
+            return;
+        }
+
+        // CONFIRMATION DIALOG ADDED
+        showConfirm(
+            `Remove <b>${esc(userToDelete)}</b> from the team list?`,
+            () => {
+                team.splice(idx, 1); 
+                saveLocally(); 
+                renderTeamSettings();
+                showToast("User removed");
+            },
+            "Remove User"
+        );
+    }
     
     function toggleProjView() { viewMode = viewMode === 'list' ? 'board' : 'list'; saveLocally(); render(); }
     function toggleShowComp() { showComplete = !showComplete; saveLocally(); render(); }
@@ -3387,100 +3860,162 @@ function decayInventory() {
     }
     
     function saveWiki() { wikiText = document.getElementById('wiki-text').value; saveLocally(); }
-    function handleChat(e) { if(e.key==='Enter'){ const t=document.getElementById('chatInput').value; if(t){ chatLog.push({user:"User", time:new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), text:t}); document.getElementById('chatInput').value=''; saveLocally(); render(); }}}
 
-function nav(id) { 
-    // 1. Reset Sort Direction (optional, keeps default behavior consistent)
-    sortDir = 1; 
+    function handleChat(e) { 
+        if(e.key==='Enter'){ 
+            const t=document.getElementById('chatInput').value; 
+            if(t){ 
+                const now = new Date();
+                // 1. Get Date (MM/DD)
+                const dateStr = (now.getMonth()+1).toString().padStart(2,'0') + '/' + now.getDate().toString().padStart(2,'0');
+                // 2. Get Time
+                const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 
-    // 2. Switch the Main View
-    document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active')); 
-    document.getElementById('view-' + id).classList.add('active'); 
+                chatLog.push({
+                    user: currentUser, 
+                    time: `${dateStr} ${timeStr}`, // Combine them
+                    text: t
+                }); 
 
-    // 3. Highlight the Sidebar Button
-    document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active')); 
-    const btn = document.getElementById('nav-' + (id === 'project-detail' ? 'proj' : id));
-    if(btn) btn.classList.add('active');
-
-    // 4. Specific Tool Initialization logic
-    if(id === 'hp') {
-        switchHpTab('decay');
-        loadHPState(); // Ensure inputs are restored from state
-    }
-
-    if(id === 'finance') {
-        switchFinTab('overview');
-    }
-
-    if(id === 'estimator') {
-         // Refresh the Project Dropdown in the Estimator
-         const sel = document.getElementById('est-proj-select');
-         const currentVal = sel.value; 
-         let html = '<option value="">-- Select Project --</option>';
-         projects.forEach(p => html += `<option value="${p.id}">${esc(p.title)}</option>`);
-         sel.innerHTML = html;
-         
-         // Restore previous selection if it still exists
-         if(currentVal) sel.value = currentVal; 
-         
-         updateEstItems(); 
-         calcEstimate(); 
-    }
-
-    // 5. Update Browser Tab Title (Context-Aware)
-    let title = APP_VER;
-    switch(id) {
-        case 'dashboard': title = "Dash | " + APP_VER; break;
-        case 'projects': title = "Projects | " + APP_VER; break;
-        case 'finance': title = "Cost | " + APP_VER; break;
-        case 'estimator': title = "Estimator | " + APP_VER; break;
-        case 'inventory': title = "Inv | " + APP_VER; break;
-        case 'hp': title = "HP Tools | " + APP_VER; break;
-        case 'exempt': title = "Exempt Log | " + APP_VER; break;
-        case 'logbook': title = "Logbook | " + APP_VER; break;
-    }
-    document.title = title;
-}
-    
-    function openModal(id) { 
-    document.getElementById(id).classList.add('active'); 
-    
-    // Clear New Project inputs when opening
-    if(id === 'projectModal') {
-        document.getElementById('pTitle').value = '';
-        document.getElementById('pDesc').value = '';
-        document.getElementById('pDate').value = '';
-        document.getElementById('pCost').value = '';
-        if(document.getElementById('pUic')) document.getElementById('pUic').value = '';
-        if(document.getElementById('pLoc')) document.getElementById('pLoc').value = '';
-    }
-
-    // --- FIX: POPULATE INVENTORY MODAL PROJECTS ---
-    if(id === 'invModal') {
-        const sel = document.getElementById('invProj');
-        sel.innerHTML = '<option value="">-- None --</option>'; 
-        projects.forEach(p => {
-            sel.innerHTML += `<option value="${p.id}">${esc(p.title)}</option>`;
-        });
-    }
-    // ----------------------------------------------
-
-    if(id === 'expenseModal' || id === 'allocModal') { 
-        const sel = document.getElementById(id === 'expenseModal' ? 'expProj' : 'allocProj'); 
-        sel.innerHTML = '<option value="">-- General --</option>'; 
-        projects.forEach(p => sel.innerHTML += `<option value="${p.id}">${esc(p.title)}</option>`); 
-        
-        if(id === 'expenseModal') {
-            document.getElementById('expDesc').value = '';
-            document.getElementById('expAmt').value = '';
-            document.getElementById('expDate').value = getTodayStr(); 
-        } else {
-            document.getElementById('allocDesc').value = '';
-            document.getElementById('allocAmt').value = '';
-            document.getElementById('allocDate').value = getTodayStr();
+                document.getElementById('chatInput').value=''; 
+                saveLocally(); 
+                render(); 
+            }
         }
     }
-}
+
+function nav(id, force=false) { 
+        // --- 1. SAFETY CHECK (Estimator Guard) ---
+        // If we are currently ON the estimator, AND trying to go somewhere else, 
+        // AND we haven't forced the move yet...
+        const currentView = document.querySelector('.view-section.active');
+        if(!force && currentView && currentView.id === 'view-estimator' && id !== 'estimator') {
+            // Check if there is actual work to lose
+            if(estItems.length > 0) {
+                // Use the custom confirmation modal
+                showConfirm(
+                    "You have unsaved line items in the estimator. Discard them?", 
+                    () => { 
+                        // User clicked "Confirm"
+                        resetEstimator(); // Clear the data
+                        nav(id, true);    // Call nav again, forcing the move
+                    },
+                    "Discard Unsaved Estimate?", 
+                    true // Show as 'Danger' (Red icon)
+                );
+                return; // Stop execution here until user decides
+            }
+        }
+        
+        window.scrollTo(0, 0);
+        document.querySelector('.main').scrollTop = 0;
+
+        // 2. Reset Sort Direction
+        sortDir = 1; 
+
+        // 3. Switch the Main View
+        document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active')); 
+        document.getElementById('view-' + id).classList.add('active'); 
+
+        // 4. Highlight the Sidebar Button
+        document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active')); 
+        const btn = document.getElementById('nav-' + (id === 'project-detail' ? 'proj' : id));
+        if(btn) btn.classList.add('active');
+
+        // 5. Specific Tool Initialization logic
+        if(id === 'hp') {
+            switchHpTab('decay');
+            loadHPState(); 
+        }
+
+        if(id === 'finance') {
+            switchFinTab('overview');
+        }
+
+        if(id === 'estimator') {
+             // Populate the project dropdown dynamically
+             const sel = document.getElementById('est-proj-select');
+             const currentVal = sel.value; 
+             let html = '<option value="">-- Select Project --</option>';
+             projects.forEach(p => html += `<option value="${p.id}">${esc(p.title)}</option>`);
+             sel.innerHTML = html;
+             
+             // Restore previous selection if valid
+             if(currentVal) sel.value = currentVal; 
+             
+             updateEstItems(); 
+             calcEstimate(); 
+        }
+
+        // 6. Update Browser Tab Title
+        let title = APP_VER;
+        switch(id) {
+            case 'dashboard': title = "Dash | " + APP_VER; break;
+            case 'projects': title = "Projects | " + APP_VER; break;
+            case 'finance': title = "Cost | " + APP_VER; break;
+            case 'estimator': title = "Estimator | " + APP_VER; break;
+            case 'inventory': title = "Inv | " + APP_VER; break;
+            case 'hp': title = "HP Tools | " + APP_VER; break;
+            case 'exempt': title = "Exempt Log | " + APP_VER; break;
+            case 'logbook': title = "Logbook | " + APP_VER; break;
+        }
+        document.title = title;
+    }
+    
+function openModal(id) { 
+        document.getElementById(id).classList.add('active'); 
+        
+        // --- Render Team Settings when opening the modal ---
+        if(id === 'settingsModal') {
+            renderTeamSettings();
+        }
+
+        if(id === 'projectModal') {
+            document.getElementById('pTitle').value = '';
+            document.getElementById('pDesc').value = '';
+            document.getElementById('pDate').value = '';
+            document.getElementById('pCost').value = '';
+            if(document.getElementById('pUic')) document.getElementById('pUic').value = '';
+            if(document.getElementById('pLoc')) document.getElementById('pLoc').value = '';
+        }
+
+        if(id === 'invModal') {
+            const sel = document.getElementById('invProj');
+            sel.innerHTML = '<option value="">-- None --</option>'; 
+            // Alphabetical Sort
+            const sortedP = [...projects].sort((a,b) => a.title.localeCompare(b.title));
+            sortedP.forEach(p => {
+                sel.innerHTML += `<option value="${p.id}">${esc(p.title)}</option>`;
+            });
+        }
+
+        if(id === 'expenseModal' || id === 'allocModal') { 
+            const sel = document.getElementById(id === 'expenseModal' ? 'expProj' : 'allocProj'); 
+            sel.innerHTML = '<option value="">-- General --</option>'; 
+            // Alphabetical Sort
+            const sortedP = [...projects].sort((a,b) => a.title.localeCompare(b.title));
+            sortedP.forEach(p => sel.innerHTML += `<option value="${p.id}">${esc(p.title)}</option>`); 
+            
+            if(id === 'expenseModal') {
+                document.getElementById('expDesc').value = '';
+                document.getElementById('expAmt').value = '';
+                document.getElementById('expDate').value = getTodayStr(); 
+            } else {
+                document.getElementById('allocDesc').value = '';
+                document.getElementById('allocAmt').value = '';
+                document.getElementById('allocDate').value = getTodayStr();
+            }
+        }
+    }
+
+let searchDebounce;
+    function handleSearch(val) {
+        clearTimeout(searchDebounce);
+        // Wait 300ms after typing stops before refreshing the view
+        searchDebounce = setTimeout(() => {
+            render(val);
+        }, 300);
+    }
 
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
     
@@ -3489,38 +4024,55 @@ function nav(id) {
         document.getElementById('exportText').value = data;
         openModal('exportModal');
     }
+
     function copyExport() {
         const copyText = document.getElementById("exportText");
         copyText.select();
         document.execCommand("copy");
         showToast("Copied to clipboard", "info");
     }
+
     function openImportModal() {
         document.getElementById('importText').value = '';
         openModal('importModal');
     }
+
     function runImport() {
         try {
             const raw = document.getElementById('importText').value;
+            if(!raw) throw new Error("No data pasted.");
+
             const d = JSON.parse(raw);
-            projects=d.projects||[]; inventory=d.inventory||[]; expenses=d.expenses||[]; allocations=d.allocations||[]; chatLog=d.chat||[]; team=d.team||[]; wikiText=d.wiki||""; 
-            hpState=d.hpState||{}; viewMode=d.viewMode||'list'; showComplete=d.showComplete||false; 
-            estItems=d.estItems||[]; exemptLog=d.exemptLog||[]; 
-            // Data Migration for Updates
-            projects.forEach(p => {
-                if(!p.updatesSent) {
-                    p.updatesSent = [];
-                    // Migrate old single date if exists
-                    if(p.updatesDate) {
-                        p.updatesSent.push(p.updatesDate);
-                        delete p.updatesDate;
-                    }
-                }
-            });
-            saveLocally(); render(); loadHPState();
-            closeModal('importModal');
-            showToast("Data Loaded Successfully");
-        } catch(e) { alert("Invalid Data Code."); }
+            
+            // SECURITY: Basic Schema Validation
+            if(!Array.isArray(d.projects) || !Array.isArray(d.inventory)) {
+                throw new Error("Invalid Data Structure: Missing core arrays.");
+            }
+
+            // Backup current data before overwriting in case of partial failure
+            const backup = localStorage.getItem('rad25_7_data');
+            
+            try {
+                projects=d.projects||[]; inventory=d.inventory||[]; expenses=d.expenses||[]; 
+                allocations=d.allocations||[]; chatLog=d.chat||[]; team=d.team||[]; 
+                wikiText=d.wiki||""; hpState=d.hpState||{}; 
+                estItems=d.estItems||[]; exemptLog=d.exemptLog||[]; 
+                
+                saveLocally(); 
+                render(); 
+                loadHPState();
+                closeModal('importModal');
+                showToast("Data Imported Successfully");
+            } catch (innerErr) {
+                // Restore backup if something went wrong during assignment/render
+                if(backup) localStorage.setItem('rad25_7_data', backup);
+                throw innerErr;
+            }
+
+        } catch(e) { 
+            // Use custom alert instead of browser alert
+            showAlert("<b>Import Failed:</b><br>" + e.message, "Error");
+        }
     }
 
     function saveLocally() { localStorage.setItem('rad25_7_data', JSON.stringify({projects,inventory,expenses,allocations,chat:chatLog,team,wiki:wikiText,hpState,viewMode,showComplete,estItems,exemptLog})); }
@@ -3583,10 +4135,13 @@ function nav(id) {
     loadHPState();
     updateEstItems(); 
     calcEstimate(); 
+
+    document.getElementById('sidebar-user-display').innerText = currentUser;
 }
     
 function resetData(ask=true) { 
-        if(!ask || confirm("Restore Examples?")) { 
+        // Helper function that performs the actual reset
+        const doReset = () => {
             projects = JSON.parse(JSON.stringify(STARTER_DATA.projects)); 
             inventory = JSON.parse(JSON.stringify(STARTER_DATA.inventory)); 
             expenses = JSON.parse(JSON.stringify(STARTER_DATA.expenses)); 
@@ -3594,16 +4149,44 @@ function resetData(ask=true) {
             chatLog = JSON.parse(JSON.stringify(STARTER_DATA.chat)); 
             team = STARTER_DATA.team; 
             wikiText = STARTER_DATA.wiki; 
-            
-            // FIX: This line was missing, so the log was always resetting to empty
             exemptLog = JSON.parse(JSON.stringify(STARTER_DATA.exemptLog || []));
             
             saveLocally(); 
-            if(ask) location.reload(); 
-        } 
+            
+            // Reload to ensure all states (like ID generators) reset cleanly
+            location.reload(); 
+        };
+
+        if(ask) {
+            // Use custom confirm modal
+            showConfirm(
+                "Reset all data to Example Defaults?<br><b>This cannot be undone.</b>", 
+                doReset, 
+                "Factory Reset", 
+                true // Danger style
+            );
+        } else {
+            doReset();
+        }
     }
 
-    function clearData() { if(confirm("Clear All?")) { projects=[]; inventory=[]; expenses=[]; allocations=[]; chatLog=[]; team=[]; wikiText=""; hpState={}; estItems=[]; exemptLog=[]; saveLocally(); render(); } }
+    function clearData() { 
+        showConfirm(
+            "Clear all application data?<br>This will wipe everything and cannot be undone.", 
+            () => { 
+                projects=[]; inventory=[]; expenses=[]; allocations=[]; 
+                chatLog=[]; team=[]; wikiText=""; hpState={}; 
+                estItems=[]; exemptLog=[]; 
+                
+                saveLocally(); 
+                render(); 
+                showToast("All Data Cleared");
+            }, 
+            "Clear All Data", 
+            true // Danger Red
+        );
+    }
+
     function toggleTheme() { const b=document.body; const newTheme = b.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; if(newTheme === 'dark') b.setAttribute('data-theme', 'dark'); else b.removeAttribute('data-theme'); localStorage.setItem('rad_theme', newTheme); }
 
 // --- GLOBAL SHORTCUTS & BEHAVIOR ---
