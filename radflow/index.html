@@ -57,37 +57,36 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
         } 
 
         /* --- BOTTOM NAV BAR (Floating Dock with Scroll Snap) --- */
-        .sidebar { 
-            position: fixed; 
-            bottom: 0; left: 0; 
-            width: 100%; 
-            height: 85px; 
-            z-index: 999; 
-            display: flex; /* Flex behavior */
-            flex-direction: row; 
-            flex-wrap: nowrap; 
-            overflow-x: auto; /* Enable scrolling */
-            padding: 10px 5px; 
-            padding-bottom: 15px; /* Space for scrollbar/home bar */
-            
-            background: rgba(255, 255, 255, 0.95); /* Semi-transparent */
-            backdrop-filter: blur(10px); /* Frosted glass effect */
-            border-top: 1px solid rgba(0,0,0,0.05);
-            border-right: none;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
-            
-            /* KEY FIX: Styled Scrollbar + Snapping */
-            scrollbar-width: thin; 
-            scrollbar-color: var(--border) transparent; /* Firefox */
-            scroll-snap-type: x mandatory; 
-            -webkit-overflow-scrolling: touch; /* Smooth iOS scroll */
-        }
+    .sidebar { 
+        position: fixed; 
+        bottom: 0; left: 0; 
+        width: 100%; 
+        height: 85px; 
+        z-index: 999; 
+        display: flex; /* Flex behavior */
+        flex-direction: row; 
+        flex-wrap: nowrap; 
+        overflow-x: auto; /* Enable scrolling */
+        padding: 10px 5px; 
+        padding-bottom: 15px; /* Space for scrollbar/home bar */
         
-        /* Webkit (Chrome/Safari) Scrollbar Styling */
-        .sidebar::-webkit-scrollbar {
-            height: 4px; /* Thin horizontal bar */
-            display: block; 
-        }
+        background: rgba(255, 255, 255, 0.95); /* Semi-transparent */
+        backdrop-filter: blur(10px); /* Frosted glass effect */
+        border-top: 1px solid rgba(0,0,0,0.05);
+        border-right: none;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+        
+        /* UPDATED: Hide Scrollbar but keep functionality */
+        scrollbar-width: none; 
+        -ms-overflow-style: none;
+        scroll-snap-type: x mandatory; 
+        -webkit-overflow-scrolling: touch; 
+    }
+    
+    /* UPDATED: Hide Scrollbar for Chrome/Safari */
+    .sidebar::-webkit-scrollbar {
+        display: none;
+    }
         .sidebar::-webkit-scrollbar-track { background: transparent; }
         .sidebar::-webkit-scrollbar-thumb {
             background: var(--border); 
@@ -1113,16 +1112,30 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     <div class="chat-input-area"><input type="text" id="chatInput" class="form-control" placeholder="Update team..." onkeypress="handleChat(event)"></div>
 </div>
 
+<div id="graveyardModal" class="modal-overlay">
+    <div class="modal" style="max-width:800px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3><i class="fa-solid fa-tombstone"></i> Project Graveyard</h3>
+            <button class="btn-sync" style="width:auto;" onclick="closeModal('graveyardModal')">Close</button>
+        </div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">
+            This is an archive of deleted projects. Records are read-only.
+        </p>
+        <div id="graveyard-list" style="max-height:500px; overflow-y:auto; border:1px solid var(--border); border-radius:6px;"></div>
+    </div>
+</div>
+
 <div id="settingsModal" class="modal-overlay">
     <div class="modal">
         <h3>System Settings</h3>
         
         <div style="margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:15px;">
             <h4 style="margin-bottom:10px; color:var(--text-muted); font-size:0.8rem; text-transform:uppercase;">Actions & Reports</h4>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                 <button class="btn-toggle" onclick="window.print()" style="margin:0; justify-content:center;"><i class="fa-solid fa-print"></i> Report</button>
                 <button class="btn-toggle" onclick="closeModal('settingsModal'); openExportModal()" style="margin:0; justify-content:center;"><i class="fa-solid fa-copy"></i> Export</button>
                 <button class="btn-toggle" onclick="closeModal('settingsModal'); openImportModal()" style="margin:0; justify-content:center;"><i class="fa-solid fa-paste"></i> Import</button>
+                <button class="btn-toggle" onclick="closeModal('settingsModal'); openGraveyard()" style="margin:0; justify-content:center;"><i class="fa-solid fa-book-skull"></i> Graveyard</button>
             </div>
         </div>
 
@@ -1615,6 +1628,7 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
                         <li><b>Theme:</b> Toggle Dark/Light mode in Settings. This preference is saved to your browser.</li>
                         <li><b>Live Editing:</b> Most tables (Expenses, Inventory, Logbook) support "Click-to-Edit". Changes are saved instantly.</li>
                         <li><b>Reset:</b> "Reset to Defaults" loads the example training data. "Clear All" wipes the database clean.</li>
+                        <li><b>Graveyard:</b> Deleted projects are archived in the Graveyard (accessible via Settings). You can view their final status or <b>Revive</b> them if deleted by mistake.</li>
                     </ul>
                 </div>
 
@@ -1624,15 +1638,59 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
 </div>
 
 <script>
-    const APP_VER = "RadFlow v25.7";
+
+    const APP_VER = "RadFlow v26.0";
+
+    // --- MATH HELPER ---
+    // Rounds to 2 decimal places to prevent floating point errors (e.g. 10.99999 -> 11.00)
+    const roundMoney = (num) => {
+        return Math.round((num + Number.EPSILON) * 100) / 100;
+    };
 
     // --- CUSTOM UI HELPERS ---
-    
+       
     function showAlert(msg, title="System Alert") {
         document.getElementById('cmHead').innerHTML = `<i class="fa-solid fa-circle-info" style="color:var(--info)"></i> <span>${title}</span>`;
         document.getElementById('cmBody').innerHTML = msg;
         document.getElementById('cmFoot').innerHTML = `<button class="btn" onclick="closeCustomAlert()">OK</button>`;
         document.getElementById('customAlertOverlay').style.display = 'flex';
+    }
+
+    function showPrompt(msg, onConfirm, title="Input Required", placeholder="", isDanger=false) {
+        // 1. Set Title & Icon
+        const icon = isDanger ? '<i class="fa-solid fa-trash-can"></i>' : '<i class="fa-solid fa-pen-to-square"></i>';
+        const color = isDanger ? 'var(--danger)' : 'var(--accent)';
+        
+        document.getElementById('cmHead').innerHTML = `<span style="color:${color}">${icon}</span> <span>${title}</span>`;
+
+        // 2. Inject Message + Input Field
+        document.getElementById('cmBody').innerHTML = `
+            <div style="margin-bottom:15px; color:var(--text-muted);">${msg}</div>
+            <input id="cmInput" class="form-control" placeholder="${placeholder}" autocomplete="off">
+        `;
+
+        // 3. Configure Buttons
+        const btnStyle = isDanger ? 'background:var(--danger)' : 'background:var(--accent)';
+        const yesBtn = `<button class="btn" id="btnPromptYes" style="${btnStyle}">Confirm</button>`;
+        const noBtn = `<button class="btn btn-sec" onclick="closeCustomAlert()">Cancel</button>`;
+        
+        document.getElementById('cmFoot').innerHTML = noBtn + yesBtn;
+        document.getElementById('customAlertOverlay').style.display = 'flex';
+
+        // 4. Focus Input & Handle Enter Key
+        const input = document.getElementById('cmInput');
+        setTimeout(() => input.focus(), 50);
+        
+        input.onkeydown = function(e) {
+            if(e.key === 'Enter') document.getElementById('btnPromptYes').click();
+        };
+
+        // 5. Handle Confirm Click
+        document.getElementById('btnPromptYes').onclick = function() {
+            const val = input.value.trim(); // Capture text
+            closeCustomAlert();
+            if(onConfirm) onConfirm(val); // Send text back to callback
+        };
     }
 
     function showConfirm(msg, onYes, title="Confirmation Required", isDanger=false) {
@@ -1985,7 +2043,7 @@ const STARTER_DATA = {
         wiki: "LOGBOOK:\n- Use this space for daily operational notes.\n- 01/15: Annual calibration due for meter SN: 44521.\n- 02/20: Updated waste acceptance criteria received from WCS.\n- 09/01: Tritium exit sign project approved for Rota."
     };
 
-    let projects = []; let inventory = []; let expenses = []; let allocations = []; let chatLog = []; let team = []; let wikiText = "";
+    let projects = []; let deletedProjects = []; let inventory = []; let expenses = []; let allocations = []; let chatLog = []; let team = []; let wikiText = "";
 
     let references = [];
 
@@ -2317,12 +2375,12 @@ function calculateDecay() {
         if(!qty || !rate) return;
         const itemData = COST_DB[cat][itemKey];
         estItems.push({
-            id: Date.now(),
+            id: Date.now() + Math.floor(Math.random() * 1000),
             name: itemData.name,
             cat: cat.charAt(0).toUpperCase() + cat.slice(1),
             rate: rate,
             qty: qty,
-            total: rate * qty
+            total: roundMoney(rate * qty)
         });
         document.getElementById('est-qty').value = '';
 
@@ -2368,7 +2426,7 @@ function saveEstimateAction(mode) {
 
         if (mode === 'funding') {
             allocations.push({
-                id: Date.now(),
+                id: Date.now() + Math.floor(Math.random() * 1000),
                 projId: pid,
                 date: getTodayStr(),
                 amount: parseFloat(currentTotal.toFixed(2)),
@@ -2383,7 +2441,7 @@ function saveEstimateAction(mode) {
         } 
         else if (mode === 'expense') {
             expenses.push({
-                id: Date.now(),
+                id: Date.now() + Math.floor(Math.random() * 1000),
                 projId: pid,
                 desc: "Estimated Cost",
                 amount: parseFloat(currentTotal.toFixed(2)),
@@ -2398,7 +2456,7 @@ function saveEstimateAction(mode) {
         } 
         else if (mode === 'estimate') {
             expenses.push({
-                id: Date.now(),
+                id: Date.now() + Math.floor(Math.random() * 1000),
                 projId: pid,
                 desc: "Cost Estimate (Draft)",
                 amount: parseFloat(currentTotal.toFixed(2)),
@@ -2597,7 +2655,17 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
             current.setDate(diff);
         }
 
+        let loopGuard = 0; // 1. Initialize counter
+        const MAX_LOOPS = 1000; // 2. Set a safe limit (1000 months is ~83 years)
+
         while(current <= maxDate) {
+            // 3. Check the guard
+            if(loopGuard++ > MAX_LOOPS) {
+                console.warn("Chart generation stopped: Date range is too large or invalid.");
+                showToast("Date range too wide to chart", "error"); // Optional: Alert the user
+                break; 
+            }
+            
             let lbl, nextDate;
             const y = current.getFullYear();
             
@@ -2917,10 +2985,10 @@ function normalizeIso(input) {
         document.getElementById('dash-inv').innerHTML = invListHtml;
 
         // --- 5. GLOBAL FINANCIALS (For Dashboard Widget ONLY) ---
-        // We use global 'allocations' and 'expenses' here for the "Snapshot"
-        const globalBudg = allocations.reduce((s, a) => s + (parseFloat(a.amount)||0), 0);
-        const globalSpent = expenses.filter(e => e.status !== 'Estimate').reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
-        const globalRem = globalBudg - globalSpent;
+        // Note: We wrap the final SUM in roundMoney
+        const globalBudg = roundMoney(allocations.reduce((s, a) => s + (parseFloat(a.amount)||0), 0));
+        const globalSpent = roundMoney(expenses.filter(e => e.status !== 'Estimate').reduce((s, e) => s + (parseFloat(e.amount)||0), 0));
+        const globalRem = roundMoney(globalBudg - globalSpent);
         const globalActive = new Set(expenses.map(e => e.projId)).size;
         
         const dashSources = {};
@@ -2965,9 +3033,9 @@ function normalizeIso(input) {
         const finAllocs = allocations.filter(a => isDateInScope(a.date));
 
         // 3. Calculate Totals based on FILTERED data
-        const finTotalBudg = finAllocs.reduce((s, a) => s + (parseFloat(a.amount)||0), 0);
-        const finTotalSpent = finExps.filter(e => e.status !== 'Estimate').reduce((s, e) => s + (parseFloat(e.amount)||0), 0);
-        const finRemaining = finTotalBudg - finTotalSpent;
+        const finTotalBudg = roundMoney(finAllocs.reduce((s, a) => s + (parseFloat(a.amount)||0), 0));
+        const finTotalSpent = roundMoney(finExps.filter(e => e.status !== 'Estimate').reduce((s, e) => s + (parseFloat(e.amount)||0), 0));
+        const finRemaining = roundMoney(finTotalBudg - finTotalSpent);
         const finActiveSpenders = new Set(finExps.map(e => e.projId)).size;
         
         // 4. Update Finance View Top Cards
@@ -3644,7 +3712,7 @@ function viewProject(id) {
         const original = expenses.find(x => x.id === id);
         if(original) {
             const copy = JSON.parse(JSON.stringify(original));
-            copy.id = Date.now();
+            copy.id = Date.now() + Math.floor(Math.random() * 1000);
 
             copy.updated = Date.now();
 
@@ -3708,7 +3776,7 @@ function viewProject(id) {
             existing.updated = Date.now();
 
         } else {
-            allocations.push({ id: Date.now(), projId: pid, date: getTodayStr(), amount: amount, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" });
+            allocations.push({ id: Date.now() + Math.floor(Math.random() * 1000), projId: pid, date: getTodayStr(), amount: amount, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" });
         }
         saveLocally(); render();
     }
@@ -3790,13 +3858,11 @@ function getSortedData(data, tableId) {
 
         // Special Sort: Dose (Handle "Unknown")
         if (sortState.col === 3) {
-            // Helper: Convert to number, or -1 if "Unknown"
-            const val = (v) => {
-                if (typeof v === 'number') return v;
+            const getVal = (v) => {
                 const f = parseFloat(v);
-                return isNaN(f) ? -1 : f;
+                return isNaN(f) ? -1 : f; // Treat text/unknown as -1
             };
-            return (val(a.dose) - val(b.dose)) * sortState.dir;
+            return (getVal(a.dose) - getVal(b.dose)) * sortState.dir;
         }
         
         valA = a[keys[sortState.col]];
@@ -3969,53 +4035,109 @@ function cycPrio(pId, tId) {
         saveLocally(); viewProject(pId); 
     }
     
-function cloneProject(id) { 
-    const original = projects.find(x => x.id === id); 
-    const copy = JSON.parse(JSON.stringify(original)); 
+function cloneProject(id) {
+    const original = projects.find(x => x.id === id);
     
-    copy.id = Date.now(); 
+    // 1. Create the Copy (Standard Logic)
+    const copy = JSON.parse(JSON.stringify(original));
+    
+    // GENERATE NEW ID (Using random logic)
+    copy.id = Date.now() + Math.floor(Math.random() * 1000); 
+    
     copy.title = "Copy of " + copy.title; 
-
     copy.updated = Date.now();
-
     copy.status = "Planning"; 
     copy.health = "green"; 
     
-    // --- FIX: RESET DATES & IDs ---
-    copy.due = "";         // Don't inherit old deadlines
-    copy.jmcId = "";       // Clear unique tracking IDs
+    // Reset fields
+    copy.due = "";         
+    copy.jmcId = "";       
     copy.rcn = "";
     copy.updatesSent = []; 
-    // ------------------------------
-
     copy.links = [];
     copy.tasks.forEach(t => t.done = false); 
     
-    projects.push(copy); 
-    
-    // Copy the Initial Budget if it exists
-    const base = allocations.find(a => a.projId === id && (a.type === 'base' || a.desc === 'Initial Budget'));
-    if (base) {
-        allocations.push({ 
-            id: Date.now() + 5, 
-            projId: copy.id, 
-            date: getTodayStr(), 
-            amount: base.amount, 
-            desc: "Initial Budget", 
-            type: 'base', 
-            fundSource: base.fundSource,
-            updated: Date.now()
-        });
+    // 2. Scan for Active Inventory in the Old Project
+    // We only care about items that are NOT 'Shipped' (i.e. Stored or Staged)
+    const activeInv = inventory.filter(i => i.projId === id && i.status !== 'Shipped');
+
+    // 3. Define the Final Save Step (Wrapped in a function to reuse it)
+    const finalizeClone = (transferInv = false) => {
+        projects.push(copy);
+        
+        // Copy Initial Budget if exists
+        const base = allocations.find(a => a.projId === id && (a.type === 'base' || a.desc === 'Initial Budget'));
+        if (base) {
+            allocations.push({ 
+                id: Date.now() + Math.floor(Math.random() * 1000), 
+                projId: copy.id, 
+                date: getTodayStr(), 
+                amount: base.amount, 
+                desc: "Initial Budget", 
+                type: 'base', 
+                fundSource: base.fundSource,
+                updated: Date.now()
+            });
+        }
+
+        // --- THE TRANSFER LOGIC ---
+        if(transferInv && activeInv.length > 0) {
+            activeInv.forEach(item => {
+                item.projId = copy.id; // Move item to new project
+                item.updated = Date.now();
+            });
+            logSystemAction(`Project <b>${esc(original.title)}</b> cloned to <b>${esc(copy.title)}</b> with ${activeInv.length} inventory items transferred.`);
+            showToast(`Project Cloned & ${activeInv.length} Items Moved`); 
+        } else {
+            logSystemAction(`Project <b>${esc(original.title)}</b> cloned to <b>${esc(copy.title)}</b>.`);
+            showToast("Project Cloned (Inventory left behind)"); 
+        }
+
+        saveLocally(); 
+        render();
+        viewProject(copy.id); 
+    };
+
+    // 4. Decision Time
+    if(activeInv.length > 0) {
+        // If we have inventory, ASK the user
+        showConfirm(
+            `This project has <b>${activeInv.length}</b> active inventory items.<br>Move them to the new project?`, 
+            () => finalizeClone(true), // Yes: Transfer
+            "Transfer Inventory?",
+            false // Not a 'danger' alert, just a question
+        );
+        
+        // Inject the custom third button
+        setTimeout(() => {
+            const footer = document.getElementById('cmFoot');
+            const cloneEmptyBtn = document.createElement('button');
+            cloneEmptyBtn.className = 'btn';
+            
+            // --- UPDATED STYLES HERE ---
+            // Use a standard blue that fits the theme, and white text
+            cloneEmptyBtn.style.background = 'var(--info)';
+            cloneEmptyBtn.style.color = '#fff';
+            cloneEmptyBtn.style.border = 'none';
+            // Add a slight hover effect
+            cloneEmptyBtn.onmouseover = () => { cloneEmptyBtn.style.background = '#0056b3'; };
+            cloneEmptyBtn.onmouseout = () => { cloneEmptyBtn.style.background = 'var(--info)'; };
+            // ---------------------------
+
+            cloneEmptyBtn.style.marginRight = '10px';
+            cloneEmptyBtn.innerText = "No, Clone Empty";
+            cloneEmptyBtn.onclick = () => {
+                closeCustomAlert();
+                finalizeClone(false); // Run clone WITHOUT transfer
+            };
+            // Insert before the Confirm button
+            footer.insertBefore(cloneEmptyBtn, footer.lastElementChild);
+        }, 50);
+
+    } else {
+        // No inventory? Just clone immediately.
+        finalizeClone(false);
     }
-
-    logSystemAction(`Project <b>${esc(original.title)}</b> cloned to <b>${esc(copy.title)}</b>.`);
-
-    saveLocally(); 
-
-    render();
-
-    viewProject(copy.id); 
-    showToast("Project Cloned"); 
 }
     
     function togTask(pId, tId) { 
@@ -4036,7 +4158,7 @@ function addTask(pId) {
         const a = document.getElementById('newTA').value; 
         if(t) { 
             const p = projects.find(x=>x.id===pId);
-            p.tasks.push({id:Date.now(), text:t, done:false, assign:a, prio:'med'}); 
+            p.tasks.push({id: Date.now() + Math.floor(Math.random() * 1000), text:t, done:false, assign:a, prio:'med'}); 
 
             p.updated = Date.now();
             
@@ -4061,36 +4183,123 @@ function delTask(pId, tId) {
         }
     }
     
-    function delProj(id) { 
-        const p = projects.find(x => x.id === id);
-        if(!p) return;
-        
-        showConfirm(
-            `Permanently delete project <b>${esc(p.title)}</b>?<br>This will remove all associated expenses and funding records.`,
-            () => {
-                logSystemAction(`Project <b>${esc(p.title)}</b> deleted.`);
+function delProj(id) { 
+    const p = projects.find(x => x.id === id);
+    if(!p) return;
+    
+    showPrompt(
+        `Permanently delete <b>${esc(p.title)}</b>?<br>This will archive the project and remove active records.<br><br><b>Reason for deletion:</b>`,
+        (val) => {
+            const reason = val || "No reason provided";
 
-                registerDeletion(id);
+            // 1. CAPTURE DATA SNAPSHOT (So we can Revive it later)
+            const snapExpenses = expenses.filter(x => x.projId === id);
+            const snapAllocations = allocations.filter(x => x.projId === id);
+
+            // 2. Archive to Graveyard
+            deletedProjects.push({
+                id: p.id,
+                title: p.title,
+                desc: p.desc,
+                status: p.status,
+                health: p.health,
+
+                tasks: p.tasks || [], 
+                links: p.links || [],
+
+                // Save the snapshot data inside the tombstone
+                snapshotData: {
+                    expenses: snapExpenses,
+                    allocations: snapAllocations
+                },
+                deletedBy: currentUser,
+                deletedDate: Date.now(),
+                deleteReason: reason
+            });
+
+            logSystemAction(`Project <b>${esc(p.title)}</b> deleted.`);
+            registerDeletion(id);
+            
+            // 3. Delete Active Records
+            projects = projects.filter(x => x.id !== id); 
+            expenses = expenses.filter(x => x.projId !== id); 
+            allocations = allocations.filter(x => x.projId !== id);
+            
+            // Unlink Inventory (We don't snapshot this, as items physically move)
+            inventory.forEach(i => { if(i.projId === id) i.projId = null; });
+            
+            saveLocally(); 
+            render(); 
+            nav('dashboard'); 
+            showToast("Project Deleted & Archived");
+        },
+        "Delete Project", 
+        "e.g. Cancelled by sponsor...", 
+        true 
+    );
+}
+
+function reviveProject(id) {
+    // 1. Find the Corpse
+    const graveIndex = deletedProjects.findIndex(x => x.id === id);
+    if(graveIndex === -1) return;
+    
+    const corpse = deletedProjects[graveIndex];
+
+    showConfirm(
+        `Revive project <b>${esc(corpse.title)}</b>?<br>This will restore the project and its financial records to the active dashboard.`,
+        () => {
+            // 2. Restore Project Shell
+            const restored = {
+                id: corpse.id,
+                title: corpse.title,
+                desc: corpse.desc,
+                status: 'Planning', 
+                health: corpse.health || 'green',
+                due: "", 
+                updated: Date.now(),
                 
-                // 1. Remove data from all arrays
-                projects = projects.filter(x=>x.id!==id); 
-                expenses = expenses.filter(x=>x.projId!==id); 
-                allocations = allocations.filter(x=>x.projId!==id);
-                inventory.forEach(i => { if(i.projId === id) i.projId = null; });
+                // Restore metadata
+                uic: corpse.uic || "",
+                location: corpse.location || "",
+                region: corpse.region || "",
+                poc: corpse.poc || "",
+                mipr: corpse.mipr || "",
+                jmcId: corpse.jmcId || "",
+                contractor: corpse.contractor || "",
+                contractStatus: corpse.contractStatus || "Pre-Prop",
                 
-                saveLocally(); 
-                
-                // 2. Re-render the app so the list updates immediately
-                render(); 
-                
-                // 3. Go back to Dashboard
-                nav('dashboard'); 
-                showToast("Project Deleted", "error");
-            },
-            "Delete Project",
-            true // Danger Red
-        );
-    }
+                // RESTORE TASKS & LINKS ---
+                tasks: corpse.tasks || [], 
+                links: corpse.links || []
+
+            };
+            projects.push(restored);
+
+            // 3. Restore Financials (If snapshot exists)
+            if(corpse.snapshotData) {
+                if(corpse.snapshotData.expenses) {
+                    expenses.push(...corpse.snapshotData.expenses);
+                }
+                if(corpse.snapshotData.allocations) {
+                    allocations.push(...corpse.snapshotData.allocations);
+                }
+            }
+
+            // 4. Remove from Graveyard
+            deletedProjects.splice(graveIndex, 1);
+
+            logSystemAction(`Project <b>${esc(corpse.title)}</b> was revived from the graveyard.`);
+            
+            saveLocally();
+            render();
+            closeModal('graveyardModal');
+            showToast("Project Revived");
+            viewProject(restored.id);
+        },
+        "Revive Project"
+    );
+}
     
     // Using sanitizer in addLink
     function addLink(pId) { 
@@ -4134,7 +4343,7 @@ function addProject() {
         const popE = document.getElementById('pPopEnd').value;
 
         if(t) { 
-            const pid = Date.now();
+            const pid = Date.now() + Math.floor(Math.random() * 1000);
             projects.push({
                 id: pid, 
                 title: t, 
@@ -4166,7 +4375,7 @@ function addProject() {
             // Create Initial Budget Allocation if cost > 0
             if(c > 0) {
                 allocations.push({
-                    id: Date.now()+1, 
+                    id: Date.now() + Math.floor(Math.random() * 1000),
                     projId: pid, 
                     date: dt || getTodayStr(), 
                     amount: c, 
@@ -4207,7 +4416,7 @@ function addExpense() {
         }
 
         expenses.push({
-            id: Date.now(), 
+            id: Date.now() + Math.floor(Math.random() * 1000),
             projId: pid, 
             desc: desc, 
             amount: parseFloat(amt), 
@@ -4254,7 +4463,7 @@ function addExpense() {
         }
 
         allocations.push({
-            id:Date.now(), 
+            id: Date.now() + Math.floor(Math.random() * 1000),
             projId:pid, 
             desc:desc, 
             amount:parseFloat(amt), 
@@ -4466,6 +4675,55 @@ function setCurrentUser(val) {
 
         p.links.splice(idx, 1); saveLocally(); viewProject(pId); }
     
+function openGraveyard() {
+    const list = document.getElementById('graveyard-list');
+    
+    if(deletedProjects.length === 0) {
+        list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">The graveyard is empty. No projects have been deleted.</div>';
+    } else {
+        // Sort by deletion date (newest on top)
+        const sorted = [...deletedProjects].sort((a,b) => b.deletedDate - a.deletedDate);
+        
+        list.innerHTML = `
+        <table class="sci-table">
+            <thead>
+                <tr>
+                    <th>Project</th>
+                    <th>Deleted By</th>
+                    <th>Date</th>
+                    <th>Reason</th>
+                    <th style="text-align:center;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${sorted.map(p => {
+                    const dateStr = new Date(p.deletedDate).toLocaleDateString();
+                    // Check if we have snapshot data to indicate a "Full" restore is possible
+                    const hasData = p.snapshotData ? '<i class="fa-solid fa-database" title="Has Financial Data" style="margin-left:5px; color:var(--info); font-size:0.7rem;"></i>' : '';
+                    
+                    return `
+                    <tr>
+                        <td>
+                            <div style="font-weight:bold;">${esc(p.title)} ${hasData}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">Last Status: ${p.status}</div>
+                        </td>
+                        <td>${esc(p.deletedBy)}</td>
+                        <td style="font-size:0.8rem;">${dateStr}</td>
+                        <td style="font-size:0.8rem; font-style:italic; color:var(--text-muted);">${esc(p.deleteReason)}</td>
+                        <td style="text-align:center;">
+                            <button class="btn-rect" onclick="reviveProject(${p.id})" style="background:var(--bg-input); color:var(--accent); border-color:var(--accent);">
+                                <i class="fa-solid fa-trash-arrow-up"></i> Revive
+                            </button>
+                        </td>
+                    </tr>`;
+                }).join('')}
+            </tbody>
+        </table>`;
+    }
+    
+    openModal('graveyardModal');
+}
+
     function renderTeamSettings() { 
         // 1. Render the Delete List
         document.getElementById('teamList').innerHTML = team.map((m, i) => 
@@ -4542,7 +4800,7 @@ function setCurrentUser(val) {
         if(!t || !u) { showToast("Title and URL required", "error"); return; }
 
         references.push({
-            id: Date.now(),
+            id: Date.now() + Math.floor(Math.random() * 1000),
             title: t,
             url: formatLink(u), // Use existing sanitizer
             desc: d,
@@ -4739,7 +4997,13 @@ let searchDebounce;
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
     
     function openExportModal() { 
-        const data = JSON.stringify({projects,inventory,expenses,allocations,chat:chatLog, team, wiki:wikiText, hpState, viewMode, showComplete, estItems, exemptLog}); 
+        const data = JSON.stringify({
+            projects, inventory, expenses, allocations, 
+            chat: chatLog, team, wiki: wikiText, 
+            hpState, viewMode, showComplete, estItems, exemptLog,
+            deletedProjects 
+        });
+
         document.getElementById('exportText').value = data;
         openModal('exportModal');
     }
@@ -4832,6 +5096,8 @@ let searchDebounce;
             mergeList(allocations, d.allocations);
             mergeList(exemptLog, d.exemptLog);
 
+            mergeList(deletedProjects, d.deletedProjects || []);
+
             mergeList(references, d.references);
 
             // Simple Lists (Append Only)
@@ -4891,7 +5157,7 @@ let searchDebounce;
         projects, inventory, expenses, allocations, 
         chat: chatLog, team, wiki: wikiText, 
         hpState, viewMode, showComplete, estItems, exemptLog,
-        tombstones
+        tombstones, deletedProjects
     })); 
 }
 
@@ -4931,6 +5197,8 @@ let searchDebounce;
 
             // Load Tombstones
             tombstones = d.tombstones || [];
+
+            deletedProjects = d.deletedProjects || [];
 
             viewMode=d.viewMode||'list'; showComplete=d.showComplete||false; 
 
