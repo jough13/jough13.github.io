@@ -1208,8 +1208,10 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
 </div>
 
 <div id="projectModal" class="modal-overlay">
-    <div class="modal" style="max-width:600px;"> <h3>New Project</h3>
-        <input id="pTitle" class="form-control" placeholder="Project Name (e.g. Lab 4 Cleanout)">
+    <div class="modal" style="max-width:600px;"> 
+        <h3>New Project</h3>
+        
+        <input id="pTitle" class="form-control" placeholder="Project Name (e.g. Lab 4 Cleanout)" style="font-weight:bold;">
         <input id="pDesc" class="form-control" placeholder="Brief Description">
         
         <div class="input-grid">
@@ -1243,7 +1245,7 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
         <div class="input-grid">
             <div><label style="font-size:0.7rem; color:var(--text-muted)">MIPR #</label><input id="pMipr" class="form-control" placeholder="N000..."></div>
             <div><label style="font-size:0.7rem; color:var(--text-muted)">JMC ID</label><input id="pJmc" class="form-control" placeholder="Tracking #"></div>
-            <div><label style="font-size:0.7rem; color:var(--text-muted)">UIC</label><input id="pUic" class="form-control" placeholder="N00000"></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">INITIAL BUDGET ($)</label><input id="pCost" type="number" step="0.01" class="form-control" placeholder="0.00"></div>
         </div>
 
         <div class="input-grid">
@@ -1264,14 +1266,18 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
             </div>
         </div>
         
-        <div style="margin-top:10px;">
-            <label style="font-size:0.7rem; color:var(--text-muted)">INITIAL BUDGET ($)</label>
-            <input id="pCost" type="number" step="0.01" class="form-control" placeholder="0.00">
-        </div>
-        
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
-            <button class="btn-sync" style="width:auto;" onclick="closeModal('projectModal')">Cancel</button>
-            <button class="btn" onclick="addProject()">Save Project</button>
+            <button class="btn-sync" 
+                    style="width:140px; height:38px; justify-content:center; align-items:center; margin:0;" 
+                    onclick="closeModal('projectModal')">
+                Cancel
+            </button>
+            
+            <button class="btn" 
+                    style="width:140px; height:38px; display:flex; justify-content:center; align-items:center; border:1px solid transparent; margin:0;" 
+                    onclick="addProject()">
+                Save Project
+            </button>
         </div>
     </div>
 </div>
@@ -1396,9 +1402,18 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
             </div>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; gap:10px;">
-            <button class="btn-sync" style="width:auto;" onclick="closeModal('invModal')">Cancel</button>
-            <button class="btn" onclick="addInventory()">Log</button>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:15px;">
+            <button class="btn-sync" 
+                    style="width:140px; height:38px; justify-content:center; align-items:center; margin:0;" 
+                    onclick="cancelAddInventory()">
+                Cancel
+            </button>
+            
+            <button class="btn" 
+                    style="width:140px; height:38px; display:flex; justify-content:center; align-items:center; border:1px solid transparent; margin:0;" 
+                    onclick="addInventory()">
+                Add Item
+            </button>
         </div>
     </div>
 </div>
@@ -3637,12 +3652,16 @@ let rollupHtml = budgetData.map(row => {
             </tr>`;
         }).join('');
 
-// --- UPDATED INVENTORY ROW GENERATION ---
+        // --- UPDATED INVENTORY ROW GENERATION ---
         const sortedInv = getSortedData(filteredInv, 'table-inv');
         
-        // WRAPPER DIV FOR HORIZONTAL SCROLL
+        // 1. CAPTURE CURRENT SCROLL (Fix for jumping)
+        const invScrollBox = document.getElementById('inv-table-container');
+        const prevScroll = invScrollBox ? invScrollBox.scrollLeft : 0;
+
+        // WRAPPER DIV FOR HORIZONTAL SCROLL (Added ID 'inv-table-container')
         const tableHtml = `
-        <div style="overflow-x:auto; white-space:nowrap; border:1px solid var(--border); border-radius:6px;">
+        <div id="inv-table-container" style="overflow-x:auto; white-space:nowrap; border:1px solid var(--border); border-radius:6px;">
             <table class="sci-table" id="table-inv" style="margin:0;">
                 <thead>
                     <tr>
@@ -3722,6 +3741,11 @@ let rollupHtml = budgetData.map(row => {
         </div>`;
         
         document.getElementById('full-inv-list').innerHTML = tableHtml;
+
+        // 2. RESTORE SCROLL (Apply captured value)
+        if(document.getElementById('inv-table-container')) {
+            document.getElementById('inv-table-container').scrollLeft = prevScroll;
+        }
         
         document.getElementById('chatFeed').innerHTML = chatLog.map(c => 
             `<div class="msg"><div class="msg-meta"><span>${esc(c.user)}</span><span>${c.time}</span></div><div>${c.user === 'System' ? c.text : esc(c.text)}</div></div>`
@@ -3859,15 +3883,16 @@ function viewProject(id) {
     // 4. Generate Lists
     const teamOpts = team.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
     
-    // Inventory Assets (Now with Trash Icon)
+    // Inventory Assets (Updated with Quantity & "ea." label)
     const assignedItems = inventory.filter(i => i.projId === id);
     const assetsHtml = assignedItems.length ? assignedItems.map(i => `
         <div class="list-item" style="font-size:0.8rem; display:flex; justify-content:space-between; align-items:center;">
              <div style="cursor:pointer; flex-grow:1;" onclick="viewInventory('${jsEsc(i.id)}')">
                 <span style="font-weight:bold; color:var(--text-main);"><i class="fa-solid fa-box"></i> ${esc(i.id)}:</span> 
                 <span>${esc(i.desc || 'No description')}</span>
-                <div style="font-size:0.75rem; color:var(--text-muted);">
-                    ${esc(i.iso)} | ${esc(i.act)} | ${i.dose} mR/hr
+                
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                    ${esc(i.iso)} | ${esc(i.act)} ea. | <b style="color:var(--text-main);">Qty: ${i.qty || 1}</b> | ${i.dose} mR/hr
                 </div>
             </div>
             
@@ -4506,6 +4531,9 @@ function updItem(type, id, key, val, elem) {
         if (type === 'inventory') { 
             const i = inventory.find(x => x.id == id); 
             if(key === 'iso') val = normalizeIso(val);
+
+            if(key === 'qty') val = parseFloat(val) || 0;
+
             if(key === 'fill') {
                 val = parseInt(val);
                 if(isNaN(val)) val = 0;
@@ -4784,16 +4812,9 @@ function delProj(id) {
 
             // 2. Archive to Graveyard
             deletedProjects.push({
-                id: p.id,
-                title: p.title,
-                desc: p.desc,
-                status: p.status,
-                health: p.health,
-
-                tasks: p.tasks || [], 
-                links: p.links || [],
-
-                // Save the snapshot data inside the tombstone
+                ...p, // <--- Copies uic, poc, mipr, etc. automatically.
+                
+                // Overwrite/Add specific archive metadata
                 snapshotData: {
                     expenses: snapExpenses,
                     allocations: snapAllocations
@@ -4836,34 +4857,20 @@ function reviveProject(id) {
         `Revive project <b>${esc(corpse.title)}</b>?<br>This will restore the project and its financial records to the active dashboard.`,
         () => {
             // 2. Restore Project Shell
+            // 2. Restore Project Shell
             const restored = {
-                id: corpse.id,
-                title: corpse.title,
-                desc: corpse.desc,
+                ...corpse, // <--- COPIES EVERYTHING (Logistics, POCs, Dates, Notes, etc.)
+                
+                // Reset status for a clean revival
                 status: 'Planning', 
                 health: corpse.health || 'green',
-                due: "", 
                 updated: Date.now(),
                 
-                // Restore metadata
-                uic: corpse.uic || "",
-                location: corpse.location || "",
-                region: corpse.region || "",
-                poc: corpse.poc || "",
-                pocEmail: corpse.pocEmail || "",
-                pocPhone: corpse.pocPhone || "",
-                poc2: corpse.poc2 || "",
-                pocEmail2: corpse.pocEmail2 || "",
-                pocPhone2: corpse.pocPhone2 || "",
-                mipr: corpse.mipr || "",
-                jmcId: corpse.jmcId || "",
-                contractor: corpse.contractor || "",
-                contractStatus: corpse.contractStatus || "Pre-Prop",
-                
-                // RESTORE TASKS & LINKS ---
-                tasks: corpse.tasks || [], 
-                links: corpse.links || []
-
+                // Strip out the graveyard metadata so it looks like a normal project again
+                snapshotData: undefined,
+                deletedBy: undefined,
+                deletedDate: undefined,
+                deleteReason: undefined
             };
             projects.push(restored);
 
@@ -5143,34 +5150,59 @@ function addExpense() {
         }, "Confirm Deletion", true);
     }
     
+// --- NEW: Helper to Clear & Close ---
+function cancelAddInventory() {
+    // 1. Reset Core Fields
+    document.getElementById('invId').value = '';
+    document.getElementById('invDesc').value = ''; 
+    document.getElementById('invIso').value = 'Co-60'; 
+    
+    document.getElementById('invIsoCustom').value = '';
+    document.getElementById('invIsoCustom').style.display = 'none';
+    
+    document.getElementById('invAct').value = '';
+    document.getElementById('invDose').value = '';
+    document.getElementById('invFill').value = '0';
+    document.getElementById('invFillLabel').innerText = '0%';
+    document.getElementById('invDate').value = '';
+
+    // 2. Reset Extended Fields
+    const extras = ['invNsn','invWeight','invVol','invLicNum','invMfr','invSerial','invLoc','invPhys','invSsdr','invConst'];
+    extras.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = '';
+    });
+
+    // 3. Reset Dropdowns
+    document.getElementById('invQty').value = '1';
+    document.getElementById('invLic').value = 'No';
+    document.getElementById('invRcra').value = 'No';
+
+    // 4. Close the Window
+    closeModal('invModal');
+}
+
+// --- UPDATED: Add Inventory (With Auto-Close & Refresh) ---
 function addInventory() { 
     // 1. Get Core Inputs
     const id = document.getElementById('invId').value; 
     const desc = document.getElementById('invDesc').value; 
     
-    // Isotope Logic (Dropdown vs Custom)
     let iso = document.getElementById('invIso').value;
     if(iso === 'Custom') iso = document.getElementById('invIsoCustom').value;
     
-    // Activity Construction (Value + Unit)
-    const actVal = document.getElementById('invAct').value;
-    const actUnit = document.getElementById('invActUnit') ? document.getElementById('invActUnit').value : ""; // Handle if unit dropdown exists or is part of string
-    // Note: If you don't have a separate unit dropdown, assume user typed it in 'invAct'
-    const act = actVal; 
-
-    // Numerical Data
+    const act = document.getElementById('invAct').value;
     const dose = parseFloat(document.getElementById('invDose').value) || 0;
     const fill = parseFloat(document.getElementById('invFill').value) || 0;
     
-    // Logistics
-    const pid = document.getElementById('invProj').value ? parseInt(document.getElementById('invProj').value) : null;
+    const pidVal = document.getElementById('invProj').value;
+    const pid = pidVal ? parseInt(pidVal) : null;
     const stat = document.getElementById('invStatus').value;
     
-    // Date Parsing
     const dateRaw = document.getElementById('invDate').value;
-    const dateVal = dateRaw ? dateRaw : getTodayStr(); // Keep as string "YYYY-MM-DD" for consistency
+    const dateVal = dateRaw ? dateRaw : getTodayStr();
 
-    // 2. GET PHYSICAL & REGULATORY INPUTS (Phase 2)
+    // 2. Extended Fields
     const nsn = document.getElementById('invNsn').value;
     const weight = document.getElementById('invWeight').value;
     const vol = document.getElementById('invVol').value;
@@ -5178,97 +5210,45 @@ function addInventory() {
     const licNum = document.getElementById('invLicNum').value;
     const rcra = document.getElementById('invRcra').value;
 
-    // 3. GET ORIGIN & LOCATION INPUTS (Phase 3 - New Gaps)
     const mfr = document.getElementById('invMfr').value;
     const serial = document.getElementById('invSerial').value;
     const loc = document.getElementById('invLoc').value;
     const phys = document.getElementById('invPhys').value;
-
     const qty = parseFloat(document.getElementById('invQty').value) || 1;
     const ssdr = document.getElementById('invSsdr').value;
     const constituents = document.getElementById('invConst').value;
 
-    // 4. Validation
+    // 3. Validation
     if(!id) {
         showToast("Error: Item ID is required", "error"); 
         return;
     }
 
-    // 5. Save Object
+    // 4. Save
     inventory.push({
-        id: id, 
-        desc: desc,
-        iso: iso, 
-        act: act, 
-        dose: dose, 
-        fill: fill, 
-        status: stat, 
-        projId: pid, 
-        logDate: dateVal,
-        
-        // Phase 2 Fields
-        nsn: nsn,
-        weight: weight,
-        vol: vol,
-        licensed: lic,
-        licenseNum: licNum,
-        rcra: rcra,
-
-        // Phase 3 Fields (New)
-        mfr: mfr,
-        serial: serial,
-        location: loc,
-        phys: phys,
-
-        qty: qty,
-        ssdr: ssdr,
-        constituents: constituents,
-        
-        links: [], // Initialize empty binder
-        updated: Date.now()
+        id: id, desc: desc, iso: iso, act: act, dose: dose, fill: fill, status: stat, projId: pid, logDate: dateVal,
+        nsn: nsn, weight: weight, vol: vol, licensed: lic, licenseNum: licNum, rcra: rcra,
+        mfr: mfr, serial: serial, location: loc, phys: phys,
+        qty: qty, ssdr: ssdr, constituents: constituents,
+        links: [], updated: Date.now()
     }); 
     
-    // 6. Feedback & Save
     logSystemAction(`Inventory <b>${esc(id)}</b> added.`);
-    showToast("Item Added Successfully");
+    showToast("Item Added");
     saveLocally();
     render();
 
-    const activeProjectModal = document.getElementById('projectModal');
-    if(activeProjectModal && activeProjectModal.classList.contains('active') && pid) {
-        viewProject(pid); 
+    // 5. CRITICAL FIX: Refresh Project View if open
+    // We check if the user is currently looking at the Project Details screen for this project
+    const activeView = localStorage.getItem('rad_active_view');
+    const activeProjId = parseInt(localStorage.getItem('rad_active_proj'));
+
+    if(activeView === 'project-detail' && activeProjId === pid) {
+        viewProject(pid); // Force a re-render of the project page
     }
     
-    // 7. RESET ALL FORM FIELDS
-    document.getElementById('invId').value = '';
-    document.getElementById('invDesc').value = ''; 
-    
-    document.getElementById('invIso').value = 'Co-60'; 
-    document.getElementById('invIsoCustom').value = '';
-    document.getElementById('invIsoCustom').style.display = 'none';
-    
-    document.getElementById('invAct').value = '';
-    document.getElementById('invDose').value = '';
-    document.getElementById('invFill').value = '0';
-    document.getElementById('invFillLabel').innerText = '0%'; // Reset slider label
-    document.getElementById('invDate').value = '';
-
-    // Clear Phase 2 Fields
-    document.getElementById('invNsn').value = '';
-    document.getElementById('invWeight').value = '';
-    document.getElementById('invVol').value = '';
-    document.getElementById('invLic').value = 'No';
-    document.getElementById('invLicNum').value = '';
-    document.getElementById('invRcra').value = 'No';
-
-    // Clear Phase 3 Fields
-    document.getElementById('invMfr').value = '';
-    document.getElementById('invSerial').value = '';
-    document.getElementById('invLoc').value = '';
-    document.getElementById('invPhys').value = '';
-    
-    // Close modal automatically? (Optional - uncomment if desired)
-    // closeModal('invModal');
+    // 6. Wipe and Close
+    cancelAddInventory(); 
 }
 
 function delInventory(id) {
