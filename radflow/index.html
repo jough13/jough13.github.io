@@ -1344,7 +1344,12 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
                 <label style="font-size:0.7rem; color:var(--text-muted)">SERIAL / MODEL</label>
                 <input id="invSerial" class="form-control" placeholder="e.g. 756793">
             </div>
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">SSDR #</label>
+                <input id="invSsdr" class="form-control" placeholder="Sealed Source Registry">
+            </div>
         </div>
+        
         <div class="input-grid">
             <div>
                 <label style="font-size:0.7rem; color:var(--text-muted)">ITEM LOCATION / BLDG</label>
@@ -1354,16 +1359,20 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
                 <label style="font-size:0.7rem; color:var(--text-muted)">PHYSICAL FORM</label>
                 <select id="invPhys" class="form-control">
                     <option value="">-- Select --</option>
-                    <option>Solid</option>
-                    <option>Liquid</option>
-                    <option>Gas</option>
-                    <option>Powder</option>
-                    <option>Sludge</option>
-                    <option>Debris</option>
-                    <option>Glass</option>
-                    <option>Other</option>
+                    <option>Solid</option><option>Liquid</option><option>Gas</option>
+                    <option>Powder</option><option>Sludge</option><option>Debris</option>
+                    <option>Glass</option><option>Other</option>
                 </select>
             </div>
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">QTY</label>
+                <input id="invQty" type="number" class="form-control" value="1" placeholder="1">
+            </div>
+        </div>
+
+        <div style="margin-top:10px;">
+            <label style="font-size:0.7rem; color:var(--text-muted)">CHEMICAL CONSTITUENTS (IF MIXED WASTE)</label>
+            <input id="invConst" class="form-control" placeholder="e.g. Lead, Mercury, Uranium-UO2...">
         </div>
 
         <div class="input-grid" style="margin-bottom:15px;">
@@ -1762,14 +1771,17 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
                 </div>
 
                 <h4 style="margin:15px 0 5px 0; border-bottom:1px solid var(--border); font-size:0.8rem; color:var(--text-muted);">ORIGIN & LOCATION</h4>
+                
                 <div class="input-grid" style="margin-bottom:10px;">
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">MANUFACTURER</label><input id="vid_mfr" class="form-control" placeholder="--" onchange="saveInvDetail()"></div>
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">SERIAL #</label><input id="vid_serial" class="form-control" placeholder="--" onchange="saveInvDetail()"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">MANUFACTURER</label><input id="vid_mfr" class="form-control" onchange="saveInvDetail()"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">SERIAL #</label><input id="vid_serial" class="form-control" onchange="saveInvDetail()"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">SSDR #</label><input id="vid_ssdr" class="form-control" onchange="saveInvDetail()"></div>
                 </div>
+                
                 <div class="input-grid" style="margin-bottom:10px;">
-                    <div><label style="font-size:0.7rem; color:var(--text-muted)">LOCATION / BLDG</label><input id="vid_loc" class="form-control" placeholder="--" onchange="saveInvDetail()"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">LOCATION</label><input id="vid_loc" class="form-control" onchange="saveInvDetail()"></div>
                     <div>
-                        <label style="font-size:0.7rem; color:var(--text-muted)">PHYSICAL FORM</label>
+                        <label style="font-size:0.7rem; color:var(--text-muted)">FORM</label>
                         <select id="vid_phys" class="form-control" onchange="saveInvDetail()">
                             <option value="">--</option>
                             <option>Solid</option><option>Liquid</option><option>Gas</option>
@@ -1777,6 +1789,12 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
                             <option>Glass</option><option>Other</option>
                         </select>
                     </div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">QTY</label><input id="vid_qty" type="number" class="form-control" onchange="saveInvDetail()"></div>
+                </div>
+
+                <div style="margin-bottom:10px;">
+                    <label style="font-size:0.7rem; color:var(--text-muted)">CHEMICAL CONSTITUENTS</label>
+                    <input id="vid_const" class="form-control" placeholder="e.g. Lead, solvents..." onchange="saveInvDetail()">
                 </div>
 
                 <h4 style="margin:15px 0 5px 0; border-bottom:1px solid var(--border); font-size:0.8rem; color:var(--text-muted);">REGULATORY & SHIPPING</h4>
@@ -1979,260 +1997,237 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     };
 
 const STARTER_DATA = {
-        projects: [
-            { 
-                id: 101, 
-                title: "Class B Resin Shipment", 
-                uic: "N00014", 
-                location: "Norfolk, VA", 
-                region: "East", 
-                reqDate: "2025-06-15", 
-                jmcId: "2025-045", 
-                rcn: "25-0012", 
-                pickupStatus: "Scheduled", 
-                status: "Active", 
-                health: "green", 
-                due: "2025-12-30", 
-                desc: "Transport of CNS 8-120B Cask containing exhausted resin liners.", 
-                links:[], 
-                tasks: [
-                    {id: 1, text: "Verify Cask Cert", done: true, assign: "JD", prio: "high"}, 
-                    {id: 2, text: "Notify Broker", done: true, assign: "AS", prio: "med"}, 
-                    {id: 3, text: "Schedule 100-ton Crane", done: false, assign: "JD", prio: "high"}
-                ],
-                updatesSent: ["2025-10-01"]
-            },
-            { 
-                id: 102, 
-                title: "Lab 4 Cleanout", 
-                uic: "N66001", 
-                location: "San Diego, CA", 
-                region: "West", 
-                reqDate: "2025-08-01", 
-                jmcId: "2025-099", 
-                rcn: "25-0104", 
-                pickupStatus: "Requested", 
-                status: "Planning", 
-                health: "yellow", 
-                due: "2026-02-15", 
-                desc: "Volume reduction and segregation of legacy Dry Active Waste (DAW).", 
-                links:[], 
-                tasks: [
-                    {id: 1, text: "Order 10 B-25 Boxes", done: false, assign: "AS", prio: "low"},
-                    {id: 2, text: "Survey Lab Corners", done: true, assign: "JD", prio: "med"}
-                ],
-                updatesSent: []
-            },
-            { 
-                id: 103, 
-                title: "Building 5 Decommissioning", 
-                uic: "N4523A", 
-                location: "Bremerton, WA", 
-                region: "West", 
-                reqDate: "2025-04-10", 
-                jmcId: "2025-012", 
-                rcn: "25-0003", 
-                pickupStatus: "Shipped", 
-                status: "Active", 
-                health: "green", 
-                due: "2025-11-20", 
-                desc: "Large scale D&D of former radiography bay. Concrete scabbling required.", 
-                links: [
-                    {name: "Survey Map", url: "file:///S:/RadSafety/B5_Map.pdf"},
-                    {name: "MARSSIM Plan", url: "https://www.nrc.gov/marssim"}
-                ], 
-                tasks: [
-                    {id: 1, text: "Hire Scabbling Contractor", done: true, assign: "Admin", prio: "high"},
-                    {id: 2, text: "Final Status Survey (FSS)", done: false, assign: "AS", prio: "high"},
-                    {id: 3, text: "Dispose of Rubble", done: false, assign: "JD", prio: "med"}
-                ],
-                updatesSent: ["2025-09-15", "2025-08-01"]
-            },
-            { 
-                id: 104, 
-                title: "Quarterly Source Roundup", 
-                uic: "N00014", 
-                location: "Washington, DC", 
-                region: "East", 
-                reqDate: "2025-01-10", 
-                jmcId: "2025-001", 
-                rcn: "25-0001", 
-                pickupStatus: "Complete", 
-                status: "Complete", 
-                health: "green", 
-                due: "2025-03-01", 
-                desc: "Consolidation of unwanted check sources from R&D labs.", 
-                links:[], 
-                tasks: [
-                    {id: 1, text: "Collect Pu-239 sources", done: true, assign: "JD", prio: "high"}
-                ],
-                updatesSent: []
-            },
-            { 
-                id: 105, 
-                title: "Yokosuka Emergency Support", 
-                uic: "N62742", 
-                location: "Yokosuka, Japan", 
-                region: "Far-East", 
-                reqDate: "2025-11-01", 
-                jmcId: "2025-200", 
-                rcn: "25-0400", 
-                pickupStatus: "Pending", 
-                status: "Review", 
-                health: "red", 
-                due: "2025-12-01", 
-                desc: "Emergency technical support for detection anomaly. Funding critical.", 
-                links:[], 
-                tasks: [
-                    {id: 1, text: "Secure Travel Orders", done: true, assign: "Admin", prio: "high"},
-                    {id: 2, text: "Ship Equipment", done: false, assign: "AS", prio: "high"}
-                ],
-                updatesSent: ["2025-10-20"]
-            },
-            { 
-                id: 106, 
-                title: "Base-wide Tritium Sign Disposal", 
-                uic: "N00250", 
-                location: "Rota, Spain", 
-                region: "Europe", 
-                reqDate: "2025-09-01", 
-                jmcId: "2025-088", 
-                rcn: "25-0210", 
-                pickupStatus: "Staged", 
-                status: "Active", 
-                health: "green", 
-                due: "2026-01-15", 
-                desc: "Consolidation of expired H-3 exit signs from barracks renovation.", 
-                links:[], 
-                tasks: [
-                    {id: 1, text: "Wipe Test 150 Signs", done: false, assign: "M. Scott", prio: "med"},
-                    {id: 2, text: "Package into Tri-walls", done: false, assign: "M. Scott", prio: "low"}
-                ],
-                updatesSent: []
-            },
-            { 
-                id: 107, 
-                title: "NDT Source Exchange (SSN-774)", 
-                uic: "N4523A", 
-                location: "Pearl Harbor, HI", 
-                region: "Far-East", 
-                reqDate: "2025-02-14", 
-                jmcId: "2025-030", 
-                rcn: "25-0055", 
-                pickupStatus: "Shipped", 
-                status: "Complete", 
-                health: "green", 
-                due: "2025-02-28", 
-                desc: "Urgent exchange of decayed Ir-192 radiography camera source.", 
-                links: [
-                   {name: "Source Cert (New)", url: "file:///S:/Certs/Ir192_New.pdf"}
-                ], 
-                tasks: [
-                    {id: 1, text: "Receive New Source", done: true, assign: "JD", prio: "high"},
-                    {id: 2, text: "Return Old Source", done: true, assign: "JD", prio: "high"}
-                ],
-                updatesSent: ["2025-02-20"]
-            },
-            { 
-                id: 108, 
-                title: "Medical Irradiator Decomm", 
-                uic: "N00014", 
-                location: "Bethesda, MD", 
-                region: "East", 
-                reqDate: "2025-07-01", 
-                jmcId: "2025-110", 
-                rcn: "25-0500", 
-                pickupStatus: "Planning", 
-                status: "Planning", 
-                health: "yellow", 
-                due: "2026-06-30", 
-                desc: "Removal of legacy Cs-137 blood irradiator. Security escort required.", 
-                links:[], 
-                tasks: [
-                    {id: 1, text: "Submit security plan", done: false, assign: "Admin", prio: "high"},
-                    {id: 2, text: "Hire riggers", done: false, assign: "AS", prio: "med"}
-                ],
-                updatesSent: []
-            }
-        ],
-        allocations: [
-            { id: 1, projId: 101, date: "2025-01-01", amount: 85000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" },
-            { id: 2, projId: 102, date: "2025-01-10", amount: 12000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" },
-            { id: 3, projId: 103, date: "2025-02-01", amount: 150000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" },
-            { id: 4, projId: 103, date: "2025-06-01", amount: 50000, desc: "Command Top-up", type: 'adj', fundSource: "Command Funded" },
-            { id: 5, projId: 104, date: "2025-01-05", amount: 5000, desc: "Initial Budget", type: 'base', fundSource: "Other" },
-            { id: 6, projId: 105, date: "2025-10-15", amount: 25000, desc: "Emergency Auth", type: 'base', fundSource: "Navy General Fund" },
-            { id: 7, projId: 106, date: "2025-08-01", amount: 8000, desc: "Initial Budget", type: 'base', fundSource: "Command Funded" },
-            { id: 8, projId: 107, date: "2025-01-20", amount: 3500, desc: "Exchange Fee", type: 'base', fundSource: "Navy General Fund" },
-            { id: 9, projId: 108, date: "2025-06-15", amount: 250000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" }
-        ],
-        inventory: [
-            {id: "HIC-24-01", iso: "Co-60", act: "35 Ci", dose: 4500, fill: 95, status: "Staged", projId: 101, logDate: "2025-01-01"}, 
-            {id: "DRM-24-55", iso: "H-3", act: "15 mCi", dose: 0.5, fill: 40, status: "Stored", projId: null, logDate: "2025-01-15"},
-            {id: "BOX-25-01", iso: "Cs-137", act: "200 mCi", dose: 150, fill: 100, status: "Shipped", projId: 103, logDate: "2025-03-10"},
-            {id: "BOX-25-02", iso: "Cs-137", act: "180 mCi", dose: 140, fill: 100, status: "Shipped", projId: 103, logDate: "2025-03-12"},
-            {id: "DRM-25-10", iso: "Am-241", act: "50 uCi", dose: 0.1, fill: 10, status: "Stored", projId: 102, logDate: "2025-08-05"},
-            {id: "BOX-25-88", iso: "H-3", act: "5 Ci", dose: 1.2, fill: 85, status: "Staged", projId: 106, logDate: "2025-09-10"},
-            {id: "CAM-774-A", iso: "Ir-192", act: "85 Ci", dose: 6500, fill: 100, status: "Shipped", projId: 107, logDate: "2025-02-15"},
-            {id: "IRR-01-X", iso: "Cs-137", act: "1200 Ci", dose: 85000, fill: 100, status: "Stored", projId: 108, logDate: "2025-07-10"}
-        ],
-        expenses: [
-            {id: 1, projId: 101, desc: "Cask Rental", amount: 15000, date: "2025-11-01", status: "Paid", fundSource: "Navy General Fund"},
-            {id: 2, projId: 103, desc: "Contract Labor (Week 1)", amount: 12500, date: "2025-04-15", status: "Invoiced", fundSource: "Navy General Fund"},
-            {id: 3, projId: 103, desc: "Contract Labor (Week 2)", amount: 12500, date: "2025-04-22", status: "Invoiced", fundSource: "Navy General Fund"},
-            {id: 4, projId: 103, desc: "Specialized Tooling", amount: 8400, date: "2025-05-01", status: "Paid", fundSource: "Command Funded"},
-            {id: 5, projId: 104, desc: "FedEx Shipping", amount: 450, date: "2025-02-15", status: "Paid", fundSource: "Other"},
-            {id: 6, projId: 105, desc: "Last Minute Airfare", amount: 4200, date: "2025-10-25", status: "Encumbered", fundSource: "Navy General Fund"},
-            {id: 7, projId: 107, desc: "Source Exchange Fee", amount: 3200, date: "2025-02-28", status: "Paid", fundSource: "Navy General Fund"}
-        ],
-        exemptLog: [
-            {id: "2025-001", date: "2025-03-14", cmd: "PSNS & IMF", desc: "Electron Tube, JAN-CTL-6551", qty: "12", iso: "Kr-85", act: "30 µCi", basis: "10 CFR § 30.15", path: "E-Waste Recycling", rev: "J. Doe", authDate: "2025-07-25"},
-            {id: "2025-002", date: "2025-05-07", cmd: "NAVSTA NORFOLK", desc: "Lensatic Compass", qty: "1", iso: "H-3", act: "120 mCi", basis: "10 CFR § 30.19", path: "Transfer", rev: "A. Smith", authDate: ""},
-            {id: "2025-003", date: "2025-06-12", cmd: "NSWCDD", desc: "Smoke Detectors (Expired)", qty: "50", iso: "Am-241", act: "50 uCi", basis: "10 CFR § 30.20", path: "Municipal Trash", rev: "J. Doe", authDate: "2025-06-15"},
-            {id: "2025-004", date: "2025-08-22", cmd: "NAS JAX", desc: "Gas Chromatograph Foil", qty: "2", iso: "Ni-63", act: "15 mCi", basis: "10 CFR § 31.5", path: "Transfer", rev: "AS", authDate: "2025-09-01"},
-            {id: "2025-005", date: "2025-09-05", cmd: "FRC WEST", desc: "Thoriated Welding Rods", qty: "5 lbs", iso: "Th-232", act: "0.5 uCi", basis: "10 CFR § 40.13", path: "Scrap Metal", rev: "JD", authDate: "2025-09-10"},
-            {id: "2025-006", date: "2025-10-12", cmd: "NAVSEA", desc: "Spark Gaps (F-18)", qty: "8", iso: "Kr-85", act: "2 mCi", basis: "10 CFR § 30.15", path: "Transfer", rev: "AS", authDate: ""},
-            {id: "2025-007", date: "2025-11-01", cmd: "BUMED", desc: "LSC Vials (Deregulated)", qty: "10 gal", iso: "H-3/C-14", act: "<0.05 uCi/g", basis: "10 CFR § 20.2005", path: "Incineration", rev: "JD", authDate: "2025-11-05"},
-            {id: "2025-008", date: "2025-11-15", cmd: "NUWC DIV", desc: "Static Eliminators (Brushes)", qty: "2", iso: "Po-210", act: "500 uCi", basis: "10 CFR § 31.3", path: "Transfer", rev: "Admin", authDate: ""}
-        ],
+    projects: [
+        { 
+            id: 101, title: "Class B Resin Shipment", uic: "N00014", location: "Norfolk, VA", region: "East", 
+            reqDate: "2025-06-15", jmcId: "2025-045", rcn: "25-0012", pickupStatus: "Scheduled", 
+            status: "Active", health: "green", due: "2025-12-30", 
+            desc: "Transport of CNS 8-120B Cask containing exhausted resin liners.", 
+            links:[], 
+            tasks: [
+                {id: 1, text: "Verify Cask Cert", done: true, assign: "JD", prio: "high"}, 
+                {id: 2, text: "Notify Broker", done: true, assign: "AS", prio: "med"}, 
+                {id: 3, text: "Schedule 100-ton Crane", done: false, assign: "JD", prio: "high"}
+            ],
+            updatesSent: ["2025-10-01"]
+        },
+        { 
+            id: 102, title: "Lab 4 Cleanout", uic: "N66001", location: "San Diego, CA", region: "West", 
+            reqDate: "2025-08-01", jmcId: "2025-099", rcn: "25-0104", pickupStatus: "Requested", 
+            status: "Planning", health: "yellow", due: "2026-02-15", 
+            desc: "Volume reduction and segregation of legacy Dry Active Waste (DAW).", 
+            links:[], 
+            tasks: [
+                {id: 1, text: "Order 10 B-25 Boxes", done: false, assign: "AS", prio: "low"},
+                {id: 2, text: "Survey Lab Corners", done: true, assign: "JD", prio: "med"}
+            ],
+            updatesSent: []
+        },
+        { 
+            id: 103, title: "Building 5 Decommissioning", uic: "N4523A", location: "Bremerton, WA", region: "West", 
+            reqDate: "2025-04-10", jmcId: "2025-012", rcn: "25-0003", pickupStatus: "Shipped", 
+            status: "Active", health: "green", due: "2025-11-20", 
+            desc: "Large scale D&D of former radiography bay. Concrete scabbling required.", 
+            links: [
+                {name: "Survey Map", url: "file:///S:/RadSafety/B5_Map.pdf"},
+                {name: "MARSSIM Plan", url: "https://www.nrc.gov/marssim"}
+            ], 
+            tasks: [
+                {id: 1, text: "Hire Scabbling Contractor", done: true, assign: "Admin", prio: "high"},
+                {id: 2, text: "Final Status Survey (FSS)", done: false, assign: "AS", prio: "high"},
+                {id: 3, text: "Dispose of Rubble", done: false, assign: "JD", prio: "med"}
+            ],
+            updatesSent: ["2025-09-15", "2025-08-01"]
+        },
+        { 
+            id: 104, title: "Quarterly Source Roundup", uic: "N00014", location: "Washington, DC", region: "East", 
+            reqDate: "2025-01-10", jmcId: "2025-001", rcn: "25-0001", pickupStatus: "Complete", 
+            status: "Complete", health: "green", due: "2025-03-01", 
+            desc: "Consolidation of unwanted check sources from R&D labs.", 
+            links:[], 
+            tasks: [
+                {id: 1, text: "Collect Pu-239 sources", done: true, assign: "JD", prio: "high"}
+            ],
+            updatesSent: []
+        },
+        { 
+            id: 105, title: "Yokosuka Emergency Support", uic: "N62742", location: "Yokosuka, Japan", region: "Far-East", 
+            reqDate: "2025-11-01", jmcId: "2025-200", rcn: "25-0400", pickupStatus: "Pending", 
+            status: "Review", health: "red", due: "2025-12-01", 
+            desc: "Emergency technical support for detection anomaly. Funding critical.", 
+            links:[], 
+            tasks: [
+                {id: 1, text: "Secure Travel Orders", done: true, assign: "Admin", prio: "high"},
+                {id: 2, text: "Ship Equipment", done: false, assign: "AS", prio: "high"}
+            ],
+            updatesSent: ["2025-10-20"]
+        },
+        { 
+            id: 106, title: "Base-wide Tritium Sign Disposal", uic: "N00250", location: "Rota, Spain", region: "Europe", 
+            reqDate: "2025-09-01", jmcId: "2025-088", rcn: "25-0210", pickupStatus: "Staged", 
+            status: "Active", health: "green", due: "2026-01-15", 
+            desc: "Consolidation of expired H-3 exit signs from barracks renovation.", 
+            links:[], 
+            tasks: [
+                {id: 1, text: "Wipe Test 150 Signs", done: false, assign: "M. Scott", prio: "med"},
+                {id: 2, text: "Package into Tri-walls", done: false, assign: "M. Scott", prio: "low"}
+            ],
+            updatesSent: []
+        },
+        { 
+            id: 107, title: "NDT Source Exchange (SSN-774)", uic: "N4523A", location: "Pearl Harbor, HI", region: "Far-East", 
+            reqDate: "2025-02-14", jmcId: "2025-030", rcn: "25-0055", pickupStatus: "Shipped", 
+            status: "Complete", health: "green", due: "2025-02-28", 
+            desc: "Urgent exchange of decayed Ir-192 radiography camera source.", 
+            links: [
+                {name: "Source Cert (New)", url: "file:///S:/Certs/Ir192_New.pdf"}
+            ], 
+            tasks: [
+                {id: 1, text: "Receive New Source", done: true, assign: "JD", prio: "high"},
+                {id: 2, text: "Return Old Source", done: true, assign: "JD", prio: "high"}
+            ],
+            updatesSent: ["2025-02-20"]
+        },
+        { 
+            id: 108, title: "Medical Irradiator Decomm", uic: "N00014", location: "Bethesda, MD", region: "East", 
+            reqDate: "2025-07-01", jmcId: "2025-110", rcn: "25-0500", pickupStatus: "Planning", 
+            status: "Planning", health: "yellow", due: "2026-06-30", 
+            desc: "Removal of legacy Cs-137 blood irradiator. Security escort required.", 
+            links:[], 
+            tasks: [
+                {id: 1, text: "Submit security plan", done: false, assign: "Admin", prio: "high"},
+                {id: 2, text: "Hire riggers", done: false, assign: "AS", prio: "med"}
+            ],
+            updatesSent: []
+        }
+    ],
 
-        references: [
-            // --- NRC ---
-            { id: 1, title: "10 CFR Part 20", desc: "Standards for Protection Against Radiation", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/cfr/part020/index.html", locked: true },
-            { id: 2, title: "10 CFR Part 61", desc: "Licensing Requirements for Land Disposal", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/cfr/part061/index.html", locked: true },
-            { id: 3, title: "10 CFR Part 71", desc: "Packaging and Transportation of Radioactive Material", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/cfr/part071/index.html", locked: true },
+    // --- NEW: INVENTORY WITH ALL FIELDS ---
+    inventory: [
+        // 1. Proj 101: Resin (High Dose, Heavy)
+        {
+            id: "HIC-24-01", desc: "Dewatered Resin Liner (Class B)", iso: "Co-60", act: "35 Ci", dose: 4500, 
+            fill: 95, status: "Staged", projId: 101, logDate: "2025-01-01",
+            nsn: "", weight: "2400 lbs", vol: "50 cu ft", licensed: "Yes", rcra: "No",
+            mfr: "EnergySolutions", serial: "PL-882-X", location: "High Bay", phys: "Solid",
+            qty: 1, ssdr: "N/A", constituents: ""
+        }, 
+        
+        // 2. Unassigned: Check Source
+        {
+            id: "CHK-99", desc: "Button Source (Legacy)", iso: "Cs-137", act: "10 uCi", dose: 0.5, 
+            fill: 0, status: "Stored", projId: null, logDate: "2025-01-15",
+            nsn: "6665-00-123-4567", weight: "0.1 kg", vol: "N/A", licensed: "No", rcra: "No",
+            mfr: "Spectrum", serial: "Unk", location: "Cab 4", phys: "Solid",
+            qty: 1, ssdr: "N/A", constituents: ""
+        },
 
-            // --- DOT ---
-            { id: 4, title: "49 CFR § 173.403", desc: "Class 7 (Radioactive) Definitions", type: "Trans", url: "https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.403", locked: true },
-            { id: 5, title: "49 CFR Part 172", desc: "Hazmat Tables, Marking, Labeling & Placarding", type: "Trans", url: "https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-172", locked: true },
+        // 3. Proj 103: Debris (Volume, Weight)
+        {
+            id: "BOX-25-01", desc: "Concrete Scabbling Rubble", iso: "Cs-137", act: "200 mCi", dose: 150, 
+            fill: 100, status: "Shipped", projId: 103, logDate: "2025-03-10",
+            nsn: "", weight: "4500 lbs", vol: "90 cu ft", licensed: "No", rcra: "No",
+            mfr: "N/A", serial: "N/A", location: "Yard", phys: "Debris",
+            qty: 1, ssdr: "N/A", constituents: ""
+        },
 
-            // --- NAVY & DoD ---
-            { id: 6, title: "OPNAV M-5090.1", desc: "Environmental Readiness Program Manual", type: "Site", url: "https://www.navsea.navy.mil/Portals/103/Documents/SUPSALV/Environmental/5090.1.pdf", locked: true },
-            
-            // UPDATED TITLE HERE:
-            { id: 7, title: "DoD Low-Level Radioactive Waste (LLRW) Program", desc: "DoDI 4715.27 - Management of LLRW", type: "Site", url: "https://www.esd.whs.mil/Portals/54/Documents/DD/issuances/dodi/471527p.pdf?ver=2019-04-12-075155-183", locked: true },
-            
-            { id: 8, title: "DoDI 4715.06", desc: "Environmental Compliance in the DoD", type: "Site", url: "https://www.esd.whs.mil/Portals/54/Documents/DD/issuances/dodi/471506p.pdf", locked: true },
+        // 4. Proj 102: Mixed Waste (RCRA, Constituents)
+        {
+            id: "DRM-25-10", desc: "Liquid Scintillation Vials (Cocktail)", iso: "H-3", act: "50 mCi", dose: 0.1, 
+            fill: 100, status: "Stored", projId: 102, logDate: "2025-08-05",
+            nsn: "", weight: "50 lbs", vol: "7.5 gal", licensed: "No", rcra: "Yes",
+            mfr: "Packard", serial: "N/A", location: "Haz Locker", phys: "Liquid",
+            qty: 1, ssdr: "N/A", constituents: "Toluene, Xylene"
+        },
 
-            // --- EPA / NRC GENERAL ---
-            { id: 9, title: "EPA RCRA Manual", desc: "Resource Conservation and Recovery Act Orientation", type: "Reg", url: "https://www.epa.gov/hwgenerators/resource-conservation-and-recovery-act-rcra-orientation-manual", locked: true },
-            { id: 10, title: "NRC Fact Sheets", desc: "Library of NRC Fact Sheets and Backgrounders", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/fact-sheets/index.html", locked: true },
+        // 5. Proj 106: Tritium Signs (Quantity, Gas)
+        {
+            id: "BOX-25-88", desc: "Consolidated Exit Signs (Expired)", iso: "H-3", act: "245 Ci", dose: 1.2, 
+            fill: 85, status: "Staged", projId: 106, logDate: "2025-09-10",
+            nsn: "9905-01-555-1212", weight: "120 lbs", vol: "1 Tri-wall", licensed: "Yes", rcra: "No",
+            mfr: "Isolite", serial: "Various", location: "Warehouse B", phys: "Gas",
+            qty: 35, ssdr: "NR-123-S-101-U", constituents: ""
+        },
 
-            // --- FORMS & TOOLS ---
-            { id: 11, title: "NRC Form 540", desc: "Uniform Low-Level Radioactive Waste Manifest", type: "Form", url: "https://www.nrc.gov/reading-rm/doc-collections/forms/nrc540info.html", locked: true },
-            { id: 12, title: "Rad Pro Calculator", desc: "Online decay and shielding calculator", type: "Tool", url: "http://www.radprocalculator.com/", locked: true }
-        ],
+        // 6. Proj 107: Radiography Source (SSDR, Special Form)
+        {
+            id: "CAM-774-A", desc: "Ir-192 Source Assembly (Pigtail)", iso: "Ir-192", act: "85 Ci", dose: 6500, 
+            fill: 100, status: "Shipped", projId: 107, logDate: "2025-02-15",
+            nsn: "", weight: "0.5 kg", vol: "Capsule", licensed: "Yes", rcra: "No",
+            mfr: "QSA Global", serial: "66592-A", location: "Camera 2", phys: "Solid",
+            qty: 1, ssdr: "MA-1059-S-105-S", constituents: ""
+        },
 
-        team: ["JD", "AS", "Admin", "M. Scott", "D. Schrute"],
-        chat: [
-            {user: "System", time: "01/01 08:00 AM", text: `${APP_VER} initialized.`},
-            {user: "Admin", time: "01/01 09:15 AM", text: "Welcome to the new fiscal year tracker. Please update your project statuses."},
-            {user: "JD", time: "01/02 10:00 AM", text: "Working on the Cask shipment. Crane is scheduled tentatively."},
-            {user: "System", time: "03/10 02:30 PM", text: "Project <b>Building 5 Decommissioning</b> moved to Active."},
-            {user: "AS", time: "04/05 11:45 AM", text: "Heads up: Medical Irradiator project is coming down the pipe. Big budget item."}
-        ],
-        wiki: "LOGBOOK:\n- Use this space for daily operational notes.\n- 01/15: Annual calibration due for meter SN: 44521.\n- 02/20: Updated waste acceptance criteria received from WCS.\n- 09/01: Tritium exit sign project approved for Rota."
-    };
+        // 7. Proj 108: Irradiator (Massive Weight/Activity)
+        {
+            id: "IRR-01-X", desc: "JLS Blood Irradiator (Shielded)", iso: "Cs-137", act: "1200 Ci", dose: 85000, 
+            fill: 100, status: "Stored", projId: 108, logDate: "2025-07-10",
+            nsn: "", weight: "6000 lbs", vol: "Unit", licensed: "Yes", rcra: "No",
+            mfr: "JL Shepherd", serial: "Unit-99", location: "Hospital Bsmt", phys: "Solid",
+            qty: 1, ssdr: "CA-0598-D-102-S", constituents: ""
+        }
+    ],
+
+    allocations: [
+        { id: 1, projId: 101, date: "2025-01-01", amount: 85000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" },
+        { id: 2, projId: 102, date: "2025-01-10", amount: 12000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" },
+        { id: 3, projId: 103, date: "2025-02-01", amount: 150000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" },
+        { id: 4, projId: 103, date: "2025-06-01", amount: 50000, desc: "Command Top-up", type: 'adj', fundSource: "Command Funded" },
+        { id: 5, projId: 104, date: "2025-01-05", amount: 5000, desc: "Initial Budget", type: 'base', fundSource: "Other" },
+        { id: 6, projId: 105, date: "2025-10-15", amount: 25000, desc: "Emergency Auth", type: 'base', fundSource: "Navy General Fund" },
+        { id: 7, projId: 106, date: "2025-08-01", amount: 8000, desc: "Initial Budget", type: 'base', fundSource: "Command Funded" },
+        { id: 8, projId: 107, date: "2025-01-20", amount: 3500, desc: "Exchange Fee", type: 'base', fundSource: "Navy General Fund" },
+        { id: 9, projId: 108, date: "2025-06-15", amount: 250000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" }
+    ],
+
+    expenses: [
+        {id: 1, projId: 101, desc: "Cask Rental", amount: 15000, date: "2025-11-01", status: "Paid", fundSource: "Navy General Fund"},
+        {id: 2, projId: 103, desc: "Contract Labor (Week 1)", amount: 12500, date: "2025-04-15", status: "Invoiced", fundSource: "Navy General Fund"},
+        {id: 3, projId: 103, desc: "Contract Labor (Week 2)", amount: 12500, date: "2025-04-22", status: "Invoiced", fundSource: "Navy General Fund"},
+        {id: 4, projId: 103, desc: "Specialized Tooling", amount: 8400, date: "2025-05-01", status: "Paid", fundSource: "Command Funded"},
+        {id: 5, projId: 104, desc: "FedEx Shipping", amount: 450, date: "2025-02-15", status: "Paid", fundSource: "Other"},
+        {id: 6, projId: 105, desc: "Last Minute Airfare", amount: 4200, date: "2025-10-25", status: "Encumbered", fundSource: "Navy General Fund"},
+        {id: 7, projId: 107, desc: "Source Exchange Fee", amount: 3200, date: "2025-02-28", status: "Paid", fundSource: "Navy General Fund"}
+    ],
+
+    exemptLog: [
+        {id: "2025-001", date: "2025-03-14", cmd: "PSNS & IMF", desc: "Electron Tube, JAN-CTL-6551", qty: "12", iso: "Kr-85", act: "30 µCi", basis: "10 CFR § 30.15", path: "E-Waste Recycling", rev: "J. Doe", authDate: "2025-07-25"},
+        {id: "2025-002", date: "2025-05-07", cmd: "NAVSTA NORFOLK", desc: "Lensatic Compass", qty: "1", iso: "H-3", act: "120 mCi", basis: "10 CFR § 30.19", path: "Transfer", rev: "A. Smith", authDate: ""},
+        {id: "2025-003", date: "2025-06-12", cmd: "NSWCDD", desc: "Smoke Detectors (Expired)", qty: "50", iso: "Am-241", act: "50 uCi", basis: "10 CFR § 30.20", path: "Municipal Trash", rev: "J. Doe", authDate: "2025-06-15"},
+        {id: "2025-004", date: "2025-08-22", cmd: "NAS JAX", desc: "Gas Chromatograph Foil", qty: "2", iso: "Ni-63", act: "15 mCi", basis: "10 CFR § 31.5", path: "Transfer", rev: "AS", authDate: "2025-09-01"},
+        {id: "2025-005", date: "2025-09-05", cmd: "FRC WEST", desc: "Thoriated Welding Rods", qty: "5 lbs", iso: "Th-232", act: "0.5 uCi", basis: "10 CFR § 40.13", path: "Scrap Metal", rev: "JD", authDate: "2025-09-10"},
+        {id: "2025-006", date: "2025-10-12", cmd: "NAVSEA", desc: "Spark Gaps (F-18)", qty: "8", iso: "Kr-85", act: "2 mCi", basis: "10 CFR § 30.15", path: "Transfer", rev: "AS", authDate: ""},
+        {id: "2025-007", date: "2025-11-01", cmd: "BUMED", desc: "LSC Vials (Deregulated)", qty: "10 gal", iso: "H-3/C-14", act: "<0.05 uCi/g", basis: "10 CFR § 20.2005", path: "Incineration", rev: "JD", authDate: "2025-11-05"},
+        {id: "2025-008", date: "2025-11-15", cmd: "NUWC DIV", desc: "Static Eliminators (Brushes)", qty: "2", iso: "Po-210", act: "500 uCi", basis: "10 CFR § 31.3", path: "Transfer", rev: "Admin", authDate: ""}
+    ],
+
+    references: [
+        { id: 1, title: "10 CFR Part 20", desc: "Standards for Protection Against Radiation", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/cfr/part020/index.html", locked: true },
+        { id: 2, title: "10 CFR Part 61", desc: "Licensing Requirements for Land Disposal", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/cfr/part061/index.html", locked: true },
+        { id: 3, title: "10 CFR Part 71", desc: "Packaging and Transportation of Radioactive Material", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/cfr/part071/index.html", locked: true },
+        { id: 4, title: "49 CFR § 173.403", desc: "Class 7 (Radioactive) Definitions", type: "Trans", url: "https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.403", locked: true },
+        { id: 5, title: "49 CFR Part 172", desc: "Hazmat Tables, Marking, Labeling & Placarding", type: "Trans", url: "https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-172", locked: true },
+        { id: 6, title: "OPNAV M-5090.1", desc: "Environmental Readiness Program Manual", type: "Site", url: "https://www.navsea.navy.mil/Portals/103/Documents/SUPSALV/Environmental/5090.1.pdf", locked: true },
+        { id: 7, title: "DoD Low-Level Radioactive Waste (LLRW) Program", desc: "DoDI 4715.27 - Management of LLRW", type: "Site", url: "https://www.esd.whs.mil/Portals/54/Documents/DD/issuances/dodi/471527p.pdf?ver=2019-04-12-075155-183", locked: true },
+        { id: 8, title: "DoDI 4715.06", desc: "Environmental Compliance in the DoD", type: "Site", url: "https://www.esd.whs.mil/Portals/54/Documents/DD/issuances/dodi/471506p.pdf", locked: true },
+        { id: 9, title: "EPA RCRA Manual", desc: "Resource Conservation and Recovery Act Orientation", type: "Reg", url: "https://www.epa.gov/hwgenerators/resource-conservation-and-recovery-act-rcra-orientation-manual", locked: true },
+        { id: 10, title: "NRC Fact Sheets", desc: "Library of NRC Fact Sheets and Backgrounders", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/fact-sheets/index.html", locked: true },
+        { id: 11, title: "NRC Form 540", desc: "Uniform Low-Level Radioactive Waste Manifest", type: "Form", url: "https://www.nrc.gov/reading-rm/doc-collections/forms/nrc540info.html", locked: true },
+        { id: 12, title: "Rad Pro Calculator", desc: "Online decay and shielding calculator", type: "Tool", url: "http://www.radprocalculator.com/", locked: true }
+    ],
+
+    team: ["JD", "AS", "Admin", "M. Scott", "D. Schrute"],
+    
+    chat: [
+        {user: "System", time: "01/01 08:00 AM", text: "System initialized."},
+        {user: "Admin", time: "01/01 09:15 AM", text: "Welcome to the new fiscal year tracker. Please update your project statuses."},
+        {user: "JD", time: "01/02 10:00 AM", text: "Working on the Cask shipment. Crane is scheduled tentatively."},
+        {user: "System", time: "03/10 02:30 PM", text: "Project <b>Building 5 Decommissioning</b> moved to Active."},
+        {user: "AS", time: "04/05 11:45 AM", text: "Heads up: Medical Irradiator project is coming down the pipe. Big budget item."}
+    ],
+    
+    wiki: "LOGBOOK:\n- Use this space for daily operational notes.\n- 01/15: Annual calibration due for meter SN: 44521.\n- 02/20: Updated waste acceptance criteria received from WCS.\n- 09/01: Tritium exit sign project approved for Rota."
+};
 
     let projects = []; let deletedProjects = []; let inventory = []; let deletedInventory = []; let expenses = []; let allocations = []; let chatLog = []; let team = []; let wikiText = "";
 
@@ -3003,6 +2998,10 @@ function viewInventory(id) {
     document.getElementById('vid_loc').value = i.location || "";
     document.getElementById('vid_phys').value = i.phys || "";
 
+    document.getElementById('vid_qty').value = i.qty || 1;
+    document.getElementById('vid_ssdr').value = i.ssdr || "";
+    document.getElementById('vid_const').value = i.constituents || "";
+
     renderInvLinks(i);
     openModal('invDetailModal');
 }
@@ -3029,6 +3028,10 @@ function saveInvDetail(isManual = false) {
     i.serial = document.getElementById('vid_serial').value;
     i.location = document.getElementById('vid_loc').value;
     i.phys = document.getElementById('vid_phys').value;
+
+    i.qty = parseFloat(document.getElementById('vid_qty').value) || 1;
+    i.ssdr = document.getElementById('vid_ssdr').value;
+    i.constituents = document.getElementById('vid_const').value;
 
     i.updated = Date.now();
     
@@ -3646,7 +3649,7 @@ let rollupHtml = budgetData.map(row => {
                         <th onclick="sortTable('table-inv', 0)">ID <i class="fa-solid fa-sort"></i></th>
                         <th onclick="sortTable('table-inv', 1)">Desc <i class="fa-solid fa-sort"></i></th>
                         <th onclick="sortTable('table-inv', 2)">Isotope <i class="fa-solid fa-sort"></i></th>
-                        <th onclick="sortTable('table-inv', 3)">Activity <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 3)">Act <i class="fa-solid fa-sort"></i></th>
                         <th onclick="sortTable('table-inv', 4)">Dose <i class="fa-solid fa-sort"></i></th>
                         
                         <th onclick="sortTable('table-inv', 5)">NSN <i class="fa-solid fa-sort"></i></th>
@@ -3660,9 +3663,12 @@ let rollupHtml = budgetData.map(row => {
                         <th onclick="sortTable('table-inv', 12)">Loc <i class="fa-solid fa-sort"></i></th>
                         <th onclick="sortTable('table-inv', 13)">Form <i class="fa-solid fa-sort"></i></th>
 
-                        <th onclick="sortTable('table-inv', 14)">Fill <i class="fa-solid fa-sort"></i></th>
-                        <th onclick="sortTable('table-inv', 15)">Project <i class="fa-solid fa-sort"></i></th>
-                        <th onclick="sortTable('table-inv', 16)">Status <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 14)">Qty <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 15)">SSDR <i class="fa-solid fa-sort"></i></th>
+
+                        <th onclick="sortTable('table-inv', 16)">Fill <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 17)">Project <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 18)">Status <i class="fa-solid fa-sort"></i></th>
                         <th></th>
                     </tr>
                 </thead>
@@ -3675,6 +3681,7 @@ let rollupHtml = budgetData.map(row => {
                         return `<tr>
                             <td><div style="display:flex; align-items:center; gap:5px;"><i class="fa-solid fa-eye" style="cursor:pointer; color:var(--info);" onclick="viewInventory('${safeId}')"></i><input class="live-edit" value="${esc(i.id)}" onchange="updItem('inventory', '${safeId}', 'id', this.value)"></div></td>
                             <td><input class="live-edit" style="width:120px;" value="${esc(i.desc||'')}" onchange="updItem('inventory', '${safeId}', 'desc', this.value)"></td>
+                            
                             <td><input class="live-edit" style="width:70px;" value="${esc(i.iso)}" onchange="updItem('inventory', '${safeId}', 'iso', this.value)"></td>
                             <td><input class="live-edit" style="width:80px;" value="${esc(i.act)}" onchange="updItem('inventory', '${safeId}', 'act', this.value)"></td>
                             <td><input class="live-edit" style="width:60px;" value="${i.dose}" onchange="updItem('inventory', '${safeId}', 'dose', this.value)"></td>
@@ -3696,6 +3703,9 @@ let rollupHtml = budgetData.map(row => {
                                 <option ${i.phys==='Glass'?'selected':''}>Glass</option><option ${i.phys==='Other'?'selected':''}>Other</option>
                             </select></td>
 
+                            <td><input type="number" class="live-edit" style="width:50px;" value="${i.qty||1}" onchange="updItem('inventory', '${safeId}', 'qty', this.value)"></td>
+                            <td><input class="live-edit" style="width:90px;" value="${esc(i.ssdr||'')}" onchange="updItem('inventory', '${safeId}', 'ssdr', this.value)"></td>
+
                             <td style="width:100px;">
                                 <div style="display:flex; align-items:center; gap:5px;">
                                     <input type="number" class="live-edit" style="width:40px;" value="${i.fill||0}" onchange="updItem('inventory', '${safeId}', 'fill', this.value)">%
@@ -3706,7 +3716,6 @@ let rollupHtml = budgetData.map(row => {
                             <td><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td>
                             <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delInventory('${safeId}')"></i></td>
                         </tr>`;
-
                     }).join('')}
                 </tbody>
             </table>
@@ -4385,49 +4394,26 @@ function getSortedData(data, tableId) {
             }
         }
         else if (tableId === 'table-inv') {
-            // 1. Map visual columns to data keys
             const keys = [
-                'id',       // 0
-                'desc',     // 1
-                'iso',      // 2
-                'act',      // 3
-                'dose',     // 4
-                'nsn',      // 5
-                'weight',   // 6
-                'vol',      // 7
-                'licensed', // 8
-                'rcra',     // 9
-                // NEW COLUMNS
-                'mfr',      // 10
-                'serial',   // 11
-                'location', // 12
-                'phys',     // 13
-                // SHIFTED EXISTING
-                'fill',     // 14
-                'projId',   // 15
-                'status'    // 16
+                'id', 'desc', 'iso', 'act', 'dose', 'nsn', 'weight', 'vol', 'licensed', 'rcra',
+                'mfr', 'serial', 'location', 'phys',
+                'qty', 'ssdr', 
+                'fill', 'projId', 'status' 
             ];
             
-            // 2. Special Sort: Activity
-            if (sortState.col === 3) {
-                return (getActValue(a.act) - getActValue(b.act)) * sortState.dir;
-            }
+            if (sortState.col === 3) return (getActValue(a.act) - getActValue(b.act)) * sortState.dir;
 
-            // 3. Special Sort: Mixed Numbers (Added '14' for Fill)
-            if ([4, 6, 7, 14].includes(sortState.col)) {
+            // Updated indices for mixed numbers (4=Dose, 6=Wgt, 7=Vol, 14=Fill)
+            if ([4, 6, 7, 16, 14].includes(sortState.col)) {
                 const getNum = (v) => {
-                    if (v === null || v === undefined) return -1;
-                    const s = v.toString();
+                    const s = (v||'').toString();
                     const match = s.match(/[\d\.]+/); 
                     return match ? parseFloat(match[0]) : -1;
                 };
                 const k = keys[sortState.col];
                 return (getNum(a[k]) - getNum(b[k])) * sortState.dir;
             }
-
-            // 4. Default Sort
-            valA = a[keys[sortState.col]];
-            valB = b[keys[sortState.col]];
+            valA = a[keys[sortState.col]]; valB = b[keys[sortState.col]];
         }
 
         else if (tableId === 'table-exempt') {
@@ -5198,6 +5184,10 @@ function addInventory() {
     const loc = document.getElementById('invLoc').value;
     const phys = document.getElementById('invPhys').value;
 
+    const qty = parseFloat(document.getElementById('invQty').value) || 1;
+    const ssdr = document.getElementById('invSsdr').value;
+    const constituents = document.getElementById('invConst').value;
+
     // 4. Validation
     if(!id) {
         showToast("Error: Item ID is required", "error"); 
@@ -5229,6 +5219,10 @@ function addInventory() {
         serial: serial,
         location: loc,
         phys: phys,
+
+        qty: qty,
+        ssdr: ssdr,
+        constituents: constituents,
         
         links: [], // Initialize empty binder
         updated: Date.now()
@@ -6079,32 +6073,23 @@ function clearData() {
         showConfirm(
             "Clear all application data?<br>This will wipe everything and cannot be undone.", 
             () => { 
-                // 1. NUKE ALL DATA ARRAYS
                 projects=[]; inventory=[]; expenses=[]; allocations=[]; 
                 chatLog=[]; team=[]; wikiText=""; hpState={}; 
-                estItems=[]; exemptLog=[]; 
-                deletedProjects=[]; deletedInventory=[]; tombstones=[]; references=[];
+                estItems=[]; exemptLog=[]; deletedProjects=[]; deletedInventory=[]; tombstones=[]; references=[];
                 
-                // 2. WIPE SESSION MEMORY (Forget where we were)
                 currentInvId = null;
                 localStorage.removeItem('rad_active_proj');
                 localStorage.removeItem('rad_active_view');
                 localStorage.removeItem('rad_hp_active_tab');
                 localStorage.removeItem('rad_fin_active_tab');
 
-                // 3. SAVE THE EMPTY STATE
                 saveLocally(); 
-                
-                // 4. FORCE NAVIGATION TO DASHBOARD (The "Eject" Button)
-                nav('dashboard'); 
-                
-                // 5. RENDER THE BLANK SLATE
+                nav('dashboard'); // FORCE HOME
                 render(); 
-                
                 showToast("System Wiped & Reset");
             }, 
             "Clear All Data", 
-            true // Danger Red
+            true
         );
     }
 
