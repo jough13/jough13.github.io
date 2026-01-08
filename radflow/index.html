@@ -1335,6 +1335,37 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
             </div>
         </div>
 
+        <div class="input-grid" style="margin-top:10px;">
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">MANUFACTURER</label>
+                <input id="invMfr" class="form-control" placeholder="e.g. Hanovia">
+            </div>
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">SERIAL / MODEL</label>
+                <input id="invSerial" class="form-control" placeholder="e.g. 756793">
+            </div>
+        </div>
+        <div class="input-grid">
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">ITEM LOCATION / BLDG</label>
+                <input id="invLoc" class="form-control" placeholder="e.g. Bldg 31604">
+            </div>
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">PHYSICAL FORM</label>
+                <select id="invPhys" class="form-control">
+                    <option value="">-- Select --</option>
+                    <option>Solid</option>
+                    <option>Liquid</option>
+                    <option>Gas</option>
+                    <option>Powder</option>
+                    <option>Sludge</option>
+                    <option>Debris</option>
+                    <option>Glass</option>
+                    <option>Other</option>
+                </select>
+            </div>
+        </div>
+
         <div class="input-grid" style="margin-bottom:15px;">
             <div>
                 <label style="font-size:0.7rem; color:var(--text-muted)">NRC LICENSED?</label>
@@ -1730,7 +1761,25 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
                     <div><label style="font-size:0.7rem; color:var(--text-muted)">DOSE (mR/hr)</label><input id="vid_dose" type="number" class="form-control" onchange="saveInvDetail()"></div>
                 </div>
 
-                <h4 style="margin:15px 0 5px 0; border-bottom:1px solid var(--border); font-size:0.8rem; color:var(--text-muted);">PHYSICAL & REGULATORY</h4>
+                <h4 style="margin:15px 0 5px 0; border-bottom:1px solid var(--border); font-size:0.8rem; color:var(--text-muted);">ORIGIN & LOCATION</h4>
+                <div class="input-grid" style="margin-bottom:10px;">
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">MANUFACTURER</label><input id="vid_mfr" class="form-control" placeholder="--" onchange="saveInvDetail()"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">SERIAL #</label><input id="vid_serial" class="form-control" placeholder="--" onchange="saveInvDetail()"></div>
+                </div>
+                <div class="input-grid" style="margin-bottom:10px;">
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">LOCATION / BLDG</label><input id="vid_loc" class="form-control" placeholder="--" onchange="saveInvDetail()"></div>
+                    <div>
+                        <label style="font-size:0.7rem; color:var(--text-muted)">PHYSICAL FORM</label>
+                        <select id="vid_phys" class="form-control" onchange="saveInvDetail()">
+                            <option value="">--</option>
+                            <option>Solid</option><option>Liquid</option><option>Gas</option>
+                            <option>Powder</option><option>Sludge</option><option>Debris</option>
+                            <option>Glass</option><option>Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h4 style="margin:15px 0 5px 0; border-bottom:1px solid var(--border); font-size:0.8rem; color:var(--text-muted);">REGULATORY & SHIPPING</h4>
                 <div class="input-grid" style="margin-bottom:10px;">
                     <div><label style="font-size:0.7rem; color:var(--text-muted)">NSN</label><input id="vid_nsn" class="form-control" placeholder="--" onchange="saveInvDetail()"></div>
                     <div><label style="font-size:0.7rem; color:var(--text-muted)">WEIGHT</label><input id="vid_weight" class="form-control" placeholder="--" onchange="saveInvDetail()"></div>
@@ -1759,6 +1808,18 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
                     </div>
                     <button class="btn" style="width:100%" onclick="addInvLink()">+ Add Document to Item</button>
                 </div>
+
+                <div id="vid_links" style="display:flex; flex-direction:column; gap:8px;"></div>
+                
+                <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px; text-align:center;">
+                    <button class="btn" style="background:var(--bg-body); color:var(--danger); border:1px solid var(--danger); width:100%;" 
+                            onmouseover="this.style.background='var(--danger)'; this.style.color='white';"
+                            onmouseout="this.style.background='var(--bg-body)'; this.style.color='var(--danger)';"
+                            onclick="delInventory(currentInvId)">
+                        <i class="fa-solid fa-trash"></i> Delete This Item
+                    </button>
+                </div>
+            </div>
                 
                 <div id="vid_links" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
@@ -2173,7 +2234,7 @@ const STARTER_DATA = {
         wiki: "LOGBOOK:\n- Use this space for daily operational notes.\n- 01/15: Annual calibration due for meter SN: 44521.\n- 02/20: Updated waste acceptance criteria received from WCS.\n- 09/01: Tritium exit sign project approved for Rota."
     };
 
-    let projects = []; let deletedProjects = []; let inventory = []; let expenses = []; let allocations = []; let chatLog = []; let team = []; let wikiText = "";
+    let projects = []; let deletedProjects = []; let inventory = []; let deletedInventory = []; let expenses = []; let allocations = []; let chatLog = []; let team = []; let wikiText = "";
 
     let references = [];
 
@@ -2532,6 +2593,22 @@ function updateEstItem(id, field, val) {
             calcEstimate();
         }
     }
+
+function updateEstItems() {
+    const cat = document.getElementById('est-cat').value;
+    const itemSel = document.getElementById('est-item');
+    const items = COST_DB[cat];
+    
+    // Clear and Populate
+    itemSel.innerHTML = '';
+    if(items) {
+        Object.keys(items).forEach(k => {
+            itemSel.innerHTML += `<option value="${k}">${items[k].name}</option>`;
+        });
+    }
+    // Trigger the unit update for the first item in the new list
+    updateEstUnit();
+}
 
 function calcEstimate() {
     let itemsTotal = 0;
@@ -2906,19 +2983,25 @@ function viewInventory(id) {
     document.getElementById('vid_iso').innerText = i.iso;
     document.getElementById('vid_act').innerText = i.act;
     
-    // Inputs (Using .value now)
+    // Core Inputs
     document.getElementById('vid_desc').value = i.desc || "";
     document.getElementById('vid_id').value = i.id;
     document.getElementById('vid_stat').value = i.status || 'Stored';
     document.getElementById('vid_dose').value = i.dose || 0;
     
-    // Physical & Reg
+    // Phase 2: Regulatory
     document.getElementById('vid_nsn').value = i.nsn || "";
     document.getElementById('vid_weight').value = i.weight || "";
     document.getElementById('vid_vol').value = i.vol || "";
     document.getElementById('vid_lic').value = i.licensed || "No";
     document.getElementById('vid_licNum').value = i.licenseNum || "";
     document.getElementById('vid_rcra').value = i.rcra || "No";
+
+    // Phase 3: Origin & Location (NEW)
+    document.getElementById('vid_mfr').value = i.mfr || "";
+    document.getElementById('vid_serial').value = i.serial || "";
+    document.getElementById('vid_loc').value = i.location || "";
+    document.getElementById('vid_phys').value = i.phys || "";
 
     renderInvLinks(i);
     openModal('invDetailModal');
@@ -2928,11 +3011,12 @@ function saveInvDetail(isManual = false) {
     const i = inventory.find(x => x.id == currentInvId);
     if(!i) return;
 
-    // Capture all inputs
+    // Capture Core
     i.desc = document.getElementById('vid_desc').value;
     i.status = document.getElementById('vid_stat').value;
     i.dose = parseFloat(document.getElementById('vid_dose').value) || 0;
     
+    // Capture Regulatory
     i.nsn = document.getElementById('vid_nsn').value;
     i.weight = document.getElementById('vid_weight').value;
     i.vol = document.getElementById('vid_vol').value;
@@ -2940,12 +3024,17 @@ function saveInvDetail(isManual = false) {
     i.licenseNum = document.getElementById('vid_licNum').value;
     i.rcra = document.getElementById('vid_rcra').value;
     
+    // Capture Origin & Location (NEW)
+    i.mfr = document.getElementById('vid_mfr').value;
+    i.serial = document.getElementById('vid_serial').value;
+    i.location = document.getElementById('vid_loc').value;
+    i.phys = document.getElementById('vid_phys').value;
+
     i.updated = Date.now();
     
     saveLocally();
-    render(); // Refresh main table in background
+    render(); // Refresh main table
     
-    // ONLY show toast if manually clicked
     if(isManual) {
         showToast("Item Details Saved");
     }
@@ -3649,7 +3738,7 @@ let rollupHtml = budgetData.map(row => {
 
 function downloadBackup() {
     const data = JSON.stringify({
-        projects, inventory, expenses, allocations, 
+        projects, inventory, deletedInventory, expenses, allocations, 
         chat: chatLog, team, wiki: wikiText, 
         hpState, viewMode, showComplete, estItems, exemptLog
     }, null, 2); // Pretty print for readability
@@ -3704,6 +3793,9 @@ function viewProject(id) {
     const p = projects.find(x => x.id === id); 
     if(!p) return;
     
+    // SAVE CURRENT PROJECT ID
+    localStorage.setItem('rad_active_proj', id);
+
     // 1. Update Browser Title (Context-Aware)
     document.title = `${p.title} | ${APP_VER}`;
     
@@ -3741,16 +3833,24 @@ function viewProject(id) {
     // 4. Generate Lists
     const teamOpts = team.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
     
-    // Inventory Assets (Clickable)
+    // Inventory Assets (Now with Trash Icon)
     const assignedItems = inventory.filter(i => i.projId === id);
     const assetsHtml = assignedItems.length ? assignedItems.map(i => `
-        <div class="list-item" style="font-size:0.8rem; cursor:pointer;" onclick="viewInventory('${jsEsc(i.id)}')">
-             <div>
+        <div class="list-item" style="font-size:0.8rem; display:flex; justify-content:space-between; align-items:center;">
+             <div style="cursor:pointer; flex-grow:1;" onclick="viewInventory('${jsEsc(i.id)}')">
                 <span style="font-weight:bold; color:var(--text-main);"><i class="fa-solid fa-box"></i> ${esc(i.id)}:</span> 
                 <span>${esc(i.desc || 'No description')}</span>
                 <div style="font-size:0.75rem; color:var(--text-muted);">
                     ${esc(i.iso)} | ${esc(i.act)} | ${i.dose} mR/hr
                 </div>
+            </div>
+            
+            <div style="padding-left:10px;">
+                <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--text-muted); transition:color 0.2s;" 
+                   onclick="delInventory('${jsEsc(i.id)}')" 
+                   onmouseover="this.style.color='var(--danger)'" 
+                   onmouseout="this.style.color='var(--text-muted)'"
+                   title="Remove Item"></i>
             </div>
         </div>`).join('') : '<div style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">No assets assigned.</div>';
 
@@ -4000,8 +4100,13 @@ function viewProject(id) {
                 </div>
                 <div style="margin-bottom:25px;">${lHtml}</div>
 
-                <h3>Assigned Assets</h3>
-                <div>${assetsHtml}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:5px; margin-bottom:10px;">
+    <h3 style="margin:0;">Assigned Assets</h3>
+    <button class="btn-sm" onclick="openAddInvForProject(${p.id})">
+        <i class="fa-solid fa-plus"></i> Add Item
+    </button>
+</div>
+<div>${assetsHtml}</div>
             </div>
         </div>
     </div>`;
@@ -4011,6 +4116,25 @@ function viewProject(id) {
     // This prevents the "Jump to Top" glitch when checking tasks.
     if (!document.getElementById('view-project-detail').classList.contains('active')) {
         nav('project-detail');
+    }
+}
+
+function openAddInvForProject(pid) {
+    // 1. Open the Inventory Modal
+    openModal('invModal');
+    
+    // 2. Clear fields for a fresh entry
+    document.getElementById('invId').value = '';
+    document.getElementById('invDesc').value = '';
+    document.getElementById('invDate').value = getTodayStr(); // Ensure you have this helper or use new Date().toISOString().split('T')[0]
+    
+    // 3. Auto-Select the Project
+    const projSelect = document.getElementById('invProj');
+    if(projSelect) {
+        projSelect.value = pid;
+        // Visual flash to show it was selected
+        projSelect.style.borderColor = 'var(--accent)';
+        setTimeout(() => projSelect.style.borderColor = 'var(--border)', 1000);
     }
 }
 
@@ -4030,6 +4154,9 @@ function viewProject(id) {
     }
 
     function switchHpTab(tab) {
+        // SAVE THE TAB
+        localStorage.setItem('rad_hp_active_tab', tab);
+
         ['decay','dist','shield','stay','alara'].forEach(t => document.getElementById('hp-tab-'+t).style.display = 'none');
         document.getElementById('hp-tab-'+tab).style.display = 'block';
         if(tab === 'dist') {
@@ -4038,6 +4165,7 @@ function viewProject(id) {
             inventory.forEach(i => { sel.innerHTML += `<option value="${i.id}">${esc(i.id)} (${i.dose} mR/hr)</option>`; });
         }
     }
+
     function loadInvToCalc() {
         const id = document.getElementById('dist-inv-select').value; if(!id) return;
         const item = inventory.find(x => x.id == id);
@@ -4130,6 +4258,9 @@ function viewProject(id) {
     }
 
     function switchFinTab(tab) {
+        // SAVE THE TAB
+        localStorage.setItem('rad_fin_active_tab', tab); 
+        
         document.getElementById('fin-tab-overview').style.display = tab === 'overview' ? 'block' : 'none';
         document.getElementById('fin-tab-exp').style.display = tab === 'exp' ? 'block' : 'none';
         document.getElementById('fin-tab-alloc').style.display = tab === 'alloc' ? 'block' : 'none';
@@ -5007,7 +5138,7 @@ function addExpense() {
 function addInventory() { 
     // 1. Get Core Inputs
     const id = document.getElementById('invId').value; 
-    const desc = document.getElementById('invDesc').value; // Description
+    const desc = document.getElementById('invDesc').value; 
     
     // Isotope Logic (Dropdown vs Custom)
     let iso = document.getElementById('invIso').value;
@@ -5015,8 +5146,9 @@ function addInventory() {
     
     // Activity Construction (Value + Unit)
     const actVal = document.getElementById('invAct').value;
-    const actUnit = document.getElementById('invActUnit').value;
-    const act = actVal ? (actVal + " " + actUnit) : ""; 
+    const actUnit = document.getElementById('invActUnit') ? document.getElementById('invActUnit').value : ""; // Handle if unit dropdown exists or is part of string
+    // Note: If you don't have a separate unit dropdown, assume user typed it in 'invAct'
+    const act = actVal; 
 
     // Numerical Data
     const dose = parseFloat(document.getElementById('invDose').value) || 0;
@@ -5024,13 +5156,13 @@ function addInventory() {
     
     // Logistics
     const pid = document.getElementById('invProj').value ? parseInt(document.getElementById('invProj').value) : null;
-    const stat = document.getElementById('invStat').value;
+    const stat = document.getElementById('invStatus').value;
     
     // Date Parsing
     const dateRaw = document.getElementById('invDate').value;
-    const dateVal = dateRaw ? new Date(dateRaw).getTime() : Date.now();
+    const dateVal = dateRaw ? dateRaw : getTodayStr(); // Keep as string "YYYY-MM-DD" for consistency
 
-    // 2. GET NEW PHYSICAL & REGULATORY INPUTS
+    // 2. GET PHYSICAL & REGULATORY INPUTS (Phase 2)
     const nsn = document.getElementById('invNsn').value;
     const weight = document.getElementById('invWeight').value;
     const vol = document.getElementById('invVol').value;
@@ -5038,13 +5170,19 @@ function addInventory() {
     const licNum = document.getElementById('invLicNum').value;
     const rcra = document.getElementById('invRcra').value;
 
-    // 3. Validation
+    // 3. GET ORIGIN & LOCATION INPUTS (Phase 3 - New Gaps)
+    const mfr = document.getElementById('invMfr').value;
+    const serial = document.getElementById('invSerial').value;
+    const loc = document.getElementById('invLoc').value;
+    const phys = document.getElementById('invPhys').value;
+
+    // 4. Validation
     if(!id) {
-        showToast("Error: Item ID is required", true); // True = Red error toast
+        showToast("Error: Item ID is required", "error"); 
         return;
     }
 
-    // 4. Save Object
+    // 5. Save Object
     inventory.push({
         id: id, 
         desc: desc,
@@ -5056,27 +5194,38 @@ function addInventory() {
         projId: pid, 
         logDate: dateVal,
         
-        // New Fields
+        // Phase 2 Fields
         nsn: nsn,
         weight: weight,
         vol: vol,
         licensed: lic,
         licenseNum: licNum,
         rcra: rcra,
+
+        // Phase 3 Fields (New)
+        mfr: mfr,
+        serial: serial,
+        location: loc,
+        phys: phys,
         
-        links: [], // Initialize empty binder for this item
+        links: [], // Initialize empty binder
         updated: Date.now()
     }); 
     
-    // 5. Feedback & Save
+    // 6. Feedback & Save
     logSystemAction(`Inventory <b>${esc(id)}</b> added.`);
     showToast("Item Added Successfully");
     saveLocally();
     render();
+
+    const activeProjectModal = document.getElementById('projectModal');
+    if(activeProjectModal && activeProjectModal.classList.contains('active') && pid) {
+        viewProject(pid); 
+    }
     
-    // 6. RESET ALL FORM FIELDS
+    // 7. RESET ALL FORM FIELDS
     document.getElementById('invId').value = '';
-    document.getElementById('invDesc').value = ''; // Clear Description
+    document.getElementById('invDesc').value = ''; 
     
     document.getElementById('invIso').value = 'Co-60'; 
     document.getElementById('invIsoCustom').value = '';
@@ -5084,31 +5233,70 @@ function addInventory() {
     
     document.getElementById('invAct').value = '';
     document.getElementById('invDose').value = '';
-    document.getElementById('invFill').value = '';
+    document.getElementById('invFill').value = '0';
+    document.getElementById('invFillLabel').innerText = '0%'; // Reset slider label
     document.getElementById('invDate').value = '';
 
-    // Clear New Fields
+    // Clear Phase 2 Fields
     document.getElementById('invNsn').value = '';
     document.getElementById('invWeight').value = '';
     document.getElementById('invVol').value = '';
     document.getElementById('invLic').value = 'No';
     document.getElementById('invLicNum').value = '';
     document.getElementById('invRcra').value = 'No';
+
+    // Clear Phase 3 Fields
+    document.getElementById('invMfr').value = '';
+    document.getElementById('invSerial').value = '';
+    document.getElementById('invLoc').value = '';
+    document.getElementById('invPhys').value = '';
+    
+    // Close modal automatically? (Optional - uncomment if desired)
+    // closeModal('invModal');
 }
 
 function delInventory(id) {
-        showConfirm(`Permanently delete item <b>${id}</b> from inventory?`, () => {
-            const i = inventory.find(x => x.id == id);
-            if(i) logSystemAction(`Inventory <b>${esc(i.id)}</b> (${esc(i.iso)}) deleted.`);
+    showConfirm(`Permanently delete item <b>${id}</b>?<br>It will be moved to the Graveyard.`, () => {
+        const i = inventory.find(x => x.id == id);
+        
+        if(i) {
+            // 1. Archive the Item
+            deletedInventory.push({
+                ...i,
+                deletedDate: Date.now(),
+                deletedBy: (typeof currentUser !== 'undefined' ? currentUser : 'User')
+            });
+            
+            logSystemAction(`Inventory <b>${esc(i.id)}</b> moved to graveyard.`);
+            
+            // Capture Project ID (so we can refresh the project view later)
+            const pid = i.projId;
 
-            registerDeletion(id);
-
+            // 2. Remove from Active List
+            registerDeletion(id); 
             inventory = inventory.filter(x => x.id != id);
+            
             saveLocally();
-            render();
-            showToast("Item Deleted");
-        }, "Delete Item", true);
-    }
+            render(); // Refresh Main Inventory Table
+
+            // 3. UI HANDLING
+            
+            // A. If the Item Detail Popup is open, CLOSE IT.
+            if(typeof currentInvId !== 'undefined' && currentInvId == id) {
+                closeModal('invDetailModal');
+            }
+
+            // B. If we are looking at the Project Detail View, REFRESH IT.
+            // (This fixes the "Ghost" issue)
+            const projectView = document.getElementById('view-project-detail');
+            if(projectView && projectView.classList.contains('active') && pid) {
+                viewProject(pid); 
+            }
+            
+            showToast("Item Moved to Graveyard");
+        }
+    }, "Delete Item", true);
+}
 
 function decayInventory() {
     if(!confirm("Permanently update all inventory activities to current date?")) return;
@@ -5182,50 +5370,74 @@ function setCurrentUser(val) {
 function openGraveyard() {
     const list = document.getElementById('graveyard-list');
     
+    // SECTION 1: DELETED PROJECTS
+    let html = '<h4 style="margin-top:0; border-bottom:1px solid var(--border); padding-bottom:5px;">Deleted Projects</h4>';
+    
     if(deletedProjects.length === 0) {
-        list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">The graveyard is empty. No projects have been deleted.</div>';
+        html += '<div style="font-style:italic; color:var(--text-muted); margin-bottom:20px;">No archived projects.</div>';
     } else {
-        // Sort by deletion date (newest on top)
-        const sorted = [...deletedProjects].sort((a,b) => b.deletedDate - a.deletedDate);
-        
-        list.innerHTML = `
-        <table class="sci-table">
-            <thead>
-                <tr>
-                    <th>Project</th>
-                    <th>Deleted By</th>
-                    <th>Date</th>
-                    <th>Reason</th>
-                    <th style="text-align:center;">Action</th>
-                </tr>
-            </thead>
+        html += `<table class="sci-table" style="margin-bottom:20px;">
+            <thead><tr><th>Project</th><th>Deleted By</th><th>Action</th></tr></thead>
             <tbody>
-                ${sorted.map(p => {
-                    const dateStr = new Date(p.deletedDate).toLocaleDateString();
-                    // Check if we have snapshot data to indicate a "Full" restore is possible
-                    const hasData = p.snapshotData ? '<i class="fa-solid fa-database" title="Has Financial Data" style="margin-left:5px; color:var(--info); font-size:0.7rem;"></i>' : '';
-                    
-                    return `
-                    <tr>
-                        <td>
-                            <div style="font-weight:bold;">${esc(p.title)} ${hasData}</div>
-                            <div style="font-size:0.75rem; color:var(--text-muted);">Last Status: ${p.status}</div>
-                        </td>
-                        <td>${esc(p.deletedBy)}</td>
-                        <td style="font-size:0.8rem;">${dateStr}</td>
-                        <td style="font-size:0.8rem; font-style:italic; color:var(--text-muted);">${esc(p.deleteReason)}</td>
-                        <td style="text-align:center;">
-                            <button class="btn-rect" onclick="reviveProject(${p.id})" style="background:var(--bg-input); color:var(--accent); border-color:var(--accent);">
-                                <i class="fa-solid fa-trash-arrow-up"></i> Revive
-                            </button>
-                        </td>
-                    </tr>`;
-                }).join('')}
+                ${deletedProjects.map(p => `
+                <tr>
+                    <td><b>${esc(p.title)}</b><div style="font-size:0.75rem;">${new Date(p.deletedDate).toLocaleDateString()}</div></td>
+                    <td>${esc(p.deletedBy)}</td>
+                    <td style="text-align:right;"><button class="btn-rect" onclick="reviveProject(${p.id})">Revive</button></td>
+                </tr>`).join('')}
+            </tbody>
+        </table>`;
+    }
+
+    // SECTION 2: DELETED INVENTORY (NEW)
+    html += '<h4 style="margin-top:0; border-bottom:1px solid var(--border); padding-bottom:5px;">Deleted Inventory</h4>';
+    
+    if(!deletedInventory || deletedInventory.length === 0) {
+        html += '<div style="font-style:italic; color:var(--text-muted);">No archived inventory.</div>';
+    } else {
+        html += `<table class="sci-table">
+            <thead><tr><th>ID / Serial</th><th>Desc</th><th>Deleted</th><th>Action</th></tr></thead>
+            <tbody>
+                ${deletedInventory.map(i => `
+                <tr>
+                    <td><b>${esc(i.id)}</b><div style="font-size:0.7rem; color:var(--text-muted);">${esc(i.serial||'No Serial')}</div></td>
+                    <td>${esc(i.desc)}</td>
+                    <td>${new Date(i.deletedDate).toLocaleDateString()}</td>
+                    <td style="text-align:right;"><button class="btn-rect" onclick="reviveInventory('${i.id}')">Restore</button></td>
+                </tr>`).join('')}
             </tbody>
         </table>`;
     }
     
+    list.innerHTML = html;
     openModal('graveyardModal');
+}
+
+function reviveInventory(id) {
+    const idx = deletedInventory.findIndex(x => x.id == id);
+    if(idx === -1) return;
+    
+    const item = deletedInventory[idx];
+    
+    // Check for ID collision (if you re-used the ID 912 while the old 912 was dead)
+    if(inventory.some(x => x.id == item.id)) {
+        showToast("Cannot restore: ID already exists active.", "error");
+        return;
+    }
+
+    // Restore
+    delete item.deletedDate;
+    delete item.deletedBy;
+    item.updated = Date.now();
+    
+    inventory.push(item);
+    deletedInventory.splice(idx, 1);
+    
+    logSystemAction(`Inventory <b>${esc(item.id)}</b> restored from graveyard.`);
+    saveLocally();
+    render();
+    openGraveyard(); // Refresh the modal
+    showToast("Item Restored");
 }
 
     function renderTeamSettings() { 
@@ -5415,8 +5627,18 @@ function nav(id, force=false) {
         if(btn) btn.classList.add('active');
 
         // 5. Specific Tool Initialization logic
-        if(id === 'hp') { switchHpTab('decay'); loadHPState(); }
-        if(id === 'finance') { switchFinTab('overview'); }
+        // 5. Specific Tool Initialization logic
+        if(id === 'hp') { 
+            // Load saved tab or default to 'decay'
+            const lastTab = localStorage.getItem('rad_hp_active_tab') || 'decay';
+            switchHpTab(lastTab); 
+            loadHPState(); 
+        }
+        if(id === 'finance') { 
+            // Load saved tab or default to 'overview'
+            const lastTab = localStorage.getItem('rad_fin_active_tab') || 'overview';
+            switchFinTab(lastTab); 
+        }
         if(id === 'estimator') {
              const sel = document.getElementById('est-proj-select');
              const currentVal = sel.value; 
@@ -5441,6 +5663,8 @@ function nav(id, force=false) {
             case 'references': title = "Library | " + APP_VER; break;
         }
         document.title = title;
+
+        localStorage.setItem('rad_active_view', id);
     }
     
 function openModal(id) { 
@@ -5670,7 +5894,7 @@ let searchDebounce;
 
     function saveLocally() { 
     localStorage.setItem('rad25_7_data', JSON.stringify({
-        projects, inventory, expenses, allocations, 
+        projects, inventory, deletedInventory, expenses, allocations, 
         chat: chatLog, team, wiki: wikiText, 
         hpState, viewMode, showComplete, estItems, exemptLog,
         tombstones, deletedProjects
@@ -5715,6 +5939,8 @@ let searchDebounce;
             tombstones = d.tombstones || [];
 
             deletedProjects = d.deletedProjects || [];
+
+            deletedInventory = d.deletedInventory || [];
 
             viewMode=d.viewMode||'list'; showComplete=d.showComplete||false; 
 
@@ -5763,7 +5989,26 @@ let searchDebounce;
         calcEstimate(); 
 
         document.getElementById('sidebar-user-display').innerText = currentUser;
+
+        const lastView = localStorage.getItem('rad_active_view');
+    const lastProj = localStorage.getItem('rad_active_proj');
+
+    if (lastView === 'project-detail' && lastProj) {
+        // If they were looking at a specific project, verify it still exists
+        const pExists = projects.some(p => p.id == lastProj);
+        if(pExists) {
+            viewProject(parseInt(lastProj));
+        } else {
+            nav('dashboard'); // Fallback if project was deleted
+        }
+    } else if (lastView) {
+        // Restore standard tabs (Inventory, Finance, etc.)
+        nav(lastView);
+    } else {
+        // Default to dashboard
+        nav('dashboard');
     }
+}
 
     function registerDeletion(id) {
     // Check if already tombstoned to avoid duplicates
