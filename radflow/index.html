@@ -1808,7 +1808,7 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
                     </div>
                     <button class="btn" style="width:100%" onclick="addInvLink()">+ Add Document to Item</button>
                 </div>
-
+                
                 <div id="vid_links" style="display:flex; flex-direction:column; gap:8px;"></div>
                 
                 <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:15px; text-align:center;">
@@ -2997,7 +2997,7 @@ function viewInventory(id) {
     document.getElementById('vid_licNum').value = i.licenseNum || "";
     document.getElementById('vid_rcra').value = i.rcra || "No";
 
-    // Phase 3: Origin & Location (NEW)
+    // Phase 3: Origin & Location (NEW - This was missing!)
     document.getElementById('vid_mfr').value = i.mfr || "";
     document.getElementById('vid_serial').value = i.serial || "";
     document.getElementById('vid_loc').value = i.location || "";
@@ -3024,7 +3024,7 @@ function saveInvDetail(isManual = false) {
     i.licenseNum = document.getElementById('vid_licNum').value;
     i.rcra = document.getElementById('vid_rcra').value;
     
-    // Capture Origin & Location (NEW)
+    // Capture Origin & Location (NEW - This was missing!)
     i.mfr = document.getElementById('vid_mfr').value;
     i.serial = document.getElementById('vid_serial').value;
     i.location = document.getElementById('vid_loc').value;
@@ -3655,9 +3655,14 @@ let rollupHtml = budgetData.map(row => {
                         <th onclick="sortTable('table-inv', 8)">Lic? <i class="fa-solid fa-sort"></i></th>
                         <th onclick="sortTable('table-inv', 9)">RCRA? <i class="fa-solid fa-sort"></i></th>
 
-                        <th onclick="sortTable('table-inv', 10)">Fill <i class="fa-solid fa-sort"></i></th>
-                        <th onclick="sortTable('table-inv', 11)">Project <i class="fa-solid fa-sort"></i></th>
-                        <th onclick="sortTable('table-inv', 12)">Status <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 10)">Mfr <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 11)">Serial <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 12)">Loc <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 13)">Form <i class="fa-solid fa-sort"></i></th>
+
+                        <th onclick="sortTable('table-inv', 14)">Fill <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 15)">Project <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 16)">Status <i class="fa-solid fa-sort"></i></th>
                         <th></th>
                     </tr>
                 </thead>
@@ -3680,6 +3685,17 @@ let rollupHtml = budgetData.map(row => {
                             <td><select class="live-edit" style="width:50px;" onchange="updItem('inventory', '${safeId}', 'licensed', this.value)"><option ${i.licensed!=='Yes'?'selected':''}>No</option><option ${i.licensed==='Yes'?'selected':''}>Yes</option></select></td>
                             <td><select class="live-edit" style="width:50px; color:${i.rcra==='Yes'?'var(--danger)':'inherit'}; font-weight:${i.rcra==='Yes'?'bold':'normal'}" onchange="updItem('inventory', '${safeId}', 'rcra', this.value)"><option ${i.rcra!=='Yes'?'selected':''}>No</option><option value="Yes" ${i.rcra==='Yes'?'selected':''}>Yes</option></select></td>
 
+                            <td><input class="live-edit" style="width:80px;" value="${esc(i.mfr||'')}" onchange="updItem('inventory', '${safeId}', 'mfr', this.value)"></td>
+                            <td><input class="live-edit" style="width:80px;" value="${esc(i.serial||'')}" onchange="updItem('inventory', '${safeId}', 'serial', this.value)"></td>
+                            <td><input class="live-edit" style="width:80px;" value="${esc(i.location||'')}" onchange="updItem('inventory', '${safeId}', 'location', this.value)"></td>
+                            <td><select class="live-edit" style="width:70px;" onchange="updItem('inventory', '${safeId}', 'phys', this.value)">
+                                <option value="">--</option>
+                                <option ${i.phys==='Solid'?'selected':''}>Solid</option><option ${i.phys==='Liquid'?'selected':''}>Liquid</option>
+                                <option ${i.phys==='Gas'?'selected':''}>Gas</option><option ${i.phys==='Powder'?'selected':''}>Powder</option>
+                                <option ${i.phys==='Sludge'?'selected':''}>Sludge</option><option ${i.phys==='Debris'?'selected':''}>Debris</option>
+                                <option ${i.phys==='Glass'?'selected':''}>Glass</option><option ${i.phys==='Other'?'selected':''}>Other</option>
+                            </select></td>
+
                             <td style="width:100px;">
                                 <div style="display:flex; align-items:center; gap:5px;">
                                     <input type="number" class="live-edit" style="width:40px;" value="${i.fill||0}" onchange="updItem('inventory', '${safeId}', 'fill', this.value)">%
@@ -3690,6 +3706,7 @@ let rollupHtml = budgetData.map(row => {
                             <td><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td>
                             <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delInventory('${safeId}')"></i></td>
                         </tr>`;
+                        
                     }).join('')}
                 </tbody>
             </table>
@@ -4380,30 +4397,35 @@ function getSortedData(data, tableId) {
                 'vol',      // 7
                 'licensed', // 8
                 'rcra',     // 9
-                'fill',     // 10
-                'projId',   // 11
-                'status'    // 12
+                // NEW COLUMNS
+                'mfr',      // 10
+                'serial',   // 11
+                'location', // 12
+                'phys',     // 13
+                // SHIFTED EXISTING
+                'fill',     // 14
+                'projId',   // 15
+                'status'    // 16
             ];
             
-            // 2. Special Sort: Activity (Uses Physics Helper)
+            // 2. Special Sort: Activity
             if (sortState.col === 3) {
                 return (getActValue(a.act) - getActValue(b.act)) * sortState.dir;
             }
 
-            // 3. Special Sort: Mixed Numbers (Dose, Weight, Volume, Fill)
-            // This extracts "5" from "5 kg" so it sorts correctly against "100 g"
-            if ([4, 6, 7, 10].includes(sortState.col)) {
+            // 3. Special Sort: Mixed Numbers (Added '14' for Fill)
+            if ([4, 6, 7, 14].includes(sortState.col)) {
                 const getNum = (v) => {
                     if (v === null || v === undefined) return -1;
                     const s = v.toString();
-                    const match = s.match(/[\d\.]+/); // Find first number
+                    const match = s.match(/[\d\.]+/); 
                     return match ? parseFloat(match[0]) : -1;
                 };
                 const k = keys[sortState.col];
                 return (getNum(a[k]) - getNum(b[k])) * sortState.dir;
             }
 
-            // 4. Default Sort (Strings/IDs)
+            // 4. Default Sort
             valA = a[keys[sortState.col]];
             valB = b[keys[sortState.col]];
         }
@@ -5990,7 +6012,7 @@ let searchDebounce;
 
         document.getElementById('sidebar-user-display').innerText = currentUser;
 
-        const lastView = localStorage.getItem('rad_active_view');
+    const lastView = localStorage.getItem('rad_active_view');
     const lastProj = localStorage.getItem('rad_active_proj');
 
     if (lastView === 'project-detail' && lastProj) {
