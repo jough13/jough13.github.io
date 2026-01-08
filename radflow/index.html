@@ -2806,7 +2806,7 @@ function normalizeIso(input) {
         document.getElementById('btnShowComp').innerHTML = showComplete ? '<i class="fa-solid fa-eye-slash"></i> Hide Done' : '<i class="fa-solid fa-eye"></i> Show Done';
         
         // --- 1. PROJECT FILTERING (Global) ---
-        let filteredProjs = projects.filter(p => p.title.toLowerCase().includes(filter) || (p.desc||"").toLowerCase().includes(filter));
+        let filteredProjs = projects.filter(p => (p.title + (p.desc||"") + (p.uic||"") + (p.jmcId||"") + (p.rcn||"") + (p.contractor||"")).toLowerCase().includes(filter));
         if (!showComplete) filteredProjs = filteredProjs.filter(p => p.status !== 'Complete'); 
 
         const filteredInv = inventory.filter(i => i.id.toLowerCase().includes(filter));
@@ -3294,7 +3294,7 @@ const sortedInv = getSortedData(filteredInv, 'table-inv');
                         <span style="font-size:0.7rem;">%</span>
                     </div>
                     <div class="progress-bar" style="height:4px; margin-top:2px;">
-                        <div id="bar-fill-${safeId}" class="progress-fill" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':'var(--info)'}"></div>
+                        <div id="bar-fill-${safeId}" class="progress-fill" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':(i.fill>75?'var(--warning)':'var(--info)')}}"></div>
                     </div>
                 </td>
                 <td><div style="display:flex; align-items:center; gap:8px;"><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'projId', this.value)">${pOptions}</select>${linkIcon}</div></td>
@@ -3929,7 +3929,7 @@ function updItem(type, id, key, val, elem) {
                 const bar = document.getElementById(`bar-fill-${id}`);
                 if(bar) {
                     bar.style.width = val + '%';
-                    bar.style.background = val > 90 ? 'var(--danger)' : 'var(--info)';
+                    bar.style.background = val > 90 ? 'var(--danger)' : (val > 75 ? 'var(--warning)' : 'var(--info)');
                 }
             }
             if(key === 'dose') val = parseFloat(val); 
@@ -4954,6 +4954,7 @@ function openModal(id) {
             document.getElementById('pCost').value = '';
             if(document.getElementById('pUic')) document.getElementById('pUic').value = '';
             if(document.getElementById('pLoc')) document.getElementById('pLoc').value = '';
+            setTimeout(() => document.getElementById('pTitle').focus(), 50);
         }
 
         if(id === 'invModal') {
@@ -5316,6 +5317,11 @@ function resetData(ask=true) {
 // 1. Close Modals on "Escape" key
 document.addEventListener('keydown', (e) => {
     if (e.key === "Escape") {
+
+        if(document.getElementById('customAlertOverlay').style.display === 'flex') {
+             closeCustomAlert(); return; 
+        }
+        
         const active = document.querySelector('.modal-overlay.active');
         if (active) closeModal(active.id);
     }
