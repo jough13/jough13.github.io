@@ -3706,7 +3706,7 @@ let rollupHtml = budgetData.map(row => {
                             <td><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td>
                             <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delInventory('${safeId}')"></i></td>
                         </tr>`;
-                        
+
                     }).join('')}
                 </tbody>
             </table>
@@ -6075,17 +6075,33 @@ function resetData(ask=true) {
         }
     }
 
-    function clearData() { 
+function clearData() { 
         showConfirm(
             "Clear all application data?<br>This will wipe everything and cannot be undone.", 
             () => { 
+                // 1. NUKE ALL DATA ARRAYS
                 projects=[]; inventory=[]; expenses=[]; allocations=[]; 
                 chatLog=[]; team=[]; wikiText=""; hpState={}; 
                 estItems=[]; exemptLog=[]; 
+                deletedProjects=[]; deletedInventory=[]; tombstones=[]; references=[];
                 
+                // 2. WIPE SESSION MEMORY (Forget where we were)
+                currentInvId = null;
+                localStorage.removeItem('rad_active_proj');
+                localStorage.removeItem('rad_active_view');
+                localStorage.removeItem('rad_hp_active_tab');
+                localStorage.removeItem('rad_fin_active_tab');
+
+                // 3. SAVE THE EMPTY STATE
                 saveLocally(); 
+                
+                // 4. FORCE NAVIGATION TO DASHBOARD (The "Eject" Button)
+                nav('dashboard'); 
+                
+                // 5. RENDER THE BLANK SLATE
                 render(); 
-                showToast("All Data Cleared");
+                
+                showToast("System Wiped & Reset");
             }, 
             "Clear All Data", 
             true // Danger Red
