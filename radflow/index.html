@@ -1094,14 +1094,8 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
                 <button class="btn" onclick="openModal('invModal')" style="margin:0;">+ Add Item</button>
             </div>
         </div>
-        <div class="widget"><div style="overflow-x:auto;"><table class="sci-table" id="table-inv"><thead><tr><th onclick="sortTable('table-inv',0)">ID <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',1)">Isotope <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',2)">Activity <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th><th onclick="sortTable('table-inv',3)">Dose <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
-            
-            <th onclick="sortTable('table-inv',4)">Fill % <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
-<th onclick="sortTable('table-inv',5)">Project <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
-<th onclick="sortTable('table-inv',6)">Status <i class="fa-solid fa-sort" style="font-size:0.7rem; color:var(--text-muted)"></i></th>
-<th></th></tr></thead>
-
-<tbody id="full-inv-list"></tbody></table></div></div>
+        
+        <div class="widget"><div id="full-inv-list"></div></div>
 
     </div>
 </div>
@@ -1230,12 +1224,19 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
             </div>
         </div>
         
-        <div style="background:var(--bg-input); padding:10px; border-radius:6px; margin-bottom:10px;">
-            <label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold;">POINT OF CONTACT</label>
-            <div style="display:flex; gap:10px;">
+        <div style="background:var(--bg-card); border:1px solid var(--border); padding:15px; border-radius:6px; margin-bottom:15px;">
+            <label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; letter-spacing:0.5px;">PRIMARY POINT OF CONTACT</label>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
                 <input id="pPoc" class="form-control" style="margin:0; flex:1;" placeholder="Name">
                 <input id="pPocEmail" class="form-control" style="margin:0; flex:1;" placeholder="Email">
                 <input id="pPocPhone" class="form-control" style="margin:0; width:140px;" placeholder="Phone">
+            </div>
+
+            <label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; letter-spacing:0.5px;">ALTERNATE POC</label>
+            <div style="display:flex; gap:10px;">
+                <input id="pPoc2" class="form-control" style="margin:0; flex:1;" placeholder="Alt Name">
+                <input id="pPocEmail2" class="form-control" style="margin:0; flex:1;" placeholder="Alt Email">
+                <input id="pPocPhone2" class="form-control" style="margin:0; width:140px;" placeholder="Alt Phone">
             </div>
         </div>
 
@@ -1288,7 +1289,7 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
         <h3>Log Container</h3>
 
         <div class="input-grid">
-            <input id="invId" class="form-control" placeholder="ID">
+            <input id="invId" class="form-control" placeholder="ID (e.g. 911)">
             
             <div style="display:flex; flex-direction:column; gap:5px;">
                 <select id="invIso" class="form-control" style="margin:0;" onchange="toggleCustomIso(this.value)"></select>
@@ -1297,6 +1298,8 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
             
             <input id="invDate" type="date" class="form-control" title="Date Measured/Received">
         </div>
+
+        <input id="invDesc" class="form-control" placeholder="Description (e.g. Welding Electrodes, Camera Lenses)">
 
         <div class="input-grid">
             <input id="invAct" class="form-control" placeholder="Activity (e.g. 10 mCi or Unknown)">
@@ -1316,6 +1319,42 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
             <option>Staged</option>
             <option>Shipped</option>
         </select>
+
+        <div class="input-grid" style="margin-top:10px;">
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">NSN</label>
+                <input id="invNsn" class="form-control" placeholder="National Stock #">
+            </div>
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">WEIGHT</label>
+                <input id="invWeight" class="form-control" placeholder="e.g. 5 kg">
+            </div>
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">VOLUME</label>
+                <input id="invVol" class="form-control" placeholder="e.g. 10 cu ft">
+            </div>
+        </div>
+
+        <div class="input-grid" style="margin-bottom:15px;">
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">NRC LICENSED?</label>
+                <select id="invLic" class="form-control">
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">LICENSE #</label>
+                <input id="invLicNum" class="form-control" placeholder="If applicable...">
+            </div>
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted)">RCRA MIXED?</label>
+                <select id="invRcra" class="form-control">
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                </select>
+            </div>
+        </div>
 
         <div style="display:flex; justify-content:flex-end; gap:10px;">
             <button class="btn-sync" style="width:auto;" onclick="closeModal('invModal')">Cancel</button>
@@ -1646,6 +1685,86 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     </div>
 </div>
 
+<div id="invDetailModal" class="modal-overlay">
+        <div class="modal" style="max-width:600px;">
+            <div class="modal-header" style="position:relative; padding-right:50px; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:15px;">
+                <h2 style="margin:0; display:flex; align-items:center; gap:10px;">
+                    <i class="fa-solid fa-box-open" style="color:var(--accent);"></i> 
+                    <span id="vid_title" style="letter-spacing:-0.5px;">Item Detail</span>
+                </h2>
+                
+                <div onclick="closeModal('invDetailModal')" 
+                     style="position:absolute; top:0; right:0; width:32px; height:32px; 
+                            background:var(--bg-input); border-radius:6px; 
+                            display:flex; align-items:center; justify-content:center; 
+                            cursor:pointer; color:var(--text-muted); transition:all 0.2s ease;"
+                     onmouseover="this.style.background='var(--danger)'; this.style.color='white'; this.style.transform='scale(1.05)';"
+                     onmouseout="this.style.background='var(--bg-input)'; this.style.color='var(--text-muted)'; this.style.transform='scale(1)';"
+                     title="Close (Esc)">
+                    <i class="fa-solid fa-xmark" style="font-size:1.1rem;"></i>
+                </div>
+            </div>
+            
+            <div class="modal-body">
+                <div style="background:var(--bg-card); padding:15px; border-radius:8px; border:1px solid var(--border); margin-bottom:20px; text-align:center;">
+                    <div id="vid_iso" style="font-size:1.5rem; font-weight:bold; color:var(--rad);">Co-60</div>
+                    <div id="vid_act" style="font-size:1.1rem; color:var(--text-main);">10 mCi</div>
+                    
+                    <input id="vid_desc" class="form-control" style="margin-top:10px; text-align:center; font-style:italic;" placeholder="Description..." onchange="saveInvDetail()">
+                </div>
+
+                <div style="text-align:right; margin-bottom:10px;">
+                    <button class="btn" onclick="saveInvDetail(true)">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Changes
+                    </button>
+                </div>
+
+                <div class="input-grid" style="margin-bottom:10px;">
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">ID / SERIAL</label><input id="vid_id" class="form-control" readonly style="background:var(--bg-body); cursor:not-allowed;"></div>
+                    <div>
+                        <label style="font-size:0.7rem; color:var(--text-muted)">STATUS</label>
+                        <select id="vid_stat" class="form-control" onchange="saveInvDetail()">
+                            <option>Stored</option><option>Staged</option><option>Shipped</option>
+                        </select>
+                    </div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">DOSE (mR/hr)</label><input id="vid_dose" type="number" class="form-control" onchange="saveInvDetail()"></div>
+                </div>
+
+                <h4 style="margin:15px 0 5px 0; border-bottom:1px solid var(--border); font-size:0.8rem; color:var(--text-muted);">PHYSICAL & REGULATORY</h4>
+                <div class="input-grid" style="margin-bottom:10px;">
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">NSN</label><input id="vid_nsn" class="form-control" placeholder="--" onchange="saveInvDetail()"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">WEIGHT</label><input id="vid_weight" class="form-control" placeholder="--" onchange="saveInvDetail()"></div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">VOLUME</label><input id="vid_vol" class="form-control" placeholder="--" onchange="saveInvDetail()"></div>
+                </div>
+                
+                <div class="input-grid" style="margin-bottom:20px;">
+                    <div>
+                        <label style="font-size:0.7rem; color:var(--text-muted)">NRC LICENSED</label>
+                        <select id="vid_lic" class="form-control" onchange="saveInvDetail()"><option value="No">No</option><option value="Yes">Yes</option></select>
+                    </div>
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">LICENSE #</label><input id="vid_licNum" class="form-control" placeholder="--" onchange="saveInvDetail()"></div>
+                    <div>
+                        <label style="font-size:0.7rem; color:var(--text-muted)">RCRA MIXED</label>
+                        <select id="vid_rcra" class="form-control" onchange="saveInvDetail()"><option value="No">No</option><option value="Yes">Yes</option></select>
+                    </div>
+                </div>
+
+                <h3 style="border-bottom:2px solid var(--accent); padding-bottom:5px; margin-bottom:10px;">
+                    <i class="fa-solid fa-folder-open"></i> Item Binder
+                </h3>
+                <div style="background:var(--bg-input); padding:10px; border-radius:6px; margin-bottom:10px;">
+                    <div style="display:flex; gap:10px; margin-bottom:5px;">
+                        <input id="vid_linkName" class="form-control" style="margin:0; background:var(--bg-panel);" placeholder="File Name">
+                        <input id="vid_linkUrl" class="form-control" style="margin:0; background:var(--bg-panel);" placeholder="Path/URL">
+                    </div>
+                    <button class="btn" style="width:100%" onclick="addInvLink()">+ Add Document to Item</button>
+                </div>
+                
+                <div id="vid_links" style="display:flex; flex-direction:column; gap:8px;"></div>
+            </div>
+        </div>
+    </div>
+
 <script>
 
     const APP_VER = "RadFlow v26.0";
@@ -1771,6 +1890,8 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     };
 
     const ISOTOPE_DB = {
+    'Th-232': { hl: 1.405e10, name: 'Thorium-232' }, 
+    'U-238':  { hl: 4.468e9, name: 'Uranium-238' }, 
     'Co-60': { hl: 5.27, name: 'Cobalt-60' },
     'Cs-137': { hl: 30.17, name: 'Cesium-137' },
     'Ir-192': { hl: 0.202, name: 'Iridium-192' },
@@ -2359,16 +2480,20 @@ function calculateDecay() {
     return { text: `${Math.ceil(diff)} Days Left`, color: "var(--info)" };
 }
 
-    function updateEstItems() {
-        const cat = document.getElementById('est-cat').value;
-        const sel = document.getElementById('est-item');
-        sel.innerHTML = '';
-        const items = COST_DB[cat];
-        Object.keys(items).forEach(k => {
-            sel.innerHTML += `<option value="${k}" data-rate="${items[k].rate}" data-unit="${items[k].unit}">${items[k].name}</option>`;
-        });
-        updateEstUnit();
-    }
+function updateEstItem(id, field, val) {
+    const item = estItems.find(i => i.id === id);
+    if(!item) return;
+
+    if(field === 'qty') item.qty = parseFloat(val) || 0;
+    if(field === 'rate') item.rate = parseFloat(val) || 0;
+
+    // Recalculate Line Total
+    item.total = roundMoney(item.rate * item.qty);
+    
+    saveLocally();
+    calcEstimate(); // Re-render table to update totals
+}
+
     function updateEstUnit() {
         const cat = document.getElementById('est-cat').value;
         const itemKey = document.getElementById('est-item').value;
@@ -2376,6 +2501,7 @@ function calculateDecay() {
         document.getElementById('est-unit').innerText = itemData.unit;
         document.getElementById('est-rate').value = itemData.rate;
     }
+
     function addEstItem() {
         const cat = document.getElementById('est-cat').value;
         const itemKey = document.getElementById('est-item').value;
@@ -2406,17 +2532,41 @@ function calculateDecay() {
             calcEstimate();
         }
     }
-    function calcEstimate() {
-        let itemsTotal = 0;
-        const tbody = document.getElementById('est-list');
-        tbody.innerHTML = estItems.map(i => {
-            itemsTotal += i.total;
-            return `<tr><td>${i.cat}</td><td>${i.name}</td><td style="text-align:right">$${i.rate.toFixed(2)}</td><td style="text-align:right">${i.qty}</td><td style="text-align:right">$${i.total.toFixed(2)}</td><td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="removeEstItem(${i.id})"></i></td></tr>`;
-        }).join('');
-        document.getElementById('est-grand-total').innerText = "$" + itemsTotal.toLocaleString(undefined, {minimumFractionDigits:2});
-        document.getElementById('est-count').innerText = estItems.length;
-        window.currentEstTotal = itemsTotal;
-    }
+
+function calcEstimate() {
+    let itemsTotal = 0;
+    const tbody = document.getElementById('est-list');
+    
+    tbody.innerHTML = estItems.map(i => {
+        itemsTotal += i.total;
+        
+        // We use 'live-edit' class to match the style of other tables
+        return `
+        <tr>
+            <td>${esc(i.cat)}</td>
+            <td>${esc(i.name)}</td>
+            
+            <td style="text-align:right">
+                <div style="display:flex; align-items:center; justify-content:flex-end; gap:5px;">
+                    <span style="font-size:0.8rem; color:var(--text-muted);">$</span>
+                    <input class="live-edit" type="number" step="0.01" style="width:80px; text-align:right;" value="${i.rate}" onchange="updateEstItem(${i.id}, 'rate', this.value)">
+                </div>
+            </td>
+            
+            <td style="text-align:right">
+                <input class="live-edit" type="number" style="width:60px; text-align:right;" value="${i.qty}" onchange="updateEstItem(${i.id}, 'qty', this.value)">
+            </td>
+            
+            <td style="text-align:right; font-weight:bold;">$${i.total.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+            
+            <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="removeEstItem(${i.id})"></i></td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('est-grand-total').innerText = "$" + itemsTotal.toLocaleString(undefined, {minimumFractionDigits:2});
+    document.getElementById('est-count').innerText = estItems.length;
+    window.currentEstTotal = itemsTotal;
+}
     
 function saveEstimateAction(mode) {
         const pidVal = document.getElementById('est-proj-select').value;
@@ -2740,6 +2890,117 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
             if(scroller) scroller.scrollLeft = scroller.scrollWidth; 
         }, 50);
     }
+
+// --- ITEM DETAIL & BINDER LOGIC ---
+
+let currentInvId = null; // Track which item is open
+
+function viewInventory(id) {
+    const i = inventory.find(x => x.id == id);
+    if(!i) return;
+
+    currentInvId = i.id; 
+    
+    // Header
+    document.getElementById('vid_title').innerText = "Item " + i.id;
+    document.getElementById('vid_iso').innerText = i.iso;
+    document.getElementById('vid_act').innerText = i.act;
+    
+    // Inputs (Using .value now)
+    document.getElementById('vid_desc').value = i.desc || "";
+    document.getElementById('vid_id').value = i.id;
+    document.getElementById('vid_stat').value = i.status || 'Stored';
+    document.getElementById('vid_dose').value = i.dose || 0;
+    
+    // Physical & Reg
+    document.getElementById('vid_nsn').value = i.nsn || "";
+    document.getElementById('vid_weight').value = i.weight || "";
+    document.getElementById('vid_vol').value = i.vol || "";
+    document.getElementById('vid_lic').value = i.licensed || "No";
+    document.getElementById('vid_licNum').value = i.licenseNum || "";
+    document.getElementById('vid_rcra').value = i.rcra || "No";
+
+    renderInvLinks(i);
+    openModal('invDetailModal');
+}
+
+function saveInvDetail(isManual = false) {
+    const i = inventory.find(x => x.id == currentInvId);
+    if(!i) return;
+
+    // Capture all inputs
+    i.desc = document.getElementById('vid_desc').value;
+    i.status = document.getElementById('vid_stat').value;
+    i.dose = parseFloat(document.getElementById('vid_dose').value) || 0;
+    
+    i.nsn = document.getElementById('vid_nsn').value;
+    i.weight = document.getElementById('vid_weight').value;
+    i.vol = document.getElementById('vid_vol').value;
+    i.licensed = document.getElementById('vid_lic').value;
+    i.licenseNum = document.getElementById('vid_licNum').value;
+    i.rcra = document.getElementById('vid_rcra').value;
+    
+    i.updated = Date.now();
+    
+    saveLocally();
+    render(); // Refresh main table in background
+    
+    // ONLY show toast if manually clicked
+    if(isManual) {
+        showToast("Item Details Saved");
+    }
+}
+
+function renderInvLinks(item) {
+    const list = document.getElementById('vid_links');
+    const links = item.links || []; // Handle existing items with no links
+    
+    if(links.length === 0) {
+        list.innerHTML = '<div style="color:var(--text-muted); font-style:italic; text-align:center;">No documents attached.</div>';
+        return;
+    }
+
+    list.innerHTML = links.map((l, idx) => `
+        <div style="background:white; padding:8px; border:1px solid var(--border); border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+            <a href="${l.url}" target="_blank" style="text-decoration:none; color:var(--navy); font-weight:bold;">
+                <i class="fa-solid fa-file"></i> ${esc(l.name)}
+            </a>
+            <i class="fa-solid fa-trash" style="color:var(--danger); cursor:pointer;" onclick="delInvLink(${idx})"></i>
+        </div>
+    `).join('');
+}
+
+function addInvLink() {
+    const item = inventory.find(x => x.id == currentInvId);
+    if(!item) return;
+
+    const name = document.getElementById('vid_linkName').value;
+    const url = document.getElementById('vid_linkUrl').value;
+    
+    if(!name || !url) return showToast("Enter name and URL");
+
+    // Initialize array if it doesn't exist
+    if(!item.links) item.links = [];
+    
+    item.links.push({ name, url });
+    
+    // Clear inputs and save
+    document.getElementById('vid_linkName').value = '';
+    document.getElementById('vid_linkUrl').value = '';
+    
+    saveLocally();
+    renderInvLinks(item);
+    showToast("Document Added");
+}
+
+function delInvLink(idx) {
+    const item = inventory.find(x => x.id == currentInvId);
+    if(confirm("Remove this document link?")) {
+        item.links.splice(idx, 1);
+        saveLocally();
+        renderInvLinks(item);
+    }
+}
 
     function quickAdd(type, pid) {
         if(type === 'task') {
@@ -3284,34 +3545,68 @@ let rollupHtml = budgetData.map(row => {
             </tr>`;
         }).join('');
 
-const sortedInv = getSortedData(filteredInv, 'table-inv');
-        document.getElementById('full-inv-list').innerHTML = sortedInv.map(i => {
-            const pOptions = '<option value="">-- None --</option>' + projects.map(p => `<option value="${p.id}" ${i.projId===p.id?'selected':''}>${esc(p.title)}</option>`).join('');
-            const linkIcon = i.projId ? `<i class="fa-solid fa-arrow-up-right-from-square" style="cursor:pointer; color:var(--info)" onclick="viewProject(${i.projId})" title="Go to Project"></i>` : '';
-            const safeId = jsEsc(i.id);
+// --- UPDATED INVENTORY ROW GENERATION ---
+        const sortedInv = getSortedData(filteredInv, 'table-inv');
+        
+        // WRAPPER DIV FOR HORIZONTAL SCROLL
+        const tableHtml = `
+        <div style="overflow-x:auto; white-space:nowrap; border:1px solid var(--border); border-radius:6px;">
+            <table class="sci-table" id="table-inv" style="margin:0;">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('table-inv', 0)">ID <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 1)">Desc <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 2)">Isotope <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 3)">Activity <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 4)">Dose <i class="fa-solid fa-sort"></i></th>
+                        
+                        <th onclick="sortTable('table-inv', 5)">NSN <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 6)">Wgt <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 7)">Vol <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 8)">Lic? <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 9)">RCRA? <i class="fa-solid fa-sort"></i></th>
 
-            return `<tr>
-                <td><input class="live-edit" value="${esc(i.id)}" onchange="updItem('inventory', '${safeId}', 'id', this.value, this)"></td>
-                <td><input class="live-edit" value="${esc(i.iso)}" onchange="updItem('inventory', '${safeId}', 'iso', this.value, this)"></td>
-                <td><input class="live-edit" value="${esc(i.act)}" onchange="updItem('inventory', '${safeId}', 'act', this.value, this)"></td>
-                
-                <td><input class="live-edit" type="text" value="${i.dose}" onchange="updItem('inventory', '${safeId}', 'dose', this.value)"></td>
-                
-                <td style="width:100px;">
-                    <div style="display:flex; align-items:center; gap:5px;">
-                        <input type="number" class="live-edit" style="width:50px; text-align:right;" min="0" max="100" value="${i.fill||0}" onchange="updItem('inventory', '${safeId}', 'fill', this.value)">
-                        <span style="font-size:0.7rem;">%</span>
-                    </div>
-                    <div class="progress-bar" style="height:4px; margin-top:2px;">
-                        <div id="bar-fill-${safeId}" class="progress-fill" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':(i.fill>75?'var(--warning)':'var(--info)')}}"></div>
-                    </div>
-                </td>
-                <td><div style="display:flex; align-items:center; gap:8px;"><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'projId', this.value)">${pOptions}</select>${linkIcon}</div></td>
-                <td><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td>
-                
-                <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delInventory('${safeId}')"></i></td>
-            </tr>`;
-        }).join('');
+                        <th onclick="sortTable('table-inv', 10)">Fill <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 11)">Project <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 12)">Status <i class="fa-solid fa-sort"></i></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sortedInv.map(i => {
+                        const pOptions = '<option value="">--</option>' + projects.map(p => `<option value="${p.id}" ${i.projId===p.id?'selected':''}>${esc(p.title)}</option>`).join('');
+                        const linkIcon = i.projId ? `<i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--info)" onclick="viewProject(${i.projId})"></i>` : '';
+                        const safeId = jsEsc(i.id);
+
+                        return `<tr>
+                            <td><div style="display:flex; align-items:center; gap:5px;"><i class="fa-solid fa-eye" style="cursor:pointer; color:var(--info);" onclick="viewInventory('${safeId}')"></i><input class="live-edit" value="${esc(i.id)}" onchange="updItem('inventory', '${safeId}', 'id', this.value)"></div></td>
+                            <td><input class="live-edit" style="width:120px;" value="${esc(i.desc||'')}" onchange="updItem('inventory', '${safeId}', 'desc', this.value)"></td>
+                            <td><input class="live-edit" style="width:70px;" value="${esc(i.iso)}" onchange="updItem('inventory', '${safeId}', 'iso', this.value)"></td>
+                            <td><input class="live-edit" style="width:80px;" value="${esc(i.act)}" onchange="updItem('inventory', '${safeId}', 'act', this.value)"></td>
+                            <td><input class="live-edit" style="width:60px;" value="${i.dose}" onchange="updItem('inventory', '${safeId}', 'dose', this.value)"></td>
+
+                            <td><input class="live-edit" style="width:90px;" value="${esc(i.nsn||'')}" onchange="updItem('inventory', '${safeId}', 'nsn', this.value)"></td>
+                            <td><input class="live-edit" style="width:60px;" value="${esc(i.weight||'')}" onchange="updItem('inventory', '${safeId}', 'weight', this.value)"></td>
+                            <td><input class="live-edit" style="width:60px;" value="${esc(i.vol||'')}" onchange="updItem('inventory', '${safeId}', 'vol', this.value)"></td>
+                            <td><select class="live-edit" style="width:50px;" onchange="updItem('inventory', '${safeId}', 'licensed', this.value)"><option ${i.licensed!=='Yes'?'selected':''}>No</option><option ${i.licensed==='Yes'?'selected':''}>Yes</option></select></td>
+                            <td><select class="live-edit" style="width:50px; color:${i.rcra==='Yes'?'var(--danger)':'inherit'}; font-weight:${i.rcra==='Yes'?'bold':'normal'}" onchange="updItem('inventory', '${safeId}', 'rcra', this.value)"><option ${i.rcra!=='Yes'?'selected':''}>No</option><option value="Yes" ${i.rcra==='Yes'?'selected':''}>Yes</option></select></td>
+
+                            <td style="width:100px;">
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <input type="number" class="live-edit" style="width:40px;" value="${i.fill||0}" onchange="updItem('inventory', '${safeId}', 'fill', this.value)">%
+                                </div>
+                                <div class="progress-bar" style="height:4px;"><div class="fill" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':(i.fill>75?'var(--warning)':'var(--info)')}}"></div></div>
+                            </td>
+                            <td><div style="display:flex; align-items:center; gap:5px;"><select class="live-edit" style="width:100px;" onchange="updItem('inventory', '${safeId}', 'projId', this.value)">${pOptions}</select>${linkIcon}</div></td>
+                            <td><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td>
+                            <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delInventory('${safeId}')"></i></td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>`;
+        
+        document.getElementById('full-inv-list').innerHTML = tableHtml;
         
         document.getElementById('chatFeed').innerHTML = chatLog.map(c => 
             `<div class="msg"><div class="msg-meta"><span>${esc(c.user)}</span><span>${c.time}</span></div><div>${c.user === 'System' ? c.text : esc(c.text)}</div></div>`
@@ -3370,30 +3665,39 @@ function downloadBackup() {
     showToast("Backup Downloaded");
 }
 
-// --- HELPER: Parse Radioactivity ---
-// Converts "10 mCi", "5 Ci", "500 uCi" into a comparable number (Curies)
+// --- HELPER: Parse Radioactivity & Concentrations ---
+// Handles: "10 mCi", "5 uCi", "50 pCi/g", "100 uCi/ml"
 function getActValue(str) {
     if (!str) return 0;
-    
-    // Handle "Unknown" or "N/A"
-    const s = str.toString().toLowerCase();
+    const s = str.toString().toLowerCase().trim();
     if (s.includes('unknown') || s.includes('n/a') || s.includes('tbd')) return -1;
 
-    // Improved Regex: Allow zero or more spaces \s*
-const match = str.toString().match(/^([\d\.]+(?:[eE][-+]?\d+)?)\s*([a-zA-Z]+)$/);
+    // Regex: Captures Number + Unit (allowing letters, µ, and /)
+    const match = s.match(/^([\d\.]+(?:[eE][-+]?\d+)?)\s*([a-zA-Zµ\/]+)$/);
     if (!match) return 0;
     
     const val = parseFloat(match[1]);
-    const unit = match[2].toLowerCase();
+    let unit = match[2]; 
+
+    // STRIP CONCENTRATION (e.g. "pCi/g" -> "pci")
+    // We only care about the numerator for magnitude sorting
+    if (unit.includes('/')) {
+        unit = unit.split('/')[0];
+    }
     
+    // Standardize Prefixes
     if (unit === 'ci') return val;
-    if (unit === 'mci') return val * 1e-3;
-    if (unit === 'uci') return val * 1e-6;
-    if (unit === 'nci') return val * 1e-9;
+    if (unit === 'mci' || unit === 'm') return val * 1e-3;
+    if (unit === 'uci' || unit === 'u' || unit === 'µ' || unit === 'µci') return val * 1e-6;
+    if (unit === 'nci' || unit === 'n') return val * 1e-9;
+    if (unit === 'pci' || unit === 'p') return val * 1e-12; // Added Pico support
+    
     if (unit === 'gbq') return val / 37;
     if (unit === 'mbq') return (val / 37) * 1e-3;
+    if (unit === 'kbq') return (val / 37) * 1e-6;
+    if (unit === 'bq') return (val / 37) * 1e-9;
     
-    return val;
+    return val; 
 }
 
 function viewProject(id) {
@@ -3437,9 +3741,18 @@ function viewProject(id) {
     // 4. Generate Lists
     const teamOpts = team.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
     
-    // Inventory Assets
+    // Inventory Assets (Clickable)
     const assignedItems = inventory.filter(i => i.projId === id);
-    const assetsHtml = assignedItems.length ? assignedItems.map(i => `<div class="list-item" style="font-size:0.8rem;"><span><i class="fa-solid fa-box"></i> ${esc(i.id)} (${esc(i.iso)})</span><span>${i.dose} mR/hr</span></div>`).join('') : '<div style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">No assets assigned.</div>';
+    const assetsHtml = assignedItems.length ? assignedItems.map(i => `
+        <div class="list-item" style="font-size:0.8rem; cursor:pointer;" onclick="viewInventory('${jsEsc(i.id)}')">
+             <div>
+                <span style="font-weight:bold; color:var(--text-main);"><i class="fa-solid fa-box"></i> ${esc(i.id)}:</span> 
+                <span>${esc(i.desc || 'No description')}</span>
+                <div style="font-size:0.75rem; color:var(--text-muted);">
+                    ${esc(i.iso)} | ${esc(i.act)} | ${i.dose} mR/hr
+                </div>
+            </div>
+        </div>`).join('') : '<div style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">No assets assigned.</div>';
 
     // Funding History (Allocations) with IGE Icon check
     const allocHtml = projAllocs.length ? projAllocs.map(a => {
@@ -3528,38 +3841,91 @@ function viewProject(id) {
                 <i class="fa-solid fa-truck-fast"></i> Logistics & Contracting
             </div>
             
-            <div class="input-grid" style="margin-bottom:10px;">
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">UIC / COMMAND</label><input class="form-control" value="${esc(p.uic||'')}" onchange="updItem('project', ${p.id}, 'uic', this.value)"></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">LOCATION</label><input class="form-control" value="${esc(p.location||'')}" onchange="updItem('project', ${p.id}, 'location', this.value)"></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">REGION</label><select class="form-control" onchange="updItem('project', ${p.id}, 'region', this.value)"><option value="">--</option><option ${p.region==='East'?'selected':''}>East</option><option ${p.region==='West'?'selected':''}>West</option><option ${p.region==='Far-East'?'selected':''}>Far-East</option><option ${p.region==='Europe'?'selected':''}>Europe</option></select></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; margin-bottom:10px;">
+                <h4 style="margin:0; border-bottom:2px solid var(--accent); padding-bottom:5px;">Logistics & Contracting</h4>
+                <button class="btn" style="padding:4px 12px; font-size:0.8rem;" onclick="saveProjDetails(${p.id})">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Details
+                </button>
             </div>
 
-            <div style="background:var(--bg-input); padding:10px; border-radius:6px; margin-bottom:10px;">
-                <label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold;">POINT OF CONTACT</label>
-                <div style="display:flex; gap:10px; margin-bottom:5px;">
-                    <div style="flex:1">
-                        <input class="form-control" style="margin:0" value="${esc(p.poc||'')}" placeholder="Name" onchange="updItem('project', ${p.id}, 'poc', this.value)">
-                    </div>
-                    <div style="flex:1">
-                        <input class="form-control" style="margin:0" value="${esc(p.pocEmail||'')}" placeholder="Email" onchange="updItem('project', ${p.id}, 'pocEmail', this.value)">
-                    </div>
-                    <div style="width:140px">
-                        <input class="form-control" style="margin:0" value="${esc(p.pocPhone||'')}" placeholder="Phone" onchange="updItem('project', ${p.id}, 'pocPhone', this.value)">
-                    </div>
+            <div class="input-grid" style="margin-bottom:10px;">
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">UIC / COMMAND</label>
+                    <input id="ed_uic" class="form-control" value="${esc(p.uic||'')}" placeholder="N00000" onchange="saveProjDetails(${p.id}, true)">
                 </div>
-                ${p.pocEmail ? `<div style="text-align:right;"><a href="mailto:${p.pocEmail}" style="font-size:0.8rem; color:var(--accent); text-decoration:none;"><i class="fa-solid fa-envelope"></i> Send Email</a></div>` : ''}
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">LOCATION</label>
+                    <input id="ed_loc" class="form-control" value="${esc(p.location||'')}" placeholder="City, State" onchange="saveProjDetails(${p.id}, true)">
+                </div>
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">REGION</label>
+                    <select id="ed_reg" class="form-control" onchange="saveProjDetails(${p.id}, true)">
+                        <option value="">--</option>
+                        <option ${p.region==='East'?'selected':''}>East</option>
+                        <option ${p.region==='West'?'selected':''}>West</option>
+                        <option ${p.region==='Far-East'?'selected':''}>Far-East</option>
+                        <option ${p.region==='Europe'?'selected':''}>Europe</option>
+                    </select>
+                </div>
             </div>
 
-            <div class="input-grid" style="margin-bottom:10px;">
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">CONTRACTOR</label><input class="form-control" value="${esc(p.contractor||'')}" placeholder="Vendor Name" onchange="updItem('project', ${p.id}, 'contractor', this.value)"></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">MIPR #</label><input class="form-control" value="${esc(p.mipr||'')}" placeholder="N000..." onchange="updItem('project', ${p.id}, 'mipr', this.value)"></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">CONTRACT STATUS</label><select class="form-control" onchange="updItem('project', ${p.id}, 'contractStatus', this.value)"><option ${p.contractStatus==='Pre-Prop'?'selected':''}>Pre-Prop</option><option ${p.contractStatus==='Out for Prop'?'selected':''}>Out for Prop</option><option ${p.contractStatus==='On Contract'?'selected':''}>On Contract</option><option ${p.contractStatus==='Closed'?'selected':''}>Closed</option></select></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">JMC PROJECT #</label><input class="form-control" value="${esc(p.jmcId||'')}" onchange="updItem('project', ${p.id}, 'jmcId', this.value)"></div>
+            <div style="background:var(--bg-card); border:1px solid var(--border); padding:15px; border-radius:6px; margin-bottom:15px;">
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; letter-spacing:0.5px;">PRIMARY POC</label>
+                    ${p.pocEmail ? `<a href="mailto:${p.pocEmail}" style="font-size:0.75rem; color:var(--accent); text-decoration:none;"><i class="fa-solid fa-envelope"></i> Email</a>` : ''}
+                </div>
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <div style="flex:1"><input id="ed_poc" class="form-control" style="margin:0" value="${esc(p.poc||'')}" placeholder="Name" onchange="saveProjDetails(${p.id}, true)"></div>
+                    <div style="flex:1"><input id="ed_pocEm" class="form-control" style="margin:0" value="${esc(p.pocEmail||'')}" placeholder="Email" onchange="saveProjDetails(${p.id}, true)"></div>
+                    <div style="width:140px"><input id="ed_pocPh" class="form-control" style="margin:0" value="${esc(p.pocPhone||'')}" placeholder="Phone" onchange="saveProjDetails(${p.id}, true)"></div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; letter-spacing:0.5px;">ALTERNATE POC</label>
+                    ${p.pocEmail2 ? `<a href="mailto:${p.pocEmail2}" style="font-size:0.75rem; color:var(--accent); text-decoration:none;"><i class="fa-solid fa-envelope"></i> Email</a>` : ''}
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1"><input id="ed_poc2" class="form-control" style="margin:0" value="${esc(p.poc2||'')}" placeholder="Alt Name" onchange="saveProjDetails(${p.id}, true)"></div>
+                    <div style="flex:1"><input id="ed_pocEm2" class="form-control" style="margin:0" value="${esc(p.pocEmail2||'')}" placeholder="Alt Email" onchange="saveProjDetails(${p.id}, true)"></div>
+                    <div style="width:140px"><input id="ed_pocPh2" class="form-control" style="margin:0" value="${esc(p.pocPhone2||'')}" placeholder="Alt Phone" onchange="saveProjDetails(${p.id}, true)"></div>
+                </div>
+
+            </div>
+
+            <div class="input-grid">
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">MIPR #</label>
+                    <input id="ed_mipr" class="form-control" value="${esc(p.mipr||'')}" placeholder="N000..." onchange="saveProjDetails(${p.id}, true)">
+                </div>
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">JMC ID</label>
+                    <input id="ed_jmc" class="form-control" value="${esc(p.jmcId||'')}" placeholder="Tracking #" onchange="saveProjDetails(${p.id}, true)">
+                </div>
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">CONTRACTOR</label>
+                    <input id="ed_cont" class="form-control" value="${esc(p.contractor||'')}" placeholder="Company Name" onchange="saveProjDetails(${p.id}, true)">
+                </div>
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">STATUS</label>
+                    <select id="ed_stat" class="form-control" onchange="saveProjDetails(${p.id}, true)">
+                        <option ${p.contractStatus==='Pre-Prop'?'selected':''}>Pre-Prop</option>
+                        <option ${p.contractStatus==='Prop-Rec'?'selected':''}>Prop-Rec</option>
+                        <option ${p.contractStatus==='Awarded'?'selected':''}>Awarded</option>
+                        <option ${p.contractStatus==='Closed'?'selected':''}>Closed</option>
+                    </select>
+                </div>
             </div>
             
             <div class="input-grid">
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">POP START</label><input type="date" class="form-control" value="${p.popStart||''}" onchange="updItem('project', ${p.id}, 'popStart', this.value)"></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">POP END</label><input type="date" class="form-control" value="${p.popEnd||''}" onchange="updItem('project', ${p.id}, 'popEnd', this.value)"></div>
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">POP START</label>
+                    <input id="ed_popS" type="date" class="form-control" value="${p.popStart||''}" onchange="saveProjDetails(${p.id}, true)">
+                </div>
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">POP END</label>
+                    <input id="ed_popE" type="date" class="form-control" value="${p.popEnd||''}" onchange="saveProjDetails(${p.id}, true)">
+                </div>
                 
                 <div style="flex:2;">
                     <label style="font-size:0.7rem; color:var(--text-muted)">UPDATES SENT</label>
@@ -3573,9 +3939,8 @@ function viewProject(id) {
 
             <div style="margin-top:10px;">
                 <label style="font-size:0.7rem; color:var(--text-muted)">LOGISTICS NOTES / COMMENTS</label>
-                <textarea class="form-control" style="height:60px; resize:vertical;" onchange="updItem('project', ${p.id}, 'logisticsNotes', this.value)">${esc(p.logisticsNotes||'')}</textarea>
+                <textarea id="ed_notes" class="form-control" style="height:60px; resize:vertical;" onchange="saveProjDetails(${p.id}, true)">${esc(p.logisticsNotes||'')}</textarea>
             </div>
-        </div>
 
         <div style="background:var(--bg-card); padding:15px; border-radius:8px; margin:20px 0; border:1px solid var(--border);">
             <div style="margin-bottom:15px;">
@@ -3625,17 +3990,18 @@ function viewProject(id) {
                 </div>
                 <div>${tHtml}</div>
             </div>
+
             <div>
-                <h3>Assigned Assets</h3>
-                <div style="margin-bottom:15px;">${assetsHtml}</div>
-                
                 <h3>Digital Binder</h3>
                 <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
                     <input id="newLinkName" class="form-control" style="margin:0" placeholder="Name">
                     <input id="newLinkUrl" class="form-control" style="margin:0" placeholder="URL or C:\\Path\\To\\File">
                     <button class="btn" onclick="addLink(${p.id})">Link</button>
                 </div>
-                <div>${lHtml}</div>
+                <div style="margin-bottom:25px;">${lHtml}</div>
+
+                <h3>Assigned Assets</h3>
+                <div>${assetsHtml}</div>
             </div>
         </div>
     </div>`;
@@ -3871,27 +4237,45 @@ function getSortedData(data, tableId) {
             }
         }
         else if (tableId === 'table-inv') {
-        const keys = ['id', 'iso', 'act', 'dose', 'fill', 'projId', 'status'];
-        
-        // Special Sort: Activity (Physics aware)
-        if (sortState.col === 2) {
-            const numA = getActValue(a.act);
-            const numB = getActValue(b.act);
-            return (numA - numB) * sortState.dir;
-        }
+            // 1. Map visual columns to data keys
+            const keys = [
+                'id',       // 0
+                'desc',     // 1
+                'iso',      // 2
+                'act',      // 3
+                'dose',     // 4
+                'nsn',      // 5
+                'weight',   // 6
+                'vol',      // 7
+                'licensed', // 8
+                'rcra',     // 9
+                'fill',     // 10
+                'projId',   // 11
+                'status'    // 12
+            ];
+            
+            // 2. Special Sort: Activity (Uses Physics Helper)
+            if (sortState.col === 3) {
+                return (getActValue(a.act) - getActValue(b.act)) * sortState.dir;
+            }
 
-        // Special Sort: Dose (Handle "Unknown")
-        if (sortState.col === 3) {
-            const getVal = (v) => {
-                const f = parseFloat(v);
-                return isNaN(f) ? -1 : f; // Treat text/unknown as -1
-            };
-            return (getVal(a.dose) - getVal(b.dose)) * sortState.dir;
+            // 3. Special Sort: Mixed Numbers (Dose, Weight, Volume, Fill)
+            // This extracts "5" from "5 kg" so it sorts correctly against "100 g"
+            if ([4, 6, 7, 10].includes(sortState.col)) {
+                const getNum = (v) => {
+                    if (v === null || v === undefined) return -1;
+                    const s = v.toString();
+                    const match = s.match(/[\d\.]+/); // Find first number
+                    return match ? parseFloat(match[0]) : -1;
+                };
+                const k = keys[sortState.col];
+                return (getNum(a[k]) - getNum(b[k])) * sortState.dir;
+            }
+
+            // 4. Default Sort (Strings/IDs)
+            valA = a[keys[sortState.col]];
+            valB = b[keys[sortState.col]];
         }
-        
-        valA = a[keys[sortState.col]];
-        valB = b[keys[sortState.col]];
-    }
 
         else if (tableId === 'table-exempt') {
             const keys = ['id', 'date', 'cmd', 'desc', 'iso', 'act', 'basis', 'path', 'authDate'];
@@ -3922,6 +4306,45 @@ function getSortedData(data, tableId) {
         if (strA > strB) return 1 * sortState.dir;
         return 0;
     });
+}
+
+function saveProjDetails(id, silent = false) {
+    const p = projects.find(x => x.id === id);
+    if(!p) return;
+
+    const getVal = (eid) => { const el = document.getElementById(eid); return el ? el.value : ''; };
+
+    // 1. Logistics
+    p.uic = getVal('ed_uic');
+    p.location = getVal('ed_loc');
+    p.region = getVal('ed_reg');
+
+    // 2. POCs
+    p.poc = getVal('ed_poc');
+    p.pocEmail = getVal('ed_pocEm');
+    p.pocPhone = getVal('ed_pocPh');
+    p.poc2 = getVal('ed_poc2');
+    p.pocEmail2 = getVal('ed_pocEm2');
+    p.pocPhone2 = getVal('ed_pocPh2');
+
+    // 3. Contracting
+    p.mipr = getVal('ed_mipr');
+    p.jmcId = getVal('ed_jmc');
+    p.contractor = getVal('ed_cont');
+    p.contractStatus = getVal('ed_stat');
+    
+    // 4. Dates & Notes (NEW ADDITIONS)
+    p.popStart = getVal('ed_popS');
+    p.popEnd = getVal('ed_popE');
+    p.logisticsNotes = getVal('ed_notes');
+
+    saveLocally();
+    
+    if(!silent) {
+        showToast("Project Details Saved");
+        render();
+        viewProject(id);
+    }
 }
 
 function updItem(type, id, key, val, elem) { 
@@ -4290,6 +4713,9 @@ function reviveProject(id) {
                 poc: corpse.poc || "",
                 pocEmail: corpse.pocEmail || "",
                 pocPhone: corpse.pocPhone || "",
+                poc2: corpse.poc2 || "",
+                pocEmail2: corpse.pocEmail2 || "",
+                pocPhone2: corpse.pocPhone2 || "",
                 mipr: corpse.mipr || "",
                 jmcId: corpse.jmcId || "",
                 contractor: corpse.contractor || "",
@@ -4361,6 +4787,10 @@ function addProject() {
         const pocEmail = document.getElementById('pPocEmail').value;
         const pocPhone = document.getElementById('pPocPhone').value;
 
+        const poc2 = document.getElementById('pPoc2').value;
+        const pocEmail2 = document.getElementById('pPocEmail2').value;
+        const pocPhone2 = document.getElementById('pPocPhone2').value;
+
         // 3. Get Contract Info
         const mipr = document.getElementById('pMipr').value;
         const jmc = document.getElementById('pJmc').value;
@@ -4381,14 +4811,19 @@ function addProject() {
                 status: "Planning", 
                 health: "green", 
                 
-                // New Fields Mapped Here
                 uic: uic, 
                 location: loc,
                 region: reg,
 
+                // Primary
                 poc: poc,
                 pocEmail: pocEmail,
                 pocPhone: pocPhone,
+
+                // Alternate
+                poc2: poc2,
+                pocEmail2: pocEmail2,
+                pocPhone2: pocPhone2,
                 
                 mipr: mipr,
                 jmcId: jmc,
@@ -4570,58 +5005,95 @@ function addExpense() {
     }
     
 function addInventory() { 
+    // 1. Get Core Inputs
     const id = document.getElementById('invId').value; 
+    const desc = document.getElementById('invDesc').value; // Description
+    
+    // Isotope Logic (Dropdown vs Custom)
     let iso = document.getElementById('invIso').value;
+    if(iso === 'Custom') iso = document.getElementById('invIsoCustom').value;
     
-    // 1. Handle Custom Isotope
-    if (iso === 'Custom') {
-        iso = document.getElementById('invIsoCustom').value;
-        if (!iso) { showToast("Please enter a custom isotope name", "error"); return; }
-    }
-    iso = normalizeIso(iso);
+    // Activity Construction (Value + Unit)
+    const actVal = document.getElementById('invAct').value;
+    const actUnit = document.getElementById('invActUnit').value;
+    const act = actVal ? (actVal + " " + actUnit) : ""; 
 
-    // 2. Handle Activity (Default to Unknown if empty)
-    const act = document.getElementById('invAct').value || "Unknown"; 
-
-    // 3. Handle Dose (Accept Text OR Number)
-    let doseInput = document.getElementById('invDose').value;
-    let dose;
+    // Numerical Data
+    const dose = parseFloat(document.getElementById('invDose').value) || 0;
+    const fill = parseFloat(document.getElementById('invFill').value) || 0;
     
-    // If it looks like a number, save as number. Otherwise, save as text (or "Unknown" if empty).
-    if(doseInput !== '' && !isNaN(parseFloat(doseInput)) && isFinite(doseInput)) {
-        dose = parseFloat(doseInput);
-    } else {
-        dose = doseInput || "Unknown";
-    }
+    // Logistics
+    const pid = document.getElementById('invProj').value ? parseInt(document.getElementById('invProj').value) : null;
+    const stat = document.getElementById('invStat').value;
+    
+    // Date Parsing
+    const dateRaw = document.getElementById('invDate').value;
+    const dateVal = dateRaw ? new Date(dateRaw).getTime() : Date.now();
 
-    const fill = document.getElementById('invFill').value; 
-    const stat = document.getElementById('invStatus').value; 
-    const pidVal = document.getElementById('invProj').value;
-    const pid = pidVal === "" ? null : parseInt(pidVal);
-    const dateVal = document.getElementById('invDate').value || getTodayStr();
+    // 2. GET NEW PHYSICAL & REGULATORY INPUTS
+    const nsn = document.getElementById('invNsn').value;
+    const weight = document.getElementById('invWeight').value;
+    const vol = document.getElementById('invVol').value;
+    const lic = document.getElementById('invLic').value;
+    const licNum = document.getElementById('invLicNum').value;
+    const rcra = document.getElementById('invRcra').value;
 
-    if(inventory.some(i => i.id === id)) {
-        showToast("Error: Item ID already exists", "error");
+    // 3. Validation
+    if(!id) {
+        showToast("Error: Item ID is required", true); // True = Red error toast
         return;
     }
 
-    if(id) { 
-        inventory.push({
-            id, iso, act, dose, fill, status:stat, projId: pid, logDate: dateVal,
-            updated: Date.now()
-        }); 
+    // 4. Save Object
+    inventory.push({
+        id: id, 
+        desc: desc,
+        iso: iso, 
+        act: act, 
+        dose: dose, 
+        fill: fill, 
+        status: stat, 
+        projId: pid, 
+        logDate: dateVal,
         
-        logSystemAction(`Inventory <b>${esc(id)}</b> (${iso}) added.`);
-        showToast("Item Added");
+        // New Fields
+        nsn: nsn,
+        weight: weight,
+        vol: vol,
+        licensed: lic,
+        licenseNum: licNum,
+        rcra: rcra,
         
-        document.getElementById('invIso').value = 'Co-60'; // or first option
-        document.getElementById('invIsoCustom').style.display = 'none';
-        document.getElementById('invIsoCustom').value = '';
+        links: [], // Initialize empty binder for this item
+        updated: Date.now()
+    }); 
+    
+    // 5. Feedback & Save
+    logSystemAction(`Inventory <b>${esc(id)}</b> added.`);
+    showToast("Item Added Successfully");
+    saveLocally();
+    render();
+    
+    // 6. RESET ALL FORM FIELDS
+    document.getElementById('invId').value = '';
+    document.getElementById('invDesc').value = ''; // Clear Description
+    
+    document.getElementById('invIso').value = 'Co-60'; 
+    document.getElementById('invIsoCustom').value = '';
+    document.getElementById('invIsoCustom').style.display = 'none';
+    
+    document.getElementById('invAct').value = '';
+    document.getElementById('invDose').value = '';
+    document.getElementById('invFill').value = '';
+    document.getElementById('invDate').value = '';
 
-        saveLocally(); 
-        closeModal('invModal'); 
-        render(); 
-    }
+    // Clear New Fields
+    document.getElementById('invNsn').value = '';
+    document.getElementById('invWeight').value = '';
+    document.getElementById('invVol').value = '';
+    document.getElementById('invLic').value = 'No';
+    document.getElementById('invLicNum').value = '';
+    document.getElementById('invRcra').value = 'No';
 }
 
 function delInventory(id) {
@@ -4985,9 +5457,15 @@ function openModal(id) {
             document.getElementById('pDate').value = '';
             document.getElementById('pCost').value = '';
 
+            // Clear Primary
             document.getElementById('pPoc').value = '';
             document.getElementById('pPocEmail').value = '';
             document.getElementById('pPocPhone').value = '';
+
+            // Clear Alternate
+            document.getElementById('pPoc2').value = '';
+            document.getElementById('pPocEmail2').value = '';
+            document.getElementById('pPocPhone2').value = '';
 
             if(document.getElementById('pUic')) document.getElementById('pUic').value = '';
             if(document.getElementById('pLoc')) document.getElementById('pLoc').value = '';
