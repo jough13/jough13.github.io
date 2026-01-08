@@ -3010,7 +3010,7 @@ function normalizeIso(input) {
             ? Math.min((globalSpent/globalBudg)*100, 100) 
             : (globalSpent > 0 ? 100 : 0);
 
-        document.getElementById('chart-money').innerHTML = `<div class="chart-seg" style="width:${spentPct}%; background:var(--money);"></div>`;
+        document.getElementById('chart-money').innerHTML = `<div class="chart-seg" style="width:${spentPct}%; background:var(--money);" title="Spent: $${globalSpent.toLocaleString()} / Budget: $${globalBudg.toLocaleString()}"></div>`;
 
         // ============================================================
         //  FINANCE VIEW LOGIC (WITH DATE FILTERS)
