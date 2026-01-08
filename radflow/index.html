@@ -396,7 +396,7 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
             background: var(--bg-card);
         }
 
-/* New Sort Dropdown Style */
+    /* New Sort Dropdown Style */
         .sort-select {
             appearance: none;
             -webkit-appearance: none; 
@@ -407,7 +407,10 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
             padding-right: 18px; /* Space for arrow */
             font-size: 0.7rem;
             font-weight: 600;
-            color: var(--text-muted);
+            
+            /* FIXED: Changed from --text-muted to --text-main */
+            color: var(--text-main); 
+            
             cursor: pointer;
             text-align: center;
             outline: none;
@@ -696,12 +699,27 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     <div id="view-projects" class="view-section">
         <div class="header">
             <h1>All Projects</h1>
-            <div style="display:flex; gap:10px;">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <button class="btn" onclick="openModal('projectModal')">+ Project</button>
                 
-                <button class="btn-toggle" style="margin:0" onclick="toggleProjView()"><i class="fa-solid fa-table-columns"></i> View</button>
-                <button id="btnShowComp" class="btn-toggle" style="margin:0" onclick="toggleShowComp()"><i class="fa-solid fa-eye"></i> Show Done</button>
-                <input type="text" class="search-bar" style="width:200px;" placeholder="Filter..." onkeyup="handleSearch(this.value)">
+                <select class="sort-select" style="margin:0; width:auto; height:34px;" onchange="setMainProjSort(this.value)">
+                    <option value="status">Sort: Status</option>
+                    <option value="health">Sort: Health</option>
+                    <option value="due">Sort: Due Date</option>
+                    <option value="title">Sort: Name (A-Z)</option>
+                    <option value="newest">Sort: Newest</option>
+                    <option value="oldest">Sort: Oldest</option>
+                </select>
+
+                <button class="btn-toggle" style="margin:0; width:auto;" onclick="toggleProjView()">
+                    <i class="fa-solid fa-table-columns"></i> View
+                </button>
+                
+                <button id="btnShowComp" class="btn-toggle" style="margin:0; width:auto;" onclick="toggleShowComp()">
+                    <i class="fa-solid fa-eye"></i> Show Done
+                </button>
+                
+                <input type="text" class="search-bar" style="width:150px;" placeholder="Filter..." onkeyup="handleSearch(this.value)">
             </div>
         </div>
         <div class="widget"><div id="full-project-list"></div></div>
@@ -2260,6 +2278,13 @@ const STARTER_DATA = {
 
     let sortState = { table: '', col: 0, dir: 1 };
 
+    let mainProjSort = 'status'; // Default sort
+
+    function setMainProjSort(val) {
+    mainProjSort = val;
+    render();
+}
+
     // Dashboard Widget States ---
     let dashTaskSort = 'prio';   // Options: 'prio', 'oldest', 'newest'
     let dashInvSort = 'dose';    // Options: 'dose', 'fill', 'recent'
@@ -3185,6 +3210,26 @@ function normalizeIso(input) {
         // --- 1. PROJECT FILTERING (Global) ---
         let filteredProjs = projects.filter(p => (p.title + (p.desc||"") + (p.uic||"") + (p.jmcId||"") + (p.rcn||"") + (p.contractor||"")).toLowerCase().includes(filter));
         if (!showComplete) filteredProjs = filteredProjs.filter(p => p.status !== 'Complete'); 
+
+        // MAIN PROJECT SORTING ---
+        if (mainProjSort === 'title') {
+            filteredProjs.sort((a,b) => a.title.localeCompare(b.title));
+        } else if (mainProjSort === 'due') {
+            // Sort by Date (Empty dates go last)
+            filteredProjs.sort((a,b) => (a.due||'9999').localeCompare(b.due||'9999'));
+        } else if (mainProjSort === 'status') {
+            // Custom Order: Active -> Review -> Planning -> Complete
+            const sMap = { 'Active': 0, 'Review': 1, 'Planning': 2, 'Complete': 3 };
+            filteredProjs.sort((a,b) => (sMap[a.status]||9) - (sMap[b.status]||9));
+        } else if (mainProjSort === 'health') {
+            // Red -> Yellow -> Green
+            const hMap = { 'red': 0, 'yellow': 1, 'green': 2 };
+            filteredProjs.sort((a,b) => (hMap[a.health]||9) - (hMap[b.health]||9));
+        } else if (mainProjSort === 'newest') {
+            filteredProjs.sort((a,b) => b.id - a.id); // ID is timestamp
+        } else if (mainProjSort === 'oldest') {
+            filteredProjs.sort((a,b) => a.id - b.id);
+        }
 
         const filteredInv = inventory.filter(i => i.id.toLowerCase().includes(filter));
         
@@ -4856,7 +4901,6 @@ function reviveProject(id) {
     showConfirm(
         `Revive project <b>${esc(corpse.title)}</b>?<br>This will restore the project and its financial records to the active dashboard.`,
         () => {
-
             // 2. Restore Project Shell
             const restored = {
                 ...corpse, // <--- COPIES EVERYTHING (Logistics, POCs, Dates, Notes, etc.)
