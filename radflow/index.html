@@ -4856,7 +4856,7 @@ function reviveProject(id) {
     showConfirm(
         `Revive project <b>${esc(corpse.title)}</b>?<br>This will restore the project and its financial records to the active dashboard.`,
         () => {
-            // 2. Restore Project Shell
+
             // 2. Restore Project Shell
             const restored = {
                 ...corpse, // <--- COPIES EVERYTHING (Logistics, POCs, Dates, Notes, etc.)
