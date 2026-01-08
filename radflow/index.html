@@ -1230,10 +1230,19 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
             </div>
         </div>
         
+        <div style="background:var(--bg-input); padding:10px; border-radius:6px; margin-bottom:10px;">
+            <label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold;">POINT OF CONTACT</label>
+            <div style="display:flex; gap:10px;">
+                <input id="pPoc" class="form-control" style="margin:0; flex:1;" placeholder="Name">
+                <input id="pPocEmail" class="form-control" style="margin:0; flex:1;" placeholder="Email">
+                <input id="pPocPhone" class="form-control" style="margin:0; width:140px;" placeholder="Phone">
+            </div>
+        </div>
+
         <div class="input-grid">
-            <div><label style="font-size:0.7rem; color:var(--text-muted)">POC</label><input id="pPoc" class="form-control" placeholder="Name/Code"></div>
             <div><label style="font-size:0.7rem; color:var(--text-muted)">MIPR #</label><input id="pMipr" class="form-control" placeholder="N000..."></div>
             <div><label style="font-size:0.7rem; color:var(--text-muted)">JMC ID</label><input id="pJmc" class="form-control" placeholder="Tracking #"></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">UIC</label><input id="pUic" class="form-control" placeholder="N00000"></div>
         </div>
 
         <div class="input-grid">
@@ -3521,9 +3530,24 @@ function viewProject(id) {
             
             <div class="input-grid" style="margin-bottom:10px;">
                 <div><label style="font-size:0.7rem; color:var(--text-muted)">UIC / COMMAND</label><input class="form-control" value="${esc(p.uic||'')}" onchange="updItem('project', ${p.id}, 'uic', this.value)"></div>
-                <div><label style="font-size:0.7rem; color:var(--text-muted)">POINT OF CONTACT</label><input class="form-control" value="${esc(p.poc||'')}" placeholder="Officer/Civilian" onchange="updItem('project', ${p.id}, 'poc', this.value)"></div>
                 <div><label style="font-size:0.7rem; color:var(--text-muted)">LOCATION</label><input class="form-control" value="${esc(p.location||'')}" onchange="updItem('project', ${p.id}, 'location', this.value)"></div>
                 <div><label style="font-size:0.7rem; color:var(--text-muted)">REGION</label><select class="form-control" onchange="updItem('project', ${p.id}, 'region', this.value)"><option value="">--</option><option ${p.region==='East'?'selected':''}>East</option><option ${p.region==='West'?'selected':''}>West</option><option ${p.region==='Far-East'?'selected':''}>Far-East</option><option ${p.region==='Europe'?'selected':''}>Europe</option></select></div>
+            </div>
+
+            <div style="background:var(--bg-input); padding:10px; border-radius:6px; margin-bottom:10px;">
+                <label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold;">POINT OF CONTACT</label>
+                <div style="display:flex; gap:10px; margin-bottom:5px;">
+                    <div style="flex:1">
+                        <input class="form-control" style="margin:0" value="${esc(p.poc||'')}" placeholder="Name" onchange="updItem('project', ${p.id}, 'poc', this.value)">
+                    </div>
+                    <div style="flex:1">
+                        <input class="form-control" style="margin:0" value="${esc(p.pocEmail||'')}" placeholder="Email" onchange="updItem('project', ${p.id}, 'pocEmail', this.value)">
+                    </div>
+                    <div style="width:140px">
+                        <input class="form-control" style="margin:0" value="${esc(p.pocPhone||'')}" placeholder="Phone" onchange="updItem('project', ${p.id}, 'pocPhone', this.value)">
+                    </div>
+                </div>
+                ${p.pocEmail ? `<div style="text-align:right;"><a href="mailto:${p.pocEmail}" style="font-size:0.8rem; color:var(--accent); text-decoration:none;"><i class="fa-solid fa-envelope"></i> Send Email</a></div>` : ''}
             </div>
 
             <div class="input-grid" style="margin-bottom:10px;">
@@ -4264,6 +4288,8 @@ function reviveProject(id) {
                 location: corpse.location || "",
                 region: corpse.region || "",
                 poc: corpse.poc || "",
+                pocEmail: corpse.pocEmail || "",
+                pocPhone: corpse.pocPhone || "",
                 mipr: corpse.mipr || "",
                 jmcId: corpse.jmcId || "",
                 contractor: corpse.contractor || "",
@@ -4330,7 +4356,10 @@ function addProject() {
         const uic = document.getElementById('pUic').value;
         const loc = document.getElementById('pLoc').value;
         const reg = document.getElementById('pRegion').value;
+
         const poc = document.getElementById('pPoc').value;
+        const pocEmail = document.getElementById('pPocEmail').value;
+        const pocPhone = document.getElementById('pPocPhone').value;
 
         // 3. Get Contract Info
         const mipr = document.getElementById('pMipr').value;
@@ -4356,7 +4385,10 @@ function addProject() {
                 uic: uic, 
                 location: loc,
                 region: reg,
+
                 poc: poc,
+                pocEmail: pocEmail,
+                pocPhone: pocPhone,
                 
                 mipr: mipr,
                 jmcId: jmc,
@@ -4952,6 +4984,11 @@ function openModal(id) {
             document.getElementById('pDesc').value = '';
             document.getElementById('pDate').value = '';
             document.getElementById('pCost').value = '';
+
+            document.getElementById('pPoc').value = '';
+            document.getElementById('pPocEmail').value = '';
+            document.getElementById('pPocPhone').value = '';
+
             if(document.getElementById('pUic')) document.getElementById('pUic').value = '';
             if(document.getElementById('pLoc')) document.getElementById('pLoc').value = '';
             setTimeout(() => document.getElementById('pTitle').focus(), 50);
