@@ -76,6 +76,41 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
         padding-bottom: env(safe-area-inset-bottom, 20px); 
     }
 
+    /* --- SCROLL INDICATORS (Mobile Bottom Bar) --- */
+    /* Creates stationary subtle bars on left/right edges */
+    .sidebar::before,
+    .sidebar::after {
+        content: '';
+        position: absolute;
+        /* Vertically center them */
+        top: 50%;
+        transform: translateY(-60%); /* Slightly offset up due to safe-area padding */
+        
+        /* Sizing & Style */
+        height: 50%; /* Not full height, keeps it subtle */
+        width: 5px;  /* Slim */
+        border-radius: 10px; /* Rounded pill shape */
+        opacity: 0.8; /* "Subtle" transparency */
+        
+        z-index: 1001; /* Sit above the scrolling content */
+        /* CRITICAL: allows taps to pass through to the icons underneath */
+        pointer-events: none; 
+    }
+
+    /* Left Indicator (Blue Accent) */
+    .sidebar::before {
+        left: 8px;
+        background-color: var(--accent);
+        box-shadow: 1px 0 5px rgba(var(--accent-rgb), 0.4); /* Soft glow */
+    }
+
+    /* Right Indicator (Green Success) */
+    .sidebar::after {
+        right: 8px;
+        background-color: var(--success);
+        box-shadow: -1px 0 5px rgba(var(--success-rgb), 0.4); /* Soft glow */
+    }
+
     /* Dark Mode Sidebar */
     [data-theme="dark"] .sidebar {
         background: rgba(30, 41, 59, 0.96);
