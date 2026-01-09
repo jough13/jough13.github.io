@@ -77,38 +77,34 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     }
 
     /* --- SCROLL INDICATORS (Mobile Bottom Bar) --- */
-    /* Creates stationary subtle bars on left/right edges */
     .sidebar::before,
     .sidebar::after {
         content: '';
         position: absolute;
-        /* Vertically center them */
         top: 50%;
-        transform: translateY(-60%); /* Slightly offset up due to safe-area padding */
+        transform: translateY(-60%); /* Center vertically (offset for safe-area) */
         
-        /* Sizing & Style */
-        height: 50%; /* Not full height, keeps it subtle */
-        width: 5px;  /* Slim */
-        border-radius: 10px; /* Rounded pill shape */
-        opacity: 0.8; /* "Subtle" transparency */
+        height: 40%; /* Slightly shorter for a cleaner look */
+        width: 4px;  /* Slimmer */
+        border-radius: 10px;
+        opacity: 0.8;
         
-        z-index: 1001; /* Sit above the scrolling content */
-        /* CRITICAL: allows taps to pass through to the icons underneath */
-        pointer-events: none; 
+        z-index: 1001;
+        pointer-events: none; /* Clicks pass through */
     }
 
-    /* Left Indicator (Blue Accent) */
+    /* Left Indicator (Blue) */
     .sidebar::before {
         left: 8px;
-        background-color: var(--accent);
-        box-shadow: 1px 0 5px rgba(var(--accent-rgb), 0.4); /* Soft glow */
+        background-color: var(--info); /* Fixed: Now Blue */
+        box-shadow: 1px 0 6px rgba(37, 99, 235, 0.4); 
     }
 
-    /* Right Indicator (Green Success) */
+    /* Right Indicator (Green) */
     .sidebar::after {
         right: 8px;
-        background-color: var(--success);
-        box-shadow: -1px 0 5px rgba(var(--success-rgb), 0.4); /* Soft glow */
+        background-color: var(--accent); /* Fixed: Now Green */
+        box-shadow: -1px 0 6px rgba(5, 150, 105, 0.4); 
     }
 
     /* Dark Mode Sidebar */
