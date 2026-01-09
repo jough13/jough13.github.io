@@ -35,6 +35,8 @@
 .live-edit { min-width: 60px; } /* Prevent total collapse */
 td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force description to be readable */
 
+.mobile-only { display: none !important; } /* Default hidden on desktop */
+
 /* Sticky Table Headers */
 .sci-table th {
     position: sticky;
@@ -47,6 +49,8 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
         /* Responsive */
         @media (max-width: 1100px) { body { grid-template-columns: 200px 1fr; grid-template-rows: 1fr auto; } .chat-panel { grid-column: 2; grid-row: 2; border-left: none; border-top: 1px solid var(--border); height: 300px; } .main { grid-column: 2; grid-row: 1; } }
 
+
+
 /* --- MOBILE OPTIMIZATION (Polished) --- */
 @media (max-width: 768px) { 
     body { 
@@ -55,6 +59,11 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
         overflow-y: auto; 
         overscroll-behavior-y: none; 
     } 
+
+    .desktop-only, 
+    button[onclick="toggleProjView()"] { 
+        display: none !important; 
+    }
 
     /* --- BOTTOM NAV BAR --- */
     .sidebar { 
@@ -209,22 +218,89 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
 
 @media (max-width: 768px) { .mobile-only { display: flex !important; } }
 
-        /* Print Optimization */
-        @media print { 
-            body { display: block; background: white; color: black; height: auto; overflow: visible; }
-            .sidebar, .chat-panel, .btn, .btn-sync, .btn-toggle, .header button, .sync-box, .nav-item { display: none !important; }
-            .main { padding: 0; width: 100%; height: auto; overflow: visible; } 
-            .widget { border: 1px solid #ccc; break-inside: avoid; background: white; color: black; box-shadow: none; margin-bottom: 20px; page-break-inside: avoid; }
-            .header { border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; }
-            .form-control, .live-edit, input, select { border: none !important; background: transparent !important; appearance: none; -webkit-appearance: none; padding: 0; font-size: inherit; color: black !important; }
-            ::-webkit-scrollbar { display: none; }
-            .view-section { display: none; }
-            .view-section.active { display: block; }
-            .search-bar, .modal-overlay, #btnShowComp, .quick-actions, .est-input-row, .date-adder { display: none !important; }
-            table { width: 100% !important; border-collapse: collapse; }
-            th, td { border: 1px solid #ddd !important; color: black !important; }
-            :root { --bg-body: white; --bg-panel: white; --text-main: black; --text-muted: #444; }
-        }
+        /* --- PROFESSIONAL PRINT SUITE --- */
+@media print {
+    /* 1. Layout & Reset */
+    @page { margin: 0.5in; size: landscape; }
+    body { 
+        display: block; 
+        background: white !important; 
+        color: black !important; 
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact;
+        height: auto; 
+        overflow: visible; 
+    }
+
+    /* 2. Hide Interface Elements */
+    .sidebar, .chat-panel, .header button, .btn, .btn-sync, .btn-toggle, 
+    .search-bar, .modal-overlay, #btnShowComp, .quick-actions, 
+    .est-input-row, .date-adder, .nav-item, #bulk-toolbar,
+    .btn-rect, .qa-btn, .sort-select { 
+        display: none !important; 
+    }
+
+    /* 3. Expand Main Content */
+    .main { 
+        padding: 0; 
+        margin: 0; 
+        width: 100%; 
+        height: auto; 
+        grid-column: 1 / -1; 
+        overflow: visible;
+    }
+    
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+
+    /* 4. Widget & Table Styling */
+    .widget { 
+        border: 1px solid #ddd; 
+        break-inside: avoid; 
+        box-shadow: none; 
+        margin-bottom: 20px;
+    }
+    
+    .dashboard-grid { display: block; } /* Stack widgets vertically */
+    .dashboard-grid > div { margin-bottom: 20px; page-break-inside: avoid; }
+
+    table { width: 100% !important; border-collapse: collapse; page-break-inside: auto; }
+    tr { page-break-inside: avoid; page-break-after: auto; }
+    th, td { 
+        border: 1px solid #ccc !important; 
+        color: black !important; 
+        padding: 6px !important;
+        font-size: 10pt !important;
+    }
+
+    /* 5. Inputs to Text Conversion */
+    /* Removes borders/backgrounds from inputs so they look like plain text */
+    input, select, textarea, .live-edit, .form-control { 
+        border: none !important; 
+        background: transparent !important; 
+        appearance: none; 
+        -webkit-appearance: none; 
+        padding: 0; 
+        font-size: inherit; 
+        color: black !important; 
+        font-family: inherit;
+        resize: none;
+        box-shadow: none !important;
+    }
+    
+    /* Hide placeholders in print */
+    ::placeholder { color: transparent; }
+
+    /* 6. Specific Tweaks */
+    .rag-dot { border: 1px solid rgba(0,0,0,0.2); } /* Add border to dots so they pop */
+    .tag { border: 1px solid #ccc; color: black !important; }
+    
+    /* Force graphs to print background colors */
+    .chart-seg, .progress-fill, .bar-v { 
+        print-color-adjust: exact; 
+        -webkit-print-color-adjust: exact; 
+    }
+}
 
         /* Sidebar & Buttons */
         .sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; z-index: 10; overflow-y: auto; }
@@ -246,6 +322,15 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
         .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
         .widget { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; margin-bottom: 1.5rem; }
         .widget-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+
+/* STICKY HEADERS for all tables */
+th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-card); /* Opaque background so text doesn't overlap */
+    z-index: 10;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* Subtle shadow line */
+}
 
 /* --- CUSTOM ALERT & CONFIRM MODALS --- */
 .custom-modal-overlay {
@@ -655,7 +740,15 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     <div id="view-dashboard" class="view-section active">
         <div class="header">
             <div><h1 style="margin:0;">Command Center</h1><p style="margin:0; color:var(--text-muted);" id="todayDate">Loading...</p></div>
-            <input type="text" class="search-bar" placeholder="Search..." onkeyup="handleSearch(this.value)">
+            
+            <div style="position:relative; display:inline-block; width:300px;">
+    <input type="text" class="search-bar" id="main-search" style="width:100%; padding-right:30px;" placeholder="Search..." onkeyup="handleSearch(this.value)">
+    <i class="fa-solid fa-xmark" 
+       onclick="document.getElementById('main-search').value=''; handleSearch('');"
+       style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:var(--text-muted); padding:5px;"
+       title="Clear Search"></i>
+</div>
+
             <button class="btn" onclick="openModal('projectModal')">+ Project</button>
         </div>
         
@@ -685,9 +778,52 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
 
     <div id="view-project-detail" class="view-section"></div>
 
+    <div id="view-all-tasks" class="view-section">
+        <div class="header">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <button class="btn-sync" onclick="nav('dashboard')" style="width:auto; margin:0; padding: 5px 12px;" title="Back to Dashboard">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <h1 style="margin:0;">Action Items Master List</h1>
+            </div>
+            
+            <div style="display:flex; gap:10px;">
+                <button id="btnTaskShowDone" class="btn-toggle" style="margin:0; width:auto;" onclick="toggleMasterTasksDone()">
+                    <i class="fa-solid fa-eye"></i> Show Done
+                </button>
+                
+                <input type="text" class="search-bar" style="width:200px;" placeholder="Search Tasks..." onkeyup="handleSearch(this.value)">
+            </div>
+        </div>
+        <div class="widget">
+            <div style="overflow-x:auto;">
+                <table class="sci-table" id="table-all-tasks">
+                    <thead>
+                        <tr>
+                            <th style="width:50px;">Done</th>
+                            <th onclick="sortTable('table-all-tasks', 1)">Priority <i class="fa-solid fa-sort"></i></th>
+                            <th onclick="sortTable('table-all-tasks', 2)">Task <i class="fa-solid fa-sort"></i></th>
+                            <th onclick="sortTable('table-all-tasks', 3)">Project <i class="fa-solid fa-sort"></i></th>
+                            <th onclick="sortTable('table-all-tasks', 4)">Assignee <i class="fa-solid fa-sort"></i></th>
+                            <th onclick="sortTable('table-all-tasks', 5)">Due <i class="fa-solid fa-sort"></i></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="full-task-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <div id="view-projects" class="view-section">
         <div class="header">
-            <h1>All Projects</h1>
+            <div style="display:flex; align-items:center; gap:15px;">
+                <button class="btn-sync" onclick="nav('dashboard')" style="width:auto; margin:0; padding: 5px 12px;" title="Back to Dashboard">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <h1 style="margin:0;">All Projects</h1>
+            </div>
+
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <button class="btn" onclick="openModal('projectModal')">+ Project</button>
                 
@@ -717,7 +853,12 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
 <div id="view-finance" class="view-section">
         <div class="header">
             <div>
-                <h1 style="margin:0;">Cost Tracker</h1>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <button class="btn-sync" onclick="nav('dashboard')" style="width:auto; margin:0; padding: 5px 12px;" title="Back to Dashboard">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <h1 style="margin:0;">Cost Tracker</h1>
+                </div>
                 <div style="display:flex; gap:8px; align-items:center; margin-top:5px; font-size:0.8rem; color:var(--text-muted);">
                     <span><i class="fa-solid fa-filter"></i> Period:</span>
                     
@@ -868,7 +1009,12 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
 
     <div id="view-exempt" class="view-section">
         <div class="header">
-            <h1>Exempt Material Disposal Log</h1>
+            <div style="display:flex; align-items:center; gap:15px;">
+                <button class="btn-sync" onclick="nav('dashboard')" style="width:auto; margin:0; padding: 5px 12px;" title="Back to Dashboard">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <h1 style="margin:0;">Exempt Material Disposal Log</h1>
+            </div>
             <div style="display:flex; gap:10px;">
                 <input type="text" class="search-bar" style="width:200px;" placeholder="Search Log..." onkeyup="handleSearch(this.value)">
                 <button class="btn-toggle" style="margin:0" onclick="downloadExemptCSV()"><i class="fa-solid fa-file-csv"></i> Export Log</button>
@@ -900,7 +1046,14 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     </div>
 
     <div id="view-hp" class="view-section">
-        <div class="header"><h1>HP Tools</h1></div>
+        <div class="header">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <button class="btn-sync" onclick="nav('dashboard')" style="width:auto; margin:0; padding: 5px 12px;" title="Back to Dashboard">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <h1 style="margin:0;">HP Tools</h1>
+            </div>
+        </div>
         <div class="widget" style="margin-bottom:1.5rem; background:var(--bg-panel); border-left: 4px solid var(--accent);">
             <div class="widget-head" style="margin-bottom:5px;">Quick Converter</div>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -1034,7 +1187,15 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
         </div>
     </div>
 
-    <div id="view-logbook" class="view-section"><div class="header"><h1>Logbook & Notes</h1></div><div class="widget" style="height: calc(100vh - 150px);">
+    <div id="view-logbook" class="view-section"><div class="header">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <button class="btn-sync" onclick="nav('dashboard')" style="width:auto; margin:0; padding: 5px 12px;" title="Back to Dashboard">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <h1 style="margin:0;">Logbook & Notes</h1>
+            </div>
+        </div>
+    <div class="widget" style="height: calc(100vh - 150px);">
 
 <textarea id="wiki-text" class="live-edit" style="width:100%; height:100%; resize:none; font-family:monospace; padding:15px;" placeholder="Type your persistent notes here..." oninput="saveWiki()"></textarea>
 
@@ -1042,7 +1203,12 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
 
 <div id="view-references" class="view-section">
         <div class="header">
-            <h1>Reference Library</h1>
+            <div style="display:flex; align-items:center; gap:15px;">
+                <button class="btn-sync" onclick="nav('dashboard')" style="width:auto; margin:0; padding: 5px 12px;" title="Back to Dashboard">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <h1 style="margin:0;">Reference Library</h1>
+            </div>
             <div style="display:flex; gap:10px;">
                 <input type="text" class="search-bar" style="width:200px;" placeholder="Search Library..." onkeyup="handleSearch(this.value)">
                 <button class="btn" onclick="openModal('refModal')">+ Add Link</button>
@@ -1095,12 +1261,36 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     </div>
 
     <div id="view-inventory" class="view-section">
-        <div class="header"><h1>Inventory</h1>
+        <div class="header">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <button class="btn-sync" onclick="nav('dashboard')" style="width:auto; margin:0; padding: 5px 12px;" title="Back to Dashboard">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <h1 style="margin:0;">Inventory</h1>
+            </div>
             <div>
-                <button class="btn-sync" onclick="decayInventory()" style="width:auto; display:inline-block; margin:0;"><i class="fa-solid fa-clock-rotate-left"></i> Decay Correct</button>
+                <button class="btn-toggle" onclick="downloadInvCSV()" style="width:auto; display:inline-block; margin:0; margin-right:5px;">
+                    <i class="fa-solid fa-file-excel"></i> Export
+                </button>
+                
+                <button class="btn-sync" onclick="decayInventory()" style="width:auto; display:inline-block; margin:0;">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Decay Correct
+                </button>
                 <button class="btn" onclick="openModal('invModal')" style="margin:0;">+ Add Item</button>
             </div>
         </div>
+
+        <div id="bulk-toolbar" style="display:none; background:var(--navy); color:white; padding:10px 20px; border-radius:8px; margin-bottom:15px; align-items:center; justify-content:space-between; animation:slideIn 0.2s;">
+        <div style="font-weight:bold; font-size:0.9rem;">
+            <i class="fa-solid fa-check-double"></i> <span id="bulk-count">0</span> Selected
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-rect" style="background:white; color:var(--navy); border:none;" onclick="bulkAction('status')">Set Status</button>
+            <button class="btn-rect" style="background:white; color:var(--navy); border:none;" onclick="bulkAction('project')">Move to Proj</button>
+            <button class="btn-rect" style="background:var(--danger); color:white; border:none;" onclick="bulkAction('delete')">Delete</button>
+            <button class="btn-rect" style="background:transparent; color:white; border:1px solid rgba(255,255,255,0.5);" onclick="deselectAllInv()">Cancel</button>
+        </div>
+    </div>
         
         <div class="widget"><div id="full-inv-list"></div></div>
 
@@ -1108,7 +1298,12 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
 </div>
 
 <div class="chat-panel">
-    <div class="chat-header"><i class="fa-regular fa-comments"></i> Team Log</div>
+    <div class="chat-header" style="display:flex; align-items:center; justify-content:space-between;">
+        <div><i class="fa-regular fa-comments"></i> Team Log</div>
+        <button class="btn-sync mobile-only" onclick="nav('dashboard')" style="width:auto; margin:0; padding: 5px 10px; font-size:0.8rem;">
+            <i class="fa-solid fa-xmark"></i> Close
+        </button>
+    </div>
     <div id="chatFeed" class="chat-feed"></div>
     <div class="chat-input-area"><input type="text" id="chatInput" class="form-control" placeholder="Update team..." onkeypress="handleChat(event)"></div>
 </div>
@@ -1319,9 +1514,21 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
             <input id="invDose" type="text" class="form-control" placeholder="Dose Rate (e.g. 5 or Unknown)">
         </div>
 
-        <div style="margin:10px 0;">
-            <label style="font-size:0.7rem; color:var(--text-muted);">FILL LEVEL: <span id="invFillLabel" style="font-weight:bold; color:var(--accent);">0%</span></label>
-            <input id="invFill" type="range" min="0" max="100" value="0" style="width:100%" oninput="document.getElementById('invFillLabel').innerText = this.value + '%'">
+        <div style="margin:10px 0; border:1px solid var(--border); padding:10px; border-radius:6px; background:var(--bg-body);">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" id="invTrackFill" onchange="toggleFillSlider()" style="width:auto; margin:0;">
+                    <label for="invTrackFill" style="font-size:0.8rem; color:var(--text-main); font-weight:bold; cursor:pointer;">Track Container Fill Level?</label>
+                </div>
+                <span id="invFillLabel" style="font-size:0.8rem; font-weight:bold; color:var(--accent); display:none;">0%</span>
+            </div>
+            
+            <div id="invFillContainer" style="display:none; margin-top:10px;">
+                <input id="invFill" type="range" min="0" max="100" value="0" style="width:100%" oninput="document.getElementById('invFillLabel').innerText = this.value + '%'">
+                <div style="display:flex; justify-content:space-between; font-size:0.6rem; color:var(--text-muted);">
+                    <span>Empty</span><span>Full</span>
+                </div>
+            </div>
         </div>
 
         <label style="font-size:0.7rem; color:var(--text-muted);">ASSIGN TO PROJECT</label>
@@ -2262,6 +2469,12 @@ const STARTER_DATA = {
 
     let showComplete = false; let viewMode = 'list'; let hpState = {iso:'Co-60', a0:'', date:''};
 
+    let showMasterTasksDone = true; // Default to showing everything
+        function toggleMasterTasksDone() { 
+        showMasterTasksDone = !showMasterTasksDone; 
+        render(); 
+    }
+
     // Try to load the saved user, or default to the first team member (or "Admin")
     let currentUser = localStorage.getItem('rad_curr_user') || 'Admin';
 
@@ -2276,7 +2489,7 @@ const STARTER_DATA = {
 
     // Dashboard Widget States ---
     let dashTaskSort = 'prio';   // Options: 'prio', 'oldest', 'newest'
-    let dashInvSort = 'dose';    // Options: 'dose', 'fill', 'recent'
+    let dashInvSort = 'act'; // Default to Concentration/Activity
 
     let dashProjSort = 'newest'; 
 
@@ -2323,6 +2536,16 @@ let finStart = "";
         document.getElementById('fin-end').value = "";
         render();
     }
+
+// --- SEARCH HIGHLIGHTER ---
+    const high = (text, term) => {
+        const safe = esc(text); 
+        if (!term || term.length < 2) return safe; 
+        
+        const regex = new RegExp(`(${term})`, 'gi');
+
+        return safe.replace(regex, '<mark style="padding:0 2px; background:var(--accent-dim); color:var(--accent); font-weight:bold; border-radius:2px;">$1</mark>');
+    };
 
 // Escapes characters that break JavaScript strings inside HTML attributes
 const jsEsc = (t) => {
@@ -3132,6 +3355,18 @@ function delInvLink(idx) {
     }
 }
 
+function toggleFillSlider() {
+        const isChecked = document.getElementById('invTrackFill').checked;
+        document.getElementById('invFillContainer').style.display = isChecked ? 'block' : 'none';
+        document.getElementById('invFillLabel').style.display = isChecked ? 'block' : 'none';
+        
+        // If unchecked, reset to 0 internally so we don't save stale data
+        if(!isChecked) {
+            document.getElementById('invFill').value = 0;
+            document.getElementById('invFillLabel').innerText = '0%';
+        }
+    }
+
     function quickAdd(type, pid) {
         if(type === 'task') {
             viewProject(pid);
@@ -3191,9 +3426,8 @@ function normalizeIso(input) {
     }
 
     function render(filter = "") {
-        // 1. Auto-detect filter if not provided (Preserves search context after delete/edit)
+        // 1. Auto-detect filter if not provided
         if (!filter) {
-            // Find the visible search bar
             const activeView = document.querySelector('.view-section.active');
             if (activeView) {
                 const searchInput = activeView.querySelector('.search-bar');
@@ -3205,9 +3439,31 @@ function normalizeIso(input) {
         document.getElementById('todayDate').innerText = new Date().toDateString();
         document.getElementById('btnShowComp').innerHTML = showComplete ? '<i class="fa-solid fa-eye-slash"></i> Hide Done' : '<i class="fa-solid fa-eye"></i> Show Done';
         
-        // --- 1. PROJECT FILTERING (Global) ---
-        let filteredProjs = projects.filter(p => (p.title + (p.desc||"") + (p.uic||"") + (p.jmcId||"") + (p.rcn||"") + (p.contractor||"")).toLowerCase().includes(filter));
-        if (!showComplete) filteredProjs = filteredProjs.filter(p => p.status !== 'Complete'); 
+        // --- 1. SUPERCHARGED PROJECT FILTERING ---
+        let filteredProjs = projects.filter(p => {
+            // A. STRICT STATUS FILTER (triggered by charts)
+            if (filter.startsWith('status:')) {
+                const targetStatus = filter.replace('status:', '').trim().toLowerCase();
+                return p.status.toLowerCase() === targetStatus;
+            }
+
+            // B. STANDARD FUZZY SEARCH (typed by user)
+            const searchStr = (
+                p.title + (p.desc||"") + (p.uic||"") + (p.jmcId||"") + 
+                (p.rcn||"") + (p.contractor||"") + 
+                (p.status||"") + (p.health||"") + 
+                (p.region||"") + (p.poc||"") + (p.poc2||"")
+            ).toLowerCase();
+            return searchStr.includes(filter);
+        });
+
+        // Auto-show 'Complete' if the chart filter is active
+        // This ensures clicking the "Complete" slice actually shows data
+        const isChartFilter = filter.toLowerCase().includes('status:complete');
+        
+        if (!showComplete && !isChartFilter) {
+             filteredProjs = filteredProjs.filter(p => p.status !== 'Complete'); 
+        }
 
         // MAIN PROJECT SORTING ---
         if (mainProjSort === 'title') {
@@ -3229,7 +3485,16 @@ function normalizeIso(input) {
             filteredProjs.sort((a,b) => a.id - b.id);
         }
 
-        const filteredInv = inventory.filter(i => i.id.toLowerCase().includes(filter));
+        const filteredInv = inventory.filter(i => {
+            // If filtering projects by status, ignore that filter for inventory so it stays visible
+            if (filter.startsWith('status:')) return true; 
+
+            const searchStr = (
+                i.id + (i.desc||"") + (i.iso||"") + (i.status||"") + 
+                (i.location||"") + (i.serial||"") + (i.act||"")
+            ).toLowerCase();
+            return searchStr.includes(filter);
+        });
         
         const dashProjDiv = document.getElementById('dash-projects');
         const projContainer = document.getElementById('full-project-list');
@@ -3250,7 +3515,11 @@ function normalizeIso(input) {
 
         const recentProjs = displayProjs.slice(0, 10);
 
-        // UPDATED HEADER HTML: Tighter gap on left, more buffer on right
+        // TOGGLE BUTTON STATE (New)
+        const eyeIcon = showComplete ? '<i class="fa-solid fa-eye-slash"></i>' : '<i class="fa-solid fa-eye"></i>';
+        const eyeTitle = showComplete ? 'Hide Completed' : 'Show Completed';
+
+        // UPDATED HEADER HTML (With new Button)
         const projHeaderHtml = `
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                 <div style="display:flex; align-items:center; gap:6px;">
@@ -3261,6 +3530,9 @@ function normalizeIso(input) {
                         <option value="health" ${dashProjSort==='health'?'selected':''}>Health</option>
                         <option value="status" ${dashProjSort==='status'?'selected':''}>Status</option>
                     </select>
+                    <button class="btn-rect" onclick="toggleShowComp()" title="${eyeTitle}" style="width:24px; padding:0;">
+                        ${eyeIcon}
+                    </button>
                 </div>
                 <span style="font-size:0.75rem; cursor:pointer; color:var(--accent); font-weight:bold; white-space:nowrap; margin-left:15px;" onclick="nav('projects')">View All &rarr;</span>
             </div>`;
@@ -3273,7 +3545,7 @@ function normalizeIso(input) {
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div style="font-weight:600;">
                             <span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span>
-                            ${esc(p.title)}
+                            ${high(p.title, filter)}
                         </div>
                         <span style="font-size:0.7rem; color:var(--text-muted); margin-right:10px;">${p.status}</span>
                     </div>
@@ -3295,7 +3567,7 @@ function normalizeIso(input) {
         if (viewMode === 'list') {
             projContainer.innerHTML = filteredProjs.map(p => {
                 const src = getDominantSource(p.id);
-                return `<div class="list-item" onclick="viewProject(${p.id})"><span><span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span>${esc(p.title)} <span class="tag" style="background:${src.color}; color:white; border:none; margin-left:8px;">${src.short}</span></span><span>${p.status} | Due: ${p.due}</span></div>`;
+                return `<div class="list-item" onclick="viewProject(${p.id})"><span><span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span>${high(p.title, filter)} <span class="tag" style="background:${src.color}; color:white; border:none; margin-left:8px;">${src.short}</span></span><span>${p.status} | Due: ${p.due}</span></div>`;
             }).join('');
         } else {
             const cols = { 'Planning': [], 'Active': [], 'Review': [], 'Complete': [] };
@@ -3325,7 +3597,10 @@ function normalizeIso(input) {
         filteredProjs.forEach(p => { 
             if(p.tasks) {
                 p.tasks.forEach(t => { 
-                    if(!t.done && t.text.toLowerCase().includes(filter)) {
+                    // Search: Task Text OR Project Title OR Assignee OR Priority
+                    const taskStr = (t.text + p.title + (t.assign||"") + t.prio).toLowerCase();
+                    
+                    if(!t.done && taskStr.includes(filter)) {
                         allTasks.push({ task: t, proj: p });
                     }
                 });
@@ -3341,15 +3616,18 @@ function normalizeIso(input) {
             allTasks.sort((a,b) => b.task.id - a.task.id);
         }
 
-        // UPDATED TASK HEADER
+        // UPDATED TASK HEADER (With View All Link)
         const taskHeaderHtml = `
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                <span>Pending Actions</span>
-                <select class="sort-select" onchange="setDashSort('task', this.value)">
-                    <option value="prio" ${dashTaskSort==='prio'?'selected':''}>Highest Prio</option>
-                    <option value="newest" ${dashTaskSort==='newest'?'selected':''}>Newest</option>
-                    <option value="oldest" ${dashTaskSort==='oldest'?'selected':''}>Oldest</option>
-                </select>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span>Pending Actions</span>
+                    <select class="sort-select" onchange="setDashSort('task', this.value)">
+                        <option value="prio" ${dashTaskSort==='prio'?'selected':''}>Highest Prio</option>
+                        <option value="newest" ${dashTaskSort==='newest'?'selected':''}>Newest</option>
+                        <option value="oldest" ${dashTaskSort==='oldest'?'selected':''}>Oldest</option>
+                    </select>
+                </div>
+                <span style="font-size:0.75rem; cursor:pointer; color:var(--accent); font-weight:bold; white-space:nowrap; margin-left:15px;" onclick="nav('all-tasks')">View All &rarr;</span>
             </div>`;
 
         const taskListHtml = allTasks.slice(0, 10).map(item => {
@@ -3371,32 +3649,87 @@ function normalizeIso(input) {
 
 
         // B. PREPARE INVENTORY
+        // Sorting Logic
         if(dashInvSort === 'dose') { filteredInv.sort((a,b) => b.dose - a.dose); } 
         else if (dashInvSort === 'fill') { filteredInv.sort((a,b) => (b.fill||0) - (a.fill||0)); } 
         else if (dashInvSort === 'recent') { filteredInv.sort((a,b) => (b.logDate || "").localeCompare(a.logDate || "")); }
+        else if (dashInvSort === 'act') { filteredInv.sort((a,b) => getActValue(b.act) - getActValue(a.act)); } 
+        
+        // --- PROJECT SORTS ---
+        else if (dashInvSort === 'proj-old') { 
+            // Sort by Project ID (Ascending) -> Oldest Projects First
+            filteredInv.sort((a,b) => {
+                const pA = projects.find(p => p.id === a.projId)?.id || 9999999999999;
+                const pB = projects.find(p => p.id === b.projId)?.id || 9999999999999;
+                return pA - pB;
+            });
+        }
+        else if (dashInvSort === 'proj-new') { 
+            // Sort by Project ID (Descending) -> Newest Projects First
+            filteredInv.sort((a,b) => {
+                const pA = projects.find(p => p.id === a.projId)?.id || 0;
+                const pB = projects.find(p => p.id === b.projId)?.id || 0;
+                return pB - pA;
+            });
+        }
+        else if (dashInvSort === 'proj-due') { 
+            // Sort by Project Due Date (Ascending) -> Soonest Due First
+            filteredInv.sort((a,b) => {
+                const pA = projects.find(p => p.id === a.projId)?.due || "9999-99-99";
+                const pB = projects.find(p => p.id === b.projId)?.due || "9999-99-99";
+                return pA.localeCompare(pB);
+            });
+        }
 
-        // UPDATED INVENTORY HEADER
+        // UPDATED INVENTORY HEADER (New Sort Options + View All Link)
         const invHeaderHtml = `
             <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                <span>Inventory</span>
-                <select class="sort-select" onchange="setDashSort('inv', this.value)">
-                    <option value="dose" ${dashInvSort==='dose'?'selected':''}>Highest Dose</option>
-                    <option value="fill" ${dashInvSort==='fill'?'selected':''}>Fullest</option>
-                    <option value="recent" ${dashInvSort==='recent'?'selected':''}>Newest</option>
-                </select>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span>Inventory</span>
+                    <select class="sort-select" onchange="setDashSort('inv', this.value)" style="width:110px;">
+                        <option value="act" ${dashInvSort==='act'?'selected':''}>Highest Activity</option>
+                        <option value="dose" ${dashInvSort==='dose'?'selected':''}>Highest Dose</option>
+                        <option value="proj-due" ${dashInvSort==='proj-due'?'selected':''}>Proj Due Date</option>
+                        <option value="proj-new" ${dashInvSort==='proj-new'?'selected':''}>Proj Newest</option>
+                        <option value="proj-old" ${dashInvSort==='proj-old'?'selected':''}>Proj Oldest</option>
+                        <option value="fill" ${dashInvSort==='fill'?'selected':''}>Fullest</option>
+                        <option value="recent" ${dashInvSort==='recent'?'selected':''}>Newest Item</option>
+                    </select>
+                </div>
+                <span style="font-size:0.75rem; cursor:pointer; color:var(--accent); font-weight:bold; white-space:nowrap; margin-left:15px;" onclick="nav('inventory')">View All &rarr;</span>
             </div>`;
 
         const invListHtml = filteredInv.slice(0, 10).map(i => {
-            let valDisplay = `${i.dose} mR/hr`;
-            if(dashInvSort === 'fill') valDisplay = `${i.fill||0}% Full`;
-            if(dashInvSort === 'recent') valDisplay = i.logDate || 'No Date';
+            // Logic to determine what to show on the right side
+            let valDisplay = `<b>${i.act}</b>`; // Default to Concentration/Activity
+            let subDisplay = i.dose > 0 ? `${i.dose} mR/hr` : ''; // Subtext
 
-            const isHighDose = i.dose >= 1000; 
-            const rowStyle = isHighDose ? 'color:var(--danger); font-weight:bold;' : '';
+            if(dashInvSort === 'dose') {
+                 valDisplay = `<b>${i.dose} mR/hr</b>`;
+                 subDisplay = i.act;
+            }
+            else if(dashInvSort === 'fill') {
+                 valDisplay = `<b>${i.fill||0}% Full</b>`;
+                 subDisplay = i.act;
+            }
+            else if(dashInvSort === 'proj') {
+                 const pTitle = projects.find(p => p.id === i.projId)?.title || "Unassigned";
+                 valDisplay = `<span class="tag" style="max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(pTitle)}</span>`;
+                 subDisplay = i.act;
+            }
+            
+            // Highlight high activity items (arbitrary threshold > 1 Ci just for visual pop)
+            const isHot = getActValue(i.act) >= 1; 
 
-            return `<div class="list-item">
-                <span style="${rowStyle}">${esc(i.id)} <span style="font-size:0.7rem; color:var(--text-muted); font-weight:normal;">(${i.iso})</span></span>
-                <span>${valDisplay}</span>
+            return `<div class="list-item" onclick="viewInventory('${jsEsc(i.id)}')">
+                <div style="display:flex; flex-direction:column; overflow:hidden;">
+                    <span style="${isHot ? 'color:var(--rad); font-weight:bold;' : ''}">${high(i.id, filter)}</span>
+                    <span style="font-size:0.7rem; color:var(--text-muted); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${high(i.desc, filter)}</span>
+                </div>
+                <div style="text-align:right;">
+                    <div>${valDisplay}</div>
+                    <div style="font-size:0.65rem; color:var(--text-muted);">${subDisplay}</div>
+                </div>
             </div>`;
         }).join('') || '<div style="color:var(--text-muted); padding:10px;">No Inventory</div>';
 
@@ -3422,7 +3755,28 @@ function normalizeIso(input) {
         projects.forEach(p => { if (statuses[p.status] !== undefined) statuses[p.status]++; });
         const totalProjs = projects.length || 1;
         const sColors = { 'Planning': 'var(--plan)', 'Active': 'var(--accent)', 'Review': 'var(--info)', 'Complete': 'var(--comp)' };
-        document.getElementById('chart-proj').innerHTML = Object.keys(statuses).map(k => { const pct = (statuses[k] / totalProjs) * 100; return pct > 0 ? `<div class="chart-seg" style="width:${pct}%; background:${sColors[k]}" title="${k}: ${statuses[k]}"></div>` : ''; }).join('');
+        
+        document.getElementById('chart-proj').innerHTML = Object.keys(statuses).map(k => { 
+            const pct = (statuses[k] / totalProjs) * 100;
+            
+            // LOGIC: Check if this status is currently active
+            // We look for 'status:Active', not just 'Active'
+            const currentSearch = document.getElementById('main-search') ? document.getElementById('main-search').value : '';
+            const targetSearch = `status:${k}`;
+            const isActive = currentSearch.toLowerCase() === targetSearch.toLowerCase();
+            
+            // If active -> Clear it. If not active -> Set it using the status: prefix
+            const clickAction = isActive 
+                ? "document.getElementById('main-search').value=''; handleSearch('');" 
+                : `document.getElementById('main-search').value='${targetSearch}'; handleSearch('${targetSearch}');`;
+
+            const opacity = (filter.startsWith('status:') && !isActive) ? '0.3' : '1';
+
+            return pct > 0 ? `<div class="chart-seg" style="width:${pct}%; background:${sColors[k]}; cursor:pointer; opacity:${opacity};" 
+                                   title="${k}: ${statuses[k]} (Click to filter)" 
+                                   onclick="${clickAction}"></div>` : ''; 
+        }).join('');
+        
         document.getElementById('legend-proj').innerHTML = Object.keys(statuses).map(k => statuses[k] > 0 ? `<div><span class="legend-dot" style="background:${sColors[k]}"></span>${k} (${statuses[k]})</div>` : '').join('');
         
         // If budget is 0 but we spent money, show 100% (Full bar)
@@ -3498,10 +3852,17 @@ function normalizeIso(input) {
             </div>`;
         }).join('') || '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:20px;">No expenses recorded in this period.</div>';
 
-        // 7. Update Expense Table (Filtered)
+        // 7. Update Expense Table (Filtered) with TOTALS FOOTER
         const sortedExps = getSortedData(finExps, 'table-exp');
+        
+        // A. Initialize the counter
+        let expTotal = 0;
 
-        document.getElementById('expense-list').innerHTML = sortedExps.map(e => {
+        // B. Generate Rows & Accumulate Total
+        const expRows = sortedExps.map(e => {
+            // Add to running total (safely handle missing values)
+            expTotal += (e.amount || 0);
+
             const fund = e.fundSource || 'Other';
             let fundStyle = 'background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1';
             if(fund.includes('Navy')) fundStyle = 'background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe';
@@ -3514,24 +3875,14 @@ function normalizeIso(input) {
                 ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:8px;" onclick="viewEstimate(${e.id}, 'expense')" title="View Estimate Details"></i>` 
                 : '';
 
-            const fmtAmount = e.amount.toLocaleString('en-US', {style:'currency', currency:'USD'});
+            const fmtAmount = (e.amount || 0).toLocaleString('en-US', {style:'currency', currency:'USD'});
 
             return `<tr style="${rowStyle}">
                 <td><input class="live-edit" type="date" value="${e.date}" onchange="updItem('expense', ${e.id}, 'date', this.value)"></td>
                 <td><span class="proj-link" onclick="viewProject(${e.projId})">${esc(pTitle)}</span></td>
                 <td><div class="tag" style="font-size:0.75rem; padding:4px 8px; border-radius:12px; display:inline-block; ${fundStyle}">${esc(fund)}</div></td>
-                
-                <td>
-                    <div style="display:flex; align-items:center; width:100%;">
-                        <input class="live-edit" style="flex:1; min-width:0;" value="${esc(e.desc)}" onchange="updItem('expense', ${e.id}, 'desc', this.value, this)"> 
-                        ${igeIcon}
-                    </div>
-                </td>
-                
-                <td>
-                    <input class="live-edit" type="text" style="text-align:right;" value="${fmtAmount}" onchange="updItem('expense', ${e.id}, 'amount', this.value)">
-                </td>
-                
+                <td><div style="display:flex; align-items:center; width:100%;"><input class="live-edit" style="flex:1; min-width:0;" value="${esc(e.desc)}" onchange="updItem('expense', ${e.id}, 'desc', this.value, this)"> ${igeIcon}</div></td>
+                <td><input class="live-edit" type="text" style="text-align:right;" value="${fmtAmount}" onchange="updItem('expense', ${e.id}, 'amount', this.value)"></td>
                 <td>
                     <select class="live-edit" onchange="updItem('expense', ${e.id}, 'status', this.value)">
                         <option ${e.status==='Invoiced'?'selected':''}>Invoiced</option>
@@ -3543,37 +3894,61 @@ function normalizeIso(input) {
                 <td><div style="display:flex; gap:10px;"><i class="fa-solid fa-copy" style="cursor:pointer; color:var(--info)" onclick="cloneExpense(${e.id})" title="Duplicate"></i> <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delExpense(${e.id})" title="Delete"></i></div></td>
             </tr>`;
         }).join('');
+
+        // C. Generate the Footer HTML
+        // Note: colspan="4" covers Date, Project, Fund, Desc.
+        // The Total sits in the 5th column (Amount).
+        // colspan="2" covers Status and Actions.
+        const expFooter = `
+            <tr style="background:var(--bg-body); border-top:2px solid var(--border); font-weight:bold; color:var(--text-main);">
+                <td colspan="4" style="text-align:right; padding-right:15px;">Visible Total:</td>
+                <td style="text-align:right; color:var(--money);">${expTotal.toLocaleString('en-US', {style:'currency', currency:'USD'})}</td>
+                <td colspan="2"></td>
+            </tr>`;
+
+        // D. Combine and Render
+        // If rows exist, show rows + footer. If empty, show "No expenses found".
+        document.getElementById('expense-list').innerHTML = expRows 
+            ? (expRows + expFooter) 
+            : '<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--text-muted); font-style:italic;">No expenses found matching criteria.</td></tr>';
         
-        // 8. Update Allocation Table (Filtered)
+        // 8. Update Allocation Table (Filtered) with TOTALS FOOTER
         const sortedAllocs = getSortedData(finAllocs, 'table-alloc');
-        document.getElementById('alloc-list').innerHTML = sortedAllocs.map(a => {
+        
+        let allocTotal = 0; // Init Counter
+
+        const allocRows = sortedAllocs.map(a => {
+            allocTotal += (a.amount || 0); // Accumulate
+
             const fund = a.fundSource || 'Navy General Fund';
             const pTitle = projects.find(p => p.id === a.projId)?.title || "General";
             const igeIcon = a.details 
                 ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:8px;" onclick="viewEstimate(${a.id}, 'alloc')" title="View Estimate Details"></i>` 
                 : '';
-
-            const fmtAmount = a.amount.toLocaleString('en-US', {style:'currency', currency:'USD'});
+            const fmtAmount = (a.amount || 0).toLocaleString('en-US', {style:'currency', currency:'USD'});
 
             return `<tr>
                 <td><input class="live-edit" type="date" value="${a.date}" onchange="updItem('alloc', ${a.id}, 'date', this.value)"></td>
                 <td><span class="proj-link" onclick="viewProject(${a.projId})">${esc(pTitle)}</span></td>
                 <td><div class="tag">${esc(fund)}</div></td>
-                
-                <td>
-                    <div style="display:flex; align-items:center; width:100%;">
-                        <input class="live-edit" style="flex:1; min-width:0;" value="${esc(a.desc)}" onchange="updItem('alloc', ${a.id}, 'desc', this.value, this)"> 
-                        ${igeIcon}
-                    </div>
-                </td>
-
-                <td>
-                    <input class="live-edit" type="text" style="text-align:right;" value="${fmtAmount}" onchange="updItem('alloc', ${a.id}, 'amount', this.value)">
-                </td>
-
+                <td><div style="display:flex; align-items:center; width:100%;"><input class="live-edit" style="flex:1; min-width:0;" value="${esc(a.desc)}" onchange="updItem('alloc', ${a.id}, 'desc', this.value, this)"> ${igeIcon}</div></td>
+                <td><input class="live-edit" type="text" style="text-align:right;" value="${fmtAmount}" onchange="updItem('alloc', ${a.id}, 'amount', this.value)"></td>
                 <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delAlloc(${a.id})"></i></td>
             </tr>`;
         }).join('');
+
+        // Generate Footer
+        const allocFooter = `
+            <tr style="background:var(--bg-body); border-top:2px solid var(--border); font-weight:bold; color:var(--text-main);">
+                <td colspan="4" style="text-align:right; padding-right:15px;">Visible Funding:</td>
+                <td style="text-align:right; color:var(--navy);">${allocTotal.toLocaleString('en-US', {style:'currency', currency:'USD'})}</td>
+                <td></td>
+            </tr>`;
+
+        // Render
+        document.getElementById('alloc-list').innerHTML = allocRows 
+            ? (allocRows + allocFooter) 
+            : '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted); font-style:italic;">No funding records found.</td></tr>';
 
         // 9. Update Budget Rollup Logic (With Sorting!)
 let grandInit = 0, grandAdj = 0, grandTot = 0, grandSpent = 0;
@@ -3605,6 +3980,9 @@ const getProjStats = (pid) => {
 let budgetData = projects.map(p => {
     const s = getProjStats(p.id);
     const src = getDominantSource(p.id);
+
+    const dStat = getDueStatus(p.due); 
+    
     let burn = 0;
     if(s.total > 0) burn = Math.round((s.spent / s.total) * 100);
     else if(s.spent > 0) burn = 100;
@@ -3633,7 +4011,7 @@ if (sortState.table === 'table-budget') {
     });
 }
 
-// E. CALCULATE TOTALS & GENERATE HTML
+// E. CALCULATE TOTALS & GENERATE HTML (FIXED)
 let rollupHtml = budgetData.map(row => {
     // Accumulate Grands (Order doesn't matter for totals)
     grandInit += row.init; grandAdj += row.adj; grandTot += row.total; grandSpent += row.spent;
@@ -3643,14 +4021,15 @@ let rollupHtml = budgetData.map(row => {
     if(row.burn > 100) { burnBg = 'var(--danger)'; burnColor = 'white'; burnBorder = 'var(--danger)'; }
     else if (row.burn > 80) { burnBg = 'var(--warning)'; burnColor = 'white'; burnBorder = 'var(--warning)'; }
 
+    // FIX: Added ( || 0) to all .toLocaleString calls below
     return `<tr>
     <td><span class="rag-dot" style="background:${row.health==='red'?'var(--danger)':(row.health==='yellow'?'var(--warning)':'var(--accent)')}"></span><span class="proj-link" onclick="viewProject(${row.id})">${esc(row.title)}</span></td>
     <td style="text-align:center"><div class="tag" style="background:${row.srcColor}; color:white; border:none;">${row.srcName}</div></td>
-    <td style="text-align:right; color:var(--text-muted);">$${row.init.toLocaleString()}</td>
-    <td style="text-align:right; color:${row.adj>=0?'var(--info)':'var(--warning)'}">${row.adj>0?'+':''}${row.adj.toLocaleString()}</td>
-    <td style="text-align:right; font-weight:bold;">$${row.total.toLocaleString()}</td>
-    <td style="text-align:right; color:var(--warning);">$${row.spent.toLocaleString()}</td>
-    <td style="text-align:right; font-weight:bold; color:${row.rem<0?'var(--danger)':'var(--money)'}">$${row.rem.toLocaleString()}</td>
+    <td style="text-align:right; color:var(--text-muted);">$${(row.init||0).toLocaleString()}</td>
+    <td style="text-align:right; color:${row.adj>=0?'var(--info)':'var(--warning)'}">${row.adj>0?'+':''}${(row.adj||0).toLocaleString()}</td>
+    <td style="text-align:right; font-weight:bold;">$${(row.total||0).toLocaleString()}</td>
+    <td style="text-align:right; color:var(--warning);">$${(row.spent||0).toLocaleString()}</td>
+    <td style="text-align:right; font-weight:bold; color:${row.rem<0?'var(--danger)':'var(--money)'}">$${(row.rem||0).toLocaleString()}</td>
     <td style="text-align:center"><div class="tag" style="width:45px; text-align:center; display:inline-block; background:${burnBg}; color:${burnColor}; border-color:${burnBorder}; font-weight:bold;">${row.burn}%</div></td>
     </tr>`;
 }).join('');
@@ -3673,16 +4052,27 @@ let rollupHtml = budgetData.map(row => {
 
 
         // --- 7. EXEMPT LOG & INVENTORY TABLES ---
+        
+        // 1. Get Data (Sorted by column click or default)
         const sortedExempt = getSortedData(exemptLog, 'table-exempt');
-	document.getElementById('exempt-list').innerHTML = sortedExempt.map(e => {
+
+        // 2. Apply Search Filter (The missing piece)
+        const filteredExempt = sortedExempt.filter(e => {
+            const searchStr = (e.id + e.cmd + e.desc + e.iso + e.act + e.basis + e.path + (e.date||'')).toLowerCase();
+            return searchStr.includes(filter);
+        });
+
+        // 3. Render
+        document.getElementById('exempt-list').innerHTML = filteredExempt.map(e => {
+            // Status Logic
             const isAuth = e.authDate && e.authDate.trim() !== "";
             const statusBadge = isAuth 
                 ? '<span class="tag" style="background:var(--accent); color:white; border:none;">Authorized</span>' 
                 : '<span class="tag" style="background:var(--warning); color:white; border:none;">Pending</span>';
             
+            // Render Row (Keeping all your Live Edit inputs)
             return `<tr>
-                <td>${esc(e.id)}</td>
-                <td><input class="live-edit" type="date" value="${e.date}" onchange="updItem('exempt', '${e.id}', 'date', this.value)"></td>
+                <td>${high(e.id, filter)}</td> <td><input class="live-edit" type="date" value="${e.date}" onchange="updItem('exempt', '${e.id}', 'date', this.value)"></td>
                 <td><input class="live-edit" value="${esc(e.cmd)}" onchange="updItem('exempt', '${e.id}', 'cmd', this.value, this)"></td>
                 <td><input class="live-edit" value="${esc(e.desc)}" onchange="updItem('exempt', '${e.id}', 'desc', this.value, this)"></td>
                 <td><input class="live-edit" value="${esc(e.iso)}" onchange="updItem('exempt', '${e.id}', 'iso', this.value, this)"></td>
@@ -3693,7 +4083,7 @@ let rollupHtml = budgetData.map(row => {
                 <td style="text-align:center;" id="ex-status-${e.id}">${statusBadge}</td>
                 <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delExempt('${e.id}')"></i></td>
             </tr>`;
-        }).join('');
+        }).join('') || '<tr><td colspan="11" style="text-align:center; padding:20px; color:var(--text-muted);">No records found.</td></tr>';
 
         // --- UPDATED INVENTORY ROW GENERATION ---
         const sortedInv = getSortedData(filteredInv, 'table-inv');
@@ -3708,6 +4098,8 @@ let rollupHtml = budgetData.map(row => {
             <table class="sci-table" id="table-inv" style="margin:0;">
                 <thead>
                     <tr>
+                        <th style="width:30px; text-align:center;"><input type="checkbox" onclick="toggleAllInv()"></th>
+                        
                         <th onclick="sortTable('table-inv', 0)">ID <i class="fa-solid fa-sort"></i></th>
                         <th onclick="sortTable('table-inv', 1)">Desc <i class="fa-solid fa-sort"></i></th>
                         <th onclick="sortTable('table-inv', 2)">Isotope <i class="fa-solid fa-sort"></i></th>
@@ -3735,12 +4127,16 @@ let rollupHtml = budgetData.map(row => {
                     </tr>
                 </thead>
                 <tbody>
-                    ${sortedInv.map(i => {
+                    ${sortedInv.length > 0 ? sortedInv.map(i => {
                         const pOptions = '<option value="">--</option>' + projects.map(p => `<option value="${p.id}" ${i.projId===p.id?'selected':''}>${esc(p.title)}</option>`).join('');
                         const linkIcon = i.projId ? `<i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--info)" onclick="viewProject(${i.projId})"></i>` : '';
                         const safeId = jsEsc(i.id);
 
                         return `<tr>
+                            <td style="text-align:center;">
+                                <input type="checkbox" class="inv-chk" data-id="${safeId}" onclick="toggleInvSelect('${safeId}')">
+                            </td>
+
                             <td><div style="display:flex; align-items:center; gap:5px;"><i class="fa-solid fa-eye" style="cursor:pointer; color:var(--info);" onclick="viewInventory('${safeId}')"></i><input class="live-edit" value="${esc(i.id)}" onchange="updItem('inventory', '${safeId}', 'id', this.value)"></div></td>
                             <td><input class="live-edit" style="width:120px;" value="${esc(i.desc||'')}" onchange="updItem('inventory', '${safeId}', 'desc', this.value)"></td>
                             
@@ -3778,7 +4174,7 @@ let rollupHtml = budgetData.map(row => {
                             <td><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td>
                             <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delInventory('${safeId}')"></i></td>
                         </tr>`;
-                    }).join('')}
+                    }).join('') : '<tr><td colspan="19" style="text-align:center; padding:30px; color:var(--text-muted); font-size:1.1rem;"><i class="fa-solid fa-box-open" style="margin-bottom:10px; display:block; font-size:2rem; opacity:0.3;"></i>No inventory items found.</td></tr>'}
                 </tbody>
             </table>
         </div>`;
@@ -3819,13 +4215,79 @@ let rollupHtml = budgetData.map(row => {
                         <span class="tag" style="background:${color}; color:white; border:none; margin:0;">${r.type}</span>
                         <div style="font-size:0.8rem;">${icon}</div>
                     </div>
-                    <div style="font-weight:bold; color:var(--text-main); margin-bottom:5px;">${esc(r.title)}</div>
-                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px; flex:1;">${esc(r.desc)}</div>
+                    <div style="font-weight:bold; color:var(--text-main); margin-bottom:5px;">${high(r.title, filter)}</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px; flex:1;">${high(r.desc, filter)}</div>
                     <a href="${r.url}" target="_blank" class="btn" style="text-align:center; text-decoration:none; background:var(--bg-input); color:var(--text-main); border:1px solid var(--border);">
                         <i class="fa-solid fa-external-link-alt"></i> Open
                     </a>
                 </div>`;
             }).join('') || '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-muted);">No references found.</div>';
+        }
+    
+    // --- 9. RENDER MASTER TASK LIST ---
+        const taskView = document.getElementById('view-all-tasks');
+        if(taskView && taskView.classList.contains('active')) {
+            
+            // UPDATE BUTTON TEXT
+            const btn = document.getElementById('btnTaskShowDone');
+            if(btn) btn.innerHTML = showMasterTasksDone ? '<i class="fa-solid fa-eye"></i> Show Done' : '<i class="fa-solid fa-eye-slash"></i> Hide Done';
+
+            let masterTasks = [];
+            projects.forEach(p => {
+                if(p.tasks) {
+                    p.tasks.forEach(t => {
+                        // 1. Check Search Filter
+                        const matchesSearch = (t.text + p.title + (t.assign||"")).toLowerCase().includes(filter);
+                        
+                        // 2. Check "Show Done" Toggle
+                        const matchesDone = showMasterTasksDone ? true : !t.done;
+
+                        if(matchesSearch && matchesDone) {
+                            masterTasks.push({ ...t, projTitle: p.title, projId: p.id, projDue: p.due });
+                        }
+                    });
+                }
+            });
+
+            // Sort Default: Priority -> Due Date
+            const pMap = {'high':0, 'med':1, 'low':2};
+
+            // Apply Dynamic Sorting via Header Clicks
+            masterTasks = getSortedData(masterTasks, 'table-all-tasks');
+
+            document.getElementById('full-task-list').innerHTML = masterTasks.map(t => {
+                const dueStat = getDueStatus(t.projDue);
+                
+                return `
+                <tr style="${t.done ? 'opacity:0.5; text-decoration:line-through;' : ''}">
+                    <td style="text-align:center;">
+                        <i class="fa-solid ${t.done?'fa-square-check checked':'fa-square'} task-chk" 
+                           onclick="togTask(${t.projId},${t.id}); render();" 
+                           style="font-size:1.2rem; cursor:pointer; color:${t.done?'var(--accent)':'var(--text-muted)'}"></i>
+                    </td>
+                    <td style="text-align:center;">
+                        <span class="tag" style="background:${t.prio==='high'?'var(--danger)':(t.prio==='med'?'var(--warning)':'var(--bg-input)')}; color:${t.prio==='low'?'var(--text-muted)':'white'}; border:none; text-transform:uppercase;">${t.prio}</span>
+                    </td>
+                    <td>
+                        <input class="live-edit" value="${esc(t.text)}" onchange="updTask(${t.projId}, ${t.id}, 'text', this.value)">
+                    </td>
+                    <td>
+                        <span class="proj-link" onclick="viewProject(${t.projId})">${esc(t.projTitle)}</span>
+                    </td>
+                    <td>
+                        <select class="live-edit" style="width:100px;" onchange="updTask(${t.projId}, ${t.id}, 'assign', this.value)">
+                            <option value="">--</option>
+                            ${team.map(m => `<option value="${esc(m)}" ${t.assign===m?'selected':''}>${esc(m)}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td>
+                        <span style="font-size:0.75rem; color:${dueStat.color}">${dueStat.text}</span>
+                    </td>
+                    <td>
+                        <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--text-muted)" onclick="delTask(${t.projId},${t.id})"></i>
+                    </td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--text-muted);">No matching tasks found.</td></tr>';
         }
     }
 
@@ -4079,7 +4541,9 @@ function viewProject(id) {
                 <div style="display:flex; gap:10px; margin-bottom:15px;">
                     <div style="flex:1"><input id="ed_poc" class="form-control" style="margin:0" value="${esc(p.poc||'')}" placeholder="Name" onchange="saveProjDetails(${p.id}, true)"></div>
                     <div style="flex:1"><input id="ed_pocEm" class="form-control" style="margin:0" value="${esc(p.pocEmail||'')}" placeholder="Email" onchange="saveProjDetails(${p.id}, true)"></div>
-                    <div style="width:140px"><input id="ed_pocPh" class="form-control" style="margin:0" value="${esc(p.pocPhone||'')}" placeholder="Phone" onchange="saveProjDetails(${p.id}, true)"></div>
+                    <div style="width:140px">
+                        <input id="ed_pocPh" ... oninput="maskPhone(event)" onchange="saveProjDetails(...)">
+                        </div>
                 </div>
 
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
@@ -4207,9 +4671,24 @@ function viewProject(id) {
         <i class="fa-solid fa-plus"></i> Add Item
     </button>
 </div>
+
 <div>${assetsHtml}</div>
             </div>
         </div>
+
+        <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:10px;">
+            <div style="font-size:0.8rem; font-weight:bold; color:var(--text-muted); margin-bottom:10px;">
+                <i class="fa-solid fa-clock-rotate-left"></i> PROJECT HISTORY
+            </div>
+            <div style="max-height:150px; overflow-y:auto; background:var(--bg-input); padding:10px; border-radius:6px; font-size:0.75rem; color:var(--text-muted);">
+                ${chatLog.filter(c => c.text.includes(p.title)).map(c => 
+                    `<div style="margin-bottom:4px; border-bottom:1px dashed var(--border); padding-bottom:2px;">
+                        <b>${c.time.split(' ')[0]}</b>: ${c.text.replace(p.title, 'this project')}
+                    </div>`
+                ).reverse().join('') || 'No history recorded.'}
+            </div>
+        </div>
+
     </div>`;
     
     // 6. Switch View 
@@ -4403,6 +4882,33 @@ function openAddInvForProject(pid) {
         saveLocally(); render();
     }
 
+    function downloadInvCSV() {
+        // Headers matching your data model
+        let csv = "ID,Description,Isotope,Activity,Dose Rate (mR/hr),Fill %,Status,Project ID,Project Title,Location,Serial,Manufacturer,Date Logged\n";
+        
+        inventory.forEach(i => {
+            // Lookup Project Title
+            const p = projects.find(x => x.id === i.projId);
+            const pTitle = p ? p.title.replace(/,/g, '') : "Unassigned"; // Remove commas to prevent CSV break
+            
+            // Sanitize Description
+            const safeDesc = (i.desc || "").replace(/"/g, '""'); // Escape quotes
+            
+            csv += `"${i.id}","${safeDesc}",${i.iso},"${i.act}",${i.dose},${i.fill||0},${i.status},${i.projId||''},"${pTitle}","${i.location||''}","${i.serial||''}","${i.mfr||''}","${i.logDate||''}"\n`;
+        });
+
+        // Create and Click Download Link
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `RadFlow_Inventory_${getTodayStr()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast("Inventory Exported to Excel");
+    }
+
     function downloadCSV() {
         let csv = "Date,Project,Funding Source,Description,Amount,Status\n";
         expenses.forEach(e => {
@@ -4445,20 +4951,18 @@ function getSortedData(data, tableId) {
     return [...data].sort((a, b) => {
         let valA, valB;
 
-        // MAP COLUMN INDEX TO DATA FIELDS
-        // We have to map the visual column index (0, 1, 2) to the data key ('date', 'amount', etc)
-        // Adjust these maps based on your specific table layouts in HTML
+        // --- 1. EXPENSE TABLE ---
         if (tableId === 'table-exp') {
             const keys = ['date', 'projId', 'fundSource', 'desc', 'amount', 'status'];
             valA = a[keys[sortState.col]];
             valB = b[keys[sortState.col]];
             
-            // Special handling for Project Name lookup
             if(sortState.col === 1) { 
                 valA = projects.find(p => p.id === valA)?.title || '';
                 valB = projects.find(p => p.id === valB)?.title || '';
             }
         } 
+        // --- 2. ALLOCATION TABLE ---
         else if (tableId === 'table-alloc') {
             const keys = ['date', 'projId', 'fundSource', 'desc', 'amount'];
             valA = a[keys[sortState.col]];
@@ -4468,6 +4972,7 @@ function getSortedData(data, tableId) {
                 valB = projects.find(p => p.id === valB)?.title || '';
             }
         }
+        // --- 3. INVENTORY TABLE ---
         else if (tableId === 'table-inv') {
             const keys = [
                 'id', 'desc', 'iso', 'act', 'dose', 'nsn', 'weight', 'vol', 'licensed', 'rcra',
@@ -4476,10 +4981,11 @@ function getSortedData(data, tableId) {
                 'fill', 'projId', 'status' 
             ];
             
+            // Special: Sort by Activity Magnitude
             if (sortState.col === 3) return (getActValue(a.act) - getActValue(b.act)) * sortState.dir;
 
-            // Updated indices for mixed numbers (4=Dose, 6=Wgt, 7=Vol, 14=Fill)
-            if ([4, 6, 7, 16, 14].includes(sortState.col)) {
+            // Special: Mixed Numbers
+            if ([4, 6, 7, 14, 16].includes(sortState.col)) {
                 const getNum = (v) => {
                     const s = (v||'').toString();
                     const match = s.match(/[\d\.]+/); 
@@ -4490,30 +4996,44 @@ function getSortedData(data, tableId) {
             }
             valA = a[keys[sortState.col]]; valB = b[keys[sortState.col]];
         }
-
+        // --- 4. EXEMPT LOG TABLE ---
         else if (tableId === 'table-exempt') {
             const keys = ['id', 'date', 'cmd', 'desc', 'iso', 'act', 'basis', 'path', 'authDate'];
             valA = a[keys[sortState.col]];
             valB = b[keys[sortState.col]];
         }
-        // Fallback for budget rollup or other tables if needed
+        // --- 5. MASTER TASK LIST (FIXED) ---
+        else if (tableId === 'table-all-tasks') {
+            // Columns: 0=Done, 1=Prio, 2=Task, 3=Project, 4=Assignee, 5=Due
+            const keys = ['done', 'prio', 'text', 'projTitle', 'assign', 'projDue'];
+            
+            // Special: Priority (High -> Med -> Low)
+            if(sortState.col === 1) { 
+                // BUG FIX: Changed High to 1 (not 0) so it doesn't default to 99
+                const pMap = {'high':1, 'med':2, 'low':3};
+                return ((pMap[a.prio]||99) - (pMap[b.prio]||99)) * sortState.dir;
+            }
+            
+            // Special: Done Checkbox
+            if(sortState.col === 0) return (a.done === b.done) ? 0 : (a.done?1:-1) * sortState.dir;
+            
+            valA = a[keys[sortState.col]];
+            valB = b[keys[sortState.col]];
+        }
+        // Fallback
         else { return 0; }
 
-        // GENERIC COMPARISON
-        // Handle nulls/undefined
+        // --- GENERIC COMPARISON ENGINE ---
         if (valA == null) valA = '';
         if (valB == null) valB = '';
 
-        // Check for Numbers
         const numA = parseFloat(valA);
         const numB = parseFloat(valB);
         
-        // Use number comparison if both are valid numbers and not just strings that look like numbers
         if (!isNaN(numA) && !isNaN(numB) && typeof valA !== 'string') {
             return (numA - numB) * sortState.dir;
         }
 
-        // String Comparison (Case insensitive)
         const strA = valA.toString().toLowerCase();
         const strB = valB.toString().toLowerCase();
         if (strA < strB) return -1 * sortState.dir;
@@ -4562,6 +5082,14 @@ function saveProjDetails(id, silent = false) {
 }
 
 function updItem(type, id, key, val, elem) { 
+
+    if (['amount', 'act', 'dose', 'qty', 'fill', 'weight', 'vol'].includes(field)) {
+        // Keep only numbers, decimals, and negative signs
+        const clean = val.toString().replace(/[^0-9.-]/g, ''); 
+        val = parseFloat(clean);
+        if(isNaN(val)) val = 0; // Default to 0 instead of broken data
+    }
+
         // 1. Update the Data Model
         
         // --- ROBUST TIMESTAMPING ---
@@ -5095,7 +5623,7 @@ function addExpense() {
             fundSource: fund
         }); 
 
-        // --- NEW: Smart Project Naming ---
+        // --- Smart Project Naming ---
         const p = projects.find(x => x.id === pid);
         const pName = p ? p.title : "General Overhead"; // If no PID, call it Overhead
         
@@ -5206,7 +5734,7 @@ function addExpense() {
         }, "Confirm Deletion", true);
     }
     
-// --- NEW: Helper to Clear & Close ---
+// --- Helper to Clear & Close ---
 function cancelAddInventory() {
     // 1. Reset Core Fields
     document.getElementById('invId').value = '';
@@ -5234,11 +5762,117 @@ function cancelAddInventory() {
     document.getElementById('invLic').value = 'No';
     document.getElementById('invRcra').value = 'No';
 
+    document.getElementById('invTrackFill').checked = false;
+    toggleFillSlider(); // This will hide the UI elements
+
     // 4. Close the Window
     closeModal('invModal');
 }
 
-// --- UPDATED: Add Inventory (With Auto-Close & Refresh) ---
+// --- BULK ACTION LOGIC ---
+    let selectedInv = new Set();
+
+    function toggleInvSelect(id) {
+        if(selectedInv.has(id)) selectedInv.delete(id);
+        else selectedInv.add(id);
+        updateBulkUI();
+    }
+
+    function toggleAllInv() {
+        // If all currently visible are selected, clear. Otherwise, select all visible.
+        // We use the rendered table rows to determine "visible" (in case of filtering)
+        const visibleIds = Array.from(document.querySelectorAll('.inv-chk')).map(el => el.getAttribute('data-id'));
+        const allSelected = visibleIds.every(id => selectedInv.has(id));
+        
+        if(allSelected) {
+            visibleIds.forEach(id => selectedInv.delete(id));
+        } else {
+            visibleIds.forEach(id => selectedInv.add(id));
+        }
+        updateBulkUI();
+    }
+
+    function deselectAllInv() {
+        selectedInv.clear();
+        updateBulkUI();
+    }
+
+    function updateBulkUI() {
+        const bar = document.getElementById('bulk-toolbar');
+        const count = document.getElementById('bulk-count');
+        
+        // Update Checkboxes
+        document.querySelectorAll('.inv-chk').forEach(chk => {
+            chk.checked = selectedInv.has(chk.getAttribute('data-id'));
+        });
+
+        // Show/Hide Toolbar
+        if(selectedInv.size > 0) {
+            bar.style.display = 'flex';
+            count.innerText = selectedInv.size;
+        } else {
+            bar.style.display = 'none';
+        }
+    }
+
+    function bulkAction(mode) {
+        const ids = Array.from(selectedInv);
+        if(ids.length === 0) return;
+
+        if(mode === 'delete') {
+            showConfirm(`Delete ${ids.length} items?`, () => {
+                ids.forEach(id => {
+                     // Archive logic (simplified version of delInventory)
+                     const item = inventory.find(x => x.id == id);
+                     if(item) {
+                         deletedInventory.push({...item, deletedDate: Date.now(), deletedBy: currentUser});
+                         registerDeletion(id);
+                     }
+                });
+                
+                // Remove from active list
+                inventory = inventory.filter(x => !selectedInv.has(x.id.toString()));
+                
+                deselectAllInv();
+                saveLocally();
+                render();
+                showToast("Bulk Delete Complete");
+            }, "Bulk Delete", true);
+        }
+
+        if(mode === 'status') {
+            showPrompt("Enter new status (Stored, Staged, Shipped):", (val) => {
+                if(['Stored','Staged','Shipped'].includes(val)) {
+                    inventory.forEach(i => { if(selectedInv.has(i.id.toString())) i.status = val; });
+                    saveLocally();
+                    render();
+                    showToast("Bulk Status Updated");
+                } else {
+                    showToast("Invalid Status (Use: Stored, Staged, Shipped)", "error");
+                }
+            }, "Bulk Status Change", "Stored");
+        }
+
+        if(mode === 'project') {
+            // Build a simple project list for the prompt info (user has to type ID or rough Title)
+            // Ideally we'd make a custom modal, but for now we'll use ID input
+            showPrompt("Enter Target Project ID:", (val) => {
+                const pid = parseInt(val);
+                const p = projects.find(x => x.id === pid);
+                if(p) {
+                    inventory.forEach(i => { if(selectedInv.has(i.id.toString())) i.projId = pid; });
+                    saveLocally();
+                    render();
+                    showToast(`Moved ${ids.length} items to ${p.title}`);
+                    deselectAllInv();
+                } else {
+                    showToast("Project ID not found", "error");
+                }
+            }, "Move to Project", "e.g. 101");
+        }
+    }
+
+// --- Add Inventory (With Auto-Close & Refresh) ---
 function addInventory() { 
     // 1. Get Core Inputs
     const id = document.getElementById('invId').value; 
@@ -5250,7 +5884,8 @@ function addInventory() {
     const act = document.getElementById('invAct').value;
     const doseVal = document.getElementById('invDose').value;
     const dose = doseVal === "" ? 0 : (isNaN(parseFloat(doseVal)) ? doseVal : parseFloat(doseVal));
-    const fill = parseFloat(document.getElementById('invFill').value) || 0;
+    const trackFill = document.getElementById('invTrackFill').checked;
+    const fill = trackFill ? (parseFloat(document.getElementById('invFill').value) || 0) : null;
     
     const pidVal = document.getElementById('invProj').value;
     const pid = pidVal ? parseInt(pidVal) : null;
@@ -5278,6 +5913,12 @@ function addInventory() {
     // 3. Validation
     if(!id) {
         showToast("Error: Item ID is required", "error"); 
+        return;
+    }
+
+    // Duplicate Check
+    if(inventory.some(x => x.id.toLowerCase() === id.toLowerCase())) {
+        showToast("Error: Item ID already exists", "error");
         return;
     }
 
@@ -5367,7 +6008,7 @@ function decayInventory() {
             
             // 2. PARSE ACTIVITY (Using the helper we added in the previous step)
             // If you haven't added 'getActValue' yet, standard regex match works too
-            const match = i.act.match(/^([\d\.]+(?:[eE][-+]?\d+)?)\s*([a-zA-Z]+)$/);
+            const match = i.act.match(/^([\d\.]+(?:[eE][-+]?\d+)?)\s*([a-zA-Zµ\/]+)$/);
             
             if(match) {
                 let val = parseFloat(match[1]);
@@ -5707,6 +6348,7 @@ function nav(id, force=false) {
         switch(id) {
             case 'dashboard': title = "Dash | " + APP_VER; break;
             case 'projects': title = "Projects | " + APP_VER; break;
+            case 'all-tasks': title = "Task Master | " + APP_VER; break;
             case 'finance': title = "Cost | " + APP_VER; break;
             case 'estimator': title = "Estimator | " + APP_VER; break;
             case 'inventory': title = "Inv | " + APP_VER; break;
@@ -5718,7 +6360,13 @@ function nav(id, force=false) {
         document.title = title;
 
         localStorage.setItem('rad_active_view', id);
+    
+        // Force Render for Master Task List ---
+    // This ensures the list populates immediately when you switch to this view
+    if (id === 'all-tasks') {
+        render();
     }
+}
     
 function openModal(id) { 
         document.getElementById(id).classList.add('active'); 
@@ -6200,6 +6848,31 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closeModal(overlay.id);
     });
+});
+
+// 3. Global "Ctrl+S" Override
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault(); // Stop browser from saving the file
+        
+        // Detect which modal is open and trigger its primary button
+        if(document.getElementById('projectModal').classList.contains('active')) addProject();
+        else if(document.getElementById('invModal').classList.contains('active')) addInventory();
+        else if(document.getElementById('expenseModal').classList.contains('active')) addExpense();
+        else if(document.getElementById('allocModal').classList.contains('active')) addAllocation();
+        else if(document.getElementById('exemptModal').classList.contains('active')) addExemptEntry();
+        else if(document.getElementById('refModal').classList.contains('active')) addReference();
+        else if(document.getElementById('est-proj-select') && document.getElementById('est-proj-select').value) {
+            // If in Estimator and project selected, save locally
+            saveLocally(); 
+            showToast("Estimator Saved");
+        }
+        else {
+            // Fallback: Just save/sync everything
+            saveLocally();
+            showToast("System Synced & Saved");
+        }
+    }
 });
     
     loadLocally();
