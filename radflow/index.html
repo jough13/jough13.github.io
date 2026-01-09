@@ -40,203 +40,141 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     position: sticky;
     top: 0;
     background: var(--bg-panel); /* Matches theme (Dark/Light) */
-    z-index: 5;
+    z-index: 4;
     box-shadow: 0 1px 0 var(--border); /* subtle border line */
 }
 
         /* Responsive */
         @media (max-width: 1100px) { body { grid-template-columns: 200px 1fr; grid-template-rows: 1fr auto; } .chat-panel { grid-column: 2; grid-row: 2; border-left: none; border-top: 1px solid var(--border); height: 300px; } .main { grid-column: 2; grid-row: 1; } }
 
-        /* --- MOBILE OPTIMIZATION (Final Polish) --- */
-    @media (max-width: 768px) { 
-        body { 
-            display: block; 
-            height: auto; 
-            overflow-y: auto; 
-            overscroll-behavior-y: none; 
-        } 
+/* --- MOBILE OPTIMIZATION (Polished) --- */
+@media (max-width: 768px) { 
+    body { 
+        display: block; 
+        height: auto; 
+        overflow-y: auto; 
+        overscroll-behavior-y: none; 
+    } 
 
-        /* --- BOTTOM NAV BAR (Floating Dock with Scroll Snap) --- */
+    /* --- BOTTOM NAV BAR --- */
     .sidebar { 
         position: fixed; 
         bottom: 0; left: 0; 
         width: 100%; 
-        height: 85px; 
+        height: auto; /* Let padding define height */
         z-index: 999; 
-        display: flex; /* Flex behavior */
-        flex-direction: row; 
-        flex-wrap: nowrap; 
-        overflow-x: auto; /* Enable scrolling */
-        padding: 10px 5px; 
-        padding-bottom: 15px; /* Space for scrollbar/home bar */
+        display: block; /* Block layout to contain the scrolling wrapper */
+        padding: 0;
         
-        background: rgba(255, 255, 255, 0.95); /* Semi-transparent */
-        backdrop-filter: blur(10px); /* Frosted glass effect */
-        border-top: 1px solid rgba(0,0,0,0.05);
-        border-right: none;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+        background: rgba(255, 255, 255, 0.96); /* High quality blur base */
+        backdrop-filter: blur(12px); 
+        -webkit-backdrop-filter: blur(12px);
+        border-top: 1px solid rgba(0,0,0,0.08);
+        box-shadow: 0 -4px 25px rgba(0,0,0,0.05);
         
-        /* UPDATED: Hide Scrollbar but keep functionality */
+        /* CRITICAL: Support for iPhone Home Bar */
+        padding-bottom: env(safe-area-inset-bottom, 20px); 
+    }
+
+    /* Dark Mode Sidebar */
+    [data-theme="dark"] .sidebar {
+        background: rgba(30, 41, 59, 0.96);
+        border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* --- HORIZONTAL SCROLLING CONTAINER --- */
+    /* This overrides the inline 'display: grid' in your HTML */
+    #mobile-nav-wrapper {
+        display: flex !important; 
+        flex-direction: row;
+        align-items: center;
+        overflow-x: auto;
+        gap: 8px; /* Spacing between icons */
+        padding: 12px 15px !important; /* Top/Bottom padding for the bar */
+        margin: 0 !important;
+        width: 100%;
+        
+        /* Hide Scrollbar */
         scrollbar-width: none; 
         -ms-overflow-style: none;
         scroll-snap-type: x mandatory; 
-        -webkit-overflow-scrolling: touch; 
+    }
+    #mobile-nav-wrapper::-webkit-scrollbar { display: none; }
+
+    /* Hide Desktop Elements */
+    .sidebar .btn-toggle, .sidebar .sync-box, .sidebar #app-title-display, .sidebar > div:first-child, .sidebar > div:last-child { 
+        display: none !important; 
+    }
+
+    /* --- NAV ITEMS (Centered & Pill Shape) --- */
+    .nav-item { 
+        display: flex;
+        flex-direction: column; 
+        justify-content: center; 
+        align-items: center; /* Perfect Horizontal Centering */
+        
+        flex: 0 0 auto; /* Don't shrink */
+        width: 68px;    /* Fixed width touch target */
+        height: 56px;   /* Fixed height touch target */
+        
+        border-radius: 16px; /* Pill/Squircle shape */
+        margin: 0;
+        color: var(--text-muted);
+        transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+        scroll-snap-align: center; 
     }
     
-    /* UPDATED: Hide Scrollbar for Chrome/Safari */
-    .sidebar::-webkit-scrollbar {
-        display: none;
+    .nav-item i { 
+        font-size: 1.3rem; 
+        margin-bottom: 4px; 
+        display: block; /* Ensure icon is block for centering */
     }
-        .sidebar::-webkit-scrollbar-track { background: transparent; }
-        .sidebar::-webkit-scrollbar-thumb {
-            background: var(--border); 
-            border-radius: 10px;
-        }
-        
-        /* Dark mode support */
-        [data-theme="dark"] .sidebar {
-            background: rgba(30, 41, 59, 0.95);
-            border-top: 1px solid rgba(255,255,255,0.05);
-        }
-
-        /* Hide Desktop Elements */
-        .sidebar .btn-toggle, .sidebar .sync-box, .sidebar #app-title-display, .sidebar > div:first-child { 
-            display: none !important; 
-        }
-
-        /* Nav Items (Centered & Polished) */
-        .nav-item { 
-            flex-direction: column; 
-            justify-content: center; 
-            align-items: center;
-            font-size: 0.7rem; 
-            padding: 0 5px; 
-            flex: 0 0 auto; 
-            width: 72px; /* Fixed width for consistent snapping */
-            border-radius: 12px;
-            margin: 0 2px;
-            text-align: center;
-            white-space: nowrap;
-            color: var(--text-muted);
-            
-            scroll-snap-align: start; /* Lock into place */
-            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-        
-        .nav-item i { 
-            font-size: 1.4rem; 
-            margin-bottom: 4px; 
-        }
-        
-        .nav-item.active { 
-            color: var(--accent); 
-            background: var(--accent-dim);
-            transform: translateY(-2px);
-        }
-
-        /* --- MAIN LAYOUT & HEADERS --- */
-        .main { 
-            padding: 15px; 
-            padding-bottom: 110px !important; /* Buffer for taller nav */
-            height: auto; 
-            overflow: visible; 
-            width: 100%;
-        }
-
-        /* Stack Headers Vertically */
-        .header { 
-            flex-direction: column; 
-            align-items: stretch; 
-            gap: 10px; 
-        }
-        
-        .header input, .header select, .header button, .header .search-bar { 
-            width: 100% !important; 
-            margin: 0 !important;
-            max-width: none !important; 
-        }
-        
-        .header > div:first-child {
-            margin-bottom: 5px;
-            text-align: center;
-        }
-
-        /* --- SPECIFIC VIEW FIXES --- */
-
-        /* Fix Inventory Header Buttons (Grid Layout) */
-        #view-inventory .header > div {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr; 
-            gap: 10px;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        /* Fix Finance Header Layout (Full Width Toggle) */
-        #view-finance .header > div {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            gap: 10px;
-        }
-        /* Reset border/padding container */
-        #view-finance .header > div > div[style*="border-left"] {
-            border-left: none !important;
-            padding-left: 0 !important;
-            margin-left: 0 !important;
-            width: 100%;
-        }
-        /* Force Button Visibility */
-        #btn-budget-scope {
-            width: 100% !important;
-            display: flex !important; 
-            height: 44px !important;
-        }
-
-        /* --- GENERAL UI COMPONENTS --- */
-
-        /* Full Screen Modals */
-        .modal { 
-            width: 100% !important; 
-            height: 100% !important; 
-            max-height: 100% !important; 
-            border-radius: 0; 
-            padding: 15px; 
-            display: flex; 
-            flex-direction: column;
-        }
-
-        /* Single Column Grids */
-        .dashboard-grid, .input-grid, .mini-fin-grid { 
-            grid-template-columns: 1fr !important; 
-            gap: 10px;
-        }
-
-        /* Fix Tables */
-        .widget { padding: 10px; overflow-x: hidden; } 
-        div[style*="overflow-x:auto"] { -webkit-overflow-scrolling: touch; } 
-        
-        /* Larger Touch Targets */
-        .btn, .btn-sync, select, input { min-height: 44px; }
-        input, select, textarea { font-size: 16px !important; }
-
-        /* --- CHAT PANEL (Mobile View) --- */
-        .chat-panel { 
-            display: none !important; /* Hidden by default */
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%;
-            height: calc(100% - 85px); /* Minus nav height */
-            z-index: 50;
-            border-left: none;
-        }
-        
-        .chat-panel.active {
-            display: flex !important; 
-        }
+    
+    .nav-item .nav-text {
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+    
+    /* Active State - "Glowing Pill" */
+    .nav-item.active { 
+        color: var(--accent); 
+        background: var(--accent-dim);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px var(--accent-dim);
     }
 
-.mobile-only { display: none !important; }
+    /* --- LAYOUT ADJUSTMENTS --- */
+    .main { 
+        padding: 15px; 
+        padding-bottom: 120px !important; /* Push content up above taller nav */
+        width: 100%;
+    }
+
+    /* Fix Header Stacking */
+    .header { flex-direction: column; align-items: stretch; gap: 10px; }
+    .header input, .header select, .header button, .header .search-bar { width: 100% !important; margin: 0 !important; max-width: none !important; }
+
+    /* Fix Modals to be Full Screen on Mobile */
+    .modal { 
+        width: 100% !important; height: 100% !important; max-height: 100% !important; 
+        border-radius: 0; padding: 15px; padding-bottom: 100px; /* Space for nav */
+    }
+
+    /* Chat Panel Overlay */
+    .chat-panel { 
+        display: none !important; 
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        z-index: 9999; background: var(--bg-body); padding-bottom: 100px;
+    }
+    .chat-panel.active { display: flex !important; }
+
+    /* Single Column Grids */
+    .dashboard-grid, .input-grid, .mini-fin-grid { grid-template-columns: 1fr !important; }
+
+    /* Show Mobile-Only Items */
+    .mobile-only { display: flex !important; }
+}
 
 @media (max-width: 768px) { .mobile-only { display: flex !important; } }
 
@@ -307,6 +245,27 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
 .btn-sec:hover { background: var(--bg-card); color: var(--text-main); }
 @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
+/* --- UNIVERSAL SCROLLBAR STYLING --- */
+/* Works on Chrome, Edge, Safari */
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 4px;
+    border: 2px solid var(--bg-body); /* Creates padding effect */
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-muted);
+}
+
 /* Updated List Item for better spacing */
         .list-item { 
             display: flex; 
@@ -338,7 +297,7 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
             padding-left: 20px;
             /* Gradient fade so it blends in smoothly */
             background: linear-gradient(to right, transparent, var(--bg-input) 20%);
-            z-index: 5;
+            z-index: 6;
         }
         .list-item:hover .quick-actions { display: flex; }
         
@@ -2520,11 +2479,17 @@ function calculateDecay() {
 
     const hl = ISOTOPE_DB[iso].hl; 
     const d1 = new Date(dStr);
-    
-    // This line works now because tStr is defined above
-    const d2 = tStr ? new Date(tStr) : new Date();
-    
-    const years = (d2 - d1) / (1000 * 60 * 60 * 24 * 365.25);
+
+    // If tStr is empty (default), create a 'Now' date but reset time to 00:00:00
+    let d2;
+    if(tStr) {
+        d2 = new Date(tStr);
+    } else {
+        d2 = new Date();
+        d2.setHours(0,0,0,0); // Normalize to midnight for accurate day-diff
+    }
+
+const years = (d2 - d1) / (1000 * 60 * 60 * 24 * 365.25);
     
     const lambda = Math.log(2) / hl;
     const at = a0 * Math.exp(-lambda * years);
@@ -2582,11 +2547,25 @@ function updateEstItem(id, field, val) {
     if(field === 'qty') item.qty = parseFloat(val) || 0;
     if(field === 'rate') item.rate = parseFloat(val) || 0;
 
-    // Recalculate Line Total
+    // Recalculate Row Total
     item.total = roundMoney(item.rate * item.qty);
     
+    // 1. UPDATE DOM DIRECTLY (Don't re-render table)
+    const rowTotalEl = document.getElementById(`est-row-total-${id}`);
+    if(rowTotalEl) {
+        rowTotalEl.innerText = "$" + item.total.toLocaleString(undefined, {minimumFractionDigits:2});
+    }
+
     saveLocally();
-    calcEstimate(); // Re-render table to update totals
+    
+    // 2. ONLY UPDATE GRAND TOTALS
+    updateEstTotals(); 
+}
+
+function updateEstTotals() {
+    const total = estItems.reduce((sum, item) => sum + item.total, 0);
+    document.getElementById('est-grand-total').innerText = "$" + total.toLocaleString(undefined, {minimumFractionDigits:2});
+    document.getElementById('est-count').innerText = estItems.length;
 }
 
     function updateEstUnit() {
@@ -2645,38 +2624,27 @@ function updateEstItems() {
 }
 
 function calcEstimate() {
-    let itemsTotal = 0;
     const tbody = document.getElementById('est-list');
     
-    tbody.innerHTML = estItems.map(i => {
-        itemsTotal += i.total;
-        
-        // We use 'live-edit' class to match the style of other tables
-        return `
+    // We render the full table ONLY here (or when adding/deleting items)
+    tbody.innerHTML = estItems.map(i => `
         <tr>
             <td>${esc(i.cat)}</td>
             <td>${esc(i.name)}</td>
-            
             <td style="text-align:right">
                 <div style="display:flex; align-items:center; justify-content:flex-end; gap:5px;">
                     <span style="font-size:0.8rem; color:var(--text-muted);">$</span>
-                    <input class="live-edit" type="number" step="0.01" style="width:80px; text-align:right;" value="${i.rate}" onchange="updateEstItem(${i.id}, 'rate', this.value)">
+                    <input class="live-edit" type="number" step="0.01" style="width:80px; text-align:right;" value="${i.rate}" oninput="updateEstItem(${i.id}, 'rate', this.value)">
                 </div>
             </td>
-            
             <td style="text-align:right">
-                <input class="live-edit" type="number" style="width:60px; text-align:right;" value="${i.qty}" onchange="updateEstItem(${i.id}, 'qty', this.value)">
+                <input class="live-edit" type="number" style="width:60px; text-align:right;" value="${i.qty}" oninput="updateEstItem(${i.id}, 'qty', this.value)">
             </td>
-            
-            <td style="text-align:right; font-weight:bold;">$${i.total.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
-            
+            <td style="text-align:right; font-weight:bold;" id="est-row-total-${i.id}">$${i.total.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
             <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="removeEstItem(${i.id})"></i></td>
-        </tr>`;
-    }).join('');
+        </tr>`).join('');
 
-    document.getElementById('est-grand-total').innerText = "$" + itemsTotal.toLocaleString(undefined, {minimumFractionDigits:2});
-    document.getElementById('est-count').innerText = estItems.length;
-    window.currentEstTotal = itemsTotal;
+    updateEstTotals();
 }
     
 function saveEstimateAction(mode) {
@@ -3092,13 +3060,13 @@ function renderInvLinks(item) {
     }
 
     list.innerHTML = links.map((l, idx) => `
-        <div style="background:white; padding:8px; border:1px solid var(--border); border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
-            <a href="${l.url}" target="_blank" style="text-decoration:none; color:var(--navy); font-weight:bold;">
-                <i class="fa-solid fa-file"></i> ${esc(l.name)}
-            </a>
-            <i class="fa-solid fa-trash" style="color:var(--danger); cursor:pointer;" onclick="delInvLink(${idx})"></i>
-        </div>
-    `).join('');
+    <div style="background:white; padding:8px; border:1px solid var(--border); border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+        <a href="${formatLink(l.url)}" target="_blank" style="text-decoration:none; color:var(--navy); font-weight:bold;">
+            <i class="fa-solid fa-file"></i> ${esc(l.name)}
+        </a>
+        <i class="fa-solid fa-trash" style="color:var(--danger); cursor:pointer;" onclick="delInvLink(${idx})"></i>
+    </div>
+`).join('');
 }
 
 function addInvLink() {
@@ -3896,8 +3864,15 @@ function viewProject(id) {
     // 2. Navigation Logic (Remember where we came from)
     const activeEl = document.querySelector('.view-section.active');
     const currentView = activeEl ? activeEl.id.replace('view-', '') : 'dashboard';
-    if(currentView !== 'project-detail') window.lastView = currentView;
-    const backDest = window.lastView || 'dashboard';
+    
+    // Only update the "Back Destination" if we are coming from a different screen
+    // (This prevents the button from pointing to itself if you click a notification)
+    if(currentView !== 'project-detail') {
+        localStorage.setItem('rad_back_dest', currentView);
+    }
+    
+    // Retrieve safely (Default to dashboard if lost)
+    const backDest = localStorage.getItem('rad_back_dest') || 'dashboard';
     
     // 3. Financial Math (Excluding Draft Estimates)
     const projExp = expenses.filter(e => e.projId === id);
@@ -4015,7 +3990,7 @@ function viewProject(id) {
     // 5. Inject HTML
     document.getElementById('view-project-detail').innerHTML = `
     <div class="header">
-        <button class="btn-sync" style="width:auto" onclick="nav('${backDest}')">&larr; Back</button> 
+        <button class="btn-sync" style="width:auto" onclick="nav(localStorage.getItem('rad_back_dest') || 'dashboard')">&larr; Back</button>
         <div style="display:flex; gap:10px;">
             <button class="btn" style="background:var(--info)" onclick="cloneProject(${p.id})">Clone</button>
             <button class="btn" style="background:var(--danger)" onclick="delProj(${p.id})">Delete</button>
@@ -4701,6 +4676,13 @@ function cloneProject(id) {
     
     // GENERATE NEW ID (Using random logic)
     copy.id = Date.now() + Math.floor(Math.random() * 1000); 
+
+    if(copy.tasks) {
+        copy.tasks = copy.tasks.map(t => ({
+            ...t,
+            id: Date.now() + Math.floor(Math.random() * 100000) // New unique ID
+        }));
+    }
     
     copy.title = "Copy of " + copy.title; 
     copy.updated = Date.now();
@@ -5235,7 +5217,8 @@ function addInventory() {
     if(iso === 'Custom') iso = document.getElementById('invIsoCustom').value;
     
     const act = document.getElementById('invAct').value;
-    const dose = parseFloat(document.getElementById('invDose').value) || 0;
+    const doseVal = document.getElementById('invDose').value;
+    const dose = doseVal === "" ? 0 : (isNaN(parseFloat(doseVal)) ? doseVal : parseFloat(doseVal));
     const fill = parseFloat(document.getElementById('invFill').value) || 0;
     
     const pidVal = document.getElementById('invProj').value;
@@ -5799,137 +5782,185 @@ let searchDebounce;
         openModal('importModal');
     }
 
-    function runImport() {
-        try {
-            const raw = document.getElementById('importText').value;
-            if(!raw) throw new Error("No data pasted.");
+// --- SCHEMA VALIDATOR ---
+function validateSchema(d) {
+    const errors = [];
+    
+    // 1. Define required lists (Auto-fix if missing)
+    const lists = ['projects', 'inventory', 'expenses', 'allocations', 'chat', 
+                   'team', 'estItems', 'exemptLog', 'references', 
+                   'tombstones', 'deletedProjects', 'deletedInventory'];
 
-            const d = JSON.parse(raw);
-
-            d.exemptLog = d.exemptLog || [];
-            d.tombstones = d.tombstones || [];
-            d.references = d.references || []; 
-            d.estItems = d.estItems || [];
-            
-            // SECURITY: Basic Schema Validation
-            if(!Array.isArray(d.projects) || !Array.isArray(d.inventory) || !Array.isArray(d.expenses)) {
-                throw new Error("Invalid Data Structure: Core lists must be arrays.");
-            }
-
-            // --- CONFLICT-AWARE MERGE ENGINE (WITH TOMBSTONES) ---
-            const mergeList = (currentList, importedList) => {
-                if(!importedList) return currentList;
-                
-                let updates = 0;
-                let adds = 0;
-                let zombies = 0;
-
-                importedList.forEach(importItem => {
-                    // 1. CHECK GRAVEYARD
-                    const stone = tombstones.find(t => t.id === importItem.id);
-                    const tImport = importItem.updated || 0;
-
-                    if (stone) {
-                        // If the import is OLDER than the deletion, it's a Zombie. Block it.
-                        if (stone.date > tImport) {
-                            zombies++;
-                            return; // SKIP this item
-                        }
-                        // If import is NEWER than deletion, it's a Restoration. Allow it.
-                    }
-
-                    // 2. STANDARD MERGE LOGIC
-                    const idx = currentList.findIndex(x => x.id === importItem.id);
-                    
-                    if(idx > -1) {
-                        const local = currentList[idx];
-                        const tLocal = local.updated || 0;
-
-                        if(tImport > tLocal) {
-                            currentList[idx] = importItem;
-                            updates++;
-                        }
-                    } else {
-                        currentList.push(importItem);
-                        adds++;
-                    }
-                });
-                console.log(`Merge Stats: ${adds} added, ${updates} updated, ${zombies} zombies blocked.`);
-                return currentList;
-            };
-            
-            // Note: We also need to merge the tombstones themselves!
-            // If your peer deleted something, you need to know about it too.
-            if(d.tombstones) {
-                d.tombstones.forEach(t => {
-                    const exists = tombstones.find(local => local.id === t.id);
-                    if(!exists) tombstones.push(t);
-                    else if(t.date > exists.date) exists.date = t.date;
-                });
-            }
-
-            // Execute Merges
-            mergeList(projects, d.projects);
-            mergeList(inventory, d.inventory);
-            mergeList(expenses, d.expenses);
-            mergeList(allocations, d.allocations);
-            mergeList(exemptLog, d.exemptLog);
-
-            mergeList(deletedProjects, d.deletedProjects || []);
-
-            mergeList(references, d.references);
-
-            // Simple Lists (Append Only)
-            if(d.chat) {
-                d.chat.forEach(c => {
-                    const exists = chatLog.some(x => x.time === c.time && x.text === c.text);
-                    if(!exists) chatLog.push(c);
-                });
-                chatLog.sort((a,b) => new Date(a.time) - new Date(b.time));
-            }
-            if(d.team) {
-                d.team.forEach(m => { if(!team.includes(m)) team.push(m); });
-            }
-            if(d.wiki && d.wiki !== wikiText && !wikiText.includes(d.wiki)) {
-                wikiText += "\n\n--- IMPORTED NOTES ---\n" + d.wiki;
-            }
-
-            // We have merged the incoming Tombstones. Now we must apply them to OUR data.
-            // If we still have an item that the import says is deleted, we must remove it.
-            const applyGraves = (list) => {
-                return list.filter(item => {
-                    const grave = tombstones.find(t => t.id === item.id);
-                    // If a grave exists AND the grave is newer than the item's last update...
-                    if(grave && grave.date > (item.updated || 0)) {
-                        console.log(`Reaper: Removing ${item.id} based on imported tombstone.`);
-                        return false; // DELETE IT
-                    }
-                    return true; // KEEP IT
-                });
-            };
-
-            projects = applyGraves(projects);
-            inventory = applyGraves(inventory);
-            expenses = applyGraves(expenses);
-            allocations = applyGraves(allocations);
-            exemptLog = applyGraves(exemptLog);
-            references = applyGraves(references);
-
-            // Cleanup
-            inventory.forEach(i => { if(i.iso) i.iso = normalizeIso(i.iso); });
-
-            saveLocally(); 
-            render(); 
-            loadHPState();
-            closeModal('importModal');
-            
-            // Feedback
-            showToast("Data Merged (Newer versions kept)");
-
-        } catch(e) { 
-            showAlert("<b>Import Failed:</b><br>" + e.message, "Error");
+    lists.forEach(key => {
+        if (d[key] === undefined || d[key] === null) {
+            d[key] = []; // Auto-repair: Create empty array if missing
+        } else if (!Array.isArray(d[key])) {
+            errors.push(`Critical: '${key}' must be a list, found ${typeof d[key]}.`);
         }
+    });
+
+    // 2. Stop immediately if top-level structure is broken
+    if (errors.length > 0) throw new Error(errors.join("\n"));
+
+    // 3. Deep Scan: Integrity Checks
+    // Check Projects
+    d.projects.forEach((p, i) => {
+        if (!p.id) errors.push(`Project #${i} is missing an ID.`);
+        if (!p.title) p.title = "Untitled Project"; // Soft repair
+        if (!Array.isArray(p.tasks)) p.tasks = [];  // Soft repair
+        if (!Array.isArray(p.links)) p.links = [];  // Soft repair
+    });
+
+    // Check Inventory
+    d.inventory.forEach((item, i) => {
+        if (!item.id) errors.push(`Inventory item #${i} is missing an ID.`);
+    });
+
+    // Check Expenses
+    d.expenses.forEach((e, i) => {
+        if (!e.amount && e.amount !== 0) errors.push(`Expense #${i} is missing an amount.`);
+    });
+
+    if (errors.length > 0) {
+        // Return only the first 3 errors to keep the alert readable
+        throw new Error("Data Integrity Failed:\n- " + errors.slice(0, 3).join("\n- ") + (errors.length > 3 ? "\n...and more." : ""));
     }
+
+    return d; // Return the sanitized data object
+}
+
+function runImport() {
+    try {
+        const raw = document.getElementById('importText').value;
+        if(!raw) throw new Error("No data pasted.");
+
+        // 1. PARSE & VALIDATE
+        let d = JSON.parse(raw);
+        
+        // Use the validateSchema helper we created earlier
+        // (Ensure you added the validateSchema function above this one as discussed!)
+        d = validateSchema(d); 
+
+        // 2. CONFLICT-AWARE MERGE ENGINE
+        const mergeList = (currentList, importedList) => {
+            if(!importedList) return currentList;
+            
+            let updates = 0;
+            let adds = 0;
+            let zombies = 0;
+
+            importedList.forEach(importItem => {
+                // A. CHECK GRAVEYARD (Zombie Protection)
+                // If we deleted this item locally, we don't want an old import bringing it back to life.
+                const stone = tombstones.find(t => t.id === importItem.id);
+                const tImport = importItem.updated || 0;
+
+                if (stone) {
+                    // If the import is OLDER than our deletion, block it.
+                    if (stone.date > tImport) {
+                        zombies++;
+                        return; // Skip this item
+                    }
+                    // If import is NEWER than deletion, it's a valid Restoration. Allow it.
+                }
+
+                // B. STANDARD MERGE
+                const idx = currentList.findIndex(x => x.id === importItem.id);
+                
+                if(idx > -1) {
+                    const local = currentList[idx];
+                    const tLocal = local.updated || 0;
+
+                    // Only overwrite if the import is newer
+                    if(tImport > tLocal) {
+                        currentList[idx] = importItem;
+                        updates++;
+                    }
+                } else {
+                    currentList.push(importItem);
+                    adds++;
+                }
+            });
+            console.log(`Merge Stats: ${adds} added, ${updates} updated, ${zombies} zombies blocked.`);
+            return currentList;
+        };
+        
+        // 3. MERGE TOMBSTONES FIRST
+        // We need to know what the other user deleted before we process their data.
+        if(d.tombstones) {
+            d.tombstones.forEach(t => {
+                const exists = tombstones.find(local => local.id === t.id);
+                if(!exists) tombstones.push(t);
+                else if(t.date > exists.date) exists.date = t.date;
+            });
+        }
+
+        // 4. EXECUTE MERGES
+        mergeList(projects, d.projects);
+        mergeList(inventory, d.inventory);
+        mergeList(expenses, d.expenses);
+        mergeList(allocations, d.allocations);
+        mergeList(exemptLog, d.exemptLog);
+        mergeList(deletedProjects, d.deletedProjects);
+        mergeList(references, d.references);
+
+        // 5. APPLY "THE REAPER"
+        // If the import contained new tombstones, we must now delete those items from our active lists.
+        const applyGraves = (list) => {
+            return list.filter(item => {
+                const grave = tombstones.find(t => t.id === item.id);
+                // If a grave exists AND it is newer than the item's last update...
+                if(grave && grave.date > (item.updated || 0)) {
+                    console.log(`Reaper: Removing ${item.id} based on imported tombstone.`);
+                    return false; // DELETE IT
+                }
+                return true; // KEEP IT
+            });
+        };
+
+        projects = applyGraves(projects);
+        inventory = applyGraves(inventory);
+        expenses = applyGraves(expenses);
+        allocations = applyGraves(allocations);
+        exemptLog = applyGraves(exemptLog);
+        references = applyGraves(references);
+
+        // 6. MERGE SIMPLE LISTS (Append Only)
+        if(d.chat) {
+            d.chat.forEach(c => {
+                // Avoid duplicate chat messages
+                const exists = chatLog.some(x => x.time === c.time && x.text === c.text);
+                if(!exists) chatLog.push(c);
+            });
+            // Keep chat sorted chronologically
+            chatLog.sort((a,b) => new Date(a.time) - new Date(b.time));
+        }
+        
+        if(d.team) {
+            d.team.forEach(m => { if(!team.includes(m)) team.push(m); });
+        }
+        
+        if(d.wiki && d.wiki !== wikiText && !wikiText.includes(d.wiki)) {
+            wikiText += "\n\n--- IMPORTED NOTES ---\n" + d.wiki;
+        }
+
+        // 7. CLEANUP & SAVE
+        // Normalize isotope names in case the import had bad spelling
+        inventory.forEach(i => { if(i.iso) i.iso = normalizeIso(i.iso); });
+
+        saveLocally(); 
+        render(); 
+        loadHPState();
+        closeModal('importModal');
+        
+        // 8. USER FEEDBACK
+        showToast("Data Merged (Newer versions kept)");
+
+    } catch(e) { 
+        console.error(e);
+        showAlert("<b>Import Failed:</b><br>" + e.message, "Error");
+    }
+}
 
     function saveLocally() { 
     localStorage.setItem('rad25_7_data', JSON.stringify({
