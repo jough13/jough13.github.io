@@ -513,6 +513,39 @@ th {
             padding: 4px;
         }
 
+/* --- GRAVEYARD THEME --- */
+@keyframes floatGhost {
+    0% { transform: translateY(0px); opacity: 0.7; }
+    50% { transform: translateY(-10px); opacity: 1; }
+    100% { transform: translateY(0px); opacity: 0.7; }
+}
+@keyframes flyBat {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(10px, -15px) rotate(10deg); }
+    50% { transform: translate(0, -5px) rotate(0deg); }
+    75% { transform: translate(-10px, -15px) rotate(-10deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
+.gy-icon { color: var(--text-muted); opacity: 0.5; }
+.gy-stat { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+
+/* --- STICKY ACTION COLUMN --- */
+/* Pin the last column (Actions) to the right side */
+#table-inv th:last-child,
+#table-inv td:last-child {
+    position: sticky;
+    right: 0;
+    background: var(--bg-panel); /* Opaque background to hide scrolling text behind it */
+    z-index: 5;
+    border-left: 2px solid var(--border); /* Visual separator */
+    box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+}
+
+/* Ensure the header stays on top of the sticky column when scrolling down */
+#table-inv th:last-child {
+    z-index: 11; 
+}
+
 .chart-wrapper { 
     display: flex; 
     gap: 10px; 
@@ -1309,15 +1342,16 @@ th {
 </div>
 
 <div id="graveyardModal" class="modal-overlay">
-    <div class="modal" style="max-width:800px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h3><i class="fa-solid fa-tombstone"></i> Project Graveyard</h3>
-            <button class="btn-sync" style="width:auto;" onclick="closeModal('graveyardModal')">Close</button>
+    <div class="modal" style="max-width:900px; height:85vh; display:flex; flex-direction:column; padding:0; overflow:hidden;">
+        
+        <div style="padding:15px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--bg-card);">
+            <div style="font-weight:bold; color:var(--text-muted); text-transform:uppercase; font-size:0.9rem;">
+                <i class="fa-solid fa-database"></i> System Archives
+            </div>
+            <button class="btn-sync" style="width:auto; height:32px;" onclick="closeModal('graveyardModal')">Close</button>
         </div>
-        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">
-            This is an archive of deleted projects. Records are read-only.
-        </p>
-        <div id="graveyard-list" style="max-height:500px; overflow-y:auto; border:1px solid var(--border); border-radius:6px;"></div>
+
+        <div id="graveyard-list" style="flex:1; overflow-y:auto; padding:30px; background:var(--bg-body);"></div>
     </div>
 </div>
 
@@ -1433,14 +1467,14 @@ th {
             <div style="display:flex; gap:10px; margin-bottom:15px;">
                 <input id="pPoc" class="form-control" style="margin:0; flex:1;" placeholder="Name">
                 <input id="pPocEmail" class="form-control" style="margin:0; flex:1;" placeholder="Email">
-                <input id="pPocPhone" class="form-control" style="margin:0; width:140px;" placeholder="Phone">
+                <input id="pPocPhone" class="form-control" style="margin:0; width:140px;" placeholder="Phone" oninput="maskPhone(event)">
             </div>
 
             <label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; letter-spacing:0.5px;">ALTERNATE POC</label>
             <div style="display:flex; gap:10px;">
                 <input id="pPoc2" class="form-control" style="margin:0; flex:1;" placeholder="Alt Name">
                 <input id="pPocEmail2" class="form-control" style="margin:0; flex:1;" placeholder="Alt Email">
-                <input id="pPocPhone2" class="form-control" style="margin:0; width:140px;" placeholder="Alt Phone">
+                <input id="pPocPhone2" class="form-control" style="margin:0; width:140px;" placeholder="Alt Phone" oninput="maskPhone(event)">
             </div>
         </div>
 
@@ -1486,7 +1520,21 @@ th {
 
 <div id="expenseModal" class="modal-overlay"><div class="modal"><h3>Log Expense</h3><label style="font-size:0.7rem; color:var(--text-muted);">PROJECT</label><select id="expProj" class="form-control"></select><input id="expDesc" class="form-control" placeholder="Description"><div class="input-grid"><div style="flex:2;"><label style="font-size:0.7rem; color:var(--text-muted);">FUNDING SOURCE</label><select id="expFund" class="form-control"><option>Navy General Fund</option><option>Command Funded</option><option>Other</option></select></div><div style="flex:1;"><label style="font-size:0.7rem; color:var(--text-muted);">AMOUNT</label>
     <input id="expAmt" type="number" step="0.01" class="form-control" placeholder="0.00">
-</div></div><div style="margin-bottom:10px;"><label style="font-size:0.7rem; color:var(--text-muted);">DATE</label><input id="expDate" type="date" class="form-control"></div><select id="expStatus" class="form-control"><option>Invoiced</option><option>Paid</option><option>Encumbered</option></select><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('expenseModal')">Cancel</button><button class="btn" onclick="addExpense()">Add</button></div></div></div>
+</div></div>
+
+<div style="margin-bottom:10px;">
+    <label style="font-size:0.7rem; color:var(--text-muted);">DATE</label>
+    <input id="expDate" type="date" class="form-control"></div>
+    
+    <select id="expStatus" class="form-control"><option>Invoiced</option><option>Paid</option><option>Encumbered</option></select>
+
+<div style="display:flex; justify-content:flex-end; gap:10px;">
+    <button class="btn-sync" style="width:auto;" onclick="closeModal('expenseModal')">Cancel</button>
+    <button class="btn" style="background:var(--info)" onclick="addExpense(true)">Save & Add Another</button>
+    <button class="btn" onclick="addExpense(false)">Save</button>
+</div>
+
+</div></div>
 <div id="allocModal" class="modal-overlay"><div class="modal"><h3>Add Funding Allocation</h3><label style="font-size:0.7rem; color:var(--text-muted);">PROJECT</label><select id="allocProj" class="form-control"></select><div class="input-grid"><div style="flex:2;"><label style="font-size:0.7rem; color:var(--text-muted);">SOURCE</label><select id="allocFund" class="form-control"><option>Navy General Fund</option><option>Command Funded</option><option>Other</option></select></div><div style="flex:1;"><label style="font-size:0.7rem; color:var(--text-muted);">AMOUNT</label>
     <input id="allocAmt" type="number" step="0.01" class="form-control" placeholder="0.00">
 </div></div><input id="allocDesc" class="form-control" placeholder="Description (e.g. Q3 Top-up)"><div style="margin-bottom:10px;"><label style="font-size:0.7rem; color:var(--text-muted);">DATE</label><input id="allocDate" type="date" class="form-control"></div><div style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn-sync" style="width:auto;" onclick="closeModal('allocModal')">Cancel</button><button class="btn" onclick="addAllocation()">Add Funds</button></div></div></div>
@@ -2068,7 +2116,6 @@ th {
                 </div>
             </div>
                 
-                <div id="vid_links" style="display:flex; flex-direction:column; gap:8px;"></div>
             </div>
         </div>
     </div>
@@ -3712,7 +3759,7 @@ function normalizeIso(input) {
                  valDisplay = `<b>${i.fill||0}% Full</b>`;
                  subDisplay = i.act;
             }
-            else if(dashInvSort === 'proj') {
+            else if(dashInvSort.startsWith('proj')) {
                  const pTitle = projects.find(p => p.id === i.projId)?.title || "Unassigned";
                  valDisplay = `<span class="tag" style="max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(pTitle)}</span>`;
                  subDisplay = i.act;
@@ -4168,11 +4215,16 @@ let rollupHtml = budgetData.map(row => {
                                 <div style="display:flex; align-items:center; gap:5px;">
                                     <input type="number" class="live-edit" style="width:40px;" value="${i.fill||0}" onchange="updItem('inventory', '${safeId}', 'fill', this.value)">%
                                 </div>
-                                <div class="progress-bar" style="height:4px;"><div class="fill" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':(i.fill>75?'var(--warning)':'var(--info)')}}"></div></div>
+                                <div class="progress-bar" style="height:4px;"><div class="fill" id="bar-fill-${safeId}" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':(i.fill>75?'var(--warning)':'var(--info)')}}"></div></div>
                             </td>
                             <td><div style="display:flex; align-items:center; gap:5px;"><select class="live-edit" style="width:100px;" onchange="updItem('inventory', '${safeId}', 'projId', this.value)">${pOptions}</select>${linkIcon}</div></td>
                             <td><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td>
-                            <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delInventory('${safeId}')"></i></td>
+                            <td>
+    <div style="display:flex; gap:10px; justify-content:center;">
+        <i class="fa-solid fa-copy" style="cursor:pointer; color:var(--info)" onclick="cloneInventory('${safeId}')" title="Clone Item"></i>
+        <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delInventory('${safeId}')" title="Delete"></i>
+    </div>
+</td>
                         </tr>`;
                     }).join('') : '<tr><td colspan="19" style="text-align:center; padding:30px; color:var(--text-muted); font-size:1.1rem;"><i class="fa-solid fa-box-open" style="margin-bottom:10px; display:block; font-size:2rem; opacity:0.3;"></i>No inventory items found.</td></tr>'}
                 </tbody>
@@ -4542,8 +4594,8 @@ function viewProject(id) {
                     <div style="flex:1"><input id="ed_poc" class="form-control" style="margin:0" value="${esc(p.poc||'')}" placeholder="Name" onchange="saveProjDetails(${p.id}, true)"></div>
                     <div style="flex:1"><input id="ed_pocEm" class="form-control" style="margin:0" value="${esc(p.pocEmail||'')}" placeholder="Email" onchange="saveProjDetails(${p.id}, true)"></div>
                     <div style="width:140px">
-                        <input id="ed_pocPh" ... oninput="maskPhone(event)" onchange="saveProjDetails(...)">
-                        </div>
+                        <input id="ed_pocPh" class="form-control" style="margin:0" value="${esc(p.pocPhone||'')}" placeholder="Phone" oninput="maskPhone(event)" onchange="saveProjDetails(${p.id}, true)">
+                    </div>
                 </div>
 
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
@@ -4733,6 +4785,15 @@ function openAddInvForProject(pid) {
         }
     }
 
+// Helper to quick-set dates
+    function setDateInput(id, offset) {
+        const d = new Date();
+        d.setDate(d.getDate() + offset);
+        // Format YYYY-MM-DD
+        const str = d.toISOString().split('T')[0];
+        document.getElementById(id).value = str;
+    }
+
     function switchHpTab(tab) {
         // SAVE THE TAB
         localStorage.setItem('rad_hp_active_tab', tab);
@@ -4804,6 +4865,32 @@ function openAddInvForProject(pid) {
         
         document.getElementById('alara-result').innerText = totalDose.toFixed(1) + " mR";
         document.getElementById('alara-indiv').innerText = `Individual Dose: ${indivDose.toFixed(1)} mR`;
+    }
+
+    function cloneInventory(id) {
+        const original = inventory.find(x => x.id == id); // Loose match for ID
+        if(!original) return;
+        
+        // 1. Create Copy
+        const copy = JSON.parse(JSON.stringify(original));
+        
+        // 2. Modify Unique Fields
+        copy.id = copy.id + "-CPY"; 
+        copy.desc = (copy.desc || "") + " (Copy)";
+        copy.updated = Date.now();
+        
+        // 3. Collision Prevention (Recursive)
+        let counter = 1;
+        let baseId = copy.id;
+        while(inventory.some(x => x.id === copy.id)) {
+            copy.id = baseId + counter++;
+        }
+        
+        inventory.push(copy);
+        logSystemAction(`Inventory item <b>${esc(original.id)}</b> cloned.`);
+        saveLocally();
+        render();
+        showToast("Item Cloned");
     }
 
     function cloneExpense(id) {
@@ -5083,112 +5170,107 @@ function saveProjDetails(id, silent = false) {
 
 function updItem(type, id, key, val, elem) { 
 
-    if (['amount', 'act', 'dose', 'qty', 'fill', 'weight', 'vol'].includes(field)) {
-        // Keep only numbers, decimals, and negative signs
+    // FIX: Changed 'field' to 'key' to match the argument name (Fixes the crash bug)
+    if (['amount', 'act', 'dose', 'qty', 'fill', 'weight', 'vol'].includes(key)) {
         const clean = val.toString().replace(/[^0-9.-]/g, ''); 
         val = parseFloat(clean);
-        if(isNaN(val)) val = 0; // Default to 0 instead of broken data
+        if(isNaN(val)) val = 0; 
     }
 
-        // 1. Update the Data Model
+    // 1. Update the Data Model
+    let targetItem;
+    if (type === 'project') targetItem = projects.find(x => x.id === id);
+    else if (type === 'inventory') targetItem = inventory.find(x => x.id == id); 
+    else if (type === 'expense') targetItem = expenses.find(x => x.id === id);
+    else if (type === 'alloc') targetItem = allocations.find(x => x.id === id);
+    else if (type === 'exempt') targetItem = exemptLog.find(x => x.id === id);
+
+    if(targetItem) targetItem.updated = Date.now();
+
+    if (type === 'project') { 
+        const p = projects.find(x => x.id === id); 
         
-        // --- ROBUST TIMESTAMPING ---
-        // Find the item first to attach the timestamp
-        let targetItem;
-        if (type === 'project') targetItem = projects.find(x => x.id === id);
-        else if (type === 'inventory') targetItem = inventory.find(x => x.id == id); // Loose equality for ID strings
-        else if (type === 'expense') targetItem = expenses.find(x => x.id === id);
-        else if (type === 'alloc') targetItem = allocations.find(x => x.id === id);
-        else if (type === 'exempt') targetItem = exemptLog.find(x => x.id === id);
-
-        // Stamp the time of modification
-        if(targetItem) targetItem.updated = Date.now();
-
-        if (type === 'project') { const p = projects.find(x => x.id === id); p[key] = val; }
-        
-        if (type === 'inventory') { 
-            const i = inventory.find(x => x.id == id); 
-            if(key === 'iso') val = normalizeIso(val);
-
-            if(key === 'qty') val = parseFloat(val) || 0;
-
-            if(key === 'fill') {
-                val = parseInt(val);
-                if(isNaN(val)) val = 0;
-                if(val < 0) val = 0; if(val > 100) val = 100;
-                
-                // Update the bar width immediately
-                const bar = document.getElementById(`bar-fill-${id}`);
-                if(bar) {
-                    bar.style.width = val + '%';
-                    bar.style.background = val > 90 ? 'var(--danger)' : (val > 75 ? 'var(--warning)' : 'var(--info)');
-                }
-            }
-            if(key === 'dose') val = parseFloat(val); 
-            if(key === 'projId') val = val ? parseInt(val) : null; 
-            i[key] = val; 
+        // --- NEW: CELEBRATION LOGIC ---
+        // Triggers only when status changes TO 'Complete'
+        if(key === 'status' && val === 'Complete' && p.status !== 'Complete') {
+            if(typeof fireConfetti === 'function') fireConfetti();
+            showToast("Congratulations! Project Complete! 🎉");
         }
+        // ------------------------------
 
-        // --- Smart Currency Parsing & Focus Preservation ---
-        if (type === 'expense' || type === 'alloc') { 
-            const list = type === 'expense' ? expenses : allocations;
-            const item = list.find(x => x.id === id);
-            
-            if(key === 'amount') {
-                // 1. Clean the input for data storage
-                const cleanVal = val.toString().replace(/[^0-9.-]/g,"");
-                let numVal = parseFloat(cleanVal) || 0;
-                if(isNaN(numVal)) numVal = 0;
-                
-                item[key] = numVal; // Save clean number
-
-                // 2. Direct DOM update (Preserves Focus/Tab flow)
-                // We DO NOT call render() here. We just prettify the specific input.
-                if(elem) {
-                    elem.value = numVal.toLocaleString('en-US', {style:'currency', currency:'USD'});
-                }
-                
-                saveLocally();
-                return; // EXIT FUNCTION HERE so we don't trigger the generic render() below
-            }
-            
-            item[key] = val; 
-        }
-        
-        if (type === 'exempt') { 
-            const ex = exemptLog.find(x => x.id === id); 
-            ex[key] = val; 
-            
-            // SPECIAL VISUAL FIX: Update Status Badge immediately without re-rendering
-            if(key === 'authDate') {
-                const badgeCell = document.getElementById(`ex-status-${id}`);
-                if(badgeCell) {
-                    const isAuth = val && val.trim() !== "";
-                    badgeCell.innerHTML = isAuth 
-                        ? '<span class="tag" style="background:var(--accent); color:white; border:none;">Authorized</span>' 
-                        : '<span class="tag" style="background:var(--warning); color:white; border:none;">Pending</span>';
-                }
+        p[key] = val; 
+    }
+    
+    if (type === 'inventory') { 
+        const i = inventory.find(x => x.id == id); 
+        if(key === 'iso') val = normalizeIso(val);
+        if(key === 'qty') val = parseFloat(val) || 0;
+        if(key === 'fill') {
+            val = parseInt(val);
+            if(isNaN(val)) val = 0;
+            if(val < 0) val = 0; if(val > 100) val = 100;
+            const bar = document.getElementById(`bar-fill-${id}`);
+            if(bar) {
+                bar.style.width = val + '%';
+                bar.style.background = val > 90 ? 'var(--danger)' : (val > 75 ? 'var(--warning)' : 'var(--info)');
             }
         }
-        
-        saveLocally(); 
-        
-        // 2. Visual Feedback
-        if(elem) {
-            const oldBorder = elem.style.borderColor;
-            elem.style.borderColor = 'var(--accent)';
-            setTimeout(() => elem.style.borderColor = oldBorder, 500);
-        }
+        if(key === 'dose') val = parseFloat(val); 
+        if(key === 'projId') val = val ? parseInt(val) : null; 
+        i[key] = val; 
+    }
 
-        // 3. Render Logic
-        // Special: If we just updated 'amount', FORCE a re-render so the 
-        // user immediately sees their text turn back into formatted currency (e.g. they type 5000 -> it becomes $5,000.00)
-        const skipRenderFields = ['desc', 'text', 'iso', 'act', 'basis', 'path', 'cmd', 'logisticsNotes', 'date', 'qty', 'rev', 'dose', 'fill', 'authDate'];
+    if (type === 'expense' || type === 'alloc') { 
+        const list = type === 'expense' ? expenses : allocations;
+        const item = list.find(x => x.id === id);
         
-        if(!skipRenderFields.includes(key)) {
-            render();
+        if(key === 'amount') {
+            const cleanVal = val.toString().replace(/[^0-9.-]/g,"");
+            let numVal = parseFloat(cleanVal) || 0;
+            if(isNaN(numVal)) numVal = 0;
+            
+            item[key] = numVal; 
+
+            if(elem) {
+                elem.value = numVal.toLocaleString('en-US', {style:'currency', currency:'USD'});
+            }
+            
+            saveLocally();
+            return; 
+        }
+        
+        item[key] = val; 
+    }
+    
+    if (type === 'exempt') { 
+        const ex = exemptLog.find(x => x.id === id); 
+        ex[key] = val; 
+        
+        if(key === 'authDate') {
+            const badgeCell = document.getElementById(`ex-status-${id}`);
+            if(badgeCell) {
+                const isAuth = val && val.trim() !== "";
+                badgeCell.innerHTML = isAuth 
+                    ? '<span class="tag" style="background:var(--accent); color:white; border:none;">Authorized</span>' 
+                    : '<span class="tag" style="background:var(--warning); color:white; border:none;">Pending</span>';
+            }
         }
     }
+    
+    saveLocally(); 
+    
+    if(elem) {
+        const oldBorder = elem.style.borderColor;
+        elem.style.borderColor = 'var(--accent)';
+        setTimeout(() => elem.style.borderColor = oldBorder, 500);
+    }
+
+    const skipRenderFields = ['desc', 'text', 'iso', 'act', 'basis', 'path', 'cmd', 'logisticsNotes', 'date', 'qty', 'rev', 'dose', 'fill', 'authDate'];
+    
+    if(!skipRenderFields.includes(key)) {
+        render();
+    }
+}
     
     function delExempt(id) {
         showConfirm("Delete this exempt log entry?", () => {
@@ -5597,7 +5679,7 @@ function addProject() {
         }
     }
     
-function addExpense() { 
+function addExpense(keepOpen = false) { 
         const pidVal = document.getElementById('expProj').value; 
         const pid = pidVal === "" ? null : parseInt(pidVal); 
         const desc = document.getElementById('expDesc').value; 
@@ -5633,18 +5715,24 @@ function addExpense() {
         showToast("Expense Logged");
         saveLocally(); 
         
-        // CLEAR FORM DATA
+        // CLEAR FORM DATA (Only specific fields)
         document.getElementById('expDesc').value = '';
         document.getElementById('expAmt').value = '';
-        document.getElementById('expDate').value = getTodayStr(); 
+        // Note: We KEEP the Date and Project selected for rapid entry!
 
-        closeModal('expenseModal'); 
-        render(); 
+        if(keepOpen) {
+            // Re-render background, but don't close modal
+            render();
+            document.getElementById('expDesc').focus(); // Move focus back to start
+        } else {
+            closeModal('expenseModal'); 
+            render();
 
         if(pid && document.getElementById('view-project-detail').classList.contains('active')) {
             viewProject(pid);
         }
     }
+}
     
     function addAllocation() {
         const pidVal = document.getElementById('allocProj').value;
@@ -6064,44 +6152,119 @@ function setCurrentUser(val) {
 function openGraveyard() {
     const list = document.getElementById('graveyard-list');
     
-    // SECTION 1: DELETED PROJECTS
-    let html = '<h4 style="margin-top:0; border-bottom:1px solid var(--border); padding-bottom:5px;">Deleted Projects</h4>';
+    // --- 1. THEMED HEADER (3 Ghosts, No Bird) ---
+    let html = `
+        <div style="text-align:center; margin-bottom:40px; position:relative; padding:20px 0;">
+            
+            <div style="position:absolute; top:-10px; left:20%; animation:floatGhost 5s infinite ease-in-out;">
+                <i class="fa-solid fa-ghost" style="font-size:2rem; color:var(--text-muted); opacity:0.15;"></i>
+            </div>
+            
+            <div style="position:absolute; top:10px; right:20%; animation:floatGhost 4s infinite ease-in-out; animation-delay: 1s;">
+                <i class="fa-solid fa-ghost" style="font-size:2.5rem; color:var(--text-muted); opacity:0.2;"></i>
+            </div>
+
+            <div style="position:absolute; top:50px; right:12%; animation:floatGhost 6s infinite ease-in-out; animation-delay: 2.5s;">
+                <i class="fa-solid fa-ghost" style="font-size:1.5rem; color:var(--text-muted); opacity:0.1;"></i>
+            </div>
+
+            <i class="fa-solid fa-dungeon" style="font-size:4rem; color:var(--text-muted); margin-bottom:15px; opacity:0.8;"></i>
+            <h2 style="margin:0; color:var(--text-main); font-size:2rem; letter-spacing:-1px;">The Graveyard</h2>
+            <div style="color:var(--text-muted); font-size:0.9rem; margin-top:5px;">
+                Restoring deleted data requires administrative override.
+            </div>
+        </div>
+    `;
+
+    // --- 2. DELETED PROJECTS SECTION ---
+    html += `
+        <div style="background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:30px; box-shadow:0 4px 6px rgba(0,0,0,0.02);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+                <h3 style="margin:0; font-size:1.1rem;"><i class="fa-solid fa-folder-minus" style="color:var(--warning)"></i> Archived Projects</h3>
+                <span class="tag">${deletedProjects.length} Records</span>
+            </div>`;
     
     if(deletedProjects.length === 0) {
-        html += '<div style="font-style:italic; color:var(--text-muted); margin-bottom:20px;">No archived projects.</div>';
+        html += '<div style="font-style:italic; color:var(--text-muted); text-align:center; padding:20px;">No projects in the crypt.</div>';
     } else {
-        html += `<table class="sci-table" style="margin-bottom:20px;">
-            <thead><tr><th>Project</th><th>Deleted By</th><th>Action</th></tr></thead>
+        html += `<table class="sci-table">
+            <thead>
+                <tr>
+                    <th style="width:40%">Project Details</th>
+                    <th style="text-align:center;">Deleted By</th>
+                    <th style="text-align:center;">Date of Death</th>
+                    <th style="text-align:center; width:100px;">Action</th>
+                </tr>
+            </thead>
             <tbody>
                 ${deletedProjects.map(p => `
                 <tr>
-                    <td><b>${esc(p.title)}</b><div style="font-size:0.75rem;">${new Date(p.deletedDate).toLocaleDateString()}</div></td>
-                    <td>${esc(p.deletedBy)}</td>
-                    <td style="text-align:right;"><button class="btn-rect" onclick="reviveProject(${p.id})">Revive</button></td>
+                    <td>
+                        <div style="font-weight:bold; font-size:1rem; margin-bottom:4px;">${esc(p.title)}</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted);">Reason: <i>${esc(p.deleteReason || 'None provided')}</i></div>
+                    </td>
+                    <td style="text-align:center;">
+                        <span class="tag" style="background:var(--bg-input); border:none;">${esc(p.deletedBy)}</span>
+                    </td>
+                    <td style="text-align:center; color:var(--text-muted); font-size:0.85rem;">
+                        ${new Date(p.deletedDate).toLocaleDateString()}
+                    </td>
+                    <td style="text-align:center;">
+                        <button class="btn-rect" onclick="reviveProject(${p.id})" style="width:100%; justify-content:center; background:var(--accent-dim); color:var(--accent); border:1px solid var(--accent);">
+                            <i class="fa-solid fa-heart-pulse"></i> Revive
+                        </button>
+                    </td>
                 </tr>`).join('')}
             </tbody>
         </table>`;
     }
+    html += `</div>`;
 
-    // SECTION 2: DELETED INVENTORY (NEW)
-    html += '<h4 style="margin-top:0; border-bottom:1px solid var(--border); padding-bottom:5px;">Deleted Inventory</h4>';
+    // --- 3. DELETED INVENTORY SECTION ---
+    html += `
+        <div style="background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:20px; box-shadow:0 4px 6px rgba(0,0,0,0.02);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+                <h3 style="margin:0; font-size:1.1rem;"><i class="fa-solid fa-box-archive" style="color:var(--text-muted)"></i> Archived Inventory</h3>
+                <span class="tag">${deletedInventory.length} Records</span>
+            </div>`;
     
     if(!deletedInventory || deletedInventory.length === 0) {
-        html += '<div style="font-style:italic; color:var(--text-muted);">No archived inventory.</div>';
+        html += '<div style="font-style:italic; color:var(--text-muted); text-align:center; padding:20px;">No inventory items buried here.</div>';
     } else {
         html += `<table class="sci-table">
-            <thead><tr><th>ID / Serial</th><th>Desc</th><th>Deleted</th><th>Action</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>ID / Serial</th>
+                    <th>Description</th>
+                    <th style="text-align:center;">Deleted By</th>
+                    <th style="text-align:center;">Date</th>
+                    <th style="text-align:center; width:100px;">Action</th>
+                </tr>
+            </thead>
             <tbody>
                 ${deletedInventory.map(i => `
                 <tr>
-                    <td><b>${esc(i.id)}</b><div style="font-size:0.7rem; color:var(--text-muted);">${esc(i.serial||'No Serial')}</div></td>
-                    <td>${esc(i.desc)}</td>
-                    <td>${new Date(i.deletedDate).toLocaleDateString()}</td>
-                    <td style="text-align:right;"><button class="btn-rect" onclick="reviveInventory('${i.id}')">Restore</button></td>
+                    <td>
+                        <div style="font-weight:bold; color:var(--text-main);">${esc(i.id)}</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">${esc(i.serial||'No Serial')}</div>
+                    </td>
+                    <td style="font-size:0.85rem;">${esc(i.desc)}</td>
+                    <td style="text-align:center;">
+                        <span class="tag" style="background:var(--bg-input); border:none;">${esc(i.deletedBy||'Admin')}</span>
+                    </td>
+                    <td style="text-align:center; color:var(--text-muted); font-size:0.85rem;">
+                        ${new Date(i.deletedDate).toLocaleDateString()}
+                    </td>
+                    <td style="text-align:center;">
+                        <button class="btn-rect" onclick="reviveInventory('${i.id}')" style="width:100%; justify-content:center;">
+                            <i class="fa-solid fa-rotate-left"></i> Restore
+                        </button>
+                    </td>
                 </tr>`).join('')}
             </tbody>
         </table>`;
     }
+    html += `</div>`;
     
     list.innerHTML = html;
     openModal('graveyardModal');
@@ -6801,6 +6964,77 @@ function resetData(ask=true) {
             doReset();
         }
     }
+
+// --- CONFETTI ENGINE (Final Snappy Version) ---
+function fireConfetti() {
+    const colors = ['#dc2626', '#d97706', '#059669', '#2563eb', '#7c3aed', '#f43f5e'];
+    
+    for(let i=0; i<200; i++) {
+        const p = document.createElement('div');
+        p.style.position = 'fixed';
+        p.style.left = '50%';
+        p.style.top = '50%'; 
+        p.style.width = '6px';
+        p.style.height = '6px';
+        p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        p.style.zIndex = '9999';
+        p.style.borderRadius = '50%';
+        p.style.pointerEvents = 'none'; 
+        document.body.appendChild(p);
+
+        const angle = Math.random() * Math.PI * 2; 
+        const velocity = Math.random() * 300 + 50; 
+        
+        const flyX = Math.cos(angle) * velocity;
+        const flyY = Math.sin(angle) * velocity; 
+        const driftX = (Math.random() - 0.5) * 50;
+
+        p.animate([
+            // 1. POP
+            { 
+                transform: `translate(0,0) scale(1)`, 
+                opacity: 1, 
+                offset: 0, 
+                easing: 'cubic-bezier(0.25, 1, 0.5, 1)' 
+            },
+            
+            // 2. PEAK
+            { 
+                transform: `translate(${flyX}px, ${flyY}px) scale(1)`, 
+                opacity: 1, 
+                offset: 0.15, 
+                easing: 'linear' 
+            },
+            
+            // 3. HOVER
+            { 
+                transform: `translate(${flyX + driftX * 0.5}px, ${flyY + 40}px) scale(0.9)`, 
+                opacity: 1, 
+                offset: 0.55, 
+                easing: 'ease-in' 
+            },
+            
+            // 4. FADE OUT
+            { 
+                transform: `translate(${flyX + driftX}px, ${flyY + 250}px) scale(0)`, 
+                opacity: 0, 
+                offset: 1 
+            }
+        ], { 
+            // Reduced duration by ~1500ms
+            duration: 2500 + Math.random() * 2000, 
+            fill: 'forwards'
+        }).onfinish = () => p.remove();
+    }
+}
+
+// --- PHONE MASK HELPER ---
+    const maskPhone = (e) => {
+        // Strip non-numbers
+        let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,4})/);
+        // Rebuild as (123) 456-7890
+        e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
+    };
 
 function clearData() { 
         showConfirm(
