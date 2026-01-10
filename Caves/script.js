@@ -2968,6 +2968,30 @@ const ITEM_DATA = {
             state.player.thirst = Math.min(state.player.maxThirst, state.player.thirst + 40);
             logMessage("Ahhh. Crisp and cold. (+40 Thirst)");
             triggerStatAnimation(statDisplays.stamina, 'stat-pulse-blue'); // Thirst boosts stamina regen indirectly
+
+            const waterStack = state.player.inventory.find(i => i.name === 'Clean Water');
+            
+            // If this was the last water in the stack, we can safely "morph" it into a bottle
+            // This bypasses the full inventory check because we are reusing the slot.
+            if (waterStack && waterStack.quantity === 1) {
+                // We return FALSE so the main loop DOES NOT delete the item.
+                // We manually convert it to an empty bottle here.
+                waterStack.name = 'Empty Bottle';
+                waterStack.tile = '🫙';
+                // waterStack.type is already 'consumable', so that's fine
+                return false; // Tell useInventoryItem NOT to decrement/delete, we handled it.
+            } 
+            else {
+                // If we have a stack (e.g. 5 Water), we decrement normally (return true)
+                // AND we try to add a bottle.
+                if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    state.player.inventory.push({ name: 'Empty Bottle', type: 'consumable', quantity: 1, tile: '🫙' });
+                } else {
+                    logMessage("No room for the Empty Bottle! It falls to the ground.");
+                    // Optional: chunkManager.setWorldTile(state.player.x, state.player.y, '🫙');
+                }
+                return true; // Decrement the water stack
+            }
             
             // Return Empty Bottle
             if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
@@ -6166,7 +6190,7 @@ generateChunk(chunkX, chunkY) {
         const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
         const chunkY = Math.floor(worldY / this.CHUNK_SIZE);
         const chunkId = `${chunkX},${chunkY}`;
-        this.listenToChunkState(chunkX, chunkY);
+
         const localX = (worldX % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
         const localY = (worldY % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
         const tileKey = `${localX},${localY}`;
@@ -8367,6 +8391,13 @@ const hotbarContainer = document.getElementById('hotbarContainer');
 
 function renderHotbar() {
     hotbarContainer.innerHTML = '';
+
+        // Absolute positioned label that sits on the border/top-left
+    const label = document.createElement('div');
+    label.className = 'absolute -top-3 left-2 text-[10px] uppercase font-bold text-gray-400 tracking-widest bg-[var(--bg-panel)] px-1';
+    label.textContent = 'Hotkeys';
+    hotbarContainer.appendChild(label);
+    
     const hotbar = gameState.player.hotbar;
     const cooldowns = gameState.player.cooldowns || {};
 
@@ -10165,6 +10196,23 @@ function handleCraftItem(recipeName) {
         
         if (!itemInInventory || itemInInventory.quantity < requiredQuantity) {
             logMessage(`You are missing materials: ${materialName}`);
+            return;
+        }
+    }
+
+    // Look up the resulting item to see if it stacks
+    const outputItemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === recipeName);
+    const itemTemplate = ITEM_DATA[outputItemKey];
+    
+    // Check if we already have a stack of this item (and it's not equipment/masterwork)
+    // Note: We assume crafted equipment doesn't stack for safety here
+    const isStackable = itemTemplate.type === 'junk' || itemTemplate.type === 'consumable';
+    const existingStack = playerInventory.find(item => item.name === itemTemplate.name);
+
+    if (!existingStack || !isStackable) {
+        // We need a new slot. Check if full.
+        if (playerInventory.length >= MAX_INVENTORY_SLOTS) {
+            logMessage("Inventory full! Cannot craft.");
             return;
         }
     }
@@ -16026,6 +16074,14 @@ if (newTile === 'T') {
     if (gameState.mapMode === 'overworld') {
         const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
         const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+
+               // Load 3x3 chunk area around player
+        for(let y = -1; y <= 1; y++) {
+            for(let x = -1; x <= 1; x++) {
+                chunkManager.listenToChunkState(currentChunkX + x, currentChunkY + y);
+            }
+        }
+
         chunkManager.unloadOutOfRangeChunks(currentChunkX, currentChunkY);
     }
 
