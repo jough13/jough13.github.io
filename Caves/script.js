@@ -8397,7 +8397,7 @@ function renderHotbar() {
     label.className = 'absolute -top-3 left-2 text-[10px] uppercase font-bold text-gray-400 tracking-widest bg-[var(--bg-panel)] px-1';
     label.textContent = 'Hotkeys';
     hotbarContainer.appendChild(label);
-    
+
     const hotbar = gameState.player.hotbar;
     const cooldowns = gameState.player.cooldowns || {};
 
@@ -10230,7 +10230,7 @@ function handleCraftItem(recipeName) {
     }
 
     // 5. Add Crafted Item
-    const outputItemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === recipeName);
+
     const itemTemplate = ITEM_DATA[outputItemKey];
     
     // --- Masterwork Logic (Only for Equipment) ---
