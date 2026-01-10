@@ -15755,7 +15755,6 @@ if (newTile === 'T') {
     }
 
     const itemData = ITEM_DATA[newTile];
-    let inventoryWasUpdated = false;
 
     if (newTile === '✨') {
         if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
