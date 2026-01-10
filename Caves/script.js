@@ -2212,6 +2212,15 @@ window.handleFastTravel = function(targetX, targetY) {
     const player = gameState.player;
     const TRAVEL_COST = 10;
 
+    // Ensure the destination chunk is loaded or generate it temporarily to check the tile
+    const tile = chunkManager.getTile(targetX, targetY);
+    const invalidTiles = ['^', '~', '≈', '▓']; // Mountains, Water, Walls
+    
+    if (invalidTiles.includes(tile)) {
+        logMessage("The Waystone is obstructed by terrain. Teleport unsafe.");
+        return;
+    }
+
     if (player.mana < TRAVEL_COST) {
         logMessage("Not enough Mana to travel the leylines.");
         return;
@@ -5506,6 +5515,16 @@ generateCave(caveId) {
             for (let attempt = 0; attempt < 5 && !placed; attempt++) {
                 const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
                 const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
+
+                // Construct the unique ID for this specific tile in this specific cave
+                const uniqueTileId = `${caveId}:${randX},${-randY}`; 
+                
+                const lootId = `${caveId}:${randX},${-randY}`;
+
+                if (gameState.lootedTiles.has(lootId)) {
+                    continue; // Skip placing loot here, it's already taken
+                }
+
                 if (map[randY][randX] === theme.floor) {
                     map[randY][randX] = itemToPlace;
                     placed = true;
@@ -7814,6 +7833,10 @@ function handleBuyItem(itemName) {
     logMessage(`You bought a ${itemName} for ${finalBuyPrice} gold.`); // <-- Use new variable
 
     if (existingStack) {
+        if (existingStack.quantity >= 99) {
+            logMessage("You cannot carry any more of that item.");
+            return;
+        }
         existingStack.quantity++;
     } else {
 
@@ -16333,6 +16356,12 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
 
                     if (templateItem) {
                         item.effect = templateItem.effect; // Re-bind function
+
+                        // These properties are static in ITEM_DATA but lost on save
+                        item.onHit = templateItem.onHit;
+                        item.procChance = templateItem.procChance;
+                        item.inflicts = templateItem.inflicts;
+                        item.inflictChance = templateItem.inflictChance;
                         
                         // Only reset stats if they are missing (preserve crafted stats!)
                         if (templateItem.type === 'weapon') {
