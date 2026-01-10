@@ -10251,7 +10251,6 @@ function handleCraftItem(recipeName) {
     }
 
     // Stack Logic (Don't stack masterworks)
-    const existingStack = playerInventory.find(item => item.name === craftedName && !isMasterwork);
 
     if (existingStack) {
         existingStack.quantity++;
