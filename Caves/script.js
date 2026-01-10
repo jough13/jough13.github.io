@@ -2069,35 +2069,6 @@ function createDefaultPlayerState() {
     };
 }
 
-async function runSharedAiTurns() {
-    const now = Date.now();
-    
-    // THROTTLE: Only allow this client to attempt AI logic once every 2 seconds
-    if (now - lastAiExecution < 2000) return;
-    
-    // RANDOM BACKOFF: 
-    // Even if 2 seconds passed, only run 10% of the time. 
-    // This drastically reduces DB collisions when multiple players are online.
-    if (Math.random() > 0.10) return;
-
-    lastAiExecution = now;
-    console.log("🤖 AI Turn Started (Throttled)..."); 
-    
-    const nearestEnemyDir = await processOverworldEnemyTurns();
-
-    if (nearestEnemyDir) {
-        const player = gameState.player;
-        const intuitChance = Math.min(player.intuition * 0.005, 0.5); 
-
-        if (Math.random() < intuitChance) {
-            const dirString = getDirectionString(nearestEnemyDir);
-            logMessage(`You sense a hostile presence to the ${dirString}!`);
-        } else if (Math.random() < 0.1) { 
-            logMessage("You hear a shuffle nearby...");
-        }
-    }
-}
-
 async function restartGame() {
     // 1. Capture the current background so we don't lose the class choice
     const currentBg = gameState.player.background;
@@ -8001,7 +7972,20 @@ function resizeCanvas() {
     
     // Optional: Adjust height to fit standard aspect ratio or fill container
     // For now, let's keep height somewhat static or slightly larger
-    VIEWPORT_HEIGHT = 30; 
+    VIEWPORT_HEIGHT = 30;
+
+        const dpr = window.devicePixelRatio || 1;
+    
+    // Set actual size in memory (scaled up)
+    canvas.width = (VIEWPORT_WIDTH * TILE_SIZE) * dpr;
+    canvas.height = (VIEWPORT_HEIGHT * TILE_SIZE) * dpr;
+
+    // Set visible size (css size)
+    canvas.style.width = `${VIEWPORT_WIDTH * TILE_SIZE}px`;
+    canvas.style.height = `${VIEWPORT_HEIGHT * TILE_SIZE}px`;
+
+    // Normalize coordinate system to use css pixels
+    ctx.scale(dpr, dpr);
 
     // Update the canvas resolution
     canvas.width = VIEWPORT_WIDTH * TILE_SIZE;
@@ -12642,9 +12626,19 @@ function processEnemyTurns() {
  */
 
 async function runSharedAiTurns() {
-    console.log("🤖 AI Turn Started..."); // Uncomment to check browser console
+    const now = Date.now();
     
-    // Bypass the Lock System entirely for now
+    // THROTTLE: Only allow this client to attempt AI logic once every 2 seconds
+    if (now - lastAiExecution < 2000) return;
+    
+    // RANDOM BACKOFF: 
+    // Even if 2 seconds passed, only run 10% of the time. 
+    // This drastically reduces DB collisions when multiple players are online.
+    if (Math.random() > 0.10) return;
+
+    lastAiExecution = now;
+    console.log("🤖 AI Turn Started (Throttled)..."); 
+    
     const nearestEnemyDir = await processOverworldEnemyTurns();
 
     if (nearestEnemyDir) {
@@ -12698,8 +12692,18 @@ function handlePlayerDeath() {
     // 2. Visuals
     logMessage("You have perished!");
     triggerStatFlash(statDisplays.health, false);
+
+    // --- FIX START: Remove Equipment Stats ---
+    // We must subtract the bonuses of currently equipped items before deleting them
+    if (gameState.player.equipment.weapon) {
+        applyStatBonuses(gameState.player.equipment.weapon, -1);
+    }
+    if (gameState.player.equipment.armor) {
+        applyStatBonuses(gameState.player.equipment.armor, -1);
+    }
+    // --- FIX END ---
     
-    // --- CORPSE SCATTER LOGIC (Restored) ---
+    // --- CORPSE SCATTER LOGIC ---
     const player = gameState.player;
     const deathX = player.x;
     const deathY = player.y;
@@ -12710,7 +12714,6 @@ function handlePlayerDeath() {
         const item = player.inventory[i];
         
         // 100% chance to drop items (Hardcore style)
-        // Find a valid spot nearby (Spiral out)
         let placed = false;
         for (let r = 0; r <= 2 && !placed; r++) { // Radius 2
             for (let dy = -r; dy <= r && !placed; dy++) {
@@ -12718,8 +12721,6 @@ function handlePlayerDeath() {
                     const tx = deathX + dx;
                     const ty = deathY + dy;
                     
-                    // Check if tile is empty ('.')
-                    // We use the context-aware tile check here
                     let tile;
                     if (gameState.mapMode === 'overworld') tile = chunkManager.getTile(tx, ty);
                     else if (gameState.mapMode === 'dungeon') {
@@ -12731,7 +12732,6 @@ function handlePlayerDeath() {
                     }
 
                     if (tile === '.') {
-                        // Place item on map
                         if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(tx, ty, item.tile);
                         else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = item.tile;
                         else chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = item.tile;
@@ -12775,15 +12775,17 @@ function handlePlayerDeath() {
     
     // 7. Sync final state to DB
     syncPlayerState();
-    playerRef.set(player); // Full overwrite to ensure inventory is cleared on server
+    playerRef.set(player); 
     
     // Force reload to clear local state/enemies after a short delay
     setTimeout(() => location.reload(), 2000); 
     
-    return true; // Signal that death occurred
+    return true; 
 }
 
 function endPlayerTurn() {
+
+  let updates = {}; 
 
 // --- LIGHT SURVIVAL MECHANICS ---
     const player = gameState.player;
@@ -14017,6 +14019,13 @@ function useInventoryItem(itemIndex) {
 }
 
 function restPlayer() {
+
+        if (gameState.player.hunger <= 0 || gameState.player.thirst <= 0) {
+        logMessage("You are too weak from hunger or thirst to rest effectively.");
+        endPlayerTurn(); // Still costs a turn
+        return;
+    }
+
     let rested = false;
     let logMsg = "You rest for a moment. ";
 
@@ -14045,6 +14054,8 @@ function restPlayer() {
 
 async function attemptMovePlayer(newX, newY) {
     if (newX === gameState.player.x && newY === gameState.player.y) return;
+
+    let inventoryWasUpdated = false;
 
     // 1. Determine the destination tile FIRST
     let newTile;
