@@ -30,6 +30,8 @@ let otherPlayers = {};
 let unsubscribePlayerListener;
 let worldStateListeners = {};
 
+let lastAiExecution = 0;
+
 let cachedThemeColors = {};
 const charWidthCache = {}; 
 
@@ -2065,6 +2067,35 @@ function createDefaultPlayerState() {
         craftingXp: 0,
         craftingXpToNext: 50,
     };
+}
+
+async function runSharedAiTurns() {
+    const now = Date.now();
+    
+    // THROTTLE: Only allow this client to attempt AI logic once every 2 seconds
+    if (now - lastAiExecution < 2000) return;
+    
+    // RANDOM BACKOFF: 
+    // Even if 2 seconds passed, only run 10% of the time. 
+    // This drastically reduces DB collisions when multiple players are online.
+    if (Math.random() > 0.10) return;
+
+    lastAiExecution = now;
+    console.log("🤖 AI Turn Started (Throttled)..."); 
+    
+    const nearestEnemyDir = await processOverworldEnemyTurns();
+
+    if (nearestEnemyDir) {
+        const player = gameState.player;
+        const intuitChance = Math.min(player.intuition * 0.005, 0.5); 
+
+        if (Math.random() < intuitChance) {
+            const dirString = getDirectionString(nearestEnemyDir);
+            logMessage(`You sense a hostile presence to the ${dirString}!`);
+        } else if (Math.random() < 0.1) { 
+            logMessage("You hear a shuffle nearby...");
+        }
+    }
 }
 
 async function restartGame() {
