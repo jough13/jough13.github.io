@@ -7010,6 +7010,17 @@ function handleItemDrop(event) {
         return;
     }
 
+    // Check if the item has custom stats or a modified name compared to the base template
+    const template = ITEM_DATA[itemToDrop.tile];
+    const isMagic = itemToDrop.statBonuses || (template && itemToDrop.name !== template.name);
+
+    if (isMagic) {
+        logMessage("You cannot drop magic items! The magic would dissipate.");
+        logMessage("Sell it or store it in your Stash instead.");
+        gameState.isDroppingItem = false;
+        return;
+    }
+
     // Check if the player is standing on a valid drop tile (a floor)
     let currentTile;
     if (gameState.mapMode === 'dungeon') {
@@ -7677,6 +7688,7 @@ function generateEnemyLoot(player, enemy) {
  * @param {object} item - The item object (from equipment).
  * @param {number} operation - 1 to add, -1 to subtract.
  */
+
 function applyStatBonuses(item, operation) {
     // --- FIX: Safety Check ---
     // If item is null, or has no statBonuses (is null/undefined), stop immediately.
@@ -7906,10 +7918,10 @@ function handleSellItem(itemIndex) {
     } else {
         // --- SPECIAL PRICES FOR RELICS ---
         if (itemToSell.name === 'Shattered Crown') basePrice = 200;
-        if (itemToSell.name === 'Signet Ring') basePrice = 80;
-        if (itemToSell.name === 'Pouch of Gold Dust') basePrice = 50;
-        if (itemToSell.name === 'Ancient Coin') basePrice = 25;
-        if (itemToSell.name === 'Alpha Pelt') basePrice = 60;
+        else if (itemToSell.name === 'Signet Ring') basePrice = 80;
+        else if (itemToSell.name === 'Pouch of Gold Dust') basePrice = 50;
+        else if (itemToSell.name === 'Ancient Coin') basePrice = 25;
+        else if (itemToSell.name === 'Alpha Pelt') basePrice = 60;
     }
 
     const regionMult = getRegionalPriceMultiplier(itemToSell.type, itemToSell.name);
@@ -7917,7 +7929,7 @@ function handleSellItem(itemIndex) {
     const sellBonusPercent = player.charisma * 0.005;
     const finalSellBonus = Math.min(sellBonusPercent, 0.25);
     
-    // --- ECONOMY CAP ---
+    // --- FIX START: Economy Cap ---
     // Calculate raw sell price
     let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
     
@@ -7926,11 +7938,10 @@ function handleSellItem(itemIndex) {
     const maxSellPrice = Math.floor(basePrice * 0.8);
     
     // If the item is a rare relic (not sold in shops), we don't need to cap it strictly
-    // strictly against a shop price, but for general goods, we apply the cap.
+    // against a shop price, but for general goods, we apply the cap.
     const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
-    // ----------------------------
+    // --- FIX END ---
     
-    // Log the bonus if it's significant
     if (regionMult > 1.0) logMessage(`Market demand is high here! (x${regionMult})`);
     else if (regionMult < 1.0) logMessage(`Market flooded. Low demand. (x${regionMult})`);
 
@@ -12784,19 +12795,18 @@ function handlePlayerDeath() {
 }
 
 function endPlayerTurn() {
+    let updates = {}; // Defined at the top to catch status changes
 
-  let updates = {}; 
-
-// --- LIGHT SURVIVAL MECHANICS ---
+    // --- LIGHT SURVIVAL MECHANICS ---
     const player = gameState.player;
 
     // Base drain rates (Standard difficulty)
-    let hungerDrain = 0.02; // You lose 1 hunger every 50 turns. (Very slow)
-    let thirstDrain = 0.05; // You lose 1 thirst every 20 turns. (Manageable)
+    let hungerDrain = 0.02; 
+    let thirstDrain = 0.05; 
 
     // Grace Period (Level 1-2)
     if (player.level < 3) {
-        hungerDrain = 0.005; // Effectively zero
+        hungerDrain = 0.005; 
         thirstDrain = 0.01;
     }
 
@@ -12807,12 +12817,9 @@ function endPlayerTurn() {
     }
 
     // --- ENVIRONMENTAL HAZARDS ---
-    
-    // --- DETERMINE CURRENT TILE (Context Aware) ---
     let currentTile;
     if (gameState.mapMode === 'dungeon') {
         const map = chunkManager.caveMaps[gameState.currentCaveId];
-        // Safety check: if map isn't ready, assume safe floor '.'
         currentTile = (map && map[player.y]) ? map[player.y][player.x] : '.';
     } 
     else if (gameState.mapMode === 'castle') {
@@ -12820,12 +12827,10 @@ function endPlayerTurn() {
         currentTile = (map && map[player.y]) ? map[player.y][player.x] : '.';
     } 
     else {
-        // Overworld
         currentTile = chunkManager.getTile(player.x, player.y);
     }
 
     const inDungeon = gameState.mapMode === 'dungeon';
-    const currentTheme = inDungeon ? CAVE_THEMES[gameState.currentCaveTheme] : null;
 
     // 1. LAVA (Volcano Biome)
     if (inDungeon && gameState.currentCaveTheme === 'FIRE' && (currentTile === '~' || currentTile === '≈')) {
@@ -12839,7 +12844,6 @@ function endPlayerTurn() {
             triggerStatFlash(statDisplays.health, false);
             ParticleSystem.createFloatingText(player.x, player.y, "BURN", "#ef4444");
             
-            // --- IMMEDIATE DEATH CHECK ---
             if (handlePlayerDeath()) return; 
         }
     }
@@ -12859,36 +12863,30 @@ function endPlayerTurn() {
             player.health = 0; 
             ParticleSystem.createFloatingText(player.x, player.y, "☠️", "#1e3a8a");
             
-            // --- IMMEDIATE DEATH CHECK ---
             handlePlayerDeath(); 
-            return; // Stop the turn immediately
+            return; 
         }
     }
 
     // --- 1. THE BONUSES (Vitality) ---
-    // If stats are high (>80%), you regenerate naturally!
     let regenBonus = false;
     
     if (player.hunger > 80 && player.health < player.maxHealth && gameState.playerTurnCount % 5 === 0) {
-        player.health++; // Free healing every 5 turns
+        player.health++; 
         logMessage("Well Fed: You regenerate 1 Health.");
         triggerStatFlash(statDisplays.health, true);
-
-        ParticleSystem.createFloatingText(player.x, player.y, "♥", "#22c55e"); // Heart icon!
-
+        ParticleSystem.createFloatingText(player.x, player.y, "♥", "#22c55e"); 
         regenBonus = true;
     }
     
     if (player.thirst > 80 && player.stamina < player.maxStamina && gameState.playerTurnCount % 3 === 0) {
-        player.stamina++; // Free energy every 3 turns
+        player.stamina++; 
         logMessage("Hydrated: You regenerate 1 Stamina.");
         triggerStatFlash(statDisplays.stamina, true);
         regenBonus = true;
     }
 
     // --- 2. THE PENALTIES (Weakness) ---
-    // If stats hit 0, you don't die, you just stop regenerating via Time/Rest
-    // We handle the "Stop Regen" in the Time Listener below.
     if (player.hunger <= 0 && gameState.playerTurnCount % 10 === 0) {
         logMessage("Your stomach growls. You feel weak. (No HP Regen)");
     }
@@ -12896,95 +12894,74 @@ function endPlayerTurn() {
         logMessage("Your throat is parched. You feel sluggish. (No Stamina Regen)");
     }
 
-    // Only run this in the overworld to activate static mobs
     if (gameState.mapMode === 'overworld') {
         wakeUpNearbyEnemies();
     }
 
-    // Every 60 turns (approx 1 day in-game), roll for ambush
+    // Ambush Logic
     if (gameState.mapMode === 'overworld' && gameState.playerTurnCount % 60 === 0) {
-        // 20% chance of ambush
         if (Math.random() < 0.20) {
             logMessage("{red:AMBUSH!} Enemies are closing in!");
             gameState.screenShake = 15;
-            AudioSystem.playHit(); // Sound alert
+            AudioSystem.playHit(); 
 
-            // Determine enemy type based on biome
             const currentTile = chunkManager.getTile(player.x, player.y);
-            let ambushType = 'b'; // Default bandit
-            if (currentTile === 'F') ambushType = 'w'; // Wolves
-            if (currentTile === 'd') ambushType = 's'; // Skeletons
-            if (currentTile === 'D') ambushType = '🦂'; // Scorpions
+            let ambushType = 'b'; 
+            if (currentTile === 'F') ambushType = 'w'; 
+            if (currentTile === 'd') ambushType = 's'; 
+            if (currentTile === 'D') ambushType = '🦂'; 
 
-            // Spawn 3 enemies in a circle
             const offsets = [[-4, 0], [4, 0], [0, -4], [0, 4]];
             
             offsets.forEach(offset => {
-                // Randomize slightly
                 const tx = player.x + offset[0] + Math.floor(Math.random()*3)-1;
                 const ty = player.y + offset[1] + Math.floor(Math.random()*3)-1;
                 
-                // Spawn logic (reusing handleOverworldCombat logic to create)
                 const enemyData = ENEMY_DATA[ambushType];
                 const enemyId = `overworld:${tx},${-ty}`;
-                
-                // Direct RTDB write to spawn
                 const scaledStats = getScaledEnemy(enemyData, tx, ty);
                 const newEnemy = { ...scaledStats, tile: ambushType, x: tx, y: ty };
                 
                 rtdb.ref(`worldEnemies/${enemyId}`).set(newEnemy);
-                
-                // Visual
                 if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#ef4444');
             });
         }
     }
 
-    gameState.playerTurnCount++; // Increment the player's turn
-
+    gameState.playerTurnCount++; 
     updateWeather();
 
     // --- STORM LIGHTNING STRIKES ---
     if (gameState.mapMode === 'overworld' && gameState.weather === 'storm') {
-        // 15% chance of a lightning strike per turn
         if (Math.random() < 0.15) {
-            // Pick a random spot near the player
             const rx = gameState.player.x + Math.floor(Math.random() * 20) - 10;
             const ry = gameState.player.y + Math.floor(Math.random() * 20) - 10;
             
-            // Visual Effect
             logMessage("⚡ CRACK! Lightning strikes nearby!");
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createExplosion(rx, ry, '#facc15', 10);
             }
 
-            // Check if Player was hit!
             if (rx === gameState.player.x && ry === gameState.player.y) {
                 logMessage("You were struck by lightning!! (10 Dmg)");
                 gameState.player.health -= 10;
-                gameState.screenShake = 10; // Shake intensity
+                gameState.screenShake = 10; 
                 triggerStatFlash(statDisplays.health, false);
             } 
             else {
-                // Check if Enemy was hit (re-use spell logic for convenience)
-                // We fake a 'thunderbolt' cast by nature to damage enemies
-                // We use 10 flat damage
                 applySpellDamage(rx, ry, 10, 'thunderbolt');
             }
         }
     }
 
-    let updates = {};
-
     // --- 1. Tick Status Effects ---
     if (player.poisonTurns > 0) {
         player.poisonTurns--;
-        player.health -= 1; // Poison deals 1 damage
-        gameState.screenShake = 10; // Shake intensity
+        player.health -= 1; 
+        gameState.screenShake = 10; 
         logMessage("You take 1 poison damage...");
         triggerStatFlash(statDisplays.health, false);
-
-        ParticleSystem.createFloatingText(player.x, player.y, "-1", "#22c55e"); // Green text for poison
+        ParticleSystem.createFloatingText(player.x, player.y, "-1", "#22c55e"); 
 
         updates.health = player.health;
         updates.poisonTurns = player.poisonTurns;
@@ -12996,12 +12973,18 @@ function endPlayerTurn() {
     if (player.waterBreathingTurns > 0) {
         player.waterBreathingTurns--;
         updates.waterBreathingTurns = player.waterBreathingTurns;
-        if (player.waterBreathingTurns === 0) logMessage("Your gills disappear.");
+        
+        if (player.waterBreathingTurns === 3) {
+            logMessage("Warning: Your gills are starting to close up! (3 turns left)");
+        }
+        if (player.waterBreathingTurns === 0) {
+            logMessage("Your gills disappear.");
+        }
     }
 
     if (player.frostbiteTurns > 0) {
         player.frostbiteTurns--;
-        player.stamina = Math.max(0, player.stamina - 2); // Frostbite drains 2 stamina
+        player.stamina = Math.max(0, player.stamina - 2); 
         logMessage("Frostbite saps your stamina...");
         triggerStatFlash(statDisplays.stamina, false);
         updates.stamina = player.stamina;
@@ -13020,25 +13003,9 @@ function endPlayerTurn() {
             logMessage("Your surge of strength fades.");
             updates.strengthBonus = 0;
         }
-        renderEquipment(); // Update UI
+        renderEquipment(); 
     }
 
-    // --- GILL POTION TIMER ---
-    if (player.waterBreathingTurns > 0) {
-        player.waterBreathingTurns--;
-        updates.waterBreathingTurns = player.waterBreathingTurns;
-        
-        if (player.waterBreathingTurns === 3) {
-            logMessage("Warning: Your gills are starting to close up! (3 turns left)");
-        }
-        if (player.waterBreathingTurns === 0) {
-            // We don't need to kill them here; the drowning check at the 
-            // start of the NEXT turn will handle it if they are still in water.
-            logMessage("Your gills disappear.");
-        }
-    }
-
-    // --- WITS BONUS TIMER ---
     if (player.witsBonusTurns > 0) {
         player.witsBonusTurns--;
         updates.witsBonusTurns = player.witsBonusTurns;
@@ -13048,7 +13015,6 @@ function endPlayerTurn() {
             logMessage("The clarity of mind fades.");
             updates.witsBonus = 0;
         }
-        
     }
 
     if (player.thornsTurns > 0) {
@@ -13078,7 +13044,7 @@ function endPlayerTurn() {
         }
         if (cooldownsChanged) {
             updates.cooldowns = player.cooldowns;
-            renderHotbar(); // Update visuals
+            renderHotbar(); 
         }
     }
 
@@ -13086,12 +13052,9 @@ function endPlayerTurn() {
     if (player.candlelightTurns > 0) {
         player.candlelightTurns--;
         updates.candlelightTurns = player.candlelightTurns;
-        
-        // Warn when running low (optional, but helpful)
         if (player.candlelightTurns === 5) {
             logMessage("Your magical light is flickering...");
         }
-        
         if (player.candlelightTurns === 0) {
             logMessage("Your Candlelight spell extinguishes.");
         }
@@ -13108,10 +13071,9 @@ function endPlayerTurn() {
 
     // Tick down buff/debuff durations
     if (gameState.player.defenseBonusTurns > 0) {
-        gameState.player.defenseBonusTurns--; // Tick down the turn
+        gameState.player.defenseBonusTurns--; 
 
         if (gameState.player.defenseBonusTurns === 0) {
-            // Buff expired
             gameState.player.defenseBonus = 0;
             logMessage("You are no longer bracing.");
             playerRef.update({
@@ -13119,20 +13081,18 @@ function endPlayerTurn() {
                 defenseBonusTurns: 0
             });
         } else {
-            // Save the new turn count
             playerRef.update({
                 defenseBonusTurns: gameState.player.defenseBonusTurns,
                 ...updates
             });
         }
-        renderEquipment(); // Update UI (to show new turn count or remove buff)
+        renderEquipment(); 
     }
 
     if (gameState.player.shieldTurns > 0) {
-        gameState.player.shieldTurns--; // Tick down the turn
+        gameState.player.shieldTurns--; 
 
         if (gameState.player.shieldTurns === 0) {
-            // Shield expired
             gameState.player.shieldValue = 0;
             logMessage("Your Arcane Shield fades.");
             playerRef.update({
@@ -13140,37 +13100,28 @@ function endPlayerTurn() {
                 shieldTurns: 0
             });
         } else {
-            // Save the new turn count
             playerRef.update({
                 shieldTurns: gameState.player.shieldTurns,
                 ...updates
             });
         }
-        renderStats(); // Update UI (to show new turn count or remove shield)
+        renderStats(); 
     }
 
-    // --- ENTITY LOGIC ---
-    // These run independently of your shield or buffs
-    processFriendlyTurns(); // Moves castle guards
-    runCompanionTurn();     // Moves your skeleton/pet  
-
-    // FORCE MOVE: Run every turn for now to debug
-    // We removed the % 2 check so they are always active
+    processFriendlyTurns(); 
+    runCompanionTurn();     
     runSharedAiTurns();
 
-    // Save any status effect changes if buffs didn't already
     if (Object.keys(updates).length > 0) {
         playerRef.update(updates);
     }
 
     // --- PALADIN: HOLY AURA ---
     if (player.talents && player.talents.includes('holy_aura')) {
-        // Heal Companion
         if (player.companion && player.companion.hp < player.companion.maxHp) {
             player.companion.hp = Math.min(player.companion.maxHp, player.companion.hp + 2);
             if (Math.random() < 0.1) logMessage("Holy Aura heals your companion.");
         }
-        // Small self-regen if critical (Last Stand)
         if (player.health < player.maxHealth * 0.3) {
              player.health += 1;
              triggerStatFlash(statDisplays.health, true);
@@ -14530,6 +14481,14 @@ async function attemptMovePlayer(newX, newY) {
     // --- COMBAT CHECK ---
     const enemyData = ENEMY_DATA[newTile];
     if (enemyData) {
+
+        const now = Date.now();
+        // 250ms cooldown on attacks (4 attacks per second max)
+        if (now - lastActionTime < 250) { 
+            return; 
+        }
+        lastActionTime = now;
+
         const hitChance = calculateHitChance(gameState.player, enemyData);
         
         if (Math.random() > hitChance) {
@@ -15558,6 +15517,15 @@ if (newTile === 'T') {
                 grantXp(15);
                 gameState.foundLore.add(tileId);
                 playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+            }
+            // This ensures every time we open the shop, stock is fresh (or at least reset for the session)
+            // In a real MMO, stock would be synced to DB, but for now, we prevent session pollution.
+            if (gameState.mapMode === 'castle') {
+                activeShopInventory = JSON.parse(JSON.stringify(CASTLE_SHOP_INVENTORY));
+                logMessage("You enter the castle emporium.");
+            } else {
+                activeShopInventory = JSON.parse(JSON.stringify(SHOP_INVENTORY));
+                logMessage("You enter the General Store.");
             }
             if (gameState.mapMode === 'castle') {
                 activeShopInventory = CASTLE_SHOP_INVENTORY;
