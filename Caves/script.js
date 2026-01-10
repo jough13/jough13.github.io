@@ -10230,8 +10230,6 @@ function handleCraftItem(recipeName) {
     }
 
     // 5. Add Crafted Item
-
-    const itemTemplate = ITEM_DATA[outputItemKey];
     
     // --- Masterwork Logic (Only for Equipment) ---
     const levelDiff = playerCraftLevel - recipe.level;
