@@ -27,6 +27,11 @@
             to { background-position: -10000px 5000px; }
         }
 
+        /* FIX 1: Smooth scrolling makes the jump visible */
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             background-color: var(--color-deep-space);
             background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
@@ -35,7 +40,8 @@
             font-size: 18px;
             line-height: 1.7;
             margin: 0;
-            padding: 2rem 1rem; 
+            /* FIX 2: Extra padding at the bottom allows the last section to scroll to the top */
+            padding: 2rem 1rem 30vh 1rem; 
         }
 
         .container {
@@ -48,6 +54,14 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         }
 
+        /* Mobile Optimization */
+        @media (max-width: 600px) {
+            .container {
+                padding: 1.5rem;
+            }
+            h1 { font-size: 2rem; }
+        }
+
         nav {
             border-bottom: 1px solid rgba(0, 0, 0, 0.1);
             padding: 1rem 0;
@@ -56,6 +70,7 @@
             justify-content: space-around;
             align-items: center;
             flex-wrap: wrap;
+            gap: 10px;
         }
 
         nav a {
@@ -141,6 +156,40 @@
             color: var(--color-accent-amber);
         }
 
+        .info-box {
+            background-color: rgba(0, 86, 179, 0.05);
+            border-left: 3px solid var(--color-accent-hud);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 4px;
+        }
+        
+        .info-box h3 {
+            margin-top: 0;
+            color: var(--color-accent-hud);
+        }
+
+        .faction-list { list-style: none; padding-left: 0; }
+        .faction-list li {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+            border-left: 2px solid var(--color-accent-amber);
+        }
+        .faction-list strong {
+            font-family: var(--font-heading);
+            color: var(--color-accent-amber);
+            font-weight: 700;
+        }
+        
+        .archive-data {
+            font-family: var(--font-mono);
+            color: var(--color-archive-glitch);
+            font-style: italic;
+            background-color: rgba(10, 102, 62, 0.1);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
         hr {
             border: none;
             border-top: 1px solid rgba(0,0,0,0.1);
@@ -159,8 +208,7 @@
         </header>
 
         <nav>
-            <!-- Updated nav links for the lore page -->
-            <a href="cor_main.html">Foreword</a>
+            <a href="index.html">Foreword</a>
             <a href="lore.html" class="active">Lore</a>
             <a href="#starmap">Starmap</a>
             <a href="#gallery">Gallery</a>
@@ -450,7 +498,7 @@
                        <strong>Allegiance/Type:</strong> Independent Research Colony (Status: "Harmonized")<br>
                        <strong>Distance from Sol:</strong> ~20.4 light-years<br>
                        <strong>Galactic Direction:</strong> Constellation Libra<br>
-                       <strong>Notes:</strong> The site of Seraphina's first mission and the Silent Syzygy's successful, horrifying application of the "Harmonization Protocol."</p>
+                       <strong>Notes:</strong> The site of Seraphina's first mission and the Silent Syzygy's successful, horrifying application of the "Harmonization Protocol".</p>
                     <p><strong>Location:</strong> The Daedalus Maze (Gliese 445 System)<br>
                        <strong>Allegiance/Type:</strong> Archive Anomaly / Quarantine Zone<br>
                        <strong>Distance from Sol:</strong> ~17.6 light-years<br>
@@ -486,7 +534,7 @@
 
                     <h4>3. Radiomorphic Phantoms ("Nebula-Kelp")</h4>
                     <p><strong>Habitat:</strong> Dense, dark molecular clouds and stellar nurseries, like the Shipbreaker's Graveyard (LDN 1622).</p>
-                    <p><strong>Description:</strong> This is one of the most bizarre forms of life yet discovered. Radiomorphic Phantoms are not truly physical. They are vast, filamentary colonies of radiotrophic microbes that exist as a collective, gossamer-like energy field. These "webs" can stretch for hundreds of kilometers, appearing to sensors only as faint, shifting energy signatures or "ghosts."</p>
+                    <p><strong>Description:</strong> This is one of the most bizarre forms of life yet discovered. Radiomorphic Phantoms are not truly physical. They are vast, filamentary colonies of radiotrophic microbes that exist as a collective, gossamer-like energy field. These "webs" can stretch for hundreds of kilometers, appearing to sensors only as faint, shifting energy signatures or "ghosts".</p>
                     <p><strong>Behavior & Human Interaction:</strong> They "feed" directly on high levels of cosmic radiation, which is abundant in nebulae. They are drawn to concentrated energy sources like newly forming protostars or, alarmingly, the fusion reactors of active starships. They are not hostile, but their interaction is lethal. If a swarm of these Phantoms envelops a ship, they can drain its power core in a matter of hours, leaving it cold, dark, and adrift. Many of the "unexplained" disappearances in the Shipbreaker's Graveyard are now attributed to these silent, beautiful, and utterly deadly energy parasites.</p>
 
                     <h4>4. Terminator Flora</h4>
@@ -676,6 +724,29 @@
                     <strong>Example:</strong> The CEO Alistair Caine's personal vessel, The Apex.<br>
                     <strong>Description:</strong> The ultimate expression of corporate power and luxury. An Executive Yacht is a masterpiece of technology and art. Its hull is a shimmering, seamless, silver material capable of active holographic camouflage, allowing it to perfectly mimic the starfield around it for ultimate stealth. It is equipped with the most advanced, experimental Takahashi Drive in existence, making it faster than any military vessel. Its interior is a monument to wealth, with zero-gravity gardens, personalized art collections, and AI servants. It is a flying palace for the true rulers of the corporate state, capable of crossing the human sphere in a matter of subjective years, further cementing the "time ghost" status of its elite passengers.</p>
                 </section>
+
+                <hr>
+
+                <article id="chapters">
+                    <h2>The Archives: Declassified Narratives</h2>
+                    <p>The following records have been recovered and processed by the Tharsis Institute for public review.</p>
+                    
+                    <div class="info-box">
+                        <h3>Book I: The Echoes of Sol</h3>
+                        <ul class="faction-list">
+                            <li>
+                                <a href="chapter1.html"><strong>Chapter One: Listeners of the Far Dark</strong></a><br>
+                                <span class="archive-data">GSY 2850.5</span> // Station 734, Sol Oort Cloud<br>
+                                <em>Custodian Elizabeth Shaw detects an anomaly in the deep dark.</em>
+                            </li>
+                            <li>
+                                <a href="chapter2.html"><strong>Chapter Two: Port Nowhere</strong></a><br>
+                                <span class="archive-data">~GSY 2851</span> // Port Nowhere, Outer Orion Sector<br>
+                                <em>Jax gambles his last credits on a ghost signal from the Graveyard.</em>
+                            </li>
+                        </ul>
+                    </div>
+                </article>
 
             </article>
         </main>
