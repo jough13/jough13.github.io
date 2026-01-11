@@ -1,4 +1,4 @@
-safely <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -25,6 +25,8 @@ safely <!DOCTYPE html>
             from { background-position: 0 0; }
             to { background-position: -10000px 5000px; }
         }
+
+        html { scroll-behavior: smooth; }
 
         body {
             background-color: var(--color-deep-space);
@@ -135,6 +137,37 @@ safely <!DOCTYPE html>
             line-height: 0.8;
             margin-right: 0.1em;
         }
+
+        /* Navigation Button Styles */
+        .nav-chapter-container {
+            margin-top: 4rem; 
+            padding-top: 2rem; 
+            border-top: 1px solid rgba(0,0,0,0.1); 
+            display: flex; 
+            /* CHANGE: Position flex-start to keep the "Previous" button on the left */
+            justify-content: flex-start;
+        }
+        
+        .nav-btn {
+            font-family: var(--font-heading);
+            background-color: var(--color-accent-hud);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background-color 0.3s, transform 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .nav-btn:hover {
+            background-color: var(--color-accent-amber);
+            transform: translateX(-5px); /* Slide left slightly on hover */
+        }
     </style>
 </head>
 <body>
@@ -149,7 +182,7 @@ safely <!DOCTYPE html>
         <nav>
             <a href="index.html">Foreword</a>
             <a href="lore.html">Lore</a>
-            <a href="#starmap">Starmap</a>
+            <a href="starmap.html">Starmap</a>
             <a href="#gallery">Gallery</a>
             <a href="#chapters" class="active">Chapters</a>
         </nav>
@@ -257,6 +290,13 @@ safely <!DOCTYPE html>
                 <p>The <em>Void Mite’s</em> ancient engines powered up with a low, protesting groan. The magnetic clamps released with a jolt, and the small, battered ship detached from the chaotic asteroid. Jax guided it silently out of the docking cluster and into the vast, open blackness. He didn't look back. There was nothing left for him on Port Nowhere but a debt that could only be paid in blood. Ahead lay a legendary graveyard, a ghost signal, and a <span class="archive-data">12.1%</span> chance at a new life.</p>
 
                 <p>For a gambler like Jax, it was the best hand he’d been dealt in years.</p>
+                
+                <div class="nav-chapter-container">
+                    <a href="chapter1.html" class="nav-btn">
+                        <span style="font-size: 1.2em;">&larr;</span> Previous: Chapter One 
+                    </a>
+                </div>
+
             </article>
         </main>
     </div>
