@@ -144,8 +144,8 @@
             padding-top: 2rem; 
             border-top: 1px solid rgba(0,0,0,0.1); 
             display: flex; 
-            /* CHANGE: Position flex-start to keep the "Previous" button on the left */
-            justify-content: flex-start;
+            /* Changed to space-between to separate the two buttons */
+            justify-content: space-between;
         }
         
         .nav-btn {
@@ -166,7 +166,9 @@
         
         .nav-btn:hover {
             background-color: var(--color-accent-amber);
-            transform: translateX(-5px); /* Slide left slightly on hover */
+            color: white;
+            transform: translateY(-3px);
+            text-decoration: none;
         }
     </style>
 </head>
@@ -183,8 +185,8 @@
             <a href="index.html">Foreword</a>
             <a href="lore.html">Lore</a>
             <a href="starmap.html">Starmap</a>
-            <a href="#gallery">Gallery</a>
-            <a href="#chapters" class="active">Chapters</a>
+            <a href="index.html#gallery">Gallery</a>
+            <a href="index.html#chapters" class="active">Chapters</a>
         </nav>
 
         <main>
@@ -294,6 +296,10 @@
                 <div class="nav-chapter-container">
                     <a href="chapter1.html" class="nav-btn">
                         <span style="font-size: 1.2em;">&larr;</span> Previous: Chapter One 
+                    </a>
+                    
+                    <a href="index.html" class="nav-btn">
+                        Return to Main Archive <span style="font-size: 1.2em;">&uarr;</span>
                     </a>
                 </div>
 
