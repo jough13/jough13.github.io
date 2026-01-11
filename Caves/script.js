@@ -150,6 +150,10 @@ const TILE_DATA = {
     '⛩️': {
         type: 'shrine'
     },
+    '🎓': {
+        type: 'npc_historian',
+        title: 'Royal Historian'
+    },
     '|': {
         type: 'obelisk'
     },
@@ -454,7 +458,7 @@ TOWER: {
             'F F F ... F F F 🧱...........🧱 F F F F F ... F F F',
             'F F F ... F F F 🧱...🔥.B...🧱 F F F F F ... F F F',
             'F F F ... F F F 🧱...........🧱 F F F F F ... F F F',
-            'F F F ... F F F 🧱.....N.....🧱 F F F F F ... F F F',
+            'F F F ... F F F 🧱.....🎓.....🧱 F F F F F ... F F F', 
             'F F F ... F F F 🧱🧱🧱...🧱🧱🧱 F F F F F ... F F F',
             'F F F ... F F F F F F ... F F F F F F F F ... F F F',
             'F F F ... F F F F F F ... F F F F F F F F ... F F F',
@@ -2004,9 +2008,9 @@ function createDefaultPlayerState() {
         },
 
         inventory: [
-            { name: 'Hardtack', type: 'consumable', quantity: 2, tile: '🍞' },
-            { name: 'Flask of Water', type: 'consumable', quantity: 2, tile: '💧' }
-        ],
+    { templateId: '🍞', name: 'Hardtack', type: 'consumable', quantity: 2, tile: '🍞' },
+    { templateId: '💧f', name: 'Flask of Water', type: 'consumable', quantity: 2, tile: '💧' }
+],
 
         bank: [], // Persistent storage
 
@@ -4213,48 +4217,46 @@ const PLAYER_BACKGROUNDS = {
         name: 'Warrior',
         stats: { strength: 2, constitution: 1 },
         items: [
-            { name: 'Rusty Sword', type: 'weapon', quantity: 1, tile: '!', damage: 2, slot: 'weapon' },
-            { name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
-            { name: 'Conscript\'s Orders', type: 'journal', quantity: 1, tile: '1', title: 'Crumpled Orders', content: ITEM_DATA['1'].content } // <-- Added Journal
+            { templateId: '!', name: 'Rusty Sword', type: 'weapon', quantity: 1, tile: '!', damage: 2, slot: 'weapon' },
+            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
+            { templateId: '1', name: 'Conscript\'s Orders', type: 'journal', quantity: 1, tile: '1', title: 'Crumpled Orders', content: ITEM_DATA['1'].content }
         ]
     },
     'rogue': {
         name: 'Rogue',
         stats: { dexterity: 2, luck: 1 },
         items: [
-            { name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
-            { name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
-            { name: 'Thief\'s Map', type: 'journal', quantity: 1, tile: '2', title: 'Scribbled Map', content: ITEM_DATA['2'].content } // <-- Added Journal
+            { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
+            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
+            { templateId: '2', name: 'Thief\'s Map', type: 'journal', quantity: 1, tile: '2', title: 'Scribbled Map', content: ITEM_DATA['2'].content }
         ]
     },
     'mage': {
         name: 'Mage',
         stats: { wits: 2, willpower: 1 },
         items: [
-             { name: 'Spellbook: Magic Bolt', type: 'spellbook', quantity: 1, tile: '📚', spellId: 'magicBolt' },
-             { name: 'Burned Scroll', type: 'journal', quantity: 1, tile: '3', title: 'Singed Parchment', content: ITEM_DATA['3'].content } // <-- Added Journal
-             // Mages keep default tunic
+             { templateId: '📚', name: 'Spellbook: Magic Bolt', type: 'spellbook', quantity: 1, tile: '📚', spellId: 'magicBolt' },
+             { templateId: '3', name: 'Burned Scroll', type: 'journal', quantity: 1, tile: '3', title: 'Singed Parchment', content: ITEM_DATA['3'].content }
         ]
     },
     'necromancer': {
         name: 'Necromancer',
-        stats: { wits: 1, willpower: 2 }, // High Willpower for managing minions
+        stats: { wits: 1, willpower: 2 },
         items: [
-             { name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
-             { name: 'Tome: Raise Dead', type: 'spellbook', quantity: 1, tile: '💀', spellId: 'raiseDead' },
-             { name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', content: ITEM_DATA['4'].content }
+             { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
+             // Note: We use '💀' as templateId, but override the spellId to raiseDead
+             { templateId: '💀', name: 'Tome: Raise Dead', type: 'spellbook', quantity: 1, tile: '💀', spellId: 'raiseDead' },
+             { templateId: '4', name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', content: ITEM_DATA['4'].content }
         ]
     },
-    // --- HARD MODE CLASS ---
     'wretch': {
         name: 'The Wretch',
-        stats: {}, // No bonus stats! (Starts with 1s)
+        stats: {}, 
         items: [
-            { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor' },
-            { name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', content: ITEM_DATA['4'].content }
+            { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor' },
+            { templateId: '4', name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', content: ITEM_DATA['4'].content }
         ]
     }
-
 };
 
 const EVOLUTION_DATA = {
@@ -4888,6 +4890,9 @@ function getSanitizedEquipment() {
  */
 function getSanitizedInventory() {
     return gameState.player.inventory.map(item => ({
+
+        templateId: item.templateId || item.tile, 
+
         name: item.name,
         type: item.type,
         quantity: item.quantity,
@@ -6900,11 +6905,12 @@ async function wakeUpNearbyEnemies() {
             // 5. SPAWN: Found a new static enemy
             if (enemyData) {
                 // --- CRITICAL: LOCK & CLEAR IMMEDIATELY ---
-                processingSpawnTiles.add(tileId); // Lock this coordinate
-                wokenEnemyTiles.add(tileId);      // Mark as done for history
+                processingSpawnTiles.add(tileId); 
+                wokenEnemyTiles.add(tileId);      
                 
-                // Remove visual tile IMMEDIATELY from local cache. 
-                // This ensures the next frame sees dirt '.', not a goblin 'g'.
+                // Safety Timeout: Unlock if server fails to respond in 2s
+                setTimeout(() => processingSpawnTiles.delete(tileId), 2000);
+
                 chunkManager.setWorldTile(x, y, '.');
 
                 const scaledStats = getScaledEnemy(enemyData, x, y);
@@ -6912,6 +6918,9 @@ async function wakeUpNearbyEnemies() {
                 
                 // Protect against flicker (Destination lock)
                 pendingSpawns.add(enemyId);
+                
+                // --- Add to pendingSpawnData so listener keeps it alive ---
+                pendingSpawnData[enemyId] = newEnemy; 
 
                 // Optimistic Update (Show enemy immediately)
                 gameState.sharedEnemies[enemyId] = newEnemy; 
@@ -6920,16 +6929,14 @@ async function wakeUpNearbyEnemies() {
                 rtdb.ref(`worldEnemies/${enemyId}`).transaction(current => {
                     return current || newEnemy; 
                 }).then(() => {
-                    // Transaction complete
                     pendingSpawns.delete(enemyId);
-                    // REMOVED: delete pendingSpawnData[enemyId]; <--- We keep this until the listener confirms it!
+                    // Note: Listener handles pendingSpawnData cleanup
                     processingSpawnTiles.delete(tileId); 
                 }).catch(err => {
                     console.error("Spawn failed", err);
                     pendingSpawns.delete(enemyId);
-                    delete pendingSpawnData[enemyId]; // Keep this: If it failed, clear it so we can try again
+                    delete pendingSpawnData[enemyId]; 
                     processingSpawnTiles.delete(tileId); 
-                    // Optional: Restore the tile if spawn failed
                     chunkManager.setWorldTile(x, y, enemyData.tile || 'r');
                     wokenEnemyTiles.delete(tileId);
                 });
@@ -7165,6 +7172,7 @@ function generateMagicItem(tier) {
     
     // Clone the item
     let newItem = {
+        templateId: baseKey,
         name: template.name,
         type: template.type,
         quantity: 1,
@@ -7868,6 +7876,7 @@ function handleBuyItem(itemName) {
 
         player.inventory.push({
             
+            templateId: itemKey,
             name: itemTemplate.name,
             type: itemTemplate.type,
             quantity: 1,
@@ -9818,6 +9827,7 @@ function turnInQuest(questId) {
             
             if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                 gameState.player.inventory.push({
+                    templateId: rewardKey,
                     name: rewardItem.name,
                     type: rewardItem.type,
                     quantity: qty,
@@ -10256,6 +10266,7 @@ function handleCraftItem(recipeName) {
         existingStack.quantity++;
     } else {
         const newItem = {
+            templateId: outputItemKey, 
             name: craftedName,
             type: itemTemplate.type,
             quantity: 1,
@@ -11201,6 +11212,14 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             grantXp(deadEnemyInfo.xp);
             updateQuestProgress(newTile); // Uses the original tile ID
 
+            const tileId = `${newX},${-newY}`;
+            if (gameState.lootedTiles.has(tileId)) {
+                gameState.lootedTiles.delete(tileId);
+                // We don't need to save immediately here, as the playerRef update 
+                // happens at the end of the function or next move, but to be safe:
+                playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles) });
+            }
+
             const droppedLoot = generateEnemyLoot(player, enemyData);
 
             // Remove the enemy from local memory immediately so it vanishes 
@@ -11529,36 +11548,51 @@ const render = () => {
         return isWide;
     };
 
+     // --- OPTIMIZATION: Pre-map enemies for O(1) lookup ---
+    const enemyMap = {};
+    if (gameState.mapMode !== 'overworld') {
+        gameState.instancedEnemies.forEach(e => {
+            enemyMap[`${e.x},${e.y}`] = e;
+        });
+    }
+
     // --- 3. MAIN RENDER LOOP ---
     for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
             const mapY = startY + y;
             
-            const distToPlayer = Math.sqrt(Math.pow(mapX - gameState.player.x, 2) + Math.pow(mapY - gameState.player.y, 2));
+            // Calculate Distance Squared
+            const distSq = (mapX - gameState.player.x) ** 2 + (mapY - gameState.player.y) ** 2;
             
-            // Add noise to the light radius for jagged edges
+            // Add noise to radius
             let effectiveRadius = lightRadius; 
             if (typeof elevationNoise !== 'undefined') {
                  effectiveRadius += elevationNoise.noise(mapX / 5, mapY / 5) * 1.5;
             }
+            
+            // Pre-calculate radius squared for comparison
+            const effectiveRadiusSq = effectiveRadius * effectiveRadius;
 
             // Calculate Shadow Opacity
             let tileShadowOpacity = ambientLight;
             
             // Dungeon Fog Logic
             if (gameState.mapMode === 'dungeon') {
-                if (distToPlayer > effectiveRadius) {
-                    tileShadowOpacity = 1.0; // Total darkness
+                if (distSq > effectiveRadiusSq) { // Compare Squares!
+                    tileShadowOpacity = 1.0; 
                 } else {
-                    const edge = effectiveRadius - distToPlayer;
+                    // Only do the expensive Sqrt if we are actually inside the light edge (for gradient)
+                    const dist = Math.sqrt(distSq);
+                    const edge = effectiveRadius - dist;
                     if (edge < 3) tileShadowOpacity = 1.0 - (edge / 3); 
                     else tileShadowOpacity = 0.0;
                 }
             }
             // Overworld Day/Night Logic
-            else if (distToPlayer < effectiveRadius) {
-                const edge = effectiveRadius - distToPlayer;
+            else if (distSq < effectiveRadiusSq) { // Compare Squares!
+                const dist = Math.sqrt(distSq);
+                const edge = effectiveRadius - dist;
                 if (edge < 5) tileShadowOpacity = ambientLight * (1 - (edge / 5)); 
                 else tileShadowOpacity = 0; 
             }
@@ -11734,11 +11768,12 @@ const render = () => {
     } 
     // 2. Check Instanced Enemies (Dungeons/Castles)
     else {
-        const enemy = gameState.instancedEnemies.find(e => e.x === mapX && e.y === mapY);
+        const enemy = enemyMap[`${mapX},${mapY}`];
+        
         if (enemy) {
             overlayChar = enemy.tile;
             overlayColor = enemy.color || '#ef4444';
-            entityForHealthBar = enemy; // Capture for drawing
+            entityForHealthBar = enemy; 
         }
     }
 
@@ -12292,6 +12327,9 @@ function processEnemyTurns() {
                 logMessage(`The ${enemy.name} succumbs to poison!`);
                 registerKill(enemy);
                 gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+                    chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+                }
                 map[enemy.y][enemy.x] = generateEnemyLoot(player, enemy);
                 return; 
             }
@@ -12545,6 +12583,9 @@ function processEnemyTurns() {
                     if (enemy.health <= 0) {
                         registerKill(enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                        if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+                        }
                         map[enemy.y][enemy.x] = generateEnemyLoot(player, enemy);
                     }
                 }
@@ -12707,13 +12748,8 @@ function processEnemyTurns() {
 async function runSharedAiTurns() {
     const now = Date.now();
     
-    // THROTTLE: Only allow this client to attempt AI logic once every 2 seconds
-    if (now - lastAiExecution < 2000) return;
-    
-    // RANDOM BACKOFF: 
-    // Even if 2 seconds passed, only run 10% of the time. 
-    // This drastically reduces DB collisions when multiple players are online.
-    if (Math.random() > 0.10) return;
+    // THROTTLE: Run every 500ms (0.5s) for responsive chasing
+    if (now - lastAiExecution < 500) return;
 
     lastAiExecution = now;
     console.log("🤖 AI Turn Started (Throttled)..."); 
@@ -12772,7 +12808,7 @@ function handlePlayerDeath() {
     logMessage("You have perished!");
     triggerStatFlash(statDisplays.health, false);
 
-    // --- FIX START: Remove Equipment Stats ---
+    // --- Remove Equipment Stats ---
     // We must subtract the bonuses of currently equipped items before deleting them
     if (gameState.player.equipment.weapon) {
         applyStatBonuses(gameState.player.equipment.weapon, -1);
@@ -12780,40 +12816,57 @@ function handlePlayerDeath() {
     if (gameState.player.equipment.armor) {
         applyStatBonuses(gameState.player.equipment.armor, -1);
     }
-    // --- FIX END ---
     
-    // --- CORPSE SCATTER LOGIC ---
+    // --- CORPSE SCATTER LOGIC (BATCHED) ---
     const player = gameState.player;
     const deathX = player.x;
     const deathY = player.y;
     let droppedCount = 0;
 
-    // Iterate backwards to safely remove items
+    // We will buffer updates here: { "chunkID": { "localX,localY": "tileChar" } }
+    const pendingUpdates = {};
+
     for (let i = player.inventory.length - 1; i >= 0; i--) {
         const item = player.inventory[i];
         
-        // 100% chance to drop items (Hardcore style)
         let placed = false;
-        for (let r = 0; r <= 2 && !placed; r++) { // Radius 2
+        for (let r = 0; r <= 2 && !placed; r++) { 
             for (let dy = -r; dy <= r && !placed; dy++) {
                 for (let dx = -r; dx <= r && !placed; dx++) {
                     const tx = deathX + dx;
                     const ty = deathY + dy;
                     
+                    // Check tile validity
                     let tile;
                     if (gameState.mapMode === 'overworld') tile = chunkManager.getTile(tx, ty);
-                    else if (gameState.mapMode === 'dungeon') {
-                        const map = chunkManager.caveMaps[gameState.currentCaveId];
-                        tile = (map && map[ty]) ? map[ty][tx] : null;
-                    } else {
-                        const map = chunkManager.castleMaps[gameState.currentCastleId];
-                        tile = (map && map[ty]) ? map[ty][tx] : null;
-                    }
+                    else if (gameState.mapMode === 'dungeon') tile = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
+                    else tile = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
                     if (tile === '.') {
-                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(tx, ty, item.tile);
-                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = item.tile;
-                        else chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = item.tile;
+                        if (gameState.mapMode === 'overworld') {
+                            // Calculate Chunk ID for batching
+                            const cX = Math.floor(tx / chunkManager.CHUNK_SIZE);
+                            const cY = Math.floor(ty / chunkManager.CHUNK_SIZE);
+                            const cId = `${cX},${cY}`;
+                            
+                            // Calculate Local ID
+                            const lX = (tx % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
+                            const lY = (ty % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
+                            const lKey = `${lX},${lY}`;
+
+                            if (!pendingUpdates[cId]) pendingUpdates[cId] = {};
+                            pendingUpdates[cId][lKey] = item.tile;
+                            
+                            // Update local cache immediately so we don't drop two items on same spot in this loop
+                            if(!chunkManager.worldState[cId]) chunkManager.worldState[cId] = {};
+                            chunkManager.worldState[cId][lKey] = item.tile;
+                        } 
+                        else if (gameState.mapMode === 'dungeon') {
+                            chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = item.tile;
+                        } 
+                        else {
+                            chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = item.tile;
+                        }
                         
                         placed = true;
                         droppedCount++;
@@ -12823,10 +12876,31 @@ function handlePlayerDeath() {
         }
     }
 
+    // Execute Batched Writes for Overworld
+    if (gameState.mapMode === 'overworld') {
+        for (const [cId, updates] of Object.entries(pendingUpdates)) {
+            db.collection('worldState').doc(cId).set(updates, { merge: true });
+        }
+    }
+
     // 3. Clear Inventory & Stats
     player.inventory = [
         { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
     ];
+
+    player.strengthBonus = 0;
+    player.strengthBonusTurns = 0;
+    player.defenseBonus = 0;
+    player.defenseBonusTurns = 0;
+    player.witsBonus = 0;
+    player.witsBonusTurns = 0;
+    player.shieldValue = 0;
+    player.shieldTurns = 0;
+    player.thornsValue = 0;
+    player.thornsTurns = 0;
+    player.poisonTurns = 0;
+    player.frostbiteTurns = 0;
+
     player.equipment = { 
         weapon: { name: 'Fists', damage: 0 }, 
         armor: { name: 'Tattered Rags', defense: 0 } 
@@ -14072,23 +14146,44 @@ function restPlayer() {
 }
 
 async function attemptMovePlayer(newX, newY) {
-    if (newX === gameState.player.x && newY === gameState.player.y) return;
-
-    let inventoryWasUpdated = false;
-
-    // 1. Determine the destination tile FIRST
-    let newTile;
-    if (gameState.mapMode === 'dungeon') {
-        const map = chunkManager.caveMaps[gameState.currentCaveId];
-        newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
-    } else if (gameState.mapMode === 'castle') {
-        const map = chunkManager.castleMaps[gameState.currentCastleId];
-        newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
-    } else {
-        newTile = chunkManager.getTile(newX, newY);
+    // 1. Unlock input if we are just waiting (Safety fallback)
+    if (newX === gameState.player.x && newY === gameState.player.y) {
+        isProcessingMove = false;
+        return;
     }
 
-    // 2. Define tileData (Use 'let' so we can update it if needed)
+    let newTile;
+
+    // --- FIX: CHECK FOR LIVE ENEMIES FIRST (Combat Priority) ---
+    if (gameState.mapMode === 'overworld') {
+        const enemyKey = `overworld:${newX},${-newY}`;
+        const overlayEnemy = gameState.sharedEnemies[enemyKey];
+
+        if (overlayEnemy) {
+            // If there is a live enemy here, force the tile to be the enemy type so combat triggers.
+            newTile = overlayEnemy.tile;
+        } else {
+            newTile = chunkManager.getTile(newX, newY);
+        }
+    } else if (gameState.mapMode === 'dungeon') {
+        const map = chunkManager.caveMaps[gameState.currentCaveId];
+        newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
+    } else {
+        const map = chunkManager.castleMaps[gameState.currentCastleId];
+        newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
+    }
+
+    // --- SPAWN LOCK CHECK ---
+    const tileId = `${newX},${newY}`;
+    const enemyKey = `overworld:${newX},${-newY}`;
+
+    if (processingSpawnTiles.has(tileId) && !gameState.sharedEnemies[enemyKey]) {
+        console.log("Blocked move: Enemy spawning...");
+        isProcessingMove = false; 
+        return;
+    }
+
+    let inventoryWasUpdated = false;
     let tileData = TILE_DATA[newTile];
 
     // 3. Obstacle Check (The Fix)
@@ -14122,6 +14217,211 @@ async function attemptMovePlayer(newX, newY) {
                 rtdb.ref(`worldEnemies/${enemyKey}`).remove();
                 delete gameState.sharedEnemies[enemyKey];
             }
+        }
+    }
+
+
+    // --- COMBAT CHECK ---
+    const enemyData = ENEMY_DATA[newTile];
+    if (enemyData) {
+        
+        // handleInput already updated the timer!
+
+        const hitChance = calculateHitChance(gameState.player, enemyData);
+        
+        if (Math.random() > hitChance) {
+            logMessage(`You swing at the ${enemyData.name} but miss!`);
+            // We still end the turn so the enemy can move/attack
+            endPlayerTurn(); 
+            return; 
+        }
+        
+        // 1. Calculate Player's Raw Attack Power
+        const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
+        const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
+        
+        let rawDamage = playerStrength + weaponDamage;
+
+        // --- APPLY TALENT MODIFIERS ---
+        rawDamage = getPlayerDamageModifier(rawDamage); 
+        
+        // --- BREAK STEALTH ---
+        if (gameState.player.stealthTurns > 0) {
+            gameState.player.stealthTurns = 0;
+            logMessage("You emerge from the shadows.");
+            playerRef.update({ stealthTurns: 0 }); 
+        }
+
+        // 2. Critical Hit Check
+        const critChance = 0.05 + (gameState.player.luck * 0.005);
+        let isCrit = false;
+        
+        if (Math.random() < critChance) {
+            const mult = (gameState.player.talents && gameState.player.talents.includes('backstab')) ? 3.0 : 1.5;
+            rawDamage = Math.floor(rawDamage * mult); 
+            isCrit = true;
+        }
+
+        if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
+            // --- INSTANCED COMBAT ---
+            let enemy = gameState.instancedEnemies.find(e => e.x === newX && e.y === newY);
+            let enemyId = enemy ? enemy.id : null;
+
+            if (enemy) {
+                const boostedDamage = getPlayerDamageModifier(rawDamage);
+                let playerDamage = Math.max(1, boostedDamage - (enemy.defense || 0));
+
+                if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
+                    const graceFloor = Math.ceil(gameState.player.strength / 2); 
+                    playerDamage = Math.max(playerDamage, graceFloor);
+                }
+
+                enemy.health -= playerDamage;
+
+                // --- WEAPON PROC SYSTEM ---
+                const equippedWeapon = gameState.player.equipment.weapon;
+                if (equippedWeapon && equippedWeapon.onHit && Math.random() < equippedWeapon.procChance) {
+                    logMessage(`Your ${equippedWeapon.name} surges with power!`);
+                    // Cast the spell for free (0 cost)
+                    // We use applySpellDamage directly to bypass mana checks
+                    const spellId = equippedWeapon.onHit;
+                    const spellData = SPELL_DATA[spellId];
+                    const procDmg = spellData.baseDamage + (gameState.player.wits * 0.5); // Scale slightly with Wits
+                    
+                    // Apply spell effect
+                    applySpellDamage(newX, newY, procDmg, spellId);
+                    
+                    // Visuals
+                    if (spellId === 'chainLightning') ParticleSystem.createExplosion(newX, newY, '#facc15');
+                    if (spellId === 'siphonLife') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "♥", "#ef4444");
+                }
+
+                AudioSystem.playAttack();
+                
+                // Log & Effects
+                if (isCrit) {
+                    logMessage(`CRITICAL HIT! You strike the ${enemy.name} for ${playerDamage} damage!`);
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(newX, newY, '#facc15'); 
+                        ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
+                    }
+                } else {
+                    logMessage(`You attack the ${enemy.name} for {red:${playerDamage}} damage!`);
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(newX, newY, '#ef4444'); 
+                        ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
+                    }
+                }
+
+                // Weapon Poison Effect
+                const weapon = gameState.player.equipment.weapon;
+                if (weapon && weapon.inflicts === 'poison' && enemy.poisonTurns <= 0 && Math.random() < (weapon.inflictChance || 0.25)) {
+                    logMessage(`Your weapon poisons the ${enemy.name}!`);
+                    enemy.poisonTurns = 3;
+                }
+
+                // Enemy Death Logic
+                if (enemy.health <= 0) {
+                    logMessage(`You defeated the ${enemy.name}!`);
+                    registerKill(enemy);
+
+                    const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
+                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
+
+                    if (gameState.mapMode === 'dungeon') {
+                        if (chunkManager.caveEnemies[gameState.currentCaveId]) {
+                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
+                        }
+                        chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
+                    }
+                } else {
+                    // ENEMY ATTACKS BACK
+                    const armorDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
+                    const baseDefense = Math.floor(gameState.player.dexterity / 3);
+                    const buffDefense = gameState.player.defenseBonus || 0;
+                    const playerDefense = baseDefense + armorDefense + buffDefense;
+                    
+                    const enemyDamage = Math.max(1, enemy.attack - playerDefense);
+                    const luckDodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
+                    
+                    if (Math.random() < luckDodgeChance) {
+                        logMessage(`The ${enemy.name} attacks, but you luckily dodge!`);
+                    } else {
+                        let damageToApply = enemyDamage;
+                        
+                        // Shield Absorb
+                        if (gameState.player.shieldValue > 0) {
+                            const damageAbsorbed = Math.min(gameState.player.shieldValue, damageToApply);
+                            gameState.player.shieldValue -= damageAbsorbed;
+                            damageToApply -= damageAbsorbed;
+                            logMessage(`Your shield absorbs ${damageAbsorbed} damage!`);
+                            if (gameState.player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
+                        }
+
+                        if (damageToApply > 0) {
+                            gameState.player.health -= damageToApply;
+                            AudioSystem.playHit();
+
+                            if (typeof ParticleSystem !== 'undefined') {
+                                ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444'); 
+                                ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, `-${damageToApply}`, '#ef4444');
+                            }
+                            triggerStatFlash(statDisplays.health, false);
+                            logMessage(`The ${enemy.name} hits you for {red:${damageToApply}} damage!`);
+                        }
+
+                        // Thorns Damage
+                        if (gameState.player.thornsValue > 0) {
+                            enemy.health -= gameState.player.thornsValue;
+                            logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} damage from your thorns!`);
+                            if (enemy.health <= 0) {
+                                logMessage(`The ${enemy.name} is killed by your thorns!`);
+                                registerKill(enemy);
+                                const droppedLoot = generateEnemyLoot(gameState.player, enemy);
+                                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
+                                if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
+                            }
+                        }
+                    }
+
+                    if (gameState.player.health <= 0) {
+                        gameState.player.health = 0;
+                        logMessage("You have perished!");
+                        syncPlayerState();
+                        document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
+                        document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
+                        gameOverModal.classList.remove('hidden');
+                    }
+                }
+                endPlayerTurn();
+                render();
+                return;
+            } else {
+                logMessage(`You see the corpse of a ${enemyData.name}.`);
+            }
+
+        } else if (gameState.mapMode === 'overworld') {
+            // --- SHARED COMBAT ---
+            let playerDamage = Math.max(1, rawDamage - (enemyData.defense || 0));
+
+            if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
+                const graceFloor = Math.ceil(gameState.player.strength / 2); 
+                playerDamage = Math.max(playerDamage, graceFloor);
+            }
+
+            AudioSystem.playAttack();
+
+            if (isCrit) {
+                logMessage(`CRITICAL HIT! You strike the ${enemyData.name} for ${playerDamage} damage!`);
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
+                }
+            } else {
+                logMessage(`You attack the ${enemyData.name} for ${playerDamage} damage!`);
+            }
+
+            await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
+            return;
         }
     }
 
@@ -14283,7 +14583,7 @@ async function attemptMovePlayer(newX, newY) {
         }
     }
 
-    if (newTile === 'R') {
+    if (newTile === '🎓') { 
         const player = gameState.player;
         const inv = player.inventory;
 
@@ -14546,214 +14846,13 @@ async function attemptMovePlayer(newX, newY) {
         return;
     }
 
-    // --- COMBAT CHECK ---
-    const enemyData = ENEMY_DATA[newTile];
-    if (enemyData) {
 
-        const now = Date.now();
-        // 250ms cooldown on attacks (4 attacks per second max)
-        if (now - lastActionTime < 250) { 
-            return; 
-        }
-        lastActionTime = now;
 
-        const hitChance = calculateHitChance(gameState.player, enemyData);
-        
-        if (Math.random() > hitChance) {
-            logMessage(`You swing at the ${enemyData.name} but miss!`);
-            // We still end the turn so the enemy can move/attack
-            endPlayerTurn(); 
-            return; 
-        }
-        
-        // 1. Calculate Player's Raw Attack Power
-        const weaponDamage = gameState.player.equipment.weapon ? gameState.player.equipment.weapon.damage : 0;
-        const playerStrength = gameState.player.strength + (gameState.player.strengthBonus || 0);
-        
-        let rawDamage = playerStrength + weaponDamage;
+    
 
-        // --- APPLY TALENT MODIFIERS ---
-        rawDamage = getPlayerDamageModifier(rawDamage); 
-        
-        // --- BREAK STEALTH ---
-        if (gameState.player.stealthTurns > 0) {
-            gameState.player.stealthTurns = 0;
-            logMessage("You emerge from the shadows.");
-            playerRef.update({ stealthTurns: 0 }); 
-        }
 
-        // 2. Critical Hit Check
-        const critChance = 0.05 + (gameState.player.luck * 0.005);
-        let isCrit = false;
-        
-        if (Math.random() < critChance) {
-            const mult = (gameState.player.talents && gameState.player.talents.includes('backstab')) ? 3.0 : 1.5;
-            rawDamage = Math.floor(rawDamage * mult); 
-            isCrit = true;
-        }
 
-        if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-            // --- INSTANCED COMBAT ---
-            let enemy = gameState.instancedEnemies.find(e => e.x === newX && e.y === newY);
-            let enemyId = enemy ? enemy.id : null;
 
-            if (enemy) {
-                const boostedDamage = getPlayerDamageModifier(rawDamage);
-                let playerDamage = Math.max(1, boostedDamage - (enemy.defense || 0));
-
-                if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
-                    const graceFloor = Math.ceil(gameState.player.strength / 2); 
-                    playerDamage = Math.max(playerDamage, graceFloor);
-                }
-
-                enemy.health -= playerDamage;
-
-                // --- WEAPON PROC SYSTEM ---
-                const equippedWeapon = gameState.player.equipment.weapon;
-                if (equippedWeapon && equippedWeapon.onHit && Math.random() < equippedWeapon.procChance) {
-                    logMessage(`Your ${equippedWeapon.name} surges with power!`);
-                    // Cast the spell for free (0 cost)
-                    // We use applySpellDamage directly to bypass mana checks
-                    const spellId = equippedWeapon.onHit;
-                    const spellData = SPELL_DATA[spellId];
-                    const procDmg = spellData.baseDamage + (gameState.player.wits * 0.5); // Scale slightly with Wits
-                    
-                    // Apply spell effect
-                    applySpellDamage(newX, newY, procDmg, spellId);
-                    
-                    // Visuals
-                    if (spellId === 'chainLightning') ParticleSystem.createExplosion(newX, newY, '#facc15');
-                    if (spellId === 'siphonLife') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "♥", "#ef4444");
-                }
-
-                AudioSystem.playAttack();
-                
-                // Log & Effects
-                if (isCrit) {
-                    logMessage(`CRITICAL HIT! You strike the ${enemy.name} for ${playerDamage} damage!`);
-                    if (typeof ParticleSystem !== 'undefined') {
-                        ParticleSystem.createExplosion(newX, newY, '#facc15'); 
-                        ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
-                    }
-                } else {
-                    logMessage(`You attack the ${enemy.name} for {red:${playerDamage}} damage!`);
-                    if (typeof ParticleSystem !== 'undefined') {
-                        ParticleSystem.createExplosion(newX, newY, '#ef4444'); 
-                        ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
-                    }
-                }
-
-                // Weapon Poison Effect
-                const weapon = gameState.player.equipment.weapon;
-                if (weapon && weapon.inflicts === 'poison' && enemy.poisonTurns <= 0 && Math.random() < (weapon.inflictChance || 0.25)) {
-                    logMessage(`Your weapon poisons the ${enemy.name}!`);
-                    enemy.poisonTurns = 3;
-                }
-
-                // Enemy Death Logic
-                if (enemy.health <= 0) {
-                    logMessage(`You defeated the ${enemy.name}!`);
-                    registerKill(enemy);
-
-                    const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
-                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
-
-                    if (gameState.mapMode === 'dungeon') {
-                        if (chunkManager.caveEnemies[gameState.currentCaveId]) {
-                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
-                        }
-                        chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
-                    }
-                } else {
-                    // ENEMY ATTACKS BACK
-                    const armorDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
-                    const baseDefense = Math.floor(gameState.player.dexterity / 3);
-                    const buffDefense = gameState.player.defenseBonus || 0;
-                    const playerDefense = baseDefense + armorDefense + buffDefense;
-                    
-                    const enemyDamage = Math.max(1, enemy.attack - playerDefense);
-                    const luckDodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
-                    
-                    if (Math.random() < luckDodgeChance) {
-                        logMessage(`The ${enemy.name} attacks, but you luckily dodge!`);
-                    } else {
-                        let damageToApply = enemyDamage;
-                        
-                        // Shield Absorb
-                        if (gameState.player.shieldValue > 0) {
-                            const damageAbsorbed = Math.min(gameState.player.shieldValue, damageToApply);
-                            gameState.player.shieldValue -= damageAbsorbed;
-                            damageToApply -= damageAbsorbed;
-                            logMessage(`Your shield absorbs ${damageAbsorbed} damage!`);
-                            if (gameState.player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
-                        }
-
-                        if (damageToApply > 0) {
-                            gameState.player.health -= damageToApply;
-                            AudioSystem.playHit();
-
-                            if (typeof ParticleSystem !== 'undefined') {
-                                ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444'); 
-                                ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, `-${damageToApply}`, '#ef4444');
-                            }
-                            triggerStatFlash(statDisplays.health, false);
-                            logMessage(`The ${enemy.name} hits you for {red:${damageToApply}} damage!`);
-                        }
-
-                        // Thorns Damage
-                        if (gameState.player.thornsValue > 0) {
-                            enemy.health -= gameState.player.thornsValue;
-                            logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} damage from your thorns!`);
-                            if (enemy.health <= 0) {
-                                logMessage(`The ${enemy.name} is killed by your thorns!`);
-                                registerKill(enemy);
-                                const droppedLoot = generateEnemyLoot(gameState.player, enemy);
-                                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
-                                if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
-                            }
-                        }
-                    }
-
-                    if (gameState.player.health <= 0) {
-                        gameState.player.health = 0;
-                        logMessage("You have perished!");
-                        syncPlayerState();
-                        document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
-                        document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
-                        gameOverModal.classList.remove('hidden');
-                    }
-                }
-                endPlayerTurn();
-                render();
-                return;
-            } else {
-                logMessage(`You see the corpse of a ${enemyData.name}.`);
-            }
-
-        } else if (gameState.mapMode === 'overworld') {
-            // --- SHARED COMBAT ---
-            let playerDamage = Math.max(1, rawDamage - (enemyData.defense || 0));
-
-            if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
-                const graceFloor = Math.ceil(gameState.player.strength / 2); 
-                playerDamage = Math.max(playerDamage, graceFloor);
-            }
-
-            AudioSystem.playAttack();
-
-            if (isCrit) {
-                logMessage(`CRITICAL HIT! You strike the ${enemyData.name} for ${playerDamage} damage!`);
-                if (typeof ParticleSystem !== 'undefined') {
-                    ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
-                }
-            } else {
-                logMessage(`You attack the ${enemyData.name} for ${playerDamage} damage!`);
-            }
-
-            await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
-            return;
-        }
-    }
 
     if (tileData && tileData.type === 'shrine') {
         const tileId = `${newX},${-newY}`;
@@ -16398,35 +16497,56 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
             // --- Update Inventory ---
             if (data.inventory) {
                 data.inventory.forEach(item => {
-                    // 1. Try exact name match
-                    let templateItem = Object.values(ITEM_DATA).find(d => d.name === item.name);
-                    
-                    // 2. If not found, check if it's a Masterwork and strip the prefix
-                    if (!templateItem && item.name.startsWith("Masterwork ")) {
-                        const baseName = item.name.replace("Masterwork ", "");
-                        templateItem = Object.values(ITEM_DATA).find(d => d.name === baseName);
+                    let templateItem = null;
+
+                    // 1. NEW: Try lookup by ID first (The Robust Way)
+                    if (item.templateId && ITEM_DATA[item.templateId]) {
+                        templateItem = ITEM_DATA[item.templateId];
+                    }
+
+                    // 2. Fallback: Try exact name match (Legacy Way)
+                    if (!templateItem) {
+                        templateItem = Object.values(ITEM_DATA).find(d => d.name === item.name);
+                    }
+
+                    // 3. Fallback: Try stripping prefixes (The "Masterwork" Fix)
+                    // This handles cases where the name changed but we don't have an ID yet
+                    if (!templateItem && item.name.includes(" ")) {
+                        // Try to find a template name that appears at the END of the item name
+                        // e.g. "Masterwork Rusty Sword" ends with "Rusty Sword"
+                        templateItem = Object.values(ITEM_DATA).find(d => item.name.endsWith(d.name));
                     }
 
                     if (templateItem) {
-                        item.effect = templateItem.effect; // Re-bind function
+                        // SELF-HEAL: Ensure the item has the ID for next save if it was missing
+                        if (!item.templateId) {
+                            // Find the key in ITEM_DATA that matches this template
+                            const key = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k] === templateItem);
+                            if (key) item.templateId = key;
+                        }
 
-                        // These properties are static in ITEM_DATA but lost on save
+                        // Re-bind functions that don't survive JSON serialization
+                        item.effect = templateItem.effect;
+
+                        // Re-bind static properties that might be needed for logic
                         item.onHit = templateItem.onHit;
                         item.procChance = templateItem.procChance;
                         item.inflicts = templateItem.inflicts;
                         item.inflictChance = templateItem.inflictChance;
-                        
+
                         // Only reset stats if they are missing (preserve crafted stats!)
+                        // But ensure the slot is correct based on the template
                         if (templateItem.type === 'weapon') {
-                            if (!item.damage) item.damage = templateItem.damage;
+                            if (item.damage === undefined || item.damage === null) item.damage = templateItem.damage;
                             item.slot = templateItem.slot;
                         } else if (templateItem.type === 'armor') {
-                            if (!item.defense) item.defense = templateItem.defense;
+                            if (item.defense === undefined || item.defense === null) item.defense = templateItem.defense;
                             item.slot = templateItem.slot;
                         }
                     }
                 });
 
+                // Sync Equipment based on the 'isEquipped' flag in the inventory list
                 const equippedWeapon = data.inventory.find(i => i.type === 'weapon' && i.isEquipped);
                 const equippedArmor = data.inventory.find(i => i.type === 'armor' && i.isEquipped);
 
@@ -16439,69 +16559,21 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
 
             // --- Update Equipment Stats ---
             if (data.equipment) {
+                // Merge DB equipment data with our calculated state
                 gameState.player.equipment = {
-                    ...{
-                        weapon: { name: 'Fists', damage: 0 },
-                        armor: { name: 'Simple Tunic', defense: 0 }
-                    },
+                    ...gameState.player.equipment,
                     ...data.equipment
                 };
                 renderEquipment();
             }
-        }
-    });
-
-    const timeRef = db.collection("world").doc("time");
-    timeRef.onSnapshot((doc) => {
-        if (doc.exists) {
-            const newTime = doc.data();
-            const oldTotalMinutes = (gameState.time.day * 1440) + (gameState.time.hour * 60) + gameState.time.minute;
-            const newTotalMinutes = (newTime.day * 1440) + (newTime.hour * 60) + newTime.minute;
-            const elapsedMinutes = newTotalMinutes - oldTotalMinutes;
-
-            if (elapsedMinutes > 0) {
-                const REGEN_PER_MINUTE = 0.1;
-                const regenAmount = elapsedMinutes * REGEN_PER_MINUTE;
-                const player = gameState.player;
-                let statsUpdated = false;
-
-                const applyRegen = (stat, maxStat, progressStat) => {
-                    // --- LIGHT SURVIVAL: PENALTY CHECK ---
-                    // If Hunger is 0, Health won't regen passively
-                    if (stat === 'health' && gameState.player.hunger <= 0) return;
-                    
-                    // If Thirst is 0, Stamina won't regen passively
-                    if (stat === 'stamina' && gameState.player.thirst <= 0) return;
-
-                    if (player[stat] < player[maxStat]) {
-                        player[progressStat] += regenAmount;
-                        if (player[progressStat] >= 1) {
-                            const pointsToAdd = Math.floor(player[progressStat]);
-                            player[stat] = Math.min(player[maxStat], player[stat] + pointsToAdd);
-                            player[progressStat] -= pointsToAdd;
-                            statsUpdated = true;
-                        }
-                    }
-                };
-
-                if (player.health > 0) applyRegen('health', 'maxHealth', 'healthRegenProgress');
-                applyRegen('stamina', 'maxStamina', 'staminaRegenProgress');
-                applyRegen('mana', 'maxMana', 'manaRegenProgress');
-                applyRegen('psyche', 'maxPsyche', 'psycheRegenProgress');
-
-                if (statsUpdated) {
-                    playerRef.update({
-                        health: player.health,
-                        stamina: player.stamina,
-                        mana: player.mana,
-                        psyche: player.psyche
-                    });
-                    renderStats();
-                }
-            }
-
-            Object.assign(gameState.time, newTime);
-            renderTime();
+            
+            // --- Sync Core Stats if changed externally ---
+            // This ensures if you buy something or heal, the UI updates
+            const statsToSync = ['coins', 'xp', 'level', 'statPoints', 'talentPoints', 'health', 'mana', 'stamina', 'psyche'];
+            statsToSync.forEach(stat => {
+                if (data[stat] !== undefined) gameState.player[stat] = data[stat];
+            });
+            renderStats();
         }
     });
 
@@ -16514,11 +16586,20 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
             hour: 'numeric',
             minute: '2-digit'
         });
-        if (message.senderId === player_id) {
-            messageDiv.innerHTML = `<span class="muted-text text-xs">[${timeString}]</span> <strong class="highlight-text">${message.email}:</strong> ${message.message}`;
-        } else {
-            messageDiv.innerHTML = `<span class="muted-text text-xs">[${timeString}]</span> <strong>${message.email}:</strong> ${message.message}`;
-        }
+        // Create elements safely
+        const timeSpan = document.createElement('span');
+        timeSpan.className = "muted-text text-xs";
+        timeSpan.textContent = `[${timeString}] `;
+
+        const nameStrong = document.createElement('strong');
+        if (message.senderId === player_id) nameStrong.className = "highlight-text";
+        nameStrong.textContent = `${message.email}: `;
+
+        const msgText = document.createTextNode(message.message); // <--- Safe text node
+
+        messageDiv.appendChild(timeSpan);
+        messageDiv.appendChild(nameStrong);
+        messageDiv.appendChild(msgText);
         chatMessages.prepend(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
