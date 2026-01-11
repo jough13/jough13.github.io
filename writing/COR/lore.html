@@ -27,7 +27,6 @@
             to { background-position: -10000px 5000px; }
         }
 
-        /* FIX 1: Smooth scrolling makes the jump visible */
         html {
             scroll-behavior: smooth;
         }
@@ -40,8 +39,7 @@
             font-size: 18px;
             line-height: 1.7;
             margin: 0;
-            /* FIX 2: Extra padding at the bottom allows the last section to scroll to the top */
-            padding: 2rem 1rem 30vh 1rem; 
+            padding: 2rem 1rem 10vh 1rem; 
         }
 
         .container {
@@ -195,6 +193,38 @@
             border-top: 1px solid rgba(0,0,0,0.1);
             margin: 3rem 0;
         }
+        
+        /* New Style for Bottom Nav Button */
+        .nav-chapter-container {
+            margin-top: 4rem; 
+            padding-top: 2rem; 
+            border-top: 1px solid rgba(0,0,0,0.1); 
+            display: flex; 
+            justify-content: center;
+        }
+        
+        .nav-btn {
+            font-family: var(--font-heading);
+            background-color: var(--color-accent-hud);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background-color 0.3s, transform 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .nav-btn:hover {
+            background-color: var(--color-accent-amber);
+            transform: translateY(-3px);
+            color: white;
+            text-decoration: none;
+        }
 
     </style>
 </head>
@@ -211,8 +241,8 @@
             <a href="index.html">Foreword</a>
             <a href="lore.html" class="active">Lore</a>
             <a href="starmap.html">Starmap</a>
-            <a href="#gallery">Gallery</a>
-            <a href="#chapters">Chapters</a>
+            <a href="index.html#gallery">Gallery</a>
+            <a href="index.html#chapters">Chapters</a>
         </nav>
 
         <main>
@@ -724,29 +754,12 @@
                     <strong>Example:</strong> The CEO Alistair Caine's personal vessel, The Apex.<br>
                     <strong>Description:</strong> The ultimate expression of corporate power and luxury. An Executive Yacht is a masterpiece of technology and art. Its hull is a shimmering, seamless, silver material capable of active holographic camouflage, allowing it to perfectly mimic the starfield around it for ultimate stealth. It is equipped with the most advanced, experimental Takahashi Drive in existence, making it faster than any military vessel. Its interior is a monument to wealth, with zero-gravity gardens, personalized art collections, and AI servants. It is a flying palace for the true rulers of the corporate state, capable of crossing the human sphere in a matter of subjective years, further cementing the "time ghost" status of its elite passengers.</p>
                 </section>
-
-                <hr>
-
-                <article id="chapters">
-                    <h2>The Archives: Declassified Narratives</h2>
-                    <p>The following records have been recovered and processed by the Tharsis Institute for public review.</p>
-                    
-                    <div class="info-box">
-                        <h3>Book I: The Echoes of Sol</h3>
-                        <ul class="faction-list">
-                            <li>
-                                <a href="chapter1.html"><strong>Chapter One: Listeners of the Far Dark</strong></a><br>
-                                <span class="archive-data">GSY 2850.5</span> // Station 734, Sol Oort Cloud<br>
-                                <em>Custodian Elizabeth Shaw detects an anomaly in the deep dark.</em>
-                            </li>
-                            <li>
-                                <a href="chapter2.html"><strong>Chapter Two: Port Nowhere</strong></a><br>
-                                <span class="archive-data">~GSY 2851</span> // Port Nowhere, Outer Orion Sector<br>
-                                <em>Jax gambles his last credits on a ghost signal from the Graveyard.</em>
-                            </li>
-                        </ul>
-                    </div>
-                </article>
+                
+                <div class="nav-chapter-container">
+                    <a href="index.html" class="nav-btn">
+                        <span style="font-size: 1.2em;">&uarr;</span> Return to Main Archive
+                    </a>
+                </div>
 
             </article>
         </main>
