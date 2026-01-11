@@ -12748,11 +12748,6 @@ async function runSharedAiTurns() {
     
     // THROTTLE: Only allow this client to attempt AI logic once every 2 seconds
     if (now - lastAiExecution < 2000) return;
-    
-    // RANDOM BACKOFF: 
-    // Even if 2 seconds passed, only run 10% of the time. 
-    // This drastically reduces DB collisions when multiple players are online.
-    if (Math.random() > 0.10) return;
 
     lastAiExecution = now;
     console.log("🤖 AI Turn Started (Throttled)..."); 
@@ -14634,13 +14629,8 @@ async function attemptMovePlayer(newX, newY) {
     // --- COMBAT CHECK ---
     const enemyData = ENEMY_DATA[newTile];
     if (enemyData) {
-
-        const now = Date.now();
-        // 250ms cooldown on attacks (4 attacks per second max)
-        if (now - lastActionTime < 250) { 
-            return; 
-        }
-        lastActionTime = now;
+        
+        // handleInput already updated the timer!
 
         const hitChance = calculateHitChance(gameState.player, enemyData);
         
