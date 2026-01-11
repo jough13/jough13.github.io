@@ -14174,10 +14174,10 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     // --- SPAWN LOCK CHECK ---
-    const tileId = `${newX},${newY}`;
+    const spawnLockId = `${newX},${newY}`; 
     const enemyKey = `overworld:${newX},${-newY}`;
 
-    if (processingSpawnTiles.has(tileId) && !gameState.sharedEnemies[enemyKey]) {
+    if (processingSpawnTiles.has(spawnLockId) && !gameState.sharedEnemies[enemyKey]) {
         console.log("Blocked move: Enemy spawning...");
         isProcessingMove = false; 
         return;
