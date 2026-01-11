@@ -9752,7 +9752,6 @@ function acceptQuest(questId) {
         kills: 0
     };
     
-    playerRef.update({ quests: gameState.player.quests });
     renderBountyBoard(); // Re-render the modal
 }
 
