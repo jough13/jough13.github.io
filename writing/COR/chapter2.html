@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chapter 2: Port Nowhere | The Great Silence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-deep-space: #0a0f18;
+            --color-content-bg: #ffffff;
+            --color-text-main: #212529;
+            --color-text-headings: #000000;
+            --color-accent-hud: #0056b3;
+            --color-accent-amber: #c75c00;
+            --color-archive-glitch: #0a663e;
+            --font-heading: 'Exo 2', sans-serif;
+            --font-body: 'Lora', serif;
+            --font-mono: 'Source-Code-Pro', monospace;
+        }
+
+        @keyframes stars-drift {
+            from { background-position: 0 0; }
+            to { background-position: -10000px 5000px; }
+        }
+
+        body {
+            background-color: var(--color-deep-space);
+            background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
+            animation: stars-drift 1200s linear infinite;
+            font-family: var(--font-body);
+            font-size: 18px;
+            line-height: 1.7;
+            margin: 0;
+            padding: 2rem 1rem; 
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: var(--color-content-bg);
+            color: var(--color-text-main);
+            padding: 2rem 3rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        nav {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 1rem 0;
+            margin-bottom: 3rem;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            font-family: var(--font-heading);
+            color: var(--color-accent-hud);
+            text-decoration: none;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.9em;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: color 0.3s, background-color 0.3s;
+        }
+
+        nav a:hover, nav a.active {
+            color: var(--color-content-bg);
+            background-color: var(--color-accent-hud);
+        }
+        
+        h1, h2, h3, h4 {
+            font-family: var(--font-heading);
+            color: var(--color-text-headings);
+            font-weight: 400;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding-bottom: 10px;
+        }
+
+        h1 { font-size: 2.5rem; letter-spacing: 2px; text-transform: uppercase; text-align: center; }
+        h2 { font-size: 2rem; color: var(--color-accent-amber); text-align: center; margin-bottom: 2rem; }
+        h3 { font-size: 1.5rem; border-bottom: none; }
+        h4 { font-size: 1.2rem; color: var(--color-text-main); border-bottom: none; font-weight: 700;}
+
+        p { margin-bottom: 1.5rem; }
+
+        .document-header {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 1rem;
+            margin: 1rem 0 2rem 0;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+
+        .archive-data {
+            font-family: var(--font-mono);
+            color: var(--color-archive-glitch);
+            font-style: italic;
+            background-color: rgba(10, 102, 62, 0.1);
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .info-box {
+            background-color: rgba(0, 86, 179, 0.05);
+            border-left: 3px solid var(--color-accent-hud);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 4px;
+        }
+
+        .info-box h3 {
+             margin-top: 0;
+             color: var(--color-accent-hud);
+             font-size: 1.1rem;
+             text-transform: uppercase;
+             letter-spacing: 1px;
+        }
+
+        /* Drop cap for the first letter of the chapter */
+        .drop-cap::first-letter {
+            font-family: var(--font-heading);
+            font-size: 3.5rem;
+            color: var(--color-accent-amber);
+            float: left;
+            line-height: 0.8;
+            margin-right: 0.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>The Great Silence</h1>
+            <p style="font-family: var(--font-heading); text-align: center; color: var(--color-accent-amber); margin-top: -1rem; font-size: 1rem; letter-spacing: 1px;">
+                An Archive of Humanity's Diaspora
+            </p>
+        </header>
+
+        <nav>
+            <a href="index.html">Foreword</a>
+            <a href="lore.html">Lore</a>
+            <a href="#starmap">Starmap</a>
+            <a href="#gallery">Gallery</a>
+            <a href="#chapters" class="active">Chapters</a>
+        </nav>
+
+        <main>
+            <article>
+                <h2>Chapter Two: Port Nowhere</h2>
+                
+                <div class="document-header">
+                    LOCATION: Port Nowhere, Outer Orion Sector<br>
+                    DATE: <span class="archive-data">~GSY 2851</span> (Local Subjective Time)
+                </div>
+
+                <div class="info-box">
+                    <h3>Archivist's Note</h3>
+                    <p style="font-size: 0.9em; margin-bottom: 0;">
+                        Due to this location's distance of approximately <span class="archive-data">1,300 light-years</span> from Sol, objective data regarding these events will not be available in the Core Systems until <span class="archive-data">GSY ~4151</span>. The "now" of this chapter is contemporary only to the protagonist's personal experience.
+                    </p>
+                </div>
+
+                <p class="drop-cap">The air in the Stygian Bar and Lounge tasted like regret mixed with peanuts. It was a thick, soupy mixture of stale synthetic ale, oily spices frying in a nearby food stall, and the ever-present high pitched hum of an overworked atmospheric recycler that could almost, but not quite scrub the scent of a million desperate bodies from the air.</p>
+                
+                <p>Jax nursed a glass of the cheapest, strongest liquor they served. The dozen or so fluid ounces of the amber liquid were the only thing of value he had left in the universe. On the flickering surface of the cantina table, a single, damning number glowed from his data-slate: <span class="archive-data">217 Credits</span>.</p>
+                
+                <p>He tapped the screen. The damning "<span class="archive-data">217 Credits</span>" vanished, replaced by a flickering, corrupted image. A woman's face, smiling, her eyes full of a light he hadn't seen in years. Ria. He remembered her laughing in the cockpit of the <em>Void Mite</em> when it was still theirs, not just his, and sighed. 'This is it, Jax,' she'd said, 'our clean slate.' He closed the image, the ache in his chest tightening. The Hesperia venture. What a horrible, horrible idea. It had cost him everything. More than everything.</p>
+
+                <p>Jax was now well beyond broke. He had enough for another two drinks. Maybe one of those worse-than-flavorless nutrient bars. Not enough to refuel the <em>Void Mite</em> with any more than a drop of fuel. Nowhere close to enough to repair the failing capacitors in the life support system. And absolutely not enough to make even the first of many interest payments due to Dimitri. Jax sighed again and took another swig.</p>
+
+                <p>“Your bio-signs indicate elevated cortisol levels and a dangerously high heart rate, Captain,” a calm, synthesized voice said from a small comm unit on his wrist. “Statistically, you are either about to have a cardiac event or make a poor decision.”</p>
+
+                <p>“Stow it, Mite, you know both are equally likely,” Jax growled, taking his next to last swig of liquor. The burn was welcome. Always good to feel. “Run the numbers again.”</p>
+
+                <p>“I have run the numbers 3,722 times in the last cycle, Captain. The conclusion is unchanged. Our current fuel reserves are sufficient for approximately <span class="archive-data">four hours</span> of sub-light maneuvering. Our remaining life support will last for <span class="archive-data">sixty-seven hours</span>. Our credit balance is <span class="archive-data">217</span>. The interest on Mr. Volkov’s loan, which compounds hourly, just exceeded the value of our total assets, which consist almost entirely of the <em>Void Mite</em>. The probability of us leaving Port Nowhere under our own power without a significant, immediate influx of capital is <span class="archive-data">0.003%</span>.”</p>
+
+                <p>Jax drained his glass. <span class="archive-data">0.003%</span>. The odds had never been lower. The Hesperia Minerals venture, the failed asteroid mine that had cost him everything—his ship's registration, his partner Ria's life, his future—had been Volkov's debt trap all along, a financial cage Jax had been trying to escape ever since. Now, the walls were closing in.</p>
+
+                <p>As if on cue, two of Volkov’s Auditors swept into the room. Contrary to the cliche, they weren't big or clumsy. They were quiet, dressed in corporate-style suits, each with a singular cybernetic eye glowing a dull, analytic red. They scanned the crowd, their faces both polite and dead. Jax sank lower in his booth, pulling the shadow of his collar over his face. Had they seen him? They didn't see him. Or, maybe they did, and were just letting him stew. They passed his booth without a glance and disappeared into a private room in the back. Jax let out a breath he didn't know he was holding. His time was up. He had to get off this station. Tonight.</p>
+
+                <p>But he couldn’t. He was still waiting on that ghost, a data-runner who went by the name of Glitch. Glitch was a notorious information broker, a whisper on the fringe who dealt in secrets and rumors, his face and species a matter of wild, drunken speculation. He was also, Jax knew, exorbitantly expensive and utterly untrustworthy. But he worked on credit. He was a last resort. Jax was down to his last resort.</p>
+
+                <p>The cantina was lively with patrons and getting livelier. At a nearby table, a four-armed Xylossian was silently negotiating with a pair of nervous human traders, its five compound eyes missing nothing, its hands a blur on the data-slate. Across the room, a tall, slender Kiri artisan, his skin pulsing with a soft, honest gold of pure alien contentment, was laughing with a Hauler-Clan crew. She seemed joyful. Too joyful. A beacon of naive life in a den of sharks, Jax thought.</p>
+
+                <p>Time moved forward. Jax finished his drink, and, as he surveyed his surroundings, perhaps for the last time, a figure slid into the booth opposite him, a small, hooded being wrapped in layers of dark, dusty cloth. A respirator mask hissed softly, obscuring any facial features.</p>
+
+                <p>“You’re late,” Jax grunted.</p>
+
+                <p>“Information requires patience, Jax,” the filtered, electronic voice of Glitch replied. “And a secure line of credit. You have the fee?”</p>
+
+                <p>“I have <span class="archive-data">217 credits</span>,” Jax said, sliding his slate across the table. “It’s my last 217.”</p>
+
+                <p>“... You have 200 credits?” Glitch asked.</p>
+
+                <p>“<span class="archive-data">217 credits</span>.” Jax corrected.</p>
+
+                <p>Glitch’s gloved hand covered the slate. “The rumor I have is worth a thousand times that. A whisper from a deep-space corporate survey that went dark. High-value Precursor salvage. Guaranteed.”</p>
+
+                <p>“Nothing’s guaranteed on the Fringe,” Jax shot back.</p>
+
+                <p>“This is,” Glitch said, his voice dropping. “But it’s in the Shipbreaker’s Graveyard.”</p>
+
+                <p>Jax felt a cold knot tighten in his stomach. The Taurus Molecular Cloud—The Graveyard. A place where ships went and never came back, a chaotic hellscape of gravimetric shears and phantom energy readings that had claimed vessels a hundred times more advanced than his own battered <em>Void Mite</em>.</p>
+
+                <p>“That’s a suicide run, not a guarantee.” Jax said flatly.</p>
+
+                <p>“Suicide is a matter of perspective,” Glitch replied. “So is being repossessed piece by piece by Volkov’s enforcers. I hear he has a particular fondness for collecting unique cybernetics. That custom optic you have must be worth a pretty credit.”</p>
+
+                <p>Jax instinctively touched the cool metal around his left eye, a high-end military-grade sensor he’d acquired in a high-stakes poker game out in the Wilds some many years ago. The thought of Volkov’s calm, surgical smile as his men came to "collect" was enough to make his decision.</p>
+
+                <p>“Send the data,” Jax said, his voice a low growl.</p>
+
+                <p>The transfer was instant. <span class="archive-data">217 credits</span> vanished from his account. A heavily encrypted data-packet appeared on his slate. Glitch stood up, melting back into the cantina’s smoky shadows. “Pleasure doing business, Jax,” the voice hissed. “Try not to die. It’s bad for repeat business.”</p>
+
+                <p>Jax didn’t wait. He downed the last of his drink and made his way through the chaotic, crowded corridors of Port Nowhere, a hollowed-out asteroid that was both a haven and a trap. He reached the docking bay where the <em>Void Mite</em> was clamped to the rock like a rusty parasite.</p>
+
+                <p>The ship was a testament to his life: an ugly, asymmetrical collection of parts that had no business still functioning. It was a junker, a patchwork of scavenged plating and jury-rigged systems, but it was his. It was the only thing he had left.</p>
+
+                <p>He cycled the airlock and stepped into the familiar, cramped cockpit, the air thick with the smell of ozone and his own sweat.</p>
+
+                <p>“Welcome back, Captain,” Mite’s voice chirped from the console. “I see the meeting was a success, as our credit balance is now a statistically insignificant <span class="archive-data">17 credits</span>. I have taken the liberty of deactivating the replicator to conserve power.”</p>
+
+                <p>“Just decrypt the file, Mite,” Jax said, slumping into the worn pilot’s chair.</p>
+
+                <p>Mite’s processors whirred, bypassing Glitch’s surprisingly sophisticated encryption. A star chart bloomed on the main display, showing the swirling, dark clouds of the Taurus Molecular Cloud. A single coordinate was highlighted deep within its most treacherous core, a region designated <span class="archive-data">OMC-1 North</span>. Appended was a fragment of a corrupted Helios Dynamics survey log.</p>
+
+                <p style="font-family: var(--font-mono); font-style: italic; color: var(--color-archive-glitch);">
+                    “…anomalous neutrino emissions… patterned, five-pulse cadence… source appears to be a Class-3 Precursor… extreme gravimetric interference… recommend immediate withdrawal…”
+                </p>
+
+                <p>Jax stared. A patterned signal. That wasn’t just a rumor. That was proof.</p>
+
+                <p>“Captain,” Mite said, its voice holding a new, more serious tone. “My analysis of the nebula’s known hazards, cross-referenced with this ship’s 37 documented critical system vulnerabilities, places our probability of reaching those coordinates at <span class="archive-data">1.2%</span>. The probability of surviving the attempt and returning is… difficult to calculate, as it involves dividing by a number approaching zero.”</p>
+
+                <p>“But it’s a real signal, Mite,” Jax said, a wild, desperate hope flaring in his chest. “A Class-3. An active node. If there’s anything there, anything at all… it’s the score of a lifetime. Enough to clear the debt with Volkov, buy a new ship, get a clean slate…”</p>
+
+                <p>“It is also, with a <span class="archive-data">98.8%</span> probability, our tomb,” Mite countered. “Logically, we should sell this data to the highest bidder and use the funds to repair the capacitor.”</p>
+
+                <p>“And wait for Volkov to find us? No,” Jax said, his hands flying across the pre-flight checklist, the familiar motions a comfort. “We’re not waiting to die here. We’re going out there. We’re rolling the dice.”</p>
+
+                <p>He had spent his whole life running from his past—from the catastrophic failure of his Hesperia Minerals venture, from the ghost of Ria, his partner, whose memory was a constant ache in his soul. He had run until he had ended up here, at the absolute end of the line, cornered by his debts and his own bad decisions. But this felt different. This wasn't running from something. This was running <em>towards</em> something. A final, insane, all-or-nothing gamble.</p>
+
+                <p>“Mite,” he said, his voice steady now, filled with a grim, fatalistic purpose. “Plot a course for those coordinates. Take us out of here. Quietly.”</p>
+
+                <p>“As you wish, Captain,” the AI replied, a hint of digital resignation in its tone. “Engaging Ghost Protocol. May I suggest you use our remaining <span class="archive-data">17 credits</span> to purchase a lottery ticket? The odds would be substantially better.”</p>
+
+                <p>The <em>Void Mite’s</em> ancient engines powered up with a low, protesting groan. The magnetic clamps released with a jolt, and the small, battered ship detached from the chaotic asteroid. Jax guided it silently out of the docking cluster and into the vast, open blackness. He didn't look back. There was nothing left for him on Port Nowhere but a debt that could only be paid in blood. Ahead lay a legendary graveyard, a ghost signal, and a <span class="archive-data">1.2%</span> chance at a new life.</p>
+
+                <p>For a gambler like Jax, it was the best hand he’d been dealt in years.</p>
+            </article>
+        </main>
+    </div>
+</body>
+</html>
