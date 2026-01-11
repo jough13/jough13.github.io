@@ -47,6 +47,14 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         }
 
+        /* Mobile Optimization: Adjust padding on smaller screens */
+        @media (max-width: 600px) {
+            .container {
+                padding: 1.5rem;
+            }
+            h1 { font-size: 2rem; }
+        }
+
         nav {
             border-bottom: 1px solid rgba(0, 0, 0, 0.1);
             padding: 1rem 0;
@@ -55,6 +63,7 @@
             justify-content: space-around;
             align-items: center;
             flex-wrap: wrap;
+            gap: 10px; /* Adds space between items on mobile wrap */
         }
 
         nav a {
@@ -118,7 +127,7 @@
 
         .faction-list { list-style: none; padding-left: 0; }
         .faction-list li {
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
             padding-left: 1.5rem;
             border-left: 2px solid var(--color-accent-amber);
         }
@@ -209,6 +218,11 @@
                             <a href="chapter1.html"><strong>Chapter One: Listeners of the Far Dark</strong></a><br>
                             <span class="archive-data">GSY 2850.5</span> // Station 734, Sol Oort Cloud<br>
                             <em>Custodian Elizabeth Shaw detects an anomaly in the deep dark.</em>
+                        </li>
+                        <li>
+                            <a href="chapter2.html"><strong>Chapter Two: Port Nowhere</strong></a><br>
+                            <span class="archive-data">~GSY 2851</span> // Port Nowhere, Outer Orion Sector<br>
+                            <em>Jax gambles his last credits on a ghost signal from the Graveyard.</em>
                         </li>
                     </ul>
                 </div>
