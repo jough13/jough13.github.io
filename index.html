@@ -150,6 +150,10 @@ const TILE_DATA = {
     '⛩️': {
         type: 'shrine'
     },
+    '🎓': {
+        type: 'npc_historian',
+        title: 'Royal Historian'
+    },
     '|': {
         type: 'obelisk'
     },
@@ -454,7 +458,7 @@ TOWER: {
             'F F F ... F F F 🧱...........🧱 F F F F F ... F F F',
             'F F F ... F F F 🧱...🔥.B...🧱 F F F F F ... F F F',
             'F F F ... F F F 🧱...........🧱 F F F F F ... F F F',
-            'F F F ... F F F 🧱.....N.....🧱 F F F F F ... F F F',
+            'F F F ... F F F 🧱.....🎓.....🧱 F F F F F ... F F F', 
             'F F F ... F F F 🧱🧱🧱...🧱🧱🧱 F F F F F ... F F F',
             'F F F ... F F F F F F ... F F F F F F F F ... F F F',
             'F F F ... F F F F F F ... F F F F F F F F ... F F F',
@@ -14147,6 +14151,14 @@ function restPlayer() {
 async function attemptMovePlayer(newX, newY) {
     if (newX === gameState.player.x && newY === gameState.player.y) return;
 
+    // If this tile is currently being converted from static to active, treat it as a wall.
+    const tileId = `${newX},${newY}`;
+    if (processingSpawnTiles.has(tileId)) {
+        console.log("Blocked move: Enemy spawning...");
+        isProcessingMove = false;
+        return;
+    }
+
     let inventoryWasUpdated = false;
 
     // 1. Determine the destination tile FIRST
@@ -14356,7 +14368,7 @@ async function attemptMovePlayer(newX, newY) {
         }
     }
 
-    if (newTile === 'R') {
+    if (newTile === '🎓') { 
         const player = gameState.player;
         const inv = player.inventory;
 
