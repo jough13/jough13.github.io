@@ -2688,11 +2688,12 @@ const ITEM_DATA = {
     description: "Slimy. Can be cooked at a fire.",
     tile: '🐟'
 },
-'👢': { // Joke item
+'👢s': { 
     name: 'Soggy Boot',
     type: 'junk',
     description: "Someone lost this a long time ago.",
-    tile: '👢'
+    tile: '👢', 
+    excludeFromLoot: true
 },
 
     '🍞': {
@@ -3495,6 +3496,7 @@ const ITEM_DATA = {
         name: 'Windstrider Boots',
         type: 'armor',
         tile: '👢',
+        excludeFromLoot: true,
         defense: 2,
         slot: 'armor',
         statBonuses: { dexterity: 10, endurance: 10 },
@@ -3589,7 +3591,8 @@ const ITEM_DATA = {
         type: 'weapon', // A new type
         damage: 1, // It's better than Fists!
         slot: 'weapon',
-        description: "A sturdy branch fallen from an oak tree. Better than nothing."
+        description: "A sturdy branch fallen from an oak tree. Better than nothing.",
+        excludeFromLoot: true //
         
     },
     '%': {
@@ -4049,7 +4052,8 @@ const ITEM_DATA = {
         name: 'Tattered Rags',
         type: 'armor',
         defense: 0, // Provides no protection!
-        slot: 'armor'
+        slot: 'armor',
+        excludeFromLoot: true 
     },
     '1': {
         name: 'Conscript\'s Orders',
@@ -7158,8 +7162,8 @@ function generateMagicItem(tier) {
     const baseKeys = Object.keys(ITEM_DATA).filter(k => 
         ITEM_DATA[k].type === 'weapon' || ITEM_DATA[k].type === 'armor'
     );
-    // Filter out legendary/unique items if desired, or keep them for crazy rolls
-    const validBaseKeys = baseKeys.filter(k => !['Fists', 'Simple Tunic'].includes(ITEM_DATA[k].name));
+    // Filter out items explicitly marked to be excluded
+    const validBaseKeys = baseKeys.filter(k => !ITEM_DATA[k].excludeFromLoot);
     
     const baseKey = validBaseKeys[Math.floor(Math.random() * validBaseKeys.length)];
     const template = ITEM_DATA[baseKey];
@@ -8070,11 +8074,27 @@ function handleSellAllItems() {
         if (item.type === 'junk' || item.type === 'consumable') {
             
             // --- Price Calculation Logic (Matches handleSellItem) ---
-            const shopItem = activeShopInventory.find(sItem => sItem.name === item.name);
+            // 1. Try exact match
+            let shopItem = activeShopInventory.find(sItem => sItem.name === item.name);
+            
+            // 2. Template ID Fallback
+            if (!shopItem && item.templateId && ITEM_DATA[item.templateId]) {
+                const baseName = ITEM_DATA[item.templateId].name;
+                shopItem = activeShopInventory.find(sItem => sItem.name === baseName);
+            }
+
+            // 3. String Fallback
+            if (!shopItem) {
+                shopItem = activeShopInventory.find(sItem => item.name.endsWith(sItem.name));
+            }
             let basePrice = 2; 
             
             if (shopItem) {
                 basePrice = shopItem.price;
+                // Bonus for modified items
+                if (item.name !== shopItem.name) {
+                    basePrice = Math.floor(basePrice * 1.5);
+                }
             } else {
                 // Relic/Special Prices
                 if (item.name === 'Shattered Crown') basePrice = 200;
@@ -10958,7 +10978,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 }
             
                 // Calculate actual damage
-                damageDealt = Math.max(1, playerDamage); 
+                damageDealt = Math.max(1, damage); 
                 enemy.health -= damageDealt;
 
                 let color = '#3b82f6'; // Blue for magic
@@ -10992,7 +11012,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         // Handle Instanced Combat
         let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
         if (enemy) {
-            damageDealt = Math.max(1, playerDamage); 
+            damageDealt = Math.max(1, damage);
             enemy.health -= damageDealt;
             logMessage(`You hit the ${enemy.name} for ${damageDealt} magic damage!`);
 
@@ -13385,7 +13405,8 @@ function drinkFromSource() {
 
     // 3. Apply Effects
     if (foundWater) {
-        if (player.thirst >= player.maxThirst) {
+        // Allow drinking from magic fountains even if thirst is full
+        if (waterType !== 'magic' && player.thirst >= player.maxThirst) {
             logMessage("You aren't thirsty.");
             return;
         }
@@ -13406,11 +13427,19 @@ function drinkFromSource() {
             }
             triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
         }
+
         else if (waterType === 'magic') {
+            // Optional: Check if actually needed
+            if (player.thirst >= player.maxThirst && player.stamina >= player.maxStamina) {
+                logMessage("The fountain hums, but you are already fully revitalized.");
+                return; // Don't waste a turn
+            }
+
             player.thirst = player.maxThirst;
-            player.stamina = player.maxStamina; // Bonus!
+            player.stamina = player.maxStamina; 
             logMessage("The magic water revitalizes you! (Full Thirst & Stamina)");
             triggerStatAnimation(document.getElementById('thirstDisplay'), 'stat-pulse-blue');
+            triggerStatAnimation(document.getElementById('staminaDisplay'), 'stat-pulse-yellow'); // Add visual for stamina too
         }
 
         // Save state
@@ -13843,7 +13872,7 @@ function useInventoryItem(itemIndex) {
             // Junk (15%)
             else if (roll < 0.15) {
                 catchName = 'Soggy Boot';
-                catchTile = '👢';
+                catchTile = '👢s';
                 logMessage("Ugh, just an old boot.");
             } 
             // Fish (80%)
