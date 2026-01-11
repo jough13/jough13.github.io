@@ -14173,7 +14173,7 @@ async function attemptMovePlayer(newX, newY) {
         newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
     }
 
-    // --- FIX: SPAWN LOCK CHECK ---
+    // --- SPAWN LOCK CHECK ---
     const tileId = `${newX},${newY}`;
     const enemyKey = `overworld:${newX},${-newY}`;
 
@@ -14184,21 +14184,6 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     let inventoryWasUpdated = false;
-    let tileData = TILE_DATA[newTile];
-
-    // 1. Determine the destination tile FIRST
-    let newTile;
-    if (gameState.mapMode === 'dungeon') {
-        const map = chunkManager.caveMaps[gameState.currentCaveId];
-        newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
-    } else if (gameState.mapMode === 'castle') {
-        const map = chunkManager.castleMaps[gameState.currentCastleId];
-        newTile = (map && map[newY] && map[newY][newX]) ? map[newY][newX] : ' ';
-    } else {
-        newTile = chunkManager.getTile(newX, newY);
-    }
-
-    // 2. Define tileData (Use 'let' so we can update it if needed)
     let tileData = TILE_DATA[newTile];
 
     // 3. Obstacle Check (The Fix)
