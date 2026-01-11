@@ -26,6 +26,8 @@
             to { background-position: -10000px 5000px; }
         }
 
+        html { scroll-behavior: smooth; }
+
         body {
             background-color: var(--color-deep-space);
             background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
@@ -117,6 +119,11 @@
             margin: 2rem 0;
             border-radius: 4px;
         }
+        
+        .info-box h4 {
+            color: var(--color-accent-hud);
+            margin-top: 0;
+        }
 
         /* Drop cap for the first letter of the chapter */
         .drop-cap::first-letter {
@@ -126,6 +133,36 @@
             float: left;
             line-height: 0.8;
             margin-right: 0.1em;
+        }
+        
+        /* New Style for the "Next Chapter" Button */
+        .next-chapter-container {
+            margin-top: 4rem; 
+            padding-top: 2rem; 
+            border-top: 1px solid rgba(0,0,0,0.1); 
+            display: flex; 
+            justify-content: flex-end;
+        }
+        
+        .next-btn {
+            font-family: var(--font-heading);
+            background-color: var(--color-accent-hud);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background-color 0.3s, transform 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .next-btn:hover {
+            background-color: var(--color-accent-amber);
+            transform: translateX(5px); /* Subtle slide effect */
         }
     </style>
 </head>
@@ -141,7 +178,7 @@
         <nav>
             <a href="index.html">Foreword</a>
             <a href="lore.html">Lore</a>
-            <a href="#starmap">Starmap</a>
+            <a href="starmap.html">Starmap</a>
             <a href="#gallery">Gallery</a>
             <a href="#chapters" class="active">Chapters</a>
         </nav>
@@ -310,6 +347,13 @@
                 </div>
 
                 <p>She hit 'send.' The message was queued in the station's transmission buffer, to be bundled with the rest of her weekly data and sent on its nine-month journey to Mars. It was a message that was technically true, ambiguous enough to be dismissed by bureaucrats, and enough cover to justify dedicating all her time and resources to the seven agonizing weeks she now had to wait to see if her drones would come back with a piece of a miracle or just another fragment of silence.</p>
+            
+                <div class="next-chapter-container">
+                    <a href="chapter2.html" class="next-btn">
+                        Next: Chapter Two <span style="font-size: 1.2em;">&rarr;</span>
+                    </a>
+                </div>
+
             </article>
         </main>
     </div>
