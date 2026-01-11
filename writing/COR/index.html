@@ -26,6 +26,11 @@
             to { background-position: -10000px 5000px; }
         }
 
+        /* FIX 1: Smooth scrolling makes the jump visible */
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             background-color: var(--color-deep-space);
             background-image: url('https://www.transparenttextures.com/patterns/stardust.png');
@@ -34,7 +39,8 @@
             font-size: 18px;
             line-height: 1.7;
             margin: 0;
-            padding: 2rem 1rem; 
+            /* FIX 2: Extra padding at the bottom allows the last section to scroll to the top */
+            padding: 2rem 1rem 30vh 1rem; 
         }
 
         .container {
@@ -47,7 +53,7 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
         }
 
-        /* Mobile Optimization: Adjust padding on smaller screens */
+        /* Mobile Optimization */
         @media (max-width: 600px) {
             .container {
                 padding: 1.5rem;
@@ -63,7 +69,7 @@
             justify-content: space-around;
             align-items: center;
             flex-wrap: wrap;
-            gap: 10px; /* Adds space between items on mobile wrap */
+            gap: 10px;
         }
 
         nav a {
