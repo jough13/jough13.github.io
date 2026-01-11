@@ -2167,12 +2167,6 @@ function registerKill(enemy) {
 
     // 3. Grant XP
     grantXp(enemy.xp);
-    
-    // 4. Save
-    playerRef.update({ 
-        killCounts: gameState.player.killCounts,
-        quests: gameState.player.quests
-    });
 }
 
 const fastTravelModal = document.getElementById('fastTravelModal');
@@ -7811,14 +7805,6 @@ function grantXp(amount) {
 
     }
 
-    playerRef.update({
-        xp: player.xp,
-        level: player.level,
-        xpToNextLevel: player.xpToNextLevel,
-        statPoints: player.statPoints,
-        talentPoints: player.talentPoints || 0
-    });
-
     renderStats();
 }
 
@@ -9893,8 +9879,6 @@ function updateQuestProgress(enemyTile) {
             playerQuest.kills++;
             logMessage(`Bounty: (${playerQuest.kills} / ${questData.needed})`);
             
-            // Save the new kill count
-            playerRef.update({ quests: gameState.player.quests });
         }
     }
 }
@@ -10975,7 +10959,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 }
             
                 // Calculate actual damage
-                damageDealt = Math.max(1, damage);
+                damageDealt = Math.max(1, playerDamage); 
                 enemy.health -= damageDealt;
 
                 let color = '#3b82f6'; // Blue for magic
@@ -13254,9 +13238,32 @@ function endPlayerTurn() {
     runCompanionTurn();     
     runSharedAiTurns();
 
-    if (Object.keys(updates).length > 0) {
-        playerRef.update(updates);
-    }
+   // --- FIX: ATOMIC SAVE ---
+    // We merge the specific status updates (poison, buffs) with the core stats.
+    // This ensures XP, Quests, and Health are saved together, preventing the reset bug.
+    const finalUpdates = {
+        ...updates, // Include the specific changes calculated above (poison, cooldowns, etc.)
+        
+        // Core Vitals (Save these every turn to prevent desync)
+        health: gameState.player.health,
+        stamina: gameState.player.stamina,
+        mana: gameState.player.mana,
+        psyche: gameState.player.psyche,
+        
+        // Progression (Moved here from grantXp/registerKill)
+        xp: gameState.player.xp,
+        level: gameState.player.level,
+        statPoints: gameState.player.statPoints,
+        talentPoints: gameState.player.talentPoints || 0,
+        killCounts: gameState.player.killCounts || {},
+        quests: gameState.player.quests || {},
+        
+        // Position
+        x: gameState.player.x,
+        y: gameState.player.y
+    };
+
+    playerRef.update(finalUpdates);
 
     // --- PALADIN: HOLY AURA ---
     if (player.talents && player.talents.includes('holy_aura')) {
