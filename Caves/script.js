@@ -11009,7 +11009,7 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         // Handle Instanced Combat
         let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
         if (enemy) {
-            damageDealt = Math.max(1, damage); // TODO: Add magic resistance?
+            damageDealt = Math.max(1, playerDamage); 
             enemy.health -= damageDealt;
             logMessage(`You hit the ${enemy.name} for ${damageDealt} magic damage!`);
 
@@ -14219,7 +14219,6 @@ async function attemptMovePlayer(newX, newY) {
             }
         }
     }
-
 
     // --- COMBAT CHECK ---
     const enemyData = ENEMY_DATA[newTile];
