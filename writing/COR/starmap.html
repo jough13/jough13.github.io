@@ -53,25 +53,20 @@
             line-height: 1.7;
             margin: 0;
             padding: 2rem 1rem; 
-            /* CHANGE: Removed "color: white" to allow dark text on white paper */
         }
 
         .container {
             max-width: 1000px;
             margin: 0 auto;
-            /* CHANGE: White background to match other files */
             background-color: var(--color-content-bg);
             color: var(--color-text-main);
-            /* CHANGE: Subtle shadow adjustment */
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
             padding: 2rem;
             border-radius: 8px;
-            /* Removed the HUD border to match the clean look of the other files */
         }
 
         /* Navigation Styles */
         nav {
-            /* CHANGE: Dark divider for white background */
             border-bottom: 1px solid rgba(0, 0, 0, 0.1);
             padding: 1rem 0;
             margin-bottom: 2rem;
@@ -96,7 +91,6 @@
         }
 
         nav a:hover, nav a.active {
-            /* CHANGE: Swapped colors for active state readability */
             color: white;
             background-color: var(--color-accent-hud);
         }
@@ -107,7 +101,6 @@
             text-transform: uppercase;
             letter-spacing: 2px;
         }
-        /* CHANGE: Heading 1 is now dark */
         h1 { color: var(--color-text-headings); margin-bottom: 0.5rem; }
         h2 { color: var(--color-accent-amber); font-size: 1.2rem; margin-top: 0; }
 
@@ -116,7 +109,6 @@
             position: relative;
             width: 100%;
             height: 600px;
-            /* Map stays dark to represent space */
             background-color: #05080e;
             background-image: 
                 linear-gradient(var(--color-map-grid) 1px, transparent 1px),
@@ -267,6 +259,38 @@
             color: var(--color-archive-glitch);
             font-weight: bold;
         }
+        
+        /* New Styles for Bottom Navigation */
+        .nav-chapter-container {
+            margin-top: 2rem; 
+            padding-top: 2rem; 
+            border-top: 1px solid rgba(0,0,0,0.1); 
+            display: flex; 
+            justify-content: center;
+        }
+        
+        .nav-btn {
+            font-family: var(--font-heading);
+            background-color: var(--color-accent-hud);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background-color 0.3s, transform 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .nav-btn:hover {
+            background-color: var(--color-accent-amber);
+            transform: translateY(-3px);
+            color: white;
+            text-decoration: none;
+        }
 
         /* Mobile adjustments */
         @media (max-width: 600px) {
@@ -287,8 +311,8 @@
             <a href="index.html">Foreword</a>
             <a href="lore.html">Lore</a>
             <a href="starmap.html" class="active">Starmap</a>
-            <a href="#gallery">Gallery</a>
-            <a href="#chapters">Chapters</a>
+            <a href="index.html#gallery">Gallery</a>
+            <a href="index.html#chapters">Chapters</a>
         </nav>
 
         <div style="text-align: center; margin-bottom: 1rem; font-family: var(--font-mono); font-size: 0.8em; color: var(--color-accent-amber);">
@@ -361,6 +385,12 @@
             <p style="font-size: 0.8rem; font-family: var(--font-mono); color: #666;">
                 <strong style="color: var(--color-accent-amber);">ARCHIVIST'S NOTE:</strong> Distance representation is logarithmic. Core systems (Sol, Centauri, Ceti) are magnified for clarity. Fringe systems (Port Nowhere, Cygnus) are significantly more distant than visually depicted.
             </p>
+        </div>
+        
+        <div class="nav-chapter-container">
+            <a href="index.html" class="nav-btn">
+                <span style="font-size: 1.2em;">&uarr;</span> Return to Main Archive
+            </a>
         </div>
     </div>
 
