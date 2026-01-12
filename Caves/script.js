@@ -42,6 +42,7 @@ let areGlobalListenersInitialized = false;
 // --- INPUT THROTTLE ---
 let lastActionTime = 0;
 const ACTION_COOLDOWN = 150; // ms (limits speed to ~6 moves per second)
+let inputBuffer = null;
 
 // Track Listeners so we can turn them off
 let sharedEnemiesListener = null;
@@ -5728,6 +5729,46 @@ generateCave(caveId) {
             }
         }
 
+        if (!bossPlaced) {
+                console.warn("⚠️ Boss placement RNG failed. Forcing spawn at center.");
+                
+                // Pick the dead center of the map
+                const bx = Math.floor(CAVE_WIDTH / 2);
+                const by = Math.floor(CAVE_HEIGHT / 2);
+
+                // Force the terrain to be a floor (in case it was a wall)
+                map[by][bx] = theme.floor;
+                
+                // Place the Boss Tile
+                const bossTile = '🧙';
+                map[by][bx] = bossTile;
+
+                const bossTemplate = ENEMY_DATA[bossTile];
+
+                // Add to enemy list manually
+                this.caveEnemies[caveId].push({
+                    id: `${caveId}:BOSS`,
+                    x: bx,
+                    y: by,
+                    tile: bossTile,
+                    name: bossTemplate.name,
+                    health: bossTemplate.maxHealth,
+                    maxHealth: bossTemplate.maxHealth,
+                    attack: bossTemplate.attack,
+                    defense: bossTemplate.defense,
+                    xp: bossTemplate.xp,
+                    loot: bossTemplate.loot,
+                    caster: true,
+                    castRange: bossTemplate.castRange,
+                    spellDamage: bossTemplate.spellDamage,
+                    isBoss: true,
+                    madnessTurns: 0,
+                    frostbiteTurns: 0,
+                    poisonTurns: 0,
+                    rootTurns: 0
+                });
+            }        
+        
         // Ensure entrance is clear
         map[startPos.y][startPos.x] = '>'; 
         this.caveMaps[caveId] = map;
@@ -7734,13 +7775,12 @@ function generateEnemyLoot(player, enemy) {
 
 /**
  * Adds or subtracts an item's stat bonuses from the player.
+ * Automatically updates derived stats (Max HP, Mana, etc.) to prevent desync.
  * @param {object} item - The item object (from equipment).
  * @param {number} operation - 1 to add, -1 to subtract.
  */
-
 function applyStatBonuses(item, operation) {
     // --- FIX: Safety Check ---
-    // If item is null, or has no statBonuses (is null/undefined), stop immediately.
     if (!item || !item.statBonuses) {
         return; 
     }
@@ -7758,7 +7798,28 @@ function applyStatBonuses(item, operation) {
                 continue; 
             }
 
+            // 1. Apply the Core Stat Change
             player[stat] += (amount * operation);
+
+            // 2. FIX: Update Derived Stats Immediately
+            // This ensures Max HP/Mana stay in sync when swapping gear or dying.
+            if (stat === 'constitution') {
+                player.maxHealth += (amount * 5 * operation);
+                // If unequipped, clamp current health so it doesn't exceed new max
+                if (player.health > player.maxHealth) player.health = player.maxHealth;
+            }
+            else if (stat === 'wits') {
+                player.maxMana += (amount * 5 * operation);
+                if (player.mana > player.maxMana) player.mana = player.maxMana;
+            }
+            else if (stat === 'endurance') {
+                player.maxStamina += (amount * 5 * operation);
+                if (player.stamina > player.maxStamina) player.stamina = player.maxStamina;
+            }
+            else if (stat === 'willpower') {
+                player.maxPsyche += (amount * 3 * operation); // +3 per point based on stat allocation logic
+                if (player.psyche > player.maxPsyche) player.psyche = player.maxPsyche;
+            }
 
             // (Keep your existing log/flash logic here)
             if (operation === 1) {
@@ -12744,31 +12805,65 @@ function processEnemyTurns() {
 
 /**
  * Asynchronously runs the AI turns for shared maps.
- * Uses a Firebase RTDB lock to ensure only one client
- * runs the AI at a time.
+ * Uses a Firebase RTDB Transaction to ensure only ONE client
+ * runs the AI per interval.
  */
-
 async function runSharedAiTurns() {
     const now = Date.now();
-    
-    // THROTTLE: Run every 500ms (0.5s) for responsive chasing
-    if (now - lastAiExecution < 500) return;
+    const AI_INTERVAL = 500; // Run AI every 500ms
 
+    // 1. LOCAL THROTTLE
+    // Prevent this client from spamming Firebase requests too fast.
+    if (now - lastAiExecution < AI_INTERVAL) return;
     lastAiExecution = now;
-    console.log("🤖 AI Turn Started (Throttled)..."); 
-    
-    const nearestEnemyDir = await processOverworldEnemyTurns();
 
-    if (nearestEnemyDir) {
-        const player = gameState.player;
-        const intuitChance = Math.min(player.intuition * 0.005, 0.5); 
+    // 2. THE RACE
+    // We try to update a timestamp in the database.
+    const heartbeatRef = rtdb.ref('worldState/aiHeartbeat');
 
-        if (Math.random() < intuitChance) {
-            const dirString = getDirectionString(nearestEnemyDir);
-            logMessage(`You sense a hostile presence to the ${dirString}!`);
-        } else if (Math.random() < 0.1) { 
-            logMessage("You hear a shuffle nearby...");
-        }
+    try {
+        const result = await heartbeatRef.transaction((lastHeartbeat) => {
+            // If the database is empty (first run ever), claim it.
+            if (!lastHeartbeat) return now;
+
+            // Check if enough time has passed since the LAST successful run (by anyone).
+            if (now - lastHeartbeat >= AI_INTERVAL) {
+                // We claim this turn by writing the current time!
+                return now; 
+            }
+
+            // If not enough time passed, we abort the transaction (return undefined).
+            // This means someone else already ran the AI recently.
+            return; 
+        });
+
+        // 3. THE WINNER
+        // result.committed is TRUE only if we successfully updated the data.
+        if (result.committed) {
+            // console.log("🤖 I am the AI Host for this turn."); // Debugging
+            
+            // We won the race. Execute the logic.
+            const nearestEnemyDir = await processOverworldEnemyTurns();
+
+            // Handle Intuition/Hearing (Client-side feedback for the host)
+            // Note: Only the "host" gets these hints currently. 
+            // To fix that, you'd need to write these events to DB, but this is acceptable for now.
+            if (nearestEnemyDir) {
+                const player = gameState.player;
+                const intuitChance = Math.min(player.intuition * 0.005, 0.5); 
+
+                if (Math.random() < intuitChance) {
+                    const dirString = getDirectionString(nearestEnemyDir);
+                    logMessage(`You sense a hostile presence to the ${dirString}!`);
+                } else if (Math.random() < 0.1) { 
+                    logMessage("You hear a shuffle nearby...");
+                }
+            }
+        } 
+        // If result.committed is false, we lost the race. Do nothing.
+        
+    } catch (err) {
+        console.error("AI Heartbeat Transaction failed:", err);
     }
 }
 
@@ -13654,19 +13749,27 @@ function handleChatCommand(message) {
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
 
+    // 1. Audio Context Resume (Browser Policy)
     if (AudioSystem.ctx && AudioSystem.ctx.state === 'suspended') {
         AudioSystem.ctx.resume();
     }
 
-    if (!player_id || gameState.player.health <= 0) return;
+    // 2. FIX: Robust Safety Check
+    // Ensure player is logged in and data exists before doing anything.
+    // Also check if gameContainer is visible to prevent moving while in Character Select.
+    if (!player_id || !gameState || !gameState.player || gameContainer.classList.contains('hidden')) {
+        return;
+    }
 
-    // --- ESCAPE / CANCEL LOGIC ---
+    // 3. FIX: Allow 'Escape' even if dead
+    // This prevents getting stuck in menus after death.
     if (key === 'Escape') {
         if (!helpModal.classList.contains('hidden')) { helpModal.classList.add('hidden'); return; }
         if (!loreModal.classList.contains('hidden')) { loreModal.classList.add('hidden'); return; }
         if (!inventoryModal.classList.contains('hidden')) { closeInventoryModal(); return; }
         if (!skillModal.classList.contains('hidden')) { skillModal.classList.add('hidden'); return; }
         if (!craftingModal.classList.contains('hidden')) { craftingModal.classList.add('hidden'); return; }
+        if (!settingsModal.classList.contains('hidden')) { settingsModal.classList.add('hidden'); return; } // Added Settings Modal support
         
         if (gameState.isDroppingItem) {
             logMessage("Drop canceled.");
@@ -13687,12 +13790,17 @@ function handleInput(key) {
         return;
     }
 
+    // 4. Dead Check
+    // Now that we've handled system keys (Escape), we block gameplay inputs if dead.
+    if (gameState.player.health <= 0) return;
+
     if (key === 'q' || key === 'Q') {
         drinkFromSource();
         return;
     }
 
     // --- DROP MODE ---
+
     if (gameState.isDroppingItem) {
         // Mock an event object for handleItemDrop since it expects one
         handleItemDrop({ key: key, preventDefault: () => {} });
@@ -13765,14 +13873,20 @@ function handleInput(key) {
     if (key === 'c' || key === 'C') { openCollections(); return; }
     if (key === 'p' || key === 'P') { openTalentModal(); return; }
 
-    // 1. THROTTLE CHECK
-    // If we tried to move too soon after the last move, ignore it.
+    // 1. THROTTLE CHECK & BUFFERING
     const now = Date.now();
     if (now - lastActionTime < ACTION_COOLDOWN) {
-        // Exception: Allow rapid menu navigation if you want, 
-        // but for world movement, we block it.
+        // Only buffer movement keys to prevent menu weirdness
+        const moveKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'];
+        
+        if (moveKeys.includes(key)) {
+            inputBuffer = key; // Store the intent
+        }
         return; 
     }
+    
+    // If we are executing a move, clear the buffer so we don't double-move later
+    inputBuffer = null;
 
     let newX = gameState.player.x;
     let newY = gameState.player.y;
@@ -14247,10 +14361,20 @@ async function attemptMovePlayer(newX, newY) {
                 // Update tileData in case the enemy tile has interaction data (rare, but safe)
                 tileData = TILE_DATA[newTile]; 
             } else {
-                // Invalid "Ghost" enemy: Delete it from DB
+                // Invalid "Ghost" enemy logic
                 logMessage("Dissipating a phantom signal...");
+                
+                // 1. Delete from DB and Local State
                 rtdb.ref(`worldEnemies/${enemyKey}`).remove();
                 delete gameState.sharedEnemies[enemyKey];
+                
+                // 2. Reset the destination tile to the actual terrain
+                // This allows the player to walk onto the tile immediately
+                newTile = chunkManager.getTile(newX, newY);
+                tileData = TILE_DATA[newTile];
+
+                // 3. Force a visual update to remove the sprite
+                render();
             }
         }
     }
@@ -16734,9 +16858,15 @@ auth.onAuthStateChanged((user) => {
 function gameLoop() {
     // 1. Update Particles
     ParticleSystem.update();
+
+    // 2. Process Input Buffer (The Fix)
+    if (inputBuffer && Date.now() - lastActionTime >= ACTION_COOLDOWN) {
+        const key = inputBuffer;
+        inputBuffer = null; // Clear it immediately to prevent loops
+        handleInput(key);
+    }
     
-    // 2. Re-render the game
-    // Note: This renders 60fps. If performance is an issue, we can limit this.
+    // 3. Re-render the game
     if (gameState.mapMode) {
         render();
     }
