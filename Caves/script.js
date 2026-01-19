@@ -6933,8 +6933,8 @@ async function wakeUpNearbyEnemies() {
 
             // 3. EXISTENCE CHECK: Is the destination occupied by a live enemy?
             if (gameState.sharedEnemies[enemyId]) {
+                // If a live enemy exists, we can safely clear the static tile underneath it now
                 if (enemyData) {
-                    // Cleanup visual artifact if live enemy exists
                     chunkManager.setWorldTile(x, y, '.');
                 }
                 wokenEnemyTiles.add(tileId);
@@ -6943,14 +6943,10 @@ async function wakeUpNearbyEnemies() {
 
             // 5. SPAWN: Found a new static enemy
             if (enemyData) {
-                // --- CRITICAL: LOCK IMMEDIATELY ---
+                // --- LOCK ---
                 processingSpawnTiles.add(tileId);
                 wokenEnemyTiles.add(tileId);
 
-                // Safety Timeout: Unlock if server fails to respond in 2s
-                setTimeout(() => processingSpawnTiles.delete(tileId), 2000);
-
-                // --- CHANGE 1: PREPARE DATA BEFORE CLEARING TILE ---
                 const scaledStats = getScaledEnemy(enemyData, x, y);
                 const newEnemy = {
                     ...scaledStats,
@@ -6960,38 +6956,37 @@ async function wakeUpNearbyEnemies() {
                     spawnTime: Date.now()
                 };
 
-                // Protect against flicker (Destination lock)
+                // --- VISUAL FIX: ADD TO LOCAL STATE, BUT DO NOT CLEAR TILE YET ---
+                // We add the enemy to the "Live" list immediately.
+                // We leave the "Static" tile alone. 
+                // Result: The live enemy draws ON TOP of the static tile. No flickering.
                 pendingSpawns.add(enemyId);
-
-                // --- CHANGE 2: ADD TO LOCAL STATE IMMEDIATELY ---
-                // We add it to pending AND sharedEnemies BEFORE we clear the map tile.
-                // This ensures there is never a frame where the tile is empty.
                 pendingSpawnData[enemyId] = newEnemy;
                 gameState.sharedEnemies[enemyId] = newEnemy;
                 
-                // --- CHANGE 3: NOW CLEAR THE MAP TILE ---
-                chunkManager.setWorldTile(x, y, '.');
-                
-                render(); // Show it NOW
+                render(); // Update screen immediately
 
                 // Send to DB
                 rtdb.ref(`worldEnemies/${enemyId}`).transaction(current => {
                     return current || newEnemy;
-                }).then(() => {
+                }).then((result) => {
+                    // --- SUCCESS: NOW WE CLEAR THE TILE ---
+                    // The server has the enemy. It is safe to remove the static map tile.
+                    if (result.committed) {
+                        chunkManager.setWorldTile(x, y, '.');
+                    }
+                    
+                    // Cleanup locks
                     pendingSpawns.delete(enemyId);
                     processingSpawnTiles.delete(tileId);
-
-                    // --- CHANGE 4: REMOVED THE SETTIMEOUT CLEANUP ---
-                    // We no longer delete pendingSpawnData here. 
-                    // We let the Listener (in enterGame) handle the cleanup.
-                    // This guarantees the enemy stays on screen until the server confirms it.
 
                 }).catch(err => {
                     console.error("Spawn failed", err);
+                    // Revert everything on failure
                     pendingSpawns.delete(enemyId);
                     if (pendingSpawnData[enemyId]) delete pendingSpawnData[enemyId];
+                    if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
                     processingSpawnTiles.delete(tileId);
-                    chunkManager.setWorldTile(x, y, enemyData.tile || 'r');
                     wokenEnemyTiles.delete(tileId);
                 });
             }
@@ -12168,8 +12163,7 @@ async function processOverworldEnemyTurns() {
         return false;
     };
 
-    // 2. Iterate ACTIVE ENEMIES (Not Map Tiles)
-    // We loop through the list of enemies that are already "awake"
+// 2. Iterate ACTIVE ENEMIES (Not Map Tiles)
     const activeEnemies = Object.values(gameState.sharedEnemies);
 
     for (const enemy of activeEnemies) {
@@ -12177,11 +12171,9 @@ async function processOverworldEnemyTurns() {
         // Safety check for malformed data
         if (typeof enemy.x !== 'number' || typeof enemy.y !== 'number') continue;
 
-        // AI "Summoning Sickness"
-        // Don't move enemies that spawned less than 2 seconds ago.
-        // This prevents race conditions where AI tries to move an enemy 
-        // that hasn't fully saved to Firebase yet.
-        if (enemy.spawnTime && Date.now() - enemy.spawnTime < 2000) continue;
+        // --- CHANGE: REMOVED SUMMONING SICKNESS ---
+        // We removed the 2000ms delay check here. 
+        // Enemies will now act the moment they are created.
 
         // A. Distance Check
         const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
@@ -16784,33 +16776,27 @@ async function enterGame(playerData) {
         render();
     });
 
-    const sharedEnemiesRef = rtdb.ref('worldEnemies');
+const sharedEnemiesRef = rtdb.ref('worldEnemies');
     sharedEnemiesListener = sharedEnemiesRef.on('value', (snapshot) => {
         const serverData = snapshot.val() || {};
 
         gameState.initialEnemiesLoaded = true;
 
         // 1. Cleanup Static Tiles
+        // If the server says "There is a wolf at 10,10", we ensure the map tile at 10,10 is '.'
         Object.values(serverData).forEach(enemy => {
             if (gameState.mapMode === 'overworld') {
                 const currentTile = chunkManager.getTile(enemy.x, enemy.y);
+                // Only clear if it's actually an enemy tile (don't clear trees/walls by accident)
                 if (ENEMY_DATA[currentTile]) {
                     chunkManager.setWorldTile(enemy.x, enemy.y, '.');
                 }
             }
         });
 
-        // --- CHANGE START: SMART CLEANUP ---
-        // If the server has the enemy, we can safely remove it from our pending list.
-        Object.keys(serverData).forEach(key => {
-            if (pendingSpawnData[key]) {
-                delete pendingSpawnData[key];
-            }
-        });
-        // --- CHANGE END ---
-
         // 2. MERGE: Server Data + Pending Local Data
-        // Pending data (local) overrides server data to prevent lag/flickering
+        // We prioritize Pending Data. If we just spawned it locally, we use our local version
+        // until the server catches up.
         const mergedEnemies = { ...serverData, ...pendingSpawnData };
 
         gameState.sharedEnemies = mergedEnemies;
