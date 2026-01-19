@@ -12843,8 +12843,6 @@ async function runSharedAiTurns() {
 
     // 1. LOCAL THROTTLE
     // Prevent this client from spamming Firebase requests too fast.
-    if (now - lastAiExecution < AI_INTERVAL) return;
-    lastAiExecution = now;
 
     // 2. THE RACE
     // We try to update a timestamp in the database.
