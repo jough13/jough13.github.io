@@ -6925,11 +6925,20 @@ async function wakeUpNearbyEnemies() {
 
             // 3. HISTORY CHECK: Has this tile already been processed this session?
             if (wokenEnemyTiles.has(tileId)) {
-                // Cleanup: If visual tile still exists but we know we woke it, clear it locally.
-                if (enemyData) {
-                     chunkManager.setWorldTile(x, y, '.'); 
+                // SELF-HEALING FIX:
+                // If we marked this tile as woken, but the enemy is NOT in the shared list,
+                // something went wrong (lag, race condition). We must allow it to respawn.
+                if (!gameState.sharedEnemies[enemyId]) {
+                    // console.log(`Rescuing vanished enemy at ${x},${y}`); // Debug
+                    wokenEnemyTiles.delete(tileId);
+                    // Don't continue; let the logic below respawn it.
+                } else {
+                    // Normal behavior: Enemy exists, just ensure the static tile is gone
+                    if (enemyData) {
+                         chunkManager.setWorldTile(x, y, '.'); 
+                    }
+                    continue; 
                 }
-                continue; 
             }
 
             // 4. EXISTENCE CHECK: Is the destination occupied by a live enemy?
