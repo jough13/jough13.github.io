@@ -13125,9 +13125,13 @@ function endPlayerTurn() {
         wakeUpNearbyEnemies();
     }
 
-    // Ambush Logic
-    if (gameState.mapMode === 'overworld' && gameState.playerTurnCount % 60 === 0) {
-        if (Math.random() < 0.20) {
+    // --- UPDATED AMBUSH LOGIC ---
+    // Was: % 60 and < 0.20 (Avg every 300 turns)
+    // Now: % 150 and < 0.05 (Avg every 3000 turns) -> Much rarer!
+    if (gameState.mapMode === 'overworld' && gameState.playerTurnCount % 150 === 0) {
+        
+        // 5% Chance (1 in 20)
+        if (Math.random() < 0.05) { 
             logMessage("{red:AMBUSH!} Enemies are closing in!");
             gameState.screenShake = 15;
             AudioSystem.playHit();
@@ -13138,7 +13142,8 @@ function endPlayerTurn() {
             if (currentTile === 'd') ambushType = 's';
             if (currentTile === 'D') ambushType = '🦂';
 
-            const offsets = [[-4, 0], [4, 0], [0, -4], [0, 4]];
+            // Reduce spawn count slightly (3 instead of 4) for fairness
+            const offsets = [[-4, 0], [4, 0], [0, -4]]; 
 
             offsets.forEach(offset => {
                 const tx = player.x + offset[0] + Math.floor(Math.random() * 3) - 1;
@@ -13146,11 +13151,26 @@ function endPlayerTurn() {
 
                 const enemyData = ENEMY_DATA[ambushType];
                 const enemyId = `overworld:${tx},${-ty}`;
+                
+                // Use our safe scaling logic
                 const scaledStats = getScaledEnemy(enemyData, tx, ty);
-                const newEnemy = { ...scaledStats, tile: ambushType, x: tx, y: ty };
+                
+                // Ensure we don't overwrite an existing enemy
+                if (!gameState.sharedEnemies[enemyId]) {
+                    const newEnemy = { 
+                        ...scaledStats, 
+                        tile: ambushType, 
+                        x: tx, 
+                        y: ty,
+                        spawnTime: Date.now() 
+                    };
 
-                rtdb.ref(`worldEnemies/${enemyId}`).set(newEnemy);
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(tx, ty, '#ef4444');
+                    rtdb.ref(`worldEnemies/${enemyId}`).set(newEnemy);
+                    
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createExplosion(tx, ty, '#ef4444');
+                    }
+                }
             });
         }
     }
