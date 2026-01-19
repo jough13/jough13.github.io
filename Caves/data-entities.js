@@ -1,5 +1,4 @@
-
-const RIDDLE_DATA = [
+window.RIDDLE_DATA = [
     {
         id: "fire",
         question: "I have no mouth, but I always consume. I have no life, but I must be fed. What am I?",
@@ -30,7 +29,7 @@ const RIDDLE_DATA = [
     }
 ];
 
-const QUEST_DATA = {
+window.QUEST_DATA = {
     "healerSupply": {
         title: "Herbal Remedies",
         description: "The Healer is running low on supplies. Gather 5 Medicinal Herbs ('🌿') from the swamp.",
@@ -173,7 +172,7 @@ const QUEST_DATA = {
 
 };
 
-const ENEMY_PREFIXES = {
+window.ENEMY_PREFIXES = {
     "Savage": {
         description: "Deals extra damage.",
         statModifiers: { attack: 2 },
@@ -213,7 +212,7 @@ const ENEMY_PREFIXES = {
     }
 };
 
-const ENEMY_DATA = {
+window.ENEMY_DATA = {
     // --- LEVEL 1 (Vermin & Weaklings) ---
     'r': {
         name: 'Giant Rat',
@@ -592,7 +591,7 @@ const ENEMY_DATA = {
 };
 
 
-const PLAYER_BACKGROUNDS = {
+window.PLAYER_BACKGROUNDS = {
     'warrior': {
         name: 'Warrior',
         stats: { strength: 2, constitution: 1 },
@@ -639,7 +638,7 @@ const PLAYER_BACKGROUNDS = {
     }
 };
 
-const EVOLUTION_DATA = {
+window.EVOLUTION_DATA = {
     'warrior': [
         {
             id: 'berserker',
@@ -716,7 +715,7 @@ const EVOLUTION_DATA = {
     ]
 };
 
-const SPELL_DATA = {
+window.SPELL_DATA = {
     "candlelight": {
         name: "Candlelight",
         description: "Summons a floating light. Huge vision radius (+6) for a long time.",
@@ -908,7 +907,7 @@ const SPELL_DATA = {
     // We can easily add more spells here later!
 };
 
-const TALENT_DATA = {
+window.TALENT_DATA = {
     "bloodlust": {
         name: "Bloodlust",
         description: "Heal 2 HP whenever you kill an enemy.",
@@ -959,7 +958,7 @@ const TALENT_DATA = {
     }
 };
 
-const SKILL_DATA = {
+window.SKILL_DATA = {
     "kick": {
         name: "Kick",
         description: "Stun an enemy for 2 turns. Deals low damage.",
@@ -1123,8 +1122,7 @@ const SKILL_DATA = {
     },
 };
 
-
-const LORE_STONE_MESSAGES = [
+window.LORE_STONE_MESSAGES = [
     "The stars align when the five thrones are empty.",
     "Iron rots, but obsidian remembers.",
     "Do not trust the water in the deep grotto.",
@@ -1132,7 +1130,7 @@ const LORE_STONE_MESSAGES = [
     "Magic requires sacrifice. Always."
 ];
 
-const LORE_PLAINS = [
+window.LORE_PLAINS = [
     "The wind whispers of the Old King's return.",
     "These fields were once a great battlefield. Rusty arrowheads still surface after rain.",
     "Travelers say the safe haven lies to the west, past the old ruins.",
@@ -1144,7 +1142,7 @@ const LORE_PLAINS = [
     "You find a stone marker with a name you cannot read."
 ];
 
-const LORE_FOREST = [
+window.LORE_FOREST = [
     "The trees remember what the axe forgets.",
     "Wolves guard the heart of the wood. Tread lightly.",
     "Beware the shadows that move against the wind.",
@@ -1156,7 +1154,7 @@ const LORE_FOREST = [
     "Mushrooms glow faintly in the twilight."
 ];
 
-const LORE_MOUNTAIN = [
+window.LORE_MOUNTAIN = [
     "The stone is hollow. The dark deepens.",
     "Dragons once roosted on these peaks. Now, only the wind remains.",
     "The Prospector seeks gold, but he will find only madness.",
@@ -1168,7 +1166,7 @@ const LORE_MOUNTAIN = [
     "The echo of your footsteps sounds like someone following you."
 ];
 
-const LORE_SWAMP = [
+window.LORE_SWAMP = [
     "The water tastes of rot and old magic.",
     "Sickness takes the weak. Endurance is key.",
     "The spiders... they are growing larger.",
@@ -1179,7 +1177,7 @@ const LORE_SWAMP = [
     "Leeches the size of your arm swim in the murky pools."
 ];
 
-const VILLAGER_RUMORS = [
+window.VILLAGER_RUMORS = [
     "I heard spiders hate fire. Burn 'em, I say!",
     "If you find a pickaxe, try the mountains. Good ore there.",
     "The castle guards are tough, but they protect good loot.",
@@ -1194,7 +1192,7 @@ const VILLAGER_RUMORS = [
     "A Golden Apple can bring a man back from the brink of death."
 ];
 
-const VISIONS_OF_THE_PAST = [ // For the new Obelisks
+window.VISIONS_OF_THE_PAST = [ // For the new Obelisks
     "A VISION: You see a golden king standing atop the fortress. He raises a hand, and the mountain splits. A shadow rises from the fissure, swallowing the sun.",
     "A VISION: Five knights kneel before a dark altar. They drink from a chalice of black ichor, and their eyes turn to blue ice.",
     "A VISION: The sky burns. Not with fire, but with arcane light. The mages scream as their tower collapses, shattering into dust.",
@@ -1205,7 +1203,7 @@ const VISIONS_OF_THE_PAST = [ // For the new Obelisks
     "A VISION: The King sits upon his throne, but his face is blank. A shadow whispers in his ear, and the King nods slowly."
 ];
 
-const RANDOM_JOURNAL_PAGES = [
+window.RANDOM_JOURNAL_PAGES = [
     "Day 4: My boots are soaked. The swamp is trying to swallow me whole. I swear I saw a spider the size of a wolf.",
     "I've heard tales of a safe village, but the paths are hidden. The guards say it's for our own good.",
     "The recipe for a 'Machete'? Why would I need... oh. The forest. Of course.",
