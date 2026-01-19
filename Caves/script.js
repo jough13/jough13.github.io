@@ -5739,9 +5739,9 @@ generateCave(caveId) {
                 }
                 attempts++;
             }
-        }
 
-        if (!bossPlaced) {
+            // --- MOVED INSIDE THE IF BLOCK ---
+            if (!bossPlaced) {
                 console.warn("⚠️ Boss placement RNG failed. Forcing spawn at center.");
                 
                 // Pick the dead center of the map
@@ -5779,7 +5779,8 @@ generateCave(caveId) {
                     poisonTurns: 0,
                     rootTurns: 0
                 });
-            }        
+            }
+        }  
         
         // Ensure entrance is clear
         map[startPos.y][startPos.x] = '>'; 
