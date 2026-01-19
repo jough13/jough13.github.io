@@ -39,6 +39,8 @@ let otherPlayers = {};
 let unsubscribePlayerListener;
 let worldStateListeners = {};
 
+let isProcessingMove = false; 
+
 let lastAiExecution = 0;
 
 let cachedThemeColors = {};
@@ -5675,295 +5677,238 @@ async function executeAimedSpell(spellId, dirX, dirY) {
     // --- 2. Execute Spell Logic ---
     switch (spellId) {
 
+        // --- 1. ENTANGLE (Unique Logic) ---
+        case 'entangle': {
+            logMessage("Vines burst from the ground!");
+            const entangleDmg = spellData.baseDamage + (player.intuition * spellLevel); 
+
+            // Entangle hits a specific spot or the first thing in line
+            for (let i = 1; i <= 3; i++) {
+                const tx = player.x + (dirX * i);
+                const ty = player.y + (dirY * i);
+
+                if (await applySpellDamage(tx, ty, entangleDmg, spellId)) {
+                    hitSomething = true;
+                    if (typeof ParticleSystem !== 'undefined') {
+                        ParticleSystem.createFloatingText(tx, ty, "ROOTED", "#22c55e");
+                    }
+                    break;
+                }
+            }
+            break;
+        }
+
+        // --- 2. STANDARD PROJECTILES (Shared Logic) ---
         case 'magicBolt':
         case 'siphonLife':
         case 'psychicBlast':
         case 'frostBolt':
+        case 'poisonBolt': {
+            // Determine which stat scales damage based on the specific spell ID
+            const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast' || spellId === 'poisonBolt') 
+                ? effectiveWill 
+                : effectiveWits;
 
-        case 'entangle':
-            {
-                logMessage("Vines burst from the ground!");
-                const entangleDmg = spellData.baseDamage + (player.intuition * spellLevel); // Scales with Intuition
+            const spellDamage = spellData.baseDamage + (damageStat * spellLevel);
 
-                // Entangle hits a specific spot 3 tiles away (Sniper root)
-                // You can change '3' to 'i' in a loop if you want it to hit the first thing in line
-                for (let i = 1; i <= 3; i++) {
-                    const tx = player.x + (dirX * i);
-                    const ty = player.y + (dirY * i);
+            let logMsg = "You cast your spell!";
+            if (spellId === 'magicBolt') logMsg = "You hurl a bolt of energy!";
+            else if (spellId === 'siphonLife') logMsg = "You cast Siphon Life!";
+            else if (spellId === 'psychicBlast') logMsg = "You unleash a blast of mental energy!";
+            else if (spellId === 'frostBolt') logMsg = "You launch a shard of ice!";
+            else if (spellId === 'poisonBolt') logMsg = "You hurl a bolt of acid!";
+            
+            logMessage(logMsg);
 
-                    // We await the result. If we hit something, stop.
-                    if (await applySpellDamage(tx, ty, entangleDmg, spellId)) {
-                        hitSomething = true;
-                        if (typeof ParticleSystem !== 'undefined') {
-                            ParticleSystem.createFloatingText(tx, ty, "ROOTED", "#22c55e");
-                        }
-                        break;
-                    }
-                }
-            }
-            break;
-
-        case 'poisonBolt':
-            {
-                const damageStat = (spellId === 'siphonLife' || spellId === 'psychicBlast' || spellId === 'poisonBolt') ? effectiveWill : effectiveWits;
-
-                const spellDamage = spellData.baseDamage + (damageStat * spellLevel);
-
-                let logMsg = "You cast your spell!";
-                if (spellId === 'magicBolt') logMsg = "You hurl a bolt of energy!";
-                if (spellId === 'siphonLife') logMsg = "You cast Siphon Life!";
-                if (spellId === 'psychicBlast') logMsg = "You unleash a blast of mental energy!";
-                if (spellId === 'frostBolt') logMsg = "You launch a shard of ice!";
-                if (spellId === 'poisonBolt') logMsg = "You hurl a bolt of acid!";
-                logMessage(logMsg);
-
-                // Now checks 1, 2, and 3 tiles away
-                for (let i = 1; i <= 3; i++) {
-                    const targetX = player.x + (dirX * i);
-                    const targetY = player.y + (dirY * i);
-                    // We await here so Siphon Life's heal applies correctly
-                    if (await applySpellDamage(targetX, targetY, spellDamage, spellId)) {
-                        hitSomething = true;
-                        break; // Stop, we hit a target
-                    }
-                }
-            } // <--- CLOSE BRACE
-            break;
-
-        case 'thunderbolt':
-            { // <--- BRACE ADDED FOR SCOPE
-                const thunderDmg = spellData.baseDamage + (player.wits * spellLevel);
-                logMessage("CRACK! Lightning strikes!");
-                // Thunderbolt is instant hit, range 4
-                for (let i = 1; i <= 4; i++) {
-                    const tx = player.x + (dirX * i);
-                    const ty = player.y + (dirY * i);
-                    if (await applySpellDamage(tx, ty, thunderDmg, spellId)) {
-                        ParticleSystem.createExplosion(tx, ty, '#facc15'); // Yellow sparks
-                        hitSomething = true;
-                        break;
-                    }
-                }
-            } // <--- CLOSE BRACE
-            break;
-
-        case 'meteor':
-            { // <--- BRACE ADDED FOR SCOPE
-                // Huge AoE (radius 2)
-                const meteorDmg = spellData.baseDamage + (player.wits * spellLevel);
-                const mx = player.x + (dirX * 3);
-                const my = player.y + (dirY * 3);
-                logMessage("A meteor crashes down!");
-
-                for (let y = my - spellData.radius; y <= my + spellData.radius; y++) {
-                    for (let x = mx - spellData.radius; x <= mx + spellData.radius; x++) {
-                        applySpellDamage(x, y, meteorDmg, spellId).then(hit => {
-                            if (hit) ParticleSystem.createExplosion(x, y, '#f97316'); // Fire explosion
-                        });
-                    }
-                }
-                hitSomething = true;
-            } // <--- CLOSE BRACE
-            break;
-
-        case 'raiseDead':
-            { // <--- BRACE ADDED FOR SCOPE
-                // 1. Calculate target coordinates
-                // (We assume range 1-3 based on the loop in executeAimedSpell, 
-                // but Raise Dead usually targets a specific spot. Let's look 1 tile away for simplicity first).
-                const targetX = player.x + dirX;
-                const targetY = player.y + dirY;
-
-                // 2. Determine what is on that tile
-                let tileType;
-                if (gameState.mapMode === 'overworld') {
-                    tileType = chunkManager.getTile(targetX, targetY);
-                } else if (gameState.mapMode === 'dungeon') {
-                    tileType = chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX];
-                } else {
-                    tileType = chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX];
-                }
-
-                // 3. Check for valid "corpse" materials
-                // Valid: 's' (Skeleton enemy?), '(' (Bone Shard), '⚰️' (Grave)
-                // For now, let's say you can raise from Bone Shards '(' or graves '⚰️'
-                // OR if we just want it to be a summon, we can ignore requirements. 
-                // Let's require a Bone Shard '(' on the ground for balance.
-
-                if (tileType === '(' || tileType === '⚰️') {
-
-                    if (gameState.player.companion) {
-                        logMessage("You already have a companion! Dismiss them first.");
-                    } else {
-                        logMessage("You chant the words of unlife... A Skeleton rises to serve you!");
-
-                        // Consume the bones/grave
-                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(targetX, targetY, '.');
-                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
-
-                        // Create the companion
-                        gameState.player.companion = {
-                            name: "Risen Skeleton",
-                            tile: "s",
-                            type: "undead",
-                            hp: 15 + (player.willpower * 5), // Scales with Willpower
-                            maxHp: 15 + (player.willpower * 5),
-                            attack: 3 + Math.floor(player.wits / 2),
-                            defense: 1,
-                            x: targetX,
-                            y: targetY
-                        };
-
-                        // Update DB
-                        playerRef.update({ companion: gameState.player.companion });
-                        hitSomething = true; // Consumes the spell resource
-
-                        render(); // Show the change
-                    }
-                } else {
-                    logMessage("You need a pile of bones '(' or a grave '⚰️' to raise the dead.");
-                }
-            }
-            break;
-
-        case 'chainLightning':
-            {
-                // 1. Calculate Base Damage
-                const lightningDmg = spellData.baseDamage + (player.wits * spellLevel);
-
-                // 2. Determine Primary Impact Point (3 tiles away, like Fireball)
-                const targetX = player.x + (dirX * 3);
-                const targetY = player.y + (dirY * 3);
-
-                logMessage("A bolt of lightning arcs from your hands!");
-
-                // 3. Hit Primary Target
-                // We use 'await' here to ensure the main bolt hits first
-                const hitPrimary = await applySpellDamage(targetX, targetY, lightningDmg, spellId);
-
-                if (hitPrimary) {
+            // Projectile travel logic (Range 1-3)
+            for (let i = 1; i <= 3; i++) {
+                const targetX = player.x + (dirX * i);
+                const targetY = player.y + (dirY * i);
+                
+                if (await applySpellDamage(targetX, targetY, spellDamage, spellId)) {
                     hitSomething = true;
-                    // Visual: Bright Blue/Yellow Spark
-                    ParticleSystem.createExplosion(targetX, targetY, '#facc15');
+                    break; // Stop, we hit a target
                 }
+            }
+            break;
+        }
 
-                // 4. The "Chain" Logic
-                // Instead of a fixed square, we scan a radius and pick RANDOM valid enemies
-                const jumpRadius = 3; // How far the lightning can jump
-                let potentialJumpTargets = [];
+        // --- 3. OTHER SPELLS (Keep existing logic) ---
+        case 'thunderbolt': {
+            const thunderDmg = spellData.baseDamage + (player.wits * spellLevel);
+            logMessage("CRACK! Lightning strikes!");
+            // Thunderbolt is instant hit, range 4
+            for (let i = 1; i <= 4; i++) {
+                const tx = player.x + (dirX * i);
+                const ty = player.y + (dirY * i);
+                if (await applySpellDamage(tx, ty, thunderDmg, spellId)) {
+                    ParticleSystem.createExplosion(tx, ty, '#facc15');
+                    hitSomething = true;
+                    break;
+                }
+            }
+            break;
+        }
 
-                // Scan the area around the impact point
-                for (let y = targetY - jumpRadius; y <= targetY + jumpRadius; y++) {
-                    for (let x = targetX - jumpRadius; x <= targetX + jumpRadius; x++) {
-                        // Don't hit the primary target again
-                        if (x === targetX && y === targetY) continue;
+        case 'meteor': {
+            // Huge AoE (radius 2)
+            const meteorDmg = spellData.baseDamage + (player.wits * spellLevel);
+            const mx = player.x + (dirX * 3);
+            const my = player.y + (dirY * 3);
+            logMessage("A meteor crashes down!");
 
-                        // Check if there is actually an enemy here
-                        let hasEnemy = false;
-                        if (gameState.mapMode === 'overworld') {
-                            const tile = chunkManager.getTile(x, y);
-                            if (ENEMY_DATA[tile]) hasEnemy = true;
-                        } else {
-                            if (gameState.instancedEnemies.some(e => e.x === x && e.y === y)) hasEnemy = true;
-                        }
+            for (let y = my - spellData.radius; y <= my + spellData.radius; y++) {
+                for (let x = mx - spellData.radius; x <= mx + spellData.radius; x++) {
+                    applySpellDamage(x, y, meteorDmg, spellId).then(hit => {
+                        if (hit) ParticleSystem.createExplosion(x, y, '#f97316');
+                    });
+                }
+            }
+            hitSomething = true;
+            break;
+        }
 
-                        if (hasEnemy) {
-                            potentialJumpTargets.push({ x, y });
+        case 'raiseDead': {
+            // (Keep existing raiseDead logic...)
+            // 1. Calculate target coordinates
+            const targetX = player.x + dirX;
+            const targetY = player.y + dirY;
+
+            // 2. Determine what is on that tile
+            let tileType;
+            if (gameState.mapMode === 'overworld') {
+                tileType = chunkManager.getTile(targetX, targetY);
+            } else if (gameState.mapMode === 'dungeon') {
+                tileType = chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX];
+            } else {
+                tileType = chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX];
+            }
+
+            if (tileType === '(' || tileType === '⚰️') {
+                if (gameState.player.companion) {
+                    logMessage("You already have a companion! Dismiss them first.");
+                } else {
+                    logMessage("You chant the words of unlife... A Skeleton rises to serve you!");
+
+                    // Consume the bones/grave
+                    if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(targetX, targetY, '.');
+                    else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = '.';
+
+                    // Create the companion
+                    gameState.player.companion = {
+                        name: "Risen Skeleton",
+                        tile: "s",
+                        type: "undead",
+                        hp: 15 + (player.willpower * 5),
+                        maxHp: 15 + (player.willpower * 5),
+                        attack: 3 + Math.floor(player.wits / 2),
+                        defense: 1,
+                        x: targetX,
+                        y: targetY
+                    };
+
+                    playerRef.update({ companion: gameState.player.companion });
+                    hitSomething = true;
+                    render();
+                }
+            } else {
+                logMessage("You need a pile of bones '(' or a grave '⚰️' to raise the dead.");
+            }
+            break;
+        }
+
+        case 'chainLightning': {
+            // (Keep existing chainLightning logic...)
+            const lightningDmg = spellData.baseDamage + (player.wits * spellLevel);
+            const targetX = player.x + (dirX * 3);
+            const targetY = player.y + (dirY * 3);
+
+            logMessage("A bolt of lightning arcs from your hands!");
+
+            const hitPrimary = await applySpellDamage(targetX, targetY, lightningDmg, spellId);
+
+            if (hitPrimary) {
+                hitSomething = true;
+                ParticleSystem.createExplosion(targetX, targetY, '#facc15');
+            }
+
+            const jumpRadius = 3; 
+            let potentialJumpTargets = [];
+
+            for (let y = targetY - jumpRadius; y <= targetY + jumpRadius; y++) {
+                for (let x = targetX - jumpRadius; x <= targetX + jumpRadius; x++) {
+                    if (x === targetX && y === targetY) continue;
+
+                    let hasEnemy = false;
+                    if (gameState.mapMode === 'overworld') {
+                        const tile = chunkManager.getTile(x, y);
+                        if (ENEMY_DATA[tile]) hasEnemy = true;
+                    } else {
+                        if (gameState.instancedEnemies.some(e => e.x === x && e.y === y)) hasEnemy = true;
+                    }
+
+                    if (hasEnemy) potentialJumpTargets.push({ x, y });
+                }
+            }
+
+            const maxJumps = 2 + Math.floor(spellLevel / 2);
+            potentialJumpTargets.sort(() => Math.random() - 0.5);
+            const jumpsToMake = Math.min(potentialJumpTargets.length, maxJumps);
+
+            if (jumpsToMake > 0) {
+                setTimeout(() => logMessage(`The lightning arcs to ${jumpsToMake} nearby enemies!`), 200);
+            }
+
+            for (let i = 0; i < jumpsToMake; i++) {
+                const jumpTgt = potentialJumpTargets[i];
+                const jumpDmg = Math.max(1, Math.floor(lightningDmg * 0.75));
+                applySpellDamage(jumpTgt.x, jumpTgt.y, jumpDmg, spellId).then(hit => {
+                    if (hit) ParticleSystem.createExplosion(jumpTgt.x, jumpTgt.y, '#93c5fd');
+                });
+            }
+            break;
+        }
+
+        case 'fireball': {
+            // (Keep existing fireball logic...)
+            const fbDamage = spellData.baseDamage + (player.wits * spellLevel);
+            const radius = spellData.radius; 
+            const targetX = player.x + (dirX * 3);
+            const targetY = player.y + (dirY * 3);
+            logMessage("A fireball erupts in the distance!");
+
+            for (let y = targetY - radius; y <= targetY + radius; y++) {
+                for (let x = targetX - radius; x <= targetX + radius; x++) {
+                    let tileAt;
+                    if (gameState.mapMode === 'overworld') tileAt = chunkManager.getTile(x, y);
+                    else if (gameState.mapMode === 'dungeon') tileAt = chunkManager.caveMaps[gameState.currentCaveId]?.[y]?.[x];
+                    else if (gameState.mapMode === 'castle') tileAt = chunkManager.castleMaps[gameState.currentCastleId]?.[y]?.[x];
+
+                    if (tileAt === '🛢') {
+                        logMessage("BOOM! An Oil Barrel explodes!");
+                        ParticleSystem.createExplosion(x, y, '#f97316', 12);
+                        if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(x, y, '.');
+                        else if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][y][x] = '.';
+                        else chunkManager.castleMaps[gameState.currentCastleId][y][x] = '.';
+                        applySpellDamage(x, y, 15, 'fireball');
+                    }
+
+                    if (gameState.mapMode === 'dungeon' && tileAt === '🕸') {
+                        const map = chunkManager.caveMaps[gameState.currentCaveId];
+                        const theme = CAVE_THEMES[gameState.currentCaveTheme];
+                        if (map && map[y]) {
+                            map[y][x] = theme.floor;
+                            logMessage("The web catches fire and burns away!");
                         }
                     }
-                }
 
-                // 5. Select Jump Targets
-                // Max jumps scales slightly with spell level (Base 2 jumps + 1 per 2 levels)
-                const maxJumps = 2 + Math.floor(spellLevel / 2);
-
-                // Shuffle the potential targets array (Fisher-Yates shuffle simplified)
-                potentialJumpTargets.sort(() => Math.random() - 0.5);
-
-                // Hit the first N targets
-                const jumpsToMake = Math.min(potentialJumpTargets.length, maxJumps);
-
-                if (jumpsToMake > 0) {
-                    // Slight delay in log to simulate the "travel" time
-                    setTimeout(() => logMessage(`The lightning arcs to ${jumpsToMake} nearby enemies!`), 200);
-                }
-
-                for (let i = 0; i < jumpsToMake; i++) {
-                    const jumpTgt = potentialJumpTargets[i];
-                    // Chain hits deal 75% damage
-                    const jumpDmg = Math.max(1, Math.floor(lightningDmg * 0.75));
-
-                    applySpellDamage(jumpTgt.x, jumpTgt.y, jumpDmg, spellId).then(hit => {
-                        if (hit) ParticleSystem.createExplosion(jumpTgt.x, jumpTgt.y, '#93c5fd'); // Lighter blue for arcs
+                    applySpellDamage(x, y, fbDamage, spellId).then(hit => {
+                        if (hit) hitSomething = true;
                     });
                 }
             }
             break;
-
-        case 'fireball':
-            {
-                // This is an AoE spell. It hits a 3x3 area, 3 tiles away.
-                const fbDamage = spellData.baseDamage + (player.wits * spellLevel);
-                const radius = spellData.radius; // 1
-
-                // Fireball targets a point 3 tiles away
-                const targetX = player.x + (dirX * 3);
-                const targetY = player.y + (dirY * 3);
-                logMessage("A fireball erupts in the distance!");
-
-                // Loop in a 3x3 area around the target point
-                for (let y = targetY - radius; y <= targetY + radius; y++) {
-                    for (let x = targetX - radius; x <= targetX + radius; x++) {
-
-                        let tileAt; // <--- Declared ONCE here
-
-                        // 1. Get the tile based on map mode
-                        if (gameState.mapMode === 'overworld') {
-                            tileAt = chunkManager.getTile(x, y);
-                        } else if (gameState.mapMode === 'dungeon') {
-                            const mapRef = chunkManager.caveMaps[gameState.currentCaveId];
-                            tileAt = (mapRef && mapRef[y]) ? mapRef[y][x] : null;
-                        } else if (gameState.mapMode === 'castle') {
-                            const mapRef = chunkManager.castleMaps[gameState.currentCastleId];
-                            tileAt = (mapRef && mapRef[y]) ? mapRef[y][x] : null;
-                        }
-
-                        // 2. Check for Barrel
-                        if (tileAt === '🛢') {
-                            logMessage("BOOM! An Oil Barrel explodes!");
-                            ParticleSystem.createExplosion(x, y, '#f97316', 12);
-
-                            // Destroy the barrel (Handle Overworld vs Instanced)
-                            if (gameState.mapMode === 'overworld') {
-                                chunkManager.setWorldTile(x, y, '.');
-                            } else if (gameState.mapMode === 'dungeon') {
-                                chunkManager.caveMaps[gameState.currentCaveId][y][x] = '.';
-                            } else {
-                                chunkManager.castleMaps[gameState.currentCastleId][y][x] = '.';
-                            }
-
-                            // Deal extra damage to anything on this tile!
-                            applySpellDamage(x, y, 15, 'fireball');
-                        }
-
-                        // 3. Check for Spider Webs (Using the SAME tileAt variable)
-                        if (gameState.mapMode === 'dungeon' && tileAt === '🕸') {
-                            const map = chunkManager.caveMaps[gameState.currentCaveId];
-                            const theme = CAVE_THEMES[gameState.currentCaveTheme];
-                            if (map && map[y]) {
-                                map[y][x] = theme.floor; // Burn it away
-                                logMessage("The web catches fire and burns away!");
-                            }
-                        }
-
-                        // Don't await in the AoE loop, just fire them all off
-                        applySpellDamage(x, y, fbDamage, spellId).then(hit => {
-                            if (hit) hitSomething = true;
-                        });
-                    }
-                }
-            }
-            break;
+        }
     }
 
     if (!hitSomething && (spellId === 'magicBolt' || spellId === 'siphonLife')) {
@@ -12795,28 +12740,54 @@ function clearSessionState() {
 }
 
 logoutButton.addEventListener('click', () => {
-    const finalState = {
-        ...gameState.player,
-        lootedTiles: Array.from(gameState.lootedTiles)
-    };
+    // 1. Only attempt to save if we have a valid database reference
+    if (playerRef) {
+        const finalState = {
+            ...gameState.player,
+            lootedTiles: Array.from(gameState.lootedTiles)
+        };
 
-    // Create a clean version of the inventory before saving
+        // Create a clean version of the inventory before saving
+        if (finalState.inventory) {
+            finalState.inventory = getSanitizedInventory();
+        }
 
-    if (finalState.inventory) {
-        finalState.inventory = getSanitizedInventory();
+        // Remove ephemeral visual properties
+        delete finalState.color;
+        delete finalState.character;
+
+        // Save to Firestore
+        playerRef.set(finalState, {
+            merge: true
+        }).catch(err => {
+            console.error("Error saving on logout:", err);
+        });
     }
 
-    delete finalState.color;
-    delete finalState.character;
-    playerRef.set(finalState, {
-        merge: true
-    });
-    if (onlinePlayerRef) onlinePlayerRef.remove();
-    if (unsubscribePlayerListener) unsubscribePlayerListener();
+    // 2. Remove from Online Players list (Realtime DB)
+    if (onlinePlayerRef) {
+        onlinePlayerRef.remove().catch(err => console.error(err));
+    }
+
+    // 3. Detach Firebase Listeners
+    if (unsubscribePlayerListener) {
+        unsubscribePlayerListener();
+        unsubscribePlayerListener = null;
+    }
+    
     Object.values(worldStateListeners).forEach(unsubscribe => unsubscribe());
     worldStateListeners = {};
+
+    // 4. Clear Local Memory
     clearSessionState();
-    auth.signOut();
+
+    // 5. Sign Out
+    auth.signOut().then(() => {
+        console.log("Signed out successfully.");
+        // UI reset is handled by onAuthStateChanged, but we can force hide here to be snappy
+        gameContainer.classList.add('hidden');
+        authContainer.classList.remove('hidden');
+    });
 });
 
 async function enterGame(playerData) {
