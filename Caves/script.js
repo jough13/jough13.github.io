@@ -11226,12 +11226,17 @@ function passivePerceptionCheck() {
  * Accepts a pre-calculated playerDamage value.
  */
 
-async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage) { // <-- ADDED playerDamage
+async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage) { 
     const player = gameState.player;
-    const enemyId = `overworld:${newX},${-newY}`; // Unique RTDB key
+    const enemyId = `overworld:${newX},${-newY}`; 
     const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-    // Log message is now passed from the caller (e.g., "You attack..." or "You lunge...")
+    // --- FIX START: Capture Stats Before Death ---
+    // We grab the local state first. If it exists, we use its Name and XP.
+    // If it doesn't exist (rare race condition), we fall back to scaling.
+    const liveEnemy = gameState.sharedEnemies[enemyId];
+    const enemyInfo = liveEnemy || getScaledEnemy(enemyData, newX, newY);
+    // --- FIX END ---
 
     let enemyWasKilled = false;
     let enemyAttackedBack = false;
@@ -11243,6 +11248,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             let enemy;
             if (currentData === null) {
                 // First time this enemy is hit. Create it in RTDB.
+                // Note: We use the existing logic here, but for the LOGS we use 'enemyInfo' captured above.
                 const scaledStats = getScaledEnemy(enemyData, newX, newY);
 
                 enemy = {
@@ -11252,8 +11258,8 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     defense: enemyData.defense,
                     xp: scaledStats.xp,
                     loot: enemyData.loot,
-                    tile: newTile, // Store the original tile
-                    name: scaledStats.name // Store the scaled name (e.g., "Feral Wolf")
+                    tile: newTile, 
+                    name: scaledStats.name 
                 };
 
             } else {
@@ -11261,15 +11267,12 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             }
 
             // --- Player Attacks Enemy ---
-            // We now use the damage value passed into the function!
             enemy.health -= playerDamage;
 
             if (enemy.health <= 0) {
-                // Enemy is dead. Return 'null' to delete it from RTDB.
-                return null;
+                return null; // Delete
             } else {
-                // Enemy is still alive. Update its health.
-                return enemy;
+                return enemy; // Update
             }
         });
 
@@ -11283,32 +11286,29 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
         if (finalEnemyState === null) {
             // Enemy Died
-            const deadEnemyInfo = getScaledEnemy(enemyData, newX, newY);
-            logMessage(`The ${deadEnemyInfo.name} was vanquished!`);
-            grantXp(deadEnemyInfo.xp);
-            updateQuestProgress(newTile); // Uses the original tile ID
+            // --- FIX: Use the captured 'enemyInfo' for Name and XP ---
+            logMessage(`The ${enemyInfo.name} was vanquished!`);
+            grantXp(enemyInfo.xp);
+            updateQuestProgress(newTile); 
 
             const tileId = `${newX},${-newY}`;
             if (gameState.lootedTiles.has(tileId)) {
                 gameState.lootedTiles.delete(tileId);
-                // We don't need to save immediately here, as the playerRef update 
-                // happens at the end of the function or next move, but to be safe:
                 playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles) });
             }
 
-            const droppedLoot = generateEnemyLoot(player, enemyData);
+            // Generate loot based on the TEMPLATE, but boost chance if Elite
+            // Pass the Elite flag if the live enemy was elite
+            const lootData = { ...enemyData, isElite: enemyInfo.isElite };
+            const droppedLoot = generateEnemyLoot(player, lootData);
 
-            // Remove the enemy from local memory immediately so it vanishes 
-            // from the screen before the server listener catches up.
             if (gameState.sharedEnemies[enemyId]) {
                 delete gameState.sharedEnemies[enemyId];
             }
-            render(); // Force a re-draw to clear the sprite
+            render(); 
 
-            // Check terrain to see if we can place loot. 
-            // We allow placement if it's normal terrain OR if it's the enemy tile we just killed.
             const currentTerrain = chunkManager.getTile(newX, newY);
-            const passableTerrain = ['.', 'd', 'D', 'F', '≈']; // Plains, Deadlands, Desert, Forest, Swamp
+            const passableTerrain = ['.', 'd', 'D', 'F', '≈']; 
 
             if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
                 chunkManager.setWorldTile(newX, newY, droppedLoot);
@@ -11320,94 +11320,79 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             enemyAttackedBack = true;
             const enemy = finalEnemyState;
 
-            // --- 1. NEW: Shield Block Check ---
+            // --- 1. Block Check ---
             let blockChance = 0;
-            // Check Armor slot (Shields)
             if (player.equipment.armor && player.equipment.armor.blockChance) {
                 blockChance += player.equipment.armor.blockChance;
             }
-            // Check Weapon slot (Parrying daggers or shields in main hand)
             if (player.equipment.weapon && player.equipment.weapon.blockChance) {
                 blockChance += player.equipment.weapon.blockChance;
             }
 
             if (Math.random() < blockChance) {
-                logMessage(`CLANG! You blocked the ${enemyData.name}'s attack!`);
+                logMessage(`CLANG! You blocked the ${enemy.name}'s attack!`); // Use live name
                 if (typeof ParticleSystem !== 'undefined') {
                     ParticleSystem.createFloatingText(player.x, player.y, "BLOCKED", "#ccc");
                 }
                 enemyDamageTaken = 0;
             } else {
-                // --- 2. Calculate Potential Damage ---
+                // --- 2. Calculate Damage ---
                 const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
                 const baseDefense = Math.floor(player.dexterity / 3);
                 const buffDefense = player.defenseBonus || 0;
+                const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0; // Added missing logic
 
-                // --- TALENT: IRON SKIN ---
-                const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
-
-                const playerDefense = baseDefense + armorDefense + buffDefense;
+                const playerDefense = baseDefense + armorDefense + buffDefense + talentDefense; // Added talentDefense
 
                 enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
 
-                // --- 3. Luck Dodge Check ---
+                // --- 3. Dodge Check ---
                 let dodgeChance = Math.min(player.luck * 0.002, 0.25);
-                // Add Evasion Talent
                 if (player.talents && player.talents.includes('evasion')) {
-                    dodgeChance += 0.10; // Flat +10%
+                    dodgeChance += 0.10; 
                 }
 
                 if (Math.random() < dodgeChance) {
-                    logMessage(`The ${enemyData.name} attacks, but you dodge! (Evasion)`);
+                    logMessage(`The ${enemy.name} attacks, but you dodge!`); // Use live name
                     enemyDamageTaken = 0;
                 }
             }
 
-            // --- 4. Apply Final Damage & Reactives ---
+            // --- 4. Apply Damage ---
             if (enemyDamageTaken > 0) {
                 let damageToApply = enemyDamageTaken;
 
-                // -- Arcane Shield Logic --
+                // -- Shield --
                 if (player.shieldValue > 0) {
                     const damageAbsorbed = Math.min(player.shieldValue, damageToApply);
                     player.shieldValue -= damageAbsorbed;
                     damageToApply -= damageAbsorbed;
-
                     logMessage(`Your shield absorbs ${damageAbsorbed} damage!`);
-
-                    if (player.shieldValue === 0) {
-                        logMessage("Your Arcane Shield shatters!");
-                    }
+                    if (player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
                 }
 
-                // -- Thorns Logic (Reflect Damage) --
+                // -- Thorns --
                 if (player.thornsValue > 0) {
-                    logMessage(`The ${enemyData.name} takes ${player.thornsValue} damage from your thorns!`);
-
-                    // Use a nested transaction to safely apply thorn damage to the DB
+                    logMessage(`The ${enemy.name} takes ${player.thornsValue} damage from your thorns!`);
+                    
                     enemyRef.transaction(thornData => {
-                        if (!thornData) return null; // Enemy already dead/gone
-
+                        if (!thornData) return null; 
                         thornData.health -= player.thornsValue;
-
-                        // If dead, return null to delete
                         return thornData.health <= 0 ? null : thornData;
                     }).then(result => {
-                        // Check if the enemy was deleted (snapshot doesn't exist)
                         if (result.committed && !result.snapshot.exists()) {
-                            logMessage(`The ${enemyData.name} is killed by your thorns!`);
-                            grantXp(enemyData.xp);
+                            logMessage(`The ${enemy.name} is killed by your thorns!`);
+                            grantXp(enemyInfo.xp); // Use captured XP
                             updateQuestProgress(newTile);
-                            const droppedLoot = generateEnemyLoot(player, enemyData);
+                            const droppedLoot = generateEnemyLoot(player, { ...enemyData, isElite: enemyInfo.isElite });
                             chunkManager.setWorldTile(newX, newY, droppedLoot);
                         }
                     });
                 }
 
-                // -- Apply Final Health Damage --
                 if (damageToApply > 0) {
                     player.health -= damageToApply;
-                    gameState.screenShake = 10; // Shake intensity
+                    gameState.screenShake = 10; 
                 }
             }
         }
@@ -11415,17 +11400,13 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
     } catch (error) {
         console.error("Firebase transaction failed: ", error);
         logMessage("Your attack falters... (network error)");
-        return; // Exit combat on error
+        return; 
     }
 
-    // --- Handle Post-Combat Player State ---
     if (enemyAttackedBack && enemyDamageTaken > 0) {
-        triggerStatFlash(statDisplays.health, false); // Flash health red
-
+        triggerStatFlash(statDisplays.health, false); 
         AudioSystem.playHit();
-
-        logMessage(`The ${enemyData.name} hits you for ${enemyDamageTaken} damage!`);
-
+        logMessage(`The ${enemyInfo.name} hits you for ${enemyDamageTaken} damage!`); // Use captured name
         ParticleSystem.createFloatingText(player.x, player.y, `-${enemyDamageTaken}`, '#ef4444');
 
         if (handlePlayerDeath()) return;
@@ -14629,13 +14610,21 @@ async function attemptMovePlayer(newX, newY) {
 
             AudioSystem.playAttack();
 
+            // --- FIX START: Get Real Name ---
+            // Look up the live entity to get the correct name (e.g. "Spectral Giant Rat")
+            // instead of the base template name ("Giant Rat").
+            const enemyId = `overworld:${newX},${-newY}`;
+            const liveEnemy = gameState.sharedEnemies[enemyId];
+            const targetName = liveEnemy ? liveEnemy.name : enemyData.name;
+            // --- FIX END ---
+
             if (isCrit) {
-                logMessage(`CRITICAL HIT! You strike the ${enemyData.name} for ${playerDamage} damage!`);
+                logMessage(`CRITICAL HIT! You strike the ${targetName} for ${playerDamage} damage!`);
                 if (typeof ParticleSystem !== 'undefined') {
                     ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
                 }
             } else {
-                logMessage(`You attack the ${enemyData.name} for ${playerDamage} damage!`);
+                logMessage(`You attack the ${targetName} for ${playerDamage} damage!`);
             }
 
             await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
