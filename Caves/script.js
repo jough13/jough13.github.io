@@ -6922,27 +6922,28 @@ async function wakeUpNearbyEnemies() {
 
             const tileId = `${x},${y}`;
 
-            // 1. FAST LOCK: Skip if already processing
+            // 1. FAST LOCK: Skip if already processing this tile locally
             if (processingSpawnTiles.has(tileId)) continue;
 
             const enemyId = `overworld:${x},${-y}`;
 
-            // 2. Get the current tile
+            // 2. Get the current tile from the map data
             const tile = chunkManager.getTile(x, y);
             const enemyData = ENEMY_DATA[tile];
 
-            // 3. EXISTENCE CHECK: If a live enemy is already here, mark as woken and skip
+            // 3. EXISTENCE CHECK: If we already have a shared enemy here, consider it woken.
             if (gameState.sharedEnemies[enemyId]) {
                 wokenEnemyTiles.add(tileId);
                 continue;
             }
 
-            // 4. SPAWN LOGIC
+            // 4. SPAWN LOGIC: Found a static enemy tile
             if (enemyData) {
-                // Lock this tile so we don't try to spawn it 50 times a second
+                // Lock this tile immediately
                 processingSpawnTiles.add(tileId);
                 wokenEnemyTiles.add(tileId);
 
+                // Create the Enemy Object
                 const scaledStats = getScaledEnemy(enemyData, x, y);
                 const newEnemy = {
                     ...scaledStats,
@@ -6952,29 +6953,31 @@ async function wakeUpNearbyEnemies() {
                     spawnTime: Date.now()
                 };
 
-                // --- ROBUST FIX: OPTIMISTIC RENDER ---
-                // 1. Add to Pending (so AI ignores it)
+                // --- OPTIMISTIC UPDATE (VISUAL) ---
+                // Add to Pending list so it persists between server snapshots
                 pendingSpawnData[enemyId] = newEnemy;
-                // 2. Add to Shared (so Renderer draws it)
+                // Add to Shared list so it Renders immediately
                 gameState.sharedEnemies[enemyId] = newEnemy;
                 
-                // 3. Force Render (Draws the enemy ON TOP of the map tile)
+                // --- CRITICAL CHANGE ---
+                // We do NOT chunkManager.setWorldTile(x, y, '.') here.
+                // We leave the 'w' (wolf) tile on the map for now.
+                // The live enemy draws ON TOP of it. This prevents the "flash".
+                
                 render(); 
 
-                // 4. Send to DB
+                // 5. SERVER TRANSACTION
                 rtdb.ref(`worldEnemies/${enemyId}`).transaction(current => {
                     return current || newEnemy;
                 }).then(() => {
-                    // Unlock the tile. 
-                    // WE DO NOT DELETE PENDING DATA HERE.
-                    // WE DO NOT CLEAR THE MAP TILE HERE.
-                    // The Listener will handle that when the data comes back.
+                    // Transaction complete. We only release the lock.
+                    // The Listener (in enterGame) will handle the tile cleanup.
                     processingSpawnTiles.delete(tileId);
                 }).catch(err => {
+                    // On failure, rollback local visuals so it tries again
                     console.error("Spawn failed", err);
-                    // Rollback on error
-                    delete pendingSpawnData[enemyId];
-                    delete gameState.sharedEnemies[enemyId];
+                    if (pendingSpawnData[enemyId]) delete pendingSpawnData[enemyId];
+                    if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
                     processingSpawnTiles.delete(tileId);
                     wokenEnemyTiles.delete(tileId);
                 });
@@ -12135,7 +12138,7 @@ async function processOverworldEnemyTurns() {
 
     const isValidMove = (tx, ty, enemyType) => {
         const t = chunkManager.getTile(tx, ty);
-        if (t === '~') return false;
+        if (t === '~') return false; 
         if (['.', 'F', 'd', 'D', '≈'].includes(t)) return true;
         if (t === '^') {
             const climbers = ['Y', '🐲', 'Ø', 'g', 'o', '🦇', '🦅'];
@@ -12144,25 +12147,28 @@ async function processOverworldEnemyTurns() {
         return false;
     };
 
-    const activeEnemies = Object.values(gameState.sharedEnemies);
+    // Use Object.entries so we have the ID to check against Pending Data
+    const enemyEntries = Object.entries(gameState.sharedEnemies);
 
-    for (const enemy of activeEnemies) {
+    for (const [enemyKey, enemy] of enemyEntries) {
+        // Validation
         if (typeof enemy.x !== 'number' || typeof enemy.y !== 'number') continue;
 
-        // --- CRITICAL FIX: IGNORE PENDING ENEMIES ---
-        // If this enemy is still in our local pending list, the server doesn't know about it yet.
-        // We cannot move it, or the transaction will fail.
-        const currentId = `overworld:${enemy.x},${-enemy.y}`;
-        if (pendingSpawnData[currentId]) continue;
+        // --- CRITICAL FIX FOR AI ---
+        // If this enemy is still "Pending" (visual only, waiting on server),
+        // DO NOT TRY TO MOVE IT. Moving it will crash the transaction/sync.
+        if (pendingSpawnData[enemyKey]) continue;
 
+        // Distance Check
         const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
         if (distSq > searchDistSq) continue;
 
-        // AI Logic
+        // AI Chase/Wander Logic
         let chaseChance = 0.20;
-        if (distSq < 400) chaseChance = 0.70; // < 20 tiles
-        if (distSq < 100) chaseChance = 1.00; // < 10 tiles
+        if (distSq < 400) chaseChance = 0.70; // 20 tiles
+        if (distSq < 100) chaseChance = 1.00; // 10 tiles
 
+        // Activity Roll
         if (Math.random() < 0.75) {
             let dirX = 0, dirY = 0;
             let isChasing = false;
@@ -12182,6 +12188,7 @@ async function processOverworldEnemyTurns() {
             let finalY = enemy.y;
             let canMove = false;
 
+            // Movement Physics
             if (isValidMove(enemy.x + dirX, enemy.y + dirY, enemy.tile)) {
                 finalX = enemy.x + dirX; finalY = enemy.y + dirY; canMove = true;
             } else if (isChasing) {
@@ -12193,29 +12200,27 @@ async function processOverworldEnemyTurns() {
             }
 
             if (canMove) {
+                // Combat Check
                 if (finalX === playerX && finalY === playerY) {
                     const dmg = Math.max(1, enemy.attack - (gameState.player.defenseBonus || 0));
                     gameState.player.health -= dmg;
                     gameState.screenShake = 10;
                     logMessage(`A ${enemy.name} attacks you for ${dmg} damage!`);
                     triggerStatFlash(statDisplays.health, false);
+
                     if (gameState.player.health <= 0) {
-                        gameState.player.health = 0;
-                        logMessage("You have perished!");
-                        renderStats();
-                        syncPlayerState();
-                        document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
-                        document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
-                        gameOverModal.classList.remove('hidden');
+                        handlePlayerDeath(); // Call central death handler
                     }
-                    continue;
+                    continue; // Done acting
                 }
 
-                const isOccupied = activeEnemies.some(e => e.x === finalX && e.y === finalY);
+                // Collision with other enemies (Pre-move check)
+                const isOccupied = enemyEntries.some(([k, e]) => k !== enemyKey && e.x === finalX && e.y === finalY);
                 if (isOccupied) continue;
 
+                // Valid Move found - queue it
                 movesToMake.push({
-                    oldId: currentId,
+                    oldId: enemyKey,
                     newX: finalX,
                     newY: finalY,
                     enemyData: enemy
@@ -12229,8 +12234,7 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-    // --- EXECUTE MOVES (Parallel) ---
-    // We use Promise.all to prevent one slow move from blocking the others
+    // Execute Batched Moves
     await Promise.all(movesToMake.map(async (move) => {
         const newId = `overworld:${move.newX},${-move.newY}`;
         const oldRef = rtdb.ref(`worldEnemies/${move.oldId}`);
@@ -12239,14 +12243,19 @@ async function processOverworldEnemyTurns() {
         try {
             const updatedEnemy = { ...move.enemyData, x: move.newX, y: move.newY };
             const snapshot = await oldRef.once('value');
+            
+            // Only move if the old reference actually exists (Atomic check)
             if (snapshot.exists()) {
                 await newRef.set(updatedEnemy);
                 await oldRef.remove();
-                // Local update
+                
+                // Optimistic Local Update
                 delete gameState.sharedEnemies[move.oldId];
                 gameState.sharedEnemies[newId] = updatedEnemy;
             }
-        } catch (err) { console.error("Enemy move failed:", err); }
+        } catch (err) { 
+            console.error("Enemy move failed:", err); 
+        }
     }));
 
     return nearestEnemyDir;
@@ -16732,19 +16741,20 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
 
         gameState.initialEnemiesLoaded = true;
 
-        // 1. SMART CLEANUP & TILE CLEARING
+        // 1. DATA RECONCILIATION & MAP CLEANUP
         Object.keys(serverData).forEach(key => {
             const enemy = serverData[key];
             
-            // A. If this enemy was pending, we can stop tracking it locally
+            // A. Remove from pending since server now has it (Fixes double/ghost entities)
             if (pendingSpawnData[key]) {
                 delete pendingSpawnData[key];
             }
 
-            // B. If this enemy exists on the server, ensure the map tile underneath is clear
-            // This prevents the "Ghost Wolf" (static tile) from appearing under the "Live Wolf"
+            // B. Clean up the map tile underneath the unit (Fixes the "flash")
+            // Since this enemy definitely exists now, we don't need the static tile 'trigger'.
             if (gameState.mapMode === 'overworld') {
                 const currentTile = chunkManager.getTile(enemy.x, enemy.y);
+                // Ensure we only clear tiles that *are* enemies (prevent wiping trees by accident)
                 if (ENEMY_DATA[currentTile]) {
                     chunkManager.setWorldTile(enemy.x, enemy.y, '.');
                 }
@@ -16752,7 +16762,8 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         });
 
         // 2. MERGE: Server Data + Pending Local Data
-        // Pending data overrides server data to prevent lag/flickering during the spawn process
+        // pendingSpawnData still contains units waiting to be saved to DB.
+        // We render them *with* the server units to ensure seamlessness.
         const mergedEnemies = { ...serverData, ...pendingSpawnData };
 
         gameState.sharedEnemies = mergedEnemies;
