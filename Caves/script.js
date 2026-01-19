@@ -6941,23 +6941,16 @@ async function wakeUpNearbyEnemies() {
                 continue;
             }
 
-            // 4. SELF-HEALING: RESCUE MISSING ENEMIES
-            // If we marked this tile as "woken" previously, but NO enemy is found now,
-            // it means the spawn failed. We must revert the map tile so it tries again.
-
-            // REMOVED FOR FIX
-
             // 5. SPAWN: Found a new static enemy
             if (enemyData) {
-                // --- CRITICAL: LOCK & CLEAR IMMEDIATELY ---
+                // --- CRITICAL: LOCK IMMEDIATELY ---
                 processingSpawnTiles.add(tileId);
                 wokenEnemyTiles.add(tileId);
 
                 // Safety Timeout: Unlock if server fails to respond in 2s
                 setTimeout(() => processingSpawnTiles.delete(tileId), 2000);
 
-                chunkManager.setWorldTile(x, y, '.');
-
+                // --- CHANGE 1: PREPARE DATA BEFORE CLEARING TILE ---
                 const scaledStats = getScaledEnemy(enemyData, x, y);
                 const newEnemy = {
                     ...scaledStats,
@@ -6970,11 +6963,15 @@ async function wakeUpNearbyEnemies() {
                 // Protect against flicker (Destination lock)
                 pendingSpawns.add(enemyId);
 
-                // --- Add to pendingSpawnData so listener keeps it alive ---
+                // --- CHANGE 2: ADD TO LOCAL STATE IMMEDIATELY ---
+                // We add it to pending AND sharedEnemies BEFORE we clear the map tile.
+                // This ensures there is never a frame where the tile is empty.
                 pendingSpawnData[enemyId] = newEnemy;
-
-                // Optimistic Update (Show enemy immediately)
                 gameState.sharedEnemies[enemyId] = newEnemy;
+                
+                // --- CHANGE 3: NOW CLEAR THE MAP TILE ---
+                chunkManager.setWorldTile(x, y, '.');
+                
                 render(); // Show it NOW
 
                 // Send to DB
@@ -6984,15 +6981,10 @@ async function wakeUpNearbyEnemies() {
                     pendingSpawns.delete(enemyId);
                     processingSpawnTiles.delete(tileId);
 
-                    // --- FIX: Delay deletion of local data to prevent flickering ---
-                    // We keep the local copy for 1 second to ensure the server listener has caught up.
-                    setTimeout(() => {
-                        if (pendingSpawnData[enemyId]) {
-                            delete pendingSpawnData[enemyId];
-                            // Optional: Force render to ensure smooth transition
-                            // render(); 
-                        }
-                    }, 1000);
+                    // --- CHANGE 4: REMOVED THE SETTIMEOUT CLEANUP ---
+                    // We no longer delete pendingSpawnData here. 
+                    // We let the Listener (in enterGame) handle the cleanup.
+                    // This guarantees the enemy stays on screen until the server confirms it.
 
                 }).catch(err => {
                     console.error("Spawn failed", err);
@@ -16807,6 +16799,15 @@ async function enterGame(playerData) {
                 }
             }
         });
+
+        // --- CHANGE START: SMART CLEANUP ---
+        // If the server has the enemy, we can safely remove it from our pending list.
+        Object.keys(serverData).forEach(key => {
+            if (pendingSpawnData[key]) {
+                delete pendingSpawnData[key];
+            }
+        });
+        // --- CHANGE END ---
 
         // 2. MERGE: Server Data + Pending Local Data
         // Pending data (local) overrides server data to prevent lag/flickering
