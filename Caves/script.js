@@ -7065,18 +7065,18 @@ function handleStatAllocation(event) {
 // Add the event listener to the panel
 coreStatsPanel.addEventListener('click', handleStatAllocation);
 
-function handleItemDrop(event) {
-    event.preventDefault();
+function handleItemDrop(key) {
+    // Removed event.preventDefault() - logic should be agnostic
     const player = gameState.player;
 
     // Cancel action
-    if (event.key === 'Escape') {
+    if (key === 'Escape') {
         logMessage("Drop canceled.");
         gameState.isDroppingItem = false;
         return;
     }
 
-    const keyNum = parseInt(event.key);
+    const keyNum = parseInt(key);
 
     // Check for valid item slot
     if (isNaN(keyNum) || keyNum < 1 || keyNum > 9) {
@@ -8879,7 +8879,8 @@ async function runCompanionTurn() {
             const tile = chunkManager.getTile(tx, ty);
             const enemyData = ENEMY_DATA[tile];
             
-            if (enemyData) {
+            // FIX: Ensure enemyData has stats (maxHealth) to prevent attacking non-combat tiles
+            if (enemyData && enemyData.maxHealth) {
                 attacked = true;
                 const enemyId = `overworld:${tx},${-ty}`;
                 const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
@@ -8892,6 +8893,9 @@ async function runCompanionTurn() {
                         
                         // If enemy doesn't exist in DB yet (fresh spawn), we create it momentarily to hit it
                         if (enemy === null) {
+                             // FIX: Safety check inside transaction
+                             if (!enemyData) return null; 
+
                              const scaledStats = getScaledEnemy(enemyData, tx, ty);
                              enemy = { ...scaledStats, tile: tile };
                         }
@@ -13801,9 +13805,9 @@ function handleInput(key) {
 
     // --- DROP MODE ---
 
-    if (gameState.isDroppingItem) {
-        // Mock an event object for handleItemDrop since it expects one
-        handleItemDrop({ key: key, preventDefault: () => {} });
+        if (gameState.isDroppingItem) {
+        // Pass the key string directly
+        handleItemDrop(key);
         return; 
     }
 
@@ -16499,15 +16503,87 @@ async function enterGame(playerData) {
     const loadingIndicator = document.getElementById('loadingIndicator');
     canvas.style.visibility = 'hidden';
 
-    // --- 1. Load State ---
+     // --- FIX: PERMADEATH LOOP PREVENTION ---
     if (playerData.health <= 0) {
-        logMessage("You have respawned.");
-        // Reset to default but keep the background
-        const bgKey = playerData.background;
-        playerData = createDefaultPlayerState();
-        playerData.background = bgKey;
+        logMessage("You have respawned at the village.");
         
-        // Note: playerRef is already set to the correct slot in selectSlot
+        // 1. Get a fresh default state (for structure safety)
+        const defaultState = createDefaultPlayerState();
+
+        // 2. Preserve Critical Progression Stats from the loaded data
+        // We explicitly copy over everything that represents "Progress"
+        const preservedStats = {
+            background: playerData.background,
+            level: playerData.level || 1,
+            xp: playerData.xp || 0,
+            xpToNextLevel: playerData.xpToNextLevel || 100,
+            statPoints: playerData.statPoints || 0,
+            talentPoints: playerData.talentPoints || 0,
+            talents: playerData.talents || [],
+            quests: playerData.quests || {},
+            killCounts: playerData.killCounts || {},
+            foundLore: playerData.foundLore || [],
+            discoveredRegions: playerData.discoveredRegions || [],
+            unlockedWaypoints: playerData.unlockedWaypoints || [],
+            
+            // Keep Core Stats
+            strength: playerData.strength || 1,
+            wits: playerData.wits || 1,
+            constitution: playerData.constitution || 1,
+            dexterity: playerData.dexterity || 1,
+            charisma: playerData.charisma || 1,
+            luck: playerData.luck || 1,
+            willpower: playerData.willpower || 1,
+            perception: playerData.perception || 1,
+            endurance: playerData.endurance || 1,
+            intuition: playerData.intuition || 1,
+            
+            // Keep Derived Max Stats (Important if stats were boosted)
+            maxHealth: playerData.maxHealth || 10,
+            maxMana: playerData.maxMana || 10,
+            maxStamina: playerData.maxStamina || 10,
+            maxPsyche: playerData.maxPsyche || 10,
+            
+            // Keep Skills/Spells/Crafting
+            spellbook: playerData.spellbook || {},
+            skillbook: playerData.skillbook || {},
+            craftingLevel: playerData.craftingLevel || 1,
+            craftingXp: playerData.craftingXp || 0,
+            craftingXpToNext: playerData.craftingXpToNext || 50,
+            
+            // Keep Class Evolution status
+            classEvolved: playerData.classEvolved || false,
+            className: playerData.className || null,
+            character: playerData.character || '@' // Keep custom sprite if evolved
+        };
+
+        // 3. Merge: Default Structure + Preserved Stats + Respawn Penalties
+        playerData = {
+            ...defaultState,
+            ...preservedStats,
+            
+            // 4. Enforce Respawn Conditions (Village, Full Health)
+            x: 0,
+            y: 0,
+            health: preservedStats.maxHealth, // HEAL TO FULL
+            mana: preservedStats.maxMana,
+            stamina: preservedStats.maxStamina,
+            
+            // 5. Apply Death Penalties (Match handlePlayerDeath logic)
+            coins: Math.floor((playerData.coins || 0) / 2), // Lose half gold
+            
+            // Reset Inventory to Rags (Hardcore-lite penalty)
+            // If you want them to KEEP items on reload, change this line to: inventory: playerData.inventory
+            inventory: [ 
+                { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
+            ],
+            equipment: {
+                weapon: { name: 'Fists', damage: 0 },
+                armor: { name: 'Tattered Rags', defense: 0 }
+            }
+        };
+        
+        // 6. Save the fixed state immediately so next reload is clean
         await playerRef.set(playerData);
     }
 
@@ -16653,54 +16729,68 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
             const data = doc.data();
 
             // --- Update Inventory ---
-            if (data.inventory) {
+               if (data.inventory) {
                 data.inventory.forEach(item => {
                     let templateItem = null;
+                    let templateKey = null;
 
-                    // 1. NEW: Try lookup by ID first (The Robust Way)
+                    // 1. ROBUST LOOKUP: Use the ID if available (Best Case)
                     if (item.templateId && ITEM_DATA[item.templateId]) {
                         templateItem = ITEM_DATA[item.templateId];
+                        templateKey = item.templateId;
                     }
 
-                    // 2. Fallback: Try exact name match (Legacy Way)
+                    // 2. FALLBACK A: Exact Name Match (Legacy Data)
                     if (!templateItem) {
-                        templateItem = Object.values(ITEM_DATA).find(d => d.name === item.name);
+                        templateKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === item.name);
+                        if (templateKey) templateItem = ITEM_DATA[templateKey];
                     }
 
-                    // 3. Fallback: Try stripping prefixes (The "Masterwork" Fix)
-                    // This handles cases where the name changed but we don't have an ID yet
-                    if (!templateItem && item.name.includes(" ")) {
-                        // Try to find a template name that appears at the END of the item name
-                        // e.g. "Masterwork Rusty Sword" ends with "Rusty Sword"
-                        templateItem = Object.values(ITEM_DATA).find(d => item.name.endsWith(d.name));
+                    // 3. FALLBACK B: Smart Suffix Match (The "Masterwork" Fix)
+                    // Handles "Sharp Rusty Sword" matching "Rusty Sword" instead of just "Sword"
+                    if (!templateItem) {
+                        // Find all templates that match the end of the item name
+                        const candidates = Object.keys(ITEM_DATA).filter(k => item.name.endsWith(ITEM_DATA[k].name));
+                        
+                        if (candidates.length > 0) {
+                            // Sort by name length descending. We want the longest match.
+                            // e.g. "Iron Sword" (len 10) is better than "Sword" (len 5)
+                            candidates.sort((a, b) => ITEM_DATA[b].name.length - ITEM_DATA[a].name.length);
+                            
+                            templateKey = candidates[0];
+                            templateItem = ITEM_DATA[templateKey];
+                        }
                     }
 
                     if (templateItem) {
-                        // SELF-HEAL: Ensure the item has the ID for next save if it was missing
+                        // SELF-HEAL: Save the ID for next time so we don't have to guess again
                         if (!item.templateId) {
-                            // Find the key in ITEM_DATA that matches this template
-                            const key = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k] === templateItem);
-                            if (key) item.templateId = key;
+                            item.templateId = templateKey;
                         }
 
-                        // Re-bind functions that don't survive JSON serialization
+                        // --- RE-BINDING LOGIC ---
+                        
+                        // 1. Re-bind functions (These don't survive database storage)
                         item.effect = templateItem.effect;
 
-                        // Re-bind static properties that might be needed for logic
+                        // 2. Re-bind static properties needed for logic
                         item.onHit = templateItem.onHit;
                         item.procChance = templateItem.procChance;
                         item.inflicts = templateItem.inflicts;
                         item.inflictChance = templateItem.inflictChance;
 
-                        // Only reset stats if they are missing (preserve crafted stats!)
-                        // But ensure the slot is correct based on the template
+                        // 3. Restore Missing Stats (But preserve crafted/randomized stats!)
+                        // We only overwrite if the saved item is missing the property entirely.
                         if (templateItem.type === 'weapon') {
                             if (item.damage === undefined || item.damage === null) item.damage = templateItem.damage;
-                            item.slot = templateItem.slot;
+                            // Always enforce the correct slot type from the template
+                            item.slot = templateItem.slot; 
                         } else if (templateItem.type === 'armor') {
                             if (item.defense === undefined || item.defense === null) item.defense = templateItem.defense;
                             item.slot = templateItem.slot;
                         }
+                    } else {
+                        console.warn(`⚠️ Could not re-bind item: "${item.name}". It may be a deprecated item.`);
                     }
                 });
 
