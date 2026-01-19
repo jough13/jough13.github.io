@@ -1791,8 +1791,8 @@ window.selectBackground = async function (bgKey) {
     }, { merge: true });
 
     // 5. Start the Game UI
-    charCreationModal.classList.add('hidden');
-    gameContainer.classList.remove('hidden');
+    charCreationModal.classList.add('hidden'); // Hide the class selector
+    gameContainer.classList.remove('hidden');  // NOW we show the game map
     canvas.style.visibility = 'visible';
 
     gameState.mapMode = 'overworld';
@@ -1814,25 +1814,23 @@ window.selectBackground = async function (bgKey) {
     //  it just updates the state which we just modified)
 };
 
-
-
 async function initCharacterSelect(user) {
     currentUser = user;
+    
     authContainer.classList.add('hidden');
+    gameContainer.classList.add('hidden'); // Force hide game map
+    charCreationModal.classList.add('hidden'); // Force hide creation modal
     characterSelectModal.classList.remove('hidden');
-    loadingIndicator.classList.remove('hidden'); // Show loading while checking slots
+    loadingIndicator.classList.remove('hidden'); 
 
     // 1. Legacy Migration Check
-    // If the user has data in the old root path 'players/{uid}', move it to 'players/{uid}/characters/slot1'
     const oldRootRef = db.collection('players').doc(user.uid);
     const oldDoc = await oldRootRef.get();
 
     if (oldDoc.exists && oldDoc.data().level) {
         console.log("Migrating legacy save to Slot 1...");
         const legacyData = oldDoc.data();
-        // Copy to Slot 1
         await oldRootRef.collection('characters').doc('slot1').set(legacyData);
-        // Delete old data to prevent re-migration (and clean up)
         await oldRootRef.delete();
     }
 
@@ -1912,8 +1910,6 @@ window.selectSlot = async function (slotId) {
         enterGame(doc.data());
     } else {
         // Start creation wizard
-        gameContainer.classList.remove('hidden'); // Needs to be visible for rendering logic
-        canvas.style.visibility = 'hidden'; // Hide canvas until ready
 
         const defaultState = createDefaultPlayerState();
         // We DON'T save yet. We wait for background selection.
