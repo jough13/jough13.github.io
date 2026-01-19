@@ -12118,7 +12118,6 @@ async function processOverworldEnemyTurns() {
     let movesQueued = false;
 
     // --- ECHO SPAWNING ---
-    // (Kept your existing logic)
     const hour = gameState.time.hour;
     const isNight = hour >= 20 || hour < 5;
     if (isNight && gameState.mapMode === 'overworld' && Math.random() < 0.01) {
@@ -12147,7 +12146,6 @@ async function processOverworldEnemyTurns() {
         if (typeof enemy.x !== 'number' || typeof enemy.y !== 'number') continue;
 
         // Skip if this enemy is currently being moved by us in this same loop
-        // (Prevents double processing if local state updates fast)
         if (enemy._processedThisTurn) continue;
 
         const currentId = `overworld:${enemy.x},${-enemy.y}`;
@@ -12155,7 +12153,7 @@ async function processOverworldEnemyTurns() {
         
         if (distSq > searchDistSq) continue;
 
-        // AI Logic
+        // AI Logic: CHASE
         let chaseChance = 0.20;
         if (distSq < 400) chaseChance = 0.70; 
         if (distSq < 100) chaseChance = 1.00;
@@ -12179,9 +12177,12 @@ async function processOverworldEnemyTurns() {
             let finalY = enemy.y;
             let canMove = false;
 
+            // Try primary direction
             if (isValidMove(enemy.x + dirX, enemy.y + dirY, enemy.tile)) {
                 finalX = enemy.x + dirX; finalY = enemy.y + dirY; canMove = true;
-            } else if (isChasing) {
+            } 
+            // Try sliding (basic pathfinding)
+            else if (isChasing) {
                 if (dirX !== 0 && isValidMove(enemy.x + dirX, enemy.y, enemy.tile)) {
                     finalX = enemy.x + dirX; finalY = enemy.y; canMove = true;
                 } else if (dirY !== 0 && isValidMove(enemy.x, enemy.y + dirY, enemy.tile)) {
@@ -12201,7 +12202,7 @@ async function processOverworldEnemyTurns() {
                     continue; 
                 }
 
-                // Entity Collision (Very simple check against current local state)
+                // Entity Collision (Avoid stacking)
                 const isOccupied = activeEnemies.some(e => e.x === finalX && e.y === finalY);
                 if (isOccupied) continue;
 
@@ -12211,17 +12212,19 @@ async function processOverworldEnemyTurns() {
                 // 1. Prepare New Data
                 const updatedEnemy = { ...enemy, x: finalX, y: finalY };
                 
+                // *** CRITICAL FIX: REMOVE LOCAL FLAG BEFORE SAVING ***
+                delete updatedEnemy._processedThisTurn; 
+                
                 // 2. Add to Atomic Packet
-                // We set the NEW location to the data
                 multiPathUpdate[`worldEnemies/${newId}`] = updatedEnemy;
-                // We set the OLD location to null
                 multiPathUpdate[`worldEnemies/${currentId}`] = null;
 
-                // 3. Optimistic Local Update (So it looks instant)
-                // We mark it processed so we don't move it again this frame if logic loops
-                updatedEnemy._processedThisTurn = true; 
+                // 3. Optimistic Local Update
+                // We add the flag locally so we don't process it twice in THIS loop
+                // But we never send this specific object to the DB
+                const localEnemy = { ...updatedEnemy, _processedThisTurn: true };
                 delete gameState.sharedEnemies[currentId];
-                gameState.sharedEnemies[newId] = updatedEnemy;
+                gameState.sharedEnemies[newId] = localEnemy;
 
                 movesQueued = true;
 
@@ -12237,12 +12240,9 @@ async function processOverworldEnemyTurns() {
     // --- EXECUTE ATOMIC UPDATE ---
     if (movesQueued) {
         try {
-            // This sends ALL moves and ALL deletes in a single packet.
-            // No "vanish" frames possible.
             await rtdb.ref().update(multiPathUpdate);
         } catch (err) {
             console.error("AI Move Sync Failed:", err);
-            // Revert local state if needed, or just let the listener correct it next frame
         }
     }
 
@@ -16725,23 +16725,29 @@ async function enterGame(playerData) {
 
 const sharedEnemiesRef = rtdb.ref('worldEnemies');
     
-    // 1. Child Added: Precise insertion
+    // 1. Child Added
     const onChildAdded = sharedEnemiesRef.on('child_added', (snapshot) => {
         const key = snapshot.key;
         const val = snapshot.val();
         if (val) {
+            // *** SELF-HEALING FIX *** 
+            // If the DB has the bad flag, strip it locally so they can move again
+            if (val._processedThisTurn) delete val._processedThisTurn;
+
             gameState.sharedEnemies[key] = val;
-            // Clean up pending if it arrived
             if (pendingSpawnData[key]) delete pendingSpawnData[key];
             render();
         }
     });
 
-    // 2. Child Changed: Precise update (movement/health)
+    // 2. Child Changed
     const onChildChanged = sharedEnemiesRef.on('child_changed', (snapshot) => {
         const key = snapshot.key;
         const val = snapshot.val();
         if (val) {
+            // *** SELF-HEALING FIX ***
+            if (val._processedThisTurn) delete val._processedThisTurn;
+
             gameState.sharedEnemies[key] = val;
             render();
         }
