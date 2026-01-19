@@ -5569,7 +5569,10 @@ generateCave(caveId) {
             }
         }
         
-        const specialItems = theme.decorations.filter(item => !CAVE_LOOT_TABLE.includes(item));
+        // --- Safety check for themes without decorations ---
+        const themeDecorations = theme.decorations || []; 
+        const specialItems = themeDecorations.filter(item => !CAVE_LOOT_TABLE.includes(item));
+
         for (const itemToPlace of specialItems) {
             let placed = false;
             for (let attempt = 0; attempt < 5 && !placed; attempt++) {
@@ -6982,12 +6985,22 @@ async function wakeUpNearbyEnemies() {
                     return current || newEnemy; 
                 }).then(() => {
                     pendingSpawns.delete(enemyId);
-                    // DO NOT delete pendingSpawnData here. Let the listener do it.
                     processingSpawnTiles.delete(tileId); 
+                    
+                    // --- FIX: Delay deletion of local data to prevent flickering ---
+                    // We keep the local copy for 1 second to ensure the server listener has caught up.
+                    setTimeout(() => {
+                        if (pendingSpawnData[enemyId]) {
+                            delete pendingSpawnData[enemyId];
+                            // Optional: Force render to ensure smooth transition
+                            // render(); 
+                        }
+                    }, 1000);
+
                 }).catch(err => {
                     console.error("Spawn failed", err);
                     pendingSpawns.delete(enemyId);
-                    delete pendingSpawnData[enemyId]; // Delete on error only
+                    if (pendingSpawnData[enemyId]) delete pendingSpawnData[enemyId];
                     processingSpawnTiles.delete(tileId); 
                     chunkManager.setWorldTile(x, y, enemyData.tile || 'r');
                     wokenEnemyTiles.delete(tileId);
@@ -11941,7 +11954,8 @@ const render = () => {
                     else if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
                 }
 
-                const tintStrength = (1 - (distToPlayer / effectiveRadius)) * 0.15;
+                const dist = Math.sqrt(distSq); 
+                const tintStrength = (1 - (dist / effectiveRadius)) * 0.15;
                 
                 if (tintStrength > 0) {
                     ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${tintStrength})`;
@@ -16788,7 +16802,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         
         gameState.initialEnemiesLoaded = true;
 
-        // 1. Cleanup Static Tiles (Visuals)
+        // 1. Cleanup Static Tiles
         Object.values(serverData).forEach(enemy => {
             if (gameState.mapMode === 'overworld') {
                 const currentTile = chunkManager.getTile(enemy.x, enemy.y);
@@ -16798,17 +16812,8 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
             }
         });
 
-        // 2. SMART CLEANUP: Only delete local pending data if the server confirms it
-        // We iterate backwards or use a safe key list to avoid issues while deleting
-        Object.keys(pendingSpawnData).forEach(key => {
-            if (serverData[key]) {
-                // Server has it! Safe to remove local backup.
-                delete pendingSpawnData[key];
-            }
-        });
-
-        // 3. MERGE: Combine Server Data + Remaining Local Pending Data
-        // CRITICAL: pendingSpawnData MUST come second to overwrite server latency
+        // 2. MERGE: Server Data + Pending Local Data
+        // Pending data (local) overrides server data to prevent lag/flickering
         const mergedEnemies = { ...serverData, ...pendingSpawnData };
 
         gameState.sharedEnemies = mergedEnemies;
