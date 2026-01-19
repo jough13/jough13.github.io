@@ -1,4 +1,4 @@
-const TILE_DATA = {
+window.TILE_DATA = {
     '#': {
         type: 'lore',
         message: 'An ancient, weathered stone stands here. The markings are faded.'
@@ -202,7 +202,7 @@ const TILE_DATA = {
     },
 };
 
-const CASTLE_LAYOUTS = {
+window.CASTLE_LAYOUTS = {
     COURTYARD: {
         spawn: {
             x: 37,
@@ -421,7 +421,7 @@ const CASTLE_LAYOUTS = {
 
 };
 
-const CAVE_THEMES = {
+window.CAVE_THEMES = {
     ROCK: {
         name: 'A Dark Cave',
         wall: '▓',
@@ -533,7 +533,7 @@ const CAVE_THEMES = {
     }
 };
 
-const CAVE_ROOM_TEMPLATES = {
+window.CAVE_ROOM_TEMPLATES = {
     "Goblin Barracks": {
         width: 7,
         height: 7,
