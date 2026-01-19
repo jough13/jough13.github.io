@@ -6996,14 +6996,6 @@ async function wakeUpNearbyEnemies() {
                     chunkManager.setWorldTile(x, y, enemyData.tile || 'r');
                     wokenEnemyTiles.delete(tileId);
                 });
-                    console.error("Spawn failed", err);
-                    pendingSpawns.delete(enemyId);
-                    delete pendingSpawnData[enemyId]; 
-                    processingSpawnTiles.delete(tileId); 
-                    // Revert tile on failure
-                    chunkManager.setWorldTile(x, y, enemyData.tile || 'r');
-                    wokenEnemyTiles.delete(tileId);
-                });
             }
         }
     }
