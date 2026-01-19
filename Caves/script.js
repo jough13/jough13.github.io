@@ -6944,31 +6944,7 @@ async function wakeUpNearbyEnemies() {
             // 4. SELF-HEALING: RESCUE MISSING ENEMIES
             // If we marked this tile as "woken" previously, but NO enemy is found now,
             // it means the spawn failed. We must revert the map tile so it tries again.
-            if (wokenEnemyTiles.has(tileId) && !gameState.sharedEnemies[enemyId]) {
-                // Remove the lock so we can try again
-                wokenEnemyTiles.delete(tileId);
-                
-                // Manually revert the local map chunk to show the enemy sprite again
-                const cX = Math.floor(x / chunkManager.CHUNK_SIZE);
-                const cY = Math.floor(y / chunkManager.CHUNK_SIZE);
-                const cId = `${cX},${cY}`;
-                const lX = (x % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
-                const lY = (y % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
-                const lKey = `${lX},${lY}`;
-
-                if (chunkManager.worldState[cId] && chunkManager.worldState[cId][lKey] === '.') {
-                    // Delete the override so the procedural gen takes over (showing the enemy again)
-                    delete chunkManager.worldState[cId][lKey];
-                    // Also delete from Firestore silently to persist the fix
-                    db.collection('worldState').doc(cId).update({
-                        [lKey]: firebase.firestore.FieldValue.delete()
-                    }).catch(()=>{});
-                }
-                
-                // Force a render so the player sees the "respawned" static enemy immediately
-                render(); 
-                continue; 
-            }
+            // REMOVED FOR FIX
 
             // 5. SPAWN: Found a new static enemy
             if (enemyData) {
@@ -7005,6 +6981,7 @@ async function wakeUpNearbyEnemies() {
                     return current || newEnemy; 
                 }).then(() => {
                     pendingSpawns.delete(enemyId);
+                    delete pendingSpawnData[enemyId];
                     processingSpawnTiles.delete(tileId); 
                 }).catch(err => {
                     console.error("Spawn failed", err);
@@ -16806,7 +16783,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         
         gameState.initialEnemiesLoaded = true;
 
-        // 1. Cleanup Static Tiles (Keep existing logic)
+        // 1. Cleanup Static Tiles
         Object.values(serverData).forEach(enemy => {
             if (gameState.mapMode === 'overworld') {
                 const currentTile = chunkManager.getTile(enemy.x, enemy.y);
@@ -16816,16 +16793,11 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
             }
         });
 
-        // 2. CLEANUP PENDING DATA (The Fix)
-        // If the server now has the enemy, we don't need to hold it in pending anymore.
-        Object.keys(serverData).forEach(serverKey => {
-            if (pendingSpawnData[serverKey]) {
-                delete pendingSpawnData[serverKey];
-            }
-        });
+        // REMOVED: The cleanup loop that was deleting pending data too early.
 
         // 3. MERGE: Combine Server Data + Remaining Local Pending Data
-        const mergedEnemies = { ...serverData, ...pendingSpawnData };
+        // If serverData has the key, it overwrites pendingSpawnData, which is fine.
+        const mergedEnemies = { ...pendingSpawnData, ...serverData }; // Swapped order for safety
 
         gameState.sharedEnemies = mergedEnemies;
         render(); 
