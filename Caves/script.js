@@ -12109,15 +12109,20 @@ async function processOverworldEnemyTurns() {
     const playerY = gameState.player.y;
     const searchRadius = 25;
     const searchDistSq = searchRadius * searchRadius;
-    let nearestEnemyDir = null;
-    let minDist = Infinity;
     const HEARING_DISTANCE_SQ = 15 * 15;
 
-    // Collect all atomic updates here
+    let nearestEnemyDir = null;
+    
+    // 1. Prepare Atomic Batch
     let multiPathUpdate = {};
     let movesQueued = false;
 
-    // --- ECHO SPAWNING ---
+    // 2. Create a Local "Do Not Touch" List for this specific frame
+    // We add enemies here once we calculate a move for them so we don't 
+    // move them again if we encounter them later in the loop.
+    const processedIdsThisFrame = new Set();
+
+    // 3. ECHO SPAWNING (Keep existing logic)
     const hour = gameState.time.hour;
     const isNight = hour >= 20 || hour < 5;
     if (isNight && gameState.mapMode === 'overworld' && Math.random() < 0.01) {
@@ -12140,24 +12145,28 @@ async function processOverworldEnemyTurns() {
         return false;
     };
 
-    const activeEnemies = Object.values(gameState.sharedEnemies);
+    // 4. SNAPSHOT: Get IDs *before* we start modifying anything
+    // This prevents the loop from iterating over an enemy twice if it moves 'down' the array
+    const activeEnemyIds = Object.keys(gameState.sharedEnemies);
 
-    for (const enemy of activeEnemies) {
-        if (typeof enemy.x !== 'number' || typeof enemy.y !== 'number') continue;
+    for (const enemyId of activeEnemyIds) {
+        // Skip if we already touched this ID this frame (e.g. via collision logic)
+        if (processedIdsThisFrame.has(enemyId)) continue;
 
-        // Skip if this enemy is currently being moved by us in this same loop
-        if (enemy._processedThisTurn) continue;
+        const enemy = gameState.sharedEnemies[enemyId];
+        if (!enemy || typeof enemy.x !== 'number') continue;
 
-        const currentId = `overworld:${enemy.x},${-enemy.y}`;
         const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
         
+        // Optimization: Too far to care
         if (distSq > searchDistSq) continue;
 
-        // AI Logic: CHASE
+        // --- AI LOGIC ---
         let chaseChance = 0.20;
         if (distSq < 400) chaseChance = 0.70; 
         if (distSq < 100) chaseChance = 1.00;
 
+        // Roll to move
         if (Math.random() < 0.75) {
             let dirX = 0, dirY = 0;
             let isChasing = false;
@@ -12177,11 +12186,11 @@ async function processOverworldEnemyTurns() {
             let finalY = enemy.y;
             let canMove = false;
 
-            // Try primary direction
+            // Try Primary Move
             if (isValidMove(enemy.x + dirX, enemy.y + dirY, enemy.tile)) {
                 finalX = enemy.x + dirX; finalY = enemy.y + dirY; canMove = true;
             } 
-            // Try sliding (basic pathfinding)
+            // Try Slide (Pathfinding fallback)
             else if (isChasing) {
                 if (dirX !== 0 && isValidMove(enemy.x + dirX, enemy.y, enemy.tile)) {
                     finalX = enemy.x + dirX; finalY = enemy.y; canMove = true;
@@ -12191,7 +12200,7 @@ async function processOverworldEnemyTurns() {
             }
 
             if (canMove) {
-                // Combat (Player Collision)
+                // A. Combat Check (Player)
                 if (finalX === playerX && finalY === playerY) {
                     const dmg = Math.max(1, enemy.attack - (gameState.player.defenseBonus || 0));
                     gameState.player.health -= dmg;
@@ -12199,36 +12208,52 @@ async function processOverworldEnemyTurns() {
                     logMessage(`A ${enemy.name} attacks you for ${dmg} damage!`);
                     triggerStatFlash(statDisplays.health, false);
                     if (gameState.player.health <= 0) handlePlayerDeath();
+                    
+                    // Mark as processed so it doesn't move again this frame
+                    processedIdsThisFrame.add(enemyId); 
                     continue; 
                 }
 
-                // Entity Collision (Avoid stacking)
-                const isOccupied = activeEnemies.some(e => e.x === finalX && e.y === finalY);
-                if (isOccupied) continue;
+                // B. Collision Check (Other Enemies)
+                // Check if any EXISTING enemy is there OR if any enemy has already MOVED there this frame
+                const isOccupied = activeEnemyIds.some(otherId => {
+                    const e = gameState.sharedEnemies[otherId];
+                    return e && e.x === finalX && e.y === finalY;
+                });
+                
+                // Also check our pending updates to see if someone *just* moved there
+                const isClaimedByUpdate = Object.values(multiPathUpdate).some(u => u && u.x === finalX && u.y === finalY);
 
-                // --- ATOMIC MOVE PREPARATION ---
+                if (isOccupied || isClaimedByUpdate) continue;
+
+                // --- C. PREPARE ATOMIC MOVE ---
                 const newId = `overworld:${finalX},${-finalY}`;
                 
-                // 1. Prepare New Data
-                const updatedEnemy = { ...enemy, x: finalX, y: finalY };
+                // Create clean object (NO FLAGS)
+                const updatedEnemy = { 
+                    ...enemy, 
+                    x: finalX, 
+                    y: finalY 
+                };
                 
-                // *** CRITICAL FIX: REMOVE LOCAL FLAG BEFORE SAVING ***
-                delete updatedEnemy._processedThisTurn; 
-                
-                // 2. Add to Atomic Packet
-                multiPathUpdate[`worldEnemies/${newId}`] = updatedEnemy;
-                multiPathUpdate[`worldEnemies/${currentId}`] = null;
+                // IMPORTANT: Sanitize any accidental flags from DB
+                if (updatedEnemy._processedThisTurn) delete updatedEnemy._processedThisTurn;
 
-                // 3. Optimistic Local Update
-                // We add the flag locally so we don't process it twice in THIS loop
-                // But we never send this specific object to the DB
-                const localEnemy = { ...updatedEnemy, _processedThisTurn: true };
-                delete gameState.sharedEnemies[currentId];
-                gameState.sharedEnemies[newId] = localEnemy;
+                // Queue for Firebase
+                multiPathUpdate[`worldEnemies/${newId}`] = updatedEnemy;
+                multiPathUpdate[`worldEnemies/${enemyId}`] = null;
+
+                // Mark both IDs as processed so we don't touch them again this frame
+                processedIdsThisFrame.add(enemyId);
+                processedIdsThisFrame.add(newId);
+
+                // Optimistic Update (Immediate Visuals)
+                delete gameState.sharedEnemies[enemyId];
+                gameState.sharedEnemies[newId] = updatedEnemy;
 
                 movesQueued = true;
 
-                // Intuition Update
+                // Intuition Calculation
                 if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
                     minDist = distSq;
                     nearestEnemyDir = { x: Math.sign(finalX - playerX), y: Math.sign(finalY - playerY) };
@@ -12237,12 +12262,14 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-    // --- EXECUTE ATOMIC UPDATE ---
+    // 5. SEND BATCH UPDATE
     if (movesQueued) {
         try {
             await rtdb.ref().update(multiPathUpdate);
         } catch (err) {
             console.error("AI Move Sync Failed:", err);
+            // On fail, re-render to resync visuals with server truth
+            render();
         }
     }
 
@@ -16730,8 +16757,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         const key = snapshot.key;
         const val = snapshot.val();
         if (val) {
-            // *** SELF-HEALING FIX *** 
-            // If the DB has the bad flag, strip it locally so they can move again
+            // *** SANITIZER: Strip the flag if it exists ***
             if (val._processedThisTurn) delete val._processedThisTurn;
 
             gameState.sharedEnemies[key] = val;
@@ -16745,7 +16771,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         const key = snapshot.key;
         const val = snapshot.val();
         if (val) {
-            // *** SELF-HEALING FIX ***
+            // *** SANITIZER: Strip the flag if it exists ***
             if (val._processedThisTurn) delete val._processedThisTurn;
 
             gameState.sharedEnemies[key] = val;
@@ -16753,7 +16779,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         }
     });
 
-    // 3. Child Removed: Precise deletion
+    // 3. Child Removed
     const onChildRemoved = sharedEnemiesRef.on('child_removed', (snapshot) => {
         const key = snapshot.key;
         if (gameState.sharedEnemies[key]) {
