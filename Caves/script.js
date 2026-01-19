@@ -6978,21 +6978,17 @@ async function wakeUpNearbyEnemies() {
                 render(); // Show it NOW
 
                 // Send to DB
-                console.log(`[SPAWN] Sending transaction for ${enemyId}`);
                 rtdb.ref(`worldEnemies/${enemyId}`).transaction(current => {
                     return current || newEnemy; 
                 }).then(() => {
-                    console.log(`[SPAWN] Transaction success for ${enemyId}`);
                     pendingSpawns.delete(enemyId);
-                    // DO NOT delete from pendingSpawnData here. 
-                    // We wait for the listener to confirm it sees the enemy first.
+                    // DO NOT delete pendingSpawnData here. Let the listener do it.
                     processingSpawnTiles.delete(tileId); 
                 }).catch(err => {
-                    console.error("[SPAWN] Transaction failed", err);
+                    console.error("Spawn failed", err);
                     pendingSpawns.delete(enemyId);
-                    delete pendingSpawnData[enemyId]; // Only delete on error
+                    delete pendingSpawnData[enemyId]; // Delete on error only
                     processingSpawnTiles.delete(tileId); 
-                    // Revert tile on failure
                     chunkManager.setWorldTile(x, y, enemyData.tile || 'r');
                     wokenEnemyTiles.delete(tileId);
                 });
@@ -16077,7 +16073,9 @@ if (newTile === 'T') {
                 playerRef.update({ isBoating: true });
                 break; 
             case 'dungeon_entrance':
-                console.log("Hit Dungeon Entrance Case!"); 
+                // --- SAFETY FIX: Ensure Set exists ---
+                if (!gameState.foundLore) gameState.foundLore = new Set();
+                
                 if (!gameState.foundLore.has(tileId)) {
                     logMessage("You've discovered a cave entrance! +10 XP");
                     grantXp(10);
@@ -16104,6 +16102,7 @@ if (newTile === 'T') {
                 exitToOverworld("You emerge back into the sunlight.");
                 return;
             case 'landmark_castle':
+                if (!gameState.foundLore) gameState.foundLore = new Set();
                 if (!gameState.foundLore.has(tileId)) {
                     logMessage("You've discovered the FORGOTTEN FORTRESS! +100 XP");
                     grantXp(100);
@@ -16124,6 +16123,8 @@ if (newTile === 'T') {
                 syncPlayerState();
                 return;
             case 'castle_entrance':
+                if (!gameState.foundLore) gameState.foundLore = new Set();
+
                 if (!gameState.foundLore.has(tileId)) {
                     logMessage("You've discovered a castle entrance! +10 XP");
                     grantXp(10);
@@ -16147,6 +16148,7 @@ if (newTile === 'T') {
                 exitToOverworld("You leave the castle.");
                 return;
             case 'lore':
+                if (!gameState.foundLore) gameState.foundLore = new Set();
                 if (!gameState.foundLore.has(tileId)) {
                     logMessage("You've found an old signpost! +10 XP");
                     grantXp(10);
@@ -16786,7 +16788,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         
         gameState.initialEnemiesLoaded = true;
 
-        // 1. Cleanup Static Tiles (Keep existing logic)
+        // 1. Cleanup Static Tiles (Visuals)
         Object.values(serverData).forEach(enemy => {
             if (gameState.mapMode === 'overworld') {
                 const currentTile = chunkManager.getTile(enemy.x, enemy.y);
@@ -16797,19 +16799,16 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         });
 
         // 2. SMART CLEANUP: Only delete local pending data if the server confirms it
+        // We iterate backwards or use a safe key list to avoid issues while deleting
         Object.keys(pendingSpawnData).forEach(key => {
             if (serverData[key]) {
                 // Server has it! Safe to remove local backup.
-                // console.log(`[LISTENER] Server confirmed ${key}, clearing pending.`);
                 delete pendingSpawnData[key];
-            } else {
-                // Server doesn't have it yet. Keep local backup alive!
-                console.log(`[LISTENER] Waiting for server to confirm ${key}...`);
             }
         });
 
         // 3. MERGE: Combine Server Data + Remaining Local Pending Data
-        // Pending data overwrites server data to prevent "rubber banding" or flickering
+        // CRITICAL: pendingSpawnData MUST come second to overwrite server latency
         const mergedEnemies = { ...serverData, ...pendingSpawnData };
 
         gameState.sharedEnemies = mergedEnemies;
