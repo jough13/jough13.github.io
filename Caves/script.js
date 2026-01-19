@@ -6953,7 +6953,8 @@ async function wakeUpNearbyEnemies() {
                 chunkManager.setWorldTile(x, y, '.');
 
                 const scaledStats = getScaledEnemy(enemyData, x, y);
-                const newEnemy = { ...scaledStats, tile: tile, x: x, y: y };
+                // Add spawnTime to prevent AI from moving it immediately
+                const newEnemy = { ...scaledStats, tile: tile, x: x, y: y, spawnTime: Date.now() };
                 
                 // Protect against flicker (Destination lock)
                 pendingSpawns.add(enemyId);
@@ -10153,7 +10154,8 @@ function checkHasMaterials(recipeName) {
         const requiredQuantity = recipe.materials[materialName];
         
         // Find the material in the player's inventory
-        const itemInInventory = playerInventory.find(item => item.name === materialName);
+        const itemInInventory = playerInventory.find(item => item.name === materialName && !item.isEquipped);
+
 
         if (!itemInInventory || itemInInventory.quantity < requiredQuantity) {
             // Player is missing this material or doesn't have enough
@@ -10270,7 +10272,7 @@ function handleCraftItem(recipeName) {
     // 3. Check Materials
     for (const materialName in recipe.materials) {
         const requiredQuantity = recipe.materials[materialName];
-        const itemInInventory = playerInventory.find(item => item.name === materialName);
+        const itemInInventory = playerInventory.find(item => item.name === materialName && !item.isEquipped);
         
         if (!itemInInventory || itemInInventory.quantity < requiredQuantity) {
             logMessage(`You are missing materials: ${materialName}`);
@@ -10295,15 +10297,26 @@ function handleCraftItem(recipeName) {
         }
     }
 
-    // 4. Consume Materials
+    // 4. Consume Materials (FIXED)
     for (const materialName in recipe.materials) {
-        const requiredQuantity = recipe.materials[materialName];
-        const itemInInventory = playerInventory.find(item => item.name === materialName);
+        let remainingNeeded = recipe.materials[materialName];
 
-        itemInInventory.quantity -= requiredQuantity;
-        if (itemInInventory.quantity <= 0) {
-            const itemIndex = playerInventory.indexOf(itemInInventory);
-            playerInventory.splice(itemIndex, 1);
+        // Loop backwards to safely splice
+        for (let i = playerInventory.length - 1; i >= 0; i--) {
+            if (remainingNeeded <= 0) break;
+            
+            const item = playerInventory[i];
+            
+            // Skip equipped items so we don't craft the sword we are holding!
+            if (item.name === materialName && !item.isEquipped) {
+                const take = Math.min(item.quantity, remainingNeeded);
+                item.quantity -= take;
+                remainingNeeded -= take;
+
+                if (item.quantity <= 0) {
+                    playerInventory.splice(i, 1);
+                }
+            }
         }
     }
 
@@ -12146,6 +12159,12 @@ async function processOverworldEnemyTurns() {
         // Safety check for malformed data
         if (typeof enemy.x !== 'number' || typeof enemy.y !== 'number') continue;
 
+        // AI "Summoning Sickness"
+        // Don't move enemies that spawned less than 2 seconds ago.
+        // This prevents race conditions where AI tries to move an enemy 
+        // that hasn't fully saved to Firebase yet.
+        if (enemy.spawnTime && Date.now() - enemy.spawnTime < 2000) continue;
+
         // A. Distance Check
         const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
         
@@ -13402,7 +13421,16 @@ function exitToOverworld(exitMessage) {
     if (gameState.overworldExit) {
         gameState.player.x = gameState.overworldExit.x;
         gameState.player.y = gameState.overworldExit.y;
+    } else {
+        // --- TELEPORT SAFETY FALLBACK ---
+        // If we don't know where we came from, send player to spawn (0,0)
+        // This prevents getting stuck in walls or oceans at dungeon coordinates (e.g. 15,15)
+        logMessage("You lost your bearings in the dark...");
+        logMessage("...and found your way back to the Village.");
+        gameState.player.x = 0;
+        gameState.player.y = 0;
     }
+
     gameState.mapMode = 'overworld';
     gameState.currentCaveId = null;
     gameState.currentCastleId = null;
@@ -14305,9 +14333,50 @@ async function attemptMovePlayer(newX, newY) {
         return;
     }
 
+    // --- DIAGONAL CLIPPING CHECK ---
+    const dx = newX - gameState.player.x;
+    const dy = newY - gameState.player.y;
+
+    // If moving diagonally (change in X and Y is 1)
+    if (Math.abs(dx) === 1 && Math.abs(dy) === 1) {
+        
+        // Helper to get a tile regardless of map mode
+        const getTileAt = (tx, ty) => {
+            if (gameState.mapMode === 'overworld') return chunkManager.getTile(tx, ty);
+            if (gameState.mapMode === 'dungeon') return chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx] || ' ';
+            if (gameState.mapMode === 'castle') return chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx] || ' ';
+            return ' ';
+        };
+
+        // Get the two "cardinal" neighbors we are passing between
+        const t1 = getTileAt(gameState.player.x + dx, gameState.player.y); // Horizontal neighbor
+        const t2 = getTileAt(gameState.player.x, gameState.player.y + dy); // Vertical neighbor
+
+        // Define what counts as a "Hard Block" for squeezing
+        const isHardBlock = (t) => {
+            // 1. Check defined obstacles (Trees, Webs, Barrels)
+            if (TILE_DATA[t] && TILE_DATA[t].type === 'obstacle') return true;
+            
+            // 2. Check Walls and Mountains
+            // ▓/▒ = Dungeon/Castle Walls, 🧱 = Village Walls, ^ = Mountains
+            if (['▓', '▒', '🧱', '^'].includes(t)) return true;
+            
+            // 3. Check Water (unless boating or has gills)
+            if ((t === '~' || t === '≈') && !gameState.player.isBoating && gameState.player.waterBreathingTurns <= 0) return true;
+            
+            return false;
+        };
+
+        // If BOTH neighbors are blocked, you can't squeeze through the crack
+        if (isHardBlock(t1) && isHardBlock(t2)) {
+            logMessage("The gap is too tight to squeeze through.");
+            return; // Stop the move immediately
+        }
+    }
+
     let newTile;
 
-    // --- FIX: CHECK FOR LIVE ENEMIES FIRST (Combat Priority) ---
+    // --- CHECK FOR LIVE ENEMIES FIRST (Combat Priority) ---
     if (gameState.mapMode === 'overworld') {
         const enemyKey = `overworld:${newX},${-newY}`;
         const overlayEnemy = gameState.sharedEnemies[enemyKey];
