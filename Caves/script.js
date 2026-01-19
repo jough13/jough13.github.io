@@ -9374,50 +9374,60 @@ function endPlayerTurn() {
     // --- UPDATED AMBUSH LOGIC ---
     // Was: % 60 and < 0.20 (Avg every 300 turns)
     // Now: % 150 and < 0.05 (Avg every 3000 turns) -> Much rarer!
+     // --- UPDATED AMBUSH LOGIC ---
     if (gameState.mapMode === 'overworld' && gameState.playerTurnCount % 150 === 0) {
         
-        // 5% Chance (1 in 20)
-        if (Math.random() < 0.05) { 
-            logMessage("{red:AMBUSH!} Enemies are closing in!");
-            gameState.screenShake = 15;
-            AudioSystem.playHit();
+        // --- 1. CALCULATE SAFETY METRICS ---
+        const distFromSpawn = Math.sqrt(player.x * player.x + player.y * player.y);
+        
+        // --- 2. APPLY SAFEGUARDS ---
+        // Rule A: No ambushes within 50 tiles of the village (Safe Zone)
+        // Rule B: No ambushes if Level 1 (Newbie Grace Period)
+        if (distFromSpawn > 50 && player.level >= 2) {
 
-            const currentTile = chunkManager.getTile(player.x, player.y);
-            let ambushType = 'b';
-            if (currentTile === 'F') ambushType = 'w';
-            if (currentTile === 'd') ambushType = 's';
-            if (currentTile === 'D') ambushType = '🦂';
+            // 5% Chance (1 in 20)
+            if (Math.random() < 0.05) { 
+                logMessage("{red:AMBUSH!} Enemies are closing in!");
+                gameState.screenShake = 15;
+                AudioSystem.playHit();
 
-            // Reduce spawn count slightly (3 instead of 4) for fairness
-            const offsets = [[-4, 0], [4, 0], [0, -4]]; 
+                const currentTile = chunkManager.getTile(player.x, player.y);
+                let ambushType = 'b';
+                if (currentTile === 'F') ambushType = 'w';
+                if (currentTile === 'd') ambushType = 's';
+                if (currentTile === 'D') ambushType = '🦂';
 
-            offsets.forEach(offset => {
-                const tx = player.x + offset[0] + Math.floor(Math.random() * 3) - 1;
-                const ty = player.y + offset[1] + Math.floor(Math.random() * 3) - 1;
+                // Reduce spawn count slightly (3 instead of 4) for fairness
+                const offsets = [[-4, 0], [4, 0], [0, -4]]; 
 
-                const enemyData = ENEMY_DATA[ambushType];
-                const enemyId = `overworld:${tx},${-ty}`;
-                
-                // Use our safe scaling logic
-                const scaledStats = getScaledEnemy(enemyData, tx, ty);
-                
-                // Ensure we don't overwrite an existing enemy
-                if (!gameState.sharedEnemies[enemyId]) {
-                    const newEnemy = { 
-                        ...scaledStats, 
-                        tile: ambushType, 
-                        x: tx, 
-                        y: ty,
-                        spawnTime: Date.now() 
-                    };
+                offsets.forEach(offset => {
+                    const tx = player.x + offset[0] + Math.floor(Math.random() * 3) - 1;
+                    const ty = player.y + offset[1] + Math.floor(Math.random() * 3) - 1;
 
-                    rtdb.ref(`worldEnemies/${enemyId}`).set(newEnemy);
+                    const enemyData = window.ENEMY_DATA[ambushType]; // Use window. to be safe
+                    const enemyId = `overworld:${tx},${-ty}`;
                     
-                    if (typeof ParticleSystem !== 'undefined') {
-                        ParticleSystem.createExplosion(tx, ty, '#ef4444');
+                    // Use our safe scaling logic
+                    const scaledStats = getScaledEnemy(enemyData, tx, ty);
+                    
+                    // Ensure we don't overwrite an existing enemy
+                    if (!gameState.sharedEnemies[enemyId]) {
+                        const newEnemy = { 
+                            ...scaledStats, 
+                            tile: ambushType, 
+                            x: tx, 
+                            y: ty,
+                            spawnTime: Date.now() 
+                        };
+
+                        rtdb.ref(`worldEnemies/${enemyId}`).set(newEnemy);
+                        
+                        if (typeof ParticleSystem !== 'undefined') {
+                            ParticleSystem.createExplosion(tx, ty, '#ef4444');
+                        }
                     }
-                }
-            });
+                });
+            }
         }
     }
 
