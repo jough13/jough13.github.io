@@ -10143,22 +10143,24 @@ function initSkillTrainerListeners() {
  * @returns {boolean} - True if the player has all materials, false otherwise.
  */
 function checkHasMaterials(recipeName) {
-    const recipe = CRAFTING_RECIPES[recipeName];
+    const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName]; // Check both lists!
     if (!recipe) return false; // Recipe doesn't exist
 
     const playerInventory = gameState.player.inventory;
 
     // Check every material in the recipe
-    // We now iterate over 'recipe.materials' because the structure changed
     for (const materialName in recipe.materials) {
         const requiredQuantity = recipe.materials[materialName];
         
-        // Find the material in the player's inventory
-        const itemInInventory = playerInventory.find(item => item.name === materialName && !item.isEquipped);
+        // Count TOTAL amount of this material across all UNEQUIPPED stacks
+        const totalAmount = playerInventory.reduce((sum, item) => {
+            if (item.name === materialName && !item.isEquipped) {
+                return sum + item.quantity;
+            }
+            return sum;
+        }, 0);
 
-
-        if (!itemInInventory || itemInInventory.quantity < requiredQuantity) {
-            // Player is missing this material or doesn't have enough
+        if (totalAmount < requiredQuantity) {
             return false;
         }
     }
@@ -10297,22 +10299,25 @@ function handleCraftItem(recipeName) {
         }
     }
 
-    // 4. Consume Materials (FIXED)
+    // 4. Consume Materials
     for (const materialName in recipe.materials) {
         let remainingNeeded = recipe.materials[materialName];
 
-        // Loop backwards to safely splice
+        // Iterate backwards so we can safely splice (remove) items while looping
         for (let i = playerInventory.length - 1; i >= 0; i--) {
-            if (remainingNeeded <= 0) break;
-            
-            const item = playerInventory[i];
-            
-            // Skip equipped items so we don't craft the sword we are holding!
-            if (item.name === materialName && !item.isEquipped) {
-                const take = Math.min(item.quantity, remainingNeeded);
-                item.quantity -= take;
-                remainingNeeded -= take;
+            if (remainingNeeded <= 0) break; // We have enough
 
+            const item = playerInventory[i];
+
+            // Only take from matching items that are NOT equipped
+            if (item.name === materialName && !item.isEquipped) {
+                // Take as much as we can from this stack, up to the remaining need
+                const amountToTake = Math.min(item.quantity, remainingNeeded);
+                
+                item.quantity -= amountToTake;
+                remainingNeeded -= amountToTake;
+
+                // If stack is empty, remove it
                 if (item.quantity <= 0) {
                     playerInventory.splice(i, 1);
                 }
