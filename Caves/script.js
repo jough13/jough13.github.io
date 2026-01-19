@@ -6902,90 +6902,107 @@ const AudioSystem = {
 const wokenEnemyTiles = new Set(); 
 
 async function wakeUpNearbyEnemies() {
-
- if (!gameState.initialEnemiesLoaded) return; 
+    if (!gameState.initialEnemiesLoaded) return;
 
     const player = gameState.player;
-    const WAKE_RADIUS = 9; 
+    const WAKE_RADIUS = 9;
 
     for (let y = player.y - WAKE_RADIUS; y <= player.y + WAKE_RADIUS; y++) {
         for (let x = player.x - WAKE_RADIUS; x <= player.x + WAKE_RADIUS; x++) {
-            
+
             const tileId = `${x},${y}`;
-            
-            // 1. FAST LOCK: If we are currently processing this specific tile, skip it.
-            // This prevents rapid movement from triggering the same tile twice.
+
+            // 1. FAST LOCK: Skip if currently processing
             if (processingSpawnTiles.has(tileId)) continue;
 
             const enemyId = `overworld:${x},${-y}`;
 
-            // 2. Get the current tile state
+            // 2. Get current tile
             const tile = chunkManager.getTile(x, y);
             const enemyData = ENEMY_DATA[tile];
 
-            // 3. HISTORY CHECK: Has this tile already been processed this session?
-            if (wokenEnemyTiles.has(tileId)) {
-                // SELF-HEALING FIX:
-                // If we marked this tile as woken, but the enemy is NOT in the shared list,
-                // something went wrong (lag, race condition). We must allow it to respawn.
-                if (!gameState.sharedEnemies[enemyId]) {
-                    // console.log(`Rescuing vanished enemy at ${x},${y}`); // Debug
-                    wokenEnemyTiles.delete(tileId);
-                    // Don't continue; let the logic below respawn it.
-                } else {
-                    // Normal behavior: Enemy exists, just ensure the static tile is gone
-                    if (enemyData) {
-                         chunkManager.setWorldTile(x, y, '.'); 
-                    }
-                    continue; 
+            // 3. EXISTENCE CHECK: Is there a live enemy here?
+            if (gameState.sharedEnemies[enemyId]) {
+                // If there is a live enemy, ensure the tile underneath is floor
+                // (This fixes cases where the static tile reappears)
+                if (enemyData) {
+                    chunkManager.setWorldTile(x, y, '.');
                 }
+                wokenEnemyTiles.add(tileId);
+                continue;
             }
 
-            // 4. EXISTENCE CHECK: Is the destination occupied by a live enemy?
-            if (gameState.sharedEnemies[enemyId]) {
-                if (enemyData) {
-                     chunkManager.setWorldTile(x, y, '.'); 
+            // 4. HISTORY CHECK & SELF-HEALING
+            // If we have processed this tile before, but NO enemy exists now...
+            if (wokenEnemyTiles.has(tileId) && !gameState.sharedEnemies[enemyId]) {
+                // ...Something went wrong. The enemy vanished.
+                // We must RESET the tile so the spawn logic can try again.
+                wokenEnemyTiles.delete(tileId);
+
+                // Calculate Chunk IDs to manually delete the '.' override
+                const cX = Math.floor(x / chunkManager.CHUNK_SIZE);
+                const cY = Math.floor(y / chunkManager.CHUNK_SIZE);
+                const cId = `${cX},${cY}`;
+                const lX = (x % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
+                const lY = (y % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
+                const lKey = `${lX},${lY}`;
+
+                // 1. Delete local override (forces it to revert to procedural generation)
+                if (chunkManager.worldState[cId] && chunkManager.worldState[cId][lKey] === '.') {
+                    delete chunkManager.worldState[cId][lKey];
                 }
-                wokenEnemyTiles.add(tileId); 
+
+                // 2. Delete remote override (Firestore) to persist the fix
+                // We do this silently without awaiting to prevent lag
+                db.collection('worldState').doc(cId).update({
+                    [lKey]: firebase.firestore.FieldValue.delete()
+                }).catch(() => {}); // Ignore errors if doc doesn't exist
+
+                // On the NEXT frame/move, getTile will return the original enemy char, and step 5 will run.
                 continue;
             }
 
             // 5. SPAWN: Found a new static enemy
             if (enemyData) {
                 // --- CRITICAL: LOCK & CLEAR IMMEDIATELY ---
-                processingSpawnTiles.add(tileId); 
-                wokenEnemyTiles.add(tileId);      
-                
-                // Safety Timeout: Unlock if server fails to respond in 2s
-                setTimeout(() => processingSpawnTiles.delete(tileId), 2000);
+                processingSpawnTiles.add(tileId);
+                wokenEnemyTiles.add(tileId);
 
+                // Optimistically clear the tile locally so the user doesn't see a duplicate
                 chunkManager.setWorldTile(x, y, '.');
 
+                // Safety Timeout
+                setTimeout(() => processingSpawnTiles.delete(tileId), 2000);
+
                 const scaledStats = getScaledEnemy(enemyData, x, y);
-                // Add spawnTime to prevent AI from moving it immediately
-                const newEnemy = { ...scaledStats, tile: tile, x: x, y: y, spawnTime: Date.now() };
-                
-                // Protect against flicker (Destination lock)
+                const newEnemy = {
+                    ...scaledStats,
+                    tile: tile,
+                    x: x,
+                    y: y,
+                    spawnTime: Date.now()
+                };
+
+                // Add to pendingSpawnData so the listener keeps it alive
                 pendingSpawns.add(enemyId);
-                
-                // --- Add to pendingSpawnData so listener keeps it alive ---
-                pendingSpawnData[enemyId] = newEnemy; 
+                pendingSpawnData[enemyId] = newEnemy;
 
                 // Optimistic Update (Show enemy immediately)
-                gameState.sharedEnemies[enemyId] = newEnemy; 
-                
+                gameState.sharedEnemies[enemyId] = newEnemy;
+                render(); // Force render to show the new enemy instantly
+
                 // Send to DB
                 rtdb.ref(`worldEnemies/${enemyId}`).transaction(current => {
-                    return current || newEnemy; 
+                    return current || newEnemy;
                 }).then(() => {
                     pendingSpawns.delete(enemyId);
-                    // Note: Listener handles pendingSpawnData cleanup
-                    processingSpawnTiles.delete(tileId); 
+                    processingSpawnTiles.delete(tileId);
                 }).catch(err => {
                     console.error("Spawn failed", err);
                     pendingSpawns.delete(enemyId);
-                    delete pendingSpawnData[enemyId]; 
-                    processingSpawnTiles.delete(tileId); 
+                    delete pendingSpawnData[enemyId];
+                    processingSpawnTiles.delete(tileId);
+                    // If fail, revert the tile so we can try again
                     chunkManager.setWorldTile(x, y, enemyData.tile || 'r');
                     wokenEnemyTiles.delete(tileId);
                 });
