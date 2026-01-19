@@ -23,21 +23,17 @@
             </div>
          </div>
          <div id="characterSelectModal" class="themed-container mx-auto max-w-4xl p-6 rounded-2xl shadow-xl border-2 hidden">
-    <h1 class="text-3xl font-bold text-center mb-6">Select Character</h1>
-    
-    <div id="slotsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        </div>
-
-    <div class="text-center">
-        <button id="logoutFromSelectButton" class="text-sm text-red-500 hover:underline">Logout</button>
-    </div>
-</div>
+            <h1 class="text-3xl font-bold text-center mb-6">Select Character</h1>
+            <div id="slotsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            </div>
+            <div class="text-center">
+               <button id="logoutFromSelectButton" class="text-sm text-red-500 hover:underline">Logout</button>
+            </div>
+         </div>
          <div id="charCreationModal" class="themed-container mx-auto max-w-2xl p-6 rounded-2xl shadow-xl border-2 hidden">
             <h1 class="text-3xl font-bold text-center mb-2">Choose Your Path</h1>
             <p class="text-center muted-text mb-6">Who were you before you arrived here?</p>
-            
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-               
                <div class="panel p-4 rounded-xl border-2 hover:border-blue-500 cursor-pointer transition-all" onclick="selectBackground('warrior')">
                   <div class="text-4xl text-center mb-2">⚔️</div>
                   <h3 class="text-xl font-bold text-center mb-1">Warrior</h3>
@@ -48,7 +44,6 @@
                      <li class="text-green-600">Start: Rusty Sword</li>
                   </ul>
                </div>
-
                <div class="panel p-4 rounded-xl border-2 hover:border-yellow-500 cursor-pointer transition-all" onclick="selectBackground('rogue')">
                   <div class="text-4xl text-center mb-2">🗡️</div>
                   <h3 class="text-xl font-bold text-center mb-1">Rogue</h3>
@@ -59,7 +54,6 @@
                      <li class="text-green-600">Start: Bone Dagger</li>
                   </ul>
                </div>
-
                <div class="panel p-4 rounded-xl border-2 hover:border-purple-500 cursor-pointer transition-all" onclick="selectBackground('mage')">
                   <div class="text-4xl text-center mb-2">🔮</div>
                   <h3 class="text-xl font-bold text-center mb-1">Mage</h3>
@@ -70,7 +64,6 @@
                      <li class="text-green-600">Start: Magic Bolt</li>
                   </ul>
                </div>
-
                <div class="panel p-4 rounded-xl border-2 hover:border-gray-500 cursor-pointer transition-all" onclick="selectBackground('necromancer')">
                   <div class="text-4xl text-center mb-2">💀</div>
                   <h3 class="text-xl font-bold text-center mb-1">Necromancer</h3>
@@ -81,7 +74,6 @@
                      <li class="text-green-600">Start: Raise Dead</li>
                   </ul>
                </div>
-
                <div class="panel p-4 rounded-xl border-2 hover:border-red-600 cursor-pointer transition-all" onclick="selectBackground('wretch')">
                   <div class="text-4xl text-center mb-2">🦴</div>
                   <h3 class="text-xl font-bold text-center mb-1">Wretch</h3>
@@ -92,13 +84,11 @@
                      <li class="text-red-500">Start: Tattered Rags</li>
                   </ul>
                </div>
-
             </div>
-
             <div class="mt-6 text-center">
-                <button onclick="const keys=['warrior','rogue','mage','wretch']; selectBackground(keys[Math.floor(Math.random()*keys.length)])" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-full transition-all">
-                    🎲 Random Fate
-                </button>
+               <button onclick="const keys=['warrior','rogue','mage','wretch']; selectBackground(keys[Math.floor(Math.random()*keys.length)])" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-full transition-all">
+               🎲 Random Fate
+               </button>
             </div>
          </div>
          <div id="gameContainer" class="themed-container game-container mx-auto p-6 rounded-2xl shadow-lg border-2 hidden">
@@ -124,7 +114,6 @@
                      <div id="gameCanvasWrapper" class="relative w-full rounded-xl overflow-hidden border-2" style="border-color: var(--border-color);">
                         <canvas id="gameCanvas" class="w-full h-full"></canvas>
                      </div>
-
                      <div id="hotbarContainer" class="flex justify-center gap-2 mt-4 p-2 panel rounded-xl border-2 min-h-[4rem]">
                      </div>
                   </div>
@@ -136,31 +125,29 @@
                   </div>
                </div>
                <div class="lg:col-span-1 flex flex-col gap-4 mt-4 lg:mt-0">
-                  
-                 <div id="equipmentPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-2">
-    <h2 class="text-lg font-bold mb-2">Equipment</h2>
-    <div class="flex justify-center gap-4">
-        <!-- Main Hand -->
-        <div class="flex flex-col items-center">
-            <div class="w-12 h-12 border-2 border-gray-500 rounded bg-gray-800 flex items-center justify-center text-2xl" id="slotWeaponIcon">
-                👊
-            </div>
-            <span class="text-xs mt-1 text-gray-400">Main Hand</span>
-        </div>
-        
-        <!-- Chest -->
-        <div class="flex flex-col items-center">
-            <div class="w-12 h-12 border-2 border-gray-500 rounded bg-gray-800 flex items-center justify-center text-2xl" id="slotArmorIcon">
-                👕
-            </div>
-            <span class="text-xs mt-1 text-gray-400">Body</span>
-        </div>
-    </div>
-    <div class="text-xs text-center mt-2">
-        <p id="equippedWeaponDisplay" class="highlight-text">Fists</p>
-        <p id="equippedArmorDisplay" class="highlight-text">Simple Tunic</p>
-    </div>
-</div>
+                  <div id="equipmentPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-2">
+                     <h2 class="text-lg font-bold mb-2">Equipment</h2>
+                     <div class="flex justify-center gap-4">
+                        <!-- Main Hand -->
+                        <div class="flex flex-col items-center">
+                           <div class="w-12 h-12 border-2 border-gray-500 rounded bg-gray-800 flex items-center justify-center text-2xl" id="slotWeaponIcon">
+                              👊
+                           </div>
+                           <span class="text-xs mt-1 text-gray-400">Main Hand</span>
+                        </div>
+                        <!-- Chest -->
+                        <div class="flex flex-col items-center">
+                           <div class="w-12 h-12 border-2 border-gray-500 rounded bg-gray-800 flex items-center justify-center text-2xl" id="slotArmorIcon">
+                              👕
+                           </div>
+                           <span class="text-xs mt-1 text-gray-400">Body</span>
+                        </div>
+                     </div>
+                     <div class="text-xs text-center mt-2">
+                        <p id="equippedWeaponDisplay" class="highlight-text">Fists</p>
+                        <p id="equippedArmorDisplay" class="highlight-text">Simple Tunic</p>
+                     </div>
+                  </div>
                   <div id="statusPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-2">
                      <div>
                         <span id="healthDisplay" class="font-bold">Health: 10</span>
@@ -199,7 +186,7 @@
                         </div>
                      </div>
                      <div id="statusEffectsPanel" class="flex gap-2 justify-center pt-2 min-h-[1.5rem] text-lg">
-                        </div>
+                     </div>
                      <span id="coinsDisplay" class="font-bold text-yellow-500 pt-1">Coins: 0</span>
                      <span id="levelDisplay" class="font-bold highlight-text pt-2">Level: 1</span>
                      <div>
@@ -260,15 +247,15 @@
                </div>
             </div>
             <div id="controls" class="mt-4 text-center">
-   <p class="text-lg">
-      Move: <span class="highlight-text font-bold">WASD</span> | 
-      Rest: <span class="highlight-text font-bold">R</span> | 
-      Inv: <span class="highlight-text font-bold">I</span> | 
-      Map: <span class="highlight-text font-bold">M</span> | 
-      Magic: <span class="highlight-text font-bold">B</span> | 
-      Skills: <span class="highlight-text font-bold">K</span>
-   </p>
-</div>
+               <p class="text-lg">
+                  Move: <span class="highlight-text font-bold">WASD</span> | 
+                  Rest: <span class="highlight-text font-bold">R</span> | 
+                  Inv: <span class="highlight-text font-bold">I</span> | 
+                  Map: <span class="highlight-text font-bold">M</span> | 
+                  Magic: <span class="highlight-text font-bold">B</span> | 
+                  Skills: <span class="highlight-text font-bold">K</span>
+               </p>
+            </div>
          </div>
       </main>
       <div id="helpModal" class="modal-overlay hidden">
@@ -294,42 +281,36 @@
       <div id="settingsModal" class="modal-overlay hidden">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Game Settings</h2>
-            
             <div class="space-y-4">
-                <h3 class="font-bold border-b border-gray-500 pb-1">Audio</h3>
-                
-                <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
-                    <span>🔊 Master Volume</span>
-                    <input type="checkbox" id="settingMaster" class="form-checkbox h-5 w-5 text-blue-600">
-                </label>
-
-                <div class="pl-4 space-y-2">
-                    <label class="flex items-center justify-between cursor-pointer">
-                        <span class="text-sm muted-text">🦶 Footsteps</span>
-                        <input type="checkbox" id="settingSteps" class="form-checkbox h-4 w-4 text-blue-600">
-                    </label>
-                    <label class="flex items-center justify-between cursor-pointer">
-                        <span class="text-sm muted-text">⚔️ Combat</span>
-                        <input type="checkbox" id="settingCombat" class="form-checkbox h-4 w-4 text-blue-600">
-                    </label>
-                    <label class="flex items-center justify-between cursor-pointer">
-                        <span class="text-sm muted-text">✨ Magic</span>
-                        <input type="checkbox" id="settingMagic" class="form-checkbox h-4 w-4 text-blue-600">
-                    </label>
-                    <label class="flex items-center justify-between cursor-pointer">
-                        <span class="text-sm muted-text">💰 Loot & UI</span>
-                        <input type="checkbox" id="settingUI" class="form-checkbox h-4 w-4 text-blue-600">
-                    </label>
-                </div>
+               <h3 class="font-bold border-b border-gray-500 pb-1">Audio</h3>
+               <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
+               <span>🔊 Master Volume</span>
+               <input type="checkbox" id="settingMaster" class="form-checkbox h-5 w-5 text-blue-600">
+               </label>
+               <div class="pl-4 space-y-2">
+                  <label class="flex items-center justify-between cursor-pointer">
+                  <span class="text-sm muted-text">🦶 Footsteps</span>
+                  <input type="checkbox" id="settingSteps" class="form-checkbox h-4 w-4 text-blue-600">
+                  </label>
+                  <label class="flex items-center justify-between cursor-pointer">
+                  <span class="text-sm muted-text">⚔️ Combat</span>
+                  <input type="checkbox" id="settingCombat" class="form-checkbox h-4 w-4 text-blue-600">
+                  </label>
+                  <label class="flex items-center justify-between cursor-pointer">
+                  <span class="text-sm muted-text">✨ Magic</span>
+                  <input type="checkbox" id="settingMagic" class="form-checkbox h-4 w-4 text-blue-600">
+                  </label>
+                  <label class="flex items-center justify-between cursor-pointer">
+                  <span class="text-sm muted-text">💰 Loot & UI</span>
+                  <input type="checkbox" id="settingUI" class="form-checkbox h-4 w-4 text-blue-600">
+                  </label>
+               </div>
             </div>
-
             <h3 class="font-bold border-b border-gray-500 pb-1 mt-4">Visuals</h3>
-            
             <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
-                <span>📺 CRT Scanlines</span>
-                <input type="checkbox" id="settingCRT" class="form-checkbox h-5 w-5 text-blue-600">
+            <span>📺 CRT Scanlines</span>
+            <input type="checkbox" id="settingCRT" class="form-checkbox h-5 w-5 text-blue-600">
             </label>
-
             <button id="closeSettingsButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
@@ -338,7 +319,7 @@
             <h2 class="text-2xl font-bold mb-4">Leyline Network</h2>
             <p class="text-sm muted-text mb-4">Travel to an attuned Waystone? (Cost: 10 Mana)</p>
             <ul id="fastTravelList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-               </ul>
+            </ul>
             <button id="closeFastTravelButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Cancel</button>
          </div>
       </div>
@@ -357,13 +338,11 @@
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 id="loreTitle" class="text-2xl font-bold mb-4">Title</h2>
             <div id="loreContent" class="space-y-2 text-sm whitespace-pre-wrap mb-4"></div>
-            
             <!-- NEW: Riddle Input Section (Hidden by default) -->
             <div id="riddleContainer" class="hidden mb-4">
-                <input type="text" id="riddleInput" class="themed-input w-full p-2 border rounded mb-2" placeholder="Your answer...">
-                <button id="submitRiddle" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded w-full">Speak</button>
+               <input type="text" id="riddleInput" class="themed-input w-full p-2 border rounded mb-2" placeholder="Your answer...">
+               <button id="submitRiddle" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded w-full">Speak</button>
             </div>
-
             <button id="closeLoreButton" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
@@ -415,63 +394,54 @@
             <button id="closeSkillButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
-
-<div id="questModal" class="modal-overlay hidden">
-   <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 max-h-[90vh] flex flex-col">
-      <h2 class="text-2xl font-bold mb-4">Bounty Board</h2>
-      
-      <div id="questList" class="space-y-4 max-h-80 overflow-y-auto pr-2">
+      <div id="questModal" class="modal-overlay hidden">
+         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 max-h-[90vh] flex flex-col">
+            <h2 class="text-2xl font-bold mb-4">Bounty Board</h2>
+            <div id="questList" class="space-y-4 max-h-80 overflow-y-auto pr-2">
+            </div>
+            <button id="closeQuestButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave</button>
+         </div>
       </div>
-
-      <button id="closeQuestButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave</button>
-   </div>
-</div>
-
       <div id="craftingModal" class="modal-overlay hidden">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Crafting Workbench</h2>
             <ul id="craftingRecipeList" class="space-y-3 max-h-80 overflow-y-auto pr-2">
-               </ul>
+            </ul>
             <button id="closeCraftingButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave Workbench</button>
          </div>
       </div>
-
       <div id="talentModal" class="modal-overlay hidden">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold">Class Mastery</h2>
-                <span id="talentPointsDisplay" class="font-bold highlight-text">Points: 0</span>
+               <h2 class="text-2xl font-bold">Class Mastery</h2>
+               <span id="talentPointsDisplay" class="font-bold highlight-text">Points: 0</span>
             </div>
             <p class="text-sm muted-text mb-4">Choose a permanent passive ability.</p>
             <div id="talentList" class="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto pr-2">
-               </div>
+            </div>
             <button id="closeTalentButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
-
       <div id="evolutionModal" class="modal-overlay hidden">
-    <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 text-center">
-        <h2 class="text-3xl font-bold text-yellow-500 mb-2">Class Evolution</h2>
-        <p class="text-muted-text mb-6">You have reached Level 10. Choose your destiny.</p>
-        
-        <div id="evolutionOptions" class="grid grid-cols-1 gap-4 mb-6">
+         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 text-center">
+            <h2 class="text-3xl font-bold text-yellow-500 mb-2">Class Evolution</h2>
+            <p class="text-muted-text mb-6">You have reached Level 10. Choose your destiny.</p>
+            <div id="evolutionOptions" class="grid grid-cols-1 gap-4 mb-6">
             </div>
-    </div>
-</div>
-
+         </div>
+      </div>
       <div id="skillTrainerModal" class="modal-overlay hidden">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold">Skill Trainer</h2>
-                <span id="skillTrainerStatPoints" class="font-bold highlight-text">Your Stat Points: 0</span>
+               <h2 class="text-2xl font-bold">Skill Trainer</h2>
+               <span id="skillTrainerStatPoints" class="font-bold highlight-text">Your Stat Points: 0</span>
             </div>
             <p class="text-sm muted-text mb-4">Spend 1 Stat Point to learn a new skill or level up an existing one.</p>
             <ul id="skillTrainerList" class="space-y-3 max-h-80 overflow-y-auto pr-2">
-               </ul>
+            </ul>
             <button id="closeSkillTrainerButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave Trainer</button>
          </div>
       </div>
-
       <div id="stashModal" class="modal-overlay hidden">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Storage Stash</h2>
@@ -479,61 +449,53 @@
                <div>
                   <h3 class="text-lg font-bold mb-2 border-b-2" style="border-color: var(--border-color);">Your Inventory</h3>
                   <ul id="stashPlayerList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                     </ul>
+                  </ul>
                </div>
                <div>
                   <h3 class="text-lg font-bold mb-2 border-b-2" style="border-color: var(--border-color);">Stash Contents</h3>
                   <ul id="stashBankList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                     </ul>
+                  </ul>
                </div>
             </div>
             <button id="closeStashButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close Stash</button>
          </div>
       </div>
-
       <div id="mapModal" class="modal-overlay hidden">
-   <div class="modal-content themed-container p-4 rounded-2xl shadow-xl border-2 flex flex-col h-[80vh] w-[90vw] max-w-4xl">
-      <div class="flex justify-between items-center mb-4">
-         <h2 class="text-2xl font-bold">World Map</h2>
-         <span class="text-xs muted-text">Only explored lands appear here.</span>
-         <button id="closeMapButton" class="text-red-500 font-bold hover:text-red-700">X</button>
+         <div class="modal-content themed-container p-4 rounded-2xl shadow-xl border-2 flex flex-col h-[80vh] w-[90vw] max-w-4xl">
+            <div class="flex justify-between items-center mb-4">
+               <h2 class="text-2xl font-bold">World Map</h2>
+               <span class="text-xs muted-text">Only explored lands appear here.</span>
+               <button id="closeMapButton" class="text-red-500 font-bold hover:text-red-700">X</button>
+            </div>
+            <div class="flex-grow w-full h-full border-2 border-gray-700 bg-black rounded relative overflow-hidden" style="cursor: grab;">
+               <canvas id="worldMapCanvas" class="block"></canvas>
+            </div>
+            <div class="mt-4 text-center text-sm muted-text">
+               <span style="color:#22c55e">■ Plains</span> 
+               <span style="color:#14532d">■ Forest</span> 
+               <span style="color:#57534e">■ Mountain</span> 
+               <span style="color:#3b82f6">■ Water</span> 
+               <span style="color:#fde047">■ Desert</span>
+               <span class="ml-4 font-bold text-white" id="mapCoords">0, 0</span>
+            </div>
+         </div>
       </div>
-      
-      <div class="flex-grow w-full h-full border-2 border-gray-700 bg-black rounded relative overflow-hidden" style="cursor: grab;">
-         <canvas id="worldMapCanvas" class="block"></canvas>
-      </div>
-
-      <div class="mt-4 text-center text-sm muted-text">
-         <span style="color:#22c55e">■ Plains</span> 
-         <span style="color:#14532d">■ Forest</span> 
-         <span style="color:#57534e">■ Mountain</span> 
-         <span style="color:#3b82f6">■ Water</span> 
-         <span style="color:#fde047">■ Desert</span>
-         <span class="ml-4 font-bold text-white" id="mapCoords">0, 0</span>
-      </div>
-   </div>
-</div>
-
       <div id="collectionsModal" class="modal-overlay hidden">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 max-h-[90vh] flex flex-col">
             <div class="flex justify-between items-center mb-4">
                <h2 class="text-2xl font-bold">Collections</h2>
                <div class="flex gap-2">
-                   <button id="tabBestiary" class="text-sm font-bold border-b-2 border-blue-500 pb-1">Bestiary</button>
-                   <button id="tabLibrary" class="text-sm font-bold text-gray-500 pb-1">Library</button>
+                  <button id="tabBestiary" class="text-sm font-bold border-b-2 border-blue-500 pb-1">Bestiary</button>
+                  <button id="tabLibrary" class="text-sm font-bold text-gray-500 pb-1">Library</button>
                </div>
             </div>
-            
             <div id="bestiaryView" class="overflow-y-auto pr-2 flex-grow space-y-2">
-                </div>
-            
+            </div>
             <div id="libraryView" class="overflow-y-auto pr-2 flex-grow space-y-2 hidden">
-                </div>
-
+            </div>
             <button id="closeCollectionsButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
-
       <footer class="text-center text-xs muted-text mt-4">
          <p>Version 0.1.9.5 | Last Updated: January 19th, 2026</p>
       </footer>
@@ -541,24 +503,30 @@
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+      
+      <!-- DATA MODULES (Load Before Main Script) -->
+      <script defer src="data-maps.js"></script>
+      <script defer src="data-items.js"></script>
+      <script defer src="data-entities.js"></script>
+      
+      <!-- MAIN GAME LOGIC -->
       <script defer src="script.js"></script>
-
-<div id="mobileControls" class="mobile-controls lg:hidden">
-    <div class="d-pad-container">
-        <button data-key="ArrowUp" class="d-pad-btn up">⬆️</button>
-        <button data-key="ArrowLeft" class="d-pad-btn left">⬅️</button>
-        <button data-key="r" class="d-pad-btn center">💤</button> 
-        <button data-key="ArrowRight" class="d-pad-btn right">➡️</button>
-        <button data-key="ArrowDown" class="d-pad-btn down">⬇️</button>
-    </div>
-    <div class="action-buttons-container">
-        <button data-key="i" class="action-btn">🎒</button> 
-        <button data-key="m" class="action-btn">🔮</button> 
-        <button data-key="k" class="action-btn">⚔️</button> 
-        <button data-key="q" class="action-btn blue">💧</button>
-        <button data-key="Escape" class="action-btn red">❌</button> 
-    </div>
-</div>
-
+      
+      <div id="mobileControls" class="mobile-controls lg:hidden">
+         <div class="d-pad-container">
+            <button data-key="ArrowUp" class="d-pad-btn up">⬆️</button>
+            <button data-key="ArrowLeft" class="d-pad-btn left">⬅️</button>
+            <button data-key="r" class="d-pad-btn center">💤</button> 
+            <button data-key="ArrowRight" class="d-pad-btn right">➡️</button>
+            <button data-key="ArrowDown" class="d-pad-btn down">⬇️</button>
+         </div>
+         <div class="action-buttons-container">
+            <button data-key="i" class="action-btn">🎒</button> 
+            <button data-key="m" class="action-btn">🔮</button> 
+            <button data-key="k" class="action-btn">⚔️</button> 
+            <button data-key="q" class="action-btn blue">💧</button>
+            <button data-key="Escape" class="action-btn red">❌</button> 
+         </div>
+      </div>
    </body>
 </html>
