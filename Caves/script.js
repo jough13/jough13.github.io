@@ -6956,10 +6956,10 @@ async function wakeUpNearbyEnemies() {
                     spawnTime: Date.now()
                 };
 
-                // --- VISUAL FIX: ADD TO LOCAL STATE, BUT DO NOT CLEAR TILE YET ---
+                // --- VISUAL FIX: ADD TO LOCAL STATE IMMEDIATELY ---
                 // We add the enemy to the "Live" list immediately.
-                // We leave the "Static" tile alone. 
-                // Result: The live enemy draws ON TOP of the static tile. No flickering.
+                // We DO NOT clear the static map tile yet. The live enemy draws on top.
+                // This prevents the "empty frame" flicker.
                 pendingSpawns.add(enemyId);
                 pendingSpawnData[enemyId] = newEnemy;
                 gameState.sharedEnemies[enemyId] = newEnemy;
@@ -6971,12 +6971,14 @@ async function wakeUpNearbyEnemies() {
                     return current || newEnemy;
                 }).then((result) => {
                     // --- SUCCESS: NOW WE CLEAR THE TILE ---
-                    // The server has the enemy. It is safe to remove the static map tile.
+                    // The server has accepted the enemy. It is now safe to remove the static map tile.
                     if (result.committed) {
                         chunkManager.setWorldTile(x, y, '.');
                     }
                     
                     // Cleanup locks
+                    // NOTE: We do NOT delete pendingSpawnData here. 
+                    // We let the main Listener handle that when the data comes back.
                     pendingSpawns.delete(enemyId);
                     processingSpawnTiles.delete(tileId);
 
@@ -12172,8 +12174,8 @@ async function processOverworldEnemyTurns() {
         if (typeof enemy.x !== 'number' || typeof enemy.y !== 'number') continue;
 
         // --- CHANGE: REMOVED SUMMONING SICKNESS ---
-        // We removed the 2000ms delay check here. 
-        // Enemies will now act the moment they are created.
+        // The line: "if (enemy.spawnTime && Date.now() - enemy.spawnTime < 2000) continue;"
+        // has been removed. Enemies will now chase immediately.
 
         // A. Distance Check
         const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
@@ -16783,14 +16785,21 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         gameState.initialEnemiesLoaded = true;
 
         // 1. Cleanup Static Tiles
-        // If the server says "There is a wolf at 10,10", we ensure the map tile at 10,10 is '.'
         Object.values(serverData).forEach(enemy => {
             if (gameState.mapMode === 'overworld') {
                 const currentTile = chunkManager.getTile(enemy.x, enemy.y);
-                // Only clear if it's actually an enemy tile (don't clear trees/walls by accident)
                 if (ENEMY_DATA[currentTile]) {
                     chunkManager.setWorldTile(enemy.x, enemy.y, '.');
                 }
+            }
+        });
+
+        // --- CHANGE: SMART CLEANUP ---
+        // If the server data contains an ID that we have in our "Pending" list,
+        // it means the server has caught up! We can safely stop tracking it locally.
+        Object.keys(serverData).forEach(key => {
+            if (pendingSpawnData[key]) {
+                delete pendingSpawnData[key];
             }
         });
 
