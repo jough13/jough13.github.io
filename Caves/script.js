@@ -10139,12 +10139,13 @@ function initSkillTrainerListeners() {
 
 /**
  * Checks if the player has the required materials for a recipe.
- * @param {string} recipeName - The name of the item to craft (a key in CRAFTING_RECIPES).
+ * @param {string} recipeName - The name of the item to craft.
  * @returns {boolean} - True if the player has all materials, false otherwise.
  */
 function checkHasMaterials(recipeName) {
-    const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName]; // Check both lists!
-    if (!recipe) return false; // Recipe doesn't exist
+    // Check both crafting and cooking lists
+    const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName];
+    if (!recipe) return false; 
 
     const playerInventory = gameState.player.inventory;
 
@@ -10154,18 +10155,19 @@ function checkHasMaterials(recipeName) {
         
         // Count TOTAL amount of this material across all UNEQUIPPED stacks
         const totalAmount = playerInventory.reduce((sum, item) => {
+            // Only count items that match the name AND are NOT equipped
             if (item.name === materialName && !item.isEquipped) {
                 return sum + item.quantity;
             }
             return sum;
         }, 0);
 
+        // If the total across all stacks is less than required, we can't craft
         if (totalAmount < requiredQuantity) {
             return false;
         }
     }
     
-    // If we get here, the player has everything
     return true;
 }
 
@@ -10254,6 +10256,11 @@ function renderCraftingModal() {
  * @param {string} recipeName - The name of the item to craft.
  */
 
+/**
+ * Handles the logic of crafting an item.
+ * Consumes materials and adds the new item to inventory.
+ * @param {string} recipeName - The name of the item to craft.
+ */
 function handleCraftItem(recipeName) {
     // 1. Check both lists to find the recipe data
     const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName];
@@ -10264,48 +10271,41 @@ function handleCraftItem(recipeName) {
     const playerInventory = player.inventory;
     
     // 2. Check Level Requirement
-    // If it's a Workbench recipe, check crafting level. Cooking is currently Lvl 1 for all.
     const playerCraftLevel = player.craftingLevel || 1;
     if (CRAFTING_RECIPES[recipeName] && playerCraftLevel < recipe.level) {
         logMessage(`You need Crafting Level ${recipe.level} to make this.`);
         return;
     }
 
-    // 3. Check Materials
-    for (const materialName in recipe.materials) {
-        const requiredQuantity = recipe.materials[materialName];
-        const itemInInventory = playerInventory.find(item => item.name === materialName && !item.isEquipped);
-        
-        if (!itemInInventory || itemInInventory.quantity < requiredQuantity) {
-            logMessage(`You are missing materials: ${materialName}`);
-            return;
-        }
+    // 3. Verify Materials (Double check using our robust function)
+    if (!checkHasMaterials(recipeName)) {
+        logMessage("You are missing materials (or they are currently equipped).");
+        return;
     }
 
-    // Look up the resulting item to see if it stacks
+    // Look up the resulting item template
     const outputItemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === recipeName);
     const itemTemplate = ITEM_DATA[outputItemKey];
     
-    // Check if we already have a stack of this item (and it's not equipment/masterwork)
-    // Note: We assume crafted equipment doesn't stack for safety here
+    // Check Inventory Space
+    // If it's stackable, check if we have a stack. If not, check for empty slot.
     const isStackable = itemTemplate.type === 'junk' || itemTemplate.type === 'consumable';
     const existingStack = playerInventory.find(item => item.name === itemTemplate.name);
 
     if (!existingStack || !isStackable) {
-        // We need a new slot. Check if full.
         if (playerInventory.length >= MAX_INVENTORY_SLOTS) {
             logMessage("Inventory full! Cannot craft.");
             return;
         }
     }
 
-    // 4. Consume Materials
+    // 4. Consume Materials (The Fix)
     for (const materialName in recipe.materials) {
         let remainingNeeded = recipe.materials[materialName];
 
-        // Iterate backwards so we can safely splice (remove) items while looping
+        // Iterate backwards so we can safely remove items while looping
         for (let i = playerInventory.length - 1; i >= 0; i--) {
-            if (remainingNeeded <= 0) break; // We have enough
+            if (remainingNeeded <= 0) break; // We have consumed enough of this material
 
             const item = playerInventory[i];
 
@@ -10317,7 +10317,7 @@ function handleCraftItem(recipeName) {
                 item.quantity -= amountToTake;
                 remainingNeeded -= amountToTake;
 
-                // If stack is empty, remove it
+                // If stack is empty, remove it from inventory
                 if (item.quantity <= 0) {
                     playerInventory.splice(i, 1);
                 }
@@ -10346,9 +10346,8 @@ function handleCraftItem(recipeName) {
         if (itemTemplate.type === 'armor') itemTemplate.defense = (itemTemplate.defense || 0) + 1;
     }
 
-    // Stack Logic (Don't stack masterworks)
-
-    if (existingStack) {
+    // Add to Inventory
+    if (existingStack && isStackable && !isMasterwork) {
         existingStack.quantity++;
     } else {
         const newItem = {
@@ -10373,7 +10372,7 @@ function handleCraftItem(recipeName) {
         logMessage(`You crafted/cooked: ${recipeName}.`);
     }
 
-    // 6. Grant XP (Unified Crafting XP)
+    // 6. Grant XP
     const xpGain = recipe.xp || 10;
     player.craftingXp = (player.craftingXp || 0) + xpGain;
     player.craftingXpToNext = player.craftingXpToNext || 50;
