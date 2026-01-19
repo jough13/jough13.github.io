@@ -6922,7 +6922,7 @@ async function wakeUpNearbyEnemies() {
 
             const tileId = `${x},${y}`;
 
-            // 1. FAST LOCK: If we are currently processing this specific tile, skip it.
+            // 1. FAST LOCK: Skip if already processing
             if (processingSpawnTiles.has(tileId)) continue;
 
             const enemyId = `overworld:${x},${-y}`;
@@ -6931,19 +6931,15 @@ async function wakeUpNearbyEnemies() {
             const tile = chunkManager.getTile(x, y);
             const enemyData = ENEMY_DATA[tile];
 
-            // 3. EXISTENCE CHECK: Is the destination occupied by a live enemy?
+            // 3. EXISTENCE CHECK: If a live enemy is already here, mark as woken and skip
             if (gameState.sharedEnemies[enemyId]) {
-                // If a live enemy exists, we can safely clear the static tile underneath it now
-                if (enemyData) {
-                    chunkManager.setWorldTile(x, y, '.');
-                }
                 wokenEnemyTiles.add(tileId);
                 continue;
             }
 
-            // 5. SPAWN: Found a new static enemy
+            // 4. SPAWN LOGIC
             if (enemyData) {
-                // --- LOCK ---
+                // Lock this tile so we don't try to spawn it 50 times a second
                 processingSpawnTiles.add(tileId);
                 wokenEnemyTiles.add(tileId);
 
@@ -6956,38 +6952,29 @@ async function wakeUpNearbyEnemies() {
                     spawnTime: Date.now()
                 };
 
-                // --- VISUAL FIX: ADD TO LOCAL STATE IMMEDIATELY ---
-                // We add the enemy to the "Live" list immediately.
-                // We DO NOT clear the static map tile yet. The live enemy draws on top.
-                // This prevents the "empty frame" flicker.
-                pendingSpawns.add(enemyId);
+                // --- ROBUST FIX: OPTIMISTIC RENDER ---
+                // 1. Add to Pending (so AI ignores it)
                 pendingSpawnData[enemyId] = newEnemy;
+                // 2. Add to Shared (so Renderer draws it)
                 gameState.sharedEnemies[enemyId] = newEnemy;
                 
-                render(); // Update screen immediately
+                // 3. Force Render (Draws the enemy ON TOP of the map tile)
+                render(); 
 
-                // Send to DB
+                // 4. Send to DB
                 rtdb.ref(`worldEnemies/${enemyId}`).transaction(current => {
                     return current || newEnemy;
-                }).then((result) => {
-                    // --- SUCCESS: NOW WE CLEAR THE TILE ---
-                    // The server has accepted the enemy. It is now safe to remove the static map tile.
-                    if (result.committed) {
-                        chunkManager.setWorldTile(x, y, '.');
-                    }
-                    
-                    // Cleanup locks
-                    // NOTE: We do NOT delete pendingSpawnData here. 
-                    // We let the main Listener handle that when the data comes back.
-                    pendingSpawns.delete(enemyId);
+                }).then(() => {
+                    // Unlock the tile. 
+                    // WE DO NOT DELETE PENDING DATA HERE.
+                    // WE DO NOT CLEAR THE MAP TILE HERE.
+                    // The Listener will handle that when the data comes back.
                     processingSpawnTiles.delete(tileId);
-
                 }).catch(err => {
                     console.error("Spawn failed", err);
-                    // Revert everything on failure
-                    pendingSpawns.delete(enemyId);
-                    if (pendingSpawnData[enemyId]) delete pendingSpawnData[enemyId];
-                    if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
+                    // Rollback on error
+                    delete pendingSpawnData[enemyId];
+                    delete gameState.sharedEnemies[enemyId];
                     processingSpawnTiles.delete(tileId);
                     wokenEnemyTiles.delete(tileId);
                 });
@@ -12126,101 +12113,78 @@ function getBaseTerrain(worldX, worldY) {
 async function processOverworldEnemyTurns() {
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
-
-    // 1. Interaction Range
     const searchRadius = 25;
     const searchDistSq = searchRadius * searchRadius;
-
     let nearestEnemyDir = null;
     let minDist = Infinity;
     const HEARING_DISTANCE_SQ = 15 * 15;
 
     let movesToMake = [];
 
-    // --- ECHO SPAWNING (Night Only: 8 PM to 5 AM) ---
+    // --- ECHO SPAWNING (Night Only) ---
     const hour = gameState.time.hour;
     const isNight = hour >= 20 || hour < 5;
-
-    // 1% chance per turn at night to spawn an Echo near player
     if (isNight && gameState.mapMode === 'overworld' && Math.random() < 0.01) {
-        // Find a spot
         const ex = playerX + (Math.floor(Math.random() * 10) - 5);
         const ey = playerY + (Math.floor(Math.random() * 10) - 5);
-
         if (chunkManager.getTile(ex, ey) === '.') {
             chunkManager.setWorldTile(ex, ey, '👻');
             logMessage("A spectral figure flickers into existence nearby...");
         }
     }
 
-    // --- MOVEMENT VALIDATOR ---
     const isValidMove = (tx, ty, enemyType) => {
         const t = chunkManager.getTile(tx, ty);
-        if (t === '~') return false; // Block water
-        if (['.', 'F', 'd', 'D', '≈'].includes(t)) return true; // Allow standard ground
-        if (t === '^') { // Mountains
+        if (t === '~') return false;
+        if (['.', 'F', 'd', 'D', '≈'].includes(t)) return true;
+        if (t === '^') {
             const climbers = ['Y', '🐲', 'Ø', 'g', 'o', '🦇', '🦅'];
             return climbers.includes(enemyType);
         }
         return false;
     };
 
-// 2. Iterate ACTIVE ENEMIES (Not Map Tiles)
     const activeEnemies = Object.values(gameState.sharedEnemies);
 
     for (const enemy of activeEnemies) {
-
-        // Safety check for malformed data
         if (typeof enemy.x !== 'number' || typeof enemy.y !== 'number') continue;
 
-        // --- CHANGE: REMOVED SUMMONING SICKNESS ---
-        // The line: "if (enemy.spawnTime && Date.now() - enemy.spawnTime < 2000) continue;"
-        // has been removed. Enemies will now chase immediately.
+        // --- CRITICAL FIX: IGNORE PENDING ENEMIES ---
+        // If this enemy is still in our local pending list, the server doesn't know about it yet.
+        // We cannot move it, or the transaction will fail.
+        const currentId = `overworld:${enemy.x},${-enemy.y}`;
+        if (pendingSpawnData[currentId]) continue;
 
-        // A. Distance Check
         const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
-
-        // Optimization: Ignore enemies that are too far away
         if (distSq > searchDistSq) continue;
 
-        const dist = Math.sqrt(distSq);
+        // AI Logic
+        let chaseChance = 0.20;
+        if (distSq < 400) chaseChance = 0.70; // < 20 tiles
+        if (distSq < 100) chaseChance = 1.00; // < 10 tiles
 
-        // B. Calculate Logic
-        let chaseChance = 0.20; // Idle/Wander
-        if (dist < 20) chaseChance = 0.70; // On Screen
-        if (dist < 10) chaseChance = 1.00; // Close Combat
-
-        // C. Activity Roll (75% chance to act)
         if (Math.random() < 0.75) {
             let dirX = 0, dirY = 0;
             let isChasing = false;
 
             if (Math.random() < chaseChance) {
-                // CHASE
                 dirX = Math.sign(playerX - enemy.x);
                 dirY = Math.sign(playerY - enemy.y);
                 isChasing = true;
             } else {
-                // WANDER
                 dirX = Math.floor(Math.random() * 3) - 1;
                 dirY = Math.floor(Math.random() * 3) - 1;
             }
 
             if (dirX === 0 && dirY === 0) continue;
 
-            // D. Pathfinding (Slide Logic)
             let finalX = enemy.x;
             let finalY = enemy.y;
             let canMove = false;
 
-            // Try Direct
             if (isValidMove(enemy.x + dirX, enemy.y + dirY, enemy.tile)) {
-                finalX = enemy.x + dirX;
-                finalY = enemy.y + dirY;
-                canMove = true;
-            }
-            // Try Slide
-            else if (isChasing) {
+                finalX = enemy.x + dirX; finalY = enemy.y + dirY; canMove = true;
+            } else if (isChasing) {
                 if (dirX !== 0 && isValidMove(enemy.x + dirX, enemy.y, enemy.tile)) {
                     finalX = enemy.x + dirX; finalY = enemy.y; canMove = true;
                 } else if (dirY !== 0 && isValidMove(enemy.x, enemy.y + dirY, enemy.tile)) {
@@ -12229,38 +12193,27 @@ async function processOverworldEnemyTurns() {
             }
 
             if (canMove) {
-                // Attack Player?
                 if (finalX === playerX && finalY === playerY) {
                     const dmg = Math.max(1, enemy.attack - (gameState.player.defenseBonus || 0));
                     gameState.player.health -= dmg;
-                    gameState.screenShake = 10; // Shake intensity
+                    gameState.screenShake = 10;
                     logMessage(`A ${enemy.name} attacks you for ${dmg} damage!`);
                     triggerStatFlash(statDisplays.health, false);
-
-                    // --- IMMEDIATE DEATH CHECK ---
                     if (gameState.player.health <= 0) {
                         gameState.player.health = 0;
                         logMessage("You have perished!");
-
-                        // Force UI update immediately so the user sees 0, not -3
                         renderStats();
-
                         syncPlayerState();
                         document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
                         document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
                         gameOverModal.classList.remove('hidden');
                     }
-
                     continue;
                 }
 
-                // Check collision with other enemies (Basic Check)
                 const isOccupied = activeEnemies.some(e => e.x === finalX && e.y === finalY);
                 if (isOccupied) continue;
 
-                // Queue the Move
-                // Reconstruct the ID based on current position
-                const currentId = `overworld:${enemy.x},${-enemy.y}`;
                 movesToMake.push({
                     oldId: currentId,
                     newX: finalX,
@@ -12268,7 +12221,6 @@ async function processOverworldEnemyTurns() {
                     enemyData: enemy
                 });
 
-                // Audio Hint
                 if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
                     minDist = distSq;
                     nearestEnemyDir = { x: Math.sign(finalX - playerX), y: Math.sign(finalY - playerY) };
@@ -12277,29 +12229,25 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-    // 3. Execute Moves (Batched)
-    for (const move of movesToMake) {
+    // --- EXECUTE MOVES (Parallel) ---
+    // We use Promise.all to prevent one slow move from blocking the others
+    await Promise.all(movesToMake.map(async (move) => {
         const newId = `overworld:${move.newX},${-move.newY}`;
         const oldRef = rtdb.ref(`worldEnemies/${move.oldId}`);
         const newRef = rtdb.ref(`worldEnemies/${newId}`);
 
         try {
-            // Update the enemy data with new coordinates
             const updatedEnemy = { ...move.enemyData, x: move.newX, y: move.newY };
-
-            // Atomic Move: Set New -> Remove Old
-            // We verify the old one still exists to prevent race conditions
             const snapshot = await oldRef.once('value');
             if (snapshot.exists()) {
                 await newRef.set(updatedEnemy);
                 await oldRef.remove();
-
-                // Optimistic Local Update
+                // Local update
                 delete gameState.sharedEnemies[move.oldId];
                 gameState.sharedEnemies[newId] = updatedEnemy;
             }
         } catch (err) { console.error("Enemy move failed:", err); }
-    }
+    }));
 
     return nearestEnemyDir;
 }
@@ -16784,8 +16732,17 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
 
         gameState.initialEnemiesLoaded = true;
 
-        // 1. Cleanup Static Tiles
-        Object.values(serverData).forEach(enemy => {
+        // 1. SMART CLEANUP & TILE CLEARING
+        Object.keys(serverData).forEach(key => {
+            const enemy = serverData[key];
+            
+            // A. If this enemy was pending, we can stop tracking it locally
+            if (pendingSpawnData[key]) {
+                delete pendingSpawnData[key];
+            }
+
+            // B. If this enemy exists on the server, ensure the map tile underneath is clear
+            // This prevents the "Ghost Wolf" (static tile) from appearing under the "Live Wolf"
             if (gameState.mapMode === 'overworld') {
                 const currentTile = chunkManager.getTile(enemy.x, enemy.y);
                 if (ENEMY_DATA[currentTile]) {
@@ -16794,18 +16751,8 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
             }
         });
 
-        // --- CHANGE: SMART CLEANUP ---
-        // If the server data contains an ID that we have in our "Pending" list,
-        // it means the server has caught up! We can safely stop tracking it locally.
-        Object.keys(serverData).forEach(key => {
-            if (pendingSpawnData[key]) {
-                delete pendingSpawnData[key];
-            }
-        });
-
         // 2. MERGE: Server Data + Pending Local Data
-        // We prioritize Pending Data. If we just spawned it locally, we use our local version
-        // until the server catches up.
+        // Pending data overrides server data to prevent lag/flickering during the spawn process
         const mergedEnemies = { ...serverData, ...pendingSpawnData };
 
         gameState.sharedEnemies = mergedEnemies;
