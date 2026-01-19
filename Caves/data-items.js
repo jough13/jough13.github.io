@@ -1,5 +1,5 @@
 
-const COOKING_RECIPES = {
+window.COOKING_RECIPES = {
     "Berry Pie": {
         materials: { "Wildberry": 3, "Bag of Flour": 1, "Jar of Honey": 1 },
         xp: 40, level: 2
@@ -42,7 +42,7 @@ const COOKING_RECIPES = {
     }
 };
 
-const CRAFTING_RECIPES = {
+window.CRAFTING_RECIPES = {
     // --- TIER 0 (Basic Survival) ---
     "Wooden Club": {
         materials: { "Stick": 2 },
@@ -253,7 +253,7 @@ const CRAFTING_RECIPES = {
     },
 };
 
-const ITEM_DATA = {
+window.ITEM_DATA = {
     // --- RESOURCES ---
     '🎣': {
         name: 'Fishing Rod',
@@ -1759,7 +1759,7 @@ const ITEM_DATA = {
 };
 
 // --- RANDOMIZED LOOT DATA ---
-const LOOT_PREFIXES = {
+window.LOOT_PREFIXES = {
     "Sharp": { type: 'weapon', bonus: { damage: 1 } },
     "Jagged": { type: 'weapon', bonus: { damage: 2 } },
     "Deadly": { type: 'weapon', bonus: { damage: 3 } },
@@ -1775,7 +1775,7 @@ const LOOT_PREFIXES = {
     "Light": { type: 'armor', bonus: { dexterity: 1 } },
 };
 
-const LOOT_SUFFIXES = {
+window.LOOT_SUFFIXES = {
     "of the Bear": { bonus: { strength: 1, constitution: 1 } },
     "of the Wolf": { bonus: { dexterity: 1, strength: 1 } },
     "of the Owl": { bonus: { wits: 2 } },
@@ -1790,7 +1790,7 @@ const LOOT_SUFFIXES = {
 };
 
 
-const SHOP_INVENTORY = [{
+window.SHOP_INVENTORY = [{
     name: 'Healing Potion',
     price: 25,
     stock: 10 // How many the shop has
@@ -1827,7 +1827,7 @@ const SHOP_INVENTORY = [{
 }
 ];
 
-const CASTLE_SHOP_INVENTORY = [{
+window.CASTLE_SHOP_INVENTORY = [{
     name: 'Healing Potion',
     price: 25,
     stock: 20 // Castles have more stock
@@ -1899,7 +1899,7 @@ const CASTLE_SHOP_INVENTORY = [{
 }
 ];
 
-const TRADER_INVENTORY = [
+window.TRADER_INVENTORY = [
     { name: 'Elixir of Life', price: 500, stock: 1 },
     { name: 'Elixir of Power', price: 500, stock: 1 },
     { name: 'Obsidian Shard', price: 200, stock: 3 },
