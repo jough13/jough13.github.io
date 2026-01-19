@@ -12838,7 +12838,8 @@ function processEnemyTurns() {
  */
 async function runSharedAiTurns() {
     const now = Date.now();
-    const AI_INTERVAL = 500; // Run AI every 500ms
+    // Lower interval to match ACTION_COOLDOWN (150ms) so enemies don't skip turns
+    const AI_INTERVAL = 100; 
 
     // 1. LOCAL THROTTLE
     // Prevent this client from spamming Firebase requests too fast.
