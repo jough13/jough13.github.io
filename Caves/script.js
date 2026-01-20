@@ -524,6 +524,124 @@ function handleAuthError(error) {
     console.error("Authentication Error:", error); // Keep the detailed log for yourself
 }
 
+// --- BACKUP INTEGRITY UTILS ---
+const BACKUP_SALT = "kEsMaI_v1_S3cR3t_s@lt"; // Change this to something random!
+
+// Simple string hashing function
+function generateSaveSignature(data) {
+    // We only hash critical stats to ensure they match
+    const stringToHash = `${data.xp}_${data.level}_${data.coins}_${data.background}_${BACKUP_SALT}`;
+    
+    let hash = 0;
+    if (stringToHash.length === 0) return hash;
+    for (let i = 0; i < stringToHash.length; i++) {
+        const char = stringToHash.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash.toString();
+}
+
+// --- BACKUP SYSTEM ---
+
+async function createCloudBackup() {
+    if (!playerRef) return;
+
+    logMessage("Creating cloud backup...");
+    
+    // 1. Get clean data (reuse your logout/save logic)
+    const backupState = {
+        ...gameState.player,
+        lootedTiles: Array.from(gameState.lootedTiles),
+        exploredChunks: Array.from(gameState.exploredChunks),
+        inventory: getSanitizedInventory(),
+        equipment: getSanitizedEquipment(),
+        timestamp: Date.now() // Record when backup was made
+    };
+
+    // 2. Sign the data
+    backupState.signature = generateSaveSignature(backupState);
+
+    // 3. Save to a 'backups' subcollection inside the current slot
+    // path: players/{uid}/characters/{slotId}/backups/latest
+    try {
+        await playerRef.collection('backups').doc('latest').set(backupState);
+        logMessage("{green:Backup successful!}");
+        updateBackupUI(); // Update the UI to show the new timestamp
+    } catch (err) {
+        console.error(err);
+        logMessage("{red:Backup failed.} See console.");
+    }
+}
+
+async function restoreCloudBackup() {
+    if (!playerRef) return;
+
+    if (!confirm("Are you sure? This will overwrite your current progress with the last backup.")) return;
+
+    logMessage("Locating backup...");
+
+    try {
+        const doc = await playerRef.collection('backups').doc('latest').get();
+
+        if (!doc.exists) {
+            logMessage("{red:No backup found.}");
+            return;
+        }
+
+        const data = doc.data();
+
+        // 1. Verify Integrity
+        const calculatedSig = generateSaveSignature(data);
+        if (data.signature !== calculatedSig) {
+            logMessage("{red:CORRUPT DATA.} Backup signature mismatch.");
+            return; // STOP RESTORE
+        }
+
+        // 2. Restore
+        logMessage("Restoring data...");
+        
+        // Remove the backup-specific fields before applying to game
+        delete data.signature; 
+        delete data.timestamp;
+
+        // Apply to Game State (Reuse your enterGame logic structure)
+        await enterGame(data);
+        
+        // Save immediately to the main slot so it persists
+        await playerRef.set(data);
+
+        logMessage("{green:Restore complete.}");
+        
+        // Close modal
+        document.getElementById('settingsModal').classList.add('hidden');
+
+    } catch (err) {
+        console.error(err);
+        logMessage("{red:Restore failed.}");
+    }
+}
+
+async function updateBackupUI() {
+    if (!playerRef) return;
+    const label = document.getElementById('lastBackupLabel');
+    if (!label) return;
+
+    try {
+        const doc = await playerRef.collection('backups').doc('latest').get();
+        if (doc.exists) {
+            const date = new Date(doc.data().timestamp);
+            label.textContent = `Last Backup: ${date.toLocaleString()}`;
+            label.classList.remove('text-red-500');
+            label.classList.add('text-gray-400');
+        } else {
+            label.textContent = "No backup found.";
+        }
+    } catch (e) {
+        label.textContent = "Status: Unknown";
+    }
+}
+
 function stringToSeed(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -3580,14 +3698,10 @@ function applyVisualSettings() {
 function initSettingsListeners() {
     console.log("⚙️ Initializing Settings Listeners...");
 
+    // --- DOM ELEMENTS ---
     const modal = document.getElementById('settingsModal');
     const closeBtn = document.getElementById('closeSettingsButton');
     const openBtn = document.getElementById('settingsButton');
-
-    if (!modal || !openBtn || !closeBtn) {
-        console.error("❌ Critical Settings UI elements missing from HTML!");
-        return;
-    }
 
     // Audio Checkboxes
     const cbMaster = document.getElementById('settingMaster');
@@ -3599,71 +3713,124 @@ function initSettingsListeners() {
     // Visual Checkboxes
     const cbCRT = document.getElementById('settingCRT');
 
-    // 1. Sync UI with current state
+    // Cloud Backup Buttons
+    const btnBackup = document.getElementById('btnBackup');
+    const btnRestore = document.getElementById('btnRestore');
+
+    // Safety Check: If critical UI is missing, abort to prevent errors
+    if (!modal || !openBtn || !closeBtn) {
+        console.error("❌ Critical Settings UI elements missing from HTML!");
+        return;
+    }
+
+    // --- HELPER: SYNC UI ---
+    // Updates checkboxes to match current global variables/localStorage
     const syncUI = () => {
+        // Audio Sync
         if (cbMaster) cbMaster.checked = AudioSystem.settings.master;
         if (cbSteps) cbSteps.checked = AudioSystem.settings.steps;
         if (cbCombat) cbCombat.checked = AudioSystem.settings.combat;
         if (cbMagic) cbMagic.checked = AudioSystem.settings.magic;
         if (cbUI) cbUI.checked = AudioSystem.settings.ui;
 
-        // Visuals
+        // Visual Sync
         if (cbCRT) cbCRT.checked = crtEnabled;
 
-        // Disable sub-options if master is off
+        // Master Volume Logic: Disable sub-options if master is off
         if (cbMaster) {
+            const isMasterOn = cbMaster.checked;
             [cbSteps, cbCombat, cbMagic, cbUI].forEach(cb => {
-                if (cb) cb.disabled = !cbMaster.checked;
+                if (cb) {
+                    cb.disabled = !isMasterOn;
+                    // Visual flair: dim the label if disabled (optional, depends on CSS)
+                    cb.parentElement.style.opacity = isMasterOn ? '1' : '0.5';
+                }
             });
         }
     };
 
-    // 2. Open Modal
+    // --- 1. OPEN/CLOSE MODAL ---
+    
     openBtn.onclick = (e) => {
-        e.preventDefault(); // Prevent any default button behavior
-        console.log("⚙️ Settings Button Clicked");
+        e.preventDefault();
+        
+        // 1. Refresh Checkboxes
         syncUI();
+        
+        // 2. Refresh Backup Timestamp (Async)
+        updateBackupUI(); 
+        
+        // 3. Show Modal
         modal.classList.remove('hidden');
     };
 
-    // 3. Close Modal
     closeBtn.onclick = (e) => {
         e.preventDefault();
         modal.classList.add('hidden');
     };
 
-    // 4. Handle Audio Toggles
-    const handleToggle = (key, element) => {
-        if (!element) return; // Safety check
+    // --- 2. AUDIO HANDLERS ---
+    
+    const handleAudioToggle = (key, element) => {
+        if (!element) return;
         element.onchange = (e) => {
+            // Update State
             AudioSystem.settings[key] = e.target.checked;
             AudioSystem.saveSettings();
+            
+            // If Master changed, update the UI (disable/enable children)
             if (key === 'master') syncUI();
 
-            if (e.target.checked) {
+            // Feedback Sound
+            if (e.target.checked && AudioSystem.settings.master) {
                 if (key === 'steps') AudioSystem.playStep();
                 else AudioSystem.playCoin();
             }
         };
     };
 
-    handleToggle('master', cbMaster);
-    handleToggle('steps', cbSteps);
-    handleToggle('combat', cbCombat);
-    handleToggle('magic', cbMagic);
-    handleToggle('ui', cbUI);
+    handleAudioToggle('master', cbMaster);
+    handleAudioToggle('steps', cbSteps);
+    handleAudioToggle('combat', cbCombat);
+    handleAudioToggle('magic', cbMagic);
+    handleAudioToggle('ui', cbUI);
 
-    // 5. Handle CRT Toggle
+    // --- 3. VISUAL HANDLERS ---
+
     if (cbCRT) {
         cbCRT.onchange = (e) => {
             crtEnabled = e.target.checked;
             localStorage.setItem('crtSetting', crtEnabled);
-            applyVisualSettings();
-            if (crtEnabled) AudioSystem.playMagic();
+            applyVisualSettings(); // Apply CSS class immediately
+            
+            if (crtEnabled) AudioSystem.playMagic(); // Sound effect
         };
     }
 
-    console.log("✅ Settings Listeners Attached Successfully.");
+    // --- 4. CLOUD BACKUP HANDLERS ---
+
+    if (btnBackup) {
+        btnBackup.onclick = (e) => {
+            e.preventDefault();
+            // Prevent spamming
+            btnBackup.disabled = true;
+            btnBackup.textContent = "Saving...";
+            
+            createCloudBackup().then(() => {
+                btnBackup.disabled = false;
+                btnBackup.textContent = "☁️ Create Backup";
+            });
+        };
+    }
+
+    if (btnRestore) {
+        btnRestore.onclick = (e) => {
+            e.preventDefault();
+            restoreCloudBackup();
+        };
+    }
+
+    console.log("✅ Settings Listeners (Audio, Visuals, Backups) Attached.");
 }
 
 function renderWorldMap() {
@@ -7770,27 +7937,33 @@ const render = () => {
     ctx.save(); // Save context state
     ctx.translate(shakeX, shakeY); // Move the whole world
 
-    const viewportCenterX = Math.floor(VIEWPORT_WIDTH / 2);
+        const viewportCenterX = Math.floor(VIEWPORT_WIDTH / 2);
     const viewportCenterY = Math.floor(VIEWPORT_HEIGHT / 2);
     const startX = gameState.player.x - viewportCenterX;
     const startY = gameState.player.y - viewportCenterY;
 
-    // --- 2. LIGHTING SETUP ---
+    // --- 2. LIGHTING SETUP (UPDATED) ---
     let ambientLight = 0.0;
     let baseRadius = 10;
 
     // Check for Light Sources
     const hasTorch = gameState.player.inventory.some(item => item.name === 'Torch');
-    const torchBonus = hasTorch ? 4 : 0;
-    const candleBonus = (gameState.player.candlelightTurns > 0) ? 6 : 0;
+    
+    // UPDATED: Buffed light sources
+    const torchBonus = hasTorch ? 6 : 0; // Was 4
+    const candleBonus = (gameState.player.candlelightTurns > 0) ? 8 : 0; // Was 6
 
     if (gameState.mapMode === 'dungeon') {
-        ambientLight = 0.6; // Dim
-        baseRadius = 3 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus;
+        ambientLight = 0.6; // Dim atmosphere
+        
+        // UPDATED: Base radius increased from 3 to 6
+        // Now: Base (6) + Perception (~1) = 7 tiles visibility without torch
+        // With Torch: 13 tiles visibility (covers most of the screen)
+        baseRadius = 6 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus;
     }
     else if (gameState.mapMode === 'castle') {
         ambientLight = 0.2; // Bright
-        baseRadius = 10 + torchBonus + candleBonus;
+        baseRadius = 12 + torchBonus + candleBonus;
     }
     else {
         // Overworld Day/Night
@@ -7800,7 +7973,8 @@ const render = () => {
         else if (hour >= 5 && hour < 6) ambientLight = 0.3;   // Dawn
         else ambientLight = 0.5; // Night
 
-        baseRadius = (ambientLight > 0.3) ? 5 + torchBonus + candleBonus : 20;
+        // Night time visibility increased slightly (5 -> 8)
+        baseRadius = (ambientLight > 0.3) ? 8 + torchBonus + candleBonus : 25;
     }
 
     // Flicker Effect
@@ -7853,9 +8027,19 @@ const render = () => {
                     // Only do the expensive Sqrt if we are actually inside the light edge (for gradient)
                     const dist = Math.sqrt(distSq);
                     const edge = effectiveRadius - dist;
-                    if (edge < 3) tileShadowOpacity = 1.0 - (edge / 3);
+                    
+                    // UPDATED: Softened edge from 3 to 5 for smoother fade
+                    if (edge < 5) tileShadowOpacity = 1.0 - (edge / 5);
                     else tileShadowOpacity = 0.0;
                 }
+            }
+            // Overworld Day/Night Logic
+            else if (distSq < effectiveRadiusSq) { 
+                const dist = Math.sqrt(distSq);
+                const edge = effectiveRadius - dist;
+                // Softened edge here too
+                if (edge < 5) tileShadowOpacity = ambientLight * (1 - (edge / 5));
+                else tileShadowOpacity = 0;
             }
             // Overworld Day/Night Logic
             else if (distSq < effectiveRadiusSq) { // Compare Squares!
