@@ -549,25 +549,29 @@ async function createCloudBackup() {
 
     logMessage("Creating cloud backup...");
     
-    // 1. Get clean data (reuse your logout/save logic)
-    const backupState = {
+    // 1. Get clean data
+    // We explicitly define the object to avoid copying 'undefined' junk from gameState.player
+    const rawData = {
         ...gameState.player,
         lootedTiles: Array.from(gameState.lootedTiles),
         exploredChunks: Array.from(gameState.exploredChunks),
         inventory: getSanitizedInventory(),
         equipment: getSanitizedEquipment(),
-        timestamp: Date.now() // Record when backup was made
+        timestamp: Date.now()
     };
 
-    // 2. Sign the data
+    // JSON stringify/parse hack removes 'undefined' keys automatically
+    // This is the "Nuclear Option" against the "Unsupported field value: undefined" error.
+    const backupState = JSON.parse(JSON.stringify(rawData));
+
+    // 2. Sign the data (After sanitization!)
     backupState.signature = generateSaveSignature(backupState);
 
-    // 3. Save to a 'backups' subcollection inside the current slot
-    // path: players/{uid}/characters/{slotId}/backups/latest
+    // 3. Save
     try {
         await playerRef.collection('backups').doc('latest').set(backupState);
         logMessage("{green:Backup successful!}");
-        updateBackupUI(); // Update the UI to show the new timestamp
+        updateBackupUI(); 
     } catch (err) {
         console.error(err);
         logMessage("{red:Backup failed.} See console.");
@@ -1228,28 +1232,48 @@ function getSanitizedEquipment() {
     const equip = gameState.player.equipment;
 
     // Helper to clean a single item
-    const sanitize = (item) => {
+    const sanitize = (item, fallbackType) => {
         if (!item) return null;
+        
         return {
-            name: item.name,
-            type: item.type,
+            name: item.name || "Unknown",
+            // FIX: If type is missing (like on Fists), fallback to 'weapon'/'armor' or null
+            type: item.type || fallbackType || null, 
             quantity: item.quantity || 1,
-            tile: item.tile,
-            damage: item.damage || null,
-            defense: item.defense || null,
+            // FIX: If tile is missing, use a default icon based on fallback type
+            tile: item.tile || (fallbackType === 'weapon' ? '👊' : '👕'), 
+            
+            // Use null if 0 or undefined to be safe, though 0 is valid for numbers. 
+            // '|| null' converts 0 to null, which is fine for optional stats.
+            damage: (item.damage !== undefined) ? item.damage : null,
+            defense: (item.defense !== undefined) ? item.defense : null,
+            
             slot: item.slot || null,
             statBonuses: item.statBonuses || null,
             spellId: item.spellId || null,
             skillId: item.skillId || null,
             stat: item.stat || null,
             isEquipped: true
-            // Note: We intentionally exclude 'effect' here to prevent the undefined error
         };
     };
 
+    // Sanitize with specific fallbacks
+    // If equip.weapon is just {name: 'Fists'}, it grabs 'weapon' as the type.
+    let weapon = sanitize(equip.weapon, 'weapon');
+    
+    // Extra safety: If weapon is completely null (unequipped state?), force Fists
+    if (!weapon) {
+        weapon = { name: 'Fists', type: 'weapon', tile: '👊', damage: 0, isEquipped: true };
+    }
+
+    let armor = sanitize(equip.armor, 'armor');
+    if (!armor) {
+        armor = { name: 'Simple Tunic', type: 'armor', tile: '👕', defense: 0, isEquipped: true };
+    }
+
     return {
-        weapon: sanitize(equip.weapon) || { name: 'Fists', damage: 0 },
-        armor: sanitize(equip.armor) || { name: 'Simple Tunic', defense: 0 }
+        weapon: weapon,
+        armor: armor
     };
 }
 
@@ -1257,25 +1281,26 @@ function getSanitizedEquipment() {
  * Returns a clean array of inventory items ready for Firebase storage.
  * Removes functions (like 'effect') and ensures data consistency.
  */
+
 function getSanitizedInventory() {
     return gameState.player.inventory.map(item => ({
-
-        templateId: item.templateId || item.tile,
-
-        name: item.name,
-        type: item.type,
-        quantity: item.quantity,
-        tile: item.tile,
-        damage: item.damage || null,
+        templateId: item.templateId || item.tile || null,
+        name: item.name || "Unknown",
+        // FIX: Default to 'junk' if type is somehow missing
+        type: item.type || "junk", 
+        quantity: item.quantity || 1,
+        tile: item.tile || '?',
+        
+        // Explicit checks for undefined to preserve 0 but convert undefined to null
+        damage: (item.damage !== undefined) ? item.damage : null,
+        defense: (item.defense !== undefined) ? item.defense : null,
+        
         slot: item.slot || null,
-        defense: item.defense || null,
         statBonuses: item.statBonuses || null,
         spellId: item.spellId || null,
         skillId: item.skillId || null,
         stat: item.stat || null,
-        isEquipped: item.isEquipped || false,
-        // When we add Durability later, we only need to add it HERE:
-        // durability: item.durability || null 
+        isEquipped: item.isEquipped || false
     }));
 }
 
