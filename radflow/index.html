@@ -236,7 +236,7 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
     .sidebar, .chat-panel, .header button, .btn, .btn-sync, .btn-toggle, 
     .search-bar, .modal-overlay, #btnShowComp, .quick-actions, 
     .est-input-row, .date-adder, .nav-item, #bulk-toolbar,
-    .btn-rect, .qa-btn, .sort-select { 
+    .btn-rect, .qa-btn, .sort-select, .mobile-only { 
         display: none !important; 
     }
 
@@ -2024,9 +2024,9 @@ th {
             
             <div class="modal-body">
                 <div style="background:var(--bg-card); padding:15px; border-radius:8px; border:1px solid var(--border); margin-bottom:20px; text-align:center;">
-                    <div id="vid_iso" style="font-size:1.5rem; font-weight:bold; color:var(--rad);">Co-60</div>
-                    <div id="vid_act" style="font-size:1.1rem; color:var(--text-main);">10 mCi</div>
-                    
+                    <input id="vid_iso" class="form-control" style="font-size:1.5rem; font-weight:bold; color:var(--rad); text-align:center; margin-bottom:5px;" placeholder="Isotope (e.g. Co-60)" onchange="saveInvDetail()">
+                    <input id="vid_act" class="form-control" style="font-size:1.1rem; color:var(--text-main); text-align:center;" placeholder="Activity (e.g. 10 mCi)" onchange="saveInvDetail()">
+    
                     <input id="vid_desc" class="form-control" style="margin-top:10px; text-align:center; font-style:italic;" placeholder="Description..." onchange="saveInvDetail()">
                 </div>
 
@@ -2067,6 +2067,8 @@ th {
                         </select>
                     </div>
                     <div><label style="font-size:0.7rem; color:var(--text-muted)">QTY</label><input id="vid_qty" type="number" class="form-control" onchange="saveInvDetail()"></div>
+
+                    <div><label style="font-size:0.7rem; color:var(--text-muted)">FILL %</label><input id="vid_fill" type="number" min="0" max="100" class="form-control" onchange="saveInvDetail()"></div>
                 </div>
 
                 <div style="margin-bottom:10px;">
@@ -2258,8 +2260,6 @@ th {
     'Kr-85':  { hl: 10.756, name: 'Krypton-85' }, 
     'Po-210': { hl: 0.379, name: 'Polonium-210' }, 
     'Ra-226': { hl: 1600, name: 'Radium-226' },
-    'Th-232': { hl: 1.405e10, name: 'Thorium-232' },
-    'U-238':  { hl: 4.468e9, name: 'Uranium-238' },
     'I-131':  { hl: 0.022, name: 'Iodine-131' }, 
     'Tc-99m': { hl: 0.00068, name: 'Technetium-99m' },
     'Cf-252': { hl: 2.645, name: 'Californium-252' },
@@ -2631,16 +2631,21 @@ const jsEsc = (t) => {
     }
 
     function logSystemAction(msg) {
-        const now = new Date();
-        const dateStr = (now.getMonth()+1).toString().padStart(2,'0') + '/' + now.getDate().toString().padStart(2,'0');
-        const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        
-        const finalMsg = `${msg} <span style="opacity:0.6; font-size:0.85em;">by ${esc(currentUser)}</span>`;
+    const now = new Date();
+    const dateStr = (now.getMonth()+1).toString().padStart(2,'0') + '/' + now.getDate().toString().padStart(2,'0');
+    const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    
+    const finalMsg = `${msg} <span style="opacity:0.6; font-size:0.85em;">by ${esc(currentUser)}</span>`;
 
-        chatLog.push({user: "System", time: `${dateStr} ${timeStr}`, text: finalMsg});
-        saveLocally();
-        render(); 
-    }
+    chatLog.push({
+        user: "System", 
+        time: `${dateStr} ${timeStr}`, 
+        timestamp: Date.now(), // FIX: Precise sorting value
+        text: finalMsg
+    });
+    saveLocally();
+    render(); 
+}
 
     function generateLogId() {
         const yr = new Date().getFullYear();
@@ -2767,8 +2772,16 @@ function expandChart() {
 
 function calculateDecay() {
     const iso = document.getElementById('calc-iso').value;
+
+    if (iso === 'Custom') {
+        showToast("Cannot calculate decay for 'Custom' (Half-life unknown)", "error");
+        document.getElementById('calc-result').innerText = "---";
+        return;
+    }
+
     const a0 = parseFloat(document.getElementById('calc-a0').value);
     const dStr = document.getElementById('calc-date').value;
+
     
     // --- FIX: Define tStr so the math below works ---
     const tStr = document.getElementById('calc-target-date').value; 
@@ -2779,7 +2792,7 @@ function calculateDecay() {
     }
 
     const hl = ISOTOPE_DB[iso].hl; 
-    const d1 = new Date(dStr);
+    const d1 = new Date(dStr + 'T00:00:00');
 
     // If tStr is empty (default), create a 'Now' date but reset time to 00:00:00
     let d2;
@@ -3055,7 +3068,7 @@ function saveEstimateAction(mode) {
 
         // 5. Switch View and Save
         closeModal('estimateViewModal');
-        nav('estimator'); // This will re-render the estimator table with our new data
+        nav('estimator', true);
         saveLocally();
         
         showToast("Estimate loaded into editor");
@@ -3123,7 +3136,9 @@ function saveEstimateAction(mode) {
 
         let csv = "Category,Item,Rate,Quantity,Total Cost\n";
         rec.details.forEach(d => {
-            csv += `"${d.cat}","${d.name}",${d.rate},${d.qty},${d.total}\n`;
+            // Escape double quotes by doubling them (" becomes "")
+            const safeName = d.name.replace(/"/g, '""'); 
+            csv += `"${d.cat}","${safeName}",${d.rate},${d.qty},${d.total}\n`;
         });
         
         // Add footer totals
@@ -3283,8 +3298,10 @@ function viewInventory(id) {
     
     // Header
     document.getElementById('vid_title').innerText = "Item " + i.id;
-    document.getElementById('vid_iso').innerText = i.iso;
-    document.getElementById('vid_act').innerText = i.act;
+    
+    // CHANGED: Set values for input fields
+    document.getElementById('vid_iso').value = i.iso || "";
+    document.getElementById('vid_act').value = i.act || "";
     
     // Core Inputs
     document.getElementById('vid_desc').value = i.desc || "";
@@ -3300,13 +3317,15 @@ function viewInventory(id) {
     document.getElementById('vid_licNum').value = i.licenseNum || "";
     document.getElementById('vid_rcra').value = i.rcra || "No";
 
-    // Phase 3: Origin & Location (NEW - This was missing!)
+    // Phase 3: Origin & Location
     document.getElementById('vid_mfr').value = i.mfr || "";
     document.getElementById('vid_serial').value = i.serial || "";
     document.getElementById('vid_loc').value = i.location || "";
     document.getElementById('vid_phys').value = i.phys || "";
 
     document.getElementById('vid_qty').value = i.qty || 1;
+    document.getElementById('vid_fill').value = i.fill || 0;
+
     document.getElementById('vid_ssdr').value = i.ssdr || "";
     document.getElementById('vid_const').value = i.constituents || "";
 
@@ -3317,6 +3336,10 @@ function viewInventory(id) {
 function saveInvDetail(isManual = false) {
     const i = inventory.find(x => x.id == currentInvId);
     if(!i) return;
+
+    // CHANGED: Capture new Isotope (normalized) and Activity
+    i.iso = normalizeIso(document.getElementById('vid_iso').value);
+    i.act = document.getElementById('vid_act').value;
 
     // Capture Core
     i.desc = document.getElementById('vid_desc').value;
@@ -3331,13 +3354,15 @@ function saveInvDetail(isManual = false) {
     i.licenseNum = document.getElementById('vid_licNum').value;
     i.rcra = document.getElementById('vid_rcra').value;
     
-    // Capture Origin & Location (NEW - This was missing!)
+    // Capture Origin & Location
     i.mfr = document.getElementById('vid_mfr').value;
     i.serial = document.getElementById('vid_serial').value;
     i.location = document.getElementById('vid_loc').value;
     i.phys = document.getElementById('vid_phys').value;
 
     i.qty = parseFloat(document.getElementById('vid_qty').value) || 1;
+    i.fill = parseInt(document.getElementById('vid_fill').value) || 0;
+
     i.ssdr = document.getElementById('vid_ssdr').value;
     i.constituents = document.getElementById('vid_const').value;
 
@@ -4215,7 +4240,7 @@ let rollupHtml = budgetData.map(row => {
                                 <div style="display:flex; align-items:center; gap:5px;">
                                     <input type="number" class="live-edit" style="width:40px;" value="${i.fill||0}" onchange="updItem('inventory', '${safeId}', 'fill', this.value)">%
                                 </div>
-                                <div class="progress-bar" style="height:4px;"><div class="fill" id="bar-fill-${safeId}" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':(i.fill>75?'var(--warning)':'var(--info)')}}"></div></div>
+                                <div class="progress-bar" style="height:4px;"><div class="fill" id="bar-fill-${safeId}" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':(i.fill>75?'var(--warning)':'var(--info)')}"></div></div>
                             </td>
                             <td><div style="display:flex; align-items:center; gap:5px;"><select class="live-edit" style="width:100px;" onchange="updItem('inventory', '${safeId}', 'projId', this.value)">${pOptions}</select>${linkIcon}</div></td>
                             <td><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td>
@@ -4999,7 +5024,8 @@ function openAddInvForProject(pid) {
     function downloadCSV() {
         let csv = "Date,Project,Funding Source,Description,Amount,Status\n";
         expenses.forEach(e => {
-            const pName = projects.find(p => p.id === e.projId)?.title || "General/Overhead";
+            const rawTitle = projects.find(p => p.id === e.projId)?.title || "General/Overhead";
+            const pName = rawTitle.replace(/"/g, '""');
             const safeDesc = `"${e.desc.replace(/"/g, '""')}"`; 
             const fund = e.fundSource || "Other";
             csv += `${e.date},"${pName}","${fund}",${safeDesc},${e.amount},${e.status}\n`;
@@ -5170,7 +5196,7 @@ function saveProjDetails(id, silent = false) {
 
 function updItem(type, id, key, val, elem) { 
 
-    // FIX: Changed 'field' to 'key' to match the argument name (Fixes the crash bug)
+
     if (['amount', 'act', 'dose', 'qty', 'fill', 'weight', 'vol'].includes(key)) {
         const clean = val.toString().replace(/[^0-9.-]/g, ''); 
         val = parseFloat(clean);
@@ -5420,19 +5446,25 @@ function cloneProject(id) {
         finalizeClone(false);
     }
 }
+
+function togTask(pId, tId) {
     
-    function togTask(pId, tId) { 
-        const p = projects.find(x=>x.id===pId);
-        const t = p.tasks.find(x=>x.id===tId);
-        t.done = !t.done; 
+    const t = p.tasks.find(x=>x.id===tId);
+    t.done = !t.done; 
+    p.updated = Date.now();
+    
+    const status = t.done ? "completed" : "re-opened";
+    logSystemAction(`Task <b>${esc(t.text)}</b> marked ${status} in <b>${esc(p.title)}</b>.`);
 
-        p.updated = Date.now();
-        
-        const status = t.done ? "completed" : "re-opened";
-        logSystemAction(`Task <b>${esc(t.text)}</b> marked ${status} in <b>${esc(p.title)}</b>.`);
+    saveLocally(); 
 
-        saveLocally(); viewProject(pId); 
+    // Only go to project view if we are NOT in the master list
+    if(document.getElementById('view-all-tasks').classList.contains('active')) {
+        render(); // Just re-render the list in place
+    } else {
+        viewProject(pId); // Refresh project view
     }
+}
     
 function addTask(pId) { 
         const t = document.getElementById('newT').value; 
@@ -5460,7 +5492,14 @@ function delTask(pId, tId) {
             logSystemAction(`Task <b>${esc(t.text)}</b> deleted from <b>${esc(p.title)}</b>.`);
             
             p.tasks = p.tasks.filter(x=>x.id!==tId); 
-            saveLocally(); viewProject(pId); 
+            saveLocally(); viewProject(pId);
+
+            if(document.getElementById('view-all-tasks').classList.contains('active')) {
+            render(); 
+        } else {
+            // If we are inside the project (or anywhere else), refresh the project view
+            viewProject(pId); 
+        }
         }
     }
     
@@ -5476,6 +5515,9 @@ function delProj(id) {
             // 1. CAPTURE DATA SNAPSHOT (So we can Revive it later)
             const snapExpenses = expenses.filter(x => x.projId === id);
             const snapAllocations = allocations.filter(x => x.projId === id);
+
+            snapExpenses.forEach(e => registerDeletion(e.id));
+            snapAllocations.forEach(a => registerDeletion(a.id));
 
             // 2. Archive to Graveyard
             deletedProjects.push({
@@ -5493,6 +5535,13 @@ function delProj(id) {
 
             logSystemAction(`Project <b>${esc(p.title)}</b> deleted.`);
             registerDeletion(id);
+    
+            snapExpenses.forEach(e => registerDeletion(e.id));
+            snapAllocations.forEach(a => registerDeletion(a.id));
+    
+            // Also remove them from the active arrays immediately
+            expenses = expenses.filter(x => x.projId !== id); 
+            allocations = allocations.filter(x => x.projId !== id);
             
             // 3. Delete Active Records
             projects = projects.filter(x => x.id !== id); 
@@ -5904,7 +5953,10 @@ function cancelAddInventory() {
     }
 
     function bulkAction(mode) {
-        const ids = Array.from(selectedInv);
+        const visibleIds = Array.from(document.querySelectorAll('.inv-chk'))
+                            .map(el => el.getAttribute('data-id'));
+        const ids = Array.from(selectedInv).filter(id => visibleIds.includes(id));
+    
         if(ids.length === 0) return;
 
         if(mode === 'delete') {
@@ -5951,7 +6003,7 @@ function cancelAddInventory() {
                     inventory.forEach(i => { if(selectedInv.has(i.id.toString())) i.projId = pid; });
                     saveLocally();
                     render();
-                    showToast(`Moved ${ids.length} items to ${p.title}`);
+                    showToast(`Moved ${ids.length} items to ${esc(p.title)}`);
                     deselectAllInv();
                 } else {
                     showToast("Project ID not found", "error");
@@ -5967,7 +6019,11 @@ function addInventory() {
     const desc = document.getElementById('invDesc').value; 
     
     let iso = document.getElementById('invIso').value;
-    if(iso === 'Custom') iso = document.getElementById('invIsoCustom').value;
+    
+    if(iso === 'Custom') {
+        const customInput = document.getElementById('invIsoCustom').value;
+        iso = normalizeIso(customInput); // <--- Forces "co60" to become "Co-60"
+    }
     
     const act = document.getElementById('invAct').value;
     const doseVal = document.getElementById('invDose').value;
@@ -6319,6 +6375,10 @@ function reviveInventory(id) {
     function addTeamMember() { 
         const m = document.getElementById('newMember').value; 
         if(m) { 
+            if(team.includes(m)) {
+                showToast("User already exists", "error");
+                return;
+            }
             team.push(m); 
             saveLocally(); 
             renderTeamSettings(); 
@@ -6421,27 +6481,28 @@ function reviveInventory(id) {
     function saveWiki() { wikiText = document.getElementById('wiki-text').value; saveLocally(); }
 
     function handleChat(e) { 
-        if(e.key==='Enter'){ 
-            const t=document.getElementById('chatInput').value; 
-            if(t){ 
-                const now = new Date();
-                // 1. Get Date (MM/DD)
-                const dateStr = (now.getMonth()+1).toString().padStart(2,'0') + '/' + now.getDate().toString().padStart(2,'0');
-                // 2. Get Time
-                const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    if(e.key==='Enter'){ 
+        const t=document.getElementById('chatInput').value; 
+        if(t){ 
+            const now = new Date();
+            // 1. Get Date (MM/DD)
+            const dateStr = (now.getMonth()+1).toString().padStart(2,'0') + '/' + now.getDate().toString().padStart(2,'0');
+            // 2. Get Time
+            const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 
-                chatLog.push({
-                    user: currentUser, 
-                    time: `${dateStr} ${timeStr}`, // Combine them
-                    text: t
-                }); 
+            chatLog.push({
+                user: currentUser, 
+                time: `${dateStr} ${timeStr}`, 
+                timestamp: Date.now(), // FIX: Precise sorting value
+                text: t
+            }); 
 
-                document.getElementById('chatInput').value=''; 
-                saveLocally(); 
-                render(); 
-            }
+            document.getElementById('chatInput').value=''; 
+            saveLocally(); 
+            render(); 
         }
     }
+}
 
 function nav(id, force=false) { 
         // --- 1. SAFETY CHECK (Estimator Guard) ---
@@ -6769,14 +6830,24 @@ function runImport() {
 
         // 6. MERGE SIMPLE LISTS (Append Only)
         if(d.chat) {
-            d.chat.forEach(c => {
-                // Avoid duplicate chat messages
-                const exists = chatLog.some(x => x.time === c.time && x.text === c.text);
-                if(!exists) chatLog.push(c);
-            });
-            // Keep chat sorted chronologically
-            chatLog.sort((a,b) => new Date(a.time) - new Date(b.time));
+    d.chat.forEach(c => {
+        // Avoid duplicate chat messages
+        const exists = chatLog.some(x => x.time === c.time && x.text === c.text);
+        if(!exists) {
+            // Retroactive Fix: If importing old data without a timestamp, try to generate one
+            // (Note: this still guesses the year for legacy data, but fixes mixed sorting)
+            if(!c.timestamp) c.timestamp = new Date(c.time).getTime() || 0;
+            chatLog.push(c);
         }
+    });
+    
+    // Sort using the precise timestamp first
+    chatLog.sort((a,b) => {
+        const tA = a.timestamp || new Date(a.time).getTime();
+        const tB = b.timestamp || new Date(b.time).getTime();
+        return tA - tB;
+    });
+}
         
         if(d.team) {
             d.team.forEach(m => { if(!team.includes(m)) team.push(m); });
@@ -6876,7 +6947,8 @@ function runImport() {
             allocations.forEach(a => { if(!a.type && a.desc.toLowerCase().includes('initial')) a.type = 'base'; });
             projects.forEach(p => {
                 if(p.cost && !allocations.find(a => a.projId === p.id)) {
-                    allocations.push({id: Date.now() + Math.random(), projId: p.id, date: p.due, amount: parseFloat(p.cost), desc: "Initial Budget", type: 'base'});
+                    let cleanCost = p.cost.toString().replace(/,/g, '');
+                    allocations.push({id: Date.now() + Math.random(), projId: p.id, date: p.due, amount: parseFloat(cleanCost), desc: "Initial Budget", type: 'base'});
                     delete p.cost;
                 }
                 if(!p.updatesSent) {
@@ -6942,7 +7014,7 @@ function resetData(ask=true) {
             references = JSON.parse(JSON.stringify(STARTER_DATA.references));
             allocations = JSON.parse(JSON.stringify(STARTER_DATA.allocations)); 
             chatLog = JSON.parse(JSON.stringify(STARTER_DATA.chat)); 
-            team = STARTER_DATA.team; 
+            team = JSON.parse(JSON.stringify(STARTER_DATA.team));
             wikiText = STARTER_DATA.wiki; 
             exemptLog = JSON.parse(JSON.stringify(STARTER_DATA.exemptLog || []));
             
