@@ -436,12 +436,12 @@ window.CAVE_THEMES = {
     },
     ICE: {
         name: 'A Glacial Cavern',
-        wall: '▒', // A lighter, "icy" wall
+        wall: '▒', 
         secretWall: '▓',
-        floor: ':', // A "slick" floor
+        floor: '.', // FIX: Changed from ':' to '.' to prevent Wildberry conflict
         colors: {
             wall: '#99f6e4',
-            floor: '#e0f2fe'
+            floor: '#e0f2fe' // This color makes it look like ice
         },
         enemies: ['s', 'w', 'Z', 'Y']
     },
@@ -449,48 +449,46 @@ window.CAVE_THEMES = {
         name: 'A Volcanic Fissure',
         wall: '▓',
         secretWall: '▒',
-        floor: '.', // REVERT to '.' (Safe ground)
+        floor: '.', 
         colors: {
             wall: '#450a0a',
-            floor: '#ef4444' // The '.' will still be painted Red
+            floor: '#ef4444' 
         },
         decorations: ['+', '$', '🔥', 'J'],
         enemies: ['b', 'C', 'o', 'm', '👺', 'f']
     },
-
     CRYPT: {
         name: 'A Musty Crypt',
-        wall: '▓', // Standard wall
-        floor: '.', // Standard floor
+        wall: '▓', 
+        floor: '.', 
         secretWall: '▒',
         colors: {
-            wall: '#374151', // Dark stone color
-            floor: '#4b5563'  // Lighter, cold stone floor
+            wall: '#374151', 
+            floor: '#4b5563' 
         },
         decorations: ['+', '$', '(', '†', '🌀', '😱', '💀', '🕸'],
         enemies: ['s', 'Z', 'a']
     },
-
     CRYSTAL: {
         name: 'A Crystalline Tunnel',
-        wall: '▒', // Use the 'ice' wall, but colors will make it different
+        wall: '▒', 
         secretWall: '▓',
         floor: '.',
         colors: {
-            wall: '#67e8f9', // Bright Cyan
-            floor: '#22d3ee' // Darker Cyan
+            wall: '#67e8f9', 
+            floor: '#22d3ee' 
         },
         decorations: ['Y', '🔮', '$', 'K'],
         enemies: ['g']
     },
     VOID: {
         name: 'The Void Sanctum',
-        wall: '▓',         // Solid Wall
-        floor: '.',        // Floor
-        phaseWall: '▒',    // <--- Special "Fake" Wall
+        wall: '▓',         
+        floor: '.',        
+        phaseWall: '▒',    
         colors: {
-            wall: '#2e0249', // Deep Purple
-            floor: '#0f0518' // Almost Black
+            wall: '#2e0249', 
+            floor: '#0f0518' 
         },
         decorations: ['✨', '💀', 'Ω'],
         enemies: ['v', 'a', 'm', 'v', 'D']
@@ -501,32 +499,32 @@ window.CAVE_THEMES = {
         floor: '.',
         secretWall: '▒',
         colors: {
-            wall: '#0f0f0f', // Almost black
-            floor: '#331133' // Dark purple
+            wall: '#0f0f0f', 
+            floor: '#331133' 
         },
-        decorations: ['💀', '🕸️', '🔥', 'Ω', '💎', '🕸'], // Omegas and Gems!
-        enemies: ['o', 'm', 'Z', '👺', '🐺', 'scorpion', 'a'] // Only tough enemies
+        decorations: ['💀', '🕸️', '🔥', 'Ω', '💎', '🕸'],
+        enemies: ['o', 'm', 'Z', '👺', '🐺', 'scorpion', 'a'] 
     },
     SUNKEN: {
         name: 'The Sunken Temple',
         wall: '🧱',
-        floor: '.', // REVERT to '.' (Wet Stone)
+        floor: '.', 
         secretWall: '▒',
         colors: {
-            wall: '#0e7490', // Cyan-Blue bricks
-            floor: '#1e3a8a'  // Deep Blue floor (looks like wet stone)
+            wall: '#0e7490', 
+            floor: '#1e3a8a'  
         },
         decorations: ['🐟', '🌿', '🗿', '🦀'],
         enemies: ['🐸', '🐍', 'l', '🦑']
     },
     GROTTO: {
         name: 'A Sunken Grotto',
-        wall: '▓', // Use standard 'rock' wall
-        floor: ':', // Use 'ice' floor, but colors make it look slick/wet
+        wall: '▓', 
+        floor: '.', // Changed from ':' to '.'
         secretWall: '▒',
         colors: {
-            wall: '#14532d', // Dark Green
-            floor: '#16a34a' // Bright Green
+            wall: '#14532d', 
+            floor: '#16a34a' 
         },
         decorations: ['+', 'S', '🔮', '☣️', '🕸'],
         enemies: ['g', 'w', '@']
