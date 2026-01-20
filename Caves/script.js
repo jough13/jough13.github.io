@@ -248,6 +248,24 @@ const equippedArmorDisplay = document.getElementById('equippedArmorDisplay');
 const coreStatsPanel = document.getElementById('coreStatsPanel');
 const statusEffectsPanel = document.getElementById('statusEffectsPanel');
 
+const entityMap = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+  '/': '&#x2F;',
+  '`': '&#x60;',
+  '=': '&#x3D;'
+};
+
+function escapeHtml(string) {
+  if (!string) return "";
+  return String(string).replace(/[&<>"'`=\/]/g, function (s) {
+    return entityMap[s];
+  });
+}
+
 const DAY_CYCLE_STOPS = [{
     time: 0,
     color: [10, 10, 40],
@@ -2722,18 +2740,22 @@ ctx.textBaseline = 'middle';
 const logMessage = (text) => {
     const messageElement = document.createElement('p');
 
-    // Simple parser for colors
-    // Usage: "You hit for {red:10} damage"
-    let formattedText = text
+    // 1. SANITIZE: Turn "<script>" into "&lt;script&gt;"
+    // This renders the text visibly but prevents it from running as code.
+    let safeText = escapeHtml(text);
+
+    // 2. FORMAT: Now it is safe to re-introduce YOUR specific HTML tags
+    // Since we escaped the input first, users cannot inject their own <span> tags.
+    let formattedText = safeText
         .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
         .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
         .replace(/{blue:(.*?)}/g, '<span class="text-blue-400 font-bold">$1</span>')
-        .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>');
+        .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
+        .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
 
     messageElement.innerHTML = `> ${formattedText}`;
     messageLog.prepend(messageElement);
 
-    // Keep log size manageable (Max 50 entries)
     if (messageLog.children.length > 50) {
         messageLog.removeChild(messageLog.lastChild);
     }
@@ -9833,9 +9855,11 @@ function handleChatCommand(message) {
             let onlineList = ["You"];
             for (const id in otherPlayers) {
                 const p = otherPlayers[id];
-                // Try to get name from email
-                const name = p.email ? p.email.split('@')[0] : "Unknown";
-                onlineList.push(`${name} (Lvl ${p.level || '?'})`);
+                // Sanitize the name before adding it to the list
+                const rawName = p.email ? p.email.split('@')[0] : "Unknown";
+                const safeName = escapeHtml(rawName);
+                
+                onlineList.push(`${safeName} (Lvl ${escapeHtml(p.level) || '?'})`);
             }
             logMessage(`Online Players (${onlineList.length}): ${onlineList.join(', ')}`);
             break;
@@ -12661,8 +12685,15 @@ chatInput.addEventListener('keydown', (event) => {
     }
 
     if (event.key === 'Enter' && chatInput.value) {
-        const message = chatInput.value.trim();
-        chatInput.value = ''; // Clear input immediately
+                let message = chatInput.value.trim();
+        
+        // 1. Limit Length
+        if (message.length > 255) {
+            logMessage("{red:Message too long.}");
+            return;
+        }
+
+        chatInput.value = ''; 
 
         if (message.startsWith('/')) {
             handleChatCommand(message);
@@ -13146,20 +13177,33 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
             hour: 'numeric',
             minute: '2-digit'
         });
-        // Create elements safely
+
         const timeSpan = document.createElement('span');
         timeSpan.className = "muted-text text-xs";
         timeSpan.textContent = `[${timeString}] `;
 
         const nameStrong = document.createElement('strong');
         if (message.senderId === player_id) nameStrong.className = "highlight-text";
-        nameStrong.textContent = `${message.email}: `;
+        
+        // 1. Sanitize the Email/Name (Crucial!)
+        const safeName = escapeHtml(message.email ? message.email.split('@')[0] : "Unknown");
+        nameStrong.textContent = `${safeName}: `;
 
-        const msgText = document.createTextNode(message.message); // <--- Safe text node
+        // 2. Sanitize and Format the Message Body
+        // This allows players to use {red:text} but NOT <script>
+        const msgSpan = document.createElement('span');
+        const safeBody = escapeHtml(message.message); 
+        
+        // Apply color formatting to the SAFE body
+        const formattedBody = safeBody
+            .replace(/{red:(.*?)}/g, '<span class="text-red-500">$1</span>')
+            .replace(/{blue:(.*?)}/g, '<span class="text-blue-400">$1</span>');
+
+        msgSpan.innerHTML = formattedBody; 
 
         messageDiv.appendChild(timeSpan);
         messageDiv.appendChild(nameStrong);
-        messageDiv.appendChild(msgText);
+        messageDiv.appendChild(msgSpan); // Use the span instead of raw text node
         chatMessages.prepend(messageDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
