@@ -278,42 +278,65 @@
             <button id="closeHelpButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
          </div>
       </div>
+      
       <div id="settingsModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <h2 class="text-2xl font-bold mb-4">Game Settings</h2>
-            <div class="space-y-4">
-               <h3 class="font-bold border-b border-gray-500 pb-1">Audio</h3>
-               <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
-               <span>🔊 Master Volume</span>
-               <input type="checkbox" id="settingMaster" class="form-checkbox h-5 w-5 text-blue-600">
-               </label>
-               <div class="pl-4 space-y-2">
-                  <label class="flex items-center justify-between cursor-pointer">
-                  <span class="text-sm muted-text">🦶 Footsteps</span>
-                  <input type="checkbox" id="settingSteps" class="form-checkbox h-4 w-4 text-blue-600">
-                  </label>
-                  <label class="flex items-center justify-between cursor-pointer">
-                  <span class="text-sm muted-text">⚔️ Combat</span>
-                  <input type="checkbox" id="settingCombat" class="form-checkbox h-4 w-4 text-blue-600">
-                  </label>
-                  <label class="flex items-center justify-between cursor-pointer">
-                  <span class="text-sm muted-text">✨ Magic</span>
-                  <input type="checkbox" id="settingMagic" class="form-checkbox h-4 w-4 text-blue-600">
-                  </label>
-                  <label class="flex items-center justify-between cursor-pointer">
-                  <span class="text-sm muted-text">💰 Loot & UI</span>
-                  <input type="checkbox" id="settingUI" class="form-checkbox h-4 w-4 text-blue-600">
-                  </label>
-               </div>
-            </div>
-            <h3 class="font-bold border-b border-gray-500 pb-1 mt-4">Visuals</h3>
-            <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
-            <span>📺 CRT Scanlines</span>
-            <input type="checkbox" id="settingCRT" class="form-checkbox h-5 w-5 text-blue-600">
+   <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
+      <h2 class="text-2xl font-bold mb-4">Game Settings</h2>
+      
+      <!-- Audio Section -->
+      <div class="space-y-4">
+         <h3 class="font-bold border-b border-gray-500 pb-1">Audio</h3>
+         <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
+            <span>🔊 Master Volume</span>
+            <input type="checkbox" id="settingMaster" class="form-checkbox h-5 w-5 text-blue-600">
+         </label>
+         <div class="pl-4 space-y-2">
+            <label class="flex items-center justify-between cursor-pointer">
+               <span class="text-sm muted-text">🦶 Footsteps</span>
+               <input type="checkbox" id="settingSteps" class="form-checkbox h-4 w-4 text-blue-600">
             </label>
-            <button id="closeSettingsButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
+            <label class="flex items-center justify-between cursor-pointer">
+               <span class="text-sm muted-text">⚔️ Combat</span>
+               <input type="checkbox" id="settingCombat" class="form-checkbox h-4 w-4 text-blue-600">
+            </label>
+            <label class="flex items-center justify-between cursor-pointer">
+               <span class="text-sm muted-text">✨ Magic</span>
+               <input type="checkbox" id="settingMagic" class="form-checkbox h-4 w-4 text-blue-600">
+            </label>
+            <label class="flex items-center justify-between cursor-pointer">
+               <span class="text-sm muted-text">💰 Loot & UI</span>
+               <input type="checkbox" id="settingUI" class="form-checkbox h-4 w-4 text-blue-600">
+            </label>
          </div>
       </div>
+
+      <!-- Visuals Section -->
+      <h3 class="font-bold border-b border-gray-500 pb-1 mt-4">Visuals</h3>
+      <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
+         <span>📺 CRT Scanlines</span>
+         <input type="checkbox" id="settingCRT" class="form-checkbox h-5 w-5 text-blue-600">
+      </label>
+
+      <!-- Cloud Backup Section -->
+      <h3 class="font-bold border-b border-gray-500 pb-1 mt-4">Cloud Save</h3>
+      <div class="mt-2 text-center">
+         <p id="lastBackupLabel" class="text-xs text-gray-400 mb-2">Checking status...</p>
+         <div class="flex gap-2">
+            <button id="btnBackup" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded text-sm transition-all">
+               ☁️ Create Backup
+            </button>
+            <button id="btnRestore" class="flex-1 bg-red-900 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-sm transition-all">
+               ↺ Restore
+            </button>
+         </div>
+         <p class="text-[10px] text-gray-500 mt-1">
+            Backups are stored securely in the cloud. <br>Restoring overwrites current progress.
+         </p>
+      </div>
+
+      <button id="closeSettingsButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
+   </div>
+</div>
       <div id="fastTravelModal" class="modal-overlay hidden">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 class="text-2xl font-bold mb-4">Leyline Network</h2>
