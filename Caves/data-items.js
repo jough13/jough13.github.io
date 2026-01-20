@@ -1261,10 +1261,11 @@ window.ITEM_DATA = {
     },
 
     // --- NEW TIER 3 GEAR ---
-    '=': {
+    '⚔️s': { // Changed from '=' to '⚔️s'
         name: 'Steel Sword',
         type: 'weapon',
-        damage: 4, // Better than Rusty Sword (2)
+        tile: '⚔️', // Use the emoji for visual display
+        damage: 4, 
         slot: 'weapon',
         description: "A soldier's blade. Well-balanced, sharp, and reliable."
     },
