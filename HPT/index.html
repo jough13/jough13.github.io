@@ -8129,11 +8129,31 @@
                     };
 
                const REG_GUIDE_1_86_LIMITS = {
-          'transuranics': { removable: 20, total: 100, label: 'Transuranics, I-125, I-129, Ra-226, Ac-227' },
-          'sr_90': { removable: 200, total: 1000, label: 'Th-nat, Sr-90, I-131, Ra-223, Ra-224, U-232' }, // <--- NEW CATEGORY
-          'u_nat': { removable: 1000, total: 5000, label: 'U-nat, U-235, U-238, and associated decay products' },
-          'beta_gamma': { removable: 1000, total: 5000, label: 'Beta-gamma emitters (nuclides with decay modes other than alpha)' }
-      };
+                  // Note: The key 'transuranics' is used here to represent the Regulatory Guide 1.86
+                  // group that includes "Transuranics, Ra-226, Ac-227, I-125, I-129".
+                  // I-125 and I-129 are mapped to this key in the database because they share
+                  // the same strict limits (20/100 dpm), despite not being transuranic elements.
+                  'transuranics': { 
+                      removable: 20, 
+                      total: 100, 
+                      label: 'Transuranics, Ra-226, Ac-227, I-125, I-129' 
+                  },
+                  'sr_90': { 
+                      removable: 200, 
+                      total: 1000, 
+                      label: 'Th-nat, Sr-90, I-131, Ra-223, Ra-224, U-232' 
+                  },
+                  'u_nat': { 
+                      removable: 1000, 
+                      total: 5000, 
+                      label: 'U-nat, U-235, U-238, and associated decay products' 
+                  },
+                  'beta_gamma': { 
+                      removable: 1000, 
+                      total: 5000, 
+                      label: 'Beta-gamma emitters (nuclides with decay modes other than alpha)' 
+                  }
+              };
 
                     const ANSI_13_12_LIMITS = {
                     'alpha_very_high': { removable: 20, total: 100, label: 'Alpha Emitters (Very High Hazard - e.g., Pu-238, Am-241)' },
@@ -10658,7 +10678,7 @@ const handleExport = () => {
                     * knowledge and external data sources that underpin the calculations and information in the app.
                     */
 
-      const ReferencesPage = ({ onNavClick }) => {
+      const ReferencesPage = ({ onNavClick, previousView }) => {
           const referenceLinks = [
               {
                   category: 'Regulatory & Guidance',
@@ -10676,7 +10696,7 @@ const handleExport = () => {
                       { title: 'NIST XCOM', url: 'https://physics.nist.gov/PhysRefData/Xcom/html/xcom1.html', description: 'Photon Cross Sections Database (Attenuation Coefficients).' },
                       { title: 'Rad Pro Calculator', url: 'http://www.radprocalculator.com/', description: 'Comprehensive online health physics calculations.' },
                       { title: 'EPA Radiation', url: 'https://www.epa.gov/radiation', description: 'US EPA radiation protection information and resources.' },
-		      { title: 'Plexus-NSD', url: 'http://www.iem-inc.com/information/tools/gamma-ray-dose-constants', description: 'Source for Specific Gamma Ray Constants.' }, 
+                      { title: 'Plexus-NSD', url: 'http://www.iem-inc.com/information/tools/gamma-ray-dose-constants', description: 'Source for Specific Gamma Ray Constants.' },
                       { title: 'REMM', url: 'https://remm.hhs.gov/', description: 'Radiation Emergency Medical Management (HHS).' },
                   ]
               },
@@ -10690,20 +10710,24 @@ const handleExport = () => {
               }
           ];
 
+          // Helper to determine button text
+          // If previousView is null, undefined, or 'home', label it "Back Home". Otherwise just "Back".
+          const backLabel = (!previousView || previousView === 'home') ? 'Back Home' : 'Back';
+
           return (
               <div className="p-4 animate-fade-in">
                   <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
 
-<div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Links & References</h2>
-                    <button 
-                        onClick={() => onNavClick('home')}
-                        className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center gap-2 text-sm font-semibold"
-                    >
-                        <Icon path={ICONS.home} className="w-4 h-4" />
-                        Back Home
-                    </button>
-                </div>
+                      <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
+                          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Links & References</h2>
+                          <button
+                              onClick={() => onNavClick(previousView || 'home')}
+                              className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center gap-2 text-sm font-semibold"
+                          >
+                              <Icon path={ICONS.home} className="w-4 h-4" />
+                              {backLabel}
+                          </button>
+                      </div>
                       <div className="space-y-6">
                           {referenceLinks.map(section => (
                               <div key={section.category}>
@@ -12108,7 +12132,12 @@ const StandardDecayCalculator = ({ radionuclides, selectedNuclide, setSelectedNu
             } else if (timeMode === 'date') {
                 const start = new Date();
                 const end = new Date(targetDate);
-                if (isNaN(end.getTime())) throw new Error("Invalid target date.");
+                // CHECK VALIDITY
+                if (isNaN(end.getTime())) {
+                    // Fail silently or set error, don't render result
+                    setResult(null); 
+                    return; 
+                }
                 t_seconds = (end - start) / 1000;
                 // Allow negative time (back calculation), but warn or handle charts gracefully?
                 // For now, let's allow it for result, but chart might look weird if negative.
@@ -12715,21 +12744,22 @@ const handleSaveToHistory = () => {
                   // Calculate Total (Static)
                   // DPM/100cm2 = (NetCPM / Eff_inst) * (100 / ProbeArea)
                   if (staticPoints.length > 0) {
-                      const avgStaticCpm = staticPoints.reduce((sum, val) => sum + val, 0) / staticPoints.length;
-                      const maxStaticCpm = Math.max(...staticPoints);
+                        const avgStaticCpm = staticPoints.reduce((sum, val) => sum + val, 0) / staticPoints.length;
+                        const maxStaticCpm = Math.max(...staticPoints);
 
-                      // Subtract Bkg? Static data usually entered as Gross.
-                      // Let's assume Gross. We need a static background input?
-                      // For simplicity in this tool, we assume inputs are NET counts or user handled background.
-                      // *Improvement*: Let's treat them as Gross and use the Wipe Bkg as the Static Bkg proxy if available.
-                      const bkg = !isNaN(wipeBkg) ? wipeBkg : 0;
+                        // Assume Gross inputs. Use Wipe Bkg as proxy if available, otherwise 0.
+                        const bkg = !isNaN(wipeBkg) ? wipeBkg : 0;
 
-                      const avgNet = Math.max(0, avgStaticCpm - bkg);
-                      const maxNet = Math.max(0, maxStaticCpm - bkg);
+                        const avgNet = Math.max(0, avgStaticCpm - bkg);
+                        const maxNet = Math.max(0, maxStaticCpm - bkg);
 
-                      totalDPM = (avgNet / instEff) * (100 / area);
-                      maxDPM = (maxNet / instEff) * (100 / area);
-                  }
+                        totalDPM = (avgNet / instEff) * (100 / area);
+                        maxDPM = (maxNet / instEff) * (100 / area);
+                    } else {
+                        // Explicitly set to null if no data entered, preventing NaN
+                        totalDPM = null;
+                        maxDPM = null;
+                    }
 
                   if (removableDPM === null && totalDPM === null) { setResult(null); return; }
 
@@ -13303,7 +13333,7 @@ const handleSaveToHistory = () => {
               HRCQ: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', display: 'HRCQ (Type B)' }
           };
 
-          // Main Effect for Package Type
+// Main Effect for Package Type
           React.useEffect(() => {
               if (!selectedNuclide) { setResult(null); setError(''); return; }
 
@@ -13332,23 +13362,41 @@ const handleSaveToHistory = () => {
                   return;
               }
 
-              // Determine Excepted Package Multiplier (49 CFR 173.425 Table 4)
-              // Solid: 10^-3, Liquid: 10^-4, Gas: 10^-3 (Simplified, Tritium is 2e-2 but keeping generic)
-              let exceptedMultiplier = 1e-3;
-              if (physicalState === 'liquid') exceptedMultiplier = 1e-4;
+              // --- DETERMINE MULTIPLIERS (49 CFR 173.425 Table 4) ---
+              let matMultiplier = 0;
+              let instMultiplier = 0;
 
-              const exceptedLimitTBq = limitTBq === Infinity ? Infinity : exceptedMultiplier * limitTBq;
+              // Special Case: Tritium (H-3) has specific limits regardless of state
+              if (selectedNuclide.symbol === 'H-3') {
+                  matMultiplier = 2e-2; // 0.02 (Limited Qty)
+                  instMultiplier = 2e-1; // 0.2 (Instrument/Article Item Limit)
+              } 
+              // Standard Logic based on Physical State
+              else {
+                  if (physicalState === 'liquid') {
+                      matMultiplier = 1e-4;
+                      instMultiplier = 1e-3;
+                  } else {
+                      // Solids and Gases (Normal Form)
+                      matMultiplier = 1e-3;
+                      instMultiplier = 1e-2;
+                  }
+              }
+
+              const exceptedMaterialTBq = limitTBq === Infinity ? Infinity : matMultiplier * limitTBq;
+              const exceptedInstrumentTBq = limitTBq === Infinity ? Infinity : instMultiplier * limitTBq;
 
               // HRCQ Threshold: > 3000 * A1/A2 OR > 1000 TBq (27,000 Ci), whichever is less.
               const hrcqActivityThreshold = Math.min(3000 * limitTBq, 1000);
 
+              // Classification Logic
               let classification = '';
-              if (userActivityTBq <= exceptedLimitTBq) {
+              // Check against Material limit for the main badge
+              if (userActivityTBq <= exceptedMaterialTBq) {
                   classification = 'EXCEPTED';
               } else if (userActivityTBq <= limitTBq) {
                   classification = 'TYPE_A';
               } else {
-                  // Check for HRCQ
                   if (userActivityTBq > hrcqActivityThreshold) {
                       classification = 'HRCQ';
                   } else {
@@ -13366,7 +13414,7 @@ const handleSaveToHistory = () => {
               const displayUnit = isSI ? 'TBq' : 'Ci';
               const conversionFactor = isSI ? 1 : (1 / 0.037); // approx 27.027 Ci/TBq
 
-              let activityDisplay, limitDisplay, exceptedDisplay;
+              let activityDisplay, limitDisplay, matExceptedDisplay, instExceptedDisplay;
 
               if (isSI) {
                   activityDisplay = `${userActivityTBq.toExponential(3)} TBq`;
@@ -13377,12 +13425,16 @@ const handleSaveToHistory = () => {
 
               if (isUnlimited) {
                   limitDisplay = 'Unlimited';
-                  exceptedDisplay = 'Unlimited';
+                  matExceptedDisplay = 'Unlimited';
+                  instExceptedDisplay = 'Unlimited';
               } else {
                   const limitVal = limitTBq * conversionFactor;
-                  const exceptedVal = exceptedLimitTBq * conversionFactor;
+                  const matVal = exceptedMaterialTBq * conversionFactor;
+                  const instVal = exceptedInstrumentTBq * conversionFactor;
+                  
                   limitDisplay = `${limitVal.toPrecision(3)} ${displayUnit}`;
-                  exceptedDisplay = `${exceptedVal.toExponential(3)} ${displayUnit}`;
+                  matExceptedDisplay = `${matVal.toExponential(3)} ${displayUnit}`;
+                  instExceptedDisplay = `${instVal.toExponential(3)} ${displayUnit}`;
               }
 
               setResult({
@@ -13390,8 +13442,12 @@ const handleSaveToHistory = () => {
                   ansiCategory,
                   activityDisplay,
                   limitDisplay,
-                  exceptedDisplay,
-                  displayUnit
+                  matExceptedDisplay,
+                  instExceptedDisplay,
+                  displayUnit,
+                  userActivityTBq,
+                  exceptedInstrumentTBq,
+                  isTritium: selectedNuclide.symbol === 'H-3' // Flag for UI note
               });
           }, [selectedNuclide, formType, physicalState, activity, activityUnit, settings.unitSystem]);
 
@@ -13594,10 +13650,39 @@ const handleSaveToHistory = () => {
                                       </div>
                                   )}
 
-                                  <div className="mt-2 pt-2 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-2 text-xs text-left">
-                                      <p>Activity:</p><p className="font-mono text-right">{result.activityDisplay}</p>
-                                      <p>{formType} Limit:</p><p className="font-mono text-right">{result.limitDisplay}</p>
-                                      <p>Excepted Limit:</p><p className="font-mono text-right">≤ {result.exceptedDisplay}</p>
+                                  {/* RESULT TABLE */}
+                                  <div className="mt-2 pt-2 border-t border-slate-300 dark:border-slate-600 text-xs text-left">
+                                      <div className="grid grid-cols-2 gap-1 mb-2">
+                                          <span className="text-slate-500 dark:text-slate-400">Source Activity:</span>
+                                          <span className="font-mono text-right font-bold">{result.activityDisplay}</span>
+                                          
+                                          <span className="text-slate-500 dark:text-slate-400">{formType} Limit (Type A):</span>
+                                          <span className="font-mono text-right font-bold">{result.limitDisplay}</span>
+                                      </div>
+
+                                      <div className="bg-white/50 dark:bg-black/20 rounded p-2 mt-2">
+                                          <p className="font-bold text-slate-700 dark:text-slate-300 mb-1 text-center">Excepted Package Limits</p>
+                                          
+                                          <div className="grid grid-cols-2 gap-1">
+                                              <span>Materials:</span>
+                                              <span className="font-mono text-right">≤ {result.matExceptedDisplay}</span>
+                                              
+                                              <span>Instruments:</span>
+                                              <span className="font-mono text-right">≤ {result.instExceptedDisplay}</span>
+                                          </div>
+                                          
+                                          {/* Contextual Hint if it qualifies as Instrument but not Material */}
+                                          {result.classification !== 'EXCEPTED' && result.userActivityTBq <= result.exceptedInstrumentTBq && (
+                                              <p className="text-[10px] text-center mt-1 text-green-600 dark:text-green-400 font-bold">
+                                                  * Qualifies as Excepted if inside an Instrument/Article.
+                                              </p>
+                                          )}
+                                          {result.isTritium && (
+                                              <p className="text-[10px] text-center mt-1 text-slate-500 italic">
+                                                  * Using specific Tritium limits (Table 4)
+                                              </p>
+                                          )}
+                                      </div>
                                   </div>
 
                                   {/* --- ANSI CATEGORY DISPLAY --- */}
@@ -13781,7 +13866,15 @@ const handleSaveToHistory = () => {
                   const K_unshielded = (K_output * W * U * T) / Math.pow(d, 2);
                   const B = P / K_unshielded;
 
-                  if (B >= 1) { setResult({ thickness: 0, tvls: 0, transmission: '>1' }); return; }
+                  if (B >= 1) { 
+                      setResult({ 
+                          thickness: 0, 
+                          tvls: 0, 
+                          // Display "Safe" instead of ">1" to avoid confusion
+                          transmission: `Safe (Factor: ${B.toFixed(1)}x)` 
+                      }); 
+                      return; 
+                  }
 
                   const n_tvl = -Math.log10(B);
                   const { TVL1, TVLe } = TVL_DATA[shieldMaterial][kvp];
@@ -16806,20 +16899,27 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
       };
 
                const handleNavClick = (view, opHpTab = null) => {
-          if (view !== VIEWS.DETAIL) {
-             setDetailedNuclide(null);
-          }
+                   // Save current view as 'previous' if we are changing views,
+                   // but ignore if we are just going to the Detail view (handled separately)
+                   // or if we are already on the References page to prevent circular history.
+                   if (activeView !== view && view !== VIEWS.DETAIL && view !== VIEWS.REFERENCES) {
+                       setPreviousView(activeView);
+                   }
 
-      // If opHpTab is passed (deep link), it sets it.
-          // If undefined/null (normal nav), it clears it.
-          setOpHpActiveTab(opHpTab);
+                   if (view !== VIEWS.DETAIL) {
+                       setDetailedNuclide(null);
+                   }
 
-               // When navigating manually, clear any pre-selections
-               setPreselectedNuclide(null);
-               setActiveView(view);
-               window.location.hash = view;
-               scrollToMainContent();
-               if (view === VIEWS.HOME) { inputRef.current?.blur(); }
+                   // If opHpTab is passed (deep link), it sets it.
+                   // If undefined/null (normal nav), it clears it.
+                   setOpHpActiveTab(opHpTab);
+
+                   // When navigating manually, clear any pre-selections
+                   setPreselectedNuclide(null);
+                   setActiveView(view);
+                   window.location.hash = view;
+                   scrollToMainContent();
+                   if (view === VIEWS.HOME) { inputRef.current?.blur(); }
                };
 
                const handleClearSearch = () => {
@@ -17121,7 +17221,9 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
                );
 
                case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in"><div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowCalcPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} /></div></div> );
-                  case VIEWS.REFERENCES: return <ReferencesPage onNavClick={handleNavClick} />;
+                  
+               case VIEWS.REFERENCES: return <ReferencesPage onNavClick={handleNavClick} previousView={previousView} />;
+
                   case VIEWS.HOME:
                   default:
                       return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;
@@ -17597,56 +17699,77 @@ const ComparisonView = ({ radionuclides, onNuclideClick, comparisonList, onAddTo
                                                     const displayVal = prop.getDisplay ? prop.getDisplay(nuclide) : (rawVal || 'N/A');
 
                                                     if (prop.type === 'numeric') {
-                                                        const numVal = numericValues[idx];
-                                                        let barWidth = 0;
+    const numVal = numericValues[idx];
+    let barWidth = 0;
 
-                                                        if (numVal !== null && maxVal > 0) {
-                                                            if (prop.useLogScale && minVal > 0 && maxVal / minVal > 100) {
-                                                                const logMin = Math.log10(minVal);
-                                                                const logMax = Math.log10(maxVal);
-                                                                const logVal = Math.log10(numVal);
-                                                                
-                                                                // FIX: Prevent divide by zero if logMax == logMin
-                                                                if (logMax === logMin) {
-                                                                    barWidth = 100;
-                                                                } else {
-                                                                    barWidth = ((logVal - logMin) / (logMax - logMin)) * 100;
-                                                                }
-                                                                barWidth = Math.max(barWidth, 5);
-                                                            } else {
-                                                                barWidth = (numVal / maxVal) * 100;
-                                                            }
+    // Check if we have a valid, non-null value to work with
+    if (numVal !== null && numVal !== undefined) {
+        
+        // CASE 1: Infinite Value (e.g., Stable Half-life)
+        if (numVal === Infinity) {
+            barWidth = 100; // Fill the bar completely for "Stable"
+        }
+        // CASE 2: Normal Calculation (Must be > 0 for Log Scale safety)
+        else if (maxVal > 0) {
+            
+            // Logarithmic Scale Logic (Used for Half-life, Specific Activity)
+            if (prop.useLogScale) {
+                // Ensure value is positive (log(0) is -Infinity)
+                if (numVal > 0 && minVal > 0 && maxVal / minVal > 100) {
+                    const logMin = Math.log10(minVal);
+                    const logMax = Math.log10(maxVal);
+                    const logVal = Math.log10(numVal);
 
-                                                            // Highlight logic
-                                                            if (prop.highlightMode === 'highGood') {
-                                                                if (numVal === maxVal) cellClass += ' bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-bold';
-                                                                if (numVal === minVal) cellClass += ' text-slate-500 dark:text-slate-400';
-                                                            } else if (prop.highlightMode === 'lowGood') {
-                                                                if (numVal === minVal) cellClass += ' bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-bold';
-                                                                if (numVal === maxVal) cellClass += ' text-slate-500 dark:text-slate-400';
-                                                            } else { // Neutral
-                                                                if (numVal === maxVal) cellClass += ' bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 font-bold';
-                                                            }
-                                                        }
+                    // Prevent divide-by-zero if all values are the same
+                    if (logMax === logMin) {
+                        barWidth = 100;
+                    } else {
+                        barWidth = ((logVal - logMin) / (logMax - logMin)) * 100;
+                    }
+                    
+                    // Ensure tiny bars are at least visible (5%)
+                    barWidth = Math.max(barWidth, 5);
+                } 
+                // If numVal is 0 but we are in log mode, barWidth stays 0.
+            } 
+            // Linear Scale Logic (Used for Gamma Constant, etc.)
+            else {
+                barWidth = (numVal / maxVal) * 100;
+            }
+        }
+    }
 
-                                                        cellContent = (
-                                                            <div className="relative h-full w-full flex items-center">
-                                                                {barWidth > 0 && (
-                                                                    <div
-                                                                        className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${
-                                                                            prop.highlightMode === 'highGood' ? (numVal === maxVal ? 'bg-green-500' : 'bg-green-200') :
-                                                                            prop.highlightMode === 'lowGood' ? (numVal === minVal ? 'bg-green-500' : 'bg-slate-300') :
-                                                                            'bg-sky-400'
-                                                                        }`}
-                                                                        style={{ width: `${barWidth}%`, opacity: 0.4 }}
-                                                                    />
-                                                                )}
-                                                                <span className="relative z-10">{displayVal}</span>
-                                                            </div>
-                                                        );
-                                                    } else {
-                                                        cellContent = <span>{displayVal}</span>;
-                                                    }
+  
+    // highlightMode logic
+    if (prop.highlightMode === 'highGood') {
+        if (numVal === maxVal && numVal !== Infinity) cellClass += ' bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-bold';
+        if (numVal === minVal) cellClass += ' text-slate-500 dark:text-slate-400';
+    } else if (prop.highlightMode === 'lowGood') {
+        if (numVal === minVal) cellClass += ' bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-bold';
+        if (numVal === maxVal && numVal !== Infinity) cellClass += ' text-slate-500 dark:text-slate-400';
+    } else { // Neutral
+        if (numVal === maxVal && numVal !== Infinity) cellClass += ' bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 font-bold';
+    }
+
+    // Render the visual bar
+    cellContent = (
+        <div className="relative h-full w-full flex items-center">
+            {barWidth > 0 && (
+                <div
+                    className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${
+                        prop.highlightMode === 'highGood' ? (numVal === maxVal ? 'bg-green-500' : 'bg-green-200') :
+                        prop.highlightMode === 'lowGood' ? (numVal === minVal ? 'bg-green-500' : 'bg-slate-300') :
+                        'bg-sky-400'
+                    }`}
+                    style={{ width: `${barWidth}%`, opacity: 0.4 }}
+                />
+            )}
+            <span className="relative z-10">{displayVal}</span>
+        </div>
+    );
+} else {
+    cellContent = <span>{displayVal}</span>;
+}
                                                 }
                                                 return <td key={nuclide.symbol} className={`${cellClass} p-3 text-sm`}>{cellContent}</td>;
                                             })}
@@ -17842,7 +17965,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                         <line x1="20" y1="10" x2="20" y2="70" stroke="#0ea5e9" strokeWidth="4" />
                         <text x="15" y="45" fontSize="10" textAnchor="end" fill="#0ea5e9">L</text>
                         <line x1="20" y1="40" x2="175" y2="40" stroke="#94a3b8" strokeWidth="2" markerEnd="url(#arrow)" />
-                        <text x="100" y="35" fontSize="10" textAnchor="middle" fill="#64748b">Distance (h)</text>
+                        <text x="100" y="35" fontSize="10" textAnchor="middle" fill="#64748b">Distance (Perpendicular to Center)</text>
                         <rect x="180" y="30" width="10" height="20" fill="#f43f5e" />
                          <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" /></marker></defs>
                     </svg>
@@ -17856,7 +17979,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                         <ellipse cx="40" cy="40" rx="10" ry="30" stroke="#0ea5e9" strokeWidth="2" fill="none" />
                         <text x="40" y="80" fontSize="10" textAnchor="middle" fill="#0ea5e9">Disk (R)</text>
                         <line x1="40" y1="40" x2="175" y2="40" stroke="#94a3b8" strokeWidth="2" markerEnd="url(#arrow)" />
-                        <text x="100" y="35" fontSize="10" textAnchor="middle" fill="#64748b">Distance (h)</text>
+                        <text x="100" y="35" fontSize="10" textAnchor="middle" fill="#64748b">Distance (Perpendicular to Center)</text>
                         <rect x="180" y="30" width="10" height="20" fill="#f43f5e" />
                          <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" /></marker></defs>
                     </svg>
@@ -17877,162 +18000,202 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     const concentrationFactors_uCi_per_cm2 = { 'dpm/100cm²': 1 / 2.22e8, 'µCi/cm²': 1, 'mCi/cm²': 1000, 'Ci/cm²': 1e6, 'Bq/cm²': 1 / 37000 };
 
     const handleCalculate = React.useCallback(() => {
-        setError(''); setResult(null);
+              setError(''); setResult(null);
 
-        // --- FIELD CALC (Inverse Square) ---
-        if (calcMode === CALC_MODE_FIELD) {
-            const d1 = parseFloat(field_d1) * distanceFactorsM[field_d1Unit];
-            const r1 = parseFloat(field_r1) * doseRateFactors_mrem_hr[field_r1Unit];
+              // --- FIELD CALC (Inverse Square) ---
+              if (calcMode === CALC_MODE_FIELD) {
+                  const d1 = parseFloat(field_d1) * distanceFactorsM[field_d1Unit];
+                  const r1 = parseFloat(field_r1) * doseRateFactors_mrem_hr[field_r1Unit];
 
-            if (isNaN(d1) || isNaN(r1) || d1 <= 0 || r1 < 0) {
-                setError("Inputs must be positive numbers."); return;
-            }
+                  if (isNaN(d1) || isNaN(r1) || d1 <= 0 || r1 < 0) {
+                      setError("Inputs must be positive numbers."); return;
+                  }
 
-            const k = r1 * (d1 * d1);
+                  const k = r1 * (d1 * d1);
 
-            if (field_targetType === 'findRate') {
-                const d2 = parseFloat(field_d2) * distanceFactorsM[field_d2Unit];
-                if (isNaN(d2) || d2 <= 0) { setError("Target distance must be > 0."); return; }
-                const r2 = k / (d2 * d2);
-                setResult({ type: 'field', val: r2, unit: 'doseRate', label: 'Projected Dose Rate' });
-            } else {
-                const r2 = parseFloat(field_r2) * doseRateFactors_mrem_hr[field_r2Unit];
-                if (isNaN(r2) || r2 <= 0) { setError("Target rate must be > 0."); return; }
-                const d2_sq = k / r2;
-                const d2 = Math.sqrt(d2_sq);
-                setResult({ type: 'field', val: d2 / distanceFactorsM[field_d2Unit], unit: 'distance', label: 'Distance to Boundary' });
-            }
-            return;
-        }
-
-        // --- GAMMA / BETA / INTERNAL Logic ---
-        const A_val = parseFloat(activity);
-        const d_val = parseFloat(distance);
-
-        if (calcMode !== CALC_MODE_INTERNAL && (isNaN(d_val) || d_val <= 0)) {
-            if(distance) setError("Distance must be > 0."); return;
-        }
-
-        switch (calcMode) {
-             case CALC_MODE_GAMMA: {
-                  let gammaConstant = 0;
-                  if (inputMode === INPUT_MODE_DB) {
-                      if (!selectedNuclide) return;
-                      gammaConstant = parseFloat(selectedNuclide.gammaConstant);
+                  if (field_targetType === 'findRate') {
+                      const d2 = parseFloat(field_d2) * distanceFactorsM[field_d2Unit];
+                      if (isNaN(d2) || d2 <= 0) { setError("Target distance must be > 0."); return; }
+                      const r2 = k / (d2 * d2);
+                      setResult({ type: 'field', val: r2, unit: 'doseRate', label: 'Projected Dose Rate' });
                   } else {
-                      gammaConstant = parseFloat(manualGammaConstant);
+                      const r2 = parseFloat(field_r2) * doseRateFactors_mrem_hr[field_r2Unit];
+                      if (isNaN(r2) || r2 <= 0) { setError("Target rate must be > 0."); return; }
+                      const d2_sq = k / r2;
+                      const d2 = Math.sqrt(d2_sq);
+                      setResult({ type: 'field', val: d2 / distanceFactorsM[field_d2Unit], unit: 'distance', label: 'Distance to Boundary' });
                   }
-                  if (!gammaConstant || isNaN(gammaConstant)) return;
+                  return;
+              }
 
-                  const transValue = parseFloat(transmission) || 1.0;
-                  const d_m = d_val * distanceFactorsM[distanceUnit];
-                  let doseRateR_hr = 0;
+              // --- GAMMA / BETA / INTERNAL Logic ---
+              const A_val = parseFloat(activity);
+              const d_val = parseFloat(distance);
 
-                  if (geometryMode === GEOMETRY_POINT) {
-                      const A_Ci = A_val * activityFactorsCi[activityUnit];
-                      doseRateR_hr = (gammaConstant * A_Ci) / Math.pow(d_m, 2);
-                  } else if (geometryMode === GEOMETRY_LINE) {
-                      const len_val = parseFloat(lineLength);
-                      const len_m = len_val * distanceFactorsM[lineLengthUnit];
-                      const A_L_Ci_m = A_val * linearActivityFactorsCi_per_m[linearActivityUnit];
-                      doseRateR_hr = (gammaConstant * A_L_Ci_m / d_m) * 2 * Math.atan(len_m / (2 * d_m));
-                  } else if (geometryMode === GEOMETRY_AREA) {
-                      const r_val = parseFloat(diskRadius);
-                      const r_m = r_val * distanceFactorsM[diskRadiusUnit];
-                      const A_A_Ci_m2 = A_val * arealActivityFactorsCi_per_m2[arealActivityUnit];
-                      doseRateR_hr = Math.PI * gammaConstant * A_A_Ci_m2 * Math.log((Math.pow(r_m, 2) + Math.pow(d_m, 2)) / Math.pow(d_m, 2));
-                  }
-                  setResult({ type: 'gamma', rawDoseRate_mrem_hr: doseRateR_hr * 1000 * transValue, usedGamma: gammaConstant });
-                  break;
-             }
-             
-             case CALC_MODE_BETA: 
-             case CALC_MODE_BREMS: {
-                  let E_max = 0;
-                  if (inputMode === INPUT_MODE_DB) {
-                      if (!selectedNuclide) return;
-                      if (selectedNuclide.emissionEnergies?.beta?.length > 0) {
-                          E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
-                      } else if (selectedNuclide.daughterEmissions?.beta?.length > 0) {
-                           const str = selectedNuclide.daughterEmissions.beta[0];
-                           E_max = parseFloat(str.split(' ')[0]);
-                      }
-                  } else {
-                      E_max = parseFloat(manualBetaEnergy);
-                  }
-                  if (!E_max || isNaN(E_max)) return;
+              if (calcMode !== CALC_MODE_INTERNAL && (isNaN(d_val) || d_val <= 0)) {
+                  if(distance) setError("Distance must be > 0."); return;
+              }
 
-                  if (calcMode === CALC_MODE_BETA) {
-                      if (betaMode === BETA_MODE_SKIN) {
-                          const skin_val = parseFloat(skinActivity);
-                          if (isNaN(skin_val)) return;
-                          const conc_uCi_cm2 = skin_val * concentrationFactors_uCi_per_cm2[skinActivityUnit];
-                          
-                          let doseRate_rad_hr = 0;
-                          let note = "";
-                          if (E_max < 0.07) {
-                             doseRate_rad_hr = 0;
-                             note = `E_max (${E_max.toFixed(3)} MeV) is too low to penetrate the dead skin layer. Dose is zero.`;
-                          } else {
-                             let factor = 9.0;
-                             if (E_max < 0.6) factor = 9.0 * ((E_max - 0.07) / (0.6 - 0.07));
-                             doseRate_rad_hr = factor * conc_uCi_cm2;
-                          }
-                          setResult({ type: 'beta_skin', rawDoseRate_mrem_hr: doseRate_rad_hr * 1000, e_max: E_max, sourceNote: note });
-                      } else {
-                          const A_Ci = A_val * activityFactorsCi[activityUnit];
-                          const d_ft = (d_val * distanceFactorsM[distanceUnit]) * 3.28084;
-                          const d_m = d_val * distanceFactorsM[distanceUnit];
-                          let range_g_cm2 = E_max > 0.8 ? (0.542 * E_max - 0.133) : (0.407 * Math.pow(E_max, 1.38));
-                          const range_m = (range_g_cm2 / 0.001225) / 100;
-                          const isBeyondRange = d_m >= range_m;
-                          let doseRate_rad_hr = 0;
-                          if (!isBeyondRange) {
-                              doseRate_rad_hr = (300 * A_Ci) / Math.pow(d_ft, 2);
-                          }
-                          setResult({ type: 'beta_air', rawDoseRate_mrem_hr: doseRate_rad_hr * 1000, e_max: E_max, isBeyondRange, range_m: range_m.toPrecision(2) });
-                      }
-                  } else {
-                      // Corrected: Uses SHIELD_PROPS now
-                      const matProps = SHIELD_PROPS[shieldMaterial];
-                      if (!matProps) { setError("Invalid shield material."); return; }
-                      const A_Ci = A_val * activityFactorsCi[activityUnit];
-                      const d_m = d_val * distanceFactorsM[distanceUnit];
-                      const doseRate_R_hr_1m = (6e-4 * matProps.Z * Math.pow(E_max, 2) * A_Ci);
-                      const finalRate = doseRate_R_hr_1m / Math.pow(d_m, 2);
-                      const fraction = 3.5e-4 * matProps.Z * E_max;
-                      setResult({ type: 'bremsstrahlung', rawDoseRate_mrem_hr: finalRate * 1000, bremsstrahlungFraction: (fraction * 100).toPrecision(2) });
-                  }
-                  break;
-             }
+              switch (calcMode) {
+                   case CALC_MODE_GAMMA: {
+                        let gammaConstant = 0;
+                        if (inputMode === INPUT_MODE_DB) {
+                            if (!selectedNuclide) return;
+                            gammaConstant = parseFloat(selectedNuclide.gammaConstant);
+                        } else {
+                            gammaConstant = parseFloat(manualGammaConstant);
+                        }
+                        if (!gammaConstant || isNaN(gammaConstant)) return;
 
-             case CALC_MODE_INTERNAL: {
-                  if (!selectedNuclide) return;
-                  const I_val = parseFloat(intakeAmount);
-                  if (isNaN(I_val) || I_val <= 0) return;
+                        const transValue = parseFloat(transmission) || 1.0;
+                        const d_m = d_val * distanceFactorsM[distanceUnit];
+                        let doseRateR_hr = 0;
 
-                  const dataKey = intakeRoute === 'ingestion' ? 'ingestion' : `inhalation_${solubility}`;
-                  let cede_mrem = 0;
-                  
-                  if (doseMethod === METHOD_10CFR20) {
-                      const I_uCi = I_val * intakeUnitFactors[intakeUnit];
-                      const ALI = selectedNuclide.dosimetry.ALI?.[dataKey];
-                      if (!ALI) { setError(`ALI not found for ${dataKey}`); setResult(null); return; }
-                      cede_mrem = (I_uCi / ALI) * 5000;
-                  } else {
-                      const I_Bq = I_val * intakeUnitFactorsBq[intakeUnit];
-                      const DCF = selectedNuclide.dosimetry.DCF?.[dataKey];
-                      if (!DCF) { setError(`DCF not found for ${dataKey}`); setResult(null); return; }
-                      cede_mrem = (I_Bq * DCF) * 100000;
-                  }
-                  setResult({ type: 'internal', rawDose_mrem: cede_mrem, method: doseMethod });
-                  break;
-             }
-             
-             default: break;
-        }
+                        if (geometryMode === GEOMETRY_POINT) {
+                            const A_Ci = A_val * activityFactorsCi[activityUnit];
+                            doseRateR_hr = (gammaConstant * A_Ci) / Math.pow(d_m, 2);
+                        } else if (geometryMode === GEOMETRY_LINE) {
+                            const len_val = parseFloat(lineLength);
+                            const len_m = len_val * distanceFactorsM[lineLengthUnit];
+                            const A_L_Ci_m = A_val * linearActivityFactorsCi_per_m[linearActivityUnit];
+                            // Note: Label logic updated for Line Source visually in a previous step, math remains valid for center point
+                            doseRateR_hr = (gammaConstant * A_L_Ci_m / d_m) * 2 * Math.atan(len_m / (2 * d_m));
+                        } else if (geometryMode === GEOMETRY_AREA) {
+                            const r_val = parseFloat(diskRadius);
+                            const r_m = r_val * distanceFactorsM[diskRadiusUnit];
+                            const A_A_Ci_m2 = A_val * arealActivityFactorsCi_per_m2[arealActivityUnit];
+                            doseRateR_hr = Math.PI * gammaConstant * A_A_Ci_m2 * Math.log((Math.pow(r_m, 2) + Math.pow(d_m, 2)) / Math.pow(d_m, 2));
+                        }
+                        
+                        setResult({ 
+                            type: 'gamma', 
+                            rawDoseRate_mrem_hr: doseRateR_hr * 1000 * transValue, 
+                            usedGamma: gammaConstant,
+                            label: "Est. Dose Eq. (1 R ≈ 1 rem)" // Explicitly state approximation
+                        });
+                        break;
+                   }
+                   
+                   case CALC_MODE_BETA: 
+                   case CALC_MODE_BREMS: {
+                        let E_max = 0;
+                        if (inputMode === INPUT_MODE_DB) {
+                            if (!selectedNuclide) return;
+                            if (selectedNuclide.emissionEnergies?.beta?.length > 0) {
+                                E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
+                            } else if (selectedNuclide.daughterEmissions?.beta?.length > 0) {
+                                 const str = selectedNuclide.daughterEmissions.beta[0];
+                                 E_max = parseFloat(str.split(' ')[0]);
+                            }
+                        } else {
+                            E_max = parseFloat(manualBetaEnergy);
+                        }
+                        if (!E_max || isNaN(E_max)) return;
 
-    }, [calcMode, field_d1, field_d1Unit, field_r1, field_r1Unit, field_d2, field_d2Unit, field_r2, field_r2Unit, field_targetType, activity, distance, geometryMode, inputMode, nuclideSymbol, manualGammaConstant, manualBetaEnergy, transmission, lineLength, lineLengthUnit, linearActivityUnit, diskRadius, diskRadiusUnit, arealActivityUnit, betaMode, skinActivity, skinActivityUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, doseMethod, selectedNuclide]);
+                        if (calcMode === CALC_MODE_BETA) {
+                            if (betaMode === BETA_MODE_SKIN) {
+                                const skin_val = parseFloat(skinActivity);
+                                if (isNaN(skin_val)) return;
+                                const conc_uCi_cm2 = skin_val * concentrationFactors_uCi_per_cm2[skinActivityUnit];
+                                
+                                let doseRate_rad_hr = 0;
+                                let note = "";
+                                if (E_max < 0.07) {
+                                   doseRate_rad_hr = 0;
+                                   note = `E_max (${E_max.toFixed(3)} MeV) is too low to penetrate the dead skin layer. Dose is zero.`;
+                                } else {
+                                   let factor = 9.0;
+                                   if (E_max < 0.6) factor = 9.0 * ((E_max - 0.07) / (0.6 - 0.07));
+                                   doseRate_rad_hr = factor * conc_uCi_cm2;
+                                }
+                                setResult({ 
+                                    type: 'beta_skin', 
+                                    rawDoseRate_mrem_hr: doseRate_rad_hr * 1000, 
+                                    e_max: E_max, 
+                                    sourceNote: note,
+                                    label: "Skin Dose Rate" 
+                                });
+                            } else {
+                                // Dose in Air (External Point Source)
+                                const A_Ci = A_val * activityFactorsCi[activityUnit];
+                                const d_ft = (d_val * distanceFactorsM[distanceUnit]) * 3.28084;
+                                const d_m = d_val * distanceFactorsM[distanceUnit];
+                                
+                                // Range Calculation (from Fix B)
+                                let range_g_cm2 = E_max > 0.8 ? (0.542 * E_max - 0.133) : (0.407 * Math.pow(E_max, 1.38));
+                                const density_air_g_cm3 = 0.001225; 
+                                const range_m = (range_g_cm2 / density_air_g_cm3) / 100;
+                                
+                                const isBeyondRange = d_m >= range_m;
+                                let doseRate_rad_hr = 0;
+
+                                if (!isBeyondRange) {
+                                    doseRate_rad_hr = (300 * A_Ci) / Math.pow(d_ft, 2);
+                                } else {
+                                    doseRate_rad_hr = 0; 
+                                }
+
+                                setResult({ 
+                                    type: 'beta_air', 
+                                    rawDoseRate_mrem_hr: doseRate_rad_hr * 1000, 
+                                    e_max: E_max, 
+                                    isBeyondRange, 
+                                    range_m: range_m.toPrecision(2),
+                                    warning: isBeyondRange ? "Target is beyond maximum beta range in air." : "Approximation: Uses '300 Rule'. Ignores air attenuation.",
+                                    label: "Dose Rate in Air"
+                                });
+                            }
+                        } else {
+                            // Bremsstrahlung
+                            const matProps = SHIELD_PROPS[shieldMaterial];
+                            if (!matProps) { setError("Invalid shield material."); return; }
+                            const A_Ci = A_val * activityFactorsCi[activityUnit];
+                            const d_m = d_val * distanceFactorsM[distanceUnit];
+                            const doseRate_R_hr_1m = (6e-4 * matProps.Z * Math.pow(E_max, 2) * A_Ci);
+                            const finalRate = doseRate_R_hr_1m / Math.pow(d_m, 2);
+                            const fraction = 3.5e-4 * matProps.Z * E_max;
+                            setResult({ 
+                                type: 'bremsstrahlung', 
+                                rawDoseRate_mrem_hr: finalRate * 1000, 
+                                bremsstrahlungFraction: (fraction * 100).toPrecision(2),
+                                label: "X-Ray Dose Rate (Brems.)"
+                            });
+                        }
+                        break;
+                   }
+
+                   case CALC_MODE_INTERNAL: {
+                        if (!selectedNuclide) return;
+                        const I_val = parseFloat(intakeAmount);
+                        if (isNaN(I_val) || I_val <= 0) return;
+
+                        const dataKey = intakeRoute === 'ingestion' ? 'ingestion' : `inhalation_${solubility}`;
+                        let cede_mrem = 0;
+                        
+                        if (doseMethod === METHOD_10CFR20) {
+                            const I_uCi = I_val * intakeUnitFactors[intakeUnit];
+                            const ALI = selectedNuclide.dosimetry.ALI?.[dataKey];
+                            if (!ALI) { setError(`ALI not found for ${dataKey}`); setResult(null); return; }
+                            cede_mrem = (I_uCi / ALI) * 5000;
+                        } else {
+                            const I_Bq = I_val * intakeUnitFactorsBq[intakeUnit];
+                            const DCF = selectedNuclide.dosimetry.DCF?.[dataKey];
+                            if (!DCF) { setError(`DCF not found for ${dataKey}`); setResult(null); return; }
+                            cede_mrem = (I_Bq * DCF) * 100000;
+                        }
+                        setResult({ 
+                            type: 'internal', 
+                            rawDose_mrem: cede_mrem, 
+                            method: doseMethod,
+                            label: "Committed Dose (CEDE)"
+                        });
+                        break;
+                   }
+                   
+                   default: break;
+              }
+
+          }, [calcMode, field_d1, field_d1Unit, field_r1, field_r1Unit, field_d2, field_d2Unit, field_r2, field_r2Unit, field_targetType, activity, distance, geometryMode, inputMode, nuclideSymbol, manualGammaConstant, manualBetaEnergy, transmission, lineLength, lineLengthUnit, linearActivityUnit, diskRadius, diskRadiusUnit, arealActivityUnit, betaMode, skinActivity, skinActivityUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, doseMethod, selectedNuclide]);
 
     // AUTO-CALCULATION TRIGGER
     React.useEffect(() => {
@@ -18243,28 +18406,53 @@ const handleSaveToHistory = () => {
                 
                 {/* --- RESULTS --- */}
                 {result && (
-                    <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative">
-                        <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to history"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
-                        <p className="text-xs uppercase font-bold text-slate-500 mb-2">{result.label || "Calculated Dose Rate"}</p>
-                        <div className="flex items-center justify-center gap-2">
-                             {result.type === 'field' ? (
-                                  <>
-                                      <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{formatNumber(result.val)}</span>
-                                      <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit === 'doseRate' ? field_r1Unit : field_d2Unit}</span>
-                                  </>
-                             ) : (
-                                  <>
-                                      <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{formatDoseValue(result.rawDoseRate_mrem_hr || result.rawDose_mrem, result.type === 'internal' ? 'dose' : 'doseRate', settings).value}</span>
-                                      <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{formatDoseValue(result.rawDoseRate_mrem_hr || result.rawDose_mrem, result.type === 'internal' ? 'dose' : 'doseRate', settings).unit}</span>
-                                  </>
-                             )}
-                        </div>
-                        {result.usedGamma && <p className="text-xs text-slate-400 mt-2">Gamma Constant: {result.usedGamma} R·m²/hr·Ci</p>}
-                        {result.sourceNote && <p className="text-xs text-amber-600 mt-2 italic">{result.sourceNote}</p>}
-                        {result.isBeyondRange && <p className="text-xs text-green-600 mt-2 font-bold">Beyond Max Range ({result.range_m} m)</p>}
-                        {result.bremsstrahlungFraction && <p className="text-xs text-slate-500 mt-2">Radiative Fraction: ~{result.bremsstrahlungFraction}%</p>}
-                    </div>
+    <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative">
+        <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to history"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
+        <p className="text-xs uppercase font-bold text-slate-500 mb-2">{result.label || "Calculated Dose Rate"}</p>
+        <div className="flex items-center justify-center gap-2">
+             {result.type === 'field' ? (
+                  <>
+                      <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{formatNumber(result.val)}</span>
+                      <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit === 'doseRate' ? field_r1Unit : field_d2Unit}</span>
+                  </>
+             ) : (
+                  <>
+                      <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">
+                          {formatDoseValue(
+                              result.rawDoseRate_mrem_hr !== undefined ? result.rawDoseRate_mrem_hr : result.rawDose_mrem, 
+                              result.type === 'internal' ? 'dose' : 'doseRate', 
+                              settings
+                          ).value}
+                      </span>
+                      <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">
+                          {formatDoseValue(
+                              result.rawDoseRate_mrem_hr !== undefined ? result.rawDoseRate_mrem_hr : result.rawDose_mrem, 
+                              result.type === 'internal' ? 'dose' : 'doseRate', 
+                              settings
+                          ).unit}
+                      </span>
+                  </>
+             )}
+        </div>
+        
+        {/* Contextual Info */}
+        {result.usedGamma && <p className="text-xs text-slate-400 mt-2">Gamma Constant: {result.usedGamma} R·m²/hr·Ci</p>}
+        {result.sourceNote && <p className="text-xs text-amber-600 mt-2 italic">{result.sourceNote}</p>}
+        {result.bremsstrahlungFraction && <p className="text-xs text-slate-500 mt-2">Radiative Fraction: ~{result.bremsstrahlungFraction}%</p>}
+
+        {/* REPLACED: Better Beta Air Warning Block */}
+        {result.type === 'beta_air' && (
+            <div className="mt-2 border-t border-slate-200 dark:border-slate-600 pt-2">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Max Range in Air: {result.range_m} m</p>
+                {result.warning && (
+                    <p className={`text-xs mt-2 p-1 rounded font-bold ${result.isBeyondRange ? 'text-green-600 bg-green-50 dark:bg-green-900/20' : 'text-amber-600 bg-amber-50 dark:bg-amber-900/20'}`}>
+                        {result.warning}
+                    </p>
                 )}
+            </div>
+        )}
+    </div>
+)}
                 
                 {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
             </div>
@@ -21855,7 +22043,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                   const tableRow = CHI_SQUARED_CRITICAL_VALUES?.[alpha];
                   if (tableRow && tableRow[df] !== undefined) {
                       if (Array.isArray(tableRow[df])) [lowerCrit, upperCrit] = tableRow[df];
-                      else { lowerCrit = tableRow[df]; upperCrit = UPPER_BOUNDS[alpha][df]; } // Handle your logic
+                      else { lowerCrit = tableRow[df]; upperCrit = UPPER_BOUNDS[alpha][df] || Infinity; } // Handle your logic
                   } else {
                       // Wilson-Hilferty approx
                       const zScoreMap = { '0.10': 1.645, '0.05': 1.960, '0.01': 2.576 };
