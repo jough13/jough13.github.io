@@ -7890,8 +7890,8 @@
                     // --- APPLICATION METADATA & CONSTANTS
                     //==============================================================================
 
-                    const VERSION = '3.8.3';
-                    const LAST_UPDATED = 'December 18th, 2025';
+                    const VERSION = '3.8.4';
+                    const LAST_UPDATED = 'January 20th, 2026';
 
                     // NEW: A global constant for all navigation views
 
@@ -10245,6 +10245,7 @@ const handleExport = () => {
       /**
        * @description A professional-grade scientific calculator component.
        */
+
       const ScientificCalculator = ({ calcState, setCalcState }) => {
           const { addToast } = useToast();
           const calculatorRef = React.useRef(null);
@@ -10296,6 +10297,7 @@ const handleExport = () => {
                   const scope = {
                       Ans: currentAns,
                       ...math,
+                      ln: math.log,
                       // Trig overrides for DEG mode
                       sin: (x) => currentMode === 'deg' ? math.sin(math.unit(x, 'deg')) : math.sin(x),
                       cos: (x) => currentMode === 'deg' ? math.cos(math.unit(x, 'deg')) : math.cos(x),
@@ -10656,7 +10658,7 @@ const handleExport = () => {
                     * knowledge and external data sources that underpin the calculations and information in the app.
                     */
 
-      const ReferencesPage = () => {
+      const ReferencesPage = ({ onNavClick }) => {
           const referenceLinks = [
               {
                   category: 'Regulatory & Guidance',
@@ -10674,6 +10676,7 @@ const handleExport = () => {
                       { title: 'NIST XCOM', url: 'https://physics.nist.gov/PhysRefData/Xcom/html/xcom1.html', description: 'Photon Cross Sections Database (Attenuation Coefficients).' },
                       { title: 'Rad Pro Calculator', url: 'http://www.radprocalculator.com/', description: 'Comprehensive online health physics calculations.' },
                       { title: 'EPA Radiation', url: 'https://www.epa.gov/radiation', description: 'US EPA radiation protection information and resources.' },
+		      { title: 'Plexus-NSD', url: 'http://www.iem-inc.com/information/tools/gamma-ray-dose-constants', description: 'Source for Specific Gamma Ray Constants.' }, 
                       { title: 'REMM', url: 'https://remm.hhs.gov/', description: 'Radiation Emergency Medical Management (HHS).' },
                   ]
               },
@@ -10690,7 +10693,17 @@ const handleExport = () => {
           return (
               <div className="p-4 animate-fade-in">
                   <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                      <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Links & References</h2>
+
+<div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Links & References</h2>
+                    <button 
+                        onClick={() => onNavClick('home')}
+                        className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center gap-2 text-sm font-semibold"
+                    >
+                        <Icon path={ICONS.home} className="w-4 h-4" />
+                        Back Home
+                    </button>
+                </div>
                       <div className="space-y-6">
                           {referenceLinks.map(section => (
                               <div key={section.category}>
@@ -12237,32 +12250,48 @@ const StandardDecayCalculator = ({ radionuclides, selectedNuclide, setSelectedNu
         if (selectedNuclide) handleCalculate();
     }, [handleCalculate]);
 
-    const handleSaveToHistory = () => {
-        if (result && selectedNuclide) {
-            let inputStr = '';
-            let resultStr = '';
+const handleSaveToHistory = () => {
+    if (result && selectedNuclide) {
+        let inputStr = '';
+        let resultStr = '';
 
-            if (calculationMode === MODE_REMAINING) {
-                const timeStr = timeMode === 'date' ? `until ${new Date(targetDate).toLocaleDateString()}` : `${timeElapsed} ${timeUnit}`;
-                inputStr = `${initialActivity} of ${selectedNuclide.symbol} (${timeStr})`;
-                resultStr = `${result.value}`;
-            } else if (calculationMode === MODE_TIME) {
-                inputStr = `${initialActivity} → ${remainingActivity} of ${selectedNuclide.symbol}`;
-                resultStr = `${result.value} ${result.unit}`;
-            }
-            // ... (add other modes as needed)
+        // Helper to format time based on the toggle (Date vs Duration)
+        const getTimeStr = () => {
+             return timeMode === 'date' 
+                ? `at ${new Date(targetDate).toLocaleDateString()}` 
+                : `${timeElapsed} ${timeUnit}`;
+        };
 
-            addHistory({
-                id: Date.now(),
-                type: 'Decay Calc',
-                icon: ICONS.calculator,
-                inputs: inputStr,
-                result: resultStr,
-                view: VIEWS.CALCULATOR
-            });
-            addToast('Saved to history!');
+        if (calculationMode === MODE_REMAINING) {
+            inputStr = `${initialActivity} ${selectedNuclide.symbol} (${getTimeStr()})`;
+            resultStr = `${result.value}`; // result.unit is empty string for remaining (activity unit inferred)
+        } 
+        else if (calculationMode === MODE_TIME) {
+            inputStr = `${initialActivity} → ${remainingActivity} of ${selectedNuclide.symbol}`;
+            resultStr = `${result.value} ${result.unit}`;
+        } 
+        else if (calculationMode === MODE_INITIAL) {
+            // "Initial" is calculating backwards from remaining
+            inputStr = `${remainingActivity} ${selectedNuclide.symbol} remaining (${getTimeStr()} ago)`;
+            resultStr = `${result.value}`;
+        } 
+        else if (calculationMode === MODE_DAUGHTER) {
+            // Daughter result structure is different: { parent: {...}, daughter: {...} }
+            inputStr = `${initialActivity} ${selectedNuclide.symbol} → ${result.daughter.name} (${getTimeStr()})`;
+            resultStr = `D: ${result.daughter.activity}`;
         }
-    };
+
+        addHistory({
+            id: Date.now(),
+            type: 'Decay Calc',
+            icon: ICONS.calculator,
+            inputs: inputStr,
+            result: resultStr,
+            view: VIEWS.CALCULATOR
+        });
+        addToast('Saved to history!');
+    }
+};
 
     return (
         <div className="space-y-4">
@@ -12333,7 +12362,7 @@ const StandardDecayCalculator = ({ radionuclides, selectedNuclide, setSelectedNu
             {/* Results Display */}
             {result && (
                 <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-                     {/* ... (Existing Result Display Logic - same as before) ... */}
+
                      <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mb-2 border-b border-slate-200 dark:border-slate-600 pb-1">
                         <span>Decay Constant (λ): {result.lambdaVal} {result.lambdaUnit}</span>
                      </div>
@@ -13035,6 +13064,11 @@ const StandardDecayCalculator = ({ radionuclides, selectedNuclide, setSelectedNu
 
       const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
           const [activeCalculator, setActiveCalculator] = React.useState(initialTab || 'surfaceContam');
+
+            React.useEffect(() => {
+              if (initialTab) setActiveCalculator(initialTab);
+            }, [initialTab]);
+
           const { settings } = React.useContext(SettingsContext);
           const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq'] : ['pCi', 'nCi', 'µCi', 'mCi', 'Ci'], [settings.unitSystem]);
 
@@ -14098,15 +14132,30 @@ const StandardDecayCalculator = ({ radionuclides, selectedNuclide, setSelectedNu
           const PEAK_LIBRARY = React.useMemo(() => {
               const lib = [];
               // A. Ingest from DB
-              if (radionuclides) {
-                  radionuclides.forEach(n => {
-                      if (n.gammaPeaks) {
-                          n.gammaPeaks.forEach(p => {
-                              lib.push({ symbol: n.symbol, name: n.name, energy: p.energy, yield: p.yield, confirm: null });
-                          });
-                      }
-                  });
-              }
+                if (radionuclides) {
+                    radionuclides.forEach(n => {
+                        // Parse Gamma
+                        if (n.emissionEnergies && n.emissionEnergies.gamma) {
+                            n.emissionEnergies.gamma.forEach(eStr => {
+                                // Regex to pull number: "0.662 MeV" -> 0.662
+                                const match = eStr.match(/([\d.]+)/);
+                                if (match) {
+                                    let energy = parseFloat(match[1]);
+                                    // Convert MeV to keV for peak search consistency
+                                    if (eStr.includes('MeV')) energy *= 1000; 
+                                    
+                                    lib.push({ 
+                                        symbol: n.symbol, 
+                                        name: n.name, 
+                                        energy: energy, 
+                                        yield: 0, // Yield is not parsed in your current DB, assume 0 or placeholder
+                                        confirm: null 
+                                    });
+                                }
+                            });
+                        }
+                    });
+                  }
               // B. Fallback/Enrichment
               const COMMON_ISOTOPES = [
                   { symbol: 'Cs-137', name: 'Cesium-137', energy: 661.7, yield: 85.1, confirm: 'Single Peak' },
@@ -17072,7 +17121,7 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
                );
 
                case VIEWS.SCIENTIFIC_CALCULATOR: return ( <div className="p-4 animate-fade-in"><div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg"><div className="flex justify-between items-center mb-4"><h2 className="text-xl font-bold text-slate-800 dark:text-white">Scientific Calculator</h2><Tooltip text="Open in New Window" widthClass="w-auto"><button onClick={() => setShowCalcPopout(true)} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.popOut} className="w-5 h-5" /></button></Tooltip></div><ScientificCalculator calcState={scientificCalculatorState} setCalcState={setScientificCalculatorState} /></div></div> );
-                  case VIEWS.REFERENCES: return <ReferencesPage />;
+                  case VIEWS.REFERENCES: return <ReferencesPage onNavClick={handleNavClick} />;
                   case VIEWS.HOME:
                   default:
                       return <HomePage errorMessage={errorMessage} randomSuggestions={randomSuggestions} searchHistory={searchHistory} handleNuclideSelection={handleNuclideSelection} handleClearHistory={handleClearHistory} favorites={favorites} radionuclides={radionuclides} handleClearFavorites={handleClearFavorites} onNavClick={handleNavClick} />;
@@ -17990,14 +18039,44 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
         handleCalculate();
     }, [handleCalculate]);
 
-    const handleSaveToHistory = () => {
-        if (result) {
-            const formattedResult = formatDoseValue(result.rawDoseRate_mrem_hr || result.rawDose_mrem, result.type === 'internal' ? 'dose' : 'doseRate', settings);
-            const source = result.type === 'field' ? 'Field Calc' : (nuclideSymbol || 'Manual');
-            addHistory({ id: Date.now(), type: 'Dose Calculation', icon: ICONS.doseRate, inputs: calcMode, result: `${formattedResult.value} ${formattedResult.unit} (${source})`, view: VIEWS.DOSE_RATE });
-            addToast("Saved to history!");
+const handleSaveToHistory = () => {
+    if (result) {
+        const formattedResult = formatDoseValue(
+            result.rawDoseRate_mrem_hr || result.rawDose_mrem, 
+            result.type === 'internal' ? 'dose' : 'doseRate', 
+            settings
+        );
+        
+        let inputDetail = '';
+
+        // Build a specific string based on the active mode
+        if (calcMode === CALC_MODE_FIELD) {
+             inputDetail = `Field: ${field_r1} ${field_r1Unit} @ ${field_d1} ${field_d1Unit}`;
+        } 
+        else if (calcMode === CALC_MODE_INTERNAL) {
+             inputDetail = `${intakeAmount} ${intakeUnit} ${nuclideSymbol} (${intakeRoute})`;
+        } 
+        else {
+             // Gamma, Beta, Bremsstrahlung
+             const source = nuclideSymbol || 'Manual Source';
+             inputDetail = `${activity} ${activityUnit} ${source} @ ${distance} ${distanceUnit}`;
+             
+             if (shieldMaterial !== 'None') {
+                 inputDetail += ` w/ ${shieldMaterial}`;
+             }
         }
-    };
+
+        addHistory({ 
+            id: Date.now(), 
+            type: 'Dose Calculation', 
+            icon: ICONS.doseRate, 
+            inputs: inputDetail, // Fixed: Now shows actual parameters
+            result: `${formattedResult.value} ${formattedResult.unit}`, 
+            view: VIEWS.DOSE_RATE 
+        });
+        addToast("Saved to history!");
+    }
+};
 
     const handleClear = () => {
         setCalcMode(CALC_MODE_GAMMA);
@@ -18736,6 +18815,11 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
           React.useEffect(() => { if (!doseUnits.includes(doseLimitUnit)) setDoseLimitUnit(doseUnits[1]); }, [doseUnits, doseLimitUnit]);
 
           React.useEffect(() => {
+            setResult(null);
+            setError('');
+          }, [inputMode]);
+
+          React.useEffect(() => {
               const gammaNuclides = radionuclides.filter(n => n.gammaConstant);
               if (preselectedNuclide && gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
                   setNuclideSymbol(preselectedNuclide);
@@ -19243,13 +19327,28 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
               } catch (e) { setError(e.message); setResult(null); }
           }, [inputMode, targetSymbol, targetMass, massUnit, abundance, neutronFlux, irradiationTime, timeUnit, manualAW, manualCS, manualHL, manualHLUnit, manualProductName, settings.unitSystem]);
 
-          const handleSaveToHistory = () => {
-              if (result) {
-                  const inputs = inputMode === 'fromDB' ? `${targetMass} ${massUnit} ${targetSymbol}` : 'Manual Target';
-                  addHistory({ id: Date.now(), type: 'Activation', icon: ICONS.neutron, inputs, result: `${result.displayVal} ${result.unit} ${result.productName}`, view: VIEWS.NEUTRON });
-                  addToast("Calculation saved!");
-              }
-          };
+const handleSaveToHistory = () => {
+    if (result) {
+        let inputs = '';
+        
+        if (inputMode === 'fromDB') {
+            inputs = `${targetMass} ${massUnit} ${targetSymbol} @ ${neutronFlux} n/cm²s`;
+        } else {
+            // Fix: Include mass and flux even for manual targets
+            inputs = `${targetMass} ${massUnit} Manual Target @ ${neutronFlux} n/cm²s`;
+        }
+
+        addHistory({ 
+            id: Date.now(), 
+            type: 'Activation', 
+            icon: ICONS.neutron, 
+            inputs: inputs, 
+            result: `${result.displayVal} ${result.unit} ${result.productName}`, 
+            view: VIEWS.NEUTRON 
+        });
+        addToast("Calculation saved!");
+    }
+};
 
           return (
               <div className="space-y-4">
@@ -19476,12 +19575,22 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
           } catch(e) { setError(e.message); setResult(null); }
           }, [initialFlux, shieldMaterial, shieldThickness, thicknessUnit, selectedEnergy, spectrum, setResult, setError]);
 
-          const handleSaveToHistory = () => {
-              if (result) {
-                 addHistory({ id: Date.now(), type: 'Neutron Shielding', icon: ICONS.shield, inputs: `${shieldThickness} ${thicknessUnit} of ${shieldMaterial}`, result: `Final: ${result.finalDose.value} ${result.finalDose.unit}`, view: VIEWS.NEUTRON });
-                 addToast("Calculation saved to history!");
-              }
-          };
+const handleSaveToHistory = () => {
+    if (result) {
+        // Include Flux and Energy in the log
+        const inputs = `${initialFlux} n/cm²s (${selectedEnergy} MeV) + ${shieldThickness} ${thicknessUnit} ${shieldMaterial}`;
+
+        addHistory({ 
+            id: Date.now(), 
+            type: 'Neutron Shielding', 
+            icon: ICONS.shield, 
+            inputs: inputs, 
+            result: `Final: ${result.finalDose.value} ${result.finalDose.unit}`, 
+            view: VIEWS.NEUTRON 
+        });
+        addToast("Calculation saved to history!");
+    }
+};
 
           return (
           <div className="space-y-4">
@@ -19636,7 +19745,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                           inputMode={act_inputMode} setInputMode={setAct_inputMode}
                           targetMass={act_targetMass} setTargetMass={setAct_targetMass}
                           massUnit={act_massUnit} setMassUnit={setAct_massUnit}
-                          abundance={act_abundance} setAbundance={setAct_abundance} // <--- FIXED: Was setAbundance={setAbundance}
+                          abundance={act_abundance} setAbundance={setAct_abundance}
                           neutronFlux={act_neutronFlux} setNeutronFlux={setAct_neutronFlux}
                           irradiationTime={act_irradiationTime} setIrradiationTime={setAct_irradiationTime}
                           timeUnit={act_timeUnit} setTimeUnit={setAct_timeUnit}
@@ -19962,6 +20071,12 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                             <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" value={grossTime} onChange={e => setGrossTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                             <div><label className="block text-sm font-medium">Desired Unit</label><select value={outputUnit} onChange={e => setOutputUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{ Object.keys(MDA_UNIT_CONFIG).map(u => <option key={u} value={u}>{MDA_UNIT_CONFIG[u].label}</option>) }</select></div>
                         </div>
+                            {MDA_UNIT_CONFIG[outputUnit].requires.includes('volume') && (
+                                <div><label className="block text-sm font-medium">Sample Volume (L)</label><input type="number" value={sampleVolume} onChange={e => setSampleVolume(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            )}
+                            {MDA_UNIT_CONFIG[outputUnit].requires.includes('mass') && (
+                                <div><label className="block text-sm font-medium">Sample Mass (g)</label><input type="number" value={sampleMass} onChange={e => setSampleMass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            )}
                         {/* Target Limit Input */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Target Limit (Optional)</label>
@@ -21865,7 +21980,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                           <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
                           <p className="text-xs uppercase font-bold text-slate-500">Relative Percent Difference</p>
                           <p className={`text-4xl font-extrabold my-2 ${result.pass ? 'text-sky-600 dark:text-sky-400' : 'text-amber-500'}`}>{result.rpd}%</p>
-                          {result.pass ? <p className="text-green-600 font-bold text-sm">Acceptable (≤ 20%)</p> : <p className="text-amber-600 font-bold text-sm">Investigate (> 20%)</p>}
+                          {result.pass ? <p className="text-green-600 font-bold text-sm">Acceptable (≤ 20%)</p> : <p className="text-amber-600 font-bold text-sm">Investigate (&gt; 20%)</p>}
                       </div>
                   )}
               </div>
