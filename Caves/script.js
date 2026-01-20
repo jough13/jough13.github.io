@@ -3453,51 +3453,34 @@ function handleStatAllocation(event) {
 coreStatsPanel.addEventListener('click', handleStatAllocation);
 
 function handleItemDrop(key) {
-    // Removed event.preventDefault() - logic should be agnostic
     const player = gameState.player;
-
-    // Cancel action
-    if (key === 'Escape') {
-        logMessage("Drop canceled.");
-        gameState.isDroppingItem = false;
-        return;
-    }
-
     const keyNum = parseInt(key);
 
-    // Check for valid item slot
-    if (isNaN(keyNum) || keyNum < 1 || keyNum > 9) {
-        logMessage("Invalid selection. Press 1-9 or (Esc) to cancel.");
-        return;
-    }
+    if (isNaN(keyNum) || keyNum < 1 || keyNum > 9) return;
 
     const itemIndex = keyNum - 1;
     const itemToDrop = player.inventory[itemIndex];
 
+    if (!itemToDrop) return; // Empty slot
+
     if (itemToDrop.isEquipped) {
         logMessage("You cannot drop an item you are wearing!");
-        gameState.isDroppingItem = false;
+        // Visual feedback failure? Optional.
         return;
     }
 
-    if (!itemToDrop) {
-        logMessage("No item in that slot.");
-        gameState.isDroppingItem = false; // Exit drop mode
+    // --- MAGIC ITEM CHECK ---
+    // Prevent accidental deletion of rare loot
+    const template = ITEM_DATA[itemToDrop.tile] || ITEM_DATA[itemToDrop.templateId];
+    // Check if name differs from template (Prefix/Suffix) or has bonuses
+    const isModified = itemToDrop.statBonuses || (template && itemToDrop.name !== template.name);
+    
+    if (isModified) {
+        logMessage("You cannot drop magic items! Sell or Stash them.");
         return;
     }
 
-    // Check if the item has custom stats or a modified name compared to the base template
-    const template = ITEM_DATA[itemToDrop.tile];
-    const isMagic = itemToDrop.statBonuses || (template && itemToDrop.name !== template.name);
-
-    if (isMagic) {
-        logMessage("You cannot drop magic items! The magic would dissipate.");
-        logMessage("Sell it or store it in your Stash instead.");
-        gameState.isDroppingItem = false;
-        return;
-    }
-
-    // Check if the player is standing on a valid drop tile (a floor)
+    // --- TILE VALIDATION ---
     let currentTile;
     if (gameState.mapMode === 'dungeon') {
         const map = chunkManager.caveMaps[gameState.currentCaveId];
@@ -3509,39 +3492,27 @@ function handleItemDrop(key) {
         currentTile = chunkManager.getTile(player.x, player.y);
     }
 
+    // Validate Floor
     let isValidDropTile = false;
-    if (gameState.mapMode === 'overworld' && currentTile === '.') {
-        isValidDropTile = true;
-    } else if (gameState.mapMode === 'dungeon') {
+    if (gameState.mapMode === 'overworld' && currentTile === '.') isValidDropTile = true;
+    else if (gameState.mapMode === 'castle' && currentTile === '.') isValidDropTile = true;
+    else if (gameState.mapMode === 'dungeon') {
         const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
         if (currentTile === theme.floor) isValidDropTile = true;
-    } else if (gameState.mapMode === 'castle' && currentTile === '.') {
-        isValidDropTile = true;
     }
 
     if (!isValidDropTile) {
-        logMessage("You can't drop an item here. (Must be on a floor tile)");
-        gameState.isDroppingItem = false; // Exit drop mode
+        logMessage("You can't drop items here. (Must be on open floor)");
         return;
     }
 
-    // --- All checks passed, let's drop the item ---
-
-    // 1. (MODIFIED) Create a unique tileId based on the map
-    let tileId;
-    if (gameState.mapMode === 'overworld') {
-        tileId = `${player.x},${-player.y}`;
-    } else {
-        // This creates a unique ID like "cave_120_340:15,-22"
-        const mapId = gameState.currentCaveId || gameState.currentCastleId;
-        tileId = `${mapId}:${player.x},${-player.y}`;
-    }
-
-    // 2. Remove one item from the stack
+    // --- EXECUTE DROP ---
+    
+    // 1. Logic
     itemToDrop.quantity--;
-    logMessage(`You dropped one ${itemToDrop.name}.`);
+    logMessage(`Dropped 1x ${itemToDrop.name}.`);
 
-    // 3. (MODIFIED) Place the item tile on the map
+    // 2. Place on Map
     if (gameState.mapMode === 'overworld') {
         chunkManager.setWorldTile(player.x, player.y, itemToDrop.tile);
     } else if (gameState.mapMode === 'dungeon') {
@@ -3550,39 +3521,28 @@ function handleItemDrop(key) {
         chunkManager.castleMaps[gameState.currentCastleId][player.y][player.x] = itemToDrop.tile;
     }
 
-    // 4. (MOVED & MODIFIED) Allow the tile to be re-looted by deleting
-    // its unique ID from the looted list.
+    // 3. Clear Loot Memory (So it can be picked up again)
+    let tileId = (gameState.mapMode === 'overworld') 
+        ? `${player.x},${-player.y}`
+        : `${gameState.currentCaveId || gameState.currentCastleId}:${player.x},${-player.y}`;
     gameState.lootedTiles.delete(tileId);
 
-    // 5. If the stack is empty, remove it from inventory
+    // 4. Cleanup Inventory Array
     if (itemToDrop.quantity <= 0) {
         player.inventory.splice(itemIndex, 1);
     }
 
-    // 6. Update UI and DB
-    renderInventory();
-    render(); // Re-render the map to show the dropped item
-    const inventoryToSave = gameState.player.inventory.map(item => ({
-        name: item.name,
-        type: item.type,
-        quantity: item.quantity,
-        tile: item.tile,
-        damage: item.damage || null,
-        slot: item.slot || null,
-        defense: item.defense || null,
-        statBonuses: item.statBonuses || null,
-        spellId: item.spellId || null,
-        skillId: item.skillId || null,
-        stat: item.stat || null,
-        isEquipped: item.isEquipped || false
-    }));
-
-    playerRef.update({
-        inventory: getSanitizedInventory()
-    }); // Save the clean version
-
-    // 7. Exit drop mode
+    // --- UI UPDATE ---
+    
+    // Turn off drop mode automatically after one drop (Standard UX)
     gameState.isDroppingItem = false;
+    
+    // Update DB
+    playerRef.update({ inventory: getSanitizedInventory() });
+    
+    // Refresh the UI immediately so the item disappears or count decreases
+    renderInventory();
+    render(); // Update map to show item on ground
 }
 
 function generateMagicItem(tier) {
@@ -7821,6 +7781,18 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
 
 const renderInventory = () => {
     inventoryModalList.innerHTML = '';
+    const titleElement = document.querySelector('#inventoryModal h2');
+
+    // --- VISUAL STATE HANDLING ---
+    if (gameState.isDroppingItem) {
+        titleElement.textContent = "SELECT ITEM TO DROP";
+        titleElement.classList.add('text-red-500', 'font-extrabold');
+        titleElement.classList.remove('text-default'); // Assuming standard text color class
+    } else {
+        titleElement.textContent = "Inventory";
+        titleElement.classList.remove('text-red-500', 'font-extrabold');
+        titleElement.classList.add('text-default');
+    }
 
     if (!gameState.player.inventory || gameState.player.inventory.length === 0) {
         inventoryModalList.innerHTML = '<span class="muted-text italic px-2">Inventory is empty.</span>';
@@ -7828,27 +7800,29 @@ const renderInventory = () => {
         gameState.player.inventory.forEach((item, index) => {
             const itemDiv = document.createElement('div');
 
-            // Check for isEquipped flag and add cursor-pointer for hover indication
-            if (item.isEquipped) {
-                itemDiv.className = 'inventory-slot equipped p-2 rounded-md cursor-pointer';
+            // --- DYNAMIC STYLING ---
+            let slotClass = 'inventory-slot p-2 rounded-md cursor-pointer transition-all duration-200';
+            
+            if (gameState.isDroppingItem) {
+                // Red Border/Glow for Drop Mode
+                slotClass += ' border-2 border-red-500 bg-red-900 bg-opacity-20 hover:bg-opacity-40';
+            } else if (item.isEquipped) {
+                // Gold Border for Equipped
+                slotClass += ' equipped';
             } else {
-                itemDiv.className = 'inventory-slot p-2 rounded-md cursor-pointer';
+                // Standard Hover
+                slotClass += ' hover:border-blue-500';
             }
+            
+            itemDiv.className = slotClass;
 
-            // --- MOBILE UPDATE: CLICK TO USE ---
-            // This allows clicking the slot to act exactly like pressing the number key
-            itemDiv.onclick = () => {
-                // If in Drop Mode, treat click as Drop command
-                if (gameState.isDroppingItem) {
-                    // Simulate pressing the number key for this slot
-                    handleInput((index + 1).toString());
-                } else {
-                    // Otherwise, Use/Equip
-                    handleInput((index + 1).toString());
-                }
+            // Click Handler: Passes input to main handler to decide Use vs Drop
+            itemDiv.onclick = (e) => {
+                e.stopPropagation(); // Prevent clicking through to modal background
+                handleInput((index + 1).toString());
             };
 
-            // Build Tooltip Title
+            // Build Tooltip
             let title = item.name;
             if (item.statBonuses) {
                 title += " (";
@@ -7861,7 +7835,7 @@ const renderInventory = () => {
             }
             itemDiv.title = title;
 
-            // Create Visual Elements
+            // Elements
             const itemChar = document.createElement('span');
             itemChar.className = 'item-char';
             itemChar.textContent = item.tile;
@@ -7872,11 +7846,7 @@ const renderInventory = () => {
 
             const slotNumber = document.createElement('span');
             slotNumber.className = 'absolute top-0 left-1 text-xs highlight-text font-bold';
-
-            // Only number the first 9 slots (since we use keys 1-9)
-            if (index < 9) {
-                slotNumber.textContent = index + 1;
-            }
+            if (index < 9) slotNumber.textContent = index + 1;
 
             itemDiv.appendChild(slotNumber);
             itemDiv.appendChild(itemChar);
@@ -10211,6 +10181,37 @@ function handleInput(key) {
         return;
     }
 
+     // --- ESCAPE KEY UPDATE ---
+    if (key === 'Escape') {
+        if (!helpModal.classList.contains('hidden')) { helpModal.classList.add('hidden'); return; }
+        if (!loreModal.classList.contains('hidden')) { loreModal.classList.add('hidden'); return; }
+        // if (!inventoryModal.classList.contains('hidden')) ... (This line is handled by logic below now)
+        if (!skillModal.classList.contains('hidden')) { skillModal.classList.add('hidden'); return; }
+        if (!craftingModal.classList.contains('hidden')) { craftingModal.classList.add('hidden'); return; }
+        if (!settingsModal.classList.contains('hidden')) { settingsModal.classList.add('hidden'); return; } 
+
+        if (gameState.isAiming) {
+            gameState.isAiming = false;
+            gameState.abilityToAim = null;
+            logMessage("Aiming canceled.");
+            return;
+        }
+        
+        // If in Drop Mode, Cancel Drop Mode but keep Inventory Open
+        if (gameState.isDroppingItem) {
+            gameState.isDroppingItem = false;
+            logMessage("Drop canceled.");
+            renderInventory(); // Reset visuals to normal
+            return;
+        }
+
+        if (gameState.inventoryMode) {
+            closeInventoryModal();
+            return;
+        }
+        return;
+    }
+
     // 3. FIX: Allow 'Escape' even if dead
     // This prevents getting stuck in menus after death.
     if (key === 'Escape') {
@@ -10285,34 +10286,51 @@ function handleInput(key) {
         return;
     }
 
-    // --- INVENTORY MODE (USE ITEM) ---
-    if (gameState.inventoryMode) {
-        // Toggle Drop Mode
-        if (key === 'd' || key === 'D') {
-            if (gameState.player.inventory.length === 0) {
-                logMessage("Inventory empty.");
-                return;
-            }
-            logMessage("Drop Mode: Tap an item to drop.");
-            gameState.isDroppingItem = true;
-            closeInventoryModal();
+     // --- DROP MODE TOGGLE ---
+    // If we are in inventory mode and press D
+    if (gameState.inventoryMode && (key === 'd' || key === 'D')) {
+        if (gameState.player.inventory.length === 0) {
+            logMessage("Inventory empty.");
             return;
+        }
+        
+        // Toggle Drop Mode State
+        gameState.isDroppingItem = !gameState.isDroppingItem;
+
+        if (gameState.isDroppingItem) {
+            logMessage("Drop Mode: Select an item to discard.");
+        } else {
+            logMessage("Drop Mode cancelled.");
         }
 
-        const keyNum = parseInt(key);
-        if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
-            const itemIndex = keyNum - 1;
-            useInventoryItem(itemIndex);
-            return;
-        }
+        // Re-render to show red borders (DO NOT CLOSE MODAL)
+        renderInventory(); 
         return;
     }
 
-    // --- HOTBAR KEYS (1-5) ---
+    // --- NUMBER KEYS (1-9) ---
+    // This handles both Using and Dropping based on state
     const keyNum = parseInt(key);
-    if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 5) {
-        useHotbarSlot(keyNum - 1);
-        return;
+    if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 9) {
+        
+        // Priority 1: Drop Mode active?
+        if (gameState.isDroppingItem) {
+            handleItemDrop(key); // Use the string key "1", "2", etc.
+            return;
+        }
+
+        // Priority 2: Inventory Open? Use Item.
+        if (gameState.inventoryMode) {
+            useInventoryItem(keyNum - 1);
+            return;
+        }
+
+        // Priority 3: Normal Hotbar usage
+        // Note: Only 1-5 usually used for hotbar, but we check range 1-9 to be safe
+        if (keyNum <= 5) {
+            useHotbarSlot(keyNum - 1);
+            return;
+        }
     }
 
     // --- MENUS ---
