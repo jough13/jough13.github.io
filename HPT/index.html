@@ -1788,11 +1788,8 @@
           category: 'Industrial',
           commonality: 'Common',
           commonalityReason: 'Widely used for industrial radiography, medical equipment sterilization, and cancer therapy.',
-          sourceRef: {
-            halfLife: 'nndc',
-            gammaConstant: 'hps'
-          },
-      shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
+          
+          shipping: { A1: 0.4, A2: 0.4, unit: 'TBq' },
           dosimetry: {
             ALI: {
               ingestion: 200,
@@ -10114,47 +10111,21 @@ const ClickableNuclide = ({ text, radionuclides, onNuclideClick }) => {
           };
 
 const handleExport = () => {
-    if (!filteredList || filteredList.length === 0) return;
+    // Reference the 'notes' prop/state, not 'filteredList'
+    if (!notes || notes.trim() === '') {
+        addToast("Nothing to save!");
+        return;
+    }
 
-    // IMPROVED HEADERS: Separated emission columns
-    const headers = [
-        'Name', 'Symbol', 'Category', 'Half-Life', 
-        'Decay Constant', 'Specific Activity', 'Gamma Constant', 
-        'Alpha Energies', 'Beta Energies', 'Gamma Energies'
-    ];
-    
-    const csvRows = [headers.join(',')];
-
-    filteredList.forEach(n => {
-        const name = `"${n.name}"`;
-        
-        // Helper to join array data safely
-        const fmtEmissions = (arr) => arr ? `"${arr.join('; ')}"` : '""';
-
-        const row = [
-            name,
-            n.symbol,
-            n.category,
-            n.halfLife,
-            n.decayConstant,
-            n.specificActivity || 'N/A',
-            n.gammaConstant || 'N/A',
-            // SPLIT COLUMNS
-            fmtEmissions(n.emissionEnergies?.alpha),
-            fmtEmissions(n.emissionEnergies?.beta),
-            fmtEmissions(n.emissionEnergies?.gamma)
-        ];
-        csvRows.push(row.join(','));
-    });
-
-    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const blob = new Blob([notes], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'nuclide_database_export.csv';
+    link.download = `scratchpad_notes_${new Date().toISOString().slice(0,10)}.txt`; // Add a timestamp to the filename
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url); // Clean up the created URL
 };
 
           const handleInsertTimestamp = () => {
@@ -11284,7 +11255,7 @@ const handleExport = () => {
       const DatabaseView = ({ filteredList, filterProps, onNuclideClick, isFiltersVisible, setIsFiltersVisible, scrollPositionRef, handleClearFilters }) => {
           const { selectedCategory, setSelectedCategory } = filterProps;
 
-          // NEW: Export Function
+          // Export Function
           const handleExport = () => {
               if (!filteredList || filteredList.length === 0) return;
 
@@ -11645,9 +11616,9 @@ const handleExport = () => {
                   const A0 = parseFloat(initialActivity);
                   const Af = parseFloat(finalActivity);
 
-                  if (isNaN(A0) || isNaN(Af) || A0 <= 0 || Af < 0) {
-                      if (initialActivity && finalActivity) setError("Activities must be positive numbers.");
-                      setResult(null); return;
+                  if (isNaN(A0) || isNaN(Af) || A0 <= 0 || Af <= 0) {
+                    if (initialActivity && finalActivity) setError("Activities must be positive numbers (Target cannot be 0).");
+                    setResult(null); return;
                   }
 
                   const A0_Bq = A0 * activityFactorsBq[initialUnit];
@@ -12276,8 +12247,15 @@ const StandardDecayCalculator = ({ radionuclides, selectedNuclide, setSelectedNu
 
     // Trigger calculation on input change
     React.useEffect(() => {
-        if (selectedNuclide) handleCalculate();
-    }, [handleCalculate]);
+    if (selectedNuclide) {
+        handleCalculate();
+    } else {
+        // Explicitly clear results if nuclide is removed
+        setResult(null);
+        setChartData(null);
+        setError('');
+    }
+    }, [handleCalculate, selectedNuclide]);
 
 const handleSaveToHistory = () => {
     if (result && selectedNuclide) {
@@ -12505,7 +12483,7 @@ const handleSaveToHistory = () => {
                     <div className="space-y-4 max-w-md mx-auto">
                       <div><label className="text-sm font-medium">Survey Nuclide</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide to auto-fill limits..."/>}</div></div>
                       <div>
-                          <label className="block text-sm font-medium">Survey Data</label>
+                          <label className="block text-sm font-medium">Survey Data <span className="text-xs font-normal text-slate-500">(Must be same units as Limit, e.g. DPM)</span></label>
                           <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -19700,27 +19678,44 @@ const handleSaveToHistory = () => {
           );
       };
 
-      const NeutronShieldingCalculator = ({ selectedEnergy, setSelectedEnergy, initialFlux, setInitialFlux, shieldMaterial, setShieldMaterial, shieldThickness, setShieldThickness, thicknessUnit, setThicknessUnit, result, setResult, error, setError }) => {
+const NeutronShieldingCalculator = ({ selectedEnergy, setSelectedEnergy, initialFlux, setInitialFlux, shieldMaterial, setShieldMaterial, shieldThickness, setShieldThickness, thicknessUnit, setThicknessUnit, result, setResult, error, setError }) => {
           const { addHistory } = useCalculationHistory();
           const { addToast } = useToast();
           const thicknessFactors_cm = { 'mm': 0.1, 'cm': 1, 'in': 2.54, 'ft': 30.48 };
 
-          // 1. Source Spectrum Toggle
+          // NEW: Source Spectrum state, defaults to fission
           const [spectrum, setSpectrum] = React.useState('fission'); // 'fission' or 'fusion14'
 
-          // 2. Updated Data Getter
+          // NEW: useEffect hook for intelligent spectrum switching
+          // This automatically selects the most likely spectrum when the energy changes.
+          React.useEffect(() => {
+              const energyMeV = parseFloat(selectedEnergy);
+              if (isNaN(energyMeV)) return;
+
+              // Threshold for Fusion spectrum (typically D-T reactions are > 10 MeV)
+              const fusionThreshold = 10; // in MeV
+
+              if (energyMeV >= fusionThreshold) {
+                  setSpectrum('fusion14');
+              } else {
+                  // Default to fission/AmBe for all other non-thermal energies
+                  setSpectrum('fission');
+              }
+          }, [selectedEnergy]); // Dependency: run this whenever the energy changes
+
           const getHvl = (mat) => {
               const data = NEUTRON_SHIELDING_DATA[mat];
               if (!data) return null;
 
-              // If energy is explicitly "Thermal" (< 1e-4 MeV), force thermal HVL
               const energyMeV = parseFloat(selectedEnergy);
+              // If energy is explicitly thermal, force thermal HVL, ignoring the toggle
               if (energyMeV < 1e-4) return data.thermal;
 
-              // Otherwise use spectrum toggle
+              // Otherwise, use the automatically-set (or manually overridden) spectrum toggle
               return spectrum === 'fission' ? data.fission : data.fusion14;
           };
 
+          // Interpolation and Calculation logic remains the same...
           const logLogInterpolate = (targetX, x1, y1, x2, y2) => y1 * Math.pow(targetX / x1, Math.log(y2 / y1) / Math.log(x2 / x1));
 
           React.useEffect(() => {
@@ -19733,7 +19728,7 @@ const handleSaveToHistory = () => {
              }
 
              const hvl_cm = getHvl(shieldMaterial);
-             if (!hvl_cm || hvl_cm >= 99) { throw new Error("Material is ineffective for this neutron energy."); }
+             if (!hvl_cm || hvl_cm >= 99) { throw new Error("This material is ineffective as a shield for the selected neutron energy."); }
 
              let p1 = NEUTRON_CONVERSION_FACTORS[0], p2 = NEUTRON_CONVERSION_FACTORS[NEUTRON_CONVERSION_FACTORS.length - 1];
              if (energyVal < p1.energyMeV) { p2 = p1; }
@@ -19763,38 +19758,41 @@ const handleSaveToHistory = () => {
           } catch(e) { setError(e.message); setResult(null); }
           }, [initialFlux, shieldMaterial, shieldThickness, thicknessUnit, selectedEnergy, spectrum, setResult, setError]);
 
-const handleSaveToHistory = () => {
-    if (result) {
-        // Include Flux and Energy in the log
-        const inputs = `${initialFlux} n/cm²s (${selectedEnergy} MeV) + ${shieldThickness} ${thicknessUnit} ${shieldMaterial}`;
+          // Save handler 
+          const handleSaveToHistory = () => {
+              if (result) {
+                  const inputs = `${initialFlux} n/cm²s (${selectedEnergy} MeV) + ${shieldThickness} ${thicknessUnit} ${shieldMaterial}`;
+                  addHistory({ 
+                      id: Date.now(), 
+                      type: 'Neutron Shielding', 
+                      icon: ICONS.shield, 
+                      inputs: inputs, 
+                      result: `Final: ${result.finalDose.value} ${result.finalDose.unit}`, 
+                      view: VIEWS.NEUTRON 
+                  });
+                  addToast("Calculation saved to history!");
+              }
+          };
 
-        addHistory({ 
-            id: Date.now(), 
-            type: 'Neutron Shielding', 
-            icon: ICONS.shield, 
-            inputs: inputs, 
-            result: `Final: ${result.finalDose.value} ${result.finalDose.unit}`, 
-            view: VIEWS.NEUTRON 
-        });
-        addToast("Calculation saved to history!");
-    }
-};
-
+          // Component JSX with updated UI
           return (
           <div className="space-y-4">
              <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                 <div><label className="block text-sm font-medium">Neutron Energy</label><select value={selectedEnergy} onChange={e => setSelectedEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{NEUTRON_CONVERSION_FACTORS.map(f => <option key={f.energyMeV} value={f.energyMeV}>{f.label}</option>)}</select></div>
+                 <div>
+                    <label className="block text-sm font-medium">Neutron Energy</label>
+                    <select value={selectedEnergy} onChange={e => setSelectedEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{NEUTRON_CONVERSION_FACTORS.map(f => <option key={f.energyMeV} value={f.energyMeV}>{f.label}</option>)}</select>
+                </div>
 
-                 {/* Source Spectrum Toggle (Visible if not Thermal) */}
-                 {parseFloat(selectedEnergy) >= 1e-4 && (
-                     <div>
-                         <label className="block text-sm font-medium mb-1">Source Spectrum</label>
-                         <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
-                             <button onClick={() => setSpectrum('fission')} className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${spectrum === 'fission' ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Fission / AmBe (~2-5 MeV)</button>
-                             <button onClick={() => setSpectrum('fusion14')} className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${spectrum === 'fusion14' ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Fusion (14 MeV)</button>
-                         </div>
-                     </div>
-                 )}
+                {/* A toggle for the spectrum, disabled for thermal neutrons */}
+                {parseFloat(selectedEnergy) >= 1e-4 && (
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Assumed Source Spectrum</label>
+                        <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
+                            <button onClick={() => setSpectrum('fission')} className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${spectrum === 'fission' ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Fission / AmBe (~2 MeV)</button>
+                            <button onClick={() => setSpectrum('fusion14')} className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${spectrum === 'fusion14' ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>D-T Fusion (~14 MeV)</button>
+                        </div>
+                    </div>
+                )}
 
                  <div><label className="block text-sm font-medium">Initial Neutron Flux (n/cm²·s)</label><input type="text" value={initialFlux} onChange={e => setInitialFlux(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                  <div><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(NEUTRON_SHIELDING_DATA).map(m => <option key={m} value={m}>{m}</option>)}</select></div>
@@ -19806,18 +19804,16 @@ const handleSaveToHistory = () => {
                      </div>
                  </div>
              </div>
-             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+             {error && <p className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
              {result && (
                  <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative overflow-hidden">
                      <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to Recent Calculations" widthClass="w-auto"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
-
                      <p className="text-xs uppercase font-bold text-slate-500 mb-2">Shielded Dose Rate</p>
                      <div className="flex items-center justify-center gap-2 mb-2">
                          <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.finalDose.value}</span>
                          <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.finalDose.unit}</span>
                          <CopyButton textToCopy={result.finalDose.value} />
                      </div>
-
                      <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-600 pt-3">
                          <p>Unshielded: <strong>{result.initialDose.value} {result.initialDose.unit}</strong></p>
                          <p>HVL Used: <strong>{result.hvlUsed} cm</strong></p>
