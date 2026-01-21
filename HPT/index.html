@@ -1,6 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
    <head>
+    <!-- Inline Styles for the Loader (Must remain in HTML for instant loading) -->
+    <style>
+      #loader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background-color: #f1f5f9;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+      }
+      .spinner {
+        width: 48px;
+        height: 48px;
+        border: 5px solid #cbd5e1;
+        border-bottom-color: #38bdf8;
+        border-radius: 50%;
+        display: inline-block;
+        box-sizing: border-box;
+        animation: spin 1s linear infinite;
+      }
+      .loading-text {
+        margin-top: 20px;
+        font-size: 1rem;
+        font-weight: 500;
+        color: #64748b;
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      /* Dark Mode Loader Overrides */
+      html.dark #loader { background-color: #0f172a; }
+      html.dark .spinner { border: 5px solid #334155; border-bottom-color: #38bdf8; }
+      html.dark .loading-text { color: #94a3b8; }
+      
+      #loader.hidden { opacity: 0; visibility: hidden; }
+      
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
       <!--Basic HTML Metadata-->
       <meta charset="UTF-8" />
       <meta content="width=device-width, initial-scale=1.0" name="viewport" />
@@ -2843,14 +2883,19 @@
            parentData.push(currentAct_UserUnit);
          }
          
-         setChartData({
-           labels,
-           parentData,
-           daughterData: null,
-           timeUnit: bestUnit,
-           parentName: selectedNuclide.name
-         });
-         // ---------------------------
+         if (A0_Bq / Af_Bq > 100) {
+                  setUseLogScale(true);
+              } else {
+                  setUseLogScale(false);
+              }
+
+              setChartData({
+                  labels,
+                  parentData,
+                  daughterData: null,
+                  timeUnit: bestUnit,
+                  parentName: selectedNuclide.name
+              });
          
          } catch (e) {
          setError(e.message || "Calculation failed.");
@@ -5892,10 +5937,11 @@
                  </thead>
                  <tbody>
                      <tr className="bg-sky-50 dark:bg-sky-900/30 font-bold border-b border-sky-200 dark:border-sky-800">
-                         <td className="p-2">TOTAL ACTIVITY</td>
-                         <td className="p-2 text-right">{formatSensibleUnit(results.total, 'activity_conventional', 4).value}</td>
-                     </tr>
-                     {results.items.map(r => (
+                                    <td className="p-2">TOTAL ACTIVITY</td>
+                                    {/* Use consistent exponential formatting instead of smart units to match column header */}
+                                    <td className="p-2 text-right">{results.total.toExponential(3)}</td>
+                                </tr>
+                                {results.items.map(r => (
                          <tr key={r.name} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
                              <td className="p-2 font-medium">
                                  <button
@@ -5918,125 +5964,117 @@
          );
          };
          
-         /**
-          * @description A React component that renders a line chart for a decay series using Chart.js.
-          * It's designed to display the activity of all nuclides in a chain over time.
-          * @param {{chartData: object}} props - The data object for the chart, including labels and datasets.
-          */
-         
-         const SeriesDecayChart = ({ chartData, useLogScale, theme }) => { // <-- MODIFIED: Accepted 'theme' prop
-         const chartRef = React.useRef(null);
-         const chartInstance = React.useRef(null);
-         
-         React.useEffect(() => {
-         if (chartInstance.current) {
-            chartInstance.current.destroy();
-         }
-         
-         if (chartRef.current && chartData) {
-         
-            // Determine colors based on the theme prop
-         
-            const isDarkMode = theme === 'dark';
-            const textColor = isDarkMode ? '#cbd5e1' : '#334155';
-            const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
-         
-            const ctx = chartRef.current.getContext('2d');
-            chartInstance.current = new Chart(ctx, {
-                type: 'line',
-                data: chartData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                boxWidth: 20,
-                                font: { size: 10 },
-                                color: textColor
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: 'Decay Series Activity Over Time',
-                            color: textColor
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                        }
-                    },
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: `Time (${chartData.timeUnit})`,
-                                color: textColor
-                            },
-                            ticks: {
-                                maxRotation: 0,
-                                autoSkip: true,
-                                autoSkipPadding: 20,
-                                color: textColor
-                            },
-                            grid: {
-                                color: gridColor
-                            }
-                        },
-                        y: {
-                            type: useLogScale ? 'logarithmic' : 'linear',
-                            title: {
-                                display: true,
-                                text: `Activity (${useLogScale ? 'Log Scale' : 'Linear Scale'})`,
-                                color: textColor
-                            },
-                            beginAtZero: !useLogScale,
-                            min: useLogScale ? (Math.max(...chartData.datasets.flatMap(d => d.data)) > 0 ? 1e-9 : 0) : undefined,
-                            ticks: {
-                                color: textColor
-                            },
-                            grid: {
-                                color: gridColor
-                            }
-                        }
+        /**
+                     * @description A React component that renders a line chart for a decay series using Chart.js.
+                     */
+                    const SeriesDecayChart = ({ chartData, useLogScale, theme }) => {
+                    const chartRef = React.useRef(null);
+                    const chartInstance = React.useRef(null);
+
+                    React.useEffect(() => {
+                    if (chartInstance.current) {
+                       chartInstance.current.destroy();
                     }
-                }
-            });
-         }
-         
-         return () => {
-            if (chartInstance.current) {
-                chartInstance.current.destroy();
-            }
-         };
-         }, [chartData, useLogScale, theme]);
-         
-         const handleExport = () => {
-         if (chartInstance.current) {
-           const link = document.createElement('a');
-           link.href = chartInstance.current.toBase64Image();
-           link.download = 'decay-chart.png';
-           link.click();
-         }
-         };
-         
-         return (
-         <div className="mt-4">
-           <div className="h-64">
-               <canvas ref={chartRef}></canvas>
-           </div>
-           <div className="text-center mt-2">
-               <button
-                   onClick={handleExport}
-                   className="px-3 py-1 text-xs bg-slate-200 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold"
-               >
-                   Export as PNG
-               </button>
-           </div>
-         </div>
-         );
-         };
+
+                    if (chartRef.current && chartData) {
+
+                       const isDarkMode = theme === 'dark';
+                       const textColor = isDarkMode ? '#cbd5e1' : '#334155';
+                       const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+
+                       const ctx = chartRef.current.getContext('2d');
+
+                       let safeMin = undefined;
+                       if (useLogScale && chartData.datasets) {
+                           const allValues = chartData.datasets.flatMap(d => d.data);
+                           const maxVal = Math.max(...allValues);
+                           
+                           if (maxVal > 0) {
+                               // Use 5 orders of magnitude (standard 5-cycle log paper)
+                               safeMin = maxVal * 1e-5; 
+                           } else {
+                               safeMin = 1e-5;
+                           }
+                       }
+
+                       chartInstance.current = new Chart(ctx, {
+                           type: 'line',
+                           data: chartData,
+                           options: {
+                               responsive: true,
+                               maintainAspectRatio: false,
+                               plugins: {
+                                   legend: {
+                                       position: 'top',
+                                       labels: { boxWidth: 20, font: { size: 10 }, color: textColor }
+                                   },
+                                   title: {
+                                       display: true,
+                                       text: 'Decay Series Activity Over Time',
+                                       color: textColor
+                                   },
+                                   tooltip: { mode: 'index', intersect: false }
+                               },
+                               scales: {
+                                   x: {
+                                       title: { display: true, text: `Time (${chartData.timeUnit})`, color: textColor },
+                                       ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 20, color: textColor },
+                                       grid: { color: gridColor }
+                                   },
+                                   y: {
+                                       type: useLogScale ? 'logarithmic' : 'linear',
+                                       title: { display: true, text: `Activity (${useLogScale ? 'Log Scale' : 'Linear Scale'})`, color: textColor },
+                                       min: safeMin,
+                                       beginAtZero: !useLogScale,
+                                       ticks: {
+                                           color: textColor,
+                                           callback: function(value) {
+                                               if (value !== 0 && (Math.abs(value) < 1e-3 || Math.abs(value) >= 1e4)) {
+                                                   return value.toExponential(1);
+                                               }
+                                               return value.toLocaleString();
+                                           }
+                                       },
+                                       grid: { color: gridColor }
+                                   }
+                               },
+                               elements: {
+                                   line: { tension: 0 } // Disable curves to prevent wavy artifacts
+                               }
+                           }
+                       });
+                    }
+
+                    return () => {
+                       if (chartInstance.current) { chartInstance.current.destroy(); }
+                    };
+                    }, [chartData, useLogScale, theme]);
+
+                    const handleExport = () => {
+                    if (chartInstance.current) {
+                      const link = document.createElement('a');
+                      link.href = chartInstance.current.toBase64Image();
+                      link.download = 'decay-chart.png';
+                      link.click();
+                    }
+                    };
+
+                    return (
+                    <div className="mt-4">
+                      <div className="h-64">
+                          <canvas ref={chartRef}></canvas>
+                      </div>
+                      <div className="text-center mt-2">
+                          <button
+                              onClick={handleExport}
+                              className="px-3 py-1 text-xs bg-slate-200 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold"
+                          >
+                              Export as PNG
+                          </button>
+                      </div>
+                    </div>
+                    );
+                    };
          
          /**
          * @description A combined calculator for mass-to-activity conversions and for calculating
@@ -6081,12 +6119,16 @@
          
          const t_seconds = t_val * timeUnits[halfLifeUnit];
          const sa_Bq_g = (Math.log(2) * AVOGADRO) / (t_seconds * aw);
-         const formatted = formatSensibleUnit(settings.unitSystem === 'si' ? sa_Bq_g : sa_Bq_g * 3.7e10, settings.unitSystem === 'si' ? 'activity_si' : 'activity_conventional');
          
-         setResult({
-         sa_Bq_g: sa_Bq_g,
-         display: `${formatted.value} ${formatted.unit}/g`
-         });
+         const valToFormat = settings.unitSystem === 'si' ? sa_Bq_g : sa_Bq_g / 3.7e10;
+            const configKey = settings.unitSystem === 'si' ? 'activity_si' : 'activity_conventional';
+            
+            const formatted = formatSensibleUnit(valToFormat, configKey);
+
+            setResult({
+                sa_Bq_g: sa_Bq_g,
+                display: `${formatted.value} ${formatted.unit}/g`
+            });
          
          } catch (e) { setError(e.message); setResult(null); }
          }, [atomicWeight, halfLifeValue, halfLifeUnit, settings.unitSystem]);
@@ -6773,6 +6815,19 @@
                  )}
             </div>
          )}
+
+        {/* Branching Warning */}
+            {parentNuclide && (parentNuclide.daughter.includes('/') || parentNuclide.daughter.includes(' or ')) && (
+                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
+                    <Icon path={ICONS.warning} className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <strong>Complex Branching Detected:</strong> This calculator models a simple 2-step chain (Parent &rarr; Daughter).
+                        <br />
+                        Calculating equilibrium for <strong>{daughterNuclide ? daughterNuclide.name : 'Primary Daughter'}</strong> only.
+                        For full branching analysis, use the <a href="#decaySeries" className="underline hover:text-amber-600 dark:hover:text-amber-100">Series Decay Calculator</a>.
+                    </div>
+                </div>
+            )}
          
          {parentNuclide && (
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
@@ -6870,7 +6925,7 @@
          
          const Bq_per_m3_in_pCi_per_L = 37;
          const PAEC_J_per_m3_in_WL = 2.08e-5;
-         const dose_conversion_mrem_per_WLM = 500; // 10 CFR 20 Occupational
+         const dose_conversion_mrem_per_WLM = 1250;
          
          React.useEffect(() => {
          localStorage.setItem('radon_calcMode', calcMode);
@@ -7328,15 +7383,27 @@
          const [kusnetz_error, setKusnetz_error] = React.useState('');
          
          // Auto-switch units if system setting changes
-         React.useEffect(() => {
-         if (isSI) {
-         if (conc_unit === 'pCi/L') setConc_unit('Bq/m³');
-         if (['µCi', 'mCi', 'Ci'].includes(ingrowth_unit)) setIngrowth_unit('kBq');
-         } else {
-         if (conc_unit === 'Bq/m³') setConc_unit('pCi/L');
-         if (['Bq', 'kBq', 'MBq', 'GBq'].includes(ingrowth_unit)) setIngrowth_unit('µCi');
-         }
-         }, [isSI]);
+                   React.useEffect(() => {
+              if (isSI) {
+                  if (conc_unit === 'pCi/L') {
+                      setConc_unit('Bq/m³');
+                      setConc_concentration('148'); // Approx 4 pCi/L
+                  }
+                  if (['µCi', 'mCi', 'Ci'].includes(ingrowth_unit)) {
+                      setIngrowth_unit('kBq');
+                      setIngrowth_amount('1');
+                  }
+              } else {
+                  if (conc_unit === 'Bq/m³') {
+                      setConc_unit('pCi/L');
+                      setConc_concentration('4'); // EPA Action Level
+                  }
+                  if (['Bq', 'kBq', 'MBq', 'GBq'].includes(ingrowth_unit)) {
+                      setIngrowth_unit('µCi');
+                      setIngrowth_amount('1');
+                  }
+              }
+          }, [isSI]);
          
          const handleClearActiveCalculator = () => {
          if (activeTab === 'concentration') {
@@ -8159,14 +8226,37 @@
          if (selectedEmissionType !== 'All') { filtered = filtered.filter(n => n.emissionType?.includes(selectedEmissionType)); }
          if (selectedCommonality !== 'All') { filtered = filtered.filter(n => n.commonality === selectedCommonality); }
          const filterByEnergyRange = (nuclide, type, min, max) => {
-         const energy = parseEnergyToMeV(nuclide.emissionEnergies?.[type]);
-         if (energy === 0 && (min || max)) return false;
-         const minVal = parseFloat(min); const maxVal = parseFloat(max);
-         if (!isNaN(minVal) && !isNaN(maxVal)) return energy >= minVal && energy <= maxVal;
-         if (!isNaN(minVal)) return energy >= minVal;
-         if (!isNaN(maxVal)) return energy <= maxVal;
-         return true;
-         };
+            // Get all energies for this type (e.g., all gamma lines)
+            const energies = nuclide.emissionEnergies?.[type] || [];
+            
+            // If no energies exist for this type...
+            if (energies.length === 0) {
+                // ...but the user requested a specific range, exclude this nuclide.
+                if (min || max) return false;
+                // If user didn't request a range, keep it (neutral).
+                return true; 
+            }
+
+            const minVal = parseFloat(min);
+            const maxVal = parseFloat(max);
+
+            // If user inputs are invalid (empty), don't filter out anything based on them.
+            const hasMin = !isNaN(minVal);
+            const hasMax = !isNaN(maxVal);
+            
+            if (!hasMin && !hasMax) return true;
+
+            // Check if AT LEAST ONE energy in the array meets the criteria
+            return energies.some(energyStr => {
+                const val = parseEnergyToMeV([energyStr]); // Re-use utility to parse single string
+                if (val === 0) return false;
+                
+                if (hasMin && hasMax) return val >= minVal && val <= maxVal;
+                if (hasMin) return val >= minVal;
+                if (hasMax) return val <= maxVal;
+                return true;
+            });
+        };
          if (minAlphaEnergy || maxAlphaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'alpha', minAlphaEnergy, maxAlphaEnergy));
          if (minBetaEnergy || maxBetaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'beta', minBetaEnergy, maxBetaEnergy));
          if (minGammaEnergy || maxGammaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'gamma', minGammaEnergy, maxGammaEnergy));
@@ -8833,16 +8923,23 @@
                          let maxVal = -Infinity, minVal = Infinity;
          
                          if (prop.type === 'numeric') {
-                             numericValues = comparisonList.map(n => {
-                                 const v = prop.getValue ? prop.getValue(n) : null;
-                                 return (typeof v === 'number' && !isNaN(v) && v !== Infinity) ? v : null;
-                             });
-                             const validValues = numericValues.filter(v => v !== null && v > 0);
-                             if (validValues.length > 0) {
-                                 maxVal = Math.max(...validValues);
-                                 minVal = Math.min(...validValues);
-                             }
-                         }
+                                        numericValues = comparisonList.map(n => {
+                                            const v = prop.getValue ? prop.getValue(n) : null;
+                                            return (typeof v === 'number' && !isNaN(v)) ? v : null;
+                                        });
+
+                                        // Filter out Infinity explicitly when finding Max/Min for scaling
+                                        const validFiniteValues = numericValues.filter(v => v !== null && v !== Infinity && v > 0);
+                                        
+                                        if (validFiniteValues.length > 0) {
+                                            maxVal = Math.max(...validFiniteValues);
+                                            minVal = Math.min(...validFiniteValues);
+                                        } else {
+                                            // Fallback if all values are Infinity or 0 (prevents divide by zero)
+                                            maxVal = 1;
+                                            minVal = 0;
+                                        }
+                                    }
          
                          return (
                              <tr key={prop.label} className="group hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -11285,21 +11382,30 @@
          const mda_dpm = (Ld_counts / Ts) / E_total;
          
          // Convert to output unit
-         let finalMDA;
-         if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
-         finalMDA = mda_dpm * dpmFactors[outputUnit];
-         } else if (outputUnit === 'dpm/100cm²') {
-         if (isNaN(A) || A <= 0) throw new Error('Probe Area is required.');
-         finalMDA = mda_dpm * (100 / A);
-         } else if (outputUnit === 'Bq/L') {
-         if (isNaN(V) || V <= 0) throw new Error('Sample Volume is required.');
-         finalMDA = (mda_dpm / 60) / V;
-         } else if (outputUnit === 'pCi/g') {
-         if (isNaN(M) || M <= 0) throw new Error('Sample Mass is required.');
-         finalMDA = (mda_dpm / 2.22) / M;
-         } else if (outputUnit === 'cpm') {
-         finalMDA = Ld_counts / Ts;
-         }
+        // Convert to output unit
+        let finalMDA;
+        
+        // 1. Check Category-based conversions (Activity)
+        if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
+            finalMDA = mda_dpm * dpmFactors[outputUnit];
+        } 
+        // 2. Specific Surface/Volume/Mass conversions
+        else if (outputUnit === 'dpm/100cm²') {
+            if (isNaN(A) || A <= 0) throw new Error('Probe Area is required.');
+            finalMDA = mda_dpm * (100 / A);
+        } else if (outputUnit === 'Bq/L') {
+            if (isNaN(V) || V <= 0) throw new Error('Sample Volume is required.');
+            finalMDA = (mda_dpm / 60) / V;
+        } else if (outputUnit === 'pCi/g') {
+            if (isNaN(M) || M <= 0) throw new Error('Sample Mass is required.');
+            finalMDA = (mda_dpm / 2.22) / M;
+        } 
+        // 3. Raw Count/Rate conversions
+        else if (outputUnit === 'cpm') {
+            finalMDA = Ld_counts / Ts;
+        } else if (outputUnit === 'counts') { // <--- ADD THIS BLOCK
+            finalMDA = Ld_counts;
+        }
          
          // --- NEW: Time to Target Logic ---
          let timeToTarget = null;
@@ -11471,11 +11577,14 @@
              
              {result.type === 'static' ? (
                  <>
-                     <p className="text-xs uppercase font-bold text-slate-500 text-center">Minimum Detectable Activity</p>
-                     <div className="flex items-center justify-center gap-2">
-                         <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.MDA}</span>
-                         <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit}</span>
-                     </div>
+                     <p className="text-xs uppercase font-bold text-slate-500 text-center">
+                                    {['cpm', 'counts'].includes(result.unit) ? 'Detection Limit (Ld)' : 'Minimum Detectable Activity'}
+                                </p>
+                                
+                                <div className="flex items-center justify-center gap-2">
+                                    <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.MDA}</span>
+                                    <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit}</span>
+                                </div>
          
                      {/* Target Comparison Logic */}
                      {targetLimit && (
@@ -12010,6 +12119,12 @@
                radius: 4,
                className: 'biased-sample-marker'
            }).bindPopup(popupContent);
+
+           newMarker.on('contextmenu', () => {
+                drawnItemsRef.current.removeLayer(newMarker);
+                setPlottedPoints(prev => prev.filter(p => p.id !== newId));
+                addToast(`Bias Point #${newId} removed.`);
+            });
          
            newMarker.myCustomId = newId;
            drawnItemsRef.current.addLayer(newMarker);
@@ -12191,6 +12306,17 @@
                });
                const popupContent = `<b>Sample Point #${point.id}</b><br>Type: ${point.type}<br>Lat: ${point.lat.toFixed(7)}<br>Lng: ${point.lng.toFixed(7)}`;
                marker.bindPopup(popupContent);
+
+               marker.on('contextmenu', () => {
+                    // Remove from map
+                    samplePointsLayerRef.current.removeLayer(marker);
+                    
+                    // Update state
+                    setPlottedPoints(prev => prev.filter(p => p.id !== point.id));
+                    
+                    addToast(`Point #${point.id} removed.`);
+                });
+
                marker.addTo(samplePointsLayerRef.current);
          
                if (point.type === 'Biased') {
@@ -12549,13 +12675,18 @@
          
          // This component provides a user interface for performing two statistical tests from the Multi-Agency Radiation Survey and Site Investigation Manual (MARSSIM): the Wilcoxon Rank Sum (WRS) test for survey units and the Elevated Measurement Comparison (EMC) Sign Test for localized areas.
          
-         // 1. UPDATED: Sign Test Calculator (Added Background Subtraction & Visuals)
-         // 1. UPDATED: Sign Test Calculator (Clarified Background & Visual Fixes)
+         // 1. Sign Test Calculator (Added Background Subtraction & Visuals)
          const SignTest_Calculator = ({ dcgl, setDcgl, dataInput, setDataInput, alpha, setAlpha, subtractBkg, setSubtractBkg, background, setBackground, result, setResult, error, setError }) => {
          const { addHistory } = useCalculationHistory();
          const { addToast } = useToast();
          
-         const signTestCriticalValues = { '0.05': { 5: 5, 6: 6, 7: 7, 8: 7, 9: 8, 10: 8, 11: 9, 12: 10, 13: 11, 14: 11, 15: 12, 16: 12, 17: 13, 18: 14, 19: 14, 20: 15, 21: 16, 22: 16, 23: 17, 24: 17, 25: 18, 26: 19, 27: 19, 28: 20, 29: 21, 30: 21 }, '0.025': { 5: 5, 6: 6, 7: 7, 8: 8, 9: 8, 10: 9, 11: 10, 12: 10, 13: 11, 14: 12, 15: 12, 16: 13, 17: 14, 18: 14, 19: 15, 20: 15, 21: 16, 22: 17, 23: 17, 24: 18, 25: 19, 26: 19, 27: 20, 28: 20, 29: 21, 30: 22 }, '0.01': { 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 9, 11: 10, 12: 11, 13: 11, 14: 12, 15: 13, 16: 13, 17: 14, 18: 15, 19: 15, 20: 16, 21: 17, 22: 17, 23: 18, 24: 18, 25: 19, 26: 20, 27: 20, 28: 21, 29: 22, 30: 22 }, '0.10': { 5: 4, 6: 5, 7: 6, 8: 6, 9: 7, 10: 8, 11: 8, 12: 9, 13: 10, 14: 10, 15: 11, 16: 11, 17: 12, 18: 13, 19: 13, 20: 14, 21: 15, 22: 15, 23: 16, 24: 16, 25: 17, 26: 18, 27: 18, 28: 19, 29: 20, 30: 20 } };
+         const signTestCriticalValues = {
+            '0.05': { 5: 5, 6: 6, 7: 7, 8: 7, 9: 8, 10: 8, 11: 9, 12: 10, 13: 11, 14: 11, 15: 12, 16: 12, 17: 13, 18: 14, 19: 14, 20: 15, 21: 16, 22: 16, 23: 17, 24: 17, 25: 18, 26: 19, 27: 19, 28: 20, 29: 21, 30: 21 },
+            '0.025': { 5: 5, 6: 6, 7: 7, 8: 8, 9: 8, 10: 9, 11: 10, 12: 10, 13: 11, 14: 12, 15: 12, 16: 13, 17: 14, 18: 14, 19: 15, 20: 15, 21: 16, 22: 17, 23: 17, 24: 18, 25: 19, 26: 19, 27: 20, 28: 20, 29: 21, 30: 22 },
+            '0.01': { 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 9, 11: 10, 12: 11, 13: 11, 14: 12, 15: 13, 16: 13, 17: 14, 18: 15, 19: 15, 20: 16, 21: 17, 22: 17, 23: 18, 24: 18, 25: 19, 26: 20, 27: 20, 28: 21, 29: 22, 30: 22 },
+            '0.10': { 5: 4, 6: 5, 7: 6, 8: 6, 9: 7, 10: 8, 11: 8, 12: 9, 13: 10, 14: 10, 15: 11, 16: 11, 17: 12, 18: 13, 19: 13, 20: 14, 21: 15, 22: 15, 23: 16, 24: 16, 25: 17, 26: 18, 27: 18, 28: 19, 29: 20, 30: 20 }
+        };
+
          const zScores = { '0.05': 1.645, '0.025': 1.960, '0.01': 2.326, '0.10': 1.282 };
          
          const parseData = (dataString) => dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
@@ -12568,14 +12699,22 @@
          };
          
          const handleCalculate = () => {
-         setResult(null); setError('');
-         
-         let measurements = parseData(dataInput);
-         const dcgl_val = parseFloat(dcgl);
-         const bkg_val = parseFloat(background);
-         
-         if (isNaN(dcgl_val) || dcgl_val <= 0) { setError('DCGL must be a valid positive number.'); return; }
-         if (measurements.length === 0) { setError('Please enter measurement data.'); return; }
+              setResult(null); setError('');
+              
+              // 1. Get raw chunks (split by separators)
+              const rawChunks = dataInput.split(/[\s,;\n]+/).filter(d => d.trim() !== '');
+              
+              // 2. Filter to valid numbers
+              const measurements = rawChunks.map(Number).filter(n => !isNaN(n));
+              
+              // 3. Detect ignored values
+              const droppedCount = rawChunks.length - measurements.length;
+
+              const dcgl_val = parseFloat(dcgl);
+              const bkg_val = parseFloat(background);
+
+              if (isNaN(dcgl_val) || dcgl_val <= 0) { setError('DCGL must be a valid positive number.'); return; }
+              if (measurements.length === 0) { setError('Please enter measurement data.'); return; }
          
          // Apply Background Subtraction if enabled
          if (subtractBkg) {
@@ -12619,7 +12758,8 @@
          Cs,
          note,
          stats: getStats(measurements),
-         dcgl: dcgl_val
+         dcgl: dcgl_val,
+         warning: droppedCount > 0 ? `Warning: ${droppedCount} non-numeric values were ignored.` : null, 
          });
          };
          
@@ -12725,12 +12865,21 @@
          const parseData = (dataString) => dataString.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
          
          const handleCalculate = () => {
-         setResult(null); setError('');
-         const refData = parseData(referenceData);
-         const suData = parseData(surveyData);
-         const dcgl_val = parseFloat(dcgl);
-         
-         if (isNaN(dcgl_val)) { setError('DCGL must be a valid number.'); return; }
+              setResult(null); setError('');
+              
+              // Parse Reference
+              const rawRef = referenceData.split(/[\s,;\n]+/).filter(d => d.trim() !== '');
+              const refData = rawRef.map(Number).filter(n => !isNaN(n));
+              
+              // Parse Survey
+              const rawSu = surveyData.split(/[\s,;\n]+/).filter(d => d.trim() !== '');
+              const suData = rawSu.map(Number).filter(n => !isNaN(n));
+
+              const droppedCount = (rawRef.length - refData.length) + (rawSu.length - suData.length);
+              
+              const dcgl_val = parseFloat(dcgl);
+
+              if (isNaN(dcgl_val)) { setError('DCGL must be a valid number.'); return; }
          if (refData.length < 5 || suData.length < 5) {
          setError('At least 5 data points are required for each area to perform a valid WRS test.');
          return;
@@ -12766,11 +12915,17 @@
          const hotMeasurements = suData.filter(v => v > (refStats.max + dcgl_val)); // Rough check for EMC needs
          
          // Quality Warnings
-         let warning = null;
-         if (refStats.sd > suStats.sd * 1.5) warning = "Note: Reference area variability is significantly higher than Survey Unit variability.";
-         if (suStats.mean < refStats.mean) warning = "Note: Survey Unit mean is lower than Reference Area mean (Clear Pass).";
-         
-         setResult({
+          let warningMsg = null;
+              if (refStats.sd > suStats.sd * 1.5) warningMsg = "Note: Reference area variability is significantly higher than Survey Unit variability.";
+              if (suStats.mean < refStats.mean) warningMsg = "Note: Survey Unit mean is lower than Reference Area mean (Clear Pass).";
+              
+              // Append Data Warning
+              if (droppedCount > 0) {
+                  const dataWarn = `Warning: ${droppedCount} non-numeric values were ignored.`;
+                  warningMsg = warningMsg ? `${warningMsg} ${dataWarn}` : dataWarn;
+              }
+
+              setResult({
          conclusion: finalConclusion,
          reason: wrsTestPassed ? `Rank Sum (${W_rs}) ≥ Critical Value (${C_w}).` : `Rank Sum (${W_rs}) < Critical Value (${C_w}).`,
          n, m, W_rs, C_w,
@@ -12778,7 +12933,7 @@
          hotCount: hotMeasurements.length,
          refStats,
          suStats,
-         warning
+         warning: warningMsg
          });
          };
          
@@ -13447,7 +13602,7 @@
                <ClearButton onClick={handleClear} />
            </div>
          
-           {/* UPDATED: Centered Tabs using flex-1 and text-center */}
+           {/* Centered Tabs using flex-1 and text-center */}
            <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6 overflow-x-auto no-scrollbar gap-1">
                {['mda', 'chi', 'dt', 'rpd', 'fwhm'].map(id => {
                    const labels = { mda: 'MDA/MDC', chi: 'Chi-Sq', dt: 'Dead Time', rpd: 'RPD', fwhm: 'Resolution' };
@@ -13493,139 +13648,140 @@
          );
          };
          
-         /**
-         * @description A React component that renders a line chart for simple radioactive decay using Chart.js.
-         */
-         const DecayChart = ({ chartData, useLogScale, theme }) => {
-         const chartRef = React.useRef(null);
-         const chartInstance = React.useRef(null);
-         
-         React.useEffect(() => {
-         // Destroy the previous chart instance if it exists
-         if (chartInstance.current) {
-         chartInstance.current.destroy();
-         }
-         
-         if (chartRef.current && chartData) {
-         // Theme Colors
-         const isDarkMode = theme === 'dark';
-         const textColor = isDarkMode ? '#94a3b8' : '#475569';
-         const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
-         const legendColor = isDarkMode ? '#cbd5e1' : '#334155';
-         
-         const ctx = chartRef.current.getContext('2d');
-         
-         // 1. Log Scale Safety Calculation
-         // Log scales break on 0. We find the lowest positive number to set a safe minimum.
-         let safeMin = undefined;
-         if (useLogScale) {
-           const allValues = [...chartData.parentData, ...(chartData.daughterData || [])];
-           const positives = allValues.filter(v => v > 0);
-           const minPos = Math.min(...positives);
-           // Set floor to 1 order of magnitude below lowest data, or 1e-5 default
-           safeMin = minPos ? minPos / 10 : 1e-5;
-         }
-         
-         chartInstance.current = new Chart(ctx, {
-           type: 'line',
-           data: {
-               labels: chartData.labels,
-               datasets: [
-                   {
-                       label: chartData.parentName,
-                       data: chartData.parentData,
-                       borderColor: '#0284c7', // Sky-600
-                       backgroundColor: 'rgba(2, 132, 199, 0.1)',
-                       fill: true,
-                       tension: 0.3, // Smoother curve
-                       pointRadius: 0,
-                       pointHoverRadius: 6 // Visual feedback on hover
-                   },
-                   ...(chartData.daughterData ? [{
-                       label: chartData.daughterName,
-                       data: chartData.daughterData,
-                       borderColor: '#e11d48', // Rose-600
-                       backgroundColor: 'rgba(225, 29, 72, 0.1)',
-                       fill: true,
-                       tension: 0.3,
-                       pointRadius: 0,
-                       pointHoverRadius: 6
-                   }] : [])
-               ]
-           },
-           options: {
-               responsive: true,
-               maintainAspectRatio: false,
-               // 2. UX: Better Tooltips
-               interaction: {
-                   mode: 'index',
-                   intersect: false,
-               },
-               scales: {
-                   x: {
-                       title: { display: true, text: `Time (${chartData.timeUnit})`, color: textColor },
-                       ticks: { color: textColor },
-                       grid: { color: gridColor }
-                   },
-                   y: {
-                       type: useLogScale ? 'logarithmic' : 'linear',
-                       title: { display: true, text: 'Activity', color: textColor },
-                       // Fix for Log(0) crash
-                       min: safeMin,
-                       beginAtZero: !useLogScale,
-                       ticks: { color: textColor },
-                       grid: { color: gridColor }
-                   }
-               },
-               plugins: {
-                   legend: { labels: { color: legendColor } },
-                   tooltip: {
-                       backgroundColor: isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)',
-                       titleColor: isDarkMode ? '#fff' : '#000',
-                       bodyColor: isDarkMode ? '#fff' : '#000',
-                       borderColor: gridColor,
-                       borderWidth: 1
-                   }
-               }
-           }
-         });
-         }
-         
-         return () => {
-         if (chartInstance.current) {
-           chartInstance.current.destroy();
-         }
-         };
-         }, [chartData, useLogScale, theme]);
-         
-         const handleExport = () => {
-         if (chartInstance.current) {
-         const link = document.createElement('a');
-         link.href = chartInstance.current.toBase64Image();
-         // 3. UX: Dynamic Filename
-         const filename = `Decay_${chartData.parentName || 'Chart'}.png`;
-         link.download = filename;
-         link.click();
-         }
-         };
-         
-         return (
-         <div className="mt-4">
-         <div className="h-64 w-full">
-           <canvas ref={chartRef}></canvas>
-         </div>
-         <div className="text-center mt-3">
-           <button
-               onClick={handleExport}
-               className="flex items-center justify-center gap-2 mx-auto px-4 py-2 text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors"
-           >
-               <Icon path={ICONS.download} className="w-3 h-3" />
-               Save Chart Image
-           </button>
-         </div>
-         </div>
-         );
-         };
+       /**
+       * @description A React component that renders a line chart for simple decay (Parent/Daughter) using Chart.js.
+       */
+      const DecayChart = ({ chartData, useLogScale, theme }) => {
+          const chartRef = React.useRef(null);
+          const chartInstance = React.useRef(null);
+
+          React.useEffect(() => {
+              if (chartInstance.current) {
+                  chartInstance.current.destroy();
+              }
+
+              if (chartRef.current && chartData) {
+                  const isDarkMode = theme === 'dark';
+                  const textColor = isDarkMode ? '#94a3b8' : '#475569';
+                  const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+                  const legendColor = isDarkMode ? '#cbd5e1' : '#334155';
+
+                  const ctx = chartRef.current.getContext('2d');
+
+                  // LOG SCALE SAFETY LOGIC ---
+                  let safeMin = undefined;
+                  if (useLogScale) {
+                      // Combine parent and daughter data to find the range
+                      const allValues = [...chartData.parentData];
+                      if (chartData.daughterData) {
+                          allValues.push(...chartData.daughterData);
+                      }
+                      
+                      const maxVal = Math.max(...allValues);
+                      
+                      if (maxVal > 0) {
+                          // Set floor to 5 orders of magnitude below peak
+                          safeMin = maxVal * 1e-5;
+                      } else {
+                          safeMin = 1e-5;
+                      }
+                  }
+
+                  chartInstance.current = new Chart(ctx, {
+                      type: 'line',
+                      data: {
+                          labels: chartData.labels,
+                          datasets: [
+                              {
+                                  label: chartData.parentName,
+                                  data: chartData.parentData,
+                                  borderColor: '#0284c7', // Sky-600
+                                  backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                                  fill: true,
+                                  tension: 0, // Straight lines for log scale accuracy
+                                  pointRadius: 0,
+                                  pointHoverRadius: 6
+                              },
+                              ...(chartData.daughterData ? [{
+                                  label: chartData.daughterName,
+                                  data: chartData.daughterData,
+                                  borderColor: '#e11d48', // Rose-600
+                                  backgroundColor: 'rgba(225, 29, 72, 0.1)',
+                                  fill: true,
+                                  tension: 0,
+                                  pointRadius: 0,
+                                  pointHoverRadius: 6
+                              }] : [])
+                          ]
+                      },
+                      options: {
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          interaction: { mode: 'index', intersect: false },
+                          scales: {
+                              x: {
+                                  title: { display: true, text: `Time (${chartData.timeUnit})`, color: textColor },
+                                  ticks: { color: textColor },
+                                  grid: { color: gridColor }
+                              },
+                              y: {
+                                  type: useLogScale ? 'logarithmic' : 'linear',
+                                  title: { display: true, text: 'Activity', color: textColor },
+                                  min: safeMin,
+                                  beginAtZero: !useLogScale,
+                                  ticks: { 
+                                      color: textColor,
+                                      callback: function(value) {
+                                           if (value !== 0 && (Math.abs(value) < 1e-3 || Math.abs(value) >= 1e4)) {
+                                               return value.toExponential(1);
+                                           }
+                                           return value.toLocaleString();
+                                      }
+                                  },
+                                  grid: { color: gridColor }
+                              }
+                          },
+                          plugins: {
+                              legend: { labels: { color: legendColor } }
+                          }
+                      }
+                  });
+              }
+
+              return () => {
+                  if (chartInstance.current) {
+                      chartInstance.current.destroy();
+                  }
+              };
+          }, [chartData, useLogScale, theme]);
+
+          const handleExport = () => {
+              if (chartInstance.current) {
+                  const link = document.createElement('a');
+                  link.href = chartInstance.current.toBase64Image();
+                  const filename = `Decay_${chartData.parentName || 'Chart'}.png`;
+                  link.download = filename;
+                  link.click();
+              }
+          };
+
+          return (
+              <div className="mt-4">
+                  <div className="h-64 w-full">
+                      <canvas ref={chartRef}></canvas>
+                  </div>
+                  <div className="text-center mt-3">
+                      <button
+                          onClick={handleExport}
+                          className="flex items-center justify-center gap-2 mx-auto px-4 py-2 text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors"
+                      >
+                          <Icon path={ICONS.download} className="w-3 h-3" />
+                          Save Chart Image
+                      </button>
+                  </div>
+              </div>
+          );
+      };
          
          // Final step: Render the main App component into the DOM.
          
