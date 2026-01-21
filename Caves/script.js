@@ -4480,46 +4480,50 @@ function resizeCanvas() {
     const canvasContainer = canvas.parentElement;
     if (!canvasContainer) return;
 
-    // 1. Get Exact Container Dimensions
-    // We use clientHeight instead of hardcoding '30' to fix the bottom glitch
+    // 1. Get Container Dimensions
     const containerWidth = canvasContainer.clientWidth;
-    const containerHeight = canvasContainer.clientHeight; 
+    const containerHeight = canvasContainer.clientHeight;
 
     TILE_SIZE = 20;
 
-    // 2. Calculate Viewport (Round UP + Buffer)
-    // Math.ceil ensures we cover partial tiles at the edge (fixes Black Bar)
-    // +1 adds a safety buffer for screen shake or offsets
+    // 2. Calculate Viewport (Round UP to ensure full coverage, +1 for buffer)
     VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 1;
     VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 1;
 
     const dpr = window.devicePixelRatio || 1;
 
-    // 3. Resize Main Canvas to FILL Container
-    // We set the canvas to the exact container size, not the "snapped" tile size
-    canvas.width = containerWidth * dpr;
-    canvas.height = containerHeight * dpr;
-    
-    canvas.style.width = `${containerWidth}px`;
-    canvas.style.height = `${containerHeight}px`;
+    // 3. Resize Main Canvas (SNAP TO GRID)
+    // CRITICAL FIX: We set the canvas size to match the TILES, not the container pixels.
+    // This prevents stretching/blurring.
+    const logicalWidth = VIEWPORT_WIDTH * TILE_SIZE;
+    const logicalHeight = VIEWPORT_HEIGHT * TILE_SIZE;
 
-    // Reset transform is automatic on resize, but safe to ensure clean state
-    ctx.scale(dpr, dpr);
+    canvas.width = logicalWidth * dpr;
+    canvas.height = logicalHeight * dpr;
+
+    // Force CSS to match logical size to prevent scrollbars or stretching
+    canvas.style.width = `${logicalWidth}px`;
+    canvas.style.height = `${logicalHeight}px`;
+
+    // 4. Configure Main Context
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+    ctx.scale(dpr, dpr); // Apply DPI scale
     ctx.font = `${TILE_SIZE}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 4. Resize Offscreen Canvas (Match Main Canvas)
+    // 5. Resize Offscreen Canvas (Match Main Canvas Exactly)
     terrainCanvas.width = canvas.width;
     terrainCanvas.height = canvas.height;
     
-    terrainCtx.scale(dpr, dpr); 
+    // 6. Configure Offscreen Context
+    terrainCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+    terrainCtx.scale(dpr, dpr); // Apply DPI scale
     terrainCtx.font = `${TILE_SIZE}px monospace`;
     terrainCtx.textAlign = 'center';
     terrainCtx.textBaseline = 'middle';
 
-    // 5. Force Redraw
-    // Added safety check to prevent error on first load
+    // 7. Force Redraw
     if (typeof gameState !== 'undefined') {
         gameState.mapDirty = true; 
         render();
@@ -8050,16 +8054,20 @@ function renderTerrainCache(startX, startY) {
     }
 }
 
-
 const render = () => {
     if (!gameState.mapMode) return;
 
-    // --- SETUP & OPTIMIZATION ---
+    // --- SETUP ---
     if (!cachedThemeColors.canvasBg) updateThemeColors();
     const { canvasBg } = cachedThemeColors;
 
+    // 1. Clear & Fill Background (Handles "Shake Gaps")
+    // We fill the background BEFORE translation so screen shake doesn't leave trails/voids
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset to absolute coordinates
     ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore(); // Restore to logical coordinates (scaled by dpr)
 
     // --- SCREEN SHAKE ---
     let shakeX = 0; let shakeY = 0;
@@ -8070,7 +8078,7 @@ const render = () => {
         if (gameState.screenShake < 0.5) gameState.screenShake = 0;
     }
 
-    ctx.save();
+    ctx.save(); // Start Scene Transform
     ctx.translate(shakeX, shakeY);
 
     const viewportCenterX = Math.floor(VIEWPORT_WIDTH / 2);
@@ -8078,25 +8086,24 @@ const render = () => {
     const startX = gameState.player.x - viewportCenterX;
     const startY = gameState.player.y - viewportCenterY;
 
-    // --- 1. UPDATE TERRAIN CACHE (The "Missing" 250 Lines) ---
-    // This delegates the heavy static drawing to your existing helper function
+    // --- 2. UPDATE TERRAIN CACHE ---
     if (gameState.mapDirty) {
         renderTerrainCache(startX, startY);
         gameState.mapDirty = false;
     }
 
-    // --- 2. DRAW CACHED TERRAIN (FAST!) ---
-    // We must specify the destination size to prevent double-scaling on High-DPI screens.
-    // We divide by devicePixelRatio because the context is already scaled.
+    // --- 3. DRAW CACHED TERRAIN ---
+    // CRITICAL FIX: The terrainCanvas is already scaled by DPR.
+    // The Main CTX is already scaled by DPR.
+    // To draw it 1:1, we must draw it at logical 0,0 with logical dimensions.
     const dpr = window.devicePixelRatio || 1;
-    ctx.drawImage(
-        terrainCanvas, 
-        0, 0, 
-        canvas.width / dpr, 
-        canvas.height / dpr
-    );
+    const logicalW = terrainCanvas.width / dpr;
+    const logicalH = terrainCanvas.height / dpr;
 
-    // --- 3. LIGHTING CALCULATIONS ---
+    // We use the logical dimensions because ctx is currently scaled
+    ctx.drawImage(terrainCanvas, 0, 0, logicalW, logicalH);
+
+    // --- 4. LIGHTING & DYNAMIC LAYER ---
     let ambientLight = 0.0;
     let baseRadius = 10;
     const hasTorch = gameState.player.inventory.some(item => item.name === 'Torch');
@@ -8122,13 +8129,12 @@ const render = () => {
     const torchFlicker = (Math.sin(now / 1000) * 0.2) + (Math.cos(now / 2500) * 0.1);
     const lightRadius = baseRadius + torchFlicker;
 
-    // --- 4. MAIN DYNAMIC LOOP (Lighting & Animations) ---
+    // --- LIGHTING LOOP ---
     for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
             const mapY = startY + y;
 
-            // Lighting Distances
             const distSq = (mapX - gameState.player.x) ** 2 + (mapY - gameState.player.y) ** 2;
             let effectiveRadius = lightRadius;
             if (typeof elevationNoise !== 'undefined') {
@@ -8136,8 +8142,8 @@ const render = () => {
             }
             const effectiveRadiusSq = effectiveRadius * effectiveRadius;
 
-            // Shadow Logic
             let tileShadowOpacity = ambientLight;
+
             if (gameState.mapMode === 'dungeon') {
                 if (distSq > effectiveRadiusSq) {
                     tileShadowOpacity = 1.0;
@@ -8154,8 +8160,7 @@ const render = () => {
                 else tileShadowOpacity = 0;
             }
 
-            // --- ANIMATED TILES (Drawn ON TOP of cache) ---
-            // The cache skips these, so we draw them live here
+            // Animated Tiles Overlay
             let tile = null;
             if (gameState.mapMode === 'overworld') tile = chunkManager.getTile(mapX, mapY);
             else if (gameState.mapMode === 'dungeon') {
@@ -8165,27 +8170,21 @@ const render = () => {
 
             if (tile) {
                 if (tile === '~') {
-                    // Your Specific Water Logic
                     const waveVal = (now / 1500) + (mapX * 0.3) + (mapY * 0.2) + Math.sin(mapY * 0.5);
                     let fgChar = Math.sin(waveVal) > 0 ? '~' : '≈';
                     ctx.fillStyle = '#3b82f6';
                     ctx.font = `bold ${TILE_SIZE}px monospace`;
                     ctx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
-                }
-                else if (tile === '🔥' || tile === 'D') {
+                } else if (tile === '🔥' || tile === 'D') {
                     const flicker = Math.floor(now / 100) % 3;
                     let fgColor = flicker === 0 ? '#ef4444' : (flicker === 1 ? '#f97316' : '#facc15');
-                    
                     if (tile === '🔥') {
                         TileRenderer.drawFire(ctx, x, y);
-                    }
-                    else if (tile === 'D' && gameState.currentCaveTheme === 'FIRE') {
-                        // Lava Floor Logic
+                    } else if (tile === 'D' && gameState.currentCaveTheme === 'FIRE') {
                         ctx.fillStyle = fgColor;
                         ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                     }
-                }
-                else if (tile === 'Ω') {
+                } else if (tile === 'Ω') {
                     const spin = Math.floor(now / 150) % 4;
                     const chars = ['Ω', 'C', 'U', '∩'];
                     ctx.fillStyle = '#a855f7';
@@ -8194,30 +8193,24 @@ const render = () => {
                 }
             }
 
-            // --- APPLY SHADOW ---
+            // Apply Shadow
             if (tileShadowOpacity > 0) {
                 ctx.fillStyle = `rgba(0, 0, 0, ${tileShadowOpacity})`;
                 ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
 
-            // --- TINT (Light Source Color) ---
+            // Apply Tint
             if (ambientLight > 0.3 && tileShadowOpacity < 0.5) {
-                // Default Warm
-                let r = 255, g = 180, b = 100; 
-                
-                // Your specific Biome Tints
+                let r = 255, g = 180, b = 100;
                 if (gameState.mapMode === 'dungeon') {
-                    const theme = chunkManager.caveThemes[gameState.currentCaveId];
-                    if (theme === 'ICE' || theme === 'CRYSTAL') { r = 100; g = 240; b = 255; }
-                    else if (theme === 'SWAMP' || theme === 'GROTTO') { r = 50; g = 255; b = 50; }
-                    else if (theme === 'FIRE') { r = 255; g = 80; b = 50; }
-                    else if (theme === 'VOID') { r = 180; g = 50; b = 255; }
+                    const themeName = chunkManager.caveThemes[gameState.currentCaveId];
+                    if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
+                    if (themeName === 'FIRE') { r = 255; g = 100; b = 50; }
                 } else if (gameState.mapMode === 'overworld') {
                     if (tile === '≈') { r = 100; g = 200; b = 100; }
                     else if (tile === 'd') { r = 200; g = 200; b = 180; }
                     else if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
                 }
-
                 const dist = Math.sqrt(distSq);
                 const tintStrength = (1 - (dist / effectiveRadius)) * 0.15;
                 if (tintStrength > 0) {
@@ -8228,9 +8221,9 @@ const render = () => {
         }
     }
 
-    // --- 5. ENTITIES & EFFECTS (Drawn after terrain is finished) ---
-
-    // Draw Telegraphs (Red Warning Zones)
+    // --- ENTITIES & PLAYERS ---
+    
+    // Attack Telegraphs
     if (gameState.instancedEnemies) {
         gameState.instancedEnemies.forEach(enemy => {
             if (enemy.pendingAttacks) {
@@ -8245,26 +8238,21 @@ const render = () => {
         });
     }
 
-    // Helper for Entities
     const drawEntity = (entity, x, y) => {
         const char = entity.tile || '?';
-        // Your cached check logic
         const isWide = charWidthCache[char] !== undefined ? charWidthCache[char] : /\p{Extended_Pictographic}/u.test(char);
-        
         ctx.fillStyle = entity.color || '#ef4444';
         ctx.font = isWide ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
         ctx.fillText(char, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
-
+        
         if (entity.isElite) {
             ctx.strokeStyle = entity.color || '#facc15';
             ctx.lineWidth = 1;
             ctx.strokeRect(x * TILE_SIZE + 2, y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
         }
-        // Draw Health Bar
         TileRenderer.drawHealthBar(ctx, x, y, entity.health, entity.maxHealth);
     };
 
-    // Draw Shared Enemies (Overworld)
     if (gameState.mapMode === 'overworld') {
         for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
             for (let x = 0; x < VIEWPORT_WIDTH; x++) {
@@ -8276,9 +8264,7 @@ const render = () => {
                 }
             }
         }
-    } 
-    // Draw Instanced Enemies
-    else {
+    } else {
         gameState.instancedEnemies.forEach(enemy => {
             const screenX = enemy.x - startX;
             const screenY = enemy.y - startY;
@@ -8288,21 +8274,18 @@ const render = () => {
         });
     }
 
-    // Draw Other Players
-    if (gameState.mapMode !== 'dungeon') {
+    const shouldRenderOtherPlayers = gameState.mapMode !== 'dungeon';
+    if (shouldRenderOtherPlayers) {
         for (const id in otherPlayers) {
             if (otherPlayers[id].mapMode !== gameState.mapMode || 
                 otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
-
             const op = otherPlayers[id];
             const screenX = (op.x - startX) * TILE_SIZE;
             const screenY = (op.y - startY) * TILE_SIZE;
-
             if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
                 ctx.fillStyle = '#f97316';
                 ctx.font = `bold ${TILE_SIZE}px monospace`;
                 ctx.fillText('@', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
-
                 if (op.companion) {
                     ctx.fillStyle = '#86efac';
                     ctx.font = `bold ${TILE_SIZE * 0.7}px monospace`;
@@ -8312,7 +8295,6 @@ const render = () => {
         }
     }
 
-    // Draw Self
     const playerChar = gameState.player.isBoating ? 'c' : gameState.player.character;
     ctx.font = `bold ${TILE_SIZE}px monospace`;
     ctx.strokeStyle = '#000';
@@ -8321,56 +8303,54 @@ const render = () => {
     ctx.fillStyle = '#3b82f6';
     ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
 
-    // --- 6. WEATHER EFFECTS (Restored Your Logic) ---
     const intensity = gameState.player.weatherIntensity || 0;
     if (intensity > 0 && gameState.weather !== 'clear') {
         ctx.save();
         ctx.globalAlpha = intensity;
-
         if (gameState.weather === 'rain') {
             ctx.fillStyle = 'rgba(0, 0, 100, 0.2)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr); // Fix fill size
             ctx.strokeStyle = 'rgba(120, 140, 255, 0.6)';
             ctx.lineWidth = 1;
             const dropCount = Math.floor(200 * intensity);
             for (let i = 0; i < dropCount; i++) {
-                const rx = Math.random() * canvas.width;
-                const ry = Math.random() * canvas.height;
+                const rx = Math.random() * (canvas.width / dpr);
+                const ry = Math.random() * (canvas.height / dpr);
                 const len = 10 + Math.random() * 10;
                 ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + len); ctx.stroke();
             }
         }
         else if (gameState.weather === 'snow') {
             ctx.fillStyle = 'rgba(200, 200, 220, 0.15)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             ctx.fillStyle = 'white';
             const flakeCount = Math.floor(150 * intensity);
             for (let i = 0; i < flakeCount; i++) {
-                const rx = Math.random() * canvas.width;
-                const ry = Math.random() * canvas.height;
+                const rx = Math.random() * (canvas.width / dpr);
+                const ry = Math.random() * (canvas.height / dpr);
                 const size = Math.random() * 2 + 1;
                 ctx.fillRect(rx, ry, size, size);
             }
         }
         else if (gameState.weather === 'storm') {
             ctx.fillStyle = 'rgba(10, 10, 30, 0.4)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             ctx.strokeStyle = 'rgba(150, 150, 255, 0.5)';
             ctx.lineWidth = 2;
             const dropCount = Math.floor(300 * intensity);
             for (let i = 0; i < dropCount; i++) {
-                const rx = Math.random() * canvas.width;
-                const ry = Math.random() * canvas.height;
+                const rx = Math.random() * (canvas.width / dpr);
+                const ry = Math.random() * (canvas.height / dpr);
                 ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 8, ry + 15); ctx.stroke();
             }
             if (Math.random() < 0.05 * intensity) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             }
         }
         else if (gameState.weather === 'fog') {
             ctx.fillStyle = `rgba(200, 200, 200, ${0.5 * intensity})`;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
         }
         ctx.restore();
     }
@@ -8379,14 +8359,11 @@ const render = () => {
         ParticleSystem.draw(ctx, startX, startY);
     }
 
-    // --- BOSS HEALTH BAR (Restored Your Logic) ---
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
         const bosses = gameState.instancedEnemies.filter(e => e.isBoss);
-
         if (bosses.length > 0) {
             let activeBoss = bosses[0];
             let minDist = Infinity;
-
             bosses.forEach(b => {
                 const d = Math.sqrt(Math.pow(b.x - gameState.player.x, 2) + Math.pow(b.y - gameState.player.y, 2));
                 if (d < minDist) {
@@ -8394,11 +8371,10 @@ const render = () => {
                     activeBoss = b;
                 }
             });
-
             if (minDist < 20 || bosses.length === 1) {
-                const barWidth = canvas.width * 0.6;
+                const barWidth = (canvas.width / dpr) * 0.6;
                 const barHeight = 20;
-                const barX = (canvas.width - barWidth) / 2;
+                const barX = ((canvas.width / dpr) - barWidth) / 2;
                 const barY = 40;
 
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -8407,7 +8383,7 @@ const render = () => {
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 16px monospace';
                 ctx.textAlign = 'center';
-                ctx.fillText(activeBoss.name, canvas.width / 2, barY - 5);
+                ctx.fillText(activeBoss.name, (canvas.width / dpr) / 2, barY - 5);
 
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 2;
@@ -8419,7 +8395,7 @@ const render = () => {
 
                 ctx.fillStyle = '#ffffff';
                 ctx.font = '12px monospace';
-                ctx.fillText(`${activeBoss.health} / ${activeBoss.maxHealth}`, canvas.width / 2, barY + 14);
+                ctx.fillText(`${activeBoss.health} / ${activeBoss.maxHealth}`, (canvas.width / dpr) / 2, barY + 14);
             }
         }
     }
