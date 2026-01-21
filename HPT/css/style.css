@@ -1,0 +1,195 @@
+/* --- Styles for the mouse coordinate display on the map --- */
+.leaflet-control-mouseposition {
+	background-color: rgba(255, 255, 255, 0.8);
+	box-shadow: 0 0 5px #bbb;
+	padding: 3px 8px;
+	margin: 0;
+	color: #333;
+	font: 12px/1.5 "Inter", sans-serif;
+	border-radius: 4px;
+	border: 1px solid #aaa;
+}
+
+/* --- STYLES FOR PERSISTENT NUMBER INPUT SPINNERS & CUSTOM DRAW CURSOR --- */
+.persistent-spinner::-webkit-inner-spin-button,
+.persistent-spinner::-webkit-outer-spin-button {
+	opacity: 0.3;
+	-webkit-appearance: inner-spin-button !important;
+	cursor: pointer;
+	transition: opacity 0.2s ease-in-out;
+}
+
+.persistent-spinner:hover::-webkit-inner-spin-button,
+.persistent-spinner:hover::-webkit-outer-spin-button,
+.persistent-spinner:focus::-webkit-inner-spin-button,
+.persistent-spinner:focus::-webkit-outer-spin-button {
+	opacity: 1;
+}
+
+/* Biased sample drawing tool icon */
+.leaflet-draw-biased-marker-icon {
+	background-color: #facc15;
+	/* amber-400 */
+	border: 2px solid #ca8a04;
+	/* amber-600 */
+	border-radius: 50%;
+	box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Fade-in animation logic */
+#root {
+	visibility: hidden;
+	opacity: 0;
+	transform: translateY(-10px);
+	transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+}
+
+#root.visible {
+	visibility: visible;
+	opacity: 1;
+	transform: translateY(0);
+}
+
+/* --- LOADER STYLES --- */
+#loader {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+	background-color: #f1f5f9;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+	transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+}
+
+.spinner {
+	width: 48px;
+	height: 48px;
+	border: 5px solid #cbd5e1;
+	border-bottom-color: #38bdf8;
+	border-radius: 50%;
+	display: inline-block;
+	box-sizing: border-box;
+	animation: spin 1s linear infinite;
+}
+
+.loading-text {
+	margin-top: 20px;
+	font-size: 1rem;
+	font-weight: 500;
+	color: #64748b;
+	animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Dark Mode Overrides */
+.dark #loader {
+	background-color: #0f172a;
+}
+
+.dark .spinner {
+	border: 5px solid #334155;
+	border-bottom-color: #38bdf8;
+}
+
+.dark .loading-text {
+	color: #94a3b8;
+}
+
+#loader.hidden {
+	opacity: 0;
+	visibility: hidden;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes pulse {
+
+	0%,
+	100% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0.5;
+	}
+}
+
+/* Body and Scrollbar */
+body {
+	background-color: #0f172a;
+	font-family: "Inter", sans-serif;
+}
+
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: #f1f5f9;
+}
+
+.dark ::-webkit-scrollbar-track {
+	background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+	background: #64748b;
+	border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: #475569;
+}
+
+/* Animations */
+.animate-fade-in {
+	animation: fade-in 0.3s ease-out forwards;
+}
+
+@keyframes toast-in {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.animate-toast-in {
+	animation: toast-in 0.3s ease-out forwards;
+}
+
+/* Map Markers */
+.grid-sample-marker {
+	stroke: #1E88E5;
+	stroke-width: 1;
+	fill: #1E88E5;
+	fill-opacity: 1;
+}
+
+.origin-sample-marker {
+	stroke: #9333ea;
+	stroke-width: 2;
+	fill: #c084fc;
+	fill-opacity: 1;
+}
+
+.biased-sample-marker {
+	stroke: #facc15;
+	stroke-width: 1;
+	fill: #facc15;
+	fill-opacity: 1;
+}
