@@ -4480,35 +4480,50 @@ function resizeCanvas() {
     const canvasContainer = canvas.parentElement;
     if (!canvasContainer) return;
 
+    // 1. Get Exact Container Dimensions
+    // We use clientHeight instead of hardcoding '30' to fix the bottom glitch
     const containerWidth = canvasContainer.clientWidth;
+    const containerHeight = canvasContainer.clientHeight; 
+
     TILE_SIZE = 20;
-    VIEWPORT_WIDTH = Math.floor(containerWidth / TILE_SIZE);
-    VIEWPORT_HEIGHT = 30;
+
+    // 2. Calculate Viewport (Round UP + Buffer)
+    // Math.ceil ensures we cover partial tiles at the edge (fixes Black Bar)
+    // +1 adds a safety buffer for screen shake or offsets
+    VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 1;
+    VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 1;
 
     const dpr = window.devicePixelRatio || 1;
 
-    // 1. Resize Main Canvas
-    canvas.width = (VIEWPORT_WIDTH * TILE_SIZE) * dpr;
-    canvas.height = (VIEWPORT_HEIGHT * TILE_SIZE) * dpr;
-    canvas.style.width = `${VIEWPORT_WIDTH * TILE_SIZE}px`;
-    canvas.style.height = `${VIEWPORT_HEIGHT * TILE_SIZE}px`;
+    // 3. Resize Main Canvas to FILL Container
+    // We set the canvas to the exact container size, not the "snapped" tile size
+    canvas.width = containerWidth * dpr;
+    canvas.height = containerHeight * dpr;
+    
+    canvas.style.width = `${containerWidth}px`;
+    canvas.style.height = `${containerHeight}px`;
+
+    // Reset transform is automatic on resize, but safe to ensure clean state
     ctx.scale(dpr, dpr);
     ctx.font = `${TILE_SIZE}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // 2. Resize Offscreen Canvas (New!)
+    // 4. Resize Offscreen Canvas (Match Main Canvas)
     terrainCanvas.width = canvas.width;
     terrainCanvas.height = canvas.height;
-    // We must scale the offscreen context too
+    
     terrainCtx.scale(dpr, dpr); 
     terrainCtx.font = `${TILE_SIZE}px monospace`;
     terrainCtx.textAlign = 'center';
     terrainCtx.textBaseline = 'middle';
 
-    // Force a full redraw next frame
-    gameState.mapDirty = true; 
-    render();
+    // 5. Force Redraw
+    // Added safety check to prevent error on first load
+    if (typeof gameState !== 'undefined') {
+        gameState.mapDirty = true; 
+        render();
+    }
 }
 
 function handleSellAllItems() {
