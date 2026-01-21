@@ -44,7 +44,6 @@ let isProcessingMove = false;
 let lastAiExecution = 0;
 
 let cachedThemeColors = {};
-const charWidthCache = {};
 
 const processingSpawnTiles = new Set();
 
