@@ -8085,8 +8085,16 @@ const render = () => {
         gameState.mapDirty = false;
     }
 
-    // --- 2. DRAW CACHED TERRAIN ---
-    ctx.drawImage(terrainCanvas, 0, 0);
+    // --- 2. DRAW CACHED TERRAIN (FAST!) ---
+    // We must specify the destination size to prevent double-scaling on High-DPI screens.
+    // We divide by devicePixelRatio because the context is already scaled.
+    const dpr = window.devicePixelRatio || 1;
+    ctx.drawImage(
+        terrainCanvas, 
+        0, 0, 
+        canvas.width / dpr, 
+        canvas.height / dpr
+    );
 
     // --- 3. LIGHTING CALCULATIONS ---
     let ambientLight = 0.0;
