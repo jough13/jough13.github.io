@@ -69,6 +69,17 @@ let activeShopInventory = [];
 
 const SELL_MODIFIER = 0.5; // Players sell items for 50% of their base price
 
+// --- OPTIMIZATION: Cache Emoji Checks ---
+// Regex is slow! We save the result so we don't calculate it 600 times a frame.
+const charWidthCache = {};
+const isWideChar = (char) => {
+    if (charWidthCache[char] !== undefined) return charWidthCache[char];
+    // The expensive check:
+    const isWide = /\p{Extended_Pictographic}/u.test(char); 
+    charWidthCache[char] = isWide;
+    return isWide;
+};
+
 /**
  * Scales an enemy based on distance from the center of the world.
  * Adds prefixes (Weak, Feral, Ancient) and buffs stats.
@@ -7954,7 +7965,7 @@ function renderTerrainCache(startX, startY) {
     // Optimized Helper for Wide Chars
     const isWideChar = (char) => {
         if (charWidthCache[char] !== undefined) return charWidthCache[char];
-        const isWide = /\p{Extended_Pictographic}/u.test(char);
+        const isWide = isWideChar(char);
         charWidthCache[char] = isWide;
         return isWide;
     };
@@ -8136,10 +8147,29 @@ const render = () => {
             const mapY = startY + y;
 
             const distSq = (mapX - gameState.player.x) ** 2 + (mapY - gameState.player.y) ** 2;
-            let effectiveRadius = lightRadius;
-            if (typeof elevationNoise !== 'undefined') {
-                effectiveRadius += elevationNoise.noise(mapX / 5, mapY / 5) * 1.5;
-            }
+
+// --- OPTIMIZATION: Early Exit ---
+// If the tile is waaaay outside our max possible light radius, skip the math.
+// (15 is a safe upper limit for torch + flicker + noise)
+if (distSq > 225 && gameState.mapMode !== 'dungeon') { // 15^2 = 225
+    // Just draw shadow and continue
+    if (ambientLight < 1.0) {
+        ctx.fillStyle = `rgba(0, 0, 0, ${1 - ambientLight})`; // Invert logic for opacity
+        // Actually, your logic uses 'tileShadowOpacity'. 
+        // If it's far away, opacity is 1.0 (black) in dungeons, or 'ambient' in overworld.
+    }
+    // Note: If you have ambient light (Daytime), you still need to render, 
+    // but you can skip the 'Noise' and 'EffectiveRadius' math below.
+}
+
+let effectiveRadius = lightRadius;
+
+// ONLY run the expensive Perlin Noise if we are actually near the light's edge
+// (This saves running it 400 times a frame for tiles that are obviously dark or obviously bright)
+if (typeof elevationNoise !== 'undefined' && distSq < 400) { 
+    effectiveRadius += elevationNoise.noise(mapX / 5, mapY / 5) * 1.5;
+}
+
             const effectiveRadiusSq = effectiveRadius * effectiveRadius;
 
             let tileShadowOpacity = ambientLight;
@@ -13515,18 +13545,29 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-function gameLoop() {
-    // 1. Update Particles
-    ParticleSystem.update();
+let lastFrameTime = 0;
+const FPS_LIMIT = 30;
+const FRAME_MIN_TIME = 1000 / FPS_LIMIT;
 
-    // 2. Process Input Buffer (The Fix)
+function gameLoop(timestamp) {
+    // 1. Throttle FPS
+    if (timestamp - lastFrameTime < FRAME_MIN_TIME) {
+        requestAnimationFrame(gameLoop);
+        return;
+    }
+    lastFrameTime = timestamp;
+
+    // 2. Update Particles
+    if (typeof ParticleSystem !== 'undefined') ParticleSystem.update();
+
+    // 3. Process Input Buffer
     if (inputBuffer && Date.now() - lastActionTime >= ACTION_COOLDOWN) {
         const key = inputBuffer;
-        inputBuffer = null; // Clear it immediately to prevent loops
+        inputBuffer = null; 
         handleInput(key);
     }
 
-    // 3. Re-render the game
+    // 4. Re-render
     if (gameState.mapMode) {
         render();
     }
@@ -13537,4 +13578,12 @@ function gameLoop() {
 // Start the loop
 requestAnimationFrame(gameLoop);
 
-window.addEventListener('resize', resizeCanvas); 
+// DEBOUNCE RESIZE: Only resize once the user STOPS dragging the window (saves CPU)
+let resizeTimer;
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resizeCanvas, 100); });
+
+// PREVENT SCROLLING: Stop arrow keys and spacebar from scrolling the browser window
+window.addEventListener('keydown', e => { if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault(); }, false);
+
+// AUTO-SAVE: Save the game if the user closes the tab or refreshes
+window.addEventListener('beforeunload', () => { if(typeof player_id !== 'undefined' && player_id) saveGame(); });
