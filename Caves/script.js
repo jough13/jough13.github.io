@@ -190,8 +190,6 @@ const ctx = canvas.getContext('2d');
 // --- PERFORMANCE: OFFSCREEN CANVAS ---
 const terrainCanvas = document.createElement('canvas');
 const terrainCtx = terrainCanvas.getContext('2d');
-// This flag tells us when the player moved and we MUST redraw the background
-gameState.mapDirty = true;
 
 const darkModeToggle = document.getElementById('darkModeToggle');
 const messageLog = document.getElementById('messageLog');
@@ -2804,6 +2802,7 @@ const ParticleSystem = {
 
 const gameState = {
     initialEnemiesLoaded: false,
+    mapDirty: true,
     screenShake: 0,
     weather: 'clear',
     player: {
