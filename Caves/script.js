@@ -7961,14 +7961,6 @@ function renderTerrainCache(startX, startY) {
     terrainCtx.fillStyle = canvasBg;
     terrainCtx.fillRect(0, 0, terrainCanvas.width, terrainCanvas.height);
 
-    // Optimized Helper for Wide Chars
-    const isWideChar = (char) => {
-        if (charWidthCache[char] !== undefined) return charWidthCache[char];
-        const isWide = isWideChar(char);
-        charWidthCache[char] = isWide;
-        return isWide;
-    };
-
     // Loop through the Viewport
     for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
