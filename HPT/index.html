@@ -1010,90 +1010,86 @@
          // These components represent the main content areas of the application.
          //==============================================================================
          
-         const CalculationHistoryPanel = ({ onNavClick }) => {
-         const [history, setHistory] = React.useState([]);
-         const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
-         
-         React.useEffect(() => {
-         const savedHistory = localStorage.getItem('rad_tool_calculation_history');
-         if (savedHistory) {
-         setHistory(JSON.parse(savedHistory));
-         }
-         }, []);
-         
-         const handleClearHistory = () => {
-         localStorage.removeItem('rad_tool_calculation_history');
-         setHistory([]);
-         setIsClearModalOpen(false);
-         };
-         
-         const handleItemClick = (view) => {
-         if (view && onNavClick) {
-         onNavClick(view);
-         }
-         };
-         
-         // Helper to format the timestamp
-         const formatTime = (timestamp) => {
-         if (!timestamp) return '';
-         return new Date(timestamp).toLocaleString('en-US', {
-         month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
-         });
-         };
-         
-         if (history.length === 0) {
-         return null;
-         }
-         
-         return (
-         <>
-         <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
-           <div className="flex justify-between items-center mb-4">
-               <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Calculations</h4>
-               <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">
-                   Clear History
-               </button>
-           </div>
-           <div className="space-y-3">
-               {history.map(item => (
-                   <button
-                       key={item.id}
-                       onClick={() => handleItemClick(item.view)}
-                       className="w-full text-left p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm hover:ring-2 hover:ring-sky-500 transition-all duration-150 relative group"
-                   >
-                       {/* Timestamp Badge */}
-                       <span className="absolute top-3 right-3 text-[10px] text-slate-400 font-mono bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
-                           {formatTime(item.id)}
-                       </span>
-         
-                       <div className="flex items-start gap-4 pr-16"> {/* Added padding-right to avoid overlap with timestamp */}
-                           {item.icon && <Icon path={item.icon} className="w-8 h-8 text-slate-400 dark:text-slate-500 mt-1 flex-shrink-0" />}
-                           <div className="flex-grow">
-                               <p className="font-bold text-sky-600 dark:text-sky-400">{item.type}</p>
-                               <p className="text-sm text-slate-600 dark:text-slate-300">
-                                   <span className="font-semibold">Inputs:</span> {item.inputs}
-                               </p>
-                               <p className="text-sm text-slate-800 dark:text-slate-100">
-                                   <span className="font-semibold">Result:</span> {item.result}
-                               </p>
-                           </div>
-                       </div>
-                   </button>
-               ))}
-           </div>
-         </div>
-         
-         <ConfirmationModal
-           isOpen={isClearModalOpen}
-           onClose={() => setIsClearModalOpen(false)}
-           onConfirm={handleClearHistory}
-           title="Clear Calculation History"
-         >
-           <p>Are you sure you want to clear your five most recent calculations?</p>
-         </ConfirmationModal>
-         </>
-         );
-         };
+         const CalculationHistoryPanel = () => {
+          // Note: Removed onNavClick prop since we are making this read-only
+          const [history, setHistory] = React.useState([]);
+          const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
+
+          React.useEffect(() => {
+              const savedHistory = localStorage.getItem('rad_tool_calculation_history');
+              if (savedHistory) {
+                  setHistory(JSON.parse(savedHistory));
+              }
+          }, []);
+
+          const handleClearHistory = () => {
+              localStorage.removeItem('rad_tool_calculation_history');
+              setHistory([]);
+              setIsClearModalOpen(false);
+          };
+
+          // Helper to format the timestamp
+          const formatTime = (timestamp) => {
+              if (!timestamp) return '';
+              return new Date(timestamp).toLocaleString('en-US', {
+                  month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+              });
+          };
+
+          if (history.length === 0) {
+              return null;
+          }
+
+          return (
+              <>
+                  <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
+                      <div className="flex justify-between items-center mb-4">
+                          <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Calculations</h4>
+                          {/* FIX: Renamed button to be specific */}
+                          <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">
+                              Clear Calculations
+                          </button>
+                      </div>
+                      <div className="space-y-3">
+                          {history.map(item => (
+                              /* FIX: Changed <button> to <div> and removed onClick/hover effects */
+                              <div
+                                  key={item.id}
+                                  className="w-full text-left p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 relative"
+                              >
+                                  {/* Timestamp Badge */}
+                                  <span className="absolute top-3 right-3 text-[10px] text-slate-400 font-mono bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                                      {formatTime(item.id)}
+                                  </span>
+
+                                  <div className="flex items-start gap-4 pr-16">
+                                      {item.icon && <Icon path={item.icon} className="w-8 h-8 text-slate-400 dark:text-slate-500 mt-1 flex-shrink-0" />}
+                                      <div className="flex-grow">
+                                          <p className="font-bold text-sky-600 dark:text-sky-400">{item.type}</p>
+                                          <p className="text-sm text-slate-600 dark:text-slate-300">
+                                              <span className="font-semibold">Inputs:</span> {item.inputs}
+                                          </p>
+                                          <p className="text-sm text-slate-800 dark:text-slate-100">
+                                              <span className="font-semibold">Result:</span> {item.result}
+                                          </p>
+                                      </div>
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+
+                  <ConfirmationModal
+                      isOpen={isClearModalOpen}
+                      onClose={() => setIsClearModalOpen(false)}
+                      onConfirm={handleClearHistory}
+                      title="Clear Calculation History"
+                  >
+                      <p>Are you sure you want to clear your five most recent calculations?</p>
+                  </ConfirmationModal>
+              </>
+          );
+      };
          
          /**
          * @description The landing page view, showing suggestions, search history, favorites, or the main search result.
@@ -1201,33 +1197,40 @@
                            nuclide={n}
                            isCompact={true}
                            onNuclideClick={handleNuclideSelection}
+                           // Pass true to skip adding this to search history again
+                           onNuclideClick={(n) => handleNuclideSelection(n, true)}
                        />
                    ))}
                </div>
            </div>
          )}
          
-         {/* --- 2. RECENT SEARCHES --- */}
-         {searchHistoryNuclides.length > 0 && (
-           <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
-               <div className="flex justify-between items-center mb-4">
-                   <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Searches</h4>
-                   <button onClick={() => setIsHistoryModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
-                       Clear History
-                   </button>
-               </div>
-               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                   {searchHistoryNuclides.map(n => (
-                       <NuclideCard
-                           key={n.symbol}
-                           nuclide={n}
-                           isCompact={true}
-                           onNuclideClick={handleNuclideSelection}
-                       />
-                   ))}
-               </div>
-           </div>
-         )}
+        {/* --- 2. RECENT SEARCHES --- */}
+        {searchHistoryNuclides.length > 0 && (
+            <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
+                <div className="flex justify-between items-center mb-4">
+                    <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Searches</h4>
+                    
+                    {/* FIX: Renamed button text from "Clear History" to "Clear Searches" */}
+                    <button onClick={() => setIsHistoryModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
+                        Clear Searches
+                    </button>
+                    
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {searchHistoryNuclides.map(n => (
+                        <NuclideCard
+                            key={n.symbol}
+                            nuclide={n}
+                            isCompact={true}
+                            onNuclideClick={handleNuclideSelection}
+                            // Pass true here too
+                            onNuclideClick={(n) => handleNuclideSelection(n, true)}
+                        />
+                    ))}
+                </div>
+            </div>
+        )}
          
          {/* --- 3. RECENT CALCULATIONS --- */}
          <CalculationHistoryPanel onNavClick={onNavClick} />
@@ -8031,11 +8034,14 @@
          const { addToast } = useToast();
          
          React.useEffect(() => {
-         const initialHash = window.location.hash.replace('#', '');
-         if ((initialHash === VIEWS.HOME || initialHash === '') && window.innerWidth > 768) {
-         inputRef.current?.focus();
-         }
-         }, []);
+        // Check if the new view is HOME and we are on a desktop (width > 768px)
+        if (activeView === VIEWS.HOME && window.innerWidth > 768) {
+            // Small timeout ensures the render is complete before focusing
+            setTimeout(() => {
+                inputRef.current?.focus();
+            }, 50);
+        }
+        }, [activeView]); // Dependency added here
          
          React.useEffect(() => {
          if (sessionStorage.getItem('showResetToast') === 'true') {
@@ -8072,7 +8078,6 @@
          setActiveView(view);
          window.location.hash = view;
          scrollToMainContent();
-         if (view === VIEWS.HOME) { inputRef.current?.blur(); }
          };
          
          const handleClearSearch = () => {
@@ -8197,21 +8202,25 @@
          const handleClearFavorites = () => { setFavorites([]); localStorage.removeItem('favoriteNuclides'); addToast('Favorites list cleared.'); };
          const updateSearchHistory = (nuclide) => { setSearchHistory(prev => { const newHistory = [nuclide.symbol, ...prev.filter(symbol => symbol !== nuclide.symbol)]; const limitedHistory = newHistory.slice(0, 5); localStorage.setItem('radionuclideSearchHistory', JSON.stringify(limitedHistory)); return limitedHistory; }); }
          
-         const handleNuclideSelection = (nuclide) => {
-         // Save the current view if we are not already in the detail view.
-         // This allows browsing parent/daughter chains while keeping the original "Back" destination.
-         if (activeView !== VIEWS.DETAIL) {
-         setPreviousView(activeView);
-         }
-         
-         setNuclideName(nuclide.name);
-         updateSearchHistory(nuclide);
-         setDetailedNuclide(nuclide);
-         setSuggestions([]);
-         setErrorMessage('');
-         setCurrentDecaySeriesId(null);
-         handleNavClick(VIEWS.DETAIL);
-         };
+         const handleNuclideSelection = (nuclide, skipHistory = false) => {
+            // Save the current view if we are not already in the detail view.
+            if (activeView !== VIEWS.DETAIL) {
+                setPreviousView(activeView);
+            }
+
+            setNuclideName(nuclide.name);
+            
+            // Only update history if the flag is FALSE (default behavior)
+            if (!skipHistory) {
+                updateSearchHistory(nuclide);
+            }
+
+            setDetailedNuclide(nuclide);
+            setSuggestions([]);
+            setErrorMessage('');
+            setCurrentDecaySeriesId(null);
+            handleNavClick(VIEWS.DETAIL);
+        };
          
          
          React.useEffect(() => {
