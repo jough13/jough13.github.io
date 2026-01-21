@@ -11741,6 +11741,7 @@ async function attemptMovePlayer(newX, newY) {
                     gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
                     logMessage("You enter the " + (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') + "...");
                     updateRegionDisplay();
+                    gameState.mapDirty = true;
                     render();
                     syncPlayerState();
                     return;
@@ -12427,6 +12428,9 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
                 logMessage("You enter the peaceful village.");
                 updateRegionDisplay();
+
+                gameState.mapDirty = true;
+
                 render();
                 syncPlayerState();
                 return;
@@ -12454,6 +12458,9 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.instancedEnemies = JSON.parse(JSON.stringify(epicEnemies));
                 logMessage("You descend into The Maw.");
                 updateRegionDisplay();
+
+                gameState.mapDirty = true;
+
                 render();
                 syncPlayerState();
                 return;
@@ -12495,6 +12502,9 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
                 logMessage("You enter the " + (CAVE_THEMES[gameState.currentCaveTheme]?.name || 'cave') + "...");
                 updateRegionDisplay();
+
+                gameState.mapDirty = true;
+
                 render();
                 syncPlayerState();
                 return;
@@ -12541,6 +12551,9 @@ async function attemptMovePlayer(newX, newY) {
                 gameState.friendlyNpcs = JSON.parse(JSON.stringify(chunkManager.friendlyNpcs?.[gameState.currentCastleId] || []));
                 logMessage("You enter the castle grounds.");
                 updateRegionDisplay();
+
+                gameState.mapDirty = true;
+                
                 render();
                 syncPlayerState();
                 return;
