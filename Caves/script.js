@@ -4250,9 +4250,9 @@ function grantXp(amount) {
         logMessage(`LEVEL UP! You are now level ${player.level}!`);
         ParticleSystem.createLevelUp(player.x, player.y);
 
-        if (player.level === 10 && !player.classEvolved) {
-            openEvolutionModal();
-        }
+        if (player.level >= 10 && !player.classEvolved) {
+           openEvolutionModal();
+            }
 
         // --- Award Talent Point every 3 levels ---
         if (player.level % 3 === 0) {
@@ -4528,7 +4528,7 @@ function handleSellAllItems() {
 
         // 2. Filter: Only sell 'junk' (Loot) and 'consumable' (Food/Potions)
         // We skip 'weapon', 'armor', 'tool', 'spellbook', etc. to be safe.
-        if (item.type === 'junk' || item.type === 'consumable') {
+        if (item.type === 'junk') {
 
             // --- Price Calculation Logic (Matches handleSellItem) ---
             // 1. Try exact match
@@ -7391,23 +7391,31 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         const enemyId = `overworld:${targetX},${-targetY}`;
         const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
+        // --- FIX START: Capture Stats Before Damage ---
+        // Just like melee, we check if we have a local visual copy of this enemy.
+        // If we do, we use its stats (Name, Elite status, Max HP) for the transaction.
+        const liveEnemy = gameState.sharedEnemies[enemyId];
+        const enemyInfo = liveEnemy || getScaledEnemy(enemyData, targetX, targetY);
+        // --- FIX END ---
+
         try {
             const transactionResult = await enemyRef.transaction(currentData => {
                 let enemy;
 
-                // --- NEW: Handle fresh spawn via magic ---
                 if (currentData === null) {
-                    // If it doesn't exist yet, create it scaled!
-                    const scaledStats = getScaledEnemy(enemyData, targetX, targetY);
+                    // FIX: Use enemyInfo (the visual state) instead of generating random new stats
                     enemy = {
-                        health: scaledStats.maxHealth,
-                        maxHealth: scaledStats.maxHealth,
-                        attack: scaledStats.attack,
-                        defense: enemyData.defense,
-                        xp: scaledStats.xp,
+                        name: enemyInfo.name, 
+                        health: enemyInfo.maxHealth,
+                        maxHealth: enemyInfo.maxHealth,
+                        attack: enemyInfo.attack,
+                        defense: enemyData.defense, // Base defense is usually fine, or use enemyInfo.defense
+                        xp: enemyInfo.xp,
                         loot: enemyData.loot,
                         tile: tile,
-                        name: scaledStats.name
+                        // Critical: Persist Elite status and color
+                        isElite: enemyInfo.isElite || false,
+                        color: enemyInfo.color || null
                     };
                 } else {
                     enemy = currentData;
@@ -7422,21 +7430,28 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
                 if (spellId === 'fireball') color = '#f97316'; // Orange for fire
                 if (spellId === 'poisonBolt') color = '#22c55e'; // Green for poison
 
-                ParticleSystem.createExplosion(targetX, targetY, color);
-                ParticleSystem.createFloatingText(targetX, targetY, `-${damageDealt}`, color);
+                // Note: Visuals inside transaction might fire multiple times on retries, 
+                // but for this game it's acceptable.
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createExplosion(targetX, targetY, color);
+                    ParticleSystem.createFloatingText(targetX, targetY, `-${damageDealt}`, color);
+                }
 
                 if (enemy.health <= 0) return null;
                 return enemy;
             });
 
             const finalEnemyState = transactionResult.snapshot.val();
+            
             if (finalEnemyState === null) {
+                // Enemy Died
+                // Use enemyInfo for the log and XP so it matches what the player saw
+                logMessage(`The ${enemyInfo.name} was vanquished!`);
+                registerKill(enemyInfo);
 
-                const deadEnemyInfo = getScaledEnemy(enemyData, targetX, targetY);
-
-                registerKill(deadEnemyInfo);
-
-                const droppedLoot = generateEnemyLoot(player, enemyData);
+                // Pass Elite flag to loot generator
+                const lootData = { ...enemyData, isElite: enemyInfo.isElite };
+                const droppedLoot = generateEnemyLoot(player, lootData);
 
                 chunkManager.setWorldTile(targetX, targetY, droppedLoot);
             }
@@ -7608,26 +7623,26 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
     try {
         // Use a transaction to safely read and write enemy health
         const transactionResult = await enemyRef.transaction(currentData => {
-            let enemy;
-            if (currentData === null) {
-                // First time this enemy is hit. Create it in RTDB.
-                // Note: We use the existing logic here, but for the LOGS we use 'enemyInfo' captured above.
-                const scaledStats = getScaledEnemy(enemyData, newX, newY);
-
-                enemy = {
-                    health: scaledStats.maxHealth,
-                    maxHealth: scaledStats.maxHealth,
-                    attack: scaledStats.attack,
-                    defense: enemyData.defense,
-                    xp: scaledStats.xp,
-                    loot: enemyData.loot,
-                    tile: newTile, 
-                    name: scaledStats.name 
-                };
-
-            } else {
-                enemy = currentData;
-            }
+    let enemy;
+    if (currentData === null) {
+        // Instead of generating NEW stats here, use the stats we already saw!
+        // We use enemyInfo (captured from local state) as the blueprint.
+        enemy = {
+            name: enemyInfo.name, // Keep the name (e.g. "Massive Wolf")
+            health: enemyInfo.maxHealth, // Keep the HP we saw
+            maxHealth: enemyInfo.maxHealth,
+            attack: enemyInfo.attack,
+            defense: enemyInfo.defense || enemyData.defense,
+            xp: enemyInfo.xp,
+            loot: enemyData.loot,
+            tile: newTile,
+            // Persist the Elite flag and color so other players see the same thing
+            isElite: enemyInfo.isElite || false,
+            color: enemyInfo.color || null
+        };
+    } else {
+        enemy = currentData;
+    }
 
             // --- Player Attacks Enemy ---
             enemy.health -= playerDamage;
@@ -8303,16 +8318,50 @@ const render = () => {
     }
 
     // --- 4. DRAW OTHER PLAYERS ---
-    for (const id in otherPlayers) {
-        if (otherPlayers[id].mapMode !== gameState.mapMode || otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
-        const op = otherPlayers[id];
-        const screenX = (op.x - startX) * TILE_SIZE;
-        const screenY = (op.y - startY) * TILE_SIZE;
-        if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
-            // Restored Text Drawing for Other Players
-            ctx.fillStyle = '#f97316'; // Orange
-            ctx.font = `bold ${TILE_SIZE}px monospace`;
-            ctx.fillText('@', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
+
+    // TODO: FUTURE UPDATE - Implement True MMO Dungeons.
+    // Currently, dungeons use local instanced enemies. To prevent visual confusion ("ghost fighting"),
+    // we hide other players while inside dungeons. 
+    const shouldRenderOtherPlayers = gameState.mapMode !== 'dungeon'; 
+
+    if (shouldRenderOtherPlayers) {
+        for (const id in otherPlayers) {
+            // Check if they are in the same mode and same map ID
+            if (otherPlayers[id].mapMode !== gameState.mapMode || 
+                otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) {
+                continue;
+            }
+
+            const op = otherPlayers[id];
+            const screenX = (op.x - startX) * TILE_SIZE;
+            const screenY = (op.y - startY) * TILE_SIZE;
+
+            // Only draw if on screen
+            if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
+                
+                // 1. Draw The Player (@)
+                ctx.fillStyle = '#f97316'; // Orange
+                ctx.font = `bold ${TILE_SIZE}px monospace`;
+                ctx.fillText('@', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
+
+                // 2. Draw Their Companion (If they have one)
+                if (op.companion) {
+                    // Draw a smaller sprite slightly offset to the top-right
+                    // This indicates "following" without needing exact coordinate syncing
+                    const petChar = op.companion.tile || '?';
+                    
+                    ctx.fillStyle = '#86efac'; // Light Green (Friendly Pet color)
+                    ctx.font = `bold ${TILE_SIZE * 0.7}px monospace`; // 70% size
+                    
+                    // Offset calculation: 
+                    // X: Push to right side of tile
+                    // Y: Push to top side of tile
+                    const petX = screenX + TILE_SIZE - 2;
+                    const petY = screenY + 6;
+
+                    ctx.fillText(petChar, petX, petY);
+                }
+            }
         }
     }
 
@@ -8449,11 +8498,17 @@ function syncPlayerState() {
             maxHealth: gameState.player.maxHealth,
             mapMode: gameState.mapMode,
             mapId: gameState.currentCaveId || gameState.currentCastleId || null,
-            email: auth.currentUser.email
+            email: auth.currentUser.email,
+            // Sync Companion Position
+            companion: gameState.player.companion ? {
+                tile: gameState.player.companion.tile,
+                name: gameState.player.companion.name,
+                x: gameState.player.companion.x, // Sync X
+                y: gameState.player.companion.y  // Sync Y
+            } : null
         };
         onlinePlayerRef.set(stateToSync);
     }
-
 }
 
 /**
