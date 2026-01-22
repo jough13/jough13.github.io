@@ -346,17 +346,17 @@
             <button id="closeFastTravelButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Cancel</button>
          </div>
       </div>
-      <div id="gameOverModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 text-center">
-            <h2 class="text-3xl font-bold text-red-500 mb-4">You Have Perished</h2>
-            <div class="mb-6 space-y-1">
-               <p id="finalLevelDisplay" class="text-lg">Level: 1</p>
-               <p id="finalCoinsDisplay" class="text-lg">Gold: 0</p>
-            </div>
-            <p class="mb-6">Your journey has come to an end. But a new one can begin.</p>
-            <button id="restartButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">Restart</button>
-         </div>
-      </div>
+      <div id="gameOverModal" class="modal hidden">
+    <div class="modal-content">
+        <h2>YOU DIED</h2>
+        <p id="finalLevelDisplay">Level: 1</p>
+        <p id="finalCoinsDisplay">Gold: 0</p>
+        <div class="flex gap-4 mt-4">
+            <button id="restartButton" class="btn-green flex-1">Respawn at Village</button>
+            <button id="mainMenuButton" class="btn-red flex-1">Main Menu</button>
+        </div>
+    </div>
+</div>
       <div id="loreModal" class="modal-overlay hidden">
          <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
             <h2 id="loreTitle" class="text-2xl font-bold mb-4">Title</h2>
