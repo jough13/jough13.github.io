@@ -9163,34 +9163,37 @@ function getPlayerDamageModifier(baseDamage) {
 function handlePlayerDeath() {
     if (gameState.player.health > 0) return false; // Not dead
 
-    // 1. Clamp health
-    gameState.player.health = 0;
+    const player = gameState.player;
 
-    // 2. Visuals & Logs
+    // 1. Visuals & Logs
+    // Ensure health is clamped to 0 so the game loop knows we are dead
+    player.health = 0; 
     logMessage("{red:You have perished!}");
     triggerStatFlash(statDisplays.health, false);
 
-    // --- Remove Equipment Stats ---
-    if (gameState.player.equipment.weapon) applyStatBonuses(gameState.player.equipment.weapon, -1);
-    if (gameState.player.equipment.armor) applyStatBonuses(gameState.player.equipment.armor, -1);
+    // 2. Remove Equipment Stats (So we don't carry buffs over)
+    if (player.equipment.weapon) applyStatBonuses(player.equipment.weapon, -1);
+    if (player.equipment.armor) applyStatBonuses(player.equipment.armor, -1);
 
-    // --- CORPSE SCATTER LOGIC (BATCHED) ---
-    // (Keep your existing loop here that drops items onto the ground)
-    const player = gameState.player;
+    // 3. CORPSE SCATTER LOGIC
+    // (This drops your inventory on the ground where you died)
     const deathX = player.x;
     const deathY = player.y;
-    let droppedCount = 0;
     const pendingUpdates = {};
 
     for (let i = player.inventory.length - 1; i >= 0; i--) {
         const item = player.inventory[i];
         let placed = false;
+        
+        // Try to place item in a 3x3 grid around death spot
         for (let r = 0; r <= 2 && !placed; r++) {
             for (let dy = -r; dy <= r && !placed; dy++) {
                 for (let dx = -r; dx <= r && !placed; dx++) {
                     const tx = deathX + dx;
                     const ty = deathY + dy;
                     let tile;
+
+                    // Check terrain validity
                     if (gameState.mapMode === 'overworld') tile = chunkManager.getTile(tx, ty);
                     else if (gameState.mapMode === 'dungeon') tile = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
                     else tile = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
@@ -9205,49 +9208,43 @@ function handlePlayerDeath() {
                             const lKey = `${lX},${lY}`;
                             if (!pendingUpdates[cId]) pendingUpdates[cId] = {};
                             pendingUpdates[cId][lKey] = item.tile;
-                            if (!chunkManager.worldState[cId]) chunkManager.worldState[cId] = {};
-                            chunkManager.worldState[cId][lKey] = item.tile;
                         } else if (gameState.mapMode === 'dungeon') {
                             chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = item.tile;
                         } else {
                             chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = item.tile;
                         }
-                        placed = true; droppedCount++;
+                        placed = true;
                     }
                 }
             }
         }
     }
 
+    // Apply map updates
     if (gameState.mapMode === 'overworld') {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
             db.collection('worldState').doc(cId).set(updates, { merge: true });
         }
     }
 
-    // 3. APPLY PERMANENT DEATH CHANGES TO DATA
+    // 4. CALCULATE PENALTIES (But do not move player yet)
     const goldLost = Math.floor(player.coins / 2);
     player.coins -= goldLost;
-    player.x = 0;
-    player.y = 0;
-    player.health = player.maxHealth; // Pre-heal for the respawn
-    player.stamina = player.maxStamina;
-    player.hunger = 50;
-    player.thirst = 50;
-    player.inventory = [
-        { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
-    ];
-    player.equipment = { weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Tattered Rags', defense: 0 } };
+    
+    // Clear inventory immediately so it can't be accessed while dead
+    player.inventory = []; 
+    player.equipment = { weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Simple Tunic', defense: 0 } };
 
-    // 4. Update UI Text
+    // 5. Update Modal UI
     document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
     document.getElementById('finalCoinsDisplay').textContent = `Gold lost: ${goldLost}`;
 
-    // 5. Show Modal (DO NOT RELOAD AUTOMATICALLY)
+    // 6. Show Modal
     gameOverModal.classList.remove('hidden');
 
-    // 6. Sync death state to DB
-    syncPlayerState();
+    // 7. Save "Dead" State
+    // We save health: 0 and current X/Y. 
+    // This ensures if they refresh the page, they are still dead.
     playerRef.set(player);
 
     return true;
@@ -13397,33 +13394,61 @@ window.addEventListener('keydown', e => { if(["Space","ArrowUp","ArrowDown","Arr
 // AUTO-SAVE: Save the game if the user closes the tab or refreshes
 window.addEventListener('beforeunload', () => { if(typeof player_id !== 'undefined' && player_id) saveGame(); });
 
-// Continue / Respawn
+// --- Restart / Respawn Handler ---
 restartButton.onclick = () => {
-    gameOverModal.classList.add('hidden');
-    logMessage("{green:You open your eyes... you have been given a second chance.}");
+    const player = gameState.player;
+
+    // 1. Reset Position (The "Original Coordinates")
+    player.x = 0;
+    player.y = 0;
+
+    // 2. Restore Vitals
+    player.health = player.maxHealth;
+    player.stamina = player.maxStamina;
+    player.mana = player.maxMana;
+    player.hunger = 50;
+    player.thirst = 50;
     
-    // Refresh the map and UI
+    // Clear buffs
+    player.poisonTurns = 0;
+    player.frostbiteTurns = 0;
+
+    // 3. Give Starter Gear (Hardcore penalty: Rags)
+    player.inventory = [
+        { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
+    ];
+    player.equipment = {
+        weapon: { name: 'Fists', damage: 0 },
+        armor: { name: 'Tattered Rags', defense: 0 }
+    };
+
+    // 4. Reset Map Mode to Overworld
     gameState.mapMode = 'overworld';
     gameState.currentCaveId = null;
     gameState.currentCastleId = null;
-    
+
+    // 5. Save "Alive" State to DB
+    playerRef.set(player);
+
+    // 6. UI Cleanup
+    gameOverModal.classList.add('hidden');
+    logMessage("{green:You open your eyes... you have been given a second chance.}");
+
+    // Force full re-render
     updateRegionDisplay();
     renderStats();
     renderInventory();
+    renderEquipment();
     resizeCanvas();
     render();
 };
 
-// Quit to Main Menu
+// --- Main Menu Handler ---
 const mainMenuBtn = document.getElementById('mainMenuButton');
 if (mainMenuBtn) {
     mainMenuBtn.onclick = () => {
-        gameOverModal.classList.add('hidden');
-        
-        // Remove from online list and sign out
-        if (onlinePlayerRef) onlinePlayerRef.remove();
-        auth.signOut(); 
-        
-        // UI reset handled by auth.onAuthStateChanged
+        // Reloading is the safest way to clear all game state (variables, listeners, etc.)
+        // and return to the login/character select screen.
+        location.reload();
     };
 }
