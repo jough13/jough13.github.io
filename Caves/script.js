@@ -49,6 +49,24 @@ const processingSpawnTiles = new Set();
 
 let areGlobalListenersInitialized = false;
 
+// --- OPTIMIZATION: Spatial Hash ---
+const SpatialHash = {
+    buckets: new Map(),
+    getKey: (x, y) => `${x},${y}`,
+    add: function(entity, x, y) {
+        this.buckets.set(this.getKey(x, y), entity);
+    },
+    remove: function(x, y) {
+        this.buckets.delete(this.getKey(x, y));
+    },
+    get: function(x, y) {
+        return this.buckets.get(this.getKey(x, y));
+    },
+    clear: function() {
+        this.buckets.clear();
+    }
+};
+
 // --- INPUT THROTTLE ---
 let lastActionTime = 0;
 const ACTION_COOLDOWN = 150; // ms (limits speed to ~6 moves per second)
@@ -2710,97 +2728,92 @@ const chunkManager = {
 };
 
 const ParticleSystem = {
-    particles: [],
+    pool: [],
+    activeParticles: [],
+    MAX_PARTICLES: 150,
 
-    // 🩸 Blood/Sparks (Physics based)
-    createExplosion: (x, y, color, count = 8) => {
-        for (let i = 0; i < count; i++) {
-            ParticleSystem.particles.push({
-                x: x + 0.5,
-                y: y + 0.5,
-                vx: (Math.random() - 0.5) * 0.2, // Explode out
-                vy: (Math.random() - 0.5) * 0.2,
-                life: 1.0,
-                color: color,
-                type: 'dust',
-                size: Math.random() * 3 + 2,
-                gravity: 0.01 // Gravity pulls particles down
-            });
+    // Initialize the pool
+    init: function() {
+        for(let i=0; i<this.MAX_PARTICLES; i++) this.pool.push({ active: false });
+    },
+
+    spawn: function(x, y, color, type='dust', text='', size=2) {
+        if(this.pool.length === 0) return; // Pool empty, skip particle
+        
+        const p = this.pool.pop(); // Reuse an old particle
+        p.active = true;
+        p.x = x + 0.5; 
+        p.y = y + 0.5;
+        p.color = color; 
+        p.type = type; 
+        p.text = text; 
+        p.size = size;
+        p.life = 1.0;
+        
+        if (type === 'text') {
+            p.vx = 0; 
+            p.vy = -0.02; 
+            p.size = 14;
+            p.gravity = 0;
+        } else {
+            p.vx = (Math.random() - 0.5) * 0.2;
+            p.vy = (Math.random() - 0.5) * 0.2;
+            p.gravity = 0.01;
         }
+        this.activeParticles.push(p);
     },
 
-    // 💬 Floating Text (Drifts up)
-    createFloatingText: (x, y, text, color) => {
-        ParticleSystem.particles.push({
-            x: x + 0.5,
-            y: y,
-            vx: 0,
-            vy: -0.02, // Float up slowly
-            life: 1.0, // 1 second duration
-            color: color,
-            text: text,
-            type: 'text',
-            size: 14 // Start size
-        });
+    createExplosion: function(x, y, color, count=8) {
+        for(let i=0; i<count; i++) this.spawn(x, y, color, 'dust', '', Math.random()*3+2);
     },
 
-    // 🎉 Level Up (Confetti)
-    createLevelUp: (x, y) => {
-        for (let i = 0; i < 30; i++) {
-            const colors = ['#facc15', '#ef4444', '#3b82f6', '#22c55e'];
-            ParticleSystem.particles.push({
-                x: x + 0.5,
-                y: y + 0.5,
-                vx: (Math.random() - 0.5) * 0.3,
-                vy: (Math.random() * -0.3) - 0.1, // Pop UP
-                life: 2.0,
-                color: colors[Math.floor(Math.random() * colors.length)],
-                type: 'dust',
-                size: 4,
-                gravity: 0.015
-            });
-        }
-        ParticleSystem.createFloatingText(x, y, "LEVEL UP!", "#facc15");
+    createFloatingText: function(x, y, text, color) {
+        this.spawn(x, y, color, 'text', text);
     },
 
-    update: () => {
-        for (let i = ParticleSystem.particles.length - 1; i >= 0; i--) {
-            const p = ParticleSystem.particles[i];
+    createLevelUp: function(x, y) {
+        this.createFloatingText(x, y, "LEVEL UP!", "#facc15");
+        for(let i=0; i<20; i++) this.spawn(x, y, ['#facc15','#ef4444'][Math.floor(Math.random()*2)], 'dust');
+    },
 
-            p.x += p.vx;
+    update: function() {
+        for (let i = this.activeParticles.length - 1; i >= 0; i--) {
+            const p = this.activeParticles[i];
+            p.x += p.vx; 
             p.y += p.vy;
             p.life -= 0.02;
-
-            // Apply Gravity to dust/blood
-            if (p.gravity) {
-                p.vy += p.gravity;
-            }
+            if(p.gravity) p.vy += p.gravity;
 
             if (p.life <= 0) {
-                ParticleSystem.particles.splice(i, 1);
+                p.active = false;
+                this.pool.push(p); // Recycle back to pool
+                this.activeParticles.splice(i, 1);
             }
         }
     },
 
-    draw: (ctx, startX, startY) => {
-        ParticleSystem.particles.forEach(p => {
+    draw: function(ctx, startX, startY) {
+        // Simple culling bounds
+        const minX = -TILE_SIZE;
+        const maxX = ctx.canvas.width + TILE_SIZE;
+        const minY = -TILE_SIZE;
+        const maxY = ctx.canvas.height + TILE_SIZE;
+
+        for(let i=0; i<this.activeParticles.length; i++) {
+            const p = this.activeParticles[i];
             const screenX = (p.x - startX) * TILE_SIZE;
             const screenY = (p.y - startY) * TILE_SIZE;
 
-            // Optimization: Off-screen check
-            if (screenX < -TILE_SIZE || screenX > ctx.canvas.width ||
-                screenY < -TILE_SIZE || screenY > ctx.canvas.height) return;
+            if (screenX < minX || screenX > maxX || screenY < minY || screenY > maxY) continue;
 
             ctx.save();
-            ctx.globalAlpha = Math.max(0, p.life); // Fade out
+            ctx.globalAlpha = Math.max(0, p.life);
 
             if (p.type === 'text') {
                 ctx.fillStyle = p.color;
-                // Text pops up (scales) then fades
+                // Pop effect
                 const scale = 1 + (Math.sin(p.life * Math.PI) * 0.5);
                 ctx.font = `bold ${p.size * scale}px monospace`;
-
-                // Outline for readability
                 ctx.strokeStyle = 'black';
                 ctx.lineWidth = 3;
                 ctx.strokeText(p.text, screenX, screenY);
@@ -2809,11 +2822,12 @@ const ParticleSystem = {
                 ctx.fillStyle = p.color;
                 ctx.fillRect(screenX, screenY, p.size, p.size);
             }
-
             ctx.restore();
-        });
+        }
     }
 };
+// Initialize immediately
+ParticleSystem.init();
 
 const gameState = {
     initialEnemiesLoaded: false,
@@ -7604,53 +7618,48 @@ function passivePerceptionCheck() {
  * Accepts a pre-calculated playerDamage value.
  */
 
+/**
+ * Handles combat for overworld enemies, syncing health via RTDB.
+ * Counter-attack logic removed to prevent double-striking bug.
+ */
 async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage) { 
     const player = gameState.player;
     const enemyId = `overworld:${newX},${-newY}`; 
     const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-    // --- FIX START: Capture Stats Before Death ---
-    // We grab the local state first. If it exists, we use its Name and XP.
-    // If it doesn't exist (rare race condition), we fall back to scaling.
+    // --- Capture Stats Before Death ---
     const liveEnemy = gameState.sharedEnemies[enemyId];
     const enemyInfo = liveEnemy || getScaledEnemy(enemyData, newX, newY);
-    // --- FIX END ---
-
-    let enemyWasKilled = false;
-    let enemyAttackedBack = false;
-    let enemyDamageTaken = 0;
 
     try {
         // Use a transaction to safely read and write enemy health
         const transactionResult = await enemyRef.transaction(currentData => {
-    let enemy;
-    if (currentData === null) {
-        // Instead of generating NEW stats here, use the stats we already saw!
-        // We use enemyInfo (captured from local state) as the blueprint.
-        enemy = {
-            name: enemyInfo.name, // Keep the name (e.g. "Massive Wolf")
-            health: enemyInfo.maxHealth, // Keep the HP we saw
-            maxHealth: enemyInfo.maxHealth,
-            attack: enemyInfo.attack,
-            defense: enemyInfo.defense || enemyData.defense,
-            xp: enemyInfo.xp,
-            loot: enemyData.loot,
-            tile: newTile,
-            // Persist the Elite flag and color so other players see the same thing
-            isElite: enemyInfo.isElite || false,
-            color: enemyInfo.color || null
-        };
-    } else {
-        enemy = currentData;
-    }
+            let enemy;
+            if (currentData === null) {
+                // Use enemyInfo (the visual state) instead of generating random new stats
+                enemy = {
+                    name: enemyInfo.name, 
+                    health: enemyInfo.maxHealth,
+                    maxHealth: enemyInfo.maxHealth,
+                    attack: enemyInfo.attack,
+                    defense: enemyInfo.defense || enemyData.defense,
+                    xp: enemyInfo.xp,
+                    loot: enemyData.loot,
+                    tile: newTile,
+                    isElite: enemyInfo.isElite || false,
+                    color: enemyInfo.color || null
+                };
+            } else {
+                enemy = currentData;
+            }
 
             // --- Player Attacks Enemy ---
             enemy.health -= playerDamage;
 
             if (enemy.health <= 0) {
-                return null; // Delete
+                return null; // Delete if dead
             } else {
-                return enemy; // Update
+                return enemy; // Update if alive
             }
         });
 
@@ -7658,13 +7667,15 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
         const finalEnemyState = transactionResult.snapshot.val();
 
         if (transactionResult.committed) {
-            ParticleSystem.createExplosion(newX, newY, '#ef4444');
-            ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
+            // Visual Feedback
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createExplosion(newX, newY, '#ef4444');
+                ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
+            }
         }
 
         if (finalEnemyState === null) {
             // Enemy Died
-            // --- FIX: Use the captured 'enemyInfo' for Name and XP ---
             logMessage(`The ${enemyInfo.name} was vanquished!`);
             grantXp(enemyInfo.xp);
             updateQuestProgress(newTile); 
@@ -7675,15 +7686,13 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                 playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles) });
             }
 
-            // Generate loot based on the TEMPLATE, but boost chance if Elite
-            // Pass the Elite flag if the live enemy was elite
+            // Generate loot based on the TEMPLATE
             const lootData = { ...enemyData, isElite: enemyInfo.isElite };
             const droppedLoot = generateEnemyLoot(player, lootData);
 
             if (gameState.sharedEnemies[enemyId]) {
                 delete gameState.sharedEnemies[enemyId];
             }
-            render(); 
 
             const currentTerrain = chunkManager.getTile(newX, newY);
             const passableTerrain = ['.', 'd', 'D', 'F', '≈']; 
@@ -7691,89 +7700,9 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
                 chunkManager.setWorldTile(newX, newY, droppedLoot);
             }
-
-        } else {
-
-            // --- ENEMY SURVIVES AND ATTACKS ---
-            enemyAttackedBack = true;
-            const enemy = finalEnemyState;
-
-            // --- 1. Block Check ---
-            let blockChance = 0;
-            if (player.equipment.armor && player.equipment.armor.blockChance) {
-                blockChance += player.equipment.armor.blockChance;
-            }
-            if (player.equipment.weapon && player.equipment.weapon.blockChance) {
-                blockChance += player.equipment.weapon.blockChance;
-            }
-
-            if (Math.random() < blockChance) {
-                logMessage(`CLANG! You blocked the ${enemy.name}'s attack!`); // Use live name
-                if (typeof ParticleSystem !== 'undefined') {
-                    ParticleSystem.createFloatingText(player.x, player.y, "BLOCKED", "#ccc");
-                }
-                enemyDamageTaken = 0;
-            } else {
-                // --- 2. Calculate Damage ---
-                const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
-                const baseDefense = Math.floor(player.dexterity / 3);
-                const buffDefense = player.defenseBonus || 0;
-                const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0; // Added missing logic
-
-                const playerDefense = baseDefense + armorDefense + buffDefense + talentDefense; // Added talentDefense
-
-                enemyDamageTaken = Math.max(1, enemy.attack - playerDefense);
-
-                // --- 3. Dodge Check ---
-                let dodgeChance = Math.min(player.luck * 0.002, 0.25);
-                if (player.talents && player.talents.includes('evasion')) {
-                    dodgeChance += 0.10; 
-                }
-
-                if (Math.random() < dodgeChance) {
-                    logMessage(`The ${enemy.name} attacks, but you dodge!`); // Use live name
-                    enemyDamageTaken = 0;
-                }
-            }
-
-            // --- 4. Apply Damage ---
-            if (enemyDamageTaken > 0) {
-                let damageToApply = enemyDamageTaken;
-
-                // -- Shield --
-                if (player.shieldValue > 0) {
-                    const damageAbsorbed = Math.min(player.shieldValue, damageToApply);
-                    player.shieldValue -= damageAbsorbed;
-                    damageToApply -= damageAbsorbed;
-                    logMessage(`Your shield absorbs ${damageAbsorbed} damage!`);
-                    if (player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
-                }
-
-                // -- Thorns --
-                if (player.thornsValue > 0) {
-                    logMessage(`The ${enemy.name} takes ${player.thornsValue} damage from your thorns!`);
-                    
-                    enemyRef.transaction(thornData => {
-                        if (!thornData) return null; 
-                        thornData.health -= player.thornsValue;
-                        return thornData.health <= 0 ? null : thornData;
-                    }).then(result => {
-                        if (result.committed && !result.snapshot.exists()) {
-                            logMessage(`The ${enemy.name} is killed by your thorns!`);
-                            grantXp(enemyInfo.xp); // Use captured XP
-                            updateQuestProgress(newTile);
-                            const droppedLoot = generateEnemyLoot(player, { ...enemyData, isElite: enemyInfo.isElite });
-                            chunkManager.setWorldTile(newX, newY, droppedLoot);
-                        }
-                    });
-                }
-
-                if (damageToApply > 0) {
-                    player.health -= damageToApply;
-                    gameState.screenShake = 10; 
-                }
-            }
-        }
+        } 
+        // NOTE: The "else" block (Counter-attack) has been removed.
+        // The enemy will now strike normally during processOverworldEnemyTurns.
 
     } catch (error) {
         console.error("Firebase transaction failed: ", error);
@@ -7781,15 +7710,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
         return; 
     }
 
-    if (enemyAttackedBack && enemyDamageTaken > 0) {
-        triggerStatFlash(statDisplays.health, false); 
-        AudioSystem.playHit();
-        logMessage(`The ${enemyInfo.name} hits you for ${enemyDamageTaken} damage!`); // Use captured name
-        ParticleSystem.createFloatingText(player.x, player.y, `-${enemyDamageTaken}`, '#ef4444');
-
-        if (handlePlayerDeath()) return;
-    }
-
+    // Finalize Turn
     endPlayerTurn();
     render();
 }
@@ -10908,139 +10829,74 @@ async function attemptMovePlayer(newX, newY) {
         }
 
         if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
-            // --- INSTANCED COMBAT ---
-            let enemy = gameState.instancedEnemies.find(e => e.x === newX && e.y === newY);
-            let enemyId = enemy ? enemy.id : null;
+            // --- INSTANCED COMBAT (Inside attemptMovePlayer) ---
+let enemy = gameState.instancedEnemies.find(e => e.x === newX && e.y === newY);
+let enemyId = enemy ? enemy.id : null;
 
-            if (enemy) {
-                const boostedDamage = getPlayerDamageModifier(rawDamage);
-                let playerDamage = Math.max(1, boostedDamage - (enemy.defense || 0));
+if (enemy) {
+    const boostedDamage = getPlayerDamageModifier(rawDamage);
+    let playerDamage = Math.max(1, boostedDamage - (enemy.defense || 0));
 
-                if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
-                    const graceFloor = Math.ceil(gameState.player.strength / 2);
-                    playerDamage = Math.max(playerDamage, graceFloor);
-                }
+    // Low-level grace logic
+    if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
+        const graceFloor = Math.ceil(gameState.player.strength / 2);
+        playerDamage = Math.max(playerDamage, graceFloor);
+    }
 
-                enemy.health -= playerDamage;
+    enemy.health -= playerDamage;
 
-                // --- WEAPON PROC SYSTEM ---
-                const equippedWeapon = gameState.player.equipment.weapon;
-                if (equippedWeapon && equippedWeapon.onHit && Math.random() < equippedWeapon.procChance) {
-                    logMessage(`Your ${equippedWeapon.name} surges with power!`);
-                    // Cast the spell for free (0 cost)
-                    // We use applySpellDamage directly to bypass mana checks
-                    const spellId = equippedWeapon.onHit;
-                    const spellData = SPELL_DATA[spellId];
-                    const procDmg = spellData.baseDamage + (gameState.player.wits * 0.5); // Scale slightly with Wits
+    // --- WEAPON PROC SYSTEM ---
+    const equippedWeapon = gameState.player.equipment.weapon;
+    if (equippedWeapon && equippedWeapon.onHit && Math.random() < equippedWeapon.procChance) {
+        logMessage(`Your ${equippedWeapon.name} surges with power!`);
+        const spellId = equippedWeapon.onHit;
+        const spellData = SPELL_DATA[spellId];
+        const procDmg = spellData.baseDamage + (gameState.player.wits * 0.5);
+        applySpellDamage(newX, newY, procDmg, spellId);
+    }
 
-                    // Apply spell effect
-                    applySpellDamage(newX, newY, procDmg, spellId);
+    AudioSystem.playAttack();
 
-                    // Visuals
-                    if (spellId === 'chainLightning') ParticleSystem.createExplosion(newX, newY, '#facc15');
-                    if (spellId === 'siphonLife') ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, "♥", "#ef4444");
-                }
+    // Log & Effects
+    if (isCrit) {
+        logMessage(`CRITICAL HIT! You strike the ${enemy.name} for ${playerDamage} damage!`);
+        ParticleSystem.createExplosion(newX, newY, '#facc15');
+        ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
+    } else {
+        logMessage(`You attack the ${enemy.name} for {red:${playerDamage}} damage!`);
+        ParticleSystem.createExplosion(newX, newY, '#ef4444');
+        ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
+    }
 
-                AudioSystem.playAttack();
+    // Weapon Poison Effect
+    const weapon = gameState.player.equipment.weapon;
+    if (weapon && weapon.inflicts === 'poison' && enemy.poisonTurns <= 0 && Math.random() < (weapon.inflictChance || 0.25)) {
+        logMessage(`Your weapon poisons the ${enemy.name}!`);
+        enemy.poisonTurns = 3;
+    }
 
-                // Log & Effects
-                if (isCrit) {
-                    logMessage(`CRITICAL HIT! You strike the ${enemy.name} for ${playerDamage} damage!`);
-                    if (typeof ParticleSystem !== 'undefined') {
-                        ParticleSystem.createExplosion(newX, newY, '#facc15');
-                        ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
-                    }
-                } else {
-                    logMessage(`You attack the ${enemy.name} for {red:${playerDamage}} damage!`);
-                    if (typeof ParticleSystem !== 'undefined') {
-                        ParticleSystem.createExplosion(newX, newY, '#ef4444');
-                        ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
-                    }
-                }
+    // Enemy Death Logic
+    if (enemy.health <= 0) {
+        logMessage(`You defeated the ${enemy.name}!`);
+        registerKill(enemy);
 
-                // Weapon Poison Effect
-                const weapon = gameState.player.equipment.weapon;
-                if (weapon && weapon.inflicts === 'poison' && enemy.poisonTurns <= 0 && Math.random() < (weapon.inflictChance || 0.25)) {
-                    logMessage(`Your weapon poisons the ${enemy.name}!`);
-                    enemy.poisonTurns = 3;
-                }
+        const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
+        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
 
-                // Enemy Death Logic
-                if (enemy.health <= 0) {
-                    logMessage(`You defeated the ${enemy.name}!`);
-                    registerKill(enemy);
+        if (gameState.mapMode === 'dungeon') {
+            if (chunkManager.caveEnemies[gameState.currentCaveId]) {
+                chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
+            }
+            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
+        }
+    } 
 
-                    const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
-                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
+    // FINALIZE TURN - No counter-attack here! 
+    // The enemy will now attack during the processEnemyTurns() AI loop.
+    endPlayerTurn();
+    render();
+    return;
 
-                    if (gameState.mapMode === 'dungeon') {
-                        if (chunkManager.caveEnemies[gameState.currentCaveId]) {
-                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
-                        }
-                        chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
-                    }
-                } else {
-                    // ENEMY ATTACKS BACK
-                    const armorDefense = gameState.player.equipment.armor ? gameState.player.equipment.armor.defense : 0;
-                    const baseDefense = Math.floor(gameState.player.dexterity / 3);
-                    const buffDefense = gameState.player.defenseBonus || 0;
-                    const playerDefense = baseDefense + armorDefense + buffDefense;
-
-                    const enemyDamage = Math.max(1, enemy.attack - playerDefense);
-                    const luckDodgeChance = Math.min(gameState.player.luck * 0.002, 0.25);
-
-                    if (Math.random() < luckDodgeChance) {
-                        logMessage(`The ${enemy.name} attacks, but you luckily dodge!`);
-                    } else {
-                        let damageToApply = enemyDamage;
-
-                        // Shield Absorb
-                        if (gameState.player.shieldValue > 0) {
-                            const damageAbsorbed = Math.min(gameState.player.shieldValue, damageToApply);
-                            gameState.player.shieldValue -= damageAbsorbed;
-                            damageToApply -= damageAbsorbed;
-                            logMessage(`Your shield absorbs ${damageAbsorbed} damage!`);
-                            if (gameState.player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
-                        }
-
-                        if (damageToApply > 0) {
-                            gameState.player.health -= damageToApply;
-                            AudioSystem.playHit();
-
-                            if (typeof ParticleSystem !== 'undefined') {
-                                ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444');
-                                ParticleSystem.createFloatingText(gameState.player.x, gameState.player.y, `-${damageToApply}`, '#ef4444');
-                            }
-                            triggerStatFlash(statDisplays.health, false);
-                            logMessage(`The ${enemy.name} hits you for {red:${damageToApply}} damage!`);
-                        }
-
-                        // Thorns Damage
-                        if (gameState.player.thornsValue > 0) {
-                            enemy.health -= gameState.player.thornsValue;
-                            logMessage(`The ${enemy.name} takes ${gameState.player.thornsValue} damage from your thorns!`);
-                            if (enemy.health <= 0) {
-                                logMessage(`The ${enemy.name} is killed by your thorns!`);
-                                registerKill(enemy);
-                                const droppedLoot = generateEnemyLoot(gameState.player, enemy);
-                                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
-                                if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
-                            }
-                        }
-                    }
-
-                    if (gameState.player.health <= 0) {
-                        gameState.player.health = 0;
-                        logMessage("You have perished!");
-                        syncPlayerState();
-                        document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
-                        document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
-                        gameOverModal.classList.remove('hidden');
-                    }
-                }
-                endPlayerTurn();
-                render();
-                return;
             } else {
                 logMessage(`You see the corpse of a ${enemyData.name}.`);
             }
