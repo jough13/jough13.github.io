@@ -9307,29 +9307,7 @@ function handlePlayerDeath() {
 }
 
 function endPlayerTurn() {
-     // --- ADVANCE GAME TIME ---
-    const time = gameState.time;
-    time.minute += TURN_DURATION_MINUTES; // Adds 10 minutes per turn
-
-    if (time.minute >= 60) {
-        time.minute = 0;
-        time.hour++;
-        
-        // Log hourly atmospheric changes (Optional)
-        if (time.hour === 6) logMessage("{gold:The sun begins to rise.}");
-        if (time.hour === 18) logMessage("{blue:The sun sets. Shadows lengthen...}");
-        if (time.hour === 20) logMessage("{gray:It is now night. The air grows cold.}");
-
-        if (time.hour >= 24) {
-            time.hour = 0;
-            time.day++;
-            logMessage(`{green:A new day begins: Day ${time.day}.}`);
-        }
-    }
     
-    // Refresh the clock UI
-    renderTime();
-
     let updates = {}; // Defined at the top to catch status changes
 
     // --- LIGHT SURVIVAL MECHANICS ---
@@ -13109,6 +13087,23 @@ if (timeDoc.exists) {
             });
         }
     });
+
+    // --- LIVE FIRESTORE CLOCK SYNC ---
+// This listens for your server-side function to update the time
+db.collection('world').doc('time').onSnapshot((doc) => {
+    if (doc.exists) {
+        const serverTime = doc.data();
+        
+        // Directly sync the server's time to your game state
+        gameState.time.day = serverTime.day;
+        gameState.time.hour = serverTime.hour;
+        gameState.time.minute = serverTime.minute;
+
+        // Force the UI and Lighting to update automatically
+        renderTime();
+        render(); 
+    }
+});
 
     rtdb.ref('onlinePlayers').on('value', (snapshot) => {
         const newOtherPlayers = snapshot.val() || {};
