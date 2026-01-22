@@ -503,7 +503,7 @@ window.CAVE_THEMES = {
             floor: '#331133' 
         },
         decorations: ['💀', '🕸️', '🔥', 'Ω', '💎', '🕸'],
-        enemies: ['o', 'm', 'Z', '👺', '🐺', 'scorpion', 'a'] 
+        enemies: ['o', 'm', 'Z', 'g', '🐺', '🦂', 'a'] 
     },
     SUNKEN: {
         name: 'The Sunken Temple',
