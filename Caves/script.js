@@ -245,8 +245,11 @@ const loreModal = document.getElementById('loreModal');
 const closeLoreButton = document.getElementById('closeLoreButton');
 const loreTitle = document.getElementById('loreTitle');
 const loreContent = document.getElementById('loreContent');
+
 const gameOverModal = document.getElementById('gameOverModal');
 const restartButton = document.getElementById('restartButton');
+const finalLevelDisplay = document.getElementById('finalLevelDisplay');
+const finalCoinsDisplay = document.getElementById('finalCoinsDisplay');
 
 const shopModal = document.getElementById('shopModal');
 const closeShopButton = document.getElementById('closeShopButton');
