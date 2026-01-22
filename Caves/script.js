@@ -7210,8 +7210,8 @@ function castSpell(spellId) {
 }
 
 function calculateHitChance(player, enemy) {
-    // Base 80% accuracy
-    let chance = 0.80;
+    // Base 88% accuracy
+    let chance = 0.88;
 
     // Add 2% per point of Perception or Dexterity
     chance += (player.perception * 0.02);
@@ -10798,6 +10798,12 @@ async function attemptMovePlayer(newX, newY) {
 
         if (Math.random() > hitChance) {
             logMessage(`You swing at the ${enemyData.name} but miss!`);
+
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createFloatingText(newX, newY, "MISS", "#9ca3af");
+        }
+
+
             // We still end the turn so the enemy can move/attack
             endPlayerTurn();
             return;
