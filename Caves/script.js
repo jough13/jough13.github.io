@@ -9307,6 +9307,29 @@ function handlePlayerDeath() {
 }
 
 function endPlayerTurn() {
+     // --- ADVANCE GAME TIME ---
+    const time = gameState.time;
+    time.minute += TURN_DURATION_MINUTES; // Adds 10 minutes per turn
+
+    if (time.minute >= 60) {
+        time.minute = 0;
+        time.hour++;
+        
+        // Log hourly atmospheric changes (Optional)
+        if (time.hour === 6) logMessage("{gold:The sun begins to rise.}");
+        if (time.hour === 18) logMessage("{blue:The sun sets. Shadows lengthen...}");
+        if (time.hour === 20) logMessage("{gray:It is now night. The air grows cold.}");
+
+        if (time.hour >= 24) {
+            time.hour = 0;
+            time.day++;
+            logMessage(`{green:A new day begins: Day ${time.day}.}`);
+        }
+    }
+    
+    // Refresh the clock UI
+    renderTime();
+    
     let updates = {}; // Defined at the top to catch status changes
 
     // --- LIGHT SURVIVAL MECHANICS ---
