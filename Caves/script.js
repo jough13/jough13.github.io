@@ -69,11 +69,16 @@ let activeShopInventory = [];
 const SELL_MODIFIER = 0.5; // Players sell items for 50% of their base price
 
 // --- OPTIMIZATION: Cache Emoji Checks ---
-// Regex is slow! We save the result so we don't calculate it 600 times a frame.
 const charWidthCache = {};
+
+// PRE-FILL CACHE: Mark standard ASCII as "not wide" to skip regex
+const ascii = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{};':\",./<>?`~|\\ ";
+for (let i = 0; i < ascii.length; i++) {
+    charWidthCache[ascii[i]] = false;
+}
+
 const isWideChar = (char) => {
     if (charWidthCache[char] !== undefined) return charWidthCache[char];
-    // The expensive check:
     const isWide = /\p{Extended_Pictographic}/u.test(char); 
     charWidthCache[char] = isWide;
     return isWide;
@@ -3192,11 +3197,12 @@ const renderStats = () => {
     }
 };
 
-// --- ADVANCED AUDIO SYSTEM ---
+// --- ADVANCED AUDIO SYSTEM (OPTIMIZED) ---
 const AudioSystem = {
     ctx: new (window.AudioContext || window.webkitAudioContext)(),
+    noiseBuffer: null, // Cache the buffer here
 
-    // Settings State (Loaded from LocalStorage if available)
+    // Settings State
     settings: JSON.parse(localStorage.getItem('audioSettings')) || {
         master: true,
         steps: true,
@@ -3209,47 +3215,43 @@ const AudioSystem = {
         localStorage.setItem('audioSettings', JSON.stringify(AudioSystem.settings));
     },
 
-    // Helper: Generate White Noise (for footsteps/explosions)
-    createNoiseBuffer: () => {
-        if (!AudioSystem.ctx) return null;
-        const bufferSize = AudioSystem.ctx.sampleRate * 2.0; // 2 seconds buffer
-        const buffer = AudioSystem.ctx.createBuffer(1, bufferSize, AudioSystem.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
+    // Initialize the buffer once
+    initNoise: function() {
+        if (!this.ctx) return;
+        const bufferSize = this.ctx.sampleRate * 2.0; 
+        this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = this.noiseBuffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
             data[i] = Math.random() * 2 - 1;
         }
-        return buffer;
     },
 
-    // Helper: Play Noise with Filter
-    playNoise: (duration, vol = 0.1, filterFreq = 1000) => {
-        if (AudioSystem.ctx.state === 'suspended') AudioSystem.ctx.resume();
-        if (!AudioSystem.settings.master) return;
+    playNoise: function(duration, vol = 0.1, filterFreq = 1000) {
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        if (!this.settings.master) return;
 
-        const noiseBuffer = AudioSystem.createNoiseBuffer();
-        if (!noiseBuffer) return;
+        // Lazy load the buffer if it doesn't exist
+        if (!this.noiseBuffer) this.initNoise();
 
-        const src = AudioSystem.ctx.createBufferSource();
-        src.buffer = noiseBuffer;
+        const src = this.ctx.createBufferSource();
+        src.buffer = this.noiseBuffer; // Reuse existing buffer
 
-        // Filter (Lowpass makes it sound like a thud/shuffle instead of static)
-        const filter = AudioSystem.ctx.createBiquadFilter();
+        const filter = this.ctx.createBiquadFilter();
         filter.type = 'lowpass';
         filter.frequency.value = filterFreq;
 
-        const gain = AudioSystem.ctx.createGain();
-        gain.gain.setValueAtTime(vol, AudioSystem.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, AudioSystem.ctx.currentTime + duration);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
 
         src.connect(filter);
         filter.connect(gain);
-        gain.connect(AudioSystem.ctx.destination);
+        gain.connect(this.ctx.destination);
 
         src.start();
-        src.stop(AudioSystem.ctx.currentTime + duration);
+        src.stop(this.ctx.currentTime + duration);
     },
 
-    // Helper: Play Tonal Sound (Beeps/Chimes)
     playTone: (freq, type, duration, vol = 0.1) => {
         if (AudioSystem.ctx.state === 'suspended') AudioSystem.ctx.resume();
         if (!AudioSystem.settings.master) return;
@@ -3268,23 +3270,10 @@ const AudioSystem = {
         osc.stop(AudioSystem.ctx.currentTime + duration);
     },
 
-    // 🦶 Footstep (The Shuffle)
-    // Uses filtered noise. Very short duration, low volume, low frequency filter.
-    playStep: () => {
-        if (!AudioSystem.settings.steps) return;
-        // Duration: 0.08s, Vol: 0.05 (Very Quiet), Filter: 600Hz (Muffled)
-        AudioSystem.playNoise(0.08, 0.05, 600);
-    },
-
-    // ⚔️ Attack (High pitch slide)
-    playAttack: () => {
-        // --- Check Master Volume first! ---
-        if (!AudioSystem.settings.master) return;
-
-        if (!AudioSystem.settings.combat) return;
-
+    playStep: () => { if (AudioSystem.settings.steps) AudioSystem.playNoise(0.08, 0.05, 600); },
+    playAttack: () => { 
+        if (!AudioSystem.settings.master || !AudioSystem.settings.combat) return;
         if (AudioSystem.ctx.state === 'suspended') AudioSystem.ctx.resume();
-
         const osc = AudioSystem.ctx.createOscillator();
         const gain = AudioSystem.ctx.createGain();
         osc.frequency.setValueAtTime(300, AudioSystem.ctx.currentTime);
@@ -3296,24 +3285,9 @@ const AudioSystem = {
         osc.start();
         osc.stop(AudioSystem.ctx.currentTime + 0.1);
     },
-
-    // 🤕 Hit/Damage (Crunchy square wave)
-    playHit: () => {
-        if (!AudioSystem.settings.combat) return;
-        AudioSystem.playTone(80, 'square', 0.15, 0.1);
-    },
-
-    // ✨ Magic (Chime)
-    playMagic: () => {
-        if (!AudioSystem.settings.magic) return;
-        AudioSystem.playTone(600, 'sine', 0.3, 0.05);
-    },
-
-    // 💰 Gold/Loot (High ping)
-    playCoin: () => {
-        if (!AudioSystem.settings.ui) return;
-        AudioSystem.playTone(1200, 'sine', 0.1, 0.05);
-    }
+    playHit: () => { if (AudioSystem.settings.combat) AudioSystem.playTone(80, 'square', 0.15, 0.1); },
+    playMagic: () => { if (AudioSystem.settings.magic) AudioSystem.playTone(600, 'sine', 0.3, 0.05); },
+    playCoin: () => { if (AudioSystem.settings.ui) AudioSystem.playTone(1200, 'sine', 0.1, 0.05); }
 };
 
 // Global set to track processed tiles this session
@@ -9398,7 +9372,15 @@ function handlePlayerDeath() {
     playerRef.set(player);
 
     // Force reload to clear local state/enemies after a short delay
-    setTimeout(() => location.reload(), 2000);
+    setTimeout(async () => {
+    // Re-fetch fresh data from DB (which now has health=MaxHealth from your previous update)
+    const freshDoc = await playerRef.get();
+    if (freshDoc.exists) {
+        enterGame(freshDoc.data());
+        gameOverModal.classList.add('hidden'); // Hide the death screen
+        logMessage("You draw a breath... you are alive again.");
+    }
+}, 2000);
 
     return true;
 }
