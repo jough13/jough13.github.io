@@ -9166,39 +9166,30 @@ function handlePlayerDeath() {
     // 1. Clamp health
     gameState.player.health = 0;
 
-    // 2. Visuals
-    logMessage("You have perished!");
+    // 2. Visuals & Logs
+    logMessage("{red:You have perished!}");
     triggerStatFlash(statDisplays.health, false);
 
     // --- Remove Equipment Stats ---
-    // We must subtract the bonuses of currently equipped items before deleting them
-    if (gameState.player.equipment.weapon) {
-        applyStatBonuses(gameState.player.equipment.weapon, -1);
-    }
-    if (gameState.player.equipment.armor) {
-        applyStatBonuses(gameState.player.equipment.armor, -1);
-    }
+    if (gameState.player.equipment.weapon) applyStatBonuses(gameState.player.equipment.weapon, -1);
+    if (gameState.player.equipment.armor) applyStatBonuses(gameState.player.equipment.armor, -1);
 
     // --- CORPSE SCATTER LOGIC (BATCHED) ---
+    // (Keep your existing loop here that drops items onto the ground)
     const player = gameState.player;
     const deathX = player.x;
     const deathY = player.y;
     let droppedCount = 0;
-
-    // We will buffer updates here: { "chunkID": { "localX,localY": "tileChar" } }
     const pendingUpdates = {};
 
     for (let i = player.inventory.length - 1; i >= 0; i--) {
         const item = player.inventory[i];
-
         let placed = false;
         for (let r = 0; r <= 2 && !placed; r++) {
             for (let dy = -r; dy <= r && !placed; dy++) {
                 for (let dx = -r; dx <= r && !placed; dx++) {
                     const tx = deathX + dx;
                     const ty = deathY + dy;
-
-                    // Check tile validity
                     let tile;
                     if (gameState.mapMode === 'overworld') tile = chunkManager.getTile(tx, ty);
                     else if (gameState.mapMode === 'dungeon') tile = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
@@ -9206,102 +9197,58 @@ function handlePlayerDeath() {
 
                     if (tile === '.') {
                         if (gameState.mapMode === 'overworld') {
-                            // Calculate Chunk ID for batching
                             const cX = Math.floor(tx / chunkManager.CHUNK_SIZE);
                             const cY = Math.floor(ty / chunkManager.CHUNK_SIZE);
                             const cId = `${cX},${cY}`;
-
-                            // Calculate Local ID
                             const lX = (tx % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
                             const lY = (ty % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
                             const lKey = `${lX},${lY}`;
-
                             if (!pendingUpdates[cId]) pendingUpdates[cId] = {};
                             pendingUpdates[cId][lKey] = item.tile;
-
-                            // Update local cache immediately so we don't drop two items on same spot in this loop
                             if (!chunkManager.worldState[cId]) chunkManager.worldState[cId] = {};
                             chunkManager.worldState[cId][lKey] = item.tile;
-                        }
-                        else if (gameState.mapMode === 'dungeon') {
+                        } else if (gameState.mapMode === 'dungeon') {
                             chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = item.tile;
-                        }
-                        else {
+                        } else {
                             chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = item.tile;
                         }
-
-                        placed = true;
-                        droppedCount++;
+                        placed = true; droppedCount++;
                     }
                 }
             }
         }
     }
 
-    // Execute Batched Writes for Overworld
     if (gameState.mapMode === 'overworld') {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
             db.collection('worldState').doc(cId).set(updates, { merge: true });
         }
     }
 
-    // 3. Clear Inventory & Stats
-    player.inventory = [
-        { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
-    ];
-
-    player.strengthBonus = 0;
-    player.strengthBonusTurns = 0;
-    player.defenseBonus = 0;
-    player.defenseBonusTurns = 0;
-    player.witsBonus = 0;
-    player.witsBonusTurns = 0;
-    player.shieldValue = 0;
-    player.shieldTurns = 0;
-    player.thornsValue = 0;
-    player.thornsTurns = 0;
-    player.poisonTurns = 0;
-    player.frostbiteTurns = 0;
-
-    player.equipment = {
-        weapon: { name: 'Fists', damage: 0 },
-        armor: { name: 'Tattered Rags', defense: 0 }
-    };
-    player.coins = Math.floor(player.coins / 2); // Lose half gold
-
-    // 4. Respawn at 0,0 (Village)
+    // 3. APPLY PERMANENT DEATH CHANGES TO DATA
+    const goldLost = Math.floor(player.coins / 2);
+    player.coins -= goldLost;
     player.x = 0;
     player.y = 0;
-    player.health = player.maxHealth;
+    player.health = player.maxHealth; // Pre-heal for the respawn
     player.stamina = player.maxStamina;
     player.hunger = 50;
     player.thirst = 50;
+    player.inventory = [
+        { name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor', isEquipped: true }
+    ];
+    player.equipment = { weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Tattered Rags', defense: 0 } };
 
-    logMessage(`You wake up in the village, aching. You dropped ${droppedCount} items where you fell.`);
+    // 4. Update UI Text
+    document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
+    document.getElementById('finalCoinsDisplay').textContent = `Gold lost: ${goldLost}`;
 
-    // 5. Update Death Modal UI
-    const levelDisplay = document.getElementById('finalLevelDisplay');
-    const coinsDisplay = document.getElementById('finalCoinsDisplay');
-    if (levelDisplay) levelDisplay.textContent = `Level: ${gameState.player.level}`;
-    if (coinsDisplay) coinsDisplay.textContent = `Gold: ${gameState.player.coins}`;
+    // 5. Show Modal (DO NOT RELOAD AUTOMATICALLY)
+    gameOverModal.classList.remove('hidden');
 
-    // 6. Show Modal
-    if (gameOverModal) gameOverModal.classList.remove('hidden');
-
-    // 7. Sync final state to DB
+    // 6. Sync death state to DB
     syncPlayerState();
     playerRef.set(player);
-
-    // Force reload to clear local state/enemies after a short delay
-    setTimeout(async () => {
-    // Re-fetch fresh data from DB (which now has health=MaxHealth from your previous update)
-    const freshDoc = await playerRef.get();
-    if (freshDoc.exists) {
-        enterGame(freshDoc.data());
-        gameOverModal.classList.add('hidden'); // Hide the death screen
-        logMessage("You draw a breath... you are alive again.");
-    }
-}, 2000);
 
     return true;
 }
@@ -13449,3 +13396,34 @@ window.addEventListener('keydown', e => { if(["Space","ArrowUp","ArrowDown","Arr
 
 // AUTO-SAVE: Save the game if the user closes the tab or refreshes
 window.addEventListener('beforeunload', () => { if(typeof player_id !== 'undefined' && player_id) saveGame(); });
+
+// Continue / Respawn
+restartButton.onclick = () => {
+    gameOverModal.classList.add('hidden');
+    logMessage("{green:You open your eyes... you have been given a second chance.}");
+    
+    // Refresh the map and UI
+    gameState.mapMode = 'overworld';
+    gameState.currentCaveId = null;
+    gameState.currentCastleId = null;
+    
+    updateRegionDisplay();
+    renderStats();
+    renderInventory();
+    resizeCanvas();
+    render();
+};
+
+// Quit to Main Menu
+const mainMenuBtn = document.getElementById('mainMenuButton');
+if (mainMenuBtn) {
+    mainMenuBtn.onclick = () => {
+        gameOverModal.classList.add('hidden');
+        
+        // Remove from online list and sign out
+        if (onlinePlayerRef) onlinePlayerRef.remove();
+        auth.signOut(); 
+        
+        // UI reset handled by auth.onAuthStateChanged
+    };
+}
