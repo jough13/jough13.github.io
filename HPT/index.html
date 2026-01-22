@@ -1077,14 +1077,21 @@
           };
 
           if (history.length === 0) {
-              return null;
-          }
+                return (
+                    <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl text-center border-2 border-dashed border-slate-300 dark:border-slate-700">
+                        <p className="text-slate-500 dark:text-slate-400 font-semibold">No Saved Calculations</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                            Look for the <span className="inline-block align-middle"><svg className="w-3 h-3 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></span> icon in calculator results to pin them here.
+                        </p>
+                    </div>
+                );
+            }
 
           return (
               <>
                   <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                       <div className="flex justify-between items-center mb-4">
-                          <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Calculations</h4>
+                          <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Saved Calculations</h4>
                           {/* FIX: Renamed button to be specific */}
                           <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">
                               Clear Calculations
@@ -1092,7 +1099,6 @@
                       </div>
                       <div className="space-y-3">
                           {history.map(item => (
-                              /* FIX: Changed <button> to <div> and removed onClick/hover effects */
                               <div
                                   key={item.id}
                                   className="w-full text-left p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 relative"
@@ -1125,192 +1131,213 @@
                       onConfirm={handleClearHistory}
                       title="Clear Calculation History"
                   >
-                      <p>Are you sure you want to clear your five most recent calculations?</p>
+                      <p>Are you sure you want to clear your recently saved calculations?</p>
                   </ConfirmationModal>
               </>
           );
       };
          
          /**
-         * @description The landing page view, showing suggestions, search history, favorites, or the main search result.
-         * @param {object} props - Contains data and handlers for the home page.
-         */
-         
-         const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites, onNavClick }) => {
-         const [isFavoritesModalOpen, setIsFavoritesModalOpen] = React.useState(false);
-         const [isHistoryModalOpen, setIsHistoryModalOpen] = React.useState(false);
-         
-         const favoriteNuclides = React.useMemo(() =>
-         favorites.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
-         [favorites, radionuclides]
-         );
-         
-         const searchHistoryNuclides = React.useMemo(() =>
-         searchHistory.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
-         [searchHistory, radionuclides]
-         );
-         
-         const confirmClearFavorites = () => {
-         handleClearFavorites();
-         setIsFavoritesModalOpen(false);
-         };
-         
-         const confirmClearHistory = () => {
-         handleClearHistory();
-         setIsHistoryModalOpen(false);
-         };
-         
-         const isNewUser = favoriteNuclides.length === 0 && searchHistoryNuclides.length === 0;
-         
-         return (
-         <div className="p-4 sm:p-6 space-y-6">
-         {errorMessage && (
-           <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
-               <p className="font-bold">Error</p><p>{errorMessage}</p>
-           </div>
-         )}
-         
-         {/* --- Educational Welcome Banner --- */}
-         {isNewUser && (
-           <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-700 border-l-8 border-l-sky-500 animate-fade-in">
-               <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Welcome to the Health Physics Toolbox</h2>
-               <p className="text-slate-600 dark:text-slate-300 mb-6 max-w-3xl">
-                   This is a unified platform for radiological calculations. Data flows automatically from the database to the tools, saving you time and reducing manual entry errors.
-               </p>
-         
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                   {/* Feature 1: Database */}
-                   <div className="flex flex-col gap-2">
-                       <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400">
-                           <div className="p-2 bg-sky-50 dark:bg-sky-900/30 rounded-lg">
-                               <Icon path={ICONS.database} className="w-6 h-6" />
-                           </div>
-                           <h3 className="font-bold text-lg">Robust Database</h3>
-                       </div>
-                       <p className="text-sm text-slate-600 dark:text-slate-400">
-                           Access detailed decay properties, gamma constants, and regulatory limits (10 CFR 20, DOT) for over 100 radionuclides. Start by searching above.
-                       </p>
-                   </div>
-         
-                   {/* Feature 2: Smart Calculators */}
-                   <div className="flex flex-col gap-2">
-                       <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                           <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-lg">
-                               <Icon path={ICONS.calculator} className="w-6 h-6" />
-                           </div>
-                           <h3 className="font-bold text-lg">Integrated Math</h3>
-                       </div>
-                       <p className="text-sm text-slate-600 dark:text-slate-400">
-                           Select a nuclide to pre-fill standard values into shielding, decay, and dose rate calculators. No more looking up half-lives manually.
-                       </p>
-                   </div>
-         
-                   {/* Feature 3: Operational Tools */}
-                   <div className="flex flex-col gap-2">
-                       <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                           <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
-                               <Icon path={ICONS.shield} className="w-6 h-6" />
-                           </div>
-                           <h3 className="font-bold text-lg">Field Ready</h3>
-                       </div>
-                       <p className="text-sm text-slate-600 dark:text-slate-400">
-                           Plan MARSSIM surveys, determine shipping labels, or calculate patient release criteria with tools designed for operational health physics.
-                       </p>
-                   </div>
-               </div>
-           </div>
-         )}
-         
-         {/* --- 1. FAVORITES --- */}
-         {favoriteNuclides.length > 0 && (
-           <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
-               <div className="flex justify-between items-center mb-4">
-                   <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Your Favorites</h4>
-                   <button onClick={() => setIsFavoritesModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
-                       Clear Favorites
-                   </button>
-               </div>
-               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                   {favoriteNuclides.map(n => (
-                       <NuclideCard
-                           key={n.symbol}
-                           nuclide={n}
-                           isCompact={true}
-                           onNuclideClick={handleNuclideSelection}
-                           // Pass true to skip adding this to search history again
-                           onNuclideClick={(n) => handleNuclideSelection(n, true)}
-                       />
-                   ))}
-               </div>
-           </div>
-         )}
-         
-        {/* --- 2. RECENT SEARCHES --- */}
-        {searchHistoryNuclides.length > 0 && (
-            <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
-                <div className="flex justify-between items-center mb-4">
-                    <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Searches</h4>
-                    
-                    {/* FIX: Renamed button text from "Clear History" to "Clear Searches" */}
-                    <button onClick={() => setIsHistoryModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
-                        Clear Searches
-                    </button>
-                    
+ * @description The landing page view, showing suggestions, search history, favorites, or the main search result.
+ * @param {object} props - Contains data and handlers for the home page.
+ */
+
+const HomePage = ({ errorMessage, randomSuggestions, searchHistory, handleNuclideSelection, handleClearHistory, favorites, radionuclides, handleClearFavorites, onNavClick }) => {
+    const [isFavoritesModalOpen, setIsFavoritesModalOpen] = React.useState(false);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = React.useState(false);
+
+    // --- NEW: State to track if the welcome banner was manually dismissed ---
+    const [isBannerDismissed, setIsBannerDismissed] = React.useState(() => {
+        return localStorage.getItem('rad_tool_welcome_dismissed') === 'true';
+    });
+
+    const handleDismissBanner = () => {
+        setIsBannerDismissed(true);
+        localStorage.setItem('rad_tool_welcome_dismissed', 'true');
+    };
+
+    const favoriteNuclides = React.useMemo(() =>
+        favorites.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
+        [favorites, radionuclides]
+    );
+
+    const searchHistoryNuclides = React.useMemo(() =>
+        searchHistory.map(symbol => radionuclides.find(n => n.symbol === symbol)).filter(Boolean),
+        [searchHistory, radionuclides]
+    );
+
+    const confirmClearFavorites = () => {
+        handleClearFavorites();
+        setIsFavoritesModalOpen(false);
+    };
+
+    const confirmClearHistory = () => {
+        handleClearHistory();
+        setIsHistoryModalOpen(false);
+    };
+
+    // --- UPDATED LOGIC: Hide if user has history OR if they manually dismissed it ---
+    const isNewUser = favoriteNuclides.length === 0 && searchHistoryNuclides.length === 0 && !isBannerDismissed;
+
+    return (
+        <div className="p-4 sm:p-6 space-y-6">
+            {errorMessage && (
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
+                    <p className="font-bold">Error</p><p>{errorMessage}</p>
                 </div>
+            )}
+
+            {/* --- Educational Welcome Banner --- */}
+            {isNewUser && (
+                <div className="relative bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg border border-slate-200 dark:border-slate-700 border-l-8 border-l-sky-500 animate-fade-in group">
+                    
+                    {/* NEW: Close Button */}
+                    <button 
+                        onClick={handleDismissBanner}
+                        className="absolute top-2 right-2 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                        title="Dismiss Welcome Message"
+                    >
+                        <Icon path={ICONS.clear} className="w-5 h-5" />
+                    </button>
+
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2 pr-8">Welcome to the Health Physics Toolbox</h2>
+                    <p className="text-slate-600 dark:text-slate-300 mb-6 max-w-3xl">
+                        This is a unified platform for radiological calculations. Data flows automatically from the database to the tools, saving you time and reducing manual entry errors.
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Feature 1: Database */}
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400">
+                                <div className="p-2 bg-sky-50 dark:bg-sky-900/30 rounded-lg">
+                                    <Icon path={ICONS.database} className="w-6 h-6" />
+                                </div>
+                                <h3 className="font-bold text-lg">Robust Database</h3>
+                            </div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                                Access detailed decay properties, gamma constants, and regulatory limits (10 CFR 20, DOT) for over 100 radionuclides. Start by searching above.
+                            </p>
+                        </div>
+
+                        {/* Feature 2: Smart Calculators */}
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                                <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-lg">
+                                    <Icon path={ICONS.calculator} className="w-6 h-6" />
+                                </div>
+                                <h3 className="font-bold text-lg">Integrated Math</h3>
+                            </div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                                Select a nuclide to pre-fill standard values into shielding, decay, and dose rate calculators. No more looking up half-lives manually.
+                            </p>
+                        </div>
+
+                        {/* Feature 3: Operational Tools */}
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
+                                    <Icon path={ICONS.shield} className="w-6 h-6" />
+                                </div>
+                                <h3 className="font-bold text-lg">Field Ready</h3>
+                            </div>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                                Plan MARSSIM surveys, determine shipping labels, or calculate patient release criteria with tools designed for operational health physics.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- 1. FAVORITES --- */}
+            {favoriteNuclides.length > 0 && (
+                <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Your Favorites</h4>
+                        <button onClick={() => setIsFavoritesModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
+                            Clear Favorites
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {favoriteNuclides.map(n => (
+                            <NuclideCard
+                                key={n.symbol}
+                                nuclide={n}
+                                isCompact={true}
+                                onNuclideClick={handleNuclideSelection}
+                                // Pass true to skip adding this to search history again
+                                onNuclideClick={(n) => handleNuclideSelection(n, true)}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* --- 2. RECENT SEARCHES --- */}
+            {searchHistoryNuclides.length > 0 && (
+                <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
+                    <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Recent Searches</h4>
+
+                        {/* FIX: Renamed button text from "Clear History" to "Clear Searches" */}
+                        <button onClick={() => setIsHistoryModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline focus:outline-none">
+                            Clear Searches
+                        </button>
+
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {searchHistoryNuclides.map(n => (
+                            <NuclideCard
+                                key={n.symbol}
+                                nuclide={n}
+                                isCompact={true}
+                                onNuclideClick={handleNuclideSelection}
+                                // Pass true here too
+                                onNuclideClick={(n) => handleNuclideSelection(n, true)}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* --- 3. RECENT CALCULATIONS --- */}
+            <CalculationHistoryPanel onNavClick={onNavClick} />
+
+            {/* --- 4. QUICK SUGGESTIONS --- */}
+            <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl">
+                <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 text-left">Quick Suggestions</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {searchHistoryNuclides.map(n => (
+                    {randomSuggestions.map(n => (
                         <NuclideCard
                             key={n.symbol}
                             nuclide={n}
                             isCompact={true}
                             onNuclideClick={handleNuclideSelection}
-                            // Pass true here too
-                            onNuclideClick={(n) => handleNuclideSelection(n, true)}
                         />
                     ))}
                 </div>
             </div>
-        )}
-         
-         {/* --- 3. RECENT CALCULATIONS --- */}
-         <CalculationHistoryPanel onNavClick={onNavClick} />
-         
-         {/* --- 4. QUICK SUGGESTIONS --- */}
-         <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl">
-           <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-4 text-left">Quick Suggestions</h4>
-           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-               {randomSuggestions.map(n => (
-                   <NuclideCard
-                       key={n.symbol}
-                       nuclide={n}
-                       isCompact={true}
-                       onNuclideClick={handleNuclideSelection}
-                   />
-               ))}
-           </div>
-         </div>
-         
-         <ConfirmationModal
-           isOpen={isFavoritesModalOpen}
-           onClose={() => setIsFavoritesModalOpen(false)}
-           onConfirm={confirmClearFavorites}
-           title="Clear All Favorites"
-         >
-           <p>Are you sure you want to clear your entire list of favorites? This action cannot be undone.</p>
-         </ConfirmationModal>
-         
-         <ConfirmationModal
-           isOpen={isHistoryModalOpen}
-           onClose={() => setIsHistoryModalOpen(false)}
-           onConfirm={confirmClearHistory}
-           title="Clear Search History"
-         >
-           <p>Are you sure you want to clear your recent search history?</p>
-         </ConfirmationModal>
-         
-         </div>
-         );
-         };
+
+            <ConfirmationModal
+                isOpen={isFavoritesModalOpen}
+                onClose={() => setIsFavoritesModalOpen(false)}
+                onConfirm={confirmClearFavorites}
+                title="Clear All Favorites"
+            >
+                <p>Are you sure you want to clear your entire list of favorites? This action cannot be undone.</p>
+            </ConfirmationModal>
+
+            <ConfirmationModal
+                isOpen={isHistoryModalOpen}
+                onClose={() => setIsHistoryModalOpen(false)}
+                onConfirm={confirmClearHistory}
+                title="Clear Search History"
+            >
+                <p>Are you sure you want to clear your recent search history?</p>
+            </ConfirmationModal>
+
+        </div>
+    );
+};
          
          /**
          * @description A robust note-taking component with Markdown preview support.
