@@ -66,12 +66,8 @@ body {
 canvas {
 	background-color: var(--canvas-bg);
 	border: 1px solid var(--canvas-border);
-	box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-#messageLog {
-	/* This can be empty as layout is handled by Tailwind */
-}
 
 /* This prevents the inventory from collapsing before JS loads */ 
 
@@ -739,6 +735,10 @@ kbd {
 .library-entry:hover {
     transform: translateX(4px);
     border-color: var(--text-highlight);
+}
+
+#gameCanvasWrapper {
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); 
 }
 
 /* CRT Effect Overlay - Only active when .crt class is present on the wrapper */
