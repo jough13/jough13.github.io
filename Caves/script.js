@@ -9329,7 +9329,7 @@ function endPlayerTurn() {
     
     // Refresh the clock UI
     renderTime();
-    
+
     let updates = {}; // Defined at the top to catch status changes
 
     // --- LIGHT SURVIVAL MECHANICS ---
@@ -12924,6 +12924,15 @@ async function enterGame(playerData) {
     const loadingIndicator = document.getElementById('loadingIndicator');
     canvas.style.visibility = 'hidden';
 
+    const timeDoc = await db.collection('world').doc('time').get();
+if (timeDoc.exists) {
+    const data = timeDoc.data();
+    gameState.time.day = data.day;
+    gameState.time.hour = data.hour;
+    gameState.time.minute = data.minute;
+    renderTime();
+}
+
     // --- FIX: PERMADEATH LOOP PREVENTION ---
     if (playerData.health <= 0) {
         logMessage("You have respawned at the village.");
@@ -13063,7 +13072,7 @@ async function enterGame(playerData) {
     if (sharedEnemiesListener) rtdb.ref('worldEnemies').off('value', sharedEnemiesListener);
     if (chatListener) rtdb.ref('chat').off('child_added', chatListener);
 
-    // Note: player_id was set in selectSlot (it is currentUser.uid)
+        // Note: player_id was set in selectSlot (it is currentUser.uid)
     onlinePlayerRef = rtdb.ref(`onlinePlayers/${player_id}`);
     const connectedRef = rtdb.ref('.info/connected');
 
