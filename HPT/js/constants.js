@@ -394,6 +394,14 @@ const HVL_DATA = {
       'Water': 6.0,
       sourceRef: 'rse'
    },
+   'In-111': {
+   'Lead': 0.07,
+   'Steel': 0.6,
+   'Concrete': 2.9,
+   'Aluminum': 1.4,
+   'Water': 4.5,
+   sourceRef: 'estimated'
+},
    'Ir-192': {
       'Lead': 0.33,
       'Steel': 1.3,
