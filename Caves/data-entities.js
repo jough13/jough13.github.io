@@ -1227,5 +1227,11 @@ window.RANDOM_JOURNAL_PAGES = [
     "The guards in the village are jumpy. They keep talking about 'the King's folly' and looking east, toward the old fortress.",
     "Endurance is the key. A strong constitution can shrug off swamp-sickness, or so I've heard.",
     "Someone told me a silver tongue is as good as a steel sword. I wonder if they've ever tried to 'pacify' a skeleton?",
-    "That fortress... something is *wrong* there. It's not just bandits. The air feels... heavy."
+    "That fortress... something is *wrong* there. It's not just bandits. The air feels... heavy.",
+    "The King hasn't eaten in weeks. He just stares at the Void Rift, whispering to things that aren't there. We should have left when the birds stopped singing.",
+    "Entry 442: The 'Mithril' we found in the deep grotto isn't ore. It’s growing. Like a scab over the world's skin.",
+    "If you find my shield, give it to my son. Tell him I died defending the pass, not fleeing from the shadows. Lie to him if you have to.",
+    "The Sage says the stars are actually eyes. I told him he’s had too much Bluecap stew, but last night... I saw one blink.",
+    "Final Note: The Shadowed Hand offered us immortality. They didn't mention that we'd have to forget our names to keep it.",
+    "The First King wasn't a man. The tapestries in the Grand Fortress show him arriving in a vessel made of fallen stars."
 ];
