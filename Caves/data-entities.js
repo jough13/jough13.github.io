@@ -307,7 +307,8 @@ window.ENEMY_DATA = {
         attack: 2,
         defense: 0,
         xp: 12,
-        loot: 't'
+        loot: 't',
+        flavor: "Scavengers who worship the scrap metal left behind by the Great Fall."
     },
     'w': {
         name: 'Wolf',
@@ -323,7 +324,8 @@ window.ENEMY_DATA = {
         attack: 3,
         defense: 1, // Bones are hard
         xp: 18,
-        loot: '('
+        loot: '(',
+        flavor: "Once the King's elite guard. Even in death, they cannot break their oath of silence."
     },
     'b': {
         name: 'Bandit',
@@ -443,7 +445,8 @@ window.ENEMY_DATA = {
         loot: '&',
         caster: true,
         castRange: 6,
-        spellDamage: 6
+        spellDamage: 6,
+        flavor: "A scholar who stared too long into the Void. Their body is now just a vessel for forbidden math."
     },
     'C': {
         name: 'Bandit Chief',
@@ -473,7 +476,8 @@ window.ENEMY_DATA = {
         xp: 200,
         loot: '😈',
         teleporter: true,
-        inflicts: 'madness'
+        inflicts: 'madness',
+        flavor: "A fragment of the nothingness that existed before the First Age."
     },
     'v': {
         name: 'Void Stalker',
@@ -1211,7 +1215,12 @@ window.VISIONS_OF_THE_PAST = [ // For the new Obelisks
     "A VISION: The blacksmith hammers a blade of black glass. 'It drinks the light,' he mutters. 'It drinks the soul.'",
     "A VISION: A star falls from the heavens, crashing into the plains. The crater glows with a purple light that does not fade.",
     "A VISION: The woods were not always trees. Once, they were tall spires of bone, reaching for a moon that wasn't there.",
-    "A VISION: The King sits upon his throne, but his face is blank. A shadow whispers in his ear, and the King nods slowly."
+    "A VISION: The King sits upon his throne, but his face is blank. A shadow whispers in his ear, and the King nods slowly.",
+    "A VISION: You see the world from high above. Great purple veins are pulsing beneath the crust of the earth, converging on the Grand Fortress.",
+    "A VISION: A council of mages stands around a table. They are arguing about a 'star' that fell in the desert. One mage is bleeding from his eyes.",
+    "A VISION: The King is weeping. He is trying to wash black ink off his hands, but the harder he scrubs, the further it spreads up his arms.",
+    "A VISION: You see yourself, standing exactly where you are now, but the world is made of white light and the silence is absolute.",
+    "A VISION: A giant shadow, larger than a mountain, leans down and blows out the sun like a candle."
 ];
 
 window.RANDOM_JOURNAL_PAGES = [
