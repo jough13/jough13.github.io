@@ -267,6 +267,41 @@ window.CRAFTING_RECIPES = {
 };
 
 window.ITEM_DATA = {
+    // --- STORY-RICH ARTIFACTS ---
+    '💍k': {
+        name: 'The Queen\'s Promise',
+        type: 'armor',
+        defense: 0,
+        slot: 'armor',
+        statBonuses: { charisma: 4, luck: 2 },
+        description: "An elegant silver ring. The inscription says: 'Until the stars go dark.'"
+    },
+    '⚔️r': {
+        name: 'Rebel\'s Edge',
+        type: 'weapon',
+        damage: 4,
+        slot: 'weapon',
+        statBonuses: { strength: 1, dexterity: 1 },
+        description: "A notched blade used in the failed coup of the Third Age."
+    },
+    '🏺o': {
+        name: 'Urn of Eternal Ash',
+        type: 'junk',
+        description: "The remains of the first Oracle. It stays warm to the touch, even in the ice caves."
+    },
+    '📜f': {
+        name: 'Faded Blueprint',
+        type: 'junk',
+        description: "A drawing of a machine that could supposedly bridge the gap between worlds."
+    },
+    '🧿v': {
+        name: 'Eye of the Watcher',
+        type: 'armor',
+        defense: 1,
+        slot: 'armor',
+        statBonuses: { perception: 5, wits: -1 },
+        description: "You see everything, but your own thoughts feel distant and cold."
+    },
     // --- NEW ARTIFACTS ---
     '🔱o': {
         name: 'Scepter of the Tides',
