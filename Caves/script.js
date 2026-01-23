@@ -8407,46 +8407,48 @@ async function processOverworldEnemyTurns() {
     let movesQueued = false;
     const processedIdsThisFrame = new Set();
 
-    // --- OPTIMIZATION START: Spatial Retrieval ---
+    // 1. Gather candidates from local buckets
     const activeEnemyIds = [];
-    
-    // 1. Get Player's Chunk Coordinates
     const pChunkX = Math.floor(playerX / SPATIAL_CHUNK_SIZE);
     const pChunkY = Math.floor(playerY / SPATIAL_CHUNK_SIZE);
 
-    // 2. Check Player's Chunk + 8 Neighbors (3x3 grid)
-    // This covers a 48x48 tile area centered roughly on the player
     for (let y = pChunkY - 1; y <= pChunkY + 1; y++) {
         for (let x = pChunkX - 1; x <= pChunkX + 1; x++) {
             const key = `${x},${y}`;
             if (gameState.enemySpatialMap.has(key)) {
-                // Add all IDs from this bucket to our list
-                gameState.enemySpatialMap.get(key).forEach(id => {
-                    activeEnemyIds.push(id);
-                });
+                gameState.enemySpatialMap.get(key).forEach(id => activeEnemyIds.push(id));
             }
         }
     }
 
+    // Helper: Valid path check for overworld
+    const isValidMove = (tx, ty, enemyType) => {
+        const t = chunkManager.getTile(tx, ty);
+        if (t === '~') return false; // Water blocks most
+        if (['.', 'F', 'd', 'D', '≈'].includes(t)) return true;
+        if (t === '^') {
+            const climbers = ['Y', '🐲', 'Ø', 'g', 'o', '🦇', '🦅'];
+            return climbers.includes(enemyType);
+        }
+        return false;
+    };
+
     for (const enemyId of activeEnemyIds) {
-        // Skip if we already touched this ID this frame (e.g. via collision logic)
         if (processedIdsThisFrame.has(enemyId)) continue;
 
         const enemy = gameState.sharedEnemies[enemyId];
+        // Safety: If enemy moved or died, it might be in bucket but not in sharedEnemies
         if (!enemy || typeof enemy.x !== 'number') continue;
 
         const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
-        
-        // Optimization: Too far to care
         if (distSq > searchDistSq) continue;
 
         // --- AI LOGIC ---
         let chaseChance = 0.20;
-        if (distSq < 400) chaseChance = 0.70; 
-        if (distSq < 100) chaseChance = 1.00;
+        if (distSq < 400) chaseChance = 0.85; // Close range
+        if (distSq < 100) chaseChance = 1.00; // Aggressive
 
-        // Roll to move
-        if (Math.random() < 0.75) {
+        if (Math.random() < 0.80) { // 80% chance to act per turn
             let dirX = 0, dirY = 0;
             let isChasing = false;
 
@@ -8461,15 +8463,15 @@ async function processOverworldEnemyTurns() {
 
             if (dirX === 0 && dirY === 0) continue;
 
-            let finalX = enemy.x;
-            let finalY = enemy.y;
+            let finalX = enemy.x + dirX;
+            let finalY = enemy.y + dirY;
             let canMove = false;
 
-            // Try Primary Move
-            if (isValidMove(enemy.x + dirX, enemy.y + dirY, enemy.tile)) {
-                finalX = enemy.x + dirX; finalY = enemy.y + dirY; canMove = true;
+            // Simple collision check with world terrain
+            if (isValidMove(finalX, finalY, enemy.tile)) {
+                canMove = true;
             } 
-            // Try Slide (Pathfinding fallback)
+            // Pathfinding "slide" (if diagonal blocked, try cardinal)
             else if (isChasing) {
                 if (dirX !== 0 && isValidMove(enemy.x + dirX, enemy.y, enemy.tile)) {
                     finalX = enemy.x + dirX; finalY = enemy.y; canMove = true;
@@ -8479,7 +8481,7 @@ async function processOverworldEnemyTurns() {
             }
 
             if (canMove) {
-                // A. Combat Check (Player)
+                // Combat Check
                 if (finalX === playerX && finalY === playerY) {
                     const dmg = Math.max(1, enemy.attack - (gameState.player.defenseBonus || 0));
                     gameState.player.health -= dmg;
@@ -8487,52 +8489,36 @@ async function processOverworldEnemyTurns() {
                     logMessage(`A ${enemy.name} attacks you for ${dmg} damage!`);
                     triggerStatFlash(statDisplays.health, false);
                     if (gameState.player.health <= 0) handlePlayerDeath();
-                    
-                    // Mark as processed so it doesn't move again this frame
-                    processedIdsThisFrame.add(enemyId); 
+                    processedIdsThisFrame.add(enemyId);
                     continue; 
                 }
 
-                // B. Collision Check (Other Enemies)
-                // Check if any EXISTING enemy is there OR if any enemy has already MOVED there this frame
-                const isOccupied = activeEnemyIds.some(otherId => {
-                    const e = gameState.sharedEnemies[otherId];
-                    return e && e.x === finalX && e.y === finalY;
-                });
-                
-                // Also check our pending updates to see if someone *just* moved there
-                const isClaimedByUpdate = Object.values(multiPathUpdate).some(u => u && u.x === finalX && u.y === finalY);
-
-                if (isOccupied || isClaimedByUpdate) continue;
-
-                // --- C. PREPARE ATOMIC MOVE ---
+                // --- EXECUTE MOVE & SYNC BUCKETS ---
                 const newId = `overworld:${finalX},${-finalY}`;
                 
-                // Create clean object (NO FLAGS)
-                const updatedEnemy = { 
-                    ...enemy, 
-                    x: finalX, 
-                    y: finalY 
-                };
-                
-                // IMPORTANT: Sanitize any accidental flags from DB
+                // If another enemy just moved into this exact coordinate this turn, skip
+                if (gameState.sharedEnemies[newId] || multiPathUpdate[`worldEnemies/${newId}`]) continue;
+
+                const updatedEnemy = { ...enemy, x: finalX, y: finalY };
                 if (updatedEnemy._processedThisTurn) delete updatedEnemy._processedThisTurn;
 
-                // Queue for Firebase
+                // 1. Prepare Firebase Batch
                 multiPathUpdate[`worldEnemies/${newId}`] = updatedEnemy;
                 multiPathUpdate[`worldEnemies/${enemyId}`] = null;
 
-                // Mark both IDs as processed so we don't touch them again this frame
-                processedIdsThisFrame.add(enemyId);
-                processedIdsThisFrame.add(newId);
-
-                // Optimistic Update (Immediate Visuals)
+                // 2. Update Local "sharedEnemies" (Snappy Visuals)
                 delete gameState.sharedEnemies[enemyId];
                 gameState.sharedEnemies[newId] = updatedEnemy;
 
+                // 3. CRITICAL: Update Spatial Map Buckets immediately
+                // This prevents the enemy from "vanishing" from the AI loop
+                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null); // Remove old
+                updateSpatialMap(newId, null, null, finalX, finalY);     // Add new
+
+                processedIdsThisFrame.add(newId);
                 movesQueued = true;
 
-                // Intuition Calculation
+                // Intuition logic
                 if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
                     minDist = distSq;
                     nearestEnemyDir = { x: Math.sign(finalX - playerX), y: Math.sign(finalY - playerY) };
@@ -8541,15 +8527,8 @@ async function processOverworldEnemyTurns() {
         }
     }
 
-    // 5. SEND BATCH UPDATE
     if (movesQueued) {
-        try {
-            await rtdb.ref().update(multiPathUpdate);
-        } catch (err) {
-            console.error("AI Move Sync Failed:", err);
-            // On fail, re-render to resync visuals with server truth
-            render();
-        }
+        rtdb.ref().update(multiPathUpdate).catch(err => console.error("AI Sync Error:", err));
     }
 
     return nearestEnemyDir;
