@@ -250,6 +250,53 @@ window.CRAFTING_RECIPES = {
 };
 
 window.ITEM_DATA = {
+    // --- NEW ARTIFACTS ---
+    '🔱o': {
+        name: 'Scepter of the Tides',
+        type: 'armor', // Accessory slot
+        defense: 2,
+        slot: 'armor',
+        statBonuses: { intuition: 5, maxMana: 20 },
+        description: "It hums with the sound of distant waves."
+    },
+    '🌑': {
+        name: 'Void-Touched Ring',
+        type: 'armor',
+        defense: 0,
+        slot: 'armor',
+        statBonuses: { willpower: 6, constitution: -2 }, // High power, low health
+        description: "The metal feels like it's trying to merge with your finger."
+    },
+    '🫀': {
+        name: 'Heart of the Forest',
+        type: 'junk',
+        description: "A pulsating emerald root. A collector would pay thousands of gold for this."
+    },
+    '🕯️b': {
+        name: 'Ever-Burning Candle',
+        type: 'tool',
+        tile: '🕯️',
+        statBonuses: { perception: 3 },
+        description: "The flame never flickers, even in the strongest wind."
+    },
+
+    // --- NEW MATERIALS & TRADE GOODS ---
+    '💎g': { name: 'Emerald Dust', type: 'junk', description: "Fine green powder used in high-level alchemy." },
+    '🦴w': { name: 'Whale Bone', type: 'junk', description: "Incredibly sturdy and light." },
+    '📜r': { name: 'Royal Decree', type: 'junk', description: "An old order signed by the King. Historically significant." },
+    '🧪p': {
+        name: 'Berserker Brew',
+        type: 'consumable',
+        description: "Reduces your defense but doubles your strength. (+10 Str, -5 Def for 20 turns)",
+        effect: (state) => {
+            state.player.strengthBonus = 10;
+            state.player.defenseBonus = -5;
+            state.player.strengthBonusTurns = 20;
+            state.player.defenseBonusTurns = 20;
+            logMessage("You feel a reckless rage! (+10 Str, -5 Def)");
+            return true;
+        }
+    },
     // --- RESOURCES ---
     '🎣': {
         name: 'Fishing Rod',
