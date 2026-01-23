@@ -1,4 +1,17 @@
 window.TILE_DATA = {
+    '🚢': {
+        type: 'loot_container', // Reuses the chest logic!
+        name: 'Sunken Shipwreck',
+        flavor: "You search the rotting hull for salvaged goods...",
+        lootTable: ['$', '🐚', '💎b', '⚓', '🐟'] 
+    },
+    '🧙‍♂️': {
+        type: 'lore_statue', // Reuses statue logic!
+        message: [
+            "The hermit's ghost whispers: 'The King didn't find the Void. The Void found him.'",
+            "A message is carved into the stone: 'Beware the rain in the deadlands.'"
+        ]
+    },
     '#': {
         type: 'lore',
         message: 'An ancient, weathered stone stands here. The markings are faded.'
@@ -205,6 +218,24 @@ window.TILE_DATA = {
 };
 
 window.CASTLE_LAYOUTS = {
+    LIBRARY_WING: {
+        spawn: { x: 10, y: 15 },
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓.........B.........▓',
+            '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
+            '▓.▓L▓.▓L▓.O.▓L▓.▓L▓.▓', // L is a Journal (Bookcase)
+            '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
+            '▓...................▓',
+            '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
+            '▓.▓L▓.▓L▓.🎓.▓L▓.▓L▓.▓', // Historian is here
+            '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
+            '▓.........W.........▓', // Workbench
+            '▓...................▓',
+            '▓...▓▓▓▓▓▓.X.▓▓▓▓▓▓.▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
+        ]
+    },
     COURTYARD: {
         spawn: {
             x: 37,
@@ -424,6 +455,42 @@ window.CASTLE_LAYOUTS = {
 };
 
 window.CAVE_THEMES = {
+    FUNGAL: {
+        name: 'The Mycelium Depths',
+        wall: '▓',
+        floor: '.',
+        secretWall: '▒',
+        colors: {
+            wall: '#4a1d96', // Deep Purple
+            floor: '#7e22ce' // Bright Purple
+        },
+        decorations: ['🍄', '🍄', '🌿', '🏺', 'S'], // Heavy mushroom spawns
+        enemies: ['@', 'l', 's'] // Spiders, Leeches, Skeletons
+    },
+    GOLDEN: {
+        name: 'The Glimmering Vault',
+        wall: '🧱',
+        floor: '.',
+        secretWall: '▒',
+        colors: {
+            wall: '#ca8a04', // Dark Gold/Bronze
+            floor: '#facc15' // Gold
+        },
+        decorations: ['$', '$', '🏺', '👑', '📦'], // High gold spawns
+        enemies: ['m', 'o', 'C'] // Mages, Orcs, and Bandit Chiefs
+    },
+    CORRUPTED: {
+        name: 'The Abyssal Tear',
+        wall: '▓',
+        floor: '.',
+        phaseWall: '▒',
+        colors: {
+            wall: '#000000', 
+            floor: '#1e1b4b' // Deep Midnight Blue
+        },
+        decorations: ['✨', '💀', 'vd', 'Ω'],
+        enemies: ['v', 'D', 'a'] // Void Stalkers, Demons, Acolytes
+    },
     ROCK: {
         name: 'A Dark Cave',
         wall: '▓',
@@ -534,6 +601,28 @@ window.CAVE_THEMES = {
 };
 
 window.CAVE_ROOM_TEMPLATES = {
+    "The Alchemist's Lab": {
+        width: 7,
+        height: 5,
+        map: [
+            ' WWWWW ',
+            'W🧪.🧪W', // Potions
+            'W..W..W',
+            'W.🧪.🧪W',
+            ' WWWWW '
+        ]
+    },
+    "Void Observation Deck": {
+        width: 9,
+        height: 5,
+        map: [
+            ' WWWWWWW ',
+            'W.......W',
+            'W..Ω.Ω..W', // Two Void Rifts
+            'W.......W',
+            ' WWWWWWW '
+        ]
+    },
     "Goblin Barracks": {
         width: 7,
         height: 7,
