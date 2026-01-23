@@ -135,7 +135,9 @@ window.TILE_DATA = {
             "The statue's face is worn away, but it still holds a bowl of fresh water.",
             "A statue of a weeping knight. The inscription reads: 'Duty is heavier than a mountain.'",
             "A crude idol made of mud and sticks. It smells of goblin musk.",
-            "A statue of a woman holding a lantern. You feel safer standing near it."
+            "A statue of a woman holding a lantern. You feel safer standing near it.",
+            "A headless statue pointing toward the eastern mountains.",
+            "A statue of a dog. Someone has left a Fossilized Bone at its feet."
         ]
     },
     '🏺': {
