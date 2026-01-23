@@ -49,6 +49,36 @@ const processingSpawnTiles = new Set();
 
 let areGlobalListenersInitialized = false;
 
+// --- SPATIAL PARTITIONING HELPERS ---
+const SPATIAL_CHUNK_SIZE = 16; // Match your chunkManager size
+
+function getSpatialKey(x, y) {
+    const cx = Math.floor(x / SPATIAL_CHUNK_SIZE);
+    const cy = Math.floor(y / SPATIAL_CHUNK_SIZE);
+    return `${cx},${cy}`;
+}
+
+function updateSpatialMap(enemyId, oldX, oldY, newX, newY) {
+    // 1. Remove from old bucket if it exists
+    if (oldX !== null && oldY !== null) {
+        const oldKey = getSpatialKey(oldX, oldY);
+        if (gameState.enemySpatialMap.has(oldKey)) {
+            const set = gameState.enemySpatialMap.get(oldKey);
+            set.delete(enemyId);
+            if (set.size === 0) gameState.enemySpatialMap.delete(oldKey); // Cleanup empty buckets
+        }
+    }
+
+    // 2. Add to new bucket
+    if (newX !== null && newY !== null) {
+        const newKey = getSpatialKey(newX, newY);
+        if (!gameState.enemySpatialMap.has(newKey)) {
+            gameState.enemySpatialMap.set(newKey, new Set());
+        }
+        gameState.enemySpatialMap.get(newKey).add(enemyId);
+    }
+}
+
 // --- OPTIMIZATION: Spatial Hash ---
 const SpatialHash = {
     buckets: new Map(),
@@ -2901,6 +2931,7 @@ const gameState = {
     friendlyNpcs: [],
     worldEnemies: {},
     sharedEnemies: {},
+    enemySpatialMap: new Map(), // Key: "chunkX,chunkY", Value: Set(enemyId)
     isDroppingItem: false,
     playerTurnCount: 0,
     isAiming: false,
@@ -8371,44 +8402,31 @@ async function processOverworldEnemyTurns() {
     const HEARING_DISTANCE_SQ = 15 * 15;
 
     let nearestEnemyDir = null;
-
     let minDist = Infinity; 
-    
-    // 1. Prepare Atomic Batch
     let multiPathUpdate = {};
     let movesQueued = false;
-
-    // 2. Create a Local "Do Not Touch" List for this specific frame
-    // We add enemies here once we calculate a move for them so we don't 
-    // move them again if we encounter them later in the loop.
     const processedIdsThisFrame = new Set();
 
-    // 3. ECHO SPAWNING (Keep existing logic)
-    const hour = gameState.time.hour;
-    const isNight = hour >= 20 || hour < 5;
-    if (isNight && gameState.mapMode === 'overworld' && Math.random() < 0.01) {
-        const ex = playerX + (Math.floor(Math.random() * 10) - 5);
-        const ey = playerY + (Math.floor(Math.random() * 10) - 5);
-        if (chunkManager.getTile(ex, ey) === '.') {
-            chunkManager.setWorldTile(ex, ey, '👻');
-            logMessage("A spectral figure flickers into existence nearby...");
+    // --- OPTIMIZATION START: Spatial Retrieval ---
+    const activeEnemyIds = [];
+    
+    // 1. Get Player's Chunk Coordinates
+    const pChunkX = Math.floor(playerX / SPATIAL_CHUNK_SIZE);
+    const pChunkY = Math.floor(playerY / SPATIAL_CHUNK_SIZE);
+
+    // 2. Check Player's Chunk + 8 Neighbors (3x3 grid)
+    // This covers a 48x48 tile area centered roughly on the player
+    for (let y = pChunkY - 1; y <= pChunkY + 1; y++) {
+        for (let x = pChunkX - 1; x <= pChunkX + 1; x++) {
+            const key = `${x},${y}`;
+            if (gameState.enemySpatialMap.has(key)) {
+                // Add all IDs from this bucket to our list
+                gameState.enemySpatialMap.get(key).forEach(id => {
+                    activeEnemyIds.push(id);
+                });
+            }
         }
     }
-
-    const isValidMove = (tx, ty, enemyType) => {
-        const t = chunkManager.getTile(tx, ty);
-        if (t === '~') return false;
-        if (['.', 'F', 'd', 'D', '≈'].includes(t)) return true;
-        if (t === '^') {
-            const climbers = ['Y', '🐲', 'Ø', 'g', 'o', '🦇', '🦅'];
-            return climbers.includes(enemyType);
-        }
-        return false;
-    };
-
-    // 4. SNAPSHOT: Get IDs *before* we start modifying anything
-    // This prevents the loop from iterating over an enemy twice if it moves 'down' the array
-    const activeEnemyIds = Object.keys(gameState.sharedEnemies);
 
     for (const enemyId of activeEnemyIds) {
         // Skip if we already touched this ID this frame (e.g. via collision logic)
@@ -13078,10 +13096,13 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         const key = snapshot.key;
         const val = snapshot.val();
         if (val) {
-            // *** SANITIZER: Strip the flag if it exists ***
             if (val._processedThisTurn) delete val._processedThisTurn;
 
             gameState.sharedEnemies[key] = val;
+            
+            // OPTIMIZATION: Add to Spatial Map
+            updateSpatialMap(key, null, null, val.x, val.y);
+
             if (pendingSpawnData[key]) delete pendingSpawnData[key];
             render();
         }
@@ -13092,10 +13113,19 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         const key = snapshot.key;
         const val = snapshot.val();
         if (val) {
-            // *** SANITIZER: Strip the flag if it exists ***
             if (val._processedThisTurn) delete val._processedThisTurn;
 
+            // OPTIMIZATION: Get old coords before overwriting
+            const oldEnemy = gameState.sharedEnemies[key];
+            const oldX = oldEnemy ? oldEnemy.x : null;
+            const oldY = oldEnemy ? oldEnemy.y : null;
+
+            // Update Main State
             gameState.sharedEnemies[key] = val;
+
+            // Update Spatial Map (Move from old bucket to new bucket)
+            updateSpatialMap(key, oldX, oldY, val.x, val.y);
+
             render();
         }
     });
@@ -13103,7 +13133,12 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
     // 3. Child Removed
     const onChildRemoved = sharedEnemiesRef.on('child_removed', (snapshot) => {
         const key = snapshot.key;
+        
+        // OPTIMIZATION: Remove from Spatial Map
         if (gameState.sharedEnemies[key]) {
+            const enemy = gameState.sharedEnemies[key];
+            updateSpatialMap(key, enemy.x, enemy.y, null, null);
+            
             delete gameState.sharedEnemies[key];
             render();
         }
