@@ -2590,17 +2590,32 @@ const chunkManager = {
 
                 // --- 5. COMMON FEATURES ---
                 else if (tile === '.' && featureRoll < 0.0005) {
-                    let features = Object.keys(TILE_DATA);
-                    features = features.filter(f =>
-                        TILE_DATA[f].type !== 'dungeon_exit' &&
-                        TILE_DATA[f].type !== 'castle_exit' &&
-                        TILE_DATA[f].type !== 'enemy' &&
-                        f !== '📖' && f !== '♛' && f !== 'V' && f !== 'c'
-                    );
-                    const featureTile = features[Math.floor(random() * features.length)];
-                    this.setWorldTile(worldX, worldY, featureTile);
-                    chunkData[y][x] = featureTile;
-                }
+    // 1. Grab every key from TILE_DATA
+    let features = Object.keys(TILE_DATA);
+
+    // 2. Filter to ONLY include generic, non-breaking features
+    features = features.filter(f => {
+        const data = TILE_DATA[f];
+        
+        // We ONLY want these specific types to spawn randomly in the fields
+        const allowedTypes = [
+            'lore',           // Signposts
+            'lore_statue',    // Statues / Hermits
+            'loot_container', // Chests / Shipwrecks
+            'campsite',       // Tents
+            'decoration'      // Trees / Rocks
+        ];
+
+        return allowedTypes.includes(data.type);
+    });
+
+    // 3. Pick one at random from the safe list
+    if (features.length > 0) {
+        const featureTile = features[Math.floor(random() * features.length)];
+        this.setWorldTile(worldX, worldY, featureTile);
+        chunkData[y][x] = featureTile;
+    }
+}
 
                 // --- 6. RIDDLE STATUES ---
                 else if (tile === '.' && featureRoll < 0.00008) {
