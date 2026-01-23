@@ -4555,6 +4555,7 @@ function resizeCanvas() {
     // 4. Configure Main Context
     ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
     ctx.scale(dpr, dpr); // Apply DPI scale
+    ctx.imageSmoothingEnabled = false; // Forces crisp pixel/text edges
     ctx.font = `${TILE_SIZE}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -10188,6 +10189,29 @@ function handleInput(key) {
         }
     }
 
+    if (key === 'g' || key === 'G') {
+    // 1. Get tile ID
+    let tileId;
+    if (gameState.mapMode === 'overworld') tileId = `${gameState.player.x},${-gameState.player.y}`;
+    else tileId = `${gameState.currentCaveId || gameState.currentCastleId}:${gameState.player.x},${-gameState.player.y}`;
+
+    // 2. Check current tile for lootable items
+    const currentTile = (gameState.mapMode === 'overworld') 
+        ? chunkManager.getTile(gameState.player.x, gameState.player.y)
+        : (gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] : chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x]);
+
+    // 3. Trigger pickup if it's an item
+    if (ITEM_DATA[currentTile]) {
+        // We reuse the move logic's pickup code by faking a "wait" on the spot
+        logMessage("You scour the ground for items...");
+        attemptMovePlayer(gameState.player.x, gameState.player.y); 
+        return;
+    } else {
+        logMessage("There is nothing here to pick up.");
+        return;
+    }
+}
+
     // --- MENUS ---
     if (key === 'i' || key === 'I') { openInventoryModal(); return; }
     if (key === 'm' || key === 'M') { openWorldMap(); return; }
@@ -13090,6 +13114,13 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         const key = snapshot.key;
         const val = snapshot.val();
         if (val) {
+
+                    if (val.health <= 0) {
+            // Self-healing: If we receive a dead enemy, delete it immediately
+            rtdb.ref(`worldEnemies/${key}`).remove();
+            return;
+        }
+
             if (val._processedThisTurn) delete val._processedThisTurn;
 
             gameState.sharedEnemies[key] = val;
@@ -13111,6 +13142,17 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
 
             // OPTIMIZATION: Get old coords before overwriting
             const oldEnemy = gameState.sharedEnemies[key];
+
+                    if (oldEnemy && val.health < oldEnemy.health) {
+            const damageDiff = oldEnemy.health - val.health;
+            if (damageDiff > 0 && typeof ParticleSystem !== 'undefined') {
+                // Show damage number from other players/sources
+                // We use a different color (e.g., Gray/White) to distinguish from your hits
+                ParticleSystem.createFloatingText(val.x, val.y, `-${damageDiff}`, '#cbd5e1'); 
+                ParticleSystem.createExplosion(val.x, val.y, '#ef4444', 3); // Small blood pop
+            }
+        }
+        
             const oldX = oldEnemy ? oldEnemy.x : null;
             const oldY = oldEnemy ? oldEnemy.y : null;
 
