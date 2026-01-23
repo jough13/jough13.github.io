@@ -1,5 +1,17 @@
 
 window.COOKING_RECIPES = {
+    "Oracle's Broth": {
+        materials: { "Bluecap Mushroom": 2, "Medicinal Herb": 1, "Dirty Water": 1 },
+        xp: 25, level: 2 // It's foul, but it opens the mind.
+    },
+    "Soldier's Last Meal": {
+        materials: { "Steak": 2, "Hardtack": 2, "Wheel of Cheese": 1 },
+        xp: 60, level: 3 // A heavy meal meant for those who don't expect to return.
+    },
+    "Void-Salted Fish": {
+        materials: { "Raw Fish": 1, "Void Dust": 1 },
+        xp: 100, level: 4 // Dangerous to eat, but it fills you with strange energy.
+    },
     "Berry Pie": {
         materials: { "Wildberry": 3, "Bag of Flour": 1, "Jar of Honey": 1 },
         xp: 40, level: 2
