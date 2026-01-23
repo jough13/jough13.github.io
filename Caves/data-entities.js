@@ -1151,7 +1151,12 @@ window.LORE_FOREST = [
     "The canopy is so thick it blocks out the sun.",
     "You hear a twig snap behind you, but see nothing.",
     "Old carvings on the bark warn of 'The Sleeper'.",
-    "Mushrooms glow faintly in the twilight."
+    "Mushrooms glow faintly in the twilight.",
+    "The roots here drink from a sun that set a thousand years ago.",
+    "Do not whisper your true name to the Elder Trees.",
+    "The squirrels here watch with too much intelligence.",
+    "Moss only grows on the side of the trees facing the Fortress.",
+    "You find a circle of mushrooms where the birds refuse to sing."
 ];
 
 window.LORE_MOUNTAIN = [
@@ -1189,7 +1194,13 @@ window.VILLAGER_RUMORS = [
     "They say the Old King isn't dead, just... waiting.",
     "The shopkeeper cheats at cards. Don't play him.",
     "If you see a rift in the world, jump in! What's the worst that could happen?",
-    "A Golden Apple can bring a man back from the brink of death."
+    "A Golden Apple can bring a man back from the brink of death.",
+    "My grandad says if you're drowning, a Gill Potion is better than a prayer.",
+    "Don't go into the Deadlands without a way to light the dark. The shadows there bite.",
+    "The Historian says he'll trade XP for those creepy Memory Shards. I'd rather keep my memories, thanks.",
+    "I heard the Bandit Chief has a Steel Sword. I bet it’s sharp enough to shave a ghost.",
+    "If you see a statue with red eyes, it wants an answer. If you're wrong, it wants your blood.",
+    "They say the Old King's crown was shattered into five pieces. I found a bit of gold once, but it was just a button."
 ];
 
 window.VISIONS_OF_THE_PAST = [ // For the new Obelisks
