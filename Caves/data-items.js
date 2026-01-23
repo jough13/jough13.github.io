@@ -121,6 +121,23 @@ window.CRAFTING_RECIPES = {
         materials: { "Spider Silk": 3 },
         xp: 35, level: 3
     },
+    // --- TIER 3 (Advanced) ---
+    "Reinforced Tunic": {
+        materials: { "Leather Tunic": 1, "Iron Ore": 5, "Spider Silk": 2 },
+        xp: 60, level: 3
+    },
+    "Masterwork Dagger": {
+        materials: { "Bone Dagger": 1, "Obsidian Shard": 2, "Arcane Dust": 3 },
+        xp: 80, level: 3
+    },
+    "Fisherman's Stew": {
+        materials: { "Raw Fish": 2, "Wildberry": 2, "Cactus Fruit": 1 },
+        xp: 30, level: 1 // Everyone can cook this!
+    },
+    "Void-Shielded Mail": {
+        materials: { "Iron Mail": 1, "Void Dust": 5, "Arcane Dust": 5 },
+        xp: 150, level: 4
+    },
 
     // --- TIER 4 (Expert) ---
     "Steel Sword": {
