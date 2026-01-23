@@ -673,24 +673,41 @@ const calculateDistance = (p1, p2) => {
 
 /**
  * Calculates the area of a polygon given its geographical coordinates.
+ * Uses Spherical Excess to handle Earth's curvature and Date Line wrapping correctly.
  * @param {L.LatLng[]} latLngs - An array of Leaflet LatLng objects.
  * @returns {number} The area in square meters.
  */
-const calculatePolygonArea = (latLngs) => {
-   if (!latLngs || latLngs.length === 0 || latLngs[0].length < 3) return 0;
 
-   const points = latLngs[0];
-   const earthRadius = 6378137; // Earth's radius in meters
+const calculatePolygonArea = (latLngs) => {
+   // Safety check: Leaflet often passes polygons as [ [p1, p2, p3] ] (nested rings).
+   // We grab the first element (outer ring) if it's nested.
+   const points = (Array.isArray(latLngs) && Array.isArray(latLngs[0])) ? latLngs[0] : latLngs;
+
+   if (!points || points.length < 3) return 0;
+
+   const R = 6378137; // Earth's Mean Radius in meters
    let area = 0;
 
    for (let i = 0; i < points.length; i++) {
-      const j = (i + 1) % points.length;
-      const xi = points[i].lng * Math.PI / 180;
-      const yi = points[i].lat * Math.PI / 180;
-      const xj = points[j].lng * Math.PI / 180;
-      const yj = points[j].lat * Math.PI / 180;
+       const p1 = points[i];
+       const p2 = points[(i + 1) % points.length];
 
-      area += (xj - xi) * (2 + Math.sin(yi) + Math.sin(yj));
+       // Convert to radians
+       const lat1 = p1.lat * (Math.PI / 180);
+       const lat2 = p2.lat * (Math.PI / 180);
+       const lng1 = p1.lng * (Math.PI / 180);
+       const lng2 = p2.lng * (Math.PI / 180);
+
+       // Calculate longitude difference
+       let dLng = lng2 - lng1;
+
+       // Handle Date Line wrapping (e.g., crossing from 179 to -179)
+       if (dLng > Math.PI) dLng -= 2 * Math.PI;
+       if (dLng < -Math.PI) dLng += 2 * Math.PI;
+
+       // Spherical Trapezoid Formula
+       area += dLng * (2 + Math.sin(lat1) + Math.sin(lat2));
    }
-   return Math.abs(area * earthRadius * earthRadius / 2.0);
+
+   return Math.abs(area * (R * R) / 2.0);
 };
