@@ -5812,8 +5812,6 @@
             const { addToast } = useToast();
             
             // --- 1. DYNAMIC SUB-CHAINS ---
-            // Flatten the hardcoded series into a list of useful starting points.
-            // e.g., allow starting U-238 series at Ra-226.
             const availableSeries = React.useMemo(() => {
             const list = [];
             decaySeriesData.forEach(series => {
@@ -5822,12 +5820,12 @@
             
             // Add useful sub-chains
             if (series.id === 'U-238-series') {
-            const raIndex = series.chain.findIndex(s => s.nuclide === 'Radium-226');
-            if (raIndex > -1) list.push({ label: 'Radium-226 (Sub-chain of U-238)', value: `${series.id}|${raIndex}`, chain: series.chain.slice(raIndex) });
+                const raIndex = series.chain.findIndex(s => s.nuclide === 'Radium-226');
+                if (raIndex > -1) list.push({ label: 'Radium-226 (Sub-chain of U-238)', value: `${series.id}|${raIndex}`, chain: series.chain.slice(raIndex) });
             }
             if (series.id === 'Th-232-series') {
-            const th228Index = series.chain.findIndex(s => s.nuclide === 'Thorium-228');
-            if (th228Index > -1) list.push({ label: 'Thorium-228 (Sub-chain of Th-232)', value: `${series.id}|${th228Index}`, chain: series.chain.slice(th228Index) });
+                const th228Index = series.chain.findIndex(s => s.nuclide === 'Thorium-228');
+                if (th228Index > -1) list.push({ label: 'Thorium-228 (Sub-chain of Th-232)', value: `${series.id}|${th228Index}`, chain: series.chain.slice(th228Index) });
             }
             });
             return list;
@@ -5894,142 +5892,151 @@
             
             setTimeout(() => {
             try {
-            // 1. Determine Initial Activity (A0) in Bq
-            let A0_Bq = 0;
+                // 1. Determine Initial Activity (A0) in Bq
+                let A0_Bq = 0;
             
-            if (inputMode === 'activity') {
-               A0_Bq = val * activityFactorsBq[inputUnit];
-            } else { // Mass to Activity Calculation
-               const parentName = activeSeriesObj.chain[0].nuclide;
-               const parentNuclide = radionuclides.find(n => n.name === parentName || n.symbol === parentName);
+                if (inputMode === 'activity') {
+                    A0_Bq = val * activityFactorsBq[inputUnit];
+                } else { // Mass to Activity Calculation
+                    const parentName = activeSeriesObj.chain[0].nuclide;
+                    const parentNuclide = radionuclides.find(n => n.name === parentName || n.symbol === parentName);
             
-               if (!parentNuclide) {
-                   throw new Error(`Data for parent nuclide ${parentName} not found.`);
-               }
-               if (parentNuclide.halfLife === 'Stable') {
-                   throw new Error(`Cannot calculate activity from mass for a stable nuclide.`);
-               }
+                    if (!parentNuclide) {
+                        throw new Error(`Data for parent nuclide ${parentName} not found.`);
+                    }
+                    if (parentNuclide.halfLife === 'Stable') {
+                        throw new Error(`Cannot calculate activity from mass for a stable nuclide.`);
+                    }
             
-               let sa_Bq_g = parseSpecificActivity(parentNuclide.specificActivity);
+                    let sa_Bq_g = parseSpecificActivity(parentNuclide.specificActivity);
             
-               // If specific activity is not pre-calculated in the database, calculate it from first principles.
-               if (!sa_Bq_g || sa_Bq_g === 0) {
-                   const hl_seconds = parseHalfLifeToSeconds(parentNuclide.halfLife);
-                   const match = parentNuclide.symbol.match(/-(\d+)/);
-                   
-                   // Do not default to a hardcoded mass. Throw an error if mass number can't be parsed.
-                   if (!match || !match[1]) {
-                       throw new Error(`Could not determine atomic mass for ${parentNuclide.name} to calculate specific activity.`);
-                   }
-                   const atomicMass = parseInt(match[1], 10);
-                   const AVOGADRO = 6.02214076e23;
-                   
-                   // Check for division by zero if half-life is infinite (stable)
-                   if (hl_seconds === Infinity || hl_seconds === 0) {
-                       throw new Error(`Invalid half-life for ${parentNuclide.name}; cannot calculate specific activity.`);
-                   }
+                    // If specific activity is not pre-calculated in the database, calculate it from first principles.
+                    if (!sa_Bq_g || sa_Bq_g === 0) {
+                        const hl_seconds = parseHalfLifeToSeconds(parentNuclide.halfLife);
+                        const match = parentNuclide.symbol.match(/-(\d+)/);
             
-                   sa_Bq_g = (Math.log(2) * AVOGADRO) / (hl_seconds * atomicMass);
-               }
-               
-               const mass_g = val * massFactorsG[inputUnit];
-               A0_Bq = mass_g * sa_Bq_g;
-            }
+                        if (!match || !match[1]) {
+                            throw new Error(`Could not determine atomic mass for ${parentNuclide.name} to calculate specific activity.`);
+                        }
+                        const atomicMass = parseInt(match[1], 10);
+                        const AVOGADRO = 6.02214076e23;
             
-            const t_seconds = t_input * unitConversionsTime[timeUnit];
-            const flatChain = flattenChainForCalculator(activeSeriesObj.chain);
+                        if (hl_seconds === Infinity || hl_seconds === 0) {
+                            throw new Error(`Invalid half-life for ${parentNuclide.name}; cannot calculate specific activity.`);
+                        }
             
-            // 2. Calculate Final State (Single Point)
-            const calculatedActivities_Bq = runBatemanWithBranching(flatChain, A0_Bq, t_seconds);
+                        sa_Bq_g = (Math.log(2) * AVOGADRO) / (hl_seconds * atomicMass);
+                    }
             
-            // Convert back to display units
-            const displayFactor = settings.unitSystem === 'si' ? 1 : 1/3.7e10; // Bq to Ci
-            const displayUnit = settings.unitSystem === 'si' ? 'Bq' : 'Ci';
+                    const mass_g = val * massFactorsG[inputUnit];
+                    A0_Bq = mass_g * sa_Bq_g;
+                }
             
-            const finalResults = flatChain.map((step, i) => {
-            const act = calculatedActivities_Bq[i] * displayFactor;
-            return {
-                name: step.nuclide,
-                activity: act,
-                // Helper for sorting/filtering
-                halfLifeSeconds: parseHalfLifeToSeconds(step.halfLife)
-            };
-            });
+                const t_seconds = t_input * unitConversionsTime[timeUnit];
+                const flatChain = flattenChainForCalculator(activeSeriesObj.chain);
             
-            const totalActivityNow = finalResults.reduce((a, b) => a + b.activity, 0);
-            setResults({ items: finalResults, total: totalActivityNow, displayUnit });
+                // 2. Calculate Final State (Single Point)
+                const calculatedActivities_Bq = runBatemanWithBranching(flatChain, A0_Bq, t_seconds);
             
-            // 3. Calculate Chart Data (Time Series)
-            const chartLabels = [];
-            const steps = 100;
-            // Pre-initialize datasets structure
-            const datasets = flatChain.map((step, i) => {
-            const hl = parseHalfLifeToSeconds(step.halfLife);
-            // Smart Visibility: Show Parent, End of Chain, and Long-lived daughters (> 1 day)
-            const isImportant = i === 0 || i === flatChain.length - 1 || hl > 86400;
-            return {
-                label: step.nuclide,
-                data: [],
-                borderColor: `hsl(${(i * 360 / Math.min(activeSeriesObj.chain.length, 15)) % 360}, 70%, 50%)`,
-                borderWidth: 2,
-                pointRadius: 0,
-                tension: 0.4,
-                hidden: !isImportant
-            };
-            });
-            const totalData = [];
+                // --- FIX: SMART UNITS LOGIC ---
+                // If input mode is activity, match the input unit. 
+                // If input mode is mass, default to system base unit (Ci or Bq).
+                let displayFactor;
+                let displayUnit;
             
-            // Generate Time Points
-            const rawCsvRows = []; // Array for CSV export
-            rawCsvRows.push(['Time (' + timeUnit + ')', 'Total Activity', ...flatChain.map(s => s.nuclide)].join(','));
+                if (inputMode === 'activity') {
+                    displayUnit = inputUnit;
+                    // Factor to convert FROM Bq TO Target Unit
+                    displayFactor = 1 / activityFactorsBq[inputUnit];
+                } else {
+                    // Default behavior for Mass input
+                    displayFactor = settings.unitSystem === 'si' ? 1 : 1 / 3.7e10;
+                    displayUnit = settings.unitSystem === 'si' ? 'Bq' : 'Ci';
+                }
             
-            for (let i = 0; i <= steps; i++) {
-            const timePoint = (t_input / steps) * i;
+                const finalResults = flatChain.map((step, i) => {
+                    const act = calculatedActivities_Bq[i] * displayFactor;
+                    return {
+                        name: step.nuclide,
+                        activity: act,
+                        // Helper for sorting/filtering
+                        halfLifeSeconds: parseHalfLifeToSeconds(step.halfLife)
+                    };
+                });
             
-            // X-Axis Label
-            if (t_input > 10) chartLabels.push(Math.round(timePoint).toString());
-            else chartLabels.push(timePoint.toPrecision(2));
+                const totalActivityNow = finalResults.reduce((a, b) => a + b.activity, 0);
+                setResults({ items: finalResults, total: totalActivityNow, displayUnit });
             
-            const timePoint_seconds = timePoint * unitConversionsTime[timeUnit];
+                // 3. Calculate Chart Data (Time Series)
+                const chartLabels = [];
+                const steps = 100;
+                
+                const datasets = flatChain.map((step, i) => {
+                    const hl = parseHalfLifeToSeconds(step.halfLife);
+                    const isImportant = i === 0 || i === flatChain.length - 1 || hl > 86400;
+                    return {
+                        label: step.nuclide,
+                        data: [],
+                        borderColor: `hsl(${(i * 360 / Math.min(activeSeriesObj.chain.length, 15)) % 360}, 70%, 50%)`,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        hidden: !isImportant
+                    };
+                });
+                const totalData = [];
             
-            // Run Bateman for this time step
-            const actsAtT_Bq = runBatemanWithBranching(flatChain, A0_Bq, timePoint_seconds);
+                // Generate Time Points
+                const rawCsvRows = []; // Array for CSV export
+                rawCsvRows.push(['Time (' + timeUnit + ')', 'Total Activity', ...flatChain.map(s => s.nuclide)].join(','));
             
-            let sum = 0;
-            const rowValues = [timePoint];
+                for (let i = 0; i <= steps; i++) {
+                    const timePoint = (t_input / steps) * i;
             
-            actsAtT_Bq.forEach((act_Bq, j) => {
-                const val = act_Bq * displayFactor;
-                datasets[j].data.push(val);
-                sum += val;
-                rowValues.push(val); // Add to CSV row
-            });
+                    // X-Axis Label
+                    if (t_input > 10) chartLabels.push(Math.round(timePoint).toString());
+                    else chartLabels.push(timePoint.toPrecision(2));
             
-            totalData.push(sum);
+                    const timePoint_seconds = timePoint * unitConversionsTime[timeUnit];
             
-            // CSV Row: Time, Total, ...Nuclides
-            rawCsvRows.push([timePoint, sum, ...actsAtT_Bq.map(v => v * displayFactor)].join(','));
-            }
+                    // Run Bateman for this time step
+                    const actsAtT_Bq = runBatemanWithBranching(flatChain, A0_Bq, timePoint_seconds);
             
-            datasets.push({
-               label: 'Total Activity',
-               data: totalData,
-               borderColor: theme === 'dark' ? '#ffffff' : '#000000', // Note: This color logic is handled in the Chart component now, but keeping structure valid
-               borderWidth: 3,
-               borderDash: [5, 5],
-               pointRadius: 0,
-               tension: 0.4,
-               order: 0 // Explicitly set order (lower numbers draw on top in mixed charts, but for lines, array order usually matters)
-            });
+                    let sum = 0;
+                    const rowValues = [timePoint];
             
-            setChartData({ labels: chartLabels, datasets, timeUnit });
-            setRawDataForExport(rawCsvRows.join('\n'));
+                    actsAtT_Bq.forEach((act_Bq, j) => {
+                        const val = act_Bq * displayFactor;
+                        datasets[j].data.push(val);
+                        sum += val;
+                        rowValues.push(val); 
+                    });
+            
+                    totalData.push(sum);
+            
+                    // CSV Row: Time, Total, ...Nuclides
+                    rawCsvRows.push([timePoint, sum, ...actsAtT_Bq.map(v => v * displayFactor)].join(','));
+                }
+            
+                datasets.push({
+                    label: 'Total Activity',
+                    data: totalData,
+                    borderColor: theme === 'dark' ? '#ffffff' : '#000000', 
+                    borderWidth: 3,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    tension: 0.4,
+                    order: 0 
+                });
+            
+                setChartData({ labels: chartLabels, datasets, timeUnit });
+                setRawDataForExport(rawCsvRows.join('\n'));
             
             } catch (e) {
-            setError('Calculation error: ' + e.message);
-            console.error(e);
+                setError('Calculation error: ' + e.message);
+                console.error(e);
             } finally {
-            setIsLoading(false);
+                setIsLoading(false);
             }
             }, 50);
             };
@@ -6065,240 +6072,240 @@
             return (
             <div className="p-4 animate-fade-in">
             <div className="max-w-4xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Decay Series Calculator</h2>
-            <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-            <Icon path={ICONS.clear} className="w-3 h-3"/> Clear Inputs
-            </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-            <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Decay Chain</label>
-            <select value={selectedSeriesValue} onChange={e => setSelectedSeriesValue(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                {availableSeries.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-            </div>
-            
-            {/* Initial Quantity Input (Mass or Activity) */}
-            <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Initial Quantity</label>
-            <div className="flex">
-                 <input type="number" value={inputValue} onChange={e => setInputValue(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                 <select 
-                     value={inputUnit} 
-                     onChange={e => {
-                         const u = e.target.value;
-                         setInputUnit(u);
-                         // Toggle mode based on unit selection
-                         if (massUnitsList.includes(u)) setInputMode('mass');
-                         else setInputMode('activity');
-                     }} 
-                     className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 border border-slate-300 dark:border-slate-600 text-sm font-bold w-24"
-                 >
-                     <optgroup label="Activity">
-                         {activityUnits.map(u => <option key={u} value={u}>{u}</option>)}
-                     </optgroup>
-                     <optgroup label="Mass">
-                         {massUnitsList.map(u => <option key={u} value={u}>{u}</option>)}
-                     </optgroup>
-                 </select>
-            </div>
-            </div>
-            
-            <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Time Elapsed</label>
-            <div className="flex gap-2 mt-1">
-                <input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                    {timeUnitsList.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
-            </div>
-            </div>
-            
-            <button onClick={handleCalculate} disabled={isLoading} className="w-full md:col-span-4 py-3 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition disabled:bg-sky-800 disabled:cursor-wait shadow-md">
-            {isLoading ? 'Running Bateman Simulation...' : 'Calculate Chain'}
-            </button>
-            </div>
-            
-            {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
-            
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Chart Section */}
-            <div className="min-h-[300px]">
-            {chartData ? (
-                <>
-                    <div className="flex justify-between items-center mb-2">
-                         <button onClick={handleExportCSV} className="text-xs font-bold text-sky-600 hover:underline flex items-center gap-1"><Icon path={ICONS.database} className="w-3 h-3"/> Download Data (CSV)</button>
-                         <label className="flex items-center gap-2 text-sm cursor-pointer">
-                             <input type="checkbox" checked={useLogScale} onChange={() => setUseLogScale(!useLogScale)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
-                             Use Log Scale
-                         </label>
-                    </div>
-                    <SeriesDecayChart chartData={chartData} useLogScale={useLogScale} theme={theme} />
-                </>
-            ) : (
-                <div className="flex items-center justify-center h-full bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
-                    <p className="text-slate-500">Chart will display here</p>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Decay Series Calculator</h2>
+                    <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                        <Icon path={ICONS.clear} className="w-3 h-3" /> Clear Inputs
+                    </button>
                 </div>
-            )}
-            </div>
             
-            {/* Results Table Section */}
-            <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-            <h3 className="text-lg font-semibold mb-2">Results at {timeElapsed} {timeUnit}</h3>
-            {results.items && results.items.length > 0 ? (
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0 z-10">
-                        <tr><th className="p-2">Nuclide</th><th className="p-2 text-right">Activity ({results.displayUnit})</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr className="bg-sky-50 dark:bg-sky-900/30 font-bold border-b border-sky-200 dark:border-sky-800">
-                                       <td className="p-2">TOTAL ACTIVITY</td>
-                                       {/* Use consistent exponential formatting instead of smart units to match column header */}
-                                       <td className="p-2 text-right">{results.total.toExponential(3)}</td>
-                                   </tr>
-                                   {results.items.map(r => (
-                            <tr key={r.name} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                                <td className="p-2 font-medium">
-                                    <button
-                                        onClick={() => handleRowClick(r.name)}
-                                        className="text-sky-600 dark:text-sky-400 hover:underline text-left"
-                                    >
-                                        {r.name}
-                                    </button>
-                                </td>
-                                <td className="p-2 text-right font-mono text-slate-700 dark:text-slate-300">{r.activity.toExponential(3)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            ) : <p className="text-center text-slate-500 dark:text-slate-400 py-4">No results to display.</p>}
-            </div>
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Decay Chain</label>
+                        <select value={selectedSeriesValue} onChange={e => setSelectedSeriesValue(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                            {availableSeries.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                        </select>
+                    </div>
+            
+                    {/* Initial Quantity Input (Mass or Activity) */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Initial Quantity</label>
+                        <div className="flex">
+                            <input type="number" value={inputValue} onChange={e => setInputValue(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <select
+                                value={inputUnit}
+                                onChange={e => {
+                                    const u = e.target.value;
+                                    setInputUnit(u);
+                                    // Toggle mode based on unit selection
+                                    if (massUnitsList.includes(u)) setInputMode('mass');
+                                    else setInputMode('activity');
+                                }}
+                                className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 border border-slate-300 dark:border-slate-600 text-sm font-bold w-24"
+                            >
+                                <optgroup label="Activity">
+                                    {activityUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                                </optgroup>
+                                <optgroup label="Mass">
+                                    {massUnitsList.map(u => <option key={u} value={u}>{u}</option>)}
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+            
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Time Elapsed</label>
+                        <div className="flex gap-2 mt-1">
+                            <input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                {timeUnitsList.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                        </div>
+                    </div>
+            
+                    <button onClick={handleCalculate} disabled={isLoading} className="w-full md:col-span-4 py-3 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition disabled:bg-sky-800 disabled:cursor-wait shadow-md">
+                        {isLoading ? 'Running Bateman Simulation...' : 'Calculate Chain'}
+                    </button>
+                </div>
+            
+                {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+            
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Chart Section */}
+                    <div className="min-h-[300px]">
+                        {chartData ? (
+                            <>
+                                <div className="flex justify-between items-center mb-2">
+                                    <button onClick={handleExportCSV} className="text-xs font-bold text-sky-600 hover:underline flex items-center gap-1"><Icon path={ICONS.database} className="w-3 h-3" /> Download Data (CSV)</button>
+                                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                        <input type="checkbox" checked={useLogScale} onChange={() => setUseLogScale(!useLogScale)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
+                                        Use Log Scale
+                                    </label>
+                                </div>
+                                <SeriesDecayChart chartData={chartData} useLogScale={useLogScale} theme={theme} />
+                            </>
+                        ) : (
+                            <div className="flex items-center justify-center h-full bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
+                                <p className="text-slate-500">Chart will display here</p>
+                            </div>
+                        )}
+                    </div>
+            
+                    {/* Results Table Section */}
+                    <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                        <h3 className="text-lg font-semibold mb-2">Results at {timeElapsed} {timeUnit}</h3>
+                        {results.items && results.items.length > 0 ? (
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0 z-10">
+                                    <tr><th className="p-2">Nuclide</th><th className="p-2 text-right">Activity ({results.displayUnit})</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="bg-sky-50 dark:bg-sky-900/30 font-bold border-b border-sky-200 dark:border-sky-800">
+                                        <td className="p-2">TOTAL ACTIVITY</td>
+                                        {/* Use consistent exponential formatting */}
+                                        <td className="p-2 text-right">{results.total.toExponential(3)}</td>
+                                    </tr>
+                                    {results.items.map(r => (
+                                        <tr key={r.name} className="border-b border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                            <td className="p-2 font-medium">
+                                                <button
+                                                    onClick={() => handleRowClick(r.name)}
+                                                    className="text-sky-600 dark:text-sky-400 hover:underline text-left"
+                                                >
+                                                    {r.name}
+                                                </button>
+                                            </td>
+                                            <td className="p-2 text-right font-mono text-slate-700 dark:text-slate-300">{r.activity.toExponential(3)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : <p className="text-center text-slate-500 dark:text-slate-400 py-4">No results to display.</p>}
+                    </div>
+                </div>
             </div>
             </div>
             );
             };
             
             /**
-                        * @description A React component that renders a line chart for a decay series using Chart.js.
-                        */
-                       const SeriesDecayChart = ({ chartData, useLogScale, theme }) => {
-                       const chartRef = React.useRef(null);
-                       const chartInstance = React.useRef(null);
+            * @description A React component that renders a line chart for a decay series using Chart.js.
+            */
+            const SeriesDecayChart = ({ chartData, useLogScale, theme }) => {
+            const chartRef = React.useRef(null);
+            const chartInstance = React.useRef(null);
             
-                       React.useEffect(() => {
-                       if (chartInstance.current) {
-                          chartInstance.current.destroy();
-                       }
+            React.useEffect(() => {
+            if (chartInstance.current) {
+                chartInstance.current.destroy();
+            }
             
-                       if (chartRef.current && chartData) {
+            if (chartRef.current && chartData) {
             
-                          const isDarkMode = theme === 'dark';
-                          const textColor = isDarkMode ? '#cbd5e1' : '#334155';
-                          const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+                const isDarkMode = theme === 'dark';
+                const textColor = isDarkMode ? '#cbd5e1' : '#334155';
+                const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
             
-                          const ctx = chartRef.current.getContext('2d');
+                const ctx = chartRef.current.getContext('2d');
             
-                          let safeMin = undefined;
-                          if (useLogScale && chartData.datasets) {
-                              const allValues = chartData.datasets.flatMap(d => d.data);
-                              const maxVal = Math.max(...allValues);
-                              
-                              if (maxVal > 0) {
-                                  // Use 5 orders of magnitude (standard 5-cycle log paper)
-                                  safeMin = maxVal * 1e-5; 
-                              } else {
-                                  safeMin = 1e-5;
-                              }
-                          }
+                let safeMin = undefined;
+                if (useLogScale && chartData.datasets) {
+                    const allValues = chartData.datasets.flatMap(d => d.data);
+                    const maxVal = Math.max(...allValues);
+                    
+                    if (maxVal > 0) {
+                        // Use 5 orders of magnitude (standard 5-cycle log paper)
+                        safeMin = maxVal * 1e-5; 
+                    } else {
+                        safeMin = 1e-5;
+                    }
+                }
             
-                          if (chartData.datasets && chartData.datasets.length > 0) {
-                               // Assuming Total Activity is always index 0 (unshifted in parent)
-                               if (chartData.datasets[0].label === 'Total Activity') {
-                                   chartData.datasets[0].borderColor = theme === 'dark' ? '#ffffff' : '#000000';
-                               }
-                           }
+                if (chartData.datasets && chartData.datasets.length > 0) {
+                    // Assuming Total Activity is always index 0 (unshifted in parent)
+                    if (chartData.datasets[0].label === 'Total Activity') {
+                        chartData.datasets[0].borderColor = theme === 'dark' ? '#ffffff' : '#000000';
+                    }
+                }
             
-                          chartInstance.current = new Chart(ctx, {
-                              type: 'line',
-                              data: chartData,
-                              options: {
-                                  responsive: true,
-                                  maintainAspectRatio: false,
-                                  plugins: {
-                                      legend: {
-                                          position: 'top',
-                                          labels: { boxWidth: 20, font: { size: 10 }, color: textColor }
-                                      },
-                                      title: {
-                                          display: true,
-                                          text: 'Decay Series Activity Over Time',
-                                          color: textColor
-                                      },
-                                      tooltip: { mode: 'index', intersect: false }
-                                  },
-                                  scales: {
-                                      x: {
-                                          title: { display: true, text: `Time (${chartData.timeUnit})`, color: textColor },
-                                          ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 20, color: textColor },
-                                          grid: { color: gridColor }
-                                      },
-                                      y: {
-                                          type: useLogScale ? 'logarithmic' : 'linear',
-                                          title: { display: true, text: `Activity (${useLogScale ? 'Log Scale' : 'Linear Scale'})`, color: textColor },
-                                          min: safeMin,
-                                          beginAtZero: !useLogScale,
-                                          ticks: {
-                                              color: textColor,
-                                              callback: function(value) {
-                                                  if (value !== 0 && (Math.abs(value) < 1e-3 || Math.abs(value) >= 1e4)) {
-                                                      return value.toExponential(1);
-                                                  }
-                                                  return value.toLocaleString();
-                                              }
-                                          },
-                                          grid: { color: gridColor }
-                                      }
-                                  },
-                                  elements: {
-                                      line: { tension: 0 } // Disable curves to prevent wavy artifacts
-                                  }
-                              }
-                          });
-                       }
+                chartInstance.current = new Chart(ctx, {
+                    type: 'line',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { boxWidth: 20, font: { size: 10 }, color: textColor }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Decay Series Activity Over Time',
+                                color: textColor
+                            },
+                            tooltip: { mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            x: {
+                                title: { display: true, text: `Time (${chartData.timeUnit})`, color: textColor },
+                                ticks: { maxRotation: 0, autoSkip: true, autoSkipPadding: 20, color: textColor },
+                                grid: { color: gridColor }
+                            },
+                            y: {
+                                type: useLogScale ? 'logarithmic' : 'linear',
+                                title: { display: true, text: `Activity (${useLogScale ? 'Log Scale' : 'Linear Scale'})`, color: textColor },
+                                min: safeMin,
+                                beginAtZero: !useLogScale,
+                                ticks: {
+                                    color: textColor,
+                                    callback: function(value) {
+                                        if (value !== 0 && (Math.abs(value) < 1e-3 || Math.abs(value) >= 1e4)) {
+                                            return value.toExponential(1);
+                                        }
+                                        return value.toLocaleString();
+                                    }
+                                },
+                                grid: { color: gridColor }
+                            }
+                        },
+                        elements: {
+                            line: { tension: 0 } // Disable curves to prevent wavy artifacts
+                        }
+                    }
+                });
+            }
             
-                       return () => {
-                          if (chartInstance.current) { chartInstance.current.destroy(); }
-                       };
-                       }, [chartData, useLogScale, theme]);
+            return () => {
+                if (chartInstance.current) { chartInstance.current.destroy(); }
+            };
+            }, [chartData, useLogScale, theme]);
             
-                       const handleExport = () => {
-                       if (chartInstance.current) {
-                         const link = document.createElement('a');
-                         link.href = chartInstance.current.toBase64Image();
-                         link.download = 'decay-chart.png';
-                         link.click();
-                       }
-                       };
+            const handleExport = () => {
+            if (chartInstance.current) {
+                const link = document.createElement('a');
+                link.href = chartInstance.current.toBase64Image();
+                link.download = 'decay-chart.png';
+                link.click();
+            }
+            };
             
-                       return (
-                       <div className="mt-4">
-                         <div className="h-64">
-                             <canvas ref={chartRef}></canvas>
-                         </div>
-                         <div className="text-center mt-2">
-                             <button
-                                 onClick={handleExport}
-                                 className="px-3 py-1 text-xs bg-slate-200 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold"
-                             >
-                                 Export as PNG
-                             </button>
-                         </div>
-                       </div>
-                       );
-                       };
+            return (
+            <div className="mt-4">
+                <div className="h-64">
+                    <canvas ref={chartRef}></canvas>
+                </div>
+                <div className="text-center mt-2">
+                    <button
+                        onClick={handleExport}
+                        className="px-3 py-1 text-xs bg-slate-200 dark:bg-slate-700 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition font-semibold"
+                    >
+                        Export as PNG
+                    </button>
+                </div>
+            </div>
+            );
+            };
             
             /**
             * @description A combined calculator for mass-to-activity conversions and for calculating
