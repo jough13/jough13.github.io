@@ -61,10 +61,6 @@ window.CRAFTING_RECIPES = {
         xp: 10, level: 1
     },
     // --- TIER 1 (Basic Survival) ---
-    "Stick": {
-        materials: { "Bone Shard": 2 },
-        xp: 5, level: 1
-    },
     "Leather Tunic": {
         materials: { "Wolf Pelt": 3 },
         xp: 10, level: 1
