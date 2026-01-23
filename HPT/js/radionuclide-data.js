@@ -1506,7 +1506,7 @@ const RADIONUCLIDE_DATA = [{
       sourceRef: {
          halfLife: 'nndc'
       },
-      gammaConstant: '0.09 R·m²/hr·Ci'
+      gammaConstant: '0.151 R·m²/hr·Ci'
    },
    {
       name: 'Cobalt-60',
@@ -2504,7 +2504,7 @@ const RADIONUCLIDE_DATA = [{
          A2: 3,
          unit: 'TBq'
       },
-      gammaConstant: '0.16 R·m²/hr·Ci',
+      gammaConstant: '0.277 R·m²/hr·Ci',
       dValue: 0.2,
       dosimetry: {
          ALI: {
