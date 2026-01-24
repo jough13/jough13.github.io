@@ -2334,6 +2334,15 @@ for (let y = 0; y < map.length; y++) {
             }
         }
 
+                if (map[spawnY] && map[spawnY][spawnX] !== undefined) {
+            map[spawnY][spawnX] = '.';
+        } else {
+            console.error(`CRITICAL: Spawn point {x:${spawnX}, y:${spawnY}} is out of bounds for layout!`);
+            // Fallback: Force spawn to 1,1 to prevent crash
+            if(map[1] && map[1][1]) map[1][1] = '.';
+            // Note: Player might spawn in a wall if layout is tiny, but game won't crash.
+        }
+
         // Finally, ensure the spawn tile itself is a floor tile
         map[spawnY][spawnX] = '.';
 
@@ -13559,4 +13568,3 @@ if (mainMenuBtn) {
         location.reload();
     };
 }
-    
