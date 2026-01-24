@@ -218,8 +218,8 @@ window.TILE_DATA = {
 };
 
 window.CASTLE_LAYOUTS = {
-    LIBRARY_WING: {
-        spawn: { x: 11, y: 11 }, // <--- CHANGED from {x:10, y:15} to match the Exit (X) location
+LIBRARY_WING: {
+        spawn: { x: 10, y: 11 }, // <--- CHANGED x from 11 to 10
         map: [
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
             '▓.........B.........▓',
@@ -232,7 +232,7 @@ window.CASTLE_LAYOUTS = {
             '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
             '▓.........W.........▓', 
             '▓...................▓',
-            '▓...▓▓▓▓▓▓.X.▓▓▓▓▓▓.▓', // The X is at x:11, y:11
+            '▓...▓▓▓▓▓▓.X.▓▓▓▓▓▓.▓', // The X is at 11, so we spawn at 10 (left of it)
             '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
         ]
     },
