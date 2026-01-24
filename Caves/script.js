@@ -1832,6 +1832,17 @@ const chunkManager = {
         let CAVE_HEIGHT = 70;
         let enemyCount = 20;
 
+        // Calculate cave location from ID (format: cave_X_Y)
+        const parts = caveId.split('_');
+        const cX = parts.length > 2 ? parseInt(parts[1]) : 0;
+        const cY = parts.length > 2 ? parseInt(parts[2]) : 0;
+        const dist = Math.sqrt(cX * cX + cY * cY);
+
+        // Safe Zone Density Nerf
+        if (dist < 150) { 
+            enemyCount = 10; // Half the enemies for starter caves!
+        }
+
         // --- THEME SELECTION LOGIC ---
         if (caveId === 'cave_landmark') {
             chosenThemeKey = 'ABYSS'; // Force the Epic Theme
