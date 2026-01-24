@@ -2270,6 +2270,19 @@ const chunkManager = {
 
         const map = baseMap.map(row => [...row]);
 
+        // Calculate the maximum width of any row
+let maxWidth = 0;
+for (let r of map) {
+    if (r.length > maxWidth) maxWidth = r.length;
+}
+
+// Pad shorter rows with walls ('▓') or void (' ') to match maxWidth
+for (let y = 0; y < map.length; y++) {
+    while (map[y].length < maxWidth) {
+        map[y].push('▓'); // Fill gaps on the right side with Wall
+    }
+}
+
         const npcTypesToSpawn = ['N', 'N', '§', 'H']; // 2 Villagers, 1 Shop, 1 Healer
         let spawnAttempts = 50; // Try 50 times to place them
 
