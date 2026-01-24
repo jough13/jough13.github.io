@@ -13483,25 +13483,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         chatMessages.scrollTop = chatMessages.scrollHeight;
     });
 
-    // --- 5. Final Render & Initialization (UPDATED) ---
-
-    // We wrap the startup in a Promise to wait for data
-    const waitForWorldData = new Promise((resolve) => {
-        if (gameState.mapMode === 'overworld') {
-            const cX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
-            const cY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
-
-            // Wait for the chunk changes (dead static enemies) to load
-            chunkManager.listenToChunkState(cX, cY, () => {
-                resolve();
-            });
-        } else {
-            // Dungeons/Castles don't use worldState in the same way, resolve immediately
-            resolve();
-        }
-    });
-
-    // --- 5. Final Render & Initialization (PRE-WARM & SYNC) ---
+     // --- 5. Final Render & Initialization (PRE-WARM & SYNC) ---
 
     // A. Wait for Static Map Modifications (Dead static enemies, walls, etc.)
     const waitForWorldData = new Promise((resolve) => {
@@ -13521,6 +13503,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
                 resolve();
             });
         } else {
+            // Dungeons/Castles resolve immediately
             resolve();
         }
     });
@@ -13533,8 +13516,9 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
                 const enemies = snapshot.val() || {};
                 // Populate local state immediately
                 Object.entries(enemies).forEach(([key, val]) => {
-                    if (val.health > 0) {
+                    if (val && val.health > 0) {
                         gameState.sharedEnemies[key] = val;
+                        // Add to spatial map so logic finds them immediately
                         updateSpatialMap(key, null, null, val.x, val.y);
                     }
                 });
@@ -13596,6 +13580,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
 
                 areGlobalListenersInitialized = true; 
             } else {
+                console.log("UI Listeners already active. Skipping.");
                 const mobileContainer = document.getElementById('mobileControls');
                 if (mobileContainer) mobileContainer.classList.remove('hidden');
             }
