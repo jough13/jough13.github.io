@@ -13501,10 +13501,62 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         }
     });
 
-    // Wait for BOTH World Data and Live Enemies before dropping the loading screen
-    Promise.all([waitForWorldData]).then(() => {
-        // A small safety timeout to ensure the enemy listener (sharedEnemiesListener) 
-        // has had a split second to populate gameState.sharedEnemies
+    // --- 5. Final Render & Initialization (PRE-WARM & SYNC) ---
+
+    // A. Wait for Static Map Modifications (Dead static enemies, walls, etc.)
+    const waitForWorldData = new Promise((resolve) => {
+        if (gameState.mapMode === 'overworld') {
+            const cX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+            const cY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+            
+            // Force generate the chunks in memory now so wakeUpNearbyEnemies has data to read
+            for(let y=-1; y<=1; y++) {
+                for(let x=-1; x<=1; x++) {
+                    chunkManager.getTile((cX+x)*chunkManager.CHUNK_SIZE, (cY+y)*chunkManager.CHUNK_SIZE);
+                }
+            }
+
+            // Listen for persistent changes
+            chunkManager.listenToChunkState(cX, cY, () => {
+                resolve();
+            });
+        } else {
+            resolve();
+        }
+    });
+
+    // B. Wait for Dynamic Enemies (Snapshot)
+    // Instead of waiting for the 'child_added' listener to trickle in, we grab a snapshot
+    const waitForEnemies = new Promise((resolve) => {
+        if (gameState.mapMode === 'overworld') {
+            rtdb.ref('worldEnemies').once('value').then(snapshot => {
+                const enemies = snapshot.val() || {};
+                // Populate local state immediately
+                Object.entries(enemies).forEach(([key, val]) => {
+                    if (val.health > 0) {
+                        gameState.sharedEnemies[key] = val;
+                        updateSpatialMap(key, null, null, val.x, val.y);
+                    }
+                });
+                resolve();
+            });
+        } else {
+            resolve();
+        }
+    });
+
+    // Run Pre-Warm Sequence
+    Promise.all([waitForWorldData, waitForEnemies]).then(() => {
+        
+        // C. THE STEALTH CHECK: Wake up enemies before the screen drops
+        if (gameState.mapMode === 'overworld') {
+            console.log("🔥 Pre-warming world: Waking up static entities...");
+            // This detects any static 'r' or 'g' tiles near spawn and converts them 
+            // to dynamic entities instantly in the background.
+            wakeUpNearbyEnemies(); 
+        }
+
+        // Small buffer to let the wakeUpNearbyEnemies async operations settle
         setTimeout(() => {
             renderStats();
             renderEquipment();
@@ -13515,7 +13567,9 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
             renderHotbar();
             renderInventory();
 
-            // NOW we render the map, ensuring static wolves are gone before the user sees them
+            // D. First Render
+            // Now we render. Any static enemy near us has already been converted to a 
+            // dynamic one in gameState.sharedEnemies by step C.
             render();
 
             canvas.style.visibility = 'visible';
@@ -13538,17 +13592,14 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
                 initCraftingListeners();
                 initSkillTrainerListeners();
                 initMobileControls();
-
                 initSettingsListeners();
 
-                areGlobalListenersInitialized = true; // Mark as done
+                areGlobalListenersInitialized = true; 
             } else {
-                console.log("UI Listeners already active. Skipping.");
-                // Ensure Mobile Controls are visible if they were hidden
                 const mobileContainer = document.getElementById('mobileControls');
                 if (mobileContainer) mobileContainer.classList.remove('hidden');
             }
-        }, 200); // 200ms buffer for smoothness
+        }, 100); 
     });
 }
 
