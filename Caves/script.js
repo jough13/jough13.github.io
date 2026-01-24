@@ -10635,23 +10635,21 @@ function restPlayer() {
     // 1. Check Survival Constraints
     if (gameState.player.hunger <= 0 || gameState.player.thirst <= 0) {
         logMessage("You are too weak from hunger or thirst to rest effectively.");
-        endPlayerTurn(); // Still costs a turn
+        endPlayerTurn(); 
         return;
     }
 
     let rested = false;
     let logMsg = "You rest for a moment. ";
 
-    // 2. Determine Rest Power ("Hotel" Mechanic)
-    // If inside a castle/village, recovery is 5x faster!
-    const restAmount = (gameState.mapMode === 'castle') ? 5 : 1;
+    // 2. Check Location
+    const inSafeZone = (gameState.mapMode === 'castle');
+    const restAmount = inSafeZone ? 5 : 1;
 
     // 3. Regenerate Stamina
     if (gameState.player.stamina < gameState.player.maxStamina) {
-        // Calculate amount to add, ensuring we don't go over Max
         const amountToAdd = Math.min(gameState.player.maxStamina - gameState.player.stamina, restAmount);
         gameState.player.stamina += amountToAdd;
-        
         triggerStatFlash(statDisplays.stamina, true);
         logMsg += `Recovered ${amountToAdd} stamina. `;
         rested = true;
@@ -10659,27 +10657,47 @@ function restPlayer() {
 
     // 4. Regenerate Health
     if (gameState.player.health < gameState.player.maxHealth) {
-        // Calculate amount to add, ensuring we don't go over Max
         const amountToAdd = Math.min(gameState.player.maxHealth - gameState.player.health, restAmount);
         gameState.player.health += amountToAdd;
-        
         triggerStatFlash(statDisplays.health, true);
         logMsg += `Recovered ${amountToAdd} health.`;
         rested = true;
     }
 
-    // 5. Feedback
-    if (!rested) {
-        logMessage("You are already at full health and stamina.");
-    } else {
-        if (restAmount > 1) {
-            logMessage(`You rest comfortably in the haven. (+${restAmount} HP/Stamina)`);
+    // 5. --- NEW: WELL RESTED BONUS ---
+    // If we are in a safe zone AND fully healed, give a buff!
+    if (inSafeZone && !rested) {
+        // Only apply if we don't already have a long buff active
+        if (gameState.player.strengthBonusTurns < 10) {
+            gameState.player.strengthBonus = 2;     // +2 Strength
+            gameState.player.strengthBonusTurns = 50; // Lasts 50 Turns
+            
+            logMessage("{gold:You feel Well Rested! (+2 Strength for 50 turns)}");
+            triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
+            
+            // We need to save and render this immediately
+            playerRef.update({
+                strengthBonus: 2,
+                strengthBonusTurns: 50
+            });
+            renderEquipment(); // Updates the stat display UI
+            endPlayerTurn();
+            return;
         } else {
-            logMessage(logMsg);
+            logMessage("You are already well rested.");
         }
     }
+    // ---------------------------------
 
-    // 6. Save & End Turn
+    // 6. Standard Feedback
+    if (!rested && !inSafeZone) {
+        logMessage("You are already at full health and stamina.");
+    } else if (rested) {
+        if (inSafeZone) logMessage(`You rest comfortably in the haven. (+${restAmount} HP/Stamina)`);
+        else logMessage(logMsg);
+    }
+
+    // 7. Save & End Turn
     playerRef.update({
         stamina: gameState.player.stamina,
         health: gameState.player.health
