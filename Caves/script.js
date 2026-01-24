@@ -2490,8 +2490,12 @@ for (let y = 0; y < map.length; y++) {
     // Helper: Determine enemy spawn based on Biome and Distance
     getEnemySpawn(biome, dist, random) {
         // --- CONFIGURATION ---
-        // Tier 0: 0-250, Tier 1: 250-600, Tier 2: 600-1000, Tier 3: 1000-2500, Tier 4: 2500+
-        const TIER_THRESHOLDS = [250, 600, 1000, 2500];
+        // Tier 0: 0-500 (Tutorial/Easy - Rats, Snakes, Weak Bandits)
+        // Tier 1: 500-1500 (Standard - Wolves, Goblins, Skeletons)
+        // Tier 2: 1500-3000 (Hard - Bears, Orcs, Draugr)
+        // Tier 3: 3000-6000 (Very Hard - Golems, Yetis, Demons)
+        // Tier 4: 6000+ (Nightmare - Dragons, Rexes, Horrors)
+        const TIER_THRESHOLDS = [500, 1500, 3000, 6000];
 
         // 1. Calculate Tier dynamically
         let tier = 0;
@@ -2506,59 +2510,63 @@ for (let y = 0; y < map.length; y++) {
         // 2. Define Spawn Tables
         const spawns = {
             '.': { // Plains
-                0: ['r', 'R', 'b'],
-                1: ['b', 'w', 'o'],
-                2: ['o', 'C', '🐺'],
-                3: ['o', '🐺', 'Ø'],
-                4: ['Ø', '🦖', '🤖'] // Rex, Guardian
+                0: ['r', 'r', 'b'], // Rat, Rat, Bandit
+                1: ['b', 'w', 'o'], // Bandit, Wolf, Orc
+                2: ['o', 'C', '🐺'], // Orc, Chief, Dire Wolf
+                3: ['o', '🐺', 'Ø'], // Orc, Dire Wolf, Ogre
+                4: ['Ø', '🦖', '🤖'] // Ogre, Rex, Guardian
             },
             'F': { // Forest
-                0: ['🐍', '🦌', '🐗'],
-                1: ['w', '🐗', '🐻'],
-                2: ['🐻', '🐺', '🕸'],
-                3: ['🐺', '🐻', '🌲'],
-                4: ['🌲', '🧛', '👾'] // Vampire, Horror
+                0: ['🐍', '🦌', '🐗'], // Snake, Stag, Boar
+                1: ['w', '🐗', '🐻'], // Wolf, Boar, Bear
+                2: ['🐻', '🐺', '🕸'], // Bear, Dire Wolf, Web (Spider)
+                3: ['🐺', '🐻', '🌲'], // Dire Wolf, Bear, Ent (Treant)
+                4: ['🌲', '🧛', '👾'] // Treant, Vampire, Horror
             },
             '^': { // Mountain
-                0: ['🦇', 'g', 'R'],
-                1: ['g', 's', '🦅'],
-                2: ['s', '🗿', 'Y'],
-                3: ['Y', 'Ø', '🐲'],
-                4: ['🐲', '🦖', '🤖'] // Dragon, Rex, Guardian
+                0: ['🦇', 'g', 'R'], // Bat, Goblin, Recruit
+                1: ['g', 's', '🦅'], // Goblin, Skeleton, Eagle
+                2: ['s', '🗿', 'Y'], // Skeleton, Golem, Yeti
+                3: ['Y', 'Ø', '🐲'], // Yeti, Ogre, Drake
+                4: ['🐲', '🦖', '🤖'] // Drake, Rex, Guardian
             },
             '≈': { // Swamp
-                0: ['🦟', '🐸', '🐍'],
-                1: ['🐍', 'l', 'Z'],
-                2: ['Z', 'l', '💀'],
-                3: ['Z', '💀', 'Hydra'],
-                4: ['Hydra', '👾', '🧛'] // Horror, Vampire
+                0: ['🦟', '🐸', '🐍'], // Mosquito, Toad, Snake
+                1: ['🐍', 'l', 'Z'], // Snake, Leech, Draugr
+                2: ['Z', 'l', '💀'], // Draugr, Leech, Necro Tome (Trap)
+                3: ['Z', '💀', 'Hydra'], // Draugr, Necro, Hydra
+                4: ['Hydra', '👾', '🧛'] // Hydra, Horror, Vampire
             },
             'D': { // Desert
-                0: ['🦂s', '🐍', '🌵'],
-                1: ['🦂', '🐍c', '🌵'],
-                2: ['🦂', 'm', '💀'],
-                3: ['m', '💀', 'Efreet'],
-                4: ['Efreet', '🦖', '🤖'] // Rex, Guardian
+                0: ['🦂s', '🐍', '🌵'], // Small Scorpion, Snake, Cactus
+                1: ['🦂', '🐍c', '🌵'], // Giant Scorpion, Cobra, Cactus
+                2: ['🦂', 'm', '💀'], // Scorpion, Mage, Necro
+                3: ['m', '💀', 'Efreet'], // Mage, Necro, Efreet
+                4: ['Efreet', '🦖', '🤖'] // Efreet, Rex, Guardian
             },
             'd': { // Deadlands
-                0: ['s', 'b', 'R'],
-                1: ['s', 'Z', 'a'],
-                2: ['Z', 'a', 'D'],
-                3: ['D', 'v', '🧙'],
-                4: ['🧙', '👾', '🧛'] // Necro, Horror, Vampire
+                0: ['s', 'b', 'R'], // Skeleton, Bandit, Recruit
+                1: ['s', 'Z', 'a'], // Skeleton, Draugr, Acolyte
+                2: ['Z', 'a', 'D'], // Draugr, Acolyte, Demon
+                3: ['D', 'v', '🧙'], // Demon, Void Stalker, Necro Lord
+                4: ['🧙', '👾', '🧛'] // Necro Lord, Horror, Vampire
             }
         };
 
         // 3. Select Enemy
         const table = spawns[biome];
+        // If biome isn't listed (e.g. Water), no spawn
         if (!table) return null;
 
+        // Cap the tier at the maximum defined for this biome
         const maxDefinedTier = Math.max(...Object.keys(table).map(Number));
         const safeTier = Math.min(tier, maxDefinedTier);
 
         const tierList = table[safeTier];
         if (!tierList) return null;
 
+        // Weighted Random Selection
+        // 60% Common, 30% Uncommon, 10% Rare
         const roll = random();
         if (roll < 0.60) return tierList[0];
         if (roll < 0.90) return tierList[1];
