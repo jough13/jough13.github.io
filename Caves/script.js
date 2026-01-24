@@ -3283,6 +3283,8 @@ const renderStats = () => {
     }
 };
 
+    document.title = `HP: ${gameState.player.health}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
+
 // --- ADVANCED AUDIO SYSTEM (OPTIMIZED) ---
 const AudioSystem = {
     ctx: new (window.AudioContext || window.webkitAudioContext)(),
@@ -10671,7 +10673,7 @@ function restPlayer() {
         if (gameState.player.strengthBonusTurns < 10) {
             gameState.player.strengthBonus = 2;     // +2 Strength
             gameState.player.strengthBonusTurns = 50; // Lasts 50 Turns
-            
+            // --- ADVANCED AUDIO SYSTEM (OPTIMIZED) ---
             logMessage("{gold:You feel Well Rested! (+2 Strength for 50 turns)}");
             triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
             
