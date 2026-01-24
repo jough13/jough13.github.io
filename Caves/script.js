@@ -458,6 +458,9 @@ window.selectBackground = async function (bgKey) {
 };
 
 async function initCharacterSelect(user) {
+    
+    document.title = "Caves and Castles";
+
     currentUser = user;
     
     authContainer.classList.add('hidden');
@@ -3330,7 +3333,8 @@ const renderStats = () => {
             }
         }
     }
-    if (gameState.player && gameState.player.level) {
+        // Only update if mapMode is active (meaning we are actually playing, not in menus)
+    if (gameState.mapMode && gameState.player && gameState.player.level) {
         document.title = `HP: ${gameState.player.health}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
     }
 };
