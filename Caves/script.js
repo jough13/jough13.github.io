@@ -3441,18 +3441,24 @@ async function wakeUpNearbyEnemies() {
     const player = gameState.player;
     if (!player) return;
 
-    const WAKE_RADIUS = 12; // Increased radius slightly to ensure smooth loading
+    const WAKE_RADIUS = 14; // Increased slightly to ensure they spawn before you see them
 
     // Use a batch update for map tiles to prevent excessive rendering/saving
     let mapUpdates = {}; 
     let spawnUpdates = {};
     let enemiesSpawnedCount = 0;
+    let visualUpdateNeeded = false;
 
     for (let y = player.y - WAKE_RADIUS; y <= player.y + WAKE_RADIUS; y++) {
         for (let x = player.x - WAKE_RADIUS; x <= player.x + WAKE_RADIUS; x++) {
             
             // 1. Check the static map tile
             const tile = chunkManager.getTile(x, y);
+            
+            // Optimization: Only check logic if it looks like an enemy tile
+            // This prevents looking up ENEMY_DATA for every single grass tile
+            if (tile === '.' || tile === 'F' || tile === 'd' || tile === 'D' || tile === '^' || tile === '~' || tile === '≈') continue;
+
             const enemyData = ENEMY_DATA[tile];
 
             // 2. If it's a valid enemy tile, we "Wake" it
@@ -3476,16 +3482,18 @@ async function wakeUpNearbyEnemies() {
                     spawnUpdates[`worldEnemies/${enemyId}`] = newEnemy;
                     
                     // C. Add to local pending (Immediate Visual Feedback)
+                    // CRITICAL FIX: Add directly to sharedEnemies immediately so there is 0 frames of invisibility
                     pendingSpawnData[enemyId] = newEnemy;
-                    gameState.sharedEnemies[enemyId] = newEnemy; // Force local render immediately
+                    gameState.sharedEnemies[enemyId] = newEnemy; 
+                    
+                    // D. Update Spatial Map immediately so AI knows it exists
+                    updateSpatialMap(enemyId, null, null, x, y);
 
-                    // D. CONSUME THE MAP TILE
-                    // This is the aggressive fix. We turn the 'g' on the map into a '.'
-                    // This ensures we never try to spawn this specific tile again.
-                    // The enemy is now an Entity, not a Tile.
+                    // E. CONSUME THE MAP TILE
                     chunkManager.setWorldTile(x, y, '.'); 
                     
                     enemiesSpawnedCount++;
+                    visualUpdateNeeded = true;
                 }
             }
         }
@@ -3493,13 +3501,15 @@ async function wakeUpNearbyEnemies() {
 
     // 3. Send Batch to Firebase (Atomic Operation)
     if (enemiesSpawnedCount > 0) {
-        // We update the enemies in the cloud. 
-        // Note: We already updated the map tiles via setWorldTile above.
         rtdb.ref().update(spawnUpdates).catch(err => {
             console.error("Mass Spawn Error:", err);
         });
-        // Force a render to hide the static tiles and show the sprites
-        render(); 
+    }
+
+    // 4. Force Render if we changed anything
+    if (visualUpdateNeeded) {
+        gameState.mapDirty = true; // Forces terrain cache to redraw (removing static 'r')
+        render(); // Draws the new dynamic 'r' on top immediately
     }
 }
 
