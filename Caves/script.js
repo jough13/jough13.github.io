@@ -9622,7 +9622,8 @@ function endPlayerTurn() {
     runCompanionTurn();
     runSharedAiTurns();
 
-    // --- FIX: ATOMIC SAVE ---
+    processEnemyTurns(); // <--- This activates dungeon/castle enemies!
+
     // We merge the specific status updates (poison, buffs) with the core stats.
     // This ensures XP, Quests, and Health are saved together, preventing the reset bug.
     const finalUpdates = {
