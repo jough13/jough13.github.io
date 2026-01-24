@@ -2270,6 +2270,8 @@ const chunkManager = {
 
         const map = baseMap.map(row => [...row]);
 
+        const random = Alea(stringToSeed(castleId)); 
+
         // Calculate the maximum width of any row
 let maxWidth = 0;
 for (let r of map) {
@@ -13557,3 +13559,4 @@ if (mainMenuBtn) {
         location.reload();
     };
 }
+    
