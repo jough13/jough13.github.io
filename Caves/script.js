@@ -12990,6 +12990,41 @@ if (timeDoc.exists) {
     };
     Object.assign(gameState.player, fullPlayerData);
 
+    // If not in a dungeon, ensure we aren't inside a wall/water without a boat
+if (gameState.mapMode === 'overworld') {
+    const currentTile = chunkManager.getTile(gameState.player.x, gameState.player.y);
+    const blockedTiles = ['^', '▓', '▒', '🧱']; // Walls/Mountains
+    // Also check water if not boating
+    if (!gameState.player.isBoating && (currentTile === '~' || currentTile === '≈')) {
+        blockedTiles.push('~', '≈'); 
+    }
+
+    if (blockedTiles.includes(currentTile)) {
+        console.warn("Player loaded inside obstacle. Finding safe spot...");
+        // Spiral search for nearest floor
+        let found = false;
+        for (let r = 1; r <= 5; r++) { // Check radius 1 to 5
+            if (found) break;
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    const tx = gameState.player.x + dx;
+                    const ty = gameState.player.y + dy;
+                    const t = chunkManager.getTile(tx, ty);
+                    if (['.', 'F', 'd', 'D'].includes(t)) {
+                        gameState.player.x = tx;
+                        gameState.player.y = ty;
+                        found = true;
+                        logMessage("You woke up in a safer spot.");
+                        playerRef.update({ x: tx, y: ty }); // Save fix
+                        break;
+                    }
+                }
+                if (found) break;
+            }
+        }
+    }
+}
+
     if (playerData.activeTreasure) {
         gameState.activeTreasure = playerData.activeTreasure;
         logMessage(`You recall a location marked on your map: (${gameState.activeTreasure.x}, ${-gameState.activeTreasure.y})`);
@@ -13152,7 +13187,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
                 ParticleSystem.createExplosion(val.x, val.y, '#ef4444', 3); // Small blood pop
             }
         }
-        
+
             const oldX = oldEnemy ? oldEnemy.x : null;
             const oldY = oldEnemy ? oldEnemy.y : null;
 
