@@ -2270,23 +2270,6 @@ const chunkManager = {
 
         const map = baseMap.map(row => [...row]);
 
-        const random = Alea(stringToSeed(castleId));
-
-        // Procedurally add breaches and rubble (This code is unchanged)
-        for (let i = 0; i < 75; i++) {
-            const y = Math.floor(random() * (map.length - 4)) + 2;
-            const x = Math.floor(random() * (map[0].length - 4)) + 2;
-
-            if (map[y][x] === '▓' && random() > 0.5) {
-                map[y][x] = '.';
-            } else if (map[y][x] === '.') {
-                const neighbors = [map[y - 1][x], map[y + 1][x], map[y][x - 1], map[y][x + 1]];
-                const isNextToWall = neighbors.includes('▓');
-                if (isNextToWall && random() > 0.85) {
-                    map[y][x] = '▒';
-                }
-            }
-        }
         const npcTypesToSpawn = ['N', 'N', '§', 'H']; // 2 Villagers, 1 Shop, 1 Healer
         let spawnAttempts = 50; // Try 50 times to place them
 
