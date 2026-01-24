@@ -150,12 +150,21 @@ function getScaledEnemy(enemyTemplate, x, y) {
 
     enemy.maxHealth = Math.floor(enemy.maxHealth * multiplier);
     enemy.attack = Math.floor(enemy.attack * multiplier) + Math.floor(zoneLevel / 3);
-    // This ensures that even "Weak" enemies eventually hit harder as you go further out.
     enemy.xp = Math.floor(enemy.xp * multiplier);
+
+    // --- NEW: SAFE ZONE NERF (The Fix) ---
+    // If within 100 tiles of spawn, weaken enemies significantly
+    if (dist < 100) {
+        // Reduce Attack by 1 (Min 1). This turns 2 dmg rats into 1 dmg rats.
+        enemy.attack = Math.max(1, enemy.attack - 1); 
+        // Reduce HP by 20% so they die faster
+        enemy.maxHealth = Math.ceil(enemy.maxHealth * 0.8); 
+    }
+    // -------------------------------------
 
     // 4. Apply Zone Name (Cosmetic)
     if (zoneLevel === 0) {
-        // No prefix for zone 0, keep it simple
+        // No prefix for zone 0
     } else if (zoneLevel >= 2 && zoneLevel < 5) {
         enemy.name = `Feral ${enemy.name}`;
     } else if (zoneLevel >= 5 && zoneLevel < 10) {
@@ -164,30 +173,27 @@ function getScaledEnemy(enemyTemplate, x, y) {
         enemy.name = `Ancient ${enemy.name}`;
     }
 
-    // --- 5. NEW: Elite Affix Roll (THIS WAS MISSING) ---
-    // Chance increases with distance and player luck
-    // Base 5% chance, +1% per zone level
+    // --- 5. Elite Affix Roll ---
     const eliteChance = 0.05 + (zoneLevel * 0.01);
 
-    // Don't apply prefixes to Bosses (they are hard enough)
-    if (!enemy.isBoss && Math.random() < eliteChance) {
+    // --- NEW: DISABLE ELITES NEAR SPAWN ---
+    // Elites can only spawn if distance > 150. 
+    // No more "Savage Rats" killing you at level 1.
+    if (dist > 150 && !enemy.isBoss && Math.random() < eliteChance) {
         const prefixKeys = Object.keys(ENEMY_PREFIXES);
         const prefixKey = prefixKeys[Math.floor(Math.random() * prefixKeys.length)];
         const affix = ENEMY_PREFIXES[prefixKey];
 
-        // Apply Name Change
         enemy.name = `${prefixKey} ${enemy.name}`;
-        enemy.isElite = true; // Flag for renderer and loot logic
-        enemy.color = affix.color; // For the renderer
+        enemy.isElite = true;
+        enemy.color = affix.color;
 
-        // Apply Stat Modifiers
         if (affix.statModifiers) {
             if (affix.statModifiers.attack) enemy.attack += affix.statModifiers.attack;
             if (affix.statModifiers.defense) enemy.defense = (enemy.defense || 0) + affix.statModifiers.defense;
             if (affix.statModifiers.maxHealth) enemy.maxHealth += affix.statModifiers.maxHealth;
         }
 
-        // Apply Special Effects
         if (affix.special === 'poison') {
             enemy.inflicts = 'poison';
             enemy.inflictChance = 0.5;
@@ -196,7 +202,6 @@ function getScaledEnemy(enemyTemplate, x, y) {
             enemy.inflictChance = 0.5;
         }
 
-        // Boost XP
         enemy.xp = Math.floor(enemy.xp * affix.xpMult);
     }
 
