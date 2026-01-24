@@ -1185,10 +1185,10 @@ function getRegionName(regionX, regionY) {
 }
 
 const TERRAIN_COST = {
-    '^': 3, // Mountains cost 3 stamina
-    '≈': 2, // Swamps cost 2 stamina
-    '~': Infinity, // Water is impassable
-    'F': 1, // Forests cost 1 stamina
+    '^': 2, // Changed from 3 to 2. Now you can walk 5 tiles instead of 3!
+    '≈': 2, 
+    '~': Infinity, 
+    'F': 1, 
 };
 
 
@@ -10632,7 +10632,7 @@ function useInventoryItem(itemIndex) {
 }
 
 function restPlayer() {
-
+    // 1. Check Survival Constraints
     if (gameState.player.hunger <= 0 || gameState.player.thirst <= 0) {
         logMessage("You are too weak from hunger or thirst to rest effectively.");
         endPlayerTurn(); // Still costs a turn
@@ -10642,22 +10642,44 @@ function restPlayer() {
     let rested = false;
     let logMsg = "You rest for a moment. ";
 
+    // 2. Determine Rest Power ("Hotel" Mechanic)
+    // If inside a castle/village, recovery is 5x faster!
+    const restAmount = (gameState.mapMode === 'castle') ? 5 : 1;
+
+    // 3. Regenerate Stamina
     if (gameState.player.stamina < gameState.player.maxStamina) {
-        gameState.player.stamina++;
+        // Calculate amount to add, ensuring we don't go over Max
+        const amountToAdd = Math.min(gameState.player.maxStamina - gameState.player.stamina, restAmount);
+        gameState.player.stamina += amountToAdd;
+        
         triggerStatFlash(statDisplays.stamina, true);
-        logMsg += "Recovered 1 stamina.";
+        logMsg += `Recovered ${amountToAdd} stamina. `;
         rested = true;
     }
+
+    // 4. Regenerate Health
     if (gameState.player.health < gameState.player.maxHealth) {
-        gameState.player.health++;
+        // Calculate amount to add, ensuring we don't go over Max
+        const amountToAdd = Math.min(gameState.player.maxHealth - gameState.player.health, restAmount);
+        gameState.player.health += amountToAdd;
+        
         triggerStatFlash(statDisplays.health, true);
-        logMsg += " Recovered 1 health.";
+        logMsg += `Recovered ${amountToAdd} health.`;
         rested = true;
     }
 
-    if (!rested) logMessage("You are already at full health and stamina.");
-    else logMessage(logMsg);
+    // 5. Feedback
+    if (!rested) {
+        logMessage("You are already at full health and stamina.");
+    } else {
+        if (restAmount > 1) {
+            logMessage(`You rest comfortably in the haven. (+${restAmount} HP/Stamina)`);
+        } else {
+            logMessage(logMsg);
+        }
+    }
 
+    // 6. Save & End Turn
     playerRef.update({
         stamina: gameState.player.stamina,
         health: gameState.player.health
