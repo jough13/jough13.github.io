@@ -60,17 +60,17 @@ function getSpatialKey(x, y) {
 
 function updateSpatialMap(enemyId, oldX, oldY, newX, newY) {
     // 1. Remove from old bucket if it exists
-    if (oldX !== null && oldY !== null) {
+    if (oldX !== null && oldY !== null && oldX !== undefined && oldY !== undefined) {
         const oldKey = getSpatialKey(oldX, oldY);
         if (gameState.enemySpatialMap.has(oldKey)) {
             const set = gameState.enemySpatialMap.get(oldKey);
             set.delete(enemyId);
-            if (set.size === 0) gameState.enemySpatialMap.delete(oldKey); // Cleanup empty buckets
+            if (set.size === 0) gameState.enemySpatialMap.delete(oldKey); // Cleanup
         }
     }
 
     // 2. Add to new bucket
-    if (newX !== null && newY !== null) {
+    if (newX !== null && newY !== null && newX !== undefined && newY !== undefined) {
         const newKey = getSpatialKey(newX, newY);
         if (!gameState.enemySpatialMap.has(newKey)) {
             gameState.enemySpatialMap.set(newKey, new Set());
@@ -8528,8 +8528,11 @@ async function processOverworldEnemyTurns() {
         if (processedIdsThisFrame.has(enemyId)) continue;
 
         const enemy = gameState.sharedEnemies[enemyId];
-        // Safety: If enemy moved or died, it might be in bucket but not in sharedEnemies
-        if (!enemy || typeof enemy.x !== 'number') continue;
+                // --- SAFETY CHECK ---
+        // If enemy is missing or coords are invalid, skip it (don't crash the loop)
+        if (!enemy || typeof enemy.x !== 'number' || typeof enemy.y !== 'number') {
+            continue;
+        }
 
         const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
         if (distSq > searchDistSq) continue;
@@ -9162,61 +9165,45 @@ function processEnemyTurns() {
 /**
  * Asynchronously runs the AI turns for shared maps.
  * Uses a Firebase RTDB Transaction to ensure only ONE client
- * runs the AI per interval.
+ * runs the AI per interval. Includes logic to break stale locks.
  */
 async function runSharedAiTurns() {
     const now = Date.now();
-    // Lower interval to match ACTION_COOLDOWN (150ms) so enemies don't skip turns
-    const AI_INTERVAL = 100;
+    const AI_INTERVAL = 150; // Match action cooldown
+    const STALE_TIMEOUT = 5000; // 5 seconds - if heartbeat is older than this, steal it
 
-    // 1. LOCAL THROTTLE
-    // Prevent this client from spamming Firebase requests too fast.
-
-    // 2. THE RACE
-    // We try to update a timestamp in the database.
     const heartbeatRef = rtdb.ref('worldState/aiHeartbeat');
 
     try {
         const result = await heartbeatRef.transaction((lastHeartbeat) => {
-            // If the database is empty (first run ever), claim it.
+            // 1. If no heartbeat exists, claim it
             if (!lastHeartbeat) return now;
 
-            // Check if enough time has passed since the LAST successful run (by anyone).
-            if (now - lastHeartbeat >= AI_INTERVAL) {
-                // We claim this turn by writing the current time!
-                return now;
-            }
+            // 2. If the lock is "stale" (old host crashed/lagged out), claim it
+            if (now - lastHeartbeat > STALE_TIMEOUT) return now;
 
-            // If not enough time passed, we abort the transaction (return undefined).
-            // This means someone else already ran the AI recently.
+            // 3. Standard interval check
+            if (now - lastHeartbeat >= AI_INTERVAL) return now;
+
+            // 4. Otherwise, abort (someone else ran it recently)
             return;
         });
 
-        // 3. THE WINNER
-        // result.committed is TRUE only if we successfully updated the data.
+        // If we won the race (committed = true), run the logic
         if (result.committed) {
-            // console.log("🤖 I am the AI Host for this turn."); // Debugging
-
-            // We won the race. Execute the logic.
             const nearestEnemyDir = await processOverworldEnemyTurns();
 
-            // Handle Intuition/Hearing (Client-side feedback for the host)
-            // Note: Only the "host" gets these hints currently. 
-            // To fix that, you'd need to write these events to DB, but this is acceptable for now.
+            // Client-side intuition feedback
             if (nearestEnemyDir) {
                 const player = gameState.player;
+                // Chance to hear/sense enemies based on stats
                 const intuitChance = Math.min(player.intuition * 0.005, 0.5);
-
                 if (Math.random() < intuitChance) {
                     const dirString = getDirectionString(nearestEnemyDir);
                     logMessage(`You sense a hostile presence to the ${dirString}!`);
-                } else if (Math.random() < 0.1) {
-                    logMessage("You hear a shuffle nearby...");
                 }
             }
         }
-        // If result.committed is false, we lost the race. Do nothing.
-
     } catch (err) {
         console.error("AI Heartbeat Transaction failed:", err);
     }
