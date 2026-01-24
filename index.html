@@ -1,573 +1,574 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
-   <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏰</text></svg>">
-      <title>Caves and Castles</title>
-      <script src="https://cdn.tailwindcss.com"></script>
-      <link rel="stylesheet" href="style.css">
-   </head>
-   <body class="flex flex-col items-center justify-center min-h-screen p-4 font-mono">
-      <main class="container w-full">
-         <div id="authContainer" class="themed-container mx-auto max-w-sm p-6 rounded-2xl shadow-xl border-2">
-            <h1 class="text-2xl font-bold text-center mb-4">Caves and Castles</h1>
-            <div class="space-y-4">
-               <input type="email" id="emailInput" placeholder="Email" class="themed-input w-full p-2 border rounded">
-               <input type="password" id="passwordInput" placeholder="Password" class="themed-input w-full p-2 border rounded">
-               <div class="flex gap-4">
-                  <button id="loginButton" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-all">Login</button>
-                  <button id="signupButton" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition-all">Sign Up</button>
-               </div>
-               <p id="authError" class="text-red-500 text-center text-sm min-h-[1rem]"></p>
-            </div>
-         </div>
-         <!-- DELETE CONFIRMATION MODAL -->
-<div id="deleteConfirmModal" class="modal-overlay hidden">
-    <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 border-red-500 text-center">
-        <h2 class="text-2xl font-bold mb-4 text-red-500">Delete Character?</h2>
-        <p class="mb-6 text-sm muted-text">
-            Are you sure you want to delete this character? <br>
-            <span class="font-bold text-red-400">This action cannot be undone.</span>
+<html lang="en" class="">
+<head>
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Jough Donakowski | Blog</title>
+    <meta name="description" content="The personal blog and project showcase for Jough Donakowski.">
+    <meta property="og:image" content="https://placehold.co/1200x630/0f172a/e0f2fe?text=JD">
+    <meta property="og:url" content="https://jough13.github.io/">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50,50 m0,-45 a45,45 0 1,1 0,90 a45,45 0 1,1 0,-90' stroke='%2338bdf8' stroke-width='10' stroke-dasharray='1 7' fill='none' transform='rotate(15 50 50)'><animateTransform attributeName='transform' type='rotate' from='15 50 50' to='375 50 50' dur='10s' repeatCount='indefinite' /></path><circle cx='50' cy='50' r='20' fill='%230ea5e9'/></svg>">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        // On page load or when changing themes, best to add inline in `head` to avoid FOUC
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    
+    <style>
+        :root {
+            --font-sans: 'Inter', sans-serif;
+            --bg-light-start: #e0f2fe;
+            --bg-dark-start: #0f172a;
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-sans);
+            transition: background-color 0.5s ease-in-out, color 0.3s ease-in-out;
+            background-color: var(--bg-light-start);
+        }
+        .dark body { background-color: var(--bg-dark-start); }
+        .main-card, .project-link, .sidebar-card, .social-icon { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .main-card:hover, .sidebar-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+        .dark .main-card:hover, .dark .sidebar-card:hover { box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .social-icon:hover { transform: scale(1.15); }
+        
+        #interactive-header-canvas {
+            position: fixed; 
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+        main {
+            position: relative; 
+            z-index: 1;
+        }
+      
+        .header-content { position: relative; } 
+        #dust-trigger {
+            cursor: default;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            text-underline-offset: 4px;
+        }
+        #scrollToTopBtn { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
+        
+        /* Color-specific hover effects for project links */
+        .project-link.bg-indigo-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25), 0 6px 6px rgba(99, 102, 241, 0.2); }
+        .project-link.bg-rose-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(225, 29, 72, 0.25), 0 6px 6px rgba(225, 29, 72, 0.2); }
+        .project-link.bg-green-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(22, 163, 74, 0.25), 0 6px 6px rgba(22, 163, 74, 0.2); }
+        .project-link.bg-amber-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(217, 119, 6, 0.25), 0 6px 6px rgba(217, 119, 6, 0.2); }
+        .project-link.bg-cyan-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(8, 145, 178, 0.25), 0 6px 6px rgba(8, 145, 178, 0.2); }
+        .project-link.bg-purple-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25), 0 6px 6px rgba(147, 51, 234, 0.2); }
+        .project-link.bg-pink-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(219, 39, 119, 0.25), 0 6px 6px rgba(219, 39, 119, 0.2); }
+        .project-link.bg-sky-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(2, 132, 199, 0.25), 0 6px 6px rgba(2, 132, 199, 0.2); }
+        .project-link.bg-slate-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(71, 85, 105, 0.25), 0 6px 6px rgba(71, 85, 105, 0.2); }
+        .project-link.bg-teal-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(13, 148, 136, 0.25), 0 6px 6px rgba(13, 148, 136, 0.2); }
+        .project-link.bg-orange-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(234, 88, 12, 0.25), 0 6px 6px rgba(234, 88, 12, 0.2); }
+        .project-link.bg-stone-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(87, 83, 78, 0.25), 0 6px 6px rgba(87, 83, 78, 0.2); }
+        .project-link.bg-lime-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(101, 163, 13, 0.25), 0 6px 6px rgba(101, 163, 13, 0.2); }
+        .project-link.bg-emerald-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(5, 150, 105, 0.25), 0 6px 6px rgba(5, 150, 105, 0.2); }
+        .project-link.bg-fuchsia-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(192, 38, 211, 0.25), 0 6px 6px rgba(192, 38, 211, 0.2); }
+        .project-link.bg-blue-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(30, 64, 175, 0.25), 0 6px 6px rgba(30, 64, 175, 0.2); }
+        .project-link.bg-violet-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(124, 58, 237, 0.25), 0 6px 6px rgba(124, 58, 237, 0.2); }
+        .project-link.bg-red-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(220, 38, 38, 0.25), 0 6px 6px rgba(220, 38, 38, 0.2); }
+        .project-link.bg-yellow-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(146, 64, 14, 0.25), 0 6px 6px rgba(146, 64, 14, 0.2); }
+        .bg-clip-text { -webkit-background-clip: text; }
+
+        @media (max-width: 768px) {
+    #interactive-header-canvas {
+        display: none !important;
+    }
+}
+        @media screen and (max-width: 768px) {
+        /* 1. Kill the Blur: It's the #1 cause of mobile glitches */
+        .backdrop-blur-sm {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            /* Make background solid so it's readable without blur */
+            background-color: rgb(255, 255, 255) !important; 
+        }
+        .dark .backdrop-blur-sm {
+            background-color: rgb(15, 23, 42) !important;
+        }
+
+        /* 2. Kill the Gradient Text: Complex clipping crashes mobile renderers */
+        .bg-clip-text {
+            background: none !important;
+            -webkit-background-clip: border-box !important;
+            background-clip: border-box !important;
+            /* Reset text color to a solid nice blue */
+            color: #0ea5e9 !important; 
+            -webkit-text-fill-color: #0ea5e9 !important;
+        }
+
+        /* 3. Kill the Fade In: Prevents the "flash" of GPU calculation on load */
+        #content-container {
+            opacity: 1 !important;
+            transition: none !important;
+        }
+        
+        /* 4. Ensure Canvas is gone (if you haven't already) */
+        #interactive-header-canvas {
+            display: none !important;
+        }
+    }
+        
+</style>
+        
+    </style>
+</head>
+<body class="text-slate-800 dark:text-slate-300 antialiased">
+
+    <canvas id="interactive-header-canvas"></canvas>
+
+    <main id="content-container" class="relative w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 opacity-0 transition-opacity duration-1000 ease-out">
+        <div class="flex flex-col lg:flex-row lg:space-x-8 space-y-8 lg:space-y-0">
+            <article class="flex-1">
+                
+                <div class="relative bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-8 md:p-12 overflow-hidden main-card">
+                    <button id="theme-toggle" type="button" class="absolute top-6 right-6 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-200 dark:focus:ring-slate-700 rounded-lg text-sm p-2.5 z-10">
+                        <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                        <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                    </button>
+                    <header class="mb-6 header-content">
+                        <h1 class="text-4xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-violet-600 mb-2">
+                            Pardon the <span id="dust-trigger">Dust.</span>
+                        </h1>
+                        <p class="text-lg text-slate-600 dark:text-slate-400">
+                            This little corner of the web is getting a facelift. I'm busy tinkering behind the scenes, but I'll be back with a fresh coat of paint soon.
+                        </p>
+                    </header>
+                    
+                    <div class="mb-8 header-content">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                                <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+                                </svg>
+                            </div>
+                            <input type="text" id="searchInput" class="block w-full p-4 ps-10 text-sm text-slate-900 border border-slate-300 rounded-lg bg-slate-50 focus:ring-sky-500 focus:border-sky-500 dark:bg-slate-700 dark:border-slate-600 dark:placeholder-slate-400 dark:text-white dark:focus:ring-sky-500 dark:focus:border-sky-500" placeholder="Search posts by title, tag, or content...">
+                        </div>
+                    </div>
+
+                    <div class="header-content" id="posts-container">
+                        <p class="text-slate-500">Loading posts...</p>
+                    </div>
+<footer class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 text-center header-content">
+<p id="article-footer-message" class="text-slate-500">Thanks for stopping by. Pants suck.</p>
+</footer>
+                </div>
+            </article>
+
+            <aside id="sidebar-container" class="w-full lg:w-80 flex-shrink-0">
+                </aside>
+
+        </div>
+    </main>
+
+    <button id="scrollToTopBtn" aria-label="Scroll to top" class="hidden fixed bottom-8 right-8 bg-sky-500 hover:bg-sky-600 text-white rounded-full p-3 shadow-lg transition-opacity duration-300 z-50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+        </svg>
+    </button>
+    
+<footer class="text-center p-4 mt-4">
+    <p id="site-footer-content" class="text-sm text-slate-500 dark:text-slate-400">
         </p>
-        <div class="flex gap-4 justify-center">
-            <button id="cancelDeleteButton" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded w-full">
-                Cancel
-            </button>
-            <button id="confirmDeleteButton" class="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded w-full">
-                Delete Forever
-            </button>
-        </div>
-    </div>
-</div>
-         <div id="characterSelectModal" class="themed-container mx-auto max-w-4xl p-6 rounded-2xl shadow-xl border-2 hidden">
-            <h1 class="text-3xl font-bold text-center mb-6">Select Character</h1>
-            <div id="slotsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            </div>
-            <div class="text-center">
-               <button id="logoutFromSelectButton" class="text-sm text-red-500 hover:underline">Logout</button>
-            </div>
-         </div>
-         <div id="charCreationModal" class="themed-container mx-auto max-w-2xl p-6 rounded-2xl shadow-xl border-2 hidden">
-            <h1 class="text-3xl font-bold text-center mb-2">Choose Your Path</h1>
-            <p class="text-center muted-text mb-6">Who were you before you arrived here?</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-               <div class="panel p-4 rounded-xl border-2 hover:border-blue-500 cursor-pointer transition-all" onclick="selectBackground('warrior')">
-                  <div class="text-4xl text-center mb-2">⚔️</div>
-                  <h3 class="text-xl font-bold text-center mb-1">Warrior</h3>
-                  <p class="text-sm text-center muted-text mb-3">Strong and tough.</p>
-                  <ul class="text-xs space-y-1 list-disc list-inside">
-                     <li>+2 Strength</li>
-                     <li>+1 Constitution</li>
-                     <li class="text-green-600">Start: Rusty Sword</li>
-                  </ul>
-               </div>
-               <div class="panel p-4 rounded-xl border-2 hover:border-yellow-500 cursor-pointer transition-all" onclick="selectBackground('rogue')">
-                  <div class="text-4xl text-center mb-2">🗡️</div>
-                  <h3 class="text-xl font-bold text-center mb-1">Rogue</h3>
-                  <p class="text-sm text-center muted-text mb-3">Fast and lucky.</p>
-                  <ul class="text-xs space-y-1 list-disc list-inside">
-                     <li>+2 Dexterity</li>
-                     <li>+1 Luck</li>
-                     <li class="text-green-600">Start: Bone Dagger</li>
-                  </ul>
-               </div>
-               <div class="panel p-4 rounded-xl border-2 hover:border-purple-500 cursor-pointer transition-all" onclick="selectBackground('mage')">
-                  <div class="text-4xl text-center mb-2">🔮</div>
-                  <h3 class="text-xl font-bold text-center mb-1">Mage</h3>
-                  <p class="text-sm text-center muted-text mb-3">Wise and willful.</p>
-                  <ul class="text-xs space-y-1 list-disc list-inside">
-                     <li>+2 Wits</li>
-                     <li>+1 Willpower</li>
-                     <li class="text-green-600">Start: Magic Bolt</li>
-                  </ul>
-               </div>
-               <div class="panel p-4 rounded-xl border-2 hover:border-gray-500 cursor-pointer transition-all" onclick="selectBackground('necromancer')">
-                  <div class="text-4xl text-center mb-2">💀</div>
-                  <h3 class="text-xl font-bold text-center mb-1">Necromancer</h3>
-                  <p class="text-sm text-center muted-text mb-3">Master of the dead.</p>
-                  <ul class="text-xs space-y-1 list-disc list-inside">
-                     <li>+2 Willpower</li>
-                     <li>+1 Wits</li>
-                     <li class="text-green-600">Start: Raise Dead</li>
-                  </ul>
-               </div>
-               <div class="panel p-4 rounded-xl border-2 hover:border-red-600 cursor-pointer transition-all" onclick="selectBackground('wretch')">
-                  <div class="text-4xl text-center mb-2">🦴</div>
-                  <h3 class="text-xl font-bold text-center mb-1">Wretch</h3>
-                  <p class="text-sm text-center text-red-500 mb-3 font-bold">HARD MODE</p>
-                  <ul class="text-xs space-y-1 list-disc list-inside">
-                     <li>No Stat Bonus</li>
-                     <li>No Weapon</li>
-                     <li class="text-red-500">Start: Tattered Rags</li>
-                  </ul>
-               </div>
-            </div>
-            <div class="mt-6 text-center">
-               <button onclick="const keys=['warrior','rogue','mage','wretch']; selectBackground(keys[Math.floor(Math.random()*keys.length)])" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-full transition-all">
-               🎲 Random Fate
-               </button>
-            </div>
-         </div>
-         <div id="gameContainer" class="themed-container game-container mx-auto p-6 rounded-2xl shadow-lg border-2 hidden">
-            <div id="loadingIndicator" class="absolute inset-0 flex items-center justify-center bg-[var(--bg-container)] z-50">
-               <p class="text-2xl font-bold highlight-text">Loading...</p>
-            </div>
-            <header class="relative">
-               <h1 class="text-4xl font-bold text-center mb-4">Caves and Castles</h1>
-               <nav class="absolute top-0 right-0 flex items-center gap-2">
-                  <button id="settingsButton" class="p-2 text-sm font-bold highlight-text">⚙️</button> <!-- NEW -->
-                  <button id="helpButton" class="p-2 text-sm font-bold highlight-text">Help</button>
-                  <button id="logoutButton" class="p-2 text-sm font-bold highlight-text">Logout</button>
-                  <button id="darkModeToggle" class="p-2 text-2xl" title="Toggle Dark Mode">🌙</button>
-               </nav>
-            </header>
-            <div class="lg:grid lg:grid-cols-3 lg:gap-6">
-               <div class="lg:col-span-2 flex flex-col gap-4">
-                  <div class="flex flex-col gap-4">
-                     <div id="timePanel" class="panel p-2 rounded-lg border text-center">
-                        <span id="timeDisplay" class="font-bold"></span>
-                        <h2 id="regionDisplay" class="text-sm muted-text"></h2>
-                     </div>
-                     <div id="gameCanvasWrapper" class="relative w-full rounded-xl overflow-hidden border-2" style="border-color: var(--border-color);">
-                        <canvas id="gameCanvas" class="w-full h-full"></canvas>
-                     </div>
-                     <div id="hotbarContainer" class="flex justify-center gap-2 mt-4 p-2 panel rounded-xl border-2 min-h-[4rem]">
-                     </div>
-                  </div>
-                  <div class="grid grid-cols-1 gap-4">
-                     <div id="messageLogPanel" class="panel p-4 w-full rounded-2xl border-2">
-                        <h2 class="text-lg font-bold mb-2">Log</h2>
-                        <div id="messageLog" class="h-24 overflow-y-auto flex flex-col-reverse text-sm pr-2"></div>
-                     </div>
-                  </div>
-               </div>
-               <div class="lg:col-span-1 flex flex-col gap-4 mt-4 lg:mt-0">
-                  <div id="equipmentPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-2">
-                     <h2 class="text-lg font-bold mb-2">Equipment</h2>
-                     <div class="flex justify-center gap-4">
-                        <!-- Main Hand -->
-                        <div class="flex flex-col items-center">
-                           <div class="w-12 h-12 border-2 border-gray-500 rounded bg-gray-800 flex items-center justify-center text-2xl" id="slotWeaponIcon">
-                              👊
-                           </div>
-                           <span class="text-xs mt-1 text-gray-400">Main Hand</span>
-                        </div>
-                        <!-- Chest -->
-                        <div class="flex flex-col items-center">
-                           <div class="w-12 h-12 border-2 border-gray-500 rounded bg-gray-800 flex items-center justify-center text-2xl" id="slotArmorIcon">
-                              👕
-                           </div>
-                           <span class="text-xs mt-1 text-gray-400">Body</span>
-                        </div>
-                     </div>
-                     <div class="text-xs text-center mt-2">
-                        <p id="equippedWeaponDisplay" class="highlight-text">Fists</p>
-                        <p id="equippedArmorDisplay" class="highlight-text">Simple Tunic</p>
-                     </div>
-                  </div>
-                  <div id="statusPanel" class="panel flex flex-col w-full p-4 rounded-2xl border-2 gap-y-2">
-                     <div>
-                        <span id="healthDisplay" class="font-bold">Health: 10</span>
-                        <div class="stat-bar-container">
-                           <div id="healthBar" class="stat-bar bar-health"></div>
-                        </div>
-                     </div>
-                     <div>
-                        <span id="manaDisplay" class="font-bold text-blue-500">Mana: 10</span>
-                        <div class="stat-bar-container">
-                           <div id="manaBar" class="stat-bar bar-mana"></div>
-                        </div>
-                     </div>
-                     <div>
-                        <span id="staminaDisplay" class="font-bold text-green-500">Stamina: 10</span>
-                        <div class="stat-bar-container">
-                           <div id="staminaBar" class="stat-bar bar-stamina"></div>
-                        </div>
-                     </div>
-                     <div>
-                        <span id="psycheDisplay" class="font-bold text-indigo-500">Psyche: 10</span>
-                        <div class="stat-bar-container">
-                           <div id="psycheBar" class="stat-bar bar-psyche"></div>
-                        </div>
-                     </div>
-                     <div>
-                        <span id="hungerDisplay" class="font-bold text-orange-500">Hunger: 100</span>
-                        <div class="stat-bar-container">
-                           <div id="hungerBar" class="stat-bar" style="background-color: #f97316;"></div>
-                        </div>
-                     </div>
-                     <div>
-                        <span id="thirstDisplay" class="font-bold text-cyan-500">Thirst: 100</span>
-                        <div class="stat-bar-container">
-                           <div id="thirstBar" class="stat-bar" style="background-color: #06b6d4;"></div>
-                        </div>
-                     </div>
-                     <div id="statusEffectsPanel" class="flex gap-2 justify-center pt-2 min-h-[1.5rem] text-lg">
-                     </div>
-                     <span id="coinsDisplay" class="font-bold text-yellow-500 pt-1">Coins: 0</span>
-                     <span id="levelDisplay" class="font-bold highlight-text pt-2">Level: 1</span>
-                     <div>
-                        <span id="xpDisplay" class="font-bold">XP: 0 / 100</span>
-                        <div class="stat-bar-container">
-                           <div id="xpBar" class="stat-bar bar-xp"></div>
-                        </div>
-                     </div>
-                     <span id="statPointsDisplay" class="font-bold text-yellow-400 hidden"></span>
-                  </div>
-                  <div id="coreStatsPanel" class="panel grid grid-cols-2 gap-x-4 w-full p-4 rounded-2xl border-2 text-xs">
-                     <span class="flex justify-between items-center">
-                     <span id="strengthDisplay" class="font-bold">Strength: 1</span>
-                     <button id="addStrBtn" class="stat-add-btn" data-stat="strength">+</button>
-                     </span>
-                     <span class="flex justify-between items-center">
-                     <span id="witsDisplay" class="font-bold">Wits: 1</span>
-                     <button id="addWitsBtn" class="stat-add-btn" data-stat="wits">+</button>
-                     </span>
-                     <span class="flex justify-between items-center">
-                     <span id="constitutionDisplay" class="font-bold">Constitution: 1</span>
-                     <button id="addConBtn" class="stat-add-btn" data-stat="constitution">+</button>
-                     </span>
-                     <span class="flex justify-between items-center">
-                     <span id="dexterityDisplay" class="font-bold">Dexterity: 1</span>
-                     <button id="addDexBtn" class="stat-add-btn" data-stat="dexterity">+</button>
-                     </span>
-                     <span class="flex justify-between items-center">
-                     <span id="charismaDisplay" class="font-bold">Charisma: 1</span>
-                     <button id="addChaBtn" class="stat-add-btn" data-stat="charisma">+</button>
-                     </span>
-                     <span class="flex justify-between items-center">
-                     <span id="luckDisplay" class="font-bold">Luck: 1</span>
-                     <button id="addLuckBtn" class="stat-add-btn" data-stat="luck">+</button>
-                     </span>
-                     <span class="flex justify-between items-center">
-                     <span id="willpowerDisplay" class="font-bold">Willpower: 1</span>
-                     <button id="addWillBtn" class="stat-add-btn" data-stat="willpower">+</button>
-                     </span>
-                     <span class="flex justify-between items-center">
-                     <span id="perceptionDisplay" class="font-bold">Perception: 1</span>
-                     <button id="addPercBtn" class="stat-add-btn" data-stat="perception">+</button>
-                     </span>
-                     <span class="flex justify-between items-center">
-                     <span id="enduranceDisplay" class="font-bold">Endurance: 1</span>
-                     <button id="addEndBtn" class="stat-add-btn" data-stat="endurance">+</button>
-                     </span>
-                     <span class="flex justify-between items-center">
-                     <span id="intuitionDisplay" class="font-bold">Intuition: 1</span>
-                     <button id="addIntuiBtn" class="stat-add-btn" data-stat="intuition">+</button>
-                     </span>
-                  </div>
-                  <div id="chatContainer" class="panel p-4 w-full rounded-2xl border-2 flex flex-col flex-grow">
-                     <h2 class="text-xl font-bold mb-2">Chat</h2>
-                     <div id="chatMessages" class="flex-grow overflow-y-auto flex flex-col-reverse"></div>
-                     <input type="text" id="chatInput" class="themed-input w-full p-2 border rounded text-sm mt-2" placeholder="Say something...">
-                  </div>
-               </div>
-            </div>
-            <div id="controls" class="mt-4 text-center">
-               <p class="text-lg">
-                  Move: <span class="highlight-text font-bold">WASD</span> | 
-                  Rest: <span class="highlight-text font-bold">R</span> | 
-                  Inv: <span class="highlight-text font-bold">I</span> | 
-                  Map: <span class="highlight-text font-bold">M</span> | 
-                  Magic: <span class="highlight-text font-bold">B</span> | 
-                  Skills: <span class="highlight-text font-bold">K</span>
-               </p>
-            </div>
-         </div>
-      </main>
-      <div id="helpModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <h2 class="text-2xl font-bold mb-4">Player's Guide</h2>
-            <div class="space-y-2 text-sm">
-               <p><strong class="highlight-text">Movement:</strong> Use <kbd>W, A, S, D</kbd> or <kbd>Arrow Keys</kbd>.</p>
-               <p><strong class="highlight-text">Rest:</strong> Press <kbd>R</kbd> to rest and recover 1 Health and 1 Stamina.</p>
-               <p><strong class="highlight-text">Inventory:</strong> Press <kbd>I</kbd> to open your inventory.
-               <ul class="list-disc list-inside pl-4">
-                  <li>Press <kbd>1-9</kbd> to use or equip an item.</li>
-                  <li>Press <kbd>D</kbd> to enter Drop mode.</li>
-               </ul>
-               </p>
-               <p><strong class="highlight-text">Magic:</strong> Press <kbd>M</kbd> to open your spellbook.</p>
-               <p><strong class="highlight-text">Skills:</strong> Press <kbd>K</kbd> to open your skills list.</p>
-               <p><strong class="highlight-text">Chat:</strong> Click the chat box and press <kbd>Enter</kbd> to send messages.</p>
-               <p><strong class="highlight-text">Exploration:</strong> Look for landmarks like signposts (<span class="font-bold">☗</span>), castles (<span class="font-bold">🏰</span>), caves (<span class="font-bold">⛰</span>), and even secret passages!</p>
-            </div>
-            <button id="closeHelpButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
-         </div>
-      </div>
-      
-      <div id="settingsModal" class="modal-overlay hidden">
-   <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-      <h2 class="text-2xl font-bold mb-4">Game Settings</h2>
-      
-      <!-- Audio Section -->
-      <div class="space-y-4">
-         <h3 class="font-bold border-b border-gray-500 pb-1">Audio</h3>
-         <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
-            <span>🔊 Master Volume</span>
-            <input type="checkbox" id="settingMaster" class="form-checkbox h-5 w-5 text-blue-600">
-         </label>
-         <div class="pl-4 space-y-2">
-            <label class="flex items-center justify-between cursor-pointer">
-               <span class="text-sm muted-text">🦶 Footsteps</span>
-               <input type="checkbox" id="settingSteps" class="form-checkbox h-4 w-4 text-blue-600">
-            </label>
-            <label class="flex items-center justify-between cursor-pointer">
-               <span class="text-sm muted-text">⚔️ Combat</span>
-               <input type="checkbox" id="settingCombat" class="form-checkbox h-4 w-4 text-blue-600">
-            </label>
-            <label class="flex items-center justify-between cursor-pointer">
-               <span class="text-sm muted-text">✨ Magic</span>
-               <input type="checkbox" id="settingMagic" class="form-checkbox h-4 w-4 text-blue-600">
-            </label>
-            <label class="flex items-center justify-between cursor-pointer">
-               <span class="text-sm muted-text">💰 Loot & UI</span>
-               <input type="checkbox" id="settingUI" class="form-checkbox h-4 w-4 text-blue-600">
-            </label>
-         </div>
-      </div>
+</footer>
 
-      <!-- Visuals Section -->
-      <h3 class="font-bold border-b border-gray-500 pb-1 mt-4">Visuals</h3>
-      <label class="flex items-center justify-between cursor-pointer p-2 hover:bg-gray-700 hover:bg-opacity-10 rounded">
-         <span>📺 CRT Scanlines</span>
-         <input type="checkbox" id="settingCRT" class="form-checkbox h-5 w-5 text-blue-600">
-      </label>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    
+    <script src="shared.js"></script>
+    <script>
 
-      <!-- Cloud Backup Section -->
-      <h3 class="font-bold border-b border-gray-500 pb-1 mt-4">Cloud Save</h3>
-      <div class="mt-2 text-center">
-         <p id="lastBackupLabel" class="text-xs text-gray-400 mb-2">Checking status...</p>
-         <div class="flex gap-2">
-            <button id="btnBackup" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded text-sm transition-all">
-               ☁️ Create Backup
-            </button>
-            <button id="btnRestore" class="flex-1 bg-red-900 hover:bg-red-700 text-white font-bold py-2 px-4 rounded text-sm transition-all">
-               ↺ Restore
-            </button>
-         </div>
-         <p class="text-[10px] text-gray-500 mt-1">
-            Backups are stored securely in the cloud. <br>Restoring overwrites current progress.
-         </p>
-      </div>
+ let database; 
 
-      <button id="closeSettingsButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
-   </div>
-</div>
-      <div id="fastTravelModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <h2 class="text-2xl font-bold mb-4">Leyline Network</h2>
-            <p class="text-sm muted-text mb-4">Travel to an attuned Waystone? (Cost: 10 Mana)</p>
-            <ul id="fastTravelList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-            </ul>
-            <button id="closeFastTravelButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Cancel</button>
-         </div>
-      </div>
-      <div id="gameOverModal" class="modal-overlay hidden">
-    <div class="modal-content">
-        <h2 class="text-red-500 font-bold text-2xl">YOU HAVE PERISHED</h2>
-        <p id="finalLevelDisplay">Level: 1</p>
-        <p id="finalCoinsDisplay">Gold lost: 0</p>
-        <div class="flex gap-4 mt-6">
-            <button id="restartButton" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex-1">Respawn at Village</button>
-            <button id="mainMenuButton" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded flex-1">Main Menu</button>
-        </div>
-    </div>
-</div>
-      <div id="loreModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <h2 id="loreTitle" class="text-2xl font-bold mb-4">Title</h2>
-            <div id="loreContent" class="space-y-2 text-sm whitespace-pre-wrap mb-4"></div>
-            <!-- NEW: Riddle Input Section (Hidden by default) -->
-            <div id="riddleContainer" class="hidden mb-4">
-               <input type="text" id="riddleInput" class="themed-input w-full p-2 border rounded mb-2" placeholder="Your answer...">
-               <button id="submitRiddle" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded w-full">Speak</button>
-            </div>
-            <button id="closeLoreButton" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
-         </div>
-      </div>
-      <div id="shopModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <div class="flex justify-between items-center mb-4">
-               <h2 class="text-2xl font-bold">General Store</h2>
-               <span id="shopPlayerCoins" class="font-bold highlight-text">Your Gold: 0</span>
-            </div>
-            <div class="grid grid-cols-2 gap-6">
-               <div>
-                  <h3 class="text-lg font-bold mb-2 border-b-2" style="border-color: var(--border-color);">Items for Sale</h3>
-                  <ul id="shopBuyList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                  </ul>
-               </div>
-               <div>
-                  <h3 class="text-lg font-bold mb-2 border-b-2" style="border-color: var(--border-color);">Your Inventory</h3>
-                  <ul id="shopSellList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                  </ul>
-               </div>
-            </div>
-            <button id="closeShopButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave Store</button>
-         </div>
-      </div>
-      <div id="spellModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <h2 class="text-2xl font-bold mb-4">Spellbook</h2>
-            <ul id="spellList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-            </ul>
-            <button id="closeSpellButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
-         </div>
-      </div>
-      <div id="inventoryModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <h2 class="text-2xl font-bold mb-2">Inventory</h2>
-            <div id="inventoryModalList" class="flex gap-2 flex-wrap min-h-[8rem]">
-            </div>
-            <p class="text-sm text-center muted-text mt-4">
-               Press <kbd>1-9</kbd> to use/equip. Press <kbd>D</kbd> to drop. Press <kbd>Esc</kbd> to close.
-            </p>
-            <button id="closeInventoryButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
-         </div>
-      </div>
-      <div id="skillModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <h2 class="text-2xl font-bold mb-4">Skills</h2>
-            <ul id="skillList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-            </ul>
-            <button id="closeSkillButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
-         </div>
-      </div>
-      <div id="questModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 max-h-[90vh] flex flex-col">
-            <h2 class="text-2xl font-bold mb-4">Bounty Board</h2>
-            <div id="questList" class="space-y-4 max-h-80 overflow-y-auto pr-2">
-            </div>
-            <button id="closeQuestButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave</button>
-         </div>
-      </div>
-      <div id="craftingModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <h2 class="text-2xl font-bold mb-4">Crafting Workbench</h2>
-            <ul id="craftingRecipeList" class="space-y-3 max-h-80 overflow-y-auto pr-2">
-            </ul>
-            <button id="closeCraftingButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave Workbench</button>
-         </div>
-      </div>
-      <div id="talentModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <div class="flex justify-between items-center mb-4">
-               <h2 class="text-2xl font-bold">Class Mastery</h2>
-               <span id="talentPointsDisplay" class="font-bold highlight-text">Points: 0</span>
-            </div>
-            <p class="text-sm muted-text mb-4">Choose a permanent passive ability.</p>
-            <div id="talentList" class="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto pr-2">
-            </div>
-            <button id="closeTalentButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
-         </div>
-      </div>
-      <div id="evolutionModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 text-center">
-            <h2 class="text-3xl font-bold text-yellow-500 mb-2">Class Evolution</h2>
-            <p class="text-muted-text mb-6">You have reached Level 10. Choose your destiny.</p>
-            <div id="evolutionOptions" class="grid grid-cols-1 gap-4 mb-6">
-            </div>
-         </div>
-      </div>
-      <div id="skillTrainerModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <div class="flex justify-between items-center mb-4">
-               <h2 class="text-2xl font-bold">Skill Trainer</h2>
-               <span id="skillTrainerStatPoints" class="font-bold highlight-text">Your Stat Points: 0</span>
-            </div>
-            <p class="text-sm muted-text mb-4">Spend 1 Stat Point to learn a new skill or level up an existing one.</p>
-            <ul id="skillTrainerList" class="space-y-3 max-h-80 overflow-y-auto pr-2">
-            </ul>
-            <button id="closeSkillTrainerButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Leave Trainer</button>
-         </div>
-      </div>
-      <div id="stashModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2">
-            <h2 class="text-2xl font-bold mb-4">Storage Stash</h2>
-            <div class="grid grid-cols-2 gap-6">
-               <div>
-                  <h3 class="text-lg font-bold mb-2 border-b-2" style="border-color: var(--border-color);">Your Inventory</h3>
-                  <ul id="stashPlayerList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                  </ul>
-               </div>
-               <div>
-                  <h3 class="text-lg font-bold mb-2 border-b-2" style="border-color: var(--border-color);">Stash Contents</h3>
-                  <ul id="stashBankList" class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                  </ul>
-               </div>
-            </div>
-            <button id="closeStashButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close Stash</button>
-         </div>
-      </div>
-      <div id="mapModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-4 rounded-2xl shadow-xl border-2 flex flex-col h-[80vh] w-[90vw] max-w-4xl">
-            <div class="flex justify-between items-center mb-4">
-               <h2 class="text-2xl font-bold">World Map</h2>
-               <span class="text-xs muted-text">Only explored lands appear here.</span>
-               <button id="closeMapButton" class="text-red-500 font-bold hover:text-red-700">X</button>
-            </div>
-            <div class="flex-grow w-full h-full border-2 border-gray-700 bg-black rounded relative overflow-hidden" style="cursor: grab;">
-               <canvas id="worldMapCanvas" class="block"></canvas>
-            </div>
-            <div class="mt-4 text-center text-sm muted-text">
-               <span style="color:#22c55e">■ Plains</span> 
-               <span style="color:#14532d">■ Forest</span> 
-               <span style="color:#57534e">■ Mountain</span> 
-               <span style="color:#3b82f6">■ Water</span> 
-               <span style="color:#fde047">■ Desert</span>
-               <span class="ml-4 font-bold text-white" id="mapCoords">0, 0</span>
-            </div>
-         </div>
-      </div>
-      <div id="collectionsModal" class="modal-overlay hidden">
-         <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4">
-               <h2 class="text-2xl font-bold">Collections</h2>
-               <div class="flex gap-2">
-                  <button id="tabBestiary" class="text-sm font-bold border-b-2 border-blue-500 pb-1">Bestiary</button>
-                  <button id="tabLibrary" class="text-sm font-bold text-gray-500 pb-1">Library</button>
-               </div>
-            </div>
-            <div id="bestiaryView" class="overflow-y-auto pr-2 flex-grow space-y-2">
-            </div>
-            <div id="libraryView" class="overflow-y-auto pr-2 flex-grow space-y-2 hidden">
-            </div>
-            <button id="closeCollectionsButton" class="mt-6 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
-         </div>
-      </div>
-      <footer class="text-center text-xs muted-text mt-4">
-         <p>Version 0.1.9.7 | Last Updated: January 24th, 2026</p>
-      </footer>
-      <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-      <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-      <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-      <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-      
-      <!-- DATA MODULES (Load Before Main Script) -->
-      <script defer src="data-maps.js"></script>
-      <script defer src="data-items.js"></script>
-      <script defer src="data-entities.js"></script>
-      
-      <!-- MAIN GAME LOGIC -->
-      <script defer src="script.js?v=1"></script>
-      
-      <div id="mobileControls" class="mobile-controls lg:hidden">
-         <div class="d-pad-container">
-            <button data-key="ArrowUp" class="d-pad-btn up">⬆️</button>
-            <button data-key="ArrowLeft" class="d-pad-btn left">⬅️</button>
-            <button data-key="r" class="d-pad-btn center">💤</button> 
-            <button data-key="ArrowRight" class="d-pad-btn right">➡️</button>
-            <button data-key="ArrowDown" class="d-pad-btn down">⬇️</button>
-         </div>
-         <div class="action-buttons-container">
-            <button data-key="i" class="action-btn">🎒</button> 
-            <button data-key="m" class="action-btn">🔮</button> 
-            <button data-key="k" class="action-btn">⚔️</button> 
-            <button data-key="q" class="action-btn blue">💧</button>
-            <button data-key="Escape" class="action-btn red">❌</button> 
-         </div>
-      </div>
-   </body>
+function initializeFirebase() {
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWI858qb8vIWN3gRQh7fD2qKhGWG3QQyE",
+      authDomain: "my-blog-counter-b2521.firebaseapp.com",
+      projectId: "my-blog-counter-b2521",
+      storageBucket: "my-blog-counter-b2521.firebasestorage.app",
+      messagingSenderId: "124481622747",
+      appId: "1:124481622747:web:19c183d3bc92b174d472fe",
+      measurementId: "G-K27KZ4BQ80"
+    };
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    database = firebase.database(); // Assign the connection to our global variable
+}
+        
+function initializeAndRunCounter() {
+    const displayElement = document.getElementById('article-footer-message'); 
+    if (!displayElement) return;
+
+    const counterRef = database.ref('pageviews/total');
+
+    counterRef.transaction((currentValue) => {
+        return (currentValue || 0) + 1;
+    }, (error, committed, snapshot) => {
+        if (error) {
+            console.error("Firebase transaction failed:", error);
+            // If it fails, the original text will simply remain.
+        } else if (committed) {
+            const visitorNumber = snapshot.val().toLocaleString('en-US');
+           
+            displayElement.textContent = `Thanks for stopping by. You've been visitor ${visitorNumber}. Pants suck.`; 
+        }
+    });
+}
+        
+        // --- Combined Page and Sidebar Logic ---
+
+        let allPosts = [];
+
+async function loadContent() {
+    try {
+        // Use Promise.all to fetch posts and sidebar HTML concurrently
+        const [postsResponse, sidebarResponse] = await Promise.all([
+            fetch('posts.json'),
+            fetch('right-sidebar.html')
+        ]);
+
+        if (!postsResponse.ok) throw new Error(`HTTP error! status: ${postsResponse.status}`);
+        if (!sidebarResponse.ok) throw new Error(`HTTP error! status: ${sidebarResponse.status}`);
+
+        allPosts = await postsResponse.json();
+        const sidebarHtml = await sidebarResponse.text();
+
+        // Step 1: Inject the sidebar HTML into the placeholder
+        const sidebarContainer = document.getElementById('sidebar-container');
+        if (sidebarContainer) {
+            sidebarContainer.innerHTML = sidebarHtml;
+            // Step 2: NOW that the sidebar is loaded, generate the tag cloud
+            generateTagCloud(); 
+        } else {
+            console.error('Sidebar container not found!');
+            return; // Stop if the container isn't there
+        }
+
+        // Step 3: Finally, render the main posts
+        renderPosts(allPosts);
+
+    } catch (error) {
+        document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading content.</p>';
+        console.error('Error loading content:', error);
+    }
+}
+        
+function renderPosts(posts) {
+    const container = document.getElementById('posts-container');
+    if (!container) return;
+
+    if (posts.length === 0) {
+        container.innerHTML = `<p class="text-slate-500">No posts found.</p>`;
+    } else {
+        container.innerHTML = posts.map((post, index) => {
+            // --- START: Create a Firebase-safe ID ---
+            // Replace all periods in the filename with underscores
+            const sanitizedPostId = post.file.replace(/\./g, '_');
+            // --- END: Create a Firebase-safe ID ---
+
+            const isLastPost = index === posts.length - 1;
+            const articleClasses = `prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-4 ${isLastPost ? '' : 'mb-12 pb-8 border-b border-slate-200 dark:border-slate-700'}`;
+            const postDate = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+            const tagsHtml = post.tags.map(t =>
+                `<a href="/tag.html?tag=${encodeURIComponent(t)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${t}</a>`
+            ).join(' ');
+
+            return `
+            <article class="${articleClasses}">
+                <h2 class="mb-2"><a href="/post.html?p=${post.file}" class="no-underline hover:text-sky-500"><strong>${post.title}</strong></a></h2>
+                <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
+                <p>${post.summary}</p>
+                
+                <div class="not-prose flex items-center gap-4 mt-4">
+<button data-post-id="${sanitizedPostId}" class="like-button bg-sky-500 text-white font-semibold py-1 px-2 rounded-md text-sm hover:bg-sky-600 transition-colors">
+    👍 Like
+</button>
+                    <span id="like-count-${sanitizedPostId}" class="font-semibold text-slate-600 dark:text-slate-400">0</span>
+                </div>
+
+                <div class="not-prose flex flex-wrap gap-2 mt-4">
+                    ${tagsHtml}
+                </div>
+            </article>
+            `;
+        }).join('');
+    }
+
+    setupLikeButtons();
+}
+        
+        function generateTagCloud() {
+            const tagCloud = document.getElementById('tag-cloud');
+            if (!tagCloud) {
+                console.warn('Tag cloud element not found. Was the sidebar loaded correctly?');
+                return;
+            }
+            const allTags = allPosts.flatMap(post => post.tags);
+            const uniqueTags = [...new Set(allTags)];
+
+            if (uniqueTags.length === 0) {
+                tagCloud.innerHTML = '<p class="text-xs text-slate-500">No tags yet.</p>';
+            } else {
+                tagCloud.innerHTML = uniqueTags.sort().map(tag => `
+                    <a href="tag.html?tag=${encodeURIComponent(tag)}" class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-sky-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-sky-800 transition-colors no-underline">
+                        #${tag}
+                    </a>
+                `).join('');
+            }
+        }
+
+        function setupSearch() {
+            const searchInput = document.getElementById('searchInput');
+            if(!searchInput) return;
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const filteredPosts = allPosts.filter(post => {
+                    if (!post.title || !post.summary || !post.tags) return false;
+                    const titleMatch = post.title.toLowerCase().includes(searchTerm);
+                    const summaryMatch = post.summary.toLowerCase().includes(searchTerm);
+                    const tagsMatch = post.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+                    return titleMatch || summaryMatch || tagsMatch;
+                });
+                renderPosts(filteredPosts);
+            });
+        }
+            
+function initPage() {
+    initializeFirebase();
+    setupInteractiveHeader();
+    loadContent(); 
+    setupSearch();
+    initializeAndRunCounter();
+}
+
+        const interactiveHeader = { canvas: null, ctx: null, resize: () => {} };
+
+        function setupInteractiveHeader() {
+    interactiveHeader.canvas = document.getElementById('interactive-header-canvas');
+    if (!interactiveHeader.canvas) return;
+
+    interactiveHeader.ctx = interactiveHeader.canvas.getContext('2d');
+    let particles = [];
+    const mouse = { x: undefined, y: undefined };
+    let isEffectActive = false;
+    let effectTimeout;
+    const dustTrigger = document.getElementById('dust-trigger');
+
+    interactiveHeader.resize = () => {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = { width: window.innerWidth, height: window.innerHeight };
+        
+        interactiveHeader.canvas.width = rect.width * dpr;
+        interactiveHeader.canvas.height = rect.height * dpr;
+        
+        // Normalize coordinate system to use css pixels.
+        interactiveHeader.ctx.scale(dpr, dpr);
+    };
+
+    window.addEventListener('resize', interactiveHeader.resize);
+
+    document.addEventListener('mousemove', (event) => {
+        if (isEffectActive) {
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+        }
+    });
+
+    document.addEventListener('mouseleave', () => {
+        mouse.x = undefined;
+        mouse.y = undefined;
+    });
+
+    if (dustTrigger) {
+        dustTrigger.addEventListener('mouseover', () => {
+            isEffectActive = true;
+            clearTimeout(effectTimeout);
+            effectTimeout = setTimeout(() => {
+                isEffectActive = false;
+            }, 5000);
+        });
+    }
+
+    class Particle {
+        constructor() {
+            this.x = mouse.x;
+            this.y = mouse.y;
+            this.speedX = Math.random() * 0.5 - 0.25;
+            this.speedY = Math.random() * 0.5 - 0.25;
+            this.initialLife = this.life = Math.random() * 30 + 30;
+            this.radius = Math.random() * 1.5 + 0.5;
+            this.color = document.documentElement.classList.contains('dark') 
+                ? 'rgba(107, 224, 255, 1)' 
+                : 'rgba(0, 149, 255, 1)';
+        }
+
+        update() {
+            this.life--;
+            this.x += this.speedX;
+            this.y += this.speedY;
+        }
+
+        draw() {
+            const opacity = Math.max(0, this.life / this.initialLife);
+            const ctx = interactiveHeader.ctx;
+            
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = this.color.replace(', 1)', `, ${opacity})`);
+            
+            ctx.fillStyle = this.color.replace(', 1)', `, ${opacity})`);
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    function animate() {
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReducedMotion) {
+            interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
+            return; 
+        }
+
+        // --- THE FIX IS HERE ---
+        // 1. Save the current context state (with the dpr scale)
+        interactiveHeader.ctx.save();
+        // 2. Reset the transform to identity (1:1 pixel mapping)
+        interactiveHeader.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        // 3. Clear the full physical canvas safely
+        interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
+        // 4. Restore the context to the previous state (with dpr scale) for drawing
+        interactiveHeader.ctx.restore();
+        // -----------------------
+
+        if (isEffectActive && mouse.x !== undefined) {
+             for (let i = 0; i < 3; i++) {
+                particles.push(new Particle());
+            }
+        }
+        
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.update();
+            p.draw();
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+        
+        requestAnimationFrame(animate);
+    }
+
+    interactiveHeader.resize();
+    animate();
+}
+
+function setupLikeButtons() {
+    // Helper function to get liked posts from localStorage
+    function getLikedPosts() {
+        const liked = localStorage.getItem('likedPosts');
+        return liked ? JSON.parse(liked) : [];
+    }
+
+    // Helper function to save liked posts to localStorage
+    function saveLikedPosts(likedPosts) {
+        localStorage.setItem('likedPosts', JSON.stringify(likedPosts));
+    }
+
+    const likeButtons = document.querySelectorAll('.like-button');
+    let likedPosts = getLikedPosts();
+
+    likeButtons.forEach(button => {
+        const postId = button.dataset.postId;
+        const likeCountElement = document.getElementById(`like-count-${postId}`);
+        if (!likeCountElement) return;
+
+        const likesRef = database.ref(`likes/${postId}`);
+
+        // 1. Set the initial state of the button on page load
+        if (likedPosts.includes(postId)) {
+            button.textContent = 'Unlike';
+            button.classList.replace('bg-sky-500', 'bg-slate-500');
+            button.classList.replace('hover:bg-sky-600', 'hover:bg-slate-600');
+        }
+
+        // 2. Fetch and display the current like count from Firebase
+        likesRef.get().then((snapshot) => {
+            if (snapshot.exists()) {
+                likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+            } else {
+                likeCountElement.textContent = '0';
+            }
+        });
+
+        // 3. Listen for clicks to either like or unlike
+        button.addEventListener('click', () => {
+            likedPosts = getLikedPosts(); // Get the latest list in case it changed
+            const isLiked = likedPosts.includes(postId);
+            const increment = isLiked ? -1 : 1; // If liked, subtract 1. If not, add 1.
+
+            // Run the transaction to increment or decrement
+            likesRef.transaction((currentLikes) => {
+                return (currentLikes || 0) + increment;
+            }, (error, committed, snapshot) => {
+                if (!error && committed) {
+                    // Update the number on the page
+                    likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+
+                    // Update localStorage and button appearance
+                    if (isLiked) {
+                        // It was liked, now it's unliked
+                        const updatedLikedPosts = likedPosts.filter(id => id !== postId);
+                        saveLikedPosts(updatedLikedPosts);
+                        button.textContent = '👍 Like';
+                        button.classList.replace('bg-slate-500', 'bg-sky-500');
+                        button.classList.replace('hover:bg-slate-600', 'hover:bg-sky-600');
+                    } else {
+                        // It was not liked, now it is
+                        likedPosts.push(postId);
+                        saveLikedPosts(likedPosts);
+                        button.textContent = 'Unlike';
+                        button.classList.replace('bg-sky-500', 'bg-slate-500');
+                        button.classList.replace('hover:bg-sky-600', 'hover:bg-slate-600');
+                    }
+                }
+            });
+        });
+    });
+}
+        
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+    <script src="/sidebar-loader.js"></script>
+
+</body>
 </html>
