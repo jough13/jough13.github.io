@@ -1,4 +1,31 @@
 window.TILE_DATA = {
+    // Add/Modify inside window.TILE_DATA
+
+// 1. The Obelisks (The Puzzle Components)
+'|n': { type: 'obelisk_puzzle', direction: 'north', flavor: "A freezing cold obelisk stands here.", tile: '|' },
+'|e': { type: 'obelisk_puzzle', direction: 'east', flavor: "Moss grows on the east side of this stone.", tile: '|' },
+'|w': { type: 'obelisk_puzzle', direction: 'west', flavor: "The stone is warm, facing the setting sun.", tile: '|' },
+'|s': { type: 'obelisk_puzzle', direction: 'south', flavor: "The stone is scorched and hot.", tile: '|' },
+
+// 2. The Sealed Door (The Reward Location)
+'⛩️d': { 
+    type: 'sealed_door', 
+    name: 'The Vault of the Old King',
+    flavor: "A massive stone door with no handle. It has a keyhole.",
+    tile: '⛩️' 
+},
+
+// 3. Invisible Spirit (Plot NPC)
+'👻k': {
+    type: 'spirit_npc',
+    name: 'Echo of the King',
+    tile: '👻',
+    dialogue: [
+        "You... you can see me?",
+        "The Five Thrones were a mistake. We divided the power, and it divided the world.",
+        "Find the Obelisks. Restore the key. End my suffering."
+    ]
+},
     '🚢': {
         type: 'loot_container', // Reuses the chest logic!
         name: 'Sunken Shipwreck',
