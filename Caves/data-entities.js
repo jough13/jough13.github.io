@@ -1,3 +1,35 @@
+window.PLAYER_RACES = {
+    'human': {
+        name: 'Human',
+        description: "Versatile and ambitious. They adapt to any situation.",
+        stats: { charisma: 1, luck: 1, endurance: 1 }, // Jack of all trades
+        icon: '👨'
+    },
+    'elf': {
+        name: 'Elf',
+        description: "Ancient and keen-eyed. Magic flows through their veins.",
+        stats: { wits: 2, perception: 1 }, // Magic/Scouting focus
+        icon: '🧝'
+    },
+    'dwarf': {
+        name: 'Dwarf',
+        description: "Stout and unyielding. Born of stone and steel.",
+        stats: { constitution: 2, strength: 1 }, // Tank focus
+        icon: '🧔'
+    },
+    'orc': {
+        name: 'Orc',
+        description: "Fierce and mighty. Glory is earned in blood.",
+        stats: { strength: 2, endurance: 1 }, // Melee damage focus
+        icon: '👹'
+    },
+    'halfling': {
+        name: 'Halfling',
+        description: "Small, quiet, and incredibly lucky.",
+        stats: { dexterity: 2, luck: 1 }, // Stealth/Crit focus
+        icon: '🦶'
+    }
+};
 window.RIDDLE_DATA = [
     {
         id: "fire",
