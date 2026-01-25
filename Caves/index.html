@@ -48,67 +48,67 @@
                <button id="logoutFromSelectButton" class="text-sm text-red-500 hover:underline">Logout</button>
             </div>
          </div>
-         <div id="charCreationModal" class="themed-container mx-auto max-w-2xl p-6 rounded-2xl shadow-xl border-2 hidden">
-            <h1 class="text-3xl font-bold text-center mb-2">Choose Your Path</h1>
-            <p class="text-center muted-text mb-6">Who were you before you arrived here?</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-               <div class="panel p-4 rounded-xl border-2 hover:border-blue-500 cursor-pointer transition-all" onclick="selectBackground('warrior')">
-                  <div class="text-4xl text-center mb-2">⚔️</div>
-                  <h3 class="text-xl font-bold text-center mb-1">Warrior</h3>
-                  <p class="text-sm text-center muted-text mb-3">Strong and tough.</p>
-                  <ul class="text-xs space-y-1 list-disc list-inside">
-                     <li>+2 Strength</li>
-                     <li>+1 Constitution</li>
-                     <li class="text-green-600">Start: Rusty Sword</li>
-                  </ul>
+        
+
+<div id="charCreationModal" class="themed-container mx-auto max-w-4xl p-6 rounded-2xl shadow-xl border-2 hidden overflow-y-auto max-h-[90vh]">
+   <h1 class="text-3xl font-bold text-center mb-6">Create Your Character</h1>
+
+   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+       
+       <!-- LEFT COLUMN: Identity -->
+       <div class="space-y-6">
+           <!-- Name -->
+           <div>
+               <label class="block text-sm font-bold mb-2">Name</label>
+               <input type="text" id="charNameInput" class="themed-input w-full p-3 border-2 rounded-xl font-bold text-lg" placeholder="Enter Character Name..." maxlength="16">
+           </div>
+
+           <!-- Gender -->
+           <div>
+               <label class="block text-sm font-bold mb-2">Gender</label>
+               <div class="flex gap-4" id="genderSelectionContainer">
+                   <div class="gender-btn" data-value="Male">Male</div>
+                   <div class="gender-btn" data-value="Female">Female</div>
+                   <div class="gender-btn" data-value="Non-Binary">Non-Binary</div>
                </div>
-               <div class="panel p-4 rounded-xl border-2 hover:border-yellow-500 cursor-pointer transition-all" onclick="selectBackground('rogue')">
-                  <div class="text-4xl text-center mb-2">🗡️</div>
-                  <h3 class="text-xl font-bold text-center mb-1">Rogue</h3>
-                  <p class="text-sm text-center muted-text mb-3">Fast and lucky.</p>
-                  <ul class="text-xs space-y-1 list-disc list-inside">
-                     <li>+2 Dexterity</li>
-                     <li>+1 Luck</li>
-                     <li class="text-green-600">Start: Bone Dagger</li>
-                  </ul>
+           </div>
+
+           <!-- Race -->
+           <div>
+               <label class="block text-sm font-bold mb-2">Race</label>
+               <div id="raceSelectionContainer" class="grid grid-cols-2 gap-3">
+                   <!-- Javascript will populate this -->
                </div>
-               <div class="panel p-4 rounded-xl border-2 hover:border-purple-500 cursor-pointer transition-all" onclick="selectBackground('mage')">
-                  <div class="text-4xl text-center mb-2">🔮</div>
-                  <h3 class="text-xl font-bold text-center mb-1">Mage</h3>
-                  <p class="text-sm text-center muted-text mb-3">Wise and willful.</p>
-                  <ul class="text-xs space-y-1 list-disc list-inside">
-                     <li>+2 Wits</li>
-                     <li>+1 Willpower</li>
-                     <li class="text-green-600">Start: Magic Bolt</li>
-                  </ul>
+           </div>
+       </div>
+
+       <!-- RIGHT COLUMN: Class & Preview -->
+       <div class="space-y-6">
+           <!-- Class -->
+           <div>
+               <label class="block text-sm font-bold mb-2">Background (Class)</label>
+               <div id="classSelectionContainer" class="grid grid-cols-2 gap-3">
+                    <!-- Javascript will populate this -->
                </div>
-               <div class="panel p-4 rounded-xl border-2 hover:border-gray-500 cursor-pointer transition-all" onclick="selectBackground('necromancer')">
-                  <div class="text-4xl text-center mb-2">💀</div>
-                  <h3 class="text-xl font-bold text-center mb-1">Necromancer</h3>
-                  <p class="text-sm text-center muted-text mb-3">Master of the dead.</p>
-                  <ul class="text-xs space-y-1 list-disc list-inside">
-                     <li>+2 Willpower</li>
-                     <li>+1 Wits</li>
-                     <li class="text-green-600">Start: Raise Dead</li>
-                  </ul>
+           </div>
+
+           <!-- Summary/Preview -->
+           <div class="panel p-4 rounded-xl border-2 bg-black bg-opacity-5">
+               <h3 class="font-bold border-b border-gray-400 pb-1 mb-2">Summary</h3>
+               <div class="text-sm space-y-1" id="creationSummary">
+                   <p>Name: <span class="highlight-text">???</span></p>
+                   <p>Identity: <span class="muted-text">Unknown</span></p>
+                   <p>Stats: <span class="text-green-600">Base stats only</span></p>
                </div>
-               <div class="panel p-4 rounded-xl border-2 hover:border-red-600 cursor-pointer transition-all" onclick="selectBackground('wretch')">
-                  <div class="text-4xl text-center mb-2">🦴</div>
-                  <h3 class="text-xl font-bold text-center mb-1">Wretch</h3>
-                  <p class="text-sm text-center text-red-500 mb-3 font-bold">HARD MODE</p>
-                  <ul class="text-xs space-y-1 list-disc list-inside">
-                     <li>No Stat Bonus</li>
-                     <li>No Weapon</li>
-                     <li class="text-red-500">Start: Tattered Rags</li>
-                  </ul>
-               </div>
-            </div>
-            <div class="mt-6 text-center">
-               <button onclick="const keys=['warrior','rogue','mage','wretch']; selectBackground(keys[Math.floor(Math.random()*keys.length)])" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-full transition-all">
-               🎲 Random Fate
-               </button>
-            </div>
-         </div>
+           </div>
+
+           <button id="finalizeCreationBtn" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+               Begin Adventure
+           </button>
+       </div>
+   </div>
+</div>
+
          <div id="gameContainer" class="themed-container game-container mx-auto p-6 rounded-2xl shadow-lg border-2 hidden">
             <div id="loadingIndicator" class="absolute inset-0 flex items-center justify-center bg-[var(--bg-container)] z-50">
                <p class="text-2xl font-bold highlight-text">Loading...</p>
