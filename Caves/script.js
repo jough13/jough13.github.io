@@ -2283,6 +2283,10 @@ else if (worldX === 35 && worldY === 35) {
                     this.setWorldTile(worldX, worldY, '⛩️');
                     chunkData[y][x] = '⛩️';
                 }
+                else if (tile === '.' && featureRoll < 0.0003) { // Forgotten Letter (Lore)
+                    this.setWorldTile(worldX, worldY, '📜l');
+                    chunkData[y][x] = '📜l';
+                }
                 else if (tile === '.' && featureRoll < 0.00004) { // Obelisk
                     this.setWorldTile(worldX, worldY, '|');
                     chunkData[y][x] = '|';
@@ -12174,6 +12178,19 @@ if (enemy) {
 
     if (itemData) {
         let isTileLooted = gameState.lootedTiles.has(tileId);
+        if (itemData.type === 'random_lore') {
+            const seed = stringToSeed(`${newX},${newY}`);
+            const random = Alea(seed);
+            const fragment = LORE_FRAGMENTS[Math.floor(random() * LORE_FRAGMENTS.length)];
+            
+            loreTitle.textContent = "Forgotten Letter";
+            loreContent.textContent = `You smooth out the paper. The handwriting is faded.\n\n"${fragment}"`;
+            loreModal.classList.remove('hidden');
+            
+            // Consume the tile
+            clearLootTile();
+            return;
+        }
         if (isTileLooted) {
             logMessage(`You see where a ${itemData.name} once was...`);
         } else {
