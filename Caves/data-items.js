@@ -279,6 +279,48 @@ window.CRAFTING_RECIPES = {
 };
 
 window.ITEM_DATA = {
+    // --- NEW ARTIFACTS & PUZZLE ITEMS ---
+'👓s': {
+    name: 'Spirit Lens',
+    type: 'tool', // Passive effect when in inventory
+    tile: '👓',
+    description: "Looking through it reveals the echoes of the dead.",
+    excludeFromLoot: true // Unique item found via puzzle/quest
+},
+'🧩n': {
+    name: 'Tablet of the North',
+    type: 'junk',
+    description: "An ancient stone fragment. Etched on the back: 'First, the cold wind blows.'",
+    tile: '🧩'
+},
+'🧩e': {
+    name: 'Tablet of the East',
+    type: 'junk',
+    description: "An ancient stone fragment. Etched on the back: 'Second, the sun rises.'",
+    tile: '🧩'
+},
+'🧩w': {
+    name: 'Tablet of the West',
+    type: 'junk',
+    description: "An ancient stone fragment. Etched on the back: 'Third, the light fades.'",
+    tile: '🧩'
+},
+'🧩s': {
+    name: 'Tablet of the South',
+    type: 'junk',
+    description: "An ancient stone fragment. Etched on the back: 'Finally, the heat consumes.'",
+    tile: '🧩'
+},
+'🗝️a': {
+    name: 'Ancient Key',
+    type: 'consumable',
+    description: "Fused together from four fragments. It hums with power.",
+    tile: '🗝️',
+    effect: (state) => {
+        logMessage("This key doesn't do anything... yet. You need to find the Sealed Door.");
+        return false;
+    }
+},
     // --- STORY-RICH ARTIFACTS ---
     '💍k': {
         name: 'The Queen\'s Promise',
