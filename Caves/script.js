@@ -8272,6 +8272,21 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
                 tile = (map && map[mapY]) ? map[mapY][mapX] : null;
             }
 
+            if (tile === '👻k') {
+                // We reused the 'hasLens' variable we defined at the top of render() in the previous step
+                if (!hasLens) {
+                    tile = '.'; // Visually replace ghost with floor
+                } else {
+                    // Visually render the ghost
+                    ctx.fillStyle = 'rgba(168, 85, 247, 0.6)'; // Ghostly Purple, transparent
+                    ctx.font = `bold ${TILE_SIZE}px monospace`;
+                    ctx.fillText('👻', x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                    
+                    // Skip the rest of the loop for this tile so we don't draw over it
+                    continue; 
+                }
+            }
+
             if (tile) {
                 if (tile === '~') {
                     const waveVal = (now / 1500) + (mapX * 0.3) + (mapY * 0.2) + Math.sin(mapY * 0.5);
@@ -10969,6 +10984,43 @@ if (tileData.type === 'obelisk_puzzle') {
     }
     return;
 }
+
+  if (tileData.type === 'spirit_npc') {
+            const requiredItem = tileData.requiresItem;
+            const hasItem = gameState.player.inventory.some(i => i.name === requiredItem);
+
+            if (!hasItem) {
+                // If we don't have the lens, the ghost is invisible/immaterial.
+                // We treat it like walking on a floor, but give a hint.
+                logMessage(tileData.invisibleMessage || "You shiver.");
+                
+                // Allow movement onto the tile (ghosts are intangible)
+                gameState.player.x = newX;
+                gameState.player.y = newY;
+                gameState.mapDirty = true;
+                AudioSystem.playStep();
+                endPlayerTurn();
+                render();
+                return;
+            }
+
+            // If we HAVE the lens, we interact with the Ghost
+            const seed = stringToSeed(tileId + gameState.playerTurnCount); // Randomize dialogue based on turn
+            const random = Alea(seed);
+            const msg = tileData.dialogue[Math.floor(random() * tileData.dialogue.length)];
+
+            loreTitle.textContent = tileData.name;
+            loreContent.textContent = `The ghostly figure shimmers into view through your lens.\n\n"${msg}"`;
+            loreModal.classList.remove('hidden');
+            
+            // Optional: Grant XP for finding him the first time
+            if (!gameState.foundLore.has(tileId)) {
+                grantXp(50);
+                gameState.foundLore.add(tileId);
+                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+            }
+            return;
+        }
 
 // --- SEALED DOOR LOGIC ---
 if (tileData.type === 'sealed_door') {
