@@ -55,6 +55,11 @@ window.COOKING_RECIPES = {
 };
 
 window.CRAFTING_RECIPES = {
+    // Add to window.CRAFTING_RECIPES
+"Ancient Key": {
+    materials: { "Tablet of the North": 1, "Tablet of the East": 1, "Tablet of the West": 1, "Tablet of the South": 1 },
+    xp: 500, level: 1 // No level requirement, it's a puzzle reward
+},
     // --- TIER 0 (Basic Survival) ---
     "Wooden Club": {
         materials: { "Stick": 2 },
