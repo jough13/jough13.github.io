@@ -1,5 +1,19 @@
 window.TILE_DATA = {
-    // Add/Modify inside window.TILE_DATA
+
+       '👻k': {
+        type: 'spirit_npc',
+        name: 'Echo of the King',
+        tile: '👻', 
+        // We use a custom property for the specific requirements
+        requiresItem: 'Spirit Lens', 
+        invisibleMessage: "You walk through a patch of unnaturally cold air.",
+        dialogue: [
+            "You... you can see me?",
+            "The Five Thrones were a mistake. We divided the power, and it divided the world.",
+            "My knights are gone. My kingdom is ash. Only the Void remains.",
+            "Seek the Obelisks to the North, East, West, and South. Restore the key."
+        ]
+    },
 
 // 1. The Obelisks (The Puzzle Components)
 '|n': { type: 'obelisk_puzzle', direction: 'north', flavor: "A freezing cold obelisk stands here.", tile: '|' },
