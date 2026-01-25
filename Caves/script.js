@@ -32,6 +32,14 @@ try {
 }
 
 // Globals
+
+let creationState = {
+    name: "",
+    race: null,
+    gender: null,
+    background: null
+};
+
 let player_id;
 let playerRef;
 let onlinePlayerRef;
@@ -555,15 +563,13 @@ window.selectSlot = async function (slotId) {
         // Load existing game
         enterGame(doc.data());
     } else {
-        // Start creation wizard
-
-        const defaultState = createDefaultPlayerState();
-        // We DON'T save yet. We wait for background selection.
-        Object.assign(gameState.player, defaultState);
-
-        loadingIndicator.classList.add('hidden');
-        charCreationModal.classList.remove('hidden');
-    }
+    // Start creation wizard
+    const defaultState = createDefaultPlayerState();
+    Object.assign(gameState.player, defaultState);
+    
+    // Call our new UI initializer
+    initCreationUI(); 
+}
 };
 
 let slotPendingDeletion = null; // Store the slot ID temporarily
@@ -896,6 +902,187 @@ function createDefaultPlayerState() {
         craftingXp: 0,
         craftingXpToNext: 50,
     };
+}
+
+// --- CHARACTER CREATION LOGIC ---
+
+function initCreationUI() {
+    // 1. Clear State
+    creationState = { name: "", race: null, gender: "Non-Binary", background: null };
+    document.getElementById('charNameInput').value = "";
+    
+    // 2. Populate Races
+    const raceContainer = document.getElementById('raceSelectionContainer');
+    raceContainer.innerHTML = '';
+    
+    for (const key in PLAYER_RACES) {
+        const r = PLAYER_RACES[key];
+        const div = document.createElement('div');
+        div.className = 'creation-option p-3 rounded-lg flex items-center gap-2';
+        div.innerHTML = `<span class="text-2xl">${r.icon}</span> <span class="font-bold">${r.name}</span>`;
+        div.onclick = () => selectCreationOption('race', key, div);
+        div.dataset.key = key; // identifier
+        raceContainer.appendChild(div);
+    }
+
+    // 3. Populate Classes (Backgrounds)
+    const classContainer = document.getElementById('classSelectionContainer');
+    classContainer.innerHTML = '';
+
+    for (const key in PLAYER_BACKGROUNDS) {
+        const bg = PLAYER_BACKGROUNDS[key];
+        // Skip Wretch if you want it hidden, or keep it.
+        const div = document.createElement('div');
+        div.className = 'creation-option p-3 rounded-lg';
+        div.innerHTML = `
+            <div class="font-bold text-lg">${bg.name}</div>
+            <div class="text-xs muted-text">Start: ${bg.items[0].name}</div>
+        `;
+        div.onclick = () => selectCreationOption('background', key, div);
+        div.dataset.key = key;
+        classContainer.appendChild(div);
+    }
+
+    // 4. Setup Gender Buttons
+    const genderBtns = document.querySelectorAll('.gender-btn');
+    genderBtns.forEach(btn => {
+        btn.onclick = () => {
+            // Visual toggle
+            genderBtns.forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            creationState.gender = btn.dataset.value;
+            updateCreationSummary();
+        };
+    });
+    // Default select Non-Binary or first option
+    genderBtns[2].click(); 
+
+    updateCreationSummary();
+    
+    // Show Modal
+    charCreationModal.classList.remove('hidden');
+    loadingIndicator.classList.add('hidden');
+}
+
+function selectCreationOption(type, key, element) {
+    creationState[type] = key;
+
+    // Visual Update: Remove 'selected' from siblings, add to clicked
+    const container = element.parentElement;
+    Array.from(container.children).forEach(child => child.classList.remove('selected'));
+    element.classList.add('selected');
+
+    updateCreationSummary();
+}
+
+function updateCreationSummary() {
+    const summaryDiv = document.getElementById('creationSummary');
+    const nameInput = document.getElementById('charNameInput');
+    creationState.name = nameInput.value.trim();
+
+    const raceName = creationState.race ? PLAYER_RACES[creationState.race].name : "???";
+    const className = creationState.background ? PLAYER_BACKGROUNDS[creationState.background].name : "???";
+    
+    // Calculate Stats Preview
+    let stats = [];
+    if (creationState.race) {
+        const rStats = PLAYER_RACES[creationState.race].stats;
+        for(let s in rStats) stats.push(`+${rStats[s]} ${s} (Race)`);
+    }
+    if (creationState.background) {
+        const cStats = PLAYER_BACKGROUNDS[creationState.background].stats;
+        for(let s in cStats) stats.push(`+${cStats[s]} ${s} (Class)`);
+    }
+
+    summaryDiv.innerHTML = `
+        <p>Name: <span class="highlight-text font-bold">${creationState.name || "???"}</span></p>
+        <p>Identity: ${creationState.gender || "?"} ${raceName} ${className}</p>
+        <div class="mt-2 text-xs border-t pt-2 border-gray-500">
+            ${stats.length > 0 ? stats.join('<br>') : "Select Race & Class to see bonuses."}
+        </div>
+    `;
+
+    // Enable/Disable Button
+    const btn = document.getElementById('finalizeCreationBtn');
+    if (creationState.name.length > 0 && creationState.race && creationState.background && creationState.gender) {
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+// Bind the Name Input to update summary live
+document.getElementById('charNameInput').addEventListener('input', updateCreationSummary);
+
+// Bind the Finalize Button
+document.getElementById('finalizeCreationBtn').addEventListener('click', finalizeCharacterCreation);
+
+async function finalizeCharacterCreation() {
+    const btn = document.getElementById('finalizeCreationBtn');
+    btn.disabled = true;
+    btn.textContent = "Forging Destiny...";
+
+    const player = gameState.player;
+    const bgData = PLAYER_BACKGROUNDS[creationState.background];
+    const raceData = PLAYER_RACES[creationState.race];
+
+    // 1. Apply Base Data
+    player.name = creationState.name;
+    player.race = creationState.race;
+    player.gender = creationState.gender;
+    player.background = creationState.background; // Class ID
+
+    // 2. Apply Class Stats
+    for (const stat in bgData.stats) {
+        player[stat] = (player[stat] || 1) + bgData.stats[stat];
+    }
+    
+    // 3. Apply Race Stats
+    for (const stat in raceData.stats) {
+        player[stat] = (player[stat] || 1) + raceData.stats[stat];
+    }
+
+    // 4. Recalculate Derived Vitals (Health/Mana) based on TOTAL Constitution/Wits
+    // (Default is 10, plus bonuses)
+    player.maxHealth = 10 + (player.constitution * 5);
+    player.health = player.maxHealth;
+    
+    player.maxMana = 10 + (player.wits * 5);
+    player.mana = player.maxMana;
+    
+    player.maxStamina = 10 + (player.endurance * 5);
+    player.stamina = player.maxStamina;
+
+    // 5. Apply Inventory (Class Kit)
+    bgData.items.forEach(newItem => {
+        player.inventory.push(newItem);
+    });
+
+    // 6. Auto-Equip
+    const weapon = player.inventory.find(i => i.type === 'weapon');
+    const armor = player.inventory.find(i => i.type === 'armor');
+    if (weapon) { player.equipment.weapon = weapon; weapon.isEquipped = true; }
+    if (armor) { player.equipment.armor = armor; armor.isEquipped = true; }
+
+    // 7. Save and Start
+    await playerRef.set(player);
+
+    charCreationModal.classList.add('hidden');
+    gameContainer.classList.remove('hidden');
+    canvas.style.visibility = 'visible';
+    
+    gameState.mapMode = 'overworld';
+    
+    logMessage(`Welcome, ${player.name} the ${raceData.name} ${bgData.name}.`);
+    
+    renderStats();
+    renderEquipment();
+    renderInventory();
+    renderTime();
+    resizeCanvas();
+    render();
 }
 
 async function restartGame() {
