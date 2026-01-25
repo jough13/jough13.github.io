@@ -7383,8 +7383,18 @@ const renderEquipment = () => {
     const weaponIcon = document.getElementById('slotWeaponIcon');
     const armorIcon = document.getElementById('slotArmorIcon');
 
-    if (weaponIcon) weaponIcon.textContent = weapon.tile || '👊';
-    if (armorIcon) armorIcon.textContent = armor.tile || '👕';
+        if (weaponIcon) {
+        weaponIcon.textContent = weapon.tile || '👊';
+        // Add this to colorize the weapon icon
+        weaponIcon.style.color = (weapon.name === 'Fists') ? 'var(--text-muted)' : 'var(--text-default)';
+    }
+
+        if (armorIcon) {
+        armorIcon.textContent = armor.tile || '👕';
+        // Add this to colorize the armor icon
+        armorIcon.style.color = (armor.name === 'Simple Tunic' || armor.name === 'Tattered Rags') ? 'var(--text-muted)' : 'var(--text-default)';
+    }
+    
 
     // Calculate total defense
     const baseDefense = Math.floor(player.dexterity / 3);
