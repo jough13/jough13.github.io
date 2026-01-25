@@ -1,1287 +1,829 @@
-window.PLAYER_RACES = {
-    'human': {
-        name: 'Human',
-        description: "Versatile and ambitious. They adapt to any situation.",
-        stats: { charisma: 1, luck: 1, endurance: 1 }, // Jack of all trades
-        icon: '👨'
-    },
-    'elf': {
-        name: 'Elf',
-        description: "Ancient and keen-eyed. Magic flows through their veins.",
-        stats: { wits: 2, perception: 1 }, // Magic/Scouting focus
-        icon: '🧝'
-    },
-    'dwarf': {
-        name: 'Dwarf',
-        description: "Stout and unyielding. Born of stone and steel.",
-        stats: { constitution: 2, strength: 1 }, // Tank focus
-        icon: '🧔'
-    },
-    'orc': {
-        name: 'Orc',
-        description: "Fierce and mighty. Glory is earned in blood.",
-        stats: { strength: 2, endurance: 1 }, // Melee damage focus
-        icon: '👹'
-    },
-    'halfling': {
-        name: 'Halfling',
-        description: "Small, quiet, and incredibly lucky.",
-        stats: { dexterity: 2, luck: 1 }, // Stealth/Crit focus
-        icon: '🦶'
-    }
-};
-window.RIDDLE_DATA = [
-    {
-        id: "fire",
-        question: "I have no mouth, but I always consume. I have no life, but I must be fed. What am I?",
-        answers: ["fire", "flame", "campfire"],
-        reward: "strength", // Grants +1 Strength
-        message: "The statue's eyes glow red. You feel a surge of heat."
-    },
-    {
-        id: "shadow",
-        question: "The more of me there is, the less you see. What am I?",
-        answers: ["darkness", "dark", "shadow", "night"],
-        reward: "wits", // Grants +1 Wits
-        message: "The statue seems to vanish for a moment. Your mind sharpens."
-    },
-    {
-        id: "echo",
-        question: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
-        answers: ["echo"],
-        reward: "psyche", // Grants +1 Psyche
-        message: "A whisper surrounds you. Your will is strengthened."
-    },
-    {
-        id: "silence",
-        question: "I am so fragile that if you say my name, you break me. What am I?",
-        answers: ["silence"],
-        reward: "dexterity", // Grants +1 Dex (Stealth theme)
-        message: "The world goes quiet. You feel lighter."
-    }
-];
+window.TILE_DATA = {
 
-window.QUEST_DATA = {
-    "healerSupply": {
-        title: "Herbal Remedies",
-        description: "The Healer is running low on supplies. Gather 5 Medicinal Herbs ('🌿') from the swamp.",
-        type: 'collect',
-        itemNeeded: 'Medicinal Herb',
-        needed: 5,
-        reward: {
-            xp: 200,
-            coins: 50,
-            item: 'Healing Potion', // New reward type!
-            itemQty: 3
-        }
-    },
-    "banditChief": {
-        title: "Wanted: The Chief",
-        description: "The Bandit Chief ('C') has been spotted in the fortresses. Put an end to his reign.",
-        type: 'kill', // Uses the standard kill tracking
-        enemy: 'C',   // Tracks kills of 'C' (Bandit Chief)
-        needed: 1,
-        reward: {
-            xp: 500,
-            coins: 300,
-            item: 'Steel Sword',
-            itemQty: 1
-        }
-    },
-    "goblinHeirloom": {
-        title: "The Lost Heirloom",
-        description: "A villager is distraught. A goblin ('g') stole their family heirloom!",
-        type: 'fetch',
-        enemy: 'g',
-        itemNeeded: 'Heirloom',
-        itemTile: '♦',
-        reward: {
-            xp: 150,
-            coins: 100
-        }
-    },
-    "goblinTrophies": {
-        title: "Goblin Trophies",
-        description: "A Lost Prospector ('K') is tired of being harassed. He'll reward you for clearing out 10 Goblin Totems.",
-        type: 'collect',
-        itemNeeded: 'Goblin Totem',
-        needed: 10,
-        reward: {
-            xp: 200,
-            coins: 150
-        }
-    },
-    "orcHunt": {
-        title: "Bounty: Orc Hunt",
-        description: "The brutes are getting bold. Put them down.",
-        enemy: 'o',
-        needed: 8,
-        reward: {
-            xp: 150,
-            coins: 100
-        }
-    },
-    "mageMenace": {
-        title: "Bounty: Mage Menace",
-        description: "Apprentice mages are experimenting in the wild. Stop them before they burn something down.",
-        enemy: 'm',
-        needed: 5,
-        reward: {
-            xp: 180,
-            coins: 120
-        }
-    },
-    "draugrProblems": {
-        title: "Bounty: Draugr Problems",
-        description: "The Draugr are walking again. Send them back to their graves.",
-        enemy: 'Z',
-        needed: 5,
-        reward: {
-            xp: 200,
-            coins: 150
-        }
-    },
-    "acolyteHunt": {
-        title: "Bounty: Shadow Acolytes",
-        description: "Strange, robed figures have been spotted in the crypts. Clear them out.",
-        enemy: 'a', // The 'a' tile for Shadow Acolyte
-        needed: 10,
-        reward: {
-            xp: 150,
-            coins: 100
-        }
-    },
-    "spiderHunt": {
-        title: "Bounty: Spider Nest",
-        description: "The caves are crawling with giant spiders. Clear out the nests.",
-        enemy: '@', // The '@' tile for Giant Spider
-        needed: 12,
-        reward: {
-            xp: 120,
-            coins: 80
-        }
-    },
-    "wolfHunt": {
-        title: "Bounty: Wolf Hunt",
-        description: "The local shepherds are plagued by wolves. Thin their numbers.",
-        enemy: 'w', // The enemy tile to track
-        needed: 10,
-        reward: {
-            xp: 100,
-            coins: 50
-        }
-    },
-    "goblinHunt": {
-        title: "Bounty: Goblin Hunt",
-        description: "Goblins are multiplying in the nearby caves. Clear them out.",
-        enemy: 'g', // Tracks 'g' tile
-        needed: 15, // Need to kill 15
-        reward: {
-            xp: 75,
-            coins: 30
-        }
-    },
-    "skeletonScourge": {
-        title: "Bounty: Skeleton Scourge",
-        description: "Restless dead are rising. Put them back to rest.",
-        enemy: 's', // Tracks 's' tile
-        needed: 10,
-        reward: {
-            xp: 100,
-            coins: 50
-        }
-    },
-    "banditCleanup": {
-        title: "Bounty: Bandit Cleanup",
-        description: "Bandits have been waylaying travelers. Bring them to justice.",
-        enemy: 'b', // Tracks 'b' tile
-        needed: 12,
-        reward: {
-            xp: 120,
-            coins: 75
-        }
-    }
-
-};
-
-window.ENEMY_PREFIXES = {
-    "Savage": {
-        description: "Deals extra damage.",
-        statModifiers: { attack: 2 },
-        xpMult: 1.2,
-        color: '#ef4444' // Red-ish
-    },
-    "Armored": {
-        description: "Harder to hit.",
-        statModifiers: { defense: 2 },
-        xpMult: 1.2,
-        color: '#9ca3af' // Grey
-    },
-    "Swift": {
-        description: "Harder to hit and moves fast.",
-        statModifiers: { defense: 1 }, // Simulates dodging
-        xpMult: 1.1,
-        color: '#facc15' // Yellow
-    },
-    "Massive": {
-        description: "A giant among its kind.",
-        statModifiers: { maxHealth: 10, attack: 1 },
-        xpMult: 1.5,
-        color: '#ea580c' // Orange
-    },
-    "Plagued": {
-        description: "Carries disease.",
-        statModifiers: { maxHealth: 5 },
-        special: 'poison',
-        xpMult: 1.3,
-        color: '#22c55e' // Green
-    },
-    "Spectral": {
-        description: "Hard to hurt with physical weapons.",
-        statModifiers: { defense: 3, maxHealth: -5 }, // High def, low HP
-        xpMult: 1.4,
-        color: '#a855f7' // Purple
-    }
-};
-
-window.ENEMY_DATA = {
-    // --- LEVEL 1 (Vermin & Weaklings) ---
-    'r': {
-        name: 'Giant Rat',
-        maxHealth: 3,
-        attack: 1,
-        defense: 0,
-        xp: 4,
-        loot: '🐀', // Rat Tail
-        flavor: "It hisses and bares yellow teeth."
-    },
-    '🦇': {
-        name: 'Giant Bat',
-        maxHealth: 2,
-        attack: 1,
-        defense: 0,
-        xp: 5,
-        loot: '🦇', // Bat Wing
-        flavor: "It swoops down from the darkness!"
-    },
-    '🐍': {
-        name: 'Viper',
-        maxHealth: 4,
-        attack: 2,
-        defense: 0,
-        xp: 8,
-        loot: '🦷', // Snake Fang
-        inflicts: 'poison',
-        inflictChance: 0.2
-    },
-    'R': {
-        name: 'Bandit Recruit',
-        maxHealth: 5,
-        attack: 2, // Has a weapon
-        defense: 0,
-        xp: 10,
-        loot: '🧣', // Red Bandana
-        flavor: "He looks nervous, holding his dagger with shaking hands."
+       '👻k': {
+        type: 'spirit_npc',
+        name: 'Echo of the King',
+        tile: '👻', 
+        // We use a custom property for the specific requirements
+        requiresItem: 'Spirit Lens', 
+        invisibleMessage: "You walk through a patch of unnaturally cold air.",
+        dialogue: [
+            "You... you can see me?",
+            "The Five Thrones were a mistake. We divided the power, and it divided the world.",
+            "My knights are gone. My kingdom is ash. Only the Void remains.",
+            "Seek the Obelisks to the North, East, West, and South. Restore the key."
+        ]
     },
 
-    // --- DESERT WILDLIFE ---
-    '🦂s': { // Small Scorpion variant
-        name: 'Sand Scorpion',
-        maxHealth: 5, attack: 2, defense: 1, xp: 8,
-        loot: '🦷',
-        inflicts: 'poison', inflictChance: 0.3,
-        flavor: "It burrows in the sand, waiting."
-    },
-    '🐍c': { // Cobra
-        name: 'King Cobra',
-        maxHealth: 15, attack: 5, defense: 0, xp: 30,
-        loot: '🦷',
-        inflicts: 'poison', inflictChance: 0.5,
-        flavor: "It rears up, hood flared, hissing loudly."
-    },
+// 1. The Obelisks (The Puzzle Components)
+'|n': { type: 'obelisk_puzzle', direction: 'north', flavor: "A freezing cold obelisk stands here.", tile: '|' },
+'|e': { type: 'obelisk_puzzle', direction: 'east', flavor: "Moss grows on the east side of this stone.", tile: '|' },
+'|w': { type: 'obelisk_puzzle', direction: 'west', flavor: "The stone is warm, facing the setting sun.", tile: '|' },
+'|s': { type: 'obelisk_puzzle', direction: 'south', flavor: "The stone is scorched and hot.", tile: '|' },
 
-    // --- SWAMP WILDLIFE ---
-    '🐸': {
-        name: 'Giant Toad',
-        maxHealth: 20, attack: 3, defense: 0, xp: 25,
-        loot: '🍖', // Drops meat!
-        flavor: "It looks at you with unblinking eyes."
-    },
-    '🦟': {
-        name: 'Blood Mosquito',
-        maxHealth: 2, attack: 1, defense: 5, // Hard to hit!
-        xp: 10,
-        loot: 'vd',
-        flavor: "An annoying, high-pitched whine follows it."
-    },
-
-    // --- FOREST WILDLIFE ---
-    '🐻': {
-        name: 'Cave Bear',
-        maxHealth: 14, // Reduced from 30 (Now doable in ~6-7 hits)
-        attack: 3,     // Reduced from 5 (Player survives ~4-5 hits)
-        defense: 1,    // Reduced from 2 (So basic weapons actually do damage)
-        xp: 25,        // Reduced from 50 to match new difficulty
-        loot: '❄️f',   // Yeti Fur (Generic Fur)
-        flavor: "A large bear. It looks hungry, but not invincible."
-    },
-    '🦌': {
-        name: 'Stag',
-        maxHealth: 15, attack: 2, defense: 0, xp: 10,
-        loot: '🍖',
-        flavor: "It watches you warily."
-    },
-
-    // --- LEVEL 2-3 (Standard Threats) ---
-    'g': {
-        name: 'Goblin',
-        maxHealth: 6,
-        attack: 2,
-        defense: 0,
-        xp: 12,
-        loot: 't',
-        flavor: "Scavengers who worship the scrap metal left behind by the Great Fall."
-    },
-    'w': {
-        name: 'Wolf',
-        maxHealth: 8,
-        attack: 3,
-        defense: 0,
-        xp: 15,
-        loot: 'p'
-    },
-    's': {
-        name: 'Skeleton',
-        maxHealth: 10,
-        attack: 3,
-        defense: 1, // Bones are hard
-        xp: 18,
-        loot: '(',
-        flavor: "Once the King's elite guard. Even in death, they cannot break their oath of silence."
-    },
-    'b': {
-        name: 'Bandit',
-        maxHealth: 10,
-        attack: 2,
-        defense: 1, // Leather armor
-        xp: 20,
-        loot: 'i'
-    },
-    'k': {
-        name: 'Kobold',
-        maxHealth: 6,
-        attack: 2,
-        defense: 0,
-        xp: 10,
-        loot: '$',
-        flavor: "Yip yip!"
-    },
-    '🐗': {
-        name: 'Wild Boar',
-        maxHealth: 12,
-        attack: 3,
-        defense: 0,
-        xp: 20,
-        loot: '🍖'
-    },
-    'a': {
-        name: 'Shadow Acolyte',
-        maxHealth: 8,
-        attack: 1,
-        defense: 0,
-        xp: 15,
-        loot: 'r',
-        caster: true,
-        castRange: 4,
-        spellDamage: 3
-    },
-
-    // --- LEVEL 4-5 (Advanced Threats) ---
-    '@': {
-        name: 'Giant Spider',
-        maxHealth: 10,
-        attack: 4,
-        defense: 0,
-        xp: 25,
-        loot: '"',
-        inflicts: 'poison'
-    },
-    '🦂': {
-        name: 'Giant Scorpion',
-        maxHealth: 12,
-        attack: 4,
-        defense: 2, // Hard shell
-        xp: 30,
-        loot: 'i',
-        inflicts: 'poison'
-    },
-    'l': {
-        name: 'Giant Leech',
-        maxHealth: 15,
-        attack: 2,
-        defense: 0,
-        xp: 20,
-        loot: 'p',
-        inflicts: 'poison'
-    },
-    'o': {
-        name: 'Orc Brute',
-        maxHealth: 20,
-        attack: 5,
-        defense: 1,
-        xp: 40,
-        loot: 'U'
-    },
-    'Z': {
-        name: 'Draugr',
-        maxHealth: 18,
-        attack: 4,
-        defense: 2,
-        xp: 35,
-        loot: 'E',
-        inflicts: 'frostbite'
-    },
-
-    // --- LEVEL 6+ (Elites) ---
-    '🐺': {
-        name: 'Dire Wolf',
-        maxHealth: 25,
-        attack: 6,
-        defense: 1,
-        xp: 60,
-        loot: '🐺'
-    },
-    'Ø': { // FIXED: Changed ID to avoid Sage conflict
-        name: 'Ogre',
-        maxHealth: 35,
-        attack: 7,
-        defense: 1,
-        xp: 80,
-        loot: '$'
-    },
-    'Y': {
-        name: 'Yeti',
-        maxHealth: 40,
-        attack: 6,
-        defense: 2,
-        xp: 90,
-        loot: '❄️f',
-        inflicts: 'frostbite'
-    },
-    'm': {
-        name: 'Arcane Mage',
-        maxHealth: 15,
-        attack: 2,
-        defense: 0,
-        xp: 50,
-        loot: '&',
-        caster: true,
-        castRange: 6,
-        spellDamage: 6,
-        flavor: "A scholar who stared too long into the Void. Their body is now just a vessel for forbidden math."
-    },
-    'C': {
-        name: 'Bandit Chief',
-        maxHealth: 25,
-        attack: 5,
-        defense: 2,
-        xp: 50,
-        loot: 'i'
-    },
-    'f': {
-        name: 'Fire Elemental',
-        maxHealth: 20,
-        attack: 5,
-        defense: 3,
-        xp: 60,
-        loot: '🔥c',
-        caster: true,
-        castRange: 4,
-        spellDamage: 5,
-        inflicts: 'burn'
-    },
-    '👻': {
-    name: 'Lost Soul',
-    type: 'spirit', // <--- This triggers the logic
-    maxHealth: 15,
-    attack: 3,
-    xp: 20,
-    loot: 'ectoplasm',
-    flavor: "It wails silently."
+// 2. The Sealed Door (The Reward Location)
+'⛩️d': { 
+    type: 'sealed_door', 
+    name: 'The Vault of the Old King',
+    flavor: "A massive stone door with no handle. It has a keyhole.",
+    tile: '⛩️' 
 },
-    'D': {
-        name: 'Void Demon',
-        maxHealth: 50,
-        attack: 8,
-        defense: 4,
-        xp: 200,
-        loot: '😈',
-        teleporter: true,
-        inflicts: 'madness',
-        flavor: "A fragment of the nothingness that existed before the First Age."
+
+// 3. Invisible Spirit (Plot NPC)
+'👻k': {
+    type: 'spirit_npc',
+    name: 'Echo of the King',
+    tile: '👻',
+    dialogue: [
+        "You... you can see me?",
+        "The Five Thrones were a mistake. We divided the power, and it divided the world.",
+        "Find the Obelisks. Restore the key. End my suffering."
+    ]
+},
+    '🚢': {
+        type: 'loot_container', // Reuses the chest logic!
+        name: 'Sunken Shipwreck',
+        flavor: "You search the rotting hull for salvaged goods...",
+        lootTable: ['$', '🐚', '💎b', '⚓', '🐟'] 
     },
-    'v': {
-        name: 'Void Stalker',
-        maxHealth: 15,
-        attack: 6,
-        defense: 1,
-        xp: 55,
-        loot: 'vd',
-        teleporter: true
+    '🧙‍♂️': {
+        type: 'lore_statue', // Reuses statue logic!
+        message: [
+            "The hermit's ghost whispers: 'The King didn't find the Void. The Void found him.'",
+            "A message is carved into the stone: 'Beware the rain in the deadlands.'"
+        ]
     },
-    'M': {
-        name: 'Mimic',
-        maxHealth: 20,
-        attack: 6,
-        defense: 2,
-        xp: 50,
-        loot: '💍',
-        inflicts: 'root'
+    '#': {
+        type: 'lore',
+        message: 'An ancient, weathered stone stands here. The markings are faded.'
     },
-    '🧙': {
-        name: 'Necromancer Lord',
-        maxHealth: 80,
-        attack: 7,
-        defense: 3,
-        xp: 1000,
-        loot: '👑',
-        caster: true,
-        castRange: 7,
-        spellDamage: 8,
-        isBoss: true
+    '☗': {
+        type: 'lore',
+        message: ['"...the king has fallen..."', '"...his castle to the west lies empty..."', '"...but a dark presence still lingers."']
+    },
+    '⛰': {
+        type: 'dungeon_entrance',
+        getCaveId: (x, y) => `cave_${x}_${y}`
+    },
+    '>': {
+        type: 'dungeon_exit'
+    },
+    '🏰': {
+        type: 'castle_entrance',
+        getCastleId: (x, y) => `castle_${x}_${y}`
+    },
+    'X': {
+        type: 'castle_exit'
+    },
+    'B': {
+        type: 'lore',
+        message: 'This is a bounty board, covered in notices.'
+    },
+    'L': {
+        type: 'journal',
+        title: 'The King\'s Lament',
+        content: `Day 34 since the fall...\n\nThe stones of this castle weep. I hear them every night. The whispers tell of a power that sleeps beneath the mountains, a power we were foolish to awaken.\n\nMy knights are gone. My kingdom is ash. All that remains is this cursed immortality, a silent witness to my failure.`
+    },
+    'N': {
+        type: 'npc',
+        title: 'Villager'
+    },
+    '§': {
+        type: 'shop',
+        title: 'General Store'
+    },
+    'H': {
+        type: 'npc_healer',
+        title: 'Healer'
+    },
+    'W': {
+        type: 'workbench',
+        title: 'Crafting Workbench'
+    },
+    'G': {
+        type: 'npc_guard',
+        title: 'Castle Guard'
+    },
+    'O': {
+        type: 'npc_sage',
+        title: 'Sage'
+    },
+    'T': {
+        type: 'npc_skill_trainer',
+        title: 'Skill Trainer'
+    },
+    'J': {
+        type: 'journal',
+        title: 'Orc War-Chant',
+        content: `Blood and dust. Steel and bone.\n\nThe weak build with stone. The strong build with fear.\n\nWe come from the fire, we return to the ash. The mountain is our mother, the world our feast. Stomp the soft-skins. Take their steel. Raise the tusk-banner.\n\n...the rest is scrawled in a crude, unintelligible script.`
+    },
+    '📘': {
+        type: 'journal',
+        title: 'Frozen Journal',
+        content: `Day 12: The cold... it seeps into your bones. But the essence in these walls is worth a fortune. I must have more.\n\nDay 15: I saw one of them today. A... walking corpse, encased in ice. It didn't see me. My pickaxe feels heavy.\n\nDay 17: They are the old ones. The first warriors. The cold preserves them. Binds them. They guard the essence.\n\nDay ???: Can't feel my fingers. It's in my pack. I can't... I...`
+    },
+    'K': {
+        type: 'npc_prospector',
+        title: 'Lost Prospector'
     },
     'c': {
-        name: 'Cultist Initiate',
-        maxHealth: 12,
-        attack: 3,
-        defense: 0,
-        xp: 25,
-        loot: '📜', // Drops random scrolls often
-        flavor: "He mutters prayers to a sleeping god."
+        type: 'canoe',
+        title: 'A small canoe'
     },
-    'z': {
-        name: 'Cultist Fanatic',
-        maxHealth: 15,
-        attack: 6, // High damage!
-        defense: 0, // No armor
-        xp: 35,
-        loot: '🗡️', // Often drops daggers
-        flavor: "He fights with reckless abandon."
+    '♛': {
+        type: 'landmark_castle',
+        getCastleId: (x, y) => `castle_landmark_${x}_${y}`
     },
-
-    // --- NEW BEASTS (Tanky & Dangerous) ---
+    'b': {
+        type: 'enemy'
+    },
+    'w': {
+        type: 'enemy'
+    },
+    'V': {
+        type: 'village_entrance',
+        getVillageId: (x, y) => `village_${x}_${y}`
+    },
+    '⛩️': {
+        type: 'shrine'
+    },
+    '🎓': {
+        type: 'npc_historian',
+        title: 'Royal Historian'
+    },
+    '|': {
+        type: 'obelisk'
+    },
+    '¥': {
+        type: 'trader'
+    },
+    '📦': {
+        type: 'loot_chest'
+    },
+    '🔥': {
+        type: 'cooking_fire',
+        flavor: "A crackling fire. Good for cooking."
+    },
+    'Ω': {
+        type: 'dungeon_entrance',
+        getCaveId: (x, y) => `void_${x}_${y}`, // Creates a unique ID starting with "void_"
+        flavor: "The reality tears open here. You hear whispers from the other side."
+    },
+    '∴': {
+        type: 'dig_spot',
+        name: 'Loose Soil',
+        flavor: "The earth here looks disturbed recently..."
+    },
+    'T': {
+        type: 'decoration', // Dead Tree
+    },
+    '⚰️': {
+        type: 'loot_container', // We'll treat this like a chest, but with specific flavor
+        name: 'Ancient Grave',
+        flavor: "You disturb the resting place of a forgotten warrior...",
+        lootTable: ['(', '(', '†', '👢', '🛡️', '💀'] // Bones, Daggers, Boots, Shields
+    },
     '🗿': {
-        name: 'Stone Golem',
-        maxHealth: 40,
-        attack: 4,
-        defense: 4, // Very high defense! Needs magic or pickaxe.
-        xp: 60,
-        loot: '🪨', // Drops Stone/Ore
-        flavor: "A walking boulder. Blades skitter off its hide."
+        type: 'lore_statue',
+        message: [
+            "The statue's face is worn away, but it still holds a bowl of fresh water.",
+            "A statue of a weeping knight. The inscription reads: 'Duty is heavier than a mountain.'",
+            "A crude idol made of mud and sticks. It smells of goblin musk.",
+            "A statue of a woman holding a lantern. You feel safer standing near it.",
+            "A headless statue pointing toward the eastern mountains.",
+            "A statue of a dog. Someone has left a Fossilized Bone at its feet."
+        ]
     },
-    '🐲': {
-        name: 'Young Drake',
-        maxHealth: 50,
-        attack: 7,
-        defense: 2,
-        xp: 100,
-        loot: '🐉', // Dragon Scale
-        inflicts: 'burn', // We'll map this to fire damage
-        inflictChance: 0.3,
-        flavor: "Smoke curls from its nostrils."
+    '🏺': {
+        type: 'loot_container',
+        name: 'Dusty Urn',
+        flavor: "You smash the urn open...",
+        lootTable: ['$', '$', 'gold_dust', 'ancient_coin', '💍']
     },
-    // --- TIER 4 (The Deep Wilds - 2500+ Distance) ---
-    '🦖': {
-        name: 'Ancient Rex',
-        maxHealth: 150,
-        attack: 12,
-        defense: 5,
-        xp: 500,
-        loot: '🦖', // T-Rex Tooth (Junk/Trophy)
-        flavor: "The earth shakes with every step."
+    '🕳️': {
+        type: 'landmark_cave', // New type
+        getCaveId: (x, y) => `cave_landmark`, // Fixed ID so it's always the same dungeon
+        flavor: "A gaping abyss stares back at you. Cold air rushes up from the depths."
     },
-    '🧛': {
-        name: 'Vampire Lord',
-        maxHealth: 80,
-        attack: 10,
-        defense: 3,
-        xp: 600,
-        loot: '🩸', // Vial of Blood
-        caster: true,
-        castRange: 5,
-        spellDamage: 8,
-        inflicts: 'siphon', // We can reuse siphon logic or just high damage
-        flavor: "He moves faster than your eyes can follow."
+    '⛺': {
+        type: 'campsite',
+        flavor: "An abandoned campsite. The embers are still warm."
     },
-    '👾': {
-        name: 'Eldritch Horror',
-        maxHealth: 200,
-        attack: 15,
-        defense: 0, // Soft but massive HP
-        xp: 800,
-        loot: 'vd',
-        inflicts: 'madness',
-        inflictChance: 0.5,
-        flavor: "To look at it is to invite insanity."
+    '🏛️': {
+        type: 'ruin',
+        flavor: "The crumbling remains of an ancient library."
     },
-    '🤖': {
-        name: 'Clockwork Guardian',
-        maxHealth: 100,
-        attack: 8,
-        defense: 10, // Insane defense, needs magic/piercing
-        xp: 500,
-        loot: '⚙️', // Gear
-        flavor: "A relic of a lost civilization, still patrolling."
+    '🌿': {
+        type: 'forage',
+        item: 'Medicinal Herb'
+    },
+    '🕸': {
+        type: 'obstacle',
+        name: 'Spider Web',
+        tool: 'Machete',
+        spell: 'fireball', // Fireball can burn it
+        flavor: "A thick, sticky web blocks the path."
+    },
+    '🛢': {
+        type: 'barrel',
+        name: 'Oil Barrel',
+        flavor: "Filled with volatile oil. Highly flammable."
+    },
+    '🏚': {
+        type: 'obstacle',
+        name: 'Cracked Wall',
+        tool: 'Pickaxe',
+        flavor: "The stone looks fractured and weak."
+    },
+    '🌳': {
+        type: 'obstacle',
+        name: 'Thicket',
+        tool: 'Machete',
+        flavor: "A dense wall of thorny vines."
+    },
+    '🌳e': {
+        type: 'anomaly',
+        name: 'Elder Tree',
+        flavor: "A massive tree with silver bark. It hums with life."
+    },
+    '🗿k': {
+        type: 'anomaly',
+        name: 'Petrified Giant',
+        flavor: "A boulder shaped like a weeping giant. Moss covers its eyes."
+    },
+    '🦴d': { // Reusing bone icon for map tile
+        type: 'anomaly',
+        name: 'Dragon Skeleton',
+        flavor: "The bleached ribs of a colossal beast rise from the sand."
     },
 };
 
+window.CASTLE_LAYOUTS = {
+LIBRARY_WING: {
+        spawn: { x: 10, y: 11 }, // <--- CHANGED x from 11 to 10
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓.........B.........▓',
+            '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
+            '▓.▓L▓.▓L▓.O.▓L▓.▓L▓.▓', 
+            '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
+            '▓...................▓',
+            '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
+            '▓.▓L▓.▓L▓.🎓.▓L▓.▓L▓.▓', 
+            '▓.▓▓▓.▓▓▓...▓▓▓.▓▓▓.▓',
+            '▓.........W.........▓', 
+            '▓...................▓',
+            '▓...▓▓▓▓▓▓.X.▓▓▓▓▓▓.▓', // The X is at 11, so we spawn at 10 (left of it)
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
+        ]
+    },
+    COURTYARD: {
+        spawn: {
+            x: 37,
+            y: 32
+        }, // Your original spawn point
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓...................................................................▓',
+            '▓...................................B...................................▓',
+            '▓.....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓.....▓',
+            '▓.....▓.....................▓.......▓.....................▓.....▓',
+            '▓.....▓.....................▓.......▓.....................▓.....▓',
+            '▓.....▓.....................▓.......▓...▓▓▓...▓▓▓...▓▓▓...▓.....▓',
+            '▓.....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓.......▓...▓.▓...▓.▓...▓.▓...▓.....▓',
+            '▓...................................▓...▓▓▓...▓▓▓...▓▓▓...▓.....▓',
+            '▓...................................▓.....................▓.....▓',
+            '▓...................................▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓.....▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓.......................................▓',
+            '▓....▓...................▓..........................................▓',
+            '▓....▓...▓▓▓...▓▓▓...▓...▓..........................................▓',
+            '▓....▓...▓.▓...▓.▓...▓...▓..........................................▓',
+            '▓....▓...▓▓▓...▓▓▓...▓...▓..........................................▓',
+            '▓....▓...................▓..........................................▓',
+            '▓....▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓..........................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓...................................................................▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓X▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', // Exit
+        ]
+    },
 
-window.PLAYER_BACKGROUNDS = {
-    'warrior': {
-        name: 'Warrior',
-        stats: { strength: 2, constitution: 1 },
-        items: [
-            { templateId: '!', name: 'Rusty Sword', type: 'weapon', quantity: 1, tile: '!', damage: 2, slot: 'weapon' },
-            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
-            { templateId: '1', name: 'Conscript\'s Orders', type: 'journal', quantity: 1, tile: '1', title: 'Crumpled Orders', content: ITEM_DATA['1'].content }
+    TOWER: {
+        spawn: { x: 10, y: 18 },
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓...................▓',
+            '▓...▓▓▓.............▓',
+            '▓...▓.▓...▓▓▓.......▓',
+            '▓...▓.▓...▓.▓.......▓',
+            '▓...▓▓▓...▓▓▓.......▓',
+            '▓...................▓',
+            '▓.........▓▓▓▓▓▓▓▓▓▓▓',
+            '▓.........▓.........▓',
+            '▓.........▓........▓', // Note: This row in your original was also missing a space at the end
+            '▓.........▓.........▓',
+            '▓.........▓...L.....▓',
+            '▓.........▓.........▓',
+            '▓...▓▓▓...▓▓▓.......▓',
+            '▓...▓.O.▓.......▓...▓', // Fixed width
+            '▓...▓.📄.▓.......▓...▓', // Fixed width
+            '▓...▓▓▓...▓.......▓...▓', // Fixed width
+            '▓.............▓.....▓',
+            '▓.............X.....▓',
+            '▓▓▓▓▓▓▓▓▓▓▓T▓▓▓▓▓▓▓▓▓'
         ]
     },
-    'rogue': {
-        name: 'Rogue',
-        stats: { dexterity: 2, luck: 1 },
-        items: [
-            { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
-            { templateId: '%', name: 'Leather Tunic', type: 'armor', quantity: 1, tile: '%', defense: 1, slot: 'armor' },
-            { templateId: '2', name: 'Thief\'s Map', type: 'journal', quantity: 1, tile: '2', title: 'Scribbled Map', content: ITEM_DATA['2'].content }
+
+    FORTRESS: {
+        spawn: {
+            x: 4,
+            y: 38
+        }, // Spawns near the gate
+        map: [
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓...............................................................................▓',
+            '▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+            '▓...▓.......................................................................▓...▓',
+            '▓...▓...▓▓▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓.........................................▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓▓▓▓▓▓▓...▓▓▓▓▓...▓▓▓▓▓▓▓...▓▓▓▓▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓......▓...▓...▓...▓......▓...▓...▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓......▓...▓...▓...▓......▓...▓...▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓▓▓▓▓▓▓...▓▓▓▓▓...▓▓▓▓▓▓▓...▓...▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓.........................................▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓...▓',
+            '▓...▓...▓..........▓...................................................▓...▓...▓',
+            '▓...▓...▓..........▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓',
+            '▓...▓...▓.......................................................................▓...▓',
+            '▓...▓...▓.......................................................................▓...▓',
+            '▓...▓...▓.......................................................................▓...▓',
+            '▓...▓...▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓.........▓...▓',
+            '▓...▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓',
+            '▓...............................................................................▓',
+            '▓...............................................................................▓',
+            '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓',
+            '▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓',
+            '▓...▓...B...▓...▓.......▓...▓.......▓...▓.......▓...▓...$.....▓...▓...$.....▓...▓',
+            '▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓',
+            '▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓.......▓...▓',
+            '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓',
+            '▓...............................................................................▓',
+            '▓...............T.....................................................G.........▓',
+            '▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+            '▓....X..........................................................................▓', // Exit is here
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+            '▓...............▓$▓...............▓',
+            '▓....W..........▓$▓....W..........▓',
+            '▓...............▓$▓...............▓',
+            '▓...............▓▓▓...............▓',
+            '▓.................................▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', // Bottom of the fortress
         ]
     },
-    'mage': {
-        name: 'Mage',
-        stats: { wits: 2, willpower: 1 },
-        items: [
-            { templateId: '📚', name: 'Spellbook: Magic Bolt', type: 'spellbook', quantity: 1, tile: '📚', spellId: 'magicBolt' },
-            { templateId: '3', name: 'Burned Scroll', type: 'journal', quantity: 1, tile: '3', title: 'Singed Parchment', content: ITEM_DATA['3'].content }
+    GRAND_FORTRESS: {
+        spawn: {
+            x: 4,
+            y: 38
+        }, // Same spawn as Fortress
+        map: [
+            // This is a copy of FORTRESS, with two new rooms added
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓',
+            '▓...............................................................................▓',
+            '▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+            '▓...▓.......................................................................▓...▓',
+            '▓...▓...▓▓▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓.........................................▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓▓▓▓▓▓▓...▓▓▓▓▓...▓▓▓▓▓▓▓...▓▓▓▓▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓......▓...▓...▓...▓......▓...▓...▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓......▓...▓...▓...▓......▓...▓...▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓...▓▓▓▓▓▓▓...▓▓▓▓▓...▓▓▓▓▓▓▓...▓...▓...▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓.........................................▓...▓...▓...▓',
+            '▓...▓...▓..........▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓...▓',
+            '▓...▓...▓..........▓...................................................▓...▓...▓',
+            '▓...▓...▓..........▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓...▓',
+            '▓...▓...▓.......................................................................▓...▓',
+            '▓...▓...▓..................▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓.......................▓...▓',
+            '▓...▓...▓..................▓.........B.........▓.......▓.......................▓...▓',
+            '▓...▓...▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓▓▓...▓.........▓...L...▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.▓...▓.......▓.......▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓▓▓...▓.......▓..O....▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.▓...▓.......▓.......▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.▓...▓...▓▓▓▓▓▓▓▓▓...▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.▓...▓...▓.....j.▓...▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.▓...▓...▓...💪....▓...▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.▓...▓...▓.......▓...▓...▓.........▓...▓.........▓...▓',
+            '▓...▓.............▓...▓.........▓...▓.▓...▓...▓▓▓▓▓▓▓▓▓...▓...▓.........▓...▓.........▓...▓',
+            '▓...▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓...▓',
+            '▓...............................................................................▓',
+            '▓.......................▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...............................▓',
+            '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓.......$.......▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓...▓',
+            '▓...▓.......▓...▓.......▓...▓...$...$...$...▓...▓.......▓...▓.......▓...▓...▓',
+            '▓...▓...B...▓...▓.......▓...▓...$...B...$...▓...▓.......▓...▓.......▓...▓...▓',
+            '▓...▓.......▓...▓.......▓...▓...$...$...$...▓...▓.......▓...▓.......▓...▓...▓',
+            '▓...▓.......▓...▓.......▓...▓.......$.......▓...▓.......▓...▓.......▓...▓...▓',
+            '▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓▓▓▓▓▓▓▓▓...▓...▓',
+            '▓................................G...G..........................................▓',
+            '▓...............................................................................▓',
+            '▓▓▓▓...▓▓▓▓▓▓▓▓▓▓▓▓▓.▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+            '▓....X..........................................................................▓', // Exit is here
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓...▓',
+
+            '▓...............▓$▓...............▓',
+            '▓...............▓$▓...............▓',
+            '▓...............▓$▓...............▓',
+            '▓...............▓▓▓...............▓',
+            '▓.................................▓',
+            '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓', // Bottom of the fortress
+        ]
+
+    },
+
+    SAFE_HAVEN: {
+        spawn: { x: 15, y: 26 },
+        map: [
+            'F F F F F F F F F F F F F F F F F F F F F F F F F F F F F F',
+            'F F F F F F F F F F F F F F F F F F F F F F F F F F F F F F',
+            'F F 🧱🧱🧱🧱🧱 F F F F F F F F F F F F F 🧱🧱🧱🧱🧱 F F',
+            'F F 🧱.....🧱 F F F F F F F F F F F F F 🧱.....🧱 F F',
+            'F F 🧱..H..🧱 F F F F F F F F F F F F F 🧱..§..🧱 F F',
+            'F F 🧱.....🧱 F F F F F F F F F F F F F 🧱.....🧱 F F',
+            'F F 🧱🧱+🧱🧱 F F F F F F F F F F F F F 🧱🧱+🧱🧱 F F',
+            'F F F ... F F F F F F F F F F F F F F F F ... F F F',
+            'F F F ... F F F F F F F F F F F F F F F F ... F F F',
+            'F F F ... F F F 🧱🧱🧱🧱🧱🧱🧱 F F F F F ... F F F',
+            'F F F ... F F F 🧱...........🧱 F F F F F ... F F F',
+            'F F F ... F F F 🧱...🔥.B...🧱 F F F F F ... F F F',
+            'F F F ... F F F 🧱...........🧱 F F F F F ... F F F',
+            'F F F ... F F F 🧱.....🎓.....🧱 F F F F F ... F F F',
+            'F F F ... F F F 🧱🧱🧱...🧱🧱🧱 F F F F F ... F F F',
+            'F F F ... F F F F F F ... F F F F F F F F ... F F F',
+            'F F F ... F F F F F F ... F F F F F F F F ... F F F',
+            'F F 🧱🧱+🧱🧱 F F F F ... F F F F F F F 🧱🧱+🧱🧱 F F',
+            'F F 🧱.....🧱 F F F F ... F F F F F F F 🧱.....🧱 F F',
+            'F F 🧱..R..🧱 F F F F ... F F F F F F F 🧱..T..🧱 F F',
+            'F F 🧱.....🧱 F F F F ... F F F F F F F 🧱.....🧱 F F',
+            'F F 🧱🧱🧱🧱🧱 F F F F ... F F F F F F F 🧱🧱🧱🧱🧱 F F',
+            'F F F F F F F F F F F ... F F F F F F F F F F F F F F',
+            'F F F F F F F F F F F ... F F F F F F F F F F F F F F',
+            'F F F F F F F F F F F ... F F F F F F F F F F F F F F',
+            'F F F F F F F F F F F ... F F F F F F F F F F F F F F',
+            'F F F F F F F F F F F .X. F F F F F F F F F F F F F F', // Exit
+            'F F F F F F F F F F F F F F F F F F F F F F F F F F F',
         ]
     },
-    'necromancer': {
-        name: 'Necromancer',
-        stats: { wits: 1, willpower: 2 },
-        items: [
-            { templateId: '†', name: 'Bone Dagger', type: 'weapon', quantity: 1, tile: '†', damage: 2, slot: 'weapon' },
-            // Note: We use '💀' as templateId, but override the spellId to raiseDead
-            { templateId: '💀', name: 'Tome: Raise Dead', type: 'spellbook', quantity: 1, tile: '💀', spellId: 'raiseDead' },
-            { templateId: '4', name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', content: ITEM_DATA['4'].content }
+
+};
+
+window.CAVE_THEMES = {
+    FUNGAL: {
+        name: 'The Mycelium Depths',
+        wall: '▓',
+        floor: '.',
+        secretWall: '▒',
+        colors: {
+            wall: '#4a1d96', // Deep Purple
+            floor: '#7e22ce' // Bright Purple
+        },
+        decorations: ['🍄', '🍄', '🌿', '🏺', 'S'], // Heavy mushroom spawns
+        enemies: ['@', 'l', 's'] // Spiders, Leeches, Skeletons
+    },
+    GOLDEN: {
+        name: 'The Glimmering Vault',
+        wall: '🧱',
+        floor: '.',
+        secretWall: '▒',
+        colors: {
+            wall: '#ca8a04', // Dark Gold/Bronze
+            floor: '#facc15' // Gold
+        },
+        decorations: ['$', '$', '🏺', '👑', '📦'], // High gold spawns
+        enemies: ['m', 'o', 'C'] // Mages, Orcs, and Bandit Chiefs
+    },
+    CORRUPTED: {
+        name: 'The Abyssal Tear',
+        wall: '▓',
+        floor: '.',
+        phaseWall: '▒',
+        colors: {
+            wall: '#000000', 
+            floor: '#1e1b4b' // Deep Midnight Blue
+        },
+        decorations: ['✨', '💀', 'vd', 'Ω'],
+        enemies: ['v', 'D', 'a'] // Void Stalkers, Demons, Acolytes
+    },
+    ROCK: {
+        name: 'A Dark Cave',
+        wall: '▓',
+        floor: '.',
+        secretWall: '▒',
+        colors: {
+            wall: '#422006',
+            floor: '#a16207'
+        },
+        decorations: ['+', '🔮', '$', '📖', 'K', '🏚'],
+        enemies: ['g', 's', '@']
+    },
+    ICE: {
+        name: 'A Glacial Cavern',
+        wall: '▒', 
+        secretWall: '▓',
+        floor: '.', // FIX: Changed from ':' to '.' to prevent Wildberry conflict
+        colors: {
+            wall: '#99f6e4',
+            floor: '#e0f2fe' // This color makes it look like ice
+        },
+        enemies: ['s', 'w', 'Z', 'Y']
+    },
+    FIRE: {
+        name: 'A Volcanic Fissure',
+        wall: '▓',
+        secretWall: '▒',
+        floor: '.', 
+        colors: {
+            wall: '#450a0a',
+            floor: '#ef4444' 
+        },
+        decorations: ['+', '$', '🔥', 'J'],
+        enemies: ['b', 'C', 'o', 'm', '👺', 'f']
+    },
+    CRYPT: {
+        name: 'A Musty Crypt',
+        wall: '▓', 
+        floor: '.', 
+        secretWall: '▒',
+        colors: {
+            wall: '#374151', 
+            floor: '#4b5563' 
+        },
+        decorations: ['+', '$', '(', '†', '🌀', '😱', '💀', '🕸'],
+        enemies: ['s', 'Z', 'a']
+    },
+    CRYSTAL: {
+        name: 'A Crystalline Tunnel',
+        wall: '▒', 
+        secretWall: '▓',
+        floor: '.',
+        colors: {
+            wall: '#67e8f9', 
+            floor: '#22d3ee' 
+        },
+        decorations: ['Y', '🔮', '$', 'K'],
+        enemies: ['g']
+    },
+    VOID: {
+        name: 'The Void Sanctum',
+        wall: '▓',         
+        floor: '.',        
+        phaseWall: '▒',    
+        colors: {
+            wall: '#2e0249', 
+            floor: '#0f0518' 
+        },
+        decorations: ['✨', '💀', 'Ω'],
+        enemies: ['v', 'a', 'm', 'v', 'D']
+    },
+    ABYSS: {
+        name: 'The Maw',
+        wall: '▓',
+        floor: '.',
+        secretWall: '▒',
+        colors: {
+            wall: '#0f0f0f', 
+            floor: '#331133' 
+        },
+        decorations: ['💀', '🕸️', '🔥', 'Ω', '💎', '🕸'],
+        enemies: ['o', 'm', 'Z', 'g', '🐺', '🦂', 'a'] 
+    },
+    SUNKEN: {
+        name: 'The Sunken Temple',
+        wall: '🧱',
+        floor: '.', 
+        secretWall: '▒',
+        colors: {
+            wall: '#0e7490', 
+            floor: '#1e3a8a'  
+        },
+        decorations: ['🐟', '🌿', '🗿', '🦀'],
+        enemies: ['🐸', '🐍', 'l', '🦑']
+    },
+    GROTTO: {
+        name: 'A Sunken Grotto',
+        wall: '▓', 
+        floor: '.', // Changed from ':' to '.'
+        secretWall: '▒',
+        colors: {
+            wall: '#14532d', 
+            floor: '#16a34a' 
+        },
+        decorations: ['+', 'S', '🔮', '☣️', '🕸'],
+        enemies: ['g', 'w', '@']
+    }
+};
+
+window.CAVE_ROOM_TEMPLATES = {
+    "The Alchemist's Lab": {
+        width: 7,
+        height: 5,
+        map: [
+            ' WWWWW ',
+            'W🧪.🧪W', // Potions
+            'W..W..W',
+            'W.🧪.🧪W',
+            ' WWWWW '
         ]
     },
-    'wretch': {
-        name: 'The Wretch',
-        stats: {},
-        items: [
-            { templateId: 'x', name: 'Tattered Rags', type: 'armor', quantity: 1, tile: 'x', defense: 0, slot: 'armor' },
-            { templateId: '4', name: 'Mad Scrawlings', type: 'journal', quantity: 1, tile: '4', title: 'Dirty Scrap', content: ITEM_DATA['4'].content }
+    "Void Observation Deck": {
+        width: 9,
+        height: 5,
+        map: [
+            ' WWWWWWW ',
+            'W.......W',
+            'W..Ω.Ω..W', // Two Void Rifts
+            'W.......W',
+            ' WWWWWWW '
+        ]
+    },
+    "Goblin Barracks": {
+        width: 7,
+        height: 7,
+        map: [
+            ' WWWWW ',
+            'W.....W',
+            'W.g.g.W',
+            'W..📕..W',
+            'W.g.g.W',
+            'W.....W',
+            ' WWWWW '
+        ]
+    },
+    "Skeleton Crypt": {
+        width: 9,
+        height: 7,
+        map: [
+            ' WWWWWWW ',
+            'WW.....WW',
+            'W...s...W',
+            'W..s†s..W', // Spawns a Bone Dagger!
+            'W...s...W',
+            'WW.....WW',
+            ' WWWWWWW '
+        ]
+    },
+    "Orc Stash": {
+        width: 5,
+        height: 5,
+        map: [
+            'WWWWW',
+            'W.J.W', // Orc Journal
+            'W.+o.W',
+            'W.📗.W',
+            'WWWWW'
+        ]
+    },
+    "Treasure Nook": {
+        width: 3,
+        height: 3,
+        map: [
+            'W★W',
+            '$ $',
+            'W☆W'
+        ]
+    },
+    "Flooded Grotto": {
+        width: 9,
+        height: 7,
+        map: [
+            ' WWWWWWW ',
+            'W~~~~~~~W',
+            'W~W...W~W',
+            'W~W.S.W~W', // Stamina Crystal
+            'W~W...W~W',
+            'W~~~~~~~W',
+            ' WWWWWWW '
+        ]
+    },
+    "Bandit Stash": {
+        width: 7,
+        height: 7,
+        map: [
+            ' WWWWW ',
+            'W.b.b.W',
+            'W.<q<.W',
+            'W..C..W', // Bandit Chief
+            'W.$.$.W', // Gold
+            'W.<...W',
+            ' WWWWW '
+        ]
+    },
+    "Abandoned Camp": {
+        width: 5,
+        height: 5,
+        map: [
+            'WWWWW',
+            'W...W',
+            'W.J.W', // A Journal
+            'W.+📄.W',
+            'WWWWW'
+        ]
+    },
+    "Acolyte's Nook": {
+        width: 5,
+        height: 5,
+        map: [
+            'WWWWW',
+            'W...W',
+            'W.a.W', // An Acolyte
+            'W.j.W', // The new Journal
+            'WWWWW'
+        ]
+    },
+    "Champion's Crypt": {
+        width: 7,
+        height: 7,
+        map: [
+            ' WWWWW ',
+            'W.<.<.W', // Traps!
+            'W.....W',
+            'W..s..W', // The Skeleton "Champion"
+            'W..💪..W', // Guards the Tome of Strength!
+            'W.<.<.W', // More traps!
+            ' WWWWW '
         ]
     }
 };
 
-window.EVOLUTION_DATA = {
-    'warrior': [
-        {
-            id: 'berserker',
-            name: 'Berserker',
-            icon: '👹', // New Character Sprite
-            description: "Gain Rage on hit. Deal double damage below 50% HP.",
-            stats: { strength: 4, constitution: 2 },
-            talent: 'blood_rage'
-        },
-        {
-            id: 'paladin',
-            name: 'Paladin',
-            icon: '🛡️',
-            description: "Immune to Poison/Disease. Heals allies nearby.",
-            stats: { constitution: 4, willpower: 2 },
-            talent: 'holy_aura'
-        }
+window.ATMOSPHERE_TEXT = {
+    NIGHT: [
+        "The stars are uncaringly bright tonight.",
+        "A distant wolf howl shivers through the air.",
+        "The darkness feels heavy, like a physical weight.",
+        "You hear something chittering in the dark.",
+        "The moon casts long, twisted shadows."
     ],
-    'rogue': [
-        {
-            id: 'assassin',
-            name: 'Assassin',
-            icon: '🥷',
-            description: "Attacks from Stealth deal 4x damage.",
-            stats: { dexterity: 4, wits: 2 },
-            talent: 'shadow_strike'
-        },
-        {
-            id: 'ranger',
-            name: 'Ranger',
-            icon: '🏹',
-            description: "Can move through Forests without stamina cost.",
-            stats: { dexterity: 3, perception: 3 },
-            talent: 'pathfinder'
-        }
+    DAWN: [
+        "The first light of dawn paints the horizon gold.",
+        "Dew glistens on the ground.",
+        "The world wakes up. Birds begin to sing.",
+        "A cold morning mist clings to the ground."
     ],
-    'mage': [
-        {
-            id: 'archmage',
-            name: 'Archmage',
-            icon: '🧙‍♂️',
-            description: "Spells cost 20% less Mana.",
-            stats: { wits: 5, maxMana: 20 },
-            talent: 'mana_flow'
-        },
-        {
-            id: 'battlemage',
-            name: 'Battlemage',
-            icon: '🗡️',
-            description: "Can wear Heavy Armor without penalty.",
-            stats: { strength: 3, wits: 3 },
-            talent: 'arcane_steel'
-        }
+    STORM: [
+        "Thunder rattles your teeth.",
+        "The wind screams like a banshee.",
+        "Lightning illuminates the landscape in a stark flash.",
+        "The rain is torrential. It's hard to see."
     ],
-    'necromancer': [
-        {
-            id: 'lich',
-            name: 'Lich',
-            icon: '💀',
-            description: "You no longer need food or water. You are Undead.",
-            stats: { wits: 4, willpower: 4 },
-            talent: 'undeath'
-        }
+    FOREST: [
+        "The trees seem to lean in as you pass.",
+        "You spot scratch marks on a trunk. Too big for a bear.",
+        "The smell of pine and rotting leaves is thick.",
+        "Was that a face in the bark? No, just a knot."
     ],
-    'wretch': [
-        {
-            id: 'hero',
-            name: 'True Hero',
-            icon: '👑',
-            description: "Stats +5. You survived the darkness.",
-            stats: { strength: 5, dexterity: 5, wits: 5, constitution: 5 },
-            talent: 'legend'
-        }
+    DESERT: [
+        "The heat rising from the sand distorts the air.",
+        "Your throat feels dry just looking at the dunes.",
+        "The wind shifts the sand, erasing your footprints.",
+        "Bleached bones poke out from a dune."
+    ],
+    MOUNTAIN: [
+        "The air is thin and sharp here.",
+        "Loose gravel clatters down the cliffside.",
+        "You feel vertiginous looking down.",
+        "The wind howls through the crags."
+    ],
+    SWAMP: [
+        "Bubbles rise from the muck with a foul smell.",
+        "Insects swarm around your head.",
+        "The ground feels spongy and unstable.",
+        "You see ripples in the water. Something is moving."
     ]
 };
-
-window.SPELL_DATA = {
-    "candlelight": {
-        name: "Candlelight",
-        description: "Summons a floating light. Huge vision radius (+6) for a long time.",
-        cost: 15,
-        costType: "mana",
-        requiredLevel: 1, // Easy to learn
-        target: "self",
-        type: "buff",
-        duration: 100 // Lasts 100 turns!
-    },
-    "chainLightning": {
-        name: "Chain Lightning",
-        description: "Strikes a target, then jumps to a nearby enemy.",
-        cost: 18,
-        costType: "mana",
-        requiredLevel: 6,
-        target: "aimed",
-        baseDamage: 6,
-        // You'd handle the "jump" in executeAimedSpell
-    },
-    "stoneSkin": {
-        name: "Stone Skin",
-        description: "Greatly increases Defense but lowers Dexterity.",
-        cost: 20,
-        costType: "mana",
-        requiredLevel: 3,
-        target: "self",
-        type: "buff",
-        // Handled in castSpell switch case
-    },
-    "lesserHeal": {
-        name: "Lesser Heal",
-        description: "Heals for a small amount, scaling with Wits.",
-        cost: 5,
-        costType: "mana",
-        requiredLevel: 1, // Player level needed to learn this
-        target: "self",   // 'self' or 'aimed'
-        baseHeal: 5       // The base amount for the formula
-    },
-    "clarity": {
-        name: "Clarity",
-        description: "Focus your mind to reveal adjacent secret walls.",
-        cost: 8,
-        costType: "psyche",
-        requiredLevel: 1,
-        target: "self",
-        type: "utility" // Special type
-    },
-    "raiseDead": {
-        name: "Raise Dead",
-        description: "Summons a Skeleton Minion from a corpse (or bone pile) to fight for you.",
-        cost: 15,
-        costType: "mana", // Or 'psyche' if you prefer
-        requiredLevel: 1,
-        target: "aimed", // You aim at the tile you want to raise
-        range: 3
-    },
-    "arcaneShield": {
-        name: "Arcane Shield",
-        description: "Creates a temporary shield that absorbs damage. Scales with Wits.",
-        cost: 10,
-        costType: "mana",
-        requiredLevel: 3,
-        target: "self",
-        type: "buff",
-        baseShield: 5,
-        duration: 5 // Lasts for 5 player turns
-    },
-    "fireball": {
-        name: "Fireball",
-        description: "An explosive orb damages enemies in a 3x3 area. Scales with Wits.",
-        cost: 15,
-        costType: "mana",
-        requiredLevel: 5,
-        target: "aimed",
-        baseDamage: 8,
-        radius: 1 // 1-tile radius = 3x3 area
-    },
-    "siphonLife": {
-        name: "Siphon Life",
-        description: "Drains life from a target, healing you. Scales with Willpower.",
-        cost: 12,
-        costType: "psyche",
-        requiredLevel: 4,
-        target: "aimed",
-        baseDamage: 4,
-        healPercent: 0.5 // Heals for 50% of damage dealt
-    },
-    "thunderbolt": {
-        name: "Thunderbolt",
-        description: "Strikes a target with massive lightning damage. Scales with Wits.",
-        cost: 20,
-        costType: "mana",
-        requiredLevel: 6,
-        target: "aimed",
-        baseDamage: 12 // Huge single target damage
-    },
-    "meteor": {
-        name: "Meteor",
-        description: "Summons a meteor from the heavens. Large AoE (5x5). Scales with Wits.",
-        cost: 30,
-        costType: "mana",
-        requiredLevel: 8,
-        target: "aimed",
-        baseDamage: 10,
-        radius: 2 // 2 tile radius = 5x5 area!
-    },
-    "divineLight": {
-        name: "Divine Light",
-        description: "Fully restores Health and cures all status effects.",
-        cost: 25,
-        costType: "psyche", // Miracle
-        requiredLevel: 5,
-        target: "self",
-        type: "utility"
-    },
-    "magicBolt": {
-        name: "Magic Bolt",
-        description: "Hurls a bolt of energy, scaling with Wits.",
-        cost: 8,
-        costType: "mana",
-        requiredLevel: 1,
-        target: "aimed",
-        baseDamage: 5
-    },
-    "psychicBlast": {
-        name: "Psychic Blast",
-        description: "Assaults a target's mind, scaling with Willpower.",
-        cost: 10,                 // Costs a bit more than Magic Bolt
-        costType: "psyche",       // <-- Uses Psyche!
-        requiredLevel: 2,         // A level 2 spell
-        target: "aimed",
-        baseDamage: 6             // Does a bit more base damage
-    },
-    "frostBolt": {
-        name: "Frost Bolt",
-        description: "Hurls a shard of ice, scaling with Willpower. Has a chance to inflict Frostbite.",
-        cost: 10,                 // A bit more expensive
-        costType: "mana",
-        requiredLevel: 1,
-        target: "aimed",
-        baseDamage: 5,
-        inflicts: "frostbite",  // <-- Links to our status effect!
-        inflictChance: 0.25     // 25% chance to inflict it
-    },
-    "poisonBolt": {
-        name: "Poison Bolt",
-        description: "Launches a bolt of acidic poison, scaling with Willpower. Has a chance to inflict Poison.",
-        cost: 10,
-        costType: "psyche",       // <-- Uses Psyche
-        requiredLevel: 2,
-        target: "aimed",
-        baseDamage: 4,            // A bit less direct damage
-        inflicts: "poison",
-        inflictChance: 0.50     // 50% chance to inflict it
-    },
-
-    "darkPact": {
-        name: "Dark Pact",
-        description: "Sacrifice 5 Health to restore 10 Mana. Scales with Willpower.",
-        cost: 5,
-        costType: "health", // <-- Uses Health!
-        requiredLevel: 4,
-        target: "self",
-        baseRestore: 10
-    },
-    "entangle": {
-        name: "Entangle",
-        description: "Roots an enemy in place, preventing movement and attacks. Scales with Intuition.",
-        cost: 12,
-        costType: "mana",
-        requiredLevel: 3,
-        target: "aimed",
-        baseDamage: 2,       // Low damage
-        inflicts: "root",    // New status!
-        inflictChance: 1.0   // 100% chance (it's the main point of the spell)
-    },
-    "thornSkin": {
-        name: "Thorn Skin",
-        description: "Reflects damage back to attackers. Scales with Intuition.",
-        cost: 15,
-        costType: "mana",
-        requiredLevel: 4,
-        target: "self",
-        type: "buff",
-        baseReflect: 2, // Base damage reflected
-        duration: 5
-    }
-    // We can easily add more spells here later!
-};
-
-window.TALENT_DATA = {
-    "bloodlust": {
-        name: "Bloodlust",
-        description: "Heal 2 HP whenever you kill an enemy.",
-        class: "warrior",
-        icon: "🩸"
-    },
-    "iron_skin": {
-        name: "Iron Skin",
-        description: "Permanent +1 Bonus to Defense.",
-        class: "warrior",
-        icon: "🛡️"
-    },
-    "backstab": {
-        name: "Backstab",
-        description: "Critical hits deal 3x damage instead of 1.5x.",
-        class: "rogue",
-        icon: "🗡️"
-    },
-    "evasion": {
-        name: "Evasion",
-        description: "+10% chance to dodge enemy attacks.",
-        class: "rogue",
-        icon: "💨"
-    },
-    "arcane_potency": {
-        name: "Arcane Potency",
-        description: "All spells deal +2 Bonus Damage.",
-        class: "mage",
-        icon: "✨"
-    },
-    "scholar": {
-        name: "Scholar",
-        description: "Gain +20% more XP from all sources.",
-        class: "mage",
-        icon: "📖"
-    },
-    "soul_siphon": {
-        name: "Soul Siphon",
-        description: "Restore 2 Mana whenever you kill an enemy.",
-        class: "necromancer",
-        icon: "💀"
-    },
-    "survivalist": {
-        name: "Survivalist",
-        description: "Foraging (Wildberries/Herbs) restores double HP/Mana.",
-        class: "general",
-        icon: "🌿"
-    }
-};
-
-window.SKILL_DATA = {
-    "kick": {
-        name: "Kick",
-        description: "Stun an enemy for 2 turns. Deals low damage.",
-        cost: 8,
-        costType: "stamina",
-        requiredLevel: 1,
-        target: "aimed",
-        baseDamageMultiplier: 0.2, // Very low damage
-        cooldown: 8,
-
-    },
-    "vanish": {
-        name: "Vanish",
-        description: "Instantly drop all enemy aggro and enter Stealth.",
-        cost: 15,
-        costType: "stamina",
-        requiredLevel: 4,
-        target: "self",
-        cooldown: 30,
-        type: "utility"
-        // Needs a tiny update in useSkill to set stealthTurns
-    },
-    "brace": {
-        name: "Brace",
-        description: "Gain temporary Defense. Scales with Constitution.",
-        cost: 6,
-        costType: "stamina",
-        requiredLevel: 2,
-        target: "self",
-        type: "buff",
-        baseDefense: 1,
-        duration: 3,
-        cooldown: 5 // <-- NEW
-    },
-    "tame": {
-        name: "Tame Beast",
-        description: "Attempt to bond with a weakened animal (HP < 30%). Scales with Charisma.",
-        cost: 15,
-        costType: "psyche",
-        requiredLevel: 3,
-        target: "aimed",
-        cooldown: 20
-    },
-    "lunge": {
-        name: "Lunge",
-        description: "Attack an enemy 2-3 tiles away. Scales with Strength.",
-        cost: 5,
-        costType: "stamina",
-        requiredLevel: 2,
-        target: "aimed",
-        baseDamageMultiplier: 1.0,
-        cooldown: 3 // <-- NEW
-    },
-    "shieldBash": {
-        name: "Shield Bash",
-        description: "Strike an enemy with your shield, stunning them. Scales with Constitution.",
-        cost: 10,
-        costType: "stamina",
-        requiredLevel: 3,
-        target: "aimed",
-        baseDamageMultiplier: 0.5, // Low damage
-        cooldown: 5
-        // Note: Needs logic update below
-    },
-    "cleave": {
-        name: "Cleave",
-        description: "Strike the target and enemies adjacent to it.",
-        cost: 12,
-        costType: "stamina",
-        requiredLevel: 5,
-        target: "aimed",
-        baseDamageMultiplier: 0.8,
-        cooldown: 4
-    },
-    "adrenaline": {
-        name: "Adrenaline",
-        description: "Instantly restore 10 Stamina.",
-        cost: 5,
-        costType: "health", // Sacrifice health for energy
-        requiredLevel: 2,
-        target: "self",
-        cooldown: 10
-    },
-    "pacify": {
-        name: "Pacify",
-        description: "Attempt to calm a hostile target. Scales with Charisma.",
-        cost: 10,
-        costType: "psyche",
-        requiredLevel: 3,
-        target: "aimed",
-        cooldown: 5 // <-- NEW
-    },
-    "inflictMadness": {
-        name: "Inflict Madness",
-        description: "Assault a target's mind. Scales with Charisma.",
-        cost: 12,
-        costType: "psyche",
-        requiredLevel: 5,
-        target: "aimed",
-        cooldown: 8 // <-- NEW
-    },
-    "whirlwind": {
-        name: "Whirlwind",
-        description: "Strike all adjacent enemies. Scales with Strength and Dexterity.",
-        cost: 15,
-        costType: "stamina",
-        requiredLevel: 4,
-        target: "self", // Instant AoE
-        cooldown: 6
-    },
-    "stealth": {
-        name: "Stealth",
-        description: "Become invisible to enemies for 5 turns or until you attack.",
-        cost: 10,
-        costType: "stamina",
-        requiredLevel: 3,
-        target: "self",
-        duration: 5,
-        cooldown: 10
-    },
-    // --- WEAPON TECHNIQUES ---
-    "crush": {
-        name: "Crush",
-        description: "A heavy blow that stuns the target. (Hammer/Club only)",
-        cost: 8,
-        costType: "stamina",
-        requiredLevel: 1,
-        target: "aimed",
-        baseDamageMultiplier: 1.2,
-        cooldown: 6
-        // Logic handled in executeMeleeSkill (we will treat it like shieldBash)
-    },
-    "quickstep": {
-        name: "Quickstep",
-        description: "Dash 2 tiles instantly. (Dagger only)",
-        cost: 5,
-        costType: "stamina",
-        requiredLevel: 1,
-        target: "aimed", // We'll use aiming to pick direction
-        cooldown: 4,
-        type: "movement"
-    },
-    "deflect": {
-        name: "Deflect",
-        description: "Enter a defensive stance, reflecting the next attack. (Sword only)",
-        cost: 6,
-        costType: "stamina",
-        requiredLevel: 1,
-        target: "self",
-        duration: 2,
-        cooldown: 5
-    },
-    "channel": {
-        name: "Channel",
-        description: "Focus your energy to restore Mana. (Staff only)",
-        cost: 0, // Free to cast
-        costType: "stamina", // But takes a turn
-        requiredLevel: 1,
-        target: "self",
-        cooldown: 10
-    },
-};
-
-window.LORE_STONE_MESSAGES = [
-    "The stars align when the five thrones are empty.",
-    "Iron rots, but obsidian remembers.",
-    "Do not trust the water in the deep grotto.",
-    "The King was not the first to fall to the shadow.",
-    "Magic requires sacrifice. Always."
-];
-
-window.LORE_PLAINS = [
-    "The wind whispers of the Old King's return.",
-    "These fields were once a great battlefield. Rusty arrowheads still surface after rain.",
-    "Travelers say the safe haven lies to the west, past the old ruins.",
-    "The grass hides many secrets, and many graves.",
-    "Look for the shrines. They still hold the power of the old gods.",
-    "A broken cart lies here, its wheel rotted away.",
-    "The horizon feels endless here. You feel small.",
-    "Wildflowers grow in a perfect circle here. Strange.",
-    "You find a stone marker with a name you cannot read."
-];
-
-window.LORE_FOREST = [
-    "The trees remember what the axe forgets.",
-    "Wolves guard the heart of the wood. Tread lightly.",
-    "Beware the shadows that move against the wind.",
-    "The Elves left long ago, but their magic remains in the roots.",
-    "A Machete is a traveler's best friend here.",
-    "The canopy is so thick it blocks out the sun.",
-    "You hear a twig snap behind you, but see nothing.",
-    "Old carvings on the bark warn of 'The Sleeper'.",
-    "Mushrooms glow faintly in the twilight.",
-    "The roots here drink from a sun that set a thousand years ago.",
-    "Do not whisper your true name to the Elder Trees.",
-    "The squirrels here watch with too much intelligence.",
-    "Moss only grows on the side of the trees facing the Fortress.",
-    "You find a circle of mushrooms where the birds refuse to sing."
-];
-
-window.LORE_MOUNTAIN = [
-    "The stone is hollow. The dark deepens.",
-    "Dragons once roosted on these peaks. Now, only the wind remains.",
-    "The Prospector seeks gold, but he will find only madness.",
-    "Iron and bone. That is all that remains here.",
-    "Climbing requires strength, or the right tools.",
-    "The air is thin and cold. Every breath is a struggle.",
-    "You see a cave entrance that looks like a screaming mouth.",
-    "Avalanches are common this time of year.",
-    "The echo of your footsteps sounds like someone following you."
-];
-
-window.LORE_SWAMP = [
-    "The water tastes of rot and old magic.",
-    "Sickness takes the weak. Endurance is key.",
-    "The spiders... they are growing larger.",
-    "Do not follow the lights in the mist. They lead to drowning.",
-    "A sunken city lies beneath the muck. You can see the spires.",
-    "Bubbles rise from the bog, smelling of sulfur.",
-    "The mud sucks at your boots, trying to pull you down.",
-    "Leeches the size of your arm swim in the murky pools."
-];
-
-window.VILLAGER_RUMORS = [
-    "I heard spiders hate fire. Burn 'em, I say!",
-    "If you find a pickaxe, try the mountains. Good ore there.",
-    "The castle guards are tough, but they protect good loot.",
-    "Don't eat the yellow snow. Or the blue mushrooms. Actually, just stick to bread.",
-    "I saw a stone glowing in the woods last night. Didn't go near it.",
-    "My cousin went into the crypts. He came back... wrong. Kept staring at the wall.",
-    "Endurance helps you resist the swamp sickness. Eat your greens.",
-    "Wits will help you find hidden doors in the caves. Knock on every wall!",
-    "They say the Old King isn't dead, just... waiting.",
-    "The shopkeeper cheats at cards. Don't play him.",
-    "If you see a rift in the world, jump in! What's the worst that could happen?",
-    "A Golden Apple can bring a man back from the brink of death.",
-    "My grandad says if you're drowning, a Gill Potion is better than a prayer.",
-    "Don't go into the Deadlands without a way to light the dark. The shadows there bite.",
-    "The Historian says he'll trade XP for those creepy Memory Shards. I'd rather keep my memories, thanks.",
-    "I heard the Bandit Chief has a Steel Sword. I bet it’s sharp enough to shave a ghost.",
-    "If you see a statue with red eyes, it wants an answer. If you're wrong, it wants your blood.",
-    "They say the Old King's crown was shattered into five pieces. I found a bit of gold once, but it was just a button."
-];
-
-window.VISIONS_OF_THE_PAST = [ // For the new Obelisks
-    "A VISION: You see a golden king standing atop the fortress. He raises a hand, and the mountain splits. A shadow rises from the fissure, swallowing the sun.",
-    "A VISION: Five knights kneel before a dark altar. They drink from a chalice of black ichor, and their eyes turn to blue ice.",
-    "A VISION: The sky burns. Not with fire, but with arcane light. The mages scream as their tower collapses, shattering into dust.",
-    "A VISION: A lone figure seals the crypt doors. He is weeping. 'Sleep well, my brothers,' he whispers. 'Sleep until the world breaks.'",
-    "A VISION: The blacksmith hammers a blade of black glass. 'It drinks the light,' he mutters. 'It drinks the soul.'",
-    "A VISION: A star falls from the heavens, crashing into the plains. The crater glows with a purple light that does not fade.",
-    "A VISION: The woods were not always trees. Once, they were tall spires of bone, reaching for a moon that wasn't there.",
-    "A VISION: The King sits upon his throne, but his face is blank. A shadow whispers in his ear, and the King nods slowly.",
-    "A VISION: You see the world from high above. Great purple veins are pulsing beneath the crust of the earth, converging on the Grand Fortress.",
-    "A VISION: A council of mages stands around a table. They are arguing about a 'star' that fell in the desert. One mage is bleeding from his eyes.",
-    "A VISION: The King is weeping. He is trying to wash black ink off his hands, but the harder he scrubs, the further it spreads up his arms.",
-    "A VISION: You see yourself, standing exactly where you are now, but the world is made of white light and the silence is absolute.",
-    "A VISION: A giant shadow, larger than a mountain, leans down and blows out the sun like a candle."
-];
-
-window.RANDOM_JOURNAL_PAGES = [
-    "Day 4: My boots are soaked. The swamp is trying to swallow me whole. I swear I saw a spider the size of a wolf.",
-    "I've heard tales of a safe village, but the paths are hidden. The guards say it's for our own good.",
-    "The recipe for a 'Machete'? Why would I need... oh. The forest. Of course.",
-    "...the ore from the mountains is useless, but the Draugr guard something... an 'essence'...",
-    "The mage in the tower just laughed. 'Power comes to those who seek it,' he said, before blasting a rock to smithereens.",
-    "T. was right to leave. The chief *is* mad. He's taking all our gold to the old fortress. Says he's 'paying tribute'. To what?",
-    "Don't bother with the caves near the coast. They're flooded and full of grotto-spiders. Nothing of value.",
-    "I saw a wolf the other day... it was *glowing*. Just faintly. I didn't stick around to find out why.",
-    "That prospector, 'K', he's always looking for totems. Says he's building 'a monument to their stupidity'. Strange fellow.",
-    "The guards in the village are jumpy. They keep talking about 'the King's folly' and looking east, toward the old fortress.",
-    "Endurance is the key. A strong constitution can shrug off swamp-sickness, or so I've heard.",
-    "Someone told me a silver tongue is as good as a steel sword. I wonder if they've ever tried to 'pacify' a skeleton?",
-    "That fortress... something is *wrong* there. It's not just bandits. The air feels... heavy.",
-    "The King hasn't eaten in weeks. He just stares at the Void Rift, whispering to things that aren't there. We should have left when the birds stopped singing.",
-    "Entry 442: The 'Mithril' we found in the deep grotto isn't ore. It’s growing. Like a scab over the world's skin.",
-    "If you find my shield, give it to my son. Tell him I died defending the pass, not fleeing from the shadows. Lie to him if you have to.",
-    "The Sage says the stars are actually eyes. I told him he’s had too much Bluecap stew, but last night... I saw one blink.",
-    "Final Note: The Shadowed Hand offered us immortality. They didn't mention that we'd have to forget our names to keep it.",
-    "The First King wasn't a man. The tapestries in the Grand Fortress show him arriving in a vessel made of fallen stars."
+window.LORE_FRAGMENTS = [
+    "My dearest Elara, the crops failed again. The soil tastes of ash...",
+    "Order 66: Burn the library. The King commands it. He says the books are whispering to him.",
+    "I hid the gold under the loose stone in the... (the rest is smeared with blood).",
+    "They are coming from the mountain. They don't look like men anymore.",
+    "Day 4: I ran out of water. I see the oasis, but I know it's a mirage. Or a trap.",
+    "Mom, Dad, I'm going to the safe haven. I promise I'll write when I get there.",
+    "Recipe: Two parts Bluecap, one part Void Dust... (The handwriting becomes frantic scribbles)."
 ];
