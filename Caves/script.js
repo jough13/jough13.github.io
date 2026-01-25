@@ -808,6 +808,8 @@ function createDefaultPlayerState() {
 
         unlockedWaypoints: [], // Stores objects: { x, y, name }
 
+        obeliskProgress: [], // Tracks the order: ['north', 'east'] etc.
+
         strength: 1,
         wits: 1,
         luck: 1,
@@ -2607,6 +2609,37 @@ for (let y = 0; y < map.length; y++) {
 
                 const featureRoll = random();
 
+                // ... inside generateChunk loop ...
+
+// --- PUZZLE SPAWNS (Deterministic Locations) ---
+// We place the 4 obelisks at specific distances in cardinal directions from spawn (0,0)
+
+// North Obelisk (High Y negative)
+if (worldX === 0 && worldY === -50) { 
+    this.setWorldTile(worldX, worldY, '|n');
+    chunkData[y][x] = '|n';
+}
+// East Obelisk (High X positive)
+else if (worldX === 50 && worldY === 0) { 
+    this.setWorldTile(worldX, worldY, '|e');
+    chunkData[y][x] = '|e';
+}
+// West Obelisk
+else if (worldX === -50 && worldY === 0) { 
+    this.setWorldTile(worldX, worldY, '|w');
+    chunkData[y][x] = '|w';
+}
+// South Obelisk
+else if (worldX === 0 && worldY === 50) { 
+    this.setWorldTile(worldX, worldY, '|s');
+    chunkData[y][x] = '|s';
+}
+// The Vault Entrance (Somewhere tricky)
+else if (worldX === 35 && worldY === 35) {
+    this.setWorldTile(worldX, worldY, '⛩️d');
+    chunkData[y][x] = '⛩️d';
+}
+
                 // --- 1. LEGENDARY LANDMARKS (Unique, Very Rare) ---
                 if (tile === '.' && featureRoll < 0.0000005) { // 1 in 2M
                     this.setWorldTile(worldX, worldY, '♛');
@@ -4282,7 +4315,7 @@ function generateEnemyLoot(player, enemy) {
     const tier2Loot = ['!', '[', '📚', '🛡️', '🛡️w'];
 
     // Tier 3: Steel/Chain/Magic
-    const tier3Loot = ['=', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i'];
+    const tier3Loot = ['⚔️s', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i'];
 
     // Tier 4: Heavy/Plate
     const tier4Loot = ['🪓', '🔨', '🛡️p'];
@@ -6861,30 +6894,35 @@ function handleCraftItem(recipeName) {
         if (itemTemplate.type === 'armor') itemTemplate.defense = (itemTemplate.defense || 0) + 1;
     }
 
-    // Add to Inventory
-    if (existingStack && isStackable && !isMasterwork) {
-        existingStack.quantity++;
-    } else {
-        const newItem = {
-            templateId: outputItemKey,
-            name: craftedName,
-            type: itemTemplate.type,
-            quantity: 1,
-            tile: outputItemKey || '?',
-            damage: itemTemplate.damage || null,
-            defense: itemTemplate.defense || null,
-            slot: itemTemplate.slot || null,
-            statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
-            effect: itemTemplate.effect || null
-        };
-        playerInventory.push(newItem);
-    }
+    // DETERMINE QUANTITY
+// If it's a Masterwork, we usually just make 1, otherwise use recipe yield or default to 1
+let craftQuantity = (isMasterwork) ? 1 : (recipe.yield || 1); 
 
-    if (isMasterwork) {
+// Add to Inventory
+if (existingStack && isStackable && !isMasterwork) {
+    existingStack.quantity += craftQuantity; // CHANGED FROM ++
+} else {
+    const newItem = {
+        templateId: outputItemKey,
+        name: craftedName,
+        type: itemTemplate.type,
+        quantity: craftQuantity, // CHANGED FROM 1
+        tile: outputItemKey || '?',
+        damage: itemTemplate.damage || null,
+        defense: itemTemplate.defense || null,
+        slot: itemTemplate.slot || null,
+        statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
+        effect: itemTemplate.effect || null
+    };
+    playerInventory.push(newItem);
+}
+
+if (isMasterwork) {
         logMessage(`Critical Success! You crafted a ${craftedName}!`);
         triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
     } else {
-        logMessage(`You crafted/cooked: ${recipeName}.`);
+        const qtyStr = craftQuantity > 1 ? ` (x${craftQuantity})` : '';
+        logMessage(`You crafted/cooked: ${recipeName}${qtyStr}.`);
     }
 
     // 6. Grant XP
@@ -8105,6 +8143,9 @@ const render = () => {
     if (!cachedThemeColors.canvasBg) updateThemeColors();
     const { canvasBg } = cachedThemeColors;
 
+        // Check if the player possesses the lens right now
+    const hasLens = gameState.player.inventory.some(i => i.name === 'Spirit Lens');
+
     // 1. Clear & Fill Background (Handles "Shake Gaps")
     // We fill the background BEFORE translation so screen shake doesn't leave trails/voids
     ctx.save();
@@ -8302,11 +8343,32 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
     }
 
     const drawEntity = (entity, x, y) => {
+        // --- 1. SPIRIT LOGIC START ---
+        // If the entity definition has type: 'spirit' AND the player lacks the lens...
+        if (entity.type === 'spirit' && !hasLens) {
+            return; // STOP. Do not draw this entity. It is invisible.
+        }
+        // --- SPIRIT LOGIC END ---
+
         const char = entity.tile || '?';
+        
+        // (Existing width check logic)
         const isWide = charWidthCache[char] !== undefined ? charWidthCache[char] : /\p{Extended_Pictographic}/u.test(char);
+        
+        // --- 2. OPTIONAL: VISUAL FLAIR ---
+        // If it is a spirit and we CAN see it, make it look ghostly (semi-transparent)
+        if (entity.type === 'spirit') {
+            ctx.globalAlpha = 0.6; // Make it see-through
+        }
+
         ctx.fillStyle = entity.color || '#ef4444';
         ctx.font = isWide ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
         ctx.fillText(char, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+        
+        // Reset transparency for the next item
+        if (entity.type === 'spirit') {
+            ctx.globalAlpha = 1.0; 
+        }
         
         if (entity.isElite) {
             ctx.strokeStyle = entity.color || '#facc15';
@@ -10853,6 +10915,87 @@ async function attemptMovePlayer(newX, newY) {
         logMessage(`You can't go that way.`);
         return; // Stop the move
     }
+
+    // --- OBELISK PUZZLE LOGIC ---
+if (tileData.type === 'obelisk_puzzle') {
+    const dir = tileData.direction;
+    const requiredOrder = ['north', 'east', 'west', 'south'];
+    const currentStep = gameState.player.obeliskProgress.length;
+
+    logMessage(tileData.flavor);
+
+    // Check if we are activating the CORRECT next step
+    if (dir === requiredOrder[currentStep]) {
+        if (!gameState.player.obeliskProgress.includes(dir)) {
+            gameState.player.obeliskProgress.push(dir);
+            
+            logMessage(`The Obelisk hums violently! (${gameState.player.obeliskProgress.length}/4 activated)`);
+            ParticleSystem.createExplosion(newX, newY, '#3b82f6', 15); // Blue explosion
+            AudioSystem.playMagic();
+
+            // REWARD: Give the fragment for this specific direction
+            const fragmentName = `Tablet of the ${dir.charAt(0).toUpperCase() + dir.slice(1)}`;
+            gameState.player.inventory.push(
+                // Lookup item from ITEM_DATA using the name map logic or hardcode keys
+                { name: fragmentName, type: 'junk', quantity: 1, tile: '🧩' }
+            );
+            logMessage(`A stone fragment falls from the obelisk: ${fragmentName}`);
+
+            // Save progress
+            playerRef.update({ 
+                obeliskProgress: gameState.player.obeliskProgress,
+                inventory: gameState.player.inventory 
+            });
+        } else {
+            logMessage("This obelisk is already active.");
+        }
+    } 
+    // Wrong order? Reset!
+    else if (!gameState.player.obeliskProgress.includes(dir)) {
+        logMessage("The Obelisk shrieks! A shockwave knocks you back!");
+        logMessage("{red:PUZZLE FAILED. Sequence Reset.}");
+        
+        gameState.player.health -= 5;
+        gameState.player.obeliskProgress = []; // Reset
+        
+        triggerStatFlash(statDisplays.health, false);
+        playerRef.update({ 
+            health: gameState.player.health,
+            obeliskProgress: [] 
+        });
+        
+        // Punishment damage visual
+        ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444', 10);
+    }
+    return;
+}
+
+// --- SEALED DOOR LOGIC ---
+if (tileData.type === 'sealed_door') {
+    const hasKey = gameState.player.inventory.some(i => i.name === 'Ancient Key');
+    
+    if (hasKey) {
+        logMessage("You insert the Ancient Key. The massive doors grind open...");
+        // Teleport to a special Vault Dungeon ID
+        gameState.mapMode = 'dungeon';
+        gameState.currentCaveId = 'vault_kings_treasure';
+        gameState.currentCaveTheme = 'GOLDEN'; // Make sure this theme exists in data-maps
+        
+        // Generate the Vault
+        chunkManager.generateCave(gameState.currentCaveId);
+        
+        // Move player
+        gameState.player.x = 10; // Arbitrary safe spot in your gen logic
+        gameState.player.y = 10;
+        
+        updateRegionDisplay();
+        render();
+        syncPlayerState();
+    } else {
+        logMessage("The door is sealed tight. There is a keyhole shaped like four joined stone fragments.");
+    }
+    return;
+}
 
     // 4. Obsolete Tile Cleanup
     const obsoleteTiles = [];
