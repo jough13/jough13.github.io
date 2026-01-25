@@ -468,6 +468,15 @@ window.ENEMY_DATA = {
         spellDamage: 5,
         inflicts: 'burn'
     },
+    '👻': {
+    name: 'Lost Soul',
+    type: 'spirit', // <--- This triggers the logic
+    maxHealth: 15,
+    attack: 3,
+    xp: 20,
+    loot: 'ectoplasm',
+    flavor: "It wails silently."
+},
     'D': {
         name: 'Void Demon',
         maxHealth: 50,
