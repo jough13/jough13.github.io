@@ -2614,47 +2614,34 @@ const logMessage = (text) => {
 };
 
 function triggerAtmosphericFlavor(tile) {
-    // 2% chance to trigger flavor text on move
-    if (Math.random() > 0.02) return;
+    // 5% chance to trigger flavor text on move (approx every 20 steps)
+    if (Math.random() > 0.05) return;
 
-    let flavorText = "";
+    let flavorOptions = [];
+    const time = gameState.time;
+    const weather = gameState.weather;
 
-    // Dungeons
-    if (gameState.mapMode === 'dungeon') {
-        const theme = CAVE_THEMES[gameState.currentCaveTheme];
-        if (theme.name.includes("Ice")) {
-            flavorText = "Your breath mists in the freezing air.";
-        } else if (theme.name.includes("Fire")) {
-            flavorText = "The heat is oppressive. Sweat runs down your back.";
-        } else {
-            flavorText = "Water drips rhythmically from the ceiling. Plip. Plip.";
-        }
+    // 1. Add Weather/Time Context
+    if (weather === 'storm' || weather === 'rain') {
+        flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.STORM);
     }
-    // Castles
-    else if (gameState.mapMode === 'castle') {
-        flavorText = "Dust motes dance in a shaft of light.";
-    }
-    // Overworld Biomes
-    else {
-        if (tile === 'F') { // Forest
-            const msgs = ["Leaves rustle, though there is no wind.", "A bird calls out, then is suddenly silenced.", "The smell of pine and damp earth fills the air."];
-            flavorText = msgs[Math.floor(Math.random() * msgs.length)];
-        } else if (tile === '≈') { // Swamp
-            const msgs = ["Something splashes in the water nearby.", "A thick mist rolls over the water.", "The air smells of decay."];
-            flavorText = msgs[Math.floor(Math.random() * msgs.length)];
-        } else if (tile === '^') { // Mountain
-            const msgs = ["Loose stones clatter down the cliffside.", "The wind howls through the crags.", "You feel the weight of the mountain looming above."];
-            flavorText = msgs[Math.floor(Math.random() * msgs.length)];
-        } else if (tile === '.') { // Plains
-            const msgs = ["A warm breeze ripples through the grass.", "Cloud shadows race across the plains.", "You spot a hawk circling high above."];
-            flavorText = msgs[Math.floor(Math.random() * msgs.length)];
-        } else if (tile === 'd' || tile === 'D') { // Deadlands/Desert
-            flavorText = "The silence here is deafening.";
-        }
+    if (time.hour >= 20 || time.hour < 5) {
+        flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.NIGHT);
+    } else if (time.hour >= 5 && time.hour < 8) {
+        flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.DAWN);
     }
 
-    if (flavorText) {
-        logMessage(flavorText);
+    // 2. Add Biome Context
+    if (tile === 'F') flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.FOREST);
+    else if (tile === 'D') flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.DESERT);
+    else if (tile === '^') flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.MOUNTAIN);
+    else if (tile === '≈') flavorOptions = flavorOptions.concat(ATMOSPHERE_TEXT.SWAMP);
+
+    // 3. Pick a Message
+    if (flavorOptions.length > 0) {
+        const msg = flavorOptions[Math.floor(Math.random() * flavorOptions.length)];
+        // Use gray coloring for atmosphere to distinguish from game mechanics
+        logMessage(`{gray:${msg}}`);
     }
 }
 
