@@ -800,3 +800,25 @@ kbd {
     pointer-events: none; /* Ensures clicks pass through to the canvas */
     box-shadow: inset 0 0 20px rgba(0,0,0,0.5); /* Adds a nice vignette inside the frame */
 }
+
+/* Equipment Slot Styling */
+.equipment-slot {
+    width: 60px;
+    height: 60px;
+    background-color: var(--bg-page); /* Adapts to theme */
+    border: 2px solid var(--border-color);
+    border-radius: 12px; /* Smoother corners */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem; /* Larger icons */
+    box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.1); /* "Inset" look */
+    color: var(--text-default);
+    transition: all 0.2s ease;
+}
+
+.equipment-slot:hover {
+    border-color: var(--text-highlight);
+    transform: scale(1.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
