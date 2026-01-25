@@ -772,3 +772,49 @@ window.CAVE_ROOM_TEMPLATES = {
         ]
     }
 };
+
+window.ATMOSPHERE_TEXT = {
+    NIGHT: [
+        "The stars are uncaringly bright tonight.",
+        "A distant wolf howl shivers through the air.",
+        "The darkness feels heavy, like a physical weight.",
+        "You hear something chittering in the dark.",
+        "The moon casts long, twisted shadows."
+    ],
+    DAWN: [
+        "The first light of dawn paints the horizon gold.",
+        "Dew glistens on the ground.",
+        "The world wakes up. Birds begin to sing.",
+        "A cold morning mist clings to the ground."
+    ],
+    STORM: [
+        "Thunder rattles your teeth.",
+        "The wind screams like a banshee.",
+        "Lightning illuminates the landscape in a stark flash.",
+        "The rain is torrential. It's hard to see."
+    ],
+    FOREST: [
+        "The trees seem to lean in as you pass.",
+        "You spot scratch marks on a trunk. Too big for a bear.",
+        "The smell of pine and rotting leaves is thick.",
+        "Was that a face in the bark? No, just a knot."
+    ],
+    DESERT: [
+        "The heat rising from the sand distorts the air.",
+        "Your throat feels dry just looking at the dunes.",
+        "The wind shifts the sand, erasing your footprints.",
+        "Bleached bones poke out from a dune."
+    ],
+    MOUNTAIN: [
+        "The air is thin and sharp here.",
+        "Loose gravel clatters down the cliffside.",
+        "You feel vertiginous looking down.",
+        "The wind howls through the crags."
+    ],
+    SWAMP: [
+        "Bubbles rise from the muck with a foul smell.",
+        "Insects swarm around your head.",
+        "The ground feels spongy and unstable.",
+        "You see ripples in the water. Something is moving."
+    ]
+};
