@@ -10932,7 +10932,7 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     // --- OBELISK PUZZLE LOGIC ---
-if (tileData.type === 'obelisk_puzzle') {
+if (tileData && tileData.type === 'obelisk_puzzle') {
     const dir = tileData.direction;
     const requiredOrder = ['north', 'east', 'west', 'south'];
     const currentStep = gameState.player.obeliskProgress.length;
@@ -10985,16 +10985,12 @@ if (tileData.type === 'obelisk_puzzle') {
     return;
 }
 
-  if (tileData.type === 'spirit_npc') {
+   if (tileData && tileData.type === 'spirit_npc') { 
             const requiredItem = tileData.requiresItem;
             const hasItem = gameState.player.inventory.some(i => i.name === requiredItem);
 
             if (!hasItem) {
-                // If we don't have the lens, the ghost is invisible/immaterial.
-                // We treat it like walking on a floor, but give a hint.
                 logMessage(tileData.invisibleMessage || "You shiver.");
-                
-                // Allow movement onto the tile (ghosts are intangible)
                 gameState.player.x = newX;
                 gameState.player.y = newY;
                 gameState.mapDirty = true;
@@ -11004,8 +11000,7 @@ if (tileData.type === 'obelisk_puzzle') {
                 return;
             }
 
-            // If we HAVE the lens, we interact with the Ghost
-            const seed = stringToSeed(tileId + gameState.playerTurnCount); // Randomize dialogue based on turn
+            const seed = stringToSeed(tileId + gameState.playerTurnCount);
             const random = Alea(seed);
             const msg = tileData.dialogue[Math.floor(random() * tileData.dialogue.length)];
 
@@ -11013,7 +11008,6 @@ if (tileData.type === 'obelisk_puzzle') {
             loreContent.textContent = `The ghostly figure shimmers into view through your lens.\n\n"${msg}"`;
             loreModal.classList.remove('hidden');
             
-            // Optional: Grant XP for finding him the first time
             if (!gameState.foundLore.has(tileId)) {
                 grantXp(50);
                 gameState.foundLore.add(tileId);
@@ -11023,7 +11017,7 @@ if (tileData.type === 'obelisk_puzzle') {
         }
 
 // --- SEALED DOOR LOGIC ---
-if (tileData.type === 'sealed_door') {
+if (tileData && tileData.type === 'sealed_door') {
     const hasKey = gameState.player.inventory.some(i => i.name === 'Ancient Key');
     
     if (hasKey) {
