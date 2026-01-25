@@ -285,6 +285,12 @@ window.CRAFTING_RECIPES = {
 
 window.ITEM_DATA = {
     // --- NEW ARTIFACTS & PUZZLE ITEMS ---
+    '📜l': {
+    name: 'Forgotten Letter',
+    type: 'random_lore', // New type
+    tile: '📄',
+    description: "A crumbling piece of parchment."
+},
 '👓s': {
     name: 'Spirit Lens',
     type: 'tool', // Passive effect when in inventory
