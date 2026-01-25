@@ -1,3 +1,43 @@
+/* Character Creation Styles */
+.creation-option {
+    border: 2px solid var(--border-color);
+    background-color: var(--bg-panel);
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 0.7;
+}
+
+.creation-option:hover {
+    transform: translateY(-2px);
+    opacity: 1.0;
+    border-color: #9ca3af;
+}
+
+.creation-option.selected {
+    border-color: var(--text-highlight); /* Blue/Yellow depending on theme */
+    background-color: rgba(59, 130, 246, 0.1); /* Faint blue tint */
+    opacity: 1.0;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+    transform: scale(1.02);
+}
+
+.gender-btn {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    flex: 1;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.gender-btn.selected {
+    background-color: var(--text-highlight);
+    color: var(--bg-page);
+    border-color: transparent;
+}
+
 :root {
 	/* MODIFIED: Brighter, more saturated light-theme colors */
 	--bg-page: #f9fafb;
