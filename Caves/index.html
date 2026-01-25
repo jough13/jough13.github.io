@@ -545,18 +545,17 @@
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
       
-      <!-- DATA MODULES (Load Before Main Script) -->
+      <!-- DATA MODULES -->
+      <script defer src="utils.js"></script>    <!-- Load Utils FIRST -->
+      <script defer src="audio.js"></script>    <!-- Load Audio SECOND -->
+      <script defer src="renderer.js"></script> <!-- Load Renderer THIRD -->
+      
       <script defer src="data-maps.js"></script>
       <script defer src="data-items.js"></script>
       <script defer src="data-entities.js"></script>
       
-      <!-- HELPERS & UTILITIES (NEW) -->
-      <script defer src="utils.js"></script>
-      <script defer src="audio.js"></script>
-      <script defer src="renderer.js"></script>
-      
       <!-- MAIN GAME LOGIC -->
-      <script defer src="script.js?v=1"></script>
+      <script defer src="script.js?v=2"></script> <!-- Increment version to bust cache -->
       
       <div id="mobileControls" class="mobile-controls lg:hidden">
          <div class="d-pad-container">
