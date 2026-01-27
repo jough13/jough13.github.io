@@ -3980,7 +3980,10 @@ function getRegionalPriceMultiplier(itemType, itemName) {
 
 function handleSellItem(itemIndex) {
     const player = gameState.player;
+        if (itemIndex < 0 || itemIndex >= player.inventory.length) return;
+    
     const itemToSell = player.inventory[itemIndex];
+    if (!itemToSell) return; 
 
     if (itemToSell.isEquipped) {
         logMessage("You cannot sell an item you are wearing!");
@@ -7173,10 +7176,7 @@ function passivePerceptionCheck() {
  * Accepts a pre-calculated playerDamage value.
  */
 
-/**
- * Handles combat for overworld enemies, syncing health via RTDB.
- * Counter-attack logic removed to prevent double-striking bug.
- */
+
 async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage) { 
     const player = gameState.player;
     const enemyId = `overworld:${newX},${-newY}`; 
@@ -7191,7 +7191,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
         const transactionResult = await enemyRef.transaction(currentData => {
             let enemy;
             if (currentData === null) {
-                // Use enemyInfo (the visual state) instead of generating random new stats
+                // Use enemyInfo (the visual state) to init
                 enemy = {
                     name: enemyInfo.name, 
                     health: enemyInfo.maxHealth,
@@ -7245,6 +7245,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             const lootData = { ...enemyData, isElite: enemyInfo.isElite };
             const droppedLoot = generateEnemyLoot(player, lootData);
 
+            // Clean local state immediately
             if (gameState.sharedEnemies[enemyId]) {
                 delete gameState.sharedEnemies[enemyId];
             }
@@ -7252,22 +7253,24 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             const currentTerrain = chunkManager.getTile(newX, newY);
             const passableTerrain = ['.', 'd', 'D', 'F', '≈']; 
 
+            // Place loot on ground
             if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
                 chunkManager.setWorldTile(newX, newY, droppedLoot);
             }
         } 
-        // NOTE: The "else" block (Counter-attack) has been removed.
-        // The enemy will now strike normally during processOverworldEnemyTurns.
+
+        // Finalize Turn
+        endPlayerTurn();
+        render();
 
     } catch (error) {
         console.error("Firebase transaction failed: ", error);
         logMessage("Your attack falters... (network error)");
         return; 
+    } finally {
+        // [NEW] UNLOCK INPUT REGARDLESS OF OUTCOME
+        isProcessingMove = false;
     }
-
-    // Finalize Turn
-    endPlayerTurn();
-    render();
 }
 
 const renderInventory = () => {
@@ -9567,7 +9570,13 @@ function handleChatCommand(message) {
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
 
-    // 1. Audio Context Resume (Browser Policy)
+     // 1. INPUT LOCK: Prevent spamming while network/animations are processing
+    if (isProcessingMove) {
+        console.log("Input blocked: Move in progress.");
+        return;
+    }
+
+    // 2. Audio Context Resume (Browser Policy)
     if (AudioSystem.ctx && AudioSystem.ctx.state === 'suspended') {
         AudioSystem.ctx.resume();
     }
@@ -10596,13 +10605,11 @@ if (enemy) {
 
             AudioSystem.playAttack();
 
-            // --- FIX START: Get Real Name ---
             // Look up the live entity to get the correct name (e.g. "Spectral Giant Rat")
             // instead of the base template name ("Giant Rat").
             const enemyId = `overworld:${newX},${-newY}`;
             const liveEnemy = gameState.sharedEnemies[enemyId];
             const targetName = liveEnemy ? liveEnemy.name : enemyData.name;
-            // --- FIX END ---
 
             if (isCrit) {
                 logMessage(`CRITICAL HIT! You strike the ${targetName} for ${playerDamage} damage!`);
@@ -10612,6 +10619,8 @@ if (enemy) {
             } else {
                 logMessage(`You attack the ${targetName} for ${playerDamage} damage!`);
             }
+
+            isProcessingMove = true; 
 
             await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
             return;
