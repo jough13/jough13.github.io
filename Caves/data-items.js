@@ -709,34 +709,26 @@ window.ITEM_DATA = {
 
             const waterStack = state.player.inventory.find(i => i.name === 'Clean Water');
 
-            // If this was the last water in the stack, we can safely "morph" it into a bottle
-            // This bypasses the full inventory check because we are reusing the slot.
-            if (waterStack && waterStack.quantity === 1) {
-                // We return FALSE so the main loop DOES NOT delete the item.
-                // We manually convert it to an empty bottle here.
-                waterStack.name = 'Empty Bottle';
-                waterStack.tile = '🫙';
-                // waterStack.type is already 'consumable', so that's fine
-                return false; // Tell useInventoryItem NOT to decrement/delete, we handled it.
-            }
-            else {
-                // If we have a stack (e.g. 5 Water), we decrement normally (return true)
-                // AND we try to add a bottle.
-                if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    state.player.inventory.push({ name: 'Empty Bottle', type: 'consumable', quantity: 1, tile: '🫙' });
-                } else {
-                    logMessage("No room for the Empty Bottle! It falls to the ground.");
-                    // Optional: chunkManager.setWorldTile(state.player.x, state.player.y, '🫙');
-                }
-                return true; // Decrement the water stack
-            }
-
-            // Return Empty Bottle
+            // Case 1: Last item in stack. Morph it into a bottle.
+        if (waterStack && waterStack.quantity === 1) {
+            waterStack.name = 'Empty Bottle';
+            waterStack.tile = '🫙';
+            waterStack.type = 'consumable'; // Ensure type is correct
+            // Return FALSE so the engine doesn't delete the item slot
+            return false; 
+        } 
+        // Case 2: Stack > 1. Give a new bottle and consume 1 water.
+        else {
             if (state.player.inventory.length < MAX_INVENTORY_SLOTS) {
                 state.player.inventory.push({ name: 'Empty Bottle', type: 'consumable', quantity: 1, tile: '🫙' });
+            } else {
+                logMessage("No room for the Empty Bottle! It falls to the ground.");
+                // Optional: chunkManager.setWorldTile(state.player.x, state.player.y, '🫙');
             }
+            return true; // Consume 1 water from stack
         }
-    },
+    }
+},
     '🤢': {
         name: 'Dirty Water',
         type: 'consumable',
