@@ -4048,7 +4048,12 @@ function handleSellItem(itemIndex) {
     }
 
     // Find the item's base price in the shop.
-    const shopItem = activeShopInventory.find(item => item.name === itemToSell.name);
+    const shopItem = activeShopInventory.find(i => i.name === itemToSell.name);
+        if (shopItem) {
+            // Never allow selling for more than 75% of base buy price, regardless of modifiers
+            const maxSell = Math.floor(shopItem.price * 0.75);
+            calculatedSellPrice = Math.min(calculatedSellPrice, maxSell);
+        }
 
     let basePrice = 2; // Default
     if (shopItem) {
