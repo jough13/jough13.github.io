@@ -1,3 +1,14 @@
+{
+  "title": "The Grand Unification Theory of the Sandwich: A Multidisciplinary Analysis",
+  "date": "2026-01-30",
+  "file": "food/sandwich-theory.md",
+  "summary": "Defining the 'Greatest Sandwich in Human History' through the lens of topology, thermodynamics, beam theory, and gastrophysics.",
+  "category": "food",
+  "tags": ["sandwiches", "science", "gastrophysics", "humor", "engineering"]
+}
+
+# The Grand Unification Theory of the Sandwich: A Multidisciplinary Analysis of Gastronomic Perfection
+
 ## Executive Summary
 The inquiry into the "best" kind of sandwich is not a trivial pursuit of subjective taste; it is a complex optimization problem located at the intersection of topology, thermodynamics, material science, history, and gastrophysics. To answer this query with the requested rigor—incorporating mathematical, philosophical, and gastrological analyses—one must first dismantle the very definition of the object itself. We must determine what constitutes a sandwich in a universe governed by the Cube Rule of Food Identification, analyze the structural loads of ingredients using Beam Theory, and evaluate the sensory experience through the lens of Maillard reaction chemistry and acoustic texture analysis.
 
@@ -30,9 +41,9 @@ While topology offers geometric precision, the law offers pragmatic enforcement.
 This legal definition is expansive, explicitly categorizing the burrito, the gyro, and the hot dog as sandwiches for the purpose of sales tax. This creates a legal ontology that prioritizes function (hand-held prepared food) over form (geometry). The Massachusetts court case White City Shopping Ctr., LP v. PR Restaurants, LLC offers a counter-narrative, where a judge ruled that a burrito is not a sandwich for the purposes of a lease exclusivity clause. This legal schizophrenia highlights the cultural tension inherent in the category: the "sandwich" is a contested space between the traditional European definition (bread slices) and the global reality of stuffed starches. For this report, we side with the New York tax code: the burrito is a sandwich, and thus eligible for the title.
 
 ### 1.3 The Ham Sandwich Theorem: A Topological Proof
-Moving from the legal to the mathematical, the sandwich exists as a measurable entity subject to bisection. The Ham Sandwich Theorem (Stone-Tukey Theorem) states that given *n* measurable objects in *n*-dimensional Euclidean space, it is possible to divide each of them in half with a single (*n*-1)-dimensional hyperplane.
+Moving from the legal to the mathematical, the sandwich exists as a measurable entity subject to bisection. The Ham Sandwich Theorem (Stone-Tukey Theorem) states that given n measurable objects in n-dimensional Euclidean space, it is possible to divide each of them in half with a single (n-1)-dimensional hyperplane.
 
-In the case of a standard sandwich (*n*=3 dimensions), containing three ingredients (e.g., bread, cheese, and ham), there exists a single planar cut that can simultaneously bisect the volume of the bread, the volume of the cheese, and the volume of the ham. This theorem provides the mathematical foundation for the "Perfect Cut." It confirms that regardless of the sandwich's asymmetry or the "lop-sidedness" of its construction, there is a theoretical plane of equilibrium.
+In the case of a standard sandwich (n=3 dimensions), containing three ingredients (e.g., bread, cheese, and ham), there exists a single planar cut that can simultaneously bisect the volume of the bread, the volume of the cheese, and the volume of the ham. This theorem provides the mathematical foundation for the "Perfect Cut." It confirms that regardless of the sandwich's asymmetry or the "lop-sidedness" of its construction, there is a theoretical plane of equilibrium.
 
 This mathematical truth underpins the structural analysis of the sandwich: a "great" sandwich must not only be edible but must possess a distribution of mass that allows for this theoretical bisection without catastrophic structural failure. A sandwich that cannot be cut (e.g., an overstuffed burrito that explodes upon incision) violates the spirit of the Ham Sandwich Theorem, suggesting a failure of assembly rather than a failure of geometry.
 
@@ -91,7 +102,7 @@ A subset of sandwiches relies on applied compressive force to achieve structural
 * **The Monte Cristo:** A hybrid of a sandwich and French toast, the Monte Cristo introduces a liquid binding agent (egg batter). The bread is not just a container but is chemically altered through soaking and frying, creating a Custard-Crust Interface. The challenge here is the "Soggy-Crisp Paradox": the exterior must be Maillard-reacted and crisp, while the interior remains structurally sound despite the moisture load of the custard.
 
 ### 3.3 Moisture Migration and Barrier Films
-Moisture is the entropic enemy of the sandwich. "Soggy bread" is cited as the primary grievance in sandwich consumption. The science of Moisture Migration dictates that water moves from areas of high water activity ($a_w$) (tomatoes, meat juices) to areas of low water activity (bread).
+Moisture is the entropic enemy of the sandwich. "Soggy bread" is cited as the primary grievance in sandwich consumption. The science of Moisture Migration dictates that water moves from areas of high water activity (a_w) (tomatoes, meat juices) to areas of low water activity (bread).
 
 To prevent this, a **Moisture Barrier** is required.
 * **Hydrophobic Barriers:** Fat-based layers (butter, mayonnaise, oil) repel water. The Jambon Beurre relies on a thick layer of high-quality butter to protect the baguette from the ham's moisture.
@@ -205,17 +216,17 @@ Based on the ontological, historical, engineering, and gastrophysical criteria e
 
 ### Table 1: Comparative Analysis of Sandwich Contenders (Weighted Score)
 
-| Sandwich | Structural Integrity (1-10) | Texture Contrast (1-10) | Flavor Complexity (1-10) | Thermodynamic Balance (1-10) | Cultural Adaptability (1-10) | **Total Score** |
+| Sandwich | Structural Integrity (1-10) | Texture Contrast (1-10) | Flavor Complexity (1-10) | Thermodynamic Balance (1-10) | Cultural Adaptability (1-10) | Total Score |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Bánh Mì** | 9 | 10 | 10 | 10 | 9 | **48** |
 | **Cuban** | 10 | 7 | 8 | 8 | 6 | **39** |
 | **Shawarma** | 7 | 6 | 9 | 7 | 8 | **37** |
 | **Burger** | 5 | 6 | 8 | 8 | 10 | **37** |
+| **Monte Cristo** | 4 | 5 | 9 | 5 | 4 | **27** |
+| **Croque Monsieur** | 3 | 4 | 8 | 6 | 4 | **25** |
 | **Burrito** | 8 | 3 | 7 | 6 | 7 | **31** |
 | **Jambon Beurre** | 9 | 8 | 5 | 4 | 5 | **31** |
 | **Hot Dog** | 9 | 4 | 5 | 5 | 6 | **29** |
-| **Monte Cristo** | 4 | 5 | 9 | 5 | 4 | **27** |
-| **Croque Monsieur** | 3 | 4 | 8 | 6 | 4 | **25** |
 
 *Note: The Cuban scores a perfect 10 on Structural Integrity due to the pressing process. The Monte Cristo and Croque Monsieur suffer heavily in Structural Integrity due to greasiness and the need for utensils.*
 
@@ -224,12 +235,9 @@ Based on the ontological, historical, engineering, and gastrophysical criteria e
 ## Part VII: The Definitive Scientific and Artistic Verdict
 After an exhaustive analysis of the topological form, the thermodynamics of heat transfer, the chemistry of flavor, and the sociology of consumption, the data points to a singular conclusion.
 
-* The **Hamburger** is the most important sandwich (culturally and economically).
-* The **Cuban** is the most structurally perfect sandwich (engineering).
-* The **Monte Cristo** is the most hedonistic sandwich (flavor intensity).
-* The **Burrito** is the most efficient energy delivery system.
+The Hamburger is the most important sandwich (culturally and economically). The Cuban is the most structurally perfect sandwich (engineering). The Monte Cristo is the most hedonistic sandwich (flavor intensity). The Burrito is the most efficient energy delivery system.
 
-### However, the **Bánh Mì** remains the Greatest Sandwich in Human History.
+### However, the Bánh Mì remains the Greatest Sandwich in Human History.
 
 **The Justification:**
 * **Topological Superiority:** It utilizes the "Hinged Cylinder" topology (Cube Rule: Taco/Sub), which offers the best compromise between structural security and accessibility.
@@ -239,65 +247,60 @@ After an exhaustive analysis of the topological form, the thermodynamics of heat
 
 The Bánh Mì is not just a food; it is a perfectly engineered system for stimulating the human sensorium. It is the only sandwich that respects the physics of the crust, the chemistry of the pickle, and the history of the people who made it.
 
-## Citations
-1. **[wikiHow](https://wikihow.com)**: What is the Cube Rule of Food Identification Theory?
-2. **[cuberule.com](https://cuberule.com)**: The Cube Rule
-3. **[youtube.com](https://youtube.com)**: What is a Sandwich?
-4. **[chris-s-friedman.com](https://chris-s-friedman.com)**: The Cube Rule of Foods: Wrong
-5. **[alloveralbany.com](https://alloveralbany.com)**: Taxable sandwiches and other foods that are taxed, unless they're not
-6. **[minnesotalawreview.org](https://minnesotalawreview.org)**: Constructing the Sandwich
-7. **[brilliant.org](https://brilliant.org)**: Ham Sandwich Theorem
-8. **[en.wikipedia.org](https://en.wikipedia.org)**: Ham sandwich theorem
-9. **[lovebritishhistory.co.uk](https://lovebritishhistory.co.uk)**: The History of the Sandwich
-10. **[eastbaydeli.com](https://eastbaydeli.com)**: Who actually invented the sandwich?
-11. **[jinqcooklife.com](https://jinqcooklife.com)**: Rou Jia Mo(肉夹馍) – The Ultimate Chinese Hamburger
-12. **[en.wikipedia.org](https://en.wikipedia.org)**: Roujiamo
-13. **[sh-streetfood.org](https://sh-streetfood.org)**: Rou Jia Mo – Shaan Xi Style Sandwich – 肉夹馍
-14. **[wanderplate.com](https://wanderplate.com)**: Chinese Rou Jia Mo or Rougamo Bread: World's Oldest Sandwich
-15. **[700southdeli.com](https://700southdeli.com)**: The History of the Sandwich: Simple, but Complicated
-16. **[theolddutchcupboard.com](https://theolddutchcupboard.com)**: The Storied and Surprising History of the Sandwich
-17. **[pbs.org](https://pbs.org)**: Discover the History of the Sandwich
-18. **[de-babel.com](https://de-babel.com)**: Chicken Gyro vs Chicken Shawarma: What's the Difference?
-19. **[reddit.com](https://reddit.com)**: Shawarma vs Döner vs Gyro
-20. **[nrn.com](https://nrn.com)**: Al pastor, the taco flavor that has gone mainstream
-21. **[afar.com](https://afar.com)**: A New Generation of Chefs is Revitalizing an Immigrant Cuisine in Mexico City
-22. **[hanoifreeprivatetourguide.com](https://hanoifreeprivatetourguide.com)**: Banh My: Symphony of Flavors in a Vietnamese Sandwich
-23. **[learningvietnamese.edu.vn](https://learningvietnamese.edu.vn)**: Banh mi Vietnam street food #5 facts you should know
-24. **[bamivietnamese.com.au](https://bamivietnamese.com.au)**: Banh mi - A Culinary Journey
-25. **[researchgate.net](https://researchgate.net)**: Structural and Failure Mechanics of Sandwich Composites
-26. **[emerald.com](https://emerald.com)**: Finite element analyses of sandwich structures
-27. **[pdfs.semanticscholar.org](https://semanticscholar.org)**: Structural integrity of hierarchical composites
-28. **[tandfonline.com](https://tandfonline.com)**: Non-linear thermomechanical potent zig-zag theory
-29. **[artofmanliness.com](https://artofmanliness.com)**: Skill of the Week: Stack Your Burger Toppings With Maximum Effectiveness
-30. **[corporate.asda.com](https://corporate.asda.com)**: Soggy bread sabotaging the nation's love affair with sandwiches
-31. **[proampac.com](https://proampac.com)**: Pret a Manger increased sales with more elevated packaging
-32. **[artofmanliness.com](https://artofmanliness.com)**: The Best Way to Hold a Burger --- According to Science!
-33. **[bhekisisa.org](https://bhekisisa.org)**: Why science & research can be hard to swallow: The giant hamburger of trust
-34. **[spice.alibaba.com](https://alibaba.com)**: Perfect Garlic Bread Cheese Sandwich Recipe
-35. **[patents.google.com](https://patents.google.com)**: US7226630B2 - Edible moisture barrier for food and method of use products
-36. **[packagingtechnologyandresearch.com](https://packagingtechnologyandresearch.com)**: Controlling Moisture in Foods Using Packaging
-37. **[timeout.com](https://timeout.com)**: 18 Best Sandwiches in the World For 2025
-38. **[quora.com](https://quora.com)**: Why does toasting a sandwich make it taste so much better?
-39. **[youtube.com](https://youtube.com)**: How Second Law Of Thermodynamics Applies In Eating Food?
-40. **[reddit.com](https://reddit.com)**: Why burritos? Seems like a less than ideal choice for re-heating
-41. **[reddit.com](https://reddit.com)**: Different world cuisines seem to have different shortcomings
-42. **[home.sandiego.edu](https://home.sandiego.edu)**: Thermo‐physical properties of composite bread dough
-43. **[researchgate.net](https://researchgate.net)**: Transport and related properties of breads
-44. **[seriouseats.com](https://seriouseats.com)**: An Introduction to the Maillard Reaction
-45. **[modernistcuisine.com](https://modernistcuisine.com)**: The Maillard Reaction
-46. **[cafemeetingplace.com](https://cafemeetingplace.com)**: Taste Happens in the Brain (Not Just the Mouth)
-47. **[lesaffre.uk](https://lesaffre.uk)**: How to define the sound of crusty bread?
-48. **[peasonmoss.com](https://peasonmoss.com)**: Texture in Sensory Analysis
-49. **[hanoifreeprivatetourguide.com](https://hanoifreeprivatetourguide.com)**: Banh Mi Vietnam: Once again crowned by CNN Travel 11/2025
-50. **[mbrfingredients.com.br](https://mbrfingredients.com.br)**: The importance of crunchiness in food formulations
-51. **[scribd.com](https://scribd.com)**: A Deep Comparative Analysis of Meat and Veggie Sandwiches
-52. **[reddit.com](https://reddit.com)**: Why do sandwiches taste better when cut diagonally?
-53. **[yic.edu.et](https://yic.edu.et)**: Michael Ruhlman Ratio
-54. **[mashed.com](https://mashed.com)**: David Chang's Massive Joke Sandwich Is Now One Of His Favorites
-55. **[travellinglebanon.blog](https://travellinglebanon.blog)**: From Beirut to the World: Lebanon's Shawarma Tops 2025 Sandwich Rankings
-56. **[timeout.com](https://timeout.com)**: This Parisian bistro is home to the world's best sandwich, according to Time Out
-57. **[e.vnexpress.net](https://vnexpress.net)**: Banh mi and coffee to unite at HCMC festival
-58. **[youtube.com](https://youtube.com)**: Anthony Bourdain - Banh Mi in Vietnam
-59. **[tasteofhome.com](https://tasteofhome.com)**: Is a Hot Dog a Sandwich? Let's Settle This Debate.
-60. **[foodunfolded.com](https://foodunfolded.com)**: How Does Texture Affect the Way We Eat?
-61. **[researchgate.net](https://researchgate.net)**: Thermal and Physical Properties of Bakery Products
+## Works Cited
+1. **[What is the Cube Rule of Food Identification Theory? - wikiHow](https://www.wikihow.com/Cube-Rule-of-Food)**
+2. **[The Cube Rule](https://cuberule.com/)**
+3. **[What is a Sandwich? - YouTube](https://www.youtube.com/watch?v=AD4aHTut_Ko)**
+4. **[The Cube Rule of Foods: Wrong](https://chris-s-friedman.com/posts/2023/cube_rule/)**
+5. **[Taxable sandwiches and other foods that are taxed, unless they're not - All Over Albany](http://alloveralbany.com/archive/2015/03/05/taxable-sandwiches-and-other-foods-that-are-taxed)**
+6. **[Constructing the Sandwich - Minnesota Law Review](https://minnesotalawreview.org/2019/02/22/constructing-the-sandwich/)**
+7. **[Ham Sandwich Theorem - Brilliant Math & Science Wiki](https://brilliant.org/wiki/ham-sandwich-theorem/)**
+8. **[Ham sandwich theorem - Wikipedia](https://en.wikipedia.org/wiki/Ham_sandwich_theorem)**
+9. **[The History of the Sandwich](https://www.lovebritishhistory.co.uk/2020/08/the-history-of-sandwich.html)**
+10. **[Who actually invented the sandwich? - East Bay Deli](https://www.eastbaydeli.com/who-actually-invented-the-sandwich/)**
+11. **[Rou Jia Mo(肉夹馍) – The Ultimate Chinese Hamburger - Jinqcooklife.com](https://jinqcooklife.com/xian-rou-jia-mo-chinese-hamburger/)**
+12. **[Roujiamo - Wikipedia](https://en.wikipedia.org/wiki/Roujiamo)**
+13. **[Rou Jia Mo – Shaan Xi Style Sandwich – 肉夹馍 - MOVABLE FEASTS](https://sh-streetfood.org/rou-jia-mo-shaan-xi-style-sandwich-%E8%82%89%E5%A4%B9%E9%A6%8D/)**
+14. **[Chinese Rou Jia Mo or Rougamo Bread: World's Oldest Sandwich - Wanderplate](https://www.wanderplate.com/post/rou-jia-mo-or-rougamo-bread-all-about-the-world-s-oldest-sandwich)**
+15. **[The History of the Sandwich: Simple, but Complicated - 700 South Deli and Catering Copy](https://www.700southdeli.com/the-history-of-the-sandwich-simple-but-complicated)**
+16. **[The Storied and Surprising History of the Sandwich - The Old Dutch Cupboard](https://theolddutchcupboard.com/the-storied-surprising-history-of-the-sandwich/)**
+17. **[Discover the History of the Sandwich - PBS Food](https://www.pbs.org/food/stories/history-sandwich)**
+18. **[Chicken Gyro vs Chicken Shawarma: What's the Difference? - De Babel](https://de-babel.com/chicken-gyro-vs-chicken-shawarma/)**
+19. **[Shawarma vs Döner vs Gyro - Reddit](https://www.reddit.com/r/Cooking/comments/mfwycm/shawarma_vs_d%C3%B6ner_vs_gyro/)**
+20. **[Al pastor, the taco flavor that has gone mainstream - Nation's Restaurant News](https://www.nrn.com/food-trends/al-pastor-the-taco-flavor-that-has-gone-mainstream)**
+21. **[A New Generation of Chefs is Revitalizing an Immigrant Cuisine in Mexico City](https://www.afar.com/magazine/mexico-citys-middle-eastern-history-inspires-its-food-scene)**
+22. **[Banh My: Symphony of Flavors in a Vietnamese Sandwich - Hanoi Free Private Tour Guide](https://hanoifreeprivatetourguide.com/banh-my-symphony-flavors-vietnamese-sandwich/)**
+23. **[Banh mi Vietnam street food #5 facts you should know](https://learningvietnamese.edu.vn/blog/banh-mi-vietnam-street-food/?lang=en)**
+24. **[Banh mi - A Culinary Journey - Bami Vietnamese](https://bamivietnamese.com.au/community/story-of-banh-mi/)**
+25. **[Structural and Failure Mechanics of Sandwich Composites - ResearchGate](https://www.researchgate.net/publication/265543640_Structural_and_Failure_Mechanics_of_Sandwich_Composites)**
+26. **[Finite element analyses of sandwich structures: a bibliography (1980–2001)](https://www.emerald.com/ec/article/19/2/206/114032/Finite-element-analyses-of-sandwich-structures-a)**
+27. **[Structural integrity of hierarchical composites - Semantic Scholar](https://pdfs.semanticscholar.org/80be/17f6ec3f4f0bb4bc8c47605ae230b7dcbf7d.pdf)**
+28. **[Non-linear thermomechanical potent zig-zag theory for bending, buckling, and vibration analysis of laminated sandwich composite beam - Taylor & Francis](https://www.tandfonline.com/doi/full/10.1080/15376494.2025.2549852?src=)**
+29. **[Skill of the Week: Stack Your Burger Toppings With Maximum Effectiveness](https://www.artofmanliness.com/living/food-drink/the-best-order-to-stack-your-burger-toppings/)**
+30. **[Soggy bread sabotaging the nation's love affair with sandwiches - Asda](https://corporate.asda.com/newsroom/2017/05/18/soggy-bread-sabotaging-the-nations-love-affair-with-sandwiches)**
+31. **[Pret a Manger increased sales with more elevated packaging using the RAP DayFresh Sandwich Wedge - ProAmpac](https://www.proampac.com/en-us/success-stories/2/pret-a-manger-increased-sales-with-more-elevated-packaging-using-the-rap-dayfresh-sandwich-wedge/)**
+32. **[The Best Way to Hold a Burger --- According to Science! - The Art of Manliness](https://www.artofmanliness.com/living/food-drink/the-best-way-to-hold-a-burger-according-to-science/)**
+33. **[Why science & research can be hard to swallow: The giant hamburger of trust - Bhekisisa](https://bhekisisa.org/resources/2021-08-20-science-and-hamburgers-have-lots-in-common-heres-how-to-make-them-both-good/)**
+34. **[Perfect Garlic Bread Cheese Sandwich Recipe & Pro Tips - Spices – Alibaba.com](https://spice.alibaba.com/spice-basics/garlic-bread-cheese-sandwich)**
+35. **[US7226630B2 - Edible moisture barrier for food and method of use products - Google Patents](https://patents.google.com/patent/US7226630B2/en)**
+36. **[Controlling Moisture in Foods Using Packaging](https://www.packagingtechnologyandresearch.com/uploads/2/4/1/1/24118835/moisture_barriers_for_food.pdf)**
+37. **[18 Best Sandwiches in the World For 2025 - Time Out](https://www.timeout.com/food-and-drink/best-sandwiches-in-the-world)**
+38. **[How Second Law Of Thermodynamics Applies In Eating Food? - Chemistry For Everyone](https://www.youtube.com/watch?v=UEDiWDPgREY)**
+39. **[Why burritos? Seems like a less than ideal choice for re-heating and for a protein diet - Reddit](https://www.reddit.com/r/MealPrepSunday/comments/3flaqr/why_burritos_seems_like_a_less_than_ideal_choice/)**
+40. **[Different world cuisines seem to have different shortcomings. What is your cuisine's downfall? - Reddit](https://www.reddit.com/r/Cooking/comments/hknss2/different_world_cuisines_seem_to_have_different/)**
+41. **[An Introduction to the Maillard Reaction: The Science of Browning, Aroma, and Flavor](https://www.seriouseats.com/what-is-maillard-reaction-cooking-science)**
+42. **[The Maillard Reaction - Modernist Cuisine](https://modernistcuisine.com/mc/the-maillard-reaction/)**
+43. **[Taste Happens in the Brain (Not Just the Mouth) - Cafemeetingplace](https://www.cafemeetingplace.com/features/item/3160-taste-happens-in-the-brain-not-just-the-mouth)**
+44. **[How to define the sound of crusty bread? - Lesaffre UK & Ireland](https://www.lesaffre.uk/how-to-define-the-sound-of-crusty-bread/)**
+45. **[Texture in Sensory Analysis - PeasOnMoss](https://www.peasonmoss.com/2018/02/01/texture-sensory-analysis/)**
+46. **[Banh Mi Vietnam: Once again crowned by CNN Travel 11/2025](https://hanoifreeprivatetourguide.com/banh-mi-vietnam-crowned-by-cnn-travel/)**
+47. **[The importance of crunchiness in food formulations](https://www.mbrfingredients.com.br/en/blog/posts/the-importance-of-crunchiness-in-food-formulations/)**
+48. **[Why does toasting a sandwich make it taste so much better? - Quora](https://www.quora.com/Why-does-toasting-a-sandwich-make-it-taste-so-much-better)**
+49. **[A Deep Comparative Analysis of Meat and Veggie Sandwiches - Scribd](https://www.scribd.com/document/957940704/A-Deep-Comparative-Analysis-of-Meat-and-Veggie-Sandwiches)**
+50. **[Why do sandwiches taste better when cut diagonally? - Reddit](https://www.reddit.com/r/AskReddit/comments/6libcd/why_do_sandwiches_taste_better_when_cut_diagonally/)**
+51. **[Michael Ruhlman Ratio](https://www.yic.edu.et/index.jsp/publication/LOT7jQ/Michael_Ruhlman_Ratio.pdf)**
+52. **[David Chang's Massive Joke Sandwich Is Now One Of His Favorites - Mashed](https://www.mashed.com/396514/david-changs-massive-joke-sandwich-is-now-one-of-his-favorites/ )**
+53. **[From Beirut to the World: Lebanon's Shawarma Tops 2025 Sandwich Rankings](https://travellinglebanon.blog/2025/01/17/from-beirut-to-the-world-lebanons-shawarma-tops-2025-sandwich-rankings/)**
+54. **[This Parisian bistro is home to the world's best sandwich, according to Time Out](https://www.timeout.com/news/this-parisian-bistro-is-home-to-the-worlds-best-sandwich-according-to-time-out-020625)**
+55. **[Banh mi and coffee to unite at HCMC festival - VnExpress International](https://e.vnexpress.net/news/travel/food-recipes/banh-mi-and-coffee-to-unite-at-hcmc-festival-4856198.html)**
+56. **[Anthony Bourdain - Banh Mi in Vietnam - YouTube](https://www.youtube.com/watch?v=0nI9LvK7r-4)**
