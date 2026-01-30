@@ -1129,9 +1129,10 @@ window.ITEM_DATA = {
             return true;
         }
     },
-    ':': {
+        '🍇': { 
         name: 'Wildberry',
         type: 'consumable',
+        tile: '🍇', // Explicit visual tile
         effect: (state) => {
             state.player.health = Math.min(state.player.maxHealth, state.player.health + 1);
             state.player.hunger = Math.min(state.player.maxHunger, state.player.hunger + 5);
