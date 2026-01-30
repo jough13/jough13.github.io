@@ -30,9 +30,9 @@ While topology offers geometric precision, the law offers pragmatic enforcement.
 This creates a legal ontology that prioritizes function over form, explicitly categorizing the burrito and hot dog as sandwiches.
 
 ### 1.3 The Ham Sandwich Theorem: A Topological Proof
-The sandwich exists as a measurable entity subject to bisection. The **Ham Sandwich Theorem (Stone-Tukey Theorem)** states that given $n$ measurable objects in $n$-dimensional Euclidean space, it is possible to divide each of them in half with a single $(n-1)$-dimensional hyperplane.
+The sandwich exists as a measurable entity subject to bisection. The **Ham Sandwich Theorem (Stone-Tukey Theorem)** states that given *n* measurable objects in *n*-dimensional Euclidean space, it is possible to divide each of them in half with a single (*n*-1)-dimensional hyperplane.
 
-In the case of a standard sandwich ($n=3$ dimensions), containing three ingredients, there exists a single planar cut that can simultaneously bisect the volume of the bread, cheese, and ham. This theorem provides the mathematical foundation for the "Perfect Cut" and implies that a "great" sandwich must possess a distribution of mass that allows for equilibrium.
+In the case of a standard sandwich (*n*=3 dimensions), containing three ingredients, there exists a single planar cut that can simultaneously bisect the volume of the bread, cheese, and ham. This theorem provides the mathematical foundation for the "Perfect Cut" and implies that a "great" sandwich must possess a distribution of mass that allows for equilibrium.
 
 ---
 
@@ -75,13 +75,13 @@ The bread acts as the face sheets, and the filling is the core.
 * **The Monte Cristo:** A hybrid using liquid binding (egg batter). It faces the "Soggy-Crisp Paradox."
 
 ### 3.3 Moisture Migration and Barrier Films
-Moisture moves from high water activity ($a_w$) to low.
+Moisture moves from high water activity to low.
 * **Hydrophobic Barriers:** Fat-based layers (butter, mayo) repel water.
 * **The Béchamel Problem (Croque Monsieur):** Uses a water-based sauce, requiring a broiled cheese crust (tensioned skin) to prevent collapse.
 
 ### 3.4 Thermodynamics
 * **The Burrito (Insulator):** Traps heat, creating Thermodynamic Monotony.
-* **The Bánh Mì (Gradient):** Possesses **Thermodynamic Contrast** ($\Delta T$). Warm meat against cold pickles excites the trigeminal nerve.
+* **The Bánh Mì (Gradient):** Possesses **Thermodynamic Contrast** (ΔT). Warm meat against cold pickles excites the trigeminal nerve.
 
 ---
 
@@ -94,7 +94,7 @@ The **Maillard reaction** creates browning and flavor. The **Monte Cristo** achi
 The "Sonic Crunch" influences perception of freshness.
 * **Soft Sandwiches:** Burger, Burrito (Silent).
 * **Hard Sandwiches:** Baguette (High-frequency vibration).
-* **The Bánh Mì:** Offers a **Multi-Phasic Textural Profile**: Hard (Crust) $\to$ Soft (Crumb) $\to$ Fatty (Pâté) $\to$ Chewy (Meat) $\to$ Crunchy (Pickles).
+* **The Bánh Mì:** Offers a **Multi-Phasic Textural Profile**: Hard (Crust) → Soft (Crumb) → Fatty (Pâté) → Chewy (Meat) → Crunchy (Pickles).
 
 ### 4.3 Umami and Flavor Balance
 * **Umami Bomb:** Cheeseburger (Beef + Cheese + Tomato).
@@ -105,11 +105,11 @@ The "Sonic Crunch" influences perception of freshness.
 ## Part V: The Calculus of Composition
 
 ### 5.1 The Bread-to-Filling Ratio
-While the Golden Ratio ($\phi \approx 1.618$) is aesthetic, the structural ideal is closer to **3:1 by volume** for sliced bread. The **Bánh Mì** distributes volume along the Z-axis (length) rather than Y-axis (height), maintaining an optimal **Bite Aspect Ratio**.
+While the Golden Ratio (φ ≈ 1.618) is aesthetic, the structural ideal is closer to **3:1 by volume** for sliced bread. The **Bánh Mì** distributes volume along the Z-axis (length) rather than Y-axis (height), maintaining an optimal **Bite Aspect Ratio**.
 
 ### 5.2 The Geometry of the Cut
-* **Diagonal Cut:** Increases the exposed edge ($c = \sqrt{a^2 + b^2}$).
-* **Acute Angles:** $45^\circ$ corners fit the human mouth better than $90^\circ$ corners.
+* **Diagonal Cut:** Increases the exposed edge (hypotenuse c = √(a² + b²)).
+* **Acute Angles:** 45° corners fit the human mouth better than 90° corners.
 
 ---
 
