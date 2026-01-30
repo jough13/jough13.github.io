@@ -570,11 +570,11 @@ window.ENEMY_DATA = {
     },
 
     // --- NEW BEASTS (Tanky & Dangerous) ---
-    '🗿': {
+    '🧌': { 
         name: 'Stone Golem',
         maxHealth: 40,
         attack: 4,
-        defense: 4, // Very high defense! Needs magic or pickaxe.
+        defense: 3, // Reduced from 4 to 3 so early players deal >1 dmg
         xp: 60,
         loot: '🪨', // Drops Stone/Ore
         flavor: "A walking boulder. Blades skitter off its hide."
