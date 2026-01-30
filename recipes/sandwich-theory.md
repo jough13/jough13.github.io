@@ -1,5 +1,3 @@
-# The Grand Unification Theory of the Sandwich: A Multidisciplinary Analysis of Gastronomic Perfection
-
 ## Executive Summary
 The inquiry into the "best" kind of sandwich is not a trivial pursuit of subjective taste; it is a complex optimization problem located at the intersection of topology, thermodynamics, material science, history, and gastrophysics. To answer this query with the requested rigor—incorporating mathematical, philosophical, and gastrological analyses—one must first dismantle the very definition of the object itself. We must determine what constitutes a sandwich in a universe governed by the Cube Rule of Food Identification, analyze the structural loads of ingredients using Beam Theory, and evaluate the sensory experience through the lens of Maillard reaction chemistry and acoustic texture analysis.
 
