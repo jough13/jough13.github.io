@@ -1301,6 +1301,7 @@ const talentListDiv = document.getElementById('talentList');
 const talentPointsDisplay = document.getElementById('talentPointsDisplay');
 
 function openTalentModal() {
+    inputBuffer = null;
     renderTalentTree();
     talentModal.classList.remove('hidden');
 }
@@ -1451,31 +1452,82 @@ function getSanitizedEquipment() {
     };
 }
 
+function rehydrateInventory(savedInventory) {
+    if (!savedInventory || !Array.isArray(savedInventory)) return [];
+
+    return savedInventory.map(savedItem => {
+        // 1. Find the Template
+        let template = null;
+
+        // Try lookup by ID first (Best/Fastest)
+        if (savedItem.templateId && ITEM_DATA[savedItem.templateId]) {
+            template = ITEM_DATA[savedItem.templateId];
+        } 
+        // Fallback: Lookup by Name (For legacy saves)
+        else {
+            // Find key where ITEM_DATA[key].name matches savedItem.name
+            const key = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === savedItem.name);
+            if (key) {
+                template = ITEM_DATA[key];
+                savedItem.templateId = key; // Self-heal the save file for next time
+            }
+        }
+
+        // 2. Handle Broken/Missing Items
+        if (!template) {
+            console.warn(`Item '${savedItem.name}' (ID: ${savedItem.templateId}) no longer exists in code.`);
+            // Return a generic "Glitch" item so the player doesn't crash
+            return {
+                ...savedItem,
+                name: `Broken: ${savedItem.name}`,
+                description: "This item is from an old version and has crumbled to dust.",
+                type: 'junk',
+                tile: '❓',
+                effect: null // No effect
+            };
+        }
+
+        // 3. Merge: Template (Logic) + Save (State)
+        // savedItem properties OVERWRITE template properties.
+        // This preserves "Masterwork" damage/names, but injects the `effect` function from template.
+        return {
+            ...template,       // Load static data (effect function, description, base stats)
+            ...savedItem,      // Load instance data (qty, equipped status, custom name/stats)
+            
+            // Explicitly ensure the visual tile comes from template 
+            // UNLESS the save file explicitly overrides it (rare)
+            tile: template.tile 
+        };
+    });
+}
+
 /**
  * Returns a clean array of inventory items ready for Firebase storage.
  * Removes functions (like 'effect') and ensures data consistency.
  */
 
 function getSanitizedInventory() {
-    return gameState.player.inventory.map(item => ({
-        templateId: item.templateId || item.tile || null,
-        name: item.name || "Unknown",
-        // FIX: Default to 'junk' if type is somehow missing
-        type: item.type || "junk", 
-        quantity: item.quantity || 1,
-        tile: item.tile || '?',
+    return gameState.player.inventory.map(item => {
+        // 1. Identify the Source Template
+        // We prefer templateId, but fallback to tile if it was used as an ID
+        const sourceId = item.templateId || item.tile; 
         
-        // Explicit checks for undefined to preserve 0 but convert undefined to null
-        damage: (item.damage !== undefined) ? item.damage : null,
-        defense: (item.defense !== undefined) ? item.defense : null,
-        
-        slot: item.slot || null,
-        statBonuses: item.statBonuses || null,
-        spellId: item.spellId || null,
-        skillId: item.skillId || null,
-        stat: item.stat || null,
-        isEquipped: item.isEquipped || false
-    }));
+        return {
+            templateId: sourceId, 
+            name: item.name,          // Saved incase it's a "Masterwork" renamed item
+            quantity: item.quantity || 1,
+            isEquipped: item.isEquipped || false,
+            
+            // 2. Only save stats if they DIFFER from the template (Optional optimization, 
+            // but for now let's save them to preserve "Masterwork" RNG stats)
+            damage: item.damage,
+            defense: item.defense,
+            statBonuses: item.statBonuses,
+            
+            // 3. CRITICAL: Do NOT save 'effect', 'type', 'description', or 'tile'.
+            // These should come from the code, not the database.
+        };
+    });
 }
 
 const chunkManager = {
@@ -4332,6 +4384,8 @@ const stashPlayerList = document.getElementById('stashPlayerList');
 const stashBankList = document.getElementById('stashBankList');
 
 function openStashModal() {
+    inputBuffer = null; 
+    
     renderStash();
     stashModal.classList.remove('hidden');
 }
@@ -4567,6 +4621,7 @@ function assignToHotbar(abilityId) {
 }
 
 function openInventoryModal() {
+    inputBuffer = null; // <--- Stop pending moves
     if (gameState.player.inventory.length === 0) {
         logMessage("Your inventory is empty.");
         return;
@@ -4620,6 +4675,7 @@ function initInventoryListeners() {
  * based on their skillbook and the SKILL_DATA.
  */
 function openSkillbook() {
+    inputBuffer = null;
     skillList.innerHTML = ''; // Clear the list
     const player = gameState.player;
     const playerSkills = player.skillbook || {};
@@ -5716,6 +5772,7 @@ function initSkillbookListeners() {
 }
 
 function openBountyBoard() {
+    inputBuffer = null; 
     renderBountyBoard();
     questModal.classList.remove('hidden');
 }
@@ -5956,6 +6013,7 @@ const tabBestiary = document.getElementById('tabBestiary');
 const tabLibrary = document.getElementById('tabLibrary');
 
 function openCollections() {
+    inputBuffer = null; 
     renderBestiary();
     renderLibrary();
     collectionsModal.classList.remove('hidden');
@@ -6301,17 +6359,36 @@ let craftQuantity = (isMasterwork) ? 1 : (recipe.yield || 1);
 if (existingStack && isStackable && !isMasterwork) {
     existingStack.quantity += craftQuantity; // CHANGED FROM ++
 } else {
+    // --- 1. Calculate Stats Locally (Fixes Global Template Mutation Bug) ---
+    // We calculate these values here instead of modifying itemTemplate directly.
+    const finalDamage = (isMasterwork && itemTemplate.type === 'weapon') 
+        ? (itemTemplate.damage || 0) + 1 
+        : (itemTemplate.damage || null);
+
+    const finalDefense = (isMasterwork && itemTemplate.type === 'armor') 
+        ? (itemTemplate.defense || 0) + 1 
+        : (itemTemplate.defense || null);
+
+    // --- 2. Create the Item Object ---
     const newItem = {
-        templateId: outputItemKey,
+        templateId: outputItemKey,  // CRITICAL: This is the anchor for rehydration
         name: craftedName,
         type: itemTemplate.type,
-        quantity: craftQuantity, // CHANGED FROM 1
+        quantity: craftQuantity,
         tile: outputItemKey || '?',
-        damage: itemTemplate.damage || null,
-        defense: itemTemplate.defense || null,
+        
+        // Use our safe local variables
+        damage: finalDamage, 
+        defense: finalDefense,
+        
         slot: itemTemplate.slot || null,
         statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
-        effect: itemTemplate.effect || null
+        
+        // We include 'effect' here so the item is usable IMMEDIATELY in this session.
+        // The getSanitizedInventory() function will strip this out before saving to DB.
+        effect: itemTemplate.effect || null,
+        
+        isEquipped: false
     };
     playerInventory.push(newItem);
 }
@@ -6352,6 +6429,7 @@ if (isMasterwork) {
 }
 
 function openCraftingModal(mode = 'workbench') {
+    inputBuffer = null; 
     gameState.currentCraftingMode = mode;
 
     // Update Title based on mode
@@ -6481,7 +6559,9 @@ function openSkillTrainerModal() {
  * Dynamically renders the list of spells the player knows
  * based on their spellbook and the SPELL_DATA.
  */
+
 function openSpellbook() {
+    inputBuffer = null; 
     spellList.innerHTML = ''; // Clear the list
     const player = gameState.player;
     const playerSpells = player.spellbook || {};
@@ -7176,99 +7256,123 @@ function passivePerceptionCheck() {
  * Accepts a pre-calculated playerDamage value.
  */
 
-
 async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage) { 
     const player = gameState.player;
     const enemyId = `overworld:${newX},${-newY}`; 
     const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-    // --- Capture Stats Before Death ---
+    // --- 1. LOCAL PRE-CHECK ---
+    // If our local state already knows it's dead/gone, don't even bother the network.
+    // This makes the game feel snappier.
+    if (!gameState.sharedEnemies[enemyId]) {
+        // Visual cleanup in case a ghost tile remains
+        logMessage("That enemy is already gone.");
+        if (gameState.mapMode === 'overworld') {
+            chunkManager.setWorldTile(newX, newY, '.');
+            gameState.mapDirty = true;
+            render();
+        }
+        isProcessingMove = false;
+        return;
+    }
+
+    // --- 2. Capture Visual Stats ---
+    // We need these stats (XP, Name, Loot Table) in memory NOW.
+    // If we kill the enemy, the DB returns null, so we can't look them up later.
     const liveEnemy = gameState.sharedEnemies[enemyId];
+    // Fallback to template if local state is weird, but prefer live data
     const enemyInfo = liveEnemy || getScaledEnemy(enemyData, newX, newY);
 
     try {
-        // Use a transaction to safely read and write enemy health
+        // --- 3. THE TRANSACTION ---
         const transactionResult = await enemyRef.transaction(currentData => {
-            let enemy;
+            // CRITICAL FIX: Abort on Null
+            // If currentData is null, the enemy is dead/missing. 
+            // We return 'undefined' to abort the transaction.
             if (currentData === null) {
-                // Use enemyInfo (the visual state) to init
-                enemy = {
-                    name: enemyInfo.name, 
-                    health: enemyInfo.maxHealth,
-                    maxHealth: enemyInfo.maxHealth,
-                    attack: enemyInfo.attack,
-                    defense: enemyInfo.defense || enemyData.defense,
-                    xp: enemyInfo.xp,
-                    loot: enemyData.loot,
-                    tile: newTile,
-                    isElite: enemyInfo.isElite || false,
-                    color: enemyInfo.color || null
-                };
-            } else {
-                enemy = currentData;
+                return; 
             }
 
-            // --- Player Attacks Enemy ---
+            // Apply Damage
+            const enemy = currentData;
             enemy.health -= playerDamage;
 
-            if (enemy.health <= 0) {
-                return null; // Delete if dead
-            } else {
-                return enemy; // Update if alive
-            }
+            // If dead, set to null (deletes node)
+            // If alive, return updated object
+            return enemy.health <= 0 ? null : enemy;
         });
 
-        // --- Process Transaction Results ---
-        const finalEnemyState = transactionResult.snapshot.val();
-
+        // --- 4. HANDLE RESULT ---
+        // 'committed' is true ONLY if the transaction completed successfully.
+        // If we returned 'undefined' above (because it was null), committed will be false.
+        
         if (transactionResult.committed) {
-            // Visual Feedback
+            const finalEnemyState = transactionResult.snapshot.val();
+
+            // VISUALS: Show damage number (only if we actually hit it)
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createExplosion(newX, newY, '#ef4444');
                 ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
             }
-        }
 
-        if (finalEnemyState === null) {
-            // Enemy Died
-            logMessage(`The ${enemyInfo.name} was vanquished!`);
-            grantXp(enemyInfo.xp);
-            updateQuestProgress(newTile); 
+            // CHECK KILL CONDITION
+            if (finalEnemyState === null) {
+                // If committed is true AND state is null, WE struck the killing blow.
+                logMessage(`The ${enemyInfo.name} was vanquished!`);
+                
+                // Reward Logic using our captured 'enemyInfo'
+                grantXp(enemyInfo.xp);
+                updateQuestProgress(newTile); 
 
-            const tileId = `${newX},${-newY}`;
-            if (gameState.lootedTiles.has(tileId)) {
-                gameState.lootedTiles.delete(tileId);
-                playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles) });
+                // Cleanup Map
+                const tileId = `${newX},${-newY}`;
+                if (gameState.lootedTiles.has(tileId)) {
+                    gameState.lootedTiles.delete(tileId);
+                    playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles) });
+                }
+
+                // Loot Generation
+                const lootData = { ...enemyData, isElite: enemyInfo.isElite };
+                const droppedLoot = generateEnemyLoot(player, lootData);
+
+                // Local Cleanup (Instant feedback)
+                if (gameState.sharedEnemies[enemyId]) {
+                    delete gameState.sharedEnemies[enemyId];
+                }
+
+                // Place Loot on Ground
+                const currentTerrain = chunkManager.getTile(newX, newY);
+                const passableTerrain = ['.', 'd', 'D', 'F', '≈']; 
+                if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
+                    chunkManager.setWorldTile(newX, newY, droppedLoot);
+                }
+            } 
+            else {
+                // We hit it, but it didn't die. 
+                // The sharedEnemies listener will handle updating the HP bar for us.
             }
-
-            // Generate loot based on the TEMPLATE
-            const lootData = { ...enemyData, isElite: enemyInfo.isElite };
-            const droppedLoot = generateEnemyLoot(player, lootData);
-
-            // Clean local state immediately
+        } 
+        else {
+            // Transaction failed or aborted (Enemy was null/already dead)
+            logMessage("You swing at empty air... the enemy is already dead.");
+            
+            // Force cleanup of local ghost
             if (gameState.sharedEnemies[enemyId]) {
                 delete gameState.sharedEnemies[enemyId];
             }
+            chunkManager.setWorldTile(newX, newY, '.');
+            render();
+        }
 
-            const currentTerrain = chunkManager.getTile(newX, newY);
-            const passableTerrain = ['.', 'd', 'D', 'F', '≈']; 
-
-            // Place loot on ground
-            if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
-                chunkManager.setWorldTile(newX, newY, droppedLoot);
-            }
-        } 
-
-        // Finalize Turn
+        // Finalize Turn (Costs stamina/time even if we hit a ghost, to prevent spam-clicking)
         endPlayerTurn();
         render();
 
     } catch (error) {
         console.error("Firebase transaction failed: ", error);
         logMessage("Your attack falters... (network error)");
-        return; 
     } finally {
-        // [NEW] UNLOCK INPUT REGARDLESS OF OUTCOME
+        // --- 5. ALWAYS RELEASE LOCK ---
         isProcessingMove = false;
     }
 }
@@ -9770,6 +9874,22 @@ function handleInput(key) {
     if (key === 'k' || key === 'K') { openSkillbook(); return; }
     if (key === 'c' || key === 'C') { openCollections(); return; }
     if (key === 'p' || key === 'P') { openTalentModal(); return; }
+
+    // --- GUARD: BLOCK MOVEMENT IF MENUS ARE OPEN ---
+    // This prevents walking while in Inventory, Shop, or Map
+    if (gameState.inventoryMode || 
+        !mapModal.classList.contains('hidden') || 
+        !spellModal.classList.contains('hidden') ||
+        !skillModal.classList.contains('hidden') ||
+        !shopModal.classList.contains('hidden') ||
+        !craftingModal.classList.contains('hidden') ||
+        !stashModal.classList.contains('hidden') ||
+        !questModal.classList.contains('hidden') ||
+        !loreModal.classList.contains('hidden')) {
+        
+        // Allow ONLY closing menus (Escape is handled above) or specific menu keys
+        return;
+    }
 
     // 1. THROTTLE CHECK & BUFFERING
     const now = Date.now();
@@ -13020,6 +13140,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
 
                 gameState.player.inventory = data.inventory;
                 renderInventory();
+                renderEquipment();
             }
 
             // --- Update Equipment Stats ---
