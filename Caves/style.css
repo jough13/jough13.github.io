@@ -104,10 +104,11 @@ body {
 }
 
 canvas {
-	background-color: var(--canvas-bg);
-	border: 1px solid var(--canvas-border);
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }
-
 
 /* This prevents the inventory from collapsing before JS loads */ 
 
