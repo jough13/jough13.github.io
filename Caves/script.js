@@ -2437,9 +2437,17 @@ else if (worldX === 35 && worldY === 35) {
                     if (tile === '^') spawnChance = 0.0020;
 
                     if (hostileRoll < spawnChance) {
-                        const enemyTile = this.getEnemySpawn(tile, dist, random);
+        
+        // --- NEW SAFETY CHECK ---
+        // If within 200 tiles of spawn, force distance to 0 for spawn calculation.
+        // This ensures even if a Mountain spawns at x=10, y=10, 
+        // it generates Bats (Tier 0) instead of Yetis (Tier 3).
+        const effectiveDist = (dist < 200) ? 0 : dist;
 
-                        if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
+        // Pass effectiveDist instead of dist
+        const enemyTile = this.getEnemySpawn(tile, effectiveDist, random);
+
+        if (enemyTile && (ENEMY_DATA[enemyTile] || TILE_DATA[enemyTile])) {
                             chunkData[y][x] = enemyTile;
                             if (TILE_DATA[enemyTile]) {
                                 this.setWorldTile(worldX, worldY, enemyTile);
