@@ -2190,8 +2190,10 @@ for (let y = 0; y < map.length; y++) {
             '^': { // Mountain
                 0: ['🦇', 'g', 'R'], // Bat, Goblin, Recruit
                 1: ['g', 's', '🦅'], // Goblin, Skeleton, Eagle
-                2: ['s', '🗿', 'Y'], // Skeleton, Golem, Yeti
-                3: ['Y', 'Ø', '🐲'], // Yeti, Ogre, Drake
+                // WAS: 2: ['s', '🗿', 'Y'],
+                2: ['s', '🧌', 'Y'], // Skeleton, Golem (New Icon), Yeti
+                // WAS: 3: ['Y', 'Ø', '🐲'],
+                3: ['Y', '🧌', '🐲'], // Yeti, Golem, Drake
                 4: ['🐲', '🦖', '🤖'] // Drake, Rex, Guardian
             },
             '≈': { // Swamp
