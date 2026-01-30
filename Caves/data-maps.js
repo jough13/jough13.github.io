@@ -818,3 +818,12 @@ window.ATMOSPHERE_TEXT = {
         "You see ripples in the water. Something is moving."
     ]
 };
+window.LORE_FRAGMENTS = [
+    "My dearest Elara, the crops failed again. The soil tastes of ash...",
+    "Order 66: Burn the library. The King commands it. He says the books are whispering to him.",
+    "I hid the gold under the loose stone in the... (the rest is smeared with blood).",
+    "They are coming from the mountain. They don't look like men anymore.",
+    "Day 4: I ran out of water. I see the oasis, but I know it's a mirage. Or a trap.",
+    "Mom, Dad, I'm going to the safe haven. I promise I'll write when I get there.",
+    "Recipe: Two parts Bluecap, one part Void Dust... (The handwriting becomes frantic scribbles)."
+];
