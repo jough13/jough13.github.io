@@ -1,15 +1,11 @@
 <style>
   .recipe-photo {
-    width: 67%;
+    width: 60%;
     border: 1px solid #555; /* 1 pixel stroked outer border */
     border-radius: 4px; /* Optional: slight rounding looks nice */
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     display: block;
     margin: 20px auto; /* Centers the image */
-  }
-  .recipe-photo:hover {
-    transform: scale(1.03); /* Subtle popup effect */
-    box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23); /* Shadow for depth */
   }
 </style>
 **The Concept:** This meal is designed for maximum flavor with minimal active effort. We’re using the slow cooker to create incredibly tender, savory pork while simultaneously whipping up a quick, aromatic beef broth on the stove. The result is a rich, satisfying sandwich paired with a lighter soup that tastes like it simmered all day.
