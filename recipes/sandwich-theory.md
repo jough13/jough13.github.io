@@ -7,6 +7,7 @@ This report operates under a liberal definition of the sandwich, accepting candi
 The analysis reveals that while the Hamburger represents a triumph of industrial standardization and the Shawarma dominates the domain of pure meat preparation (winning the 2025 TasteAtlas ranking), the Vietnamese Bánh Mì emerges as the definitive "Greatest Sandwich in Human History." It achieves this title through a singular optimization of textural contrast (the gastrophysical "crunch"), thermodynamic gradients (hot meat vs. cold pickle), and structural integrity (the hydrophobic barrier of pâté), all while embodying a profound post-colonial cultural resilience.
 
 ---
+
 ## Part I: The Ontological Crisis and the Topological Definition
 Before we can evaluate quality, we must define the boundaries of existence. The taxonomy of the sandwich is plagued by chaotic nomenclature, legal contradictions, and geometric ambiguity. To determine the "best," we must first establish the eligible set of candidates through a rigorous topological framework.
 
@@ -37,7 +38,9 @@ Moving from the legal to the mathematical, the sandwich exists as a measurable e
 In the case of a standard sandwich (n=3 dimensions), containing three ingredients (e.g., bread, cheese, and ham), there exists a single planar cut that can simultaneously bisect the volume of the bread, the volume of the cheese, and the volume of the ham. This theorem provides the mathematical foundation for the "Perfect Cut." It confirms that regardless of the sandwich's asymmetry or the "lop-sidedness" of its construction, there is a theoretical plane of equilibrium.
 
 This mathematical truth underpins the structural analysis of the sandwich: a "great" sandwich must not only be edible but must possess a distribution of mass that allows for this theoretical bisection without catastrophic structural failure. A sandwich that cannot be cut (e.g., an overstuffed burrito that explodes upon incision) violates the spirit of the Ham Sandwich Theorem, suggesting a failure of assembly rather than a failure of geometry.
+
 ---
+
 ## Part II: The Phylogenetics of Portable Nutrition
 To determine the "greatest" sandwich, one must analyze the evolutionary pressures that refined these culinary forms over millennia. The sandwich is not a singular invention of 18th-century England but a case of convergent evolution across cultures solving the same problem: how to transport high-value calories (meat/fat) in an edible, clean container (starch).
 
@@ -67,6 +70,7 @@ The 19th-century French colonization of Vietnam created the conditions for the B
 Unlike the Rou Jia Mo (ancient tradition) or the Burger (industrial standardization), the Bánh Mì represents Culinary Resistance and Adaptation. It took the tools of the colonizer (the baguette) and improved upon them, creating a product superior to the sum of its parts. This historical context adds a layer of "Cultural Weight" to the Bánh Mì that the simple Ham and Cheese lacks.
 
 ---
+
 ## Part III: The Physics of the Interface (Engineering Analysis)
 A sandwich is, fundamentally, a composite material structure. Its greatness depends on its ability to maintain Structural Integrity under the stress of consumption (biting, holding, gravity). We apply Sandwich Beam Theory and Thermodynamics to evaluate the contenders.
 
@@ -105,7 +109,9 @@ The thermodynamic experience of a sandwich is defined by Heat Retention and Ther
 * **The Burrito (The Insulator):** The burrito acts as a thermal insulator. The tortilla and the density of the rice/beans trap heat. While efficient for transport, this creates a Thermodynamic Monotony—every bite is the same uniform temperature (often too hot), and the steam generated internally degrades the texture of any crunchy elements (lettuce wilts instantly).
 * **The Cold Sandwich:** Lacks thermal energy, relying entirely on ambient flavor release.
 * **The Bánh Mì and Burger (The Gradient):** These possess Thermodynamic Contrast. The ideal Burger has a hot patty and cold lettuce/tomato. The Bánh Mì features warm grilled pork against cold pickled vegetables. This temperature gradient (ΔT) excites the trigeminal nerve, enhancing the perception of freshness and complexity.
+
 ---
+
 ## Part IV: Gastrophysics and the Sensory Manifold
 Moving beyond the physics of the object to the physics of perception, we analyze the Gastrophysics of eating. Greatness is defined by the amplitude and diversity of sensory inputs.
 
@@ -130,7 +136,9 @@ The "Fifth Taste," Umami, is the sensation of savory deliciousness derived from 
 The flow of sauce (Rheology) determines the messiness and mouthfeel. A sauce must have a Yield Stress high enough to stay in the sandwich but low enough to flow when bitten.
 * **Béchamel (Croque Monsieur):** A non-Newtonian fluid with high viscosity. When properly prepared, it acts as a flavorful mortar. However, if the roux is too thin, the sandwich suffers from Catastrophic Slide, requiring the indignity of a fork.
 * **Mustard (Cuban):** Essential for its acid profile, but rheologically it is a shear-thinning fluid. In a Cuban, it is absorbed slightly into the bread during pressing, reducing lubricity and aiding structural stability.
+
 ---
+
 ## Part V: The Calculus of Composition (Mathematical Analysis)
 Can we calculate the greatness of a sandwich? We can analyze the ratios and geometry.
 
@@ -146,7 +154,9 @@ The Golden Ratio (φ ≈ 1.618) is often cited in aesthetics, but in sandwich me
 The debate over cutting sandwiches (diagonal vs. straight) is mathematically resolvable.
 * **Diagonal Cut:** Increases the length of the exposed edge (hypotenuse c = √(a² + b²)). This allows for a first bite with minimal crust resistance and maximum filling exposure. It creates acute angles (45°) which fit the mouth better than 90° corners.
 * **The Cuban Cut:** Typically cut on a severe bias (diagonal), maximizing the exposed surface area of the melted cheese and pork layers, visually signaling the quality of the lamination.
+
 ---
+
 ## Part VI: The Grand Tournament (Comparative Analysis)
 Based on the ontological, historical, engineering, and gastrophysical criteria established, we evaluate the finalists using specific data from 2024/2025 rankings and scientific analysis.
 
