@@ -1,6 +1,7 @@
-# Crock Pot Banh Mi & "Cheat" Beef Pho
 
 **The Concept:** This meal is designed for maximum flavor with minimal active effort. We’re using the slow cooker to create incredibly tender, savory pork while simultaneously whipping up a quick, aromatic beef broth on the stove. The result is a rich, satisfying sandwich paired with a lighter soup that tastes like it simmered all day.
+
+![Crock Pot Banh Mi](/photos/PXL_20260130_222656771~2.jpg)
 
 ## Kitchen Stats
 * **Prep Time:** 30–40 Minutes
@@ -62,6 +63,8 @@ A Banh Mi isn't complete without this tangy crunch to cut through the richness o
 
 ### Phase 3: The "Cheat" Beef Noodle Soup
 Here is how we get deep, smoky flavor without simmering bones for 12 hours.
+
+![Beef Noodle Soup](/photos/PXL_20260130_223721118~2.jpg)
 
 1. **Char the Aromatics:** Cut the onion and the piece of ginger in half. Place them cut-side up on a baking sheet and broil them for about 5 minutes until they are blackened and charred. This char is what gives the broth its authentic, smoky depth.
 2. **Simmer:** Add the charred onion and ginger to a pot with the beef broth, star anise, and cinnamon stick. Bring to a gentle simmer for 20 minutes to infuse the flavors.
