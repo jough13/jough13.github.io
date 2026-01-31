@@ -5,6 +5,7 @@ The inquiry into the "best" kind of sandwich is not a trivial pursuit of subject
 This report operates under a liberal definition of the sandwich, accepting candidates ranging from the traditional planar structures (Reuben, Club) to the topological rebels (Taco, Burrito, Hot Dog). By synthesizing data from global rankings (TasteAtlas, CNN), historical records (Qin Dynasty texts, Earl of Sandwich lore), and scientific principles of moisture migration and heat transfer, we establish a hierarchy of excellence.
 
 The analysis reveals that while the Hamburger represents a triumph of industrial standardization and the Shawarma dominates the domain of pure meat preparation (winning the 2025 TasteAtlas ranking), the Vietnamese Bánh Mì emerges as the definitive "Greatest Sandwich in Human History." It achieves this title through a singular optimization of textural contrast (the gastrophysical "crunch"), thermodynamic gradients (hot meat vs. cold pickle), and structural integrity (the hydrophobic barrier of pâté), all while embodying a profound post-colonial cultural resilience.
+
 ---
 ## Part I: The Ontological Crisis and the Topological Definition
 Before we can evaluate quality, we must define the boundaries of existence. The taxonomy of the sandwich is plagued by chaotic nomenclature, legal contradictions, and geometric ambiguity. To determine the "best," we must first establish the eligible set of candidates through a rigorous topological framework.
