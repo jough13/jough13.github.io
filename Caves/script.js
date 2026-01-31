@@ -1538,8 +1538,7 @@ const chunkManager = {
     caveThemes: {},
     castleMaps: {},
     caveEnemies: {},
-
-    generateCave(caveId) {
+generateCave(caveId) {
         if (this.caveMaps[caveId]) return this.caveMaps[caveId];
 
         // --- 1. Setup Variables (Dynamic Scaling) ---
@@ -1554,24 +1553,24 @@ const chunkManager = {
         const cY = parts.length > 2 ? parseInt(parts[2]) : 0;
         const dist = Math.sqrt(cX * cX + cY * cY);
 
-        // Safe Zone Density Nerf
+        // Safe Zone Density Nerf (Fewer enemies near spawn)
         if (dist < 150) { 
-            enemyCount = 10; // Half the enemies for starter caves!
+            enemyCount = 10; 
         }
 
         // --- THEME SELECTION LOGIC ---
         if (caveId === 'cave_landmark') {
             chosenThemeKey = 'ABYSS'; // Force the Epic Theme
-            CAVE_WIDTH = 100;  // Huge map (Standard is 70)
+            CAVE_WIDTH = 100;  // Huge map
             CAVE_HEIGHT = 100; // Huge map
-            enemyCount = 60;   // Triple the enemies (Standard is 20)
+            enemyCount = 60;   // Triple the enemies
         } else if (caveId.startsWith('void_')) {
             chosenThemeKey = 'VOID'; // Force Void Theme
-            enemyCount = 25;   // Slightly denser than normal
+            enemyCount = 25;   
         } else {
             // Normal procedural cave
             const randomTheme = Alea(stringToSeed(caveId + ':theme'));
-            // Filter out special themes so they doesn't appear in normal caves
+            // Filter out special themes
             const themeKeys = Object.keys(CAVE_THEMES).filter(k => k !== 'ABYSS' && k !== 'VOID');
             chosenThemeKey = themeKeys[Math.floor(randomTheme() * themeKeys.length)];
         }
@@ -1580,7 +1579,7 @@ const chunkManager = {
         const theme = CAVE_THEMES[chosenThemeKey];
         this.caveThemes[caveId] = chosenThemeKey; // Remember the theme
 
-        // 2. Generate the map layout
+        // 2. Generate the map layout (Random Walk)
         const map = Array.from({
             length: CAVE_HEIGHT
         }, () => Array(CAVE_WIDTH).fill(theme.wall));
@@ -1641,19 +1640,17 @@ const chunkManager = {
                         tileToPlace = templateTile; // It's an item or enemy
                     }
 
-                    // Stamp the tile onto the map
-                    map[mapY][mapX] = tileToPlace;
-
-                    // If it's an enemy, we must pre-populate it
+                    // --- FIX: GHOST TILE LOGIC ---
                     if (ENEMY_DATA[tileToPlace]) {
-                        const enemyTemplate = ENEMY_DATA[tileToPlace];
-                        // Parse the cave's world coordinates if available, or default to 0
-                        const parts = caveId.split('_');
-                        const caveX = parts.length > 2 ? parseInt(parts[1]) : 0;
-                        const caveY = parts.length > 2 ? parseInt(parts[2]) : 0;
+                        // 1. If it's an enemy, set the underlying map tile to FLOOR
+                        // This prevents the "White C" ghost under the "Red C" enemy
+                        map[mapY][mapX] = theme.floor;
 
-                        // Generate scaled stats
-                        const scaledStats = getScaledEnemy(enemyTemplate, caveX, caveY);
+                        // 2. Create the Entity
+                        const enemyTemplate = ENEMY_DATA[tileToPlace];
+                        
+                        // Generate scaled stats based on cave coordinates
+                        const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
 
                         this.caveEnemies[caveId].push({
                             id: `${caveId}:${mapX},${mapY}`,
@@ -1671,15 +1668,16 @@ const chunkManager = {
                             loot: enemyTemplate.loot,
                             caster: enemyTemplate.caster || false,
                             castRange: enemyTemplate.castRange || 0,
-                            spellDamage: Math.floor((enemyTemplate.spellDamage || 0) * (1 + (Math.floor(Math.sqrt(caveX * caveX + caveY * caveY) / 50) * 0.1))),
+                            spellDamage: Math.floor((enemyTemplate.spellDamage || 0) * (1 + (Math.floor(dist / 50) * 0.1))),
                             inflicts: enemyTemplate.inflicts || null,
-                            isElite: scaledStats.isElite || false,
-                            color: scaledStats.color || null,
                             madnessTurns: 0,
                             frostbiteTurns: 0,
                             poisonTurns: 0,
                             rootTurns: 0
                         });
+                    } else {
+                        // Not an enemy? Stamp the tile normally (Walls, Items, Floor)
+                        map[mapY][mapX] = tileToPlace;
                     }
                 }
             }
@@ -1742,9 +1740,6 @@ const chunkManager = {
                 const randY = Math.floor(random() * (CAVE_HEIGHT - 2)) + 1;
                 const randX = Math.floor(random() * (CAVE_WIDTH - 2)) + 1;
 
-                // Construct the unique ID for this specific tile in this specific cave
-                const uniqueTileId = `${caveId}:${randX},${-randY}`;
-
                 const lootId = `${caveId}:${randX},${-randY}`;
 
                 if (gameState.lootedTiles.has(lootId)) {
@@ -1787,7 +1782,19 @@ const chunkManager = {
         }
 
         // --- 5. Place procedural enemies ---
-        const enemyTypes = theme.enemies || Object.keys(ENEMY_DATA);
+        let enemyTypes = theme.enemies || Object.keys(ENEMY_DATA);
+
+        // --- FIX: SAFE ZONE CAVE NERF ---
+        // If within 250 tiles of spawn, remove "Hard" enemies from the spawn pool
+        if (dist < 250) {
+            // Filter out Chiefs (C), Mages (m), Orcs (o), Ogres (Ø), Yetis (Y), Demons (D), etc.
+            const hardEnemies = ['C', 'm', 'o', 'Ø', 'Y', 'D', '🐲', '🧙', 'v', 'f'];
+            enemyTypes = enemyTypes.filter(e => !hardEnemies.includes(e));
+            
+            // Safety fallback: If we filtered everything out, add basics
+            if (enemyTypes.length === 0) enemyTypes = ['r', 'b', 'g'];
+        }
+        // --------------------------------
 
         for (let i = 0; i < enemyCount; i++) {
 
@@ -1798,12 +1805,7 @@ const chunkManager = {
                 const enemyTile = enemyTypes[Math.floor(random() * enemyTypes.length)];
                 const enemyTemplate = ENEMY_DATA[enemyTile];
 
-                // Parse coordinates for scaling
-                const parts = caveId.split('_');
-                const caveX = parts.length > 2 ? parseInt(parts[1]) : 0;
-                const caveY = parts.length > 2 ? parseInt(parts[2]) : 0;
-                const scaledStats = getScaledEnemy(enemyTemplate, caveX, caveY);
-
+                const scaledStats = getScaledEnemy(enemyTemplate, cX, cY);
 
                 map[randY][randX] = enemyTile;
 
@@ -1812,10 +1814,10 @@ const chunkManager = {
                     x: randX,
                     y: randY,
                     tile: enemyTile,
-                    name: scaledStats.name, // Use scaled name
-                    health: scaledStats.maxHealth, // Use scaled HP
+                    name: scaledStats.name, 
+                    health: scaledStats.maxHealth, 
                     maxHealth: scaledStats.maxHealth,
-                    attack: scaledStats.attack, // Use scaled Atk
+                    attack: scaledStats.attack,
                     defense: enemyTemplate.defense,
                     xp: scaledStats.xp,
                     loot: enemyTemplate.loot,
@@ -1929,7 +1931,6 @@ const chunkManager = {
                 attempts++;
             }
 
-            // --- MOVED INSIDE THE IF BLOCK ---
             if (!bossPlaced) {
                 console.warn("⚠️ Boss placement RNG failed. Forcing spawn at center.");
 
@@ -2863,8 +2864,9 @@ const renderStats = () => {
                     // e.g., "Health: 10 (+5)"
                     healthString += ` <span class="text-blue-400">(+${Math.ceil(gameState.player.shieldValue)})</span>`;
                 }
-                // Use innerHTML to render the span, and Math.ceil to avoid ugly decimals
-                element.innerHTML = healthString;
+                
+                    let displayHealth = Math.ceil(value); 
+                    let healthString = `${label}: ${displayHealth}`; 
 
 
                 // Update text and bar color
@@ -8509,7 +8511,7 @@ function processEnemyTurns() {
 
                 // Check collision with player
                 if (tile.x === player.x && tile.y === player.y) {
-                    const dmg = Math.floor(enemy.attack * 1.5); // 150% Damage
+                    const dmg = Math.floor(enemy.attack * 1.5); // 150% Damage (Rounded down)
                     player.health -= dmg;
                     gameState.screenShake = 15;
                     triggerStatFlash(statDisplays.health, false);
@@ -8570,7 +8572,10 @@ function processEnemyTurns() {
             const baseDefense = Math.floor(player.dexterity / 3);
             const buffDefense = player.defenseBonus || 0;
             const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
-            const totalDefense = baseDefense + armorDefense + buffDefense + (player.constitution * 0.1);
+            
+            // FIX: Round down Constitution bonus so Total Defense is an integer
+            const conBonus = Math.floor(player.constitution * 0.1);
+            const totalDefense = baseDefense + armorDefense + buffDefense + conBonus + talentDefense;
 
             let dodgeChance = Math.min(player.luck * 0.002, 0.25);
             if (player.talents && player.talents.includes('evasion')) {
@@ -8581,7 +8586,9 @@ function processEnemyTurns() {
                 logMessage(`The ${enemy.name} attacks, but you dodge!`);
                 ParticleSystem.createFloatingText(player.x, player.y, "Dodge!", "#3b82f6");
             } else {
-                let dmg = Math.max(1, enemy.attack - totalDefense);
+                // FIX: Ensure damage is an integer (Math.floor)
+                let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
+                
                 // Shield Absorb
                 if (player.shieldValue > 0) {
                     const absorb = Math.min(player.shieldValue, dmg);
@@ -8620,7 +8627,9 @@ function processEnemyTurns() {
         // Caster Attack (Range Check)
         const castRangeSq = Math.pow(enemy.castRange || 6, 2);
         if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20) {
-            const spellDmg = Math.max(1, enemy.spellDamage || 1);
+            // FIX: Ensure spell damage is integer
+            const spellDmg = Math.max(1, Math.floor(enemy.spellDamage || 1));
+            
             let spellName = "spell";
             if (enemy.tile === 'm') spellName = "Arcane Bolt";
             if (enemy.tile === 'Z') spellName = "Frost Shard";
