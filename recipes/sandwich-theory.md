@@ -14,6 +14,7 @@ The most robust framework for classifying food structure is the **Cube Rule of F
 * **Five Sides:** Quiche. (e.g., Bread Bowl, Deep Dish Pizza).
 * **Six Sides:** Calzone. (e.g., Dumplings, Uncrustables, Ravioli).
 
+
 This framework introduces immediate philosophical friction with the user's "liberal" definition. Under strict topological interpretation, the Sub Sandwich and the Hot Dog are structurally identical to the Taco—they are starches protecting the filling on three sides (bottom, left, right). A traditional sandwich requires two distinct, unconnected planes of starch. However, the "Sandwich Alignment Chart" provides a necessary corrective for this analysis. It distinguishes between "Structure Purists" (who demand two separate slices) and "Structure Rebels" (who accept the hinged roll or the wrap). We adopt the Radical Anarchist position on the alignment chart: if it functions as a portable nutrient delivery system encasing a filling in starch, it is a sandwich. This inclusion is crucial because it allows us to evaluate the Burrito (a cylindrical sandwich) and the Hot Dog (a hinged taco-sandwich) against the traditional BLT.
 
 ### 1.2 The Legal and Legislative Definition
