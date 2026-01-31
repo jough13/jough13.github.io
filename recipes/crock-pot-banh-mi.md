@@ -1,11 +1,9 @@
 **The Concept:** This meal is designed for maximum flavor with minimal active effort. We’re using the slow cooker to create incredibly tender, savory pork while simultaneously whipping up a quick, aromatic beef broth on the stove. The result is a rich, satisfying sandwich paired with a lighter soup that tastes like it simmered all day.
 
-
 ## Kitchen Stats
 * **Prep Time:** 30–40 Minutes
 * **Cook Time:** 4–8 Hours (depending on slow cooker setting)
 * **Total Time:** ~8.5 Hours
-
 
 ## The Shopping List
 
@@ -38,7 +36,6 @@
 * Fresh Cilantro
 * Cucumber (sliced)
 * Jalapeño (sliced)
-
 
 ## Instructions
 
