@@ -22,7 +22,7 @@ window.TILE_DATA = {
 '⬇️': { type: 'obelisk_puzzle', direction: 'south', flavor: "The stone is scorched and hot.", tile: '|' },
 
 // 2. The Sealed Door (The Reward Location)
-'⛩️d': { 
+'🚪': { 
     type: 'sealed_door', 
     name: 'The Vault of the Old King',
     flavor: "A massive stone door with no handle. It has a keyhole.",
