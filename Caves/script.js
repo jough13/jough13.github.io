@@ -57,6 +57,52 @@ const processingSpawnTiles = new Set();
 
 let areGlobalListenersInitialized = false;
 
+// --- OPTIMIZATION GLOBALS ---
+let saveTimeout = null; // Tracks the pending save timer
+
+/**
+ * Queues a Firestore update. If another update comes in before the timer fires,
+ * the previous one is cancelled and the new one takes its place.
+ */
+function triggerDebouncedSave(updates) {
+    // 1. Cancel any previously pending save
+    if (saveTimeout) {
+        clearTimeout(saveTimeout);
+    }
+
+    // 2. Set a new timer for 2 seconds
+    saveTimeout = setTimeout(() => {
+        if (playerRef) {
+            // This runs 2 seconds after the player STOPS moving
+            playerRef.update(updates).catch(err => {
+                console.error("Auto-save failed:", err);
+            });
+            console.log("☁️ Auto-saved to cloud."); // Debug log
+        }
+        saveTimeout = null;
+    }, 2000); 
+}
+
+/**
+ * Forces any pending debounced save to happen immediately.
+ * Call this before entering combat or closing the window.
+ */
+
+function flushPendingSave(updates = null) {
+    if (saveTimeout) {
+        clearTimeout(saveTimeout);
+        saveTimeout = null;
+        
+        // If specific updates provided, use them. Otherwise, we rely on the 
+        // fact that game state is robust, but technically we need the data object.
+        // In this implementation, we usually pass the latest updates data.
+        if (updates && playerRef) {
+            playerRef.update(updates);
+            console.log("☁️ Forced flush save.");
+        }
+    }
+}
+
 // --- SPATIAL PARTITIONING HELPERS ---
 const SPATIAL_CHUNK_SIZE = 16; // Match your chunkManager size
 
@@ -3028,66 +3074,43 @@ function handleStatAllocation(event) {
     const statToIncrease = event.target.dataset.stat;
 
     if (statToIncrease && gameState.player.hasOwnProperty(statToIncrease)) {
-        // Spend the point
+        // 1. Spend the point & Increase the Stat
         gameState.player.statPoints--;
         gameState.player[statToIncrease]++;
 
-        let derivedUpdate = {}; // Store changes for Firebase
+        logMessage(`You increased your ${statToIncrease}!`);
 
-        if (statToIncrease === 'constitution') {
-            gameState.player.maxHealth += 5;
-            gameState.player.health += 5; // Also heal them
-            derivedUpdate.maxHealth = gameState.player.maxHealth;
-            derivedUpdate.health = gameState.player.health;
-            logMessage(`Your Constitution increases! Max Health is now ${gameState.player.maxHealth}.`);
+        // 2. Recalculate Derived Vitals (Health/Mana/etc) automatically
+        // This replaces the big if/else block that manually added +5
+        const oldMaxHealth = gameState.player.maxHealth;
+        const oldMaxMana = gameState.player.maxMana;
+        
+        recalculateDerivedStats();
 
-        } else if (statToIncrease === 'wits') {
-            gameState.player.maxMana += 5;
-            gameState.player.mana += 5; // Restore mana
-            derivedUpdate.maxMana = gameState.player.maxMana;
-            derivedUpdate.mana = gameState.player.mana;
-            logMessage(`Your Wits increase! Max Mana is now ${gameState.player.maxMana}.`);
-
-        } else if (statToIncrease === 'endurance') {
-            gameState.player.maxStamina += 5;
-            gameState.player.stamina += 5; // Restore stamina
-            derivedUpdate.maxStamina = gameState.player.maxStamina;
-            derivedUpdate.stamina = gameState.player.stamina;
-            logMessage(`Your Endurance increases! Max Stamina is now ${gameState.player.maxStamina}.`);
-
-        } else if (statToIncrease === 'willpower') {
-            // Psyche seems to be a smaller pool, so we'll add less
-            gameState.player.maxPsyche += 3;
-            gameState.player.psyche += 3; // Restore psyche
-            derivedUpdate.maxPsyche = gameState.player.maxPsyche;
-            derivedUpdate.psyche = gameState.player.psyche;
-            logMessage(`Your Willpower increases! Max Psyche is now ${gameState.player.maxPsyche}.`);
-
-        } else if (statToIncrease === 'dexterity') {
-            logMessage(`Your Dexterity increases! You feel quicker and harder to hit.`);
-
-        } else if (statToIncrease === 'luck') {
-            logMessage(`Your Luck increases! You feel a bit luckier.`);
-
-        } else if (statToIncrease === 'perception') {
-            logMessage(`Your Perception increases! You feel more aware of your surroundings.`);
-
-        } else if (statToIncrease === 'intuition') {
-            logMessage(`Your Intuition increases! You feel more in tune with your surroundings.`);
-
-        } else {
-            // This handles stats that don't have derived effects yet
-            logMessage(`You increased your ${statToIncrease}!`);
+        // Optional: Heal the difference so they get the benefit immediately
+        if (gameState.player.maxHealth > oldMaxHealth) {
+            gameState.player.health += (gameState.player.maxHealth - oldMaxHealth);
+        }
+        if (gameState.player.maxMana > oldMaxMana) {
+            gameState.player.mana += (gameState.player.maxMana - oldMaxMana);
         }
 
-        // Update database
+        // 3. Update database
+        // We save the entire player object state to ensure sync
         playerRef.update({
             statPoints: gameState.player.statPoints,
             [statToIncrease]: gameState.player[statToIncrease],
-            ...derivedUpdate // Add any derived stat changes here
+            maxHealth: gameState.player.maxHealth,
+            health: gameState.player.health,
+            maxMana: gameState.player.maxMana,
+            mana: gameState.player.mana,
+            maxStamina: gameState.player.maxStamina,
+            stamina: gameState.player.stamina,
+            maxPsyche: gameState.player.maxPsyche,
+            psyche: gameState.player.psyche
         });
 
-        // Update UI
+        // 4. Update UI
         renderStats();
     }
 }
@@ -8851,6 +8874,11 @@ function getPlayerDamageModifier(baseDamage) {
 function handlePlayerDeath() {
     if (gameState.player.health > 0) return false; // Not dead
 
+        if (saveTimeout) {
+        clearTimeout(saveTimeout);
+        saveTimeout = null;
+    }
+
     const player = gameState.player;
 
     // 1. Visuals & Logs
@@ -9313,7 +9341,19 @@ function endPlayerTurn() {
         y: gameState.player.y
     };
 
-    playerRef.update(finalUpdates);
+     if (gameState.mapMode === 'overworld') {
+        // In the Overworld, players move fast (hold W). 
+        // We delay the save until they stop moving for 2 seconds.
+        triggerDebouncedSave(finalUpdates);
+    } else {
+        // In Dungeons/Castles, moves are strategic and turn-based.
+        // We save immediately to prevent data loss if the browser crashes during a fight.
+        
+        // Also cancel any pending overworld save so we don't overwrite this newer data
+        if (saveTimeout) clearTimeout(saveTimeout); 
+        
+        playerRef.update(finalUpdates);
+    }
 
     // --- PALADIN: HOLY AURA ---
     if (player.talents && player.talents.includes('holy_aura')) {
@@ -10374,6 +10414,46 @@ function restPlayer() {
         health: gameState.player.health
     });
     endPlayerTurn();
+}
+
+function recalculateDerivedStats() {
+    const player = gameState.player;
+    
+    // 1. Reset to Base (Race + Background + Stat Points + Tomes)
+    // Note: We assume current player.strength/constitution includes permanent stat points
+    // If you separate base stats from spent points later, update this.
+    
+    // 2. Base Formulas
+    let calculatedMaxHealth = 10 + (player.constitution * 5);
+    let calculatedMaxMana = 10 + (player.wits * 5);
+    let calculatedMaxStamina = 10 + (player.endurance * 5);
+    let calculatedMaxPsyche = 10 + (player.willpower * 3);
+
+    // 3. Add Equipment Bonuses
+    ['weapon', 'armor'].forEach(slot => {
+        const item = player.equipment[slot];
+        if (item && item.statBonuses) {
+            if (item.statBonuses.constitution) calculatedMaxHealth += (item.statBonuses.constitution * 5);
+            if (item.statBonuses.wits) calculatedMaxMana += (item.statBonuses.wits * 5);
+            if (item.statBonuses.endurance) calculatedMaxStamina += (item.statBonuses.endurance * 5);
+            if (item.statBonuses.willpower) calculatedMaxPsyche += (item.statBonuses.willpower * 3);
+        }
+    });
+
+    // 4. Add Permanent Anomalies (Elder Tree, etc.)
+    // You might need to store these specific permanent buffs in a separate object if they aren't just raw stat increases.
+    
+    // 5. Apply
+    player.maxHealth = calculatedMaxHealth;
+    player.maxMana = calculatedMaxMana;
+    player.maxStamina = calculatedMaxStamina;
+    player.maxPsyche = calculatedMaxPsyche;
+
+    // 6. Clamp current values (don't allow HP > MaxHP)
+    player.health = Math.min(player.health, player.maxHealth);
+    player.mana = Math.min(player.mana, player.maxMana);
+    player.stamina = Math.min(player.stamina, player.maxStamina);
+    player.psyche = Math.min(player.psyche, player.maxPsyche);
 }
 
 async function attemptMovePlayer(newX, newY) {
@@ -12693,6 +12773,14 @@ function clearSessionState() {
 }
 
 logoutButton.addEventListener('click', () => {
+
+    // 0. Cancel any pending saves immediately
+    
+    if (saveTimeout) {
+        clearTimeout(saveTimeout);
+        saveTimeout = null;
+    }
+
     // 1. Only attempt to save if we have a valid database reference
     if (playerRef) {
         const finalState = {
@@ -12849,6 +12937,8 @@ if (timeDoc.exists) {
         ...playerData
     };
     Object.assign(gameState.player, fullPlayerData);
+
+    recalculateDerivedStats(); 
 
     // If not in a dungeon, ensure we aren't inside a wall/water without a boat
 if (gameState.mapMode === 'overworld') {
