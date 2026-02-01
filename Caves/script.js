@@ -2976,79 +2976,101 @@ function renderStatusEffects() {
 }
 
 const renderStats = () => {
+    // 1. Safety Check: Don't run if player isn't loaded
+    if (!gameState.player) return;
 
     renderStatusEffects();
 
     for (const statName in statDisplays) {
+        // RECOVERY: If the element was null at startup, try to find it now
+        // This fixes the "XP doesn't update" bug if the ID wasn't ready
+        if (!statDisplays[statName]) {
+            statDisplays[statName] = document.getElementById(`${statName}Display`);
+        }
+
         const element = statDisplays[statName];
+
         if (element && gameState.player.hasOwnProperty(statName)) {
             const value = gameState.player[statName];
             const label = statName.charAt(0).toUpperCase() + statName.slice(1);
 
             if (statName === 'xp') {
-                const max = gameState.player.xpToNextLevel;
-                const percent = (value / max) * 100;
+                const max = gameState.player.xpToNextLevel || 100; // Prevent divide by zero
+                const percent = Math.min(100, (value / max) * 100);
 
-                // Update text and bar width
+                // Update text
                 element.textContent = `XP: ${value} / ${max}`;
-                statBarElements.xp.style.width = `${percent}%`;
+                
+                // Safe Bar Update
+                const xpBar = statBarElements.xp || document.getElementById('xpBar');
+                if (xpBar) xpBar.style.width = `${percent}%`;
 
             } else if (statName === 'statPoints') {
+                // Safe Panel Access
+                const panel = coreStatsPanel || document.getElementById('coreStatsPanel');
+                
                 if (value > 0) {
                     element.textContent = `Stat Points: ${value}`;
                     element.classList.remove('hidden');
-                    coreStatsPanel.classList.add('show-stat-buttons');
+                    if (panel) panel.classList.add('show-stat-buttons');
                 } else {
                     element.classList.add('hidden');
-                    coreStatsPanel.classList.remove('show-stat-buttons');
+                    if (panel) panel.classList.remove('show-stat-buttons');
                 }
 
             } else if (statName === 'health') {
                 const max = gameState.player.maxHealth;
-                const percent = (value / max) * 100;
+                const percent = Math.min(100, (value / max) * 100);
 
-                // Update bar width
-                statBarElements.health.style.width = `${percent}%`;
+                // Safe Bar Update
+                const hpBar = statBarElements.health || document.getElementById('hpBar');
+                if (hpBar) {
+                    hpBar.style.width = `${percent}%`;
+                    
+                    // Dynamic Bar Color (Your Custom Logic)
+                    if (percent > 60) hpBar.style.backgroundColor = '#22c55e'; // Green
+                    else if (percent > 30) hpBar.style.backgroundColor = '#eab308'; // Yellow
+                    else hpBar.style.backgroundColor = '#ef4444'; // Red
+                }
                 
-                // 1. Calculate display value (Round up to avoid 9.99/10)
+                // 1. Calculate display value 
                 let displayHealth = Math.ceil(value); 
                 
-                // 2. Declare string ONCE
+                // 2. Declare string
                 let healthString = `${label}: ${displayHealth}`;
 
-                // 3. Add Shield text if active
-                if (gameState.player.shieldValue > 0) {
-                    healthString += ` <span class="text-blue-400">(+${Math.ceil(gameState.player.shieldValue)})</span>`;
+                // 3. Add Shield text if active (Safe check for undefined)
+                const shield = gameState.player.shieldValue || 0;
+                if (shield > 0) {
+                    healthString += ` <span class="text-blue-400">(+${Math.ceil(shield)})</span>`;
                 }
                 
                 // 4. Update the element text
                 element.innerHTML = healthString;
 
-                // Update text and bar color
-                element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500'); // Clear old text colors
-
-                if (percent > 60) {
-                    element.classList.add('text-green-500');
-                    statBarElements.health.style.backgroundColor = '#22c55e'; // Green
-                } else if (percent > 30) {
-                    element.classList.add('text-yellow-500');
-                    statBarElements.health.style.backgroundColor = '#eab308'; // Yellow
-                } else {
-                    element.classList.add('text-red-500');
-                    statBarElements.health.style.backgroundColor = '#ef4444'; // Red
-                }
+                // Update text colors
+                element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500'); 
+                if (percent > 60) element.classList.add('text-green-500');
+                else if (percent > 30) element.classList.add('text-yellow-500');
+                else element.classList.add('text-red-500');
 
             } else if (statName === 'mana') {
                 const max = gameState.player.maxMana;
-                const percent = (value / max) * 100;
-                statBarElements.mana.style.width = `${percent}%`;
-                element.textContent = `${label}: ${value}`;
+                const percent = Math.min(100, (value / max) * 100);
+                
+                const manaBar = statBarElements.mana || document.getElementById('manaBar');
+                if (manaBar) manaBar.style.width = `${percent}%`;
+                
+                element.textContent = `${label}: ${Math.floor(value)}`;
 
             } else if (statName === 'stamina') {
                 const max = gameState.player.maxStamina;
-                const percent = (value / max) * 100;
-                statBarElements.stamina.style.width = `${percent}%`;
-                element.textContent = `${label}: ${value}`;
+                const percent = Math.min(100, (value / max) * 100);
+                
+                const stamBar = statBarElements.stamina || document.getElementById('staminaBar');
+                if (stamBar) stamBar.style.width = `${percent}%`;
+                
+                element.textContent = `${label}: ${Math.floor(value)}`;
 
             } else if (statName === 'wits') {
                 let witsText = `${label}: ${value}`;
@@ -3056,24 +3078,33 @@ const renderStats = () => {
                 if (gameState.player.witsBonus > 0) {
                     witsText += ` <span class="text-green-500">(+${gameState.player.witsBonus})</span>`;
                 }
-                // Use innerHTML to render the color span
                 element.innerHTML = witsText;
 
             } else if (statName === 'psyche') {
-                const max = gameState.player.maxPsyche;
-                const percent = (value / max) * 100;
-                statBarElements.psyche.style.width = `${percent}%`;
+                const max = gameState.player.maxPsyche || 10;
+                const percent = Math.min(100, (value / max) * 100);
+                
+                const psycheBar = statBarElements.psyche || document.getElementById('psycheBar');
+                if (psycheBar) psycheBar.style.width = `${percent}%`;
+                
                 element.textContent = `${label}: ${value}`;
 
             } else if (statName === 'hunger') {
-                const max = gameState.player.maxHunger;
-                const percent = (value / max) * 100;
-                statBarElements.hunger.style.width = `${percent}%`;
-                element.textContent = `${label}: ${Math.floor(value)}`; // Use Math.floor to hide decimals
+                const max = gameState.player.maxHunger || 100;
+                const percent = Math.min(100, (value / max) * 100);
+                
+                const hungerBar = statBarElements.hunger || document.getElementById('hungerBar');
+                if (hungerBar) hungerBar.style.width = `${percent}%`;
+                
+                element.textContent = `${label}: ${Math.floor(value)}`;
+
             } else if (statName === 'thirst') {
-                const max = gameState.player.maxThirst;
-                const percent = (value / max) * 100;
-                statBarElements.thirst.style.width = `${percent}%`;
+                const max = gameState.player.maxThirst || 100;
+                const percent = Math.min(100, (value / max) * 100);
+                
+                const thirstBar = statBarElements.thirst || document.getElementById('thirstBar');
+                if (thirstBar) thirstBar.style.width = `${percent}%`;
+                
                 element.textContent = `${label}: ${Math.floor(value)}`;
 
             } else {
@@ -3082,9 +3113,10 @@ const renderStats = () => {
             }
         }
     }
-        // Only update if mapMode is active (meaning we are actually playing, not in menus)
+
+    // Only update title if playing
     if (gameState.mapMode && gameState.player && gameState.player.level) {
-        document.title = `HP: ${gameState.player.health}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
+        document.title = `HP: ${Math.ceil(gameState.player.health)}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
     }
 };
 
@@ -4070,32 +4102,52 @@ function grantXp(amount) {
 
     player.xp += amount;
     logMessage(`You gained ${amount} XP!`);
-    triggerStatFlash(statDisplays.xp, true);
+
+    // FIX 1: Safety Check - Only flash if the UI element actually exists
+    if (statDisplays.xp) {
+        triggerStatFlash(statDisplays.xp, true);
+    }
+
+    let leveledUp = false;
 
     while (player.xp >= player.xpToNextLevel) {
         player.xp -= player.xpToNextLevel;
         player.level++;
         player.statPoints++;
         player.xpToNextLevel = player.level * 100;
+        leveledUp = true;
 
         logMessage(`LEVEL UP! You are now level ${player.level}!`);
-        ParticleSystem.createLevelUp(player.x, player.y);
+        
+        // Safety check for ParticleSystem
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createLevelUp(player.x, player.y);
+        }
 
         if (player.level >= 10 && !player.classEvolved) {
            openEvolutionModal();
-            }
+        }
 
         // --- Award Talent Point every 3 levels ---
         if (player.level % 3 === 0) {
             player.talentPoints = (player.talentPoints || 0) + 1;
             logMessage("You gained a Mastery Talent Point! Press 'P' to spend it.");
-            triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+            if (statDisplays.level) triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
         } else {
             logMessage(`You gained 1 Stat Point.`);
-            triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
+            if (statDisplays.level) triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
         }
-
     }
+
+    // FIX 2: Save to Database immediately
+    // We save XP, Level, and Points so progress is never lost
+    playerRef.update({
+        xp: player.xp,
+        level: player.level,
+        xpToNextLevel: player.xpToNextLevel,
+        statPoints: player.statPoints,
+        talentPoints: player.talentPoints || 0
+    });
 
     renderStats();
 }
