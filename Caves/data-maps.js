@@ -15,6 +15,39 @@ window.TILE_DATA = {
         ]
     },
 
+    // 1. Forest: The Whispering Root
+'♣': {
+    type: 'mini_dungeon_entrance',
+    theme: 'ROOT',
+    name: 'Hollow Root',
+    flavor: "A tunnel bores into the massive roots of an ancient tree.",
+    tile: '♣'
+},
+
+// 2. Desert: The Hidden Oasis
+'🏝️': {
+    type: 'mini_dungeon_entrance',
+    theme: 'OASIS',
+    name: 'Hidden Oasis',
+    flavor: "A cool breeze flows from a cave hidden behind the palms.",
+    tile: '🏝️'
+},
+
+// 3. Mountain: Glacial Crevasse
+'🧊': {
+    type: 'mini_dungeon_entrance',
+    theme: 'ICE',
+    name: 'Glacial Crevasse',
+    flavor: "A narrow crack in the ice leads deep into the glacier.",
+    tile: '🧊'
+},
+
+// 4. The Exit (Used inside the mini-dungeons)
+'🔼': {
+    type: 'dungeon_exit', // Reuses your existing exit logic!
+    tile: '🔼'
+},
+
 // 1. The Obelisks (The Puzzle Components)
 '⬆️': { type: 'obelisk_puzzle', direction: 'north', flavor: "A freezing cold obelisk stands here.", tile: '|' },
 '➡️': { type: 'obelisk_puzzle', direction: 'east', flavor: "Moss grows on the east side of this stone.", tile: '|' },
@@ -818,3 +851,4 @@ window.ATMOSPHERE_TEXT = {
         "You see ripples in the water. Something is moving."
     ]
 };
+
