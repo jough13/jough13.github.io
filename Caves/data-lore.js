@@ -155,3 +155,34 @@ window.VISIONS_OF_THE_PAST = [
     "A VISION: You see yourself, standing exactly where you are now, but the world is made of white light and the silence is absolute.",
     "A VISION: A giant shadow, larger than a mountain, leans down and blows out the sun like a candle."
 ];
+
+window.RIDDLE_DATA = [
+    {
+        id: "fire",
+        question: "I have no mouth, but I always consume. I have no life, but I must be fed. What am I?",
+        answers: ["fire", "flame", "campfire"],
+        reward: "strength", // Grants +1 Strength
+        message: "The statue's eyes glow red. You feel a surge of heat."
+    },
+    {
+        id: "shadow",
+        question: "The more of me there is, the less you see. What am I?",
+        answers: ["darkness", "dark", "shadow", "night"],
+        reward: "wits", // Grants +1 Wits
+        message: "The statue seems to vanish for a moment. Your mind sharpens."
+    },
+    {
+        id: "echo",
+        question: "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
+        answers: ["echo"],
+        reward: "psyche", // Grants +1 Psyche
+        message: "A whisper surrounds you. Your will is strengthened."
+    },
+    {
+        id: "silence",
+        question: "I am so fragile that if you say my name, you break me. What am I?",
+        answers: ["silence"],
+        reward: "dexterity", // Grants +1 Dex (Stealth theme)
+        message: "The world goes quiet. You feel lighter."
+    }
+];
