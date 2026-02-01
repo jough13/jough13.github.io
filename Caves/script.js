@@ -546,18 +546,18 @@ async function renderSlots() {
             // --- OCCUPIED SLOT UI ---
             slotDiv.classList.add('hover:border-blue-500');
             slotDiv.innerHTML = `
-                <div class="text-center w-full">
-                    <h3 class="text-xl font-bold mb-1">Slot ${slotId.replace('slot', '')}</h3>
-                    <div class="text-4xl mb-2">${data.isBoating ? 'c' : (data.character || '@')}</div>
-                    <p class="font-bold highlight-text">${bg.name}</p>
-                    <p class="text-sm muted-text">Level ${data.level || 1}</p>
-                    <p class="text-xs muted-text mt-2">${getRegionName(Math.floor((data.x || 0) / 160), Math.floor((data.y || 0) / 160))}</p>
-                </div>
-                <div class="flex gap-2 w-full mt-4">
-                    <button onclick="selectSlot('${slotId}')" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Play</button>
-                    <button onclick="deleteSlot('${slotId}')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">🗑️</button>
-                </div>
-            `;
+        <div class="text-center w-full">
+            <h3 class="text-xl font-bold mb-1">${data.name || 'Unnamed'}</h3>
+            <div class="text-4xl mb-2">${data.isBoating ? 'c' : (data.character || '@')}</div>
+            <p class="font-bold highlight-text">${bg.name}</p>
+            <p class="text-sm muted-text">Level ${data.level || 1}</p>
+            <p class="text-xs muted-text mt-2">${getRegionName(Math.floor((data.x || 0) / 160), Math.floor((data.y || 0) / 160))}</p>
+        </div>
+        <div class="flex gap-2 w-full mt-4">
+            <button onclick="selectSlot('${slotId}')" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Play</button>
+            <button onclick="deleteSlot('${slotId}')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">🗑️</button>
+        </div>
+    `;
         } else {
             // --- EMPTY SLOT UI ---
             slotDiv.classList.add('opacity-75', 'hover:opacity-100', 'hover:border-green-500', 'cursor-pointer');
