@@ -1657,23 +1657,20 @@ function rehydrateInventory(savedInventory) {
 function getSanitizedInventory() {
     return gameState.player.inventory.map(item => {
         // 1. Identify the Source Template
-        // We prefer templateId, but fallback to tile if it was used as an ID
         const sourceId = item.templateId || item.tile; 
         
         return {
             templateId: sourceId, 
-            name: item.name,          // Saved incase it's a "Masterwork" renamed item
+            name: item.name,          
             quantity: item.quantity || 1,
             isEquipped: item.isEquipped || false,
             
-            // 2. Only save stats if they DIFFER from the template (Optional optimization, 
-            // but for now let's save them to preserve "Masterwork" RNG stats)
-            damage: item.damage,
-            defense: item.defense,
-            statBonuses: item.statBonuses,
-            
-            // 3. CRITICAL: Do NOT save 'effect', 'type', 'description', or 'tile'.
-            // These should come from the code, not the database.
+            // --- Convert 'undefined' to 'null' ---
+            // Firestore crashes on undefined, so we must be explicit.
+            damage: (item.damage !== undefined) ? item.damage : null,
+            defense: (item.defense !== undefined) ? item.defense : null,
+            statBonuses: (item.statBonuses !== undefined) ? item.statBonuses : null,
+            slot: (item.slot !== undefined) ? item.slot : null
         };
     });
 }
@@ -4303,49 +4300,45 @@ function grantXp(amount) {
 function handleBuyItem(itemName) {
     const player = gameState.player;
     const shopItem = activeShopInventory.find(item => item.name === itemName);
-    const itemTemplate = ITEM_DATA[Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName)];
+    // Find the template key (e.g. '⚔️r' for Rusty Sword)
+    const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName);
+    const itemTemplate = ITEM_DATA[itemKey];
 
     if (!shopItem || !itemTemplate) {
         logMessage("Error: Item not found in shop.");
         return;
     }
-   // --- PRICING LOGIC START --- 
-    const basePrice = shopItem.price;
-    
-    // 1. Charisma
-    let discountPercent = player.charisma * 0.005;
 
-    // 2. Codex Bonus
+    // --- PRICING LOGIC --- 
+    const basePrice = shopItem.price;
+    let discountPercent = player.charisma * 0.005;
     if (player.completedLoreSets && player.completedLoreSets.includes('king_fall')) {
         discountPercent += 0.10;
     }
-
-    // 3. Final Calculation
     const finalDiscount = Math.min(discountPercent, 0.50);
     const finalBuyPrice = Math.floor(basePrice * (1.0 - finalDiscount));
 
-    // 1. Check if player has enough gold
+    // 1. Checks
     if (player.coins < finalBuyPrice) {
         logMessage("You don't have enough gold for that.");
         return;
     }
-
     if (shopItem.stock <= 0) {
         logMessage("The shop is out of stock!");
         return;
     }
 
-    // 2. Check if player has inventory space
+    // 2. Inventory Space Check
     const existingStack = player.inventory.find(item => item.name === itemName);
     if (!existingStack && player.inventory.length >= MAX_INVENTORY_SLOTS) {
         logMessage("Your inventory is full!");
         return;
     }
 
-    // 3. Process the transaction
+    // 3. Process Transaction
     player.coins -= finalBuyPrice;
     shopItem.stock--;
-    logMessage(`You bought a ${itemName} for ${finalBuyPrice} gold.`); // <-- Use new variable
+    logMessage(`You bought a ${itemName} for ${finalBuyPrice} gold.`);
 
     if (existingStack) {
         if (existingStack.quantity >= 99) {
@@ -4354,34 +4347,33 @@ function handleBuyItem(itemName) {
         }
         existingStack.quantity++;
     } else {
-
-        const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName);
-
+        // --- THE FIX: Copy ALL stats, not just name/type ---
         player.inventory.push({
-
             templateId: itemKey,
             name: itemTemplate.name,
             type: itemTemplate.type,
             quantity: 1,
             tile: itemKey || '?',
+            // Copy combat stats or default to null (never undefined)
+            damage: itemTemplate.damage || null,
+            defense: itemTemplate.defense || null,
+            slot: itemTemplate.slot || null,
+            statBonuses: itemTemplate.statBonuses || null,
             effect: itemTemplate.effect || null
         });
     }
 
-    // 4. Update database and UI
-    playerRef.update({
-        coins: player.coins,
-        inventory: player.inventory
-    });
-
+    // 4. Update Database
+    // Use the sanitizer to prevent crashes
     playerRef.update({
         coins: player.coins,
         inventory: getSanitizedInventory()
     });
 
-    renderShop(); // Re-render the shop to show new gold and inventory
-    renderInventory(); // Update the main UI inventory
-    renderStats(); // Update the main UI gold display
+    // 5. Update UI
+    renderShop(); 
+    renderInventory(); 
+    renderStats(); 
 }
 
 function getRegionalPriceMultiplier(itemType, itemName) {
