@@ -959,6 +959,53 @@ function initCreationUI() {
     loadingIndicator.classList.add('hidden');
 }
 
+function grantLoreDiscovery(itemId) {
+    const player = gameState.player;
+    
+    // 1. Add to found set (existing logic)
+    if (!gameState.foundLore) gameState.foundLore = new Set();
+    if (gameState.foundLore.has(itemId)) return; // Already found
+    
+    gameState.foundLore.add(itemId);
+    grantXp(25); // Base XP for reading
+    logMessage("New Codex Entry added.");
+
+    // 2. Check for Set Completion
+    let completedSet = null;
+
+    for (const setKey in LORE_SETS) {
+        const set = LORE_SETS[setKey];
+        // Check if all items in this set are in foundLore
+        const allFound = set.items.every(id => gameState.foundLore.has(id));
+        
+        // Check if we haven't already awarded this set
+        // We'll store completed sets in player.completedLoreSets
+        if (!player.completedLoreSets) player.completedLoreSets = [];
+        
+        if (allFound && !player.completedLoreSets.includes(setKey)) {
+            completedSet = set;
+            player.completedLoreSets.push(setKey);
+            
+            // --- APPLY PERMANENT BONUS ---
+            if (setKey === 'void_research') {
+                player.maxMana += 10;
+                player.mana += 10;
+            }
+            // (Other bonuses like price reduction are checked dynamically in their respective functions)
+            
+            logMessage(`{gold:CODEX COMPLETE: ${set.name}!}`);
+            logMessage(`Bonus Unlocked: ${set.bonus}`);
+            triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+        }
+    }
+
+    // 3. Save
+    playerRef.update({ 
+        foundLore: Array.from(gameState.foundLore),
+        completedLoreSets: player.completedLoreSets || [] 
+    });
+}
+
 function selectCreationOption(type, key, element) {
     creationState[type] = key;
 
@@ -3952,15 +3999,20 @@ function handleBuyItem(itemName) {
         logMessage("Error: Item not found in shop.");
         return;
     }
-
-    // --- CHARISMA LOGIC ---
+   // --- PRICING LOGIC START --- 
     const basePrice = shopItem.price;
-    // 0.5% discount per point of Charisma
-    const discountPercent = player.charisma * 0.005;
-    // Cap the discount at 25% (at 100 Charisma)
-    const finalDiscount = Math.min(discountPercent, 0.25);
-    const finalBuyPrice = Math.floor(basePrice * (1.0 - finalDiscount));
+    
+    // 1. Charisma
+    let discountPercent = player.charisma * 0.005;
 
+    // 2. Codex Bonus
+    if (player.completedLoreSets && player.completedLoreSets.includes('king_fall')) {
+        discountPercent += 0.10;
+    }
+
+    // 3. Final Calculation
+    const finalDiscount = Math.min(discountPercent, 0.50);
+    const finalBuyPrice = Math.floor(basePrice * (1.0 - finalDiscount));
 
     // 1. Check if player has enough gold
     if (player.coins < finalBuyPrice) {
@@ -4305,7 +4357,16 @@ function renderShop() {
         const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === item.name);
 
         const baseBuyPrice = item.price;
-        const discountPercent = gameState.player.charisma * 0.005;
+        
+        // 1. Charisma Discount (Max 25%)
+        let discountPercent = gameState.player.charisma * 0.005;
+        
+        // 2. Codex Discount (+10% Flat)
+        if (gameState.player.completedLoreSets && gameState.player.completedLoreSets.includes('king_fall')) {
+            discountPercent += 0.10; 
+        }
+
+        // Cap Total Discount (e.g., max 50% off)
         const finalDiscount = Math.min(discountPercent, 0.5);
         const finalBuyPrice = Math.floor(baseBuyPrice * (1.0 - finalDiscount));
 
@@ -6121,39 +6182,72 @@ function renderBestiary() {
 
 function renderLibrary() {
     libraryView.innerHTML = '';
+    const player = gameState.player;
+    // Ensure the set exists from previous step
+    const foundEntries = new Set(player.foundCodexEntries || []);
 
-    // 1. Gather all journals the player has *seen* or currently *has*
+    // 1. Loop through defined Sets
+    for (const setKey in LORE_SETS) {
+        const set = LORE_SETS[setKey];
+        const isComplete = player.completedLoreSets && player.completedLoreSets.includes(setKey);
+        
+        // Count progress
+        const foundCount = set.items.filter(id => foundEntries.has(id)).length;
+        const totalCount = set.items.length;
 
-    // Iterate ITEM_DATA. If type == 'journal', check if player.foundLore has the key OR inventory has it.
+        // Render Set Container
+        const setDiv = document.createElement('div');
+        setDiv.className = `panel p-3 mb-2 rounded border-2 ${isComplete ? 'border-yellow-500 bg-yellow-900 bg-opacity-10' : 'border-gray-600'}`;
+        
+        let headerHtml = `
+            <div class="flex justify-between items-center cursor-pointer" onclick="toggleSetDetails('${setKey}')">
+                <h3 class="font-bold ${isComplete ? 'text-yellow-500' : ''}">${set.name}</h3>
+                <span class="text-xs">${foundCount}/${totalCount}</span>
+            </div>
+            <div class="text-xs text-gray-400 italic">${set.description}</div>
+            <div class="text-xs text-green-400 mt-1">${isComplete ? 'Bonus Active: ' + set.bonus : ''}</div>
+        `;
 
-    const inventoryTiles = gameState.player.inventory.map(i => i.tile);
-
-    Object.keys(ITEM_DATA).forEach(key => {
-        const item = ITEM_DATA[key];
-        if (item.type === 'journal' || item.type === 'random_journal') {
-
-            // Do we have it?
-            const hasItem = inventoryTiles.includes(key);
-            // Alternatively, add a "collectedJournals" set to player state later for permanent record
-
-            if (hasItem) {
-                const div = document.createElement('div');
-                div.className = 'library-entry';
-                div.innerHTML = `<h4 class="font-bold">${item.name}</h4><p class="text-xs text-gray-500">${item.title || 'Untitled'}</p>`;
-                div.onclick = () => {
-                    loreTitle.textContent = item.title || item.name;
-                    loreContent.textContent = item.content || "The ink is smeared...";
-                    loreModal.classList.remove('hidden');
-                };
-                libraryView.appendChild(div);
+        // Render Entries inside the set (Hidden by default or separate logic)
+        let entriesHtml = '<div class="mt-2 space-y-1 pl-2 border-l-2 border-gray-700 hidden" id="set-content-' + setKey + '">';
+        
+        set.items.forEach(itemId => {
+            const itemData = ITEM_DATA[itemId];
+            const hasFound = foundEntries.has(itemId);
+            
+            if (hasFound) {
+                entriesHtml += `
+                    <div class="text-sm p-1 hover:bg-gray-700 cursor-pointer rounded" 
+                         onclick="openSpecificLore('${itemId}')">
+                        📄 ${itemData.title || itemData.name}
+                    </div>`;
+            } else {
+                entriesHtml += `
+                    <div class="text-sm p-1 text-gray-600">
+                        🔒 Undiscovered Entry
+                    </div>`;
             }
-        }
-    });
+        });
+        entriesHtml += '</div>';
 
-    if (libraryView.children.length === 0) {
-        libraryView.innerHTML = '<div class="p-4 italic text-gray-500">You have not collected any journals yet.</div>';
+        setDiv.innerHTML = headerHtml + entriesHtml;
+        libraryView.appendChild(setDiv);
     }
 }
+
+// Global helpers for HTML onclicks
+window.toggleSetDetails = function(setKey) {
+    const el = document.getElementById('set-content-' + setKey);
+    if (el) el.classList.toggle('hidden');
+};
+
+window.openSpecificLore = function(itemId) {
+    const data = ITEM_DATA[itemId];
+    loreTitle.textContent = data.title;
+    loreContent.textContent = data.content;
+    loreModal.classList.remove('hidden');
+};
+
 
 // --- Event Listeners ---
 closeCollectionsButton.addEventListener('click', () => collectionsModal.classList.add('hidden'));
@@ -8990,6 +9084,11 @@ function endPlayerTurn() {
         thirstDrain = 0.01;
     }
 
+    if (player.completedLoreSets && player.completedLoreSets.includes('adventurer_tips')) {
+        hungerDrain *= 0.90; // 10% Slower drain
+        thirstDrain *= 0.90; 
+    }
+
     // --- LICH: UNDEATH ---
     if (!player.talents || !player.talents.includes('undeath')) {
         player.hunger = Math.max(0, player.hunger - hungerDrain);
@@ -10436,6 +10535,16 @@ function recalculateDerivedStats() {
     let calculatedMaxStamina = 10 + (player.endurance * 5);
     let calculatedMaxPsyche = 10 + (player.willpower * 3);
 
+    if (player.completedLoreSets) {
+        // Void Research: +10 Max Mana
+        if (player.completedLoreSets.includes('void_research')) {
+            calculatedMaxMana += 10;
+        }
+        
+        // Example Future Set: Titan's History (+10 Health)
+        // if (player.completedLoreSets.includes('titan_history')) calculatedMaxHealth += 10;
+    }
+
     // 3. Add Equipment Bonuses
     ['weapon', 'armor'].forEach(slot => {
         const item = player.equipment[slot];
@@ -11568,12 +11677,23 @@ if (enemy) {
         const tileId = `${newX},${-newY}`;
 
         if (tileData.type === 'journal') {
-            if (!gameState.foundLore.has(tileId)) {
-                logMessage("You found a new journal! +25 XP");
-                grantXp(25);
-                gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-            }
+            // New centralized handler
+            grantLoreDiscovery(tileId); // tileId is used as unique key for map locations
+            
+            // For the Codex, we also want to mark the ITEM ID as found, not just the map coordinate.
+            // This requires a slight shift: tracking "Lore Item IDs" separate from "Map Coordinates".
+            // For simplicity, we can assume 'grantLoreDiscovery' handles both if we pass the right ID.
+            // Let's rely on ITEM_DATA keys being unique enough for now.
+            
+            // To make the set system work, we need to track the ITEM TEMPLATE ID (e.g. "📜1")
+            // alongside the specific map tile coordinates.
+            if (!gameState.foundCodexEntries) gameState.foundCodexEntries = new Set();
+            gameState.foundCodexEntries.add(newTile); // Add "📜1"
+            playerRef.update({ foundCodexEntries: Array.from(gameState.foundCodexEntries) });
+            
+            // Trigger the set check with the ITEM KEY, not the coordinate
+            checkLoreSets(newTile); 
+
             loreTitle.textContent = tileData.title;
             loreContent.textContent = tileData.content;
             loreModal.classList.remove('hidden');
