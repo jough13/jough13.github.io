@@ -16,10 +16,10 @@ window.TILE_DATA = {
     },
 
 // 1. The Obelisks (The Puzzle Components)
-'|n': { type: 'obelisk_puzzle', direction: 'north', flavor: "A freezing cold obelisk stands here.", tile: '|' },
-'|e': { type: 'obelisk_puzzle', direction: 'east', flavor: "Moss grows on the east side of this stone.", tile: '|' },
-'|w': { type: 'obelisk_puzzle', direction: 'west', flavor: "The stone is warm, facing the setting sun.", tile: '|' },
-'|s': { type: 'obelisk_puzzle', direction: 'south', flavor: "The stone is scorched and hot.", tile: '|' },
+'⬆️': { type: 'obelisk_puzzle', direction: 'north', flavor: "A freezing cold obelisk stands here.", tile: '|' },
+'➡️': { type: 'obelisk_puzzle', direction: 'east', flavor: "Moss grows on the east side of this stone.", tile: '|' },
+'⬅️': { type: 'obelisk_puzzle', direction: 'west', flavor: "The stone is warm, facing the setting sun.", tile: '|' },
+'⬇️': { type: 'obelisk_puzzle', direction: 'south', flavor: "The stone is scorched and hot.", tile: '|' },
 
 // 2. The Sealed Door (The Reward Location)
 '⛩️d': { 
@@ -818,12 +818,3 @@ window.ATMOSPHERE_TEXT = {
         "You see ripples in the water. Something is moving."
     ]
 };
-window.LORE_FRAGMENTS = [
-    "My dearest Elara, the crops failed again. The soil tastes of ash...",
-    "Order 66: Burn the library. The King commands it. He says the books are whispering to him.",
-    "I hid the gold under the loose stone in the... (the rest is smeared with blood).",
-    "They are coming from the mountain. They don't look like men anymore.",
-    "Day 4: I ran out of water. I see the oasis, but I know it's a mirage. Or a trap.",
-    "Mom, Dad, I'm going to the safe haven. I promise I'll write when I get there.",
-    "Recipe: Two parts Bluecap, one part Void Dust... (The handwriting becomes frantic scribbles)."
-];
