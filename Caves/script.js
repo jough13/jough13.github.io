@@ -2469,6 +2469,24 @@ else if (worldX === 35 && worldY === 35) {
                 }
 
                 // --- 2. BIOME ANOMALIES (Very Rare) ---
+
+                // --- NEW: MINI-DUNGEON ENTRANCES (0.1% Chance) ---
+                // Forest -> Whispering Root
+                else if (tile === 'F' && featureRoll < 0.001) { 
+                    this.setWorldTile(worldX, worldY, '♣');
+                    chunkData[y][x] = '♣';
+                }
+                // Desert -> Hidden Oasis
+                else if (tile === 'D' && featureRoll < 0.001) { 
+                    this.setWorldTile(worldX, worldY, '🏝️');
+                    chunkData[y][x] = '🏝️';
+                }
+                // Mountain -> Glacial Crevasse
+                else if (tile === '^' && featureRoll < 0.001) { 
+                    this.setWorldTile(worldX, worldY, '🧊');
+                    chunkData[y][x] = '🧊';
+                }
+                
                 else if (tile === 'F' && featureRoll < 0.0001) {
                     this.setWorldTile(worldX, worldY, '🌳e');
                     chunkData[y][x] = '🌳e';
@@ -3405,6 +3423,88 @@ function handleItemDrop(key) {
     renderInventory();
     render(); // Update map to show item on ground
     gameState.mapDirty = true; 
+}
+
+function generateMiniDungeon(theme, seedStr) {
+    const seed = stringToSeed(seedStr);
+    const rng = new Alea(seed); // Use your seeded RNG
+    
+    const width = 20;
+    const height = 20;
+    const map = [];
+
+    // 1. Fill with Wall/Void based on theme
+    let wallChar, floorChar, decorationChars;
+    
+    if (theme === 'ROOT') {
+        wallChar = '♣'; // Roots as walls
+        floorChar = '.'; // Dirt floor
+        decorationChars = ['🌿', '🍄', '🕸'];
+    } else if (theme === 'OASIS') {
+        wallChar = '🌵'; // Cactus/Rock walls
+        floorChar = '~'; // Water floor!
+        decorationChars = ['.', '.', '🦀']; // Sand patches
+    } else { // ICE
+        wallChar = '🧊'; 
+        floorChar = '_'; // Ice floor
+        decorationChars = ['⛄', '🦴'];
+    }
+
+    // Init Grid
+    for (let y = 0; y < height; y++) {
+        let row = "";
+        for (let x = 0; x < width; x++) {
+            row += wallChar;
+        }
+        map.push(row.split('')); // Convert to array for easy editing
+    }
+
+    // 2. Drunkard's Walk (Organic Cave Generation)
+    // We start in the center and "walk" randomly to carve out space
+    let digX = Math.floor(width / 2);
+    let digY = Math.floor(height / 2);
+    let floorCount = 0;
+    const targetFloors = 100; // How big the cave should be
+
+    while (floorCount < targetFloors) {
+        // Carve
+        if (map[digY][digX] !== floorChar) {
+            map[digY][digX] = floorChar;
+            floorCount++;
+        }
+
+        // Move Randomly
+        const dir = Math.floor(rng() * 4);
+        if (dir === 0 && digY > 1) digY--;
+        else if (dir === 1 && digY < height - 2) digY++;
+        else if (dir === 2 && digX > 1) digX--;
+        else if (dir === 3 && digX < width - 2) digX++;
+    }
+
+    // 3. Place Entrance/Exit (Center)
+    map[Math.floor(height/2)][Math.floor(width/2)] = '🔼'; 
+
+    // 4. Place Loot/Lore at the "Edges"
+    // Find floor tiles that are surrounded by walls (dead ends)
+    for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+            if (map[y][x] === floorChar) {
+                // Random decoration
+                if (rng() < 0.1) {
+                    const deco = decorationChars[Math.floor(rng() * decorationChars.length)];
+                    map[y][x] = deco;
+                }
+                
+                // Rare Loot (Chest/Lore)
+                if (rng() < 0.02) {
+                    map[y][x] = '📦'; // Chest
+                }
+            }
+        }
+    }
+
+    // 5. Convert back to strings
+    return map.map(row => row.join(''));
 }
 
 function generateMagicItem(tier) {
@@ -11956,6 +12056,34 @@ if (enemy) {
                 return;
             }
         }
+
+        if (tileData.type === 'mini_dungeon_entrance') {
+    const dungeonId = `mini_${gameState.player.x}_${gameState.player.y}`;
+    
+    // 1. Generate if not exists
+    if (!chunkManager.caveMaps[dungeonId]) {
+        logMessage(`You squeeze into the ${tileData.name}...`);
+        chunkManager.caveMaps[dungeonId] = generateMiniDungeon(tileData.theme, dungeonId);
+    } else {
+        logMessage("You return to the hidden pocket.");
+    }
+
+    // 2. Save location
+    gameState.savedOverworldX = gameState.player.x;
+    gameState.savedOverworldY = gameState.player.y;
+
+    // 3. Switch Mode
+    gameState.mapMode = 'dungeon'; // We reuse dungeon mode for rendering
+    gameState.currentCaveId = dungeonId;
+    
+    // 4. Spawn Player (Center of 20x20 map)
+    gameState.player.x = 10;
+    gameState.player.y = 10;
+
+    // 5. Render
+    render();
+    return;
+}
 
         if (tileData.type === 'campsite') {
             logMessage("You rest at the abandoned camp...");
