@@ -10,18 +10,31 @@
    </head>
    <body class="flex flex-col items-center justify-center min-h-screen p-4 font-mono">
       <main class="container w-full">
-         <div id="authContainer" class="themed-container mx-auto max-w-sm p-6 rounded-2xl shadow-xl border-2">
-            <h1 class="text-2xl font-bold text-center mb-4">Caves and Castles</h1>
-            <div class="space-y-4">
-               <input type="email" id="emailInput" placeholder="Email" class="themed-input w-full p-2 border rounded">
-               <input type="password" id="passwordInput" placeholder="Password" class="themed-input w-full p-2 border rounded">
-               <div class="flex gap-4">
-                  <button id="loginButton" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-all">Login</button>
-                  <button id="signupButton" class="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition-all">Sign Up</button>
-               </div>
-               <p id="authError" class="text-red-500 text-center text-sm min-h-[1rem]"></p>
-            </div>
-         </div>
+<div id="authContainer" class="themed-container mx-auto max-w-sm p-6 rounded-2xl shadow-xl border-2">
+    <h1 id="authTitle" class="text-2xl font-bold text-center mb-4">Login</h1>
+    <div class="space-y-4">
+        <input type="email" id="emailInput" placeholder="Email" class="themed-input w-full p-2 border rounded">
+        <input type="password" id="passwordInput" placeholder="Password" class="themed-input w-full p-2 border rounded">
+
+        <!-- Main Auth Button (Login/Sign Up) -->
+        <button id="authButton" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-all">
+            Login
+        </button>
+
+        <div class="flex justify-between items-center text-sm">
+            <!-- "Remember Me" Checkbox -->
+            <label for="rememberMe" class="flex items-center gap-2 cursor-pointer muted-text">
+                <input type="checkbox" id="rememberMe" class="form-checkbox h-4 w-4 rounded" checked>
+                Remember Me
+            </label>
+
+            <!-- Toggle Link -->
+            <a href="#" id="authToggle" class="highlight-text hover:underline">Create Account</a>
+        </div>
+
+        <p id="authError" class="text-red-500 text-center text-sm min-h-[1rem]"></p>
+    </div>
+</div>
          <!-- DELETE CONFIRMATION MODAL -->
 <div id="deleteConfirmModal" class="modal-overlay hidden">
     <div class="modal-content themed-container p-6 rounded-2xl shadow-xl border-2 border-red-500 text-center">
@@ -538,7 +551,8 @@
          </div>
       </div>
       <footer class="text-center text-xs muted-text mt-4">
-         <p>Version 0.1.9.7 | Last Updated: January 24th, 2026</p>
+          <!-- Devlog Link Added Here -->
+          <p><a href="devlog.html" class="hover:underline">Devlog</a> | Version 0.1.9.8 | Last Updated: February 1st, 2026</p>
       </footer>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
