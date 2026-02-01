@@ -5503,90 +5503,38 @@ async function executeLunge(dirX, dirY) {
             // --- End Damage Calc ---
 
             if (gameState.mapMode === 'overworld') {
-                // Handle Overworld Combat
-                // We now pass our calculated skill damage!
-                await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
+    // Handle Overworld Combat
+    await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
 
-            } else {
-                // Handle Instanced Combat
-                let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
-                if (enemy) {
-                    // We apply our new calculated damage!
-                    enemy.health -= totalLungeDamage;
-                    logMessage(`You hit the ${enemy.name} for ${totalLungeDamage} damage!`);
+} else {
+    // Handle Instanced Combat
+    let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+    if (enemy) {
+        // Apply damage
+        enemy.health -= totalLungeDamage;
+        logMessage(`You hit the ${enemy.name} for ${totalLungeDamage} damage!`);
 
-                    if (enemy.health <= 0) {
-                        logMessage(`You defeated the ${enemy.name}!`);
+        // Handle enemy death
+        if (enemy.health <= 0) {
+            logMessage(`You defeated the ${enemy.name}!`);
+            registerKill(enemy);
 
-                        registerKill(enemy);
-
-                        // 1. Determine Loot
-                        let lootItemKey = null;
-                        
-                        // Use the enemy's defined loot if it exists (e.g., 'bone')
-                        if (enemyData.loot) {
-                            lootItemKey = enemyData.loot;
-                        } 
-                        // Fallback: Small chance for Gold Dust if no specific loot
-                        else {
-                            if (Math.random() < 0.15) lootItemKey = 'gold_dust';
-                        }
-
-                        // 2. Give Item to Player (Inventory Push)
-                        if (lootItemKey && window.ITEM_DATA[lootItemKey]) {
-                            const itemTemplate = window.ITEM_DATA[lootItemKey];
-                            
-                            // Safe Create
-                            const newItem = {
-                                templateId: lootItemKey,
-                                name: itemTemplate.name,
-                                type: itemTemplate.type,
-                                quantity: 1,
-                                tile: lootItemKey, 
-                                // Sanitize stats to prevent crashes
-                                damage: itemTemplate.damage || null,
-                                defense: itemTemplate.defense || null,
-                                slot: itemTemplate.slot || null
-                            };
-
-                            // Add to bag
-                            gameState.player.inventory.push(newItem);
-                            logMessage(`The ${enemy.name} dropped a {cyan:${newItem.name}}!`);
-                            
-                            // Visual: Update inventory UI
-                            if (gameState.inventoryMode) renderInventory();
-                        } else {
-                            // If no loot, just log it (prevents dropping 'Y' on ground)
-                            console.log("Enemy died, no loot dropped.");
-                        }
-
-                        // 3. Cleanup Enemy from Arrays
-                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
-
-                        if (gameState.mapMode === 'dungeon') {
-                            if (chunkManager.caveEnemies[gameState.currentCaveId]) {
-                                chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
-                            }
-                            // Clear the tile (remove the enemy sprite)
-                            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = CAVE_THEMES[gameState.currentCaveTheme].floor;
-                        } else if (gameState.mapMode === 'castle') {
-                             chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = '.';
-                        }
-                    }
-
-                        const droppedLoot = generateEnemyLoot(player, enemy);
-                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-
-                        if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
-                        }
-
-                        if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
-                        }
-                    }
-                }
+            // Generate and place loot
+            const droppedLoot = generateEnemyLoot(player, enemy);
+            if (gameState.mapMode === 'dungeon') {
+                chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
+            } else if (gameState.mapMode === 'castle') {
+                chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = droppedLoot;
             }
+
+            // Remove enemy from lists
+            gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+            if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+                chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+            }
+        }
+    }
+}
             break; // Stop looping, we hit our target
         }
     }
