@@ -3734,6 +3734,61 @@ function drawMountain(ctx, x, y, size) {
 }
 
 // Listeners
+
+// In script.js
+
+// --- NEW AUTH UI ELEMENTS ---
+const authTitle = document.getElementById('authTitle');
+const authButton = document.getElementById('authButton');
+const rememberMe = document.getElementById('rememberMe');
+const authToggle = document.getElementById('authToggle');
+let isLoginMode = true;
+
+// --- NEW AUTH TOGGLE HANDLER ---
+authToggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    isLoginMode = !isLoginMode;
+
+    if (isLoginMode) {
+        authTitle.textContent = 'Login';
+        authButton.textContent = 'Login';
+        authToggle.textContent = 'Create Account';
+    } else {
+        authTitle.textContent = 'Create Account';
+        authButton.textContent = 'Sign Up';
+        authToggle.textContent = 'Back to Login';
+    }
+    authError.textContent = '';
+});
+
+// --- NEW UNIFIED AUTH BUTTON HANDLER ---
+authButton.addEventListener('click', async () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    authError.textContent = '';
+
+    // Set persistence based on the "Remember Me" checkbox
+    const persistence = rememberMe.checked 
+        ? firebase.auth.Auth.Persistence.LOCAL // Stays logged in across browser sessions
+        : firebase.auth.Auth.Persistence.SESSION; // Clears when tab is closed
+
+    try {
+        await auth.setPersistence(persistence);
+
+        if (isLoginMode) {
+            // LOGIN LOGIC
+            await auth.signInWithEmailAndPassword(email, password);
+        } else {
+            // SIGN UP LOGIC
+            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+            const user = userCredential.user;
+            // Note: createDefaultPlayerState() is now called in the selectSlot logic
+        }
+    } catch (error) {
+        handleAuthError(error);
+    }
+});
+
 document.getElementById('closeMapButton').addEventListener('click', closeWorldMap);
 window.addEventListener('resize', () => {
     if (!mapModal.classList.contains('hidden')) {
