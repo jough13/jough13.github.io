@@ -13656,28 +13656,120 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
     });
 }
 
+// --- AUTH SETTINGS & STATE ---
+const autoLoginCheck = document.getElementById('autoLoginCheck');
+
+// 1. Load Preference
+const storedAutoLogin = localStorage.getItem('pref_autoLogin');
+if (storedAutoLogin !== null) {
+    autoLoginCheck.checked = (storedAutoLogin === 'true');
+}
+
+// 2. Save Preference Listener
+autoLoginCheck.addEventListener('change', () => {
+    localStorage.setItem('pref_autoLogin', autoLoginCheck.checked);
+});
+
+// --- UPDATED AUTH BUTTON HANDLER ---
+authButton.addEventListener('click', async () => {
+    // CASE 1: RESUME SESSION (Auto-Login was off, but user is here)
+    if (auth.currentUser && emailInput.classList.contains('hidden')) {
+        initCharacterSelect(auth.currentUser);
+        return;
+    }
+
+    // CASE 2: STANDARD LOGIN / SIGNUP
+    const email = emailInput.value;
+    const password = passwordInput.value;
+    authError.textContent = '';
+
+    const persistence = rememberMe.checked 
+        ? firebase.auth.Auth.Persistence.LOCAL 
+        : firebase.auth.Auth.Persistence.SESSION;
+
+    try {
+        await auth.setPersistence(persistence);
+        if (isLoginMode) {
+            await auth.signInWithEmailAndPassword(email, password);
+        } else {
+            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+            // Note: Data creation happens in selectSlot now
+        }
+    } catch (error) {
+        handleAuthError(error);
+    }
+});
+
+// --- UPDATED AUTH STATE LISTENER ---
 auth.onAuthStateChanged((user) => {
     if (user) {
-        const savedTheme = localStorage.getItem('theme');
-        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (savedTheme) applyTheme(savedTheme);
-        else if (prefersDark) applyTheme('dark');
-        else applyTheme('light');
+        // User is logged in (Session exists)
+        
+        if (autoLoginCheck.checked) {
+            // OPTION A: Auto-Login Enabled -> Go straight to game
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme) applyTheme(savedTheme);
+            else if (prefersDark) applyTheme('dark');
+            else applyTheme('light');
 
-        // --- Call initCharacterSelect instead of startGame ---
-        gameContainer.classList.add('hidden');
-        initCharacterSelect(user);
+            gameContainer.classList.add('hidden');
+            initCharacterSelect(user);
+        } else {
+            // OPTION B: Auto-Login Disabled -> Show "Continue" Screen
+            authContainer.classList.remove('hidden');
+            gameContainer.classList.add('hidden');
+            characterSelectModal.classList.add('hidden');
+
+            // Transform UI to "Welcome Back" mode
+            const safeName = user.email ? user.email.split('@')[0] : "Traveler";
+            authTitle.textContent = `Welcome back, ${safeName}`;
+            
+            // Hide Inputs, Show Continue Button
+            emailInput.classList.add('hidden');
+            passwordInput.classList.add('hidden');
+            rememberMe.parentElement.parentElement.classList.add('hidden'); // Hide checkboxes row
+            
+            authButton.textContent = "Continue Adventure";
+            authToggle.textContent = "Switch Account"; // Change "Create Account" link to Switch
+            
+            // Handle Switch Account Click
+            authToggle.onclick = (e) => {
+                e.preventDefault();
+                auth.signOut(); // This triggers the 'else' block below
+            };
+        }
+        
     } else {
+        // User is logged out
         authContainer.classList.remove('hidden');
         gameContainer.classList.add('hidden');
-        characterSelectModal.classList.add('hidden'); // Hide select modal
+        characterSelectModal.classList.add('hidden');
+        
+        // Reset UI to Standard Login
+        emailInput.classList.remove('hidden');
+        passwordInput.classList.remove('hidden');
+        rememberMe.parentElement.parentElement.classList.remove('hidden'); // Show checkboxes
+        
+        authTitle.textContent = isLoginMode ? 'Login' : 'Create Account';
+        authButton.textContent = isLoginMode ? 'Login' : 'Sign Up';
+        authToggle.textContent = isLoginMode ? 'Create Account' : 'Back to Login';
+        
+        // Restore standard toggle behavior
+        authToggle.onclick = (e) => {
+            e.preventDefault();
+            isLoginMode = !isLoginMode;
+            authTitle.textContent = isLoginMode ? 'Login' : 'Create Account';
+            authButton.textContent = isLoginMode ? 'Login' : 'Sign Up';
+            authToggle.textContent = isLoginMode ? 'Create Account' : 'Back to Login';
+        };
+
         player_id = null;
         if (onlinePlayerRef) onlinePlayerRef.remove();
         if (unsubscribePlayerListener) unsubscribePlayerListener();
         Object.values(worldStateListeners).forEach(unsubscribe => unsubscribe());
         worldStateListeners = {};
         clearSessionState();
-        console.log("No user is signed in.");
     }
 });
 
