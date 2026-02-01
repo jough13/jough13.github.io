@@ -12952,31 +12952,6 @@ chatInput.addEventListener('keydown', (event) => {
     }
 });
 
-signupButton.addEventListener('click', async () => {
-    const email = emailInput.value;
-    const password = passwordInput.value;
-    authError.textContent = '';
-    try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-        const user = userCredential.user;
-        const playerRef = db.collection('players').doc(user.uid);
-        await playerRef.set(createDefaultPlayerState());
-    } catch (error) {
-        handleAuthError(error);
-    }
-});
-
-loginButton.addEventListener('click', async () => {
-    const email = emailInput.value;
-    const password = passwordInput.value;
-    authError.textContent = '';
-    try {
-        await auth.signInWithEmailAndPassword(email, password);
-    } catch (error) {
-        handleAuthError(error);
-    }
-});
-
 function clearSessionState() {
     gameState.lootedTiles.clear();
     gameState.discoveredRegions.clear();
