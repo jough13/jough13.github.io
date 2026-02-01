@@ -10883,60 +10883,6 @@ async function attemptMovePlayer(newX, newY) {
         return; // Stop the move
     }
 
-    // --- OBELISK PUZZLE LOGIC ---
-if (tileData && tileData.type === 'obelisk_puzzle') {
-    const dir = tileData.direction;
-    const requiredOrder = ['north', 'east', 'west', 'south'];
-    const currentStep = gameState.player.obeliskProgress.length;
-
-    logMessage(tileData.flavor);
-
-    // Check if we are activating the CORRECT next step
-    if (dir === requiredOrder[currentStep]) {
-        if (!gameState.player.obeliskProgress.includes(dir)) {
-            gameState.player.obeliskProgress.push(dir);
-            
-            logMessage(`The Obelisk hums violently! (${gameState.player.obeliskProgress.length}/4 activated)`);
-            ParticleSystem.createExplosion(newX, newY, '#3b82f6', 15); // Blue explosion
-            AudioSystem.playMagic();
-
-            // REWARD: Give the fragment for this specific direction
-            const fragmentName = `Tablet of the ${dir.charAt(0).toUpperCase() + dir.slice(1)}`;
-            gameState.player.inventory.push(
-                // Lookup item from ITEM_DATA using the name map logic or hardcode keys
-                { name: fragmentName, type: 'junk', quantity: 1, tile: '🧩' }
-            );
-            logMessage(`A stone fragment falls from the obelisk: ${fragmentName}`);
-
-            // Save progress
-            playerRef.update({ 
-                obeliskProgress: gameState.player.obeliskProgress,
-                inventory: gameState.player.inventory 
-            });
-        } else {
-            logMessage("This obelisk is already active.");
-        }
-    } 
-    // Wrong order? Reset!
-    else if (!gameState.player.obeliskProgress.includes(dir)) {
-        logMessage("The Obelisk shrieks! A shockwave knocks you back!");
-        logMessage("{red:PUZZLE FAILED. Sequence Reset.}");
-        
-        gameState.player.health -= 5;
-        gameState.player.obeliskProgress = []; // Reset
-        
-        triggerStatFlash(statDisplays.health, false);
-        playerRef.update({ 
-            health: gameState.player.health,
-            obeliskProgress: [] 
-        });
-        
-        // Punishment damage visual
-        ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444', 10);
-    }
-    return;
-}
-
    if (tileData && tileData.type === 'spirit_npc') { 
             const requiredItem = tileData.requiresItem;
             const hasItem = gameState.player.inventory.some(i => i.name === requiredItem);
@@ -12273,6 +12219,88 @@ if (enemy) {
             }
             return;
         }
+
+        // --- OBELISK PUZZLE LOGIC ---
+if (tileData.type === 'obelisk_puzzle') {
+    // 1. Identify the specific obelisk direction from the tile data
+    const dir = tileData.direction; // 'north', 'south', 'east', 'west'
+    const requiredOrder = ['north', 'east', 'west', 'south'];
+    
+    // 2. Check current progress
+    // Ensure the array exists (it should be in default state, but safety first)
+    if (!gameState.player.obeliskProgress) gameState.player.obeliskProgress = [];
+    
+    const currentStepIndex = gameState.player.obeliskProgress.length;
+    const requiredDir = requiredOrder[currentStepIndex];
+
+    logMessage(tileData.flavor);
+
+    // 3. Already Active?
+    if (gameState.player.obeliskProgress.includes(dir)) {
+        logMessage("{blue:This Obelisk is already humming with power.}");
+        return;
+    }
+
+    // 4. Check if the player has the key item
+    const hasCrystal = gameState.player.inventory.some(i => i.name === 'Resonance Crystal');
+    
+    if (!hasCrystal) {
+        logMessage("It seems dormant. There is a slot that looks like it fits a crystal.");
+        return;
+    }
+
+    // 5. Check Sequence
+    if (dir === requiredDir) {
+        // SUCCESS: Correct Order
+        gameState.player.obeliskProgress.push(dir);
+        
+        // Consume Crystal
+        const crystalIdx = gameState.player.inventory.findIndex(i => i.name === 'Resonance Crystal');
+        if (crystalIdx > -1) {
+            gameState.player.inventory[crystalIdx].quantity--;
+            if (gameState.player.inventory[crystalIdx].quantity <= 0) {
+                gameState.player.inventory.splice(crystalIdx, 1);
+            }
+        }
+
+        // FX
+        AudioSystem.playMagic();
+        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#06b6d4', 20); // Cyan burst
+        
+        logMessage(`{cyan:The Obelisk awakens!} A beam of light shoots into the sky.`);
+        logMessage(`Sequence Progress: ${gameState.player.obeliskProgress.length}/4`);
+
+        // Check for Completion
+        if (gameState.player.obeliskProgress.length === 4) {
+            logMessage("{gold:The ground trembles... The Seal on the Vault has broken!}");
+            // Optional: Mark the Vault door as open in world state here if you want
+        }
+
+        // Save
+        playerRef.update({ 
+            obeliskProgress: gameState.player.obeliskProgress,
+            inventory: getSanitizedInventory()
+        });
+
+    } else {
+        // FAILURE: Wrong Order
+        logMessage("{red:The Obelisk rejects you!} A shockwave blasts you back.");
+        
+        // Penalty: Reset Progress and Take Damage
+        gameState.player.obeliskProgress = [];
+        gameState.player.health -= 5;
+        triggerStatFlash(statDisplays.health, false);
+        
+        playerRef.update({ 
+            obeliskProgress: [],
+            health: gameState.player.health
+        });
+        
+        logMessage("The sequence has been reset.");
+        AudioSystem.playNoise(0.5, 0.5, 100); // Low thud
+    }
+    return; // Stop movement (don't walk into the pillar)
+}
 
         if (tileData.type === 'random_journal') {
             if (!gameState.foundLore.has(tileId)) {
