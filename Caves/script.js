@@ -496,6 +496,37 @@ async function initCharacterSelect(user) {
     renderSlots();
 }
 
+/**
+ * Recursively cleans an object to remove any keys with 'undefined' values.
+ * Firestore cannot store 'undefined' and will throw an error. This prevents that.
+ * @param {object} obj The object to clean.
+ * @returns {object} A new object, safe to send to Firestore.
+ */
+
+function sanitizeForFirebase(obj) {
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
+
+    // Handle arrays by sanitizing each item
+    if (Array.isArray(obj)) {
+        return obj.map(item => sanitizeForFirebase(item));
+    }
+
+    // Handle objects by rebuilding them without undefined keys
+    const newObj = {};
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            const value = obj[key];
+            // The core logic: Only include the key if its value is NOT undefined
+            if (value !== undefined) {
+                newObj[key] = sanitizeForFirebase(value); // Sanitize nested objects
+            }
+        }
+    }
+    return newObj;
+}
+
 async function renderSlots() {
     slotsContainer.innerHTML = '';
     const charsRef = db.collection('players').doc(currentUser.uid).collection('characters');
@@ -1109,7 +1140,7 @@ async function finalizeCharacterCreation() {
     if (armor) { player.equipment.armor = armor; armor.isEquipped = true; }
 
     // 7. Save and Start
-    await playerRef.set(player);
+    await playerRef.set(sanitizeForFirebase(player));
 
     charCreationModal.classList.add('hidden');
     gameContainer.classList.remove('hidden');
@@ -9062,7 +9093,7 @@ function handlePlayerDeath() {
     // 7. Save "Dead" State
     // We save health: 0 and current X/Y. 
     // This ensures if they refresh the page, they are still dead.
-    playerRef.set(player);
+    playerRef.set(sanitizeForFirebase(player));
 
     return true;
 }
@@ -9458,7 +9489,7 @@ function endPlayerTurn() {
         // Also cancel any pending overworld save so we don't overwrite this newer data
         if (saveTimeout) clearTimeout(saveTimeout); 
         
-        playerRef.update(finalUpdates);
+        playerRef.update(sanitizeForFirebase(finalUpdates));
     }
 
     // --- PALADIN: HOLY AURA ---
@@ -12948,9 +12979,7 @@ logoutButton.addEventListener('click', () => {
         delete finalState.character;
 
         // Save to Firestore
-        playerRef.set(finalState, {
-            merge: true
-        }).catch(err => {
+        playerRef.set(sanitizeForFirebase(finalState), { merge: true }).catch(err => {
             console.error("Error saving on logout:", err);
         });
     }
@@ -13079,7 +13108,7 @@ if (timeDoc.exists) {
         };
 
         // 6. Save the fixed state immediately so next reload is clean
-        await playerRef.set(playerData);
+        await playerRef.set(sanitizeForFirebase(playerData));
     }
 
     const fullPlayerData = {
@@ -13205,9 +13234,7 @@ if (gameState.mapMode === 'overworld') {
 
                 delete finalState.color;
                 delete finalState.character;
-                playerRef.set(finalState, {
-                    merge: true
-                });
+                playerRef.set(sanitizeForFirebase(finalState), { merge: true });
             });
         }
     });
@@ -13696,7 +13723,7 @@ restartButton.onclick = () => {
     gameState.currentCastleId = null;
 
     // 5. Save "Alive" State to DB
-    playerRef.set(player);
+    playerRef.set(sanitizeForFirebase(player));
 
     // 6. UI Cleanup
     gameOverModal.classList.add('hidden');
