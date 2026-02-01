@@ -2486,7 +2486,7 @@ else if (worldX === 35 && worldY === 35) {
                     this.setWorldTile(worldX, worldY, '🧊');
                     chunkData[y][x] = '🧊';
                 }
-                
+
                 else if (tile === 'F' && featureRoll < 0.0001) {
                     this.setWorldTile(worldX, worldY, '🌳e');
                     chunkData[y][x] = '🌳e';
@@ -8078,6 +8078,18 @@ function renderTerrainCache(startX, startY) {
             }
         }
     }
+}
+
+// --- CAMERA HELPER ---
+function centerCamera(x, y) {
+    // Updates the map camera (used for the 'M' world map)
+    if (typeof mapCamera !== 'undefined') {
+        mapCamera.x = x;
+        mapCamera.y = y;
+    }
+    // Note: The main game renderer currently calculates the view 
+    // directly from gameState.player.x/y inside render(), 
+    // so we don't need to do anything else here for now.
 }
 
 const render = () => {
