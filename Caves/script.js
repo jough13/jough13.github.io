@@ -469,7 +469,6 @@ window.selectBackground = async function (bgKey) {
         centerCamera(player.x, player.y); 
         render();                     
     }, 50); 
-};
 
     gameState.mapMode = 'overworld';
 
@@ -13656,7 +13655,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
         render();
         canvas.style.visibility = 'visible'; // Reveal canvas after it's drawn
     }, 50);
-    
+
             updateExploration();
 
             loadingIndicator.classList.add('hidden');
