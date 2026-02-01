@@ -2983,32 +2983,28 @@ const renderStats = () => {
 
     for (const statName in statDisplays) {
         // RECOVERY: If the element was null at startup, try to find it now
-        // This fixes the "XP doesn't update" bug if the ID wasn't ready
         if (!statDisplays[statName]) {
             statDisplays[statName] = document.getElementById(`${statName}Display`);
         }
 
         const element = statDisplays[statName];
 
+        // Ensure element exists and player has the stat
         if (element && gameState.player.hasOwnProperty(statName)) {
             const value = gameState.player[statName];
             const label = statName.charAt(0).toUpperCase() + statName.slice(1);
 
             if (statName === 'xp') {
-                const max = gameState.player.xpToNextLevel || 100; // Prevent divide by zero
+                const max = gameState.player.xpToNextLevel || 100;
                 const percent = Math.min(100, (value / max) * 100);
 
-                // Update text
                 element.textContent = `XP: ${value} / ${max}`;
                 
-                // Safe Bar Update
                 const xpBar = statBarElements.xp || document.getElementById('xpBar');
                 if (xpBar) xpBar.style.width = `${percent}%`;
 
             } else if (statName === 'statPoints') {
-                // Safe Panel Access
                 const panel = coreStatsPanel || document.getElementById('coreStatsPanel');
-                
                 if (value > 0) {
                     element.textContent = `Stat Points: ${value}`;
                     element.classList.remove('hidden');
@@ -3022,33 +3018,24 @@ const renderStats = () => {
                 const max = gameState.player.maxHealth;
                 const percent = Math.min(100, (value / max) * 100);
 
-                // Safe Bar Update
                 const hpBar = statBarElements.health || document.getElementById('hpBar');
                 if (hpBar) {
                     hpBar.style.width = `${percent}%`;
-                    
-                    // Dynamic Bar Color (Your Custom Logic)
-                    if (percent > 60) hpBar.style.backgroundColor = '#22c55e'; // Green
-                    else if (percent > 30) hpBar.style.backgroundColor = '#eab308'; // Yellow
-                    else hpBar.style.backgroundColor = '#ef4444'; // Red
+                    if (percent > 60) hpBar.style.backgroundColor = '#22c55e';
+                    else if (percent > 30) hpBar.style.backgroundColor = '#eab308';
+                    else hpBar.style.backgroundColor = '#ef4444';
                 }
                 
-                // 1. Calculate display value 
-                let displayHealth = Math.ceil(value); 
-                
-                // 2. Declare string
+                let displayHealth = Math.ceil(value);
                 let healthString = `${label}: ${displayHealth}`;
 
-                // 3. Add Shield text if active (Safe check for undefined)
                 const shield = gameState.player.shieldValue || 0;
                 if (shield > 0) {
                     healthString += ` <span class="text-blue-400">(+${Math.ceil(shield)})</span>`;
                 }
                 
-                // 4. Update the element text
                 element.innerHTML = healthString;
 
-                // Update text colors
                 element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500'); 
                 if (percent > 60) element.classList.add('text-green-500');
                 else if (percent > 30) element.classList.add('text-yellow-500');
@@ -3072,14 +3059,15 @@ const renderStats = () => {
                 
                 element.textContent = `${label}: ${Math.floor(value)}`;
 
+            // --- FIXED: Wits now rounds the base value ---
             } else if (statName === 'wits') {
-                let witsText = `${label}: ${value}`;
-                // Check for bonus
+                let witsText = `${label}: ${Math.floor(value)}`; 
                 if (gameState.player.witsBonus > 0) {
                     witsText += ` <span class="text-green-500">(+${gameState.player.witsBonus})</span>`;
                 }
                 element.innerHTML = witsText;
 
+            // --- FIXED: Psyche now rounds the value ---
             } else if (statName === 'psyche') {
                 const max = gameState.player.maxPsyche || 10;
                 const percent = Math.min(100, (value / max) * 100);
@@ -3087,7 +3075,7 @@ const renderStats = () => {
                 const psycheBar = statBarElements.psyche || document.getElementById('psycheBar');
                 if (psycheBar) psycheBar.style.width = `${percent}%`;
                 
-                element.textContent = `${label}: ${value}`;
+                element.textContent = `${label}: ${Math.floor(value)}`;
 
             } else if (statName === 'hunger') {
                 const max = gameState.player.maxHunger || 100;
@@ -3107,8 +3095,12 @@ const renderStats = () => {
                 
                 element.textContent = `${label}: ${Math.floor(value)}`;
 
+            // --- NEW: Explicitly handle Strength and Defense to remove decimals ---
+            } else if (statName === 'strength' || statName === 'defense') {
+                element.textContent = `${label}: ${Math.floor(value)}`;
+
             } else {
-                // Default case for Coins, Level, and Core Stats
+                // Default case for Coins, Level, etc.
                 element.textContent = `${label}: ${value}`;
             }
         }
