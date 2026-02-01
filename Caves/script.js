@@ -2410,23 +2410,28 @@ for (let y = 0; y < map.length; y++) {
 
 // North Obelisk (High Y negative)
 if (worldX === 0 && worldY === -50) { 
-    this.setWorldTile(worldX, worldY, '|n');
-    chunkData[y][x] = '|n';
+    this.setWorldTile(worldX, worldY, '⬆️'); // USE NEW KEY
+    chunkData[y][x] = '⬆️';
 }
 // East Obelisk (High X positive)
 else if (worldX === 50 && worldY === 0) { 
-    this.setWorldTile(worldX, worldY, '|e');
-    chunkData[y][x] = '|e';
+    this.setWorldTile(worldX, worldY, '➡️'); // USE NEW KEY
+    chunkData[y][x] = '➡️';
 }
 // West Obelisk
 else if (worldX === -50 && worldY === 0) { 
-    this.setWorldTile(worldX, worldY, '|w');
-    chunkData[y][x] = '|w';
+    this.setWorldTile(worldX, worldY, '⬅️'); // USE NEW KEY
+    chunkData[y][x] = '⬅️';
 }
 // South Obelisk
 else if (worldX === 0 && worldY === 50) { 
-    this.setWorldTile(worldX, worldY, '|s');
-    chunkData[y][x] = '|s';
+    this.setWorldTile(worldX, worldY, '⬇️'); // USE NEW KEY
+    chunkData[y][x] = '⬇️';
+}
+// The Vault Entrance (Somewhere tricky)
+else if (worldX === 35 && worldY === 35) {
+    this.setWorldTile(worldX, worldY, '🚪'); // USE NEW KEY
+    chunkData[y][x] = '🚪';
 }
 // The Vault Entrance (Somewhere tricky)
 else if (worldX === 35 && worldY === 35) {
