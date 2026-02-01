@@ -57,10 +57,14 @@
     --mtn-shadow: #44403c; /* Darker grey for depth */
     --mtn-cap: #f9fafb;    /* Bright snow */
 
-	--pattern-color: rgba(0, 0, 0, 0.06);
-	
-	--vine-color: rgba(34, 197, 94, 0.15);  /* Faint Green */
-    --rock-color: rgba(120, 113, 108, 0.15); /* Faint Stone Brown */
+--pattern-color: rgba(0, 0, 0, 0.05); 
+    
+    /* NEW: Bolder Nature Colors */
+    --vine-dark:  rgba(21, 128, 61, 0.25);  /* Deep Forest Green */
+    --vine-light: rgba(74, 222, 128, 0.3);  /* Bright Leaf Green */
+    
+    --rock-dark:  rgba(68, 64, 60, 0.3);    /* Dark Stone */
+    --rock-light: rgba(120, 113, 108, 0.25); /* Lit Stone */
 }
 
 [data-theme="dark"] {
@@ -78,68 +82,88 @@
 	/* MODIFIED: Darker, richer blue for dark mode */
 	--terrain-color: #d1d5db;
 
-	--pattern-color: rgba(255, 255, 255, 0.06);
-
-	--vine-color: rgba(74, 222, 128, 0.1); 
-    --rock-color: rgba(168, 162, 158, 0.1);
-
-	--mtn-base: #374151;   /* Darker base */
-    --mtn-shadow: #1f2937; /* Deep shadow */
-    --mtn-cap: #e5e7eb;    /* Muted snow */
+	--pattern-color: rgba(255, 255, 255, 0.05);
+        
+        /* Dark Mode: Make them glow slightly */
+        --vine-dark:  rgba(22, 163, 74, 0.15); 
+        --vine-light: rgba(74, 222, 128, 0.15); 
+        
+        --rock-dark:  rgba(28, 25, 23, 0.4); 
+        --rock-light: rgba(87, 83, 78, 0.2); 
 }
 
 body {
     font-family: 'Courier New', Courier, monospace;
     background-color: var(--bg-page);
     
-    /* --- THE 8-BIT NATURE STACK --- */
+    /* --- THE COMPLEX 8-BIT WORLD --- */
     background-image: 
-        /* 1. VIGNETTE: Keeps focus in the center */
-        radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.1) 100%),
+        /* 1. VIGNETTE (Focus on center) */
+        radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.15) 100%),
 
-        /* 2. TOP VINES: Two gradients forming downward triangles (leaves) */
-        linear-gradient(135deg, var(--vine-color) 25%, transparent 25%),
-        linear-gradient(225deg, var(--vine-color) 25%, transparent 25%),
+        /* --- TOP: VINES (Organic Curves) --- */
+        /* Layer A: Big drooping vines (Darker, hanging lower) */
+        radial-gradient(ellipse at top, var(--vine-dark) 30%, transparent 32%),
+        /* Layer B: Small leaves (Brighter, near the top edge) */
+        radial-gradient(circle at top, var(--vine-light) 35%, transparent 36%),
 
-        /* 3. BOTTOM ROCKS: A solid wash + vertical blocks */
-        linear-gradient(to top, var(--rock-color) 0%, transparent 20%), /* Fades up */
-        linear-gradient(90deg, var(--rock-color) 50%, transparent 50%), /* Square blocks */
 
-        /* 4. THE GRID: The graph paper texture (Background) */
+        /* --- BOTTOM: ROCKS (Sharp Angles) --- */
+        /* Layer C: Small sharp spikes (Foreground) */
+        linear-gradient(45deg, var(--rock-light) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--rock-light) 25%, transparent 25%),
+        
+        /* Layer D: Massive bedrock base (Background) */
+        linear-gradient(to top, var(--rock-dark) 0%, var(--rock-dark) 10%, transparent 50%),
+
+
+        /* --- BACKGROUND: GRID --- */
         linear-gradient(90deg, var(--pattern-color) 1px, transparent 1px),
         linear-gradient(var(--pattern-color) 1px, transparent 1px);
 
-    /* --- SIZING THE LAYERS --- */
+
+    /* --- SIZING (The "Pixel" Scale) --- */
     background-size: 
         100% 100%,      /* Vignette */
-        20px 20px,      /* Vine (Left leaning) - Small 20px tiles */
-        20px 20px,      /* Vine (Right leaning) */
-        100% 100%,      /* Rock Wash */
-        40px 40px,      /* Rock Squares - Larger 40px blocks */
-        32px 32px,      /* Grid X */
-        32px 32px;      /* Grid Y */
+        
+        60px 80px,      /* Big Vines (Wide and tall drape) */
+        20px 30px,      /* Small Leaves (Tight spacing) */
+        
+        20px 20px,      /* Sharp Spikes (Small 20px zig-zags) */
+        20px 20px,      /* Sharp Spikes (Mirrored) */
+        100% 200px,     /* Bedrock (Stretches across bottom) */
+        
+        32px 32px,      /* Grid */
+        32px 32px;      /* Grid */
 
-    /* --- POSITIONING THE LAYERS --- */
+
+    /* --- POSITIONING --- */
     background-position:
         0 0,            /* Vignette */
-        0 0,            /* Vine 1 (Top Left) */
-        10px 0,         /* Vine 2 (Offset to create the 'leaf' shape) */
-        0 0,            /* Rock Wash */
-        0 100%,         /* Rock Squares (Locked to Bottom) */
+        
+        0 -10px,        /* Big Vines */
+        10px -15px,     /* Small Leaves (Offset to look natural) */
+        
+        0 100%,         /* Spikes Left-leaning (Bottom) */
+        0 100%,         /* Spikes Right-leaning (Bottom) */
+        0 100%,         /* Bedrock (Bottom) */
+        
         0 0,            /* Grid */
         0 0;            /* Grid */
 
-    /* --- REPEATING (The Trick) --- */
+
+    /* --- REPEATING RULES --- */
     background-repeat:
         no-repeat,      /* Vignette */
-        repeat-x,       /* Vines: ONLY repeat horizontally at the top */
-        repeat-x,       /* Vines */
-        no-repeat,      /* Rock Wash */
-        repeat-x,       /* Rock Squares: ONLY repeat horizontally at the bottom */
-        repeat,         /* Grid: Everywhere */
-        repeat;         /* Grid: Everywhere */
+        repeat-x,       /* Vines X only */
+        repeat-x,       /* Vines X only */
+        repeat-x,       /* Spikes X only */
+        repeat-x,       /* Spikes X only */
+        no-repeat,      /* Bedrock */
+        repeat,         /* Grid */
+        repeat;         /* Grid */
     
-    /* Standard Layout */
+    /* Layout Logic */
     display: flex;
     flex-direction: column;
     align-items: center;
