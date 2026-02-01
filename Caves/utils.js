@@ -174,3 +174,30 @@ function generateUUID() {
         return v.toString(16);
     });
 }
+
+// --- Add to utils.js (or top of script.js) ---
+function sanitizeForFirestore(obj) {
+    if (obj === undefined) return null;
+    if (obj === null) return null;
+    
+    // If it's an array, map it
+    if (Array.isArray(obj)) {
+        return obj.map(item => sanitizeForFirestore(item));
+    }
+    
+    // If it's an object, strictly copy keys and replace undefined with null
+    if (typeof obj === 'object') {
+        const newObj = {};
+        Object.keys(obj).forEach(key => {
+            const val = obj[key];
+            if (val === undefined) {
+                newObj[key] = null; // THE FIX: Undefined becomes null
+            } else {
+                newObj[key] = sanitizeForFirestore(val);
+            }
+        });
+        return newObj;
+    }
+    
+    return obj;
+}
