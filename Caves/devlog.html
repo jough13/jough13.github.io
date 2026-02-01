@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caves & Castles - Devlog #1</title>
+    <style>
+        :root {
+            --bg-page: #f9fafb;
+            --bg-container: #ffffff;
+            --bg-panel: #f3f4f6;
+            --text-default: #111827;
+            --text-muted: #4b5563;
+            --text-highlight: #4f46e5;
+            --border-color: #d1d5db;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-page: #111827;
+                --bg-container: #1f2937;
+                --bg-panel: #374151;
+                --text-default: #f9fafb;
+                --text-muted: #9ca3af;
+                --text-highlight: #facc15;
+                --border-color: #4b5563;
+            }
+        }
+
+        body {
+            font-family: Menlo, Monaco, 'Courier New', monospace;
+            background-color: var(--bg-page);
+            color: var(--text-default);
+            line-height: 1.6;
+            margin: 0;
+            padding: 2rem 1rem;
+        }
+
+        main {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: var(--bg-container);
+            border: 2px solid var(--border-color);
+            padding: 2rem 3rem;
+            border-radius: 1rem;
+        }
+
+        h1, h2, h3 {
+            color: var(--text-highlight);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-top: 2rem;
+        }
+
+        h1 {
+            text-align: center;
+            border-bottom: none;
+            font-size: 2.5rem;
+            margin-top: 0;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+        }
+
+        .date {
+            text-align: center;
+            color: var(--text-muted);
+            margin-top: -1rem;
+            margin-bottom: 2rem;
+            font-style: italic;
+        }
+
+        p {
+            margin-bottom: 1rem;
+        }
+
+        code {
+            background-color: var(--bg-panel);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            font-weight: bold;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        strong {
+            color: var(--text-highlight);
+        }
+
+        a {
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Devlog #1: The Scholar's Update</h1>
+        <p class="date">February 1st, 2026</p>
+
+        <p>Hello Adventurers!</p>
+        <p>
+            Welcome to the first official development diary for <strong>Caves and Castles</strong>! This update is a big one, split into two major parts: shoring up the foundations of the game engine and adding a brand new system designed to reward exploration and storytelling: <strong>The Codex</strong>.
+        </p>
+
+        <h2>The Codex: A New Lore System</h2>
+        <p>
+            Finding scattered pages and journals is cool, but we wanted to make it a core part of your progression. The new Codex system transforms lore from simple flavor text into a rewarding gameplay loop.
+        </p>
+        <ul>
+            <li><strong>Lore Sets:</strong> Journals and important notes are now grouped into "sets" or chapters in the Collections tab. Finding one page is just the start—now you have a reason to hunt for the rest!</li>
+            <li><strong>Permanent Bonuses:</strong> Completing a lore set grants a permanent, passive bonus to your character. This is our way of making exploration and intellectual curiosity a valid path to power.</li>
+            <li><strong>Launch Day Sets:</strong>
+                <ul>
+                    <li>📜 <strong>The Fall of Alaric:</strong> Collect the five chronicles detailing the Old King's demise to gain <strong>Authority</strong>, granting a permanent 10% discount at all shops.</li>
+                    <li>🔮 <strong>Notes from the Void:</strong> Uncover the mages' forbidden research to gain <strong>Clarity</strong>, granting a permanent +10 to your Max Mana.</li>
+                    <li>🌿 <strong>The Survivalist's Guide:</strong> Piece together tips from past adventurers to become <strong>Hardy</strong>, reducing Hunger and Thirst drain by 10%.</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h2>Engine Hardening & Bug Fixes</h2>
+        <p>
+            Before building new stories, we had to make sure the foundation was solid rock. This part of the update focused on fixing critical background issues to ensure a smoother, more stable experience for everyone.
+        </p>
+        <ul>
+            <li><strong>Cloud Save Optimization:</strong> We've implemented a "debounced" save system. Instead of writing to the database every time you move in the Overworld, the game now waits for you to pause before saving. This drastically reduces network usage, makes movement feel smoother, and will lower server costs in the long run. (Don't worry, saves are still instant during turn-based dungeon combat!)</li>
+            <li><strong>Stat Desync Fix:</strong> Fixed a nasty bug where your Max Health or Mana could get "stuck" at the wrong value after equipping items or allocating stat points. The game now recalculates your vitals from the ground up, ensuring they are always accurate.</li>
+            <li><strong>"Fair-Weather Merchant" Fix:</strong> Addressed an exploit where shopkeepers would instantly restock their entire inventory if you walked away and came right back. Shops now have a persistent memory for the duration of your play session.</li>
+            <li><strong>Version Compatibility Fix:</strong> If an item is ever removed or changed in a future game update, your old save file will no longer crash. Instead, the obsolete item will safely turn into "Crumbling Ash," which you can discard.</li>
+            <li><strong>Mobile UX Polish:</strong> Tapping on the game canvas on a mobile device will no longer accidentally zoom or pan the webpage, preventing interruptions during gameplay.</li>
+        </ul>
+
+        <h2>What's Next?</h2>
+        <p>
+            With a stable engine and the new Codex system in place, our next focus is to build upon it. We're now free to design the main questline, add dozens of new lore sets to discover, and create unique rewards that tie directly into the history of the world. Expect more reasons to explore, more secrets to uncover, and more stories to piece together!
+        </p>
+        <p>
+            Happy adventuring!
+        </p>
+        <p>- The Dev Team</p>
+        <hr style="border-color: var(--border-color); margin: 2rem 0;">
+        <p style="text-align: center;"><a href="index.html">&laquo; Back to the Game</a></p>
+    </main>
+</body>
+</html>
