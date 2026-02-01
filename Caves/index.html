@@ -22,15 +22,19 @@
         </button>
 
         <div class="flex justify-between items-center text-sm">
-            <!-- "Remember Me" Checkbox -->
-            <label for="rememberMe" class="flex items-center gap-2 cursor-pointer muted-text">
-                <input type="checkbox" id="rememberMe" class="form-checkbox h-4 w-4 rounded" checked>
-                Remember Me
-            </label>
+    <div class="flex flex-col gap-1"> <label for="rememberMe" class="flex items-center gap-2 cursor-pointer muted-text">
+            <input type="checkbox" id="rememberMe" class="form-checkbox h-4 w-4 rounded" checked>
+            Remember Me
+        </label>
+        
+        <label for="autoLoginCheck" class="flex items-center gap-2 cursor-pointer muted-text">
+            <input type="checkbox" id="autoLoginCheck" class="form-checkbox h-4 w-4 rounded" checked>
+            Auto Login
+        </label>
+    </div>
 
-            <!-- Toggle Link -->
-            <a href="#" id="authToggle" class="highlight-text hover:underline">Create Account</a>
-        </div>
+    <a href="#" id="authToggle" class="highlight-text hover:underline">Create Account</a>
+</div>
 
         <p id="authError" class="text-red-500 text-center text-sm min-h-[1rem]"></p>
     </div>
