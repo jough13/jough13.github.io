@@ -2287,12 +2287,21 @@ for (let y = 0; y < map.length; y++) {
         const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
         const chunkY = Math.floor(worldY / this.CHUNK_SIZE);
         const chunkId = `${chunkX},${chunkY}`;
+        
         const localX = (worldX % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
         const localY = (worldY % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
+        
         if (!this.worldState[chunkId]) this.worldState[chunkId] = {};
+        
         const tileKey = `${localX},${localY}`;
         this.worldState[chunkId][tileKey] = newTile;
-        db.collection('worldState').doc(chunkId).set(this.worldState[chunkId], {
+
+        // --- Sanitize Data ---
+        // We use your existing 'sanitizeForFirebase' helper to strip out 'undefined' values
+        // before they crash the database save.
+        const cleanData = sanitizeForFirebase(this.worldState[chunkId]);
+
+        db.collection('worldState').doc(chunkId).set(cleanData, {
             merge: true
         });
     },
@@ -4428,58 +4437,47 @@ function getRegionalPriceMultiplier(itemType, itemName) {
 
 function handleSellItem(itemIndex) {
     const player = gameState.player;
-        if (itemIndex < 0 || itemIndex >= player.inventory.length) return;
-    
+    if (itemIndex < 0 || itemIndex >= player.inventory.length) return;
+
     const itemToSell = player.inventory[itemIndex];
-    if (!itemToSell) return; 
+    if (!itemToSell) return;
 
     if (itemToSell.isEquipped) {
         logMessage("You cannot sell an item you are wearing!");
         return;
     }
 
-    if (!itemToSell) {
-        logMessage("Error: Item not in inventory.");
-        return;
-    }
-
-    // Find the item's base price in the shop.
+    // --- 1. Determine Base Price & Modifiers FIRST ---
     const shopItem = activeShopInventory.find(i => i.name === itemToSell.name);
-        if (shopItem) {
-            // Never allow selling for more than 75% of base buy price, regardless of modifiers
-            const maxSell = Math.floor(shopItem.price * 0.75);
-            calculatedSellPrice = Math.min(calculatedSellPrice, maxSell);
-        }
+    
+    let basePrice = 2;
 
-    let basePrice = 2; // Default
-    if (shopItem) {
-        basePrice = shopItem.price;
-    } else {
-        // --- SPECIAL PRICES FOR RELICS ---
-        if (itemToSell.name === 'Shattered Crown') basePrice = 200;
-        else if (itemToSell.name === 'Signet Ring') basePrice = 80;
-        else if (itemToSell.name === 'Pouch of Gold Dust') basePrice = 50;
-        else if (itemToSell.name === 'Ancient Coin') basePrice = 25;
-        else if (itemToSell.name === 'Alpha Pelt') basePrice = 60;
-    }
+            if (shopItem) {
+                basePrice = shopItem.price;
+                // Bonus for modified items
+                if (item.name !== shopItem.name) {
+                    basePrice = Math.floor(basePrice * 1.5);
+                }
+            } else {
+                // Relic/Special Prices
+                if (item.name === 'Shattered Crown') basePrice = 200;
+                else if (item.name === 'Signet Ring') basePrice = 80;
+                else if (item.name === 'Pouch of Gold Dust') basePrice = 50;
+                else if (item.name === 'Ancient Coin') basePrice = 25;
+                else if (item.name === 'Alpha Pelt') basePrice = 60;
+            }
 
-    const regionMult = getRegionalPriceMultiplier(itemToSell.type, itemToSell.name);
+            // 1. Declare values first
+            const regionMult = getRegionalPriceMultiplier(item.type, item.name);
+            const sellBonusPercent = player.charisma * 0.005;
+            const finalSellBonus = Math.min(sellBonusPercent, 0.25);
 
-    const sellBonusPercent = player.charisma * 0.005;
-    const finalSellBonus = Math.min(sellBonusPercent, 0.25);
+            // 2. Calculate variable
+            let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
 
-    // --- FIX START: Economy Cap ---
-    // Calculate raw sell price
-    let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
-
-    // Cap the sell price at 80% of the base price to prevent infinite money loops
-    // (e.g. buying for 90g and selling for 100g)
-    const maxSellPrice = Math.floor(basePrice * 0.8);
-
-    // If the item is a rare relic (not sold in shops), we don't need to cap it strictly
-    // against a shop price, but for general goods, we apply the cap.
-    const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
-    // --- FIX END ---
+            // 3. Apply Cap
+            const maxSellPrice = Math.floor(basePrice * 0.8);
+            const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
 
     if (regionMult > 1.0) logMessage(`Market demand is high here! (x${regionMult})`);
     else if (regionMult < 1.0) logMessage(`Market flooded. Low demand. (x${regionMult})`);
@@ -5521,6 +5519,60 @@ async function executeLunge(dirX, dirY) {
                         logMessage(`You defeated the ${enemy.name}!`);
 
                         registerKill(enemy);
+
+                        // 1. Determine Loot
+                        let lootItemKey = null;
+                        
+                        // Use the enemy's defined loot if it exists (e.g., 'bone')
+                        if (enemyData.loot) {
+                            lootItemKey = enemyData.loot;
+                        } 
+                        // Fallback: Small chance for Gold Dust if no specific loot
+                        else {
+                            if (Math.random() < 0.15) lootItemKey = 'gold_dust';
+                        }
+
+                        // 2. Give Item to Player (Inventory Push)
+                        if (lootItemKey && window.ITEM_DATA[lootItemKey]) {
+                            const itemTemplate = window.ITEM_DATA[lootItemKey];
+                            
+                            // Safe Create
+                            const newItem = {
+                                templateId: lootItemKey,
+                                name: itemTemplate.name,
+                                type: itemTemplate.type,
+                                quantity: 1,
+                                tile: lootItemKey, 
+                                // Sanitize stats to prevent crashes
+                                damage: itemTemplate.damage || null,
+                                defense: itemTemplate.defense || null,
+                                slot: itemTemplate.slot || null
+                            };
+
+                            // Add to bag
+                            gameState.player.inventory.push(newItem);
+                            logMessage(`The ${enemy.name} dropped a {cyan:${newItem.name}}!`);
+                            
+                            // Visual: Update inventory UI
+                            if (gameState.inventoryMode) renderInventory();
+                        } else {
+                            // If no loot, just log it (prevents dropping 'Y' on ground)
+                            console.log("Enemy died, no loot dropped.");
+                        }
+
+                        // 3. Cleanup Enemy from Arrays
+                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
+
+                        if (gameState.mapMode === 'dungeon') {
+                            if (chunkManager.caveEnemies[gameState.currentCaveId]) {
+                                chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
+                            }
+                            // Clear the tile (remove the enemy sprite)
+                            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = CAVE_THEMES[gameState.currentCaveTheme].floor;
+                        } else if (gameState.mapMode === 'castle') {
+                             chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = '.';
+                        }
+                    }
 
                         const droppedLoot = generateEnemyLoot(player, enemy);
                         gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
@@ -9287,27 +9339,36 @@ function getPlayerDamageModifier(baseDamage) {
 }
 
 function handlePlayerDeath() {
-    if (gameState.player.health > 0) return false; // Not dead
+    // 1. Alive Check
+    if (gameState.player.health > 0) return false;
 
-        if (saveTimeout) {
+    // 2. THE FIX: The "Double Death" Lock
+    // If we are already handling death, STOP. Do not run this twice.
+    if (gameState.isGameOver) return true;
+
+    // 3. Set the Lock immediately
+    gameState.isGameOver = true;
+
+    // Clear any pending auto-saves so we don't save "half-dead" states
+    if (saveTimeout) {
         clearTimeout(saveTimeout);
         saveTimeout = null;
     }
 
     const player = gameState.player;
+    const gameOverModal = document.getElementById('gameOverModal');
 
-    // 1. Visuals & Logs
-    // Ensure health is clamped to 0 so the game loop knows we are dead
+    // 4. Visuals & Logs
     player.health = 0; 
     logMessage("{red:You have perished!}");
     triggerStatFlash(statDisplays.health, false);
+    AudioSystem.playNoise(0.5, 0.2, 50); // Add a death sound if you have it
 
-    // 2. Remove Equipment Stats (So we don't carry buffs over)
+    // 5. Remove Equipment Stats
     if (player.equipment.weapon) applyStatBonuses(player.equipment.weapon, -1);
     if (player.equipment.armor) applyStatBonuses(player.equipment.armor, -1);
 
-    // 3. CORPSE SCATTER LOGIC
-    // (This drops your inventory on the ground where you died)
+    // 6. CORPSE SCATTER LOGIC (Your existing code)
     const deathX = player.x;
     const deathY = player.y;
     const pendingUpdates = {};
@@ -9316,7 +9377,6 @@ function handlePlayerDeath() {
         const item = player.inventory[i];
         let placed = false;
         
-        // Try to place item in a 3x3 grid around death spot
         for (let r = 0; r <= 2 && !placed; r++) {
             for (let dy = -r; dy <= r && !placed; dy++) {
                 for (let dx = -r; dx <= r && !placed; dx++) {
@@ -9324,7 +9384,6 @@ function handlePlayerDeath() {
                     const ty = deathY + dy;
                     let tile;
 
-                    // Check terrain validity
                     if (gameState.mapMode === 'overworld') tile = chunkManager.getTile(tx, ty);
                     else if (gameState.mapMode === 'dungeon') tile = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
                     else tile = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
@@ -9351,31 +9410,36 @@ function handlePlayerDeath() {
         }
     }
 
-    // Apply map updates
     if (gameState.mapMode === 'overworld') {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
             db.collection('worldState').doc(cId).set(updates, { merge: true });
         }
     }
 
-    // 4. CALCULATE PENALTIES (But do not move player yet)
+    // 7. CALCULATE PENALTIES
     const goldLost = Math.floor(player.coins / 2);
     player.coins -= goldLost;
     
-    // Clear inventory immediately so it can't be accessed while dead
+    // Clear inventory
     player.inventory = []; 
     player.equipment = { weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Simple Tunic', defense: 0 } };
 
-    // 5. Update Modal UI
-    document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
-    document.getElementById('finalCoinsDisplay').textContent = `Gold lost: ${goldLost}`;
+    // 8. Update Modal UI
+    const lvlDisplay = document.getElementById('finalLevelDisplay');
+    const coinDisplay = document.getElementById('finalCoinsDisplay');
+    
+    if (lvlDisplay) lvlDisplay.textContent = `Level: ${player.level}`;
+    if (coinDisplay) coinDisplay.textContent = `Gold lost: ${goldLost}`;
 
-    // 6. Show Modal
-    gameOverModal.classList.remove('hidden');
+    // 9. Show Modal (Safe Check)
+    if (gameOverModal) {
+        gameOverModal.classList.remove('hidden');
+        gameOverModal.style.zIndex = "9999"; // Force it to the front
+    } else {
+        console.error("Game Over Modal not found!");
+    }
 
-    // 7. Save "Dead" State
-    // We save health: 0 and current X/Y. 
-    // This ensures if they refresh the page, they are still dead.
+    // 10. Save "Dead" State
     playerRef.set(sanitizeForFirebase(player));
 
     return true;
@@ -14118,6 +14182,8 @@ restartButton.onclick = () => {
     // 1. Reset Position (The "Original Coordinates")
     player.x = 0;
     player.y = 0;
+
+    gameState.isGameOver = false;
 
     // 2. Restore Vitals
     player.health = player.maxHealth;
