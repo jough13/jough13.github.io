@@ -440,16 +440,36 @@ window.selectBackground = async function (bgKey) {
     }
 
     // 4. Save to Database
-    // We save the whole player state + the new "background" tag
     await playerRef.set({
         ...player,
         background: bgKey
     }, { merge: true });
 
     // 5. Start the Game UI
-    charCreationModal.classList.add('hidden'); // Hide the class selector
-    gameContainer.classList.remove('hidden');  // NOW we show the game map
+    charCreationModal.classList.add('hidden'); 
+    
+    // UI Updates (Do these BEFORE showing the canvas)
+    logMessage(`You have chosen the path of the ${background.name}.`);
+    gameState.mapMode = 'overworld';
+    
+    // Update HTML UI elements (HUD)
+    renderStats();
+    renderEquipment();
+    renderInventory();
+    renderTime();
+    
+    // 6. SHOW THE GAME (The Fix)
+    gameContainer.classList.remove('hidden'); 
     canvas.style.visibility = 'visible';
+
+    // ONLY render inside the timeout. 
+    // Do not call resizeCanvas() or render() outside of this block.
+    setTimeout(() => {
+        resizeCanvas();               
+        centerCamera(player.x, player.y); 
+        render();                     
+    }, 50); 
+};
 
     gameState.mapMode = 'overworld';
 
@@ -13629,6 +13649,14 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
 
             logMessage(`Welcome back, ${playerData.background} of level ${gameState.player.level}.`);
             updateRegionDisplay();
+
+            setTimeout(() => {
+        resizeCanvas();
+        centerCamera(gameState.player.x, gameState.player.y);
+        render();
+        canvas.style.visibility = 'visible'; // Reveal canvas after it's drawn
+    }, 50);
+    
             updateExploration();
 
             loadingIndicator.classList.add('hidden');
