@@ -2868,20 +2868,20 @@ function triggerAtmosphericFlavor(tile) {
 function updateWeather() {
     const player = gameState.player;
 
-    // 1. Initialize State if missing (Safety check for existing saves)
+    // 1. Initialize State if missing
     if (typeof player.weatherIntensity === 'undefined') player.weatherIntensity = 0;
     if (typeof player.weatherState === 'undefined') player.weatherState = 'calm'; // calm, building, active, fading
     if (typeof player.weatherDuration === 'undefined') player.weatherDuration = 0;
+    if (typeof player.weatherCooldown === 'undefined') player.weatherCooldown = 0; // NEW: Track sunny days
 
     // 2. Determine Local Forecast (Where we are now)
-    // We expanded the noise scale to 300 so weather zones are larger/longer
     const x = player.x;
     const y = player.y;
+    // We keep the noise check to ensure rain only happens in "humid" biomes
     const temp = elevationNoise.noise(x / 300, y / 300);
     const humid = moistureNoise.noise(x / 300 + 100, y / 300 + 100);
 
     let localForecast = 'clear';
-    // Overworld only
     if (gameState.mapMode === 'overworld') {
         if (humid > 0.6) {
             if (temp < 0.3) localForecast = 'snow';
@@ -2892,26 +2892,35 @@ function updateWeather() {
         }
     }
 
-    // 3. Weather State Machine
-    const TRANSITION_SPEED = 0.1; // Takes 10 turns to fade in/out fully
+    // 3. Update Cooldown
+    if (player.weatherCooldown > 0) {
+        player.weatherCooldown--;
+    }
+
+    // 4. Weather State Machine
+    const TRANSITION_SPEED = 0.05; // Slower transitions (feels more natural)
 
     switch (player.weatherState) {
         case 'calm':
-            // If the forecast calls for weather, start building it
-            if (localForecast !== 'clear') {
-                gameState.weather = localForecast; // Set the type
-                player.weatherState = 'building';
-                logMessage(`The sky darkens. It looks like ${localForecast} is coming.`);
+            // Rule 1: Must be in a weather zone
+            // Rule 2: Cooldown must be 0
+            // Rule 3: Random Chance (5% per turn) to prevent "Instant Rain" upon entering a forest
+            if (localForecast !== 'clear' && player.weatherCooldown <= 0) {
+                if (Math.random() < 0.05) { 
+                    gameState.weather = localForecast; 
+                    player.weatherState = 'building';
+                    logMessage(`The wind picks up. It looks like ${localForecast} is coming.`);
+                }
             }
             break;
 
         case 'building':
-            // Increase intensity
             player.weatherIntensity += TRANSITION_SPEED;
             if (player.weatherIntensity >= 1.0) {
                 player.weatherIntensity = 1.0;
                 player.weatherState = 'active';
-                player.weatherDuration = 50 + Math.floor(Math.random() * 50); // Lasts 50-100 turns
+                // Storms are shorter now (30-60 turns) to make them intense but brief
+                player.weatherDuration = 30 + Math.floor(Math.random() * 30); 
                 logMessage(`The ${gameState.weather} is fully upon you.`);
             }
             break;
@@ -2919,25 +2928,25 @@ function updateWeather() {
         case 'active':
             player.weatherDuration--;
 
-            // If we walked OUT of the bad weather zone, start fading early
-            if (localForecast === 'clear' && player.weatherDuration > 5) {
-                player.weatherDuration = 5;
-                logMessage("The weather seems to be clearing up.");
-            }
-
-            if (player.weatherDuration <= 0) {
+            // If we walk OUT of the zone, fade early
+            if (localForecast === 'clear') {
+                player.weatherState = 'fading';
+                logMessage("You leave the storm behind.");
+            } else if (player.weatherDuration <= 0) {
                 player.weatherState = 'fading';
             }
             break;
 
         case 'fading':
-            // Decrease intensity
             player.weatherIntensity -= TRANSITION_SPEED;
             if (player.weatherIntensity <= 0) {
                 player.weatherIntensity = 0;
                 player.weatherState = 'calm';
                 gameState.weather = 'clear';
-                logMessage("The skies are clear again.");
+                
+                // This ensures long periods of exploration between weather events
+                player.weatherCooldown = 500 + Math.floor(Math.random() * 500); 
+                logMessage("The skies clear. It should be sunny for a while.");
             }
             break;
     }
