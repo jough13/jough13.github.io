@@ -58,6 +58,9 @@
     --mtn-cap: #f9fafb;    /* Bright snow */
 
 	--pattern-color: rgba(0, 0, 0, 0.06);
+	
+	--vine-color: rgba(34, 197, 94, 0.15);  /* Faint Green */
+    --rock-color: rgba(120, 113, 108, 0.15); /* Faint Stone Brown */
 }
 
 [data-theme="dark"] {
@@ -77,30 +80,66 @@
 
 	--pattern-color: rgba(255, 255, 255, 0.06);
 
+	--vine-color: rgba(74, 222, 128, 0.1); 
+    --rock-color: rgba(168, 162, 158, 0.1);
+
 	--mtn-base: #374151;   /* Darker base */
     --mtn-shadow: #1f2937; /* Deep shadow */
     --mtn-cap: #e5e7eb;    /* Muted snow */
 }
 
 body {
-    font-family: 'Courier New', Courier, monospace; /* Keeps your retro font */
-    
-    /* 1. Base Background Color */
+    font-family: 'Courier New', Courier, monospace;
     background-color: var(--bg-page);
     
-    /* 2. The 8-Bit Grid Pattern */
+    /* --- THE 8-BIT NATURE STACK --- */
     background-image: 
-        /* Vertical Lines */
-        linear-gradient(90deg, var(--pattern-color) 1px, transparent 1px),
-        /* Horizontal Lines */
-        linear-gradient(var(--pattern-color) 1px, transparent 1px),
-        /* Vignette (Shadows in corners) */
-        radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.1) 100%);
+        /* 1. VIGNETTE: Keeps focus in the center */
+        radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.1) 100%),
 
-    /* 3. Size of the grid squares (32px looks like old-school tiles) */
-    background-size: 32px 32px, 32px 32px, 100% 100%;
+        /* 2. TOP VINES: Two gradients forming downward triangles (leaves) */
+        linear-gradient(135deg, var(--vine-color) 25%, transparent 25%),
+        linear-gradient(225deg, var(--vine-color) 25%, transparent 25%),
+
+        /* 3. BOTTOM ROCKS: A solid wash + vertical blocks */
+        linear-gradient(to top, var(--rock-color) 0%, transparent 20%), /* Fades up */
+        linear-gradient(90deg, var(--rock-color) 50%, transparent 50%), /* Square blocks */
+
+        /* 4. THE GRID: The graph paper texture (Background) */
+        linear-gradient(90deg, var(--pattern-color) 1px, transparent 1px),
+        linear-gradient(var(--pattern-color) 1px, transparent 1px);
+
+    /* --- SIZING THE LAYERS --- */
+    background-size: 
+        100% 100%,      /* Vignette */
+        20px 20px,      /* Vine (Left leaning) - Small 20px tiles */
+        20px 20px,      /* Vine (Right leaning) */
+        100% 100%,      /* Rock Wash */
+        40px 40px,      /* Rock Squares - Larger 40px blocks */
+        32px 32px,      /* Grid X */
+        32px 32px;      /* Grid Y */
+
+    /* --- POSITIONING THE LAYERS --- */
+    background-position:
+        0 0,            /* Vignette */
+        0 0,            /* Vine 1 (Top Left) */
+        10px 0,         /* Vine 2 (Offset to create the 'leaf' shape) */
+        0 0,            /* Rock Wash */
+        0 100%,         /* Rock Squares (Locked to Bottom) */
+        0 0,            /* Grid */
+        0 0;            /* Grid */
+
+    /* --- REPEATING (The Trick) --- */
+    background-repeat:
+        no-repeat,      /* Vignette */
+        repeat-x,       /* Vines: ONLY repeat horizontally at the top */
+        repeat-x,       /* Vines */
+        no-repeat,      /* Rock Wash */
+        repeat-x,       /* Rock Squares: ONLY repeat horizontally at the bottom */
+        repeat,         /* Grid: Everywhere */
+        repeat;         /* Grid: Everywhere */
     
-    /* Standard Layout Stuff (Keep this) */
+    /* Standard Layout */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -108,8 +147,6 @@ body {
     min-height: 100vh;
     padding: 1rem;
     margin: 0;
-    
-    /* Ensures the background stays fixed when scrolling on mobile */
     background-attachment: fixed; 
 }
 
