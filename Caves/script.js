@@ -3016,7 +3016,6 @@ const renderStats = () => {
 
         const element = statDisplays[statName];
 
-        // Ensure element exists and player has the stat
         if (element && gameState.player.hasOwnProperty(statName)) {
             const value = gameState.player[statName];
             const label = statName.charAt(0).toUpperCase() + statName.slice(1);
@@ -3062,7 +3061,7 @@ const renderStats = () => {
                 }
                 
                 element.innerHTML = healthString;
-
+                
                 element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500'); 
                 if (percent > 60) element.classList.add('text-green-500');
                 else if (percent > 30) element.classList.add('text-yellow-500');
@@ -3086,7 +3085,6 @@ const renderStats = () => {
                 
                 element.textContent = `${label}: ${Math.floor(value)}`;
 
-            // --- FIXED: Wits now rounds the base value ---
             } else if (statName === 'wits') {
                 let witsText = `${label}: ${Math.floor(value)}`; 
                 if (gameState.player.witsBonus > 0) {
@@ -3094,7 +3092,6 @@ const renderStats = () => {
                 }
                 element.innerHTML = witsText;
 
-            // --- FIXED: Psyche now rounds the value ---
             } else if (statName === 'psyche') {
                 const max = gameState.player.maxPsyche || 10;
                 const percent = Math.min(100, (value / max) * 100);
@@ -3122,18 +3119,15 @@ const renderStats = () => {
                 
                 element.textContent = `${label}: ${Math.floor(value)}`;
 
-            // --- NEW: Explicitly handle Strength and Defense to remove decimals ---
             } else if (statName === 'strength' || statName === 'defense') {
                 element.textContent = `${label}: ${Math.floor(value)}`;
 
             } else {
-                // Default case for Coins, Level, etc.
                 element.textContent = `${label}: ${value}`;
             }
         }
     }
 
-    // Only update title if playing
     if (gameState.mapMode && gameState.player && gameState.player.level) {
         document.title = `HP: ${Math.ceil(gameState.player.health)}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
     }
