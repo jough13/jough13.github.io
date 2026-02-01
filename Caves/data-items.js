@@ -284,6 +284,48 @@ window.CRAFTING_RECIPES = {
 };
 
 window.ITEM_DATA = {
+    // 2. Add these items to your ITEM_DATA
+// (Paste this inside your existing window.ITEM_DATA object)
+'bone': {
+    name: "Fossilized Bone",
+    type: "trade",
+    char: "🦴",
+    color: "#a8a29e",
+    description: "The remains of something that predates the Kingdom.",
+    value: 5
+},
+'pottery': {
+    name: "Shard of Pottery",
+    type: "trade",
+    char: "🏺",
+    color: "#d97706",
+    description: "It depicts a king with no face.",
+    value: 15
+},
+'arrowhead': {
+    name: "Obsidian Arrowhead",
+    type: "trade",
+    char: "🔺",
+    color: "#1f2937",
+    description: "Sharp as the day it was knapped. Elven make.",
+    value: 25
+},
+'idol': {
+    name: "Strange Idol",
+    type: "trade",
+    char: "🗿",
+    color: "#78716c",
+    description: "It feels warm to the touch. Unsettling.",
+    value: 100
+},
+'tome_page': {
+    name: "Rotting Page",
+    type: "lore",
+    char: "📜",
+    color: "#fef3c7",
+    description: "A fragment of a spell: '...the void requires a tether...'",
+    value: 50
+},
     // --- NEW ARTIFACTS & PUZZLE ITEMS ---
     '📜l': {
     name: 'Forgotten Letter',
@@ -2061,3 +2103,14 @@ window.TRADER_INVENTORY = [
     { name: 'Scroll of Homing', price: 150, stock: 2 },
     { name: 'Tattered Map', price: 100, stock: 3 }
 ];
+
+// 1. Define the Archaeology Loot Table
+window.LOOT_TABLE_ARCHAEOLOGY = [
+    'bone',        // Common
+    'bone',        // Common
+    'pottery',     // Uncommon
+    'arrowhead',   // Uncommon
+    'idol',        // Rare
+    'tome_page'    // Very Rare (Lore Item)
+];
+
