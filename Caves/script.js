@@ -3120,6 +3120,59 @@ const renderStats = () => {
     }
 };
 
+function handleDig() {
+    // 1. Get the current tile safely based on location
+    let tile;
+    if (gameState.mapMode === 'overworld') {
+        tile = chunkManager.getWorldTile(player.x, player.y);
+    } else {
+        // Disallow digging indoors to prevent logic headaches
+        logMessage("You cannot dig inside a structure.");
+        return;
+    }
+
+    // 2. Check Tile: Can only dig on Loose Soil
+    if (tile !== '∴') {
+        logMessage("The ground here is too hard to dig.");
+        return;
+    }
+
+    // 2. Check Stamina
+    if (player.stamina < 5) {
+        logMessage("You are too exhausted to dig.");
+        return;
+    }
+
+    // 3. Execute Dig
+    player.stamina -= 5;
+    AudioSystem.playNoise(0.1, 0.05, 200); // reuse your noise function for a "crunch" sound
+
+    // 4. Calculate Loot
+    const roll = Math.random();
+    
+    // 30% chance to find nothing (just dirt)
+    if (roll < 0.30) {
+        logMessage("You dig up nothing but worms.");
+    } else {
+        // Pull from the loot table we made
+        const itemKey = window.LOOT_TABLE_ARCHAEOLOGY[Math.floor(Math.random() * window.LOOT_TABLE_ARCHAEOLOGY.length)];
+        const itemData = window.ITEM_DATA[itemKey];
+        
+        // Add to inventory
+        const newItem = { ...itemData, quantity: 1, uuid: generateUUID() };
+        player.inventory.push(newItem);
+        logMessage(`You unearthed a {cyan:${newItem.name}}!`);
+    }
+
+    // 5. Transform the tile so they can't farm it forever
+    // Change '∴' (Loose Soil) to '.' (Standard Floor)
+    chunkManager.setWorldTile(player.x, player.y, '.');
+    
+    // 6. Update UI
+    render();
+    renderStats();
+}
+
 // Global set to track processed tiles this session
 // (Ensure this is defined at the top of your file with other globals)
 const wokenEnemyTiles = new Set();
@@ -10177,24 +10230,32 @@ function handleInput(key) {
     }
 
     if (key === 'g' || key === 'G') {
-    // 1. Get tile ID
-    let tileId;
-    if (gameState.mapMode === 'overworld') tileId = `${gameState.player.x},${-gameState.player.y}`;
-    else tileId = `${gameState.currentCaveId || gameState.currentCastleId}:${gameState.player.x},${-gameState.player.y}`;
-
-    // 2. Check current tile for lootable items
+    // 1. Determine what is on the ground (using your robust mapMode check)
     const currentTile = (gameState.mapMode === 'overworld') 
-        ? chunkManager.getTile(gameState.player.x, gameState.player.y)
-        : (gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] : chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x]);
+        ? chunkManager.getWorldTile(gameState.player.x, gameState.player.y)
+        : (gameState.mapMode === 'dungeon' 
+            ? chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] 
+            : chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x]);
 
-    // 3. Trigger pickup if it's an item
-    if (ITEM_DATA[currentTile]) {
-        // We reuse the move logic's pickup code by faking a "wait" on the spot
+    // 2. PRIORITY 1: Pick Up Item
+    // We check if the character on the ground exists in ITEM_DATA
+    if (window.ITEM_DATA[currentTile]) {
         logMessage("You scour the ground for items...");
+        // We reuse the move logic's pickup code by faking a movement update
         attemptMovePlayer(gameState.player.x, gameState.player.y); 
         return;
-    } else {
-        logMessage("There is nothing here to pick up.");
+    } 
+    
+    // 3. PRIORITY 2: Archaeology (Digging)
+    // If it's not an item, checks if it is Loose Soil
+    else if (currentTile === '∴') {
+        handleDig(); // Calls the function we defined earlier
+        return;
+    }
+
+    // 4. Fallback
+    else {
+        logMessage("There is nothing here to pick up or dig.");
         return;
     }
 }
