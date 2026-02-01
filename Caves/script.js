@@ -1522,14 +1522,19 @@ function rehydrateInventory(savedInventory) {
         // 2. Handle Broken/Missing Items
         if (!template) {
             console.warn(`Item '${savedItem.name}' (ID: ${savedItem.templateId}) no longer exists in code.`);
-            // Return a generic "Glitch" item so the player doesn't crash
+            
+            // Return a generic "Ash" item instead of crashing
             return {
-                ...savedItem,
-                name: `Broken: ${savedItem.name}`,
+                ...savedItem, // Keep ID/Qty
+                name: `Crumbling Ash`, 
                 description: "This item is from an old version and has crumbled to dust.",
                 type: 'junk',
-                tile: '❓',
-                effect: null // No effect
+                tile: '💨',
+                effect: null,
+                isEquipped: false, // Ensure unequipped
+                damage: 0,
+                defense: 0,
+                statBonuses: null
             };
         }
 
@@ -12095,37 +12100,58 @@ if (enemy) {
         }
 
         if (newTile === '§') {
-            const hour = gameState.time.hour;
-            if (hour < 6 || hour >= 20) {
-                logMessage("The General Store is closed. A sign reads: 'Open 6 AM - 8 PM'.");
-                return;
-            }
-            if (!gameState.foundLore.has(tileId)) {
-                logMessage("You've discovered a General Store! +15 XP");
-                grantXp(15);
-                gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-            }
-            // This ensures every time we open the shop, stock is fresh (or at least reset for the session)
-            // In a real MMO, stock would be synced to DB, but for now, we prevent session pollution.
-            if (gameState.mapMode === 'castle') {
-                activeShopInventory = JSON.parse(JSON.stringify(CASTLE_SHOP_INVENTORY));
-                logMessage("You enter the castle emporium.");
-            } else {
-                activeShopInventory = JSON.parse(JSON.stringify(SHOP_INVENTORY));
-                logMessage("You enter the General Store.");
-            }
-            if (gameState.mapMode === 'castle') {
-                activeShopInventory = CASTLE_SHOP_INVENTORY;
-                logMessage("You enter the castle emporium.");
-            } else {
-                activeShopInventory = SHOP_INVENTORY;
-                logMessage("You enter the General Store.");
-            }
-            renderShop();
-            shopModal.classList.remove('hidden');
+        const hour = gameState.time.hour;
+        if (hour < 6 || hour >= 20) {
+            logMessage("The General Store is closed. A sign reads: 'Open 6 AM - 8 PM'.");
             return;
         }
+
+        // Discovery XP Logic
+        const tileId = `${newX},${-newY}`; // Used for lore discovery
+        if (!gameState.foundLore.has(tileId)) {
+            logMessage("You've discovered a General Store! +15 XP");
+            grantXp(15);
+            gameState.foundLore.add(tileId);
+            playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+        }
+
+        // --- NEW SHOP PERSISTENCE LOGIC ---
+        
+        // 1. Generate Unique Shop ID
+        // We use the Map ID + Coordinates to ensure every specific shop node is unique
+        let contextId = "overworld";
+        if (gameState.mapMode === 'castle') contextId = gameState.currentCastleId;
+        // (Dungeon shops don't exist yet, but this handles them if added)
+        if (gameState.mapMode === 'dungeon') contextId = gameState.currentCaveId;
+
+        const shopId = `shop_${contextId}_${newX}_${newY}`;
+
+        // 2. Initialize Container if missing
+        if (!gameState.shopStates) gameState.shopStates = {};
+
+        // 3. Check if this specific shop has been visited this session
+        if (!gameState.shopStates[shopId]) {
+            // First visit! Clone the appropriate template.
+            let template = SHOP_INVENTORY; // Default
+            if (gameState.mapMode === 'castle') template = CASTLE_SHOP_INVENTORY;
+            
+            // Deep copy to break reference to the global constant
+            gameState.shopStates[shopId] = JSON.parse(JSON.stringify(template));
+        }
+
+        // 4. Point active inventory to the persistent session state
+        activeShopInventory = gameState.shopStates[shopId];
+
+        if (gameState.mapMode === 'castle') {
+            logMessage("You enter the castle emporium.");
+        } else {
+            logMessage("You enter the General Store.");
+        }
+
+        renderShop();
+        shopModal.classList.remove('hidden');
+        return;
+    }
 
         if (newTile === 'H') {
             const hour = gameState.time.hour;
@@ -12746,6 +12772,8 @@ function clearSessionState() {
 
     gameState.mapMode = null;
 
+    gameState.shopStates = {}; // Clear shop memory
+
     if (gameState.flags) {
         gameState.flags.hasSeenForestWarning = false;
         gameState.flags.canoeEmbarkCount = 0;
@@ -12775,7 +12803,7 @@ function clearSessionState() {
 logoutButton.addEventListener('click', () => {
 
     // 0. Cancel any pending saves immediately
-    
+
     if (saveTimeout) {
         clearTimeout(saveTimeout);
         saveTimeout = null;
@@ -13241,7 +13269,29 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
                             item.slot = templateItem.slot;
                         }
                     } else {
-                        console.warn(`⚠️ Could not re-bind item: "${item.name}". It may be a deprecated item.`);
+                                                // --- GHOST ITEM FIX START ---
+                        console.warn(`⚠️ Corrupted item found: "${item.name}". Converting to Ash.`);
+                        
+                        // Mutate the item into safe "Ash" so the UI can render it without crashing
+                        item.name = `Ash (${item.name})`;
+                        item.description = "An ancient item that has crumbled to dust (Incompatible Version).";
+                        item.type = 'junk';
+                        item.tile = '💨'; // Wind/Ash icon
+                        item.quantity = item.quantity || 1;
+                        
+                        // Strip dangerous properties that might cause logic errors
+                        delete item.effect;
+                        delete item.damage;
+                        delete item.defense;
+                        delete item.statBonuses;
+                        delete item.slot;
+                        
+                        // Force unequip so it doesn't mess up stats
+                        if (item.isEquipped) {
+                            item.isEquipped = false;
+                            console.log("Unequipped ghost item.");
+                        }
+                        // --- GHOST ITEM FIX END ---
                     }
                 });
 
