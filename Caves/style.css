@@ -56,6 +56,8 @@
 	--mtn-base: #57534e;   /* Warm grey */
     --mtn-shadow: #44403c; /* Darker grey for depth */
     --mtn-cap: #f9fafb;    /* Bright snow */
+
+	--pattern-color: rgba(0, 0, 0, 0.06);
 }
 
 [data-theme="dark"] {
@@ -73,16 +75,42 @@
 	/* MODIFIED: Darker, richer blue for dark mode */
 	--terrain-color: #d1d5db;
 
+	--pattern-color: rgba(255, 255, 255, 0.06);
+
 	--mtn-base: #374151;   /* Darker base */
     --mtn-shadow: #1f2937; /* Deep shadow */
     --mtn-cap: #e5e7eb;    /* Muted snow */
 }
 
 body {
-	background-color: var(--bg-page);
-	color: var(--text-default);
-	transition: background-color 0.3s, color 0.3s;
-	font-weight: 500;
+    font-family: 'Courier New', Courier, monospace; /* Keeps your retro font */
+    
+    /* 1. Base Background Color */
+    background-color: var(--bg-page);
+    
+    /* 2. The 8-Bit Grid Pattern */
+    background-image: 
+        /* Vertical Lines */
+        linear-gradient(90deg, var(--pattern-color) 1px, transparent 1px),
+        /* Horizontal Lines */
+        linear-gradient(var(--pattern-color) 1px, transparent 1px),
+        /* Vignette (Shadows in corners) */
+        radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.1) 100%);
+
+    /* 3. Size of the grid squares (32px looks like old-school tiles) */
+    background-size: 32px 32px, 32px 32px, 100% 100%;
+    
+    /* Standard Layout Stuff (Keep this) */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 1rem;
+    margin: 0;
+    
+    /* Ensures the background stays fixed when scrolling on mobile */
+    background-attachment: fixed; 
 }
 
 .game-container {
@@ -108,6 +136,9 @@ canvas {
     image-rendering: -webkit-crisp-edges;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
+	touch-action: none; /* Prevents browser zooming/panning on the canvas */
+    user-select: none;  /* Prevents highlighting text */
+    -webkit-user-select: none;
 }
 
 /* This prevents the inventory from collapsing before JS loads */ 
@@ -666,6 +697,11 @@ kbd {
         display: none !important;
     }
 }
+
+.d-pad-container, .action-buttons-container {
+    touch-action: manipulation; 
+}
+
 
 .d-pad-container {
     pointer-events: auto;
