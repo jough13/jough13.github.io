@@ -9291,13 +9291,12 @@ function handlePlayerDeath() {
     if (gameState.player.health > 0) return false;
 
     // 2. THE FIX: The "Double Death" Lock
-    // If we are already handling death, STOP. Do not run this twice.
     if (gameState.isGameOver) return true;
 
     // 3. Set the Lock immediately
     gameState.isGameOver = true;
 
-    // Clear any pending auto-saves so we don't save "half-dead" states
+    // Clear any pending auto-saves
     if (saveTimeout) {
         clearTimeout(saveTimeout);
         saveTimeout = null;
@@ -9307,16 +9306,16 @@ function handlePlayerDeath() {
     const gameOverModal = document.getElementById('gameOverModal');
 
     // 4. Visuals & Logs
-    player.health = 0; 
+    player.health = 0;
     logMessage("{red:You have perished!}");
     triggerStatFlash(statDisplays.health, false);
-    AudioSystem.playNoise(0.5, 0.2, 50); // Add a death sound if you have it
+    AudioSystem.playNoise(0.5, 0.2, 50);
 
     // 5. Remove Equipment Stats
     if (player.equipment.weapon) applyStatBonuses(player.equipment.weapon, -1);
     if (player.equipment.armor) applyStatBonuses(player.equipment.armor, -1);
 
-    // 6. CORPSE SCATTER LOGIC (Your existing code)
+    // 6. CORPSE SCATTER LOGIC
     const deathX = player.x;
     const deathY = player.y;
     const pendingUpdates = {};
@@ -9328,6 +9327,7 @@ function handlePlayerDeath() {
         for (let r = 0; r <= 2 && !placed; r++) {
             for (let dy = -r; dy <= r && !placed; dy++) {
                 for (let dx = -r; dx <= r && !placed; dx++) {
+                    if (placed) break; // Optimization
                     const tx = deathX + dx;
                     const ty = deathY + dy;
                     let tile;
@@ -9336,7 +9336,8 @@ function handlePlayerDeath() {
                     else if (gameState.mapMode === 'dungeon') tile = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
                     else tile = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
-                    if (tile === '.') {
+                    // Can only drop items on empty floor tiles
+                    if (tile === '.' || (gameState.mapMode === 'dungeon' && tile === CAVE_THEMES[gameState.currentCaveTheme]?.floor)) {
                         if (gameState.mapMode === 'overworld') {
                             const cX = Math.floor(tx / chunkManager.CHUNK_SIZE);
                             const cY = Math.floor(ty / chunkManager.CHUNK_SIZE);
@@ -9345,11 +9346,21 @@ function handlePlayerDeath() {
                             const lY = (ty % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
                             const lKey = `${lX},${lY}`;
                             if (!pendingUpdates[cId]) pendingUpdates[cId] = {};
-                            pendingUpdates[cId][lKey] = item.tile;
+                            
+                            // --- THE FIX ---
+                            // Check if the item has a valid tile before dropping it
+                            if (item.tile) {
+                                pendingUpdates[cId][lKey] = item.tile;
+                            } else {
+                                // If the tile is missing, drop a fallback '?' and warn the developer
+                                console.warn(`Attempted to drop corrupted item without a tile: ${item.name}. Using fallback '?'`);
+                                pendingUpdates[cId][lKey] = '?';
+                            }
+                            
                         } else if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = item.tile;
+                            chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = item.tile || '?';
                         } else {
-                            chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = item.tile;
+                            chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = item.tile || '?';
                         }
                         placed = true;
                     }
@@ -9358,7 +9369,7 @@ function handlePlayerDeath() {
         }
     }
 
-    if (gameState.mapMode === 'overworld') {
+    if (gameState.mapMode === 'overworld' && Object.keys(pendingUpdates).length > 0) {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
             db.collection('worldState').doc(cId).set(updates, { merge: true });
         }
@@ -9368,8 +9379,7 @@ function handlePlayerDeath() {
     const goldLost = Math.floor(player.coins / 2);
     player.coins -= goldLost;
     
-    // Clear inventory
-    player.inventory = []; 
+    player.inventory = [];
     player.equipment = { weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Simple Tunic', defense: 0 } };
 
     // 8. Update Modal UI
@@ -9379,10 +9389,10 @@ function handlePlayerDeath() {
     if (lvlDisplay) lvlDisplay.textContent = `Level: ${player.level}`;
     if (coinDisplay) coinDisplay.textContent = `Gold lost: ${goldLost}`;
 
-    // 9. Show Modal (Safe Check)
+    // 9. Show Modal
     if (gameOverModal) {
         gameOverModal.classList.remove('hidden');
-        gameOverModal.style.zIndex = "9999"; // Force it to the front
+        gameOverModal.style.zIndex = "9999";
     } else {
         console.error("Game Over Modal not found!");
     }
