@@ -2848,8 +2848,14 @@ ctx.textAlign = 'center';
 ctx.textBaseline = 'middle';
 
 const logMessage = (text) => {
-    // 1. SANITIZE
+    const messageElement = document.createElement('p');
+
+    // 1. SANITIZE: Turn "<script>" into "&lt;script&gt;"
+    // This renders the text visibly but prevents it from running as code.
     let safeText = escapeHtml(text);
+
+    // 2. FORMAT: Now it is safe to re-introduce YOUR specific HTML tags
+    // Since we escaped the input first, users cannot inject their own <span> tags.
     let formattedText = safeText
         .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
         .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
@@ -2857,35 +2863,6 @@ const logMessage = (text) => {
         .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
         .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
 
-    // 2. DEDUPLICATE (The Fix)
-    // Check if the NEW message is identical to the LAST message
-    const lastMsg = messageLog.firstChild;
-    if (lastMsg) {
-        // We look at the raw HTML to compare formatting
-        const lastContent = lastMsg.innerHTML.replace(/^> /, ''); // Remove the "> " prefix for comparison
-        if (lastContent === formattedText) {
-            
-            // Check if we already have a counter
-            const countBadge = lastMsg.querySelector('.msg-count');
-            if (countBadge) {
-                let count = parseInt(countBadge.textContent.replace(/[()x]/g, '')) + 1;
-                countBadge.textContent = `(x${count})`;
-            } else {
-                // Create new counter
-                const span = document.createElement('span');
-                span.className = "msg-count text-xs text-gray-500 ml-2";
-                span.textContent = "(x2)";
-                lastMsg.appendChild(span);
-            }
-            // Flash the message to show it updated
-            lastMsg.style.opacity = '0.5';
-            setTimeout(() => lastMsg.style.opacity = '1', 50);
-            return; // Stop here, don't create a new element
-        }
-    }
-
-    // 3. CREATE NEW
-    const messageElement = document.createElement('p');
     messageElement.innerHTML = `> ${formattedText}`;
     messageLog.prepend(messageElement);
 
@@ -3110,15 +3087,6 @@ const renderStats = () => {
                 if (percent > 60) element.classList.add('text-green-500');
                 else if (percent > 30) element.classList.add('text-yellow-500');
                 else element.classList.add('text-red-500');
-
-                const gameWrapper = document.getElementById('gameCanvasWrapper');
-                    if (gameWrapper) {
-                        if (percent <= 25 && value > 0) {
-                            gameWrapper.classList.add('critical-health');
-                        } else {
-                            gameWrapper.classList.remove('critical-health');
-                        }
-                    }
 
             } else if (statName === 'mana') {
                 const max = gameState.player.maxMana;
@@ -4935,51 +4903,17 @@ function initShopListeners() {
 
     // Handle clicks inside the "Buy" list
     shopBuyList.addEventListener('click', (e) => {
-        // Check for the button or the button's icon
-        const btn = e.target.closest('button');
-        if (btn && btn.dataset.buyItem) {
-            const itemName = btn.dataset.buyItem;
-            // If Shift key was held, loop 5 times (or until money/stock runs out)
-            const count = e.shiftKey ? 5 : 1; 
-            for(let i=0; i<count; i++) handleBuyItem(itemName);
+        if (e.target.dataset.buyItem) {
+            handleBuyItem(e.target.dataset.buyItem);
         }
     });
 
     // Handle clicks inside the "Sell" list
     shopSellList.addEventListener('click', (e) => {
-        const btn = e.target.closest('button');
-        if (btn && btn.dataset.sellIndex) {
-            const index = parseInt(btn.dataset.sellIndex, 10);
-            // If Shift key was held, sell 5 (or max stack)
-            const count = e.shiftKey ? 5 : 1;
-            
-            // Note: We only trigger the logic once per click, but we need to modify handleSellItem 
-            // to handle bulk, OR just loop it. Looping is risky with indices shifting.
-            // BETTER APPROACH for Sell: Just sell one at a time for safety, 
-            // OR implement a specific bulk sell function later. 
-            // For now, let's just stick to single sell to avoid index bugs, 
-            // or implement a "Sell All of Type" button (which you already added!).
-            
-            handleSellItem(index); 
+        if (e.target.dataset.sellIndex) {
+            handleSellItem(parseInt(e.target.dataset.sellIndex, 10));
         }
     });
-}
-
-function sortInventory() {
-    gameState.player.inventory.sort((a, b) => {
-        // 1. Sort by Type (Weapon > Armor > Consumable > Junk)
-        const typeOrder = { 'weapon': 1, 'armor': 2, 'tool': 3, 'consumable': 4, 'junk': 5 };
-        const typeA = typeOrder[a.type] || 99;
-        const typeB = typeOrder[b.type] || 99;
-        
-        if (typeA !== typeB) return typeA - typeB;
-        
-        // 2. Sort by Name
-        return a.name.localeCompare(b.name);
-    });
-    
-    renderInventory();
-    logMessage("Inventory sorted.");
 }
 
 function initSpellbookListeners() {
@@ -7508,7 +7442,12 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
 
                         const droppedLoot = generateEnemyLoot(player, enemy);
                         
-                        removeInstancedEnemy(enemy.id); 
+                        removeInstancedEnemy(enemyId); 
+
+                        if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+
+                        }
 
                         if (map) map[coords.y][coords.x] = droppedLoot;
                     }
@@ -7902,59 +7841,46 @@ const renderInventory = () => {
     inventoryModalList.innerHTML = '';
     const titleElement = document.querySelector('#inventoryModal h2');
 
-    // --- 1. RESET TITLE TEXT ---
-    // We use innerHTML to clear any previous buttons/text
+    // --- VISUAL STATE HANDLING ---
     if (gameState.isDroppingItem) {
         titleElement.textContent = "SELECT ITEM TO DROP";
         titleElement.classList.add('text-red-500', 'font-extrabold');
-        titleElement.classList.remove('text-default');
+        titleElement.classList.remove('text-default'); // Assuming standard text color class
     } else {
         titleElement.textContent = "Inventory";
         titleElement.classList.remove('text-red-500', 'font-extrabold');
         titleElement.classList.add('text-default');
     }
 
-    // --- 2. INJECT SORT BUTTON ---
-    // We create and append it dynamically every time we render
-    const sortBtn = document.createElement('button');
-    sortBtn.textContent = "Sort";
-    sortBtn.title = "Sort by Type";
-    // Tailwind styling: small, gray, rounded, aligned vertically
-    sortBtn.className = "ml-4 text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded font-normal align-middle transition-colors";
-    
-    sortBtn.onclick = (e) => {
-        e.stopPropagation(); // Prevent clicking through to the modal background
-        sortInventory();
-    };
-    
-    titleElement.appendChild(sortBtn);
-
-    // --- 3. RENDER ITEMS (Existing Logic) ---
     if (!gameState.player.inventory || gameState.player.inventory.length === 0) {
         inventoryModalList.innerHTML = '<span class="muted-text italic px-2">Inventory is empty.</span>';
     } else {
         gameState.player.inventory.forEach((item, index) => {
             const itemDiv = document.createElement('div');
 
-            // Dynamic Styling
+            // --- DYNAMIC STYLING ---
             let slotClass = 'inventory-slot p-2 rounded-md cursor-pointer transition-all duration-200';
             
             if (gameState.isDroppingItem) {
+                // Red Border/Glow for Drop Mode
                 slotClass += ' border-2 border-red-500 bg-red-900 bg-opacity-20 hover:bg-opacity-40';
             } else if (item.isEquipped) {
+                // Gold Border for Equipped
                 slotClass += ' equipped';
             } else {
+                // Standard Hover
                 slotClass += ' hover:border-blue-500';
             }
             
             itemDiv.className = slotClass;
 
+            // Click Handler: Passes input to main handler to decide Use vs Drop
             itemDiv.onclick = (e) => {
-                e.stopPropagation(); 
+                e.stopPropagation(); // Prevent clicking through to modal background
                 handleInput((index + 1).toString());
             };
 
-            // Tooltip
+            // Build Tooltip
             let title = item.name;
             if (item.statBonuses) {
                 title += " (";
