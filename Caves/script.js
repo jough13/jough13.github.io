@@ -8204,15 +8204,12 @@ const render = () => {
 // --- OPTIMIZATION: Early Exit ---
 // If the tile is waaaay outside our max possible light radius, skip the math.
 // (15 is a safe upper limit for torch + flicker + noise)
-if (distSq > 225 && gameState.mapMode !== 'dungeon') { // 15^2 = 225
-    // Just draw shadow and continue
+if (distSq > 225 && gameState.mapMode !== 'dungeon') { 
     if (ambientLight < 1.0) {
-        ctx.fillStyle = `rgba(0, 0, 0, ${1 - ambientLight})`; // Invert logic for opacity
-        // Actually, your logic uses 'tileShadowOpacity'. 
-        // If it's far away, opacity is 1.0 (black) in dungeons, or 'ambient' in overworld.
+        ctx.fillStyle = `rgba(0, 0, 0, ${1 - ambientLight})`;
+        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE); // You need to actually draw the shadow
     }
-    // Note: If you have ambient light (Daytime), you still need to render, 
-    // but you can skip the 'Noise' and 'EffectiveRadius' math below.
+    continue; // <--- ADD THIS so the expensive code below is skipped for dark tiles
 }
 
 let effectiveRadius = lightRadius;
@@ -8321,7 +8318,7 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
 
     // --- ENTITIES & PLAYERS ---
     
-    // Attack Telegraphs
+    // 1. Attack Telegraphs
     if (gameState.instancedEnemies) {
         for (const enemy of gameState.instancedEnemies) {
             if (enemy.pendingAttacks) {
@@ -8333,36 +8330,28 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
                     }
                 });
             }
-        });
+        } // Fixed: Removed the ); that was here
     }
 
+    // 2. Define drawEntity
     const drawEntity = (entity, x, y) => {
-        // --- 1. SPIRIT LOGIC START ---
-        // If the entity definition has type: 'spirit' AND the player lacks the lens...
+        // --- SPIRIT LOGIC ---
         if (entity.type === 'spirit' && !hasLens) {
-            return; // STOP. Do not draw this entity. It is invisible.
+            return; 
         }
-        // --- SPIRIT LOGIC END ---
 
         const char = entity.tile || '?';
-        
-        // (Existing width check logic)
         const isWide = charWidthCache[char] !== undefined ? charWidthCache[char] : /\p{Extended_Pictographic}/u.test(char);
         
-        // --- 2. OPTIONAL: VISUAL FLAIR ---
-        // If it is a spirit and we CAN see it, make it look ghostly (semi-transparent)
         if (entity.type === 'spirit') {
-            ctx.globalAlpha = 0.6; // Make it see-through
+            ctx.globalAlpha = 0.6; 
         }
 
         ctx.fillStyle = entity.color || '#ef4444';
         ctx.font = isWide ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
         ctx.fillText(char, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
         
-        // Reset transparency for the next item
-        if (entity.type === 'spirit') {
-            ctx.globalAlpha = 1.0; 
-        }
+        ctx.globalAlpha = 1.0; 
         
         if (entity.isElite) {
             ctx.strokeStyle = entity.color || '#facc15';
@@ -8372,6 +8361,7 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
         TileRenderer.drawHealthBar(ctx, x, y, entity.health, entity.maxHealth);
     };
 
+    // 3. Draw Enemies (Overworld vs Instanced)
     if (gameState.mapMode === 'overworld') {
         for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
             for (let x = 0; x < VIEWPORT_WIDTH; x++) {
@@ -8390,15 +8380,17 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
             if (screenX >= 0 && screenX < VIEWPORT_WIDTH && screenY >= 0 && screenY < VIEWPORT_HEIGHT) {
                 drawEntity(enemy, screenX, screenY);
             }
-        });
+        }
     }
 
+    // 4. Multiplayer / Other Players
     const shouldRenderOtherPlayers = gameState.mapMode !== 'dungeon';
     if (shouldRenderOtherPlayers) {
         for (const id in otherPlayers) {
-            if (otherPlayers[id].mapMode !== gameState.mapMode || 
-                otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
             const op = otherPlayers[id];
+            if (op.mapMode !== gameState.mapMode || 
+                op.mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
+            
             const screenX = (op.x - startX) * TILE_SIZE;
             const screenY = (op.y - startY) * TILE_SIZE;
             if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
@@ -8414,6 +8406,7 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
         }
     }
 
+    // 5. Local Player
     const playerChar = gameState.player.isBoating ? 'c' : gameState.player.character;
     ctx.font = `bold ${TILE_SIZE}px monospace`;
     ctx.strokeStyle = '#000';
@@ -8422,104 +8415,73 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
     ctx.fillStyle = '#3b82f6';
     ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
 
+    // 6. Weather Effects
     const intensity = gameState.player.weatherIntensity || 0;
+    const dpr = window.devicePixelRatio || 1; // Ensure dpr is available
     if (intensity > 0 && gameState.weather !== 'clear') {
         ctx.save();
         ctx.globalAlpha = intensity;
         if (gameState.weather === 'rain') {
             ctx.fillStyle = 'rgba(0, 0, 100, 0.2)';
-            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr); // Fix fill size
+            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             ctx.strokeStyle = 'rgba(120, 140, 255, 0.6)';
             ctx.lineWidth = 1;
-            const dropCount = Math.floor(200 * intensity);
-            for (let i = 0; i < dropCount; i++) {
+            for (let i = 0; i < Math.floor(200 * intensity); i++) {
                 const rx = Math.random() * (canvas.width / dpr);
                 const ry = Math.random() * (canvas.height / dpr);
-                const len = 10 + Math.random() * 10;
-                ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + len); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + 15); ctx.stroke();
             }
-        }
-        else if (gameState.weather === 'snow') {
+        } else if (gameState.weather === 'snow') {
             ctx.fillStyle = 'rgba(200, 200, 220, 0.15)';
             ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             ctx.fillStyle = 'white';
-            const flakeCount = Math.floor(150 * intensity);
-            for (let i = 0; i < flakeCount; i++) {
-                const rx = Math.random() * (canvas.width / dpr);
-                const ry = Math.random() * (canvas.height / dpr);
-                const size = Math.random() * 2 + 1;
-                ctx.fillRect(rx, ry, size, size);
+            for (let i = 0; i < Math.floor(150 * intensity); i++) {
+                ctx.fillRect(Math.random() * (canvas.width / dpr), Math.random() * (canvas.height / dpr), 2, 2);
             }
-        }
-        else if (gameState.weather === 'storm') {
+        } else if (gameState.weather === 'storm') {
             ctx.fillStyle = 'rgba(10, 10, 30, 0.4)';
             ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-            ctx.strokeStyle = 'rgba(150, 150, 255, 0.5)';
-            ctx.lineWidth = 2;
-            const dropCount = Math.floor(300 * intensity);
-            for (let i = 0; i < dropCount; i++) {
-                const rx = Math.random() * (canvas.width / dpr);
-                const ry = Math.random() * (canvas.height / dpr);
-                ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 8, ry + 15); ctx.stroke();
-            }
             if (Math.random() < 0.05 * intensity) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
                 ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             }
-        }
-        else if (gameState.weather === 'fog') {
+        } else if (gameState.weather === 'fog') {
             ctx.fillStyle = `rgba(200, 200, 200, ${0.5 * intensity})`;
             ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
         }
         ctx.restore();
     }
 
+    // 7. Particles
     if (typeof ParticleSystem !== 'undefined') {
         ParticleSystem.draw(ctx, startX, startY);
     }
 
+    // 8. Boss Health Bars
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
         const bosses = gameState.instancedEnemies.filter(e => e.isBoss);
         if (bosses.length > 0) {
             let activeBoss = bosses[0];
-            let minDist = Infinity;
-            bosses.forEach(b => {
-                const d = Math.sqrt(Math.pow(b.x - gameState.player.x, 2) + Math.pow(b.y - gameState.player.y, 2));
-                if (d < minDist) {
-                    minDist = d;
-                    activeBoss = b;
-                }
-            });
-            if (minDist < 20 || bosses.length === 1) {
-                const barWidth = (canvas.width / dpr) * 0.6;
-                const barHeight = 20;
-                const barX = ((canvas.width / dpr) - barWidth) / 2;
-                const barY = 40;
+            const barWidth = (canvas.width / dpr) * 0.6;
+            const barHeight = 20;
+            const barX = ((canvas.width / dpr) - barWidth) / 2;
+            const barY = 40;
 
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                ctx.fillRect(barX, barY - 20, barWidth, barHeight + 20);
-
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 16px monospace';
-                ctx.textAlign = 'center';
-                ctx.fillText(activeBoss.name, (canvas.width / dpr) / 2, barY - 5);
-
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(barX, barY, barWidth, barHeight);
-
-                const healthPercent = Math.max(0, activeBoss.health / activeBoss.maxHealth);
-                ctx.fillStyle = '#dc2626';
-                ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * healthPercent, barHeight - 4);
-
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '12px monospace';
-                ctx.fillText(`${activeBoss.health} / ${activeBoss.maxHealth}`, (canvas.width / dpr) / 2, barY + 14);
-            }
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(barX, barY - 20, barWidth, barHeight + 20);
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText(activeBoss.name, (canvas.width / dpr) / 2, barY - 5);
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+            const hpPct = Math.max(0, activeBoss.health / activeBoss.maxHealth);
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * hpPct, barHeight - 4);
         }
     }
 
-    ctx.restore();
+    ctx.restore(); // Restore the main Scene Transform
 };
 
 function syncPlayerState() {
