@@ -538,27 +538,12 @@ async function initCharacterSelect(user) {
  */
 
 function sanitizeForFirebase(obj) {
-    if (obj === null || typeof obj !== 'object') {
-        return obj;
-    }
-
-    // Handle arrays by sanitizing each item
-    if (Array.isArray(obj)) {
-        return obj.map(item => sanitizeForFirebase(item));
-    }
-
-    // Handle objects by rebuilding them without undefined keys
-    const newObj = {};
-    for (const key in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            const value = obj[key];
-            // The core logic: Only include the key if its value is NOT undefined
-            if (value !== undefined) {
-                newObj[key] = sanitizeForFirebase(value); // Sanitize nested objects
-            }
-        }
-    }
-    return newObj;
+    if (obj === undefined || obj === null) return null;
+    
+    // The JSON stringify/parse hack is heavily optimized in V8 (Chrome/Node).
+    // It automatically removes keys with 'undefined' values and strips functions.
+    // This prevents "FirebaseError: Unsupported field value: undefined"
+    return JSON.parse(JSON.stringify(obj));
 }
 
 async function renderSlots() {
@@ -1248,20 +1233,29 @@ async function restartGame() {
 }
 
 function registerKill(enemy) {
-    // 1. Update Kill Count
-    // Use the base name (remove "Feral", "Savage" prefixes) for clean tracking
+    // 1. Resolve Base Name
     let baseName = enemy.name;
-    // Simple logic: if name has 2+ words, check if the last word is the base
-    // Or simpler: map Tile to Name using ENEMY_DATA
     if (ENEMY_DATA[enemy.tile]) {
         baseName = ENEMY_DATA[enemy.tile].name;
     }
 
     if (!gameState.player.killCounts) gameState.player.killCounts = {};
 
-    gameState.player.killCounts[baseName] = (gameState.player.killCounts[baseName] || 0) + 1;
+    // 2. Track Milestones
+    const currentCount = gameState.player.killCounts[baseName] || 0;
+    const newCount = currentCount + 1;
+    gameState.player.killCounts[baseName] = newCount;
 
-    // --- TALENT: BLOODLUST (Warrior) ---
+    // 3. Notify Player of Unlocks
+    if (newCount === 1) {
+        logMessage(`{gold:Bestiary Update:} You have discovered the ${baseName}!`);
+    } else if (newCount === 5) {
+        logMessage(`{gold:Bestiary Update:} You have learned the stats of the ${baseName}!`);
+    } else if (newCount === 10) {
+        logMessage(`{gold:Bestiary Update:} You have unlocked lore for the ${baseName}!`);
+    }
+
+    // 4. Talents
     if (gameState.player.talents && gameState.player.talents.includes('bloodlust')) {
         const heal = 2;
         if (gameState.player.health < gameState.player.maxHealth) {
@@ -1271,7 +1265,6 @@ function registerKill(enemy) {
         }
     }
 
-    // --- TALENT: SOUL SIPHON (Necromancer) ---
     if (gameState.player.talents && gameState.player.talents.includes('soul_siphon')) {
         const restore = 2;
         if (gameState.player.mana < gameState.player.maxMana) {
@@ -1281,10 +1274,8 @@ function registerKill(enemy) {
         }
     }
 
-    // 2. Handle Quests
+    // 5. Quests & XP
     updateQuestProgress(enemy.tile);
-
-    // 3. Grant XP
     grantXp(enemy.xp);
 }
 
@@ -4087,7 +4078,6 @@ function updateExploration() {
  */
 
 function generateEnemyLoot(player, enemy) {
-
     // --- 0. QUEST ITEM DROPS ---
     // 1. Sun Shard (Desert, 5% chance)
     if (gameState.player.relicQuestStage === 1 && (enemy.tile === '🦂' || enemy.tile === 'm') && Math.random() < 0.05) {
@@ -4130,107 +4120,87 @@ function generateEnemyLoot(player, enemy) {
     const GOLD_DROP_CHANCE = 0.50;
 
     const roll = Math.random();
+    let lootTile = null; // Store result here instead of returning immediately
 
     // Junk / Specific Loot
     if (roll < JUNK_DROP_CHANCE) {
-        // Specific overrides for flavor items not in ENEMY_DATA loot field
-        if (enemy.tile === 'l' || enemy.name === 'Giant Leech') return '🐟';
-        if (enemy.tile === '🐗' || enemy.name === 'Wild Boar') return '🍖';
-
-        // Otherwise return the default loot defined in ENEMY_DATA (Rat Tails, etc.)
-        return enemy.loot || '$';
+        // Specific overrides for flavor items
+        if (enemy.tile === 'l' || enemy.name === 'Giant Leech') lootTile = '🐟';
+        else if (enemy.tile === '🐗' || enemy.name === 'Wild Boar') lootTile = '🍖';
+        else lootTile = enemy.loot || '$';
     }
 
     // Gold
-    if (roll < JUNK_DROP_CHANCE + GOLD_DROP_CHANCE) {
-        return '$';
+    else if (roll < JUNK_DROP_CHANCE + GOLD_DROP_CHANCE) {
+        lootTile = '$';
     }
 
-    // --- 4. Magic Item Chance  ---
-    // Higher tier zones have higher chance of magic drops
-    let magicChance = 0.01; // 1% Base
-    if (dist > 500) magicChance = 0.10; // 10% in endgame
-    else if (dist > 250) magicChance = 0.05; // 5% in midgame
+    // --- 4. Magic Item Chance ---
+    else {
+        let magicChance = 0.01; // 1% Base
+        if (dist > 500) magicChance = 0.10;
+        else if (dist > 250) magicChance = 0.05;
 
-    // Luck Bonus (0.5% per luck point)
-    magicChance += (player.luck * 0.005);
+        // Luck Bonus
+        magicChance += (player.luck * 0.005);
 
-    if (enemy.isElite) {
-        magicChance += 0.15; // +15% chance for Magic Item from Elites!
-        logMessage(`The ${enemy.name} leaves behind a powerful essence...`);
-    }
+        if (enemy.isElite) {
+            magicChance += 0.15;
+            logMessage(`The ${enemy.name} leaves behind a powerful essence...`);
+        }
 
-    if (Math.random() < magicChance) {
-        return '✨'; // Drop Unidentified Magic Item!
+        if (Math.random() < magicChance) {
+            lootTile = '✨';
+        }
     }
 
     // --- 4.5 LEGENDARY DROPS (Tier 4 Only) ---
-    // If we are in the Deep Wilds (> 2500) and it's a Rare enemy (10% spawn chance)
-    // Give a small chance for a Legendary.
-    if (dist > 2500 && Math.random() < 0.05) { // 5% chance per kill in deep wilds
+    // Override previous loot if we hit the jackpot
+    if (dist > 2500 && Math.random() < 0.05) { 
         const legendaries = ['⚔️k', '🛡️a', '👢w', '👑v', '🍎g'];
         const drop = legendaries[Math.floor(Math.random() * legendaries.length)];
 
-        const item = ITEM_DATA[drop];
-        logMessage(`The enemy dropped a Legendary Artifact: ${item.name}!`);
-
-        // Visual fanfare
-        if (typeof ParticleSystem !== 'undefined') {
-            ParticleSystem.createLevelUp(player.x, player.y); // Reuse confetti
+        // Safety check: ensure legendary exists in data
+        if (ITEM_DATA[drop]) {
+            logMessage(`The enemy dropped a Legendary Artifact: ${ITEM_DATA[drop].name}!`);
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createLevelUp(player.x, player.y);
+            }
+            lootTile = drop;
         }
-
-        return drop;
     }
 
-    // --- 5. Standard Equipment Drops ---
-    const scaledRoll = Math.random();
+    // --- 5. Standard Equipment Drops (If no loot selected yet) ---
+    if (!lootTile) {
+        const scaledRoll = Math.random();
+        // ... (Your existing tier arrays) ...
+        const commonLoot = ['+', '🔮', 'S', 'Y', '🐀', '🦇', '🦷', '🧣'];
+        const tier1Loot = ['/', '%', '🏏', '🦯', '🏹', '👕', '👘'];
+        const tier2Loot = ['!', '[', '📚', '🛡️', '🛡️w'];
+        const tier3Loot = ['⚔️s', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i'];
+        const tier4Loot = ['🪓', '🔨', '🛡️p'];
 
-    // Define Tiers
-    const commonLoot = ['+', '🔮', 'S', 'Y', '🐀', '🦇', '🦷', '🧣'];
+        let tier1Chance = 0.30, tier2Chance = 0.0, tier3Chance = 0.0, tier4Chance = 0.0;
 
-    // Tier 1: Starter Gear (Club, Staff, Bow, Padded, Robes)
-    const tier1Loot = ['/', '%', '🏏', '🦯', '🏹', '👕', '👘'];
+        if (dist > 500) { tier1Chance = 0.0; tier2Chance = 0.20; tier3Chance = 0.50; tier4Chance = 0.30; } 
+        else if (dist > 250) { tier1Chance = 0.10; tier2Chance = 0.40; tier3Chance = 0.30; tier4Chance = 0.05; } 
+        else if (dist > 100) { tier1Chance = 0.30; tier2Chance = 0.30; tier3Chance = 0.05; tier4Chance = 0.0; }
 
-    // Tier 2: Basic Iron/Leather
-    const tier2Loot = ['!', '[', '📚', '🛡️', '🛡️w'];
-
-    // Tier 3: Steel/Chain/Magic
-    const tier3Loot = ['⚔️s', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i'];
-
-    // Tier 4: Heavy/Plate
-    const tier4Loot = ['🪓', '🔨', '🛡️p'];
-
-    // Base Chance for "Good Loot"
-    let tier1Chance = 0.30;
-    let tier2Chance = 0.0;
-    let tier3Chance = 0.0;
-    let tier4Chance = 0.0;
-
-    // Adjust chances based on distance
-    if (dist > 500) { // Endgame Zone
-        tier1Chance = 0.0;
-        tier2Chance = 0.20;
-        tier3Chance = 0.50;
-        tier4Chance = 0.30;
-    } else if (dist > 250) { // Midgame Zone
-        tier1Chance = 0.10;
-        tier2Chance = 0.40;
-        tier3Chance = 0.30;
-        tier4Chance = 0.05;
-    } else if (dist > 100) { // Adventure Zone
-        tier1Chance = 0.30;
-        tier2Chance = 0.30;
-        tier3Chance = 0.05;
-        tier4Chance = 0.0;
+        if (scaledRoll < tier4Chance) lootTile = tier4Loot[Math.floor(Math.random() * tier4Loot.length)];
+        else if (scaledRoll < tier4Chance + tier3Chance) lootTile = tier3Loot[Math.floor(Math.random() * tier3Loot.length)];
+        else if (scaledRoll < tier4Chance + tier3Chance + tier2Chance) lootTile = tier2Loot[Math.floor(Math.random() * tier2Loot.length)];
+        else if (scaledRoll < tier4Chance + tier3Chance + tier2Chance + tier1Chance) lootTile = tier1Loot[Math.floor(Math.random() * tier1Loot.length)];
+        else lootTile = commonLoot[Math.floor(Math.random() * commonLoot.length)];
     }
 
-    // Roll for Loot
-    if (scaledRoll < tier4Chance) return tier4Loot[Math.floor(Math.random() * tier4Loot.length)];
-    if (scaledRoll < tier4Chance + tier3Chance) return tier3Loot[Math.floor(Math.random() * tier3Loot.length)];
-    if (scaledRoll < tier4Chance + tier3Chance + tier2Chance) return tier2Loot[Math.floor(Math.random() * tier2Loot.length)];
-    if (scaledRoll < tier4Chance + tier3Chance + tier2Chance + tier1Chance) return tier1Loot[Math.floor(Math.random() * tier1Loot.length)];
+    // --- 6. FINAL SAFETY VALVE (The Fix) ---
+    // If the loot tile is not Gold, Magic, or a valid Item/Quest Item, fallback to Gold.
+    if (lootTile !== '$' && lootTile !== '✨' && !ITEM_DATA[lootTile] && !Object.values(QUEST_DATA).some(q => q.itemTile === lootTile)) {
+        console.warn(`Warning: Invalid loot '${lootTile}' generated from ${enemy.name}. Falling back to Gold.`);
+        lootTile = '$';
+    }
 
-    return commonLoot[Math.floor(Math.random() * commonLoot.length)];
+    return lootTile;
 }
 
 /**
@@ -4403,24 +4373,23 @@ function handleBuyItem(itemName) {
         }
         existingStack.quantity++;
     } else {
-        // --- THE FIX: Copy ALL stats, not just name/type ---
+        // --- THE FIX: Use ?? instead of || to preserve '0' values ---
         player.inventory.push({
             templateId: itemKey,
             name: itemTemplate.name,
             type: itemTemplate.type,
             quantity: 1,
             tile: itemKey || '?',
-            // Copy combat stats or default to null (never undefined)
-            damage: itemTemplate.damage || null,
-            defense: itemTemplate.defense || null,
-            slot: itemTemplate.slot || null,
-            statBonuses: itemTemplate.statBonuses || null,
-            effect: itemTemplate.effect || null
+            // Fix: 0 damage/defense is valid, don't turn it to null
+            damage: itemTemplate.damage ?? null,
+            defense: itemTemplate.defense ?? null,
+            slot: itemTemplate.slot ?? null,
+            statBonuses: itemTemplate.statBonuses ?? null,
+            effect: itemTemplate.effect ?? null
         });
     }
 
     // 4. Update Database
-    // Use the sanitizer to prevent crashes
     playerRef.update({
         coins: player.coins,
         inventory: getSanitizedInventory()
@@ -6783,11 +6752,6 @@ function renderCraftingModal() {
  * @param {string} recipeName - The name of the item to craft.
  */
 
-/**
- * Handles the logic of crafting an item.
- * Consumes materials and adds the new item to inventory.
- * @param {string} recipeName - The name of the item to craft.
- */
 function handleCraftItem(recipeName) {
     // 1. Check both lists to find the recipe data
     const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName];
@@ -6804,7 +6768,7 @@ function handleCraftItem(recipeName) {
         return;
     }
 
-    // 3. Verify Materials (Double check using our robust function)
+    // 3. Verify Materials
     if (!checkHasMaterials(recipeName)) {
         logMessage("You are missing materials (or they are currently equipped).");
         return;
@@ -6815,7 +6779,6 @@ function handleCraftItem(recipeName) {
     const itemTemplate = ITEM_DATA[outputItemKey];
 
     // Check Inventory Space
-    // If it's stackable, check if we have a stack. If not, check for empty slot.
     const isStackable = itemTemplate.type === 'junk' || itemTemplate.type === 'consumable';
     const existingStack = playerInventory.find(item => item.name === itemTemplate.name);
 
@@ -6826,25 +6789,20 @@ function handleCraftItem(recipeName) {
         }
     }
 
-    // 4. Consume Materials (The Fix)
+    // 4. Consume Materials
     for (const materialName in recipe.materials) {
         let remainingNeeded = recipe.materials[materialName];
 
-        // Iterate backwards so we can safely remove items while looping
         for (let i = playerInventory.length - 1; i >= 0; i--) {
-            if (remainingNeeded <= 0) break; // We have consumed enough of this material
+            if (remainingNeeded <= 0) break; 
 
             const item = playerInventory[i];
 
-            // Only take from matching items that are NOT equipped
             if (item.name === materialName && !item.isEquipped) {
-                // Take as much as we can from this stack, up to the remaining need
                 const amountToTake = Math.min(item.quantity, remainingNeeded);
-
                 item.quantity -= amountToTake;
                 remainingNeeded -= amountToTake;
 
-                // If stack is empty, remove it from inventory
                 if (item.quantity <= 0) {
                     playerInventory.splice(i, 1);
                 }
@@ -6853,8 +6811,7 @@ function handleCraftItem(recipeName) {
     }
 
     // 5. Add Crafted Item
-
-    // --- Masterwork Logic (Only for Equipment) ---
+    // --- Masterwork Logic ---
     const levelDiff = playerCraftLevel - recipe.level;
     const masterworkChance = 0.10 + (levelDiff * 0.05);
     let isMasterwork = false;
@@ -6868,54 +6825,43 @@ function handleCraftItem(recipeName) {
         const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
         const randomStat = stats[Math.floor(Math.random() * stats.length)];
         craftedStats[randomStat] = (craftedStats[randomStat] || 0) + 1;
-
-        if (itemTemplate.type === 'weapon') itemTemplate.damage = (itemTemplate.damage || 0) + 1;
-        if (itemTemplate.type === 'armor') itemTemplate.defense = (itemTemplate.defense || 0) + 1;
     }
 
-    // DETERMINE QUANTITY
-// If it's a Masterwork, we usually just make 1, otherwise use recipe yield or default to 1
-let craftQuantity = (isMasterwork) ? 1 : (recipe.yield || 1); 
+    // Determine Quantity
+    let craftQuantity = (isMasterwork) ? 1 : (recipe.yield || 1); 
 
-// Add to Inventory
-if (existingStack && isStackable && !isMasterwork) {
-    existingStack.quantity += craftQuantity; // CHANGED FROM ++
-} else {
-    // --- 1. Calculate Stats Locally (Fixes Global Template Mutation Bug) ---
-    // We calculate these values here instead of modifying itemTemplate directly.
-    const finalDamage = (isMasterwork && itemTemplate.type === 'weapon') 
-        ? (itemTemplate.damage || 0) + 1 
-        : (itemTemplate.damage || null);
+    if (existingStack && isStackable && !isMasterwork) {
+        existingStack.quantity += craftQuantity;
+    } else {
+        // --- FIX: Use local variables and ?? operator ---
+        const finalDamage = (isMasterwork && itemTemplate.type === 'weapon') 
+            ? (itemTemplate.damage || 0) + 1 
+            : (itemTemplate.damage ?? null); // Fix: Allow 0
 
-    const finalDefense = (isMasterwork && itemTemplate.type === 'armor') 
-        ? (itemTemplate.defense || 0) + 1 
-        : (itemTemplate.defense || null);
+        const finalDefense = (isMasterwork && itemTemplate.type === 'armor') 
+            ? (itemTemplate.defense || 0) + 1 
+            : (itemTemplate.defense ?? null); // Fix: Allow 0
 
-    // --- 2. Create the Item Object ---
-    const newItem = {
-        templateId: outputItemKey,  // CRITICAL: This is the anchor for rehydration
-        name: craftedName,
-        type: itemTemplate.type,
-        quantity: craftQuantity,
-        tile: outputItemKey || '?',
-        
-        // Use our safe local variables
-        damage: finalDamage, 
-        defense: finalDefense,
-        
-        slot: itemTemplate.slot || null,
-        statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
-        
-        // We include 'effect' here so the item is usable IMMEDIATELY in this session.
-        // The getSanitizedInventory() function will strip this out before saving to DB.
-        effect: itemTemplate.effect || null,
-        
-        isEquipped: false
-    };
-    playerInventory.push(newItem);
-}
+        const newItem = {
+            templateId: outputItemKey,
+            name: craftedName,
+            type: itemTemplate.type,
+            quantity: craftQuantity,
+            tile: outputItemKey || '?',
+            
+            damage: finalDamage, 
+            defense: finalDefense,
+            
+            slot: itemTemplate.slot ?? null,
+            statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
+            effect: itemTemplate.effect ?? null,
+            
+            isEquipped: false
+        };
+        playerInventory.push(newItem);
+    }
 
-if (isMasterwork) {
+    if (isMasterwork) {
         logMessage(`Critical Success! You crafted a ${craftedName}!`);
         triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
     } else {
@@ -10972,27 +10918,21 @@ function restPlayer() {
 function recalculateDerivedStats() {
     const player = gameState.player;
     
-    // 1. Reset to Base (Race + Background + Stat Points + Tomes)
-    // Note: We assume current player.strength/constitution includes permanent stat points
-    // If you separate base stats from spent points later, update this.
-    
-    // 2. Base Formulas
-    let calculatedMaxHealth = 10 + (player.constitution * 5);
-    let calculatedMaxMana = 10 + (player.wits * 5);
-    let calculatedMaxStamina = 10 + (player.endurance * 5);
-    let calculatedMaxPsyche = 10 + (player.willpower * 3);
+    // 1. Base Calculations (10 + Stat * Multiplier)
+    // Note: We use Math.max(0, stat) to ensure negative base stats don't crash calculation
+    let calculatedMaxHealth = 10 + (Math.max(0, player.constitution) * 5);
+    let calculatedMaxMana = 10 + (Math.max(0, player.wits) * 5);
+    let calculatedMaxStamina = 10 + (Math.max(0, player.endurance) * 5);
+    let calculatedMaxPsyche = 10 + (Math.max(0, player.willpower) * 3);
 
+    // 2. Set Bonuses
     if (player.completedLoreSets) {
-        // Void Research: +10 Max Mana
         if (player.completedLoreSets.includes('void_research')) {
             calculatedMaxMana += 10;
         }
-        
-        // Example Future Set: Titan's History (+10 Health)
-        // if (player.completedLoreSets.includes('titan_history')) calculatedMaxHealth += 10;
     }
 
-    // 3. Add Equipment Bonuses
+    // 3. Equipment Bonuses
     ['weapon', 'armor'].forEach(slot => {
         const item = player.equipment[slot];
         if (item && item.statBonuses) {
@@ -11000,19 +10940,21 @@ function recalculateDerivedStats() {
             if (item.statBonuses.wits) calculatedMaxMana += (item.statBonuses.wits * 5);
             if (item.statBonuses.endurance) calculatedMaxStamina += (item.statBonuses.endurance * 5);
             if (item.statBonuses.willpower) calculatedMaxPsyche += (item.statBonuses.willpower * 3);
+            
+            // Direct Max Stat bonuses (e.g. +50 Max Mana ring)
+            if (item.statBonuses.maxHealth) calculatedMaxHealth += item.statBonuses.maxHealth;
+            if (item.statBonuses.maxMana) calculatedMaxMana += item.statBonuses.maxMana;
         }
     });
 
-    // 4. Add Permanent Anomalies (Elder Tree, etc.)
-    // You might need to store these specific permanent buffs in a separate object if they aren't just raw stat increases.
-    
-    // 5. Apply
-    player.maxHealth = calculatedMaxHealth;
-    player.maxMana = calculatedMaxMana;
-    player.maxStamina = calculatedMaxStamina;
-    player.maxPsyche = calculatedMaxPsyche;
+    // 4. Apply with Safety Floor (The Fix)
+    // Never allow Max stats to drop below 1
+    player.maxHealth = Math.max(1, calculatedMaxHealth);
+    player.maxMana = Math.max(1, calculatedMaxMana);
+    player.maxStamina = Math.max(1, calculatedMaxStamina);
+    player.maxPsyche = Math.max(1, calculatedMaxPsyche);
 
-    // 6. Clamp current values (don't allow HP > MaxHP)
+    // 5. Clamp Current Values
     player.health = Math.min(player.health, player.maxHealth);
     player.mana = Math.min(player.mana, player.maxMana);
     player.stamina = Math.min(player.stamina, player.maxStamina);
