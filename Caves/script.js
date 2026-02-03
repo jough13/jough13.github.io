@@ -103,21 +103,6 @@ function flushPendingSave(updates = null) {
     }
 }
 
-/**
- * Centralized function to remove an enemy from the game.
- * Ensures it is removed from the active instance AND the persistent chunk memory.
- */
-
-function removeInstancedEnemy(enemyId) {
-    // 1. Remove from the active gameplay list (what you see on screen)
-    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
-
-    // 2. Remove from the persistent dungeon memory (so it doesn't respawn on re-entry)
-    if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-        chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
-    }
-}
-
 // --- SPATIAL PARTITIONING HELPERS ---
 const SPATIAL_CHUNK_SIZE = 16; // Match your chunkManager size
 
@@ -455,35 +440,16 @@ window.selectBackground = async function (bgKey) {
     }
 
     // 4. Save to Database
+    // We save the whole player state + the new "background" tag
     await playerRef.set({
         ...player,
         background: bgKey
     }, { merge: true });
 
     // 5. Start the Game UI
-    charCreationModal.classList.add('hidden'); 
-    
-    // UI Updates (Do these BEFORE showing the canvas)
-    logMessage(`You have chosen the path of the ${background.name}.`);
-    gameState.mapMode = 'overworld';
-    
-    // Update HTML UI elements (HUD)
-    renderStats();
-    renderEquipment();
-    renderInventory();
-    renderTime();
-    
-    // 6. SHOW THE GAME (The Fix)
-    gameContainer.classList.remove('hidden'); 
+    charCreationModal.classList.add('hidden'); // Hide the class selector
+    gameContainer.classList.remove('hidden');  // NOW we show the game map
     canvas.style.visibility = 'visible';
-
-    // ONLY render inside the timeout. 
-    // Do not call resizeCanvas() or render() outside of this block.
-    setTimeout(() => {
-        resizeCanvas();               
-        centerCamera(player.x, player.y); 
-        render();                     
-    }, 50); 
 
     gameState.mapMode = 'overworld';
 
@@ -1672,20 +1638,23 @@ function rehydrateInventory(savedInventory) {
 function getSanitizedInventory() {
     return gameState.player.inventory.map(item => {
         // 1. Identify the Source Template
+        // We prefer templateId, but fallback to tile if it was used as an ID
         const sourceId = item.templateId || item.tile; 
         
         return {
             templateId: sourceId, 
-            name: item.name,          
+            name: item.name,          // Saved incase it's a "Masterwork" renamed item
             quantity: item.quantity || 1,
             isEquipped: item.isEquipped || false,
             
-            // --- Convert 'undefined' to 'null' ---
-            // Firestore crashes on undefined, so we must be explicit.
-            damage: (item.damage !== undefined) ? item.damage : null,
-            defense: (item.defense !== undefined) ? item.defense : null,
-            statBonuses: (item.statBonuses !== undefined) ? item.statBonuses : null,
-            slot: (item.slot !== undefined) ? item.slot : null
+            // 2. Only save stats if they DIFFER from the template (Optional optimization, 
+            // but for now let's save them to preserve "Masterwork" RNG stats)
+            damage: item.damage,
+            defense: item.defense,
+            statBonuses: item.statBonuses,
+            
+            // 3. CRITICAL: Do NOT save 'effect', 'type', 'description', or 'tile'.
+            // These should come from the code, not the database.
         };
     });
 }
@@ -2302,21 +2271,12 @@ for (let y = 0; y < map.length; y++) {
         const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
         const chunkY = Math.floor(worldY / this.CHUNK_SIZE);
         const chunkId = `${chunkX},${chunkY}`;
-        
         const localX = (worldX % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
         const localY = (worldY % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
-        
         if (!this.worldState[chunkId]) this.worldState[chunkId] = {};
-        
         const tileKey = `${localX},${localY}`;
         this.worldState[chunkId][tileKey] = newTile;
-
-        // --- Sanitize Data ---
-        // We use your existing 'sanitizeForFirebase' helper to strip out 'undefined' values
-        // before they crash the database save.
-        const cleanData = sanitizeForFirebase(this.worldState[chunkId]);
-
-        db.collection('worldState').doc(chunkId).set(cleanData, {
+        db.collection('worldState').doc(chunkId).set(this.worldState[chunkId], {
             merge: true
         });
     },
@@ -2490,24 +2450,6 @@ else if (worldX === 35 && worldY === 35) {
                 }
 
                 // --- 2. BIOME ANOMALIES (Very Rare) ---
-
-                // --- NEW: MINI-DUNGEON ENTRANCES (0.1% Chance) ---
-                // Forest -> Whispering Root
-                else if (tile === 'F' && featureRoll < 0.001) { 
-                    this.setWorldTile(worldX, worldY, '♣');
-                    chunkData[y][x] = '♣';
-                }
-                // Desert -> Hidden Oasis
-                else if (tile === 'D' && featureRoll < 0.001) { 
-                    this.setWorldTile(worldX, worldY, '🏝️');
-                    chunkData[y][x] = '🏝️';
-                }
-                // Mountain -> Glacial Crevasse
-                else if (tile === '^' && featureRoll < 0.001) { 
-                    this.setWorldTile(worldX, worldY, '🧊');
-                    chunkData[y][x] = '🧊';
-                }
-
                 else if (tile === 'F' && featureRoll < 0.0001) {
                     this.setWorldTile(worldX, worldY, '🌳e');
                     chunkData[y][x] = '🌳e';
@@ -2907,20 +2849,20 @@ function triggerAtmosphericFlavor(tile) {
 function updateWeather() {
     const player = gameState.player;
 
-    // 1. Initialize State if missing
+    // 1. Initialize State if missing (Safety check for existing saves)
     if (typeof player.weatherIntensity === 'undefined') player.weatherIntensity = 0;
     if (typeof player.weatherState === 'undefined') player.weatherState = 'calm'; // calm, building, active, fading
     if (typeof player.weatherDuration === 'undefined') player.weatherDuration = 0;
-    if (typeof player.weatherCooldown === 'undefined') player.weatherCooldown = 0; // NEW: Track sunny days
 
     // 2. Determine Local Forecast (Where we are now)
+    // We expanded the noise scale to 300 so weather zones are larger/longer
     const x = player.x;
     const y = player.y;
-    // We keep the noise check to ensure rain only happens in "humid" biomes
     const temp = elevationNoise.noise(x / 300, y / 300);
     const humid = moistureNoise.noise(x / 300 + 100, y / 300 + 100);
 
     let localForecast = 'clear';
+    // Overworld only
     if (gameState.mapMode === 'overworld') {
         if (humid > 0.6) {
             if (temp < 0.3) localForecast = 'snow';
@@ -2931,35 +2873,26 @@ function updateWeather() {
         }
     }
 
-    // 3. Update Cooldown
-    if (player.weatherCooldown > 0) {
-        player.weatherCooldown--;
-    }
-
-    // 4. Weather State Machine
-    const TRANSITION_SPEED = 0.05; // Slower transitions (feels more natural)
+    // 3. Weather State Machine
+    const TRANSITION_SPEED = 0.1; // Takes 10 turns to fade in/out fully
 
     switch (player.weatherState) {
         case 'calm':
-            // Rule 1: Must be in a weather zone
-            // Rule 2: Cooldown must be 0
-            // Rule 3: Random Chance (5% per turn) to prevent "Instant Rain" upon entering a forest
-            if (localForecast !== 'clear' && player.weatherCooldown <= 0) {
-                if (Math.random() < 0.05) { 
-                    gameState.weather = localForecast; 
-                    player.weatherState = 'building';
-                    logMessage(`The wind picks up. It looks like ${localForecast} is coming.`);
-                }
+            // If the forecast calls for weather, start building it
+            if (localForecast !== 'clear') {
+                gameState.weather = localForecast; // Set the type
+                player.weatherState = 'building';
+                logMessage(`The sky darkens. It looks like ${localForecast} is coming.`);
             }
             break;
 
         case 'building':
+            // Increase intensity
             player.weatherIntensity += TRANSITION_SPEED;
             if (player.weatherIntensity >= 1.0) {
                 player.weatherIntensity = 1.0;
                 player.weatherState = 'active';
-                // Storms are shorter now (30-60 turns) to make them intense but brief
-                player.weatherDuration = 30 + Math.floor(Math.random() * 30); 
+                player.weatherDuration = 50 + Math.floor(Math.random() * 50); // Lasts 50-100 turns
                 logMessage(`The ${gameState.weather} is fully upon you.`);
             }
             break;
@@ -2967,25 +2900,25 @@ function updateWeather() {
         case 'active':
             player.weatherDuration--;
 
-            // If we walk OUT of the zone, fade early
-            if (localForecast === 'clear') {
-                player.weatherState = 'fading';
-                logMessage("You leave the storm behind.");
-            } else if (player.weatherDuration <= 0) {
+            // If we walked OUT of the bad weather zone, start fading early
+            if (localForecast === 'clear' && player.weatherDuration > 5) {
+                player.weatherDuration = 5;
+                logMessage("The weather seems to be clearing up.");
+            }
+
+            if (player.weatherDuration <= 0) {
                 player.weatherState = 'fading';
             }
             break;
 
         case 'fading':
+            // Decrease intensity
             player.weatherIntensity -= TRANSITION_SPEED;
             if (player.weatherIntensity <= 0) {
                 player.weatherIntensity = 0;
                 player.weatherState = 'calm';
                 gameState.weather = 'clear';
-                
-                // This ensures long periods of exploration between weather events
-                player.weatherCooldown = 500 + Math.floor(Math.random() * 500); 
-                logMessage("The skies clear. It should be sunny for a while.");
+                logMessage("The skies are clear again.");
             }
             break;
     }
@@ -3024,188 +2957,117 @@ function renderStatusEffects() {
 }
 
 const renderStats = () => {
-    // 1. Safety Check: Don't run if player isn't loaded
-    if (!gameState.player) return;
 
     renderStatusEffects();
 
     for (const statName in statDisplays) {
-        // RECOVERY: If the element was null at startup, try to find it now
-        if (!statDisplays[statName]) {
-            statDisplays[statName] = document.getElementById(`${statName}Display`);
-        }
-
         const element = statDisplays[statName];
-
         if (element && gameState.player.hasOwnProperty(statName)) {
             const value = gameState.player[statName];
             const label = statName.charAt(0).toUpperCase() + statName.slice(1);
 
             if (statName === 'xp') {
-                const max = gameState.player.xpToNextLevel || 100;
-                const percent = Math.min(100, (value / max) * 100);
+                const max = gameState.player.xpToNextLevel;
+                const percent = (value / max) * 100;
 
+                // Update text and bar width
                 element.textContent = `XP: ${value} / ${max}`;
-                
-                const xpBar = statBarElements.xp || document.getElementById('xpBar');
-                if (xpBar) xpBar.style.width = `${percent}%`;
+                statBarElements.xp.style.width = `${percent}%`;
 
             } else if (statName === 'statPoints') {
-                const panel = coreStatsPanel || document.getElementById('coreStatsPanel');
                 if (value > 0) {
                     element.textContent = `Stat Points: ${value}`;
                     element.classList.remove('hidden');
-                    if (panel) panel.classList.add('show-stat-buttons');
+                    coreStatsPanel.classList.add('show-stat-buttons');
                 } else {
                     element.classList.add('hidden');
-                    if (panel) panel.classList.remove('show-stat-buttons');
+                    coreStatsPanel.classList.remove('show-stat-buttons');
                 }
 
             } else if (statName === 'health') {
                 const max = gameState.player.maxHealth;
-                const percent = Math.min(100, (value / max) * 100);
+                const percent = (value / max) * 100;
 
-                const hpBar = statBarElements.health || document.getElementById('hpBar');
-                if (hpBar) {
-                    hpBar.style.width = `${percent}%`;
-                    if (percent > 60) hpBar.style.backgroundColor = '#22c55e';
-                    else if (percent > 30) hpBar.style.backgroundColor = '#eab308';
-                    else hpBar.style.backgroundColor = '#ef4444';
-                }
+                // Update bar width
+                statBarElements.health.style.width = `${percent}%`;
                 
-                let displayHealth = Math.ceil(value);
+                // 1. Calculate display value (Round up to avoid 9.99/10)
+                let displayHealth = Math.ceil(value); 
+                
+                // 2. Declare string ONCE
                 let healthString = `${label}: ${displayHealth}`;
 
-                const shield = gameState.player.shieldValue || 0;
-                if (shield > 0) {
-                    healthString += ` <span class="text-blue-400">(+${Math.ceil(shield)})</span>`;
+                // 3. Add Shield text if active
+                if (gameState.player.shieldValue > 0) {
+                    healthString += ` <span class="text-blue-400">(+${Math.ceil(gameState.player.shieldValue)})</span>`;
                 }
                 
+                // 4. Update the element text
                 element.innerHTML = healthString;
-                
-                element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500'); 
-                if (percent > 60) element.classList.add('text-green-500');
-                else if (percent > 30) element.classList.add('text-yellow-500');
-                else element.classList.add('text-red-500');
+
+                // Update text and bar color
+                element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500'); // Clear old text colors
+
+                if (percent > 60) {
+                    element.classList.add('text-green-500');
+                    statBarElements.health.style.backgroundColor = '#22c55e'; // Green
+                } else if (percent > 30) {
+                    element.classList.add('text-yellow-500');
+                    statBarElements.health.style.backgroundColor = '#eab308'; // Yellow
+                } else {
+                    element.classList.add('text-red-500');
+                    statBarElements.health.style.backgroundColor = '#ef4444'; // Red
+                }
 
             } else if (statName === 'mana') {
                 const max = gameState.player.maxMana;
-                const percent = Math.min(100, (value / max) * 100);
-                
-                const manaBar = statBarElements.mana || document.getElementById('manaBar');
-                if (manaBar) manaBar.style.width = `${percent}%`;
-                
-                element.textContent = `${label}: ${Math.floor(value)}`;
+                const percent = (value / max) * 100;
+                statBarElements.mana.style.width = `${percent}%`;
+                element.textContent = `${label}: ${value}`;
 
             } else if (statName === 'stamina') {
                 const max = gameState.player.maxStamina;
-                const percent = Math.min(100, (value / max) * 100);
-                
-                const stamBar = statBarElements.stamina || document.getElementById('staminaBar');
-                if (stamBar) stamBar.style.width = `${percent}%`;
-                
-                element.textContent = `${label}: ${Math.floor(value)}`;
+                const percent = (value / max) * 100;
+                statBarElements.stamina.style.width = `${percent}%`;
+                element.textContent = `${label}: ${value}`;
 
             } else if (statName === 'wits') {
-                let witsText = `${label}: ${Math.floor(value)}`; 
+                let witsText = `${label}: ${value}`;
+                // Check for bonus
                 if (gameState.player.witsBonus > 0) {
                     witsText += ` <span class="text-green-500">(+${gameState.player.witsBonus})</span>`;
                 }
+                // Use innerHTML to render the color span
                 element.innerHTML = witsText;
 
             } else if (statName === 'psyche') {
-                const max = gameState.player.maxPsyche || 10;
-                const percent = Math.min(100, (value / max) * 100);
-                
-                const psycheBar = statBarElements.psyche || document.getElementById('psycheBar');
-                if (psycheBar) psycheBar.style.width = `${percent}%`;
-                
-                element.textContent = `${label}: ${Math.floor(value)}`;
+                const max = gameState.player.maxPsyche;
+                const percent = (value / max) * 100;
+                statBarElements.psyche.style.width = `${percent}%`;
+                element.textContent = `${label}: ${value}`;
 
             } else if (statName === 'hunger') {
-                const max = gameState.player.maxHunger || 100;
-                const percent = Math.min(100, (value / max) * 100);
-                
-                const hungerBar = statBarElements.hunger || document.getElementById('hungerBar');
-                if (hungerBar) hungerBar.style.width = `${percent}%`;
-                
-                element.textContent = `${label}: ${Math.floor(value)}`;
-
+                const max = gameState.player.maxHunger;
+                const percent = (value / max) * 100;
+                statBarElements.hunger.style.width = `${percent}%`;
+                element.textContent = `${label}: ${Math.floor(value)}`; // Use Math.floor to hide decimals
             } else if (statName === 'thirst') {
-                const max = gameState.player.maxThirst || 100;
-                const percent = Math.min(100, (value / max) * 100);
-                
-                const thirstBar = statBarElements.thirst || document.getElementById('thirstBar');
-                if (thirstBar) thirstBar.style.width = `${percent}%`;
-                
-                element.textContent = `${label}: ${Math.floor(value)}`;
-
-            } else if (statName === 'strength' || statName === 'defense') {
+                const max = gameState.player.maxThirst;
+                const percent = (value / max) * 100;
+                statBarElements.thirst.style.width = `${percent}%`;
                 element.textContent = `${label}: ${Math.floor(value)}`;
 
             } else {
+                // Default case for Coins, Level, and Core Stats
                 element.textContent = `${label}: ${value}`;
             }
         }
     }
-
+        // Only update if mapMode is active (meaning we are actually playing, not in menus)
     if (gameState.mapMode && gameState.player && gameState.player.level) {
-        document.title = `HP: ${Math.ceil(gameState.player.health)}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
+        document.title = `HP: ${gameState.player.health}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
     }
 };
-
-function handleDig() {
-    // 1. Get the current tile safely based on location
-    let tile;
-    if (gameState.mapMode === 'overworld') {
-        tile = chunkManager.getTile(player.x, player.y);
-    } else {
-        // Disallow digging indoors to prevent logic headaches
-        logMessage("You cannot dig inside a structure.");
-        return;
-    }
-
-    // 2. Check Tile: Can only dig on Loose Soil
-    if (tile !== '∴') {
-        logMessage("The ground here is too hard to dig.");
-        return;
-    }
-
-    // 2. Check Stamina
-    if (player.stamina < 5) {
-        logMessage("You are too exhausted to dig.");
-        return;
-    }
-
-    // 3. Execute Dig
-    player.stamina -= 5;
-    AudioSystem.playNoise(0.1, 0.05, 200); // reuse your noise function for a "crunch" sound
-
-    // 4. Calculate Loot
-    const roll = Math.random();
-    
-    // 30% chance to find nothing (just dirt)
-    if (roll < 0.30) {
-        logMessage("You dig up nothing but worms.");
-    } else {
-        // Pull from the loot table we made
-        const itemKey = window.LOOT_TABLE_ARCHAEOLOGY[Math.floor(Math.random() * window.LOOT_TABLE_ARCHAEOLOGY.length)];
-        const itemData = window.ITEM_DATA[itemKey];
-        
-        // Add to inventory
-        const newItem = { ...itemData, quantity: 1, uuid: generateUUID() };
-        player.inventory.push(newItem);
-        logMessage(`You unearthed a {cyan:${newItem.name}}!`);
-    }
-
-    // 5. Transform the tile so they can't farm it forever
-    // Change '∴' (Loose Soil) to '.' (Standard Floor)
-    chunkManager.setWorldTile(player.x, player.y, '.');
-    
-    // 6. Update UI
-    render();
-    renderStats();
-}
 
 // Global set to track processed tiles this session
 // (Ensure this is defined at the top of your file with other globals)
@@ -3438,88 +3300,6 @@ function handleItemDrop(key) {
     renderInventory();
     render(); // Update map to show item on ground
     gameState.mapDirty = true; 
-}
-
-function generateMiniDungeon(theme, seedStr) {
-    const seed = stringToSeed(seedStr);
-    const rng = new Alea(seed); // Use your seeded RNG
-    
-    const width = 20;
-    const height = 20;
-    const map = [];
-
-    // 1. Fill with Wall/Void based on theme
-    let wallChar, floorChar, decorationChars;
-    
-    if (theme === 'ROOT') {
-        wallChar = '♣'; // Roots as walls
-        floorChar = '.'; // Dirt floor
-        decorationChars = ['🌿', '🍄', '🕸'];
-    } else if (theme === 'OASIS') {
-        wallChar = '🌵'; // Cactus/Rock walls
-        floorChar = '~'; // Water floor!
-        decorationChars = ['.', '.', '🦀']; // Sand patches
-    } else { // ICE
-        wallChar = '🧊'; 
-        floorChar = '_'; // Ice floor
-        decorationChars = ['⛄', '🦴'];
-    }
-
-    // Init Grid
-    for (let y = 0; y < height; y++) {
-        let row = "";
-        for (let x = 0; x < width; x++) {
-            row += wallChar;
-        }
-        map.push(row.split('')); // Convert to array for easy editing
-    }
-
-    // 2. Drunkard's Walk (Organic Cave Generation)
-    // We start in the center and "walk" randomly to carve out space
-    let digX = Math.floor(width / 2);
-    let digY = Math.floor(height / 2);
-    let floorCount = 0;
-    const targetFloors = 100; // How big the cave should be
-
-    while (floorCount < targetFloors) {
-        // Carve
-        if (map[digY][digX] !== floorChar) {
-            map[digY][digX] = floorChar;
-            floorCount++;
-        }
-
-        // Move Randomly
-        const dir = Math.floor(rng() * 4);
-        if (dir === 0 && digY > 1) digY--;
-        else if (dir === 1 && digY < height - 2) digY++;
-        else if (dir === 2 && digX > 1) digX--;
-        else if (dir === 3 && digX < width - 2) digX++;
-    }
-
-    // 3. Place Entrance/Exit (Center)
-    map[Math.floor(height/2)][Math.floor(width/2)] = '🔼'; 
-
-    // 4. Place Loot/Lore at the "Edges"
-    // Find floor tiles that are surrounded by walls (dead ends)
-    for (let y = 1; y < height - 1; y++) {
-        for (let x = 1; x < width - 1; x++) {
-            if (map[y][x] === floorChar) {
-                // Random decoration
-                if (rng() < 0.1) {
-                    const deco = decorationChars[Math.floor(rng() * decorationChars.length)];
-                    map[y][x] = deco;
-                }
-                
-                // Rare Loot (Chest/Lore)
-                if (rng() < 0.02) {
-                    map[y][x] = '📦'; // Chest
-                }
-            }
-        }
-    }
-
-    // 5. Convert back to strings
-    return map.map(row => row.join(''));
 }
 
 function generateMagicItem(tier) {
@@ -4271,52 +4051,32 @@ function grantXp(amount) {
 
     player.xp += amount;
     logMessage(`You gained ${amount} XP!`);
-
-    // FIX 1: Safety Check - Only flash if the UI element actually exists
-    if (statDisplays.xp) {
-        triggerStatFlash(statDisplays.xp, true);
-    }
-
-    let leveledUp = false;
+    triggerStatFlash(statDisplays.xp, true);
 
     while (player.xp >= player.xpToNextLevel) {
         player.xp -= player.xpToNextLevel;
         player.level++;
         player.statPoints++;
         player.xpToNextLevel = player.level * 100;
-        leveledUp = true;
 
         logMessage(`LEVEL UP! You are now level ${player.level}!`);
-        
-        // Safety check for ParticleSystem
-        if (typeof ParticleSystem !== 'undefined') {
-            ParticleSystem.createLevelUp(player.x, player.y);
-        }
+        ParticleSystem.createLevelUp(player.x, player.y);
 
         if (player.level >= 10 && !player.classEvolved) {
            openEvolutionModal();
-        }
+            }
 
         // --- Award Talent Point every 3 levels ---
         if (player.level % 3 === 0) {
             player.talentPoints = (player.talentPoints || 0) + 1;
             logMessage("You gained a Mastery Talent Point! Press 'P' to spend it.");
-            if (statDisplays.level) triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+            triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
         } else {
             logMessage(`You gained 1 Stat Point.`);
-            if (statDisplays.level) triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
+            triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
         }
-    }
 
-    // FIX 2: Save to Database immediately
-    // We save XP, Level, and Points so progress is never lost
-    playerRef.update({
-        xp: player.xp,
-        level: player.level,
-        xpToNextLevel: player.xpToNextLevel,
-        statPoints: player.statPoints,
-        talentPoints: player.talentPoints || 0
-    });
+    }
 
     renderStats();
 }
@@ -4324,45 +4084,49 @@ function grantXp(amount) {
 function handleBuyItem(itemName) {
     const player = gameState.player;
     const shopItem = activeShopInventory.find(item => item.name === itemName);
-    // Find the template key (e.g. '⚔️r' for Rusty Sword)
-    const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName);
-    const itemTemplate = ITEM_DATA[itemKey];
+    const itemTemplate = ITEM_DATA[Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName)];
 
     if (!shopItem || !itemTemplate) {
         logMessage("Error: Item not found in shop.");
         return;
     }
-
-    // --- PRICING LOGIC --- 
+   // --- PRICING LOGIC START --- 
     const basePrice = shopItem.price;
+    
+    // 1. Charisma
     let discountPercent = player.charisma * 0.005;
+
+    // 2. Codex Bonus
     if (player.completedLoreSets && player.completedLoreSets.includes('king_fall')) {
         discountPercent += 0.10;
     }
+
+    // 3. Final Calculation
     const finalDiscount = Math.min(discountPercent, 0.50);
     const finalBuyPrice = Math.floor(basePrice * (1.0 - finalDiscount));
 
-    // 1. Checks
+    // 1. Check if player has enough gold
     if (player.coins < finalBuyPrice) {
         logMessage("You don't have enough gold for that.");
         return;
     }
+
     if (shopItem.stock <= 0) {
         logMessage("The shop is out of stock!");
         return;
     }
 
-    // 2. Inventory Space Check
+    // 2. Check if player has inventory space
     const existingStack = player.inventory.find(item => item.name === itemName);
     if (!existingStack && player.inventory.length >= MAX_INVENTORY_SLOTS) {
         logMessage("Your inventory is full!");
         return;
     }
 
-    // 3. Process Transaction
+    // 3. Process the transaction
     player.coins -= finalBuyPrice;
     shopItem.stock--;
-    logMessage(`You bought a ${itemName} for ${finalBuyPrice} gold.`);
+    logMessage(`You bought a ${itemName} for ${finalBuyPrice} gold.`); // <-- Use new variable
 
     if (existingStack) {
         if (existingStack.quantity >= 99) {
@@ -4371,33 +4135,34 @@ function handleBuyItem(itemName) {
         }
         existingStack.quantity++;
     } else {
-        // --- THE FIX: Copy ALL stats, not just name/type ---
+
+        const itemKey = Object.keys(ITEM_DATA).find(key => ITEM_DATA[key].name === itemName);
+
         player.inventory.push({
+
             templateId: itemKey,
             name: itemTemplate.name,
             type: itemTemplate.type,
             quantity: 1,
             tile: itemKey || '?',
-            // Copy combat stats or default to null (never undefined)
-            damage: itemTemplate.damage || null,
-            defense: itemTemplate.defense || null,
-            slot: itemTemplate.slot || null,
-            statBonuses: itemTemplate.statBonuses || null,
             effect: itemTemplate.effect || null
         });
     }
 
-    // 4. Update Database
-    // Use the sanitizer to prevent crashes
+    // 4. Update database and UI
+    playerRef.update({
+        coins: player.coins,
+        inventory: player.inventory
+    });
+
     playerRef.update({
         coins: player.coins,
         inventory: getSanitizedInventory()
     });
 
-    // 5. Update UI
-    renderShop(); 
-    renderInventory(); 
-    renderStats(); 
+    renderShop(); // Re-render the shop to show new gold and inventory
+    renderInventory(); // Update the main UI inventory
+    renderStats(); // Update the main UI gold display
 }
 
 function getRegionalPriceMultiplier(itemType, itemName) {
@@ -4452,47 +4217,58 @@ function getRegionalPriceMultiplier(itemType, itemName) {
 
 function handleSellItem(itemIndex) {
     const player = gameState.player;
-    if (itemIndex < 0 || itemIndex >= player.inventory.length) return;
-
+        if (itemIndex < 0 || itemIndex >= player.inventory.length) return;
+    
     const itemToSell = player.inventory[itemIndex];
-    if (!itemToSell) return;
+    if (!itemToSell) return; 
 
     if (itemToSell.isEquipped) {
         logMessage("You cannot sell an item you are wearing!");
         return;
     }
 
-    // --- 1. Determine Base Price & Modifiers FIRST ---
+    if (!itemToSell) {
+        logMessage("Error: Item not in inventory.");
+        return;
+    }
+
+    // Find the item's base price in the shop.
     const shopItem = activeShopInventory.find(i => i.name === itemToSell.name);
-    
-    let basePrice = 2;
+        if (shopItem) {
+            // Never allow selling for more than 75% of base buy price, regardless of modifiers
+            const maxSell = Math.floor(shopItem.price * 0.75);
+            calculatedSellPrice = Math.min(calculatedSellPrice, maxSell);
+        }
 
-            if (shopItem) {
-                basePrice = shopItem.price;
-                // Bonus for modified items
-                if (item.name !== shopItem.name) {
-                    basePrice = Math.floor(basePrice * 1.5);
-                }
-            } else {
-                // Relic/Special Prices
-                if (item.name === 'Shattered Crown') basePrice = 200;
-                else if (item.name === 'Signet Ring') basePrice = 80;
-                else if (item.name === 'Pouch of Gold Dust') basePrice = 50;
-                else if (item.name === 'Ancient Coin') basePrice = 25;
-                else if (item.name === 'Alpha Pelt') basePrice = 60;
-            }
+    let basePrice = 2; // Default
+    if (shopItem) {
+        basePrice = shopItem.price;
+    } else {
+        // --- SPECIAL PRICES FOR RELICS ---
+        if (itemToSell.name === 'Shattered Crown') basePrice = 200;
+        else if (itemToSell.name === 'Signet Ring') basePrice = 80;
+        else if (itemToSell.name === 'Pouch of Gold Dust') basePrice = 50;
+        else if (itemToSell.name === 'Ancient Coin') basePrice = 25;
+        else if (itemToSell.name === 'Alpha Pelt') basePrice = 60;
+    }
 
-            // 1. Declare values first
-            const regionMult = getRegionalPriceMultiplier(item.type, item.name);
-            const sellBonusPercent = player.charisma * 0.005;
-            const finalSellBonus = Math.min(sellBonusPercent, 0.25);
+    const regionMult = getRegionalPriceMultiplier(itemToSell.type, itemToSell.name);
 
-            // 2. Calculate variable
-            let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
+    const sellBonusPercent = player.charisma * 0.005;
+    const finalSellBonus = Math.min(sellBonusPercent, 0.25);
 
-            // 3. Apply Cap
-            const maxSellPrice = Math.floor(basePrice * 0.8);
-            const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
+    // --- FIX START: Economy Cap ---
+    // Calculate raw sell price
+    let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
+
+    // Cap the sell price at 80% of the base price to prevent infinite money loops
+    // (e.g. buying for 90g and selling for 100g)
+    const maxSellPrice = Math.floor(basePrice * 0.8);
+
+    // If the item is a rare relic (not sold in shops), we don't need to cap it strictly
+    // against a shop price, but for general goods, we apply the cap.
+    const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
+    // --- FIX END ---
 
     if (regionMult > 1.0) logMessage(`Market demand is high here! (x${regionMult})`);
     else if (regionMult < 1.0) logMessage(`Market flooded. Low demand. (x${regionMult})`);
@@ -5264,57 +5040,59 @@ function useSkill(skillId) {
                 skillUsedSuccessfully = true;
                 break;
 
-             // WHIRLWIND ---
-        case 'whirlwind':
-            logMessage("You spin in a deadly vortex!");
-            let hitCount = 0;
-            // Stronger scaling: Str + Dex
-            const baseDmg = (player.strength + player.dexterity) * skillLevel;
+            // WHIRLWIND ---
+            case 'whirlwind':
+                logMessage("You spin in a deadly vortex!");
+                let hitCount = 0;
+                // Stronger scaling: Str + Dex
+                const baseDmg = (player.strength + player.dexterity) * skillLevel;
 
-            // Attack all adjacent tiles (-1 to 1)
-            for (let y = -1; y <= 1; y++) {
-                for (let x = -1; x <= 1; x++) {
-                    if (x === 0 && y === 0) continue; // Skip self
-                    const tx = player.x + x;
-                    const ty = player.y + y;
+                // Attack all adjacent tiles (-1 to 1)
+                for (let y = -1; y <= 1; y++) {
+                    for (let x = -1; x <= 1; x++) {
+                        if (x === 0 && y === 0) continue; // Skip self
+                        const tx = player.x + x;
+                        const ty = player.y + y;
 
-                    // --- Handle Overworld vs Instanced ---
-                    if (gameState.mapMode === 'overworld') {
-                        const tile = chunkManager.getTile(tx, ty);
-                        const enemyData = ENEMY_DATA[tile];
-                        if (enemyData) {
-                            // Calculate damage (simplified for AoE)
-                            const finalDmg = Math.max(1, baseDmg - (enemyData.defense || 0));
-                            // Call the async handler (fire and forget)
-                            handleOverworldCombat(tx, ty, enemyData, tile, finalDmg);
-                            hitCount++;
-                        }
-                    } else {
-                        // Existing Instanced Logic
-                        let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
-                        if (enemy) {
-                            enemy.health -= baseDmg;
-                            logMessage(`Whirlwind hits ${enemy.name} for ${baseDmg}!`);
-                            hitCount++;
+                        // --- Handle Overworld vs Instanced ---
+                        if (gameState.mapMode === 'overworld') {
+                            const tile = chunkManager.getTile(tx, ty);
+                            const enemyData = ENEMY_DATA[tile];
+                            if (enemyData) {
+                                // Calculate damage (simplified for AoE)
+                                const finalDmg = Math.max(1, baseDmg - (enemyData.defense || 0));
+                                // Call the async handler (fire and forget)
+                                handleOverworldCombat(tx, ty, enemyData, tile, finalDmg);
+                                hitCount++;
+                            }
+                        } else {
+                            // Existing Instanced Logic
+                            let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
+                            if (enemy) {
+                                enemy.health -= baseDmg;
+                                logMessage(`Whirlwind hits ${enemy.name} for ${baseDmg}!`);
+                                hitCount++;
 
-                            if (enemy.health <= 0) {
-                                logMessage(`${enemy.name} is slain!`);
-                                registerKill(enemy);
-                                
-                                removeInstancedEnemy(enemy.id);
+                                if (enemy.health <= 0) {
+                                    logMessage(`${enemy.name} is slain!`);
+                                    registerKill(enemy);
+                                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
 
+                                    // Update persistent dungeon state
+                                    if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+                                        chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+                                    }
                                 }
                             }
                         }
+
                     }
-
                 }
-            }
 
-            if (hitCount === 0) logMessage("You whirl through empty air.");
-            skillUsedSuccessfully = true;
-            break;
-    }
+                if (hitCount === 0) logMessage("You whirl through empty air.");
+                skillUsedSuccessfully = true;
+                break;
+        }
 
         // --- 5. Finalize Self-Cast Turn ---
         if (skillUsedSuccessfully) {
@@ -5326,6 +5104,7 @@ function useSkill(skillId) {
             renderEquipment(); // Update UI to show buff
         }
     }
+}
 
 async function runCompanionTurn() {
     const companion = gameState.player.companion;
@@ -5352,7 +5131,7 @@ async function runCompanionTurn() {
                 if (enemy.health <= 0) {
                     logMessage(`Your companion killed the ${enemy.name}!`);
                     grantXp(Math.floor(enemy.xp / 2)); // Half XP for pet kills
-                    removeInstancedEnemy(enemy.id);
+                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                 }
             }
         }
@@ -5515,38 +5294,36 @@ async function executeLunge(dirX, dirY) {
             // --- End Damage Calc ---
 
             if (gameState.mapMode === 'overworld') {
-    // Handle Overworld Combat
-    await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
+                // Handle Overworld Combat
+                // We now pass our calculated skill damage!
+                await handleOverworldCombat(targetX, targetY, enemyData, tile, totalLungeDamage);
 
-} else {
-    // Handle Instanced Combat
-    let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
-    if (enemy) {
-        // Apply damage
-        enemy.health -= totalLungeDamage;
-        logMessage(`You hit the ${enemy.name} for ${totalLungeDamage} damage!`);
+            } else {
+                // Handle Instanced Combat
+                let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+                if (enemy) {
+                    // We apply our new calculated damage!
+                    enemy.health -= totalLungeDamage;
+                    logMessage(`You hit the ${enemy.name} for ${totalLungeDamage} damage!`);
 
-        // Handle enemy death
-        if (enemy.health <= 0) {
-            logMessage(`You defeated the ${enemy.name}!`);
-            registerKill(enemy);
+                    if (enemy.health <= 0) {
+                        logMessage(`You defeated the ${enemy.name}!`);
 
-            // Generate and place loot
-            const droppedLoot = generateEnemyLoot(player, enemy);
-            if (gameState.mapMode === 'dungeon') {
-                chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
-            } else if (gameState.mapMode === 'castle') {
-                chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = droppedLoot;
+                        registerKill(enemy);
+
+                        const droppedLoot = generateEnemyLoot(player, enemy);
+                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+
+                        if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+                        }
+
+                        if (gameState.mapMode === 'dungeon') {
+                            chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
+                        }
+                    }
+                }
             }
-
-            // Remove enemy from lists
-            gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-            if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-                chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
-            }
-        }
-    }
-}
             break; // Stop looping, we hit our target
         }
     }
@@ -5696,7 +5473,7 @@ function executePacify(dirX, dirY) {
                 logMessage(`You calm the ${enemy.name}! It becomes passive.`);
 
                 // Remove it from the enemy list
-                removeInstancedEnemy(enemy.id);
+                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
 
                 // Set its tile to a floor
                 map[targetY][targetX] = theme.floor;
@@ -5785,8 +5562,7 @@ function executeTame(dirX, dirY) {
                 };
 
                 // Remove enemy
-                removeInstancedEnemy(enemy.id);
-
+                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
                 playerRef.update({ companion: player.companion });
 
             } else {
@@ -7441,8 +7217,7 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                         registerKill(enemy);
 
                         const droppedLoot = generateEnemyLoot(player, enemy);
-                        
-                        removeInstancedEnemy(enemyId); 
+                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
 
                         if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
                             chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
@@ -7595,32 +7370,29 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         }
 
     } else {
-    // Handle Instanced Combat
-    let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
-    if (enemy) {
-        // Apply damage
-        enemy.health -= totalLungeDamage;
-        logMessage(`You hit the ${enemy.name} for ${totalLungeDamage} damage!`);
+        // Handle Instanced Combat
+        let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+        if (enemy) {
+            damageDealt = Math.max(1, damage);
+            enemy.health -= damageDealt;
+            logMessage(`You hit the ${enemy.name} for ${damageDealt} magic damage!`);
 
-        // Handle enemy death
-        if (enemy.health <= 0) {
-            logMessage(`You defeated the ${enemy.name}!`);
-            registerKill(enemy);
+            if (enemy.health <= 0) {
+                logMessage(`You defeated the ${enemy.name}!`);
 
-            // Generate and place loot
-            const droppedLoot = generateEnemyLoot(player, enemy);
-            if (gameState.mapMode === 'dungeon') {
-                chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
-            } else if (gameState.mapMode === 'castle') {
-                chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = droppedLoot;
+                registerKill(enemy);
+
+                const droppedLoot = generateEnemyLoot(player, enemy);
+                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+                    chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+                }
+                if (gameState.mapMode === 'dungeon') {
+                    chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
+                }
             }
-
-            // --- THE FIX ---
-            // Replaces the manual filtering logic with the safe helper function
-            removeInstancedEnemy(enemy.id);
         }
     }
-}
 
     // --- Handle On-Hit Effects ---
     if (damageDealt > 0 && spellId === 'siphonLife') {
@@ -8081,18 +7853,6 @@ function renderTerrainCache(startX, startY) {
             }
         }
     }
-}
-
-// --- CAMERA HELPER ---
-function centerCamera(x, y) {
-    // Updates the map camera (used for the 'M' world map)
-    if (typeof mapCamera !== 'undefined') {
-        mapCamera.x = x;
-        mapCamera.y = y;
-    }
-    // Note: The main game renderer currently calculates the view 
-    // directly from gameState.player.x/y inside render(), 
-    // so we don't need to do anything else here for now.
 }
 
 const render = () => {
@@ -8807,13 +8567,13 @@ function processEnemyTurns() {
             if (enemy.health <= 0) {
                 logMessage(`The ${enemy.name} succumbs to poison!`);
                 registerKill(enemy);
-                    removeInstancedEnemy(enemy.id);
-    
-    // Place loot
-    if(map) map[enemy.y][enemy.x] = generateEnemyLoot(player, enemy);
-    return;
-}
-
+                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+                    chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
+                }
+                map[enemy.y][enemy.x] = generateEnemyLoot(player, enemy);
+                return;
+            }
             if (enemy.poisonTurns === 0) logMessage(`The ${enemy.name} is no longer poisoned.`);
         }
 
@@ -9304,52 +9064,27 @@ function getPlayerDamageModifier(baseDamage) {
 }
 
 function handlePlayerDeath() {
-    // 1. Alive Check
-    if (gameState.player.health > 0) return false;
+    if (gameState.player.health > 0) return false; // Not dead
 
-    // 2. The "Double Death" Lock
-    if (gameState.isGameOver) return true;
-
-    // 3. Set the Lock immediately
-    gameState.isGameOver = true;
-
-    // Clear any pending auto-saves
-    if (saveTimeout) {
+        if (saveTimeout) {
         clearTimeout(saveTimeout);
         saveTimeout = null;
     }
 
     const player = gameState.player;
-    
-    // --- FIX: SHOW MODAL IMMEDIATELY ---
-    // We do this first so the player sees the UI even if the item-drop logic crashes later.
-    const gameOverModal = document.getElementById('gameOverModal');
-    const lvlDisplay = document.getElementById('finalLevelDisplay');
-    const coinDisplay = document.getElementById('finalCoinsDisplay');
-    
-    const goldLost = Math.floor(player.coins / 2);
 
-    if (lvlDisplay) lvlDisplay.textContent = `Level: ${player.level}`;
-    if (coinDisplay) coinDisplay.textContent = `Gold lost: ${goldLost}`;
-
-    if (gameOverModal) {
-        gameOverModal.classList.remove('hidden');
-        gameOverModal.style.zIndex = "9999";
-    } else {
-        console.error("Game Over Modal not found!");
-    }
-
-    // 4. Visuals & Logs
-    player.health = 0;
+    // 1. Visuals & Logs
+    // Ensure health is clamped to 0 so the game loop knows we are dead
+    player.health = 0; 
     logMessage("{red:You have perished!}");
     triggerStatFlash(statDisplays.health, false);
-    AudioSystem.playNoise(0.5, 0.2, 50);
 
-    // 5. Remove Equipment Stats
+    // 2. Remove Equipment Stats (So we don't carry buffs over)
     if (player.equipment.weapon) applyStatBonuses(player.equipment.weapon, -1);
     if (player.equipment.armor) applyStatBonuses(player.equipment.armor, -1);
 
-    // 6. CORPSE SCATTER LOGIC
+    // 3. CORPSE SCATTER LOGIC
+    // (This drops your inventory on the ground where you died)
     const deathX = player.x;
     const deathY = player.y;
     const pendingUpdates = {};
@@ -9358,25 +9093,20 @@ function handlePlayerDeath() {
         const item = player.inventory[i];
         let placed = false;
         
+        // Try to place item in a 3x3 grid around death spot
         for (let r = 0; r <= 2 && !placed; r++) {
             for (let dy = -r; dy <= r && !placed; dy++) {
                 for (let dx = -r; dx <= r && !placed; dx++) {
-                    if (placed) break; // Optimization
                     const tx = deathX + dx;
                     const ty = deathY + dy;
                     let tile;
 
+                    // Check terrain validity
                     if (gameState.mapMode === 'overworld') tile = chunkManager.getTile(tx, ty);
                     else if (gameState.mapMode === 'dungeon') tile = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
                     else tile = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
-                    // Can only drop items on empty floor tiles
-                    // Added safety check for CAVE_THEMES[gameState.currentCaveTheme]
-                    const isDungeonFloor = gameState.mapMode === 'dungeon' && 
-                                         CAVE_THEMES[gameState.currentCaveTheme] && 
-                                         tile === CAVE_THEMES[gameState.currentCaveTheme].floor;
-
-                    if (tile === '.' || isDungeonFloor) {
+                    if (tile === '.') {
                         if (gameState.mapMode === 'overworld') {
                             const cX = Math.floor(tx / chunkManager.CHUNK_SIZE);
                             const cY = Math.floor(ty / chunkManager.CHUNK_SIZE);
@@ -9385,15 +9115,11 @@ function handlePlayerDeath() {
                             const lY = (ty % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
                             const lKey = `${lX},${lY}`;
                             if (!pendingUpdates[cId]) pendingUpdates[cId] = {};
-                            
-                            // --- FIX: PREVENT UNDEFINED CRASH ---
-                            // If item.tile is missing, use a fallback '?' to prevent Firestore crash
-                            pendingUpdates[cId][lKey] = item.tile || '?';
-                            
+                            pendingUpdates[cId][lKey] = item.tile;
                         } else if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = item.tile || '?';
+                            chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = item.tile;
                         } else {
-                            chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = item.tile || '?';
+                            chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = item.tile;
                         }
                         placed = true;
                     }
@@ -9402,25 +9128,32 @@ function handlePlayerDeath() {
         }
     }
 
-    if (gameState.mapMode === 'overworld' && Object.keys(pendingUpdates).length > 0) {
+    // Apply map updates
+    if (gameState.mapMode === 'overworld') {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
-            // Wrap in try-catch to prevent network errors from freezing the game state
-            try {
-                db.collection('worldState').doc(cId).set(updates, { merge: true });
-            } catch (e) {
-                console.error("Failed to scatter corpse items:", e);
-            }
+            db.collection('worldState').doc(cId).set(updates, { merge: true });
         }
     }
 
-    // 7. APPLY PENALTIES
+    // 4. CALCULATE PENALTIES (But do not move player yet)
+    const goldLost = Math.floor(player.coins / 2);
     player.coins -= goldLost;
-    player.inventory = [];
+    
+    // Clear inventory immediately so it can't be accessed while dead
+    player.inventory = []; 
     player.equipment = { weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Simple Tunic', defense: 0 } };
 
-    // 8. Save "Dead" State
-    // We use sanitizeForFirebase to ensure no undefined values break the save
-    playerRef.set(sanitizeForFirebase(player)).catch(err => console.error("Save failed on death:", err));
+    // 5. Update Modal UI
+    document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
+    document.getElementById('finalCoinsDisplay').textContent = `Gold lost: ${goldLost}`;
+
+    // 6. Show Modal
+    gameOverModal.classList.remove('hidden');
+
+    // 7. Save "Dead" State
+    // We save health: 0 and current X/Y. 
+    // This ensures if they refresh the page, they are still dead.
+    playerRef.set(sanitizeForFirebase(player));
 
     return true;
 }
@@ -9848,16 +9581,6 @@ function exitToOverworld(exitMessage) {
         gameState.player.y = 0;
     }
 
-        // Keep "landmark" dungeons, clear random ones
-    const keys = Object.keys(chunkManager.caveMaps);
-    keys.forEach(key => {
-        if (!key.includes('landmark') && !key.includes('vault')) {
-            delete chunkManager.caveMaps[key];
-            delete chunkManager.caveEnemies[key];
-            delete chunkManager.caveThemes[key];
-        }
-    });
-
     gameState.mapMode = 'overworld';
     gameState.mapDirty = true; 
 
@@ -9871,8 +9594,6 @@ function exitToOverworld(exitMessage) {
     updateRegionDisplay();
     render();
     syncPlayerState();
-
-
 
     const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
     const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
@@ -10385,32 +10106,24 @@ function handleInput(key) {
     }
 
     if (key === 'g' || key === 'G') {
-    // 1. Determine what is on the ground (using your robust mapMode check)
+    // 1. Get tile ID
+    let tileId;
+    if (gameState.mapMode === 'overworld') tileId = `${gameState.player.x},${-gameState.player.y}`;
+    else tileId = `${gameState.currentCaveId || gameState.currentCastleId}:${gameState.player.x},${-gameState.player.y}`;
+
+    // 2. Check current tile for lootable items
     const currentTile = (gameState.mapMode === 'overworld') 
         ? chunkManager.getTile(gameState.player.x, gameState.player.y)
-        : (gameState.mapMode === 'dungeon' 
-            ? chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] 
-            : chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x]);
+        : (gameState.mapMode === 'dungeon' ? chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] : chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x]);
 
-    // 2. PRIORITY 1: Pick Up Item
-    // We check if the character on the ground exists in ITEM_DATA
-    if (window.ITEM_DATA[currentTile]) {
+    // 3. Trigger pickup if it's an item
+    if (ITEM_DATA[currentTile]) {
+        // We reuse the move logic's pickup code by faking a "wait" on the spot
         logMessage("You scour the ground for items...");
-        // We reuse the move logic's pickup code by faking a movement update
         attemptMovePlayer(gameState.player.x, gameState.player.y); 
         return;
-    } 
-    
-    // 3. PRIORITY 2: Archaeology (Digging)
-    // If it's not an item, checks if it is Loose Soil
-    else if (currentTile === '∴') {
-        handleDig(); // Calls the function we defined earlier
-        return;
-    }
-
-    // 4. Fallback
-    else {
-        logMessage("There is nothing here to pick up or dig.");
+    } else {
+        logMessage("There is nothing here to pick up.");
         return;
     }
 }
@@ -11037,6 +10750,60 @@ async function attemptMovePlayer(newX, newY) {
         logMessage(`You can't go that way.`);
         return; // Stop the move
     }
+
+    // --- OBELISK PUZZLE LOGIC ---
+if (tileData && tileData.type === 'obelisk_puzzle') {
+    const dir = tileData.direction;
+    const requiredOrder = ['north', 'east', 'west', 'south'];
+    const currentStep = gameState.player.obeliskProgress.length;
+
+    logMessage(tileData.flavor);
+
+    // Check if we are activating the CORRECT next step
+    if (dir === requiredOrder[currentStep]) {
+        if (!gameState.player.obeliskProgress.includes(dir)) {
+            gameState.player.obeliskProgress.push(dir);
+            
+            logMessage(`The Obelisk hums violently! (${gameState.player.obeliskProgress.length}/4 activated)`);
+            ParticleSystem.createExplosion(newX, newY, '#3b82f6', 15); // Blue explosion
+            AudioSystem.playMagic();
+
+            // REWARD: Give the fragment for this specific direction
+            const fragmentName = `Tablet of the ${dir.charAt(0).toUpperCase() + dir.slice(1)}`;
+            gameState.player.inventory.push(
+                // Lookup item from ITEM_DATA using the name map logic or hardcode keys
+                { name: fragmentName, type: 'junk', quantity: 1, tile: '🧩' }
+            );
+            logMessage(`A stone fragment falls from the obelisk: ${fragmentName}`);
+
+            // Save progress
+            playerRef.update({ 
+                obeliskProgress: gameState.player.obeliskProgress,
+                inventory: gameState.player.inventory 
+            });
+        } else {
+            logMessage("This obelisk is already active.");
+        }
+    } 
+    // Wrong order? Reset!
+    else if (!gameState.player.obeliskProgress.includes(dir)) {
+        logMessage("The Obelisk shrieks! A shockwave knocks you back!");
+        logMessage("{red:PUZZLE FAILED. Sequence Reset.}");
+        
+        gameState.player.health -= 5;
+        gameState.player.obeliskProgress = []; // Reset
+        
+        triggerStatFlash(statDisplays.health, false);
+        playerRef.update({ 
+            health: gameState.player.health,
+            obeliskProgress: [] 
+        });
+        
+        // Punishment damage visual
+        ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444', 10);
+    }
+    return;
+}
 
    if (tileData && tileData.type === 'spirit_npc') { 
             const requiredItem = tileData.requiresItem;
@@ -12111,34 +11878,6 @@ if (enemy) {
             }
         }
 
-        if (tileData.type === 'mini_dungeon_entrance') {
-    const dungeonId = `mini_${gameState.player.x}_${gameState.player.y}`;
-    
-    // 1. Generate if not exists
-    if (!chunkManager.caveMaps[dungeonId]) {
-        logMessage(`You squeeze into the ${tileData.name}...`);
-        chunkManager.caveMaps[dungeonId] = generateMiniDungeon(tileData.theme, dungeonId);
-    } else {
-        logMessage("You return to the hidden pocket.");
-    }
-
-    // 2. Save location
-    gameState.savedOverworldX = gameState.player.x;
-    gameState.savedOverworldY = gameState.player.y;
-
-    // 3. Switch Mode
-    gameState.mapMode = 'dungeon'; // We reuse dungeon mode for rendering
-    gameState.currentCaveId = dungeonId;
-    
-    // 4. Spawn Player (Center of 20x20 map)
-    gameState.player.x = 10;
-    gameState.player.y = 10;
-
-    // 5. Render
-    render();
-    return;
-}
-
         if (tileData.type === 'campsite') {
             logMessage("You rest at the abandoned camp...");
             gameState.player.health = gameState.player.maxHealth;
@@ -12402,88 +12141,6 @@ if (enemy) {
             }
             return;
         }
-
-        // --- OBELISK PUZZLE LOGIC ---
-if (tileData.type === 'obelisk_puzzle') {
-    // 1. Identify the specific obelisk direction from the tile data
-    const dir = tileData.direction; // 'north', 'south', 'east', 'west'
-    const requiredOrder = ['north', 'east', 'west', 'south'];
-    
-    // 2. Check current progress
-    // Ensure the array exists (it should be in default state, but safety first)
-    if (!gameState.player.obeliskProgress) gameState.player.obeliskProgress = [];
-    
-    const currentStepIndex = gameState.player.obeliskProgress.length;
-    const requiredDir = requiredOrder[currentStepIndex];
-
-    logMessage(tileData.flavor);
-
-    // 3. Already Active?
-    if (gameState.player.obeliskProgress.includes(dir)) {
-        logMessage("{blue:This Obelisk is already humming with power.}");
-        return;
-    }
-
-    // 4. Check if the player has the key item
-    const hasCrystal = gameState.player.inventory.some(i => i.name === 'Resonance Crystal');
-    
-    if (!hasCrystal) {
-        logMessage("It seems dormant. There is a slot that looks like it fits a crystal.");
-        return;
-    }
-
-    // 5. Check Sequence
-    if (dir === requiredDir) {
-        // SUCCESS: Correct Order
-        gameState.player.obeliskProgress.push(dir);
-        
-        // Consume Crystal
-        const crystalIdx = gameState.player.inventory.findIndex(i => i.name === 'Resonance Crystal');
-        if (crystalIdx > -1) {
-            gameState.player.inventory[crystalIdx].quantity--;
-            if (gameState.player.inventory[crystalIdx].quantity <= 0) {
-                gameState.player.inventory.splice(crystalIdx, 1);
-            }
-        }
-
-        // FX
-        AudioSystem.playMagic();
-        if (typeof ParticleSystem !== 'undefined') ParticleSystem.createExplosion(newX, newY, '#06b6d4', 20); // Cyan burst
-        
-        logMessage(`{cyan:The Obelisk awakens!} A beam of light shoots into the sky.`);
-        logMessage(`Sequence Progress: ${gameState.player.obeliskProgress.length}/4`);
-
-        // Check for Completion
-        if (gameState.player.obeliskProgress.length === 4) {
-            logMessage("{gold:The ground trembles... The Seal on the Vault has broken!}");
-            // Optional: Mark the Vault door as open in world state here if you want
-        }
-
-        // Save
-        playerRef.update({ 
-            obeliskProgress: gameState.player.obeliskProgress,
-            inventory: getSanitizedInventory()
-        });
-
-    } else {
-        // FAILURE: Wrong Order
-        logMessage("{red:The Obelisk rejects you!} A shockwave blasts you back.");
-        
-        // Penalty: Reset Progress and Take Damage
-        gameState.player.obeliskProgress = [];
-        gameState.player.health -= 5;
-        triggerStatFlash(statDisplays.health, false);
-        
-        playerRef.update({ 
-            obeliskProgress: [],
-            health: gameState.player.health
-        });
-        
-        logMessage("The sequence has been reset.");
-        AudioSystem.playNoise(0.5, 0.5, 100); // Low thud
-    }
-    return; // Stop movement (don't walk into the pillar)
-}
 
         if (tileData.type === 'random_journal') {
             if (!gameState.foundLore.has(tileId)) {
@@ -13219,7 +12876,12 @@ if (tileData.type === 'obelisk_puzzle') {
     }
 
     if (gameState.player.health <= 0) {
-        handlePlayerDeath(); // Ensure the main handler runs if it hasn't already
+        gameState.player.health = 0;
+        logMessage("You have perished!");
+        syncPlayerState();
+        document.getElementById('finalLevelDisplay').textContent = `Level: ${gameState.player.level}`;
+        document.getElementById('finalCoinsDisplay').textContent = `Gold: ${gameState.player.coins}`;
+        gameOverModal.classList.remove('hidden');
     }
 
     endPlayerTurn();
@@ -13702,19 +13364,18 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
     });
 
     // 3. Child Removed
-        const onChildRemoved = sharedEnemiesRef.on('child_removed', (snapshot) => {
-            const key = snapshot.key;
+    const onChildRemoved = sharedEnemiesRef.on('child_removed', (snapshot) => {
+        const key = snapshot.key;
+        
+        // OPTIMIZATION: Remove from Spatial Map
+        if (gameState.sharedEnemies[key]) {
+            const enemy = gameState.sharedEnemies[key];
+            updateSpatialMap(key, enemy.x, enemy.y, null, null);
             
-            // OPTIMIZATION: Remove from Spatial Map
-            const enemy = gameState.sharedEnemies[key]; // Capture ref
-            
-            // Only attempt to read coords if the enemy still exists locally
-            if (enemy) {
-                updateSpatialMap(key, enemy.x, enemy.y, null, null);
-                delete gameState.sharedEnemies[key];
-                render();
-            }
-        });
+            delete gameState.sharedEnemies[key];
+            render();
+        }
+    });
 
     // Store unsubs for cleanup
     sharedEnemiesListener = () => {
@@ -13968,14 +13629,6 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
 
             logMessage(`Welcome back, ${playerData.background} of level ${gameState.player.level}.`);
             updateRegionDisplay();
-
-            setTimeout(() => {
-        resizeCanvas();
-        centerCamera(gameState.player.x, gameState.player.y);
-        render();
-        canvas.style.visibility = 'visible'; // Reveal canvas after it's drawn
-    }, 50);
-
             updateExploration();
 
             loadingIndicator.classList.add('hidden');
@@ -14003,120 +13656,28 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
     });
 }
 
-// --- AUTH SETTINGS & STATE ---
-const autoLoginCheck = document.getElementById('autoLoginCheck');
-
-// 1. Load Preference
-const storedAutoLogin = localStorage.getItem('pref_autoLogin');
-if (storedAutoLogin !== null) {
-    autoLoginCheck.checked = (storedAutoLogin === 'true');
-}
-
-// 2. Save Preference Listener
-autoLoginCheck.addEventListener('change', () => {
-    localStorage.setItem('pref_autoLogin', autoLoginCheck.checked);
-});
-
-// --- UPDATED AUTH BUTTON HANDLER ---
-authButton.addEventListener('click', async () => {
-    // CASE 1: RESUME SESSION (Auto-Login was off, but user is here)
-    if (auth.currentUser && emailInput.classList.contains('hidden')) {
-        initCharacterSelect(auth.currentUser);
-        return;
-    }
-
-    // CASE 2: STANDARD LOGIN / SIGNUP
-    const email = emailInput.value;
-    const password = passwordInput.value;
-    authError.textContent = '';
-
-    const persistence = rememberMe.checked 
-        ? firebase.auth.Auth.Persistence.LOCAL 
-        : firebase.auth.Auth.Persistence.SESSION;
-
-    try {
-        await auth.setPersistence(persistence);
-        if (isLoginMode) {
-            await auth.signInWithEmailAndPassword(email, password);
-        } else {
-            const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-            // Note: Data creation happens in selectSlot now
-        }
-    } catch (error) {
-        handleAuthError(error);
-    }
-});
-
-// --- UPDATED AUTH STATE LISTENER ---
 auth.onAuthStateChanged((user) => {
     if (user) {
-        // User is logged in (Session exists)
-        
-        if (autoLoginCheck.checked) {
-            // OPTION A: Auto-Login Enabled -> Go straight to game
-            const savedTheme = localStorage.getItem('theme');
-            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (savedTheme) applyTheme(savedTheme);
-            else if (prefersDark) applyTheme('dark');
-            else applyTheme('light');
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (savedTheme) applyTheme(savedTheme);
+        else if (prefersDark) applyTheme('dark');
+        else applyTheme('light');
 
-            gameContainer.classList.add('hidden');
-            initCharacterSelect(user);
-        } else {
-            // OPTION B: Auto-Login Disabled -> Show "Continue" Screen
-            authContainer.classList.remove('hidden');
-            gameContainer.classList.add('hidden');
-            characterSelectModal.classList.add('hidden');
-
-            // Transform UI to "Welcome Back" mode
-            const safeName = user.email ? user.email.split('@')[0] : "Traveler";
-            authTitle.textContent = `Welcome back, ${safeName}`;
-            
-            // Hide Inputs, Show Continue Button
-            emailInput.classList.add('hidden');
-            passwordInput.classList.add('hidden');
-            rememberMe.parentElement.parentElement.classList.add('hidden'); // Hide checkboxes row
-            
-            authButton.textContent = "Continue Adventure";
-            authToggle.textContent = "Switch Account"; // Change "Create Account" link to Switch
-            
-            // Handle Switch Account Click
-            authToggle.onclick = (e) => {
-                e.preventDefault();
-                auth.signOut(); // This triggers the 'else' block below
-            };
-        }
-        
+        // --- Call initCharacterSelect instead of startGame ---
+        gameContainer.classList.add('hidden');
+        initCharacterSelect(user);
     } else {
-        // User is logged out
         authContainer.classList.remove('hidden');
         gameContainer.classList.add('hidden');
-        characterSelectModal.classList.add('hidden');
-        
-        // Reset UI to Standard Login
-        emailInput.classList.remove('hidden');
-        passwordInput.classList.remove('hidden');
-        rememberMe.parentElement.parentElement.classList.remove('hidden'); // Show checkboxes
-        
-        authTitle.textContent = isLoginMode ? 'Login' : 'Create Account';
-        authButton.textContent = isLoginMode ? 'Login' : 'Sign Up';
-        authToggle.textContent = isLoginMode ? 'Create Account' : 'Back to Login';
-        
-        // Restore standard toggle behavior
-        authToggle.onclick = (e) => {
-            e.preventDefault();
-            isLoginMode = !isLoginMode;
-            authTitle.textContent = isLoginMode ? 'Login' : 'Create Account';
-            authButton.textContent = isLoginMode ? 'Login' : 'Sign Up';
-            authToggle.textContent = isLoginMode ? 'Create Account' : 'Back to Login';
-        };
-
+        characterSelectModal.classList.add('hidden'); // Hide select modal
         player_id = null;
         if (onlinePlayerRef) onlinePlayerRef.remove();
         if (unsubscribePlayerListener) unsubscribePlayerListener();
         Object.values(worldStateListeners).forEach(unsubscribe => unsubscribe());
         worldStateListeners = {};
         clearSessionState();
+        console.log("No user is signed in.");
     }
 });
 
@@ -14160,26 +13721,8 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
 // PREVENT SCROLLING: Stop arrow keys and spacebar from scrolling the browser window
 window.addEventListener('keydown', e => { if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault(); }, false);
 
-window.addEventListener('beforeunload', () => { 
-    if(typeof player_id !== 'undefined' && player_id && playerRef) {
-        // Force an immediate save of the current state
-        const finalState = {
-            ...gameState.player,
-            lootedTiles: Array.from(gameState.lootedTiles),
-            exploredChunks: Array.from(gameState.exploredChunks),
-            inventory: getSanitizedInventory(),
-            timestamp: Date.now()
-        };
-        
-        // Remove visual-only props
-        delete finalState.color;
-        delete finalState.character;
-
-        // We cannot use async/await here reliably, so we trigger it and hope 
-        // the browser keeps the thread alive long enough (standard behavior)
-        playerRef.set(sanitizeForFirebase(finalState), { merge: true });
-    }
-});
+// AUTO-SAVE: Save the game if the user closes the tab or refreshes
+window.addEventListener('beforeunload', () => { if(typeof player_id !== 'undefined' && player_id) saveGame(); });
 
 // --- Restart / Respawn Handler ---
 restartButton.onclick = () => {
@@ -14188,8 +13731,6 @@ restartButton.onclick = () => {
     // 1. Reset Position (The "Original Coordinates")
     player.x = 0;
     player.y = 0;
-
-    gameState.isGameOver = false;
 
     // 2. Restore Vitals
     player.health = player.maxHealth;
