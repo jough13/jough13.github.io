@@ -8323,7 +8323,7 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
     
     // Attack Telegraphs
     if (gameState.instancedEnemies) {
-        gameState.instancedEnemies.forEach(enemy => {
+        for (const enemy of gameState.instancedEnemies) {
             if (enemy.pendingAttacks) {
                 enemy.pendingAttacks.forEach(t => {
                     const screenX = t.x - startX;
@@ -8384,7 +8384,7 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
             }
         }
     } else {
-        gameState.instancedEnemies.forEach(enemy => {
+        for (const enemy of gameState.instancedEnemies) {
             const screenX = enemy.x - startX;
             const screenY = enemy.y - startY;
             if (screenX >= 0 && screenX < VIEWPORT_WIDTH && screenY >= 0 && screenY < VIEWPORT_HEIGHT) {
