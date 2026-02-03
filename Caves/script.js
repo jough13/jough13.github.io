@@ -8355,16 +8355,17 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
 
     // 3. Draw Enemies (Overworld vs Instanced)
     if (gameState.mapMode === 'overworld') {
-        for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
-            for (let x = 0; x < VIEWPORT_WIDTH; x++) {
-                const mapX = startX + x;
-                const mapY = startY + y;
-                const enemyKey = `overworld:${mapX},${-mapY}`;
-                if (gameState.sharedEnemies[enemyKey]) {
-                    drawEntity(gameState.sharedEnemies[enemyKey], x, y);
-                }
+        // Iterate through the enemy LIST, not the map tiles.
+        // This ensures enemies draw where they ARE (enemy.x), not where they SPAWNED (enemyKey).
+        Object.values(gameState.sharedEnemies).forEach(enemy => {
+            const screenX = enemy.x - startX;
+            const screenY = enemy.y - startY;
+
+            // Only draw if visible on screen
+            if (screenX >= 0 && screenX < VIEWPORT_WIDTH && screenY >= 0 && screenY < VIEWPORT_HEIGHT) {
+                drawEntity(enemy, screenX, screenY);
             }
-        }
+        });
     } else {
         for (const enemy of gameState.instancedEnemies) {
             const screenX = enemy.x - startX;
