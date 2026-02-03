@@ -8161,16 +8161,12 @@ const render = () => {
         gameState.mapDirty = false;
     }
 
-    // --- 3. DRAW CACHED TERRAIN ---
-    // CRITICAL FIX: The terrainCanvas is already scaled by DPR.
-    // The Main CTX is already scaled by DPR.
-    // To draw it 1:1, we must draw it at logical 0,0 with logical dimensions.
-    const dpr = window.devicePixelRatio || 1;
-    const logicalW = terrainCanvas.width / dpr;
-    const logicalH = terrainCanvas.height / dpr;
-
-    // We use the logical dimensions because ctx is currently scaled
-    ctx.drawImage(terrainCanvas, 0, 0, logicalW, logicalH);
+// --- 3. DRAW CACHED TERRAIN ---
+    // FIX: Temporarily reset the scale to draw the map 1:1 (Pixel Perfect)
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset scale to identity
+    ctx.drawImage(terrainCanvas, 0, 0); // Draw the full physical image
+    ctx.restore(); // Restore the scale for the rest of the game (UI, Player, etc.)
 
     // --- 4. LIGHTING & DYNAMIC LAYER ---
     let ambientLight = 0.0;
