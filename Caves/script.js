@@ -8202,16 +8202,7 @@ const render = () => {
 
             const distSq = (mapX - gameState.player.x) ** 2 + (mapY - gameState.player.y) ** 2;
 
-// --- OPTIMIZATION: Early Exit ---
-// If the tile is waaaay outside our max possible light radius, skip the math.
-// (15 is a safe upper limit for torch + flicker + noise)
-if (distSq > 225 && gameState.mapMode !== 'dungeon') { 
-    if (ambientLight < 1.0) {
-        ctx.fillStyle = `rgba(0, 0, 0, ${1 - ambientLight})`;
-        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE); // You need to actually draw the shadow
-    }
-    continue; // <--- ADD THIS so the expensive code below is skipped for dark tiles
-}
+
 
 let effectiveRadius = lightRadius;
 
