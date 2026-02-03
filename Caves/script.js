@@ -5335,21 +5335,16 @@ function useSkill(skillId) {
                                 if (enemy.health <= 0) {
                                     logMessage(`${enemy.name} is slain!`);
                                     registerKill(enemy);
-                                    
                                     removeInstancedEnemy(enemy.id);
-
-                                    }
                                 }
                             }
                         }
-
                     }
                 }
 
                 if (hitCount === 0) logMessage("You whirl through empty air.");
                 skillUsedSuccessfully = true;
                 break;
-        }
 
         // --- 5. Finalize Self-Cast Turn ---
         if (skillUsedSuccessfully) {
