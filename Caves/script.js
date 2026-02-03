@@ -538,12 +538,27 @@ async function initCharacterSelect(user) {
  */
 
 function sanitizeForFirebase(obj) {
-    if (obj === undefined || obj === null) return null;
-    
-    // The JSON stringify/parse hack is heavily optimized in V8 (Chrome/Node).
-    // It automatically removes keys with 'undefined' values and strips functions.
-    // This prevents "FirebaseError: Unsupported field value: undefined"
-    return JSON.parse(JSON.stringify(obj));
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
+
+    // Handle arrays by sanitizing each item
+    if (Array.isArray(obj)) {
+        return obj.map(item => sanitizeForFirebase(item));
+    }
+
+    // Handle objects by rebuilding them without undefined keys
+    const newObj = {};
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            const value = obj[key];
+            // The core logic: Only include the key if its value is NOT undefined
+            if (value !== undefined) {
+                newObj[key] = sanitizeForFirebase(value); // Sanitize nested objects
+            }
+        }
+    }
+    return newObj;
 }
 
 async function renderSlots() {
@@ -1233,29 +1248,20 @@ async function restartGame() {
 }
 
 function registerKill(enemy) {
-    // 1. Resolve Base Name
+    // 1. Update Kill Count
+    // Use the base name (remove "Feral", "Savage" prefixes) for clean tracking
     let baseName = enemy.name;
+    // Simple logic: if name has 2+ words, check if the last word is the base
+    // Or simpler: map Tile to Name using ENEMY_DATA
     if (ENEMY_DATA[enemy.tile]) {
         baseName = ENEMY_DATA[enemy.tile].name;
     }
 
     if (!gameState.player.killCounts) gameState.player.killCounts = {};
 
-    // 2. Track Milestones
-    const currentCount = gameState.player.killCounts[baseName] || 0;
-    const newCount = currentCount + 1;
-    gameState.player.killCounts[baseName] = newCount;
+    gameState.player.killCounts[baseName] = (gameState.player.killCounts[baseName] || 0) + 1;
 
-    // 3. Notify Player of Unlocks
-    if (newCount === 1) {
-        logMessage(`{gold:Bestiary Update:} You have discovered the ${baseName}!`);
-    } else if (newCount === 5) {
-        logMessage(`{gold:Bestiary Update:} You have learned the stats of the ${baseName}!`);
-    } else if (newCount === 10) {
-        logMessage(`{gold:Bestiary Update:} You have unlocked lore for the ${baseName}!`);
-    }
-
-    // 4. Talents
+    // --- TALENT: BLOODLUST (Warrior) ---
     if (gameState.player.talents && gameState.player.talents.includes('bloodlust')) {
         const heal = 2;
         if (gameState.player.health < gameState.player.maxHealth) {
@@ -1265,6 +1271,7 @@ function registerKill(enemy) {
         }
     }
 
+    // --- TALENT: SOUL SIPHON (Necromancer) ---
     if (gameState.player.talents && gameState.player.talents.includes('soul_siphon')) {
         const restore = 2;
         if (gameState.player.mana < gameState.player.maxMana) {
@@ -1274,8 +1281,10 @@ function registerKill(enemy) {
         }
     }
 
-    // 5. Quests & XP
+    // 2. Handle Quests
     updateQuestProgress(enemy.tile);
+
+    // 3. Grant XP
     grantXp(enemy.xp);
 }
 
@@ -4078,6 +4087,7 @@ function updateExploration() {
  */
 
 function generateEnemyLoot(player, enemy) {
+
     // --- 0. QUEST ITEM DROPS ---
     // 1. Sun Shard (Desert, 5% chance)
     if (gameState.player.relicQuestStage === 1 && (enemy.tile === '🦂' || enemy.tile === 'm') && Math.random() < 0.05) {
@@ -4120,87 +4130,107 @@ function generateEnemyLoot(player, enemy) {
     const GOLD_DROP_CHANCE = 0.50;
 
     const roll = Math.random();
-    let lootTile = null; // Store result here instead of returning immediately
 
     // Junk / Specific Loot
     if (roll < JUNK_DROP_CHANCE) {
-        // Specific overrides for flavor items
-        if (enemy.tile === 'l' || enemy.name === 'Giant Leech') lootTile = '🐟';
-        else if (enemy.tile === '🐗' || enemy.name === 'Wild Boar') lootTile = '🍖';
-        else lootTile = enemy.loot || '$';
+        // Specific overrides for flavor items not in ENEMY_DATA loot field
+        if (enemy.tile === 'l' || enemy.name === 'Giant Leech') return '🐟';
+        if (enemy.tile === '🐗' || enemy.name === 'Wild Boar') return '🍖';
+
+        // Otherwise return the default loot defined in ENEMY_DATA (Rat Tails, etc.)
+        return enemy.loot || '$';
     }
 
     // Gold
-    else if (roll < JUNK_DROP_CHANCE + GOLD_DROP_CHANCE) {
-        lootTile = '$';
+    if (roll < JUNK_DROP_CHANCE + GOLD_DROP_CHANCE) {
+        return '$';
     }
 
-    // --- 4. Magic Item Chance ---
-    else {
-        let magicChance = 0.01; // 1% Base
-        if (dist > 500) magicChance = 0.10;
-        else if (dist > 250) magicChance = 0.05;
+    // --- 4. Magic Item Chance  ---
+    // Higher tier zones have higher chance of magic drops
+    let magicChance = 0.01; // 1% Base
+    if (dist > 500) magicChance = 0.10; // 10% in endgame
+    else if (dist > 250) magicChance = 0.05; // 5% in midgame
 
-        // Luck Bonus
-        magicChance += (player.luck * 0.005);
+    // Luck Bonus (0.5% per luck point)
+    magicChance += (player.luck * 0.005);
 
-        if (enemy.isElite) {
-            magicChance += 0.15;
-            logMessage(`The ${enemy.name} leaves behind a powerful essence...`);
-        }
+    if (enemy.isElite) {
+        magicChance += 0.15; // +15% chance for Magic Item from Elites!
+        logMessage(`The ${enemy.name} leaves behind a powerful essence...`);
+    }
 
-        if (Math.random() < magicChance) {
-            lootTile = '✨';
-        }
+    if (Math.random() < magicChance) {
+        return '✨'; // Drop Unidentified Magic Item!
     }
 
     // --- 4.5 LEGENDARY DROPS (Tier 4 Only) ---
-    // Override previous loot if we hit the jackpot
-    if (dist > 2500 && Math.random() < 0.05) { 
+    // If we are in the Deep Wilds (> 2500) and it's a Rare enemy (10% spawn chance)
+    // Give a small chance for a Legendary.
+    if (dist > 2500 && Math.random() < 0.05) { // 5% chance per kill in deep wilds
         const legendaries = ['⚔️k', '🛡️a', '👢w', '👑v', '🍎g'];
         const drop = legendaries[Math.floor(Math.random() * legendaries.length)];
 
-        // Safety check: ensure legendary exists in data
-        if (ITEM_DATA[drop]) {
-            logMessage(`The enemy dropped a Legendary Artifact: ${ITEM_DATA[drop].name}!`);
-            if (typeof ParticleSystem !== 'undefined') {
-                ParticleSystem.createLevelUp(player.x, player.y);
-            }
-            lootTile = drop;
+        const item = ITEM_DATA[drop];
+        logMessage(`The enemy dropped a Legendary Artifact: ${item.name}!`);
+
+        // Visual fanfare
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createLevelUp(player.x, player.y); // Reuse confetti
         }
+
+        return drop;
     }
 
-    // --- 5. Standard Equipment Drops (If no loot selected yet) ---
-    if (!lootTile) {
-        const scaledRoll = Math.random();
-        // ... (Your existing tier arrays) ...
-        const commonLoot = ['+', '🔮', 'S', 'Y', '🐀', '🦇', '🦷', '🧣'];
-        const tier1Loot = ['/', '%', '🏏', '🦯', '🏹', '👕', '👘'];
-        const tier2Loot = ['!', '[', '📚', '🛡️', '🛡️w'];
-        const tier3Loot = ['⚔️s', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i'];
-        const tier4Loot = ['🪓', '🔨', '🛡️p'];
+    // --- 5. Standard Equipment Drops ---
+    const scaledRoll = Math.random();
 
-        let tier1Chance = 0.30, tier2Chance = 0.0, tier3Chance = 0.0, tier4Chance = 0.0;
+    // Define Tiers
+    const commonLoot = ['+', '🔮', 'S', 'Y', '🐀', '🦇', '🦷', '🧣'];
 
-        if (dist > 500) { tier1Chance = 0.0; tier2Chance = 0.20; tier3Chance = 0.50; tier4Chance = 0.30; } 
-        else if (dist > 250) { tier1Chance = 0.10; tier2Chance = 0.40; tier3Chance = 0.30; tier4Chance = 0.05; } 
-        else if (dist > 100) { tier1Chance = 0.30; tier2Chance = 0.30; tier3Chance = 0.05; tier4Chance = 0.0; }
+    // Tier 1: Starter Gear (Club, Staff, Bow, Padded, Robes)
+    const tier1Loot = ['/', '%', '🏏', '🦯', '🏹', '👕', '👘'];
 
-        if (scaledRoll < tier4Chance) lootTile = tier4Loot[Math.floor(Math.random() * tier4Loot.length)];
-        else if (scaledRoll < tier4Chance + tier3Chance) lootTile = tier3Loot[Math.floor(Math.random() * tier3Loot.length)];
-        else if (scaledRoll < tier4Chance + tier3Chance + tier2Chance) lootTile = tier2Loot[Math.floor(Math.random() * tier2Loot.length)];
-        else if (scaledRoll < tier4Chance + tier3Chance + tier2Chance + tier1Chance) lootTile = tier1Loot[Math.floor(Math.random() * tier1Loot.length)];
-        else lootTile = commonLoot[Math.floor(Math.random() * commonLoot.length)];
+    // Tier 2: Basic Iron/Leather
+    const tier2Loot = ['!', '[', '📚', '🛡️', '🛡️w'];
+
+    // Tier 3: Steel/Chain/Magic
+    const tier3Loot = ['⚔️s', 'A', 'Ψ', 'M', '⚔️l', '⛓️', '🛡️i'];
+
+    // Tier 4: Heavy/Plate
+    const tier4Loot = ['🪓', '🔨', '🛡️p'];
+
+    // Base Chance for "Good Loot"
+    let tier1Chance = 0.30;
+    let tier2Chance = 0.0;
+    let tier3Chance = 0.0;
+    let tier4Chance = 0.0;
+
+    // Adjust chances based on distance
+    if (dist > 500) { // Endgame Zone
+        tier1Chance = 0.0;
+        tier2Chance = 0.20;
+        tier3Chance = 0.50;
+        tier4Chance = 0.30;
+    } else if (dist > 250) { // Midgame Zone
+        tier1Chance = 0.10;
+        tier2Chance = 0.40;
+        tier3Chance = 0.30;
+        tier4Chance = 0.05;
+    } else if (dist > 100) { // Adventure Zone
+        tier1Chance = 0.30;
+        tier2Chance = 0.30;
+        tier3Chance = 0.05;
+        tier4Chance = 0.0;
     }
 
-    // --- 6. FINAL SAFETY VALVE (The Fix) ---
-    // If the loot tile is not Gold, Magic, or a valid Item/Quest Item, fallback to Gold.
-    if (lootTile !== '$' && lootTile !== '✨' && !ITEM_DATA[lootTile] && !Object.values(QUEST_DATA).some(q => q.itemTile === lootTile)) {
-        console.warn(`Warning: Invalid loot '${lootTile}' generated from ${enemy.name}. Falling back to Gold.`);
-        lootTile = '$';
-    }
+    // Roll for Loot
+    if (scaledRoll < tier4Chance) return tier4Loot[Math.floor(Math.random() * tier4Loot.length)];
+    if (scaledRoll < tier4Chance + tier3Chance) return tier3Loot[Math.floor(Math.random() * tier3Loot.length)];
+    if (scaledRoll < tier4Chance + tier3Chance + tier2Chance) return tier2Loot[Math.floor(Math.random() * tier2Loot.length)];
+    if (scaledRoll < tier4Chance + tier3Chance + tier2Chance + tier1Chance) return tier1Loot[Math.floor(Math.random() * tier1Loot.length)];
 
-    return lootTile;
+    return commonLoot[Math.floor(Math.random() * commonLoot.length)];
 }
 
 /**
@@ -4373,23 +4403,24 @@ function handleBuyItem(itemName) {
         }
         existingStack.quantity++;
     } else {
-        // --- THE FIX: Use ?? instead of || to preserve '0' values ---
+        // --- THE FIX: Copy ALL stats, not just name/type ---
         player.inventory.push({
             templateId: itemKey,
             name: itemTemplate.name,
             type: itemTemplate.type,
             quantity: 1,
             tile: itemKey || '?',
-            // Fix: 0 damage/defense is valid, don't turn it to null
-            damage: itemTemplate.damage ?? null,
-            defense: itemTemplate.defense ?? null,
-            slot: itemTemplate.slot ?? null,
-            statBonuses: itemTemplate.statBonuses ?? null,
-            effect: itemTemplate.effect ?? null
+            // Copy combat stats or default to null (never undefined)
+            damage: itemTemplate.damage || null,
+            defense: itemTemplate.defense || null,
+            slot: itemTemplate.slot || null,
+            statBonuses: itemTemplate.statBonuses || null,
+            effect: itemTemplate.effect || null
         });
     }
 
     // 4. Update Database
+    // Use the sanitizer to prevent crashes
     playerRef.update({
         coins: player.coins,
         inventory: getSanitizedInventory()
@@ -5335,37 +5366,32 @@ function useSkill(skillId) {
                                 if (enemy.health <= 0) {
                                     logMessage(`${enemy.name} is slain!`);
                                     registerKill(enemy);
+                                    
                                     removeInstancedEnemy(enemy.id);
+
+                                    }
                                 }
                             }
-                        } 
+                        }
+
                     }
                 }
 
                 if (hitCount === 0) logMessage("You whirl through empty air.");
                 skillUsedSuccessfully = true;
                 break;
-        } // <--- Closes the switch(skillId)
-
-        // --- 5. Finalize Self-Cast Turn ---
-
-        if (skillUsedSuccessfully) {
-            playerRef.update({ [costType]: player[costType] }); // Save the new resource state
-            triggerStatFlash(statDisplays[costType] || statDisplays.stamina, false); // Flash the cost
-            skillModal.classList.add('hidden');
-            triggerAbilityCooldown(skillId);
-            
-            // Check if endPlayerTurn exists before calling (Safety)
-            if (typeof endPlayerTurn === 'function') {
-                endPlayerTurn();
-            }
-            
-            renderEquipment(); // Update UI
         }
 
+        // --- 5. Finalize Self-Cast Turn ---
+        if (skillUsedSuccessfully) {
+            playerRef.update({ [costType]: player[costType] }); // Save the new stamina
+            triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
+            skillModal.classList.add('hidden');
+            triggerAbilityCooldown(skillId);
+            endPlayerTurn();
+            renderEquipment(); // Update UI to show buff
+        }
     }
-
-}
 
 async function runCompanionTurn() {
     const companion = gameState.player.companion;
@@ -6757,6 +6783,11 @@ function renderCraftingModal() {
  * @param {string} recipeName - The name of the item to craft.
  */
 
+/**
+ * Handles the logic of crafting an item.
+ * Consumes materials and adds the new item to inventory.
+ * @param {string} recipeName - The name of the item to craft.
+ */
 function handleCraftItem(recipeName) {
     // 1. Check both lists to find the recipe data
     const recipe = CRAFTING_RECIPES[recipeName] || COOKING_RECIPES[recipeName];
@@ -6773,7 +6804,7 @@ function handleCraftItem(recipeName) {
         return;
     }
 
-    // 3. Verify Materials
+    // 3. Verify Materials (Double check using our robust function)
     if (!checkHasMaterials(recipeName)) {
         logMessage("You are missing materials (or they are currently equipped).");
         return;
@@ -6784,6 +6815,7 @@ function handleCraftItem(recipeName) {
     const itemTemplate = ITEM_DATA[outputItemKey];
 
     // Check Inventory Space
+    // If it's stackable, check if we have a stack. If not, check for empty slot.
     const isStackable = itemTemplate.type === 'junk' || itemTemplate.type === 'consumable';
     const existingStack = playerInventory.find(item => item.name === itemTemplate.name);
 
@@ -6794,20 +6826,25 @@ function handleCraftItem(recipeName) {
         }
     }
 
-    // 4. Consume Materials
+    // 4. Consume Materials (The Fix)
     for (const materialName in recipe.materials) {
         let remainingNeeded = recipe.materials[materialName];
 
+        // Iterate backwards so we can safely remove items while looping
         for (let i = playerInventory.length - 1; i >= 0; i--) {
-            if (remainingNeeded <= 0) break; 
+            if (remainingNeeded <= 0) break; // We have consumed enough of this material
 
             const item = playerInventory[i];
 
+            // Only take from matching items that are NOT equipped
             if (item.name === materialName && !item.isEquipped) {
+                // Take as much as we can from this stack, up to the remaining need
                 const amountToTake = Math.min(item.quantity, remainingNeeded);
+
                 item.quantity -= amountToTake;
                 remainingNeeded -= amountToTake;
 
+                // If stack is empty, remove it from inventory
                 if (item.quantity <= 0) {
                     playerInventory.splice(i, 1);
                 }
@@ -6816,7 +6853,8 @@ function handleCraftItem(recipeName) {
     }
 
     // 5. Add Crafted Item
-    // --- Masterwork Logic ---
+
+    // --- Masterwork Logic (Only for Equipment) ---
     const levelDiff = playerCraftLevel - recipe.level;
     const masterworkChance = 0.10 + (levelDiff * 0.05);
     let isMasterwork = false;
@@ -6830,43 +6868,54 @@ function handleCraftItem(recipeName) {
         const stats = ['strength', 'wits', 'dexterity', 'constitution', 'luck'];
         const randomStat = stats[Math.floor(Math.random() * stats.length)];
         craftedStats[randomStat] = (craftedStats[randomStat] || 0) + 1;
+
+        if (itemTemplate.type === 'weapon') itemTemplate.damage = (itemTemplate.damage || 0) + 1;
+        if (itemTemplate.type === 'armor') itemTemplate.defense = (itemTemplate.defense || 0) + 1;
     }
 
-    // Determine Quantity
-    let craftQuantity = (isMasterwork) ? 1 : (recipe.yield || 1); 
+    // DETERMINE QUANTITY
+// If it's a Masterwork, we usually just make 1, otherwise use recipe yield or default to 1
+let craftQuantity = (isMasterwork) ? 1 : (recipe.yield || 1); 
 
-    if (existingStack && isStackable && !isMasterwork) {
-        existingStack.quantity += craftQuantity;
-    } else {
-        // --- FIX: Use local variables and ?? operator ---
-        const finalDamage = (isMasterwork && itemTemplate.type === 'weapon') 
-            ? (itemTemplate.damage || 0) + 1 
-            : (itemTemplate.damage ?? null); // Fix: Allow 0
+// Add to Inventory
+if (existingStack && isStackable && !isMasterwork) {
+    existingStack.quantity += craftQuantity; // CHANGED FROM ++
+} else {
+    // --- 1. Calculate Stats Locally (Fixes Global Template Mutation Bug) ---
+    // We calculate these values here instead of modifying itemTemplate directly.
+    const finalDamage = (isMasterwork && itemTemplate.type === 'weapon') 
+        ? (itemTemplate.damage || 0) + 1 
+        : (itemTemplate.damage || null);
 
-        const finalDefense = (isMasterwork && itemTemplate.type === 'armor') 
-            ? (itemTemplate.defense || 0) + 1 
-            : (itemTemplate.defense ?? null); // Fix: Allow 0
+    const finalDefense = (isMasterwork && itemTemplate.type === 'armor') 
+        ? (itemTemplate.defense || 0) + 1 
+        : (itemTemplate.defense || null);
 
-        const newItem = {
-            templateId: outputItemKey,
-            name: craftedName,
-            type: itemTemplate.type,
-            quantity: craftQuantity,
-            tile: outputItemKey || '?',
-            
-            damage: finalDamage, 
-            defense: finalDefense,
-            
-            slot: itemTemplate.slot ?? null,
-            statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
-            effect: itemTemplate.effect ?? null,
-            
-            isEquipped: false
-        };
-        playerInventory.push(newItem);
-    }
+    // --- 2. Create the Item Object ---
+    const newItem = {
+        templateId: outputItemKey,  // CRITICAL: This is the anchor for rehydration
+        name: craftedName,
+        type: itemTemplate.type,
+        quantity: craftQuantity,
+        tile: outputItemKey || '?',
+        
+        // Use our safe local variables
+        damage: finalDamage, 
+        defense: finalDefense,
+        
+        slot: itemTemplate.slot || null,
+        statBonuses: Object.keys(craftedStats).length > 0 ? craftedStats : null,
+        
+        // We include 'effect' here so the item is usable IMMEDIATELY in this session.
+        // The getSanitizedInventory() function will strip this out before saving to DB.
+        effect: itemTemplate.effect || null,
+        
+        isEquipped: false
+    };
+    playerInventory.push(newItem);
+}
 
-    if (isMasterwork) {
+if (isMasterwork) {
         logMessage(`Critical Success! You crafted a ${craftedName}!`);
         triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
     } else {
@@ -8161,12 +8210,16 @@ const render = () => {
         gameState.mapDirty = false;
     }
 
-// --- 3. DRAW CACHED TERRAIN ---
-    // FIX: Temporarily reset the scale to draw the map 1:1 (Pixel Perfect)
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset scale to identity
-    ctx.drawImage(terrainCanvas, 0, 0); // Draw the full physical image
-    ctx.restore(); // Restore the scale for the rest of the game (UI, Player, etc.)
+    // --- 3. DRAW CACHED TERRAIN ---
+    // CRITICAL FIX: The terrainCanvas is already scaled by DPR.
+    // The Main CTX is already scaled by DPR.
+    // To draw it 1:1, we must draw it at logical 0,0 with logical dimensions.
+    const dpr = window.devicePixelRatio || 1;
+    const logicalW = terrainCanvas.width / dpr;
+    const logicalH = terrainCanvas.height / dpr;
+
+    // We use the logical dimensions because ctx is currently scaled
+    ctx.drawImage(terrainCanvas, 0, 0, logicalW, logicalH);
 
     // --- 4. LIGHTING & DYNAMIC LAYER ---
     let ambientLight = 0.0;
@@ -8202,7 +8255,19 @@ const render = () => {
 
             const distSq = (mapX - gameState.player.x) ** 2 + (mapY - gameState.player.y) ** 2;
 
-
+// --- OPTIMIZATION: Early Exit ---
+// If the tile is waaaay outside our max possible light radius, skip the math.
+// (15 is a safe upper limit for torch + flicker + noise)
+if (distSq > 225 && gameState.mapMode !== 'dungeon') { // 15^2 = 225
+    // Just draw shadow and continue
+    if (ambientLight < 1.0) {
+        ctx.fillStyle = `rgba(0, 0, 0, ${1 - ambientLight})`; // Invert logic for opacity
+        // Actually, your logic uses 'tileShadowOpacity'. 
+        // If it's far away, opacity is 1.0 (black) in dungeons, or 'ambient' in overworld.
+    }
+    // Note: If you have ambient light (Daytime), you still need to render, 
+    // but you can skip the 'Noise' and 'EffectiveRadius' math below.
+}
 
 let effectiveRadius = lightRadius;
 
@@ -8310,9 +8375,9 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
 
     // --- ENTITIES & PLAYERS ---
     
-    // 1. Attack Telegraphs
+    // Attack Telegraphs
     if (gameState.instancedEnemies) {
-        for (const enemy of gameState.instancedEnemies) {
+        gameState.instancedEnemies.forEach(enemy => {
             if (enemy.pendingAttacks) {
                 enemy.pendingAttacks.forEach(t => {
                     const screenX = t.x - startX;
@@ -8322,28 +8387,36 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
                     }
                 });
             }
-        } // Fixed: Removed the ); that was here
+        });
     }
 
-    // 2. Define drawEntity
     const drawEntity = (entity, x, y) => {
-        // --- SPIRIT LOGIC ---
+        // --- 1. SPIRIT LOGIC START ---
+        // If the entity definition has type: 'spirit' AND the player lacks the lens...
         if (entity.type === 'spirit' && !hasLens) {
-            return; 
+            return; // STOP. Do not draw this entity. It is invisible.
         }
+        // --- SPIRIT LOGIC END ---
 
         const char = entity.tile || '?';
+        
+        // (Existing width check logic)
         const isWide = charWidthCache[char] !== undefined ? charWidthCache[char] : /\p{Extended_Pictographic}/u.test(char);
         
+        // --- 2. OPTIONAL: VISUAL FLAIR ---
+        // If it is a spirit and we CAN see it, make it look ghostly (semi-transparent)
         if (entity.type === 'spirit') {
-            ctx.globalAlpha = 0.6; 
+            ctx.globalAlpha = 0.6; // Make it see-through
         }
 
         ctx.fillStyle = entity.color || '#ef4444';
         ctx.font = isWide ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
         ctx.fillText(char, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
         
-        ctx.globalAlpha = 1.0; 
+        // Reset transparency for the next item
+        if (entity.type === 'spirit') {
+            ctx.globalAlpha = 1.0; 
+        }
         
         if (entity.isElite) {
             ctx.strokeStyle = entity.color || '#facc15';
@@ -8353,37 +8426,33 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
         TileRenderer.drawHealthBar(ctx, x, y, entity.health, entity.maxHealth);
     };
 
-    // 3. Draw Enemies (Overworld vs Instanced)
     if (gameState.mapMode === 'overworld') {
-        // Iterate through the enemy LIST, not the map tiles.
-        // This ensures enemies draw where they ARE (enemy.x), not where they SPAWNED (enemyKey).
-        Object.values(gameState.sharedEnemies).forEach(enemy => {
+        for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
+            for (let x = 0; x < VIEWPORT_WIDTH; x++) {
+                const mapX = startX + x;
+                const mapY = startY + y;
+                const enemyKey = `overworld:${mapX},${-mapY}`;
+                if (gameState.sharedEnemies[enemyKey]) {
+                    drawEntity(gameState.sharedEnemies[enemyKey], x, y);
+                }
+            }
+        }
+    } else {
+        gameState.instancedEnemies.forEach(enemy => {
             const screenX = enemy.x - startX;
             const screenY = enemy.y - startY;
-
-            // Only draw if visible on screen
             if (screenX >= 0 && screenX < VIEWPORT_WIDTH && screenY >= 0 && screenY < VIEWPORT_HEIGHT) {
                 drawEntity(enemy, screenX, screenY);
             }
         });
-    } else {
-        for (const enemy of gameState.instancedEnemies) {
-            const screenX = enemy.x - startX;
-            const screenY = enemy.y - startY;
-            if (screenX >= 0 && screenX < VIEWPORT_WIDTH && screenY >= 0 && screenY < VIEWPORT_HEIGHT) {
-                drawEntity(enemy, screenX, screenY);
-            }
-        }
     }
 
-    // 4. Multiplayer / Other Players
     const shouldRenderOtherPlayers = gameState.mapMode !== 'dungeon';
     if (shouldRenderOtherPlayers) {
         for (const id in otherPlayers) {
+            if (otherPlayers[id].mapMode !== gameState.mapMode || 
+                otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
             const op = otherPlayers[id];
-            if (op.mapMode !== gameState.mapMode || 
-                op.mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
-            
             const screenX = (op.x - startX) * TILE_SIZE;
             const screenY = (op.y - startY) * TILE_SIZE;
             if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
@@ -8399,7 +8468,6 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
         }
     }
 
-    // 5. Local Player
     const playerChar = gameState.player.isBoating ? 'c' : gameState.player.character;
     ctx.font = `bold ${TILE_SIZE}px monospace`;
     ctx.strokeStyle = '#000';
@@ -8408,74 +8476,105 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
     ctx.fillStyle = '#3b82f6';
     ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
 
-    // 6. Weather Effects
     const intensity = gameState.player.weatherIntensity || 0;
-    // const dpr = window.devicePixelRatio || 1; // <--- DELETED (Already defined above)
     if (intensity > 0 && gameState.weather !== 'clear') {
         ctx.save();
         ctx.globalAlpha = intensity;
         if (gameState.weather === 'rain') {
             ctx.fillStyle = 'rgba(0, 0, 100, 0.2)';
-            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr); // Fix fill size
             ctx.strokeStyle = 'rgba(120, 140, 255, 0.6)';
             ctx.lineWidth = 1;
-            for (let i = 0; i < Math.floor(200 * intensity); i++) {
+            const dropCount = Math.floor(200 * intensity);
+            for (let i = 0; i < dropCount; i++) {
                 const rx = Math.random() * (canvas.width / dpr);
                 const ry = Math.random() * (canvas.height / dpr);
-                ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + 15); ctx.stroke();
+                const len = 10 + Math.random() * 10;
+                ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 5, ry + len); ctx.stroke();
             }
-        } else if (gameState.weather === 'snow') {
+        }
+        else if (gameState.weather === 'snow') {
             ctx.fillStyle = 'rgba(200, 200, 220, 0.15)';
             ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             ctx.fillStyle = 'white';
-            for (let i = 0; i < Math.floor(150 * intensity); i++) {
-                ctx.fillRect(Math.random() * (canvas.width / dpr), Math.random() * (canvas.height / dpr), 2, 2);
+            const flakeCount = Math.floor(150 * intensity);
+            for (let i = 0; i < flakeCount; i++) {
+                const rx = Math.random() * (canvas.width / dpr);
+                const ry = Math.random() * (canvas.height / dpr);
+                const size = Math.random() * 2 + 1;
+                ctx.fillRect(rx, ry, size, size);
             }
-        } else if (gameState.weather === 'storm') {
+        }
+        else if (gameState.weather === 'storm') {
             ctx.fillStyle = 'rgba(10, 10, 30, 0.4)';
             ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+            ctx.strokeStyle = 'rgba(150, 150, 255, 0.5)';
+            ctx.lineWidth = 2;
+            const dropCount = Math.floor(300 * intensity);
+            for (let i = 0; i < dropCount; i++) {
+                const rx = Math.random() * (canvas.width / dpr);
+                const ry = Math.random() * (canvas.height / dpr);
+                ctx.beginPath(); ctx.moveTo(rx, ry); ctx.lineTo(rx - 8, ry + 15); ctx.stroke();
+            }
             if (Math.random() < 0.05 * intensity) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
                 ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             }
-        } else if (gameState.weather === 'fog') {
+        }
+        else if (gameState.weather === 'fog') {
             ctx.fillStyle = `rgba(200, 200, 200, ${0.5 * intensity})`;
             ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
         }
         ctx.restore();
     }
 
-    // 7. Particles
     if (typeof ParticleSystem !== 'undefined') {
         ParticleSystem.draw(ctx, startX, startY);
     }
 
-    // 8. Boss Health Bars
     if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
         const bosses = gameState.instancedEnemies.filter(e => e.isBoss);
         if (bosses.length > 0) {
             let activeBoss = bosses[0];
-            const barWidth = (canvas.width / dpr) * 0.6;
-            const barHeight = 20;
-            const barX = ((canvas.width / dpr) - barWidth) / 2;
-            const barY = 40;
+            let minDist = Infinity;
+            bosses.forEach(b => {
+                const d = Math.sqrt(Math.pow(b.x - gameState.player.x, 2) + Math.pow(b.y - gameState.player.y, 2));
+                if (d < minDist) {
+                    minDist = d;
+                    activeBoss = b;
+                }
+            });
+            if (minDist < 20 || bosses.length === 1) {
+                const barWidth = (canvas.width / dpr) * 0.6;
+                const barHeight = 20;
+                const barX = ((canvas.width / dpr) - barWidth) / 2;
+                const barY = 40;
 
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(barX, barY - 20, barWidth, barHeight + 20);
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'center';
-            ctx.fillText(activeBoss.name, (canvas.width / dpr) / 2, barY - 5);
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(barX, barY, barWidth, barHeight);
-            const hpPct = Math.max(0, activeBoss.health / activeBoss.maxHealth);
-            ctx.fillStyle = '#dc2626';
-            ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * hpPct, barHeight - 4);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(barX, barY - 20, barWidth, barHeight + 20);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(activeBoss.name, (canvas.width / dpr) / 2, barY - 5);
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+                const healthPercent = Math.max(0, activeBoss.health / activeBoss.maxHealth);
+                ctx.fillStyle = '#dc2626';
+                ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * healthPercent, barHeight - 4);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '12px monospace';
+                ctx.fillText(`${activeBoss.health} / ${activeBoss.maxHealth}`, (canvas.width / dpr) / 2, barY + 14);
+            }
         }
     }
 
-    ctx.restore(); // Restore the main Scene Transform
-}; // End of render function
+    ctx.restore();
+};
 
 function syncPlayerState() {
     if (onlinePlayerRef) {
@@ -8521,15 +8620,14 @@ function getBaseTerrain(worldX, worldY) {
 async function processOverworldEnemyTurns() {
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
-    const searchRadius = 25; 
+    const searchRadius = 25;
     const searchDistSq = searchRadius * searchRadius;
     const HEARING_DISTANCE_SQ = 15 * 15;
 
     let nearestEnemyDir = null;
-    let minDist = Infinity;
+    let minDist = Infinity; 
     let multiPathUpdate = {};
     let movesQueued = false;
-
     const processedIdsThisFrame = new Set();
 
     // 1. Gather candidates from local buckets
@@ -8558,226 +8656,105 @@ async function processOverworldEnemyTurns() {
         return false;
     };
 
-    // --- CRITICAL FIX: Use for...of instead of .forEach ---
     for (const enemyId of activeEnemyIds) {
         if (processedIdsThisFrame.has(enemyId)) continue;
-        
+
         const enemy = gameState.sharedEnemies[enemyId];
-
-        // --- SAFETY CHECK ---
-        if (!enemy || typeof enemy.x !== 'number') {
-            processedIdsThisFrame.add(enemyId);
-            continue; // Skip invalid enemies
+                // --- SAFETY CHECK ---
+        // If enemy is missing or coords are invalid, skip it (don't crash the loop)
+        if (!enemy || typeof enemy.x !== 'number' || typeof enemy.y !== 'number') {
+            continue;
         }
 
-        processedIdsThisFrame.add(enemyId);
+        const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
+        if (distSq > searchDistSq) continue;
 
-        // 2. Distance Check
-        const distSq = Math.pow(enemy.x - playerX, 2) + Math.pow(enemy.y - playerY, 2);
-        
-        if (distSq > searchDistSq) continue; // Too far, skip
+        // --- AI LOGIC ---
+        let chaseChance = 0.20;
+        if (distSq < 400) chaseChance = 0.85; // Close range
+        if (distSq < 100) chaseChance = 1.00; // Aggressive
 
-        // 3. Audio / Intuition Check
-        if (distSq <= HEARING_DISTANCE_SQ) {
-            if (distSq < minDist) {
-                minDist = distSq;
-                if (Math.abs(enemy.x - playerX) > Math.abs(enemy.y - playerY)) {
-                    nearestEnemyDir = (enemy.x > playerX) ? 'east' : 'west';
-                } else {
-                    nearestEnemyDir = (enemy.y > playerY) ? 'south' : 'north';
-                }
+        if (Math.random() < 0.80) { // 80% chance to act per turn
+            let dirX = 0, dirY = 0;
+            let isChasing = false;
+
+            if (Math.random() < chaseChance) {
+                dirX = Math.sign(playerX - enemy.x);
+                dirY = Math.sign(playerY - enemy.y);
+                isChasing = true;
+            } else {
+                dirX = Math.floor(Math.random() * 3) - 1;
+                dirY = Math.floor(Math.random() * 3) - 1;
             }
-        }
 
-        // --- 4. TELEPORT LOGIC (Endermen/Stalkers) ---
-        if (enemy.teleporter && distSq > 4 && Math.random() < 0.15) {
-            const angle = Math.random() * Math.PI * 2;
-            const r = 2; 
-            const tx = Math.floor(playerX + Math.cos(angle) * r);
-            const ty = Math.floor(playerY + Math.sin(angle) * r);
-            
-            if (isValidMove(tx, ty, enemy.tile)) {
-                // Update Spatial Map
-                updateSpatialMap(enemyId, enemy.x, enemy.y, tx, ty);
-                
-                // Update Enemy Object
-                enemy.x = tx;
-                enemy.y = ty;
-                
-                // Queue Update
-                multiPathUpdate[`worldEnemies/${enemyId}/x`] = tx;
-                multiPathUpdate[`worldEnemies/${enemyId}/y`] = ty;
-                movesQueued = true;
-                
-                // Visual FX
-                if (typeof ParticleSystem !== 'undefined') {
-                    ParticleSystem.createExplosion(tx, ty, '#a855f7'); 
-                }
-                logMessage(`The ${enemy.name} teleports behind you!`);
-                continue; // Turn Over for this enemy
-            }
-        }
+            if (dirX === 0 && dirY === 0) continue;
 
-        // --- 5. BOSS LOGIC (Telegraphs) ---
-        if (enemy.isBoss && Math.random() < 0.3) {
-            if (!enemy.pendingAttacks) enemy.pendingAttacks = [];
-            
-            // Pattern 1: The "Cross"
-            if (Math.random() < 0.5) {
-                logMessage(`The ${enemy.name} gathers power!`);
-                enemy.pendingAttacks.push({ x: playerX, y: playerY });
-                enemy.pendingAttacks.push({ x: playerX + 1, y: playerY });
-                enemy.pendingAttacks.push({ x: playerX - 1, y: playerY });
-                enemy.pendingAttacks.push({ x: playerX, y: playerY + 1 });
-                enemy.pendingAttacks.push({ x: playerX, y: playerY - 1 });
+            let finalX = enemy.x + dirX;
+            let finalY = enemy.y + dirY;
+            let canMove = false;
+
+            // Simple collision check with world terrain
+            if (isValidMove(finalX, finalY, enemy.tile)) {
+                canMove = true;
             } 
-            // Pattern 2: The "Breath"
-            else {
-                logMessage(`The ${enemy.name} takes a deep breath!`);
-                for(let ty = -1; ty <= 1; ty++) {
-                    for(let tx = -1; tx <= 1; tx++) {
-                        enemy.pendingAttacks.push({ x: playerX + tx, y: playerY + ty });
-                    }
+            // Pathfinding "slide" (if diagonal blocked, try cardinal)
+            else if (isChasing) {
+                if (dirX !== 0 && isValidMove(enemy.x + dirX, enemy.y, enemy.tile)) {
+                    finalX = enemy.x + dirX; finalY = enemy.y; canMove = true;
+                } else if (dirY !== 0 && isValidMove(enemy.x, enemy.y + dirY, enemy.tile)) {
+                    finalX = enemy.x; finalY = enemy.y + dirY; canMove = true;
                 }
             }
-            continue; // Turn ends (Charging up)
-        }
 
-        // --- 6. COMBAT LOGIC ---
-        
-        // Melee Attack (Range 1)
-        if (distSq <= 2) {
-            const player = gameState.player; // Grab reference
-            const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
-            const baseDefense = Math.floor(player.dexterity / 3);
-            const buffDefense = player.defenseBonus || 0;
-            const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
-            const conBonus = Math.floor(player.constitution * 0.1);
-            
-            const totalDefense = baseDefense + armorDefense + buffDefense + conBonus + talentDefense;
-
-            let dodgeChance = Math.min(player.luck * 0.002, 0.25);
-            if (player.talents && player.talents.includes('evasion')) dodgeChance += 0.10;
-
-            if (Math.random() < dodgeChance) {
-                logMessage(`The ${enemy.name} attacks, but you dodge!`);
-                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, "Dodge!", "#3b82f6");
-            } else {
-                let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
-
-                // Shield Absorb
-                if (player.shieldValue > 0) {
-                    const absorb = Math.min(player.shieldValue, dmg);
-                    player.shieldValue -= absorb;
-                    dmg -= absorb;
-                    logMessage(`Shield absorbs ${absorb} damage!`);
-                    if (player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
-                }
-
-                if (dmg > 0) {
-                    player.health -= dmg;
+            if (canMove) {
+                // Combat Check
+                if (finalX === playerX && finalY === playerY) {
+                    const dmg = Math.max(1, enemy.attack - (gameState.player.defenseBonus || 0));
+                    gameState.player.health -= dmg;
                     gameState.screenShake = 10;
+                    logMessage(`A ${enemy.name} attacks you for ${dmg} damage!`);
                     triggerStatFlash(statDisplays.health, false);
-                    logMessage(`The ${enemy.name} hits you for {red:${dmg}} damage!`);
-                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
-
-                    if (handlePlayerDeath()) return null; // Player died, stop everything
+                    if (gameState.player.health <= 0) handlePlayerDeath();
+                    processedIdsThisFrame.add(enemyId);
+                    continue; 
                 }
 
-                // Thorns Reflect
-                if (player.thornsValue > 0) {
-                    enemy.health -= player.thornsValue;
-                    logMessage(`The ${enemy.name} takes ${player.thornsValue} thorn damage!`);
-                    
-                    // Note: We don't kill the enemy here instantly to keep it simple, 
-                    // the shared update will handle it eventually or next hit.
-                }
-            }
-            continue; // Turn Over for this enemy
-        }
+                // --- EXECUTE MOVE & SYNC BUCKETS ---
+                const newId = `overworld:${finalX},${-finalY}`;
+                
+                // If another enemy just moved into this exact coordinate this turn, skip
+                if (gameState.sharedEnemies[newId] || multiPathUpdate[`worldEnemies/${newId}`]) continue;
 
-        // Caster Attack (Range Check)
-        const castRangeSq = Math.pow(enemy.castRange || 6, 2);
-        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20) {
-            const player = gameState.player;
-            const spellDmg = Math.max(1, Math.floor(enemy.spellDamage || 1));
-            
-            let spellName = "spell";
-            if (enemy.tile === 'm') spellName = "Arcane Bolt";
-            if (enemy.tile === 'Z') spellName = "Frost Shard";
-            if (enemy.tile === '@') spellName = "Poison Spit";
+                const updatedEnemy = { ...enemy, x: finalX, y: finalY };
+                if (updatedEnemy._processedThisTurn) delete updatedEnemy._processedThisTurn;
 
-            if (Math.random() < Math.min(player.luck * 0.002, 0.25)) {
-                logMessage(`The ${enemy.name} fires a ${spellName}, but you dodge!`);
-            } else {
-                let dmg = spellDmg;
-                if (player.shieldValue > 0) {
-                    const absorb = Math.min(player.shieldValue, dmg);
-                    player.shieldValue -= absorb;
-                    dmg -= absorb;
-                    logMessage(`Shield absorbs ${absorb} magic damage!`);
-                }
+                // 1. Prepare Firebase Batch
+                multiPathUpdate[`worldEnemies/${newId}`] = updatedEnemy;
+                multiPathUpdate[`worldEnemies/${enemyId}`] = null;
 
-                if (dmg > 0) {
-                    player.health -= dmg;
-                    gameState.screenShake = 10; 
-                    triggerStatFlash(statDisplays.health, false);
-                    logMessage(`The ${enemy.name} hits you with ${spellName} for {red:${dmg}} damage!`);
-                    
-                    // Status Effects
-                    if (enemy.inflicts === 'poison') {
-                        player.poisonTurns = 5;
-                        logMessage("You are poisoned!");
-                    } else if (enemy.inflicts === 'frostbite') {
-                        player.frostbiteTurns = 5;
-                        logMessage("You are frostbitten!");
-                    }
+                // 2. Update Local "sharedEnemies" (Snappy Visuals)
+                delete gameState.sharedEnemies[enemyId];
+                gameState.sharedEnemies[newId] = updatedEnemy;
 
-                    if (handlePlayerDeath()) return null;
-                }
-            }
-            continue; // Turn Over
-        }
+                // 3. CRITICAL: Update Spatial Map Buckets immediately
+                // This prevents the enemy from "vanishing" from the AI loop
+                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null); // Remove old
+                updateSpatialMap(newId, null, null, finalX, finalY);     // Add new
 
-        // --- 7. MOVEMENT LOGIC (A*) ---
-        // Simple Chase for Overworld (A* is expensive for shared)
-        const dx = Math.sign(playerX - enemy.x);
-        const dy = Math.sign(playerY - enemy.y);
-        
-        let tx = enemy.x + dx;
-        let ty = enemy.y + dy;
+                processedIdsThisFrame.add(newId);
+                movesQueued = true;
 
-        // Try direct diagonal
-        if (!isValidMove(tx, ty, enemy.tile)) {
-            // Try X only
-            tx = enemy.x + dx;
-            ty = enemy.y;
-            if (!isValidMove(tx, ty, enemy.tile)) {
-                // Try Y only
-                tx = enemy.x;
-                ty = enemy.y + dy;
-                if (!isValidMove(tx, ty, enemy.tile)) {
-                    continue; // Stuck
+                // Intuition logic
+                if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
+                    minDist = distSq;
+                    nearestEnemyDir = { x: Math.sign(finalX - playerX), y: Math.sign(finalY - playerY) };
                 }
             }
         }
-
-        // Update Spatial Map
-        updateSpatialMap(enemyId, enemy.x, enemy.y, tx, ty);
-
-        // Update Object
-        enemy.x = tx;
-        enemy.y = ty;
-
-        // Queue for DB
-        multiPathUpdate[`worldEnemies/${enemyId}/x`] = tx;
-        multiPathUpdate[`worldEnemies/${enemyId}/y`] = ty;
-        movesQueued = true;
     }
 
-    // --- 8. Batch Update Firebase ---
     if (movesQueued) {
-        rtdb.ref().update(multiPathUpdate).catch(console.error);
+        rtdb.ref().update(multiPathUpdate).catch(err => console.error("AI Sync Error:", err));
     }
 
     return nearestEnemyDir;
@@ -10995,21 +10972,27 @@ function restPlayer() {
 function recalculateDerivedStats() {
     const player = gameState.player;
     
-    // 1. Base Calculations (10 + Stat * Multiplier)
-    // Note: We use Math.max(0, stat) to ensure negative base stats don't crash calculation
-    let calculatedMaxHealth = 10 + (Math.max(0, player.constitution) * 5);
-    let calculatedMaxMana = 10 + (Math.max(0, player.wits) * 5);
-    let calculatedMaxStamina = 10 + (Math.max(0, player.endurance) * 5);
-    let calculatedMaxPsyche = 10 + (Math.max(0, player.willpower) * 3);
+    // 1. Reset to Base (Race + Background + Stat Points + Tomes)
+    // Note: We assume current player.strength/constitution includes permanent stat points
+    // If you separate base stats from spent points later, update this.
+    
+    // 2. Base Formulas
+    let calculatedMaxHealth = 10 + (player.constitution * 5);
+    let calculatedMaxMana = 10 + (player.wits * 5);
+    let calculatedMaxStamina = 10 + (player.endurance * 5);
+    let calculatedMaxPsyche = 10 + (player.willpower * 3);
 
-    // 2. Set Bonuses
     if (player.completedLoreSets) {
+        // Void Research: +10 Max Mana
         if (player.completedLoreSets.includes('void_research')) {
             calculatedMaxMana += 10;
         }
+        
+        // Example Future Set: Titan's History (+10 Health)
+        // if (player.completedLoreSets.includes('titan_history')) calculatedMaxHealth += 10;
     }
 
-    // 3. Equipment Bonuses
+    // 3. Add Equipment Bonuses
     ['weapon', 'armor'].forEach(slot => {
         const item = player.equipment[slot];
         if (item && item.statBonuses) {
@@ -11017,21 +11000,19 @@ function recalculateDerivedStats() {
             if (item.statBonuses.wits) calculatedMaxMana += (item.statBonuses.wits * 5);
             if (item.statBonuses.endurance) calculatedMaxStamina += (item.statBonuses.endurance * 5);
             if (item.statBonuses.willpower) calculatedMaxPsyche += (item.statBonuses.willpower * 3);
-            
-            // Direct Max Stat bonuses (e.g. +50 Max Mana ring)
-            if (item.statBonuses.maxHealth) calculatedMaxHealth += item.statBonuses.maxHealth;
-            if (item.statBonuses.maxMana) calculatedMaxMana += item.statBonuses.maxMana;
         }
     });
 
-    // 4. Apply with Safety Floor (The Fix)
-    // Never allow Max stats to drop below 1
-    player.maxHealth = Math.max(1, calculatedMaxHealth);
-    player.maxMana = Math.max(1, calculatedMaxMana);
-    player.maxStamina = Math.max(1, calculatedMaxStamina);
-    player.maxPsyche = Math.max(1, calculatedMaxPsyche);
+    // 4. Add Permanent Anomalies (Elder Tree, etc.)
+    // You might need to store these specific permanent buffs in a separate object if they aren't just raw stat increases.
+    
+    // 5. Apply
+    player.maxHealth = calculatedMaxHealth;
+    player.maxMana = calculatedMaxMana;
+    player.maxStamina = calculatedMaxStamina;
+    player.maxPsyche = calculatedMaxPsyche;
 
-    // 5. Clamp Current Values
+    // 6. Clamp current values (don't allow HP > MaxHP)
     player.health = Math.min(player.health, player.maxHealth);
     player.mana = Math.min(player.mana, player.maxMana);
     player.stamina = Math.min(player.stamina, player.maxStamina);
