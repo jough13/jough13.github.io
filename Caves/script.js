@@ -8528,14 +8528,15 @@ function getBaseTerrain(worldX, worldY) {
 async function processOverworldEnemyTurns() {
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
-    const searchRadius = 25;
+    const searchRadius = 25; 
     const searchDistSq = searchRadius * searchRadius;
     const HEARING_DISTANCE_SQ = 15 * 15;
 
     let nearestEnemyDir = null;
-    let minDist = Infinity; 
+    let minDist = Infinity;
     let multiPathUpdate = {};
     let movesQueued = false;
+
     const processedIdsThisFrame = new Set();
 
     // 1. Gather candidates from local buckets
@@ -8564,105 +8565,226 @@ async function processOverworldEnemyTurns() {
         return false;
     };
 
+    // --- CRITICAL FIX: Use for...of instead of .forEach ---
     for (const enemyId of activeEnemyIds) {
         if (processedIdsThisFrame.has(enemyId)) continue;
-
+        
         const enemy = gameState.sharedEnemies[enemyId];
-                // --- SAFETY CHECK ---
-        // If enemy is missing or coords are invalid, skip it (don't crash the loop)
-        if (!enemy || typeof enemy.x !== 'number' || typeof enemy.y !== 'number') {
-            continue;
+
+        // --- SAFETY CHECK ---
+        if (!enemy || typeof enemy.x !== 'number') {
+            processedIdsThisFrame.add(enemyId);
+            continue; // Skip invalid enemies
         }
 
-        const distSq = Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2);
-        if (distSq > searchDistSq) continue;
+        processedIdsThisFrame.add(enemyId);
 
-        // --- AI LOGIC ---
-        let chaseChance = 0.20;
-        if (distSq < 400) chaseChance = 0.85; // Close range
-        if (distSq < 100) chaseChance = 1.00; // Aggressive
+        // 2. Distance Check
+        const distSq = Math.pow(enemy.x - playerX, 2) + Math.pow(enemy.y - playerY, 2);
+        
+        if (distSq > searchDistSq) continue; // Too far, skip
 
-        if (Math.random() < 0.80) { // 80% chance to act per turn
-            let dirX = 0, dirY = 0;
-            let isChasing = false;
-
-            if (Math.random() < chaseChance) {
-                dirX = Math.sign(playerX - enemy.x);
-                dirY = Math.sign(playerY - enemy.y);
-                isChasing = true;
-            } else {
-                dirX = Math.floor(Math.random() * 3) - 1;
-                dirY = Math.floor(Math.random() * 3) - 1;
-            }
-
-            if (dirX === 0 && dirY === 0) continue;
-
-            let finalX = enemy.x + dirX;
-            let finalY = enemy.y + dirY;
-            let canMove = false;
-
-            // Simple collision check with world terrain
-            if (isValidMove(finalX, finalY, enemy.tile)) {
-                canMove = true;
-            } 
-            // Pathfinding "slide" (if diagonal blocked, try cardinal)
-            else if (isChasing) {
-                if (dirX !== 0 && isValidMove(enemy.x + dirX, enemy.y, enemy.tile)) {
-                    finalX = enemy.x + dirX; finalY = enemy.y; canMove = true;
-                } else if (dirY !== 0 && isValidMove(enemy.x, enemy.y + dirY, enemy.tile)) {
-                    finalX = enemy.x; finalY = enemy.y + dirY; canMove = true;
+        // 3. Audio / Intuition Check
+        if (distSq <= HEARING_DISTANCE_SQ) {
+            if (distSq < minDist) {
+                minDist = distSq;
+                if (Math.abs(enemy.x - playerX) > Math.abs(enemy.y - playerY)) {
+                    nearestEnemyDir = (enemy.x > playerX) ? 'east' : 'west';
+                } else {
+                    nearestEnemyDir = (enemy.y > playerY) ? 'south' : 'north';
                 }
             }
+        }
 
-            if (canMove) {
-                // Combat Check
-                if (finalX === playerX && finalY === playerY) {
-                    const dmg = Math.max(1, enemy.attack - (gameState.player.defenseBonus || 0));
-                    gameState.player.health -= dmg;
-                    gameState.screenShake = 10;
-                    logMessage(`A ${enemy.name} attacks you for ${dmg} damage!`);
-                    triggerStatFlash(statDisplays.health, false);
-                    if (gameState.player.health <= 0) handlePlayerDeath();
-                    processedIdsThisFrame.add(enemyId);
-                    continue; 
-                }
-
-                // --- EXECUTE MOVE & SYNC BUCKETS ---
-                const newId = `overworld:${finalX},${-finalY}`;
+        // --- 4. TELEPORT LOGIC (Endermen/Stalkers) ---
+        if (enemy.teleporter && distSq > 4 && Math.random() < 0.15) {
+            const angle = Math.random() * Math.PI * 2;
+            const r = 2; 
+            const tx = Math.floor(playerX + Math.cos(angle) * r);
+            const ty = Math.floor(playerY + Math.sin(angle) * r);
+            
+            if (isValidMove(tx, ty, enemy.tile)) {
+                // Update Spatial Map
+                updateSpatialMap(enemyId, enemy.x, enemy.y, tx, ty);
                 
-                // If another enemy just moved into this exact coordinate this turn, skip
-                if (gameState.sharedEnemies[newId] || multiPathUpdate[`worldEnemies/${newId}`]) continue;
-
-                const updatedEnemy = { ...enemy, x: finalX, y: finalY };
-                if (updatedEnemy._processedThisTurn) delete updatedEnemy._processedThisTurn;
-
-                // 1. Prepare Firebase Batch
-                multiPathUpdate[`worldEnemies/${newId}`] = updatedEnemy;
-                multiPathUpdate[`worldEnemies/${enemyId}`] = null;
-
-                // 2. Update Local "sharedEnemies" (Snappy Visuals)
-                delete gameState.sharedEnemies[enemyId];
-                gameState.sharedEnemies[newId] = updatedEnemy;
-
-                // 3. CRITICAL: Update Spatial Map Buckets immediately
-                // This prevents the enemy from "vanishing" from the AI loop
-                updateSpatialMap(enemyId, enemy.x, enemy.y, null, null); // Remove old
-                updateSpatialMap(newId, null, null, finalX, finalY);     // Add new
-
-                processedIdsThisFrame.add(newId);
+                // Update Enemy Object
+                enemy.x = tx;
+                enemy.y = ty;
+                
+                // Queue Update
+                multiPathUpdate[`worldEnemies/${enemyId}/x`] = tx;
+                multiPathUpdate[`worldEnemies/${enemyId}/y`] = ty;
                 movesQueued = true;
+                
+                // Visual FX
+                if (typeof ParticleSystem !== 'undefined') {
+                    ParticleSystem.createExplosion(tx, ty, '#a855f7'); 
+                }
+                logMessage(`The ${enemy.name} teleports behind you!`);
+                continue; // Turn Over for this enemy
+            }
+        }
 
-                // Intuition logic
-                if (distSq < minDist && distSq < HEARING_DISTANCE_SQ) {
-                    minDist = distSq;
-                    nearestEnemyDir = { x: Math.sign(finalX - playerX), y: Math.sign(finalY - playerY) };
+        // --- 5. BOSS LOGIC (Telegraphs) ---
+        if (enemy.isBoss && Math.random() < 0.3) {
+            if (!enemy.pendingAttacks) enemy.pendingAttacks = [];
+            
+            // Pattern 1: The "Cross"
+            if (Math.random() < 0.5) {
+                logMessage(`The ${enemy.name} gathers power!`);
+                enemy.pendingAttacks.push({ x: playerX, y: playerY });
+                enemy.pendingAttacks.push({ x: playerX + 1, y: playerY });
+                enemy.pendingAttacks.push({ x: playerX - 1, y: playerY });
+                enemy.pendingAttacks.push({ x: playerX, y: playerY + 1 });
+                enemy.pendingAttacks.push({ x: playerX, y: playerY - 1 });
+            } 
+            // Pattern 2: The "Breath"
+            else {
+                logMessage(`The ${enemy.name} takes a deep breath!`);
+                for(let ty = -1; ty <= 1; ty++) {
+                    for(let tx = -1; tx <= 1; tx++) {
+                        enemy.pendingAttacks.push({ x: playerX + tx, y: playerY + ty });
+                    }
+                }
+            }
+            continue; // Turn ends (Charging up)
+        }
+
+        // --- 6. COMBAT LOGIC ---
+        
+        // Melee Attack (Range 1)
+        if (distSq <= 2) {
+            const player = gameState.player; // Grab reference
+            const armorDefense = player.equipment.armor ? player.equipment.armor.defense : 0;
+            const baseDefense = Math.floor(player.dexterity / 3);
+            const buffDefense = player.defenseBonus || 0;
+            const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
+            const conBonus = Math.floor(player.constitution * 0.1);
+            
+            const totalDefense = baseDefense + armorDefense + buffDefense + conBonus + talentDefense;
+
+            let dodgeChance = Math.min(player.luck * 0.002, 0.25);
+            if (player.talents && player.talents.includes('evasion')) dodgeChance += 0.10;
+
+            if (Math.random() < dodgeChance) {
+                logMessage(`The ${enemy.name} attacks, but you dodge!`);
+                if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, "Dodge!", "#3b82f6");
+            } else {
+                let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
+
+                // Shield Absorb
+                if (player.shieldValue > 0) {
+                    const absorb = Math.min(player.shieldValue, dmg);
+                    player.shieldValue -= absorb;
+                    dmg -= absorb;
+                    logMessage(`Shield absorbs ${absorb} damage!`);
+                    if (player.shieldValue === 0) logMessage("Your Arcane Shield shatters!");
+                }
+
+                if (dmg > 0) {
+                    player.health -= dmg;
+                    gameState.screenShake = 10;
+                    triggerStatFlash(statDisplays.health, false);
+                    logMessage(`The ${enemy.name} hits you for {red:${dmg}} damage!`);
+                    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(playerX, playerY, `-${dmg}`, '#ef4444');
+
+                    if (handlePlayerDeath()) return null; // Player died, stop everything
+                }
+
+                // Thorns Reflect
+                if (player.thornsValue > 0) {
+                    enemy.health -= player.thornsValue;
+                    logMessage(`The ${enemy.name} takes ${player.thornsValue} thorn damage!`);
+                    
+                    // Note: We don't kill the enemy here instantly to keep it simple, 
+                    // the shared update will handle it eventually or next hit.
+                }
+            }
+            continue; // Turn Over for this enemy
+        }
+
+        // Caster Attack (Range Check)
+        const castRangeSq = Math.pow(enemy.castRange || 6, 2);
+        if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20) {
+            const player = gameState.player;
+            const spellDmg = Math.max(1, Math.floor(enemy.spellDamage || 1));
+            
+            let spellName = "spell";
+            if (enemy.tile === 'm') spellName = "Arcane Bolt";
+            if (enemy.tile === 'Z') spellName = "Frost Shard";
+            if (enemy.tile === '@') spellName = "Poison Spit";
+
+            if (Math.random() < Math.min(player.luck * 0.002, 0.25)) {
+                logMessage(`The ${enemy.name} fires a ${spellName}, but you dodge!`);
+            } else {
+                let dmg = spellDmg;
+                if (player.shieldValue > 0) {
+                    const absorb = Math.min(player.shieldValue, dmg);
+                    player.shieldValue -= absorb;
+                    dmg -= absorb;
+                    logMessage(`Shield absorbs ${absorb} magic damage!`);
+                }
+
+                if (dmg > 0) {
+                    player.health -= dmg;
+                    gameState.screenShake = 10; 
+                    triggerStatFlash(statDisplays.health, false);
+                    logMessage(`The ${enemy.name} hits you with ${spellName} for {red:${dmg}} damage!`);
+                    
+                    // Status Effects
+                    if (enemy.inflicts === 'poison') {
+                        player.poisonTurns = 5;
+                        logMessage("You are poisoned!");
+                    } else if (enemy.inflicts === 'frostbite') {
+                        player.frostbiteTurns = 5;
+                        logMessage("You are frostbitten!");
+                    }
+
+                    if (handlePlayerDeath()) return null;
+                }
+            }
+            continue; // Turn Over
+        }
+
+        // --- 7. MOVEMENT LOGIC (A*) ---
+        // Simple Chase for Overworld (A* is expensive for shared)
+        const dx = Math.sign(playerX - enemy.x);
+        const dy = Math.sign(playerY - enemy.y);
+        
+        let tx = enemy.x + dx;
+        let ty = enemy.y + dy;
+
+        // Try direct diagonal
+        if (!isValidMove(tx, ty, enemy.tile)) {
+            // Try X only
+            tx = enemy.x + dx;
+            ty = enemy.y;
+            if (!isValidMove(tx, ty, enemy.tile)) {
+                // Try Y only
+                tx = enemy.x;
+                ty = enemy.y + dy;
+                if (!isValidMove(tx, ty, enemy.tile)) {
+                    continue; // Stuck
                 }
             }
         }
+
+        // Update Spatial Map
+        updateSpatialMap(enemyId, enemy.x, enemy.y, tx, ty);
+
+        // Update Object
+        enemy.x = tx;
+        enemy.y = ty;
+
+        // Queue for DB
+        multiPathUpdate[`worldEnemies/${enemyId}/x`] = tx;
+        multiPathUpdate[`worldEnemies/${enemyId}/y`] = ty;
+        movesQueued = true;
     }
 
+    // --- 8. Batch Update Firebase ---
     if (movesQueued) {
-        rtdb.ref().update(multiPathUpdate).catch(err => console.error("AI Sync Error:", err));
+        rtdb.ref().update(multiPathUpdate).catch(console.error);
     }
 
     return nearestEnemyDir;
