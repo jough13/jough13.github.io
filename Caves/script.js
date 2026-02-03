@@ -103,6 +103,21 @@ function flushPendingSave(updates = null) {
     }
 }
 
+/**
+ * Centralized function to remove an enemy from the game.
+ * Ensures it is removed from the active instance AND the persistent chunk memory.
+ */
+
+function removeInstancedEnemy(enemyId) {
+    // 1. Remove from the active gameplay list (what you see on screen)
+    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
+
+    // 2. Remove from the persistent dungeon memory (so it doesn't respawn on re-entry)
+    if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
+        chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
+    }
+}
+
 // --- SPATIAL PARTITIONING HELPERS ---
 const SPATIAL_CHUNK_SIZE = 16; // Match your chunkManager size
 
@@ -3143,7 +3158,7 @@ function handleDig() {
     // 1. Get the current tile safely based on location
     let tile;
     if (gameState.mapMode === 'overworld') {
-        tile = chunkManager.getWorldTile(player.x, player.y);
+        tile = chunkManager.getTile(player.x, player.y);
     } else {
         // Disallow digging indoors to prevent logic headaches
         logMessage("You cannot dig inside a structure.");
@@ -5285,11 +5300,9 @@ function useSkill(skillId) {
                                 if (enemy.health <= 0) {
                                     logMessage(`${enemy.name} is slain!`);
                                     registerKill(enemy);
-                                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                                    
+                                    removeInstancedEnemy(enemy.id);
 
-                                    // Update persistent dungeon state
-                                    if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-                                        chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
                                     }
                                 }
                             }
@@ -5313,7 +5326,6 @@ function useSkill(skillId) {
             renderEquipment(); // Update UI to show buff
         }
     }
-}
 
 async function runCompanionTurn() {
     const companion = gameState.player.companion;
@@ -5340,7 +5352,7 @@ async function runCompanionTurn() {
                 if (enemy.health <= 0) {
                     logMessage(`Your companion killed the ${enemy.name}!`);
                     grantXp(Math.floor(enemy.xp / 2)); // Half XP for pet kills
-                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                    removeInstancedEnemy(enemy.id);
                 }
             }
         }
@@ -5684,7 +5696,7 @@ function executePacify(dirX, dirY) {
                 logMessage(`You calm the ${enemy.name}! It becomes passive.`);
 
                 // Remove it from the enemy list
-                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                removeInstancedEnemy(enemy.id);
 
                 // Set its tile to a floor
                 map[targetY][targetX] = theme.floor;
@@ -5773,7 +5785,8 @@ function executeTame(dirX, dirY) {
                 };
 
                 // Remove enemy
-                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                removeInstancedEnemy(enemy.id);
+
                 playerRef.update({ companion: player.companion });
 
             } else {
@@ -7428,7 +7441,8 @@ async function executeMeleeSkill(skillId, dirX, dirY) {
                         registerKill(enemy);
 
                         const droppedLoot = generateEnemyLoot(player, enemy);
-                        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
+                        
+                        removeInstancedEnemy(enemyId); 
 
                         if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
                             chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
@@ -7581,29 +7595,32 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         }
 
     } else {
-        // Handle Instanced Combat
-        let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
-        if (enemy) {
-            damageDealt = Math.max(1, damage);
-            enemy.health -= damageDealt;
-            logMessage(`You hit the ${enemy.name} for ${damageDealt} magic damage!`);
+    // Handle Instanced Combat
+    let enemy = gameState.instancedEnemies.find(e => e.x === targetX && e.y === targetY);
+    if (enemy) {
+        // Apply damage
+        enemy.health -= totalLungeDamage;
+        logMessage(`You hit the ${enemy.name} for ${totalLungeDamage} damage!`);
 
-            if (enemy.health <= 0) {
-                logMessage(`You defeated the ${enemy.name}!`);
+        // Handle enemy death
+        if (enemy.health <= 0) {
+            logMessage(`You defeated the ${enemy.name}!`);
+            registerKill(enemy);
 
-                registerKill(enemy);
-
-                const droppedLoot = generateEnemyLoot(player, enemy);
-                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-                    chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
-                }
-                if (gameState.mapMode === 'dungeon') {
-                    chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
-                }
+            // Generate and place loot
+            const droppedLoot = generateEnemyLoot(player, enemy);
+            if (gameState.mapMode === 'dungeon') {
+                chunkManager.caveMaps[gameState.currentCaveId][targetY][targetX] = droppedLoot;
+            } else if (gameState.mapMode === 'castle') {
+                chunkManager.castleMaps[gameState.currentCastleId][targetY][targetX] = droppedLoot;
             }
+
+            // --- THE FIX ---
+            // Replaces the manual filtering logic with the safe helper function
+            removeInstancedEnemy(enemy.id);
         }
     }
+}
 
     // --- Handle On-Hit Effects ---
     if (damageDealt > 0 && spellId === 'siphonLife') {
@@ -8790,13 +8807,13 @@ function processEnemyTurns() {
             if (enemy.health <= 0) {
                 logMessage(`The ${enemy.name} succumbs to poison!`);
                 registerKill(enemy);
-                gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemy.id);
-                if (gameState.mapMode === 'dungeon' && chunkManager.caveEnemies[gameState.currentCaveId]) {
-                    chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemy.id);
-                }
-                map[enemy.y][enemy.x] = generateEnemyLoot(player, enemy);
-                return;
-            }
+                    removeInstancedEnemy(enemy.id);
+    
+    // Place loot
+    if(map) map[enemy.y][enemy.x] = generateEnemyLoot(player, enemy);
+    return;
+}
+
             if (enemy.poisonTurns === 0) logMessage(`The ${enemy.name} is no longer poisoned.`);
         }
 
@@ -9826,6 +9843,16 @@ function exitToOverworld(exitMessage) {
         gameState.player.y = 0;
     }
 
+        // Keep "landmark" dungeons, clear random ones
+    const keys = Object.keys(chunkManager.caveMaps);
+    keys.forEach(key => {
+        if (!key.includes('landmark') && !key.includes('vault')) {
+            delete chunkManager.caveMaps[key];
+            delete chunkManager.caveEnemies[key];
+            delete chunkManager.caveThemes[key];
+        }
+    });
+
     gameState.mapMode = 'overworld';
     gameState.mapDirty = true; 
 
@@ -9839,6 +9866,8 @@ function exitToOverworld(exitMessage) {
     updateRegionDisplay();
     render();
     syncPlayerState();
+
+
 
     const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
     const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
@@ -10353,7 +10382,7 @@ function handleInput(key) {
     if (key === 'g' || key === 'G') {
     // 1. Determine what is on the ground (using your robust mapMode check)
     const currentTile = (gameState.mapMode === 'overworld') 
-        ? chunkManager.getWorldTile(gameState.player.x, gameState.player.y)
+        ? chunkManager.getTile(gameState.player.x, gameState.player.y)
         : (gameState.mapMode === 'dungeon' 
             ? chunkManager.caveMaps[gameState.currentCaveId][gameState.player.y][gameState.player.x] 
             : chunkManager.castleMaps[gameState.currentCastleId][gameState.player.y][gameState.player.x]);
@@ -13673,18 +13702,19 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
     });
 
     // 3. Child Removed
-    const onChildRemoved = sharedEnemiesRef.on('child_removed', (snapshot) => {
-        const key = snapshot.key;
-        
-        // OPTIMIZATION: Remove from Spatial Map
-        if (gameState.sharedEnemies[key]) {
-            const enemy = gameState.sharedEnemies[key];
-            updateSpatialMap(key, enemy.x, enemy.y, null, null);
+        const onChildRemoved = sharedEnemiesRef.on('child_removed', (snapshot) => {
+            const key = snapshot.key;
             
-            delete gameState.sharedEnemies[key];
-            render();
-        }
-    });
+            // OPTIMIZATION: Remove from Spatial Map
+            const enemy = gameState.sharedEnemies[key]; // Capture ref
+            
+            // Only attempt to read coords if the enemy still exists locally
+            if (enemy) {
+                updateSpatialMap(key, enemy.x, enemy.y, null, null);
+                delete gameState.sharedEnemies[key];
+                render();
+            }
+        });
 
     // Store unsubs for cleanup
     sharedEnemiesListener = () => {
@@ -14130,8 +14160,26 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
 // PREVENT SCROLLING: Stop arrow keys and spacebar from scrolling the browser window
 window.addEventListener('keydown', e => { if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault(); }, false);
 
-// AUTO-SAVE: Save the game if the user closes the tab or refreshes
-window.addEventListener('beforeunload', () => { if(typeof player_id !== 'undefined' && player_id) saveGame(); });
+window.addEventListener('beforeunload', () => { 
+    if(typeof player_id !== 'undefined' && player_id && playerRef) {
+        // Force an immediate save of the current state
+        const finalState = {
+            ...gameState.player,
+            lootedTiles: Array.from(gameState.lootedTiles),
+            exploredChunks: Array.from(gameState.exploredChunks),
+            inventory: getSanitizedInventory(),
+            timestamp: Date.now()
+        };
+        
+        // Remove visual-only props
+        delete finalState.color;
+        delete finalState.character;
+
+        // We cannot use async/await here reliably, so we trigger it and hope 
+        // the browser keeps the thread alive long enough (standard behavior)
+        playerRef.set(sanitizeForFirebase(finalState), { merge: true });
+    }
+});
 
 // --- Restart / Respawn Handler ---
 restartButton.onclick = () => {
