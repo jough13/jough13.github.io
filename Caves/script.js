@@ -5335,16 +5335,21 @@ function useSkill(skillId) {
                                 if (enemy.health <= 0) {
                                     logMessage(`${enemy.name} is slain!`);
                                     registerKill(enemy);
+                                    
                                     removeInstancedEnemy(enemy.id);
+
+                                    }
                                 }
                             }
                         }
+
                     }
                 }
 
                 if (hitCount === 0) logMessage("You whirl through empty air.");
                 skillUsedSuccessfully = true;
                 break;
+        }
 
         // --- 5. Finalize Self-Cast Turn ---
         if (skillUsedSuccessfully) {
@@ -8412,7 +8417,7 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
 
     // 6. Weather Effects
     const intensity = gameState.player.weatherIntensity || 0;
-    //    const dpr = window.devicePixelRatio || 1; // Ensure dpr is available // <--- DELETED (Already defined above)
+    // const dpr = window.devicePixelRatio || 1; // <--- DELETED (Already defined above)
     if (intensity > 0 && gameState.weather !== 'clear') {
         ctx.save();
         ctx.globalAlpha = intensity;
@@ -8477,7 +8482,7 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
     }
 
     ctx.restore(); // Restore the main Scene Transform
-};
+}; // End of render function
 
 function syncPlayerState() {
     if (onlinePlayerRef) {
