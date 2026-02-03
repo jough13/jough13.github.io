@@ -8412,7 +8412,7 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
 
     // 6. Weather Effects
     const intensity = gameState.player.weatherIntensity || 0;
-    const dpr = window.devicePixelRatio || 1; // Ensure dpr is available
+    //    const dpr = window.devicePixelRatio || 1; // Ensure dpr is available // <--- DELETED (Already defined above)
     if (intensity > 0 && gameState.weather !== 'clear') {
         ctx.save();
         ctx.globalAlpha = intensity;
