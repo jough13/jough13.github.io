@@ -5264,57 +5264,57 @@ function useSkill(skillId) {
                 skillUsedSuccessfully = true;
                 break;
 
-            // WHIRLWIND ---
-            case 'whirlwind':
-                logMessage("You spin in a deadly vortex!");
-                let hitCount = 0;
-                // Stronger scaling: Str + Dex
-                const baseDmg = (player.strength + player.dexterity) * skillLevel;
+             // WHIRLWIND ---
+        case 'whirlwind':
+            logMessage("You spin in a deadly vortex!");
+            let hitCount = 0;
+            // Stronger scaling: Str + Dex
+            const baseDmg = (player.strength + player.dexterity) * skillLevel;
 
-                // Attack all adjacent tiles (-1 to 1)
-                for (let y = -1; y <= 1; y++) {
-                    for (let x = -1; x <= 1; x++) {
-                        if (x === 0 && y === 0) continue; // Skip self
-                        const tx = player.x + x;
-                        const ty = player.y + y;
+            // Attack all adjacent tiles (-1 to 1)
+            for (let y = -1; y <= 1; y++) {
+                for (let x = -1; x <= 1; x++) {
+                    if (x === 0 && y === 0) continue; // Skip self
+                    const tx = player.x + x;
+                    const ty = player.y + y;
 
-                        // --- Handle Overworld vs Instanced ---
-                        if (gameState.mapMode === 'overworld') {
-                            const tile = chunkManager.getTile(tx, ty);
-                            const enemyData = ENEMY_DATA[tile];
-                            if (enemyData) {
-                                // Calculate damage (simplified for AoE)
-                                const finalDmg = Math.max(1, baseDmg - (enemyData.defense || 0));
-                                // Call the async handler (fire and forget)
-                                handleOverworldCombat(tx, ty, enemyData, tile, finalDmg);
-                                hitCount++;
-                            }
-                        } else {
-                            // Existing Instanced Logic
-                            let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
-                            if (enemy) {
-                                enemy.health -= baseDmg;
-                                logMessage(`Whirlwind hits ${enemy.name} for ${baseDmg}!`);
-                                hitCount++;
+                    // --- Handle Overworld vs Instanced ---
+                    if (gameState.mapMode === 'overworld') {
+                        const tile = chunkManager.getTile(tx, ty);
+                        const enemyData = ENEMY_DATA[tile];
+                        if (enemyData) {
+                            // Calculate damage (simplified for AoE)
+                            const finalDmg = Math.max(1, baseDmg - (enemyData.defense || 0));
+                            // Call the async handler (fire and forget)
+                            handleOverworldCombat(tx, ty, enemyData, tile, finalDmg);
+                            hitCount++;
+                        }
+                    } else {
+                        // Existing Instanced Logic
+                        let enemy = gameState.instancedEnemies.find(e => e.x === tx && e.y === ty);
+                        if (enemy) {
+                            enemy.health -= baseDmg;
+                            logMessage(`Whirlwind hits ${enemy.name} for ${baseDmg}!`);
+                            hitCount++;
 
-                                if (enemy.health <= 0) {
-                                    logMessage(`${enemy.name} is slain!`);
-                                    registerKill(enemy);
-                                    
-                                    removeInstancedEnemy(enemy.id);
+                            if (enemy.health <= 0) {
+                                logMessage(`${enemy.name} is slain!`);
+                                registerKill(enemy);
+                                
+                                removeInstancedEnemy(enemy.id);
 
-                                    }
                                 }
                             }
                         }
-
                     }
-                }
 
-                if (hitCount === 0) logMessage("You whirl through empty air.");
-                skillUsedSuccessfully = true;
-                break;
-        }
+                }
+            }
+
+            if (hitCount === 0) logMessage("You whirl through empty air.");
+            skillUsedSuccessfully = true;
+            break;
+    }
 
         // --- 5. Finalize Self-Cast Turn ---
         if (skillUsedSuccessfully) {
