@@ -56,6 +56,15 @@
 	--mtn-base: #57534e;   /* Warm grey */
     --mtn-shadow: #44403c; /* Darker grey for depth */
     --mtn-cap: #f9fafb;    /* Bright snow */
+
+--pattern-color: rgba(0, 0, 0, 0.05); 
+    
+    /* NEW: Bolder Nature Colors */
+    --vine-dark:  rgba(21, 128, 61, 0.25);  /* Deep Forest Green */
+    --vine-light: rgba(74, 222, 128, 0.3);  /* Bright Leaf Green */
+    
+    --rock-dark:  rgba(68, 64, 60, 0.3);    /* Dark Stone */
+    --rock-light: rgba(120, 113, 108, 0.25); /* Lit Stone */
 }
 
 [data-theme="dark"] {
@@ -73,16 +82,96 @@
 	/* MODIFIED: Darker, richer blue for dark mode */
 	--terrain-color: #d1d5db;
 
-	--mtn-base: #374151;   /* Darker base */
-    --mtn-shadow: #1f2937; /* Deep shadow */
-    --mtn-cap: #e5e7eb;    /* Muted snow */
+	--pattern-color: rgba(255, 255, 255, 0.05);
+        
+        /* Dark Mode: Make them glow slightly */
+        --vine-dark:  rgba(22, 163, 74, 0.15); 
+        --vine-light: rgba(74, 222, 128, 0.15); 
+        
+        --rock-dark:  rgba(28, 25, 23, 0.4); 
+        --rock-light: rgba(87, 83, 78, 0.2); 
 }
 
 body {
-	background-color: var(--bg-page);
-	color: var(--text-default);
-	transition: background-color 0.3s, color 0.3s;
-	font-weight: 500;
+    font-family: 'Courier New', Courier, monospace;
+    background-color: var(--bg-page);
+    
+    /* --- THE COMPLEX 8-BIT WORLD --- */
+    background-image: 
+        /* 1. VIGNETTE (Focus on center) */
+        radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.15) 100%),
+
+        /* --- TOP: VINES (Organic Curves) --- */
+        /* Layer A: Big drooping vines (Darker, hanging lower) */
+        radial-gradient(ellipse at top, var(--vine-dark) 30%, transparent 32%),
+        /* Layer B: Small leaves (Brighter, near the top edge) */
+        radial-gradient(circle at top, var(--vine-light) 35%, transparent 36%),
+
+
+        /* --- BOTTOM: ROCKS (Sharp Angles) --- */
+        /* Layer C: Small sharp spikes (Foreground) */
+        linear-gradient(45deg, var(--rock-light) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--rock-light) 25%, transparent 25%),
+        
+        /* Layer D: Massive bedrock base (Background) */
+        linear-gradient(to top, var(--rock-dark) 0%, var(--rock-dark) 10%, transparent 50%),
+
+
+        /* --- BACKGROUND: GRID --- */
+        linear-gradient(90deg, var(--pattern-color) 1px, transparent 1px),
+        linear-gradient(var(--pattern-color) 1px, transparent 1px);
+
+
+    /* --- SIZING (The "Pixel" Scale) --- */
+    background-size: 
+        100% 100%,      /* Vignette */
+        
+        60px 80px,      /* Big Vines (Wide and tall drape) */
+        20px 30px,      /* Small Leaves (Tight spacing) */
+        
+        20px 20px,      /* Sharp Spikes (Small 20px zig-zags) */
+        20px 20px,      /* Sharp Spikes (Mirrored) */
+        100% 200px,     /* Bedrock (Stretches across bottom) */
+        
+        32px 32px,      /* Grid */
+        32px 32px;      /* Grid */
+
+
+    /* --- POSITIONING --- */
+    background-position:
+        0 0,            /* Vignette */
+        
+        0 -10px,        /* Big Vines */
+        10px -15px,     /* Small Leaves (Offset to look natural) */
+        
+        0 100%,         /* Spikes Left-leaning (Bottom) */
+        0 100%,         /* Spikes Right-leaning (Bottom) */
+        0 100%,         /* Bedrock (Bottom) */
+        
+        0 0,            /* Grid */
+        0 0;            /* Grid */
+
+
+    /* --- REPEATING RULES --- */
+    background-repeat:
+        no-repeat,      /* Vignette */
+        repeat-x,       /* Vines X only */
+        repeat-x,       /* Vines X only */
+        repeat-x,       /* Spikes X only */
+        repeat-x,       /* Spikes X only */
+        no-repeat,      /* Bedrock */
+        repeat,         /* Grid */
+        repeat;         /* Grid */
+    
+    /* Layout Logic */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 1rem;
+    margin: 0;
+    background-attachment: fixed; 
 }
 
 .game-container {
@@ -108,6 +197,9 @@ canvas {
     image-rendering: -webkit-crisp-edges;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
+	touch-action: none; /* Prevents browser zooming/panning on the canvas */
+    user-select: none;  /* Prevents highlighting text */
+    -webkit-user-select: none;
 }
 
 /* This prevents the inventory from collapsing before JS loads */ 
@@ -667,6 +759,11 @@ kbd {
     }
 }
 
+.d-pad-container, .action-buttons-container {
+    touch-action: manipulation; 
+}
+
+
 .d-pad-container {
     pointer-events: auto;
     display: grid;
@@ -822,4 +919,16 @@ kbd {
     border-color: var(--text-highlight);
     transform: scale(1.05);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Critical Health Overlay */
+@keyframes heartbeat {
+    0% { box-shadow: inset 0 0 20px rgba(220, 38, 38, 0.4); }
+    50% { box-shadow: inset 0 0 60px rgba(220, 38, 38, 0.7); }
+    100% { box-shadow: inset 0 0 20px rgba(220, 38, 38, 0.4); }
+}
+
+.critical-health {
+    animation: heartbeat 1.5s infinite ease-in-out;
+    border: 2px solid rgba(220, 38, 38, 0.5); /* Red border */
 }
