@@ -5335,32 +5335,37 @@ function useSkill(skillId) {
                                 if (enemy.health <= 0) {
                                     logMessage(`${enemy.name} is slain!`);
                                     registerKill(enemy);
-                                    
                                     removeInstancedEnemy(enemy.id);
-
-                                    }
                                 }
                             }
-                        }
-
+                        } 
                     }
                 }
 
                 if (hitCount === 0) logMessage("You whirl through empty air.");
                 skillUsedSuccessfully = true;
                 break;
-        }
+        } // <--- Closes the switch(skillId)
 
         // --- 5. Finalize Self-Cast Turn ---
+
         if (skillUsedSuccessfully) {
-            playerRef.update({ [costType]: player[costType] }); // Save the new stamina
-            triggerStatFlash(statDisplays.stamina, false); // Flash stamina for cost
+            playerRef.update({ [costType]: player[costType] }); // Save the new resource state
+            triggerStatFlash(statDisplays[costType] || statDisplays.stamina, false); // Flash the cost
             skillModal.classList.add('hidden');
             triggerAbilityCooldown(skillId);
-            endPlayerTurn();
-            renderEquipment(); // Update UI to show buff
+            
+            // Check if endPlayerTurn exists before calling (Safety)
+            if (typeof endPlayerTurn === 'function') {
+                endPlayerTurn();
+            }
+            
+            renderEquipment(); // Update UI
         }
+
     }
+
+}
 
 async function runCompanionTurn() {
     const companion = gameState.player.companion;
