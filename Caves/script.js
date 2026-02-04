@@ -9066,7 +9066,7 @@ function getPlayerDamageModifier(baseDamage) {
 function handlePlayerDeath() {
     if (gameState.player.health > 0) return false; // Not dead
 
-        if (saveTimeout) {
+    if (saveTimeout) {
         clearTimeout(saveTimeout);
         saveTimeout = null;
     }
@@ -9074,8 +9074,7 @@ function handlePlayerDeath() {
     const player = gameState.player;
 
     // 1. Visuals & Logs
-    // Ensure health is clamped to 0 so the game loop knows we are dead
-    player.health = 0; 
+    player.health = 0; // Ensure health is clamped to 0
     logMessage("{red:You have perished!}");
     triggerStatFlash(statDisplays.health, false);
 
@@ -9083,8 +9082,13 @@ function handlePlayerDeath() {
     if (player.equipment.weapon) applyStatBonuses(player.equipment.weapon, -1);
     if (player.equipment.armor) applyStatBonuses(player.equipment.armor, -1);
 
-    // 3. CORPSE SCATTER LOGIC
-    // (This drops your inventory on the ground where you died)
+    // 3. UI UPDATES (Moved UP so they happen before any potential save errors)
+    const goldLost = Math.floor(player.coins / 2);
+    document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
+    document.getElementById('finalCoinsDisplay').textContent = `Gold lost: ${goldLost}`;
+    gameOverModal.classList.remove('hidden'); // Show the modal immediately
+
+    // 4. CORPSE SCATTER LOGIC
     const deathX = player.x;
     const deathY = player.y;
     const pendingUpdates = {};
@@ -9107,6 +9111,9 @@ function handlePlayerDeath() {
                     else tile = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
                     if (tile === '.') {
+                        // Use item.tile, fallback to templateId, fallback to generic bag '🎒'
+                        const dropIcon = item.tile || item.templateId || '🎒';
+
                         if (gameState.mapMode === 'overworld') {
                             const cX = Math.floor(tx / chunkManager.CHUNK_SIZE);
                             const cY = Math.floor(ty / chunkManager.CHUNK_SIZE);
@@ -9114,12 +9121,13 @@ function handlePlayerDeath() {
                             const lX = (tx % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
                             const lY = (ty % chunkManager.CHUNK_SIZE + chunkManager.CHUNK_SIZE) % chunkManager.CHUNK_SIZE;
                             const lKey = `${lX},${lY}`;
+                            
                             if (!pendingUpdates[cId]) pendingUpdates[cId] = {};
-                            pendingUpdates[cId][lKey] = item.tile;
+                            pendingUpdates[cId][lKey] = dropIcon; // Apply fallback here
                         } else if (gameState.mapMode === 'dungeon') {
-                            chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = item.tile;
+                            chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = dropIcon;
                         } else {
-                            chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = item.tile;
+                            chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = dropIcon;
                         }
                         placed = true;
                     }
@@ -9128,32 +9136,25 @@ function handlePlayerDeath() {
         }
     }
 
-    // Apply map updates
+    // 5. Apply map updates (Wrapped in Sanitize to prevent crashes)
     if (gameState.mapMode === 'overworld') {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
-            db.collection('worldState').doc(cId).set(updates, { merge: true });
+            // FIX: Sanitize the updates object to remove 'undefined' values before sending
+            const safeUpdates = sanitizeForFirebase(updates); 
+            db.collection('worldState').doc(cId).set(safeUpdates, { merge: true })
+                .catch(err => console.error("Failed to drop corpse loot:", err));
         }
     }
 
-    // 4. CALCULATE PENALTIES (But do not move player yet)
-    const goldLost = Math.floor(player.coins / 2);
+    // 6. CALCULATE PENALTIES & SAVE
     player.coins -= goldLost;
     
     // Clear inventory immediately so it can't be accessed while dead
     player.inventory = []; 
     player.equipment = { weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Simple Tunic', defense: 0 } };
 
-    // 5. Update Modal UI
-    document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
-    document.getElementById('finalCoinsDisplay').textContent = `Gold lost: ${goldLost}`;
-
-    // 6. Show Modal
-    gameOverModal.classList.remove('hidden');
-
     // 7. Save "Dead" State
-    // We save health: 0 and current X/Y. 
-    // This ensures if they refresh the page, they are still dead.
-    playerRef.set(sanitizeForFirebase(player));
+    playerRef.set(sanitizeForFirebase(player)).catch(console.error);
 
     return true;
 }
