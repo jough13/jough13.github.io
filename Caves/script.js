@@ -1214,17 +1214,37 @@ async function restartGame() {
 }
 
 function registerKill(enemy) {
-    // 1. Update Kill Count
+    // 1. Identify the Tile/Type
+    const tile = enemy.tile || Object.keys(ENEMY_DATA).find(k => ENEMY_DATA[k].name === enemy.name);
+    
+    // 2. Determine XP Value (Safety Fallback)
+    let amount = 0;
+    
+    // Priority A: The specific enemy's stored XP (includes scaling/elite bonuses)
+    if (enemy.xp !== undefined && enemy.xp !== null) {
+        amount = Number(enemy.xp);
+    } 
+    // Priority B: Fallback to the base template data
+    else if (tile && ENEMY_DATA[tile]) {
+        amount = ENEMY_DATA[tile].xp || 0;
+        console.warn(`⚠️ Enemy instance missing XP. Fell back to template for ${enemy.name}.`);
+    }
+
+    // 3. Grant the XP
+    if (amount > 0) {
+        grantXp(amount);
+    } else {
+        console.error(`❌ Zero XP awarded for ${enemy.name}. Data missing.`);
+    }
+
+    // 4. Update Kill Count (Stats)
     // Use the base name (remove "Feral", "Savage" prefixes) for clean tracking
     let baseName = enemy.name;
-    // Simple logic: if name has 2+ words, check if the last word is the base
-    // Or simpler: map Tile to Name using ENEMY_DATA
-    if (ENEMY_DATA[enemy.tile]) {
-        baseName = ENEMY_DATA[enemy.tile].name;
+    if (tile && ENEMY_DATA[tile]) {
+        baseName = ENEMY_DATA[tile].name;
     }
 
     if (!gameState.player.killCounts) gameState.player.killCounts = {};
-
     gameState.player.killCounts[baseName] = (gameState.player.killCounts[baseName] || 0) + 1;
 
     // --- TALENT: BLOODLUST (Warrior) ---
@@ -1247,13 +1267,9 @@ function registerKill(enemy) {
         }
     }
 
-    // 2. Handle Quests
-    updateQuestProgress(enemy.tile);
-
-    // 3. Grant XP
-    grantXp(enemy.xp);
+    // 5. Handle Quests
+    updateQuestProgress(tile);
 }
-
 const fastTravelModal = document.getElementById('fastTravelModal');
 const fastTravelList = document.getElementById('fastTravelList');
 const closeFastTravelButton = document.getElementById('closeFastTravelButton');
@@ -4043,6 +4059,10 @@ function applyStatBonuses(item, operation) {
 function grantXp(amount) {
     const player = gameState.player;
 
+    // Safety: Ensure amount is a number
+    amount = Number(amount);
+    if (isNaN(amount) || amount <= 0) return;
+
     // --- TALENT: SCHOLAR (+20% XP) ---
     if (player.talents && player.talents.includes('scholar')) {
         amount = Math.floor(amount * 1.2);
@@ -4050,32 +4070,45 @@ function grantXp(amount) {
     // ---------------------------------
 
     player.xp += amount;
+    
+    // Explicitly update the specific XP log message
     logMessage(`You gained ${amount} XP!`);
     triggerStatFlash(statDisplays.xp, true);
 
-    while (player.xp >= player.xpToNextLevel) {
-        player.xp -= player.xpToNextLevel;
-        player.level++;
-        player.statPoints++;
-        player.xpToNextLevel = player.level * 100;
+    // Level Up Loop
+    while (player.xp >= player.player.xpToNextLevel) { // Check property name access here
+        // Standardize access: gameState.player.xpToNextLevel
+        const needed = gameState.player.xpToNextLevel; 
+        
+        if (player.xp >= needed) {
+            player.xp -= needed;
+            player.level++;
+            player.statPoints++;
+            player.xpToNextLevel = player.level * 100;
 
-        logMessage(`LEVEL UP! You are now level ${player.level}!`);
-        ParticleSystem.createLevelUp(player.x, player.y);
-
-        if (player.level >= 10 && !player.classEvolved) {
-           openEvolutionModal();
+            logMessage(`LEVEL UP! You are now level ${player.level}!`);
+            
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createLevelUp(player.x, player.y);
             }
 
-        // --- Award Talent Point every 3 levels ---
-        if (player.level % 3 === 0) {
-            player.talentPoints = (player.talentPoints || 0) + 1;
-            logMessage("You gained a Mastery Talent Point! Press 'P' to spend it.");
-            triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
-        } else {
-            logMessage(`You gained 1 Stat Point.`);
-            triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
-        }
+            // Check for Class Evolution
+            if (player.level >= 10 && !player.classEvolved) {
+                openEvolutionModal();
+            }
 
+            // --- Award Talent Point every 3 levels ---
+            if (player.level % 3 === 0) {
+                player.talentPoints = (player.talentPoints || 0) + 1;
+                logMessage("You gained a Mastery Talent Point! Press 'P' to spend it.");
+                triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+            } else {
+                logMessage(`You gained 1 Stat Point.`);
+                triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
+            }
+        } else {
+            break; // Should not happen given while condition, but safe break
+        }
     }
 
     renderStats();
@@ -9722,13 +9755,6 @@ function drinkFromSource() {
             triggerStatAnimation(document.getElementById('staminaDisplay'), 'stat-pulse-yellow'); // Add visual for stamina too
         }
 
-        // Save state
-        playerRef.update({
-            thirst: player.thirst,
-            poisonTurns: player.poisonTurns,
-            stamina: player.stamina
-        });
-
         // Cost 1 turn
         endPlayerTurn();
         renderStats();
@@ -10518,20 +10544,6 @@ function useInventoryItem(itemIndex) {
 
     // --- FINAL SAVE & RENDER ---
     if (itemUsed) {
-        playerRef.update({
-            inventory: getSanitizedInventory(),
-            equipment: getSanitizedEquipment(),
-            health: gameState.player.health,
-            mana: gameState.player.mana,
-            stamina: gameState.player.stamina,
-            psyche: gameState.player.psyche,
-            strength: gameState.player.strength,
-            wits: gameState.player.wits,
-
-            strengthBonus: gameState.player.strengthBonus,
-            strengthBonusTurns: gameState.player.strengthBonusTurns
-        });
-
         syncPlayerState();
         endPlayerTurn();
         renderInventory();
@@ -10573,32 +10585,23 @@ function restPlayer() {
         rested = true;
     }
 
-    // 5. --- NEW: WELL RESTED BONUS ---
-    // If we are in a safe zone AND fully healed, give a buff!
+    // 5. WELL RESTED BONUS
     if (inSafeZone && !rested) {
-        // Only apply if we don't already have a long buff active
         if (gameState.player.strengthBonusTurns < 10) {
-            gameState.player.strengthBonus = 2;     // +2 Strength
-            gameState.player.strengthBonusTurns = 50; // Lasts 50 Turns
-            // --- ADVANCED AUDIO SYSTEM (OPTIMIZED) ---
+            gameState.player.strengthBonus = 2;
+            gameState.player.strengthBonusTurns = 50;
             logMessage("{gold:You feel Well Rested! (+2 Strength for 50 turns)}");
             triggerStatAnimation(statDisplays.strength, 'stat-pulse-green');
             
-            // We need to save and render this immediately
-            playerRef.update({
-                strengthBonus: 2,
-                strengthBonusTurns: 50
-            });
-            renderEquipment(); // Updates the stat display UI
-            endPlayerTurn();
+            renderEquipment(); 
+            endPlayerTurn(); // Saves everything
             return;
         } else {
             logMessage("You are already well rested.");
         }
     }
-    // ---------------------------------
 
-    // 6. Standard Feedback
+    // 6. Feedback
     if (!rested && !inSafeZone) {
         logMessage("You are already at full health and stamina.");
     } else if (rested) {
@@ -10606,11 +10609,9 @@ function restPlayer() {
         else logMessage(logMsg);
     }
 
-    // 7. Save & End Turn
-    playerRef.update({
-        stamina: gameState.player.stamina,
-        health: gameState.player.health
-    });
+    // 7. REMOVED: playerRef.update(...) <-- This was the cause of the bug!
+    
+    // 8. End Turn (This saves Health, Stamina, AND your pending XP)
     endPlayerTurn();
 }
 
