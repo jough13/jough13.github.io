@@ -6196,16 +6196,22 @@ function turnInQuest(questId) {
 
 // This function will be called every time an enemy is killed
 function updateQuestProgress(enemyTile) {
+    if (!gameState.player.quests) return; // Safety check for missing quest object
+
     const playerQuests = gameState.player.quests;
 
     for (const questId in playerQuests) {
-        const questData = QUEST_DATA[questId];
         const playerQuest = playerQuests[questId];
+        const questData = QUEST_DATA[questId];
 
-        // --- Safety Check ---
-        // If questData is undefined (stale quest ID in save file), skip it to prevent crash.
+        // 1. Check if quest data exists in the game code
         if (!questData) {
-            console.warn(`Skipping unknown quest ID: ${questId}`);
+            console.warn(`Skipping unknown quest ID in save file: ${questId}`);
+            continue;
+        }
+        // 2. Check if the player's quest data is valid (not null/undefined)
+        if (!playerQuest || typeof playerQuest !== 'object') {
+            console.warn(`Skipping corrupted quest data for: ${questId}`);
             continue;
         }
 
@@ -7562,7 +7568,6 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
         // 3. THE TRANSACTION
         const transactionResult = await enemyRef.transaction(currentData => {
             if (currentData === null) return; // Abort if already dead
-            
             const enemy = currentData;
             enemy.health -= playerDamage;
             return enemy.health <= 0 ? null : enemy;
@@ -7582,9 +7587,16 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
             if (finalEnemyState === null) {
                 logMessage(`The ${enemyInfo.name} was vanquished!`);
                 
-                // A. Grant Rewards (XP/Quests)
-                grantXp(enemyInfo.xp);
-                updateQuestProgress(newTile); 
+                // --- SAFELY GRANT REWARDS ---
+                // We wrap this in try/catch so a logic error (like a bad quest ID) 
+                // doesn't trigger the "Network Error" message.
+                try {
+                    grantXp(enemyInfo.xp);
+                    updateQuestProgress(newTile); 
+                } catch (rewardErr) {
+                    console.error("Reward Logic Error:", rewardErr);
+                    // We don't alert the user, we just log it, so they don't think combat failed.
+                }
 
                 // B. Cleanup Map Logic
                 const tileId = `${newX},${-newY}`;
@@ -7601,7 +7613,6 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                 try {
                     const lootData = { ...enemyData, isElite: enemyInfo.isElite };
                     const droppedLoot = generateEnemyLoot(player, lootData);
-                    
                     const currentTerrain = chunkManager.getTile(newX, newY);
                     const passableTerrain = ['.', 'd', 'D', 'F', '≈']; 
                     
@@ -7609,12 +7620,11 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                         chunkManager.setWorldTile(newX, newY, droppedLoot);
                     }
                 } catch (lootErr) {
-                    console.error("Loot drop visual error (XP still saved):", lootErr);
+                    console.error("Loot drop error:", lootErr);
                 }
             } 
         } 
         else {
-            // Transaction aborted (Enemy was already dead/null)
             logMessage("You swing at empty air... the enemy is already dead.");
             chunkManager.setWorldTile(newX, newY, '.');
             if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
@@ -7622,10 +7632,11 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
         }
 
     } catch (error) {
-        console.error("Combat Transaction Failed:", error);
-        logMessage("Your attack falters... (network sync error)");
+        console.error("Combat Error:", error);
+        // Display the ACTUAL error message to the player for debugging
+        logMessage(`Error: ${error.message || "Network Sync Failed"}`);
     } finally {
-        // 5. FINAL SAVE (Runs even if errors occurred above)
+        // 5. FINAL SAVE
         endPlayerTurn(); 
         render();
         isProcessingMove = false;
