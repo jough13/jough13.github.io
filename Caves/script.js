@@ -2287,13 +2287,22 @@ for (let y = 0; y < map.length; y++) {
         const chunkX = Math.floor(worldX / this.CHUNK_SIZE);
         const chunkY = Math.floor(worldY / this.CHUNK_SIZE);
         const chunkId = `${chunkX},${chunkY}`;
+        
         const localX = (worldX % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
         const localY = (worldY % this.CHUNK_SIZE + this.CHUNK_SIZE) % this.CHUNK_SIZE;
+        
         if (!this.worldState[chunkId]) this.worldState[chunkId] = {};
         const tileKey = `${localX},${localY}`;
+        
         this.worldState[chunkId][tileKey] = newTile;
-        db.collection('worldState').doc(chunkId).set(this.worldState[chunkId], {
+
+        // --- FIX: Sanitize before saving to prevent "Unsupported field value: undefined" crash ---
+        const safeData = sanitizeForFirebase(this.worldState[chunkId]);
+
+        db.collection('worldState').doc(chunkId).set(safeData, {
             merge: true
+        }).catch(err => {
+            console.error("Map update failed (visual only):", err);
         });
     },
 
@@ -7526,11 +7535,8 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
     const enemyId = `overworld:${newX},${-newY}`; 
     const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-    // --- 1. LOCAL PRE-CHECK ---
-    // If our local state already knows it's dead/gone, don't even bother the network.
-    // This makes the game feel snappier.
+    // 1. LOCAL PRE-CHECK
     if (!gameState.sharedEnemies[enemyId]) {
-        // Visual cleanup in case a ghost tile remains
         logMessage("That enemy is already gone.");
         if (gameState.mapMode === 'overworld') {
             chunkManager.setWorldTile(newX, newY, '.');
@@ -7541,103 +7547,80 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
         return;
     }
 
-    // --- 2. Capture Visual Stats ---
-    // We need these stats (XP, Name, Loot Table) in memory NOW.
-    // If we kill the enemy, the DB returns null, so we can't look them up later.
+    // 2. Capture Stats
     const liveEnemy = gameState.sharedEnemies[enemyId];
-    // Fallback to template if local state is weird, but prefer live data
     const enemyInfo = liveEnemy || getScaledEnemy(enemyData, newX, newY);
 
     try {
-        // --- 3. THE TRANSACTION ---
+        // 3. THE TRANSACTION
         const transactionResult = await enemyRef.transaction(currentData => {
-            // CRITICAL FIX: Abort on Null
-            // If currentData is null, the enemy is dead/missing. 
-            // We return 'undefined' to abort the transaction.
-            if (currentData === null) {
-                return; 
-            }
-
-            // Apply Damage
+            if (currentData === null) return; // Abort if already dead
+            
             const enemy = currentData;
             enemy.health -= playerDamage;
-
-            // If dead, set to null (deletes node)
-            // If alive, return updated object
             return enemy.health <= 0 ? null : enemy;
         });
 
-        // --- 4. HANDLE RESULT ---
-        // 'committed' is true ONLY if the transaction completed successfully.
-        // If we returned 'undefined' above (because it was null), committed will be false.
-        
+        // 4. HANDLE RESULT
         if (transactionResult.committed) {
             const finalEnemyState = transactionResult.snapshot.val();
 
-            // VISUALS: Show damage number (only if we actually hit it)
+            // Visuals
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createExplosion(newX, newY, '#ef4444');
                 ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
             }
 
-            // CHECK KILL CONDITION
+            // --- KILL CONDITION ---
             if (finalEnemyState === null) {
-                // If committed is true AND state is null, WE struck the killing blow.
                 logMessage(`The ${enemyInfo.name} was vanquished!`);
                 
-                // Reward Logic using our captured 'enemyInfo'
+                // A. Grant Rewards (XP/Quests)
                 grantXp(enemyInfo.xp);
                 updateQuestProgress(newTile); 
 
-                // Cleanup Map
+                // B. Cleanup Map Logic
                 const tileId = `${newX},${-newY}`;
                 if (gameState.lootedTiles.has(tileId)) {
                     gameState.lootedTiles.delete(tileId);
-                    playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles) });
                 }
 
-                // Loot Generation
-                const lootData = { ...enemyData, isElite: enemyInfo.isElite };
-                const droppedLoot = generateEnemyLoot(player, lootData);
-
-                // Local Cleanup (Instant feedback)
+                // C. Local Cleanup
                 if (gameState.sharedEnemies[enemyId]) {
                     delete gameState.sharedEnemies[enemyId];
                 }
 
-                // Place Loot on Ground
-                const currentTerrain = chunkManager.getTile(newX, newY);
-                const passableTerrain = ['.', 'd', 'D', 'F', '≈']; 
-                if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
-                    chunkManager.setWorldTile(newX, newY, droppedLoot);
+                // D. Loot Drop (Safety Wrapper)
+                try {
+                    const lootData = { ...enemyData, isElite: enemyInfo.isElite };
+                    const droppedLoot = generateEnemyLoot(player, lootData);
+                    
+                    const currentTerrain = chunkManager.getTile(newX, newY);
+                    const passableTerrain = ['.', 'd', 'D', 'F', '≈']; 
+                    
+                    if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
+                        chunkManager.setWorldTile(newX, newY, droppedLoot);
+                    }
+                } catch (lootErr) {
+                    console.error("Loot drop visual error (XP still saved):", lootErr);
                 }
             } 
-            else {
-                // We hit it, but it didn't die. 
-                // The sharedEnemies listener will handle updating the HP bar for us.
-            }
         } 
         else {
-            // Transaction failed or aborted (Enemy was null/already dead)
+            // Transaction aborted (Enemy was already dead/null)
             logMessage("You swing at empty air... the enemy is already dead.");
-            
-            // Force cleanup of local ghost
-            if (gameState.sharedEnemies[enemyId]) {
-                delete gameState.sharedEnemies[enemyId];
-            }
             chunkManager.setWorldTile(newX, newY, '.');
+            if (gameState.sharedEnemies[enemyId]) delete gameState.sharedEnemies[enemyId];
             render();
         }
 
-        // Finalize Turn (Costs stamina/time even if we hit a ghost, to prevent spam-clicking)
-        endPlayerTurn();
-        render();
-
     } catch (error) {
-        console.error("Firebase transaction failed: ", error);
-        logMessage("Your attack falters... (network error)");
+        console.error("Combat Transaction Failed:", error);
+        logMessage("Your attack falters... (network sync error)");
     } finally {
-        // --- 5. ALWAYS RELEASE LOCK ---
+        // 5. FINAL SAVE (Runs even if errors occurred above)
+        endPlayerTurn(); 
+        render();
         isProcessingMove = false;
     }
 }
