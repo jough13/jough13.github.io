@@ -4076,18 +4076,16 @@ function grantXp(amount) {
     if (player.talents && player.talents.includes('scholar')) {
         amount = Math.floor(amount * 1.2);
     }
-    // ---------------------------------
 
     player.xp += amount;
     
-    // Explicitly update the specific XP log message
     logMessage(`You gained ${amount} XP!`);
     triggerStatFlash(statDisplays.xp, true);
 
-    // Level Up Loop
-    while (player.xp >= player.player.xpToNextLevel) { // Check property name access here
-        // Standardize access: gameState.player.xpToNextLevel
-        const needed = gameState.player.xpToNextLevel; 
+    // --- Level Up Loop ---
+    while (player.xp >= player.xpToNextLevel) { 
+        
+        const needed = player.xpToNextLevel; 
         
         if (player.xp >= needed) {
             player.xp -= needed;
@@ -4116,7 +4114,7 @@ function grantXp(amount) {
                 triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
             }
         } else {
-            break; // Should not happen given while condition, but safe break
+            break; 
         }
     }
 
