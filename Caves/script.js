@@ -9550,16 +9550,18 @@ function endPlayerTurn() {
 
     // We merge the specific status updates (poison, buffs) with the core stats.
     // This ensures XP, Quests, and Health are saved together, preventing the reset bug.
-    const finalUpdates = {
-        ...updates, // Include the specific changes calculated above (poison, cooldowns, etc.)
+ const finalUpdates = {
+        ...updates, // Include specific status changes calculated above
 
-        // Core Vitals (Save these every turn to prevent desync)
+        // Core Vitals
         health: gameState.player.health,
         stamina: gameState.player.stamina,
         mana: gameState.player.mana,
         psyche: gameState.player.psyche,
+        hunger: gameState.player.hunger,
+        thirst: gameState.player.thirst,
 
-        // Progression (Moved here from grantXp/registerKill)
+        // Progression (XP IS SAVED HERE)
         xp: gameState.player.xp,
         level: gameState.player.level,
         statPoints: gameState.player.statPoints,
@@ -9567,26 +9569,30 @@ function endPlayerTurn() {
         killCounts: gameState.player.killCounts || {},
         quests: gameState.player.quests || {},
 
-        // Position
+        // World State
         x: gameState.player.x,
-        y: gameState.player.y
+        y: gameState.player.y,
+        activeTreasure: gameState.activeTreasure || null,
+        weather: gameState.weather || 'clear',
+        
+        // Exploration Data (Crucial for the "Region Discovery" bug)
+        discoveredRegions: Array.from(gameState.discoveredRegions),
+        exploredChunks: Array.from(gameState.exploredChunks),
+        lootedTiles: Array.from(gameState.lootedTiles)
     };
 
-     if (gameState.mapMode === 'overworld') {
-        // In the Overworld, players move fast (hold W). 
-        // We delay the save until they stop moving for 2 seconds.
+    // --- 7. SAVE TO DATABASE ---
+    if (gameState.mapMode === 'overworld') {
+        // In Overworld, we delay saving to prevent lag while running
         triggerDebouncedSave(finalUpdates);
     } else {
-        // In Dungeons/Castles, moves are strategic and turn-based.
-        // We save immediately to prevent data loss if the browser crashes during a fight.
-        
-        // Also cancel any pending overworld save so we don't overwrite this newer data
+        // In Dungeons/Castles, we save IMMEDIATELY
         if (saveTimeout) clearTimeout(saveTimeout); 
-        
         playerRef.update(sanitizeForFirebase(finalUpdates));
     }
 
-    // --- PALADIN: HOLY AURA ---
+    // --- 8. PASSIVE TALENTS ---
+    // PALADIN: HOLY AURA
     if (player.talents && player.talents.includes('holy_aura')) {
         if (player.companion && player.companion.hp < player.companion.maxHp) {
             player.companion.hp = Math.min(player.companion.maxHp, player.companion.hp + 2);
@@ -9650,10 +9656,7 @@ function updateRegionDisplay() {
         if (!gameState.discoveredRegions.has(regionId)) {
             logMessage(`You have entered ${regionName}.`); // Log only on discovery
             gameState.discoveredRegions.add(regionId);
-            // Update the discovered regions in Firestore
-            playerRef.update({
-                discoveredRegions: Array.from(gameState.discoveredRegions)
-            });
+            
             // Grant XP for discovery
             grantXp(50);
         }
@@ -12860,8 +12863,6 @@ if (enemy) {
         updates.lootedTiles = Array.from(gameState.lootedTiles);
         renderInventory();
     }
-
-    playerRef.update(updates);
 
     if (gameState.mapMode === 'overworld') {
         const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
