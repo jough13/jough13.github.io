@@ -504,24 +504,24 @@ async function initCharacterSelect(user) {
  */
 
 function sanitizeForFirebase(obj) {
+    // 1. Convert undefined to null immediately
+    if (obj === undefined) return null; 
+    
     if (obj === null || typeof obj !== 'object') {
         return obj;
     }
 
-    // Handle arrays by sanitizing each item
+    // 2. Handle Arrays (Maps them so undefined items become null)
     if (Array.isArray(obj)) {
         return obj.map(item => sanitizeForFirebase(item));
     }
 
-    // Handle objects by rebuilding them without undefined keys
+    // 3. Handle Objects
     const newObj = {};
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            const value = obj[key];
-            // The core logic: Only include the key if its value is NOT undefined
-            if (value !== undefined) {
-                newObj[key] = sanitizeForFirebase(value); // Sanitize nested objects
-            }
+            // Recursively clean every property
+            newObj[key] = sanitizeForFirebase(obj[key]);
         }
     }
     return newObj;
@@ -6202,13 +6202,20 @@ function updateQuestProgress(enemyTile) {
         const questData = QUEST_DATA[questId];
         const playerQuest = playerQuests[questId];
 
+        // --- Safety Check ---
+        // If questData is undefined (stale quest ID in save file), skip it to prevent crash.
+        if (!questData) {
+            console.warn(`Skipping unknown quest ID: ${questId}`);
+            continue;
+        }
+
         // Is this an active quest, not yet complete, and for this enemy type?
         if (playerQuest.status === 'active' &&
             questData.enemy === enemyTile &&
             playerQuest.kills < questData.needed) {
+            
             playerQuest.kills++;
             logMessage(`Bounty: (${playerQuest.kills} / ${questData.needed})`);
-
         }
     }
 }
