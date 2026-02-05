@@ -194,75 +194,65 @@ const formatWithUnitSystem = (value, type, settings) => {
  */
 
 const parseHalfLifeToSeconds = (halfLifeStr) => {
-   if (!halfLifeStr || halfLifeStr.toLowerCase() === 'stable') return Infinity;
+   if (!halfLifeStr || typeof halfLifeStr !== 'string') return 0;
+   if (halfLifeStr.toLowerCase() === 'stable') return Infinity;
 
-   const match = halfLifeStr.trim().match(/^(.*?)\s*([a-zA-Zμµ]+.*)$/);
-   let numericStr, unitStr;
-   if (match) {
-      numericStr = match[1].trim();
-      unitStr = match[2].trim();
-   } else {
-      numericStr = halfLifeStr.trim();
-      unitStr = '';
-   }
+   // 1. Clean string
+   const cleanStr = halfLifeStr.trim();
 
-   let value;
-   const sciNotationRegex = /([\d.,]+)\s*x\s*10\^?([⁻⁺\-−\d⁰¹²³⁴⁵⁶⁷⁸⁹]+)/i;
-   const sciMatch = numericStr.match(sciNotationRegex);
+   // 2. Try Scientific Notation first: "1.2 x 10^9 years" or "1.2e9 y"
+   // Captures: (Number) ... (Exponent) ... (Unit)
+   const sciRegex = /([-\d.]+)\s*(?:x|×|\*|e|E)\s*(?:10\^?)?([⁻⁺\-−\d⁰¹²³⁴⁵⁶⁷⁸⁹]+)\s*([a-zA-Zμµ]+.*)/i;
+   const sciMatch = cleanStr.match(sciRegex);
+
+   let value = 0;
+   let unitStr = '';
 
    if (sciMatch) {
       const mantissa = parseFloat(sciMatch[1].replace(/,/g, ''));
-      const exponentStr = sciMatch[2];
+      let exponentStr = sciMatch[2];
+      unitStr = sciMatch[3];
+
       const superToRegularMap = {
-         '⁰': '0',
-         '¹': '1',
-         '²': '2',
-         '³': '3',
-         '⁴': '4',
-         '⁵': '5',
-         '⁶': '6',
-         '⁷': '7',
-         '⁸': '8',
-         '⁹': '9',
-         '⁺': '+',
-         '⁻': '-',
-         '−': '-'
+         '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4',
+         '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9',
+         '⁺': '+', '⁻': '-', '−': '-'
       };
-      const regularExponentStr = [...exponentStr].map(char => superToRegularMap[char] || char).join('');
-      const exponent = parseInt(regularExponentStr);
+      exponentStr = [...exponentStr].map(char => superToRegularMap[char] || char).join('');
+      const exponent = parseInt(exponentStr, 10);
+
       if (!isNaN(mantissa) && !isNaN(exponent)) {
          value = mantissa * Math.pow(10, exponent);
       }
    } else {
-      value = parseFloat(numericStr.replace(/,/g, ''));
+      // 3. Fallback to standard "Value Unit" format (e.g., "1600 years")
+      // This regex allows for optional space between number and unit
+      const stdRegex = /^([-\d.,]+)\s*([a-zA-Zμµ]+.*)$/;
+      const match = cleanStr.match(stdRegex);
+      
+      if (match) {
+         value = parseFloat(match[1].replace(/,/g, ''));
+         unitStr = match[2];
+      }
    }
 
-   if (isNaN(value)) return 0;
+   if (!value || isNaN(value) || !unitStr) return 0;
 
-   const unit = unitStr.toLowerCase();
+   const unit = unitStr.toLowerCase().trim();
    const unitMultipliers = {
       'billion years': 3.15576e16,
       'million years': 3.15576e13,
-      'kiloyears': 3.15576e10, // Note: The data does not contain this unit, but the logic is ready for it.
-      'years': 31557600,
-      'year': 31557600,
-      'days': 86400,
-      'day': 86400,
-      'hours': 3600,
-      'hour': 3600,
-      'minutes': 60,
-      'minute': 60,
-      'seconds': 1,
-      'second': 1,
-      's': 1,
-      'milliseconds': 1e-3,
-      'millisecond': 1e-3,
-      'microseconds': 1e-6,
-      'microsecond': 1e-6,
+      'kiloyears': 3.15576e10,
+      'years': 31557600, 'year': 31557600, 'y': 31557600,
+      'days': 86400, 'day': 86400, 'd': 86400,
+      'hours': 3600, 'hour': 3600, 'h': 3600,
+      'minutes': 60, 'minute': 60, 'min': 60, 'm': 60,
+      'seconds': 1, 'second': 1, 's': 1,
+      'milliseconds': 1e-3, 'ms': 1e-3,
+      'microseconds': 1e-6, 'μs': 1e-6, 'us': 1e-6
    };
 
-   // Sort keys by length in descending order to match 'billion years' before 'years'
-
+   // Sort keys by length desc to match "billion years" before "years"
    const sortedKeys = Object.keys(unitMultipliers).sort((a, b) => b.length - a.length);
 
    for (const key of sortedKeys) {
@@ -270,7 +260,8 @@ const parseHalfLifeToSeconds = (halfLifeStr) => {
          return value * unitMultipliers[key];
       }
    }
-   return value;
+   
+   return value; // Fallback if unit not recognized (unlikely)
 };
 
 const getHalfLifeCategory = (seconds) => {
