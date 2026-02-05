@@ -72,6 +72,7 @@ const RADIONUCLIDE_DATA = [{
       specificActivity: '2.68e12 Bq/g',
       parent: 'Protactinium-231',
       daughter: 'Thorium-227 (β) or Francium-223 (α)',
+      branchingFraction: 0.9862,
       commonUses: ['Actinium-225 generator (medical)', 'Research'],
       category: 'Medical',
       commonality: 'Rare',
@@ -701,6 +702,7 @@ const RADIONUCLIDE_DATA = [{
       specificActivity: '1.2 x 10^17 Bq/g',
       parent: 'Lead-212',
       daughter: 'Polonium-212 (β-) or Thallium-208 (α)',
+      branchingFraction: 0.6406,
       commonUses: ['Research in targeted alpha/beta therapy'],
       category: 'Natural',
       commonality: 'Moderate',
@@ -4239,6 +4241,7 @@ const RADIONUCLIDE_DATA = [{
       specificActivity: '2.6 x 10^5 Bq/g',
       parent: 'Primordial',
       daughter: 'Calcium-40 (β-) or Argon-40 (EC)',
+      branchingFraction: 0.8928,
       commonUses: ['Potassium-argon dating', 'Internal human radiation dose', 'Environmental monitoring'],
       category: 'Natural',
       commonality: 'Common',
@@ -5594,6 +5597,7 @@ const RADIONUCLIDE_DATA = [{
       specificActivity: '1.93 x 10^14 Bq/g',
       parent: 'Cadmium-108',
       daughter: 'Cadmium-110 (stable) or Palladium-110 (stable)',
+      branchingFraction: 0.9864,
       commonUses: ['Environmental monitoring (fission product', 'activation product)'],
       category: 'Industrial',
       commonality: 'Rare',
@@ -6241,6 +6245,7 @@ const RADIONUCLIDE_DATA = [{
       specificActivity: '3.0 x 10^7 TBq/g', // ~800,000 Ci/g
       parent: 'Fission Product',
       daughter: 'Iodine-131',
+      branchingFraction: 0.778,
       commonUses: ['Medical Isotope Production', 'Research'],
       category: 'Medical',
       commonality: 'Rare',
@@ -6255,13 +6260,13 @@ const RADIONUCLIDE_DATA = [{
       },
       dosimetry: {
          ALI: {
-             ingestion: 400,
+             ingestion: 300,
              inhalation_D: 400,
-             inhalation_W: 600
+             inhalation_W: 400
          },
          DAC: {
              inhalation_D: '2e-7',
-             inhalation_W: '3e-7'
+             inhalation_W: '2e-7'
          }
       }
    },
