@@ -3391,11 +3391,23 @@
             const { addToast } = useToast();
             
             // Toggle between Duration and Date
+
             const [timeMode, setTimeMode] = React.useState('duration');
+
+            const [useUTC, setUseUTC] = React.useState(false);
+
+            // The "Start" date (Reference date on certificate) - Defaults to NOW
+            const [referenceDate, setReferenceDate] = React.useState(() => {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                return now.toISOString().slice(0, 16);
+            });
+
+            // The "End" date (Target date for calculation) - Defaults to NOW
             const [targetDate, setTargetDate] = React.useState(() => {
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            return now.toISOString().slice(0, 16);
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                return now.toISOString().slice(0, 16);
             });
             
             const MODE_REMAINING = 'findRemaining';
@@ -3469,12 +3481,30 @@
             
                if (calculationMode === MODE_TIME) {
                    // Time is unknown
-               } else if (timeMode === 'date') {
-                   const start = new Date();
-                   const end = new Date(targetDate);
-                   if (isNaN(end.getTime())) { setResult(null); return; }
-                   t_seconds = (end - start) / 1000;
-               } else {
+                } else if (timeMode === 'date') {
+                    // ROBUST DST FIX:
+                    // If UTC mode is on, append 'Z' to treat inputs as UTC.
+                    // Otherwise, let browser parse as Local Time (subject to DST ambiguities).
+                    const startStr = useUTC ? referenceDate + 'Z' : referenceDate;
+                    const endStr = useUTC ? targetDate + 'Z' : targetDate;
+
+                    const start = new Date(startStr);
+                    const end = new Date(endStr);
+                    
+                    if (isNaN(start.getTime()) || isNaN(end.getTime())) { 
+                        setError("Please enter valid dates."); 
+                        setResult(null); 
+                        return; 
+                    }
+
+                    if (end < start) {
+                        setError("Target Date cannot be before Reference Date.");
+                        setResult(null);
+                        return; 
+                    }
+                    
+                    t_seconds = (end - start) / 1000;
+                } else {
                    const t_input = parseFloat(timeElapsed);
                    if (isNaN(t_input)) throw new Error("Invalid time duration.");
                    t_seconds = t_input * unitConversions[timeUnit];
@@ -3634,7 +3664,13 @@
                setResult(null);
                setChartData(null);
             }
-            }, [selectedNuclide, calculationMode, initialActivity, initialUnit, remainingActivity, remainingUnit, timeElapsed, timeUnit, initialDaughterActivity, branchingFraction, timeMode, targetDate, radionuclides, activityFactors, useLogScale]);
+            }, [selectedNuclide, calculationMode, initialActivity, initialUnit, remainingActivity, remainingUnit, timeElapsed, timeUnit, initialDaughterActivity, branchingFraction, timeMode, targetDate, referenceDate, useUTC, radionuclides, activityFactors, useLogScale]);
+
+            React.useEffect(() => {
+                if (timeMode === 'date' && initialActivity && referenceDate && targetDate) {
+                    handleCalculate();
+                }
+            }, [referenceDate, targetDate, timeMode, useUTC]);
             
             // Trigger calculation on input change
             React.useEffect(() => {
@@ -3686,6 +3722,12 @@
                addToast('Saved to history!');
             }
             };
+
+            const handleKeyDown = (e) => {
+            if (e.key === 'Enter') {
+                handleCalculate();
+            }
+        };
             
             return (
             <div className="space-y-4">
@@ -3749,9 +3791,47 @@
                                        {['minutes', 'hours', 'days', 'years'].map(u => <option key={u} value={u}>{u}</option>)}
                                    </select>
                                </div>
-                           ) : (
-                               <input type="datetime-local" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                           )}
+                            ) : (
+                                <div className="flex flex-col gap-2">
+                                    {/* NEW UTC TOGGLE */}
+                                    <div className="flex justify-end">
+                                        <label className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={useUTC} 
+                                                onChange={e => setUseUTC(e.target.checked)}
+                                                className="form-checkbox h-3 w-3 rounded text-sky-600" 
+                                            />
+                                            Calculate in UTC (Ignore DST)
+                                        </label>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-[10px] uppercase font-bold text-slate-500">
+                                            Reference Date (Start) {useUTC ? '(UTC)' : '(Local)'}
+                                        </label>
+                                        <input 
+                                            type="datetime-local" 
+                                            value={referenceDate} 
+                                            onChange={e => setReferenceDate(e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] uppercase font-bold text-slate-500">
+                                            Target Date (End) {useUTC ? '(UTC)' : '(Local)'}
+                                        </label>
+                                        <input 
+                                            type="datetime-local" 
+                                            value={targetDate} 
+                                            onChange={e => setTargetDate(e.target.value)}
+                                            onKeyDown={handleKeyDown}
+                                            className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" 
+                                        />
+                                    </div>
+                                </div>
+                            )}
                        </div>
                    )}
                </div>
@@ -3809,8 +3889,6 @@
             </div>
             );
             };
-            
-            
             
             /**
             * @description React component for a static surface contamination survey calculator.
