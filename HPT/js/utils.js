@@ -454,21 +454,51 @@ const parseEnergyToMeV = (energyArray) => {
  */
 
 const parseSpecificActivity = (saStr) => {
-   if (!saStr) return 0;
-   const parts = saStr.toLowerCase().split(' ');
+    if (!saStr || typeof saStr !== 'string') return 0;
 
-   // Check for the specific "x 10^" format.
+    // 1. Clean the string: remove commas (for thousands) and trim whitespace
+    const cleanStr = saStr.replace(/,/g, '').trim();
 
-   if (parts.length < 3 || parts[1] !== 'x' || !parts[2].includes('10^')) {
-      return parseFloat(saStr.replace(/,/g, '')); // Fallback for simple numbers.
-   }
+    // 2. Regex for Scientific Notation
+    // Captures:
+    // Group 1: Mantissa (e.g., "3.7")
+    // Non-capturing group: Separator (x, ×, *, e, E) with optional spaces
+    // Non-capturing group: Base "10" or "10^" (optional, for E-notation)
+    // Group 2: Exponent (including unicode superscripts and signs)
+    const sciRegex = /([-\d.]+)\s*(?:x|×|\*|e|E)\s*(?:10\^?)?([⁻⁺\-−\d⁰¹²³⁴⁵⁶⁷⁸⁹]+)/i;
+    
+    const sciMatch = cleanStr.match(sciRegex);
 
-   const value = parseFloat(parts[0]);
-   const exponent = parseInt(parts[2].split('^')[1]);
+    if (sciMatch) {
+        const mantissa = parseFloat(sciMatch[1]);
+        let exponentStr = sciMatch[2];
 
-   if (isNaN(value) || isNaN(exponent)) return 0;
+        // Map unicode superscripts and special minus signs to standard characters
+        const superToRegularMap = {
+            '⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4',
+            '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9',
+            '⁺': '+', '⁻': '-', '−': '-'
+        };
+        
+        exponentStr = [...exponentStr].map(char => superToRegularMap[char] || char).join('');
+        const exponent = parseInt(exponentStr, 10);
 
-   return value * Math.pow(10, exponent);
+        if (!isNaN(mantissa) && !isNaN(exponent)) {
+            return mantissa * Math.pow(10, exponent);
+        }
+    }
+
+    // 3. Fallback: Try parsing as a plain number (e.g., "4059 Bq/g")
+    // This regex grabs the first contiguous number found at the start
+    const plainRegex = /^([-\d.]+)/;
+    const plainMatch = cleanStr.match(plainRegex);
+
+    if (plainMatch) {
+        const val = parseFloat(plainMatch[1]);
+        return isNaN(val) ? 0 : val;
+    }
+
+    return 0;
 };
 
 /**
