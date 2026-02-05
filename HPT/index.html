@@ -1053,12 +1053,24 @@
              const [history, setHistory] = React.useState([]);
              const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
             
-             React.useEffect(() => {
-                 const savedHistory = localStorage.getItem('rad_tool_calculation_history');
-                 if (savedHistory) {
-                     setHistory(JSON.parse(savedHistory));
-                 }
-             }, []);
+    React.useEffect(() => {
+        const savedHistory = localStorage.getItem('rad_tool_calculation_history');
+            if (savedHistory) {
+                try {
+                    // Wrap JSON.parse in try/catch to prevent app crash on corrupted data
+                    const parsed = JSON.parse(savedHistory);
+                    if (Array.isArray(parsed)) {
+                        setHistory(parsed);
+                    } else {
+                        throw new Error("Invalid history format");
+                    }
+                } catch (e) {
+                    console.error("Corrupted calculation history detected. Resetting.", e);
+                    localStorage.removeItem('rad_tool_calculation_history');
+                    setHistory([]);
+                }
+            }
+        }, []);
             
              const handleClearHistory = () => {
                  localStorage.removeItem('rad_tool_calculation_history');
@@ -8527,38 +8539,45 @@
             if (selectedCategory !== 'All') { filtered = filtered.filter(n => n.category === selectedCategory); }
             if (selectedEmissionType !== 'All') { filtered = filtered.filter(n => n.emissionType?.includes(selectedEmissionType)); }
             if (selectedCommonality !== 'All') { filtered = filtered.filter(n => n.commonality === selectedCommonality); }
+
             const filterByEnergyRange = (nuclide, type, min, max) => {
-               // Get all energies for this type (e.g., all gamma lines)
-               const energies = nuclide.emissionEnergies?.[type] || [];
-               
-               // If no energies exist for this type...
-               if (energies.length === 0) {
-                   // ...but the user requested a specific range, exclude this nuclide.
-                   if (min || max) return false;
-                   // If user didn't request a range, keep it (neutral).
-                   return true; 
-               }
-            
-               const minVal = parseFloat(min);
-               const maxVal = parseFloat(max);
-            
-               // If user inputs are invalid (empty), don't filter out anything based on them.
-               const hasMin = !isNaN(minVal);
-               const hasMax = !isNaN(maxVal);
-               
-               if (!hasMin && !hasMax) return true;
-            
-               // Check if AT LEAST ONE energy in the array meets the criteria
-               return energies.some(energyStr => {
-                   const val = parseEnergyToMeV([energyStr]); // Re-use utility to parse single string
-                   if (val === 0) return false;
-                   
-                   if (hasMin && hasMax) return val >= minVal && val <= maxVal;
-                   if (hasMin) return val >= minVal;
-                   if (hasMax) return val <= maxVal;
-                   return true;
-               });
+                // Get all energies for this type (e.g., all gamma lines)
+                const energies = nuclide.emissionEnergies?.[type] || [];
+                
+                // If no energies exist for this type...
+                if (energies.length === 0) {
+                    // ...but the user requested a specific range, exclude this nuclide.
+                    if (min || max) return false;
+                    // If user didn't request a range, keep it (neutral).
+                    return true; 
+                }
+
+                const minVal = parseFloat(min);
+                const maxVal = parseFloat(max);
+
+                // If user inputs are invalid (empty), don't filter out anything based on them.
+                const hasMin = !isNaN(minVal);
+                const hasMax = !isNaN(maxVal);
+                
+                if (!hasMin && !hasMax) return true;
+
+                // Check if AT LEAST ONE energy in the array meets the criteria
+                // Previously, this only checked the first element via parseEnergyToMeV(energies)
+                return energies.some(energyStr => {
+                    // Use the utility to parse the single string "0.662 MeV" -> 0.662
+                    const parts = energyStr.split(' ');
+                    let val = parseFloat(parts[0]);
+                    if (parts[1]?.toLowerCase().includes('kev')) val /= 1000;
+                    
+                    if (isNaN(val)) return false;
+                    
+                    if (hasMin && hasMax) return val >= minVal && val <= maxVal;
+                    if (hasMin) return val >= minVal;
+                    if (hasMax) return val <= maxVal;
+                    return true;
+                });
             };
+
             if (minAlphaEnergy || maxAlphaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'alpha', minAlphaEnergy, maxAlphaEnergy));
             if (minBetaEnergy || maxBetaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'beta', minBetaEnergy, maxBetaEnergy));
             if (minGammaEnergy || maxGammaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'gamma', minGammaEnergy, maxGammaEnergy));
@@ -12649,50 +12668,56 @@
             event.target.value = null;
             };
             
+            // Export Function
             const handleExport = () => {
-            if (plottedPoints.length === 0 || !surveyUnitLayer) {
-            addToast("Please draw a survey unit and place sample points before exporting."); return;
-            }
-            const origin = surveyUnitLayer ? { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng } : null;
-            
-            // Sort: Biased first (by ID), then grid points (by numeric ID)
-            const sortedPoints = [...plottedPoints].sort((a, b) => {
-            const aIsBiased = a.type === 'Biased';
-            const bIsBiased = b.type === 'Biased';
-            if (aIsBiased && !bIsBiased) return -1;
-            if (!aIsBiased && bIsBiased) return 1;
-            
-            // Extract numeric part of ID (e.g., S-1 -> 1)
-            const aNum = parseInt(a.id.split('-')[1]);
-            const bNum = parseInt(b.id.split('-')[1]);
-            return aNum - bNum;
-            });
-            
-            const dataForExport = sortedPoints.map((point) => {
-            const yDistance = calculateDistance(origin, { lat: point.lat, lng: origin.lng });
-            const xDistance = calculateDistance(origin, { lat: origin.lat, lng: point.lng });
-            return {
-              sampleNumber: point.id,
-              type: point.type,
-              latitude: point.lat.toFixed(7),
-              longitude: point.lng.toFixed(7),
-              xDistance: xDistance.toFixed(3),
-              yDistance: yDistance.toFixed(3)
-            };
-            });
-            const headers = ["Sample #", "Type", "Latitude", "Longitude", "X Distance (m)", "Y Distance (m)"];
-            const csvRows = [headers.join(',')];
-            dataForExport.forEach(row => { csvRows.push(Object.values(row).join(',')); });
-            const csvContent = csvRows.join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", "survey_sample_points.csv");
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+                if (!filteredList || filteredList.length === 0) return;
+
+                // IMPROVEMENT: Added raw numeric columns for analysis
+                const headers = [
+                    'Name', 'Symbol', 'Category', 
+                    'Half-Life (Text)', 'Half-Life (Seconds)', 
+                    'Decay Constant (s^-1)', 
+                    'Specific Activity (Bq/g)', 
+                    'Gamma Constant (R-m2/hr-Ci)', 
+                    'D-Value (TBq)',
+                    'Emissions'
+                ];
+                
+                const csvRows = [headers.join(',')];
+
+                filteredList.forEach(n => {
+                    // sanitize text to prevent CSV breakages
+                    const name = `"${n.name}"`;
+                    const emissions = `"${(n.emissionType || []).join('; ')}"`;
+                    
+                    // Parse raw values
+                    const hlSeconds = parseHalfLifeToSeconds(n.halfLife);
+                    const sa = parseSpecificActivity(n.specificActivity);
+                    const lambda = hlSeconds === Infinity ? 0 : Math.log(2) / hlSeconds;
+
+                    const row = [
+                        name,
+                        n.symbol,
+                        n.category,
+                        `"${n.halfLife}"`, // Quote text to handle spaces
+                        hlSeconds === Infinity ? 'Infinity' : hlSeconds,
+                        lambda,
+                        sa || 'N/A',
+                        n.gammaConstant ? parseFloat(n.gammaConstant) : 'N/A',
+                        n.dValue || 'N/A',
+                        emissions
+                    ];
+                    csvRows.push(row.join(','));
+                });
+
+                const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'nuclide_database_export.csv';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             };
             
             const handleGoToLocation = async () => {
