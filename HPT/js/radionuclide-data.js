@@ -1024,7 +1024,7 @@ const RADIONUCLIDE_DATA = [{
          gamma: [],
          alpha: []
       },
-      avgBetaEnergy: '0.086 MeV',
+      avgBetaEnergy: '0.077 MeV',
       halfLife: '162.6 days',
       decayConstant: '0.00426 day⁻¹',
       specificActivity: '6.4 x 10^14 Bq/g',
@@ -1206,7 +1206,7 @@ const RADIONUCLIDE_DATA = [{
          gamma: [],
          alpha: []
       },
-      avgBetaEnergy: '0.052 MeV',
+      avgBetaEnergy: '0.049 MeV',
       halfLife: '5730 years',
       decayConstant: '1.21 x 10⁻⁴ year⁻¹',
       specificActivity: '1.65 x 10^11 Bq/g',
@@ -3845,7 +3845,7 @@ const RADIONUCLIDE_DATA = [{
          gamma: [],
          alpha: []
       },
-      avgBetaEnergy: '0.570 MeV',
+      avgBetaEnergy: '0.695 MeV',
       halfLife: '14.26 days',
       decayConstant: '0.0486 day⁻¹',
       specificActivity: '1.07 x 10^16 Bq/g',
@@ -5934,7 +5934,7 @@ const RADIONUCLIDE_DATA = [{
          gamma: [],
          alpha: []
       },
-      avgBetaEnergy: '0.056 MeV',
+      avgBetaEnergy: '0.049 MeV',
       halfLife: '87.51 days',
       decayConstant: '0.00792 day⁻¹',
       specificActivity: '1.57 x 10^15 Bq/g',
