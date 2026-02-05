@@ -3433,10 +3433,20 @@
             
             // Smart Reset for Branching Fraction
             React.useEffect(() => {
-            if (calculationMode === MODE_DAUGHTER) {
-               if (selectedNuclide?.symbol === 'Mo-99') setBranchingFraction('0.875');
-               else setBranchingFraction('1.0');
-            }
+                if (calculationMode === MODE_DAUGHTER && selectedNuclide) {
+                    // 1. Check if we defined a specific fraction in the database
+                    if (selectedNuclide.branchingFraction) {
+                        setBranchingFraction(selectedNuclide.branchingFraction.toString());
+                    } 
+                    // 2. Legacy fallback (optional, can remove if you updated data file)
+                    else if (selectedNuclide.symbol === 'Mo-99') {
+                        setBranchingFraction('0.875');
+                    } 
+                    // 3. Default to 100% (1.0) for everything else
+                    else {
+                        setBranchingFraction('1.0');
+                    }
+                }
             }, [selectedNuclide, calculationMode, setBranchingFraction]);
             
             // Custom Input Renderer
@@ -4593,6 +4603,266 @@
             </div>
             );
             };
+
+const SimpleEfficiencyCalculator = ({
+    mode, setMode,
+    counts, setCounts,
+    time, setTime,
+    cpm, setCpm,
+    dpm, setDpm,
+    efficiency, setEfficiency,
+    result, setResult,
+    error, setError
+}) => {
+    
+    // Auto-Calculate Effect
+    React.useEffect(() => {
+        // 1. Reset
+        setResult(null);
+        setError('');
+
+        // --- MODE 1: SCALER (Counts + Time -> CPM) ---
+        if (mode === 'scaler') {
+            if (!counts || !time) return; // Wait for input
+            const c = parseFloat(counts);
+            const t = parseFloat(time);
+            
+            if (isNaN(c) || c < 0) return;
+            if (isNaN(t) || t <= 0) return;
+            
+            const rate = c / t;
+            // Poisson Error (Standard Deviation) = sqrt(N) / t
+            const stdDev = Math.sqrt(c) / t;
+            
+            setResult({ 
+                label: 'Net Rate', 
+                value: rate.toFixed(1) + ' cpm',
+                subtext: `± ${stdDev.toFixed(1)} cpm (1σ)`
+            });
+            // Auto-fill the CPM for the other tabs (silent update)
+            setCpm(rate.toFixed(1));
+        }
+
+        // --- MODE 2: EFFICIENCY (CPM + DPM -> %) ---
+        else if (mode === 'calcEff') {
+            if (!cpm || !dpm) return;
+            const c = parseFloat(cpm);
+            const d = parseFloat(dpm);
+            
+            if (isNaN(c) || c < 0) return;
+            if (isNaN(d) || d <= 0) return;
+            
+            const eff = (c / d) * 100;
+            if (eff > 100) setError('Warning: Calculated efficiency > 100%');
+            
+            setResult({ label: 'Efficiency', value: eff.toFixed(2) + '%' });
+            // Auto-fill efficiency (silent update)
+            setEfficiency(eff.toFixed(2));
+        }
+
+        // --- MODE 3: ACTIVITY (CPM + % -> DPM) ---
+        else {
+            if (!cpm || !efficiency) return;
+            const c = parseFloat(cpm);
+            const e = parseFloat(efficiency);
+            
+            if (isNaN(c) || c < 0) return;
+            if (isNaN(e) || e <= 0) return;
+            
+            const activity = c / (e / 100);
+            
+            setResult({ 
+                label: 'Activity', 
+                value: Math.round(activity).toLocaleString() + ' dpm',
+                subtext: `${(activity / 2.22e6).toPrecision(3)} µCi`
+            });
+        }
+    }, [mode, counts, time, cpm, dpm, efficiency, setCpm, setEfficiency, setResult, setError]);
+
+    return (
+        <div className="space-y-4 animate-fade-in">
+            {/* 3-Way Toggle */}
+            <div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg">
+                <button onClick={() => setMode('scaler')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'scaler' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Scaler</button>
+                <button onClick={() => setMode('calcEff')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'calcEff' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Find Eff %</button>
+                <button onClick={() => setMode('calcDpm')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'calcDpm' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Find DPM</button>
+            </div>
+
+            <div className="space-y-3">
+                {/* Inputs for SCALER */}
+                {mode === 'scaler' && (
+                    <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Total Counts</label>
+                            <input type="number" value={counts} onChange={e => setCounts(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Count Time (min)</label>
+                            <input type="number" value={time} onChange={e => setTime(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        </div>
+                    </div>
+                )}
+
+                {/* Inputs for EFFICIENCY/DPM */}
+                {mode !== 'scaler' && (
+                    <div className="animate-fade-in">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Net Count Rate (cpm)</label>
+                        <input type="number" value={cpm} onChange={e => setCpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                )}
+
+                {mode === 'calcEff' && (
+                    <div className="animate-fade-in">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Source Activity (dpm)</label>
+                        <input type="number" value={dpm} onChange={e => setDpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                )}
+
+                {mode === 'calcDpm' && (
+                    <div className="animate-fade-in">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Instrument Efficiency (%)</label>
+                        <div className="relative mt-1">
+                            <input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">%</div>
+                        </div>
+                    </div>
+                )}
+            </div>
+            
+            {/* Error Message */}
+            {error && <p className="text-red-500 text-sm text-center animate-fade-in">{error}</p>}
+            
+            {/* Result Box */}
+            {result && (
+                <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-center border border-slate-200 dark:border-slate-600 animate-fade-in">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">{result.label}</p>
+                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.value}</p>
+                    {result.subtext && <p className="text-sm text-slate-500 mt-1">{result.subtext}</p>}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const InverseSquareCalculator = ({
+    mode, setMode,
+    i1, setI1,
+    d1, setD1,
+    i2, setI2,
+    d2, setD2,
+    result, setResult,
+    error, setError
+}) => {
+    
+    // Auto-Calculate Effect
+    React.useEffect(() => {
+        // 1. Reset State
+        setResult(null);
+        setError('');
+
+        // 2. Parse Base Inputs (Reference)
+        const rate1 = parseFloat(i1);
+        const dist1 = parseFloat(d1);
+
+        // 3. Silent Fail: If base inputs are empty/invalid, just do nothing yet.
+        if (!i1 || !d1 || isNaN(rate1) || isNaN(dist1) || rate1 <= 0 || dist1 <= 0) {
+            return; 
+        }
+
+        // --- MODE 1: CALCULATE NEW RATE (I2) ---
+        if (mode === 'calcI2') {
+            // Check Target Distance
+            if (!d2) return; // Wait for input
+            const dist2 = parseFloat(d2);
+            if (isNaN(dist2) || dist2 <= 0) return;
+
+            // Calculate
+            const rate2 = rate1 * Math.pow(dist1 / dist2, 2);
+            
+            setResult({ 
+                label: 'Projected Rate (I₂)', 
+                value: rate2.toPrecision(3),
+                subtext: `at ${dist2} distance units`
+            });
+        }
+
+        // --- MODE 2: CALCULATE BOUNDARY DISTANCE (D2) ---
+        else {
+            // Check Target Rate
+            if (!i2) return; // Wait for input
+            const rate2 = parseFloat(i2);
+            if (isNaN(rate2) || rate2 <= 0) return;
+
+            // Physics Check: You can't get HIGHER dose by moving away (assuming point source)
+            if (rate2 >= rate1) { 
+                setError('Target rate must be lower than reference rate to calculate a distance boundary.'); 
+                return; 
+            }
+
+            // Calculate
+            const dist2 = dist1 * Math.sqrt(rate1 / rate2);
+            
+            setResult({ 
+                label: 'Boundary Distance (d₂)', 
+                value: dist2.toFixed(2),
+                subtext: `Distance for ${rate2} rate units`
+            });
+        }
+
+    }, [mode, i1, d1, i2, d2, setResult, setError]); // Run whenever these change
+
+    return (
+        <div className="space-y-4 animate-fade-in">
+            <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg text-sm text-slate-600 dark:text-slate-400">
+                <p>Calculate distance boundaries or projected dose rates using actual field measurements.</p>
+            </div>
+
+            {/* Mode Toggle */}
+            <div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg">
+                <button onClick={() => setMode('calcD2')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'calcD2' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Find Distance (Boundary)</button>
+                <button onClick={() => setMode('calcI2')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'calcI2' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Find Dose Rate</button>
+            </div>
+
+            <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Ref. Rate (I₁)</label>
+                        <input type="number" value={i1} onChange={e => setI1(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 100" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Ref. Distance (d₁)</label>
+                        <input type="number" value={d1} onChange={e => setD1(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 1" />
+                    </div>
+                </div>
+
+                {mode === 'calcD2' ? (
+                    <div className="animate-fade-in">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Target Limit / Rate (I₂)</label>
+                        <input type="number" value={i2} onChange={e => setI2(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 2" />
+                        <p className="text-xs text-slate-500 mt-1">Example: Enter "2" to find the 2 mR/hr boundary line.</p>
+                    </div>
+                ) : (
+                    <div className="animate-fade-in">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">New Distance (d₂)</label>
+                        <input type="number" value={d2} onChange={e => setD2(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 10" />
+                    </div>
+                )}
+            </div>
+            
+            {/* Error Message */}
+            {error && <p className="text-red-500 text-sm text-center animate-fade-in">{error}</p>}
+            
+            {/* Result Box */}
+            {result && (
+                <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-center border border-slate-200 dark:border-slate-600 animate-fade-in">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">{result.label}</p>
+                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.value}</p>
+                    {result.subtext && <p className="text-xs text-slate-500 mt-1">{result.subtext}</p>}
+                </div>
+            )}
+        </div>
+    );
+};
             
             const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
             const [activeCalculator, setActiveCalculator] = React.useState(initialTab || 'surfaceContam');
@@ -4604,25 +4874,25 @@
             const { settings } = React.useContext(SettingsContext);
             const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq'] : ['pCi', 'nCi', 'µCi', 'mCi', 'Ci'], [settings.unitSystem]);
             
-            // Lifted State for Surface Contam
+            // --- STATE: Surface Contamination ---
             const [sc_nuclideSymbol, setSc_nuclideSymbol] = React.useState('');
             const [sc_staticData, setSc_staticData] = React.useState('');
             const [sc_wipeGrossCpm, setSc_wipeGrossCpm] = React.useState('150');
             const [sc_wipeBackgroundCpm, setSc_wipeBackgroundCpm] = React.useState('50');
             const [sc_instrumentEff, setSc_instrumentEff] = React.useState('25');
             const [sc_smearEff, setSc_smearEff] = React.useState('0.1');
-            const [sc_probeArea, setSc_probeArea] = React.useState('15'); // Default to Pancake (15 cm2)
+            const [sc_probeArea, setSc_probeArea] = React.useState('15'); 
             const [sc_result, setSc_result] = React.useState(null);
             const [sc_error, setSc_error] = React.useState('');
             
-            // State for Leak Test
+            // --- STATE: Leak Test ---
             const [lt_grossCpm, setLt_grossCpm] = React.useState(() => localStorage.getItem('leakTest_grossCpm') || '150');
             const [lt_backgroundCpm, setLt_backgroundCpm] = React.useState(() => localStorage.getItem('leakTest_backgroundCpm') || '50');
             const [lt_instrumentEff, setLt_instrumentEff] = React.useState(() => localStorage.getItem('leakTest_instrumentEff') || '25');
             const [lt_result, setLt_result] = React.useState(null);
             const [lt_error, setLt_error] = React.useState('');
             
-            // State for Airborne
+            // --- STATE: Airborne ---
             const [ac_nuclideSymbol, setAc_nuclideSymbol] = React.useState('');
             const [ac_releaseActivity, setAc_releaseActivity] = React.useState('1');
             const [ac_activityUnit, setAc_activityUnit] = React.useState(activityUnits[0]);
@@ -4632,7 +4902,7 @@
             const [ac_result, setAc_result] = React.useState(null);
             const [ac_error, setAc_error] = React.useState('');
             
-            // State for Detector Response
+            // --- STATE: Detector Response ---
             const [resp_nuclideSymbol, setResp_nuclideSymbol] = React.useState('');
             const [resp_activity, setResp_activity] = React.useState('1');
             const [resp_activityUnit, setResp_activityUnit] = React.useState('µCi');
@@ -4646,107 +4916,137 @@
             const [resp_result, setResp_result] = React.useState(null);
             const [resp_error, setResp_error] = React.useState('');
             
+            // --- STATE: Counting Lab (Eff/Activity) ---
+            const [eff_mode, setEff_mode] = React.useState('scaler');
+            const [eff_counts, setEff_counts] = React.useState('');
+            const [eff_time, setEff_time] = React.useState('');
+            const [eff_cpm, setEff_cpm] = React.useState('');
+            const [eff_dpm, setEff_dpm] = React.useState('');
+            const [eff_efficiency, setEff_efficiency] = React.useState('');
+            const [eff_result, setEff_result] = React.useState(null);
+            const [eff_error, setEff_error] = React.useState('');
+
+            // --- STATE: Inverse Square (NEW 6th Module) ---
+            const [inv_mode, setInv_mode] = React.useState('calcD2');
+            const [inv_i1, setInv_i1] = React.useState('');
+            const [inv_d1, setInv_d1] = React.useState('');
+            const [inv_i2, setInv_i2] = React.useState('');
+            const [inv_d2, setInv_d2] = React.useState('');
+            const [inv_result, setInv_result] = React.useState(null);
+            const [inv_error, setInv_error] = React.useState('');
+            
             // Full Clear Handler
             const handleClear = () => {
-            if(activeCalculator === 'surfaceContam') {
-            setSc_nuclideSymbol('');
-            setSc_staticData('');
-            setSc_wipeGrossCpm('150');
-            setSc_wipeBackgroundCpm('50');
-            setSc_instrumentEff('25');
-            setSc_smearEff('0.1');
-            setSc_probeArea('15');
-            setSc_result(null);
-            setSc_error('');
-            }
-            if(activeCalculator === 'leakTest') {
-            setLt_grossCpm('150');
-            setLt_backgroundCpm('50');
-            setLt_instrumentEff('25');
-            setLt_result(null);
-            setLt_error('');
-            }
-            if(activeCalculator === 'airborne') {
-            setAc_nuclideSymbol('');
-            setAc_releaseActivity('1');
-            setAc_roomVolume('100');
-            setAc_ventilationRate('2');
-            setAc_result(null);
-            setAc_error('');
-            }
-            if(activeCalculator === 'response') {
-            setResp_nuclideSymbol('');
-            setResp_activity('1');
-            setResp_distance('30');
-            setResp_shieldMaterial('None');
-            setResp_surfaceEff('100');
-            setResp_result(null);
-            setResp_error('');
-            }
-            }
+                if(activeCalculator === 'surfaceContam') {
+                    setSc_nuclideSymbol(''); setSc_staticData(''); setSc_wipeGrossCpm('150'); setSc_wipeBackgroundCpm('50');
+                    setSc_instrumentEff('25'); setSc_smearEff('0.1'); setSc_probeArea('15'); setSc_result(null); setSc_error('');
+                }
+                if(activeCalculator === 'leakTest') {
+                    setLt_grossCpm('150'); setLt_backgroundCpm('50'); setLt_instrumentEff('25'); setLt_result(null); setLt_error('');
+                }
+                if(activeCalculator === 'efficiency') {
+                    setEff_counts(''); setEff_time(''); setEff_cpm(''); setEff_dpm(''); setEff_efficiency(''); setEff_result(null); setEff_error('');
+                }
+                if(activeCalculator === 'inverseSquare') {
+                    setInv_i1(''); setInv_d1(''); setInv_i2(''); setInv_d2(''); setInv_result(null); setInv_error('');
+                }
+                if(activeCalculator === 'airborne') {
+                    setAc_nuclideSymbol(''); setAc_releaseActivity('1'); setAc_roomVolume('100'); setAc_ventilationRate('2'); setAc_result(null); setAc_error('');
+                }
+                if(activeCalculator === 'response') {
+                    setResp_nuclideSymbol(''); setResp_activity('1'); setResp_distance('30'); setResp_shieldMaterial('None'); setResp_surfaceEff('100'); setResp_result(null); setResp_error('');
+                }
+            };
             
             return (
             <div className="p-4 animate-fade-in">
             <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-              <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold text-slate-800 dark:text-white">Operational HP Calculators</h2>
-                  <ClearButton onClick={handleClear} />
-              </div>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Operational HP Calculators</h2>
+                    <ClearButton onClick={handleClear} />
+                </div>
             
-              <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6">
-                  <button onClick={() => setActiveCalculator('surfaceContam')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeCalculator === 'surfaceContam' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Surface Contam.</button>
-                  <button onClick={() => setActiveCalculator('leakTest')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeCalculator === 'leakTest' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Leak Test</button>
-                  <button onClick={() => setActiveCalculator('airborne')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeCalculator === 'airborne' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Airborne</button>
-                  <button onClick={() => setActiveCalculator('response')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeCalculator === 'response' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Detector Resp.</button>
-              </div>
+                {/* 6-Item Grid Navigation */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6">
+                    <button onClick={() => setActiveCalculator('surfaceContam')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'surfaceContam' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Surface</button>
+                    <button onClick={() => setActiveCalculator('leakTest')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'leakTest' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Leak Test</button>
+                    <button onClick={() => setActiveCalculator('efficiency')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'efficiency' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Count Lab</button>
+                    <button onClick={() => setActiveCalculator('inverseSquare')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'inverseSquare' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Inv. Sq</button>
+                    <button onClick={() => setActiveCalculator('airborne')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'airborne' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Airborne</button>
+                    <button onClick={() => setActiveCalculator('response')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'response' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Det. Resp.</button>
+                </div>
             
-              <div className="mt-4">
-                  {activeCalculator === 'surfaceContam' && <SurfaceContaminationCalculator
-                      radionuclides={radionuclides}
-                      nuclideSymbol={sc_nuclideSymbol} setNuclideSymbol={setSc_nuclideSymbol}
-                      staticData={sc_staticData} setStaticData={setSc_staticData}
-                      wipeGrossCpm={sc_wipeGrossCpm} setWipeGrossCpm={setSc_wipeGrossCpm}
-                      wipeBackgroundCpm={sc_wipeBackgroundCpm} setWipeBackgroundCpm={setSc_wipeBackgroundCpm}
-                      instrumentEff={sc_instrumentEff} setInstrumentEff={setSc_instrumentEff}
-                      smearEff={sc_smearEff} setSmearEff={setSc_smearEff}
-                      probeArea={sc_probeArea} setProbeArea={setSc_probeArea}
-                      result={sc_result} setResult={setSc_result}
-                      error={sc_error} setError={setSc_error}
-                  />}
-                  {activeCalculator === 'leakTest' && <LeakTestCalculator
-                      grossCpm={lt_grossCpm} setGrossCpm={setLt_grossCpm}
-                      backgroundCpm={lt_backgroundCpm} setBackgroundCpm={setLt_backgroundCpm}
-                      instrumentEff={lt_instrumentEff} setInstrumentEff={setLt_instrumentEff}
-                      result={lt_result} setResult={setLt_result}
-                      error={lt_error} setError={setLt_error}
-                  />}
-                  {activeCalculator === 'airborne' && <AirborneCalculator
-                      radionuclides={radionuclides}
-                      nuclideSymbol={ac_nuclideSymbol} setNuclideSymbol={setAc_nuclideSymbol}
-                      releaseActivity={ac_releaseActivity} setReleaseActivity={setAc_releaseActivity}
-                      activityUnit={ac_activityUnit} setActivityUnit={setAc_activityUnit} activityUnits={activityUnits}
-                      roomVolume={ac_roomVolume} setRoomVolume={setAc_roomVolume}
-                      volumeUnit={ac_volumeUnit} setVolumeUnit={setAc_volumeUnit}
-                      ventilationRate={ac_ventilationRate} setVentilationRate={setAc_ventilationRate}
-                      result={ac_result} setResult={setAc_result}
-                      error={ac_error} setError={setAc_error}
-                  />}
-                  {activeCalculator === 'response' && <DetectorResponseCalculator
-                      radionuclides={radionuclides}
-                      nuclideSymbol={resp_nuclideSymbol} setNuclideSymbol={setResp_nuclideSymbol}
-                      activity={resp_activity} setActivity={setResp_activity}
-                      activityUnit={resp_activityUnit} setActivityUnit={setResp_activityUnit}
-                      distance={resp_distance} setDistance={setResp_distance}
-                      distanceUnit={resp_distanceUnit} setDistanceUnit={setResp_distanceUnit}
-                      detectorType={resp_detectorType} setDetectorType={setResp_detectorType}
-                      shieldMaterial={resp_shieldMaterial} setShieldMaterial={setResp_shieldMaterial}
-                      shieldThickness={resp_shieldThickness} setShieldThickness={setResp_shieldThickness}
-                      shieldThicknessUnit={resp_shieldThicknessUnit} setShieldThicknessUnit={setResp_shieldThicknessUnit}
-                      surfaceEff={resp_surfaceEff} setSurfaceEff={setResp_surfaceEff}
-                      result={resp_result} setResult={setResp_result}
-                      error={resp_error} setError={setResp_error}
-                  />}
-              </div>
+                <div className="mt-4">
+                    {activeCalculator === 'surfaceContam' && <SurfaceContaminationCalculator
+                        radionuclides={radionuclides}
+                        nuclideSymbol={sc_nuclideSymbol} setNuclideSymbol={setSc_nuclideSymbol}
+                        staticData={sc_staticData} setStaticData={setSc_staticData}
+                        wipeGrossCpm={sc_wipeGrossCpm} setWipeGrossCpm={setSc_wipeGrossCpm}
+                        wipeBackgroundCpm={sc_wipeBackgroundCpm} setWipeBackgroundCpm={setSc_wipeBackgroundCpm}
+                        instrumentEff={sc_instrumentEff} setInstrumentEff={setSc_instrumentEff}
+                        smearEff={sc_smearEff} setSmearEff={setSc_smearEff}
+                        probeArea={sc_probeArea} setProbeArea={setSc_probeArea}
+                        result={sc_result} setResult={setSc_result}
+                        error={sc_error} setError={setSc_error}
+                    />}
+                    
+                    {activeCalculator === 'leakTest' && <LeakTestCalculator
+                        grossCpm={lt_grossCpm} setGrossCpm={setLt_grossCpm}
+                        backgroundCpm={lt_backgroundCpm} setBackgroundCpm={setLt_backgroundCpm}
+                        instrumentEff={lt_instrumentEff} setInstrumentEff={setLt_instrumentEff}
+                        result={lt_result} setResult={setLt_result}
+                        error={lt_error} setError={setLt_error}
+                    />}
+                    
+                    {activeCalculator === 'efficiency' && <SimpleEfficiencyCalculator
+                        mode={eff_mode} setMode={setEff_mode}
+                        counts={eff_counts} setCounts={setEff_counts}
+                        time={eff_time} setTime={setEff_time}
+                        cpm={eff_cpm} setCpm={setEff_cpm}
+                        dpm={eff_dpm} setDpm={setEff_dpm}
+                        efficiency={eff_efficiency} setEfficiency={setEff_efficiency}
+                        result={eff_result} setResult={setEff_result}
+                        error={eff_error} setError={setEff_error}
+                    />}
+
+                    {activeCalculator === 'inverseSquare' && <InverseSquareCalculator
+                        mode={inv_mode} setMode={setInv_mode}
+                        i1={inv_i1} setI1={setInv_i1}
+                        d1={inv_d1} setD1={setInv_d1}
+                        i2={inv_i2} setI2={setInv_i2}
+                        d2={inv_d2} setD2={setInv_d2}
+                        result={inv_result} setResult={setInv_result}
+                        error={inv_error} setError={setInv_error}
+                    />}
+
+                    {activeCalculator === 'airborne' && <AirborneCalculator
+                        radionuclides={radionuclides}
+                        nuclideSymbol={ac_nuclideSymbol} setNuclideSymbol={setAc_nuclideSymbol}
+                        releaseActivity={ac_releaseActivity} setReleaseActivity={setAc_releaseActivity}
+                        activityUnit={ac_activityUnit} setActivityUnit={setAc_activityUnit} activityUnits={activityUnits}
+                        roomVolume={ac_roomVolume} setRoomVolume={setAc_roomVolume}
+                        volumeUnit={ac_volumeUnit} setVolumeUnit={setAc_volumeUnit}
+                        ventilationRate={ac_ventilationRate} setVentilationRate={setAc_ventilationRate}
+                        result={ac_result} setResult={setAc_result}
+                        error={ac_error} setError={setAc_error}
+                    />}
+                    
+                    {activeCalculator === 'response' && <DetectorResponseCalculator
+                        radionuclides={radionuclides}
+                        nuclideSymbol={resp_nuclideSymbol} setNuclideSymbol={setResp_nuclideSymbol}
+                        activity={resp_activity} setActivity={setResp_activity}
+                        activityUnit={resp_activityUnit} setActivityUnit={setResp_activityUnit}
+                        distance={resp_distance} setDistance={setResp_distance}
+                        distanceUnit={resp_distanceUnit} setDistanceUnit={setResp_distanceUnit}
+                        detectorType={resp_detectorType} setDetectorType={setResp_detectorType}
+                        shieldMaterial={resp_shieldMaterial} setShieldMaterial={setResp_shieldMaterial}
+                        shieldThickness={resp_shieldThickness} setShieldThickness={setResp_shieldThickness}
+                        shieldThicknessUnit={resp_shieldThicknessUnit} setShieldThicknessUnit={setResp_shieldThicknessUnit}
+                        surfaceEff={resp_surfaceEff} setSurfaceEff={setResp_surfaceEff}
+                        result={resp_result} setResult={setResp_result}
+                        error={resp_error} setError={setResp_error}
+                    />}
+                </div>
             </div>
             </div>
             );
@@ -6936,6 +7236,7 @@
             * and to analyze the type of equilibrium present based on their half-lives.
             * Now includes Auto-Branching logic and Secular Equilibrium shortcuts.
             */
+
             const EquilibriumCalculator = ({ radionuclides, theme }) => {
             const { addHistory } = useCalculationHistory();
             const { addToast } = useToast();
@@ -6959,6 +7260,33 @@
             
             const [timeElapsed, setTimeElapsed] = React.useState(() => localStorage.getItem('equilibrium_timeElapsed') || '10');
             const [timeUnit, setTimeUnit] = React.useState(() => localStorage.getItem('equilibrium_timeUnit') || 'days');
+
+            // --- CONSOLIDATED BRANCHING LOGIC ---
+            React.useEffect(() => {
+                if (parentNuclide) {
+                    // Internal Fallback List (Keeps your hardcoded data safe)
+                    const LEGACY_DEFAULTS = {
+                        'Mo-99': 0.875,
+                        'Cs-137': 0.946,
+                        'Ru-103': 0.998,
+                        'Zr-95': 0.993,
+                        'Te-131m': 0.778
+                    };
+
+                    // Priority 1: Data from Database File
+                    if (parentNuclide.branchingFraction) {
+                        setBranchingFraction(parentNuclide.branchingFraction.toString());
+                    } 
+                    // Priority 2: Hardcoded Local Fallback
+                    else if (LEGACY_DEFAULTS[parentNuclide.symbol]) {
+                        setBranchingFraction(LEGACY_DEFAULTS[parentNuclide.symbol].toString());
+                    }
+                    // Priority 3: Default to 100%
+                    else {
+                        setBranchingFraction('1.0');
+                    }
+                }
+            }, [parentNuclide, setBranchingFraction]);
             
             const [result, setResult] = React.useState(null);
             const [chartData, setChartData] = React.useState(null);
@@ -6967,16 +7295,7 @@
             const [useLogScale, setUseLogScale] = React.useState(() => JSON.parse(localStorage.getItem('equilibrium_useLogScale')) || false);
             
             const timeUnitsOrdered = ['minutes', 'hours', 'days', 'years'];
-            
-            // --- KNOWN BRANCHING FRACTIONS ---
-            const KNOWN_BRANCHING = {
-            'Mo-99': 0.875,  // to Tc-99m
-            'Cs-137': 0.946, // to Ba-137m
-            'Sr-90': 1.0,    // to Y-90
-            'Ru-103': 0.998, // to Rh-103m
-            'Zr-95': 0.993   // to Nb-95
-            };
-            
+                       
             // --- EFFECTS ---
             React.useEffect(() => {
             localStorage.setItem('equilibrium_parentSymbol', parentNuclide ? parentNuclide.symbol : '');
@@ -7004,22 +7323,15 @@
             return daughter && daughter.halfLife !== 'Stable';
             }).sort((a, b) => a.name.localeCompare(b.name));
             }, [radionuclides]);
-            
-            // Handle Parent Selection Logic
+
             const handleParentChange = (symbol) => {
-            const parent = parentNuclides.find(p => p.symbol === symbol);
-            setResult(null); setChartData(null); setError(''); setParentNuclide(parent || null);
-            
-            // AUTO-FILL BRANCHING FRACTION
-            if (parent && KNOWN_BRANCHING[parent.symbol]) {
-            setBranchingFraction(KNOWN_BRANCHING[parent.symbol].toString());
-            // Optional: Notify user
-            // addToast(`Auto-set branching to ${KNOWN_BRANCHING[parent.symbol]}`);
-            } else {
-            setBranchingFraction('1.0');
-            }
+                const parent = parentNuclides.find(p => p.symbol === symbol);
+                setResult(null); 
+                setChartData(null); 
+                setError(''); 
+                setParentNuclide(parent || null);
             };
-            
+                     
             React.useEffect(() => {
             if (!parentNuclide) {
             setAnalysis(null); setDaughterNuclide(null); return;
@@ -12345,6 +12657,8 @@
             const [samplesToPlace, setSamplesToPlace] = React.useState(25);
             const [sampleCalcMode, setSampleCalcMode] = React.useState('byNumber');
             const [gridSpacing, setGridSpacing] = React.useState(10);
+
+            const [mapStyle, setMapStyle] = React.useState('street');
             
             const highlightStyle = { weight: 5, color: '#0ea5e9', dashArray: '', fillOpacity: 0.5 };
             const defaultStyle = { color: '#3388ff' };
@@ -12895,153 +13209,202 @@
             originMarkerRef.current = originMarker;
             }
             }, [surveyUnitLayer]);
+
+            // Handle Map Style Switching ---
+            React.useEffect(() => {
+                if (!mapRef.current || !osmLayerRef.current || !satelliteLayerRef.current) return;
+
+                if (mapStyle === 'satellite') {
+                    if (mapRef.current.hasLayer(osmLayerRef.current)) {
+                        mapRef.current.removeLayer(osmLayerRef.current);
+                    }
+                    if (!mapRef.current.hasLayer(satelliteLayerRef.current)) {
+                        mapRef.current.addLayer(satelliteLayerRef.current);
+                    }
+                } else {
+                    if (mapRef.current.hasLayer(satelliteLayerRef.current)) {
+                        mapRef.current.removeLayer(satelliteLayerRef.current);
+                    }
+                    if (!mapRef.current.hasLayer(osmLayerRef.current)) {
+                        mapRef.current.addLayer(osmLayerRef.current);
+                    }
+                }
+            }, [mapStyle]);
             
             return (
-            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-            <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
-              <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
-              <div className="flex items-center gap-2">
-                  {surveyUnitLayer && ( <button onClick={handleZoomToSurveyUnit} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Zoom to Unit</button> )}
-                  <input type="file" ref={fileInputRef} onChange={handleLoadPlan} accept=".json" style={{ display: 'none' }} />
-                  <button onClick={() => fileInputRef.current.click()} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition">Load Plan</button>
-                  <button onClick={handleSavePlan} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition">Save Plan</button>
-              </div>
-            </div>
-            <div className="flex gap-2 items-center mb-4">
-              <input type="text" value={locationInput} onChange={(e) => setLocationInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleGoToLocation(); }} placeholder="Enter an address or lat,lng coordinates" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"/>
-              <button onClick={handleGoToLocation} className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Go</button>
-            </div>
-            
-            <div id="marssim-map" className="w-full h-[60vh] my-4 rounded-lg bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 z-0"></div>
-            
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                  <h4 className="font-bold text-lg mb-3">Survey Unit Dashboard</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                          <label className="font-semibold text-slate-500 dark:text-slate-400">Unit Name</label>
-                          <input type="text" value={surveyUnitName} onChange={e => setSurveyUnitName(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
-                      </div>
-                      <div>
-                          <label className="font-semibold text-slate-500 dark:text-slate-400">Unit Class</label>
-                          <select value={surveyClass} onChange={e => setSurveyClass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                              <option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Un-Impacted</option><option>Other</option>
-                          </select>
-                      </div>
-                      <div className="pt-2">
-                          <p className="font-semibold text-slate-500 dark:text-slate-400">Area (Geodesic)</p>
-                          <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{surveyUnitArea.toFixed(1)} m²</p>
-                      </div>
-                       <div className="pt-2">
-                          <p className="font-semibold text-slate-500 dark:text-slate-400">Plotted Samples</p>
-                          <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{plottedPoints.length}</p>
-                      </div>
-                  </div>
-            {gridSpacing > 0 && (
-                <div className="mt-3 p-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded text-xs">
-                     <span className="font-bold text-slate-600 dark:text-slate-300">Hotspot Detection:</span>
-                     <span className="ml-1 text-slate-500 dark:text-slate-400">
-                        With L = {gridSpacing}m, approx. unscanned area is 
-                        <strong> {((gridSpacing * gridSpacing) * 0.866).toFixed(1)} m²</strong> (Triangular) or 
-                        <strong> {(gridSpacing * gridSpacing).toFixed(1)} m²</strong> (Square).
-                     </span>
+                <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                    {/* Header Row */}
+                    <div className="flex flex-wrap justify-between items-center mb-4 gap-4">
+                        
+                        {/* Left Side: Title + Toggle */}
+                        <div className="flex items-center gap-4">
+                            <h3 className="text-lg font-bold">Survey Unit Drawing Tool</h3>
+                            
+                            {/* Map Style Toggle */}
+                            <div className="flex bg-slate-200 dark:bg-slate-700 rounded-lg p-1">
+                                <button 
+                                    onClick={() => setMapStyle('street')}
+                                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${mapStyle === 'street' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}
+                                >
+                                    Street
+                                </button>
+                                <button 
+                                    onClick={() => setMapStyle('satellite')}
+                                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${mapStyle === 'satellite' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}
+                                >
+                                    Satellite
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {/* Right Side: Action Buttons */}
+                        <div className="flex items-center gap-2">
+                            {surveyUnitLayer && ( <button onClick={handleZoomToSurveyUnit} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Zoom to Unit</button> )}
+                            <input type="file" ref={fileInputRef} onChange={handleLoadPlan} accept=".json" style={{ display: 'none' }} />
+                            <button onClick={() => fileInputRef.current.click()} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition">Load Plan</button>
+                            <button onClick={handleSavePlan} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 transition">Save Plan</button>
+                        </div>
+                    </div>
+
+                    {/* Location Search Bar */}
+                    <div className="flex gap-2 items-center mb-4">
+                        <input type="text" value={locationInput} onChange={(e) => setLocationInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleGoToLocation(); }} placeholder="Enter an address or lat,lng coordinates" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500"/>
+                        <button onClick={handleGoToLocation} className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Go</button>
+                    </div>
+                    
+                    {/* Map Container */}
+                    <div id="marssim-map" className="w-full h-[60vh] my-4 rounded-lg bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 z-0"></div>
+                    
+                    {/* Dashboard Controls */}
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                            <h4 className="font-bold text-lg mb-3">Survey Unit Dashboard</h4>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <label className="font-semibold text-slate-500 dark:text-slate-400">Unit Name</label>
+                                    <input type="text" value={surveyUnitName} onChange={e => setSurveyUnitName(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600"/>
+                                </div>
+                                <div>
+                                    <label className="font-semibold text-slate-500 dark:text-slate-400">Unit Class</label>
+                                    <select value={surveyClass} onChange={e => setSurveyClass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                        <option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Un-Impacted</option><option>Other</option>
+                                    </select>
+                                </div>
+                                <div className="pt-2">
+                                    <p className="font-semibold text-slate-500 dark:text-slate-400">Area (Geodesic)</p>
+                                    <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{surveyUnitArea.toFixed(1)} m²</p>
+                                </div>
+                                <div className="pt-2">
+                                    <p className="font-semibold text-slate-500 dark:text-slate-400">Plotted Samples</p>
+                                    <p className="text-xl font-bold text-sky-600 dark:text-sky-400">{plottedPoints.length}</p>
+                                </div>
+                            </div>
+                            {gridSpacing > 0 && (
+                                <div className="mt-3 p-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded text-xs">
+                                    <span className="font-bold text-slate-600 dark:text-slate-300">Hotspot Detection:</span>
+                                    <span className="ml-1 text-slate-500 dark:text-slate-400">
+                                        With L = {gridSpacing}m, approx. unscanned area is 
+                                        <strong> {((gridSpacing * gridSpacing) * 0.866).toFixed(1)} m²</strong> (Triangular) or 
+                                        <strong> {(gridSpacing * gridSpacing).toFixed(1)} m²</strong> (Square).
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg h-full flex flex-col justify-between">
+                            <div>
+                                <h4 className="font-bold text-lg mb-3">Statistical Samples</h4>
+                                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-3">
+                                    <button onClick={() => setSampleCalcMode('byNumber')} className={`w-1/2 p-1 rounded-md text-xs font-semibold ${sampleCalcMode === 'byNumber' ? 'bg-white dark:bg-slate-800' : ''}`}>By Number</button>
+                                    <button onClick={() => setSampleCalcMode('bySpacing')} className={`w-1/2 p-1 rounded-md text-xs font-semibold ${sampleCalcMode === 'bySpacing' ? 'bg-white dark:bg-slate-800' : ''}`}>By Spacing</button>
+                                </div>
+                                {sampleCalcMode === 'byNumber' ? (
+                                    <div className="text-center">
+                                        <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Desired Number of Samples</label>
+                                        <input type="number" value={samplesToPlace} onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} className="persistent-spinner w-24 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 p-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none" />
+                                    </div>
+                                ) : (
+                                    <div className="text-center">
+                                        <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Grid Spacing (meters)</label>
+                                        <input type="number" value={gridSpacing} onChange={(e) => setGridSpacing(parseInt(e.target.value, 10) || 0)} className="persistent-spinner w-24 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 p-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none" />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 mt-2">
+                                <button onClick={() => handleGenerateSamples('square')} className="p-2 text-xs md:text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Square Grid</button>
+                                <button onClick={() => handleGenerateSamples('triangular')} className="p-2 text-[12px] leading-tight bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Triangular Grid</button>
+                                <button onClick={() => handleGenerateSamples('random')} className="p-2 text-xs md:text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Random</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Data Table */}
+                    <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-lg font-bold">Plotted Sample Coordinates ({plottedPoints.length})</h3>
+                            <div className="flex items-center gap-4">
+                                <button onClick={handleClearPoints} className="text-xs text-slate-500 hover:underline font-semibold flex items-center gap-1"><Icon path={ICONS.clear} className="w-3 h-3"/> Clear Grid Points</button>
+                                <button onClick={handleClearAll} className="text-xs text-slate-500 hover:underline font-semibold flex items-center gap-1"><Icon path={ICONS.clear} className="w-3 h-3"/> Clear All</button>
+                                <button onClick={handleExport} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2">Export CSV</button>
+                            </div>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto mt-2 pr-2">
+                            {plottedPoints.length > 0 || surveyUnitLayer ? (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm text-center">
+                                        <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
+                                            <tr>
+                                                <th className="p-2 text-center">#</th>
+                                                <th className="p-2 text-center">Type</th>
+                                                <th className="p-2 text-center">Latitude</th>
+                                                <th className="p-2 text-center">Longitude</th>
+                                                <th className="p-2 text-center">X (m)</th>
+                                                <th className="p-2 text-center">Y (m)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(() => {
+                                                const origin = surveyUnitLayer ? { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng } : null;
+                                                const sortedPoints = [...plottedPoints].sort((a, b) => {
+                                                    const aIsBiased = a.type === 'Biased';
+                                                    const bIsBiased = b.type === 'Biased';
+                                                    if (aIsBiased && !bIsBiased) return -1;
+                                                    if (!aIsBiased && bIsBiased) return 1;
+                                                    const aNum = parseInt(a.id.split('-')[1]);
+                                                    const bNum = parseInt(b.id.split('-')[1]);
+                                                    return aNum - bNum;
+                                                });
+                                                return sortedPoints.map((point) => {
+                                                    let xDist = 'N/A', yDist = 'N/A';
+                                                    if (origin) {
+                                                        yDist = calculateDistance(origin, { lat: point.lat, lng: origin.lng }).toFixed(3);
+                                                        xDist = calculateDistance(origin, { lat: origin.lat, lng: point.lng }).toFixed(3);
+                                                    }
+                                                    return (
+                                                        <tr key={point.id} className="border-b border-slate-200 dark:border-slate-700">
+                                                            <td className="p-2 font-medium">{point.id}</td>
+                                                            <td className="p-2">{point.type}</td>
+                                                            <td className="p-2 font-mono">{point.lat.toFixed(7)}</td>
+                                                            <td className="p-2 font-mono">{point.lng.toFixed(7)}</td>
+                                                            <td className="p-2 font-mono">{xDist}</td>
+                                                            <td className="p-2 font-mono">{yDist}</td>
+                                                        </tr>
+                                                    );
+                                                });
+                                            })()}
+                                        </tbody>
+                                        <tfoot>
+                                            {(() => {
+                                                const origin = surveyUnitLayer ? { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng } : null;
+                                                if (!origin) return null;
+                                                return ( <tr className="bg-slate-200 dark:bg-slate-700 font-semibold border-t-2 border-slate-300 dark:border-slate-600"><td colSpan="2" className="p-2 text-left">Origin (SW Corner)</td><td className="p-2 font-mono">{origin.lat.toFixed(7)}</td><td className="p-2 font-mono">{origin.lng.toFixed(7)}</td><td className="p-2 font-mono">0.000</td><td className="p-2 font-mono">0.000</td></tr> );
+                                            })()}
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            ) : ( <p className="text-center text-slate-500 dark:text-slate-400 py-4">No sample points have been placed.</p> )}
+                        </div>
+                    </div>
                 </div>
-            )}
-              </div>
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg h-full flex flex-col justify-between">
-                  <div>
-                      <h4 className="font-bold text-lg mb-3">Statistical Samples</h4>
-                      <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-3">
-                          <button onClick={() => setSampleCalcMode('byNumber')} className={`w-1/2 p-1 rounded-md text-xs font-semibold ${sampleCalcMode === 'byNumber' ? 'bg-white dark:bg-slate-800' : ''}`}>By Number</button>
-                          <button onClick={() => setSampleCalcMode('bySpacing')} className={`w-1/2 p-1 rounded-md text-xs font-semibold ${sampleCalcMode === 'bySpacing' ? 'bg-white dark:bg-slate-800' : ''}`}>By Spacing</button>
-                      </div>
-                      {sampleCalcMode === 'byNumber' ? (
-                           <div className="text-center">
-                              <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Desired Number of Samples</label>
-                              <input type="number" value={samplesToPlace} onChange={(e) => setSamplesToPlace(parseInt(e.target.value, 10) || 0)} className="persistent-spinner w-24 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 p-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none" />
-                           </div>
-                      ) : (
-                          <div className="text-center">
-                              <label className="font-semibold text-sm text-slate-500 dark:text-slate-400 mb-2">Grid Spacing (meters)</label>
-                              <input type="number" value={gridSpacing} onChange={(e) => setGridSpacing(parseInt(e.target.value, 10) || 0)} className="persistent-spinner w-24 text-center text-2xl font-bold text-sky-600 dark:text-sky-400 p-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-sky-500 focus:outline-none" />
-                          </div>
-                      )}
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 mt-2">
-                      <button onClick={() => handleGenerateSamples('square')} className="p-2 text-xs md:text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Square Grid</button>
-                      <button onClick={() => handleGenerateSamples('triangular')} className="p-2 text-[12px] leading-tight bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Triangular Grid</button>
-                      <button onClick={() => handleGenerateSamples('random')} className="p-2 text-xs md:text-sm bg-slate-200 dark:bg-slate-600 font-semibold rounded-md hover:bg-sky-200 dark:hover:bg-sky-800">Random</button>
-                  </div>
-              </div>
-            </div>
-            <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-              <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-bold">Plotted Sample Coordinates ({plottedPoints.length})</h3>
-                  <div className="flex items-center gap-4">
-                      <button onClick={handleClearPoints} className="text-xs text-slate-500 hover:underline font-semibold flex items-center gap-1"><Icon path={ICONS.clear} className="w-3 h-3"/> Clear Grid Points</button>
-                      <button onClick={handleClearAll} className="text-xs text-slate-500 hover:underline font-semibold flex items-center gap-1"><Icon path={ICONS.clear} className="w-3 h-3"/> Clear All</button>
-                      <button onClick={handleExport} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2">Export CSV</button>
-                  </div>
-              </div>
-              <div className="max-h-60 overflow-y-auto mt-2 pr-2">
-                  {plottedPoints.length > 0 || surveyUnitLayer ? (
-                      <div className="overflow-x-auto">
-                      <table className="w-full text-sm text-center">
-                          <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
-                             <tr>
-                                <th className="p-2 text-center">#</th>
-                                 <th className="p-2 text-center">Type</th>
-                                 <th className="p-2 text-center">Latitude</th>
-                                 <th className="p-2 text-center">Longitude</th>
-                                 <th className="p-2 text-center">X (m)</th>
-                                 <th className="p-2 text-center">Y (m)</th>
-                             </tr>
-                          </thead>
-                          <tbody>
-                              {(() => {
-                                  const origin = surveyUnitLayer ? { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng } : null;
-                                  // Use state for rendering table
-                                  const sortedPoints = [...plottedPoints].sort((a, b) => {
-                                      const aIsBiased = a.type === 'Biased';
-                                      const bIsBiased = b.type === 'Biased';
-                                      if (aIsBiased && !bIsBiased) return -1;
-                                      if (!aIsBiased && bIsBiased) return 1;
-                                      const aNum = parseInt(a.id.split('-')[1]);
-                                      const bNum = parseInt(b.id.split('-')[1]);
-                                      return aNum - bNum;
-                                  });
-                                  return sortedPoints.map((point) => {
-                                      let xDist = 'N/A', yDist = 'N/A';
-                                      if (origin) {
-                                          yDist = calculateDistance(origin, { lat: point.lat, lng: origin.lng }).toFixed(3);
-                                          xDist = calculateDistance(origin, { lat: origin.lat, lng: point.lng }).toFixed(3);
-                                      }
-                                      return (
-                                          <tr key={point.id} className="border-b border-slate-200 dark:border-slate-700">
-                                              <td className="p-2 font-medium">{point.id}</td>
-                                              <td className="p-2">{point.type}</td>
-                                              <td className="p-2 font-mono">{point.lat.toFixed(7)}</td>
-                                              <td className="p-2 font-mono">{point.lng.toFixed(7)}</td>
-                                              <td className="p-2 font-mono">{xDist}</td>
-                                              <td className="p-2 font-mono">{yDist}</td>
-                                          </tr>
-                                      );
-                                  });
-                              })()}
-                          </tbody>
-                          <tfoot>
-                              {(() => {
-                                  const origin = surveyUnitLayer ? { lat: surveyUnitLayer.getBounds().getSouthWest().lat, lng: surveyUnitLayer.getBounds().getSouthWest().lng } : null;
-                                  if (!origin) return null;
-                                  return ( <tr className="bg-slate-200 dark:bg-slate-700 font-semibold border-t-2 border-slate-300 dark:border-slate-600"><td colSpan="2" className="p-2 text-left">Origin (SW Corner)</td><td className="p-2 font-mono">{origin.lat.toFixed(7)}</td><td className="p-2 font-mono">{origin.lng.toFixed(7)}</td><td className="p-2 font-mono">0.000</td><td className="p-2 font-mono">0.000</td></tr> );
-                              })()}
-                          </tfoot>
-                      </table>
-                      </div>
-                  ) : ( <p className="text-center text-slate-500 dark:text-slate-400 py-4">No sample points have been placed.</p> )}
-              </div>
-            </div>
-            </div>
             );
             };
             
