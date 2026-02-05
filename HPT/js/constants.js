@@ -2,8 +2,8 @@
 // --- APPLICATION METADATA & CONSTANTS
 //==============================================================================
 
-const VERSION = '3.8.5';
-const LAST_UPDATED = 'January 22nd, 2026';
+const VERSION = '3.8.6';
+const LAST_UPDATED = 'February 5th, 2026';
 
 // Global constant for all navigation views
 
