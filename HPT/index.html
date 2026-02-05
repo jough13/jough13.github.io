@@ -12288,7 +12288,7 @@
             // Robust point-in-polygon check
             const isPointInPolygon = (point, polygonLatLngs) => {
             // Leaflet Draw polygons can have nested arrays for holes, we take the outer ring [0]
-            const polyPoints = polygonLatLngs[0];
+            const polyPoints = (Array.isArray(polygonLatLngs[0])) ? polygonLatLngs[0] : polygonLatLngs;
             const x = point.lat, y = point.lng;
             let inside = false;
             for (let i = 0, j = polyPoints.length - 1; i < polyPoints.length; j = i++) {
