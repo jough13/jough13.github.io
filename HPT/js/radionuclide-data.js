@@ -1400,9 +1400,9 @@ const RADIONUCLIDE_DATA = [{
          alpha: []
       },
       avgBetaEnergy: '0.171 MeV',
-      daughterEmissions: {
+         daughterEmissions: {
          from: 'Ba-137m',
-         gamma: ['0.662 MeV']
+         gamma: ['0.662 MeV (85.1% yield)'] // Explicit total yield per parent decay
       },
       halfLife: '30.08 years',
       decayConstant: '0.0230 year⁻¹',
