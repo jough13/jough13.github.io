@@ -1415,6 +1415,7 @@ const RADIONUCLIDE_DATA = [{
       specificActivity: '3.21 x 10^12 Bq/g',
       parent: 'Uranium Fission',
       daughter: 'Barium-137m (IT) -> Barium-137 (stable)',
+      branchingFraction: 0.946,
       commonUses: ['Calibration sources', 'Industrial gauges (density, level)', 'Blood irradiators', 'Radiotherapy (historical)'],
       category: 'Industrial',
       commonality: 'Common',
@@ -2623,7 +2624,7 @@ const RADIONUCLIDE_DATA = [{
       emissionType: ['Beta-minus', 'Gamma'],
       emissionEnergies: {
          beta: ['0.606 MeV (max)'],
-         gamma: ['0.364 MeV (dominant)', '0.637 MeV', '0.284 MeV'], // Added 637 and 284
+         gamma: ['0.364 MeV (dominant)', '0.637 MeV', '0.284 MeV'],
          alpha: []
       },
       avgBetaEnergy: '0.202 MeV',
@@ -3422,6 +3423,7 @@ const RADIONUCLIDE_DATA = [{
       specificActivity: '1.77 x 10^16 Bq/g',
       parent: 'Uranium-235 Fission',
       daughter: 'Technetium-99m',
+      branchingFraction: 0.875,
       commonUses: ['Generator for Technetium-99m, the most widely used medical radioisotope.'],
       category: 'Medical',
       commonality: 'Common',
@@ -6219,6 +6221,49 @@ const RADIONUCLIDE_DATA = [{
       },
       regGuideCategory: 'beta_gamma',
       ansiCategory: 'beta_gamma'
+   },
+   {
+      name: 'Tellurium-131m',
+      symbol: 'Te-131m',
+      emissionType: ['Beta-minus', 'Gamma'],
+      emissionEnergies: {
+         beta: ['0.421 MeV (max)', '1.30 MeV (max)'],
+         gamma: ['0.149 MeV (dominant)', '0.774 MeV', '1.21 MeV']
+      },
+      // Note: Te-131m has complex branching (IT to Te-131 and Beta to I-131).
+      // For equilibrium testing, we model the effective path to I-131.
+      daughterEmissions: {
+         from: 'I-131',
+         gamma: ['0.364 MeV (81%)']
+      },
+      halfLife: '33.25 hours',
+      decayConstant: '0.0208 hour⁻¹', 
+      specificActivity: '3.0 x 10^7 TBq/g', // ~800,000 Ci/g
+      parent: 'Fission Product',
+      daughter: 'Iodine-131',
+      commonUses: ['Medical Isotope Production', 'Research'],
+      category: 'Medical',
+      commonality: 'Rare',
+      commonalityReason: 'Parent isotope for Iodine-131 production generators.',
+      sourceRef: {
+         halfLife: 'nndc'
+      },
+      shipping: {
+         A1: 0.7,
+         A2: 0.5,
+         unit: 'TBq'
+      },
+      dosimetry: {
+         ALI: {
+             ingestion: 400,
+             inhalation_D: 400,
+             inhalation_W: 600
+         },
+         DAC: {
+             inhalation_D: '2e-7',
+             inhalation_W: '3e-7'
+         }
+      }
    },
    {
       name: 'Terbium-161',
