@@ -10694,17 +10694,13 @@ const InverseSquareCalculator = ({
                   buildup = 1 + mfp;
               }
             
-              // --- PHYSICS FIX: Handle Near-Zero Transmission ---
               let transmission = Math.pow(0.5, thickCm / hvl_cm);
               if (transmission < 1e-9) transmission = 0;
             
               const shieldedRate_R_hr = unshieldedRate_R_hr * transmission * buildup;
               const shieldedRate_mrem_hr = shieldedRate_R_hr * 1000;
             
-              // Calculate Reduction Factor (Inverse of Transmission)
-              // Handle effectively zero transmission to avoid Infinity
               let reductionFactor = transmission > 0 ? (1 / transmission) : 99999; 
-              // Cap visual reduction factor for UX cleanliness
               if (reductionFactor > 10000) reductionFactor = 10000;
             
               let warning = null;
@@ -10716,9 +10712,10 @@ const InverseSquareCalculator = ({
                   type: 'gamma_dose',
                   unshielded_mrem_hr: unshieldedRate_R_hr * 1000,
                   shielded_mrem_hr: shieldedRate_mrem_hr < 1e-9 ? 0 : shieldedRate_mrem_hr,
-                  transmission: transmission, // Keep raw for logic
+                  transmission: transmission,
                   reduction: reductionFactor,
                   buildup: buildup,
+                  hvl: hvl_cm, // <-- Added HVL to result
                   warning
               });
             
@@ -10728,7 +10725,7 @@ const InverseSquareCalculator = ({
               const target_R_hr = (targetVal * doseRateFactors_mrem_hr[targetDoseRateUnit]) / 1000;
             
               if (target_R_hr >= unshieldedRate_R_hr) {
-                  setResult({ type: 'thickness', val: 0, msg: "Target > Unshielded Rate", unshielded_mrem_hr: unshieldedRate_R_hr * 1000 });
+                  setResult({ type: 'thickness', val: 0, msg: "Target > Unshielded Rate", unshielded_mrem_hr: unshieldedRate_R_hr * 1000, hvl: hvl_cm });
                   return;
               }
             
@@ -10745,7 +10742,8 @@ const InverseSquareCalculator = ({
               setResult({
                   type: 'thickness',
                   val: reqThickCm,
-                  unshielded_mrem_hr: unshieldedRate_R_hr * 1000
+                  unshielded_mrem_hr: unshieldedRate_R_hr * 1000,
+                  hvl: hvl_cm // <-- Added HVL to result
               });
             }
             
@@ -10805,7 +10803,7 @@ const InverseSquareCalculator = ({
              </div>
             
              <div className="space-y-5">
-            
+                 {/* ... (Existing input fields logic - unchanged) ... */}
                  {/* 1. GAMMA DEFINITION MODE */}
                  {calcMode !== MODE_BETA_RANGE && (
                      <div className="flex justify-center mb-2">
@@ -10853,7 +10851,6 @@ const InverseSquareCalculator = ({
                          )}
                      </>
                  ) : (
-                     // 2B. KNOWN RATE INPUT + HELPER TEXT
                      <div className="animate-fade-in">
                          <label className="text-xs font-bold mb-1 block">Initial (Unshielded) Dose Rate</label>
                          <div className="flex">
@@ -10877,7 +10874,6 @@ const InverseSquareCalculator = ({
                      </div>
                  )}
             
-                 {/* 3. SHIELDING CONFIG */}
                  <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
                      <div className="flex justify-between items-center">
                          <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Shielding Configuration</label>
@@ -10931,9 +10927,11 @@ const InverseSquareCalculator = ({
                              </div>
                              <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-600 pt-3">
                                  <p>Unshielded: <strong>{formatDoseValue(result.unshielded_mrem_hr, 'doseRate', settings).value} {formatDoseValue(result.unshielded_mrem_hr, 'doseRate', settings).unit}</strong></p>
-                                 {/* Formatted Output: No more '43.5123x' */}
-                                 <p>Reduction Factor: <strong>{result.reduction > 10 ? Math.round(result.reduction) : result.reduction.toFixed(1)}x</strong></p>
-                                 {/* Formatted Output: 95.1% instead of 95.12312% */}
+                                 
+                                 {/* NEW HVL DISPLAY */}
+                                 <p>HVL Used: <strong>{result.hvl ? result.hvl.toFixed(3) : 'N/A'} cm</strong></p>
+            
+                                 <p>Shielding Factor: <strong>{result.reduction > 10 ? Math.round(result.reduction) : result.reduction.toFixed(1)}x</strong></p>
                                  <p>Transmission: <strong>{(result.transmission * 100).toFixed(1)}%</strong></p>
                                  {useBuildup && <p>Buildup Factor: <strong>{result.buildup.toFixed(2)}</strong></p>}
                              </div>
@@ -10951,7 +10949,7 @@ const InverseSquareCalculator = ({
                                          <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{formatSensibleUnit(result.val, 'distance').value}</span>
                                          <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{formatSensibleUnit(result.val, 'distance').unit}</span>
                                      </div>
-                                     <p className="text-sm text-slate-500">of {shieldMaterial}</p>
+                                     <p className="text-sm text-slate-500">of {shieldMaterial} (HVL: {result.hvl ? result.hvl.toFixed(3) : 'N/A'} cm)</p>
                                  </>
                              )}
                          </>
