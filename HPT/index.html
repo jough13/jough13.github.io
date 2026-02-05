@@ -10696,10 +10696,16 @@ const InverseSquareCalculator = ({
             
               // --- PHYSICS FIX: Handle Near-Zero Transmission ---
               let transmission = Math.pow(0.5, thickCm / hvl_cm);
-              if (transmission < 1e-9) transmission = 0; // Clamp absurdly small numbers to 0
+              if (transmission < 1e-9) transmission = 0;
             
               const shieldedRate_R_hr = unshieldedRate_R_hr * transmission * buildup;
               const shieldedRate_mrem_hr = shieldedRate_R_hr * 1000;
+            
+              // Calculate Reduction Factor (Inverse of Transmission)
+              // Handle effectively zero transmission to avoid Infinity
+              let reductionFactor = transmission > 0 ? (1 / transmission) : 99999; 
+              // Cap visual reduction factor for UX cleanliness
+              if (reductionFactor > 10000) reductionFactor = 10000;
             
               let warning = null;
               if (useBuildup && thickCm > (3 * hvl_cm)) {
@@ -10709,9 +10715,9 @@ const InverseSquareCalculator = ({
               setResult({
                   type: 'gamma_dose',
                   unshielded_mrem_hr: unshieldedRate_R_hr * 1000,
-                  // Check if rate effectively 0
                   shielded_mrem_hr: shieldedRate_mrem_hr < 1e-9 ? 0 : shieldedRate_mrem_hr,
-                  transmission: transmission,
+                  transmission: transmission, // Keep raw for logic
+                  reduction: reductionFactor,
                   buildup: buildup,
                   warning
               });
@@ -10836,7 +10842,7 @@ const InverseSquareCalculator = ({
                          )}
             
                          {calcMode === MODE_BETA_RANGE && !nuclideSymbol && (
-                              <div><label className="text-xs font-bold">Max Beta Energy (MeV)</label><input type="number" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
+                             <div><label className="text-xs font-bold">Max Beta Energy (MeV)</label><input type="number" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
                          )}
             
                          {calcMode !== MODE_BETA_RANGE && (
@@ -10925,9 +10931,11 @@ const InverseSquareCalculator = ({
                              </div>
                              <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-600 pt-3">
                                  <p>Unshielded: <strong>{formatDoseValue(result.unshielded_mrem_hr, 'doseRate', settings).value} {formatDoseValue(result.unshielded_mrem_hr, 'doseRate', settings).unit}</strong></p>
-                                 <p>Reduction: <strong>{result.reduction}x</strong></p>
-                                 <p>Transmission: <strong>{result.transmission}%</strong></p>
-                                 {useBuildup && <p>Buildup Factor: <strong>{result.buildup}</strong></p>}
+                                 {/* Formatted Output: No more '43.5123x' */}
+                                 <p>Reduction Factor: <strong>{result.reduction > 10 ? Math.round(result.reduction) : result.reduction.toFixed(1)}x</strong></p>
+                                 {/* Formatted Output: 95.1% instead of 95.12312% */}
+                                 <p>Transmission: <strong>{(result.transmission * 100).toFixed(1)}%</strong></p>
+                                 {useBuildup && <p>Buildup Factor: <strong>{result.buildup.toFixed(2)}</strong></p>}
                              </div>
                          </>
                      )}
