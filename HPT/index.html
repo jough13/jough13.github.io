@@ -314,43 +314,53 @@
              */
             
             const ToastProvider = ({ children }) => {
-            const [toasts, setToasts] = React.useState([]);
+                const [toasts, setToasts] = React.useState([]);
             
-            const addToast = (message) => {
-            const id = Date.now();
-            setToasts(prevToasts => [...prevToasts, { id, message }]);
-            setTimeout(() => {
-               removeToast(id);
-            }, 3000);
+                const addToast = (message) => {
+                    // Date.now() is not unique enough for loops. 
+                    // Add Math.random() to ensure uniqueness.
+                    const id = Date.now() + Math.random(); 
+            
+                    setToasts(prevToasts => {
+                        // Limit to max 5 toasts to prevent screen flooding
+                        const updated = [...prevToasts, { id, message }];
+                        if (updated.length > 5) {
+                            return updated.slice(updated.length - 5);
+                        }
+                        return updated;
+                    });
+            
+                    setTimeout(() => {
+                        removeToast(id);
+                    }, 3000);
+                };
+            
+                const removeToast = (id) => {
+                    setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
+                };
+            
+                // A variable to hold the toast container's JSX
+                const toastContainer = (
+                    <div className="fixed bottom-4 right-4 z-[9999] space-y-2 pointer-events-none">
+                        {toasts.map(toast => (
+                            <div 
+                                key={toast.id} 
+                                className="animate-toast-in bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-4 py-3 rounded-lg shadow-lg flex items-center pointer-events-auto min-w-[250px]"
+                            >
+                                <Icon path={ICONS.check} className="w-5 h-5 mr-3 text-green-400" />
+                                <span className="text-sm font-medium">{toast.message}</span>
+                            </div>
+                        ))}
+                    </div>
+                );
+            
+                return (
+                    <ToastContext.Provider value={{ addToast }}>
+                        {children}
+                        {ReactDOM.createPortal(toastContainer, document.getElementById('toast-root'))}
+                    </ToastContext.Provider>
+                );
             };
-            
-            const removeToast = (id) => {
-            setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
-            };
-            
-            // ADDED: A variable to hold the toast container's JSX
-            const toastContainer = (
-            <div className="fixed bottom-4 right-4 z-50 space-y-2">
-               {toasts.map(toast => (
-                   <div key={toast.id} className="animate-toast-in bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800 px-4 py-3 rounded-lg shadow-lg flex items-center">
-                       <Icon path={ICONS.check} className="w-5 h-5 mr-3 text-green-400" />
-                       <span>{toast.message}</span>
-                   </div>
-               ))}
-            </div>
-            );
-            
-            return (
-            <ToastContext.Provider value={{ addToast }}>
-               {children}
-            
-               {/* CHANGED: Use ReactDOM.createPortal to render toasts outside this component's DOM hierarchy */}
-               {ReactDOM.createPortal(toastContainer, document.getElementById('toast-root'))}
-            
-            </ToastContext.Provider>
-            );
-            };
-            
             
             /**
             * @description Custom hook that delays updating a value until a specified time
@@ -1053,8 +1063,8 @@
              const [history, setHistory] = React.useState([]);
              const [isClearModalOpen, setIsClearModalOpen] = React.useState(false);
             
-    React.useEffect(() => {
-        const savedHistory = localStorage.getItem('rad_tool_calculation_history');
+            React.useEffect(() => {
+            const savedHistory = localStorage.getItem('rad_tool_calculation_history');
             if (savedHistory) {
                 try {
                     // Wrap JSON.parse in try/catch to prevent app crash on corrupted data
@@ -1070,7 +1080,7 @@
                     setHistory([]);
                 }
             }
-        }, []);
+            }, []);
             
              const handleClearHistory = () => {
                  localStorage.removeItem('rad_tool_calculation_history');
@@ -2902,7 +2912,22 @@
             const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
             const lambda = Math.log(2) / T_half_seconds;
             
+            // Prevent division by zero for stable nuclides
+            if (lambda === 0 || T_half_seconds === Infinity) {
+                setError("Selected nuclide is stable; it will not decay.");
+                setResult(null);
+                return;
+            }
+            
             const time_seconds = (-1 / lambda) * Math.log(Af_Bq / A0_Bq);
+            
+            // Prevent infinite chart rendering if math fails
+            if (!isFinite(time_seconds)) {
+                setError("Calculation resulted in an invalid time (possibly infinite). Check inputs.");
+                setResult(null);
+                return;
+            }
+            
             const num_half_lives = time_seconds / T_half_seconds;
             
             const bestUnit = getBestHalfLifeUnit(time_seconds);
@@ -3477,18 +3502,24 @@
                        lambdaUnit: lambdaUnit
                    });
                } else if (calculationMode === MODE_TIME) {
-                   if (isNaN(A0_Bq) || isNaN(At_Bq) || A0_Bq <= 0 || At_Bq < 0 || At_Bq > A0_Bq) throw new Error('Activities must be valid, with Remaining < Initial.');
-                   const timeInSeconds = (-1 / lambda) * Math.log(At_Bq / A0_Bq);
-                   const bestUnit = getBestHalfLifeUnit(timeInSeconds);
-                   const timeInBestUnit = timeInSeconds / unitConversions[bestUnit];
-                   setResult({
-                       label: 'Time Elapsed',
-                       value: timeInBestUnit.toPrecision(4),
-                       unit: bestUnit,
-                       lambdaVal: displayLambda.toPrecision(4),
-                       lambdaUnit: lambdaUnit
-                   });
-                   timeForChart_seconds = timeInSeconds;
+                if (isNaN(A0_Bq) || isNaN(At_Bq) || A0_Bq <= 0 || At_Bq < 0 || At_Bq > A0_Bq) throw new Error('Activities must be valid, with Remaining < Initial.');
+                
+                const timeInSeconds = (-1 / lambda) * Math.log(At_Bq / A0_Bq);
+                
+                // IMPROVEMENT: Use the existing utility to find the best unit
+                const bestUnit = getBestHalfLifeUnit(timeInSeconds); 
+                const timeInBestUnit = timeInSeconds / unitConversions[bestUnit];
+                
+                setResult({
+                    label: 'Time Elapsed',
+                    value: timeInBestUnit.toPrecision(4),
+                    unit: bestUnit, // Dynamically set unit based on magnitude
+                    lambdaVal: displayLambda.toPrecision(4),
+                    lambdaUnit: lambdaUnit
+                });
+                
+                timeForChart_seconds = timeInSeconds;
+            
                } else if (calculationMode === MODE_INITIAL) {
                    if (isNaN(At_Bq)) throw new Error('Remaining activity must be a valid number.');
                    const initial_Bq = At_Bq / Math.exp(-lambda * t_seconds);
@@ -8481,14 +8512,20 @@
             };
             
             const handleAddToCompare = (nuclideSymbol) => {
-            const nuclideToAdd = radionuclides.find(n => n.symbol === nuclideSymbol);
-            if (nuclideToAdd && !comparisonList.find(n => n.symbol === nuclideSymbol)) {
-            setComparisonList(prevList => [...prevList, nuclideToAdd]);
-            addToast(`${nuclideToAdd.name} added to comparison.`);
-            } else if (nuclideToAdd) {
-            addToast(`${nuclideToAdd.name} is already in the comparison.`);
-            }
-            window.location.hash = VIEWS.COMPARE;
+                const nuclideToAdd = radionuclides.find(n => n.symbol === nuclideSymbol);
+                
+                if (nuclideToAdd) {
+                    setComparisonList(prevList => {
+                        // Check for duplicates before adding
+                        if (prevList.some(n => n.symbol === nuclideSymbol)) {
+                            addToast(`${nuclideToAdd.name} is already in the comparison.`);
+                            return prevList;
+                        }
+                        addToast(`${nuclideToAdd.name} added to comparison.`);
+                        return [...prevList, nuclideToAdd];
+                    });
+                }
+                window.location.hash = VIEWS.COMPARE;
             };
             
             const handleRemoveFromCompare = (nuclideSymbol) => { setComparisonList(prevList => prevList.filter(n => n.symbol !== nuclideSymbol)); };
@@ -8539,7 +8576,7 @@
             if (selectedCategory !== 'All') { filtered = filtered.filter(n => n.category === selectedCategory); }
             if (selectedEmissionType !== 'All') { filtered = filtered.filter(n => n.emissionType?.includes(selectedEmissionType)); }
             if (selectedCommonality !== 'All') { filtered = filtered.filter(n => n.commonality === selectedCommonality); }
-
+            
             const filterByEnergyRange = (nuclide, type, min, max) => {
                 // Get all energies for this type (e.g., all gamma lines)
                 const energies = nuclide.emissionEnergies?.[type] || [];
@@ -8551,16 +8588,16 @@
                     // If user didn't request a range, keep it (neutral).
                     return true; 
                 }
-
+            
                 const minVal = parseFloat(min);
                 const maxVal = parseFloat(max);
-
+            
                 // If user inputs are invalid (empty), don't filter out anything based on them.
                 const hasMin = !isNaN(minVal);
                 const hasMax = !isNaN(maxVal);
                 
                 if (!hasMin && !hasMax) return true;
-
+            
                 // Check if AT LEAST ONE energy in the array meets the criteria
                 // Previously, this only checked the first element via parseEnergyToMeV(energies)
                 return energies.some(energyStr => {
@@ -8577,7 +8614,7 @@
                     return true;
                 });
             };
-
+            
             if (minAlphaEnergy || maxAlphaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'alpha', minAlphaEnergy, maxAlphaEnergy));
             if (minBetaEnergy || maxBetaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'beta', minBetaEnergy, maxBetaEnergy));
             if (minGammaEnergy || maxGammaEnergy) filtered = filtered.filter(n => filterByEnergyRange(n, 'gamma', minGammaEnergy, maxGammaEnergy));
@@ -9035,10 +9072,11 @@
             
             // Helper for HVL lookup
             const getHVL = (nuclide, material) => {
-            if (HVL_DATA[nuclide.symbol] && HVL_DATA[nuclide.symbol][material]) {
-            return HVL_DATA[nuclide.symbol][material];
-            }
-            return null;
+                // Check if HVL_DATA exists (it might be in a different file scope)
+                if (typeof HVL_DATA !== 'undefined' && HVL_DATA[nuclide.symbol] && HVL_DATA[nuclide.symbol][material]) {
+                    return HVL_DATA[nuclide.symbol][material];
+                }
+                return null; // Will render as 'N/A' in the table
             };
             
             const formatGammaSI = (valR) => (valR ? (valR * 0.01) / 3.7e10 : 0);
@@ -9155,12 +9193,21 @@
             
             // Quick Add Handlers
             const addGroup = (symbols) => {
-            // Clear existing, then add new ones
-            onClearCompare();
-            // Small timeout to allow state to clear before adding (optional, but safer in some react batches)
-            setTimeout(() => {
-            symbols.forEach(s => onAddToCompare(s));
-            }, 50);
+                // 1. Clear existing list first to prevent duplicates
+                onClearCompare();
+                
+                // 2. Filter out invalid symbols before adding
+                const validNuclides = symbols
+                    .map(s => radionuclides.find(n => n.symbol === s))
+                    .filter(n => n !== undefined);
+            
+                // 3. Use a Set to ensure uniqueness within the group being added
+                const uniqueNuclides = [...new Set(validNuclides)];
+            
+                // 4. Add them in a batch
+                setTimeout(() => {
+                    uniqueNuclides.forEach(n => onAddToCompare(n.symbol));
+                }, 50);
             };
             
             const handleExportToCSV = () => {
@@ -9223,13 +9270,13 @@
                 </div>
             </div>
             ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto relative shadow-md rounded-lg">
                 <table className="w-full min-w-[600px] text-left border-collapse">
                     <thead>
                         <tr>
-                            <th className="sticky left-0 top-0 z-20 bg-slate-50 dark:bg-slate-700 p-3 text-sm font-semibold border-b border-r border-slate-200 dark:border-slate-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Property</th>
+                            <th className="sticky left-0 top-0 z-30 bg-slate-50 dark:bg-slate-700 p-3 text-sm font-semibold border-b border-r border-slate-200 dark:border-slate-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Property</th>
                             {comparisonList.map(nuclide => (
-                                <th key={nuclide.symbol} className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 p-3 text-sm font-semibold border-b border-slate-200 dark:border-slate-600 min-w-[140px]">
+                                <th key={nuclide.symbol} className="sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 p-3 text-sm font-semibold border-b border-slate-200 dark:border-slate-600 min-w-[140px]">
                                     <div className="flex justify-between items-center">
                                         <span className="cursor-pointer hover:text-sky-500" onClick={() => onNuclideClick(nuclide)}>{nuclide.name}</span>
                                         <button onClick={() => onRemoveFromCompare(nuclide.symbol)} className="ml-2 text-slate-400 hover:text-red-500"><Icon path={ICONS.clear} className="w-4 h-4"/></button>
@@ -9318,7 +9365,6 @@
             }
             }
             }
-            
             
             // highlightMode logic
             if (prop.highlightMode === 'highGood') {
@@ -11584,6 +11630,7 @@
             * @description A unified calculator for determining detection limits for both
             * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc.
             */
+            
             const MDACalculator = ({ onNavClick, onDeepLink }) => {
             const MDA_MODE_STATIC = 'static';
             const MDA_MODE_SCAN = 'scan';
@@ -11608,8 +11655,6 @@
             const [outputUnit, setOutputUnit] = React.useState(() => localStorage.getItem('mda_outputUnit') || 'dpm/100cm²');
             const [sampleVolume, setSampleVolume] = React.useState(() => localStorage.getItem('mda_sampleVolume') || '1');
             const [sampleMass, setSampleMass] = React.useState(() => localStorage.getItem('mda_sampleMass') || '100');
-            
-            // NEW: Target Limit State
             const [targetLimit, setTargetLimit] = React.useState(() => localStorage.getItem('mda_targetLimit') || '');
             
             // Scan State
@@ -11624,8 +11669,6 @@
             // --- Data and Constants ---
             const MDA_UNIT_CONFIG = { 'counts': { label: 'LLD (counts)', category: 'Counts', requires: [] }, 'cpm': { label: 'LLD Rate (cpm)', category: 'Rate', requires: [] }, 'dpm': { label: 'Activity (dpm)', category: 'Activity', requires: ['efficiency'] }, 'Bq': { label: 'Activity (Bq)', category: 'Activity', requires: ['efficiency'] }, 'µCi': { label: 'Activity (µCi)', category: 'Activity', requires: ['efficiency'] }, 'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration', requires: ['efficiency', 'area'] }, 'Bq/L': { label: 'Liquid (Bq/L)', category: 'Concentration', requires: ['efficiency', 'volume'] }, 'pCi/g': { label: 'Solid (pCi/g)', category: 'Concentration', requires: ['efficiency', 'mass'] } };
             const dpmFactors = { 'dpm': 1, 'Bq': 1 / 60, 'µCi': 1 / 2.22e6 };
-            const dprimeOptions = [ { value: '1.38', label: '1.38 (95% detection prob.)' }, { value: '1.28', label: '1.28 (90% detection prob.)' }, { value: '1.04', label: '1.04 (85% detection prob.)' }, { value: '3.0', label: '3.0 (High Confidence)' } ];
-            const surveyorEffOptions = [ { value: '0.5', label: '0.5 (Standard/Audible)' }, { value: '0.75', label: '0.75 (Optimistic)' }, { value: '1.0', label: '1.0 (Data Logger/Scaler)' } ];
             
             const PROBE_PRESETS = {
             'custom': { label: 'Custom / Manual', area: '', dim: '' },
@@ -11665,13 +11708,24 @@
             }
             };
             
-            // Helper to calculate total efficiency
+            const handleTabSwitch = (newMode) => {
+            if (newMode === MDA_MODE_SCAN && backgroundMode === 'counts') {
+            const cts = parseFloat(bkgCounts);
+            const tm = parseFloat(bkgTime);
+            if (!isNaN(cts) && !isNaN(tm) && tm > 0) {
+                setBackgroundCpm((cts / tm).toString());
+                setBackgroundMode('rate');
+                addToast("Background rate synced from counts.");
+            }
+            }
+            setMdaMode(newMode);
+            };
+            
             const getTotalEfficiency = (iEff, sEff) => (iEff / 100.0) * (sEff / 100.0);
             
             const handleStaticCalculate = React.useCallback(() => {
-            // Determine Bkg Rate based on mode
             let bkgRate = 0;
-            let Tb = 0; // Bkg time
+            let Tb = 0;
             
             if (backgroundMode === 'rate') {
             bkgRate = parseFloat(backgroundCpm);
@@ -11690,61 +11744,40 @@
             const V = parseFloat(sampleVolume);
             const M = parseFloat(sampleMass);
             
-            if (isNaN(bkgRate) || isNaN(Ts) || Ts <= 0) {
-            throw new Error('Please enter valid, positive numbers for background and time.');
-            }
+            if (isNaN(bkgRate) || isNaN(Ts) || Ts <= 0) throw new Error('Please enter valid, positive numbers for background and time.');
             
-            // Currie Equation Selection
             let Ld_counts;
-            
-            // If we entered Counts+Time and times differ significantly (>1%), use NUREG-1507 Exact
             if (backgroundMode === 'counts' && Math.abs(Ts - Tb) > 0.01 * Ts) {
-            // Exact Unpaired
             Ld_counts = (2.71) + 3.29 * Math.sqrt(bkgRate * Ts * (1 + Ts/Tb));
             } else {
-            // Simplified (Paired or Rate-only assumption)
             Ld_counts = 2.71 + 4.65 * Math.sqrt(bkgRate * Ts);
             }
             
-            // Calculate MDA (Activity)
-            if (isNaN(ei) || isNaN(es) || ei <= 0 || es <= 0) { throw new Error('Valid efficiencies are required.'); }
+            if (isNaN(ei) || isNaN(es) || ei <= 0 || es <= 0) throw new Error('Valid efficiencies are required.');
             const E_total = getTotalEfficiency(ei, es);
-            
-            // Base MDA in DPM
             const mda_dpm = (Ld_counts / Ts) / E_total;
             
-            // Convert to output unit
-            // Convert to output unit
             let finalMDA;
-            
-            // 1. Check Category-based conversions (Activity)
             if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
-               finalMDA = mda_dpm * dpmFactors[outputUnit];
-            } 
-            // 2. Specific Surface/Volume/Mass conversions
-            else if (outputUnit === 'dpm/100cm²') {
-               if (isNaN(A) || A <= 0) throw new Error('Probe Area is required.');
-               finalMDA = mda_dpm * (100 / A);
+            finalMDA = mda_dpm * dpmFactors[outputUnit];
+            } else if (outputUnit === 'dpm/100cm²') {
+            if (isNaN(A) || A <= 0) throw new Error('Probe Area is required.');
+            finalMDA = mda_dpm * (100 / A);
             } else if (outputUnit === 'Bq/L') {
-               if (isNaN(V) || V <= 0) throw new Error('Sample Volume is required.');
-               finalMDA = (mda_dpm / 60) / V;
+            if (isNaN(V) || V <= 0) throw new Error('Sample Volume is required.');
+            finalMDA = (mda_dpm / 60) / V;
             } else if (outputUnit === 'pCi/g') {
-               if (isNaN(M) || M <= 0) throw new Error('Sample Mass is required.');
-               finalMDA = (mda_dpm / 2.22) / M;
-            } 
-            // 3. Raw Count/Rate conversions
-            else if (outputUnit === 'cpm') {
-               finalMDA = Ld_counts / Ts;
-            } else if (outputUnit === 'counts') { // <--- ADD THIS BLOCK
-               finalMDA = Ld_counts;
+            if (isNaN(M) || M <= 0) throw new Error('Sample Mass is required.');
+            finalMDA = (mda_dpm / 2.22) / M;
+            } else if (outputUnit === 'cpm') {
+            finalMDA = Ld_counts / Ts;
+            } else if (outputUnit === 'counts') {
+            finalMDA = Ld_counts;
             }
             
-            // --- NEW: Time to Target Logic ---
             let timeToTarget = null;
             const target = parseFloat(targetLimit);
-            
-            // Only calculate if we have a target and the current MDA is failing (higher than target)
-            if (!isNaN(target) && target > 0 && finalMDA > target) {
+            if (outputUnit !== 'counts' && !isNaN(target) && target > 0 && finalMDA > target) {
             timeToTarget = Ts * Math.pow(finalMDA / target, 2);
             }
             
@@ -11759,7 +11792,7 @@
             }, [backgroundMode, bkgCounts, bkgTime, backgroundCpm, grossTime, instrumentEff, surfaceEff, outputUnit, probeArea, sampleVolume, sampleMass, targetLimit]);
             
             const handleScanCalculate = React.useCallback(() => {
-            const bkgRate = parseFloat(backgroundCpm); // Always Rate for scan
+            const bkgRate = parseFloat(backgroundCpm);
             const dimension_cm = parseFloat(probeDimension);
             const eff_i = parseFloat(instrumentEff);
             const eff_s = parseFloat(surfaceEff);
@@ -11785,7 +11818,8 @@
             type: 'scan',
             obs_interval: residence_time_s.toPrecision(2),
             scan_mda: scan_mda.toPrecision(3),
-            isAlphaWarn: bkgRate < 5 // Flag for Alpha context
+            scan_mdcr: mdcr_surveyor_cpm.toFixed(0),
+            isAlphaWarn: bkgRate < 5
             });
             }, [backgroundCpm, probeDimension, instrumentEff, surfaceEff, scanSpeed, dprime, surveyorEff, probeArea]);
             
@@ -11793,15 +11827,7 @@
             if (!result) return;
             let inputs = mdaMode === MDA_MODE_STATIC ? `Time: ${grossTime} min` : `Speed: ${scanSpeed} cm/s`;
             let resString = mdaMode === MDA_MODE_STATIC ? `${result.MDA} ${result.unit}` : `${result.scan_mda} dpm/100cm²`;
-            
-            addHistory({
-            id: Date.now(),
-            type: mdaMode === MDA_MODE_STATIC ? 'Static MDA' : 'Scan MDC',
-            icon: ICONS.search,
-            inputs: inputs,
-            result: resString,
-            view: VIEWS.MDA
-            });
+            addHistory({ id: Date.now(), type: mdaMode === MDA_MODE_STATIC ? 'Static MDA' : 'Scan MDC', icon: ICONS.search, inputs: inputs, result: resString, view: VIEWS.MDA });
             addToast("Calculation saved to history!");
             };
             
@@ -11827,127 +11853,126 @@
             return (
             <div className="p-4 animate-fade-in">
             <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Detection Limit Calculator</h2>
-            <ClearButton onClick={handleClearInputs} />
-            </div>
-            <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-            <button onClick={() => setMdaMode(MDA_MODE_STATIC)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_STATIC ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Static Count MDA</button>
-            <button onClick={() => setMdaMode(MDA_MODE_SCAN)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_SCAN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Scan Survey MDC</button>
-            </div>
-            
-            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 mb-4">
-            <div className="flex justify-between items-center -mb-2">
-                <h3 className="text-md font-semibold text-center">Shared Inputs</h3>
-                <div className="flex items-center gap-2">
-                     <span className="text-xs text-slate-500">Preset:</span>
-                     <select onChange={(e) => handlePresetChange(e.target.value)} className="text-xs p-1 rounded border border-slate-300 dark:bg-slate-700 dark:border-slate-600">
-                         {Object.entries(PROBE_PRESETS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                     </select>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Detection Limit Calculator</h2>
+                    <ClearButton onClick={handleClearInputs} />
                 </div>
-            </div>
-            
-            {mdaMode === MDA_MODE_STATIC && (
-                <div className="flex bg-slate-100 dark:bg-slate-900 rounded p-1 text-xs">
-                     <button onClick={() => setBackgroundMode('rate')} className={`flex-1 py-1 rounded ${backgroundMode === 'rate' ? 'bg-white dark:bg-slate-600 shadow' : ''}`}>Enter Rate (CPM)</button>
-                     <button onClick={() => setBackgroundMode('counts')} className={`flex-1 py-1 rounded ${backgroundMode === 'counts' ? 'bg-white dark:bg-slate-600 shadow' : ''}`}>Enter Counts</button>
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                    <button onClick={() => handleTabSwitch(MDA_MODE_STATIC)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_STATIC ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Static Count MDA</button>
+                    <button onClick={() => handleTabSwitch(MDA_MODE_SCAN)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_SCAN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Scan Survey MDC</button>
                 </div>
-            )}
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {backgroundMode === 'rate' || mdaMode === MDA_MODE_SCAN ? (
-                     <div><label className="block text-sm font-medium">Background Rate (cpm)</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                ) : (
-                     <>
-                        <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                        <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                     </>
-                )}
-                
-                <div><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Source Eff. (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            </div>
-            </div>
+                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 mb-4">
+                    <div className="flex justify-between items-center -mb-2">
+                        <h3 className="text-md font-semibold text-center">Shared Inputs</h3>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-500">Preset:</span>
+                            <select onChange={(e) => handlePresetChange(e.target.value)} className="text-xs p-1 rounded border border-slate-300 dark:bg-slate-700 dark:border-slate-600">
+                                {Object.entries(PROBE_PRESETS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                            </select>
+                        </div>
+                    </div>
             
-            {/* Specific Inputs */}
-            {mdaMode === MDA_MODE_STATIC ? (
-            <div className="space-y-4 animate-fade-in">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" value={grossTime} onChange={e => setGrossTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                    <div><label className="block text-sm font-medium">Desired Unit</label><select value={outputUnit} onChange={e => setOutputUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{ Object.keys(MDA_UNIT_CONFIG).map(u => <option key={u} value={u}>{MDA_UNIT_CONFIG[u].label}</option>) }</select></div>
-                </div>
-                    {MDA_UNIT_CONFIG[outputUnit].requires.includes('volume') && (
-                        <div><label className="block text-sm font-medium">Sample Volume (L)</label><input type="number" value={sampleVolume} onChange={e => setSampleVolume(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                    {mdaMode === MDA_MODE_STATIC && (
+                        <div className="flex bg-slate-100 dark:bg-slate-900 rounded p-1 text-xs">
+                            <button onClick={() => setBackgroundMode('rate')} className={`flex-1 py-1 rounded ${backgroundMode === 'rate' ? 'bg-white dark:bg-slate-600 shadow' : ''}`}>Enter Rate (CPM)</button>
+                            <button onClick={() => setBackgroundMode('counts')} className={`flex-1 py-1 rounded ${backgroundMode === 'counts' ? 'bg-white dark:bg-slate-600 shadow' : ''}`}>Enter Counts</button>
+                        </div>
                     )}
-                    {MDA_UNIT_CONFIG[outputUnit].requires.includes('mass') && (
-                        <div><label className="block text-sm font-medium">Sample Mass (g)</label><input type="number" value={sampleMass} onChange={e => setSampleMass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                    )}
-                {/* Target Limit Input */}
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Target Limit (Optional)</label>
-                    <div className="flex items-center gap-2">
-                        <input type="number" value={targetLimit} onChange={e => setTargetLimit(e.target.value)} placeholder={`e.g. 1000`} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                        <span className="text-xs text-slate-500 mt-1 whitespace-nowrap">{outputUnit}</span>
+            
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {backgroundMode === 'rate' || mdaMode === MDA_MODE_SCAN ? (
+                            <div><label className="block text-sm font-medium">Background Rate (cpm)</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        ) : (
+                            <>
+                                <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                                <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            </>
+                        )}
+            
+                        <div><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        <div><label className="block text-sm font-medium">Source Eff. (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                     </div>
                 </div>
-            </div>
-            ) : (
-            <div className="space-y-4 animate-fade-in">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label className="block text-sm font-medium">Scan Speed (cm/s)</label><input type="number" value={scanSpeed} onChange={e => setScanSpeed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                    <div><label className="block text-sm font-medium">Probe Width (cm)</label><input type="number" value={probeDimension} onChange={e => setProbeDimension(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                </div>
-            </div>
-            )}
             
-            {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+                {mdaMode === MDA_MODE_STATIC ? (
+                    <div className="space-y-4 animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" value={grossTime} onChange={e => setGrossTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Desired Unit</label><select value={outputUnit} onChange={e => setOutputUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(MDA_UNIT_CONFIG).map(u => <option key={u} value={u}>{MDA_UNIT_CONFIG[u].label}</option>)}</select></div>
+                        </div>
+                        {MDA_UNIT_CONFIG[outputUnit].requires.includes('volume') && (
+                            <div><label className="block text-sm font-medium">Sample Volume (L)</label><input type="number" value={sampleVolume} onChange={e => setSampleVolume(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        )}
+                        {MDA_UNIT_CONFIG[outputUnit].requires.includes('mass') && (
+                            <div><label className="block text-sm font-medium">Sample Mass (g)</label><input type="number" value={sampleMass} onChange={e => setSampleMass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        )}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Target Limit (Optional)</label>
+                            <div className="flex items-center gap-2">
+                                <input type="number" value={targetLimit} onChange={e => setTargetLimit(e.target.value)} placeholder={`e.g. 1000`} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                                <span className="text-xs text-slate-500 mt-1 whitespace-nowrap">{outputUnit}</span>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-4 animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label className="block text-sm font-medium">Scan Speed (cm/s)</label><input type="number" value={scanSpeed} onChange={e => setScanSpeed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Probe Dimension (Scan Direction)</label><input type="number" value={probeDimension} onChange={e => setProbeDimension(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        </div>
+                    </div>
+                )}
             
-            {result && (
-            <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in shadow-sm">
-                <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSaveToHistory} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
-                
-                {result.type === 'static' ? (
-                    <>
-                        <p className="text-xs uppercase font-bold text-slate-500 text-center">
-                                       {['cpm', 'counts'].includes(result.unit) ? 'Detection Limit (Ld)' : 'Minimum Detectable Activity'}
-                                   </p>
-                                   
-                                   <div className="flex items-center justify-center gap-2">
-                                       <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.MDA}</span>
-                                       <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit}</span>
-                                   </div>
+                {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
             
-                        {/* Target Comparison Logic */}
-                        {targetLimit && (
-                            <div className={`mt-3 p-3 rounded text-center border-l-4 ${parseFloat(result.MDA) <= parseFloat(targetLimit) ? 'bg-green-100 border-green-500 text-green-800' : 'bg-red-100 border-red-500 text-red-800'}`}>
-                                <p className="font-bold text-sm">{parseFloat(result.MDA) <= parseFloat(targetLimit) ? "PASS: Meets Limit" : "FAIL: Exceeds Limit"}</p>
-                                
-                                {/* Time to Target Suggestion */}
-                                {parseFloat(result.MDA) > parseFloat(targetLimit) && result.timeToTarget && (
-                                    <p className="text-xs mt-1">
-                                        To reach {targetLimit} {result.unit}, increase sample time to <strong>{result.timeToTarget} min</strong>.
+                {result && (
+                    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in shadow-sm">
+                        <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSaveToHistory} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5" /></button></div>
+            
+                        {result.type === 'static' ? (
+                            <>
+                                <p className="text-xs uppercase font-bold text-slate-500 text-center">
+                                    {['cpm', 'counts'].includes(result.unit) ? 'Detection Limit (Ld)' : 'Minimum Detectable Activity'}
+                                </p>
+            
+                                <div className="flex items-center justify-center gap-2">
+                                    <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.MDA}</span>
+                                    <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit}</span>
+                                </div>
+            
+                                {targetLimit && (
+                                    <div className={`mt-3 p-3 rounded text-center border-l-4 ${parseFloat(result.MDA) <= parseFloat(targetLimit) ? 'bg-green-100 border-green-500 text-green-800' : 'bg-red-100 border-red-500 text-red-800'}`}>
+                                        <p className="font-bold text-sm">{parseFloat(result.MDA) <= parseFloat(targetLimit) ? "PASS: Meets Limit" : "FAIL: Exceeds Limit"}</p>
+                                        {parseFloat(result.MDA) > parseFloat(targetLimit) && result.timeToTarget && (
+                                            <p className="text-xs mt-1">
+                                                To reach {targetLimit} {result.unit}, increase sample time to <strong>{result.timeToTarget} min</strong>.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-xs uppercase font-bold text-slate-500 text-center">Scan MDC</p>
+                                <div className="flex items-center justify-center gap-2">
+                                    <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.scan_mda}</span>
+                                    <span className="text-md font-semibold text-slate-600 dark:text-slate-300">dpm/100cm²</span>
+                                </div>
+                                <div className="mt-2 text-center border-t border-slate-200 dark:border-slate-600 pt-2">
+                                    <p className="text-xs text-slate-500">Surveyor Minimum Detectable Count Rate</p>
+                                    <p className="font-mono font-bold text-lg text-slate-700 dark:text-slate-200">{result.scan_mdcr} net cpm</p>
+                                </div>
+                                {result.isAlphaWarn && (
+                                    <p className="text-xs text-amber-600 mt-2 text-center bg-amber-50 p-2 rounded">
+                                        <strong>Note:</strong> Background is very low (&lt;5 cpm). MARSSIM probability methods (Section 6.7.2.2) may be more accurate than the <em>d'</em> method for Alpha scanning.
                                     </p>
                                 )}
-                            </div>
+                            </>
                         )}
-                    </>
-                ) : (
-                    <>
-                        <p className="text-xs uppercase font-bold text-slate-500 text-center">Scan MDC</p>
-                        <div className="flex items-center justify-center gap-2">
-                            <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.scan_mda}</span>
-                            <span className="text-md font-semibold text-slate-600 dark:text-slate-300">dpm/100cm²</span>
-                        </div>
-                        {result.isAlphaWarn && (
-                            <p className="text-xs text-amber-600 mt-2 text-center bg-amber-50 p-2 rounded">
-                                <strong>Note:</strong> Background is very low (&lt;5 cpm). MARSSIM probability methods (Section 6.7.2.2) may be more accurate than the <em>d'</em> method for Alpha scanning.
-                            </p>
-                        )}
-                    </>
+                    </div>
                 )}
-            </div>
-            )}
             </div>
             </div>
             );
@@ -11978,7 +12003,6 @@
             '0.10': 1.282, '0.20': 0.841,
             };
             
-            // HIGH PRECISION MATH HELPER (Abramowitz & Stegun 7.1.26)
             const getNormalCDF = (x) => {
             const t = 1 / (1 + 0.2316419 * Math.abs(x));
             const d = 0.3989423 * Math.exp(-x * x / 2);
@@ -12042,28 +12066,17 @@
             let isWRS = false;
             
             if (backgroundPresence === 'insignificant') {
-            // --- SIGN TEST ---
             methodLabel = 'No Background Correction (Sign Formula)';
             Pr = getNormalCDF(usedRelShift);
             if (Pr <= 0.5) { setError("Relative Shift too low."); setResult(null); return; }
-            
-            // Sign Formula: Result is N for the Survey Unit
             N_raw = Math.pow(z1_alpha + z1_beta, 2) / (4 * Math.pow(Pr - 0.5, 2));
-            
-            // Apply 20% margin, then round up
             samplesPerUnit = Math.ceil(N_raw * 1.20);
-            
             } else {
-            // --- WRS TEST ---
             isWRS = true;
             methodLabel = 'With Background Reference (WRS Formula)';
             Pr = getNormalCDF(usedRelShift / Math.sqrt(2));
             if (Pr <= 0.5) { setError("Relative Shift too low."); setResult(null); return; }
-            
-            // WRS Formula: Result is TOTAL N (Ref + Survey)
             N_raw = Math.pow(z1_alpha + z1_beta, 2) / (3 * Math.pow(Pr - 0.5, 2));
-            
-            // Apply 20% margin to total, then divide by 2 for "N/2" (Per Unit)
             const N_total_with_margin = N_raw * 1.20;
             samplesPerUnit = Math.ceil(N_total_with_margin / 2);
             }
@@ -12080,12 +12093,12 @@
             const handleSaveToHistory = () => {
             if (result) {
             addHistory({
-              id: Date.now(),
-              type: 'MARSSIM Samples',
-              icon: ICONS.calculator,
-              inputs: `${result.methodLabel}, Δ/σ: ${result.relativeShift}`,
-              result: `${result.final_N} samples`,
-              view: VIEWS.MARSSIM_SAMPLES
+                id: Date.now(),
+                type: 'MARSSIM Samples',
+                icon: ICONS.calculator,
+                inputs: `${result.methodLabel}, Δ/σ: ${result.relativeShift}`,
+                result: `${result.final_N} samples`,
+                view: VIEWS.MARSSIM_SAMPLES
             });
             addToast("Calculation saved to history!");
             }
@@ -12096,119 +12109,118 @@
             return (
             <div className="p-4 animate-fade-in">
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-              <div className="flex justify-between items-center mb-1">
-                  <h2 className="text-xl font-bold text-slate-800 dark:text-white">MARSSIM Samples Calculator</h2>
-                  <ClearButton onClick={handleClearInputs} />
-              </div>
+                <div className="flex justify-between items-center mb-1">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">MARSSIM Samples Calculator</h2>
+                    <ClearButton onClick={handleClearInputs} />
+                </div>
             
-              {/* Simplified Toggle */}
-              <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Is the Contaminant present in Background?</label>
-                  <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="bgP" value="insignificant" checked={backgroundPresence === 'insignificant'} onChange={e => setBackgroundPresence(e.target.value)} className="text-sky-600"/>
-                          <span className="text-sm font-medium">No (Use Sign Formula)</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="bgP" value="significant" checked={backgroundPresence === 'significant'} onChange={e => setBackgroundPresence(e.target.value)} className="text-sky-600"/>
-                          <span className="text-sm font-medium">Yes (Use WRS Formula)</span>
-                      </label>
-                  </div>
-              </div>
+                <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Is the Contaminant present in Background?</label>
+                    <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="bgP" value="insignificant" checked={backgroundPresence === 'insignificant'} onChange={e => setBackgroundPresence(e.target.value)} className="text-sky-600"/>
+                            <span className="text-sm font-medium">No (Use Sign Formula)</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="bgP" value="significant" checked={backgroundPresence === 'significant'} onChange={e => setBackgroundPresence(e.target.value)} className="text-sky-600"/>
+                            <span className="text-sm font-medium">Yes (Use WRS Formula)</span>
+                        </label>
+                    </div>
+                </div>
             
-              <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                      <div>
-                          <label className="block text-sm font-medium">Type I Error (α)</label>
-                          <select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                              {Object.keys(zScores).map(key => <option key={key} value={key}>{key}</option>)}
-                          </select>
-                      </div>
-                      <div>
-                          <label className="block text-sm font-medium">Type II Error (β)</label>
-                          <select value={beta} onChange={e => setBeta(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                              {Object.keys(zScores).map(key => <option key={key} value={key}>{key}</option>)}
-                          </select>
-                      </div>
-                  </div>
-                  <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                      <div>
-                          <label className="block text-sm font-medium">Estimated Std. Deviation (σ)</label>
-                          <input type="number" value={sigma} onChange={e => setSigma(e.target.value)} placeholder="in units of DCGL" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
-                      </div>
-                      <div>
-                          <label className="block text-sm font-medium">DCGL (Limit)</label>
-                          <input type="number" value={dcgl} onChange={e => setDcgl(e.target.value)} placeholder="Cleanup limit" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
-                      </div>
-                      <div>
-                          <label className="block text-sm font-medium">LBGR (Mean)</label>
-                          <input type="number" value={lbgr} onChange={e => setLbgr(e.target.value)} placeholder="Concentration that is 'clean'" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
-                      </div>
-                  </div>
+                <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium">Type I Error (α)</label>
+                            <select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                {Object.keys(zScores).map(key => <option key={key} value={key}>{key}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium">Type II Error (β)</label>
+                            <select value={beta} onChange={e => setBeta(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                                {Object.keys(zScores).map(key => <option key={key} value={key}>{key}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium">Estimated Std. Deviation (σ)</label>
+                            <input type="number" value={sigma} onChange={e => setSigma(e.target.value)} placeholder="in units of DCGL" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium">DCGL (Limit)</label>
+                            <input type="number" value={dcgl} onChange={e => setDcgl(e.target.value)} placeholder="Cleanup limit" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium">LBGR (Mean)</label>
+                            <input type="number" value={lbgr} onChange={e => setLbgr(e.target.value)} placeholder="Concentration that is 'clean'" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                        </div>
+                    </div>
             
-                  <details className="p-3 my-2 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700">
-                      <summary className="cursor-pointer text-sm font-semibold text-slate-600 dark:text-slate-300">
-                          Scoping Data Helper
-                      </summary>
-                      <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-3">
-                          <div className="flex items-end gap-2">
-                              <div className="flex-grow">
-                                  <label className="block text-xs font-medium">Coefficient of Variation (CV)</label>
-                                  <input type="number" value={cv} onChange={e => setCv(e.target.value)} step="0.05" className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-700" />
-                              </div>
-                              <button onClick={handleCalculateSigma} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 rounded-md font-semibold hover:bg-slate-300 dark:hover:bg-slate-500">
-                                  Calculate σ
-                              </button>
-                          </div>
-                          <button onClick={handleSetLbgr} className="w-full px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 rounded-md font-semibold hover:bg-slate-300 dark:hover:bg-slate-500">
-                              Set LBGR to 50% of DCGL
-                          </button>
-                      </div>
-                  </details>
+                    <details className="p-3 my-2 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700">
+                        <summary className="cursor-pointer text-sm font-semibold text-slate-600 dark:text-slate-300">
+                            Scoping Data Helper
+                        </summary>
+                        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-3">
+                            <div className="flex items-end gap-2">
+                                <div className="flex-grow">
+                                    <label className="block text-xs font-medium">Coefficient of Variation (CV)</label>
+                                    <input type="number" value={cv} onChange={e => setCv(e.target.value)} step="0.05" className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-700" />
+                                </div>
+                                <button onClick={handleCalculateSigma} className="px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 rounded-md font-semibold hover:bg-slate-300 dark:hover:bg-slate-500">
+                                    Calculate σ
+                                </button>
+                            </div>
+                            <button onClick={handleSetLbgr} className="w-full px-3 py-2 text-sm bg-slate-200 dark:bg-slate-600 rounded-md font-semibold hover:bg-slate-300 dark:hover:bg-slate-500">
+                                Set LBGR to 50% of DCGL
+                            </button>
+                        </div>
+                    </details>
             
-                  <button onClick={handleSaveToHistory} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Save to Calculations</button>
+                    <button onClick={handleSaveToHistory} className="w-full py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition">Save to Calculations</button>
             
-                  {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             
-                  {result && (
-                      <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
-                          <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-600">
-                              <span className="text-sm font-bold text-slate-500 uppercase">Calculation Method</span>
-                              <span className={`text-sm font-mono font-bold ${parseFloat(result.relativeShift) < 1 || parseFloat(result.relativeShift) > 3 ? 'text-amber-500' : 'text-green-600'}`}>Δ/σ: {result.relativeShift}</span>
-                          </div>
+                    {result && (
+                        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-600">
+                                <span className="text-sm font-bold text-slate-500 uppercase">Calculation Method</span>
+                                <span className={`text-sm font-mono font-bold ${parseFloat(result.relativeShift) < 1 || parseFloat(result.relativeShift) > 3 ? 'text-amber-500' : 'text-green-600'}`}>Δ/σ: {result.relativeShift}</span>
+                            </div>
             
-                          <div className="py-2">
-                              <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">
-                                  {/* DYNAMIC LABEL CHANGE */}
-                                  {result.isWRS ? "Required Survey Points (N/2)" : "Required Survey Points (N)"}
-                              </p>
-                              <div className="flex items-center justify-center gap-2">
-                                  <p className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{result.final_N}</p>
-                                  <CopyButton textToCopy={result.final_N} />
-                              </div>
-                              <p className="text-xs font-medium text-slate-600 dark:text-slate-300 mt-1">(Includes 20% MARSSIM adjustment)</p>
-                          </div>
+                            <div className="py-2">
+                                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">
+                                    {result.isWRS ? "Required Survey Points (N/2)" : "Required Survey Points (N)"}
+                                </p>
+                                <div className="flex items-center justify-center gap-2">
+                                    <p className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{result.final_N}</p>
+                                    <CopyButton textToCopy={result.final_N} />
+                                </div>
+                                <p className="text-xs font-medium text-slate-600 dark:text-slate-300 mt-1">(Includes 20% MARSSIM adjustment)</p>
+                            </div>
             
-                          {result.isWRS && (
-                              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-200 dark:border-amber-700 text-xs text-amber-800 dark:text-amber-200">
-                                  <strong>WRS Requirement:</strong> You must also collect <strong>{result.final_N}</strong> samples in your Reference Area.
-                              </div>
-                          )}
+                            {result.isWRS && (
+                                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-200 dark:border-amber-700 text-xs text-amber-800 dark:text-amber-200">
+                                    <strong>WRS Requirement:</strong> You must also collect <strong>{result.final_N}</strong> samples in your Reference Area.
+                                </div>
+                            )}
             
-                          <button
-                              onClick={() => onTransferResults(result.final_N)}
-                              className="flex items-center justify-center gap-2 w-full py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition shadow-sm hover:shadow-md"
-                          >
-                              <Icon path={ICONS.map} className="w-5 h-5" />
-                              Map These Points &rarr;
-                          </button>
-                      </div>
-                  )}
-              </div>
+                            <button
+                                onClick={() => onTransferResults(result.final_N)}
+                                className="flex items-center justify-center gap-2 w-full py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition shadow-sm hover:shadow-md"
+                            >
+                                <Icon path={ICONS.map} className="w-5 h-5" />
+                                Map These Points &rarr;
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
             </div>
             );
             };
+            
             /**
             * @description React component for a graphical survey unit drawing tool. This utility
             * allows users to visually plan and lay out radiation survey points on an interactive map.
@@ -12499,7 +12511,7 @@
             }
             }
             
-            // --- CRITICAL FIX: Infinite Loop Protection ---
+            // --- Infinite Loop Protection ---
             if (pattern !== 'random' && spacingMeters <= 0.01) {
             addToast("Calculated grid spacing is too small. Check area and sample count.");
             return;
@@ -12671,7 +12683,7 @@
             // Export Function
             const handleExport = () => {
                 if (!filteredList || filteredList.length === 0) return;
-
+            
                 // IMPROVEMENT: Added raw numeric columns for analysis
                 const headers = [
                     'Name', 'Symbol', 'Category', 
@@ -12684,7 +12696,7 @@
                 ];
                 
                 const csvRows = [headers.join(',')];
-
+            
                 filteredList.forEach(n => {
                     // sanitize text to prevent CSV breakages
                     const name = `"${n.name}"`;
@@ -12694,7 +12706,7 @@
                     const hlSeconds = parseHalfLifeToSeconds(n.halfLife);
                     const sa = parseSpecificActivity(n.specificActivity);
                     const lambda = hlSeconds === Infinity ? 0 : Math.log(2) / hlSeconds;
-
+            
                     const row = [
                         name,
                         n.symbol,
@@ -12709,7 +12721,7 @@
                     ];
                     csvRows.push(row.join(','));
                 });
-
+            
                 const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
@@ -14072,7 +14084,7 @@
                                  },
                                  y: {
                                      type: useLogScale ? 'logarithmic' : 'linear',
-                                     title: { display: true, text: 'Activity', color: textColor },
+                                     title: { display: true, text: 'Activity', color: textColor, padding: { bottom: 10 }  },
                                      min: safeMin,
                                      beginAtZero: !useLogScale,
                                      ticks: { 
