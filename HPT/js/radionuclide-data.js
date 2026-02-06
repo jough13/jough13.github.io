@@ -3464,6 +3464,24 @@ const RADIONUCLIDE_DATA = [{
       ansiCategory: 'beta_gamma'
    },
    {
+      name: 'Neon-22',
+      symbol: 'Ne-22',
+      // Key: "Stable" tells the app it has no activity
+      halfLife: 'Stable', 
+      decayConstant: '0', 
+      specificActivity: '0',
+      emissionType: [], // No radiation
+      emissionEnergies: {
+         alpha: [],
+         beta: [],
+         gamma: []
+      },
+      parent: 'Sodium-22',
+      daughter: null, // End of the line
+      category: 'Stable',
+      commonality: 'Natural'
+   },
+   {
       name: 'Neptunium-237',
       symbol: 'Np-237',
       emissionType: ['Alpha', 'Gamma'],
@@ -5658,7 +5676,7 @@ const RADIONUCLIDE_DATA = [{
       },
       specificActivity: '6.45 x 10^13 Bq/g',
       parent: 'Magnesium-22 (EC)',
-      daughter: 'Neon-22 (stable)',
+      daughter: 'Ne-22',
       commonUses: ['Calibration sources for PET scanners', 'Tracers for biological studies'],
       category: 'Industrial',
       commonality: 'Moderate',
