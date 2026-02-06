@@ -732,3 +732,24 @@ const calculatePolygonArea = (latLngs) => {
 
    return Math.abs(area * (R * R) / 2.0);
 };
+
+/**
+ * @description Safely parses user input into a float, handling commas and spaces.
+ * @param {string|number} input - The raw input.
+ * @returns {number} The parsed number, or NaN if invalid.
+ */
+const safeParseFloat = (input) => {
+   if (typeof input === 'number') return input;
+   if (!input || typeof input !== 'string') return NaN;
+
+   // 1. Remove commas and spaces (e.g. "1,000, 000" -> "1000000")
+   const cleanStr = input.replace(/[, ]/g, '');
+
+   // 2. Parse
+   const val = parseFloat(cleanStr);
+
+   // 3. Check for NaN or Finite (avoids Infinity loops)
+   if (isNaN(val) || !isFinite(val)) return NaN;
+
+   return val;
+};
