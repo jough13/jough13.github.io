@@ -11396,22 +11396,22 @@ if (enemy) {
 
         // --- 4. BIND BUTTONS (If they exist) ---
         if (shardIndex > -1) {
-            setTimeout(() => { // Timeout ensures DOM is updated before we grab elements
+            setTimeout(() => {
                 const btnXP = document.getElementById('tradeShardXP');
                 const btnStat = document.getElementById('tradeShardStat');
 
                 if (btnXP) {
                     btnXP.onclick = () => {
-                        // Re-check inventory to be safe
                         const currentShardIdx = gameState.player.inventory.findIndex(i => i.name === 'Memory Shard');
                         if (currentShardIdx > -1) {
                             gameState.player.inventory[currentShardIdx].quantity--;
                             if (gameState.player.inventory[currentShardIdx].quantity <= 0) gameState.player.inventory.splice(currentShardIdx, 1);
-
                             grantXp(100);
                             logMessage("The Historian shares ancient secrets with you.");
                             loreModal.classList.add('hidden');
-                            playerRef.update({ inventory: getSanitizedInventory() });
+                            playerRef.update({
+                                inventory: getSanitizedInventory()
+                            });
                             renderInventory();
                         }
                     };
@@ -11423,28 +11423,27 @@ if (enemy) {
                         if (currentShardIdx > -1 && gameState.player.inventory[currentShardIdx].quantity >= 3) {
                             gameState.player.inventory[currentShardIdx].quantity -= 3;
                             if (gameState.player.inventory[currentShardIdx].quantity <= 0) gameState.player.inventory.splice(currentShardIdx, 1);
-
+                            
                             if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                                // Random Stat Tome
                                 const stats = ['strength', 'wits', 'constitution', 'dexterity', 'luck'];
                                 const rndStat = stats[Math.floor(Math.random() * stats.length)];
-                                // Create a dynamic tome based on the random stat
                                 const tomeItem = {
                                     name: `Tome of ${rndStat.charAt(0).toUpperCase() + rndStat.slice(1)}`,
                                     type: 'tome',
                                     quantity: 1,
-                                    tile: '📖', // Using generic book icon
+                                    tile: '📖',
                                     stat: rndStat
                                 };
                                 gameState.player.inventory.push(tomeItem);
                                 logMessage(`Received ${tomeItem.name}!`);
                             } else {
                                 logMessage("Inventory full! Shards returned.");
-                                gameState.player.inventory[currentShardIdx].quantity += 3; // Refund
+                                gameState.player.inventory[currentShardIdx].quantity += 3;
                             }
-
                             loreModal.classList.add('hidden');
-                            playerRef.update({ inventory: getSanitizedInventory() });
+                            playerRef.update({
+                                inventory: getSanitizedInventory()
+                            });
                             renderInventory();
                         } else {
                             logMessage("Not enough shards.");
