@@ -5183,13 +5183,13 @@ async function runCompanionTurn() {
             const tile = chunkManager.getTile(tx, ty);
             const enemyData = ENEMY_DATA[tile];
 
-            // FIX: Ensure enemyData has stats (maxHealth) to prevent attacking non-combat tiles
+            // Ensure enemyData has stats (maxHealth) to prevent attacking non-combat tiles
             if (enemyData && enemyData.maxHealth) {
                 attacked = true;
                 const enemyId = `overworld:${tx},${-ty}`;
                 const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-                // --- BUG FIX: Custom Transaction for Companion ---
+                // --- Custom Transaction for Companion ---
                 // We do NOT use handleOverworldCombat here to avoid player taking damage
                 try {
                     await enemyRef.transaction(currentData => {
@@ -7549,16 +7549,44 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
     const enemyId = `overworld:${newX},${-newY}`; 
     const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-    // 1. LOCAL PRE-CHECK
+// 1. LOCAL PRE-CHECK & JIT SPAWN
     if (!gameState.sharedEnemies[enemyId]) {
-        logMessage("That enemy is already gone.");
-        if (gameState.mapMode === 'overworld') {
-            chunkManager.setWorldTile(newX, newY, '.');
-            gameState.mapDirty = true;
-            render();
+        // Double check: Does the map actually show an enemy tile here?
+        const currentMapTile = chunkManager.getTile(newX, newY);
+
+        if (ENEMY_DATA[currentMapTile]) {
+            // CASE A: The map has an enemy, but Firebase hasn't loaded it yet.
+            // We generate the data immediately ("Just-In-Time") so combat can happen.
+            console.log("⚡ JIT Spawning enemy for combat...");
+            
+            const scaledStats = getScaledEnemy(enemyData, newX, newY);
+            const newEnemy = {
+                ...scaledStats,
+                tile: currentMapTile,
+                x: newX,
+                y: newY,
+                spawnTime: Date.now()
+            };
+
+            // Inject into local state immediately so the transaction below works
+            gameState.sharedEnemies[enemyId] = newEnemy;
+            
+            // Send to Firebase so other players see it too
+            // (We don't await this; the local state is enough to proceed)
+            rtdb.ref(`worldEnemies/${enemyId}`).set(newEnemy);
+        } 
+        else {
+            // CASE B: The map tile is empty ('.') or a wall. 
+            // The enemy really is gone (killed by someone else or despawned).
+            logMessage("That enemy is already gone.");
+            if (gameState.mapMode === 'overworld') {
+                chunkManager.setWorldTile(newX, newY, '.');
+                gameState.mapDirty = true;
+                render();
+            }
+            isProcessingMove = false;
+            return;
         }
-        isProcessingMove = false;
-        return;
     }
 
     // 2. Capture Stats
@@ -9996,11 +10024,16 @@ function handleChatCommand(message) {
 
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
-
-     // 1. INPUT LOCK: Prevent spamming while network/animations are processing
+    // 1. INPUT LOCK WITH SAFETY TIMEOUT
     if (isProcessingMove) {
-        console.log("Input blocked: Move in progress.");
-        return;
+        // If it's been stuck for more than 2 seconds, force unlock
+        if (Date.now() - (gameState.lastMoveStart || 0) > 2000) {
+            console.warn("⚠️ Input lock timed out. Forcing unlock.");
+            isProcessingMove = false;
+        } else {
+            console.log("Input blocked: Move in progress.");
+            return;
+        }
     }
 
     // 2. Audio Context Resume (Browser Policy)
