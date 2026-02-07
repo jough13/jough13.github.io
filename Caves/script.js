@@ -7748,20 +7748,17 @@ const renderEquipment = () => {
     const weaponIcon = document.getElementById('slotWeaponIcon');
     const armorIcon = document.getElementById('slotArmorIcon');
 
-        if (weaponIcon) {
+    if (weaponIcon) {
         weaponIcon.textContent = weapon.tile || '👊';
-        // Add this to colorize the weapon icon
         weaponIcon.style.color = (weapon.name === 'Fists') ? 'var(--text-muted)' : 'var(--text-default)';
     }
 
-        if (armorIcon) {
+    if (armorIcon) {
         armorIcon.textContent = armor.tile || '👕';
-        // Add this to colorize the armor icon
         armorIcon.style.color = (armor.name === 'Simple Tunic' || armor.name === 'Tattered Rags') ? 'var(--text-muted)' : 'var(--text-default)';
     }
-    
 
-    // Calculate total defense
+    // --- ROUNDING LOGIC ---
     const baseDefense = Math.floor(player.dexterity / 3);
     const armorDefense = armor.defense || 0;
     const buffDefense = player.defenseBonus || 0;
@@ -7769,12 +7766,14 @@ const renderEquipment = () => {
     // --- TALENT: IRON SKIN ---
     const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
 
-    const totalDefense = baseDefense + armorDefense + buffDefense + (player.constitution * 0.1);
+    // We Math.floor the Constitution bonus so it matches combat logic (0.3 becomes 0)
+    const conBonus = Math.floor(player.constitution * 0.1); 
+    
+    const totalDefense = baseDefense + armorDefense + buffDefense + conBonus + talentDefense;
 
     // Update the display
     let armorString = `Armor: ${armor.name} (+${armorDefense} Def)`;
     if (buffDefense > 0) {
-        // Add the buff text, e.g. [Braced +2] (3t)
         armorString += ` <span class="text-green-500">[Braced +${buffDefense} (${player.defenseBonusTurns}t)]</span>`;
     }
 
