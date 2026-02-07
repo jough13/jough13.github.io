@@ -64,7 +64,6 @@ let saveTimeout = null; // Tracks the pending save timer
  * Queues a Firestore update. If another update comes in before the timer fires,
  * the previous one is cancelled and the new one takes its place.
  */
-
 function triggerDebouncedSave(updates) {
     // 1. Cancel any previously pending save
     if (saveTimeout) {
@@ -215,7 +214,7 @@ function getScaledEnemy(enemyTemplate, x, y) {
     // --- 5. Elite Affix Roll ---
     const eliteChance = 0.05 + (zoneLevel * 0.01);
 
-    // --- DISABLE ELITES NEAR SPAWN ---
+    // --- NEW: DISABLE ELITES NEAR SPAWN ---
     // Elites can only spawn if distance > 150. 
     // No more "Savage Rats" killing you at level 1.
     if (dist > 150 && !enemy.isBoss && Math.random() < eliteChance) {
@@ -468,7 +467,7 @@ window.selectBackground = async function (bgKey) {
 
     // Resume the connection listener that was paused/waiting
     // (We don't need to explicitly resume, the firebase listener below is already running,
-    // it just updates the state which we just modified)
+    //  it just updates the state which we just modified)
 };
 
 async function initCharacterSelect(user) {
@@ -497,40 +496,35 @@ async function initCharacterSelect(user) {
     renderSlots();
 }
 
-function initEventListeners() {
-    EventBus.on('xpGained', (data) => {
-        logMessage(`You gained ${data.amount} XP!`);
-        triggerStatFlash(statDisplays.xp, true);
-        renderStats(); // Update the XP bar
-    });
+/**
+ * Recursively cleans an object to remove any keys with 'undefined' values.
+ * Firestore cannot store 'undefined' and will throw an error. This prevents that.
+ * @param {object} obj The object to clean.
+ * @returns {object} A new object, safe to send to Firestore.
+ */
 
-        EventBus.on('playerDied', (data) => {
-        // This is where all the UI code now lives.
-        logMessage("{red:You have perished!}");
-        triggerStatFlash(statDisplays.health, false);
-        
-        // Update the game over modal using the data from the event
-        document.getElementById('finalLevelDisplay').textContent = `Level: ${data.level}`;
-        document.getElementById('finalCoinsDisplay').textContent = `Gold lost: ${data.goldLost}`;
-        
-        // Show the modal
-        gameOverModal.classList.remove('hidden');
-    });
+function sanitizeForFirebase(obj) {
+    // 1. Convert undefined to null immediately
+    if (obj === undefined) return null; 
+    
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
 
-    EventBus.on('levelUp', (data) => {
-        logMessage(`{gold:LEVEL UP!} You are now level ${data.newLevel}!`);
-        if (data.talentPoints > (gameState.player.talentPoints - 1)) { // Check if we just gained one
-             logMessage("You gained a Mastery Talent Point! Press 'P' to spend it.");
-        } else {
-             logMessage(`You gained 1 Stat Point.`);
+    // 2. Handle Arrays (Maps them so undefined items become null)
+    if (Array.isArray(obj)) {
+        return obj.map(item => sanitizeForFirebase(item));
+    }
+
+    // 3. Handle Objects
+    const newObj = {};
+    for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            // Recursively clean every property
+            newObj[key] = sanitizeForFirebase(obj[key]);
         }
-        ParticleSystem.createLevelUp(gameState.player.x, gameState.player.y);
-        renderStats();
-    });
-
-    EventBus.on('evolutionReady', () => {
-        openEvolutionModal();
-    });
+    }
+    return newObj;
 }
 
 async function renderSlots() {
@@ -1146,7 +1140,7 @@ async function finalizeCharacterCreation() {
     if (armor) { player.equipment.armor = armor; armor.isEquipped = true; }
 
     // 7. Save and Start
-    await playerRef.set(sanitizeObjectForDB(player));
+    await playerRef.set(sanitizeForFirebase(player));
 
     charCreationModal.classList.add('hidden');
     gameContainer.classList.remove('hidden');
@@ -2303,7 +2297,7 @@ for (let y = 0; y < map.length; y++) {
         this.worldState[chunkId][tileKey] = newTile;
 
         // --- FIX: Sanitize before saving to prevent "Unsupported field value: undefined" crash ---
-        const safeData = sanitizeObjectForDB(this.worldState[chunkId]);
+        const safeData = sanitizeForFirebase(this.worldState[chunkId]);
 
         db.collection('worldState').doc(chunkId).set(safeData, {
             merge: true
@@ -4076,37 +4070,58 @@ function applyStatBonuses(item, operation) {
 
 function grantXp(amount) {
     const player = gameState.player;
+
+    // Safety: Ensure amount is a number
     amount = Number(amount);
     if (isNaN(amount) || amount <= 0) return;
 
+    // --- TALENT: SCHOLAR (+20% XP) ---
     if (player.talents && player.talents.includes('scholar')) {
         amount = Math.floor(amount * 1.2);
     }
 
     player.xp += amount;
-    EventBus.emit('xpGained', { amount: amount }); // Emit event with data
-
-    let leveledUp = false;
-    while (player.xp >= player.xpToNextLevel) {
-        leveledUp = true;
-        player.xp -= player.xpToNextLevel;
-        player.level++;
-        player.statPoints++;
-        player.xpToNextLevel = player.level * 100;
-
-        if (player.level % 3 === 0) {
-            player.talentPoints = (player.talentPoints || 0) + 1;
-        }
-
-        // Check for evolution
-        if (player.level >= 10 && !player.classEvolved) {
-            EventBus.emit('evolutionReady'); // Use an event for this, too!
-        }
-    }
     
-    if (leveledUp) {
-        EventBus.emit('levelUp', { newLevel: player.level, statPoints: player.statPoints, talentPoints: player.talentPoints });
+    logMessage(`You gained ${amount} XP!`);
+    triggerStatFlash(statDisplays.xp, true);
+
+    // --- Level Up Loop ---
+    while (player.xp >= player.xpToNextLevel) { 
+        
+        const needed = player.xpToNextLevel; 
+        
+        if (player.xp >= needed) {
+            player.xp -= needed;
+            player.level++;
+            player.statPoints++;
+            player.xpToNextLevel = player.level * 100;
+
+            logMessage(`LEVEL UP! You are now level ${player.level}!`);
+            
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createLevelUp(player.x, player.y);
+            }
+
+            // Check for Class Evolution
+            if (player.level >= 10 && !player.classEvolved) {
+                openEvolutionModal();
+            }
+
+            // --- Award Talent Point every 3 levels ---
+            if (player.level % 3 === 0) {
+                player.talentPoints = (player.talentPoints || 0) + 1;
+                logMessage("You gained a Mastery Talent Point! Press 'P' to spend it.");
+                triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+            } else {
+                logMessage(`You gained 1 Stat Point.`);
+                triggerStatAnimation(statDisplays.level, 'stat-pulse-blue');
+            }
+        } else {
+            break; 
+        }
     }
+
+    renderStats();
 }
 
 function handleBuyItem(itemName) {
@@ -5168,13 +5183,13 @@ async function runCompanionTurn() {
             const tile = chunkManager.getTile(tx, ty);
             const enemyData = ENEMY_DATA[tile];
 
-            // Ensure enemyData has stats (maxHealth) to prevent attacking non-combat tiles
+            // FIX: Ensure enemyData has stats (maxHealth) to prevent attacking non-combat tiles
             if (enemyData && enemyData.maxHealth) {
                 attacked = true;
                 const enemyId = `overworld:${tx},${-ty}`;
                 const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-                // --- Custom Transaction for Companion ---
+                // --- BUG FIX: Custom Transaction for Companion ---
                 // We do NOT use handleOverworldCombat here to avoid player taking damage
                 try {
                     await enemyRef.transaction(currentData => {
@@ -7534,44 +7549,16 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
     const enemyId = `overworld:${newX},${-newY}`; 
     const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-// 1. LOCAL PRE-CHECK & JIT SPAWN
+    // 1. LOCAL PRE-CHECK
     if (!gameState.sharedEnemies[enemyId]) {
-        // Double check: Does the map actually show an enemy tile here?
-        const currentMapTile = chunkManager.getTile(newX, newY);
-
-        if (ENEMY_DATA[currentMapTile]) {
-            // CASE A: The map has an enemy, but Firebase hasn't loaded it yet.
-            // We generate the data immediately ("Just-In-Time") so combat can happen.
-            console.log("⚡ JIT Spawning enemy for combat...");
-            
-            const scaledStats = getScaledEnemy(enemyData, newX, newY);
-            const newEnemy = {
-                ...scaledStats,
-                tile: currentMapTile,
-                x: newX,
-                y: newY,
-                spawnTime: Date.now()
-            };
-
-            // Inject into local state immediately so the transaction below works
-            gameState.sharedEnemies[enemyId] = newEnemy;
-            
-            // Send to Firebase so other players see it too
-            // (We don't await this; the local state is enough to proceed)
-            rtdb.ref(`worldEnemies/${enemyId}`).set(newEnemy);
-        } 
-        else {
-            // CASE B: The map tile is empty ('.') or a wall. 
-            // The enemy really is gone (killed by someone else or despawned).
-            logMessage("That enemy is already gone.");
-            if (gameState.mapMode === 'overworld') {
-                chunkManager.setWorldTile(newX, newY, '.');
-                gameState.mapDirty = true;
-                render();
-            }
-            isProcessingMove = false;
-            return;
+        logMessage("That enemy is already gone.");
+        if (gameState.mapMode === 'overworld') {
+            chunkManager.setWorldTile(newX, newY, '.');
+            gameState.mapDirty = true;
+            render();
         }
+        isProcessingMove = false;
+        return;
     }
 
     // 2. Capture Stats
@@ -9141,71 +9128,58 @@ function getPlayerDamageModifier(baseDamage) {
     return finalDamage;
 }
 
-/**
- * Handles all core game logic when the player's health drops to 0 or below.
- * This function is responsible for calculating penalties, scattering items,
- * and saving the player's "dead" state to the database. It then emits an
- * event to notify the UI to display the Game Over screen.
- * @returns {boolean} - Returns true if the player was dead and the process was handled, false otherwise.
- */
-
 function handlePlayerDeath() {
-    // 1. CONFIRMATION: Ensure the player is actually dead.
-    if (gameState.player.health > 0) {
-        return false;
-    }
+    if (gameState.player.health > 0) return false; // Not dead
 
-    // 2. CLEANUP: Stop any pending auto-saves to prevent saving a pre-death state.
     if (saveTimeout) {
         clearTimeout(saveTimeout);
         saveTimeout = null;
     }
 
     const player = gameState.player;
-    player.health = 0; // Clamp health to 0 for consistency.
 
-    // 3. CAPTURE DATA: Store information needed for penalties and UI before modifying state.
+    // 1. Visuals & Logs
+    player.health = 0; // Ensure health is clamped to 0
+    logMessage("{red:You have perished!}");
+    triggerStatFlash(statDisplays.health, false);
+
+    // 2. Remove Equipment Stats (So we don't carry buffs over)
+    if (player.equipment.weapon) applyStatBonuses(player.equipment.weapon, -1);
+    if (player.equipment.armor) applyStatBonuses(player.equipment.armor, -1);
+
+    // 3. UI UPDATES (Moved UP so they happen before any potential save errors)
     const goldLost = Math.floor(player.coins / 2);
-    const finalLevel = player.level;
+    document.getElementById('finalLevelDisplay').textContent = `Level: ${player.level}`;
+    document.getElementById('finalCoinsDisplay').textContent = `Gold lost: ${goldLost}`;
+    gameOverModal.classList.remove('hidden'); // Show the modal immediately
+
+    // 4. CORPSE SCATTER LOGIC
     const deathX = player.x;
     const deathY = player.y;
+    const pendingUpdates = {};
 
-    // 4. REMOVE BONUSES: Unequip items to remove their stat bonuses from the player object.
-    if (player.equipment.weapon) {
-        applyStatBonuses(player.equipment.weapon, -1); // -1 signifies subtraction
-    }
-    if (player.equipment.armor) {
-        applyStatBonuses(player.equipment.armor, -1);
-    }
-
-    // 5. CORPSE SCATTER LOGIC: Drop items on the ground around the death location.
-    const pendingUpdates = {}; // Batches overworld map updates for efficiency.
-
-    // Iterate backwards to safely remove items from the inventory array while looping.
     for (let i = player.inventory.length - 1; i >= 0; i--) {
         const item = player.inventory[i];
         let placed = false;
-
-        // Spiral search in a 5x5 grid for the nearest empty floor tile.
+        
+        // Try to place item in a 3x3 grid around death spot
         for (let r = 0; r <= 2 && !placed; r++) {
             for (let dy = -r; dy <= r && !placed; dy++) {
                 for (let dx = -r; dx <= r && !placed; dx++) {
-                    if (placed) break; // Exit inner loops if item is placed
                     const tx = deathX + dx;
                     const ty = deathY + dy;
                     let tile;
 
-                    // Get the tile at the target location based on the current map.
+                    // Check terrain validity
                     if (gameState.mapMode === 'overworld') tile = chunkManager.getTile(tx, ty);
                     else if (gameState.mapMode === 'dungeon') tile = chunkManager.caveMaps[gameState.currentCaveId]?.[ty]?.[tx];
                     else tile = chunkManager.castleMaps[gameState.currentCastleId]?.[ty]?.[tx];
 
-                    // Check if the tile is a valid, empty floor.
                     if (tile === '.') {
-                        const dropIcon = item.tile || item.templateId || '🎒'; // Use item's icon or a fallback bag icon.
+                        // Use item.tile, fallback to templateId, fallback to generic bag '🎒'
+                        const dropIcon = item.tile || item.templateId || '🎒';
 
                         if (gameState.mapMode === 'overworld') {
-                            // For the overworld, batch the database update.
                             const cX = Math.floor(tx / chunkManager.CHUNK_SIZE);
                             const cY = Math.floor(ty / chunkManager.CHUNK_SIZE);
                             const cId = `${cX},${cY}`;
@@ -9214,11 +9188,11 @@ function handlePlayerDeath() {
                             const lKey = `${lX},${lY}`;
                             
                             if (!pendingUpdates[cId]) pendingUpdates[cId] = {};
-                            pendingUpdates[cId][lKey] = dropIcon;
+                            pendingUpdates[cId][lKey] = dropIcon; // Apply fallback here
+                        } else if (gameState.mapMode === 'dungeon') {
+                            chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = dropIcon;
                         } else {
-                            // For dungeons/castles, update the local map array directly.
-                            if (gameState.mapMode === 'dungeon') chunkManager.caveMaps[gameState.currentCaveId][ty][tx] = dropIcon;
-                            else chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = dropIcon;
+                            chunkManager.castleMaps[gameState.currentCastleId][ty][tx] = dropIcon;
                         }
                         placed = true;
                     }
@@ -9227,28 +9201,27 @@ function handlePlayerDeath() {
         }
     }
 
-    // Apply the batched map updates for overworld item drops.
+    // 5. Apply map updates (Wrapped in Sanitize to prevent crashes)
     if (gameState.mapMode === 'overworld') {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
-            const safeUpdates = sanitizeObjectForDB(updates); 
+            // FIX: Sanitize the updates object to remove 'undefined' values before sending
+            const safeUpdates = sanitizeForFirebase(updates); 
             db.collection('worldState').doc(cId).set(safeUpdates, { merge: true })
                 .catch(err => console.error("Failed to drop corpse loot:", err));
         }
     }
 
-    // 6. APPLY PENALTIES: Update the player's state in memory.
+    // 6. CALCULATE PENALTIES & SAVE
     player.coins -= goldLost;
-    player.inventory = []; // Wipe inventory.
-    player.equipment = { // Reset to default unequipped state.
-        weapon: { name: 'Fists', damage: 0 },
-        armor: { name: 'Tattered Rags', defense: 0 }
-    };
+    
+    // Clear inventory immediately so it can't be accessed while dead
+    player.inventory = []; 
+    player.equipment = { weapon: { name: 'Fists', damage: 0 }, armor: { name: 'Simple Tunic', defense: 0 } };
 
-    // 7. SAVE & EMIT: Persist the changes and notify other game systems.
-    playerRef.set(sanitizeObjectForDB(player)).catch(console.error);
-    EventBus.emit('playerDied', { level: finalLevel, goldLost: goldLost });
+    // 7. Save "Dead" State
+    playerRef.set(sanitizeForFirebase(player)).catch(console.error);
 
-    return true; // Signal that the death was successfully processed.
+    return true;
 }
 
 function endPlayerTurn() {
@@ -9647,7 +9620,7 @@ function endPlayerTurn() {
     } else {
         // In Dungeons/Castles, we save IMMEDIATELY
         if (saveTimeout) clearTimeout(saveTimeout); 
-        playerRef.update(sanitizeObjectForDB(finalUpdates));
+        playerRef.update(sanitizeForFirebase(finalUpdates));
     }
 
     // --- 8. PASSIVE TALENTS ---
@@ -10023,16 +9996,11 @@ function handleChatCommand(message) {
 
 // --- CENTRAL INPUT HANDLER ---
 function handleInput(key) {
-    // 1. INPUT LOCK WITH SAFETY TIMEOUT
+
+     // 1. INPUT LOCK: Prevent spamming while network/animations are processing
     if (isProcessingMove) {
-        // If it's been stuck for more than 2 seconds, force unlock
-        if (Date.now() - (gameState.lastMoveStart || 0) > 2000) {
-            console.warn("⚠️ Input lock timed out. Forcing unlock.");
-            isProcessingMove = false;
-        } else {
-            console.log("Input blocked: Move in progress.");
-            return;
-        }
+        console.log("Input blocked: Move in progress.");
+        return;
     }
 
     // 2. Audio Context Resume (Browser Policy)
@@ -13145,7 +13113,7 @@ logoutButton.addEventListener('click', () => {
         delete finalState.character;
 
         // Save to Firestore
-        playerRef.set(sanitizeObjectForDB(finalState), { merge: true }).catch(err => {
+        playerRef.set(sanitizeForFirebase(finalState), { merge: true }).catch(err => {
             console.error("Error saving on logout:", err);
         });
     }
@@ -13274,7 +13242,7 @@ if (timeDoc.exists) {
         };
 
         // 6. Save the fixed state immediately so next reload is clean
-        await playerRef.set(sanitizeObjectForDB(playerData));
+        await playerRef.set(sanitizeForFirebase(playerData));
     }
 
     const fullPlayerData = {
@@ -13400,7 +13368,7 @@ if (gameState.mapMode === 'overworld') {
 
                 delete finalState.color;
                 delete finalState.character;
-                playerRef.set(sanitizeObjectForDB(finalState), { merge: true });
+                playerRef.set(sanitizeForFirebase(finalState), { merge: true });
             });
         }
     });
@@ -13777,10 +13745,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
                 initMobileControls();
                 initSettingsListeners();
 
-                areGlobalListenersInitialized = true;
-
-                initEventListeners(); 
-
+                areGlobalListenersInitialized = true; 
             } else {
                 console.log("UI Listeners already active. Skipping.");
                 const mobileContainer = document.getElementById('mobileControls');
@@ -13892,7 +13857,7 @@ restartButton.onclick = () => {
     gameState.currentCastleId = null;
 
     // 5. Save "Alive" State to DB
-    playerRef.set(sanitizeObjectForDB(player));
+    playerRef.set(sanitizeForFirebase(player));
 
     // 6. UI Cleanup
     gameOverModal.classList.add('hidden');
