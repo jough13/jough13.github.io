@@ -3099,6 +3099,9 @@ const renderStats = () => {
 const wokenEnemyTiles = new Set();
 
 async function wakeUpNearbyEnemies() {
+
+    if (gameState.mapMode !== 'overworld') return;
+
     // Determine player location
     const player = gameState.player;
     if (!player) return;
@@ -8336,6 +8339,9 @@ function getBaseTerrain(worldX, worldY) {
 }
 
 async function processOverworldEnemyTurns() {
+
+    if (gameState.mapMode !== 'overworld') return;
+
     const playerX = gameState.player.x;
     const playerY = gameState.player.y;
     const searchRadius = 25;
@@ -8430,11 +8436,36 @@ async function processOverworldEnemyTurns() {
                     const dmg = Math.max(1, enemy.attack - (gameState.player.defenseBonus || 0));
                     gameState.player.health -= dmg;
                     gameState.screenShake = 10;
+
+                    const wrapper = document.getElementById('gameCanvasWrapper');
+                    wrapper.classList.remove('damage-flash'); // Reset animation
+                    void wrapper.offsetWidth; // Trigger reflow
+                    wrapper.classList.add('damage-flash');
+
                     logMessage(`A ${enemy.name} attacks you for ${dmg} damage!`);
                     triggerStatFlash(statDisplays.health, false);
                     if (gameState.player.health <= 0) handlePlayerDeath();
                     processedIdsThisFrame.add(enemyId);
                     continue; 
+                }
+
+                // --- EXPANSION: PERCEPTION HINT ---
+                // If an enemy moves closer and is within "hearing" range but outside "vision"
+                const oldDist = Math.sqrt(Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2));
+                const newDist = Math.sqrt(Math.pow(playerX - finalX, 2) + Math.pow(playerY - finalY, 2));
+                
+                // If it got closer, is chasing, and is roughly 10-15 tiles away (just offscreen)
+                if (newDist < oldDist && isChasing && newDist > 10 && newDist < 16) {
+                    // 10% chance to hear it so chat isn't spammed
+                    if (Math.random() < 0.10) {
+                        // Invert direction: if enemy is to the North (0, -1), the sound comes FROM the North.
+                        // We use the enemy's movement dir (dirX, dirY). If enemy moves South (0, 1) to chase you,
+                        // they are currently North of you.
+                        // Actually, getDirectionString takes a vector. Let's calculate the vector relative to player.
+                        const soundDir = { x: Math.sign(enemy.x - playerX), y: Math.sign(enemy.y - playerY) };
+                        const dirStr = getDirectionString(soundDir); 
+                        logMessage(`{gray:You hear twigs snapping to the ${dirStr}...}`);
+                    }
                 }
 
                 // --- EXECUTE MOVE & SYNC BUCKETS ---
@@ -9025,6 +9056,9 @@ function processEnemyTurns() {
  * runs the AI per interval. Includes logic to break stale locks.
  */
 async function runSharedAiTurns() {
+    
+    if (gameState.mapMode !== 'overworld') return; 
+
     const now = Date.now();
     const AI_INTERVAL = 150; // Match action cooldown
     const STALE_TIMEOUT = 5000; // 5 seconds - if heartbeat is older than this, steal it
@@ -10512,10 +10546,31 @@ function useInventoryItem(itemIndex) {
 
         // --- TELEPORT SCROLLS ---
     } else if (itemToUse.type === 'teleport') {
-        logMessage("Space warps around you...");
-        gameState.player.x = 0;
-        gameState.player.y = 0;
-        exitToOverworld("You vanish and reappear at the village gates.");
+         logMessage("You chant the words of returning...");
+        
+        // 1. Visual Flair
+        AudioSystem.playMagic();
+        if (typeof ParticleSystem !== 'undefined') {
+            ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#3b82f6', 20);
+        }
+
+        // 2. Logic based on Map Mode
+        if (gameState.mapMode === 'overworld') {
+            // In Overworld: Teleport to 0,0 (Village)
+            gameState.player.x = 0;
+            gameState.player.y = 0;
+            
+            // Unload chunks around old location to prevent glitches
+            chunkManager.loadedChunks = {}; 
+            
+            logMessage("The world twists... you stand at the Village gates.");
+        } else {
+            // In Instance: Exit to Overworld
+            // Use existing exit logic to safely handle cleanup
+            exitToOverworld("The magic pulls you out of the dungeon and back to the surface.");
+        }
+
+        // 3. Consume Item
         itemToUse.quantity--;
         if (itemToUse.quantity <= 0) gameState.player.inventory.splice(itemIndex, 1);
         itemUsed = true;
