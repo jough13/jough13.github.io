@@ -11275,6 +11275,7 @@ if (enemy) {
     }
 
     if (newTile === '🎓') {
+
         const player = gameState.player;
         const inv = player.inventory;
 
@@ -11283,6 +11284,48 @@ if (enemy) {
 
         loreTitle.textContent = "Royal Historian";
         let dialogueHtml = "";
+
+        // In script.js, inside the 'if (newTile === '🎓')' block:
+
+        // --- 0. SECRET: RESTORE CROWN ---
+        const crownIndex = inv.findIndex(i => i.name === 'Shattered Crown');
+        if (crownIndex > -1) {
+            loreTitle.textContent = "The Historian Gasps";
+            loreContent.innerHTML = `
+                <p>The Historian drops his quill when he sees the crown in your bag.</p>
+                <p>"By the ancestors... that is the diadem of Alaric himself! It is shattered, but I can repair it using my tools."</p>
+                <button id="restoreCrownBtn" class="mt-4 bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded w-full">Restore the Crown</button>
+            `;
+            loreModal.classList.remove('hidden');
+
+            setTimeout(() => {
+                document.getElementById('restoreCrownBtn').onclick = () => {
+                    // Remove Old Crown
+                    inv.splice(crownIndex, 1);
+                    
+                    // Add Restored Crown (New Item)
+                    inv.push({
+                        name: "Crown of the First King",
+                        type: "armor",
+                        tile: "👑",
+                        quantity: 1,
+                        defense: 2, // Now offers some protection
+                        slot: "armor",
+                        statBonuses: { charisma: 10, luck: 5, maxMana: 20 }, // GODLY STATS
+                        description: "Restored to its former glory. You act with the authority of the Old World."
+                    });
+
+                    logMessage("The Historian restores the crown. It shines like the sun!");
+                    triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
+                    
+                    // Save & Close
+                    playerRef.update({ inventory: getSanitizedInventory() });
+                    renderInventory();
+                    loreModal.classList.add('hidden');
+                };
+            }, 0);
+            return; // Stop processing other historian dialogue
+        }
 
         // --- 1. MAIN QUEST LOGIC ---
         if (player.relicQuestStage === 0) {
