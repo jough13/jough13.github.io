@@ -571,11 +571,9 @@
       <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
       
       <!-- DATA MODULES -->
-      <script defer src="utils.js"></script>    <!-- Load Utils FIRST -->
-      <script defer src="audio.js"></script>    <!-- Load Audio SECOND -->
-      <script defer src="renderer.js"></script> <!-- Load Renderer THIRD -->
+      <script defer src="utils.js"></script>   
 
-      <script defer src="world.js"></script>
+      <script defer src="renderer.js"></script>
       
       <script defer src="data-maps.js"></script>
       <script defer src="data-items.js"></script>
@@ -585,9 +583,15 @@
 
       <script defer src="state.js"></script>
       <script defer src="config-firebase.js"></script>
+
+      <script defer src="world.js"></script>
+
+      <script defer src="ui.js"></script>
+
+      <script defer src="audio.js"></script> 
       
       <!-- MAIN GAME LOGIC -->
-      <script defer src="script.js?v=2"></script> <!-- Increment version to bust cache -->
+      <script defer src="script.js?v=3"></script> <!-- Increment version to bust cache -->
       
       <div id="mobileControls" class="mobile-controls lg:hidden">
          <div class="d-pad-container">
