@@ -175,7 +175,6 @@ function generateUUID() {
     });
 }
 
-// --- Add to utils.js (or top of script.js) ---
 function sanitizeForFirestore(obj) {
     if (obj === undefined) return null;
     if (obj === null) return null;
