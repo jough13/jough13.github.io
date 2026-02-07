@@ -40,30 +40,11 @@ let creationState = {
     background: null
 };
 
-let player_id;
-let playerRef;
-let onlinePlayerRef;
-let otherPlayers = {};
-let unsubscribePlayerListener;
-let worldStateListeners = {};
-
-let isProcessingMove = false; 
-
-let lastAiExecution = 0;
-
-let cachedThemeColors = {};
-
-const processingSpawnTiles = new Set();
-
-let areGlobalListenersInitialized = false;
-
-// --- OPTIMIZATION GLOBALS ---
-let saveTimeout = null; // Tracks the pending save timer
-
 /**
  * Queues a Firestore update. If another update comes in before the timer fires,
  * the previous one is cancelled and the new one takes its place.
  */
+
 function triggerDebouncedSave(updates) {
     // 1. Cancel any previously pending save
     if (saveTimeout) {
@@ -156,17 +137,7 @@ let lastActionTime = 0;
 const ACTION_COOLDOWN = 150; // ms (limits speed to ~6 moves per second)
 let inputBuffer = null;
 
-// Track Listeners so we can turn them off
-let sharedEnemiesListener = null;
-let chatListener = null;
-let connectedListener = null;
 
-// Track enemies currently being spawned so they don't flicker
-let pendingSpawns = new Set();
-
-let pendingSpawnData = {};
-
-let activeShopInventory = [];
 
 const SELL_MODIFIER = 0.5; // Players sell items for 50% of their base price
 
@@ -2727,89 +2698,6 @@ else if (worldX === 35 && worldY === 35) {
     }
 };
 
-const gameState = {
-    initialEnemiesLoaded: false,
-    mapDirty: true,
-    screenShake: 0,
-    weather: 'clear',
-    player: {
-        x: 0,
-        y: 0,
-        character: '@',
-        color: 'blue',
-        health: 10,
-        maxHealth: 10,
-        mana: 10,
-        maxMana: 10,
-        stamina: 10,
-        maxStamina: 10,
-        psyche: 10,
-        maxPsyche: 10,
-        strength: 1,
-        wits: 1,
-        luck: 1,
-        constitution: 1,
-        dexterity: 1,
-        charisma: 1,
-        willpower: 1,
-        perception: 1,
-        endurance: 1,
-        intuition: 1,
-        inventory: [],
-        coins: 0,
-        healthRegenProgress: 0,
-        staminaRegenProgress: 0,
-        manaRegenProgress: 0,
-        psycheRegenProgress: 0,
-
-        strengthBonus: 0,
-        strengthBonusTurns: 0,
-
-        frostbiteTurns: 0,
-        poisonTurns: 0,
-
-        weather: 'clear', // clear, rain, storm, snow, fog
-        weatherTimer: 0,  // Counts turns until weather changes
-    },
-
-    lootedTiles: new Set(),
-    discoveredRegions: new Set(),
-
-    activeTreasure: null,
-
-    mapMode: null,
-
-    currentCaveId: null,
-    currentCaveTheme: null,
-    currentCastleId: null,
-    overworldExit: null,
-    messages: [],
-    flags: {
-        hasSeenForestWarning: false,
-        canoeEmbarkCount: 0
-    },
-    inventoryMode: false,
-
-    currentCraftingMode: 'workbench',
-
-    instancedEnemies: [],
-    friendlyNpcs: [],
-    worldEnemies: {},
-    sharedEnemies: {},
-    enemySpatialMap: new Map(), // Key: "chunkX,chunkY", Value: Set(enemyId)
-    isDroppingItem: false,
-    playerTurnCount: 0,
-    isAiming: false,
-    abilityToAim: null,
-    time: {
-        day: 1,
-        hour: 6,
-        minute: 0,
-        year: 642,
-        era: "of the Fourth Age"
-    }
-};
-
 ctx.font = `${TILE_SIZE}px monospace`;
 ctx.textAlign = 'center';
 ctx.textBaseline = 'middle';
@@ -3093,10 +2981,6 @@ const renderStats = () => {
         document.title = `HP: ${gameState.player.health}/${gameState.player.maxHealth} | Lvl ${gameState.player.level} - Caves & Castles`;
     }
 };
-
-// Global set to track processed tiles this session
-// (Ensure this is defined at the top of your file with other globals)
-const wokenEnemyTiles = new Set();
 
 async function wakeUpNearbyEnemies() {
 
