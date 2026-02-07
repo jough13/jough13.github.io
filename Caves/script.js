@@ -8789,116 +8789,123 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     // --- OBELISK PUZZLE LOGIC ---
-if (tileData && tileData.type === 'obelisk_puzzle') {
-    const dir = tileData.direction;
-    const requiredOrder = ['north', 'east', 'west', 'south'];
-    const currentStep = gameState.player.obeliskProgress.length;
+    if (tileData && tileData.type === 'obelisk_puzzle') {
+        const dir = tileData.direction;
+        const requiredOrder = ['north', 'east', 'west', 'south'];
+        const currentStep = gameState.player.obeliskProgress.length;
 
-    logMessage(tileData.flavor);
+        logMessage(tileData.flavor);
 
-    // Check if we are activating the CORRECT next step
-    if (dir === requiredOrder[currentStep]) {
-        if (!gameState.player.obeliskProgress.includes(dir)) {
-            gameState.player.obeliskProgress.push(dir);
-            
-            logMessage(`The Obelisk hums violently! (${gameState.player.obeliskProgress.length}/4 activated)`);
-            ParticleSystem.createExplosion(newX, newY, '#3b82f6', 15); // Blue explosion
-            AudioSystem.playMagic();
+        // Check if we are activating the CORRECT next step
+        if (dir === requiredOrder[currentStep]) {
+            if (!gameState.player.obeliskProgress.includes(dir)) {
+                gameState.player.obeliskProgress.push(dir);
 
-            // REWARD: Give the fragment for this specific direction
-            const fragmentName = `Tablet of the ${dir.charAt(0).toUpperCase() + dir.slice(1)}`;
-            gameState.player.inventory.push(
-                // Lookup item from ITEM_DATA using the name map logic or hardcode keys
-                { name: fragmentName, type: 'junk', quantity: 1, tile: '🧩' }
-            );
-            logMessage(`A stone fragment falls from the obelisk: ${fragmentName}`);
+                logMessage(`The Obelisk hums violently! (${gameState.player.obeliskProgress.length}/4 activated)`);
+                ParticleSystem.createExplosion(newX, newY, '#3b82f6', 15); // Blue explosion
+                AudioSystem.playMagic();
 
-            // Save progress
-            playerRef.update({ 
-                obeliskProgress: gameState.player.obeliskProgress,
-                inventory: gameState.player.inventory 
-            });
-        } else {
-            logMessage("This obelisk is already active.");
+                // REWARD: Give the fragment for this specific direction
+                const fragmentName = `Tablet of the ${dir.charAt(0).toUpperCase() + dir.slice(1)}`;
+                gameState.player.inventory.push(
+                    // Lookup item from ITEM_DATA using the name map logic or hardcode keys
+                    {
+                        name: fragmentName,
+                        type: 'junk',
+                        quantity: 1,
+                        tile: '🧩'
+                    }
+                );
+                logMessage(`A stone fragment falls from the obelisk: ${fragmentName}`);
+
+                // Save progress
+                playerRef.update({
+                    obeliskProgress: gameState.player.obeliskProgress,
+                    inventory: gameState.player.inventory
+                });
+            } else {
+                logMessage("This obelisk is already active.");
+            }
         }
-    } 
-    // Wrong order? Reset!
-    else if (!gameState.player.obeliskProgress.includes(dir)) {
-        logMessage("The Obelisk shrieks! A shockwave knocks you back!");
-        logMessage("{red:PUZZLE FAILED. Sequence Reset.}");
-        
-        gameState.player.health -= 5;
-        gameState.player.obeliskProgress = []; // Reset
-        
-        triggerStatFlash(statDisplays.health, false);
-        playerRef.update({ 
-            health: gameState.player.health,
-            obeliskProgress: [] 
-        });
-        
-        // Punishment damage visual
-        ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444', 10);
+        // Wrong order? Reset!
+        else if (!gameState.player.obeliskProgress.includes(dir)) {
+            logMessage("The Obelisk shrieks! A shockwave knocks you back!");
+            logMessage("{red:PUZZLE FAILED. Sequence Reset.}");
+
+            gameState.player.health -= 5;
+            gameState.player.obeliskProgress = []; // Reset
+
+            triggerStatFlash(statDisplays.health, false);
+            playerRef.update({
+                health: gameState.player.health,
+                obeliskProgress: []
+            });
+
+            // Punishment damage visual
+            ParticleSystem.createExplosion(gameState.player.x, gameState.player.y, '#ef4444', 10);
+        }
+        return;
     }
-    return;
-}
 
-   if (tileData && tileData.type === 'spirit_npc') { 
-            const requiredItem = tileData.requiresItem;
-            const hasItem = gameState.player.inventory.some(i => i.name === requiredItem);
+    if (tileData && tileData.type === 'spirit_npc') {
+        const requiredItem = tileData.requiresItem;
+        const hasItem = gameState.player.inventory.some(i => i.name === requiredItem);
 
-            if (!hasItem) {
-                logMessage(tileData.invisibleMessage || "You shiver.");
-                gameState.player.x = newX;
-                gameState.player.y = newY;
-                gameState.mapDirty = true;
-                AudioSystem.playStep();
-                endPlayerTurn();
-                render();
-                return;
-            }
-
-            const seed = stringToSeed(tileId + gameState.playerTurnCount);
-            const random = Alea(seed);
-            const msg = tileData.dialogue[Math.floor(random() * tileData.dialogue.length)];
-
-            loreTitle.textContent = tileData.name;
-            loreContent.textContent = `The ghostly figure shimmers into view through your lens.\n\n"${msg}"`;
-            loreModal.classList.remove('hidden');
-            
-            if (!gameState.foundLore.has(tileId)) {
-                grantXp(50);
-                gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-            }
+        if (!hasItem) {
+            logMessage(tileData.invisibleMessage || "You shiver.");
+            gameState.player.x = newX;
+            gameState.player.y = newY;
+            gameState.mapDirty = true;
+            AudioSystem.playStep();
+            endPlayerTurn();
+            render();
             return;
         }
 
-// --- SEALED DOOR LOGIC ---
-if (tileData && tileData.type === 'sealed_door') {
-    const hasKey = gameState.player.inventory.some(i => i.name === 'Ancient Key');
-    
-    if (hasKey) {
-        logMessage("You insert the Ancient Key. The massive doors grind open...");
-        // Teleport to a special Vault Dungeon ID
-        gameState.mapMode = 'dungeon';
-        gameState.currentCaveId = 'vault_kings_treasure';
-        gameState.currentCaveTheme = 'GOLDEN'; // Make sure this theme exists in data-maps
-        
-        // Generate the Vault
-        chunkManager.generateCave(gameState.currentCaveId);
-        
-        // Move player
-        gameState.player.x = 10; // Arbitrary safe spot in your gen logic
-        gameState.player.y = 10;
-        
-        updateRegionDisplay();
-        render();
-        syncPlayerState();
-    } else {
-        logMessage("The door is sealed tight. There is a keyhole shaped like four joined stone fragments.");
+        const seed = stringToSeed(tileId + gameState.playerTurnCount);
+        const random = Alea(seed);
+        const msg = tileData.dialogue[Math.floor(random() * tileData.dialogue.length)];
+
+        loreTitle.textContent = tileData.name;
+        loreContent.textContent = `The ghostly figure shimmers into view through your lens.\n\n"${msg}"`;
+        loreModal.classList.remove('hidden');
+
+        if (!gameState.foundLore.has(tileId)) {
+            grantXp(50);
+            gameState.foundLore.add(tileId);
+            playerRef.update({
+                foundLore: Array.from(gameState.foundLore)
+            });
+        }
+        return;
     }
-    return;
-}
+
+    // --- SEALED DOOR LOGIC ---
+    if (tileData && tileData.type === 'sealed_door') {
+        const hasKey = gameState.player.inventory.some(i => i.name === 'Ancient Key');
+
+        if (hasKey) {
+            logMessage("You insert the Ancient Key. The massive doors grind open...");
+            // Teleport to a special Vault Dungeon ID
+            gameState.mapMode = 'dungeon';
+            gameState.currentCaveId = 'vault_kings_treasure';
+            gameState.currentCaveTheme = 'GOLDEN'; // Make sure this theme exists in data-maps
+
+            // Generate the Vault
+            chunkManager.generateCave(gameState.currentCaveId);
+
+            // Move player
+            gameState.player.x = 10; // Arbitrary safe spot in your gen logic
+            gameState.player.y = 10;
+
+            updateRegionDisplay();
+            render();
+            syncPlayerState();
+        } else {
+            logMessage("The door is sealed tight. There is a keyhole shaped like four joined stone fragments.");
+        }
+        return;
+    }
 
     // 4. Obsolete Tile Cleanup
     const obsoleteTiles = [];
@@ -8938,10 +8945,6 @@ if (tileData && tileData.type === 'sealed_door') {
         }
     }
 
-    console.log("Attempting Move to:", newX, newY);
-    console.log("Tile Char:", newTile);
-    console.log("Tile Data:", tileData);
-
     // --- COMBAT CHECK ---
     const enemyData = ENEMY_DATA[newTile];
     if (enemyData) {
@@ -8953,9 +8956,9 @@ if (tileData && tileData.type === 'sealed_door') {
         if (Math.random() > hitChance) {
             logMessage(`You swing at the ${enemyData.name} but miss!`);
 
-        if (typeof ParticleSystem !== 'undefined') {
-            ParticleSystem.createFloatingText(newX, newY, "MISS", "#9ca3af");
-        }
+            if (typeof ParticleSystem !== 'undefined') {
+                ParticleSystem.createFloatingText(newX, newY, "MISS", "#9ca3af");
+            }
 
 
             // We still end the turn so the enemy can move/attack
@@ -8976,7 +8979,9 @@ if (tileData && tileData.type === 'sealed_door') {
         if (gameState.player.stealthTurns > 0) {
             gameState.player.stealthTurns = 0;
             logMessage("You emerge from the shadows.");
-            playerRef.update({ stealthTurns: 0 });
+            playerRef.update({
+                stealthTurns: 0
+            });
         }
 
         // 2. Critical Hit Check
@@ -8991,72 +8996,72 @@ if (tileData && tileData.type === 'sealed_door') {
 
         if (gameState.mapMode === 'dungeon' || gameState.mapMode === 'castle') {
             // --- INSTANCED COMBAT (Inside attemptMovePlayer) ---
-let enemy = gameState.instancedEnemies.find(e => e.x === newX && e.y === newY);
-let enemyId = enemy ? enemy.id : null;
+            let enemy = gameState.instancedEnemies.find(e => e.x === newX && e.y === newY);
+            let enemyId = enemy ? enemy.id : null;
 
-if (enemy) {
-    const boostedDamage = getPlayerDamageModifier(rawDamage);
-    let playerDamage = Math.max(1, boostedDamage - (enemy.defense || 0));
+            if (enemy) {
+                const boostedDamage = getPlayerDamageModifier(rawDamage);
+                let playerDamage = Math.max(1, boostedDamage - (enemy.defense || 0));
 
-    // Low-level grace logic
-    if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
-        const graceFloor = Math.ceil(gameState.player.strength / 2);
-        playerDamage = Math.max(playerDamage, graceFloor);
-    }
+                // Low-level grace logic
+                if (gameState.player.level < 4 && enemyData.maxHealth <= 10) {
+                    const graceFloor = Math.ceil(gameState.player.strength / 2);
+                    playerDamage = Math.max(playerDamage, graceFloor);
+                }
 
-    enemy.health -= playerDamage;
+                enemy.health -= playerDamage;
 
-    // --- WEAPON PROC SYSTEM ---
-    const equippedWeapon = gameState.player.equipment.weapon;
-    if (equippedWeapon && equippedWeapon.onHit && Math.random() < equippedWeapon.procChance) {
-        logMessage(`Your ${equippedWeapon.name} surges with power!`);
-        const spellId = equippedWeapon.onHit;
-        const spellData = SPELL_DATA[spellId];
-        const procDmg = spellData.baseDamage + (gameState.player.wits * 0.5);
-        applySpellDamage(newX, newY, procDmg, spellId);
-    }
+                // --- WEAPON PROC SYSTEM ---
+                const equippedWeapon = gameState.player.equipment.weapon;
+                if (equippedWeapon && equippedWeapon.onHit && Math.random() < equippedWeapon.procChance) {
+                    logMessage(`Your ${equippedWeapon.name} surges with power!`);
+                    const spellId = equippedWeapon.onHit;
+                    const spellData = SPELL_DATA[spellId];
+                    const procDmg = spellData.baseDamage + (gameState.player.wits * 0.5);
+                    applySpellDamage(newX, newY, procDmg, spellId);
+                }
 
-    AudioSystem.playAttack();
+                AudioSystem.playAttack();
 
-    // Log & Effects
-    if (isCrit) {
-        logMessage(`CRITICAL HIT! You strike the ${enemy.name} for ${playerDamage} damage!`);
-        ParticleSystem.createExplosion(newX, newY, '#facc15');
-        ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
-    } else {
-        logMessage(`You attack the ${enemy.name} for {red:${playerDamage}} damage!`);
-        ParticleSystem.createExplosion(newX, newY, '#ef4444');
-        ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
-    }
+                // Log & Effects
+                if (isCrit) {
+                    logMessage(`CRITICAL HIT! You strike the ${enemy.name} for ${playerDamage} damage!`);
+                    ParticleSystem.createExplosion(newX, newY, '#facc15');
+                    ParticleSystem.createFloatingText(newX, newY, "CRIT!", "#facc15");
+                } else {
+                    logMessage(`You attack the ${enemy.name} for {red:${playerDamage}} damage!`);
+                    ParticleSystem.createExplosion(newX, newY, '#ef4444');
+                    ParticleSystem.createFloatingText(newX, newY, `-${playerDamage}`, '#fff');
+                }
 
-    // Weapon Poison Effect
-    const weapon = gameState.player.equipment.weapon;
-    if (weapon && weapon.inflicts === 'poison' && enemy.poisonTurns <= 0 && Math.random() < (weapon.inflictChance || 0.25)) {
-        logMessage(`Your weapon poisons the ${enemy.name}!`);
-        enemy.poisonTurns = 3;
-    }
+                // Weapon Poison Effect
+                const weapon = gameState.player.equipment.weapon;
+                if (weapon && weapon.inflicts === 'poison' && enemy.poisonTurns <= 0 && Math.random() < (weapon.inflictChance || 0.25)) {
+                    logMessage(`Your weapon poisons the ${enemy.name}!`);
+                    enemy.poisonTurns = 3;
+                }
 
-    // Enemy Death Logic
-    if (enemy.health <= 0) {
-        logMessage(`You defeated the ${enemy.name}!`);
-        registerKill(enemy);
+                // Enemy Death Logic
+                if (enemy.health <= 0) {
+                    logMessage(`You defeated the ${enemy.name}!`);
+                    registerKill(enemy);
 
-        const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
-        gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
+                    const droppedLoot = generateEnemyLoot(gameState.player, enemyData);
+                    gameState.instancedEnemies = gameState.instancedEnemies.filter(e => e.id !== enemyId);
 
-        if (gameState.mapMode === 'dungeon') {
-            if (chunkManager.caveEnemies[gameState.currentCaveId]) {
-                chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
-            }
-            chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
-        }
-    } 
+                    if (gameState.mapMode === 'dungeon') {
+                        if (chunkManager.caveEnemies[gameState.currentCaveId]) {
+                            chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
+                        }
+                        chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
+                    }
+                }
 
-    // FINALIZE TURN - No counter-attack here! 
-    // The enemy will now attack during the processEnemyTurns() AI loop.
-    endPlayerTurn();
-    render();
-    return;
+                // FINALIZE TURN - No counter-attack here! 
+                // The enemy will now attack during the processEnemyTurns() AI loop.
+                endPlayerTurn();
+                render();
+                return;
 
             } else {
                 logMessage(`You see the corpse of a ${enemyData.name}.`);
@@ -9088,7 +9093,7 @@ if (enemy) {
                 logMessage(`You attack the ${targetName} for ${playerDamage} damage!`);
             }
 
-            isProcessingMove = true; 
+            isProcessingMove = true;
 
             await handleOverworldCombat(newX, newY, enemyData, newTile, playerDamage);
             return;
@@ -9197,12 +9202,15 @@ if (enemy) {
                 const enemyData = ENEMY_DATA['s'];
                 const enemyId = `overworld:${newX},${-newY}`;
                 const scaledStats = getScaledEnemy(enemyData, newX, newY);
-                gameState.sharedEnemies[enemyId] = { ...scaledStats, tile: 's', x: newX, y: newY };
+                gameState.sharedEnemies[enemyId] = { ...scaledStats,
+                    tile: 's',
+                    x: newX,
+                    y: newY
+                };
 
                 render();
                 return; // Stop movement, fight starts next turn
-            }
-            else if (roll < 0.50) {
+            } else if (roll < 0.50) {
                 // 35% Chance: Artifact
                 const artifacts = ['🏺a', '🗿h', '🦴d', 'ancient_coin', 'gold_dust'];
                 const key = artifacts[Math.floor(Math.random() * artifacts.length)];
@@ -9220,15 +9228,16 @@ if (enemy) {
                 } else {
                     logMessage(`You found a ${template.name}, but your inventory is full.`);
                 }
-            }
-            else {
+            } else {
                 // 50% Chance: Just dirt/worms
                 logMessage("Just dirt and rocks.");
             }
 
             // Clear the tile
             chunkManager.setWorldTile(newX, newY, '.');
-            playerRef.update({ inventory: getSanitizedInventory() });
+            playerRef.update({
+                inventory: getSanitizedInventory()
+            });
             renderInventory();
             render();
             return; // Digging takes a turn
@@ -9281,7 +9290,7 @@ if (enemy) {
                 document.getElementById('restoreCrownBtn').onclick = () => {
                     // Remove Old Crown
                     inv.splice(crownIndex, 1);
-                    
+
                     // Add Restored Crown (New Item)
                     inv.push({
                         name: "Crown of the First King",
@@ -9290,15 +9299,21 @@ if (enemy) {
                         quantity: 1,
                         defense: 2, // Now offers some protection
                         slot: "armor",
-                        statBonuses: { charisma: 10, luck: 5, maxMana: 20 }, // GODLY STATS
+                        statBonuses: {
+                            charisma: 10,
+                            luck: 5,
+                            maxMana: 20
+                        }, // GODLY STATS
                         description: "Restored to its former glory. You act with the authority of the Old World."
                     });
 
                     logMessage("The Historian restores the crown. It shines like the sun!");
                     triggerStatAnimation(statDisplays.level, 'stat-pulse-purple');
-                    
+
                     // Save & Close
-                    playerRef.update({ inventory: getSanitizedInventory() });
+                    playerRef.update({
+                        inventory: getSanitizedInventory()
+                    });
                     renderInventory();
                     loreModal.classList.add('hidden');
                 };
@@ -9310,8 +9325,7 @@ if (enemy) {
         if (player.relicQuestStage === 0) {
             dialogueHtml = `<p>"Ah, a traveler! I am researching the fall of the Old King. Legend says his power was sealed in three gems."</p><p>"Bring me the <b>Sun Shard</b> from the deserts to the south. I will reward you."</p>`;
             player.relicQuestStage = 1;
-        }
-        else if (player.relicQuestStage === 1) {
+        } else if (player.relicQuestStage === 1) {
             const hasShardIndex = inv.findIndex(i => i.name === 'Sun Shard');
             if (hasShardIndex > -1) {
                 inv.splice(hasShardIndex, 1);
@@ -9321,8 +9335,7 @@ if (enemy) {
             } else {
                 dialogueHtml = `<p>"The <b>Sun Shard</b> is hidden in the scorching sands of the Desert. Please hurry."</p>`;
             }
-        }
-        else if (player.relicQuestStage === 2) {
+        } else if (player.relicQuestStage === 2) {
             const hasShardIndex = inv.findIndex(i => i.name === 'Moon Tear');
             if (hasShardIndex > -1) {
                 inv.splice(hasShardIndex, 1);
@@ -9332,8 +9345,7 @@ if (enemy) {
             } else {
                 dialogueHtml = `<p>"The <b>Moon Tear</b> is in the Swamp. Beware the poison."</p>`;
             }
-        }
-        else if (player.relicQuestStage === 3) {
+        } else if (player.relicQuestStage === 3) {
             const hasShardIndex = inv.findIndex(i => i.name === 'Void Crystal');
             if (hasShardIndex > -1) {
                 // Check space before taking
@@ -9342,7 +9354,9 @@ if (enemy) {
                     player.relicQuestStage = 4;
                     grantXp(500);
                     const reward = ITEM_DATA['⚡']; // Stormbringer
-                    inv.push({ ...reward, quantity: 1 });
+                    inv.push({ ...reward,
+                        quantity: 1
+                    });
                     dialogueHtml = `<p>"You have done it! The trinity is restored. As promised, take this... The King's own blade, <b>Stormbringer</b>."</p>`;
                 } else {
                     dialogueHtml = `<p>"I have your reward, but your pack is full! Make space and return to me."</p>`;
@@ -9350,8 +9364,7 @@ if (enemy) {
             } else {
                 dialogueHtml = `<p>"The <b>Void Crystal</b> is in the Mountains. It is the most dangerous journey."</p>`;
             }
-        }
-        else {
+        } else {
             dialogueHtml = `<p>"The history books will remember your name, hero."</p>`;
         }
 
@@ -9390,7 +9403,9 @@ if (enemy) {
                             grantXp(100);
                             logMessage("The Historian shares ancient secrets with you.");
                             loreModal.classList.add('hidden');
-                            playerRef.update({ inventory: getSanitizedInventory() });
+                            playerRef.update({
+                                inventory: getSanitizedInventory()
+                            });
                             renderInventory();
                         }
                     };
@@ -9423,7 +9438,9 @@ if (enemy) {
                             }
 
                             loreModal.classList.add('hidden');
-                            playerRef.update({ inventory: getSanitizedInventory() });
+                            playerRef.update({
+                                inventory: getSanitizedInventory()
+                            });
                             renderInventory();
                         } else {
                             logMessage("Not enough shards.");
@@ -9434,7 +9451,10 @@ if (enemy) {
         }
 
         // Save progress
-        playerRef.update({ relicQuestStage: player.relicQuestStage, inventory: getSanitizedInventory() });
+        playerRef.update({
+            relicQuestStage: player.relicQuestStage,
+            inventory: getSanitizedInventory()
+        });
         renderInventory();
         return;
     }
@@ -9454,7 +9474,12 @@ if (enemy) {
 
         // Give Item
         if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-            gameState.player.inventory.push({ name: 'Memory Shard', type: 'junk', quantity: 1, tile: '👻' });
+            gameState.player.inventory.push({
+                name: 'Memory Shard',
+                type: 'junk',
+                quantity: 1,
+                tile: '👻'
+            });
         } else {
             logMessage("Your inventory is full, the shard falls to the ground.");
             // Logic to leave it on ground is handled by not clearing tile if full? 
@@ -9462,7 +9487,9 @@ if (enemy) {
         }
 
         chunkManager.setWorldTile(newX, newY, '.'); // Remove ghost
-        playerRef.update({ inventory: getSanitizedInventory() });
+        playerRef.update({
+            inventory: getSanitizedInventory()
+        });
         renderInventory();
         return;
     }
@@ -9546,8 +9573,7 @@ if (enemy) {
         }
         if (phaseWallTile && newTile === phaseWallTile) {
             logMessage("You step into the wall... and pass right through it like smoke.");
-        }
-        else if (theme && (newTile === theme.wall || newTile === ' ')) {
+        } else if (theme && (newTile === theme.wall || newTile === ' ')) {
             logMessage("The wall is solid.");
             return;
         }
@@ -9582,28 +9608,42 @@ if (enemy) {
             player.strengthBonus = 5;
             player.strengthBonusTurns = 500;
 
-            playerRef.update({ strengthBonus: 5, strengthBonusTurns: 500 });
+            playerRef.update({
+                strengthBonus: 5,
+                strengthBonusTurns: 500
+            });
             renderEquipment();
             shrineUsed = true;
 
             if (shrineUsed) gameState.lootedTiles.add(tileId);
-            playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles) });
+            playerRef.update({
+                lootedTiles: Array.from(gameState.lootedTiles)
+            });
             loreModal.classList.add('hidden');
-        }, { once: true });
+        }, {
+            once: true
+        });
 
         document.getElementById('shrineWits').addEventListener('click', () => {
             logMessage("You pray for Wits. Your mind expands with ancient knowledge!");
             player.witsBonus = 5;
             player.witsBonusTurns = 500;
 
-            playerRef.update({ witsBonus: 5, witsBonusTurns: 500 });
+            playerRef.update({
+                witsBonus: 5,
+                witsBonusTurns: 500
+            });
             renderStats();
 
             shrineUsed = true;
             if (shrineUsed) gameState.lootedTiles.add(tileId);
-            playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles) });
+            playerRef.update({
+                lootedTiles: Array.from(gameState.lootedTiles)
+            });
             loreModal.classList.add('hidden');
-        }, { once: true });
+        }, {
+            once: true
+        });
 
         return;
     }
@@ -9612,17 +9652,28 @@ if (enemy) {
         if (gameState.player.coins >= 50) {
             logMessage("You toss 50 gold into the well...");
             gameState.player.coins -= 50;
-            playerRef.update({ coins: gameState.player.coins });
+            playerRef.update({
+                coins: gameState.player.coins
+            });
             renderStats();
             const roll = Math.random();
             if (roll < 0.3) {
                 logMessage("...and receive a Healing Potion!");
-                gameState.player.inventory.push({ name: 'Healing Potion', type: 'consumable', quantity: 1, tile: '+', effect: ITEM_DATA['+'].effect });
+                gameState.player.inventory.push({
+                    name: 'Healing Potion',
+                    type: 'consumable',
+                    quantity: 1,
+                    tile: '+',
+                    effect: ITEM_DATA['+'].effect
+                });
             } else if (roll < 0.6) {
                 logMessage("...and feel refreshed! (Full Heal)");
                 gameState.player.health = gameState.player.maxHealth;
                 gameState.player.mana = gameState.player.maxMana;
-                playerRef.update({ health: gameState.player.health, mana: gameState.player.mana });
+                playerRef.update({
+                    health: gameState.player.health,
+                    mana: gameState.player.mana
+                });
             } else {
                 logMessage("...splash. Nothing happens.");
             }
@@ -9660,9 +9711,7 @@ if (enemy) {
             logMessage("Inventory full! You drop the fruit.");
         }
         return;
-    }
-
-    else if (tileData && tileData.type === 'loot_chest') {
+    } else if (tileData && tileData.type === 'loot_chest') {
 
         // --- MIMIC CHECK ---
         if (Math.random() < 0.10) {
@@ -9700,12 +9749,13 @@ if (enemy) {
             logMessage("You found an Elixir of Life!");
         }
         chunkManager.setWorldTile(newX, newY, '.');
-        playerRef.update({ coins: gameState.player.coins, inventory: gameState.player.inventory });
+        playerRef.update({
+            coins: gameState.player.coins,
+            inventory: gameState.player.inventory
+        });
         renderInventory();
         return;
-    }
-
-    else if (newTile === '<') {
+    } else if (newTile === '<') {
         const player = gameState.player;
         let tileId;
         if (gameState.mapMode === 'overworld') {
@@ -9722,7 +9772,9 @@ if (enemy) {
             if (Math.random() < avoidChance) {
                 logMessage("You spot a spike trap and deftly avoid it, disarming it!");
                 gameState.lootedTiles.add(tileId);
-                playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles) });
+                playerRef.update({
+                    lootedTiles: Array.from(gameState.lootedTiles)
+                });
                 return;
             } else {
                 logMessage("You step right on a spike trap! Ouch!");
@@ -9793,12 +9845,19 @@ if (enemy) {
                     chunkManager.setWorldTile(newX, newY, '⛰');
                     gameState.mapMode = 'dungeon';
                     gameState.currentCaveId = `cave_${newX}_${newY}`;
-                    gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                    gameState.overworldExit = {
+                        x: gameState.player.x,
+                        y: gameState.player.y
+                    };
                     const caveMap = chunkManager.generateCave(gameState.currentCaveId);
                     gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
                     for (let y = 0; y < caveMap.length; y++) {
                         const x = caveMap[y].indexOf('>');
-                        if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
+                        if (x !== -1) {
+                            gameState.player.x = x;
+                            gameState.player.y = y;
+                            break;
+                        }
                     }
                     const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
                     gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
@@ -9819,7 +9878,9 @@ if (enemy) {
         gameState.player.isBoating = false;
         logMessage("You beach the canoe and step onto the shore.");
         chunkManager.setWorldTile(gameState.player.x, gameState.player.y, 'c');
-        playerRef.update({ isBoating: false });
+        playerRef.update({
+            isBoating: false
+        });
     }
 
     // --- DOOR LOGIC ---
@@ -9850,20 +9911,22 @@ if (enemy) {
         if (tileData.type === 'journal') {
             // New centralized handler
             grantLoreDiscovery(tileId); // tileId is used as unique key for map locations
-            
+
             // For the Codex, we also want to mark the ITEM ID as found, not just the map coordinate.
             // This requires a slight shift: tracking "Lore Item IDs" separate from "Map Coordinates".
             // For simplicity, we can assume 'grantLoreDiscovery' handles both if we pass the right ID.
             // Let's rely on ITEM_DATA keys being unique enough for now.
-            
+
             // To make the set system work, we need to track the ITEM TEMPLATE ID (e.g. "📜1")
             // alongside the specific map tile coordinates.
             if (!gameState.foundCodexEntries) gameState.foundCodexEntries = new Set();
             gameState.foundCodexEntries.add(newTile); // Add "📜1"
-            playerRef.update({ foundCodexEntries: Array.from(gameState.foundCodexEntries) });
-            
+            playerRef.update({
+                foundCodexEntries: Array.from(gameState.foundCodexEntries)
+            });
+
             // Trigger the set check with the ITEM KEY, not the coordinate
-            checkLoreSets(newTile); 
+            checkLoreSets(newTile);
 
             loreTitle.textContent = tileData.title;
             loreContent.textContent = tileData.content;
@@ -9897,18 +9960,27 @@ if (enemy) {
                     if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                         const existingWood = playerInventory.find(i => i.name === 'Wood Log');
                         if (existingWood) existingWood.quantity++;
-                        else playerInventory.push({ name: 'Wood Log', type: 'junk', quantity: 1, tile: '🪵' });
+                        else playerInventory.push({
+                            name: 'Wood Log',
+                            type: 'junk',
+                            quantity: 1,
+                            tile: '🪵'
+                        });
                         logMessage("You gathered a Wood Log!");
                         inventoryWasUpdated = true;
                     } else {
                         logMessage("Inventory full! The wood is lost.");
                     }
-                }
-                else if (toolName === 'Pickaxe') {
+                } else if (toolName === 'Pickaxe') {
                     if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                         const existingStone = playerInventory.find(i => i.name === 'Stone');
                         if (existingStone) existingStone.quantity++;
-                        else playerInventory.push({ name: 'Stone', type: 'junk', quantity: 1, tile: '🪨' });
+                        else playerInventory.push({
+                            name: 'Stone',
+                            type: 'junk',
+                            quantity: 1,
+                            tile: '🪨'
+                        });
                         logMessage("You gathered Stone!");
                         inventoryWasUpdated = true;
                     }
@@ -9967,7 +10039,12 @@ if (enemy) {
             triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
             triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
             logMessage("The fire warms your bones. You feel fully restored.");
-            playerRef.update({ health: gameState.player.health, stamina: gameState.player.stamina, mana: gameState.player.mana, psyche: gameState.player.psyche });
+            playerRef.update({
+                health: gameState.player.health,
+                stamina: gameState.player.stamina,
+                mana: gameState.player.mana,
+                psyche: gameState.player.psyche
+            });
         }
 
         if (tileData.type === 'ruin') {
@@ -10001,7 +10078,15 @@ if (enemy) {
                         logMessage("You feel a surge of intellect.");
                         if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                             const reward = ITEM_DATA['👓'];
-                            gameState.player.inventory.push({ name: reward.name, type: reward.type, quantity: 1, tile: '👓', defense: reward.defense, slot: reward.slot, statBonuses: reward.statBonuses });
+                            gameState.player.inventory.push({
+                                name: reward.name,
+                                type: reward.type,
+                                quantity: 1,
+                                tile: '👓',
+                                defense: reward.defense,
+                                slot: reward.slot,
+                                statBonuses: reward.statBonuses
+                            });
                             logMessage("You found the Scholar's Spectacles!");
                         } else {
                             logMessage("You found the Spectacles, but your pack was full! (They are lost in the rubble...)");
@@ -10014,14 +10099,23 @@ if (enemy) {
             } else {
                 logMessage("You found an Arcane Scroll.");
                 if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    gameState.player.inventory.push({ name: 'Scroll: Clarity', type: 'spellbook', quantity: 1, tile: '📜', spellId: 'clarity' });
+                    gameState.player.inventory.push({
+                        name: 'Scroll: Clarity',
+                        type: 'spellbook',
+                        quantity: 1,
+                        tile: '📜',
+                        spellId: 'clarity'
+                    });
                 } else {
                     logMessage("But your inventory is full.");
                     return;
                 }
             }
             gameState.lootedTiles.add(tileId);
-            playerRef.update({ lootedTiles: Array.from(gameState.lootedTiles), inventory: gameState.player.inventory });
+            playerRef.update({
+                lootedTiles: Array.from(gameState.lootedTiles),
+                inventory: gameState.player.inventory
+            });
             renderInventory();
             return;
         }
@@ -10036,7 +10130,9 @@ if (enemy) {
             if (!gameState.foundLore.has(tileId)) {
                 grantXp(10);
                 gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                playerRef.update({
+                    foundLore: Array.from(gameState.foundLore)
+                });
             }
             return;
         }
@@ -10096,7 +10192,10 @@ if (enemy) {
                 const theme = CAVE_THEMES[gameState.currentCaveTheme];
                 chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
             }
-            playerRef.update({ coins: gameState.player.coins, inventory: gameState.player.inventory });
+            playerRef.update({
+                coins: gameState.player.coins,
+                inventory: gameState.player.inventory
+            });
             renderInventory();
             renderStats();
             return;
@@ -10107,7 +10206,9 @@ if (enemy) {
                 logMessage("You've discovered a Bounty Board! +15 XP");
                 grantXp(15);
                 gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                playerRef.update({
+                    foundLore: Array.from(gameState.foundLore)
+                });
             }
             openBountyBoard();
             return;
@@ -10140,22 +10241,34 @@ if (enemy) {
                 triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue'); // Visual flair
 
                 // Save immediately
-                playerRef.update({ unlockedWaypoints: player.unlockedWaypoints });
+                playerRef.update({
+                    unlockedWaypoints: player.unlockedWaypoints
+                });
             }
 
             // 3. Generate Lore (Keep existing flavor)
             if (!gameState.foundLore.has(tileId)) {
                 // grantXp(10); // Removed small XP, moved to Attunement above
                 gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                playerRef.update({
+                    foundLore: Array.from(gameState.foundLore)
+                });
             }
 
             const elev = elevationNoise.noise(newX / 70, newY / 70);
             const moist = moistureNoise.noise(newX / 50, newY / 50);
-            let loreArray = LORE_PLAINS; let biomeName = "Plains";
-            if (elev < 0.4 && moist > 0.7) { loreArray = LORE_SWAMP; biomeName = "Swamp"; }
-            else if (elev > 0.8) { loreArray = LORE_MOUNTAIN; biomeName = "Mountain"; }
-            else if (moist > 0.55) { loreArray = LORE_FOREST; biomeName = "Forest"; }
+            let loreArray = LORE_PLAINS;
+            let biomeName = "Plains";
+            if (elev < 0.4 && moist > 0.7) {
+                loreArray = LORE_SWAMP;
+                biomeName = "Swamp";
+            } else if (elev > 0.8) {
+                loreArray = LORE_MOUNTAIN;
+                biomeName = "Mountain";
+            } else if (moist > 0.55) {
+                loreArray = LORE_FOREST;
+                biomeName = "Forest";
+            }
 
             const seed = stringToSeed(tileId);
             const random = Alea(seed);
@@ -10186,12 +10299,21 @@ if (enemy) {
                 if (existingStack) {
                     existingStack.quantity++;
                     logMessage("The Obelisk hums, and another shard forms in your pack.");
-                    playerRef.update({ inventory: gameState.player.inventory });
+                    playerRef.update({
+                        inventory: gameState.player.inventory
+                    });
                     renderInventory();
                 } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    gameState.player.inventory.push({ name: 'Obsidian Shard', type: 'junk', quantity: 1, tile: '▲' });
+                    gameState.player.inventory.push({
+                        name: 'Obsidian Shard',
+                        type: 'junk',
+                        quantity: 1,
+                        tile: '▲'
+                    });
                     logMessage("The Obelisk hums, and a shard of black glass falls into your hand.");
-                    playerRef.update({ inventory: gameState.player.inventory });
+                    playerRef.update({
+                        inventory: gameState.player.inventory
+                    });
                     renderInventory();
                 } else {
                     logMessage("The Obelisk offers a shard, but your inventory is full!");
@@ -10203,7 +10325,10 @@ if (enemy) {
                     triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
                     triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple');
                     logMessage("The ancient stone restores your magical energy.");
-                    playerRef.update({ mana: gameState.player.mana, psyche: gameState.player.psyche });
+                    playerRef.update({
+                        mana: gameState.player.mana,
+                        psyche: gameState.player.psyche
+                    });
                     renderStats();
                 }
 
@@ -10217,7 +10342,9 @@ if (enemy) {
                 loreModal.classList.remove('hidden');
 
                 gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                playerRef.update({
+                    foundLore: Array.from(gameState.foundLore)
+                });
             }
             return;
         }
@@ -10227,7 +10354,9 @@ if (enemy) {
                 logMessage("You found a scattered page! +10 XP");
                 grantXp(10);
                 gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                playerRef.update({
+                    foundLore: Array.from(gameState.foundLore)
+                });
             }
             const seed = stringToSeed(tileId);
             const random = Alea(seed);
@@ -10249,26 +10378,42 @@ if (enemy) {
                 logMessage("You meet a villager. +5 XP");
                 grantXp(5);
                 gameState.foundLore.add(genericVillagerId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                playerRef.update({
+                    foundLore: Array.from(gameState.foundLore)
+                });
             }
 
             if (!playerQuest) {
                 loreTitle.textContent = "Distraught Villager";
                 loreContent.innerHTML = `<p>An old villager wrings their hands.\n\n"Oh, thank goodness! A goblin stole my family heirloom... It's all I have left. If you find it, please bring it back!"</p><button id="acceptNpcQuest" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">"I'll keep an eye out."</button>`;
                 loreModal.classList.remove('hidden');
-                document.getElementById('acceptNpcQuest').addEventListener('click', () => { acceptQuest(npcQuestId); loreModal.classList.add('hidden'); }, { once: true });
+                document.getElementById('acceptNpcQuest').addEventListener('click', () => {
+                    acceptQuest(npcQuestId);
+                    loreModal.classList.add('hidden');
+                }, {
+                    once: true
+                });
             } else if (playerQuest.status === 'active') {
                 const hasItem = player.inventory.some(item => item.name === questData.itemNeeded);
                 if (hasItem) {
                     loreTitle.textContent = "Joyful Villager";
                     loreContent.innerHTML = `<p>The villager's eyes go wide.\n\n"You found it! My heirloom! Thank you, thank you! I don't have much, but please, take this for your trouble."</p><button id="turnInNpcQuest" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Here you go. (Complete Quest)"</button>`;
                     loreModal.classList.remove('hidden');
-                    document.getElementById('turnInNpcQuest').addEventListener('click', () => { turnInQuest(npcQuestId); loreModal.classList.add('hidden'); }, { once: true });
+                    document.getElementById('turnInNpcQuest').addEventListener('click', () => {
+                        turnInQuest(npcQuestId);
+                        loreModal.classList.add('hidden');
+                    }, {
+                        once: true
+                    });
                 } else {
                     loreTitle.textContent = "Anxious Villager";
                     loreContent.innerHTML = `<p>The villager looks up hopefully.\n\n"Any luck finding my heirloom? Those goblins are such pests..."</p><button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"I'm still looking."</button>`;
                     loreModal.classList.remove('hidden');
-                    document.getElementById('closeNpcLore').addEventListener('click', () => { loreModal.classList.add('hidden'); }, { once: true });
+                    document.getElementById('closeNpcLore').addEventListener('click', () => {
+                        loreModal.classList.add('hidden');
+                    }, {
+                        once: true
+                    });
                 }
             } else if (playerQuest.status === 'completed') {
                 const seed = stringToSeed(tileId);
@@ -10277,7 +10422,11 @@ if (enemy) {
                 loreTitle.textContent = "Grateful Villager";
                 loreContent.innerHTML = `<p>The villager smiles warmly.\n\n"Thank you again for your help, adventurer. By the way..."</p><p class="italic text-sm mt-2">"${rumor}"</p><button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Good to know."</button>`;
                 loreModal.classList.remove('hidden');
-                document.getElementById('closeNpcLore').addEventListener('click', () => { loreModal.classList.add('hidden'); }, { once: true });
+                document.getElementById('closeNpcLore').addEventListener('click', () => {
+                    loreModal.classList.add('hidden');
+                }, {
+                    once: true
+                });
             }
             return;
         }
@@ -10290,21 +10439,29 @@ if (enemy) {
                 loreTitle.textContent = "Captain of the Guard";
                 loreContent.innerHTML = `<p>The Captain looks grim.\n\n"The Bandit Chief has grown too bold. He's holed up in a fortress nearby. I need someone expendable—err, brave—to take him out."</p><button id="acceptGuard" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded w-full">"Consider it done."</button>`;
                 loreModal.classList.remove('hidden');
-                document.getElementById('acceptGuard').addEventListener('click', () => { acceptQuest(questId); loreModal.classList.add('hidden'); }, { once: true });
+                document.getElementById('acceptGuard').addEventListener('click', () => {
+                    acceptQuest(questId);
+                    loreModal.classList.add('hidden');
+                }, {
+                    once: true
+                });
                 return;
-            }
-            else if (playerQuest.status === 'active') {
+            } else if (playerQuest.status === 'active') {
                 if (playerQuest.kills >= 1) {
                     loreTitle.textContent = "Impressed Captain";
                     loreContent.innerHTML = `<p>"They say the Chief is dead? Ha! I knew you had it in you. Take this blade, you've earned it."</p><button id="turnInGuard" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Thanks. (Complete)"</button>`;
                     loreModal.classList.remove('hidden');
-                    document.getElementById('turnInGuard').addEventListener('click', () => { turnInQuest(questId); loreModal.classList.add('hidden'); }, { once: true });
+                    document.getElementById('turnInGuard').addEventListener('click', () => {
+                        turnInQuest(questId);
+                        loreModal.classList.add('hidden');
+                    }, {
+                        once: true
+                    });
                     return;
                 } else {
                     logMessage("The Captain nods. 'Bring me the Chief's head.'");
                 }
-            }
-            else {
+            } else {
                 // Default Flavor Text if quest is done
                 const msgs = ["The roads are safer thanks to you.", "Stay sharp out there.", "Move along, citizen."];
                 logMessage(`Guard: "${msgs[Math.floor(Math.random() * msgs.length)]}"`);
@@ -10313,15 +10470,17 @@ if (enemy) {
         }
 
         if (newTile === 'O') {
-            const tileId = (gameState.mapMode === 'overworld')
-                ? `${newX},${-newY}`
-                : `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
+            const tileId = (gameState.mapMode === 'overworld') ?
+                `${newX},${-newY}` :
+                `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
 
             if (!gameState.foundLore.has(tileId)) {
                 logMessage("You listen to the Sage's ramblings. +10 XP");
                 grantXp(10);
                 gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                playerRef.update({
+                    foundLore: Array.from(gameState.foundLore)
+                });
             }
 
             const seed = stringToSeed(tileId);
@@ -10336,15 +10495,17 @@ if (enemy) {
 
         if (newTile === 'T') {
             // --- FIX: Define tileId ---
-            const tileId = (gameState.mapMode === 'overworld')
-                ? `${newX},${-newY}`
-                : `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
+            const tileId = (gameState.mapMode === 'overworld') ?
+                `${newX},${-newY}` :
+                `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
 
 
             if (!gameState.foundLore.has(tileId)) {
                 grantXp(15);
                 gameState.foundLore.add(tileId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                playerRef.update({
+                    foundLore: Array.from(gameState.foundLore)
+                });
             }
             openSkillTrainerModal();
             return;
@@ -10360,14 +10521,21 @@ if (enemy) {
                 logMessage("You meet a Lost Prospector. +5 XP");
                 grantXp(5);
                 gameState.foundLore.add(genericProspectorId);
-                playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                playerRef.update({
+                    foundLore: Array.from(gameState.foundLore)
+                });
             }
 
             if (!playerQuest) {
                 loreTitle.textContent = "Frustrated Prospector";
                 loreContent.innerHTML = `<p>A grizzled prospector, muttering to themself, jumps as you approach.\n\n"Goblins! I hate 'em! Always stealing my supplies, leaving these... these *totems* everywhere. Say, if you're clearing 'em out, bring me 10 of those Goblin Totems. I'll make it worth your while!"</p><button id="acceptNpcQuest" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">"I'll see what I can do."</button>`;
                 loreModal.classList.remove('hidden');
-                document.getElementById('acceptNpcQuest').addEventListener('click', () => { acceptQuest(npcQuestId); loreModal.classList.add('hidden'); }, { once: true });
+                document.getElementById('acceptNpcQuest').addEventListener('click', () => {
+                    acceptQuest(npcQuestId);
+                    loreModal.classList.add('hidden');
+                }, {
+                    once: true
+                });
             } else if (playerQuest.status === 'active') {
                 const itemInInv = player.inventory.find(item => item.name === questData.itemNeeded);
                 const hasItems = itemInInv && itemInInv.quantity >= questData.needed;
@@ -10375,76 +10543,91 @@ if (enemy) {
                     loreTitle.textContent = "Surprised Prospector";
                     loreContent.innerHTML = `<p>The prospector's eyes go wide as you show him the totems.\n\n"Ha! You actually did it! That'll teach 'em. Here, as promised. This is for your trouble."</p><button id="turnInNpcQuest" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Here you go. (Complete Quest)"</button>`;
                     loreModal.classList.remove('hidden');
-                    document.getElementById('turnInNpcQuest').addEventListener('click', () => { turnInQuest(npcQuestId); loreModal.classList.add('hidden'); }, { once: true });
+                    document.getElementById('turnInNpcQuest').addEventListener('click', () => {
+                        turnInQuest(npcQuestId);
+                        loreModal.classList.add('hidden');
+                    }, {
+                        once: true
+                    });
                 } else {
                     const needed = questData.needed - (itemInInv ? itemInInv.quantity : 0);
                     loreTitle.textContent = "Impatient Prospector";
                     loreContent.innerHTML = `<p>The prospector looks up.\n\n"Back already? You still need to find ${needed} more ${questData.itemNeeded}s. Get a move on!"</p><button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"I'm still looking."</button>`;
                     loreModal.classList.remove('hidden');
-                    document.getElementById('closeNpcLore').addEventListener('click', () => { loreModal.classList.add('hidden'); }, { once: true });
+                    document.getElementById('closeNpcLore').addEventListener('click', () => {
+                        loreModal.classList.add('hidden');
+                    }, {
+                        once: true
+                    });
                 }
             } else if (playerQuest.status === 'completed') {
                 loreTitle.textContent = "Grateful Prospector";
                 loreContent.innerHTML = `<p>The prospector nods at you.\n\n"Thanks again for your help, adventurer. The caves are a little quieter... for now."</p><button id="closeNpcLore" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"You're welcome."</button>`;
                 loreModal.classList.remove('hidden');
-                document.getElementById('closeNpcLore').addEventListener('click', () => { loreModal.classList.add('hidden'); }, { once: true });
+                document.getElementById('closeNpcLore').addEventListener('click', () => {
+                    loreModal.classList.add('hidden');
+                }, {
+                    once: true
+                });
             }
             return;
         }
 
         if (newTile === '§') {
-        const hour = gameState.time.hour;
-        if (hour < 6 || hour >= 20) {
-            logMessage("The General Store is closed. A sign reads: 'Open 6 AM - 8 PM'.");
+            const hour = gameState.time.hour;
+            if (hour < 6 || hour >= 20) {
+                logMessage("The General Store is closed. A sign reads: 'Open 6 AM - 8 PM'.");
+                return;
+            }
+
+            // Discovery XP Logic
+            const tileId = `${newX},${-newY}`; // Used for lore discovery
+            if (!gameState.foundLore.has(tileId)) {
+                logMessage("You've discovered a General Store! +15 XP");
+                grantXp(15);
+                gameState.foundLore.add(tileId);
+                playerRef.update({
+                    foundLore: Array.from(gameState.foundLore)
+                });
+            }
+
+            // --- NEW SHOP PERSISTENCE LOGIC ---
+
+            // 1. Generate Unique Shop ID
+            // We use the Map ID + Coordinates to ensure every specific shop node is unique
+            let contextId = "overworld";
+            if (gameState.mapMode === 'castle') contextId = gameState.currentCastleId;
+            // (Dungeon shops don't exist yet, but this handles them if added)
+            if (gameState.mapMode === 'dungeon') contextId = gameState.currentCaveId;
+
+            const shopId = `shop_${contextId}_${newX}_${newY}`;
+
+            // 2. Initialize Container if missing
+            if (!gameState.shopStates) gameState.shopStates = {};
+
+            // 3. Check if this specific shop has been visited this session
+            if (!gameState.shopStates[shopId]) {
+                // First visit! Clone the appropriate template.
+                let template = SHOP_INVENTORY; // Default
+                if (gameState.mapMode === 'castle') template = CASTLE_SHOP_INVENTORY;
+
+                // Deep copy to break reference to the global constant
+                gameState.shopStates[shopId] = JSON.parse(JSON.stringify(template));
+            }
+
+            // 4. Point active inventory to the persistent session state
+            activeShopInventory = gameState.shopStates[shopId];
+
+            if (gameState.mapMode === 'castle') {
+                logMessage("You enter the castle emporium.");
+            } else {
+                logMessage("You enter the General Store.");
+            }
+
+            renderShop();
+            shopModal.classList.remove('hidden');
             return;
         }
-
-        // Discovery XP Logic
-        const tileId = `${newX},${-newY}`; // Used for lore discovery
-        if (!gameState.foundLore.has(tileId)) {
-            logMessage("You've discovered a General Store! +15 XP");
-            grantXp(15);
-            gameState.foundLore.add(tileId);
-            playerRef.update({ foundLore: Array.from(gameState.foundLore) });
-        }
-
-        // --- NEW SHOP PERSISTENCE LOGIC ---
-        
-        // 1. Generate Unique Shop ID
-        // We use the Map ID + Coordinates to ensure every specific shop node is unique
-        let contextId = "overworld";
-        if (gameState.mapMode === 'castle') contextId = gameState.currentCastleId;
-        // (Dungeon shops don't exist yet, but this handles them if added)
-        if (gameState.mapMode === 'dungeon') contextId = gameState.currentCaveId;
-
-        const shopId = `shop_${contextId}_${newX}_${newY}`;
-
-        // 2. Initialize Container if missing
-        if (!gameState.shopStates) gameState.shopStates = {};
-
-        // 3. Check if this specific shop has been visited this session
-        if (!gameState.shopStates[shopId]) {
-            // First visit! Clone the appropriate template.
-            let template = SHOP_INVENTORY; // Default
-            if (gameState.mapMode === 'castle') template = CASTLE_SHOP_INVENTORY;
-            
-            // Deep copy to break reference to the global constant
-            gameState.shopStates[shopId] = JSON.parse(JSON.stringify(template));
-        }
-
-        // 4. Point active inventory to the persistent session state
-        activeShopInventory = gameState.shopStates[shopId];
-
-        if (gameState.mapMode === 'castle') {
-            logMessage("You enter the castle emporium.");
-        } else {
-            logMessage("You enter the General Store.");
-        }
-
-        renderShop();
-        shopModal.classList.remove('hidden');
-        return;
-    }
 
         if (newTile === 'H') {
             const hour = gameState.time.hour;
@@ -10461,10 +10644,14 @@ if (enemy) {
                 loreTitle.textContent = "Worried Healer";
                 loreContent.innerHTML = `<p>"The swamp fever is spreading, and I am out of herbs. If you can brave the swamps and bring me 5 Medicinal Herbs, I can make a cure."</p><button id="acceptHealer" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full">"I'll find them."</button>`;
                 loreModal.classList.remove('hidden');
-                document.getElementById('acceptHealer').addEventListener('click', () => { acceptQuest(questId); loreModal.classList.add('hidden'); }, { once: true });
+                document.getElementById('acceptHealer').addEventListener('click', () => {
+                    acceptQuest(questId);
+                    loreModal.classList.add('hidden');
+                }, {
+                    once: true
+                });
                 return;
-            }
-            else if (playerQuest.status === 'active') {
+            } else if (playerQuest.status === 'active') {
                 const itemIndex = gameState.player.inventory.findIndex(i => i.name === 'Medicinal Herb');
                 const qty = itemIndex > -1 ? gameState.player.inventory[itemIndex].quantity : 0;
 
@@ -10472,7 +10659,12 @@ if (enemy) {
                     loreTitle.textContent = "Relieved Healer";
                     loreContent.innerHTML = `<p>"You found them! These are perfect. Here, take these potions for your trouble."</p><button id="turnInHealer" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full">"Glad to help. (Complete)"</button>`;
                     loreModal.classList.remove('hidden');
-                    document.getElementById('turnInHealer').addEventListener('click', () => { turnInQuest(questId); loreModal.classList.add('hidden'); }, { once: true });
+                    document.getElementById('turnInHealer').addEventListener('click', () => {
+                        turnInQuest(questId);
+                        loreModal.classList.add('hidden');
+                    }, {
+                        once: true
+                    });
                     return;
                 }
             }
@@ -10485,7 +10677,10 @@ if (enemy) {
                     player.health = player.maxHealth;
                     logMessage(`The Healer restores your health for ${HEAL_COST} gold.`);
                     triggerStatAnimation(statDisplays.health, 'stat-pulse-green');
-                    playerRef.update({ health: player.health, coins: player.coins });
+                    playerRef.update({
+                        health: player.health,
+                        coins: player.coins
+                    });
                 } else {
                     logMessage(`"You need ${HEAL_COST} gold for my services," the Healer says.`);
                 }
@@ -10501,7 +10696,9 @@ if (enemy) {
                     logMessage("You found a workbench! +10 XP");
                     grantXp(10);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
                 }
                 openCraftingModal('workbench');
                 return;
@@ -10510,11 +10707,16 @@ if (enemy) {
                     logMessage("You've discovered a safe haven village! +100 XP");
                     grantXp(100);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
                 }
                 gameState.mapMode = 'castle';
                 gameState.currentCastleId = tileData.getVillageId(newX, newY);
-                gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                gameState.overworldExit = {
+                    x: gameState.player.x,
+                    y: gameState.player.y
+                };
                 chunkManager.generateCastle(gameState.currentCastleId, 'SAFE_HAVEN');
                 const villageSpawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
                 gameState.player.x = villageSpawn.x;
@@ -10538,16 +10740,25 @@ if (enemy) {
                     logMessage("You stare into the abyss... and it stares back. +100 XP");
                     grantXp(100);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
                 }
                 gameState.mapMode = 'dungeon';
                 gameState.currentCaveId = 'cave_landmark';
-                gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                gameState.overworldExit = {
+                    x: gameState.player.x,
+                    y: gameState.player.y
+                };
                 const epicMap = chunkManager.generateCave(gameState.currentCaveId);
                 gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
                 for (let y = 0; y < epicMap.length; y++) {
                     const x = epicMap[y].indexOf('>');
-                    if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
+                    if (x !== -1) {
+                        gameState.player.x = x;
+                        gameState.player.y = y;
+                        break;
+                    }
                 }
                 const epicEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
                 gameState.instancedEnemies = JSON.parse(JSON.stringify(epicEnemies));
@@ -10564,7 +10775,9 @@ if (enemy) {
                     logMessage("You found a canoe! +10 XP");
                     grantXp(10);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
                 }
                 gameState.player.isBoating = true;
                 logMessage("You get in the canoe.");
@@ -10572,7 +10785,9 @@ if (enemy) {
                 const count = gameState.flags.canoeEmbarkCount;
                 if (count === 1 || count === 3 || count === 7) logMessage("Be warned: Rowing the canoe will cost stamina!");
                 chunkManager.setWorldTile(newX, newY, '.');
-                playerRef.update({ isBoating: true });
+                playerRef.update({
+                    isBoating: true
+                });
                 break;
             case 'dungeon_entrance':
                 // --- SAFETY FIX: Ensure Set exists ---
@@ -10582,16 +10797,25 @@ if (enemy) {
                     logMessage("You've discovered a cave entrance! +10 XP");
                     grantXp(10);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
                 }
                 gameState.mapMode = 'dungeon';
                 gameState.currentCaveId = tileData.getCaveId(newX, newY);
-                gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                gameState.overworldExit = {
+                    x: gameState.player.x,
+                    y: gameState.player.y
+                };
                 const caveMap = chunkManager.generateCave(gameState.currentCaveId);
                 gameState.currentCaveTheme = chunkManager.caveThemes[gameState.currentCaveId];
                 for (let y = 0; y < caveMap.length; y++) {
                     const x = caveMap[y].indexOf('>');
-                    if (x !== -1) { gameState.player.x = x; gameState.player.y = y; break; }
+                    if (x !== -1) {
+                        gameState.player.x = x;
+                        gameState.player.y = y;
+                        break;
+                    }
                 }
                 const baseEnemies = chunkManager.caveEnemies[gameState.currentCaveId] || [];
                 gameState.instancedEnemies = JSON.parse(JSON.stringify(baseEnemies));
@@ -10612,11 +10836,16 @@ if (enemy) {
                     logMessage("You've discovered the FORGOTTEN FORTRESS! +100 XP");
                     grantXp(100);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
                 }
                 gameState.mapMode = 'castle';
                 gameState.currentCastleId = tileData.getCastleId(newX, newY);
-                gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                gameState.overworldExit = {
+                    x: gameState.player.x,
+                    y: gameState.player.y
+                };
                 chunkManager.generateCastle(gameState.currentCastleId, 'GRAND_FORTRESS');
                 const landmarkSpawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
                 gameState.player.x = landmarkSpawn.x;
@@ -10634,11 +10863,16 @@ if (enemy) {
                     logMessage("You've discovered a castle entrance! +10 XP");
                     grantXp(10);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
                 }
                 gameState.mapMode = 'castle';
                 gameState.currentCastleId = tileData.getCastleId(newX, newY);
-                gameState.overworldExit = { x: gameState.player.x, y: gameState.player.y };
+                gameState.overworldExit = {
+                    x: gameState.player.x,
+                    y: gameState.player.y
+                };
                 chunkManager.generateCastle(gameState.currentCastleId);
                 const spawn = chunkManager.castleSpawnPoints[gameState.currentCastleId];
                 gameState.player.x = spawn.x;
@@ -10648,7 +10882,7 @@ if (enemy) {
                 updateRegionDisplay();
 
                 gameState.mapDirty = true;
-                
+
                 render();
                 syncPlayerState();
                 return;
@@ -10661,7 +10895,9 @@ if (enemy) {
                     logMessage("You've found an old signpost! +10 XP");
                     grantXp(10);
                     gameState.foundLore.add(tileId);
-                    playerRef.update({ foundLore: Array.from(gameState.foundLore) });
+                    playerRef.update({
+                        foundLore: Array.from(gameState.foundLore)
+                    });
                 }
                 if (Array.isArray(tileData.message)) {
                     const currentTurn = Math.floor((gameState.time.day * 1440 + gameState.time.hour * 60 + gameState.time.minute) / TURN_DURATION_MINUTES);
@@ -10713,7 +10949,7 @@ if (enemy) {
             logMessage("You see a sparkling item, but your inventory is full!");
         }
         // Skip standard item logic
-        itemData = null;
+        // itemData = null; // Removed this line, not needed if structure is correct
     }
 
     function clearLootTile() {
@@ -10734,11 +10970,11 @@ if (enemy) {
             const seed = stringToSeed(`${newX},${newY}`);
             const random = Alea(seed);
             const fragment = LORE_FRAGMENTS[Math.floor(random() * LORE_FRAGMENTS.length)];
-            
+
             loreTitle.textContent = "Forgotten Letter";
             loreContent.textContent = `You smooth out the paper. The handwriting is faded.\n\n"${fragment}"`;
             loreModal.classList.remove('hidden');
-            
+
             // Consume the tile
             clearLootTile();
             return;
@@ -10746,76 +10982,48 @@ if (enemy) {
         if (isTileLooted) {
             logMessage(`You see where a ${itemData.name} once was...`);
         } else {
-            if (itemData.type === 'consumable') {
-                const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
-                if (existingItem) {
-                    existingItem.quantity++;
-                    logMessage(`You picked up a ${itemData.name}.`);
-                    inventoryWasUpdated = true;
-                    clearLootTile();
-                } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile, effect: itemData.effect || null };
-                    gameState.player.inventory.push(itemForDb);
-                    logMessage(`You picked up a ${itemData.name}.`);
-                    inventoryWasUpdated = true;
-                    clearLootTile();
-                } else {
-                    logMessage(`You see a ${itemData.name}, but your inventory is full!`);
-                    return;
-                }
-            } else if (itemData.type === 'weapon') {
-                if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile, damage: itemData.damage, slot: itemData.slot, statBonuses: itemData.statBonuses || null };
-                    gameState.player.inventory.push(itemForDb);
-                    logMessage(`You picked up a ${itemData.name}.`);
-                    inventoryWasUpdated = true;
-                    clearLootTile();
-                } else {
-                    logMessage(`You see a ${itemData.name}, but your inventory is full!`);
-                    return;
-                }
-            } else if (itemData.type === 'armor') {
-                if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile, defense: itemData.defense, slot: itemData.slot, statBonuses: itemData.statBonuses || null };
-                    gameState.player.inventory.push(itemForDb);
-                    logMessage(`You picked up ${itemData.name}.`);
-                    inventoryWasUpdated = true;
-                    clearLootTile();
-                } else {
-                    logMessage(`You see ${itemData.name}, but your inventory is full!`);
-                    return;
-                }
-            } else if (itemData.type === 'spellbook' || itemData.type === 'skillbook' || itemData.type === 'tool') {
-                if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile, spellId: itemData.spellId || null, skillId: itemData.skillId || null, stat: itemData.stat || null };
-                    gameState.player.inventory.push(itemForDb);
-                    logMessage(`You picked up the ${itemData.name}.`);
-                    inventoryWasUpdated = true;
-                    clearLootTile();
-                } else {
-                    logMessage(`You see the ${itemData.name}, but your inventory is full!`);
-                    return;
-                }
-            } else if (itemData.type === 'junk') {
-                const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
-                if (existingItem) {
-                    existingItem.quantity++;
-                    logMessage(`You picked up a ${itemData.name}.`);
-                    inventoryWasUpdated = true;
-                    clearLootTile();
-                } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    const itemForDb = { name: itemData.name, type: itemData.type, quantity: 1, tile: newTile };
-                    gameState.player.inventory.push(itemForDb);
-                    logMessage(`You picked up a ${itemData.name}.`);
-                    inventoryWasUpdated = true;
-                    clearLootTile();
-                } else {
-                    logMessage(`You see a ${itemData.name}, but your inventory is full!`);
-                    return;
-                }
-            } else if (itemData.type === 'instant') {
+            // HANDLE INSTANT EFFECTS (Gold, Traps)
+            if (itemData.type === 'instant') {
                 itemData.effect(gameState, tileId);
                 clearLootTile();
+            }
+            // HANDLE ALL PICKUPABLE ITEMS
+            else {
+                // Check if we have an existing stack
+                const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
+                // Define what stacks - include your new types here!
+                const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'quest', 'lore'].includes(itemData.type);
+
+                if (existingItem && isStackable) {
+                    existingItem.quantity++;
+                    logMessage(`You picked up a ${itemData.name}.`);
+                    inventoryWasUpdated = true;
+                    clearLootTile();
+                } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    // Create safe object for DB
+                    const itemForDb = {
+                        name: itemData.name,
+                        type: itemData.type,
+                        quantity: 1,
+                        tile: newTile,
+                        // Copy potential properties (safe to copy nulls)
+                        damage: itemData.damage || null,
+                        defense: itemData.defense || null,
+                        slot: itemData.slot || null,
+                        statBonuses: itemData.statBonuses || null,
+                        effect: itemData.effect || null, // Function ref
+                        spellId: itemData.spellId || null,
+                        skillId: itemData.skillId || null,
+                        stat: itemData.stat || null
+                    };
+                    gameState.player.inventory.push(itemForDb);
+                    logMessage(`You picked up a ${itemData.name}.`);
+                    inventoryWasUpdated = true;
+                    clearLootTile();
+                } else {
+                    logMessage(`You see a ${itemData.name}, but your inventory is full!`);
+                    return; // Don't clear tile
+                }
             }
         }
     }
@@ -10832,7 +11040,7 @@ if (enemy) {
     gameState.player.x = newX;
     gameState.player.y = newY;
 
-    gameState.mapDirty = true; 
+    gameState.mapDirty = true;
 
     AudioSystem.playStep();
 
@@ -10878,7 +11086,12 @@ if (enemy) {
                         logMessage("...and find some Iron Ore!");
                         inventoryWasUpdated = true;
                     } else if (playerInventory.length < MAX_INVENTORY_SLOTS) {
-                        playerInventory.push({ name: 'Iron Ore', type: 'junk', quantity: 1, tile: '•' });
+                        playerInventory.push({
+                            name: 'Iron Ore',
+                            type: 'junk',
+                            quantity: 1,
+                            tile: '•'
+                        });
                         logMessage("...and find some Iron Ore!");
                         inventoryWasUpdated = true;
                     } else {
@@ -10887,8 +11100,7 @@ if (enemy) {
                 } else {
                     logMessage("...but find nothing of value.");
                 }
-            }
-            else if (gameState.activeTreasure && newX === gameState.activeTreasure.x && newY === gameState.activeTreasure.y) {
+            } else if (gameState.activeTreasure && newX === gameState.activeTreasure.x && newY === gameState.activeTreasure.y) {
                 logMessage("You dig where the map marked... clunk!");
                 logMessage("You found a Buried Chest!");
                 chunkManager.setWorldTile(newX, newY, '📦');
