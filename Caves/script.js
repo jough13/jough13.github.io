@@ -11866,18 +11866,8 @@ if (enemy) {
     if (tileData) {
         console.log("Entering TileData Block. Type:", tileData.type);
 
-        const tileId = `${newX},${-newY}`;
-
-
-
-
-
-
-
-        
-
         // Discovery XP Logic
-        const tileId = `${newX},${-newY}`; // Used for lore discovery
+
         if (!gameState.foundLore.has(tileId)) {
             logMessage("You've discovered a General Store! +15 XP");
             grantXp(15);
@@ -12295,7 +12285,6 @@ if (enemy) {
                 clearLootTile();
             }
         }
-    }
 
     const staminaDeficit = moveCost - gameState.player.stamina;
     if (moveCost > gameState.player.stamina && gameState.player.health <= staminaDeficit) {
