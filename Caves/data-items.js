@@ -941,8 +941,16 @@ window.ITEM_DATA = {
     // --- VALUABLE RELICS (Lore/Trade Goods) ---
     '👑': {
         name: 'Shattered Crown',
-        type: 'junk', // High value sell item
-        description: "The gold is tarnished, but the gems are real."
+        type: 'armor', // Changed from 'junk' to 'armor' so you can wear it!
+        tile: '👑',
+        defense: 0,    // It offers no physical protection
+        slot: 'armor', // Occupies your equipment slot
+        statBonuses: { 
+            charisma: 5, // Huge discount at shops & better quest rewards
+            luck: 3,     // Higher critical hit chance & better loot drops
+            willpower: 2 // Resistance to magical effects
+        }, 
+        description: "The gold is tarnished, but the gems pulse with ancient authority. You feel kingly wearing it."
     },
     '💍': {
         name: 'Signet Ring',
