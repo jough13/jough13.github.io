@@ -1433,9 +1433,8 @@ function rehydrateInventory(savedInventory) {
             ...template,       // Load static data (effect function, description, base stats)
             ...savedItem,      // Load instance data (qty, equipped status, custom name/stats)
             
-            // Explicitly ensure the visual tile comes from template 
-            // UNLESS the save file explicitly overrides it (rare)
-            tile: template.tile 
+            // Use template tile if exists, otherwise use saved tile, otherwise use the ID (emoji)
+            tile: template.tile || savedItem.tile || savedItem.templateId 
         };
     });
 }
@@ -11053,10 +11052,9 @@ async function attemptMovePlayer(newX, newY) {
         }
     }
     // --- STANDARD ITEM PICKUP (The Fix) ---
-    else if (itemData) {
+else if (itemData) {
         let isTileLooted = gameState.lootedTiles.has(tileId);
         
-        // Helper to remove item from map
         function clearLootTile() {
             gameState.lootedTiles.add(tileId);
             if (gameState.mapMode === 'overworld') {
@@ -11067,11 +11065,10 @@ async function attemptMovePlayer(newX, newY) {
             } else if (gameState.mapMode === 'castle') {
                 chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
             }
-            gameState.mapDirty = true; // Force redraw immediately
+            gameState.mapDirty = true; // Force redraw
         }
 
         if (itemData.type === 'random_lore') {
-            // Lore logic (unchanged)
             const seed = stringToSeed(`${newX},${newY}`);
             const random = Alea(seed);
             const fragment = LORE_FRAGMENTS[Math.floor(random() * LORE_FRAGMENTS.length)];
@@ -11079,24 +11076,25 @@ async function attemptMovePlayer(newX, newY) {
             loreContent.textContent = `You smooth out the paper. The handwriting is faded.\n\n"${fragment}"`;
             loreModal.classList.remove('hidden');
             clearLootTile();
-            inventoryWasUpdated = true; // Ensure we save that we read this
+            inventoryWasUpdated = true;
         }
         else if (isTileLooted) {
             logMessage(`You see where a ${itemData.name} once was...`);
         } 
         else {
-            // --- INSTANT ITEMS (Gold, Traps) ---
+            // --- INSTANT ITEMS (Gold) ---
             if (itemData.type === 'instant') {
                 itemData.effect(gameState, tileId);
                 clearLootTile();
-                inventoryWasUpdated = true; // CRITICAL: Tells the game to save the map change
-                renderStats(); // CRITICAL: Updates the gold counter UI immediately
+                inventoryWasUpdated = true; 
+                renderStats(); 
+                // FORCE SAVE: Prevents gold from resetting if you reload immediately
+                if (typeof flushPendingSave === 'function') flushPendingSave();
             } 
-            // --- ALL OTHER ITEMS (Catch-All Logic) ---
+            // --- ALL OTHER ITEMS (Catch-All) ---
             else {
-                // 1. Check for existing stack
                 const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
-                
+                // Allow almost anything to stack to be safe
                 const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'quest', 'lore', 'tool'].includes(itemData.type);
 
                 if (existingItem && isStackable) {
@@ -11106,13 +11104,12 @@ async function attemptMovePlayer(newX, newY) {
                     clearLootTile();
                 } 
                 else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    // 2. Create new item object
                     const itemForDb = { 
-                        templateId: newTile, 
+                        templateId: newTile, // Saves the Emoji ID (e.g. '🐀')
                         name: itemData.name, 
                         type: itemData.type, 
                         quantity: 1, 
-                        tile: newTile, // This must be saved!
+                        tile: newTile, // Saves the visual icon
                         
                         damage: itemData.damage || null,
                         defense: itemData.defense || null,
