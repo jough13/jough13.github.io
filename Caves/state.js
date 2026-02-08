@@ -7,6 +7,8 @@ let worldStateListeners = {};
 
 let isProcessingMove = false; 
 
+let lastPlayerChunkId = null; // Tracks the last chunk the player was in for auto-saving.
+
 let lastAiExecution = 0;
 
 let cachedThemeColors = {};
