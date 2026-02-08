@@ -223,6 +223,8 @@ canvas {
 	max-width: 500px;
 	width: 90%;
 	animation: pop-in 0.2s ease-out;
+	max-height: 90vh; /* Prevents modal from being taller than the screen */
+	overflow-y: auto; /* Adds a scrollbar ONLY if needed */
 }
 
 kbd {
