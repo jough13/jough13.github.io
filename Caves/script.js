@@ -51,6 +51,61 @@ function flushPendingSave(updates = null) {
     }
 }
 
+/**
+ * Saves the complete current game state to Firestore immediately.
+ * Provides user feedback on success or failure.
+ */
+async function manualSaveGame() {
+    if (!playerRef) {
+        logMessage("{red:Cannot save: Not connected to a character.}");
+        return;
+    }
+
+    const saveBtn = document.getElementById('btnManualSave');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving...";
+    }
+
+    logMessage("💾 Saving game to the cloud...");
+
+    // Force any pending debounced saves to happen first
+    flushPendingSave(); 
+    
+    // Gather the complete, sanitized state for a robust save
+    const finalState = {
+        ...gameState.player,
+        inventory: getSanitizedInventory(),
+        equipment: getSanitizedEquipment(),
+        lootedTiles: Array.from(gameState.lootedTiles),
+        discoveredRegions: Array.from(gameState.discoveredRegions),
+        exploredChunks: Array.from(gameState.exploredChunks),
+        shopStates: gameState.shopStates || {},
+        activeTreasure: gameState.activeTreasure || null,
+    };
+
+    try {
+        // Use set with merge to ensure a clean overwrite with the current state
+        await playerRef.set(sanitizeForFirebase(finalState), { merge: true });
+        logMessage("{green:Game saved successfully!}");
+        
+        if (saveBtn) {
+            saveBtn.textContent = "✅ Saved!";
+            setTimeout(() => { 
+                saveBtn.textContent = "💾 Save Progress";
+                saveBtn.disabled = false;
+            }, 2000);
+        }
+    } catch (err) {
+        console.error("Manual save failed:", err);
+        logMessage("{red:Save failed. Check console for details.}");
+        if (saveBtn) {
+            saveBtn.textContent = "💾 Save Progress";
+            saveBtn.disabled = false;
+        }
+    }
+}
+
 // --- INPUT THROTTLE ---
 let lastActionTime = 0;
 const ACTION_COOLDOWN = 150; // ms (limits speed to ~6 moves per second)
@@ -1912,6 +1967,8 @@ function initSettingsListeners() {
     const btnBackup = document.getElementById('btnBackup');
     const btnRestore = document.getElementById('btnRestore');
 
+    const btnManualSave = document.getElementById('btnManualSave'); // Get the new button
+
     // Safety Check: If critical UI is missing, abort to prevent errors
     if (!modal || !openBtn || !closeBtn) {
         console.error("❌ Critical Settings UI elements missing from HTML!");
@@ -2025,7 +2082,15 @@ function initSettingsListeners() {
         };
     }
 
-    console.log("✅ Settings Listeners (Audio, Visuals, Backups) Attached.");
+    // --- 5. MANUAL SAVE HANDLER ---
+    if (btnManualSave) {
+        btnManualSave.onclick = (e) => {
+            e.preventDefault();
+            manualSaveGame();
+        };
+    }
+    
+    console.log("✅ Settings Listeners (Audio, Visuals, Backups, Manual Save) Attached.");
 }
 
 function renderWorldMap() {
@@ -7900,12 +7965,28 @@ function endPlayerTurn() {
         lootedTiles: Array.from(gameState.lootedTiles)
     };
 
-    // --- 7. SAVE TO DATABASE ---
+    // --- 7. SAVE LOGIC ---
     if (gameState.mapMode === 'overworld') {
-        // In Overworld, we delay saving to prevent lag while running
-        triggerDebouncedSave(finalUpdates);
+        const currentChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+        const currentChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+        const currentChunkId = `${currentChunkX},${currentChunkY}`;
+
+        // A. IMMEDIATE SAVE ON CHUNK CHANGE
+        if (lastPlayerChunkId !== currentChunkId) {
+            console.log(`Chunk changed from ${lastPlayerChunkId} to ${currentChunkId}. Forcing immediate save.`);
+            flushPendingSave(finalUpdates); // Save any lingering changes from the last chunk
+            if (playerRef) {
+                 playerRef.update(sanitizeForFirebase(finalUpdates)).catch(err => {
+                    console.error("Chunk-change auto-save failed:", err);
+                });
+            }
+            lastPlayerChunkId = currentChunkId; // Update tracker
+        } else {
+             // B. DEBOUNCED SAVE FOR LOCAL MOVEMENT
+            triggerDebouncedSave(finalUpdates);
+        }
     } else {
-        // In Dungeons/Castles, we save IMMEDIATELY
+        // In Dungeons/Castles, save immediately on every turn
         if (saveTimeout) clearTimeout(saveTimeout); 
         playerRef.update(sanitizeForFirebase(finalUpdates));
     }
@@ -11489,6 +11570,11 @@ if (gameState.mapMode === 'overworld') {
     gameState.weather = playerData.weather || 'clear';
 
     gameState.mapMode = playerData.mapMode || 'overworld';
+
+    // Initialize the chunk tracker when the game loads
+    const startChunkX = Math.floor(gameState.player.x / chunkManager.CHUNK_SIZE);
+    const startChunkY = Math.floor(gameState.player.y / chunkManager.CHUNK_SIZE);
+    lastPlayerChunkId = `${startChunkX},${startChunkY}`;
 
     // --- 2. Restore Sets (Discovery/Lore/Loot) ---
     if (playerData.discoveredRegions && Array.isArray(playerData.discoveredRegions)) {
