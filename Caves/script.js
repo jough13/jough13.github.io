@@ -1448,18 +1448,27 @@ function rehydrateInventory(savedInventory) {
 function getSanitizedInventory() {
     return gameState.player.inventory.map(item => {
         // 1. Identify the Source Template
-        // We prefer templateId, but fallback to tile if it was used as an ID
         const sourceId = item.templateId || item.tile; 
         
         return {
             templateId: sourceId, 
-            name: item.name,          // Saved incase it's a "Masterwork" renamed item
+            name: item.name,
+            type: item.type,
             quantity: item.quantity || 1,
+            tile: item.tile,
             isEquipped: item.isEquipped || false,
 
-            damage: item.damage,
-            defense: item.defense,
-            statBonuses: item.statBonuses,
+            // Optional Stats
+            damage: item.damage || null,
+            defense: item.defense || null,
+            statBonuses: item.statBonuses || null,
+            
+            // Magic/Skill Properties
+            spellId: item.spellId || null,
+            skillId: item.skillId || null,
+            stat: item.stat || null,
+            
+            // We do NOT save 'effect' (function) as it crashes the DB
         };
     });
 }
@@ -11088,7 +11097,6 @@ async function attemptMovePlayer(newX, newY) {
                 // 1. Check for existing stack
                 const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
                 
-                // Define what stacks. We include EVERYTHING here to be safe.
                 const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'quest', 'lore', 'tool'].includes(itemData.type);
 
                 if (existingItem && isStackable) {
@@ -11100,12 +11108,12 @@ async function attemptMovePlayer(newX, newY) {
                 else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
                     // 2. Create new item object
                     const itemForDb = { 
-                        templateId: newTile, // CRITICAL: Saves the ID so it loads correctly next time
+                        templateId: newTile, 
                         name: itemData.name, 
                         type: itemData.type, 
                         quantity: 1, 
-                        tile: newTile,
-                        // Copy properties safely
+                        tile: newTile, // This must be saved!
+                        
                         damage: itemData.damage || null,
                         defense: itemData.defense || null,
                         slot: itemData.slot || null,
@@ -11123,7 +11131,7 @@ async function attemptMovePlayer(newX, newY) {
                 } else {
                     logMessage(`You see a ${itemData.name}, but your inventory is full!`);
                 }
-            } 
+            }
         }
     }
 
