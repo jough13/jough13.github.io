@@ -8781,6 +8781,22 @@ function recalculateDerivedStats() {
     player.psyche = Math.min(player.psyche, player.maxPsyche);
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 async function attemptMovePlayer(newX, newY) {
     // 1. Unlock input if we are just waiting (Safety fallback)
     if (newX === gameState.player.x && newY === gameState.player.y) {
@@ -11067,6 +11083,9 @@ async function attemptMovePlayer(newX, newY) {
             if (itemData.type === 'instant') {
                 itemData.effect(gameState, tileId);
                 clearLootTile();
+
+                inventoryWasUpdated = true; // Forces the game to save that you looted this tile
+                renderStats(); // Forces the UI to update your Gold count immediately
             }
             // HANDLE ALL PICKUPABLE ITEMS
             else {
@@ -11257,6 +11276,36 @@ async function attemptMovePlayer(newX, newY) {
 
     endPlayerTurn();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const applyTheme = (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
