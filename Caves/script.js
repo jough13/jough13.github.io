@@ -11091,27 +11091,33 @@ async function attemptMovePlayer(newX, newY) {
                 // FORCE SAVE: Prevents gold from resetting if you reload immediately
                 if (typeof flushPendingSave === 'function') flushPendingSave();
             } 
-            // --- ALL OTHER ITEMS (Catch-All) ---
+            // HANDLE ALL PICKUPABLE ITEMS
             else {
                 const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
-                
-                // Allow almost anything to stack to be safe
+                // Allow equipment to stack now too
                 const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'quest', 'lore', 'tool', 'armor', 'weapon'].includes(itemData.type);
 
                 if (existingItem && isStackable) {
                     existingItem.quantity++;
                     logMessage(`You picked up a ${itemData.name}.`);
+                    
                     inventoryWasUpdated = true;
                     clearLootTile();
-                } 
-                else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-                    const itemForDb = { 
-                        templateId: newTile, // Saves the Emoji ID (e.g. '🐀')
-                        name: itemData.name, 
-                        type: itemData.type, 
-                        quantity: 1, 
-                        tile: newTile, // Saves the visual icon
-                        
+                    
+                    // FORCE SAVE IMMEDIATELY to secure the loot
+                    flushPendingSave({
+                        inventory: getSanitizedInventory(),
+                        lootedTiles: Array.from(gameState.lootedTiles)
+                    });
+
+                } else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    
+                    // Create safe object for DB (Copied from existing logic)
+                    const itemForDb = {
+                        name: itemData.name,
+                        type: itemData.type,
+                        quantity: 1,
+                        tile: newTile,
                         damage: itemData.damage || null,
                         defense: itemData.defense || null,
                         slot: itemData.slot || null,
@@ -11121,13 +11127,21 @@ async function attemptMovePlayer(newX, newY) {
                         skillId: itemData.skillId || null,
                         stat: itemData.stat || null
                     };
-                    
                     gameState.player.inventory.push(itemForDb);
+                    
                     logMessage(`You picked up a ${itemData.name}.`);
                     inventoryWasUpdated = true;
                     clearLootTile();
+
+                    // FORCE SAVE IMMEDIATELY to secure the loot
+                    flushPendingSave({
+                        inventory: getSanitizedInventory(),
+                        lootedTiles: Array.from(gameState.lootedTiles)
+                    });
+
                 } else {
                     logMessage(`You see a ${itemData.name}, but your inventory is full!`);
+                    return; 
                 }
             }
         }
@@ -11817,99 +11831,76 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
     // Helper flag
     gameState.initialEnemiesLoaded = true;
 
-    // REPLACED BLOCK: Protects against ghost updates while keeping robust item loading
+// --- PREVENTS OVERWRITING LOCAL PROGRESS ---
     unsubscribePlayerListener = playerRef.onSnapshot({ includeMetadataChanges: true }, (doc) => {
-        
-        // --- 1. SYNC ---
-        // If hasPendingWrites is true, this data is just an echo of your own local change.
-        // We MUST ignore it, or the UI will flicker back to an old state (erasing gold/items).
-        if (doc.metadata.hasPendingWrites) {
+        // 1. If we are actively moving or have pending saves, IGNORE server echoes.
+        // This stops the "Time Travel" bug where old server data deletes new local items.
+        if (doc.metadata.hasPendingWrites || saveTimeout || isProcessingMove) {
             return;
         }
 
         if (doc.exists) {
             const data = doc.data();
 
-            // --- 2. ROBUST INVENTORY LOGIC ---
-            if (data.inventory) {
-                data.inventory.forEach(item => {
-                    let templateItem = null;
-                    let templateKey = null;
+            // 2. IMPORTANT: Only sync Inventory/Stats IF IT'S THE INITIAL LOAD.
+            // Once the game is running, 'gameState' is the source of truth.
+            // We check a flag 'gameState.initialEnemiesLoaded' (or effectively if we are in-game)
+            // If mapMode is set, we assume we are playing and we IGNORE the server 
+            // to prevent it from resetting our gold/items.
+            
+            if (gameState.mapMode) {
+               // We are playing. Only sync crucial background flags if needed, 
+               // but DO NOT touch Inventory, Gold, XP, or Health.
+               // We basically ignore the update.
+               return; 
+            }
 
-                    // A. ROBUST LOOKUP: Use the ID if available (Best Case)
+            // --- BELOW THIS IS ONLY RUN ON FIRST CONNECT/LOAD ---
+
+            // --- Update Inventory (Rehydration Logic) ---
+            if (data.inventory) {
+                const safeInventory = data.inventory.map(item => {
+                    // Try to re-bind effect functions if missing
+                    let templateItem = null;
                     if (item.templateId && ITEM_DATA[item.templateId]) {
                         templateItem = ITEM_DATA[item.templateId];
-                        templateKey = item.templateId;
-                    }
-
-                    // B. FALLBACK 1: Exact Name Match (Legacy Data)
-                    if (!templateItem) {
-                        templateKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === item.name);
-                        if (templateKey) templateItem = ITEM_DATA[templateKey];
-                    }
-
-                    // C. FALLBACK 2: Smart Suffix Match (e.g. "Sharp Rusty Sword")
-                    if (!templateItem) {
-                        const candidates = Object.keys(ITEM_DATA).filter(k => item.name.endsWith(ITEM_DATA[k].name));
-                        if (candidates.length > 0) {
-                            candidates.sort((a, b) => ITEM_DATA[b].name.length - ITEM_DATA[a].name.length);
-                            templateKey = candidates[0];
-                            templateItem = ITEM_DATA[templateKey];
-                        }
+                    } else {
+                        // Fallback by name
+                        const key = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === item.name);
+                        if(key) templateItem = ITEM_DATA[key];
                     }
 
                     if (templateItem) {
-                        // Self-Heal: Save ID for next time
-                        if (!item.templateId) item.templateId = templateKey;
-
-                        // Re-bind functions & static properties
+                        item.templateId = item.templateId || templateItem.tile; // Self-heal
                         item.effect = templateItem.effect;
                         item.onHit = templateItem.onHit;
                         item.procChance = templateItem.procChance;
                         item.inflicts = templateItem.inflicts;
                         item.inflictChance = templateItem.inflictChance;
-
-                        // Restore Missing Base Stats (preserve crafted/random bonuses)
-                        if (templateItem.type === 'weapon') {
-                            if (item.damage === undefined || item.damage === null) item.damage = templateItem.damage;
-                            item.slot = templateItem.slot;
-                        } else if (templateItem.type === 'armor') {
-                            if (item.defense === undefined || item.defense === null) item.defense = templateItem.defense;
-                            item.slot = templateItem.slot;
-                        }
-                    } else {
-                        // Corruption Handling
-                        console.warn(`⚠️ Corrupted item found: "${item.name}". Converting to Ash.`);
-                        item.name = `Ash (${item.name})`;
-                        item.description = "An ancient item that has crumbled to dust.";
-                        item.type = 'junk';
-                        item.tile = '💨'; 
-                        item.quantity = item.quantity || 1;
-                        // Strip dangerous properties
-                        delete item.effect; delete item.damage; delete item.defense; delete item.statBonuses; delete item.slot;
-                        if (item.isEquipped) item.isEquipped = false;
+                        
+                        // Restore missing base stats if null, but keep existing ones
+                        if(item.damage === undefined || item.damage === null) item.damage = templateItem.damage;
+                        if(item.defense === undefined || item.defense === null) item.defense = templateItem.defense;
+                        item.slot = templateItem.slot;
                     }
+                    return item;
                 });
 
-                // Sync Equipment based on the 'isEquipped' flag
-                const equippedWeapon = data.inventory.find(i => i.type === 'weapon' && i.isEquipped);
-                const equippedArmor = data.inventory.find(i => i.type === 'armor' && i.isEquipped);
+                // Sync Equipment
+                const equippedWeapon = safeInventory.find(i => i.type === 'weapon' && i.isEquipped);
+                const equippedArmor = safeInventory.find(i => i.type === 'armor' && i.isEquipped);
 
                 gameState.player.equipment.weapon = equippedWeapon || { name: 'Fists', damage: 0 };
                 gameState.player.equipment.armor = equippedArmor || { name: 'Simple Tunic', defense: 0 };
-
-                gameState.player.inventory = data.inventory;
-                renderInventory();
-                renderEquipment();
+                gameState.player.inventory = safeInventory;
             }
 
-            // --- Update Equipment Stats (If stored separately) ---
+            // --- Update Equipment Stats (Legacy support) ---
             if (data.equipment) {
                 gameState.player.equipment = {
                     ...gameState.player.equipment,
                     ...data.equipment
                 };
-                renderEquipment();
             }
 
             // --- Sync Core Stats ---
@@ -11917,6 +11908,10 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
             statsToSync.forEach(stat => {
                 if (data[stat] !== undefined) gameState.player[stat] = data[stat];
             });
+            
+            // Only update UI on initial load
+            renderInventory();
+            renderEquipment();
             renderStats();
         }
     });
