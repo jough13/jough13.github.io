@@ -11051,8 +11051,8 @@ async function attemptMovePlayer(newX, newY) {
             logMessage("You see a sparkling item, but your inventory is full!");
         }
     }
-    // --- STANDARD ITEM PICKUP (The Fix) ---
-else if (itemData) {
+    // --- STANDARD ITEM PICKUP ---
+    else if (itemData) {
         let isTileLooted = gameState.lootedTiles.has(tileId);
         
         function clearLootTile() {
@@ -11817,98 +11817,81 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
     // Helper flag
     gameState.initialEnemiesLoaded = true;
 
-    unsubscribePlayerListener = playerRef.onSnapshot((doc) => {
+    // REPLACED BLOCK: Protects against ghost updates while keeping robust item loading
+    unsubscribePlayerListener = playerRef.onSnapshot({ includeMetadataChanges: true }, (doc) => {
+        
+        // --- 1. SYNC ---
+        // If hasPendingWrites is true, this data is just an echo of your own local change.
+        // We MUST ignore it, or the UI will flicker back to an old state (erasing gold/items).
+        if (doc.metadata.hasPendingWrites) {
+            return;
+        }
+
         if (doc.exists) {
             const data = doc.data();
 
-            // --- Update Inventory ---
+            // --- 2. ROBUST INVENTORY LOGIC ---
             if (data.inventory) {
                 data.inventory.forEach(item => {
                     let templateItem = null;
                     let templateKey = null;
 
-                    // 1. ROBUST LOOKUP: Use the ID if available (Best Case)
+                    // A. ROBUST LOOKUP: Use the ID if available (Best Case)
                     if (item.templateId && ITEM_DATA[item.templateId]) {
                         templateItem = ITEM_DATA[item.templateId];
                         templateKey = item.templateId;
                     }
 
-                    // 2. FALLBACK A: Exact Name Match (Legacy Data)
+                    // B. FALLBACK 1: Exact Name Match (Legacy Data)
                     if (!templateItem) {
                         templateKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === item.name);
                         if (templateKey) templateItem = ITEM_DATA[templateKey];
                     }
 
-                    // 3. FALLBACK B: Smart Suffix Match
-                    // Handles "Sharp Rusty Sword" matching "Rusty Sword" instead of just "Sword"
+                    // C. FALLBACK 2: Smart Suffix Match (e.g. "Sharp Rusty Sword")
                     if (!templateItem) {
-                        // Find all templates that match the end of the item name
                         const candidates = Object.keys(ITEM_DATA).filter(k => item.name.endsWith(ITEM_DATA[k].name));
-
                         if (candidates.length > 0) {
-                            // Sort by name length descending. We want the longest match.
-                            // e.g. "Iron Sword" (len 10) is better than "Sword" (len 5)
                             candidates.sort((a, b) => ITEM_DATA[b].name.length - ITEM_DATA[a].name.length);
-
                             templateKey = candidates[0];
                             templateItem = ITEM_DATA[templateKey];
                         }
                     }
 
                     if (templateItem) {
-                        // SELF-HEAL: Save the ID for next time so we don't have to guess again
-                        if (!item.templateId) {
-                            item.templateId = templateKey;
-                        }
+                        // Self-Heal: Save ID for next time
+                        if (!item.templateId) item.templateId = templateKey;
 
-                        // --- RE-BINDING LOGIC ---
-
-                        // 1. Re-bind functions (These don't survive database storage)
+                        // Re-bind functions & static properties
                         item.effect = templateItem.effect;
-
-                        // 2. Re-bind static properties needed for logic
                         item.onHit = templateItem.onHit;
                         item.procChance = templateItem.procChance;
                         item.inflicts = templateItem.inflicts;
                         item.inflictChance = templateItem.inflictChance;
 
-                        // 3. Restore Missing Stats (But preserve crafted/randomized stats!)
-                        // We only overwrite if the saved item is missing the property entirely.
+                        // Restore Missing Base Stats (preserve crafted/random bonuses)
                         if (templateItem.type === 'weapon') {
                             if (item.damage === undefined || item.damage === null) item.damage = templateItem.damage;
-                            // Always enforce the correct slot type from the template
                             item.slot = templateItem.slot;
                         } else if (templateItem.type === 'armor') {
                             if (item.defense === undefined || item.defense === null) item.defense = templateItem.defense;
                             item.slot = templateItem.slot;
                         }
                     } else {
-
+                        // Corruption Handling
                         console.warn(`⚠️ Corrupted item found: "${item.name}". Converting to Ash.`);
-                        
-                        // Mutate the item into safe "Ash" so the UI can render it without crashing
                         item.name = `Ash (${item.name})`;
-                        item.description = "An ancient item that has crumbled to dust (Incompatible Version).";
+                        item.description = "An ancient item that has crumbled to dust.";
                         item.type = 'junk';
-                        item.tile = '💨'; // Wind/Ash icon
+                        item.tile = '💨'; 
                         item.quantity = item.quantity || 1;
-                        
-                        // Strip dangerous properties that might cause logic errors
-                        delete item.effect;
-                        delete item.damage;
-                        delete item.defense;
-                        delete item.statBonuses;
-                        delete item.slot;
-                        
-                        // Force unequip so it doesn't mess up stats
-                        if (item.isEquipped) {
-                            item.isEquipped = false;
-                            console.log("Unequipped ghost item.");
-                        }
+                        // Strip dangerous properties
+                        delete item.effect; delete item.damage; delete item.defense; delete item.statBonuses; delete item.slot;
+                        if (item.isEquipped) item.isEquipped = false;
                     }
                 });
 
-                // Sync Equipment based on the 'isEquipped' flag in the inventory list
+                // Sync Equipment based on the 'isEquipped' flag
                 const equippedWeapon = data.inventory.find(i => i.type === 'weapon' && i.isEquipped);
                 const equippedArmor = data.inventory.find(i => i.type === 'armor' && i.isEquipped);
 
@@ -11920,9 +11903,8 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
                 renderEquipment();
             }
 
-            // --- Update Equipment Stats ---
+            // --- Update Equipment Stats (If stored separately) ---
             if (data.equipment) {
-                // Merge DB equipment data with our calculated state
                 gameState.player.equipment = {
                     ...gameState.player.equipment,
                     ...data.equipment
@@ -11930,8 +11912,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
                 renderEquipment();
             }
 
-            // --- Sync Core Stats if changed externally ---
-            // This ensures if you buy something or heal, the UI updates
+            // --- Sync Core Stats ---
             const statsToSync = ['coins', 'xp', 'level', 'statPoints', 'talentPoints', 'health', 'mana', 'stamina', 'psyche'];
             statsToSync.forEach(stat => {
                 if (data[stat] !== undefined) gameState.player[stat] = data[stat];
