@@ -133,7 +133,7 @@ function getScaledEnemy(enemyTemplate, x, y) {
     enemy.attack = Math.floor(enemy.attack * multiplier) + Math.floor(zoneLevel / 3);
     enemy.xp = Math.floor(enemy.xp * multiplier);
 
-    // --- NEW: SAFE ZONE NERF (The Fix) ---
+    // --- SAFE ZONE NERF ---
     // If within 100 tiles of spawn, weaken enemies significantly
     if (dist < 100) {
         // Reduce Attack by 1 (Min 1). This turns 2 dmg rats into 1 dmg rats.
@@ -157,7 +157,7 @@ function getScaledEnemy(enemyTemplate, x, y) {
     // --- 5. Elite Affix Roll ---
     const eliteChance = 0.05 + (zoneLevel * 0.01);
 
-    // --- NEW: DISABLE ELITES NEAR SPAWN ---
+    // --- DISABLE ELITES NEAR SPAWN ---
     // Elites can only spawn if distance > 150. 
     // No more "Savage Rats" killing you at level 1.
     if (dist > 150 && !enemy.isBoss && Math.random() < eliteChance) {
@@ -1222,7 +1222,7 @@ function getRegionName(regionX, regionY) {
 }
 
 const TERRAIN_COST = {
-    '^': 2, // Changed from 3 to 2. Now you can walk 5 tiles instead of 3!
+    '^': 2,
     '≈': 2, 
     '~': Infinity, 
     'F': 1, 
@@ -1346,10 +1346,10 @@ function getSanitizedEquipment() {
         
         return {
             name: item.name || "Unknown",
-            // FIX: If type is missing (like on Fists), fallback to 'weapon'/'armor' or null
+            // If type is missing (like on Fists), fallback to 'weapon'/'armor' or null
             type: item.type || fallbackType || null, 
             quantity: item.quantity || 1,
-            // FIX: If tile is missing, use a default icon based on fallback type
+            // If tile is missing, use a default icon based on fallback type
             tile: item.tile || (fallbackType === 'weapon' ? '👊' : '👕'), 
             
             // Use null if 0 or undefined to be safe, though 0 is valid for numbers. 
@@ -1627,7 +1627,7 @@ async function wakeUpNearbyEnemies() {
                     spawnUpdates[`worldEnemies/${enemyId}`] = newEnemy;
                     
                     // C. Add to local pending (Immediate Visual Feedback)
-                    // CRITICAL FIX: Add directly to sharedEnemies immediately so there is 0 frames of invisibility
+                    // Add directly to sharedEnemies immediately so there is 0 frames of invisibility
                     pendingSpawnData[enemyId] = newEnemy;
                     gameState.sharedEnemies[enemyId] = newEnemy; 
                     
@@ -2255,14 +2255,14 @@ function drawMountain(ctx, x, y, size) {
 
 // In script.js
 
-// --- NEW AUTH UI ELEMENTS ---
+// --- AUTH UI ELEMENTS ---
 const authTitle = document.getElementById('authTitle');
 const authButton = document.getElementById('authButton');
 const rememberMe = document.getElementById('rememberMe');
 const authToggle = document.getElementById('authToggle');
 let isLoginMode = true;
 
-// --- NEW AUTH TOGGLE HANDLER ---
+// --- AUTH TOGGLE HANDLER ---
 authToggle.addEventListener('click', (e) => {
     e.preventDefault();
     isLoginMode = !isLoginMode;
@@ -2279,7 +2279,7 @@ authToggle.addEventListener('click', (e) => {
     authError.textContent = '';
 });
 
-// --- NEW UNIFIED AUTH BUTTON HANDLER ---
+// --- UNIFIED AUTH BUTTON HANDLER ---
 authButton.addEventListener('click', async () => {
     const email = emailInput.value;
     const password = passwordInput.value;
@@ -2319,7 +2319,6 @@ function updateExploration() {
     // Only track exploration in the Overworld
     if (gameState.mapMode !== 'overworld') return false;
 
-    // --- SAFETY FIX START ---
     // If the Set doesn't exist yet, create it.
     if (!gameState.exploredChunks) {
         // Try to recover data from the player object if it exists there
@@ -2329,7 +2328,6 @@ function updateExploration() {
             gameState.exploredChunks = new Set();
         }
     }
-    // --- SAFETY FIX END ---
 
     // Calculate Chunk ID
     const chunkX = Math.floor(gameState.player.x / MAP_CHUNK_SIZE);
@@ -2505,8 +2503,9 @@ function generateEnemyLoot(player, enemy) {
  * @param {object} item - The item object (from equipment).
  * @param {number} operation - 1 to add, -1 to subtract.
  */
+
 function applyStatBonuses(item, operation) {
-    // --- FIX: Safety Check ---
+    // --- Safety Check ---
     if (!item || !item.statBonuses) {
         return;
     }
@@ -2527,7 +2526,7 @@ function applyStatBonuses(item, operation) {
             // 1. Apply the Core Stat Change
             player[stat] += (amount * operation);
 
-            // 2. FIX: Update Derived Stats Immediately
+            // 2. Update Derived Stats Immediately
             // This ensures Max HP/Mana stay in sync when swapping gear or dying.
             if (stat === 'constitution') {
                 player.maxHealth += (amount * 5 * operation);
@@ -2790,7 +2789,7 @@ function handleSellItem(itemIndex) {
     const sellBonusPercent = player.charisma * 0.005;
     const finalSellBonus = Math.min(sellBonusPercent, 0.25);
 
-    // --- FIX START: Economy Cap ---
+    // --- Economy Cap ---
     // Calculate raw sell price
     let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
 
@@ -2801,7 +2800,6 @@ function handleSellItem(itemIndex) {
     // If the item is a rare relic (not sold in shops), we don't need to cap it strictly
     // against a shop price, but for general goods, we apply the cap.
     const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
-    // --- FIX END ---
 
     if (regionMult > 1.0) logMessage(`Market demand is high here! (x${regionMult})`);
     else if (regionMult < 1.0) logMessage(`Market flooded. Low demand. (x${regionMult})`);
@@ -2844,7 +2842,7 @@ function resizeCanvas() {
     const dpr = window.devicePixelRatio || 1;
 
     // 3. Resize Main Canvas (SNAP TO GRID)
-    // CRITICAL FIX: We set the canvas size to match the TILES, not the container pixels.
+    // We set the canvas size to match the TILES, not the container pixels.
     // This prevents stretching/blurring.
     const logicalWidth = VIEWPORT_WIDTH * TILE_SIZE;
     const logicalHeight = VIEWPORT_HEIGHT * TILE_SIZE;
@@ -3037,7 +3035,7 @@ function renderShop() {
             const finalSellBonus = Math.min(sellBonusPercent, 0.5);
             let calculatedSellPrice = Math.floor(basePrice * (SELL_MODIFIER + finalSellBonus) * regionMult);
 
-            // 3. Apply the 80% Cap (Visual Fix)
+            // 3. Apply the 80% Cap
             const maxSellPrice = Math.floor(basePrice * 0.8);
             const sellPrice = shopItem ? Math.min(calculatedSellPrice, maxSellPrice) : calculatedSellPrice;
 
@@ -3056,7 +3054,7 @@ function renderShop() {
         });
     }
 
-    // --- NEW: Inject Sell All Button into the Header ---
+    // --- Inject Sell All Button into the Header ---
     const sellListContainer = shopSellList.parentElement;
     const header = sellListContainer.querySelector('h3');
 
@@ -3672,13 +3670,13 @@ async function runCompanionTurn() {
             const tile = chunkManager.getTile(tx, ty);
             const enemyData = ENEMY_DATA[tile];
 
-            // FIX: Ensure enemyData has stats (maxHealth) to prevent attacking non-combat tiles
+            // Ensure enemyData has stats (maxHealth) to prevent attacking non-combat tiles
             if (enemyData && enemyData.maxHealth) {
                 attacked = true;
                 const enemyId = `overworld:${tx},${-ty}`;
                 const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-                // --- BUG FIX: Custom Transaction for Companion ---
+                // --- Custom Transaction for Companion ---
                 // We do NOT use handleOverworldCombat here to avoid player taking damage
                 try {
                     await enemyRef.transaction(currentData => {
@@ -3686,7 +3684,7 @@ async function runCompanionTurn() {
 
                         // If enemy doesn't exist in DB yet (fresh spawn), we create it momentarily to hit it
                         if (enemy === null) {
-                            // FIX: Safety check inside transaction
+                            // Safety check inside transaction
                             if (!enemyData) return null;
 
                             const scaledStats = getScaledEnemy(enemyData, tx, ty);
@@ -5081,7 +5079,7 @@ function handleCraftItem(recipeName) {
         }
     }
 
-    // 4. Consume Materials (The Fix)
+    // 4. Consume Materials
     for (const materialName in recipe.materials) {
         let remainingNeeded = recipe.materials[materialName];
 
@@ -5136,7 +5134,7 @@ let craftQuantity = (isMasterwork) ? 1 : (recipe.yield || 1);
 if (existingStack && isStackable && !isMasterwork) {
     existingStack.quantity += craftQuantity; // CHANGED FROM ++
 } else {
-    // --- 1. Calculate Stats Locally (Fixes Global Template Mutation Bug) ---
+    // --- 1. Calculate Stats Locally ---
     // We calculate these values here instead of modifying itemTemplate directly.
     const finalDamage = (isMasterwork && itemTemplate.type === 'weapon') 
         ? (itemTemplate.damage || 0) + 1 
@@ -5467,7 +5465,7 @@ function castSpell(spellId) {
         // --- Self-Cast Spells ---
         player[costType] -= cost; // Deduct the resource cost
         let spellCastSuccessfully = false;
-        let updates = {}; // --- NEW: Object to batch database updates ---
+        let updates = {}; // --- Object to batch database updates ---
 
         // --- 3. Execute Spell Effect ---
         switch (spellId) {
@@ -5846,19 +5844,18 @@ async function applySpellDamage(targetX, targetY, damage, spellId) {
         const enemyId = `overworld:${targetX},${-targetY}`;
         const enemyRef = rtdb.ref(`worldEnemies/${enemyId}`);
 
-        // --- FIX START: Capture Stats Before Damage ---
+        // --- Capture Stats Before Damage ---
         // Just like melee, we check if we have a local visual copy of this enemy.
         // If we do, we use its stats (Name, Elite status, Max HP) for the transaction.
         const liveEnemy = gameState.sharedEnemies[enemyId];
         const enemyInfo = liveEnemy || getScaledEnemy(enemyData, targetX, targetY);
-        // --- FIX END ---
-
+  
         try {
             const transactionResult = await enemyRef.transaction(currentData => {
                 let enemy;
 
                 if (currentData === null) {
-                    // FIX: Use enemyInfo (the visual state) instead of generating random new stats
+                    // Use enemyInfo (the visual state) instead of generating random new stats
                     enemy = {
                         name: enemyInfo.name, 
                         health: enemyInfo.maxHealth,
@@ -6108,6 +6105,7 @@ async function handleOverworldCombat(newX, newY, enemyData, newTile, playerDamag
                     
                     if (passableTerrain.includes(currentTerrain) || currentTerrain === newTile) {
                         chunkManager.setWorldTile(newX, newY, droppedLoot);
+                        gameState.mapDirty = true;
                     }
                 } catch (lootErr) {
                     console.error("Loot drop error:", lootErr);
@@ -6283,7 +6281,7 @@ const render = () => {
     }
 
     // --- 3. DRAW CACHED TERRAIN ---
-    // CRITICAL FIX: The terrainCanvas is already scaled by DPR.
+    // The terrainCanvas is already scaled by DPR.
     // The Main CTX is already scaled by DPR.
     // To draw it 1:1, we must draw it at logical 0,0 with logical dimensions.
     const dpr = window.devicePixelRatio || 1;
@@ -6554,7 +6552,7 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
         ctx.globalAlpha = intensity;
         if (gameState.weather === 'rain') {
             ctx.fillStyle = 'rgba(0, 0, 100, 0.2)';
-            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr); // Fix fill size
+            ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
             ctx.strokeStyle = 'rgba(120, 140, 255, 0.6)';
             ctx.lineWidth = 1;
             const dropCount = Math.floor(200 * intensity);
@@ -7202,7 +7200,7 @@ function processEnemyTurns() {
             const buffDefense = player.defenseBonus || 0;
             const talentDefense = (player.talents && player.talents.includes('iron_skin')) ? 1 : 0;
             
-            // FIX: Round down Constitution bonus so Total Defense is an integer
+            // Round down Constitution bonus so Total Defense is an integer
             const conBonus = Math.floor(player.constitution * 0.1);
             const totalDefense = baseDefense + armorDefense + buffDefense + conBonus + talentDefense;
 
@@ -7215,7 +7213,7 @@ function processEnemyTurns() {
                 logMessage(`The ${enemy.name} attacks, but you dodge!`);
                 ParticleSystem.createFloatingText(player.x, player.y, "Dodge!", "#3b82f6");
             } else {
-                // FIX: Ensure damage is an integer (Math.floor)
+                // Ensure damage is an integer (Math.floor)
                 let dmg = Math.max(1, Math.floor(enemy.attack - totalDefense));
                 
                 // Shield Absorb
@@ -7256,7 +7254,7 @@ function processEnemyTurns() {
         // Caster Attack (Range Check)
         const castRangeSq = Math.pow(enemy.castRange || 6, 2);
         if (enemy.caster && distSq <= castRangeSq && Math.random() < 0.20) {
-            // FIX: Ensure spell damage is integer
+            // Ensure spell damage is integer
             const spellDmg = Math.max(1, Math.floor(enemy.spellDamage || 1));
             
             let spellName = "spell";
@@ -7556,7 +7554,7 @@ function handlePlayerDeath() {
     // 5. Apply map updates (Wrapped in Sanitize to prevent crashes)
     if (gameState.mapMode === 'overworld') {
         for (const [cId, updates] of Object.entries(pendingUpdates)) {
-            // FIX: Sanitize the updates object to remove 'undefined' values before sending
+            // Sanitize the updates object to remove 'undefined' values before sending
             const safeUpdates = sanitizeForFirebase(updates); 
             db.collection('worldState').doc(cId).set(safeUpdates, { merge: true })
                 .catch(err => console.error("Failed to drop corpse loot:", err));
@@ -8879,7 +8877,7 @@ async function attemptMovePlayer(newX, newY) {
     let inventoryWasUpdated = false;
     let tileData = TILE_DATA[newTile];
 
-    // 3. Obstacle Check (The Fix)
+    // 3. Obstacle Check
     if (tileData && tileData.type === 'obstacle') {
         logMessage(`You can't go that way.`);
         return; // Stop the move
@@ -9151,6 +9149,8 @@ async function attemptMovePlayer(newX, newY) {
                             chunkManager.caveEnemies[gameState.currentCaveId] = chunkManager.caveEnemies[gameState.currentCaveId].filter(e => e.id !== enemyId);
                         }
                         chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = droppedLoot;
+
+                        gameState.mapDirty = true;
                     }
                 }
 
@@ -10591,7 +10591,7 @@ async function attemptMovePlayer(newX, newY) {
         }
 
         if (newTile === 'T') {
-            // --- FIX: Define tileId ---
+            // --- Define tileId ---
             const tileId = (gameState.mapMode === 'overworld') ?
                 `${newX},${-newY}` :
                 `${gameState.currentCaveId || gameState.currentCastleId}:${newX},${-newY}`;
@@ -10887,7 +10887,7 @@ async function attemptMovePlayer(newX, newY) {
                 });
                 break;
             case 'dungeon_entrance':
-                // --- SAFETY FIX: Ensure Set exists ---
+                // --- Ensure Set exists ---
                 if (!gameState.foundLore) gameState.foundLore = new Set();
 
                 if (!gameState.foundLore.has(tileId)) {
@@ -11482,7 +11482,7 @@ if (timeDoc.exists) {
     renderTime();
 }
 
-    // --- FIX: PERMADEATH LOOP PREVENTION ---
+    // --- PERMADEATH LOOP PREVENTION ---
     if (playerData.health <= 0) {
         logMessage("You have respawned at the village.");
 
@@ -11599,7 +11599,7 @@ if (gameState.mapMode === 'overworld') {
                         gameState.player.y = ty;
                         found = true;
                         logMessage("You woke up in a safer spot.");
-                        playerRef.update({ x: tx, y: ty }); // Save fix
+                        playerRef.update({ x: tx, y: ty });
                         break;
                     }
                 }
@@ -11834,7 +11834,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
                         if (templateKey) templateItem = ITEM_DATA[templateKey];
                     }
 
-                    // 3. FALLBACK B: Smart Suffix Match (The "Masterwork" Fix)
+                    // 3. FALLBACK B: Smart Suffix Match
                     // Handles "Sharp Rusty Sword" matching "Rusty Sword" instead of just "Sword"
                     if (!templateItem) {
                         // Find all templates that match the end of the item name
@@ -11878,7 +11878,7 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
                             item.slot = templateItem.slot;
                         }
                     } else {
-                                                // --- GHOST ITEM FIX START ---
+
                         console.warn(`⚠️ Corrupted item found: "${item.name}". Converting to Ash.`);
                         
                         // Mutate the item into safe "Ash" so the UI can render it without crashing
@@ -11900,7 +11900,6 @@ const sharedEnemiesRef = rtdb.ref('worldEnemies');
                             item.isEquipped = false;
                             console.log("Unequipped ghost item.");
                         }
-                        // --- GHOST ITEM FIX END ---
                     }
                 });
 
