@@ -11004,7 +11004,7 @@ async function attemptMovePlayer(newX, newY) {
         }
     }
 
-    // 4. Handle item pickups *BEFORE* moving.
+    // 4. Handle item pickups
     let tileId;
     if (gameState.mapMode === 'overworld') {
         tileId = `${newX},${-newY}`;
@@ -11015,26 +11015,23 @@ async function attemptMovePlayer(newX, newY) {
 
     const itemData = ITEM_DATA[newTile];
 
+    // --- MAGIC ITEM GENERATION (Sparkles) ---
     if (newTile === '✨') {
         if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
-            // 1. Calculate Tier based on location
             const dist = Math.sqrt(newX * newX + newY * newY);
             let tier = 1;
             if (dist > 500) tier = 4;
             else if (dist > 250) tier = 3;
             else if (dist > 100) tier = 2;
 
-            // 2. Generate the Item
             const newItem = generateMagicItem(tier);
-
-            // 3. Add to inventory
             gameState.player.inventory.push(newItem);
             logMessage(`You picked up a ${newItem.name}!`);
 
             inventoryWasUpdated = true;
             gameState.lootedTiles.add(tileId);
 
-            // Clear the tile
+            // Clear the tile visually
             if (gameState.mapMode === 'overworld') chunkManager.setWorldTile(newX, newY, '.');
             else if (gameState.mapMode === 'dungeon') {
                 const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
@@ -11045,8 +11042,89 @@ async function attemptMovePlayer(newX, newY) {
         } else {
             logMessage("You see a sparkling item, but your inventory is full!");
         }
-        // Skip standard item logic
-        // itemData = null; // Removed this line, not needed if structure is correct
+    }
+    // --- STANDARD ITEM PICKUP (The Fix) ---
+    else if (itemData) {
+        let isTileLooted = gameState.lootedTiles.has(tileId);
+        
+        // Helper to remove item from map
+        function clearLootTile() {
+            gameState.lootedTiles.add(tileId);
+            if (gameState.mapMode === 'overworld') {
+                chunkManager.setWorldTile(newX, newY, '.');
+            } else if (gameState.mapMode === 'dungeon') {
+                const theme = CAVE_THEMES[gameState.currentCaveTheme] || CAVE_THEMES.ROCK;
+                chunkManager.caveMaps[gameState.currentCaveId][newY][newX] = theme.floor;
+            } else if (gameState.mapMode === 'castle') {
+                chunkManager.castleMaps[gameState.currentCastleId][newY][newX] = '.';
+            }
+            gameState.mapDirty = true; // Force redraw immediately
+        }
+
+        if (itemData.type === 'random_lore') {
+            // Lore logic (unchanged)
+            const seed = stringToSeed(`${newX},${newY}`);
+            const random = Alea(seed);
+            const fragment = LORE_FRAGMENTS[Math.floor(random() * LORE_FRAGMENTS.length)];
+            loreTitle.textContent = "Forgotten Letter";
+            loreContent.textContent = `You smooth out the paper. The handwriting is faded.\n\n"${fragment}"`;
+            loreModal.classList.remove('hidden');
+            clearLootTile();
+            inventoryWasUpdated = true; // Ensure we save that we read this
+        }
+        else if (isTileLooted) {
+            logMessage(`You see where a ${itemData.name} once was...`);
+        } 
+        else {
+            // --- INSTANT ITEMS (Gold, Traps) ---
+            if (itemData.type === 'instant') {
+                itemData.effect(gameState, tileId);
+                clearLootTile();
+                inventoryWasUpdated = true; // CRITICAL: Tells the game to save the map change
+                renderStats(); // CRITICAL: Updates the gold counter UI immediately
+            } 
+            // --- ALL OTHER ITEMS (Catch-All Logic) ---
+            else {
+                // 1. Check for existing stack
+                const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
+                
+                // Define what stacks. We include EVERYTHING here to be safe.
+                const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'quest', 'lore', 'tool'].includes(itemData.type);
+
+                if (existingItem && isStackable) {
+                    existingItem.quantity++;
+                    logMessage(`You picked up a ${itemData.name}.`);
+                    inventoryWasUpdated = true;
+                    clearLootTile();
+                } 
+                else if (gameState.player.inventory.length < MAX_INVENTORY_SLOTS) {
+                    // 2. Create new item object
+                    const itemForDb = { 
+                        templateId: newTile, // CRITICAL: Saves the ID so it loads correctly next time
+                        name: itemData.name, 
+                        type: itemData.type, 
+                        quantity: 1, 
+                        tile: newTile,
+                        // Copy properties safely
+                        damage: itemData.damage || null,
+                        defense: itemData.defense || null,
+                        slot: itemData.slot || null,
+                        statBonuses: itemData.statBonuses || null,
+                        effect: itemData.effect || null,
+                        spellId: itemData.spellId || null,
+                        skillId: itemData.skillId || null,
+                        stat: itemData.stat || null
+                    };
+                    
+                    gameState.player.inventory.push(itemForDb);
+                    logMessage(`You picked up a ${itemData.name}.`);
+                    inventoryWasUpdated = true;
+                    clearLootTile();
+                } else {
+                    logMessage(`You see a ${itemData.name}, but your inventory is full!`);
+                }
+            } 
+        }
     }
 
     function clearLootTile() {
