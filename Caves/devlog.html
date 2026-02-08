@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Caves & Castles - Devlog #1</title>
+    <title>Caves & Castles - Devlog</title>
     <style>
         :root {
             --bg-page: #f9fafb;
@@ -108,6 +108,43 @@
 </head>
 <body>
     <main>
+        <h1>Devlog Updates</h1>
+        <p class="date">Caves and Castles</p>
+
+        <!-- NEW CONTENT ADDED HERE -->
+        <h2>Devlog #2: The Persistence & Housekeeping Update</h2>
+        <p class="date">February 8th, 2026</p>
+
+        <p>
+            Today was a huge day for the stability of the game! We tackled some of the most frustrating, game-breaking bugs that have been plaguing adventurers trying to get started. This update is all about making sure your hard-earned loot and gold actually stay with you.
+        </p>
+
+        <h3>Critical Bug Fixes: Gold & Inventory Persistence</h3>
+        <p>
+            We've finally squashed the infamous "ghost inventory" bug! Players were reporting that items and gold would appear in their inventory, only to vanish a few moments later. This was our highest priority.
+        </p>
+        <ul>
+            <li><strong>The "Time Travel" Bug:</strong> We identified a "race condition" in our cloud save system. In simple terms, after you picked up an item, your game would sometimes receive old data from the server (from *before* you picked up the item) and mistakenly overwrite your new loot. We've rebuilt the data listener to be much smarter, so it now knows to trust your local game and won't erase your progress.</li>
+            <li><strong>Guaranteed Saves:</strong> To add an extra layer of security, picking up an item now forces an immediate, high-priority save to the cloud. This ensures that even if you close the browser right after looting, your items will be waiting for you when you return.</li>
+            <li><strong>Item Stacking:</strong> We've also updated the logic to allow identical equipment (like multiple "Tattered Rags" or "Rusty Swords") to stack, saving precious inventory space.</li>
+        </ul>
+
+        <h3>Code Organization & Cleanup</h3>
+        <p>
+            As we add more features, our main script file (`script.js`) was becoming a giant monolith. This makes it difficult to find bugs and add new content quickly. We've performed a major "housekeeping" operation to make future development much smoother.
+        </p>
+        <ul>
+            <li><strong>Logical Separation:</strong> We've broken up the giant `script.js` into smaller, more focused files. We now have dedicated scripts for <strong>Combat</strong> (`combat.js`), <strong>Magic & Skills</strong> (`magic.js`), and <strong>Items & Crafting</strong> (`items.js`).</li>
+            <li><strong>Future-Proofing:</strong> While you won't see this change in-game, it's a massive win for development speed. This organization allows us (and our AI assistants!) to work on specific parts of the game without breaking others, meaning faster updates and fewer bugs down the road.</li>
+        </ul>
+        <p>
+            Thank you for your patience as we ironed out these critical issues. The foundation is now stronger than ever, and we can get back to building more exciting content for you to explore!
+        </p>
+
+        <!-- ORIGINAL CONTENT REMAINS BELOW -->
+
+        <hr style="border-color: var(--border-color); margin: 2rem 0;">
+
         <h1>Devlog #1: The Scholar's Update</h1>
         <p class="date">February 1st, 2026</p>
 
