@@ -1,3 +1,66 @@
+/**
+ * Takes raw player data (from Firebase) and reconnects it to game templates.
+ * ensuring items have effects, correct stats, and valid IDs.
+ */
+
+function rehydratePlayerState(data) {
+    if (!data.inventory) return [];
+
+    return data.inventory.map(item => {
+        let templateItem = null;
+        let templateKey = null;
+
+        // 1. ROBUST LOOKUP
+        if (item.templateId && ITEM_DATA[item.templateId]) {
+            templateItem = ITEM_DATA[item.templateId];
+            templateKey = item.templateId;
+        }
+
+        // 2. FALLBACK A: Name Match
+        if (!templateItem) {
+            templateKey = Object.keys(ITEM_DATA).find(k => ITEM_DATA[k].name === item.name);
+            if (templateKey) templateItem = ITEM_DATA[templateKey];
+        }
+
+        // 3. FALLBACK B: Suffix Match
+        if (!templateItem) {
+            const candidates = Object.keys(ITEM_DATA).filter(k => item.name.endsWith(ITEM_DATA[k].name));
+            if (candidates.length > 0) {
+                // Find longest match (Iron Sword vs Sword)
+                candidates.sort((a, b) => ITEM_DATA[b].name.length - ITEM_DATA[a].name.length);
+                templateKey = candidates[0];
+                templateItem = ITEM_DATA[templateKey];
+            }
+        }
+
+        if (templateItem) {
+            // Heal Data
+            if (!item.templateId) item.templateId = templateKey;
+            
+            // Re-bind Logic
+            item.effect = templateItem.effect;
+            item.onHit = templateItem.onHit;
+            item.procChance = templateItem.procChance;
+            item.inflicts = templateItem.inflicts;
+            item.inflictChance = templateItem.inflictChance;
+
+            // Heal Missing Stats (Keep existing ones if present)
+            if(item.damage === undefined || item.damage === null) item.damage = templateItem.damage;
+            if(item.defense === undefined || item.defense === null) item.defense = templateItem.defense;
+            item.slot = templateItem.slot; // Always force slot to prevent bugs
+            item.tile = item.tile || templateItem.tile; // Ensure icon
+            
+        } else {
+            console.warn(`Converting corrupted item to Ash: ${item.name}`);
+            item.name = `Ash (${item.name})`;
+            item.description = "Dust from a forgotten version.";
+            item.type = 'junk';
+            item.tile = '💨';
+            item.quantity = item.quantity || 1;
+        }
+        return item;
+    });
+}
 
 /**
  * Generates loot when an enemy is defeated.
