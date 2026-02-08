@@ -1810,7 +1810,10 @@ function handleItemDrop(key) {
     gameState.isDroppingItem = false;
     
     // Update DB
-    playerRef.update({ inventory: getSanitizedInventory() });
+    playerRef.update({ 
+        inventory: getSanitizedInventory(),
+        lootedTiles: Array.from(gameState.lootedTiles)
+    });
     
     // Refresh the UI immediately so the item disappears or count decreases
     renderInventory();
@@ -11141,7 +11144,6 @@ async function attemptMovePlayer(newX, newY) {
 
                 } else {
                     logMessage(`You see a ${itemData.name}, but your inventory is full!`);
-                    return; 
                 }
             }
         }
