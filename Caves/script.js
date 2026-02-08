@@ -11094,8 +11094,9 @@ else if (itemData) {
             // --- ALL OTHER ITEMS (Catch-All) ---
             else {
                 const existingItem = gameState.player.inventory.find(item => item.name === itemData.name);
+                
                 // Allow almost anything to stack to be safe
-                const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'quest', 'lore', 'tool'].includes(itemData.type);
+                const isStackable = ['junk', 'consumable', 'trade', 'ingredient', 'quest', 'lore', 'tool', 'armor', 'weapon'].includes(itemData.type);
 
                 if (existingItem && isStackable) {
                     existingItem.quantity++;
