@@ -8528,3 +8528,108 @@ const InverseSquareCalculator = ({
             </div>
             );
             };
+
+            /**
+             * @description Displays a full decay series chain.
+             * @param {{seriesId: string, onBack: () => void, onNuclideClick: (nuclide: object) => void}} props - The series ID and navigation handlers.
+             */
+            
+            const DecaySeriesViewer = ({ seriesId, onBack, onNuclideClick }) => {
+                const series = decaySeriesData.find(s => s.id === seriesId);
+                if (!series) return <p>Decay series not found.</p>;
+            
+                // --- INTERNAL COMPONENTS FOR THE DIAGRAM ---
+            
+                // A single nuclide in the chain
+                   const NuclideNode = ({ step }) => (
+                       <div className="p-3 my-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-center shadow flex-shrink-0 border border-slate-200 dark:border-slate-600">
+                           <span
+                               className="font-bold text-lg text-sky-600 dark:text-sky-400 cursor-pointer hover:underline"
+                               onClick={() => {
+                                   // Check BOTH name and symbol to ensure a match
+                                   const target = normalizeString(step.nuclide);
+                                   const found = radionuclides.find(n => 
+                                       normalizeString(n.name) === target || 
+                                       normalizeString(n.symbol) === target
+                                   );
+                                   if (found) onNuclideClick(found);
+                               }}
+                           >
+                               {step.nuclide}
+                           </span>
+                           <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{step.halfLife}</div>
+                       </div>
+                   );
+            
+                // An arrow representing a decay step
+            
+            const DecayArrow = ({ decayType }) => (
+                    <div className="flex-shrink-0 flex items-center justify-center relative mx-2 min-w-[10rem] w-auto px-2 text-center">
+            
+            {/* The horizontal line of the arrow */}
+            
+            <div className="absolute left-0 w-full h-0.5 bg-slate-300 dark:bg-slate-600"></div>
+            
+            {/* Arrowhead */}
+            
+            <div className="absolute right-0 w-0 h-0 border-t-[5px] border-t-transparent border-b-[5px] border-b-transparent border-l-[8px] border-l-slate-400 dark:border-l-slate-500"></div>
+            
+            {/* Text label floating above the line */}
+            
+                        <div className="relative bg-white dark:bg-slate-800 px-2">
+                            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">{decayType}</span>
+                        </div>
+                    </div>
+                );
+            
+                // Recursive component that renders a chain or a sub-chain horizontally
+            
+                const RenderChain = ({ chain }) => (
+                    <div className="flex items-center">
+                        {chain.map((step, index) => (
+                            <div key={step.nuclide + index} className="flex items-center">
+                                <NuclideNode step={step} />
+            
+                                {/* If the step has branches, render them vertically stacked */}
+            
+                                {step.branches && (
+                                    <>
+                                        <DecayArrow decayType="" />
+                                        <div className="flex flex-col">
+                                            {step.branches.map((branch, branchIndex) => (
+                                                <div key={branchIndex} className="flex items-center p-2">
+                                                    <DecayArrow decayType={step.decayType.split('/')[branchIndex]?.trim() || ''} />
+                                                    <RenderChain chain={branch} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+            
+                                {/* If it's a linear step, render the arrow to the next step */}
+            
+                                {!step.branches && index < chain.length - 1 && chain[index+1].nuclide !== step.nuclide && (
+                                    <DecayArrow decayType={step.decayType} />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                );
+            
+                // --- MAIN COMPONENT RENDER ---
+            
+                return (
+                    <div className="p-4 animate-fade-in">
+                        <button onClick={onBack} className="mb-4 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-lg font-semibold hover:bg-slate-300 dark:hover:bg-slate-600 transition">&larr; Back to Result</button>
+                        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">{series.name}</h2>
+                            {/* Container that allows horizontal scrolling for long chains */}
+                            <div className="overflow-x-auto pb-4">
+                               <div className="inline-block min-w-full p-2">
+                                    <RenderChain chain={series.chain} />
+                               </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
