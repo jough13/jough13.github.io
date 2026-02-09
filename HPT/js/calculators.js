@@ -6403,11 +6403,6 @@ const InverseSquareCalculator = ({
                                                 <p>Transmission: <strong>{(result.transmission * 100).toFixed(1)}%</strong></p>
                                                 {useBuildup && <p>Buildup Factor: <strong>{result.buildup.toFixed(2)}</strong></p>}
                                             </div>
-                                            {result.warning && (
-                                                <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-900/30 border-l-4 border-amber-500 text-amber-800 dark:text-amber-200 text-xs">
-                                                    <strong>Physics Note:</strong> {result.warning}
-                                                </div>
-                                            )}
                                         </>
                                     )}
                                     
