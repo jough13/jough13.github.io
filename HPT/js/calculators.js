@@ -747,14 +747,6 @@
                         const steps = 100;
                         const plotFactor = activityFactors[initialUnit];
                         const CUTOFF = plotA0_Bq * 1e-10;
-                        // Chart Logic
-                        const plotTimeAbs = Math.abs(timeForChart_seconds);
-                        const bestChartUnit = getBestHalfLifeUnit(plotTimeAbs);
-                        const plotTimeConverted = plotTimeAbs / unitConversions[bestChartUnit];
-                        const labels = [], parentData = [], daughterData = [];
-                        const steps = 100;
-                        const plotFactor = activityFactors[initialUnit];
-                        const CUTOFF = plotA0_Bq * 1e-10;
                         let labelDecimals = plotTimeConverted >= 100 ? 0 : 1;
 
                         // Cap the "sampling" duration to 15 Half-Lives to capture the curve shape, 
