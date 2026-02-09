@@ -6117,12 +6117,22 @@ const InverseSquareCalculator = ({
                             const thickCm = thickVal * thicknessFactors[thicknessUnit];
                             
                             let buildup = 1;
+                            
+                            // --- 1. SAFETY LOGIC START ---
+                            let warning = null; // Initialize warning variable
+                            
                             if (useBuildup) {
                                 const mu = Math.log(2) / hvl_cm;
-                                const mfp = mu * thickCm;
+                                const mfp = mu * thickCm; // Mean Free Paths
+                                
                                 buildup = 1 + mfp;
+
+                                // Trigger warning if shielding is thick (> 1.5 HVL is a safe heuristic breakpoint)
+                                if (thickCm > (1.5 * hvl_cm)) {
+                                    warning = "Caution: Linear buildup approximation underestimates dose for thick shields (>1.5 HVL).";
+                                }
                             }
-                            
+                                                        
                             let transmission = Math.pow(0.5, thickCm / hvl_cm);
                             if (transmission < 1e-9) transmission = 0;
                             
@@ -6132,11 +6142,7 @@ const InverseSquareCalculator = ({
                             let reductionFactor = transmission > 0 ? (1 / transmission) : 99999; 
                             if (reductionFactor > 10000) reductionFactor = 10000;
                             
-                            let warning = null;
-                            if (useBuildup && thickCm > (3 * hvl_cm)) {
-                                warning = "Linear buildup approximation may underestimate dose for thick shields (>3 HVL).";
-                            }
-                            
+                            // Pass the warning to the result object
                             setResult({
                                 type: 'gamma_dose',
                                 unshielded_mrem_hr: unshieldedRate_R_hr * 1000,
@@ -6145,9 +6151,10 @@ const InverseSquareCalculator = ({
                                 reduction: reductionFactor,
                                 buildup: buildup,
                                 hvl: hvl_cm,
-                                tvl: tvl_cm, // Added TVL
-                                warning
+                                tvl: tvl_cm, 
+                                warning: warning
                             });
+
                             
                         } else if (calcMode === MODE_FIND_THICKNESS) {
                             const targetVal = safeParseFloat(targetDoseRate);
@@ -6358,7 +6365,7 @@ const InverseSquareCalculator = ({
                                             <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-600 pt-3">
                                                 <p>Unshielded: <strong>{formatDoseValue(result.unshielded_mrem_hr, 'doseRate', settings).value} {formatDoseValue(result.unshielded_mrem_hr, 'doseRate', settings).unit}</strong></p>
                                                 
-                                                {/* NEW TVL & HVL DISPLAY */}
+                                                {/* TVL & HVL DISPLAY */}
                                                 <p>HVL: <strong>{result.hvl ? result.hvl.toFixed(3) : 'N/A'} cm</strong></p>
                                                 <p>TVL: <strong>{result.tvl ? result.tvl.toFixed(3) : 'N/A'} cm</strong></p>
                                                 
@@ -6366,6 +6373,11 @@ const InverseSquareCalculator = ({
                                                 <p>Transmission: <strong>{(result.transmission * 100).toFixed(1)}%</strong></p>
                                                 {useBuildup && <p>Buildup Factor: <strong>{result.buildup.toFixed(2)}</strong></p>}
                                             </div>
+                                            {result.warning && (
+                                                <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-900/30 border-l-4 border-amber-500 text-amber-800 dark:text-amber-200 text-xs">
+                                                    <strong>Physics Note:</strong> {result.warning}
+                                                </div>
+                                            )}
                                         </>
                                     )}
                                     
