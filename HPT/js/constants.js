@@ -1137,3 +1137,69 @@ const SHIELDING_MATERIALS = {
       density: 2.35
    } // Weighted average of common elements
 };
+
+const CATEGORY_DESCRIPTIONS = {
+            'Medical': 'Used for diagnosis, therapy, or medical research.',
+            'Industrial': 'Used in manufacturing, gauging, sterilization, or other industrial processes.',
+            'Natural': 'Occurs naturally in the environment or as part of a decay series.',
+            'Stable/Reference': 'A stable isotope, often used as a reference or target material.',
+            };
+            
+            const CATEGORY_STYLES = {
+            'Medical':    {
+            border: 'border-l-sky-400 dark:border-l-sky-600',
+            hoverBg: 'hover:bg-sky-50 dark:hover:bg-sky-900/50'
+            },
+            'Industrial': {
+            border: 'border-l-amber-400 dark:border-l-amber-600',
+            hoverBg: 'hover:bg-amber-50 dark:hover:bg-amber-900/50'
+            },
+            'Natural':    {
+            border: 'border-l-green-400 dark:border-l-green-600',
+            hoverBg: 'hover:bg-green-50 dark:hover:bg-green-900/50'
+            },
+            'Stable/Reference': {
+            border: 'border-l-slate-400 dark:border-l-slate-500',
+            hoverBg: 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+            },
+            
+            // A default style for any other categories
+            
+            'default': {
+            border: 'border-l-slate-300 dark:border-l-slate-600',
+            hoverBg: 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+            }
+            };
+
+             // --- MASTER LIST of Smart-Sorted Unit Arrays ---
+            
+            // For Activity
+            
+            const activityUnits_ordered = ['Bq', 'kBq', 'MBq', 'GBq', 'µCi', 'mCi', 'Ci', 'dps', 'dpm'];
+            
+            // For Dose & Dose Rate
+            
+            const doseRateUnits_ordered = ['µrem/hr', 'mrem/hr', 'rem/hr', 'R/hr', 'µSv/hr', 'mSv/hr', 'Sv/hr'];
+            const doseUnits_ordered = ['µrem', 'mrem', 'rem', 'R', 'µSv', 'mSv', 'Sv'];
+            
+            // For Distance & Dimensions
+            
+            const distanceUnits_ordered = ['mm', 'cm', 'm', 'in', 'ft', 'km'];
+            const areaUnits_ordered = ['cm²', 'm²', 'in²', 'ft²', 'barn'];
+            
+            // For Time
+            
+            const timeUnits_ordered = ['seconds', 'minutes', 'hours', 'days', 'years'];
+            const longTimeUnits_ordered = ['seconds', 'minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
+            
+            // For Mass
+            
+            const massUnits_ordered = ['µg', 'mg', 'g', 'kg'];
+            
+            // For Shipping (TBq based)
+            
+            const shippingActivityUnits_ordered = ['Bq', 'kBq', 'MBq', 'GBq', 'TBq', 'µCi', 'mCi', 'Ci'];
+            
+            // For Radioactive Concentration
+            
+            const concentrationUnits_ordered = ['Bq/L', 'pCi/L', 'Bq/m³', 'µCi/mL'];
