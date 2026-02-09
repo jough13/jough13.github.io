@@ -1,6 +1,6 @@
- //==============================================================================
-            // --- REACT COMPONENTS & ICONS
-            //==============================================================================
+//==============================================================================
+// --- REACT COMPONENTS & ICONS
+//==============================================================================
             
             /**
              * A simple SVG icon component.
@@ -710,7 +710,7 @@
                      <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-xl animate-fade-in">
                          <div className="flex justify-between items-center mb-4">
                              <h4 className="text-lg font-bold text-slate-700 dark:text-slate-200 text-left">Saved Calculations</h4>
-                             {/* FIX: Renamed button to be specific */}
+
                              <button onClick={() => setIsClearModalOpen(true)} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold">
                                  Clear Calculations
                              </button>
@@ -812,7 +812,7 @@
             const styles = CATEGORY_STYLES[nuclide.category] || CATEGORY_STYLES['default'];
             const hlSeconds = parseHalfLifeToSeconds(nuclide.halfLife);
             const hlCategory = getHalfLifeCategory(hlSeconds);
-            // FIX: Ensure best unit is used if not provided
+            // Ensure best unit is used if not provided
             const hlUnit = displayHalfLifeUnit || getBestHalfLifeUnit(hlSeconds);
             
             return (
@@ -1375,7 +1375,7 @@
             );
             };
 
-                        /**
+            /**
             * @description A React component that renders a line chart for simple decay (Parent/Daughter) using Chart.js.
             */
             const DecayChart = ({ chartData, useLogScale, theme }) => {
