@@ -1115,62 +1115,229 @@ return (
 );
 };
 
-// This component calculates the level of removable surface contamination in dpm/100cm² from gross count rate, background, and instrument efficiencies, then compares the result against regulatory limits from NRC Regulatory Guide 1.86 and ANSI N13.12.
-
 const ContaminationSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, grossCpm, setGrossCpm, backgroundCpm, setBackgroundCpm, instrumentEff, setInstrumentEff, removableFraction, setRemovableFraction, result, setResult, error, setError }) => {
-const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
+    
+    // --- Hooks ---
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
 
-React.useEffect(() => {
-try {
-    setError('');
-    if (!selectedNuclide) { setResult(null); return; }
-    const gross = safeParseFloat(grossCpm); const bkg = safeParseFloat(backgroundCpm);
-    const eff = safeParseFloat(instrumentEff) / 100; const frac = safeParseFloat(removableFraction);
-    if ([gross, bkg, eff, frac].some(isNaN) || eff <= 0 || frac <= 0) throw new Error("All inputs must be valid, positive numbers.");
-    if (gross < bkg) throw new Error("Gross CPM cannot be less than background.");
-    const netCpm = gross - bkg;
-    const dpm = netCpm / eff;
-    const contamination = dpm / frac;
-    const rgLimit = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory].removable;
-    const ansiLimit = ANSI_13_12_LIMITS[selectedNuclide.ansiCategory].removable;
-    setResult({ contamination: contamination.toFixed(0), rgPass: contamination <= rgLimit, ansiPass: contamination <= ansiLimit, rgLimit, ansiLimit });
-} catch (e) { setError(e.message); setResult(null); }
-}, [selectedNuclide, grossCpm, backgroundCpm, instrumentEff, removableFraction, setResult, setError]);
+    // --- Memoized Data ---
+    // Filter radionuclides to only those that have regulatory limits defined
+    const surveyNuclides = React.useMemo(() => 
+        radionuclides
+            .filter(n => n.regGuideCategory && n.ansiCategory)
+            .sort((a,b) => a.name.localeCompare(b.name)), 
+    [radionuclides]);
 
-return (
-<div className="space-y-4 max-w-md mx-auto">
-    <div><label className="text-sm font-medium">Contaminant of Concern</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select a nuclide to find limits..."/>}</div></div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><label className="block text-sm font-medium">Gross CPM</label><input type="number" value={grossCpm} onChange={e => setGrossCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-        <div><label className="block text-sm font-medium">Background CPM</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-        <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-        <div><Tooltip text="The fraction of removable contamination collected by the wipe, typically assumed to be 10% (0.1)."><label className="block text-sm font-medium">Smear Eff. (0.0-1.0)</label></Tooltip><input type="number" step="0.01" value={removableFraction} onChange={e => setRemovableFraction(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-    </div>
-    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-    {result && (
-        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Removable Contamination</p>
-            <div className="flex items-center justify-center">
-                <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.contamination} <span className="text-2xl opacity-75">dpm/100cm²</span></p>
-                <CopyButton textToCopy={result.contamination} />
+    const selectedNuclide = React.useMemo(() => 
+        surveyNuclides.find(n => n.symbol === nuclideSymbol), 
+    [nuclideSymbol, surveyNuclides]);
+
+    // --- Action Level Calculation (Reverse Math) ---
+    // Calculates what Net CPM would trigger the limit
+    const actionLevels = React.useMemo(() => {
+        if (!selectedNuclide) return null;
+
+        const instEff = safeParseFloat(instrumentEff);
+        const wipeEff = safeParseFloat(removableFraction);
+
+        // Normalize Efficiencies
+        const ie = instEff > 1 ? instEff / 100 : instEff; 
+        const we = wipeEff > 1 ? wipeEff / 100 : wipeEff; // Handle 10% vs 0.1
+
+        if (ie <= 0 || we <= 0) return null;
+
+        const totalEff = ie * we;
+        const rgLimit = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory].removable;
+        const ansiLimit = ANSI_13_12_LIMITS[selectedNuclide.ansiCategory].removable;
+
+        return {
+            rg: Math.ceil(rgLimit * totalEff),   // dpm * eff = cpm
+            ansi: Math.ceil(ansiLimit * totalEff)
+        };
+    }, [selectedNuclide, instrumentEff, removableFraction]);
+
+
+    // --- Main Calculation Effect ---
+    React.useEffect(() => {
+        try {
+            setError('');
+            if (!selectedNuclide) { setResult(null); return; }
+
+            // 1. Safe Parse Inputs
+            const gross = safeParseFloat(grossCpm);
+            const bkg = safeParseFloat(backgroundCpm);
+            const instEffInput = safeParseFloat(instrumentEff);
+            const wipeEffInput = safeParseFloat(removableFraction);
+
+            // 2. Validate (Wait for all numbers)
+            if (isNaN(gross) || isNaN(bkg) || isNaN(instEffInput) || isNaN(wipeEffInput)) { 
+                setResult(null); 
+                return; 
+            }
+            
+            // 3. Normalize Efficiencies
+            const instEff = instEffInput > 1 ? instEffInput / 100 : instEffInput;
+            const wipeEff = wipeEffInput > 1 ? wipeEffInput / 100 : wipeEffInput;
+
+            if (instEff <= 0 || wipeEff <= 0) {
+                 // Don't error visible yet, just wait for valid input
+                 return;
+            }
+
+            // 4. Calculate Net CPM (Clamp to 0)
+            const netCpm = Math.max(0, gross - bkg);
+
+            // 5. Calculate Total Efficiency (Instrument * Wipe Collection)
+            const totalEff = instEff * wipeEff;
+
+            // 6. Calculate Removable Contamination (dpm/100cm²)
+            // Formula: NetCPM / (InstEff * WipeEff)
+            const contamination = netCpm / totalEff;
+
+            // 7. Get Limits
+            const rgLimit = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory].removable;
+            const ansiLimit = ANSI_13_12_LIMITS[selectedNuclide.ansiCategory].removable;
+
+            setResult({
+                contamination: contamination.toFixed(0),
+                netCpm: netCpm.toFixed(0),
+                rgPass: contamination <= rgLimit,
+                ansiPass: contamination <= ansiLimit,
+                rgLimit,
+                ansiLimit,
+                nuclide: selectedNuclide.symbol
+            });
+
+        } catch (e) {
+            setError(e.message);
+            setResult(null);
+        }
+    }, [selectedNuclide, grossCpm, backgroundCpm, instrumentEff, removableFraction, setResult, setError]);
+
+    const handleSaveToHistory = () => {
+        if (result && selectedNuclide) {
+            addHistory({
+                id: Date.now(),
+                type: 'Wipe Survey',
+                icon: ICONS.warning,
+                inputs: `${selectedNuclide.symbol}, Net: ${result.netCpm} cpm`,
+                result: `${result.contamination} dpm/100cm²`,
+                view: VIEWS.OPERATIONAL_HP
+            });
+            addToast("Survey saved to history!");
+        }
+    };
+
+    return (
+        <div className="space-y-4 max-w-md mx-auto animate-fade-in">
+            
+            {/* 1. Nuclide Selection */}
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+                <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Contaminant of Concern</label>
+                {selectedNuclide ? (
+                    <div className="flex justify-between items-center bg-sky-50 dark:bg-sky-900/30 p-3 rounded-lg border border-sky-100 dark:border-sky-800">
+                        <span className="font-bold text-sky-800 dark:text-sky-200">{selectedNuclide.name}</span>
+                        <button onClick={() => setNuclideSymbol('')} className="text-xs text-slate-500 hover:text-red-500">
+                            Change
+                        </button>
+                    </div>
+                ) : (
+                    <SearchableSelect 
+                        options={surveyNuclides} 
+                        onSelect={setNuclideSymbol} 
+                        placeholder="Select Nuclide (e.g. I-131)..." 
+                    />
+                )}
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
-                <div className={`p-2 rounded ${result.rgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                <p className="text-xs font-bold">Reg. Guide 1.86</p>
-                <p className={`font-bold text-lg ${result.rgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.rgPass ? 'PASS' : 'FAIL'}</p>
-                <p className="text-xs">(Limit: {result.rgLimit})</p>
+
+            {/* 2. Inputs Grid */}
+            <div className="p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs uppercase font-bold text-slate-500 mb-1">Gross CPM</label>
+                        <input type="number" value={grossCpm} onChange={e => setGrossCpm(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border-transparent focus:border-sky-500 focus:ring-0" />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase font-bold text-slate-500 mb-1">Bkg CPM</label>
+                        <input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border-transparent focus:border-sky-500 focus:ring-0" />
+                    </div>
                 </div>
-                <div className={`p-2 rounded ${result.ansiPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                <p className="text-xs font-bold">ANSI N13.12</p>
-                <p className={`font-bold text-lg ${result.ansiPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.ansiPass ? 'PASS' : 'FAIL'}</p>
-                <p className="text-xs">(Limit: {result.ansiLimit})</p>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs uppercase font-bold text-slate-500 mb-1">Inst. Eff (%)</label>
+                        <input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border-transparent focus:border-sky-500 focus:ring-0" placeholder="e.g. 10" />
+                    </div>
+                    <div>
+                        <Tooltip text="The fraction of loose contamination picked up by the wipe. Typically 0.1 (10%) for standard paper smears.">
+                            <label className="block text-xs uppercase font-bold text-slate-500 mb-1 border-b border-dotted border-slate-400 inline-block">Wipe Eff (0-1)</label>
+                        </Tooltip>
+                        <input type="number" step="0.01" value={removableFraction} onChange={e => setRemovableFraction(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border-transparent focus:border-sky-500 focus:ring-0" placeholder="e.g. 0.1" />
+                    </div>
                 </div>
+
+                {/* 3. Smart Action Levels */}
+                {actionLevels && (
+                    <div className="grid grid-cols-2 gap-2 text-xs text-center">
+                        <div className="p-2 bg-slate-50 dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">
+                            <span className="block text-slate-500 mb-1">Reg Guide Limit</span>
+                            <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                                &gt; {actionLevels.rg} Net CPM
+                            </span>
+                        </div>
+                        <div className="p-2 bg-slate-50 dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">
+                            <span className="block text-slate-500 mb-1">ANSI Limit</span>
+                            <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+                                &gt; {actionLevels.ansi} Net CPM
+                            </span>
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {error && <p className="text-red-500 text-sm text-center animate-pulse">{error}</p>}
+
+            {/* 4. Results Card */}
+            {result && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                        <span className="text-xs font-bold uppercase text-slate-500">Removable Activity</span>
+                        <button onClick={handleSaveToHistory} className="text-slate-400 hover:text-sky-500 transition-colors">
+                             <Icon path={ICONS.notepad || "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"} className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="p-6 text-center">
+                        <div className="flex items-baseline justify-center gap-2 mb-1">
+                            <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{result.contamination}</span>
+                            <span className="text-sm font-medium text-slate-500">dpm / 100cm²</span>
+                        </div>
+                        <p className="text-xs text-slate-400 mb-6 font-mono">Based on {result.netCpm} Net CPM</p>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Reg Guide Badge */}
+                            <div className={`p-3 rounded-lg border-l-4 ${result.rgPass ? 'bg-green-50 dark:bg-green-900/20 border-green-500' : 'bg-red-50 dark:bg-red-900/20 border-red-500'}`}>
+                                <div className="text-[10px] uppercase font-bold opacity-60 mb-1">Reg Guide 1.86</div>
+                                <div className={`text-xl font-bold ${result.rgPass ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                                    {result.rgPass ? 'PASS' : 'FAIL'}
+                                </div>
+                                <div className="text-[10px] opacity-60 mt-1">Limit: {result.rgLimit}</div>
+                            </div>
+
+                            {/* ANSI Badge */}
+                            <div className={`p-3 rounded-lg border-l-4 ${result.ansiPass ? 'bg-green-50 dark:bg-green-900/20 border-green-500' : 'bg-red-50 dark:bg-red-900/20 border-red-500'}`}>
+                                <div className="text-[10px] uppercase font-bold opacity-60 mb-1">ANSI N13.12</div>
+                                <div className={`text-xl font-bold ${result.ansiPass ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                                    {result.ansiPass ? 'PASS' : 'FAIL'}
+                                </div>
+                                <div className="text-[10px] opacity-60 mt-1">Limit: {result.ansiLimit}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-    )}
-</div>
-);
+    );
 };
 
 const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, releaseActivity, setReleaseActivity, activityUnit, setActivityUnit, activityUnits, roomVolume, setRoomVolume, volumeUnit, setVolumeUnit, ventilationRate, setVentilationRate, result, setResult, error, setError }) => {
