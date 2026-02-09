@@ -1099,7 +1099,14 @@ return (
 );
 };
 
-// 1. UPDATED: SurfaceContaminationCalculator (The "Master" Tool)
+// --- Internal Helper: Result Badge ---
+const Badge = ({ label, pass, limit }) => (
+    <div className={`flex justify-between items-center px-2 py-1 rounded text-[10px] font-bold ${pass ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'} mt-1`}>
+        <span>{label}</span>
+        <span className="ml-2">{pass ? 'PASS' : 'FAIL'} <span className="opacity-60 font-normal">(&lt;{limit})</span></span>
+    </div>
+);
+
 const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, result, setResult, error, setError }) => {
     
     // --- STATE: Static (Field Survey) ---
@@ -1119,14 +1126,29 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
     const { addToast } = useToast();
 
     // --- Derived Data ---
-    const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-    const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
+    const surveyNuclides = React.useMemo(() => 
+        radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), 
+    [radionuclides]);
+
+    const selectedNuclide = React.useMemo(() => 
+        surveyNuclides.find(n => n.symbol === nuclideSymbol), 
+    [nuclideSymbol, surveyNuclides]);
 
     // --- Helper: Presets ---
     const EfficiencyPresets = ({ onSelect }) => (
         <div className="flex flex-wrap gap-2 mt-2">
-            {[ { label: 'Pancake (10%)', val: '10' }, { label: 'Alpha (35%)', val: '35' }, { label: 'NaI (20%)', val: '20' } ].map(p => (
-                <button key={p.label} onClick={() => onSelect(p.val)} className="px-2 py-1 text-[10px] bg-slate-200 dark:bg-slate-700 hover:bg-sky-100 dark:hover:bg-sky-900 rounded border border-slate-300 dark:border-slate-600 whitespace-nowrap flex-shrink-0 transition-colors">{p.label}</button>
+            {[ 
+                { label: 'Pancake (10%)', val: '10' }, 
+                { label: 'Alpha (35%)', val: '35' }, 
+                { label: 'NaI (20%)', val: '20' } 
+            ].map(p => (
+                <button 
+                    key={p.label} 
+                    onClick={() => onSelect(p.val)} 
+                    className="px-2 py-1 text-[10px] bg-slate-200 dark:bg-slate-700 hover:bg-sky-100 dark:hover:bg-sky-900 rounded border border-slate-300 dark:border-slate-600 whitespace-nowrap flex-shrink-0 transition-colors"
+                >
+                    {p.label}
+                </button>
             ))}
         </div>
     );
@@ -1153,21 +1175,19 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
             let totalMaxDPM = null;
 
             // 2. Calculate Removable (Wipe)
-            if (!isNaN(wGross) && !isNaN(wBkg) && !isNaN(wEff)) {
+            if (wipeGross !== '' && wipeBkg !== '' && wipeEff !== '') {
                 if (wEff <= 0 || wFactor <= 0) throw new Error("Wipe efficiencies must be positive.");
-                // Net cannot be negative for regulatory comparison (treat as 0)
                 const netWipe = Math.max(0, wGross - wBkg);
                 const totalWipeEff = (wEff > 1 ? wEff/100 : wEff) * (wFactor > 1 ? wFactor/100 : wFactor);
                 removableDPM = netWipe / totalWipeEff;
             }
 
             // 3. Calculate Total (Static List)
-            if (sPoints.length > 0 && !isNaN(sBkg) && !isNaN(sEff) && !isNaN(area)) {
-                if (sEff <= 0 || area <= 0) throw new Error("Static efficiency and area must be positive.");
+            if (sPoints.length > 0 && staticBkg !== '' && staticEff !== '' && area > 0) {
+                if (sEff <= 0) throw new Error("Static efficiency must be positive.");
                 
                 const sEffDec = sEff > 1 ? sEff / 100 : sEff;
                 
-                // Calculate Net DPM for every point
                 const dpmValues = sPoints.map(gross => {
                     const net = Math.max(0, gross - sBkg);
                     return (net / sEffDec) * (100 / area);
@@ -1192,7 +1212,7 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
                     rg: {
                         removable_pass: removableDPM === null || removableDPM <= rg.removable,
                         total_pass: totalAvgDPM === null || totalAvgDPM <= rg.total,
-                        max_pass: totalMaxDPM === null || totalMaxDPM <= (rg.total * 3), // Reg Guide Max Rule
+                        max_pass: totalMaxDPM === null || totalMaxDPM <= (rg.total * 3),
                         removable_limit: rg.removable,
                         total_limit: rg.total
                     },
@@ -1248,7 +1268,7 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
                     <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2"><Icon path={ICONS.activity} className="w-5 h-5"/> Direct Frisk (Static)</h3>
                     
                     <label className="block text-xs font-bold text-slate-500">Gross CPM Data Points</label>
-                    <textarea value={staticData} onChange={e => setStaticData(e.target.value)} rows="3" className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-mono text-xs" placeholder="Paste: 100, 120, 95..."></textarea>
+                    <textarea value={staticData} onChange={e => setStaticData(e.target.value)} rows="3" className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-mono text-xs shadow-inner" placeholder="Paste list: 100, 120, 95..."></textarea>
                     
                     <div className="grid grid-cols-2 gap-3 mt-3">
                         <div>
@@ -1259,7 +1279,7 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
                              <label className="text-xs font-bold text-slate-500">Probe Area (cm²)</label>
                              <div className="flex">
                                 <input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full p-2 rounded-l border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
-                                <select onChange={e => setProbeArea(e.target.value)} className="bg-slate-200 dark:bg-slate-600 text-xs px-1 rounded-r">
+                                <select onChange={e => setProbeArea(e.target.value)} className="bg-slate-200 dark:bg-slate-600 text-xs px-1 rounded-r border-l border-slate-300 dark:border-slate-500" value={probeArea}>
                                     <option value="100">100</option>
                                     <option value="15">15</option>
                                 </select>
@@ -1303,29 +1323,29 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
 
             {/* --- RESULTS --- */}
             {result && (
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-600 overflow-hidden">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-600 overflow-hidden animate-slide-up">
                     <div className="p-3 bg-slate-100 dark:bg-slate-900 flex justify-between items-center">
                          <span className="font-bold text-sm uppercase text-slate-500">Results (dpm/100cm²)</span>
-                         <button onClick={handleSaveToHistory}><Icon path={ICONS.notepad} className="w-5 h-5 text-slate-400 hover:text-sky-500" /></button>
+                         <button onClick={handleSaveToHistory} className="text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5" /></button>
                     </div>
                     <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                         {/* Static Average */}
                         <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700">
                              <p className="text-xs font-bold text-slate-400 uppercase">Static Average</p>
                              <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.total_avg !== null ? result.total_avg.toFixed(0) : '-'}</p>
-                             <Badge label="Reg Guide" pass={result.rg.total_pass} limit={result.rg.total_limit} />
+                             {result.total_avg !== null && <Badge label="Reg Guide" pass={result.rg.total_pass} limit={result.rg.total_limit} />}
                         </div>
                         {/* Static Max */}
                         <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700">
                              <p className="text-xs font-bold text-slate-400 uppercase">Static Max</p>
                              <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.total_max !== null ? result.total_max.toFixed(0) : '-'}</p>
-                             <Badge label="Reg Guide (3x)" pass={result.rg.max_pass} limit={result.rg.total_limit * 3} />
+                             {result.total_max !== null && <Badge label="Reg Guide (3x)" pass={result.rg.max_pass} limit={result.rg.total_limit * 3} />}
                         </div>
                         {/* Removable */}
                         <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700">
                              <p className="text-xs font-bold text-slate-400 uppercase">Removable</p>
                              <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.removable !== null ? result.removable.toFixed(0) : '-'}</p>
-                             <Badge label="Reg Guide" pass={result.rg.removable_pass} limit={result.rg.removable_limit} />
+                             {result.removable !== null && <Badge label="Reg Guide" pass={result.rg.removable_pass} limit={result.rg.removable_limit} />}
                         </div>
                     </div>
                 </div>
