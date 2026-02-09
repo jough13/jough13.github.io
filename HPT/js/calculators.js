@@ -747,13 +747,34 @@
                         const steps = 100;
                         const plotFactor = activityFactors[initialUnit];
                         const CUTOFF = plotA0_Bq * 1e-10;
+                        // Chart Logic
+                        const plotTimeAbs = Math.abs(timeForChart_seconds);
+                        const bestChartUnit = getBestHalfLifeUnit(plotTimeAbs);
+                        const plotTimeConverted = plotTimeAbs / unitConversions[bestChartUnit];
+                        const labels = [], parentData = [], daughterData = [];
+                        const steps = 100;
+                        const plotFactor = activityFactors[initialUnit];
+                        const CUTOFF = plotA0_Bq * 1e-10;
                         let labelDecimals = plotTimeConverted >= 100 ? 0 : 1;
 
-                        for (let i = 0; i <= steps; i++) {
-                            const timePoint = (plotTimeConverted / steps) * i;
-                            const timePoint_seconds = timePoint * unitConversions[bestChartUnit];
-                            labels.push(safeParseFloat(timePoint.toFixed(labelDecimals)).toString());
+                        // Cap the "sampling" duration to 15 Half-Lives to capture the curve shape, 
+                        // even if the user requested time is much longer.
+                        const tenHalfLives = 15 * T_half_seconds;
+                        const effectivePlotTime = Math.min(plotTimeAbs, tenHalfLives);
 
+                        for (let i = 0; i <= steps; i++) {
+                            // We map 'i' to the Effective time, not necessarily the total User time
+                            let timePoint_seconds = (effectivePlotTime / steps) * i;
+                            
+                            // However, the very last point should ALWAYS correspond to the user's input time
+                            // so the final data point matches the specific text result.
+                            if (i === steps) timePoint_seconds = plotTimeAbs; 
+
+                            // Determine label
+                            const timePoint_display = timePoint_seconds / unitConversions[bestChartUnit];
+                            labels.push(safeParseFloat(timePoint_display.toFixed(labelDecimals)).toString());
+
+                            // Calc Parent
                             let p_val_bq = (plotA0_Bq * Math.exp(-lambda * timePoint_seconds));
                             p_val_bq = Math.max(0, p_val_bq);
                             if (useLogScale && p_val_bq < CUTOFF) p_val_bq = CUTOFF;
@@ -5569,6 +5590,7 @@ const InverseSquareCalculator = ({
                             sourceNote: note,
                             label: "Skin Dose Rate" 
                         });
+
                     } else {
                         // Dose in Air (External Point Source)
                         const A_Ci = A_val * activityFactorsCi[activityUnit];
@@ -5580,24 +5602,40 @@ const InverseSquareCalculator = ({
                         const range_m = (range_g_cm2 / density_air_g_cm3) / 100;
                         
                         const isBeyondRange = d_m >= range_m;
+                        
+                        // --- SAFETY LOGIC START ---
+                        // Warning triggers
+                        const isCloseGeometry = d_m < 0.30; // Less than 30 cm (~1 ft)
+                        
                         let doseRate_rad_hr = 0;
-            
-                        if (!isBeyondRange) {
-                            doseRate_rad_hr = (300 * A_Ci) / Math.pow(d_ft, 2);
+                        let warnings = [];
+
+                        if (isBeyondRange) {
+                            warnings.push("Target is beyond maximum beta range in air.");
                         } else {
-                            doseRate_rad_hr = 0; 
+                            // Apply formula
+                            doseRate_rad_hr = (300 * A_Ci) / Math.pow(d_ft, 2);
+                            
+                            // Generate Physics warnings
+                            if (isCloseGeometry) {
+                                warnings.push("Warning: Inverse square law is inaccurate for Beta geometry < 1 ft (30cm). Result may overestimate.");
+                            } else {
+                                warnings.push("Approximation: Uses '300 Rule'. Ignores air attenuation (conservative).");
+                            }
                         }
-            
+
                         setResult({ 
                             type: 'beta_air', 
                             rawDoseRate_mrem_hr: doseRate_rad_hr * 1000, 
                             e_max: E_max, 
                             isBeyondRange, 
                             range_m: range_m.toPrecision(2),
-                            warning: isBeyondRange ? "Target is beyond maximum beta range in air." : "Approximation: Uses '300 Rule'. Ignores air attenuation.",
+                            // Pass array of warnings or join them
+                            warning: warnings.join(" "), 
                             label: "Dose Rate in Air"
                         });
                     }
+
                 } else {
                     // Bremsstrahlung
                     const matProps = SHIELD_PROPS[shieldMaterial];
