@@ -1099,175 +1099,239 @@ return (
 );
 };
 
-// 1. UPDATED: SurfaceContaminationCalculator (Added Probe Area)
-const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, staticData, setStaticData, wipeGrossCpm, setWipeGrossCpm, wipeBackgroundCpm, setWipeBackgroundCpm, instrumentEff, setInstrumentEff, smearEff, setSmearEff, probeArea, setProbeArea, result, setResult, error, setError }) => {
-const { addHistory } = useCalculationHistory();
-const { addToast } = useToast();
+// 1. UPDATED: SurfaceContaminationCalculator (The "Master" Tool)
+const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, result, setResult, error, setError }) => {
+    
+    // --- STATE: Static (Field Survey) ---
+    const [staticData, setStaticData] = React.useState(''); // Textarea input
+    const [staticBkg, setStaticBkg] = React.useState('');
+    const [staticEff, setStaticEff] = React.useState('');
+    const [probeArea, setProbeArea] = React.useState('100');
 
-const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
+    // --- STATE: Wipe (Lab Counter) ---
+    const [wipeGross, setWipeGross] = React.useState('');
+    const [wipeBkg, setWipeBkg] = React.useState('');
+    const [wipeEff, setWipeEff] = React.useState('');
+    const [smearFactor, setSmearFactor] = React.useState('0.1');
 
-React.useEffect(() => {
-try {
-setError('');
-if (!selectedNuclide) { setResult(null); return; }
+    // --- Hooks ---
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
 
-const staticPoints = staticData.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
-const wipeGross = safeParseFloat(wipeGrossCpm);
-const wipeBkg = safeParseFloat(wipeBackgroundCpm);
-const instEff = safeParseFloat(instrumentEff) / 100.0;
-const smearFraction = safeParseFloat(smearEff);
-const area = safeParseFloat(probeArea);
+    // --- Derived Data ---
+    const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
+    const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
 
-if (isNaN(instEff) || instEff <= 0) throw new Error("Instrument efficiency must be a positive number.");
-if (isNaN(area) || area <= 0) throw new Error("Probe physical area is required.");
+    // --- Helper: Presets ---
+    const EfficiencyPresets = ({ onSelect }) => (
+        <div className="flex flex-wrap gap-2 mt-2">
+            {[ { label: 'Pancake (10%)', val: '10' }, { label: 'Alpha (35%)', val: '35' }, { label: 'NaI (20%)', val: '20' } ].map(p => (
+                <button key={p.label} onClick={() => onSelect(p.val)} className="px-2 py-1 text-[10px] bg-slate-200 dark:bg-slate-700 hover:bg-sky-100 dark:hover:bg-sky-900 rounded border border-slate-300 dark:border-slate-600 whitespace-nowrap flex-shrink-0 transition-colors">{p.label}</button>
+            ))}
+        </div>
+    );
 
-let removableDPM = null, totalDPM = null, maxDPM = null;
+    // --- MAIN CALCULATION ---
+    React.useEffect(() => {
+        try {
+            setError('');
+            if (!selectedNuclide) { setResult(null); return; }
 
-// Calculate Removable (Wipe)
-// DPM/100cm2 = NetCPM / (Eff_inst * Eff_wipe)
-// Note: Standard assumes wipe covers 100cm2. If not, user adjusts efficiency or interpretation.
-if (!isNaN(wipeGross) && !isNaN(wipeBkg)) {
-    if (wipeGross < wipeBkg) {
-        // Technically valid (stats), but for safety we treat as < LLD or 0
-        removableDPM = 0;
-    } else {
-        if (isNaN(smearFraction) || smearFraction <= 0) throw new Error("Smear efficiency must be positive.");
-        const netWipeCpm = wipeGross - wipeBkg;
-        removableDPM = netWipeCpm / (instEff * smearFraction);
-    }
-}
+            // 1. Parse Inputs
+            const sPoints = staticData.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
+            const sBkg = safeParseFloat(staticBkg);
+            const sEff = safeParseFloat(staticEff);
+            const area = safeParseFloat(probeArea);
 
-// Calculate Total (Static)
-// DPM/100cm2 = (NetCPM / Eff_inst) * (100 / ProbeArea)
-if (staticPoints.length > 0) {
-    const avgStaticCpm = staticPoints.reduce((sum, val) => sum + val, 0) / staticPoints.length;
-    const maxStaticCpm = Math.max(...staticPoints);
+            const wGross = safeParseFloat(wipeGross);
+            const wBkg = safeParseFloat(wipeBkg);
+            const wEff = safeParseFloat(wipeEff);
+            const wFactor = safeParseFloat(smearFactor);
 
-    // Assume Gross inputs. Use Wipe Bkg as proxy if available, otherwise 0.
-    const bkg = !isNaN(wipeBkg) ? wipeBkg : 0;
+            let removableDPM = null;
+            let totalAvgDPM = null;
+            let totalMaxDPM = null;
 
-    const avgNet = Math.max(0, avgStaticCpm - bkg);
-    const maxNet = Math.max(0, maxStaticCpm - bkg);
+            // 2. Calculate Removable (Wipe)
+            if (!isNaN(wGross) && !isNaN(wBkg) && !isNaN(wEff)) {
+                if (wEff <= 0 || wFactor <= 0) throw new Error("Wipe efficiencies must be positive.");
+                // Net cannot be negative for regulatory comparison (treat as 0)
+                const netWipe = Math.max(0, wGross - wBkg);
+                const totalWipeEff = (wEff > 1 ? wEff/100 : wEff) * (wFactor > 1 ? wFactor/100 : wFactor);
+                removableDPM = netWipe / totalWipeEff;
+            }
 
-    totalDPM = (avgNet / instEff) * (100 / area);
-    maxDPM = (maxNet / instEff) * (100 / area);
-} else {
-    // Explicitly set to null if no data entered, preventing NaN
-    totalDPM = null;
-    maxDPM = null;
-}
+            // 3. Calculate Total (Static List)
+            if (sPoints.length > 0 && !isNaN(sBkg) && !isNaN(sEff) && !isNaN(area)) {
+                if (sEff <= 0 || area <= 0) throw new Error("Static efficiency and area must be positive.");
+                
+                const sEffDec = sEff > 1 ? sEff / 100 : sEff;
+                
+                // Calculate Net DPM for every point
+                const dpmValues = sPoints.map(gross => {
+                    const net = Math.max(0, gross - sBkg);
+                    return (net / sEffDec) * (100 / area);
+                });
 
-if (removableDPM === null && totalDPM === null) { setResult(null); return; }
+                const sum = dpmValues.reduce((a, b) => a + b, 0);
+                totalAvgDPM = sum / dpmValues.length;
+                totalMaxDPM = Math.max(...dpmValues);
+            }
 
-const rgLimits = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory];
-const ansiLimits = ANSI_13_12_LIMITS[selectedNuclide.ansiCategory];
+            // 4. Compare Limits & Set Result
+            if (removableDPM !== null || totalAvgDPM !== null) {
+                const rg = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory];
+                const ansi = ANSI_13_12_LIMITS[selectedNuclide.ansiCategory];
 
-setResult({
-    removable: removableDPM,
-    total_avg: totalDPM,
-    total_max: maxDPM,
-    rg: {
-        removable_limit: rgLimits.removable,
-        total_limit: rgLimits.total,
-        removable_pass: removableDPM === null || removableDPM <= rgLimits.removable,
-        total_pass: totalDPM === null || totalDPM <= rgLimits.total,
-    },
-    ansi: {
-        removable_limit: ansiLimits.removable,
-        total_limit: ansiLimits.total,
-        removable_pass: removableDPM === null || removableDPM <= ansiLimits.removable,
-        total_pass: totalDPM === null || totalDPM <= ansiLimits.total,
-    }
-});
-} catch (e) {
-setError(e.message);
-setResult(null);
-}
-}, [selectedNuclide, staticData, wipeGrossCpm, wipeBackgroundCpm, instrumentEff, smearEff, probeArea]);
+                setResult({
+                    removable: removableDPM,
+                    total_avg: totalAvgDPM,
+                    total_max: totalMaxDPM,
+                    count: sPoints.length,
+                    
+                    rg: {
+                        removable_pass: removableDPM === null || removableDPM <= rg.removable,
+                        total_pass: totalAvgDPM === null || totalAvgDPM <= rg.total,
+                        max_pass: totalMaxDPM === null || totalMaxDPM <= (rg.total * 3), // Reg Guide Max Rule
+                        removable_limit: rg.removable,
+                        total_limit: rg.total
+                    },
+                    ansi: {
+                        removable_pass: removableDPM === null || removableDPM <= ansi.removable,
+                        total_pass: totalAvgDPM === null || totalAvgDPM <= ansi.total,
+                        removable_limit: ansi.removable,
+                        total_limit: ansi.total
+                    }
+                });
+            } else {
+                setResult(null);
+            }
 
-const handleSaveToHistory = () => {
-if (result && selectedNuclide) {
-addHistory({
-    id: Date.now(),
-    type: 'Surface Survey',
-    icon: ICONS.gammaSpec,
-    inputs: `${selectedNuclide.symbol}, Area=${probeArea}cm²`,
-    result: `Removable: ${result.removable?.toFixed(0) || 'N/A'} dpm`,
-    view: VIEWS.OPERATIONAL_HP
-});
-addToast("Saved to history!");
-}
-};
+        } catch (e) {
+            setError(e.message);
+            setResult(null);
+        }
+    }, [selectedNuclide, staticData, staticBkg, staticEff, probeArea, wipeGross, wipeBkg, wipeEff, smearFactor, setResult, setError]);
 
-return (
-<div className="space-y-4">
-<div><label className="text-sm font-medium">Contaminant of Concern</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide to find limits..."/>}</div></div>
+    const handleSaveToHistory = () => {
+        if (result && selectedNuclide) {
+            addHistory({
+                id: Date.now(),
+                type: 'Surface Survey',
+                icon: ICONS.warning,
+                inputs: `${selectedNuclide.symbol}`,
+                result: `Wipe: ${result.removable?.toFixed(0) || '-'}, Static Avg: ${result.total_avg?.toFixed(0) || '-'}`,
+                view: VIEWS.OPERATIONAL_HP
+            });
+            addToast("Saved to history!");
+        }
+    };
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
-        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">Total Contamination (Static)</label>
-        <textarea value={staticData} onChange={e => setStaticData(e.target.value)} rows="3" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste Gross CPM values..."></textarea>
-
-        <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-            <label className="block text-xs font-bold text-slate-500 mb-1">Physical Probe Area (cm²)</label>
-            <div className="flex gap-2">
-                <input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full p-2 rounded-md bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm"/>
-                <select onChange={e => setProbeArea(e.target.value)} className="w-8 p-1 rounded-md bg-slate-200 dark:bg-slate-600 border-none text-xs text-center" value="">
-                    <option value="" disabled>Presets</option>
-                    <option value="15">15 (Pancake)</option>
-                    <option value="100">100 (Alpha)</option>
-                    <option value="584">584 (Floor)</option>
-                </select>
+    return (
+        <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
+             {/* Nuclide Selector */}
+             <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+                <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Contaminant of Concern</label>
+                {selectedNuclide ? (
+                    <div className="flex justify-between items-center bg-sky-50 dark:bg-sky-900/30 p-3 rounded-lg border border-sky-100 dark:border-sky-800">
+                        <span className="font-bold text-sky-800 dark:text-sky-200">{selectedNuclide.name}</span>
+                        <button onClick={() => setNuclideSymbol('')} className="text-xs text-slate-500 hover:text-red-500">Change</button>
+                    </div>
+                ) : (
+                    <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select Nuclide..." />
+                )}
             </div>
-        </div>
-    </div>
-    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
-        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">Removable (Wipe)</label>
-        <div className="grid grid-cols-2 gap-2">
-            <div><label className="block text-xs font-medium">Gross CPM</label><input type="number" value={wipeGrossCpm} onChange={e => setWipeGrossCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            <div><label className="block text-xs font-medium">Bkg CPM</label><input type="number" value={wipeBackgroundCpm} onChange={e => setWipeBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-        </div>
-        <div><label className="block text-xs font-medium">Smear Eff. (0-1)</label><input type="number" step="0.01" value={smearEff} onChange={e => setSmearEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-    </div>
-</div>
 
-<div><label className="block text-sm font-medium">Instrument Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" placeholder="e.g. 10 (4pi)"/></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* --- STATIC (Field) SECTION --- */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2"><Icon path={ICONS.activity} className="w-5 h-5"/> Direct Frisk (Static)</h3>
+                    
+                    <label className="block text-xs font-bold text-slate-500">Gross CPM Data Points</label>
+                    <textarea value={staticData} onChange={e => setStaticData(e.target.value)} rows="3" className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-mono text-xs" placeholder="Paste: 100, 120, 95..."></textarea>
+                    
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div>
+                            <label className="text-xs font-bold text-slate-500">Field Bkg (cpm)</label>
+                            <input type="number" value={staticBkg} onChange={e => setStaticBkg(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                        </div>
+                        <div>
+                             <label className="text-xs font-bold text-slate-500">Probe Area (cm²)</label>
+                             <div className="flex">
+                                <input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full p-2 rounded-l border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                                <select onChange={e => setProbeArea(e.target.value)} className="bg-slate-200 dark:bg-slate-600 text-xs px-1 rounded-r">
+                                    <option value="100">100</option>
+                                    <option value="15">15</option>
+                                </select>
+                             </div>
+                        </div>
+                    </div>
+                    <div className="mt-3">
+                        <label className="text-xs font-bold text-slate-500">Probe Eff (%)</label>
+                        <input type="number" value={staticEff} onChange={e => setStaticEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="e.g. 10" />
+                        <EfficiencyPresets onSelect={setStaticEff} />
+                    </div>
+                </div>
 
-{error && <p className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
+                {/* --- WIPE (Lab) SECTION --- */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2"><Icon path={ICONS.paper} className="w-5 h-5"/> Wipe Test (Removable)</h3>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-xs font-bold text-slate-500">Gross CPM</label>
+                            <input type="number" value={wipeGross} onChange={e => setWipeGross(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500">Lab Bkg (cpm)</label>
+                            <input type="number" value={wipeBkg} onChange={e => setWipeBkg(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                        </div>
+                    </div>
+                    <div className="mt-3">
+                        <label className="text-xs font-bold text-slate-500">Counter Eff (%)</label>
+                        <input type="number" value={wipeEff} onChange={e => setWipeEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="e.g. 30" />
+                        <EfficiencyPresets onSelect={setWipeEff} />
+                    </div>
+                    <div className="mt-3">
+                         <label className="text-xs font-bold text-slate-500">Smear Removal Factor</label>
+                         <input type="number" value={smearFactor} onChange={e => setSmearFactor(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="0.1" />
+                    </div>
+                </div>
+            </div>
 
-{result && (
-    <div className="p-5 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in shadow-sm">
-        <div className="flex justify-between items-center -mt-2 mb-2">
-            <div></div>
-            <h3 className="font-bold text-sm text-slate-500 dark:text-slate-400 uppercase tracking-wide">Survey Results (dpm/100cm²)</h3>
-            <Tooltip text="Save to history"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip>
-        </div>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
-        <div className="flex flex-wrap justify-center gap-4">
-            {result.removable !== null && (
-                <div className="flex-1 min-w-[140px] p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border-l-4 border-sky-500">
-                    <p className="text-xs font-bold text-slate-500">Removable</p>
-                    <p className="text-2xl font-bold text-slate-800 dark:text-white my-1">{parseInt(result.removable).toLocaleString()}</p>
-                    <div className={`text-xs font-bold px-2 py-1 rounded ${result.rg.removable_pass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        Limit: {result.rg.removable_limit}
+            {/* --- RESULTS --- */}
+            {result && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-600 overflow-hidden">
+                    <div className="p-3 bg-slate-100 dark:bg-slate-900 flex justify-between items-center">
+                         <span className="font-bold text-sm uppercase text-slate-500">Results (dpm/100cm²)</span>
+                         <button onClick={handleSaveToHistory}><Icon path={ICONS.notepad} className="w-5 h-5 text-slate-400 hover:text-sky-500" /></button>
+                    </div>
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                        {/* Static Average */}
+                        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700">
+                             <p className="text-xs font-bold text-slate-400 uppercase">Static Average</p>
+                             <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.total_avg !== null ? result.total_avg.toFixed(0) : '-'}</p>
+                             <Badge label="Reg Guide" pass={result.rg.total_pass} limit={result.rg.total_limit} />
+                        </div>
+                        {/* Static Max */}
+                        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700">
+                             <p className="text-xs font-bold text-slate-400 uppercase">Static Max</p>
+                             <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.total_max !== null ? result.total_max.toFixed(0) : '-'}</p>
+                             <Badge label="Reg Guide (3x)" pass={result.rg.max_pass} limit={result.rg.total_limit * 3} />
+                        </div>
+                        {/* Removable */}
+                        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700">
+                             <p className="text-xs font-bold text-slate-400 uppercase">Removable</p>
+                             <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.removable !== null ? result.removable.toFixed(0) : '-'}</p>
+                             <Badge label="Reg Guide" pass={result.rg.removable_pass} limit={result.rg.removable_limit} />
+                        </div>
                     </div>
                 </div>
             )}
-            {result.total_avg !== null && (
-                <div className="flex-1 min-w-[140px] p-3 bg-white dark:bg-slate-800 rounded-lg shadow-sm border-l-4 border-purple-500">
-                    <p className="text-xs font-bold text-slate-500">Total (Avg)</p>
-                    <p className="text-2xl font-bold text-slate-800 dark:text-white my-1">{parseInt(result.total_avg).toLocaleString()}</p>
-                    <div className={`text-xs font-bold px-2 py-1 rounded ${result.rg.total_pass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        Limit: {result.rg.total_limit.toLocaleString()}
-                    </div>
-                </div>
-            )}
         </div>
-    </div>
-)}
-</div>
-);
+    );
 };
 
 // 2. DetectorResponseCalculator (Dynamic Geometry)
