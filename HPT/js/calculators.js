@@ -1573,7 +1573,7 @@ try {
     const totalCpm = cpmGamma + cpmBeta + cpmAlpha;
 
     setResult({
-        // FIX: Use toLocaleString without parseInt to show decimals for low counts
+        // Use toLocaleString without parseInt to show decimals for low counts
         displayValue: totalCpm < 10 ? totalCpm.toFixed(2) : Math.round(totalCpm).toLocaleString(),
         rawCpm: totalCpm,
         detLabel: detInfo.label,
@@ -3209,7 +3209,7 @@ const PEAK_LIBRARY = React.useMemo(() => {
         const existingIndex = lib.findIndex(l => l.symbol === iso.symbol && Math.abs(l.energy - iso.energy) < 2);
         
         if (existingIndex > -1) {
-            // FIX: Overwrite the DB entry with the high-quality data (better energy precision + known yield)
+            // Overwrite the DB entry with the high-quality data (better energy precision + known yield)
             lib[existingIndex] = { ...lib[existingIndex], ...iso, isUnknownYield: false };
         } else {
             // If not in DB, add it
@@ -3233,7 +3233,7 @@ React.useEffect(() => {
     const energyVal = safeParseFloat(searchEnergy);
     if (!searchEnergy || isNaN(energyVal)) { setMatches([]); setAnalysis(null); return; }
     
-    // FIX: Tighter tolerance for High Res (0.3% or 1 keV), looser for Low Res (7% or 20 keV)
+    // Tighter tolerance for High Res (0.3% or 1 keV), looser for Low Res (7% or 20 keV)
     let tolerance = resolution === 'high' 
         ? Math.max(1.0, energyVal * 0.003) 
         : Math.max(20.0, energyVal * 0.07);
@@ -3242,7 +3242,7 @@ React.useEffect(() => {
     
     const results = PEAK_LIBRARY.filter(iso => {
         const delta = Math.abs(iso.energy - energyVal);
-        // FIX: Allow if within tolerance AND (Yield is high enough OR Yield is Unknown)
+        // Allow if within tolerance AND (Yield is high enough OR Yield is Unknown)
         const yieldPass = iso.isUnknownYield ? true : (iso.yield >= yieldCutoff);
         return delta <= tolerance && yieldPass;
     });
@@ -6552,7 +6552,7 @@ return (
             if (isNaN(manualRate) || manualRate < 0) { throw new Error('Please enter a valid, non-negative dose rate.'); }
             const baseRate = manualRate * doseRateFactors_mrem_hr[manualDoseRateUnit];
             
-            // FIX: Apply transmission to manual rate too
+            // Apply transmission to manual rate too
             effectiveDoseRate_mrem_hr = baseRate * transValue;
             }
             
@@ -6916,7 +6916,7 @@ return (
             if (inputMode === 'fromDB') {
             inputs = `${targetMass} ${massUnit} ${targetSymbol} @ ${neutronFlux} n/cm²s`;
             } else {
-            // Fix: Include mass and flux even for manual targets
+            // Include mass and flux even for manual targets
             inputs = `${targetMass} ${massUnit} Manual Target @ ${neutronFlux} n/cm²s`;
             }
             
@@ -8387,7 +8387,7 @@ return (
             );
             };
             
-            // 4. UPDATED: RpdCalculator (Visual Polish)
+            // 4. RpdCalculator
             const RpdCalculator = ({ sample1, setSample1, sample2, setSample2, result, setResult }) => {
             const { addHistory } = useCalculationHistory();
             const { addToast } = useToast();
@@ -8425,7 +8425,7 @@ return (
             );
             };
             
-            // 5. UPDATED: FwhmCalculator (Visual Polish)
+            // 5. FwhmCalculator
             const FwhmCalculator = ({ centroid, setCentroid, lower, setLower, upper, setUpper, result, setResult }) => {
             const { addHistory } = useCalculationHistory();
             const { addToast } = useToast();
