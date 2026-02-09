@@ -1007,127 +1007,205 @@ const StandardDecayCalculator = ({
 };
 
 /**
-* @description React component for a static surface contamination survey calculator.
-* This tool allows health physics professionals to quickly analyze a set of static
-* survey data points against regulatory or self-imposed limits.
-*
-* It is commonly used for a **2-part check**, verifying both:
-* 1.  The **average** contamination level is below the acceptable limit.
-* 2.  The **maximum** single reading is below a separate, often more conservative, limit.
-*
-* The component can automatically populate standard limits based on a selected radionuclide
-* and provides real-time feedback on whether the survey "passes" or "fails" both checks.
-*
-* @prop {array} radionuclides - Array of available radionuclides with their properties.
-* @prop {string} nuclideSymbol - The symbol of the currently selected nuclide.
-* @prop {function} setNuclideSymbol - State setter for the nuclide symbol.
-* @prop {string} surveyData - The raw, unparsed string of survey data points.
-* @prop {function} setSurveyData - State setter for the survey data string.
-* @prop {string} avgLimit - The average contamination limit.
-* @prop {function} setAvgLimit - State setter for the average limit.
-* @prop {string} maxLimit - The maximum contamination limit.
-* @prop {function} setMaxLimit - State setter for the maximum limit.
-* @prop {string} unit - The unit of measurement for the data (e.g., dpm/100cm²).
-* @prop {function} setUnit - State setter for the units.
-* @prop {object} result - Object containing the analysis results (average, max, pass/fail status).
-* @prop {function} setResult - State setter for the result object.
-* @prop {string} error - Any error message to display.
-* @prop {function} setError - State setter for error messages.
-*/
-
+ * @description React component for a static surface contamination survey calculator (Batch Processor).
+ * Verifies average and maximum contamination levels against limits.
+ */
 const StaticSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, surveyData, setSurveyData, avgLimit, setAvgLimit, maxLimit, setMaxLimit, unit, setUnit, result, setResult, error, setError }) => {
-const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
+    
+    // New Local State for CPM corrections
+    const [isCpmMode, setIsCpmMode] = React.useState(false);
+    const [background, setBackground] = React.useState('');
+    const [efficiency, setEfficiency] = React.useState('');
+    const [probeArea, setProbeArea] = React.useState('100');
 
-React.useEffect(() => {
-if (selectedNuclide) {
-    const limits = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory];
-    if (limits) {
-        setAvgLimit(limits.total);
-        setMaxLimit(limits.total * 3);
-        setUnit('dpm/100cm²');
-    }
-}
-}, [selectedNuclide, setAvgLimit, setMaxLimit, setUnit]);
+    // Derived Data
+    const surveyNuclides = React.useMemo(() => radionuclides.filter(n => n.regGuideCategory).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
+    const selectedNuclide = React.useMemo(() => surveyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, surveyNuclides]);
 
-React.useEffect(() => {
-try {
-    setError('');
-    if (!surveyData.trim()) { setResult(null); return; }
-    const dataPoints = surveyData.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
-    if (dataPoints.length === 0) throw new Error("No valid numeric data found.");
-    const avg = dataPoints.reduce((sum, val) => sum + val, 0) / dataPoints.length;
-    const max = Math.max(...dataPoints);
-    const avgL = safeParseFloat(avgLimit);
-    const maxL = safeParseFloat(maxLimit);
-    if (isNaN(avgL) || isNaN(maxL)) { if (avgLimit && maxLimit) { throw new Error("Limits must be valid numbers."); } else { return; } }
-    setResult({ count: dataPoints.length, average: avg, max: max, avgPass: avg <= avgL, maxPass: max <= maxL });
-} catch (e) { setError(e.message); setResult(null); }
-}, [surveyData, avgLimit, maxLimit, setResult, setError]);
+    // Auto-fill limits
+    React.useEffect(() => {
+        if (selectedNuclide) {
+            const limits = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory];
+            if (limits) {
+                setAvgLimit(limits.total);
+                setMaxLimit(limits.total * 3);
+                setUnit('dpm/100cm²');
+            }
+        }
+    }, [selectedNuclide, setAvgLimit, setMaxLimit, setUnit]);
 
-return (
-<div className="space-y-4 max-w-md mx-auto">
-    <div><label className="text-sm font-medium">Survey Nuclide</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide to auto-fill limits..."/>}</div></div>
-    <div>
-        <label className="block text-sm font-medium">Survey Data <span className="text-xs font-normal text-slate-500">(Must be same units as Limit, e.g. DPM)</span></label>
-        <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="6" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste comma, space, or newline separated values..."></textarea>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div><label className="block text-sm font-medium">Average Limit</label><input type="number" value={avgLimit} onChange={e => setAvgLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-        <div>
-            <Tooltip text="This is a common rule of thumb for routine surveys where an occasional higher-than-average reading is acceptable. Always refer to your specific license conditions or survey procedures.">
-                <label className="block text-sm font-medium">Max Limit</label>
-            </Tooltip>
-            <input type="number" value={maxLimit} onChange={e => setMaxLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+    // Helper for presets
+    const EfficiencyPresets = ({ onSelect }) => (
+        <div className="flex flex-wrap gap-2 mt-2">
+            {[
+                { label: 'Pancake (44-9)', val: '10' },
+                { label: 'Alpha (43-5)', val: '35' },
+                { label: 'NaI (44-10)', val: '20' }
+            ].map(p => (
+                <button key={p.label} onClick={() => onSelect(p.val)} className="px-2 py-1 text-[10px] bg-slate-200 dark:bg-slate-700 hover:bg-sky-100 dark:hover:bg-sky-900 rounded border border-slate-300 dark:border-slate-600 whitespace-nowrap transition-colors">
+                    {p.label}
+                </button>
+            ))}
         </div>
-    </div>
-    <div><label className="block text-sm font-medium">Units</label><input type="text" value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g., mrem/hr, dpm/100cm²" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-    {result && (
-        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Survey Analysis Results ({result.count} points)</p>
-            <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600 grid grid-cols-2 gap-4">
-                <div className={`p-2 rounded ${result.avgPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                <p className="text-xs font-bold">Average</p>
-                <p className={`font-bold text-lg ${result.avgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.avgPass ? 'PASS' : 'FAIL'}</p>
-                <div className="flex items-center justify-center">
-                    <p className="text-sm">{result.average.toPrecision(3)}</p>
-                    <CopyButton textToCopy={result.average.toPrecision(3)} />
+    );
+
+    // Main Calculation Logic
+    React.useEffect(() => {
+        try {
+            setError('');
+            if (!surveyData.trim()) { setResult(null); return; }
+
+            // 1. Parse Data
+            const rawPoints = surveyData.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
+            if (rawPoints.length === 0) throw new Error("No valid numeric data found.");
+
+            let finalPoints = rawPoints;
+
+            // 2. Apply CPM Corrections (if enabled)
+            if (isCpmMode) {
+                const bkg = safeParseFloat(background);
+                const eff = safeParseFloat(efficiency);
+                const area = safeParseFloat(probeArea);
+
+                // Only calculate if we have valid correction factors
+                if (background !== '' && efficiency !== '' && probeArea !== '' && eff > 0 && area > 0) {
+                     const effDec = eff > 1 ? eff / 100 : eff;
+                     finalPoints = rawPoints.map(gross => {
+                        const net = Math.max(0, gross - bkg);
+                        return (net / effDec) * (100 / area);
+                     });
+                } else {
+                    // If inputs are missing in CPM mode, don't show result yet
+                    setResult(null);
+                    return;
+                }
+            }
+
+            // 3. Calculate Stats
+            const avg = finalPoints.reduce((sum, val) => sum + val, 0) / finalPoints.length;
+            const max = Math.max(...finalPoints);
+            const avgL = safeParseFloat(avgLimit);
+            const maxL = safeParseFloat(maxLimit);
+
+            if (isNaN(avgL) || isNaN(maxL)) { 
+                if (avgLimit && maxLimit) throw new Error("Limits must be valid numbers.");
+                else return; 
+            }
+
+            setResult({ 
+                count: finalPoints.length, 
+                average: avg, 
+                max: max, 
+                avgPass: avg <= avgL, 
+                maxPass: max <= maxL 
+            });
+
+        } catch (e) { 
+            setError(e.message); 
+            setResult(null); 
+        }
+    }, [surveyData, avgLimit, maxLimit, isCpmMode, background, efficiency, probeArea, setResult, setError]);
+
+    return (
+        <div className="space-y-6 max-w-lg mx-auto">
+            {/* Top Controls */}
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Survey Nuclide</label>
+                <div className="mb-4">
+                    {selectedNuclide ? 
+                        <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')}/> : 
+                        <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide to auto-fill limits..."/>
+                    }
                 </div>
-                </div>
-                <div className={`p-2 rounded ${result.maxPass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                <p className="text-xs font-bold">Maximum</p>
-                <p className={`font-bold text-lg ${result.maxPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.maxPass ? 'PASS' : 'FAIL'}</p>
-                <div className="flex items-center justify-center">
-                    <p className="text-sm">{result.max.toPrecision(3)}</p>
-                    <CopyButton textToCopy={result.max.toPrecision(3)} />
-                </div>
+                
+                <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-700 pt-4">
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Input Data Type:</span>
+                    <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg">
+                        <button onClick={() => setIsCpmMode(false)} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${!isCpmMode ? 'bg-white dark:bg-slate-700 shadow text-sky-600' : 'text-slate-500'}`}>Pre-calculated (DPM)</button>
+                        <button onClick={() => setIsCpmMode(true)} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${isCpmMode ? 'bg-white dark:bg-slate-700 shadow text-sky-600' : 'text-slate-500'}`}>Raw CPM</button>
+                    </div>
                 </div>
             </div>
+
+            {/* Correction Inputs (Only if CPM Mode) */}
+            {isCpmMode && (
+                <div className="grid grid-cols-3 gap-3 p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg border border-sky-100 dark:border-sky-800 animate-fade-in">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Background (cpm)</label>
+                        <input type="number" value={background} onChange={e => setBackground(e.target.value)} className="w-full p-2 text-sm rounded border-slate-200 dark:bg-slate-800 dark:border-slate-600" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Probe Eff (%)</label>
+                        <input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full p-2 text-sm rounded border-slate-200 dark:bg-slate-800 dark:border-slate-600" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Area (cm²)</label>
+                        <input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full p-2 text-sm rounded border-slate-200 dark:bg-slate-800 dark:border-slate-600" />
+                    </div>
+                    <div className="col-span-3">
+                         <EfficiencyPresets onSelect={setEfficiency} />
+                    </div>
+                </div>
+            )}
+
+            {/* Data Entry */}
+            <div>
+                <label className="block text-sm font-medium mb-1">Survey Data Points <span className="text-xs font-normal text-slate-500">({isCpmMode ? 'CPM' : 'DPM'})</span></label>
+                <textarea value={surveyData} onChange={e => setSurveyData(e.target.value)} rows="6" className="w-full p-3 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-sm shadow-inner" placeholder={`Paste list of values...\n100\n120\n95...`}></textarea>
+                <p className="text-xs text-right text-slate-400 mt-1">{surveyData ? surveyData.split(/[\s,;\n]+/).filter(d=>d).length : 0} points detected</p>
+            </div>
+
+            {/* Limits */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label className="block text-sm font-medium">Average Limit</label><input type="number" value={avgLimit} onChange={e => setAvgLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div>
+                    <Tooltip text="Usually 3x the average limit per Reg Guide 1.86">
+                        <label className="block text-sm font-medium border-b border-dotted border-slate-400 inline-block">Max Limit</label>
+                    </Tooltip>
+                    <input type="number" value={maxLimit} onChange={e => setMaxLimit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                </div>
+            </div>
+
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+            {/* Results */}
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in border border-slate-200 dark:border-slate-600">
+                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400 mb-4">
+                        Analysis Results ({result.count} points) <span className="text-xs opacity-50 block">{unit}</span>
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className={`p-3 rounded-lg border-l-4 ${result.avgPass ? 'bg-green-50 dark:bg-green-900/20 border-green-500' : 'bg-red-50 dark:bg-red-900/20 border-red-500'}`}>
+                            <p className="text-xs font-bold opacity-60 uppercase">Average</p>
+                            <p className={`font-black text-2xl ${result.avgPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.avgPass ? 'PASS' : 'FAIL'}</p>
+                            <p className="text-sm font-mono mt-1">{result.average.toFixed(0)}</p>
+                        </div>
+                        <div className={`p-3 rounded-lg border-l-4 ${result.maxPass ? 'bg-green-50 dark:bg-green-900/20 border-green-500' : 'bg-red-50 dark:bg-red-900/20 border-red-500'}`}>
+                            <p className="text-xs font-bold opacity-60 uppercase">Maximum</p>
+                            <p className={`font-black text-2xl ${result.maxPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.maxPass ? 'PASS' : 'FAIL'}</p>
+                            <p className="text-sm font-mono mt-1">{result.max.toFixed(0)}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-    )}
-    {!result && !error && (
-        <div className="text-center p-8 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg mt-4">
-            <p className="text-slate-500 dark:text-slate-400">Enter survey data and limits to analyze the results.</p>
-        </div>
-    )}
-</div>
-);
+    );
 };
 
+// 4. ContaminationSurveyCalculator (Swapped: Static Left, Wipe Right)
 const ContaminationSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, result, setResult, error, setError }) => {
     
     // --- State for WIPE (Removable) ---
     const [wipeGross, setWipeGross] = React.useState('');
     const [wipeBkg, setWipeBkg] = React.useState('');
     const [wipeInstEff, setWipeInstEff] = React.useState('');
-    const [wipeFactor, setWipeFactor] = React.useState('0.1'); // Default 10% removal
+    const [wipeFactor, setWipeFactor] = React.useState('0.1'); 
     
     // --- State for STATIC (Direct/Total) ---
     const [staticGross, setStaticGross] = React.useState('');
     const [staticBkg, setStaticBkg] = React.useState('');
     const [staticInstEff, setStaticInstEff] = React.useState('');
-    const [probeArea, setProbeArea] = React.useState('100'); // Default 100 cm2
+    const [probeArea, setProbeArea] = React.useState('100'); 
 
     // --- Hooks ---
     const { addHistory } = useCalculationHistory();
@@ -1135,28 +1213,22 @@ const ContaminationSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclid
 
     // --- Memoized Data ---
     const surveyNuclides = React.useMemo(() => 
-        radionuclides
-            .filter(n => n.regGuideCategory && n.ansiCategory)
-            .sort((a,b) => a.name.localeCompare(b.name)), 
+        radionuclides.filter(n => n.regGuideCategory && n.ansiCategory).sort((a,b) => a.name.localeCompare(b.name)), 
     [radionuclides]);
 
     const selectedNuclide = React.useMemo(() => 
         surveyNuclides.find(n => n.symbol === nuclideSymbol), 
     [nuclideSymbol, surveyNuclides]);
 
-    // --- Helper: Presets Component (Anti-Squish) ---
+    // --- Helper: Presets ---
     const EfficiencyPresets = ({ onSelect }) => (
         <div className="flex flex-wrap gap-2 mt-2">
             {[
-                { label: 'Pancake (Ludlum 44-9)', val: '10' },
-                { label: 'ZnS Alpha (43-5)', val: '35' },
-                { label: 'NaI Scint (44-10)', val: '20' }
+                { label: 'Pancake (44-9)', val: '10' },
+                { label: 'Alpha (43-5)', val: '35' },
+                { label: 'NaI (44-10)', val: '20' }
             ].map(p => (
-                <button
-                    key={p.label}
-                    onClick={() => onSelect(p.val)}
-                    className="px-2 py-1 text-[10px] bg-slate-200 dark:bg-slate-700 hover:bg-sky-100 dark:hover:bg-sky-900 rounded border border-slate-300 dark:border-slate-600 whitespace-nowrap flex-shrink-0 transition-colors"
-                >
+                <button key={p.label} onClick={() => onSelect(p.val)} className="px-2 py-1 text-[10px] bg-slate-200 dark:bg-slate-700 hover:bg-sky-100 dark:hover:bg-sky-900 rounded border border-slate-300 dark:border-slate-600 whitespace-nowrap flex-shrink-0 transition-colors">
                     {p.label} ({p.val}%)
                 </button>
             ))}
@@ -1169,14 +1241,13 @@ const ContaminationSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclid
             setError('');
             if (!selectedNuclide) { setResult(null); return; }
 
-            // --- 1. Calculate REMOVABLE (Wipe) ---
+            // 1. Calculate REMOVABLE (Wipe)
             let removableRes = null;
             if (wipeGross && wipeBkg && wipeInstEff) {
                 const wGross = safeParseFloat(wipeGross);
                 const wBkg = safeParseFloat(wipeBkg);
                 const wEff = safeParseFloat(wipeInstEff);
                 const wFrac = safeParseFloat(wipeFactor);
-
                 if (wEff > 0 && wFrac > 0) {
                     const wNet = Math.max(0, wGross - wBkg);
                     const totalWipeEff = (wEff > 1 ? wEff / 100 : wEff) * (wFrac > 1 ? wFrac / 100 : wFrac);
@@ -1184,70 +1255,50 @@ const ContaminationSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclid
                 }
             }
 
-            // --- 2. Calculate TOTAL (Static) ---
+            // 2. Calculate TOTAL (Static)
             let totalRes = null;
             if (staticGross && staticBkg && staticInstEff) {
                 const sGross = safeParseFloat(staticGross);
                 const sBkg = safeParseFloat(staticBkg);
                 const sEff = safeParseFloat(staticInstEff);
                 const area = safeParseFloat(probeArea);
-
                 if (sEff > 0 && area > 0) {
                     const sNet = Math.max(0, sGross - sBkg);
                     const efficiencyDec = sEff > 1 ? sEff / 100 : sEff;
-                    // Formula: (Net CPM / Eff) * (100 / ProbeArea)
                     totalRes = (sNet / efficiencyDec) * (100 / area);
                 }
             }
 
-            // --- 3. Compare to Limits ---
             if (removableRes !== null || totalRes !== null) {
                 const rg = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory];
                 const ansi = ANSI_13_12_LIMITS[selectedNuclide.ansiCategory];
-
                 setResult({
                     removable: removableRes !== null ? removableRes.toFixed(0) : '-',
                     total: totalRes !== null ? totalRes.toFixed(0) : '-',
-                    
                     rgRemovablePass: removableRes !== null ? removableRes <= rg.removable : null,
                     rgTotalPass: totalRes !== null ? totalRes <= rg.total : null,
-                    
                     ansiRemovablePass: removableRes !== null ? removableRes <= ansi.removable : null,
                     ansiTotalPass: totalRes !== null ? totalRes <= ansi.total : null,
-                    
                     limits: { rg, ansi }
                 });
             } else {
                 setResult(null);
             }
-
-        } catch (e) {
-            setError(e.message);
-            setResult(null);
-        }
+        } catch (e) { setError(e.message); setResult(null); }
     }, [selectedNuclide, wipeGross, wipeBkg, wipeInstEff, wipeFactor, staticGross, staticBkg, staticInstEff, probeArea, setResult, setError]);
 
     const handleSaveToHistory = () => {
         if (result && selectedNuclide) {
             const details = [];
-            if (result.removable !== '-') details.push(`Wipe: ${result.removable} dpm`);
             if (result.total !== '-') details.push(`Static: ${result.total} dpm`);
-            
-            addHistory({
-                id: Date.now(),
-                type: 'Contam Survey',
-                icon: ICONS.warning,
-                inputs: `${selectedNuclide.symbol}`,
-                result: details.join(', '),
-                view: VIEWS.OPERATIONAL_HP
-            });
+            if (result.removable !== '-') details.push(`Wipe: ${result.removable} dpm`);
+            addHistory({ id: Date.now(), type: 'Contam Survey', icon: ICONS.warning, inputs: `${selectedNuclide.symbol}`, result: details.join(', '), view: VIEWS.OPERATIONAL_HP });
             addToast("Survey saved!");
         }
     };
 
     return (
         <div className="space-y-6 max-w-2xl mx-auto animate-fade-in">
-            
             {/* Nuclide Selector */}
             <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
                 <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Contaminant of Concern</label>
@@ -1263,35 +1314,7 @@ const ContaminationSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclid
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                {/* --- LEFT COL: WIPE (Removable) --- */}
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                        <Icon path={ICONS.paper} className="w-5 h-5" /> Wipe Test (Removable)
-                    </h3>
-                    <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2">
-                            <div>
-                                <label className="text-xs font-bold text-slate-500">Wipe Gross</label>
-                                <input type="number" value={wipeGross} onChange={e => setWipeGross(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="cpm" />
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500">Wipe Bkg</label>
-                                <input type="number" value={wipeBkg} onChange={e => setWipeBkg(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="cpm" />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-slate-500">Counter Efficiency (%)</label>
-                            <input type="number" value={wipeInstEff} onChange={e => setWipeInstEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="e.g. 35" />
-                            <EfficiencyPresets onSelect={setWipeInstEff} />
-                        </div>
-                        <div>
-                             <label className="text-xs font-bold text-slate-500">Wipe Removal Factor</label>
-                             <input type="number" value={wipeFactor} onChange={e => setWipeFactor(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="0.1" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* --- RIGHT COL: STATIC (Total) --- */}
+                {/* --- LEFT COL: STATIC (Total) --- */}
                 <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                     <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
                         <Icon path={ICONS.activity} className="w-5 h-5" /> Direct Frisk (Total)
@@ -1318,6 +1341,34 @@ const ContaminationSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclid
                         </div>
                     </div>
                 </div>
+
+                {/* --- RIGHT COL: WIPE (Removable) --- */}
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+                        <Icon path={ICONS.paper} className="w-5 h-5" /> Wipe Test (Removable)
+                    </h3>
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-xs font-bold text-slate-500">Wipe Gross</label>
+                                <input type="number" value={wipeGross} onChange={e => setWipeGross(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="cpm" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500">Wipe Bkg</label>
+                                <input type="number" value={wipeBkg} onChange={e => setWipeBkg(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="cpm" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500">Counter Efficiency (%)</label>
+                            <input type="number" value={wipeInstEff} onChange={e => setWipeInstEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="e.g. 35" />
+                            <EfficiencyPresets onSelect={setWipeInstEff} />
+                        </div>
+                        <div>
+                             <label className="text-xs font-bold text-slate-500">Wipe Removal Factor</label>
+                             <input type="number" value={wipeFactor} onChange={e => setWipeFactor(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="0.1" />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* --- RESULTS AREA --- */}
@@ -1329,26 +1380,26 @@ const ContaminationSurveyCalculator = ({ radionuclides, nuclideSymbol, setNuclid
                     </div>
                     
                     <div className="p-4 grid grid-cols-2 gap-8 text-center">
-                        {/* Removable Result */}
+                        {/* LEFT: Static Result */}
                         <div>
-                            <p className="text-xs uppercase font-bold text-slate-400 mb-1">Removable</p>
-                            <p className="text-2xl font-black text-slate-800 dark:text-white">{result.removable}</p>
-                            {result.removable !== '-' && (
-                                <div className="mt-2 space-y-1">
-                                    <Badge label="Reg Guide" pass={result.rgRemovablePass} limit={result.limits.rg.removable} />
-                                    <Badge label="ANSI N13.12" pass={result.ansiRemovablePass} limit={result.limits.ansi.removable} />
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Total Result */}
-                        <div className="border-l border-slate-200 dark:border-slate-700">
                             <p className="text-xs uppercase font-bold text-slate-400 mb-1">Total (Static)</p>
                             <p className="text-2xl font-black text-slate-800 dark:text-white">{result.total}</p>
                             {result.total !== '-' && (
                                 <div className="mt-2 space-y-1">
                                     <Badge label="Reg Guide" pass={result.rgTotalPass} limit={result.limits.rg.total} />
                                     <Badge label="ANSI N13.12" pass={result.ansiTotalPass} limit={result.limits.ansi.total} />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* RIGHT: Removable Result */}
+                        <div className="border-l border-slate-200 dark:border-slate-700">
+                            <p className="text-xs uppercase font-bold text-slate-400 mb-1">Removable</p>
+                            <p className="text-2xl font-black text-slate-800 dark:text-white">{result.removable}</p>
+                            {result.removable !== '-' && (
+                                <div className="mt-2 space-y-1">
+                                    <Badge label="Reg Guide" pass={result.rgRemovablePass} limit={result.limits.rg.removable} />
+                                    <Badge label="ANSI N13.12" pass={result.ansiRemovablePass} limit={result.limits.ansi.removable} />
                                 </div>
                             )}
                         </div>
