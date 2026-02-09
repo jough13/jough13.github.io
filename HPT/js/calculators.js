@@ -1632,72 +1632,170 @@ return (
 );
 };
 
-// 3. LeakTestCalculator (Added Action Level)
+// 3. LeakTestCalculator
 const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroundCpm, instrumentEff, setInstrumentEff, result, setResult, error, setError }) => {
-const { addHistory } = useCalculationHistory();
-const { addToast } = useToast();
-const LIMIT_UCI = 0.005;
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    const LIMIT_UCI = 0.005;
 
-// Auto-calculate Action Level
-const actionLevelNetCpm = React.useMemo(() => {
-const eff = safeParseFloat(instrumentEff) / 100;
-if (eff > 0) return Math.ceil(LIMIT_UCI * 2.22e6 * eff);
-return 0;
-}, [instrumentEff]);
+    // Auto-calculate Action Level (The Net CPM that equals 0.005 uCi)
+    const actionLevelNetCpm = React.useMemo(() => {
+        const eff = safeParseFloat(instrumentEff);
+        // Handle both "10" (10%) and "0.1" (10%) input styles safely
+        const efficiencyDecimal = eff > 1 ? eff / 100 : eff; 
+        
+        if (efficiencyDecimal > 0) {
+            // 0.005 uCi * 2.22e6 dpm/uCi * Eff = CPM Limit
+            return Math.ceil(LIMIT_UCI * 2.22e6 * efficiencyDecimal);
+        }
+        return 0;
+    }, [instrumentEff]);
 
-React.useEffect(() => {
-try {
-setError('');
-const gross = safeParseFloat(grossCpm);
-const bkg = safeParseFloat(backgroundCpm);
-const eff = safeParseFloat(instrumentEff);
+    React.useEffect(() => {
+        try {
+            setError('');
+            
+            // 1. Safe Parsing
+            const gross = safeParseFloat(grossCpm);
+            const bkg = safeParseFloat(backgroundCpm);
+            const effInput = safeParseFloat(instrumentEff);
 
-if (isNaN(gross) || isNaN(bkg) || isNaN(eff)) { setResult(null); return; }
-if (gross < bkg) throw new Error("Gross < Background.");
+            // 2. Validate Inputs (Wait for all fields)
+            if (isNaN(gross) || isNaN(bkg) || isNaN(effInput)) { 
+                setResult(null); 
+                return; 
+            }
+            
+            if (effInput <= 0) {
+                setResult(null); // specific error handled by UI validation usually, or just silent
+                return;
+            }
 
-const netCpm = gross - bkg;
-const act_uCi = (netCpm / (eff/100)) / 2.22e6;
-const pass = act_uCi < LIMIT_UCI;
+            // 3. Efficiency Normalization (Assume > 1 is percent, <= 1 is decimal)
+            // This is a "smart" check because Eff is rarely > 100% or < 1% in these units
+            const efficiency = effInput > 1 ? effInput / 100 : effInput;
 
-setResult({ activity: act_uCi.toExponential(2), pass, netCpm: netCpm.toFixed(0) });
-} catch (e) { setError(e.message); setResult(null); }
-}, [grossCpm, backgroundCpm, instrumentEff, setResult, setError]);
+            // 4. Calculate Net CPM (Clamp to 0 if negative)
+            // Don't throw error on negative numbers; treat as 0 (Clean)
+            const netCpm = Math.max(0, gross - bkg);
 
-const handleSaveToHistory = () => {
-if (result) {
-addHistory({ id: Date.now(), type: 'Leak Test', icon: ICONS.check, inputs: `Gross: ${grossCpm}, Bkg: ${backgroundCpm}`, result: `${result.activity} µCi`, view: VIEWS.OPERATIONAL_HP });
-addToast("Saved!");
-}
-};
+            // 5. Calculate DPM
+            const dpm = netCpm / efficiency;
 
-return (
-<div className="space-y-4 max-w-md mx-auto">
-<div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-<div className="grid grid-cols-2 gap-4">
-    <div><label className="block text-sm font-medium">Gross CPM</label><input type="number" value={grossCpm} onChange={e => setGrossCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-    <div><label className="block text-sm font-medium">Bkg CPM</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-</div>
-<div><label className="block text-sm font-medium">Efficiency (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+            // 6. Calculate uCi
+            const act_uCi = dpm / 2.22e6;
+            
+            // 7. Pass/Fail Check
+            const pass = act_uCi < LIMIT_UCI;
 
-{/* Visual Action Level Indicator */}
-<div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded border border-blue-100 dark:border-blue-800 text-center">
-    <p className="text-xs text-blue-800 dark:text-blue-200">Action Level (0.005 µCi): <strong>{actionLevelNetCpm} Net CPM</strong></p>
-</div>
-</div>
+            setResult({ 
+                activity: act_uCi.toExponential(2), 
+                dpm: dpm.toFixed(0),
+                pass, 
+                netCpm: netCpm.toFixed(0) 
+            });
 
-{result && (
-<div className={`p-4 rounded-lg mt-4 text-center animate-fade-in ${result.pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-    <div className="flex justify-between items-center -mt-2">
-        <div></div>
-        <p className={`text-3xl font-extrabold ${result.pass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{result.pass ? 'PASS' : 'FAIL'}</p>
-        <button onClick={handleSaveToHistory}><Icon path={ICONS.notepad} className="w-5 h-5 text-slate-500"/></button>
-    </div>
-    <p className="text-xl font-bold">{result.activity} µCi</p>
-    <p className="text-xs font-mono">Net: {result.netCpm} cpm</p>
-</div>
-)}
-</div>
-);
+        } catch (e) { 
+            setError(e.message); 
+            setResult(null); 
+        }
+    }, [grossCpm, backgroundCpm, instrumentEff, setResult, setError]);
+
+    const handleSaveToHistory = () => {
+        if (result) {
+            addHistory({ 
+                id: Date.now(), 
+                type: 'Leak Test', 
+                icon: ICONS.check, // Ensure ICONS is imported/available
+                inputs: `Gross: ${grossCpm}, Bkg: ${backgroundCpm}, Eff: ${instrumentEff}%`, 
+                result: `${result.activity} µCi (${result.pass ? 'PASS' : 'FAIL'})`, 
+                view: VIEWS.OPERATIONAL_HP 
+            });
+            addToast("Saved to history!");
+        }
+    };
+
+    return (
+        <div className="space-y-4 max-w-md mx-auto animate-fade-in">
+            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 bg-white dark:bg-slate-800 shadow-sm">
+                
+                {/* Inputs */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs uppercase font-bold text-slate-500 mb-1">Gross CPM</label>
+                        <input 
+                            type="number" 
+                            value={grossCpm} 
+                            onChange={e => setGrossCpm(e.target.value)} 
+                            className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border-transparent focus:border-sky-500 focus:ring-0"
+                            placeholder="e.g. 60"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs uppercase font-bold text-slate-500 mb-1">Bkg CPM</label>
+                        <input 
+                            type="number" 
+                            value={backgroundCpm} 
+                            onChange={e => setBackgroundCpm(e.target.value)} 
+                            className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border-transparent focus:border-sky-500 focus:ring-0"
+                            placeholder="e.g. 45"
+                        />
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-xs uppercase font-bold text-slate-500 mb-1">Efficiency (%)</label>
+                    <input 
+                        type="number" 
+                        value={instrumentEff} 
+                        onChange={e => setInstrumentEff(e.target.value)} 
+                        className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border-transparent focus:border-sky-500 focus:ring-0"
+                        placeholder="e.g. 10"
+                    />
+                </div>
+
+                {/* Smart Action Level Indicator */}
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-center">
+                    <p className="text-xs text-blue-800 dark:text-blue-300">
+                        To exceed 0.005 µCi, you need <strong>&gt; {actionLevelNetCpm} Net CPM</strong>
+                    </p>
+                </div>
+            </div>
+
+            {/* Result Card */}
+            {result && (
+                <div className={`p-6 rounded-xl shadow-lg border-2 text-center transition-colors duration-300 ${
+                    result.pass 
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-800 dark:text-green-300' 
+                    : 'bg-red-50 dark:bg-red-900/20 border-red-500 text-red-800 dark:text-red-300'
+                }`}>
+                    <div className="flex justify-between items-start mb-2">
+                        <span className="text-xs font-bold uppercase tracking-wider opacity-70">Status</span>
+                        <button onClick={handleSaveToHistory} className="opacity-50 hover:opacity-100 transition-opacity" title="Save">
+                            <Icon path={ICONS.notepad || "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"} className="w-5 h-5" />
+                        </button>
+                    </div>
+                    
+                    <h3 className="text-4xl font-extrabold mb-1">
+                        {result.pass ? 'PASS' : 'FAIL'}
+                    </h3>
+                    <p className="text-sm font-medium opacity-80 mb-4">
+                        Limit: {LIMIT_UCI} µCi
+                    </p>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-sm bg-white/50 dark:bg-black/20 p-3 rounded-lg">
+                        <div className="flex flex-col">
+                            <span className="text-xs opacity-60">Activity</span>
+                            <span className="font-mono font-bold">{result.activity} µCi</span>
+                        </div>
+                        <div className="flex flex-col border-l border-current/10">
+                            <span className="text-xs opacity-60">Net Counts</span>
+                            <span className="font-mono font-bold">{result.dpm} dpm</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 };
 
 const SimpleEfficiencyCalculator = ({
