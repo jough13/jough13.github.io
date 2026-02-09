@@ -7,7 +7,7 @@
             const [isFavoritesModalOpen, setIsFavoritesModalOpen] = React.useState(false);
             const [isHistoryModalOpen, setIsHistoryModalOpen] = React.useState(false);
             
-            // --- NEW: State to track if the welcome banner was manually dismissed ---
+            // --- State to track if the welcome banner was manually dismissed ---
             const [isBannerDismissed, setIsBannerDismissed] = React.useState(() => {
             return localStorage.getItem('rad_tool_welcome_dismissed') === 'true';
             });
