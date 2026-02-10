@@ -577,6 +577,7 @@ const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
         </div>
     );
 };
+
 const StandardDecayCalculator = ({
     radionuclides,
     selectedNuclide,
@@ -738,8 +739,11 @@ const StandardDecayCalculator = ({
             const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
             const lambda = Math.log(2) / T_half_seconds;
 
-            const A0_Bq = safeParseFloat(initialActivity) * activityFactors[initialUnit];
-            const At_Bq = safeParseFloat(remainingActivity) * activityFactors[remainingUnit];
+            // Safe Factor Lookup (Default to 1 if unit is somehow invalid to prevent NaN)
+            const getFactor = (u) => activityFactors[u] || 1;
+
+            const A0_Bq = safeParseFloat(initialActivity) * getFactor(initialUnit);
+            const At_Bq = safeParseFloat(remainingActivity) * getFactor(remainingUnit);
             const br = safeParseFloat(branchingFraction) || 1.0;
 
             let t_seconds = 0;
@@ -754,8 +758,7 @@ const StandardDecayCalculator = ({
 
                 if (isNaN(start.getTime()) || isNaN(end.getTime())) { setError("Please enter valid dates."); setResult(null); return; }
                 
-                // FIX: Removed "end < start" check. Negative time (Reverse Decay) is scientifically valid.
-                
+                // Negative time (Reverse Decay) is scientifically valid.
                 t_seconds = (end - start) / 1000;
             } else {
                 const t_input = safeParseFloat(timeElapsed);
@@ -772,12 +775,14 @@ const StandardDecayCalculator = ({
             else if (lambda < 1e-4) { displayLambda = lambda * 86400; lambdaUnit = 'd⁻¹'; }
             else if (lambda < 0.1) { displayLambda = lambda * 3600; lambdaUnit = 'hr⁻¹'; }
 
+            // --- CALCULATION LOGIC ---
+
             if (calculationMode === MODE_REMAINING) {
                 if (isNaN(A0_Bq)) throw new Error('Initial activity must be a valid number.');
                 const finalActivity_Bq = A0_Bq * Math.exp(-lambda * t_seconds);
                 setResult({
                     label: 'Remaining Activity',
-                    value: (finalActivity_Bq / activityFactors[remainingUnit]).toPrecision(4),
+                    value: (finalActivity_Bq / getFactor(remainingUnit)).toPrecision(4),
                     unit: remainingUnit,
                     lambdaVal: displayLambda.toPrecision(4),
                     lambdaUnit: lambdaUnit
@@ -820,7 +825,7 @@ const StandardDecayCalculator = ({
                 plotA0_Bq = initial_Bq;
                 setResult({
                     label: 'Initial Activity',
-                    value: (initial_Bq / activityFactors[initialUnit]).toPrecision(4),
+                    value: (initial_Bq / getFactor(initialUnit)).toPrecision(4),
                     unit: initialUnit,
                     lambdaVal: displayLambda.toPrecision(4),
                     lambdaUnit: lambdaUnit
@@ -836,43 +841,46 @@ const StandardDecayCalculator = ({
                 const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife);
                 const lambda2 = T_half_daughter_seconds === Infinity ? 0 : Math.log(2) / T_half_daughter_seconds;
                 
-                // Default to 0 if input is empty/invalid to prevent NaN
+                // Use daughterUnit factor
+                // Force 0 if input is invalid/empty
                 const rawDaughterInput = safeParseFloat(initialDaughterActivity);
-                const A0_daughter_Bq = (isNaN(rawDaughterInput) ? 0 : rawDaughterInput) * activityFactors[daughterUnit];
+                const A0_daughter_Bq = (isNaN(rawDaughterInput) ? 0 : rawDaughterInput) * getFactor(daughterUnit);
 
                 if (isNaN(A0_Bq)) throw new Error("Invalid activity inputs.");
 
                 const finalParentActivity_Bq = A0_Bq * Math.exp(-lambda * t_seconds);
                 let finalDaughterActivity_Bq;
 
-                // Bateman Equation
+                // Bateman for 2 nuclides (Standard vs Special Case)
                 if (Math.abs(lambda - lambda2) < 1e-12 * lambda) {
                     finalDaughterActivity_Bq = (A0_daughter_Bq * Math.exp(-lambda2 * t_seconds)) + (br * A0_Bq * lambda2 * t_seconds * Math.exp(-lambda2 * t_seconds));
                 } else {
                     finalDaughterActivity_Bq = (A0_daughter_Bq * Math.exp(-lambda2 * t_seconds)) + (br * (lambda2 / (lambda2 - lambda)) * A0_Bq * (Math.exp(-lambda * t_seconds) - Math.exp(-lambda2 * t_seconds)));
                 }
 
-                // Clamp negative results to 0 (Physically impossible to have negative activity)
-                // This happens frequently in reverse decay if you go back too far.
-                const safeDaughterVal = Math.max(0, finalDaughterActivity_Bq);
-                const safeParentVal = Math.max(0, finalParentActivity_Bq); // Just in case
+                 // SAFETY CHECK: If result is NaN or Infinity (e.g. Reverse Decay back to pre-existence), force to 0.
+                if (!isFinite(finalDaughterActivity_Bq)) {
+                    finalDaughterActivity_Bq = 0;
+                }
+                // Physically impossible to have negative activity (math artifact in reverse decay)
+                finalDaughterActivity_Bq = Math.max(0, finalDaughterActivity_Bq);
 
                 setResult({
-                    parent: { name: selectedNuclide.name, value: (safeParentVal / activityFactors[initialUnit]).toPrecision(4) },
-                    daughter: { name: daughter.name, value: (safeDaughterVal / activityFactors[daughterUnit]).toPrecision(4), isStable: T_half_daughter_seconds === Infinity },
+                    parent: { name: selectedNuclide.name, value: (finalParentActivity_Bq / getFactor(initialUnit)).toPrecision(4) },
+                    daughter: { name: daughter.name, value: (finalDaughterActivity_Bq / getFactor(daughterUnit)).toPrecision(4), isStable: T_half_daughter_seconds === Infinity },
                     lambdaVal: displayLambda.toPrecision(4),
                     lambdaUnit: lambdaUnit,
                     unit: initialUnit // Only used for parent label
                 });
             }
 
-            // Chart Logic
+            // --- CHART LOGIC (Safe & Complete) ---
             const plotTimeAbs = Math.abs(timeForChart_seconds);
             const bestChartUnit = getBestHalfLifeUnit(plotTimeAbs);
             const plotTimeConverted = plotTimeAbs / unitConversions[bestChartUnit];
             const labels = [], parentData = [], daughterData = [];
             const steps = 100;
-            const plotFactor = activityFactors[initialUnit];
+            const plotFactor = getFactor(initialUnit); 
             const CUTOFF = plotA0_Bq * 1e-10;
             let labelDecimals = plotTimeConverted >= 100 ? 0 : 1;
 
@@ -892,16 +900,17 @@ const StandardDecayCalculator = ({
                 parentData.push(p_val_bq / plotFactor);
 
                 if (calculationMode === MODE_DAUGHTER) {
-                    const activePath = decayPaths[selectedPathIndex];
-                    const daughterName = activePath ? activePath.name : selectedNuclide.daughter.split('(')[0].trim();
-                    const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
-                    
-                    if (daughter) {
+                     const activePath = decayPaths[selectedPathIndex];
+                     const daughterName = activePath ? activePath.name : selectedNuclide.daughter.split('(')[0].trim();
+                     const daughter = radionuclides.find(n => normalizeString(n.name) === normalizeString(daughterName));
+                     
+                     if (daughter) {
                         const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife);
                         const lambda2 = T_half_daughter_seconds === Infinity ? 0 : Math.log(2) / T_half_daughter_seconds;
                         
-                        // FIX: Use daughterUnit factor for chart start point too
-                        const A0_daughter_Bq_Chart = (safeParseFloat(initialDaughterActivity) || 0) * activityFactors[daughterUnit];
+                        // Use daughterUnit factor for chart start point too
+                        const rawDaughterInput = safeParseFloat(initialDaughterActivity);
+                        const A0_daughter_Bq_Chart = (isNaN(rawDaughterInput) ? 0 : rawDaughterInput) * getFactor(daughterUnit);
                         let d_val_bq;
 
                         if (Math.abs(lambda - lambda2) < 1e-12 * lambda) {
@@ -909,12 +918,16 @@ const StandardDecayCalculator = ({
                         } else {
                             d_val_bq = (A0_daughter_Bq_Chart * Math.exp(-lambda2 * timePoint_seconds)) + (br * (lambda2 / (lambda2 - lambda)) * plotA0_Bq * (Math.exp(-lambda * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds)));
                         }
+                        
+                        // Safety Checks for Chart Data
+                        if (!isFinite(d_val_bq)) d_val_bq = 0;
                         d_val_bq = Math.max(0, d_val_bq);
+
                         if (useLogScale && d_val_bq < CUTOFF) d_val_bq = CUTOFF;
                         
                         // Normalize chart to Parent's unit for consistency in visualization
                         daughterData.push(d_val_bq / plotFactor);
-                    }
+                     }
                 }
             }
 
@@ -1000,7 +1013,7 @@ const StandardDecayCalculator = ({
                     renderUnitField("Remaining Activity", remainingActivity, setRemainingActivity, remainingUnit, setRemainingUnit, calculationMode === MODE_TIME || calculationMode === MODE_INITIAL)
                 }
 
-                {/* FIX: Use Daughter Unit State here */}
+                {/* Use Daughter Unit State here */}
                 {calculationMode === MODE_DAUGHTER && renderUnitField("Initial Daughter Activity", initialDaughterActivity, setInitialDaughterActivity, daughterUnit, setDaughterUnit, true)}
 
                 {/* --- Branching Path Selector --- */}
