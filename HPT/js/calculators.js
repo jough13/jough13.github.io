@@ -2040,143 +2040,145 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
 };
 
 const SimpleEfficiencyCalculator = ({
-mode, setMode,
-counts, setCounts,
-time, setTime,
-cpm, setCpm,
-dpm, setDpm,
-efficiency, setEfficiency,
-result, setResult,
-error, setError
+    mode, setMode,
+    counts, setCounts,
+    time, setTime,
+    cpm, setCpm,
+    dpm, setDpm,
+    efficiency, setEfficiency,
+    result, setResult,
+    error, setError
 }) => {
 
-// Auto-Calculate Effect
-React.useEffect(() => {
-// 1. Reset
-setResult(null);
-setError('');
+    // Auto-Calculate Effect
+    React.useEffect(() => {
+        // 1. Reset
+        setResult(null);
+        setError('');
 
-// --- MODE 1: SCALER (Counts + Time -> CPM) ---
-if (mode === 'scaler') {
-if (!counts || !time) return; // Wait for input
-const c = safeParseFloat(counts);
-const t = safeParseFloat(time);
+        // --- MODE 1: SCALER (Counts + Time -> CPM) ---
+        if (mode === 'scaler') {
+            if (!counts || !time) return; 
+            const c = safeParseFloat(counts);
+            const t = safeParseFloat(time);
 
-if (isNaN(c) || c < 0) return;
-if (isNaN(t) || t <= 0) return;
+            if (isNaN(c) || c < 0) return;
+            if (isNaN(t) || t <= 0) return;
 
-const rate = c / t;
-// Poisson Error (Standard Deviation) = sqrt(N) / t
-const stdDev = Math.sqrt(c) / t;
+            const rate = c / t;
+            // Poisson Error (Standard Deviation of Rate) = sqrt(N) / t
+            // Note: This is 1-sigma (68% confidence)
+            const stdDev = Math.sqrt(c) / t;
 
-setResult({ 
-    label: 'Net Rate', 
-    value: rate.toFixed(1) + ' cpm',
-    subtext: `± ${stdDev.toFixed(1)} cpm (1σ)`
-});
-// Auto-fill the CPM for the other tabs (silent update)
-setCpm(rate.toFixed(1));
-}
+            setResult({ 
+                label: 'Net Rate', 
+                value: rate.toFixed(1) + ' cpm',
+                subtext: `± ${stdDev.toFixed(1)} cpm (1σ)`
+            });
+        }
 
-// --- MODE 2: EFFICIENCY (CPM + DPM -> %) ---
-else if (mode === 'calcEff') {
-if (!cpm || !dpm) return;
-const c = safeParseFloat(cpm);
-const d = safeParseFloat(dpm);
+        // --- MODE 2: EFFICIENCY (CPM + DPM -> %) ---
+        else if (mode === 'calcEff') {
+            if (!cpm || !dpm) return;
+            const c = safeParseFloat(cpm);
+            const d = safeParseFloat(dpm);
 
-if (isNaN(c) || c < 0) return;
-if (isNaN(d) || d <= 0) return;
+            if (isNaN(c) || c < 0) return;
+            if (isNaN(d) || d <= 0) return;
 
-const eff = (c / d) * 100;
-if (eff > 100) setError('Warning: Calculated efficiency > 100%');
+            const eff = (c / d) * 100;
+            if (eff > 100) setError('Warning: Calculated efficiency > 100%');
 
-setResult({ label: 'Efficiency', value: eff.toFixed(2) + '%' });
-// Auto-fill efficiency (silent update)
-setEfficiency(eff.toFixed(2));
-}
+            setResult({ label: 'Efficiency', value: eff.toFixed(2) + '%' });
+        }
 
-// --- MODE 3: ACTIVITY (CPM + % -> DPM) ---
-else {
-if (!cpm || !efficiency) return;
-const c = safeParseFloat(cpm);
-const e = safeParseFloat(efficiency);
+        // --- MODE 3: ACTIVITY (CPM + % -> DPM) ---
+        else {
+            if (!cpm || !efficiency) return;
+            const c = safeParseFloat(cpm);
+            const e = safeParseFloat(efficiency);
 
-if (isNaN(c) || c < 0) return;
-if (isNaN(e) || e <= 0) return;
+            if (isNaN(c) || c < 0) return;
+            if (isNaN(e) || e <= 0) return;
 
-const activity = c / (e / 100);
+            // DPM = CPM / Efficiency(decimal)
+            const activity = c / (e / 100);
 
-setResult({ 
-    label: 'Activity', 
-    value: Math.round(activity).toLocaleString() + ' dpm',
-    subtext: `${(activity / 2.22e6).toPrecision(3)} µCi`
-});
-}
-}, [mode, counts, time, cpm, dpm, efficiency, setCpm, setEfficiency, setResult, setError]);
+            setResult({ 
+                label: 'Activity', 
+                value: Math.round(activity).toLocaleString() + ' dpm',
+                subtext: `${(activity / 2.22e6).toExponential(3)} µCi`
+            });
+        }
+    // Removed setCpm/setEfficiency from dependencies to prevent loops
+    }, [mode, counts, time, cpm, dpm, efficiency, setResult, setError]); 
 
-return (
-<div className="space-y-4 animate-fade-in">
-{/* 3-Way Toggle */}
-<div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg">
-    <button onClick={() => setMode('scaler')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'scaler' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Scaler</button>
-    <button onClick={() => setMode('calcEff')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'calcEff' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Find Eff %</button>
-    <button onClick={() => setMode('calcDpm')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'calcDpm' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Find DPM</button>
-</div>
+    return (
+        <div className="space-y-4 animate-fade-in">
+            <ContextualNote type="info">Performs basic scaler math and efficiency conversions. Assumes standard Poisson statistics for count error.</ContextualNote>
 
-<div className="space-y-3">
-    {/* Inputs for SCALER */}
-    {mode === 'scaler' && (
-        <div className="grid grid-cols-2 gap-4 animate-fade-in">
-            <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Total Counts</label>
-                <input type="number" value={counts} onChange={e => setCounts(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+            {/* 3-Way Toggle */}
+            <div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg">
+                <button onClick={() => setMode('scaler')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'scaler' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Scaler</button>
+                <button onClick={() => setMode('calcEff')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'calcEff' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Find Eff %</button>
+                <button onClick={() => setMode('calcDpm')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'calcDpm' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Find DPM</button>
             </div>
-            <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Count Time (min)</label>
-                <input type="number" value={time} onChange={e => setTime(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+
+            <div className="space-y-3">
+                {/* Inputs for SCALER */}
+                {mode === 'scaler' && (
+                    <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Total Counts</label>
+                            <input type="number" value={counts} onChange={e => setCounts(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Count Time (min)</label>
+                            <input type="number" value={time} onChange={e => setTime(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        </div>
+                    </div>
+                )}
+
+                {/* Inputs for EFFICIENCY/DPM */}
+                {mode !== 'scaler' && (
+                    <div className="animate-fade-in">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Net Count Rate (cpm)</label>
+                        <input type="number" value={cpm} onChange={e => setCpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                )}
+
+                {mode === 'calcEff' && (
+                    <div className="animate-fade-in">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Source Activity (dpm)</label>
+                        <input type="number" value={dpm} onChange={e => setDpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    </div>
+                )}
+
+                {mode === 'calcDpm' && (
+                    <div className="animate-fade-in">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Instrument Efficiency (%)</label>
+                        <div className="relative mt-1">
+                            <input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">%</div>
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {/* Error Message */}
+            {error && <p className="text-red-500 text-sm text-center animate-fade-in">{error}</p>}
+
+            {/* Result Box */}
+            {result && (
+                <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-center border border-slate-200 dark:border-slate-600 animate-fade-in">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">{result.label}</p>
+                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.value}</p>
+                    {result.subtext && <p className="text-sm text-slate-500 mt-1">{result.subtext}</p>}
+                </div>
+            )}
         </div>
-    )}
-
-    {/* Inputs for EFFICIENCY/DPM */}
-    {mode !== 'scaler' && (
-        <div className="animate-fade-in">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Net Count Rate (cpm)</label>
-            <input type="number" value={cpm} onChange={e => setCpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-        </div>
-    )}
-
-    {mode === 'calcEff' && (
-        <div className="animate-fade-in">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Source Activity (dpm)</label>
-            <input type="number" value={dpm} onChange={e => setDpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-        </div>
-    )}
-
-    {mode === 'calcDpm' && (
-        <div className="animate-fade-in">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Instrument Efficiency (%)</label>
-            <div className="relative mt-1">
-                <input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">%</div>
-            </div>
-        </div>
-    )}
-</div>
-
-{/* Error Message */}
-{error && <p className="text-red-500 text-sm text-center animate-fade-in">{error}</p>}
-
-{/* Result Box */}
-{result && (
-    <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-center border border-slate-200 dark:border-slate-600 animate-fade-in">
-        <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">{result.label}</p>
-        <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.value}</p>
-        {result.subtext && <p className="text-sm text-slate-500 mt-1">{result.subtext}</p>}
-    </div>
-)}
-</div>
-);
+    );
 };
 
 const InverseSquareCalculator = ({
