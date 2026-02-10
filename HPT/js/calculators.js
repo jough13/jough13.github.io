@@ -836,24 +836,30 @@ const StandardDecayCalculator = ({
                 const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife);
                 const lambda2 = T_half_daughter_seconds === Infinity ? 0 : Math.log(2) / T_half_daughter_seconds;
                 
-                // FIX: Use daughterUnit factor
-                const A0_daughter_Bq = safeParseFloat(initialDaughterActivity) * activityFactors[daughterUnit];
+                // Default to 0 if input is empty/invalid to prevent NaN
+                const rawDaughterInput = safeParseFloat(initialDaughterActivity);
+                const A0_daughter_Bq = (isNaN(rawDaughterInput) ? 0 : rawDaughterInput) * activityFactors[daughterUnit];
 
                 if (isNaN(A0_Bq)) throw new Error("Invalid activity inputs.");
 
                 const finalParentActivity_Bq = A0_Bq * Math.exp(-lambda * t_seconds);
                 let finalDaughterActivity_Bq;
 
-                // Bateman for 2 nuclides (Standard vs Special Case)
+                // Bateman Equation
                 if (Math.abs(lambda - lambda2) < 1e-12 * lambda) {
                     finalDaughterActivity_Bq = (A0_daughter_Bq * Math.exp(-lambda2 * t_seconds)) + (br * A0_Bq * lambda2 * t_seconds * Math.exp(-lambda2 * t_seconds));
                 } else {
                     finalDaughterActivity_Bq = (A0_daughter_Bq * Math.exp(-lambda2 * t_seconds)) + (br * (lambda2 / (lambda2 - lambda)) * A0_Bq * (Math.exp(-lambda * t_seconds) - Math.exp(-lambda2 * t_seconds)));
                 }
 
+                // Clamp negative results to 0 (Physically impossible to have negative activity)
+                // This happens frequently in reverse decay if you go back too far.
+                const safeDaughterVal = Math.max(0, finalDaughterActivity_Bq);
+                const safeParentVal = Math.max(0, finalParentActivity_Bq); // Just in case
+
                 setResult({
-                    parent: { name: selectedNuclide.name, value: (finalParentActivity_Bq / activityFactors[initialUnit]).toPrecision(4) },
-                    daughter: { name: daughter.name, value: (finalDaughterActivity_Bq / activityFactors[daughterUnit]).toPrecision(4), isStable: T_half_daughter_seconds === Infinity },
+                    parent: { name: selectedNuclide.name, value: (safeParentVal / activityFactors[initialUnit]).toPrecision(4) },
+                    daughter: { name: daughter.name, value: (safeDaughterVal / activityFactors[daughterUnit]).toPrecision(4), isStable: T_half_daughter_seconds === Infinity },
                     lambdaVal: displayLambda.toPrecision(4),
                     lambdaUnit: lambdaUnit,
                     unit: initialUnit // Only used for parent label
