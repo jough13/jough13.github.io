@@ -426,122 +426,158 @@ return (
 // This component is a source correction calculator that computes the activity of a radioactive source on a future date by applying the principle of radioactive decay. It requires the original activity, the calibration date, and the radionuclide's half-life to perform the calculation.
 
 const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, originalActivity, setOriginalActivity, originalActivityUnit, setOriginalActivityUnit, originalDate, setOriginalDate, targetDate, setTargetDate, activityUnits }) => {
-const [result, setResult] = React.useState(null);
-const [error, setError] = React.useState('');
-const { addHistory } = useCalculationHistory();
-const { addToast } = useToast();
-const activityFactorsBq = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 'µCi': 3.7e4, 'mCi': 3.7e7, 'Ci': 3.7e10, 'dps': 1, 'dpm': 1/60 };
-const nuclidesWithHalfLife = React.useMemo(() => radionuclides.filter(r => r.halfLife !== 'Stable').sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
-const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+    
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
 
-React.useEffect(() => {
-if (!selectedNuclide) { setResult(null); return; }
-try {
-setError('');
-const A0 = safeParseFloat(originalActivity);
-if (isNaN(A0) || A0 < 0) throw new Error("Original activity must be a positive number.");
+    // MEMOIZED: Prevent recreating this object on every render
+    const activityFactorsBq = React.useMemo(() => ({ 
+        'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 
+        'µCi': 3.7e4, 'mCi': 3.7e7, 'Ci': 3.7e10, 
+        'dps': 1, 'dpm': 1/60 
+    }), []);
 
-const start = new Date(originalDate);
-const end = new Date(targetDate);
+    const nuclidesWithHalfLife = React.useMemo(() => 
+        radionuclides.filter(r => r.halfLife !== 'Stable').sort((a,b) => a.name.localeCompare(b.name)), 
+    [radionuclides]);
 
-if (isNaN(start.getTime()) || isNaN(end.getTime())) throw new Error("Please enter valid dates and times.");
-if (end < start) throw new Error("Target time cannot be before the original time.");
+    const selectedNuclide = React.useMemo(() => 
+        radionuclides.find(n => n.symbol === nuclideSymbol), 
+    [nuclideSymbol, radionuclides]);
 
-const timeElapsed_ms = end - start;
-// Allow calculation even for 0 time elapsed
-const timeElapsed_s = timeElapsed_ms / 1000;
+    React.useEffect(() => {
+        if (!selectedNuclide) { setResult(null); return; }
+        
+        try {
+            setError('');
+            
+            // 1. Validate Activity
+            const A0 = safeParseFloat(originalActivity);
+            if (isNaN(A0) || A0 < 0) throw new Error("Activity must be a positive number.");
 
-const T_half_s = parseHalfLifeToSeconds(selectedNuclide.halfLife);
-if (T_half_s === Infinity) throw new Error("Cannot calculate decay for a stable nuclide.");
+            // 2. Validate Dates
+            const start = new Date(originalDate);
+            const end = new Date(targetDate);
 
-const activity_Bq_0 = A0 * activityFactorsBq[originalActivityUnit];
-const activity_Bq_t = activity_Bq_0 * Math.pow(0.5, timeElapsed_s / T_half_s);
-const finalActivity = activity_Bq_t / activityFactorsBq[originalActivityUnit];
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                // Fail silently while user is typing/selecting dates
+                setResult(null);
+                return; 
+            }
 
-// Smart formatting for time elapsed label
-let timeLabel = `${(timeElapsed_s / 86400).toFixed(2)} days`;
-if (timeElapsed_s < 86400) {
-    timeLabel = `${(timeElapsed_s / 3600).toFixed(2)} hours`;
-}
+            // 3. Time Calculation
+            const timeElapsed_ms = end - start;
+            const timeElapsed_s = timeElapsed_ms / 1000;
 
-setResult({ currentActivity: finalActivity.toPrecision(4), timeLabel: timeLabel });
-} catch(e) {
-setError(e.message);
-setResult(null);
-}
-}, [selectedNuclide, originalActivity, originalActivityUnit, originalDate, targetDate]);
+            // REMOVED: The check preventing 'end < start'. 
+            // Negative time is valid for back-calculating initial activity.
 
-const handleSaveToHistory = () => {
-if (result && selectedNuclide) {
-// Format dates for display
-const dateStr = new Date(targetDate).toLocaleString();
-addHistory({
-    id: Date.now(),
-    type: 'Source Correction',
-    icon: ICONS.calculator,
-    inputs: `${originalActivity} ${originalActivityUnit} ${selectedNuclide.symbol}`,
-    result: `${result.currentActivity} ${originalActivityUnit} (${dateStr})`,
-    view: VIEWS.CALCULATOR
-});
-addToast("Calculation saved to history!");
-}
-};
+            // 4. Physics Calculation
+            const T_half_s = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+            if (!T_half_s || T_half_s === Infinity) throw new Error("Cannot calculate decay for a stable nuclide.");
 
-return (
-<div className="space-y-4">
-<p className="text-sm text-slate-600 dark:text-slate-400">Calculates a source's activity at a specific date and time.</p>
-<div>
-    <label className="text-sm font-medium">Radionuclide</label>
-    <div className="mt-1 min-h-[42px]">
-        {selectedNuclide ? (
-            <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} />
-        ) : (
-            <SearchableSelect options={nuclidesWithHalfLife} onSelect={setNuclideSymbol} placeholder="Search for a radionuclide..."/>
-        )}
-    </div>
-</div>
-<div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-            <label className="block text-sm font-medium">Original Activity</label>
-            <div className="flex">
-                <input type="number" value={originalActivity} onChange={e => setOriginalActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                <select value={originalActivityUnit} onChange={e => setOriginalActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
+            const activity_Bq_0 = A0 * activityFactorsBq[originalActivityUnit];
+            
+            // Formula: A = A0 * (0.5)^(t / T_half)
+            // Works for both positive t (decay) and negative t (growth/back-calc)
+            const activity_Bq_t = activity_Bq_0 * Math.pow(0.5, timeElapsed_s / T_half_s);
+            
+            const finalActivity = activity_Bq_t / activityFactorsBq[originalActivityUnit];
+
+            // 5. Smart Labeling
+            const absSeconds = Math.abs(timeElapsed_s);
+            const direction = timeElapsed_s >= 0 ? 'elapsed' : 'ago'; // Label for past/future
+            
+            let timeLabel = `${(absSeconds / 86400).toFixed(2)} days`;
+            if (absSeconds < 60) {
+                 timeLabel = `${absSeconds.toFixed(1)} seconds`;
+            } else if (absSeconds < 3600) {
+                 timeLabel = `${(absSeconds / 60).toFixed(1)} min`;
+            } else if (absSeconds < 86400) {
+                 timeLabel = `${(absSeconds / 3600).toFixed(2)} hours`;
+            }
+
+            setResult({ 
+                currentActivity: finalActivity.toPrecision(4), 
+                timeLabel: `${timeLabel} ${direction}`
+            });
+
+        } catch(e) {
+            setError(e.message);
+            setResult(null);
+        }
+    }, [selectedNuclide, originalActivity, originalActivityUnit, originalDate, targetDate, activityFactorsBq]);
+
+    const handleSaveToHistory = () => {
+        if (result && selectedNuclide) {
+            const dateStr = new Date(targetDate).toLocaleString();
+            addHistory({
+                id: Date.now(),
+                type: 'Source Correction',
+                icon: ICONS.calculator,
+                inputs: `${originalActivity} ${originalActivityUnit} ${selectedNuclide.symbol} @ ${new Date(originalDate).toLocaleDateString()}`,
+                result: `${result.currentActivity} ${originalActivityUnit} (@ ${dateStr})`,
+                view: VIEWS.CALCULATOR
+            });
+            addToast("Saved to history!");
+        }
+    };
+
+    return (
+        <div className="space-y-4 max-w-2xl mx-auto">
+            <ContextualNote type="info">Calculates radioactive decay between two dates. Enter a future "Target Date" to decay a source, or a past "Target Date" to back-calculate original activity.</ContextualNote>
+            
+            <div>
+                <label className="text-sm font-bold text-slate-500 uppercase">Radionuclide</label>
+                <div className="mt-1 min-h-[42px]">
+                    {selectedNuclide ? (
+                        <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} />
+                    ) : (
+                        <SearchableSelect options={nuclidesWithHalfLife} onSelect={setNuclideSymbol} placeholder="Search for a radionuclide..."/>
+                    )}
+                </div>
             </div>
-        </div>
-        <div>
-            <label className="block text-sm font-medium">Original Date & Time</label>
-            {/* CHANGED: type="datetime-local" */}
-            <input type="datetime-local" value={originalDate} onChange={e => setOriginalDate(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-        </div>
-    </div>
-    <div>
-        <label className="block text-sm font-medium">Target Date & Time</label>
-        {/* CHANGED: type="datetime-local" */}
-        <input type="datetime-local" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-    </div>
-</div>
-{error && <p className="text-red-500 text-sm text-center">{error}</p>}
-{result && (
-    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-        <div className="flex justify-between items-center">
-            <div></div>
-            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Corrected Activity</p>
-            <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                    <Icon path={ICONS.notepad} className="w-5 h-5" />
-                </button>
-            </Tooltip>
-        </div>
-        <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.currentActivity}</p>
-        <p className="text-md font-medium text-slate-600 dark:text-slate-300">{originalActivityUnit}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">({result.timeLabel} elapsed)</p>
-    </div>
-)}
-</div>
-);
-};
 
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reference Activity</label>
+                        <div className="flex gap-2">
+                            <input type="number" value={originalActivity} onChange={e => setOriginalActivity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600"/>
+                            <select value={originalActivityUnit} onChange={e => setOriginalActivityUnit(e.target.value)} className="w-24 p-2 rounded bg-slate-200 dark:bg-slate-600 border-none text-sm font-bold">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reference Date</label>
+                        <input type="datetime-local" value={originalDate} onChange={e => setOriginalDate(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-mono text-sm"/>
+                    </div>
+                </div>
+                
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
+                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Target Date</label>
+                     <input type="datetime-local" value={targetDate} onChange={e => setTargetDate(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-mono text-sm"/>
+                </div>
+            </div>
+
+            {error && <div className="p-3 bg-red-100 text-red-700 rounded text-sm text-center font-bold">{error}</div>}
+
+            {result && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border-2 border-sky-100 dark:border-sky-900 mt-4 overflow-hidden animate-slide-up">
+                     <div className="p-3 bg-sky-50 dark:bg-sky-900/30 flex justify-between items-center border-b border-sky-100 dark:border-sky-800">
+                        <span className="font-bold text-sm uppercase text-sky-700 dark:text-sky-300">Corrected Activity</span>
+                        <button onClick={handleSaveToHistory} className="text-sky-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5" /></button>
+                    </div>
+                    <div className="p-6 text-center">
+                        <p className="text-4xl font-black text-slate-800 dark:text-white tracking-tight">{result.currentActivity} <span className="text-xl font-bold text-slate-500">{originalActivityUnit}</span></p>
+                        <p className="text-sm font-medium text-slate-400 mt-2 uppercase tracking-wide">{result.timeLabel}</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 // This component is a versatile radioactive decay calculator that supports four different modes: calculating remaining activity, finding the time elapsed, determining the initial activity, or calculating the activity of a radioactive daughter product. It visualizes the decay curve and handles various time units and logarithmic scales.
 
 const StandardDecayCalculator = ({
