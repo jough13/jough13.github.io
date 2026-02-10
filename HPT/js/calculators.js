@@ -611,7 +611,7 @@ const StandardDecayCalculator = ({
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
 
-    // --- NEW: Decoupled Daughter Unit State ---
+    // --- Decoupled Daughter Unit State ---
     // Initialize with 'mCi' or whatever the parent defaults to, but keep independent
     const [daughterUnit, setDaughterUnit] = React.useState('mCi');
 
@@ -1134,96 +1134,192 @@ const StandardDecayCalculator = ({
 };
 
 const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, releaseActivity, setReleaseActivity, activityUnit, setActivityUnit, activityUnits, roomVolume, setRoomVolume, volumeUnit, setVolumeUnit, ventilationRate, setVentilationRate, result, setResult, error, setError }) => {
-const { addHistory } = useCalculationHistory();
-const { addToast } = useToast();
-const dosimetryNuclides = React.useMemo(() => radionuclides.filter(n => n.dosimetry?.DAC).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
-const selectedNuclide = React.useMemo(() => dosimetryNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, dosimetryNuclides]);
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    // Filter only nuclides that have DAC data
+    const dosimetryNuclides = React.useMemo(() => 
+        radionuclides.filter(n => n.dosimetry?.DAC).sort((a, b) => a.name.localeCompare(b.name)), 
+    [radionuclides]);
+    
+    const selectedNuclide = React.useMemo(() => 
+        dosimetryNuclides.find(n => n.symbol === nuclideSymbol), 
+    [nuclideSymbol, dosimetryNuclides]);
 
-// Multipliers to convert input unit to µCi (for ALI calculation logic)
-const toMicroCurie = { 'pCi': 1e-6, 'nCi': 1e-3, 'µCi': 1, 'mCi': 1e3, 'Ci': 1e6, 'Bq': 2.7e-5, 'kBq': 0.027, 'MBq': 27, 'GBq': 27000 };
+    // Move constants outside or memoize to avoid re-creation
+    const toMicroCurie = React.useMemo(() => ({ 
+        'pCi': 1e-6, 'nCi': 1e-3, 'µCi': 1, 'mCi': 1e3, 'Ci': 1e6, 
+        'Bq': 2.7e-5, 'kBq': 0.027, 'MBq': 27, 'GBq': 27000 
+    }), []);
 
-React.useEffect(() => {
-if (!selectedNuclide) { setResult(null); return; }
-try {
-setError('');
-const act = safeParseFloat(releaseActivity); const vol = safeParseFloat(roomVolume); const vent = safeParseFloat(ventilationRate);
-if ([act, vol, vent].some(isNaN) || act < 0 || vol <= 0 || vent < 0) throw new Error("Inputs must be valid numbers.");
+    const volConversions = React.useMemo(() => ({ 
+        'm³': 1e6, 'L': 1000, 'ft³': 28316.8 
+    }), []);
 
-const act_uCi = act * toMicroCurie[activityUnit];
-const vol_mL = vol * ({ 'm³': 1e6, 'L': 1000, 'ft³': 28316.8 }[volumeUnit]);
+    React.useEffect(() => {
+        if (!selectedNuclide) { setResult(null); return; }
+        
+        try {
+            setError('');
+            const act = safeParseFloat(releaseActivity); 
+            const vol = safeParseFloat(roomVolume); 
+            const vent = safeParseFloat(ventilationRate);
+            
+            if ([act, vol, vent].some(isNaN) || act < 0 || vol <= 0 || vent < 0) {
+                 // Don't throw error immediately on empty inputs, just wait
+                 if (releaseActivity && roomVolume) throw new Error("Inputs must be valid numbers.");
+                 setResult(null);
+                 return;
+            }
 
-const dac_uCi_mL = selectedNuclide.dosimetry.DAC.inhalation_W || selectedNuclide.dosimetry.DAC.inhalation_D || selectedNuclide.dosimetry.DAC.inhalation_Y || selectedNuclide.dosimetry.DAC.inhalation;
-if (!dac_uCi_mL) throw new Error(`DAC value not found for ${selectedNuclide.name}.`);
+            // 1. Identify the Most Restrictive (Lowest) DAC
+            const dacData = selectedNuclide.dosimetry.DAC;
+            let bestDAC = Infinity;
+            let bestType = 'Unknown';
 
-const initialConc_uCi_mL = act_uCi / vol_mL;
-const lambda_eff_per_hr = vent;
-const time_to_1_dac_hr = lambda_eff_per_hr > 0 ? (-1 / lambda_eff_per_hr) * Math.log(dac_uCi_mL / initialConc_uCi_mL) : Infinity;
+            // Iterate over keys like 'inhalation_D', 'inhalation_W', 'inhalation_Y'
+            Object.entries(dacData).forEach(([key, val]) => {
+                if (typeof val === 'number' && val > 0 && val < bestDAC) {
+                    bestDAC = val;
+                    // Format key for display (e.g. "inhalation_Y" -> "Type Y")
+                    bestType = key.replace('inhalation_', 'Type ').replace('inhalation', 'Generic');
+                }
+            });
 
-setResult({
-    initialConc: initialConc_uCi_mL.toExponential(3),
-    dacValue: dac_uCi_mL.toExponential(2),
-    dacMultiple: (initialConc_uCi_mL / dac_uCi_mL).toPrecision(3),
-    time_to_1_dac_hr: time_to_1_dac_hr > 0 ? time_to_1_dac_hr.toPrecision(3) : 0
-});
-} catch (e) { setError(e.message); setResult(null); }
-}, [selectedNuclide, releaseActivity, activityUnit, roomVolume, volumeUnit, ventilationRate, setResult, setError]);
+            if (bestDAC === Infinity) throw new Error(`Valid DAC value not found for ${selectedNuclide.name}.`);
 
-const handleSaveToHistory = () => {
-if (result) {
-addHistory({
-    id: Date.now(),
-    type: 'Airborne Release',
-    icon: ICONS.radon,
-    inputs: `${releaseActivity} ${activityUnit} in ${roomVolume} ${volumeUnit}`,
-    result: `${result.dacMultiple}x DAC`,
-    view: VIEWS.OPERATIONAL_HP
-});
-addToast("Calculation saved to history!");
-}
-};
+            // 2. Calculate Concentrations
+            const act_uCi = act * toMicroCurie[activityUnit];
+            const vol_mL = vol * volConversions[volumeUnit];
+            
+            const initialConc_uCi_mL = act_uCi / vol_mL;
+            
+            // 3. Calculate Time to 1 DAC
+            // Formula: t = (-1/lambda) * ln(Target / Initial)
+            // lambda = ventilation rate (ACH)
+            let time_to_1_dac_hr = 0;
+            
+            if (initialConc_uCi_mL > bestDAC) {
+                 if (vent > 0) {
+                     time_to_1_dac_hr = (-1 / vent) * Math.log(bestDAC / initialConc_uCi_mL);
+                 } else {
+                     time_to_1_dac_hr = Infinity; // No ventilation = stays forever
+                 }
+            }
 
-return (
-<div className="space-y-4 max-w-md mx-auto">
-<div><label className="text-sm font-medium">Radionuclide</label><div className="mt-1">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={dosimetryNuclides} onSelect={setNuclideSymbol} placeholder="Select a nuclide with a DAC..." />}</div></div>
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div><label className="block text-sm font-medium">Released Activity</label><div className="flex"><input type="number" value={releaseActivity} onChange={e => setReleaseActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" /><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-    <div><label className="block text-sm font-medium">Room Volume</label><div className="flex"><input type="number" value={roomVolume} onChange={e => setRoomVolume(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" /><select value={volumeUnit} onChange={e => setVolumeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600"><option>m³</option><option>L</option><option>ft³</option></select></div></div>
-    <div className="md:col-span-2"><label className="block text-sm font-medium">Ventilation Rate (ACH)</label><input type="number" value={ventilationRate} onChange={e => setVentilationRate(e.target.value)} placeholder="Air Changes per Hour" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-</div>
+            setResult({
+                initialConc: initialConc_uCi_mL.toExponential(3),
+                dacValue: bestDAC.toExponential(2),
+                dacType: bestType, // New field for safety awareness
+                dacMultiple: (initialConc_uCi_mL / bestDAC).toPrecision(3),
+                time_to_1_dac_hr: time_to_1_dac_hr === Infinity ? '∞' : time_to_1_dac_hr.toPrecision(3)
+            });
 
-<ContextualNote type="warning">
-    <strong>Safety Assumption:</strong> This model assumes perfect, instantaneous mixing of the contaminant. Localized concentrations near the release point may be significantly higher than the calculated average.
-</ContextualNote>
+        } catch (e) { 
+            setError(e.message); 
+            setResult(null); 
+        }
+    }, [selectedNuclide, releaseActivity, activityUnit, roomVolume, volumeUnit, ventilationRate, toMicroCurie, volConversions]);
 
-{error && <p className="text-red-500 text-sm text-center">{error}</p>}
-{result && (
-    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 space-y-3 text-center animate-fade-in">
-        <div className="flex justify-end -mt-2 -mr-2">
-            <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                    <Icon path={ICONS.notepad} className="w-5 h-5" />
-                </button>
-            </Tooltip>
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-sm -mt-4"><p>Initial Concentration:</p><p className="font-mono">{result.initialConc} µCi/mL</p><p>Nuclide DAC:</p><p className="font-mono">{result.dacValue} µCi/mL</p></div>
-        <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
-            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Initial Concentration</p>
-            <div className="flex items-center justify-center">
-                <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.dacMultiple}x DAC</p>
-                <CopyButton textToCopy={result.dacMultiple} />
+    const handleSaveToHistory = () => {
+        if (result) {
+            addHistory({
+                id: Date.now(),
+                type: 'Airborne Release',
+                icon: ICONS.radon || ICONS.activity, // Fallback if radon icon missing
+                inputs: `${releaseActivity} ${activityUnit} in ${roomVolume} ${volumeUnit}`,
+                result: `${result.dacMultiple}x DAC (${result.dacType})`,
+                view: VIEWS.OPERATIONAL_HP
+            });
+            addToast("Calculation saved to history!");
+        }
+    };
+
+    return (
+        <div className="space-y-4 max-w-lg mx-auto">
+            <ContextualNote type="info">Calculates the initial airborne concentration following a release and estimating the time required to clear the room to 1 DAC via dilution ventilation.</ContextualNote>
+            
+            <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Radionuclide</label>
+                <div className="mt-1">
+                    {selectedNuclide ? 
+                        <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : 
+                        <SearchableSelect options={dosimetryNuclides} onSelect={setNuclideSymbol} placeholder="Select a nuclide..." />
+                    }
+                </div>
             </div>
-        </div>
-        <div className="border-t border-slate-300 dark:border-slate-600 pt-3">
-            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Time to reach 1 DAC</p>
-            <div className="flex items-center justify-center">
-                <p className="text-2xl font-bold">{result.time_to_1_dac_hr} hours</p>
-                <CopyButton textToCopy={result.time_to_1_dac_hr} />
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Released Activity</label>
+                    <div className="flex gap-2">
+                        <input type="number" value={releaseActivity} onChange={e => setReleaseActivity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
+                        <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="w-24 p-2 rounded bg-slate-200 dark:bg-slate-600 border-none text-sm font-bold">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Room Volume</label>
+                    <div className="flex gap-2">
+                        <input type="number" value={roomVolume} onChange={e => setRoomVolume(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
+                        <select value={volumeUnit} onChange={e => setVolumeUnit(e.target.value)} className="w-24 p-2 rounded bg-slate-200 dark:bg-slate-600 border-none text-sm font-bold">
+                            <option value="m³">m³</option>
+                            <option value="L">L</option>
+                            <option value="ft³">ft³</option>
+                        </select>
+                    </div>
+                </div>
+                <div className="md:col-span-2">
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Ventilation Rate (ACH)</label>
+                    <input type="number" value={ventilationRate} onChange={e => setVentilationRate(e.target.value)} placeholder="Air Changes per Hour (e.g. 6)" className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
+                </div>
             </div>
+
+            <ContextualNote type="warning">
+                <strong>Safety Assumption:</strong> Uses the most restrictive DAC ({result?.dacType || 'Lowest'}) found for this nuclide. Model assumes perfect, instantaneous mixing.
+            </ContextualNote>
+
+            {error && <p className="text-red-500 text-sm text-center font-bold">{error}</p>}
+
+            {result && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border-2 border-sky-100 dark:border-sky-900 mt-6 overflow-hidden animate-slide-up">
+                    <div className="p-3 bg-sky-50 dark:bg-sky-900/30 flex justify-between items-center border-b border-sky-100 dark:border-sky-800">
+                        <span className="font-bold text-sm uppercase text-sky-700 dark:text-sky-300">Airborne Hazards</span>
+                        <button onClick={handleSaveToHistory} className="text-sky-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5" /></button>
+                    </div>
+                    
+                    <div className="p-4 grid grid-cols-2 gap-4 text-center border-b border-slate-100 dark:border-slate-700">
+                        <div>
+                            <p className="text-xs text-slate-500 uppercase">Initial Conc.</p>
+                            <p className="font-mono font-bold text-slate-800 dark:text-slate-200">{result.initialConc} µCi/mL</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-500 uppercase">Limit ({result.dacType})</p>
+                            <p className="font-mono font-bold text-slate-800 dark:text-slate-200">{result.dacValue} µCi/mL</p>
+                        </div>
+                    </div>
+
+                    <div className="p-6 text-center space-y-4">
+                        <div>
+                            <p className="text-sm font-medium text-slate-400 uppercase">Initial Hazard</p>
+                            <div className="flex items-center justify-center gap-2">
+                                <span className={`text-4xl font-black ${parseFloat(result.dacMultiple) > 1 ? 'text-red-500' : 'text-emerald-500'}`}>
+                                    {result.dacMultiple}x
+                                </span>
+                                <span className="text-xl font-bold text-slate-500">DAC</span>
+                            </div>
+                        </div>
+                        
+                        {parseFloat(result.dacMultiple) > 1 && (
+                            <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
+                                <p className="text-sm font-medium text-slate-400 uppercase">Time to Clear (1 DAC)</p>
+                                <p className="text-2xl font-bold text-slate-700 dark:text-slate-200">{result.time_to_1_dac_hr} hours</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
-    </div>
-)}
-</div>
-);
+    );
 };
 
 // --- Internal Helper: Result Badge ---
