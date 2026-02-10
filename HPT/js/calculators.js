@@ -11,192 +11,236 @@ const SHIELD_PROPS = {
 };
 
 /**
- * @description A comprehensive calculator for various radioactive decay scenarios,
- * including finding remaining/initial activity, time elapsed, and daughter product activity.
- * It also generates data for a visual decay chart.
- * @param {{radionuclides: Array<object>}} props - The full list of radionuclide data.
+ * @description Calculates time required for a source to decay to a specific limit.
+ * Visualizes the decay curve and the intersection point.
  */
-            
+
 const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuclide, initialActivity, setInitialActivity, initialUnit, setInitialUnit, finalActivity, setFinalActivity, finalUnit, setFinalUnit, result, setResult, error, setError, activityUnits, theme }) => {
-const { addHistory } = useCalculationHistory();
-const { addToast } = useToast();
-// Added state for chart data
-const [chartData, setChartData] = React.useState(null);
-const [useLogScale, setUseLogScale] = React.useState(false);
+    
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    // Chart State
+    const [chartData, setChartData] = React.useState(null);
+    const [useLogScale, setUseLogScale] = React.useState(false);
 
-const nuclidesWithHalfLife = React.useMemo(() => radionuclides.filter(r => r.halfLife !== 'Stable').sort((a,b) => a.name.localeCompare(b.name)), [radionuclides]);
-const activityFactorsBq = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 'µCi': 3.7e4, 'mCi': 3.7e7, 'Ci': 3.7e10, 'dps': 1, 'dpm': 1/60 };
+    // Filter Nuclides
+    const nuclidesWithHalfLife = React.useMemo(() => 
+        radionuclides.filter(r => r.halfLife !== 'Stable').sort((a,b) => a.name.localeCompare(b.name)), 
+    [radionuclides]);
 
-React.useEffect(() => {
-try {
-setError('');
-setChartData(null); // Reset chart on input change
+    // Move Constants outside or Memoize to prevent re-creation
+    const activityFactorsBq = React.useMemo(() => ({ 
+        'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 
+        'µCi': 3.7e4, 'mCi': 3.7e7, 'Ci': 3.7e10, 
+        'dps': 1, 'dpm': 1/60 
+    }), []);
 
-if (!selectedNuclide) { setResult(null); return; }
+    // --- CALCULATION EFFECT ---
+    React.useEffect(() => {
+        try {
+            setError('');
+            // Don't clear chart immediately to prevent flickering, update it at end of logic
+            
+            if (!selectedNuclide) { setResult(null); setChartData(null); return; }
 
-const A0 = safeParseFloat(initialActivity);
-const Af = safeParseFloat(finalActivity);
+            const A0 = safeParseFloat(initialActivity);
+            const Af = safeParseFloat(finalActivity);
 
-if (isNaN(A0) || isNaN(Af) || A0 <= 0 || Af <= 0) {
-if (initialActivity && finalActivity) setError("Activities must be positive numbers (Target cannot be 0).");
-setResult(null); return;
-}
+            if (isNaN(A0) || isNaN(Af) || A0 <= 0 || Af <= 0) {
+                // Only error if both fields have content, otherwise just wait
+                if (initialActivity && finalActivity) setError("Activities must be positive numbers.");
+                setResult(null); 
+                return;
+            }
 
-const A0_Bq = A0 * activityFactorsBq[initialUnit];
-const Af_Bq = Af * activityFactorsBq[finalUnit];
+            const A0_Bq = A0 * activityFactorsBq[initialUnit];
+            const Af_Bq = Af * activityFactorsBq[finalUnit];
 
-if (Af_Bq >= A0_Bq) {
-    setError("Final activity must be less than initial activity.");
-    setResult(null); return;
-}
+            // LOGIC CHECK: Target must be lower than Initial
+            if (Af_Bq >= A0_Bq) {
+                setError("Final activity must be less than initial activity.");
+                setResult(null); 
+                return;
+            }
 
-const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
-const lambda = Math.log(2) / T_half_seconds;
+            // PHYSICS CALCULATION
+            const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+            const lambda = Math.log(2) / T_half_seconds;
 
-// Prevent division by zero for stable nuclides
-if (lambda === 0 || T_half_seconds === Infinity) {
-    setError("Selected nuclide is stable; it will not decay.");
-    setResult(null);
-    return;
-}
+            if (lambda === 0 || T_half_seconds === Infinity) {
+                setError("Selected nuclide is stable.");
+                setResult(null);
+                return;
+            }
 
-const time_seconds = (-1 / lambda) * Math.log(Af_Bq / A0_Bq);
+            // t = (-1/lambda) * ln(Af / A0)
+            const time_seconds = (-1 / lambda) * Math.log(Af_Bq / A0_Bq);
 
-// Prevent infinite chart rendering if math fails
-if (!isFinite(time_seconds)) {
-    setError("Calculation resulted in an invalid time (possibly infinite). Check inputs.");
-    setResult(null);
-    return;
-}
+            if (!isFinite(time_seconds)) {
+                setError("Invalid time result. Check inputs.");
+                setResult(null);
+                return;
+            }
 
-const num_half_lives = time_seconds / T_half_seconds;
+            const num_half_lives = time_seconds / T_half_seconds;
+            const bestUnit = getBestHalfLifeUnit(time_seconds);
+            const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+            const time_in_best_unit = time_seconds / unitConversions[bestUnit];
 
-const bestUnit = getBestHalfLifeUnit(time_seconds);
-const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
-const time_in_best_unit = time_seconds / unitConversions[bestUnit];
+            setResult({
+                time: time_in_best_unit.toPrecision(4),
+                unit: bestUnit,
+                halfLives: num_half_lives.toFixed(2)
+            });
 
-setResult({
-    time: time_in_best_unit.toPrecision(4),
-    unit: bestUnit,
-    halfLives: num_half_lives.toFixed(2)
-});
+            // --- CHART GENERATION ---
+            const steps = 100;
+            // Plot 20% past the target time to visualize the crossing
+            const totalTimePlot = time_in_best_unit * 1.2; 
+            
+            const labels = [];
+            const parentData = [];
+            const limitData = []; // New Dataset: Visual Line for Target
 
-// --- GENERATE CHART DATA ---
-const labels = [];
-const parentData = [];
+            for (let i = 0; i <= steps; i++) {
+                const t_plot = (totalTimePlot / steps) * i;
+                const t_plot_seconds = t_plot * unitConversions[bestUnit];
 
-// Plot slightly past the target time (e.g., 1.2x) to show the limit crossing
-const totalTimePlot = time_in_best_unit * 1.2;
-const steps = 100;
+                // Decay Formula: A(t) = A0 * e^(-lambda * t)
+                const currentAct_Bq = A0_Bq * Math.exp(-lambda * t_plot_seconds);
+                
+                // Convert back to User's Initial Unit for the Y-Axis
+                const currentAct_UserUnit = currentAct_Bq / activityFactorsBq[initialUnit];
+                
+                // Calculate Target limit in User's Initial Unit (constant line)
+                const targetLimit_UserUnit = Af_Bq / activityFactorsBq[initialUnit];
 
-for (let i = 0; i <= steps; i++) {
-    const t_plot = (totalTimePlot / steps) * i;
-    const t_plot_seconds = t_plot * unitConversions[bestUnit];
+                // Dynamic Label Precision
+                // If time is < 1, use more decimals. If > 100, use none.
+                let label = t_plot.toFixed(2);
+                if (totalTimePlot < 0.1) label = t_plot.toExponential(2);
+                else if (totalTimePlot < 10) label = t_plot.toFixed(3);
+                else if (totalTimePlot > 100) label = t_plot.toFixed(0);
 
-    // Calculate activity in the User's Initial Unit for consistency
-    const currentAct_Bq = A0_Bq * Math.exp(-lambda * t_plot_seconds);
-    const currentAct_UserUnit = currentAct_Bq / activityFactorsBq[initialUnit];
+                labels.push(label);
+                parentData.push(currentAct_UserUnit);
+                limitData.push(targetLimit_UserUnit);
+            }
 
-    labels.push(t_plot.toFixed(2));
-    parentData.push(currentAct_UserUnit);
-}
+            setChartData({
+                labels,
+                datasets: [
+                    {
+                        label: `${selectedNuclide.name} Decay`,
+                        data: parentData,
+                        borderColor: 'rgb(14, 165, 233)', // Sky-500
+                        backgroundColor: 'rgba(14, 165, 233, 0.5)',
+                    },
+                    {
+                        label: `Target Limit (${finalActivity} ${finalUnit})`,
+                        data: limitData,
+                        borderColor: 'rgb(239, 68, 68)', // Red-500
+                        borderDash: [5, 5], // Dashed line
+                        pointRadius: 0, // No dots for the limit line
+                    }
+                ],
+                timeUnit: bestUnit,
+                yAxisLabel: `Activity (${initialUnit})`
+            });
 
-if (A0_Bq / Af_Bq > 100) {
-            setUseLogScale(true);
-        } else {
-            setUseLogScale(false);
+        } catch (e) {
+            setError("Calculation failed.");
+            setResult(null);
         }
+    }, [selectedNuclide, initialActivity, initialUnit, finalActivity, finalUnit, activityFactorsBq]); // Removed useLogScale from deps
 
-        setChartData({
-            labels,
-            parentData,
-            daughterData: null,
-            timeUnit: bestUnit,
-            parentName: selectedNuclide.name
-        });
-
-} catch (e) {
-setError(e.message || "Calculation failed.");
-setResult(null);
-}
-}, [selectedNuclide, initialActivity, initialUnit, finalActivity, finalUnit]);
-
-const handleSaveToHistory = () => {
-if (result && selectedNuclide) {
-addHistory({
-    id: Date.now(),
-    type: 'Decay to Limit',
-    icon: ICONS.stopwatch,
-    inputs: `${initialActivity} ${initialUnit} ${selectedNuclide.symbol} to ${finalActivity} ${finalUnit}`,
-    result: `${result.time} ${result.unit}`,
-    view: VIEWS.CALCULATOR
-});
-addToast('Calculation saved to history!');
-}
-};
-
-return (
-<div className="space-y-4">
-<p className="text-sm text-slate-600 dark:text-slate-400">Calculates time required to decay to a specified activity level.</p>
-<div>
-    <label className="text-sm font-medium">Radionuclide</label>
-    <div className="mt-1 min-h-[42px]">
-        {selectedNuclide ?
-            <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setSelectedNuclide(null)} /> :
-            <SearchableSelect options={nuclidesWithHalfLife} onSelect={(symbol) => setSelectedNuclide(radionuclides.find(n => n.symbol === symbol))} placeholder="Search for a radionuclide..." />
+    const handleSaveToHistory = () => {
+        if (result && selectedNuclide) {
+            addHistory({
+                id: Date.now(),
+                type: 'Decay to Limit',
+                icon: ICONS.stopwatch,
+                inputs: `${initialActivity} ${initialUnit} ${selectedNuclide.symbol} → ${finalActivity} ${finalUnit}`,
+                result: `${result.time} ${result.unit}`,
+                view: VIEWS.CALCULATOR
+            });
+            addToast('Calculation saved!');
         }
-    </div>
-</div>
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-        <label className="block text-sm font-medium">Initial Activity</label>
-        <div className="flex">
-            <input type="number" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-            <select value={initialUnit} onChange={e => setInitialUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
-        </div>
-    </div>
-    <div>
-        <label className="block text-sm font-medium">Final (Target) Activity</label>
-        <div className="flex">
-            <input type="number" value={finalActivity} onChange={e => setFinalActivity(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-            <select value={finalUnit} onChange={e => setFinalUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
-        </div>
-    </div>
-</div>
-{error && <p className="text-red-500 text-sm text-center">{error}</p>}
-{result && (
-    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-        <div className="flex justify-between items-center">
-            <div></div>
-            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Time to Decay</p>
-            <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                    <Icon path={ICONS.notepad} className="w-5 h-5" />
-                </button>
-            </Tooltip>
-        </div>
-        <div className="flex items-center justify-center">
-            <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.time}</p>
-            <CopyButton textToCopy={result.time} />
-        </div>
-        <p className="text-md font-medium text-slate-600 dark:text-slate-300">{result.unit}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">({result.halfLives} half-lives)</p>
-    </div>
-)}
+    };
 
-{/* Render Chart */}
-{chartData && (
-    <>
-        <div className="flex justify-end mt-4">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={useLogScale} onChange={() => setUseLogScale(!useLogScale)} className="form-checkbox h-4 w-4 rounded text-sky-600" /> Use Logarithmic Scale
-            </label>
+    return (
+        <div className="space-y-4 max-w-3xl mx-auto">
+            <ContextualNote type="info">Calculates the time required for a radioactive source to decay down to a specific regulatory limit or release criteria.</ContextualNote>
+            
+            {/* Nuclide Selection */}
+            <div>
+                <label className="text-sm font-bold text-slate-500 uppercase">Radionuclide</label>
+                <div className="mt-1">
+                    {selectedNuclide ?
+                        <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setSelectedNuclide(null)} /> :
+                        <SearchableSelect options={nuclidesWithHalfLife} onSelect={(symbol) => setSelectedNuclide(radionuclides.find(n => n.symbol === symbol))} placeholder="Search..." />
+                    }
+                </div>
+            </div>
+
+            {/* Inputs Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Current Activity</label>
+                    <div className="flex gap-2">
+                        <input type="number" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
+                        <select value={initialUnit} onChange={e => setInitialUnit(e.target.value)} className="w-24 p-2 rounded bg-slate-200 dark:bg-slate-600 border-none text-sm font-bold">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                    </div>
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Target Limit</label>
+                    <div className="flex gap-2">
+                        <input type="number" value={finalActivity} onChange={e => setFinalActivity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
+                        <select value={finalUnit} onChange={e => setFinalUnit(e.target.value)} className="w-24 p-2 rounded bg-slate-200 dark:bg-slate-600 border-none text-sm font-bold">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                    </div>
+                </div>
+            </div>
+
+            {error && <div className="p-3 bg-red-100 text-red-700 rounded text-sm text-center font-bold">{error}</div>}
+
+            {/* Result Display */}
+            {result && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border-2 border-sky-100 dark:border-sky-900 mt-6 overflow-hidden animate-slide-up">
+                    <div className="p-3 bg-sky-50 dark:bg-sky-900/30 flex justify-between items-center border-b border-sky-100 dark:border-sky-800">
+                        <span className="font-bold text-sm uppercase text-sky-700 dark:text-sky-300">Time Required</span>
+                        <button onClick={handleSaveToHistory} className="text-sky-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5" /></button>
+                    </div>
+                    <div className="p-6 text-center">
+                        <div className="flex items-baseline justify-center gap-2">
+                            <span className="text-5xl font-black text-slate-800 dark:text-white tracking-tight">{result.time}</span>
+                            <span className="text-xl font-bold text-slate-500">{result.unit}</span>
+                        </div>
+                        <p className="text-sm font-medium text-slate-400 mt-2 uppercase tracking-wide">{result.halfLives} Half-lives</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Chart Section */}
+            {chartData && (
+                <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700">
+                     <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-bold text-slate-700 dark:text-slate-300">Decay Curve</h3>
+                        <label className="flex items-center gap-2 text-xs font-bold bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                            <input type="checkbox" checked={useLogScale} onChange={() => setUseLogScale(!useLogScale)} className="rounded text-sky-500 focus:ring-sky-500" /> 
+                            Logarithmic Scale
+                        </label>
+                    </div>
+
+                    <DecayChart 
+                        chartData={chartData} 
+                        useLogScale={useLogScale} 
+                        theme={theme} 
+                    />
+                </div>
+            )}
         </div>
-        <DecayChart chartData={chartData} useLogScale={useLogScale} theme={theme} />
-    </>
-)}
-</div>
-);
+    );
 };
 
 const getNowString = () => {
@@ -220,14 +264,14 @@ settings.unitSystem === 'si'
 const [std_selectedNuclide, setStd_selectedNuclide] = React.useState(() => { const savedSymbol = localStorage.getItem('decayCalc_nuclideSymbol'); if (!savedSymbol) return null; return radionuclides.find(n => n.symbol === savedSymbol) || null; });
 const [std_calculationMode, setStd_calculationMode] = React.useState(() => localStorage.getItem('decayCalc_mode') || 'findRemaining');
 const [std_initialActivity, setStd_initialActivity] = React.useState(() => localStorage.getItem('decayCalc_initialActivity') || '100');
-// NEW: Unit State
+// Unit State
 const [std_initialUnit, setStd_initialUnit] = React.useState(() => localStorage.getItem('decayCalc_initialUnit') || activityUnits[1]);
 
 const [std_initialDaughterActivity, setStd_initialDaughterActivity] = React.useState(() => localStorage.getItem('decayCalc_initialDaughterActivity') || '0');
 const [std_branchingFraction, setStd_branchingFraction] = React.useState(() => localStorage.getItem('decayCalc_branchingFraction') || '1.0');
 
 const [std_remainingActivity, setStd_remainingActivity] = React.useState(() => localStorage.getItem('decayCalc_remainingActivity') || '');
-// NEW: Unit State
+// Unit State
 const [std_remainingUnit, setStd_remainingUnit] = React.useState(() => localStorage.getItem('decayCalc_remainingUnit') || activityUnits[1]);
 
 const [std_timeElapsed, setStd_timeElapsed] = React.useState(() => localStorage.getItem('decayCalc_timeElapsed') || '1');
