@@ -1870,16 +1870,19 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
 const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroundCpm, instrumentEff, setInstrumentEff, result, setResult, error, setError }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
+    
+    // Standard Regulatory Limit for Sealed Sources (0.005 µCi)
     const LIMIT_UCI = 0.005;
 
     // Auto-calculate Action Level (The Net CPM that equals 0.005 uCi)
+    // Helps user know "What number am I looking for on the meter?"
     const actionLevelNetCpm = React.useMemo(() => {
         const eff = safeParseFloat(instrumentEff);
-        // Handle both "10" (10%) and "0.1" (10%) input styles safely
-        const efficiencyDecimal = eff > 1 ? eff / 100 : eff; 
+        // SAFETY: Always treat input as percentage (e.g. 10 = 10% = 0.1)
+        const efficiencyDecimal = eff / 100; 
         
         if (efficiencyDecimal > 0) {
-            // 0.005 uCi * 2.22e6 dpm/uCi * Eff = CPM Limit
+            // Formula: Limit (µCi) * 2.22e6 (dpm/µCi) * Eff = CPM
             return Math.ceil(LIMIT_UCI * 2.22e6 * efficiencyDecimal);
         }
         return 0;
@@ -1901,16 +1904,16 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
             }
             
             if (effInput <= 0) {
-                setResult(null); // specific error handled by UI validation usually, or just silent
+                // Silent return if efficiency is invalid/zero to prevent divide-by-zero
+                setResult(null); 
                 return;
             }
 
-            // 3. Efficiency Normalization (Assume > 1 is percent, <= 1 is decimal)
-            // This is a "smart" check because Eff is rarely > 100% or < 1% in these units
+            // 3. Efficiency Normalization
+            // SAFETY: Strictly divide by 100. "10" input means 10%.
             const efficiency = effInput / 100;
 
             // 4. Calculate Net CPM (Clamp to 0 if negative)
-            // Don't throw error on negative numbers; treat as 0 (Clean)
             const netCpm = Math.max(0, gross - bkg);
 
             // 5. Calculate DPM
@@ -1940,7 +1943,7 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
             addHistory({ 
                 id: Date.now(), 
                 type: 'Leak Test', 
-                icon: ICONS.check, // Ensure ICONS is imported/available
+                icon: ICONS.check, 
                 inputs: `Gross: ${grossCpm}, Bkg: ${backgroundCpm}, Eff: ${instrumentEff}%`, 
                 result: `${result.activity} µCi (${result.pass ? 'PASS' : 'FAIL'})`, 
                 view: VIEWS.OPERATIONAL_HP 
@@ -1951,9 +1954,11 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
 
     return (
         <div className="space-y-4 max-w-2xl mx-auto animate-fade-in">
+            <ContextualNote type="info">Checks if a sealed source is leaking by comparing removable contamination against the standard limit of <strong>0.005 µCi</strong>.</ContextualNote>
+            
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 bg-white dark:bg-slate-800 shadow-sm">
                 
-                {/* UI FIX: Grid cols-3 for better alignment */}
+                {/* Inputs Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label className="block text-xs uppercase font-bold text-slate-500 mb-1">Gross CPM</label>
@@ -1988,11 +1993,13 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
                 </div>
 
                 {/* Smart Action Level Indicator */}
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-center">
-                    <p className="text-xs text-blue-800 dark:text-blue-300">
-                        To exceed 0.005 µCi, you need <strong>&gt; {actionLevelNetCpm} Net CPM</strong>
-                    </p>
-                </div>
+                {actionLevelNetCpm > 0 && (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-center">
+                        <p className="text-xs text-blue-800 dark:text-blue-300">
+                            To exceed 0.005 µCi, you need <strong>&gt; {actionLevelNetCpm} Net CPM</strong>
+                        </p>
+                    </div>
+                )}
             </div>
 
             {/* Result Card */}
@@ -2005,7 +2012,7 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
                     <div className="flex justify-between items-start mb-2">
                         <span className="text-xs font-bold uppercase tracking-wider opacity-70">Status</span>
                         <button onClick={handleSaveToHistory} className="opacity-50 hover:opacity-100 transition-opacity" title="Save">
-                            <Icon path={ICONS.notepad || "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"} className="w-5 h-5" />
+                            <Icon path={ICONS.notepad} className="w-5 h-5" />
                         </button>
                     </div>
                     
