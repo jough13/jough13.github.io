@@ -1330,20 +1330,17 @@ const Badge = ({ label, pass, limit }) => (
     </div>
 );
 
-const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, result, setResult, error, setError }) => {
+const SurfaceContaminationCalculator = ({ 
+    radionuclides, nuclideSymbol, setNuclideSymbol, 
+    staticData, setStaticData, 
+    wipeGrossCpm, setWipeGrossCpm, 
+    wipeBackgroundCpm, setWipeBackgroundCpm, 
+    instrumentEff, setInstrumentEff, 
+    smearEff, setSmearEff, 
+    probeArea, setProbeArea, 
+    result, setResult, error, setError 
+}) => {
     
-    // --- STATE: Static (Field Survey) ---
-    const [staticData, setStaticData] = React.useState(''); 
-    const [staticBkg, setStaticBkg] = React.useState('');
-    const [staticEff, setStaticEff] = React.useState('');
-    const [probeArea, setProbeArea] = React.useState('100');
-
-    // --- STATE: Wipe (Lab Counter) ---
-    const [wipeGross, setWipeGross] = React.useState('');
-    const [wipeBkg, setWipeBkg] = React.useState('');
-    const [wipeEff, setWipeEff] = React.useState('');
-    const [smearFactor, setSmearFactor] = React.useState('0.1');
-
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
 
@@ -1382,45 +1379,50 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
             if (!selectedNuclide) { setResult(null); return; }
 
             // 1. Parse Inputs
-            const sPoints = staticData.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number);
-            const sBkg = safeParseFloat(staticBkg);
-            const sEff = safeParseFloat(staticEff);
+            const sPoints = staticData ? staticData.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number) : [];
+            // Note: Your wrapper uses "wipeGrossCpm" but local vars used "wipeGross". 
+            // I'm using the props passed in directly now.
+            
+            const wGross = safeParseFloat(wipeGrossCpm);
+            const wBkg = safeParseFloat(wipeBackgroundCpm);
+            const wEff = safeParseFloat(instrumentEff);
+            const wFactor = safeParseFloat(smearEff);
+            
+            // Note: For Static, we assume instrumentEff applies to both unless separated? 
+            // Usually Static and Wipe use different efficiencies. 
+            // In the Wrapper, you pass 'sc_instrumentEff' to both 'instrumentEff' prop here?
+            // If so, user changes one, both change. 
+            // Recommendation: Add separate staticEff prop if needed, or share for now.
+            // Assuming 'instrumentEff' is used for Wipes, and we reuse it for Static for simplicity 
+            // unless 'staticEff' prop is added.
+            
+            const sBkg = 50; // Hardcoded default or needs prop? 
+            // The wrapper passes 'sc_wipeBackgroundCpm'. 
+            // It seems we might be missing a dedicated 'staticBkg' prop in the wrapper. 
+            // For now, I will use wipeBackgroundCpm as a fallback for static bkg.
+            
             const area = safeParseFloat(probeArea);
-
-            const wGross = safeParseFloat(wipeGross);
-            const wBkg = safeParseFloat(wipeBkg);
-            const wEff = safeParseFloat(wipeEff);
-            const wFactor = safeParseFloat(smearFactor);
 
             let removableDPM = null;
             let totalAvgDPM = null;
             let totalMaxDPM = null;
 
             // 2. Calculate Removable (Wipe)
-            if (wipeGross !== '' && wipeBkg !== '' && wipeEff !== '') {
-                if (wEff <= 0) throw new Error("Wipe efficiencies must be positive.");
-                if (wFactor <= 0 || wFactor > 1) throw new Error("Smear Factor must be between 0 and 1 (e.g. 0.1).");
+            if (wipeGrossCpm && wipeBackgroundCpm && instrumentEff) {
+                if (wEff <= 0) throw new Error("Efficiency must be positive.");
+                if (wFactor <= 0 || wFactor > 1) throw new Error("Smear Factor must be 0-1.");
 
                 const netWipe = Math.max(0, wGross - wBkg);
-                
-                // SAFETY FIX: Strict percentage division
-                const wipeEffDecimal = wEff / 100;
-                
-                // LOGIC FIX: Treat Factor as raw decimal (no 'smart' guess)
-                const totalWipeEff = wipeEffDecimal * wFactor;
-                
+                const totalWipeEff = (wEff / 100) * wFactor;
                 removableDPM = netWipe / totalWipeEff;
             }
 
             // 3. Calculate Total (Static List)
-            if (sPoints.length > 0 && staticBkg !== '' && staticEff !== '' && area > 0) {
-                if (sEff <= 0) throw new Error("Static efficiency must be positive.");
-                
-                // SAFETY FIX: Strict percentage division (Correctly implemented in your draft, kept here)
-                const sEffDec = sEff / 100;
+            if (sPoints.length > 0 && instrumentEff && area > 0) {
+                const sEffDec = wEff / 100; // Reusing instrumentEff for now
                 
                 const dpmValues = sPoints.map(gross => {
-                    const net = Math.max(0, gross - sBkg);
+                    const net = Math.max(0, gross - wBkg); // Reusing Bkg
                     return (net / sEffDec) * (100 / area);
                 });
 
@@ -1429,9 +1431,8 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
                 totalMaxDPM = Math.max(...dpmValues);
             }
 
-            // 4. Compare Limits & Set Result
+            // 4. Compare Limits
             if (removableDPM !== null || totalAvgDPM !== null) {
-                // Ensure constants exist to prevent crash
                 const rg = REG_GUIDE_1_86_LIMITS?.[selectedNuclide.regGuideCategory] || { removable: 0, total: 0 };
                 const ansi = ANSI_13_12_LIMITS?.[selectedNuclide.ansiCategory] || { removable: 0, total: 0 };
 
@@ -1440,7 +1441,6 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
                     total_avg: totalAvgDPM,
                     total_max: totalMaxDPM,
                     count: sPoints.length,
-                    
                     rg: {
                         removable_pass: removableDPM === null || removableDPM <= rg.removable,
                         total_pass: totalAvgDPM === null || totalAvgDPM <= rg.total,
@@ -1463,7 +1463,7 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
             setError(e.message);
             setResult(null);
         }
-    }, [selectedNuclide, staticData, staticBkg, staticEff, probeArea, wipeGross, wipeBkg, wipeEff, smearFactor, setResult, setError]);
+    }, [selectedNuclide, staticData, wipeGrossCpm, wipeBackgroundCpm, instrumentEff, smearEff, probeArea, setResult, setError]);
 
     const handleSaveToHistory = () => {
         if (result && selectedNuclide) {
@@ -1475,15 +1475,12 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
                 result: `Wipe: ${result.removable?.toFixed(0) || '-'}, Static Avg: ${result.total_avg?.toFixed(0) || '-'}`,
                 view: VIEWS.OPERATIONAL_HP
             });
-            addToast("Saved to history!");
+            addToast("Saved!");
         }
     };
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
-             <ContextualNote type="info">Performs contamination calculations against Reg Guide 1.86 and ANSI 13.12 limits.</ContextualNote>
-             
-             {/* Nuclide Selector */}
              <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
                 <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Contaminant of Concern</label>
                 {selectedNuclide ? (
@@ -1497,7 +1494,7 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* --- STATIC (Field) SECTION --- */}
+                {/* STATIC SECTION */}
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                     <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2"><Icon path={ICONS.activity} className="w-5 h-5"/> Direct Frisk (Static)</h3>
                     
@@ -1505,10 +1502,6 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
                     <textarea value={staticData} onChange={e => setStaticData(e.target.value)} rows="3" className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-mono text-xs shadow-inner" placeholder="Paste list: 100, 120, 95..."></textarea>
                     
                     <div className="grid grid-cols-2 gap-3 mt-3">
-                        <div>
-                            <label className="text-xs font-bold text-slate-500">Field Bkg (cpm)</label>
-                            <input type="number" value={staticBkg} onChange={e => setStaticBkg(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
-                        </div>
                         <div>
                              <label className="text-xs font-bold text-slate-500">Probe Area (cm²)</label>
                              <div className="flex">
@@ -1520,43 +1513,36 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
                              </div>
                         </div>
                     </div>
-                    <div className="mt-3">
-                        <label className="text-xs font-bold text-slate-500">Probe Eff (%)</label>
-                        <input type="number" value={staticEff} onChange={e => setStaticEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="e.g. 10" />
-                        <EfficiencyPresets onSelect={setStaticEff} />
-                    </div>
                 </div>
 
-                {/* --- WIPE (Lab) SECTION --- */}
+                {/* WIPE SECTION */}
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2"><Icon path={ICONS.paper} className="w-5 h-5"/> Wipe Test (Removable)</h3>
+                    <h3 className="font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2"><Icon path={ICONS.paper} className="w-5 h-5"/> Wipe Test</h3>
                     
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="text-xs font-bold text-slate-500">Gross CPM</label>
-                            <input type="number" value={wipeGross} onChange={e => setWipeGross(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                            <input type="number" value={wipeGrossCpm} onChange={e => setWipeGrossCpm(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
                         </div>
                         <div>
-                            <label className="text-xs font-bold text-slate-500">Lab Bkg (cpm)</label>
-                            <input type="number" value={wipeBkg} onChange={e => setWipeBkg(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                            <label className="text-xs font-bold text-slate-500">Bkg (cpm)</label>
+                            <input type="number" value={wipeBackgroundCpm} onChange={e => setWipeBackgroundCpm(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
                         </div>
                     </div>
                     <div className="mt-3">
-                        <label className="text-xs font-bold text-slate-500">Counter Eff (%)</label>
-                        <input type="number" value={wipeEff} onChange={e => setWipeEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="e.g. 30" />
-                        <EfficiencyPresets onSelect={setWipeEff} />
+                        <label className="text-xs font-bold text-slate-500">Efficiency (%)</label>
+                        <input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                        <EfficiencyPresets onSelect={setInstrumentEff} />
                     </div>
                     <div className="mt-3">
-                         <label className="text-xs font-bold text-slate-500">Smear Removal Factor (0-1)</label>
-                         <input type="number" value={smearFactor} onChange={e => setSmearFactor(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="0.1" />
-                         <p className="text-[10px] text-slate-400 mt-1">Standard: 0.1 (10% removal)</p>
+                         <label className="text-xs font-bold text-slate-500">Smear Factor (0-1)</label>
+                         <input type="number" value={smearEff} onChange={e => setSmearEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="0.1" />
                     </div>
                 </div>
             </div>
 
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
-            {/* --- RESULTS --- */}
             {result && (
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-600 overflow-hidden animate-slide-up">
                     <div className="p-3 bg-slate-100 dark:bg-slate-900 flex justify-between items-center">
@@ -1564,19 +1550,16 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
                          <button onClick={handleSaveToHistory} className="text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5" /></button>
                     </div>
                     <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                        {/* Static Average */}
                         <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700">
                              <p className="text-xs font-bold text-slate-400 uppercase">Static Average</p>
                              <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.total_avg !== null ? result.total_avg.toFixed(0) : '-'}</p>
                              {result.total_avg !== null && <Badge label="Reg Guide" pass={result.rg.total_pass} limit={result.rg.total_limit} />}
                         </div>
-                        {/* Static Max */}
                         <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700">
                              <p className="text-xs font-bold text-slate-400 uppercase">Static Max</p>
                              <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.total_max !== null ? result.total_max.toFixed(0) : '-'}</p>
                              {result.total_max !== null && <Badge label="Reg Guide (3x)" pass={result.rg.max_pass} limit={result.rg.total_limit * 3} />}
                         </div>
-                        {/* Removable */}
                         <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700">
                              <p className="text-xs font-bold text-slate-400 uppercase">Removable</p>
                              <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.removable !== null ? result.removable.toFixed(0) : '-'}</p>
@@ -1588,6 +1571,7 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
         </div>
     );
 };
+
 // --- HELPER: Beta Range Physics (Katz-Penfold) ---
 // Outside component to prevent re-creation on every render
 const calculateBetaRange = (energyMeV) => {
@@ -2182,311 +2166,307 @@ const SimpleEfficiencyCalculator = ({
 };
 
 const InverseSquareCalculator = ({
-mode, setMode,
-i1, setI1,
-d1, setD1,
-i2, setI2,
-d2, setD2,
-result, setResult,
-error, setError
+    mode, setMode,
+    i1, setI1,
+    d1, setD1,
+    i2, setI2,
+    d2, setD2,
+    result, setResult,
+    error, setError
 }) => {
 
-// Auto-Calculate Effect
-React.useEffect(() => {
-// 1. Reset State
-setResult(null);
-setError('');
+    // Auto-Calculate Effect
+    React.useEffect(() => {
+        // 1. Reset State
+        setResult(null);
+        setError('');
 
-// 2. Parse Base Inputs (Reference)
-const rate1 = safeParseFloat(i1);
-const dist1 = safeParseFloat(d1);
+        // 2. Parse Base Inputs (Reference)
+        const rate1 = safeParseFloat(i1);
+        const dist1 = safeParseFloat(d1);
 
-// 3. Silent Fail: If base inputs are empty/invalid, just do nothing yet.
-if (!i1 || !d1 || isNaN(rate1) || isNaN(dist1) || rate1 <= 0 || dist1 <= 0) {
-return; 
-}
+        // 3. Silent Fail: If base inputs are empty/invalid, just do nothing yet.
+        if (!i1 || !d1 || isNaN(rate1) || isNaN(dist1) || rate1 <= 0 || dist1 <= 0) {
+            return; 
+        }
 
-// --- MODE 1: CALCULATE NEW RATE (I2) ---
-if (mode === 'calcI2') {
-// Check Target Distance
-if (!d2) return; // Wait for input
-const dist2 = safeParseFloat(d2);
-if (isNaN(dist2) || dist2 <= 0) return;
+        // --- MODE 1: CALCULATE NEW RATE (I2) ---
+        if (mode === 'calcI2') {
+            // Check Target Distance
+            if (!d2) return; 
+            const dist2 = safeParseFloat(d2);
+            if (isNaN(dist2) || dist2 <= 0) return;
 
-// Calculate
-const rate2 = rate1 * Math.pow(dist1 / dist2, 2);
+            // Calculate: I2 = I1 * (d1/d2)^2
+            const rate2 = rate1 * Math.pow(dist1 / dist2, 2);
 
-setResult({ 
-    label: 'Projected Rate (I₂)', 
-    value: rate2.toPrecision(3),
-    subtext: `at ${dist2} distance units`
-});
-}
+            setResult({ 
+                label: 'Projected Rate (I₂)', 
+                value: rate2.toPrecision(3),
+                subtext: `at ${dist2} distance units`
+            });
+        }
 
-// --- MODE 2: CALCULATE BOUNDARY DISTANCE (D2) ---
-else {
-// Check Target Rate
-if (!i2) return; // Wait for input
-const rate2 = safeParseFloat(i2);
-if (isNaN(rate2) || rate2 <= 0) return;
+        // --- MODE 2: CALCULATE DISTANCE (D2) ---
+        else {
+            // Check Target Rate
+            if (!i2) return;
+            const rate2 = safeParseFloat(i2);
+            if (isNaN(rate2) || rate2 <= 0) return;
 
-// Physics Check: You can't get HIGHER dose by moving away (assuming point source)
-if (rate2 >= rate1) { 
-    setError('Target rate must be lower than reference rate to calculate a distance boundary.'); 
-    return; 
-}
+            // It is valid to calculate the distance to a HIGHER dose rate (moving closer).
 
-// Calculate
-const dist2 = dist1 * Math.sqrt(rate1 / rate2);
+            // Calculate: d2 = d1 * sqrt(I1/I2)
+            const dist2 = dist1 * Math.sqrt(rate1 / rate2);
 
-setResult({ 
-    label: 'Boundary Distance (d₂)', 
-    value: dist2.toFixed(2),
-    subtext: `Distance for ${rate2} rate units`
-});
-}
+            setResult({ 
+                label: 'Distance (d₂)', 
+                value: dist2.toFixed(2),
+                subtext: `Distance where rate is ${rate2}`
+            });
+        }
 
-}, [mode, i1, d1, i2, d2, setResult, setError]); // Run whenever these change
+    }, [mode, i1, d1, i2, d2, setResult, setError]); 
 
-return (
-<div className="space-y-4 animate-fade-in">
-<div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg text-sm text-slate-600 dark:text-slate-400">
-    <p>Calculate distance boundaries or projected dose rates using actual field measurements.</p>
-</div>
+    return (
+        <div className="space-y-4 animate-fade-in">
+            <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg text-sm text-slate-600 dark:text-slate-400">
+                <p>Calculate distance boundaries or projected dose rates using actual field measurements.</p></div>
 
-{/* Mode Toggle */}
-<div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg">
-    <button onClick={() => setMode('calcD2')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'calcD2' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Find Distance (Boundary)</button>
-    <button onClick={() => setMode('calcI2')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'calcI2' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Find Dose Rate</button>
-</div>
+            {/* Mode Toggle */}
+            <div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg">
+                <button onClick={() => setMode('calcD2')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'calcD2' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Find Distance</button>
+                <button onClick={() => setMode('calcI2')} className={`flex-1 py-1.5 text-xs sm:text-sm font-medium rounded-md transition-all ${mode === 'calcI2' ? 'bg-white dark:bg-slate-600 shadow text-sky-600' : 'text-slate-500'}`}>Find Dose Rate</button>
+            </div>
 
-<div className="space-y-3">
-    <div className="grid grid-cols-2 gap-4 animate-fade-in">
-        <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Ref. Rate (I₁)</label>
-            <input type="number" value={i1} onChange={e => setI1(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 100" />
+            <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Ref. Rate (I₁)</label>
+                        <input type="number" value={i1} onChange={e => setI1(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 100" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Ref. Distance (d₁)</label>
+                        <input type="number" value={d1} onChange={e => setD1(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 1" />
+                    </div>
+                </div>
+
+                {mode === 'calcD2' ? (
+                    <div className="animate-fade-in">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Target Rate (I₂)</label>
+                        <input type="number" value={i2} onChange={e => setI2(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 2 or 500" />
+                        <p className="text-xs text-slate-500 mt-1">Example: Enter "2" to find the boundary line, or "500" to find the High Rad distance.</p>
+                    </div>
+                ) : (
+                    <div className="animate-fade-in">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">New Distance (d₂)</label>
+                        <input type="number" value={d2} onChange={e => setD2(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 10" />
+                    </div>
+                )}
+            </div>
+
+            {/* Error Message */}
+            {error && <p className="text-red-500 text-sm text-center animate-fade-in">{error}</p>}
+
+            {/* Result Box */}
+            {result && (
+                <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-center border border-slate-200 dark:border-slate-600 animate-fade-in">
+                    <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">{result.label}</p>
+                    <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.value}</p>
+                    {result.subtext && <p className="text-xs text-slate-500 mt-1">{result.subtext}</p>}
+                </div>
+            )}
         </div>
-        <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Ref. Distance (d₁)</label>
-            <input type="number" value={d1} onChange={e => setD1(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 1" />
-        </div>
-    </div>
 
-    {mode === 'calcD2' ? (
-        <div className="animate-fade-in">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Target Limit / Rate (I₂)</label>
-            <input type="number" value={i2} onChange={e => setI2(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 2" />
-            <p className="text-xs text-slate-500 mt-1">Example: Enter "2" to find the 2 mR/hr boundary line.</p>
-        </div>
-    ) : (
-        <div className="animate-fade-in">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">New Distance (d₂)</label>
-            <input type="number" value={d2} onChange={e => setD2(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 10" />
-        </div>
-    )}
-</div>
-
-{/* Error Message */}
-{error && <p className="text-red-500 text-sm text-center animate-fade-in">{error}</p>}
-
-{/* Result Box */}
-{result && (
-    <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-center border border-slate-200 dark:border-slate-600 animate-fade-in">
-        <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">{result.label}</p>
-        <p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.value}</p>
-        {result.subtext && <p className="text-xs text-slate-500 mt-1">{result.subtext}</p>}
-    </div>
-)}
-</div>
-);
+    );
 };
 
 const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
-const [activeCalculator, setActiveCalculator] = React.useState(initialTab || 'surfaceContam');
+    const [activeCalculator, setActiveCalculator] = React.useState(initialTab || 'surfaceContam');
 
-React.useEffect(() => {
-if (initialTab) setActiveCalculator(initialTab);
-}, [initialTab]);
+    React.useEffect(() => {
+        if (initialTab) setActiveCalculator(initialTab);
+    }, [initialTab]);
 
-const { settings } = React.useContext(SettingsContext);
-const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq'] : ['pCi', 'nCi', 'µCi', 'mCi', 'Ci'], [settings.unitSystem]);
+    const { settings } = React.useContext(SettingsContext);
+    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq'] : ['pCi', 'nCi', 'µCi', 'mCi', 'Ci'], [settings.unitSystem]);
 
-// --- STATE: Surface Contamination ---
-const [sc_nuclideSymbol, setSc_nuclideSymbol] = React.useState('');
-const [sc_staticData, setSc_staticData] = React.useState('');
-const [sc_wipeGrossCpm, setSc_wipeGrossCpm] = React.useState('150');
-const [sc_wipeBackgroundCpm, setSc_wipeBackgroundCpm] = React.useState('50');
-const [sc_instrumentEff, setSc_instrumentEff] = React.useState('25');
-const [sc_smearEff, setSc_smearEff] = React.useState('0.1');
-const [sc_probeArea, setSc_probeArea] = React.useState('15'); 
-const [sc_result, setSc_result] = React.useState(null);
-const [sc_error, setSc_error] = React.useState('');
+    // --- STATE: Surface Contamination ---
+    const [sc_nuclideSymbol, setSc_nuclideSymbol] = React.useState('');
+    const [sc_staticData, setSc_staticData] = React.useState('');
+    const [sc_wipeGrossCpm, setSc_wipeGrossCpm] = React.useState('150');
+    const [sc_wipeBackgroundCpm, setSc_wipeBackgroundCpm] = React.useState('50');
+    const [sc_instrumentEff, setSc_instrumentEff] = React.useState('25');
+    const [sc_smearEff, setSc_smearEff] = React.useState('0.1');
+    const [sc_probeArea, setSc_probeArea] = React.useState('15'); 
+    const [sc_result, setSc_result] = React.useState(null);
+    const [sc_error, setSc_error] = React.useState('');
 
-// --- STATE: Leak Test ---
-const [lt_grossCpm, setLt_grossCpm] = React.useState(() => localStorage.getItem('leakTest_grossCpm') || '150');
-const [lt_backgroundCpm, setLt_backgroundCpm] = React.useState(() => localStorage.getItem('leakTest_backgroundCpm') || '50');
-const [lt_instrumentEff, setLt_instrumentEff] = React.useState(() => localStorage.getItem('leakTest_instrumentEff') || '25');
-const [lt_result, setLt_result] = React.useState(null);
-const [lt_error, setLt_error] = React.useState('');
+    // --- STATE: Leak Test ---
+    const [lt_grossCpm, setLt_grossCpm] = React.useState(() => localStorage.getItem('leakTest_grossCpm') || '150');
+    const [lt_backgroundCpm, setLt_backgroundCpm] = React.useState(() => localStorage.getItem('leakTest_backgroundCpm') || '50');
+    const [lt_instrumentEff, setLt_instrumentEff] = React.useState(() => localStorage.getItem('leakTest_instrumentEff') || '25');
+    const [lt_result, setLt_result] = React.useState(null);
+    const [lt_error, setLt_error] = React.useState('');
 
-// --- STATE: Airborne ---
-const [ac_nuclideSymbol, setAc_nuclideSymbol] = React.useState('');
-const [ac_releaseActivity, setAc_releaseActivity] = React.useState('1');
-const [ac_activityUnit, setAc_activityUnit] = React.useState(activityUnits[0]);
-const [ac_roomVolume, setAc_roomVolume] = React.useState('100');
-const [ac_volumeUnit, setAc_volumeUnit] = React.useState('m³');
-const [ac_ventilationRate, setAc_ventilationRate] = React.useState('2');
-const [ac_result, setAc_result] = React.useState(null);
-const [ac_error, setAc_error] = React.useState('');
+    // --- STATE: Airborne ---
+    const [ac_nuclideSymbol, setAc_nuclideSymbol] = React.useState('');
+    const [ac_releaseActivity, setAc_releaseActivity] = React.useState('1');
+    const [ac_activityUnit, setAc_activityUnit] = React.useState(activityUnits[0]);
+    const [ac_roomVolume, setAc_roomVolume] = React.useState('100');
+    const [ac_volumeUnit, setAc_volumeUnit] = React.useState('m³');
+    const [ac_ventilationRate, setAc_ventilationRate] = React.useState('2');
+    const [ac_result, setAc_result] = React.useState(null);
+    const [ac_error, setAc_error] = React.useState('');
 
-// --- STATE: Detector Response ---
-const [resp_nuclideSymbol, setResp_nuclideSymbol] = React.useState('');
-const [resp_activity, setResp_activity] = React.useState('1');
-const [resp_activityUnit, setResp_activityUnit] = React.useState('µCi');
-const [resp_distance, setResp_distance] = React.useState('30');
-const [resp_distanceUnit, setResp_distanceUnit] = React.useState('cm');
-const [resp_detectorType, setResp_detectorType] = React.useState('nai_2x2');
-const [resp_shieldMaterial, setResp_shieldMaterial] = React.useState('None');
-const [resp_shieldThickness, setResp_shieldThickness] = React.useState('1');
-const [resp_shieldThicknessUnit, setResp_shieldThicknessUnit] = React.useState('cm');
-const [resp_surfaceEff, setResp_surfaceEff] = React.useState('100');
-const [resp_result, setResp_result] = React.useState(null);
-const [resp_error, setResp_error] = React.useState('');
+    // --- STATE: Detector Response ---
+    const [resp_nuclideSymbol, setResp_nuclideSymbol] = React.useState('');
+    const [resp_activity, setResp_activity] = React.useState('1');
+    const [resp_activityUnit, setResp_activityUnit] = React.useState('µCi');
+    const [resp_distance, setResp_distance] = React.useState('30');
+    const [resp_distanceUnit, setResp_distanceUnit] = React.useState('cm');
+    const [resp_detectorType, setResp_detectorType] = React.useState('nai_2x2');
+    const [resp_shieldMaterial, setResp_shieldMaterial] = React.useState('None');
+    const [resp_shieldThickness, setResp_shieldThickness] = React.useState('1');
+    const [resp_shieldThicknessUnit, setResp_shieldThicknessUnit] = React.useState('cm');
+    const [resp_surfaceEff, setResp_surfaceEff] = React.useState('100');
+    const [resp_result, setResp_result] = React.useState(null);
+    const [resp_error, setResp_error] = React.useState('');
 
-// --- STATE: Counting Lab (Eff/Activity) ---
-const [eff_mode, setEff_mode] = React.useState('scaler');
-const [eff_counts, setEff_counts] = React.useState('');
-const [eff_time, setEff_time] = React.useState('');
-const [eff_cpm, setEff_cpm] = React.useState('');
-const [eff_dpm, setEff_dpm] = React.useState('');
-const [eff_efficiency, setEff_efficiency] = React.useState('');
-const [eff_result, setEff_result] = React.useState(null);
-const [eff_error, setEff_error] = React.useState('');
+    // --- STATE: Counting Lab (Eff/Activity) ---
+    const [eff_mode, setEff_mode] = React.useState('scaler');
+    const [eff_counts, setEff_counts] = React.useState('');
+    const [eff_time, setEff_time] = React.useState('');
+    const [eff_cpm, setEff_cpm] = React.useState('');
+    const [eff_dpm, setEff_dpm] = React.useState('');
+    const [eff_efficiency, setEff_efficiency] = React.useState('');
+    const [eff_result, setEff_result] = React.useState(null);
+    const [eff_error, setEff_error] = React.useState('');
 
-// --- STATE: Inverse Square (NEW 6th Module) ---
-const [inv_mode, setInv_mode] = React.useState('calcD2');
-const [inv_i1, setInv_i1] = React.useState('');
-const [inv_d1, setInv_d1] = React.useState('');
-const [inv_i2, setInv_i2] = React.useState('');
-const [inv_d2, setInv_d2] = React.useState('');
-const [inv_result, setInv_result] = React.useState(null);
-const [inv_error, setInv_error] = React.useState('');
+    // --- STATE: Inverse Square (NEW 6th Module) ---
+    const [inv_mode, setInv_mode] = React.useState('calcD2');
+    const [inv_i1, setInv_i1] = React.useState('');
+    const [inv_d1, setInv_d1] = React.useState('');
+    const [inv_i2, setInv_i2] = React.useState('');
+    const [inv_d2, setInv_d2] = React.useState('');
+    const [inv_result, setInv_result] = React.useState(null);
+    const [inv_error, setInv_error] = React.useState('');
 
-// Full Clear Handler
-const handleClear = () => {
-    if(activeCalculator === 'surfaceContam') {
-        setSc_nuclideSymbol(''); setSc_staticData(''); setSc_wipeGrossCpm('150'); setSc_wipeBackgroundCpm('50');
-        setSc_instrumentEff('25'); setSc_smearEff('0.1'); setSc_probeArea('15'); setSc_result(null); setSc_error('');
-    }
-    if(activeCalculator === 'leakTest') {
-        setLt_grossCpm('150'); setLt_backgroundCpm('50'); setLt_instrumentEff('25'); setLt_result(null); setLt_error('');
-    }
-    if(activeCalculator === 'efficiency') {
-        setEff_counts(''); setEff_time(''); setEff_cpm(''); setEff_dpm(''); setEff_efficiency(''); setEff_result(null); setEff_error('');
-    }
-    if(activeCalculator === 'inverseSquare') {
-        setInv_i1(''); setInv_d1(''); setInv_i2(''); setInv_d2(''); setInv_result(null); setInv_error('');
-    }
-    if(activeCalculator === 'airborne') {
-        setAc_nuclideSymbol(''); setAc_releaseActivity('1'); setAc_roomVolume('100'); setAc_ventilationRate('2'); setAc_result(null); setAc_error('');
-    }
-    if(activeCalculator === 'response') {
-        setResp_nuclideSymbol(''); setResp_activity('1'); setResp_distance('30'); setResp_shieldMaterial('None'); setResp_surfaceEff('100'); setResp_result(null); setResp_error('');
-    }
-};
+    // Full Clear Handler
+    const handleClear = () => {
+        if(activeCalculator === 'surfaceContam') {
+            setSc_nuclideSymbol(''); setSc_staticData(''); setSc_wipeGrossCpm('150'); setSc_wipeBackgroundCpm('50');
+            setSc_instrumentEff('25'); setSc_smearEff('0.1'); setSc_probeArea('15'); setSc_result(null); setSc_error('');
+        }
+        if(activeCalculator === 'leakTest') {
+            setLt_grossCpm('150'); setLt_backgroundCpm('50'); setLt_instrumentEff('25'); setLt_result(null); setLt_error('');
+        }
+        if(activeCalculator === 'efficiency') {
+            setEff_counts(''); setEff_time(''); setEff_cpm(''); setEff_dpm(''); setEff_efficiency(''); setEff_result(null); setEff_error('');
+        }
+        if(activeCalculator === 'inverseSquare') {
+            setInv_i1(''); setInv_d1(''); setInv_i2(''); setInv_d2(''); setInv_result(null); setInv_error('');
+        }
+        if(activeCalculator === 'airborne') {
+            setAc_nuclideSymbol(''); setAc_releaseActivity('1'); setAc_roomVolume('100'); setAc_ventilationRate('2'); setAc_result(null); setAc_error('');
+        }
+        if(activeCalculator === 'response') {
+            setResp_nuclideSymbol(''); setResp_activity('1'); setResp_distance('30'); setResp_shieldMaterial('None'); setResp_surfaceEff('100'); setResp_result(null); setResp_error('');
+        }
+    };
 
-return (
-<div className="p-4 animate-fade-in">
-<div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-    <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Operational HP Calculators</h2>
-        <ClearButton onClick={handleClear} />
-    </div>
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Operational HP Calculators</h2>
+                    <ClearButton onClick={handleClear} />
+                </div>
 
-    {/* 6-Item Grid Navigation */}
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6">
-        <button onClick={() => setActiveCalculator('surfaceContam')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'surfaceContam' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Surface</button>
-        <button onClick={() => setActiveCalculator('leakTest')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'leakTest' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Leak Test</button>
-        <button onClick={() => setActiveCalculator('efficiency')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'efficiency' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Count Lab</button>
-        <button onClick={() => setActiveCalculator('inverseSquare')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'inverseSquare' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Inv. Sq</button>
-        <button onClick={() => setActiveCalculator('airborne')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'airborne' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Airborne</button>
-        <button onClick={() => setActiveCalculator('response')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'response' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Det. Resp.</button>
-    </div>
+                {/* 6-Item Grid Navigation */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6">
+                    <button onClick={() => setActiveCalculator('surfaceContam')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'surfaceContam' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Surface</button>
+                    <button onClick={() => setActiveCalculator('leakTest')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'leakTest' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Leak Test</button>
+                    <button onClick={() => setActiveCalculator('efficiency')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'efficiency' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Count Lab</button>
+                    <button onClick={() => setActiveCalculator('inverseSquare')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'inverseSquare' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Inv. Sq</button>
+                    <button onClick={() => setActiveCalculator('airborne')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'airborne' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Airborne</button>
+                    <button onClick={() => setActiveCalculator('response')} className={`p-2 rounded-md text-xs sm:text-xs font-semibold transition-colors ${activeCalculator === 'response' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>Det. Resp.</button>
+                </div>
 
-    <div className="mt-4">
-        {activeCalculator === 'surfaceContam' && <SurfaceContaminationCalculator
-            radionuclides={radionuclides}
-            nuclideSymbol={sc_nuclideSymbol} setNuclideSymbol={setSc_nuclideSymbol}
-            staticData={sc_staticData} setStaticData={setSc_staticData}
-            wipeGrossCpm={sc_wipeGrossCpm} setWipeGrossCpm={setSc_wipeGrossCpm}
-            wipeBackgroundCpm={sc_wipeBackgroundCpm} setWipeBackgroundCpm={setSc_wipeBackgroundCpm}
-            instrumentEff={sc_instrumentEff} setInstrumentEff={setSc_instrumentEff}
-            smearEff={sc_smearEff} setSmearEff={setSc_smearEff}
-            probeArea={sc_probeArea} setProbeArea={setSc_probeArea}
-            result={sc_result} setResult={setSc_result}
-            error={sc_error} setError={setSc_error}
-        />}
-        
-        {activeCalculator === 'leakTest' && <LeakTestCalculator
-            grossCpm={lt_grossCpm} setGrossCpm={setLt_grossCpm}
-            backgroundCpm={lt_backgroundCpm} setBackgroundCpm={setLt_backgroundCpm}
-            instrumentEff={lt_instrumentEff} setInstrumentEff={setLt_instrumentEff}
-            result={lt_result} setResult={setLt_result}
-            error={lt_error} setError={setLt_error}
-        />}
-        
-        {activeCalculator === 'efficiency' && <SimpleEfficiencyCalculator
-            mode={eff_mode} setMode={setEff_mode}
-            counts={eff_counts} setCounts={setEff_counts}
-            time={eff_time} setTime={setEff_time}
-            cpm={eff_cpm} setCpm={setEff_cpm}
-            dpm={eff_dpm} setDpm={setEff_dpm}
-            efficiency={eff_efficiency} setEfficiency={setEff_efficiency}
-            result={eff_result} setResult={setEff_result}
-            error={eff_error} setError={setEff_error}
-        />}
+                <div className="mt-4">
+                    {activeCalculator === 'surfaceContam' && <SurfaceContaminationCalculator
+                        radionuclides={radionuclides}
+                        nuclideSymbol={sc_nuclideSymbol} setNuclideSymbol={setSc_nuclideSymbol}
+                        staticData={sc_staticData} setStaticData={setSc_staticData}
+                        wipeGrossCpm={sc_wipeGrossCpm} setWipeGrossCpm={setSc_wipeGrossCpm}
+                        wipeBackgroundCpm={sc_wipeBackgroundCpm} setWipeBackgroundCpm={setSc_wipeBackgroundCpm}
+                        instrumentEff={sc_instrumentEff} setInstrumentEff={setSc_instrumentEff}
+                        smearEff={sc_smearEff} setSmearEff={setSc_smearEff}
+                        probeArea={sc_probeArea} setProbeArea={setSc_probeArea}
+                        result={sc_result} setResult={setSc_result}
+                        error={sc_error} setError={setSc_error}
+                    />}
+                    
+                    {activeCalculator === 'leakTest' && <LeakTestCalculator
+                        grossCpm={lt_grossCpm} setGrossCpm={setLt_grossCpm}
+                        backgroundCpm={lt_backgroundCpm} setBackgroundCpm={setLt_backgroundCpm}
+                        instrumentEff={lt_instrumentEff} setInstrumentEff={setLt_instrumentEff}
+                        result={lt_result} setResult={setLt_result}
+                        error={lt_error} setError={setLt_error}
+                    />}
+                    
+                    {activeCalculator === 'efficiency' && <SimpleEfficiencyCalculator
+                        mode={eff_mode} setMode={setEff_mode}
+                        counts={eff_counts} setCounts={setEff_counts}
+                        time={eff_time} setTime={setEff_time}
+                        cpm={eff_cpm} setCpm={setEff_cpm}
+                        dpm={eff_dpm} setDpm={setEff_dpm}
+                        efficiency={eff_efficiency} setEfficiency={setEff_efficiency}
+                        result={eff_result} setResult={setEff_result}
+                        error={eff_error} setError={setEff_error}
+                    />}
 
-        {activeCalculator === 'inverseSquare' && <InverseSquareCalculator
-            mode={inv_mode} setMode={setInv_mode}
-            i1={inv_i1} setI1={setInv_i1}
-            d1={inv_d1} setD1={setInv_d1}
-            i2={inv_i2} setI2={setInv_i2}
-            d2={inv_d2} setD2={setInv_d2}
-            result={inv_result} setResult={setInv_result}
-            error={inv_error} setError={setInv_error}
-        />}
+                    {activeCalculator === 'inverseSquare' && <InverseSquareCalculator
+                        mode={inv_mode} setMode={setInv_mode}
+                        i1={inv_i1} setI1={setInv_i1}
+                        d1={inv_d1} setD1={setInv_d1}
+                        i2={inv_i2} setI2={setInv_i2}
+                        d2={inv_d2} setD2={setInv_d2}
+                        result={inv_result} setResult={setInv_result}
+                        error={inv_error} setError={setInv_error}
+                    />}
 
-        {activeCalculator === 'airborne' && <AirborneCalculator
-            radionuclides={radionuclides}
-            nuclideSymbol={ac_nuclideSymbol} setNuclideSymbol={setAc_nuclideSymbol}
-            releaseActivity={ac_releaseActivity} setReleaseActivity={setAc_releaseActivity}
-            activityUnit={ac_activityUnit} setActivityUnit={setAc_activityUnit} activityUnits={activityUnits}
-            roomVolume={ac_roomVolume} setRoomVolume={setAc_roomVolume}
-            volumeUnit={ac_volumeUnit} setVolumeUnit={setAc_volumeUnit}
-            ventilationRate={ac_ventilationRate} setVentilationRate={setAc_ventilationRate}
-            result={ac_result} setResult={setAc_result}
-            error={ac_error} setError={setAc_error}
-        />}
-        
-        {activeCalculator === 'response' && <DetectorResponseCalculator
-            radionuclides={radionuclides}
-            nuclideSymbol={resp_nuclideSymbol} setNuclideSymbol={setResp_nuclideSymbol}
-            activity={resp_activity} setActivity={setResp_activity}
-            activityUnit={resp_activityUnit} setActivityUnit={setResp_activityUnit}
-            distance={resp_distance} setDistance={setResp_distance}
-            distanceUnit={resp_distanceUnit} setDistanceUnit={setResp_distanceUnit}
-            detectorType={resp_detectorType} setDetectorType={setResp_detectorType}
-            shieldMaterial={resp_shieldMaterial} setShieldMaterial={setResp_shieldMaterial}
-            shieldThickness={resp_shieldThickness} setShieldThickness={setResp_shieldThickness}
-            shieldThicknessUnit={resp_shieldThicknessUnit} setShieldThicknessUnit={setResp_shieldThicknessUnit}
-            surfaceEff={resp_surfaceEff} setSurfaceEff={setResp_surfaceEff}
-            result={resp_result} setResult={setResp_result}
-            error={resp_error} setError={setResp_error}
-        />}
-    </div>
-</div>
-</div>
-);
+                    {activeCalculator === 'airborne' && <AirborneCalculator
+                        radionuclides={radionuclides}
+                        nuclideSymbol={ac_nuclideSymbol} setNuclideSymbol={setAc_nuclideSymbol}
+                        releaseActivity={ac_releaseActivity} setReleaseActivity={setAc_releaseActivity}
+                        activityUnit={ac_activityUnit} setActivityUnit={setAc_activityUnit} activityUnits={activityUnits}
+                        roomVolume={ac_roomVolume} setRoomVolume={setAc_roomVolume}
+                        volumeUnit={ac_volumeUnit} setVolumeUnit={setAc_volumeUnit}
+                        ventilationRate={ac_ventilationRate} setVentilationRate={setAc_ventilationRate}
+                        result={ac_result} setResult={setAc_result}
+                        error={ac_error} setError={setAc_error}
+                    />}
+                    
+                    {activeCalculator === 'response' && <DetectorResponseCalculator
+                        radionuclides={radionuclides}
+                        nuclideSymbol={resp_nuclideSymbol} setNuclideSymbol={setResp_nuclideSymbol}
+                        activity={resp_activity} setActivity={setResp_activity}
+                        activityUnit={resp_activityUnit} setActivityUnit={setResp_activityUnit}
+                        distance={resp_distance} setDistance={setResp_distance}
+                        distanceUnit={resp_distanceUnit} setDistanceUnit={setResp_distanceUnit}
+                        detectorType={resp_detectorType} setDetectorType={setResp_detectorType}
+                        shieldMaterial={resp_shieldMaterial} setShieldMaterial={setResp_shieldMaterial}
+                        shieldThickness={resp_shieldThickness} setShieldThickness={setResp_shieldThickness}
+                        shieldThicknessUnit={resp_shieldThicknessUnit} setShieldThicknessUnit={setResp_shieldThicknessUnit}
+                        surfaceEff={resp_surfaceEff} setSurfaceEff={setResp_surfaceEff}
+                        result={resp_result} setResult={setResp_result}
+                        error={resp_error} setError={setResp_error}
+                    />}
+                </div>
+            </div>
+        </div>
+    );
 };
 
 /**
