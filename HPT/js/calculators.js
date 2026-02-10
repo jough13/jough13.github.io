@@ -20,61 +20,66 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
     
-    // Chart State
     const [chartData, setChartData] = React.useState(null);
     const [useLogScale, setUseLogScale] = React.useState(false);
 
-    // Filter Nuclides
     const nuclidesWithHalfLife = React.useMemo(() => 
         radionuclides.filter(r => r.halfLife !== 'Stable').sort((a,b) => a.name.localeCompare(b.name)), 
     [radionuclides]);
 
-    // Move Constants outside or Memoize to prevent re-creation
+    // Expanded factors to handle 'uCi' vs 'µCi' ambiguity and other variants
     const activityFactorsBq = React.useMemo(() => ({ 
         'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 
-        'µCi': 3.7e4, 'mCi': 3.7e7, 'Ci': 3.7e10, 
+        'µCi': 3.7e4, 'uCi': 3.7e4, // Handle both micro symbol and 'u'
+        'mCi': 3.7e7, 'Ci': 3.7e10, 
         'dps': 1, 'dpm': 1/60 
     }), []);
 
-    // --- CALCULATION EFFECT ---
     React.useEffect(() => {
         try {
             setError('');
-            // Don't clear chart immediately to prevent flickering, update it at end of logic
             
+            // 1. Validate Inputs
             if (!selectedNuclide) { setResult(null); setChartData(null); return; }
 
             const A0 = safeParseFloat(initialActivity);
             const Af = safeParseFloat(finalActivity);
 
+            // Wait for both inputs to be numbers before calculating
             if (isNaN(A0) || isNaN(Af) || A0 <= 0 || Af <= 0) {
-                // Only error if both fields have content, otherwise just wait
                 if (initialActivity && finalActivity) setError("Activities must be positive numbers.");
                 setResult(null); 
                 return;
             }
 
-            const A0_Bq = A0 * activityFactorsBq[initialUnit];
-            const Af_Bq = Af * activityFactorsBq[finalUnit];
+            // 2. Validate Units & Convert to Bq
+            const factor0 = activityFactorsBq[initialUnit];
+            const factorF = activityFactorsBq[finalUnit];
 
-            // LOGIC CHECK: Target must be lower than Initial
+            if (!factor0 || !factorF) {
+                // This prevents the "undefined" result if units aren't recognized
+                setResult(null);
+                return; 
+            }
+
+            const A0_Bq = A0 * factor0;
+            const Af_Bq = Af * factorF;
+
             if (Af_Bq >= A0_Bq) {
                 setError("Final activity must be less than initial activity.");
                 setResult(null); 
                 return;
             }
 
-            // PHYSICS CALCULATION
+            // 3. Physics Calculation
             const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
-            const lambda = Math.log(2) / T_half_seconds;
-
-            if (lambda === 0 || T_half_seconds === Infinity) {
-                setError("Selected nuclide is stable.");
+            if (!T_half_seconds || T_half_seconds === Infinity) {
+                setError("Invalid half-life (Stable or Unknown).");
                 setResult(null);
                 return;
             }
 
-            // t = (-1/lambda) * ln(Af / A0)
+            const lambda = Math.log(2) / T_half_seconds;
             const time_seconds = (-1 / lambda) * Math.log(Af_Bq / A0_Bq);
 
             if (!isFinite(time_seconds)) {
@@ -83,10 +88,15 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
                 return;
             }
 
+            // 4. Result Formatting (Case-Insensitive Safe Lookup)
             const num_half_lives = time_seconds / T_half_seconds;
-            const bestUnit = getBestHalfLifeUnit(time_seconds);
+            const bestUnit = getBestHalfLifeUnit(time_seconds) || 'seconds'; // Fallback to seconds
+            
             const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
-            const time_in_best_unit = time_seconds / unitConversions[bestUnit];
+            // Ensure we match the key regardless of case (e.g. "Days" vs "days")
+            const conversionFactor = unitConversions[bestUnit.toLowerCase()] || 1; 
+            
+            const time_in_best_unit = time_seconds / conversionFactor;
 
             setResult({
                 time: time_in_best_unit.toPrecision(4),
@@ -94,33 +104,25 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
                 halfLives: num_half_lives.toFixed(2)
             });
 
-            // --- CHART GENERATION ---
+            // 5. Chart Generation
             const steps = 100;
-            // Plot 20% past the target time to visualize the crossing
             const totalTimePlot = time_in_best_unit * 1.2; 
             
             const labels = [];
             const parentData = [];
-            const limitData = []; // New Dataset: Visual Line for Target
+            const limitData = []; 
 
             for (let i = 0; i <= steps; i++) {
                 const t_plot = (totalTimePlot / steps) * i;
-                const t_plot_seconds = t_plot * unitConversions[bestUnit];
+                const t_plot_seconds = t_plot * conversionFactor;
 
-                // Decay Formula: A(t) = A0 * e^(-lambda * t)
                 const currentAct_Bq = A0_Bq * Math.exp(-lambda * t_plot_seconds);
-                
-                // Convert back to User's Initial Unit for the Y-Axis
-                const currentAct_UserUnit = currentAct_Bq / activityFactorsBq[initialUnit];
-                
-                // Calculate Target limit in User's Initial Unit (constant line)
-                const targetLimit_UserUnit = Af_Bq / activityFactorsBq[initialUnit];
+                const currentAct_UserUnit = currentAct_Bq / factor0;
+                const targetLimit_UserUnit = Af_Bq / factor0;
 
-                // Dynamic Label Precision
-                // If time is < 1, use more decimals. If > 100, use none.
+                // Dynamic X-Axis Labels
                 let label = t_plot.toFixed(2);
                 if (totalTimePlot < 0.1) label = t_plot.toExponential(2);
-                else if (totalTimePlot < 10) label = t_plot.toFixed(3);
                 else if (totalTimePlot > 100) label = t_plot.toFixed(0);
 
                 labels.push(label);
@@ -134,26 +136,27 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
                     {
                         label: `${selectedNuclide.name} Decay`,
                         data: parentData,
-                        borderColor: 'rgb(14, 165, 233)', // Sky-500
+                        borderColor: 'rgb(14, 165, 233)', 
                         backgroundColor: 'rgba(14, 165, 233, 0.5)',
                     },
                     {
-                        label: `Target Limit (${finalActivity} ${finalUnit})`,
+                        label: `Limit (${finalActivity} ${finalUnit})`,
                         data: limitData,
-                        borderColor: 'rgb(239, 68, 68)', // Red-500
-                        borderDash: [5, 5], // Dashed line
-                        pointRadius: 0, // No dots for the limit line
+                        borderColor: 'rgb(239, 68, 68)',
+                        borderDash: [5, 5], 
+                        pointRadius: 0,
                     }
                 ],
                 timeUnit: bestUnit,
-                yAxisLabel: `Activity (${initialUnit})`
+                // Fallback prevents "Activity (undefined)" if props aren't ready
+                yAxisLabel: `Activity (${initialUnit || '-'})` 
             });
 
         } catch (e) {
             setError("Calculation failed.");
             setResult(null);
         }
-    }, [selectedNuclide, initialActivity, initialUnit, finalActivity, finalUnit, activityFactorsBq]); // Removed useLogScale from deps
+    }, [selectedNuclide, initialActivity, initialUnit, finalActivity, finalUnit, activityFactorsBq]);
 
     const handleSaveToHistory = () => {
         if (result && selectedNuclide) {
@@ -231,7 +234,6 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
                             Logarithmic Scale
                         </label>
                     </div>
-
                     <DecayChart 
                         chartData={chartData} 
                         useLogScale={useLogScale} 
