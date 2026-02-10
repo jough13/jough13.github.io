@@ -1333,7 +1333,7 @@ const Badge = ({ label, pass, limit }) => (
 const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, result, setResult, error, setError }) => {
     
     // --- STATE: Static (Field Survey) ---
-    const [staticData, setStaticData] = React.useState(''); // Textarea input
+    const [staticData, setStaticData] = React.useState(''); 
     const [staticBkg, setStaticBkg] = React.useState('');
     const [staticEff, setStaticEff] = React.useState('');
     const [probeArea, setProbeArea] = React.useState('100');
@@ -1344,7 +1344,6 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
     const [wipeEff, setWipeEff] = React.useState('');
     const [smearFactor, setSmearFactor] = React.useState('0.1');
 
-    // --- Hooks ---
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
 
@@ -1399,9 +1398,17 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
 
             // 2. Calculate Removable (Wipe)
             if (wipeGross !== '' && wipeBkg !== '' && wipeEff !== '') {
-                if (wEff <= 0 || wFactor <= 0) throw new Error("Wipe efficiencies must be positive.");
+                if (wEff <= 0) throw new Error("Wipe efficiencies must be positive.");
+                if (wFactor <= 0 || wFactor > 1) throw new Error("Smear Factor must be between 0 and 1 (e.g. 0.1).");
+
                 const netWipe = Math.max(0, wGross - wBkg);
-                const totalWipeEff = (wEff > 1 ? wEff/100 : wEff) * (wFactor > 1 ? wFactor/100 : wFactor);
+                
+                // SAFETY FIX: Strict percentage division
+                const wipeEffDecimal = wEff / 100;
+                
+                // LOGIC FIX: Treat Factor as raw decimal (no 'smart' guess)
+                const totalWipeEff = wipeEffDecimal * wFactor;
+                
                 removableDPM = netWipe / totalWipeEff;
             }
 
@@ -1409,6 +1416,7 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
             if (sPoints.length > 0 && staticBkg !== '' && staticEff !== '' && area > 0) {
                 if (sEff <= 0) throw new Error("Static efficiency must be positive.");
                 
+                // SAFETY FIX: Strict percentage division (Correctly implemented in your draft, kept here)
                 const sEffDec = sEff / 100;
                 
                 const dpmValues = sPoints.map(gross => {
@@ -1423,8 +1431,9 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
 
             // 4. Compare Limits & Set Result
             if (removableDPM !== null || totalAvgDPM !== null) {
-                const rg = REG_GUIDE_1_86_LIMITS[selectedNuclide.regGuideCategory];
-                const ansi = ANSI_13_12_LIMITS[selectedNuclide.ansiCategory];
+                // Ensure constants exist to prevent crash
+                const rg = REG_GUIDE_1_86_LIMITS?.[selectedNuclide.regGuideCategory] || { removable: 0, total: 0 };
+                const ansi = ANSI_13_12_LIMITS?.[selectedNuclide.ansiCategory] || { removable: 0, total: 0 };
 
                 setResult({
                     removable: removableDPM,
@@ -1472,6 +1481,8 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
+             <ContextualNote type="info">Performs contamination calculations against Reg Guide 1.86 and ANSI 13.12 limits.</ContextualNote>
+             
              {/* Nuclide Selector */}
              <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
                 <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Contaminant of Concern</label>
@@ -1536,8 +1547,9 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
                         <EfficiencyPresets onSelect={setWipeEff} />
                     </div>
                     <div className="mt-3">
-                         <label className="text-xs font-bold text-slate-500">Smear Removal Factor</label>
+                         <label className="text-xs font-bold text-slate-500">Smear Removal Factor (0-1)</label>
                          <input type="number" value={smearFactor} onChange={e => setSmearFactor(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" placeholder="0.1" />
+                         <p className="text-[10px] text-slate-400 mt-1">Standard: 0.1 (10% removal)</p>
                     </div>
                 </div>
             </div>
@@ -1576,241 +1588,282 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
         </div>
     );
 };
-
-// 2. DetectorResponseCalculator (Dynamic Geometry)
-const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, activity, setActivity, activityUnit, setActivityUnit, distance, setDistance, distanceUnit, setDistanceUnit, detectorType, setDetectorType, shieldMaterial, setShieldMaterial, shieldThickness, setShieldThickness, shieldThicknessUnit, setShieldThicknessUnit, surfaceEff, setSurfaceEff, result, setResult, error, setError }) => {
-const { addHistory } = useCalculationHistory();
-const { addToast } = useToast();
-
-// --- CONFIG ---
-const DETECTORS = {
-'nai_1x1': { label: '1" x 1" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 175, radius_cm: 1.27 },
-'nai_2x2': { label: '2" x 2" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 900, radius_cm: 2.54 },
-'gm_pancake': { label: 'Pancake GM (Ludlum 44-9)', type: 'mix', refBetaEff: 0.20, alphaEff: 0.15, gammaCpmPerMicroR: 3.3, radius_cm: 2.2 },
-'zns_alpha': { label: 'ZnS(Ag) Scintillator', type: 'alpha_only', alphaEff: 0.25, radius_cm: 2.5 }
-};
-        
-const FALLBACK_HVL = { 'Lead': 0.6, 'Steel': 1.5, 'Aluminum': 4.0, 'Water': 10.0 };
-
-// --- ROBUST CONVERSION FACTORS ---
-// Source of Truth: 1 Ci = 3.7e10 Bq
-const BQ_TO_CI = 1 / 3.7e10; 
-
-const activityFactorsCi = React.useMemo(() => ({
-'Ci': 1,
-'mCi': 1e-3,
-'µCi': 1e-6,
-'TBq': BQ_TO_CI * 1e12,
-'GBq': BQ_TO_CI * 1e9,
-'MBq': BQ_TO_CI * 1e6,
-'kBq': BQ_TO_CI * 1e3,
-'Bq': BQ_TO_CI
-}), [BQ_TO_CI]);
-
-const distanceFactorsM = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
-const thicknessFactorsCm = { 'mm': 0.1, 'cm': 1, 'in': 2.54 };
-
-const parseE = (str) => {
-if (!str) return 0;
-const parts = str.split(' ');
-let val = safeParseFloat(parts[0]);
-if (str.toLowerCase().includes('kev')) val /= 1000;
-return val;
-};
-
-const availableNuclides = React.useMemo(() => {
-const det = DETECTORS[detectorType];
-if (det.type === 'alpha_only') return radionuclides.filter(n => n.emissionEnergies?.alpha?.length > 0);
-if (det.type === 'gamma_only') return radionuclides.filter(n => n.gammaConstant);
-return radionuclides;
-}, [radionuclides, detectorType]);
-
-const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
-
-// --- RECALCULATION TRIGGER ---
-React.useEffect(() => {
-try {
-    setError('');
-    if (!selectedNuclide) { setResult(null); return; }
-
-    const A_val = safeParseFloat(activity);
-    const d_val = safeParseFloat(distance);
-    const t_val = shieldMaterial === 'None' ? 0 : safeParseFloat(shieldThickness);
-    const eff_surf_pct = safeParseFloat(surfaceEff);
-
-    if (isNaN(A_val) || isNaN(d_val) || A_val <= 0 || d_val <= 0) {
-        if (activity && distance) setError("Inputs must be positive.");
-        setResult(null);
-        return;
-    }
-
-    const detInfo = DETECTORS[detectorType];
-    
-    // Convert everything to Base Units (Ci, meters, cm)
-    const A_Ci = A_val * activityFactorsCi[activityUnit];
-    const d_m = d_val * distanceFactorsM[distanceUnit];
-    const t_cm = t_val * thicknessFactorsCm[shieldThicknessUnit];
-    const shieldDensity = SHIELD_PROPS[shieldMaterial].density;
-    const eff_surf = eff_surf_pct / 100.0;
-
-    let cpmGamma = 0, cpmBeta = 0, cpmAlpha = 0;
-    let attenuationMsg = [];
-
-    // 1. Gamma Calculation
-    if (detInfo.type !== 'alpha_only' && selectedNuclide.gammaConstant) {
-        const gamma = safeParseFloat(selectedNuclide.gammaConstant);
-        
-        if (gamma > 0) {
-            // Dose Rate in uR/hr
-            const doseRate_uR_hr = ((gamma * A_Ci) / Math.pow(d_m, 2)) * 1e6;
-            
-            let transmission = 1;
-            if (shieldMaterial !== 'None' && t_cm > 0) {
-                const mapTo = SHIELD_PROPS[shieldMaterial].mapTo;
-                const hvl = (typeof HVL_DATA !== 'undefined' && HVL_DATA[selectedNuclide.symbol]?.[mapTo]) 
-                            || FALLBACK_HVL[mapTo] 
-                            || 0.6; 
-                
-                transmission = Math.pow(0.5, t_cm / hvl);
-            }
-
-            const responseFactor = detInfo.refCpmPerMicroR || detInfo.gammaCpmPerMicroR;
-            cpmGamma = doseRate_uR_hr * transmission * responseFactor;
-        }
-    }
-
-/**
- * Calculates the maximum range of a beta particle in matter (g/cm²).
- * Uses Katz-Penfold relationships to handle both low and high energies.
- * * @param {number} energyMeV - Maximum beta energy (E_max) in MeV
- * @returns {number} Range in g/cm²
- */
-
+// --- HELPER: Beta Range Physics (Katz-Penfold) ---
+// Outside component to prevent re-creation on every render
 const calculateBetaRange = (energyMeV) => {
-    // Prevent errors with zero or negative inputs
     if (!energyMeV || energyMeV <= 0) return 0;
-
-    // Convert Range from mg/cm² (standard K-P unit) to g/cm²
-    let range_mg_cm2;
-
+    
+    // Result in g/cm² (mass density)
+    // Low Energy (< 0.8 MeV): Exponential curve
+    // High Energy (> 0.8 MeV): Linear approximation (Feather's Rule / K-P)
     if (energyMeV < 0.8) {
-        // Low Energy: R = 412 * E^(1.265 - 0.0954 * ln(E))
         const exponent = 1.265 - (0.0954 * Math.log(energyMeV));
-        range_mg_cm2 = 412 * Math.pow(energyMeV, exponent);
+        return (412 * Math.pow(energyMeV, exponent)) / 1000;
     } else {
-        // High Energy: R = 530 * E - 106
-        // (This is the standard Katz-Penfold linear approximation for E > 0.8)
-        range_mg_cm2 = (530 * energyMeV) - 106;
+        return ((530 * energyMeV) - 106) / 1000;
     }
-
-    // Convert mg/cm² to g/cm² for consistency with your existing density units
-    return range_mg_cm2 / 1000;
 };
 
-    // 2. Beta/Alpha Geometry
-    if (detInfo.type === 'mix' || detInfo.type === 'alpha_only') {
-        const r_det = detInfo.radius_cm;
-        const d_cm = d_m * 100;
-        
-        // Solid Angle Efficiency
-        const geoEff = 0.5 * (1 - (d_cm / Math.sqrt(Math.pow(d_cm, 2) + Math.pow(r_det, 2))));
-        const A_dpm = A_Ci * 2.22e12; 
+const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, activity, setActivity, activityUnit, setActivityUnit, distance, setDistance, distanceUnit, setDistanceUnit, detectorType, setDetectorType, shieldMaterial, setShieldMaterial, shieldThickness, setShieldThickness, shieldThicknessUnit, setShieldThicknessUnit, surfaceEff, setSurfaceEff, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
 
-        if (detInfo.type === 'mix' && selectedNuclide.emissionEnergies?.beta?.length > 0) {
-            const eMax = parseE(selectedNuclide.emissionEnergies.beta[0]);
-
-            // Calculate range in mass density (g/cm²)
-            const range_g_cm2 = calculateBetaRange(eMax);
-
-            // 1. Calculate Range in Shield
-            // If shield is 'None', density is 0, so range is Infinity (safe)
-            const range_shield_cm = shieldDensity > 0 ? range_g_cm2 / shieldDensity : Infinity;
-
-            // 2. Calculate Range in Air (Density approx 0.0012 g/cm³)
-            const densityAir = 0.0012; 
-            const range_air_cm = range_g_cm2 / densityAir;
+    // --- CONFIG ---
+    const DETECTORS = React.useMemo(() => ({
+        'nai_1x1': { label: '1" x 1" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 175, radius_cm: 1.27 },
+        'nai_2x2': { label: '2" x 2" NaI(Tl)', type: 'gamma_only', refCpmPerMicroR: 900, radius_cm: 2.54 },
+        'gm_pancake': { label: 'Pancake GM (Ludlum 44-9)', type: 'mix', refBetaEff: 0.20, alphaEff: 0.15, gammaCpmPerMicroR: 3.3, radius_cm: 2.2 },
+        'zns_alpha': { label: 'ZnS(Ag) Scintillator', type: 'alpha_only', alphaEff: 0.25, radius_cm: 2.5 }
+    }), []);
             
-            // Logic Checks
-            if (shieldMaterial !== 'None' && t_cm > range_shield_cm) {
-                attenuationMsg.push("Betas blocked by shield.");
-            } else if (d_cm > range_air_cm) { 
-                // Compare distance in cm to range in air in cm
-                attenuationMsg.push("Betas ranged out in air.");
-            } else {
-                cpmBeta = A_dpm * geoEff * (detInfo.refBetaEff || 0.2) * eff_surf;
-            }
-        }
+    // Updated Fallbacks to be Conservative (Co-60 energies)
+    // Old Lead value (0.6) was too thin for high-energy emitters.
+    const FALLBACK_HVL = React.useMemo(() => ({ 
+        'Lead': 1.2,      // Conservative (approx Co-60)
+        'Steel': 2.2, 
+        'Aluminum': 6.5, 
+        'Water': 14.0 
+    }), []);
 
-        if (detInfo.alphaEff && selectedNuclide.emissionEnergies?.alpha?.length > 0) {
-             // Alphas have very short range (~3-5cm in air)
-            if (shieldMaterial !== 'None' || d_cm > 5.0) { 
-                attenuationMsg.push("Alphas blocked.");
-            } else {
-                cpmAlpha = A_dpm * geoEff * detInfo.alphaEff * eff_surf;
+    // Conversion Factors
+    const BQ_TO_CI = 1 / 3.7e10; 
+    const activityFactorsCi = React.useMemo(() => ({
+        'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6,
+        'TBq': BQ_TO_CI * 1e12, 'GBq': BQ_TO_CI * 1e9, 'MBq': BQ_TO_CI * 1e6, 'kBq': BQ_TO_CI * 1e3, 'Bq': BQ_TO_CI
+    }), [BQ_TO_CI]);
+
+    const distanceFactorsM = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
+    const thicknessFactorsCm = { 'mm': 0.1, 'cm': 1, 'in': 2.54 };
+
+    // --- Helpers ---
+    const parseE = (str) => {
+        if (!str) return 0;
+        const parts = str.split(' ');
+        let val = safeParseFloat(parts[0]);
+        if (str.toLowerCase().includes('kev')) val /= 1000;
+        return val;
+    };
+
+    const availableNuclides = React.useMemo(() => {
+        const det = DETECTORS[detectorType];
+        if (det.type === 'alpha_only') return radionuclides.filter(n => n.emissionEnergies?.alpha?.length > 0);
+        if (det.type === 'gamma_only') return radionuclides.filter(n => n.gammaConstant);
+        return radionuclides;
+    }, [radionuclides, detectorType, DETECTORS]);
+
+    const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
+
+    // --- RECALCULATION TRIGGER ---
+    React.useEffect(() => {
+        try {
+            setError('');
+            if (!selectedNuclide) { setResult(null); return; }
+
+            const A_val = safeParseFloat(activity);
+            const d_val = safeParseFloat(distance);
+            const t_val = shieldMaterial === 'None' ? 0 : safeParseFloat(shieldThickness);
+            const eff_surf_pct = safeParseFloat(surfaceEff);
+
+            if (isNaN(A_val) || isNaN(d_val) || A_val <= 0 || d_val <= 0) {
+                if (activity && distance) setError("Inputs must be positive.");
+                setResult(null);
+                return;
             }
+
+            const detInfo = DETECTORS[detectorType];
+            
+            // Standardize Units (Ci, meters, cm)
+            const A_Ci = A_val * activityFactorsCi[activityUnit];
+            const d_m = d_val * distanceFactorsM[distanceUnit];
+            const t_cm = t_val * thicknessFactorsCm[shieldThicknessUnit];
+            
+            // Ensure SHIELD_PROPS is available in scope (from constants.js or passed prop)
+            // If undefined, fallback to safe defaults to prevent crash
+            const shieldProp = (typeof SHIELD_PROPS !== 'undefined' ? SHIELD_PROPS[shieldMaterial] : null) || { density: 0, mapTo: 'None' };
+            const shieldDensity = shieldProp.density;
+            
+            const eff_surf = eff_surf_pct / 100.0;
+
+            let cpmGamma = 0, cpmBeta = 0, cpmAlpha = 0;
+            let attenuationMsg = [];
+
+            // 1. Gamma Calculation (Point Source Inverse Square)
+            if (detInfo.type !== 'alpha_only' && selectedNuclide.gammaConstant) {
+                const gamma = safeParseFloat(selectedNuclide.gammaConstant);
+                
+                if (gamma > 0) {
+                    // Dose Rate in uR/hr = (Gamma * A) / d^2
+                    // Note: Gamma Constant is usually R-m^2/hr-Ci
+                    const doseRate_uR_hr = ((gamma * A_Ci) / Math.pow(d_m, 2)) * 1e6;
+                    
+                    let transmission = 1;
+                    if (shieldMaterial !== 'None' && t_cm > 0) {
+                        const mapTo = shieldProp.mapTo;
+                        // Use DB value if exists, otherwise Conservative Fallback
+                        const hvl = (typeof HVL_DATA !== 'undefined' && HVL_DATA[selectedNuclide.symbol]?.[mapTo]) 
+                                    || FALLBACK_HVL[mapTo] 
+                                    || 1.2; // Default to 1.2 (Lead Co-60 approx) if all else fails
+                        
+                        transmission = Math.pow(0.5, t_cm / hvl);
+                    }
+
+                    const responseFactor = detInfo.refCpmPerMicroR || detInfo.gammaCpmPerMicroR;
+                    cpmGamma = doseRate_uR_hr * transmission * responseFactor;
+                }
+            }
+
+            // 2. Beta/Alpha Geometry (Solid Angle)
+            if (detInfo.type === 'mix' || detInfo.type === 'alpha_only') {
+                const r_det = detInfo.radius_cm;
+                const d_cm = d_m * 100;
+                
+                // Solid Angle Efficiency: 0.5 * (1 - d / sqrt(d^2 + r^2))
+                const geoEff = 0.5 * (1 - (d_cm / Math.sqrt(Math.pow(d_cm, 2) + Math.pow(r_det, 2))));
+                const A_dpm = A_Ci * 2.22e12; // 1 Ci = 2.22e12 dpm
+
+                if (detInfo.type === 'mix' && selectedNuclide.emissionEnergies?.beta?.length > 0) {
+                    const eMax = parseE(selectedNuclide.emissionEnergies.beta[0]);
+
+                    // Katz-Penfold Range Calculation
+                    const range_g_cm2 = calculateBetaRange(eMax);
+
+                    // A. Check Shield Penetration
+                    const range_shield_cm = shieldDensity > 0 ? range_g_cm2 / shieldDensity : Infinity;
+
+                    // B. Check Air Penetration (Density ~0.0012 g/cm³)
+                    const densityAir = 0.0012; 
+                    const range_air_cm = range_g_cm2 / densityAir;
+                    
+                    if (shieldMaterial !== 'None' && t_cm > range_shield_cm) {
+                        attenuationMsg.push("Betas blocked by shield.");
+                    } else if (d_cm > range_air_cm) { 
+                        attenuationMsg.push("Betas ranged out in air.");
+                    } else {
+                        // If it reaches, apply efficiency
+                        cpmBeta = A_dpm * geoEff * (detInfo.refBetaEff || 0.2) * eff_surf;
+                    }
+                }
+
+                if (detInfo.alphaEff && selectedNuclide.emissionEnergies?.alpha?.length > 0) {
+                    // Alphas blocked by almost anything or > 5cm air
+                    if (shieldMaterial !== 'None' || d_cm > 5.0) { 
+                        attenuationMsg.push("Alphas blocked.");
+                    } else {
+                        cpmAlpha = A_dpm * geoEff * detInfo.alphaEff * eff_surf;
+                    }
+                }
+            }
+
+            const totalCpm = cpmGamma + cpmBeta + cpmAlpha;
+
+            setResult({
+                // Smart formatting: Show decimals for low counts, integers for high
+                displayValue: totalCpm < 10 ? totalCpm.toFixed(2) : Math.round(totalCpm).toLocaleString(),
+                rawCpm: totalCpm,
+                detLabel: detInfo.label,
+                breakdown: `γ:${cpmGamma.toFixed(1)} β:${cpmBeta.toFixed(1)} α:${cpmAlpha.toFixed(1)}`,
+                notes: attenuationMsg
+            });
+
+        } catch (e) {
+            setError(e.message);
+            setResult(null);
+        }
+    }, [nuclideSymbol, activity, activityUnit, distance, distanceUnit, detectorType, shieldMaterial, shieldThickness, shieldThicknessUnit, surfaceEff, radionuclides, activityFactorsCi, DETECTORS, FALLBACK_HVL]);
+
+    const handleSave = () => {
+        if (result) {
+            addHistory({
+                id: Date.now(),
+                type: 'Detector Response',
+                icon: ICONS.doseRate,
+                inputs: `${activity} ${activityUnit} ${nuclideSymbol} @ ${distance} ${distanceUnit}`,
+                result: `${result.displayValue} cpm`,
+                view: VIEWS.OPERATIONAL_HP
+            });
+            addToast("Saved!");
         }
     }
 
-    const totalCpm = cpmGamma + cpmBeta + cpmAlpha;
+    return (
+        <div className="space-y-4">
+            <ContextualNote type="info">
+                <strong>Geometry:</strong> Calculates solid angle efficiency based on detector radius. Gamma response follows the Inverse Square Law.</ContextualNote>
+            
+            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                <div>
+                    <label className="block text-sm font-medium">Detector</label>
+                    <select value={detectorType} onChange={e => setDetectorType(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                        {Object.entries(DETECTORS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                    </select>
+                </div>
+                
+                <div className="min-h-[42px]">
+                    {selectedNuclide ? 
+                        <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : 
+                        <SearchableSelect options={availableNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide..." />
+                    }
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium">Activity</label>
+                        <div className="flex">
+                            <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                            <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
+                                {Object.keys(activityFactorsCi).map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium">Distance</label>
+                        <div className="flex">
+                            <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                            <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
+                                {Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Shielding Inputs */}
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <div>
+                        <label className="block text-sm font-medium">Shielding</label>
+                        <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
+                            {/* Assumes SHIELD_PROPS is available in scope or imported */}
+                            {typeof SHIELD_PROPS !== 'undefined' && Object.keys(SHIELD_PROPS).map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                    </div>
+                    {shieldMaterial !== 'None' && (
+                        <div>
+                            <label className="block text-sm font-medium">Thickness</label>
+                            <div className="flex mt-1">
+                                <input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                <select value={shieldThicknessUnit} onChange={e => setShieldThicknessUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
+                                    {Object.keys(thicknessFactorsCm).map(u => <option key={u} value={u}>{u}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
 
-    setResult({
-        // Use toLocaleString without parseInt to show decimals for low counts
-        displayValue: totalCpm < 10 ? totalCpm.toFixed(2) : Math.round(totalCpm).toLocaleString(),
-        rawCpm: totalCpm,
-        detLabel: detInfo.label,
-        breakdown: `γ:${cpmGamma.toFixed(1)} β:${cpmBeta.toFixed(1)} α:${cpmAlpha.toFixed(1)}`,
-        notes: attenuationMsg
-    });
-
-} catch (e) {
-    setError(e.message);
-    setResult(null);
-}
-}, [nuclideSymbol, activity, activityUnit, distance, distanceUnit, detectorType, shieldMaterial, shieldThickness, shieldThicknessUnit, surfaceEff, radionuclides, activityFactorsCi]);
-
-const handleSave = () => {
-if (result) {
-    addHistory({
-        id: Date.now(),
-        type: 'Detector Response',
-        icon: ICONS.doseRate,
-        inputs: `${activity} ${activityUnit} ${nuclideSymbol} @ ${distance} ${distanceUnit}`,
-        result: `${Math.round(result.rawCpm)} cpm`,
-        view: VIEWS.OPERATIONAL_HP
-    });
-    addToast("Saved!");
-}
-}
-
-return (
-<div className="space-y-4">
-    <ContextualNote type="info"><strong>Geometry:</strong> Calculates solid angle efficiency based on detector radius ({DETECTORS[detectorType].radius_cm} cm). Gamma calculation assumes point source.</ContextualNote>
-    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-        <div><label className="block text-sm font-medium">Detector</label><select value={detectorType} onChange={e => setDetectorType(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.entries(DETECTORS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></div>
-        <div className="min-h-[42px]">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={availableNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide..." />}</div>
-        <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-medium">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" /><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(activityFactorsCi).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-            <div><label className="block text-sm font-medium">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" /><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-        </div>
-        {/* Shielding Inputs */}
-        <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-200 dark:border-slate-700">
-            <div><label className="block text-sm font-medium">Shielding</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(SHIELD_PROPS).map(m => <option key={m} value={m}>{m}</option>)}</select></div>
-            {shieldMaterial !== 'None' && (
-                <div><label className="block text-sm font-medium">Thickness</label><div className="flex mt-1"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={shieldThicknessUnit} onChange={e => setShieldThicknessUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(thicknessFactorsCm).map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm">
+                    <div className="flex justify-end -mt-2 -mr-2">
+                        <button onClick={handleSave}><Icon path={ICONS.notepad} className="w-5 h-5 text-slate-400 hover:text-sky-500" /></button>
+                    </div>
+                    <p className="text-sm font-bold text-slate-500 uppercase">Estimated Response</p>
+                    <p className="text-3xl font-extrabold text-sky-600 dark:text-sky-400 my-2">
+                        {result.displayValue} <span className="text-xl text-slate-500">cpm</span>
+                    </p>
+                    <p className="text-xs text-slate-500">{result.breakdown}</p>
+                    {result.notes.map((n, i) => <p key={i} className="text-xs text-amber-600 mt-1">{n}</p>)}
+                </div>
             )}
         </div>
-    </div>
-    {result && (
-        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm">
-            <div className="flex justify-end -mt-2 -mr-2"><button onClick={handleSave}><Icon path={ICONS.notepad} className="w-5 h-5 text-slate-400 hover:text-sky-500" /></button></div>
-            <p className="text-sm font-bold text-slate-500 uppercase">Estimated Response</p>
-            <p className="text-3xl font-extrabold text-sky-600 dark:text-sky-400 my-2">{result.displayValue} <span className="text-xl text-slate-500">cpm</span></p>
-            <p className="text-xs text-slate-500">{result.breakdown}</p>
-            {result.notes.map((n, i) => <p key={i} className="text-xs text-amber-600 mt-1">{n}</p>)}
-        </div>
-    )}
-</div>
-);
+    );
 };
 
 // 3. LeakTestCalculator
