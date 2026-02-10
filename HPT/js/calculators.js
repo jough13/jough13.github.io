@@ -1186,7 +1186,7 @@ const SurfaceContaminationCalculator = ({ radionuclides, nuclideSymbol, setNucli
             if (sPoints.length > 0 && staticBkg !== '' && staticEff !== '' && area > 0) {
                 if (sEff <= 0) throw new Error("Static efficiency must be positive.");
                 
-                const sEffDec = sEff > 1 ? sEff / 100 : sEff;
+                const sEffDec = sEff / 100;
                 
                 const dpmValues = sPoints.map(gross => {
                     const net = Math.max(0, gross - sBkg);
@@ -1456,6 +1456,34 @@ try {
         }
     }
 
+/**
+ * Calculates the maximum range of a beta particle in matter (g/cm²).
+ * Uses Katz-Penfold relationships to handle both low and high energies.
+ * * @param {number} energyMeV - Maximum beta energy (E_max) in MeV
+ * @returns {number} Range in g/cm²
+ */
+
+const calculateBetaRange = (energyMeV) => {
+    // Prevent errors with zero or negative inputs
+    if (!energyMeV || energyMeV <= 0) return 0;
+
+    // Convert Range from mg/cm² (standard K-P unit) to g/cm²
+    let range_mg_cm2;
+
+    if (energyMeV < 0.8) {
+        // Low Energy: R = 412 * E^(1.265 - 0.0954 * ln(E))
+        const exponent = 1.265 - (0.0954 * Math.log(energyMeV));
+        range_mg_cm2 = 412 * Math.pow(energyMeV, exponent);
+    } else {
+        // High Energy: R = 530 * E - 106
+        // (This is the standard Katz-Penfold linear approximation for E > 0.8)
+        range_mg_cm2 = (530 * energyMeV) - 106;
+    }
+
+    // Convert mg/cm² to g/cm² for consistency with your existing density units
+    return range_mg_cm2 / 1000;
+};
+
     // 2. Beta/Alpha Geometry
     if (detInfo.type === 'mix' || detInfo.type === 'alpha_only') {
         const r_det = detInfo.radius_cm;
@@ -1463,15 +1491,27 @@ try {
         
         // Solid Angle Efficiency
         const geoEff = 0.5 * (1 - (d_cm / Math.sqrt(Math.pow(d_cm, 2) + Math.pow(r_det, 2))));
-        const A_dpm = A_Ci * 2.22e12; // 1 Ci = 2.22e12 dpm
+        const A_dpm = A_Ci * 2.22e12; 
 
         if (detInfo.type === 'mix' && selectedNuclide.emissionEnergies?.beta?.length > 0) {
             const eMax = parseE(selectedNuclide.emissionEnergies.beta[0]);
-            let range_cm = (0.542 * eMax - 0.133) / shieldDensity; 
+
+            // Calculate range in mass density (g/cm²)
+            const range_g_cm2 = calculateBetaRange(eMax);
+
+            // 1. Calculate Range in Shield
+            // If shield is 'None', density is 0, so range is Infinity (safe)
+            const range_shield_cm = shieldDensity > 0 ? range_g_cm2 / shieldDensity : Infinity;
+
+            // 2. Calculate Range in Air (Density approx 0.0012 g/cm³)
+            const densityAir = 0.0012; 
+            const range_air_cm = range_g_cm2 / densityAir;
             
-            if (shieldMaterial !== 'None' && t_cm > range_cm) {
+            // Logic Checks
+            if (shieldMaterial !== 'None' && t_cm > range_shield_cm) {
                 attenuationMsg.push("Betas blocked by shield.");
-            } else if (d_m > (range_cm / 1.2 / 100)) { 
+            } else if (d_cm > range_air_cm) { 
+                // Compare distance in cm to range in air in cm
                 attenuationMsg.push("Betas ranged out in air.");
             } else {
                 cpmBeta = A_dpm * geoEff * (detInfo.refBetaEff || 0.2) * eff_surf;
@@ -1479,7 +1519,8 @@ try {
         }
 
         if (detInfo.alphaEff && selectedNuclide.emissionEnergies?.alpha?.length > 0) {
-            if (shieldMaterial !== 'None' || d_m > 0.05) { 
+             // Alphas have very short range (~3-5cm in air)
+            if (shieldMaterial !== 'None' || d_cm > 5.0) { 
                 attenuationMsg.push("Alphas blocked.");
             } else {
                 cpmAlpha = A_dpm * geoEff * detInfo.alphaEff * eff_surf;
@@ -1590,7 +1631,7 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
 
             // 3. Efficiency Normalization (Assume > 1 is percent, <= 1 is decimal)
             // This is a "smart" check because Eff is rarely > 100% or < 1% in these units
-            const efficiency = effInput > 1 ? effInput / 100 : effInput;
+            const efficiency = effInput / 100;
 
             // 4. Calculate Net CPM (Clamp to 0 if negative)
             // Don't throw error on negative numbers; treat as 0 (Clean)
@@ -1633,11 +1674,11 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
     };
 
     return (
-        <div className="space-y-4 max-w-md mx-auto animate-fade-in">
+        <div className="space-y-4 max-w-2xl mx-auto animate-fade-in">
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 bg-white dark:bg-slate-800 shadow-sm">
                 
-                {/* Inputs */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* UI FIX: Grid cols-3 for better alignment */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label className="block text-xs uppercase font-bold text-slate-500 mb-1">Gross CPM</label>
                         <input 
@@ -1658,16 +1699,16 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
                             placeholder="e.g. 45"
                         />
                     </div>
-                </div>
-                <div>
-                    <label className="block text-xs uppercase font-bold text-slate-500 mb-1">Efficiency (%)</label>
-                    <input 
-                        type="number" 
-                        value={instrumentEff} 
-                        onChange={e => setInstrumentEff(e.target.value)} 
-                        className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border-transparent focus:border-sky-500 focus:ring-0"
-                        placeholder="e.g. 10"
-                    />
+                    <div>
+                        <label className="block text-xs uppercase font-bold text-slate-500 mb-1">Efficiency (%)</label>
+                        <input 
+                            type="number" 
+                            value={instrumentEff} 
+                            onChange={e => setInstrumentEff(e.target.value)} 
+                            className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border-transparent focus:border-sky-500 focus:ring-0"
+                            placeholder="e.g. 10"
+                        />
+                    </div>
                 </div>
 
                 {/* Smart Action Level Indicator */}
