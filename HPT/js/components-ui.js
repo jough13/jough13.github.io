@@ -1,6 +1,6 @@
-//==============================================================================
-// --- REACT COMPONENTS & ICONS
-//==============================================================================
+ //==============================================================================
+            // --- REACT COMPONENTS & ICONS
+            //==============================================================================
             
             /**
              * A simple SVG icon component.
@@ -1376,136 +1376,173 @@
             };
 
             /**
-            * @description A React component that renders a line chart for simple decay (Parent/Daughter) using Chart.js.
-            */
-            const DecayChart = ({ chartData, useLogScale, theme }) => {
-             const chartRef = React.useRef(null);
-             const chartInstance = React.useRef(null);
-            
-             React.useEffect(() => {
-                 if (chartInstance.current) {
-                     chartInstance.current.destroy();
-                 }
-            
-                 if (chartRef.current && chartData) {
-                     const isDarkMode = theme === 'dark';
-                     const textColor = isDarkMode ? '#94a3b8' : '#475569';
-                     const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
-                     const legendColor = isDarkMode ? '#cbd5e1' : '#334155';
-            
-                     const ctx = chartRef.current.getContext('2d');
-            
-                     // LOG SCALE SAFETY LOGIC ---
-                     let safeMin = undefined;
-                     if (useLogScale) {
-                         // Combine parent and daughter data to find the range
-                         const allValues = [...chartData.parentData];
-                         if (chartData.daughterData) {
-                             allValues.push(...chartData.daughterData);
-                         }
-                         
-                         const maxVal = Math.max(...allValues);
-                         
-                         if (maxVal > 0) {
-                             // Set floor to 5 orders of magnitude below peak
-                             safeMin = maxVal * 1e-5;
-                         } else {
-                             safeMin = 1e-5;
-                         }
-                     }
-            
-                     chartInstance.current = new Chart(ctx, {
-                         type: 'line',
-                         data: {
-                             labels: chartData.labels,
-                             datasets: [
-                                 {
-                                     label: chartData.parentName,
-                                     data: chartData.parentData,
-                                     borderColor: '#0284c7', // Sky-600
-                                     backgroundColor: 'rgba(2, 132, 199, 0.1)',
-                                     fill: true,
-                                     tension: 0, // Straight lines for log scale accuracy
-                                     pointRadius: 0,
-                                     pointHoverRadius: 6
-                                 },
-                                 ...(chartData.daughterData ? [{
-                                     label: chartData.daughterName,
-                                     data: chartData.daughterData,
-                                     borderColor: '#e11d48', // Rose-600
-                                     backgroundColor: 'rgba(225, 29, 72, 0.1)',
-                                     fill: true,
-                                     tension: 0,
-                                     pointRadius: 0,
-                                     pointHoverRadius: 6
-                                 }] : [])
-                             ]
-                         },
-                         options: {
-                             responsive: true,
-                             maintainAspectRatio: false,
-                             interaction: { mode: 'index', intersect: false },
-                             scales: {
-                                 x: {
-                                     title: { display: true, text: `Time (${chartData.timeUnit})`, color: textColor },
-                                     ticks: { color: textColor },
-                                     grid: { color: gridColor }
-                                 },
-                                 y: {
-                                     type: useLogScale ? 'logarithmic' : 'linear',
-                                     title: { display: true, text: 'Activity', color: textColor, padding: { bottom: 10 }  },
-                                     min: safeMin,
-                                     beginAtZero: !useLogScale,
-                                     ticks: { 
-                                         color: textColor,
-                                         callback: function(value) {
-                                              if (value !== 0 && (Math.abs(value) < 1e-3 || Math.abs(value) >= 1e4)) {
-                                                  return value.toExponential(1);
-                                              }
-                                              return value.toLocaleString();
-                                         }
-                                     },
-                                     grid: { color: gridColor }
-                                 }
-                             },
-                             plugins: {
-                                 legend: { labels: { color: legendColor } }
-                             }
-                         }
-                     });
-                 }
-            
-                 return () => {
-                     if (chartInstance.current) {
-                         chartInstance.current.destroy();
-                     }
-                 };
-             }, [chartData, useLogScale, theme]);
-            
-             const handleExport = () => {
-                 if (chartInstance.current) {
-                     const link = document.createElement('a');
-                     link.href = chartInstance.current.toBase64Image();
-                     const filename = `Decay_${chartData.parentName || 'Chart'}.png`;
-                     link.download = filename;
-                     link.click();
-                 }
-             };
-            
-             return (
-                 <div className="mt-4">
-                     <div className="h-64 w-full">
-                         <canvas ref={chartRef}></canvas>
-                     </div>
-                     <div className="text-center mt-3">
-                         <button
-                             onClick={handleExport}
-                             className="flex items-center justify-center gap-2 mx-auto px-4 py-2 text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors"
-                         >
-                             <Icon path={ICONS.download} className="w-3 h-3" />
-                             Save Chart Image
-                         </button>
-                     </div>
-                 </div>
-             );
-            };
+ * @description A flexible line chart for radioactive decay. 
+ * Supports both legacy props (parentData/daughterData) and pre-formatted 'datasets' arrays.
+ */
+
+const DecayChart = ({ chartData, useLogScale, theme }) => {
+    const chartRef = React.useRef(null);
+    const chartInstance = React.useRef(null);
+
+    React.useEffect(() => {
+        if (chartInstance.current) {
+            chartInstance.current.destroy();
+        }
+
+        if (chartRef.current && chartData) {
+            const isDarkMode = theme === 'dark';
+            const textColor = isDarkMode ? '#94a3b8' : '#475569';
+            const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+            const legendColor = isDarkMode ? '#cbd5e1' : '#334155';
+
+            const ctx = chartRef.current.getContext('2d');
+
+            // --- 1. DETERMINE DATASETS (Flexible Logic) ---
+            let finalDatasets = [];
+
+            if (chartData.datasets) {
+                // CASE A: Component passed a full datasets array (e.g., DecayToLimitCalculator)
+                finalDatasets = chartData.datasets;
+            } else {
+                // CASE B: Component passed legacy fields (e.g., Standard Decay Calculator)
+                finalDatasets = [
+                    {
+                        label: chartData.parentName || 'Parent',
+                        data: chartData.parentData || [],
+                        borderColor: '#0284c7', // Sky-600
+                        backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                        fill: true,
+                        tension: 0,
+                        pointRadius: 0,
+                        pointHoverRadius: 6
+                    }
+                ];
+                // Add daughter if it exists
+                if (chartData.daughterData) {
+                    finalDatasets.push({
+                        label: chartData.daughterName || 'Daughter',
+                        data: chartData.daughterData,
+                        borderColor: '#e11d48', // Rose-600
+                        backgroundColor: 'rgba(225, 29, 72, 0.1)',
+                        fill: true,
+                        tension: 0,
+                        pointRadius: 0,
+                        pointHoverRadius: 6
+                    });
+                }
+            }
+
+            // --- 2. CALCULATE SCALE MINIMUMS ---
+            let safeMin = undefined;
+            if (useLogScale) {
+                // Flatten all data to find the absolute max to scale the graph nicely
+                const allValues = finalDatasets.flatMap(d => d.data);
+                const maxVal = Math.max(...allValues);
+                
+                if (maxVal > 0) {
+                    safeMin = maxVal * 1e-5; // Show 5 orders of magnitude
+                } else {
+                    safeMin = 1e-5;
+                }
+            }
+
+            // --- 3. DETERMINE LABELS ---
+            // Allow Y-Axis label to be customized, default to "Activity"
+            const yAxisTitle = chartData.yAxisLabel || 'Activity';
+
+            chartInstance.current = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: finalDatasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: {
+                            title: { display: true, text: `Time (${chartData.timeUnit || 'units'})`, color: textColor },
+                            ticks: { color: textColor, maxRotation: 0, autoSkip: true, autoSkipPadding: 20 },
+                            grid: { color: gridColor }
+                        },
+                        y: {
+                            type: useLogScale ? 'logarithmic' : 'linear',
+                            title: { display: true, text: yAxisTitle, color: textColor, padding: { bottom: 10 } },
+                            min: safeMin,
+                            beginAtZero: !useLogScale,
+                            ticks: { 
+                                color: textColor,
+                                callback: function(value) {
+                                     // Scientific notation for very large/small numbers
+                                     if (value !== 0 && (Math.abs(value) < 1e-3 || Math.abs(value) >= 1e4)) {
+                                         return value.toExponential(1);
+                                     }
+                                     return value.toLocaleString();
+                                }
+                            },
+                            grid: { color: gridColor }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: legendColor } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        // Match the axis formatting
+                                        if (context.parsed.y !== 0 && (Math.abs(context.parsed.y) < 1e-3 || Math.abs(context.parsed.y) >= 1e4)) {
+                                            label += context.parsed.y.toExponential(2);
+                                        } else {
+                                            label += context.parsed.y.toLocaleString();
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        return () => {
+            if (chartInstance.current) {
+                chartInstance.current.destroy();
+            }
+        };
+    }, [chartData, useLogScale, theme]);
+
+    const handleExport = () => {
+        if (chartInstance.current) {
+            const link = document.createElement('a');
+            link.href = chartInstance.current.toBase64Image();
+            // Try to name the file intelligently based on the data
+            const name = chartData.parentName || (chartData.datasets && chartData.datasets[0].label) || 'Chart';
+            const filename = `Decay_${name.replace(/[^a-z0-9]/gi, '_')}.png`;
+            link.download = filename;
+            link.click();
+        }
+    };
+
+    return (
+        <div className="mt-4">
+            <div className="h-64 w-full">
+                <canvas ref={chartRef}></canvas>
+            </div>
+            <div className="text-center mt-3">
+                <button
+                    onClick={handleExport}
+                    className="flex items-center justify-center gap-2 mx-auto px-4 py-2 text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors"
+                >
+                    <Icon path={ICONS.download} className="w-3 h-3" />
+                    Save Chart Image
+                </button>
+            </div>
+        </div>
+    );
+};
