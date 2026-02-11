@@ -3366,14 +3366,14 @@ const EffectiveHalfLifeCalculator = ({ radionuclides }) => {
 
 /**
  * @description A component to display sortable and filterable data tables of all radionuclide emissions.
- * Place this COMPONENT in the same file as PeakIdentifier.
+ * NOTE: This must be defined BEFORE PeakIdentifier so it can be used there.
  */
 const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
     const [activeTable, setActiveTable] = React.useState('gamma');
     const [sortConfig, setSortConfig] = React.useState({ key: 'energyMeV', direction: 'ascending' });
     const [filterText, setFilterText] = React.useState('');
 
-    // Local fallback styles in case the global ones aren't available in this scope
+    // Local fallback styles
     const CATEGORY_STYLES = {
         'Medical': { border: 'border-l-emerald-400', bg: 'bg-emerald-100', text: 'text-emerald-800' },
         'Industrial': { border: 'border-l-amber-400', bg: 'bg-amber-100', text: 'text-amber-800' },
@@ -3397,7 +3397,7 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
     const flattenedData = React.useMemo(() => {
         const data = { gamma: [], alpha: [], beta: [] };
         if (!radionuclides) return data;
-        
+
         radionuclides.forEach(nuclide => {
             Object.keys(data).forEach(type => {
                 nuclide.emissionEnergies?.[type]?.forEach(energyStr => {
@@ -3502,9 +3502,7 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
                         {sortedAndFilteredData.length > 0 ? (
                             sortedAndFilteredData.map((item, index) => {
-                                // Safe style lookup
                                 const style = CATEGORY_STYLES[item.category] || CATEGORY_STYLES['default'];
-                                // Fallback construction of class strings if style objects vary
                                 const borderClass = style.border ? style.border.replace('border-l-', 'border-') : 'border-slate-300';
                                 const bgClass = style.bg || 'bg-slate-100';
                                 const textClass = style.text || 'text-slate-700';
@@ -3540,10 +3538,13 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
 
 /**
  * @description Smart Peak Search Tool. Identifies potential isotopes based on energy peaks.
+ * NOTE: Uses PeakDataTables defined above.
  */
 const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
+
+    const [peakIdMode, setPeakIdMode] = React.useState('search');
 
     // Search Tool State
     const [searchEnergy, setSearchEnergy] = React.useState('');
@@ -3620,9 +3621,7 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
         const energyVal = safeParseFloat(searchEnergy);
         if (!searchEnergy || isNaN(energyVal)) { setMatches([]); setAnalysis(null); return; }
         
-        // SAFETY FIX: Robust tolerance calculation
-        // High Res (HPGe): Min 1 keV or 0.3%
-        // Low Res (NaI): Min 10 keV (for low E noise) or 7%
+        // Tolerance: High Res = max(1 keV, 0.3%), Low Res = max(10 keV, 7%)
         let tolerance = resolution === 'high' 
             ? Math.max(1.0, energyVal * 0.003) 
             : Math.max(10.0, energyVal * 0.07);
@@ -3638,7 +3637,9 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
         results.sort((a, b) => {
             const deltaA = Math.abs(a.energy - energyVal);
             const deltaB = Math.abs(b.energy - energyVal);
+            // Prioritize Energy match first if >1keV difference
             if (Math.abs(deltaA - deltaB) > 1.0) return deltaA - deltaB;
+            // Then Yield
             return b.yield - a.yield;
         });
         
@@ -3682,54 +3683,63 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
                     </button>
                 </div>
             
-                <div className="animate-fade-in">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div><label className="block text-sm font-medium">Peak Energy (keV)</label><input type="number" value={searchEnergy} onChange={e => setSearchEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-bold text-lg" autoFocus placeholder="e.g. 662"/></div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div><label className="block text-sm font-medium">Min Yield %</label><input type="number" value={minYield} onChange={e => setMinYield(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                            <div><label className="block text-sm font-medium">Detector</label><select value={resolution} onChange={e => setResolution(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="low">NaI (Low)</option><option value="high">HPGe (High)</option></select></div>
-                        </div>
-                    </div>
-        
-                    {analysis && (
-                        <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
-                            <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Artifact Analysis</h3>
-                            <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                                <div><p className="text-xs text-slate-400">Compton Edge</p><p className="font-mono">{analysis.comptonEdge} keV</p></div>
-                                {analysis.singleEscape && <div><p className="text-xs text-slate-400">Single Esc.</p><p className="font-mono">{analysis.singleEscape} keV</p></div>}
-                                {analysis.doubleEscape && <div><p className="text-xs text-slate-400">Double Esc.</p><p className="font-mono">{analysis.doubleEscape} keV</p></div>}
-                            </div>
-                            {analysis.isLeadXray && <p className="mt-2 text-xs font-bold text-amber-600 dark:text-amber-400 text-center">Possible {analysis.isLeadXray} X-ray (Shielding Artifact)</p>}
-                        </div>
-                    )}
-        
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                        {matches.length > 0 ? (
-                            matches.map((m, idx) => (
-                                <div key={idx} onClick={() => { if(m.symbol) { const n = radionuclides.find(r => r.symbol === m.symbol); if(n) onNuclideClick(n); } }} className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-sky-200 cursor-pointer transition-all">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="font-bold text-sky-600 dark:text-sky-400">{m.name} ({m.symbol})</p>
-                                            <div className="flex gap-2 text-xs mt-1">
-                                                <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{m.energy.toFixed(1)} keV</span>
-                                                {m.isUnknownYield ? (
-                                                    <span className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-slate-500 dark:text-slate-400 italic">Yield: N/A</span>
-                                                ) : (
-                                                    <span className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-slate-600 dark:text-slate-300">Y: {m.yield}%</span>
-                                                )}
-                                            </div>
-                                            {m.confirm && <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic"><Icon path={ICONS.gammaSpec} className="w-3 h-3 inline mr-1"/>{m.confirm}</p>}
-                                        </div>
-                                        <span className={`text-xs px-2 py-1 rounded-full font-bold ${Math.abs(m.energy - safeParseFloat(searchEnergy)) < 1 ? 'bg-green-100 text-green-700' : 'bg-slate-100 dark:bg-slate-900 text-slate-500'}`}>Δ {Math.abs(m.energy - safeParseFloat(searchEnergy)).toFixed(1)}</span>
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <p className="text-center text-slate-400 py-4">{searchEnergy ? "No matches found." : "Enter energy to search."}</p>
-                        )}
-                    </div>
-                    {matches.length > 0 && <div className="mt-4 flex justify-center"><button onClick={handleSave} className="text-sm font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1"><Icon path={ICONS.notepad} className="w-4 h-4"/> Save Top Match</button></div>}
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                    <button onClick={() => setPeakIdMode('search')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${peakIdMode === 'search' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Search</button>
+                    <button onClick={() => setPeakIdMode('tables')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${peakIdMode === 'tables' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Data Tables</button>
                 </div>
+            
+                {peakIdMode === 'search' ? (
+                    <div className="animate-fade-in">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div><label className="block text-sm font-medium">Peak Energy (keV)</label><input type="number" value={searchEnergy} onChange={e => setSearchEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-bold text-lg" autoFocus placeholder="e.g. 662"/></div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div><label className="block text-sm font-medium">Min Yield %</label><input type="number" value={minYield} onChange={e => setMinYield(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                                <div><label className="block text-sm font-medium">Detector</label><select value={resolution} onChange={e => setResolution(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="low">NaI (Low)</option><option value="high">HPGe (High)</option></select></div>
+                            </div>
+                        </div>
+            
+                        {analysis && (
+                            <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Artifact Analysis</h3>
+                                <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                                    <div><p className="text-xs text-slate-400">Compton Edge</p><p className="font-mono">{analysis.comptonEdge} keV</p></div>
+                                    {analysis.singleEscape && <div><p className="text-xs text-slate-400">Single Esc.</p><p className="font-mono">{analysis.singleEscape} keV</p></div>}
+                                    {analysis.doubleEscape && <div><p className="text-xs text-slate-400">Double Esc.</p><p className="font-mono">{analysis.doubleEscape} keV</p></div>}
+                                </div>
+                                {analysis.isLeadXray && <p className="mt-2 text-xs font-bold text-amber-600 dark:text-amber-400 text-center">Possible {analysis.isLeadXray} X-ray (Shielding Artifact)</p>}
+                            </div>
+                        )}
+            
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                            {matches.length > 0 ? (
+                                matches.map((m, idx) => (
+                                    <div key={idx} onClick={() => { if(m.symbol) { const n = radionuclides.find(r => r.symbol === m.symbol); if(n) onNuclideClick(n); } }} className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-sky-200 cursor-pointer transition-all">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <p className="font-bold text-sky-600 dark:text-sky-400">{m.name} ({m.symbol})</p>
+                                                <div className="flex gap-2 text-xs mt-1">
+                                                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{m.energy.toFixed(1)} keV</span>
+                                                    {m.isUnknownYield ? (
+                                                        <span className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-slate-500 dark:text-slate-400 italic">Yield: N/A</span>
+                                                    ) : (
+                                                        <span className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-slate-600 dark:text-slate-300">Y: {m.yield}%</span>
+                                                    )}
+                                                </div>
+                                                {m.confirm && <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic"><Icon path={ICONS.gammaSpec} className="w-3 h-3 inline mr-1"/>{m.confirm}</p>}
+                                            </div>
+                                            <span className={`text-xs px-2 py-1 rounded-full font-bold ${Math.abs(m.energy - safeParseFloat(searchEnergy)) < 1 ? 'bg-green-100 text-green-700' : 'bg-slate-100 dark:bg-slate-900 text-slate-500'}`}>Δ {Math.abs(m.energy - safeParseFloat(searchEnergy)).toFixed(1)}</span>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-center text-slate-400 py-4">{searchEnergy ? "No matches found." : "Enter energy to search."}</p>
+                            )}
+                        </div>
+                        {matches.length > 0 && <div className="mt-4 flex justify-center"><button onClick={handleSave} className="text-sm font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1"><Icon path={ICONS.notepad} className="w-4 h-4"/> Save Top Match</button></div>}
+                    </div>
+                ) : (
+                    <PeakDataTables radionuclides={radionuclides} onNuclideClick={onNuclideClick} />
+                )}
             </div>
         </div>
     );
