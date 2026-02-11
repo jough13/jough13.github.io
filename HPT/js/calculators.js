@@ -3365,304 +3365,319 @@ const EffectiveHalfLifeCalculator = ({ radionuclides }) => {
 };
 
 /**
-* @description A component to display sortable and filterable data tables of all radionuclide emissions.
-*/
+ * @description A component to display sortable and filterable data tables of all radionuclide emissions.
+ */
 const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
-const [activeTable, setActiveTable] = React.useState('gamma');
-const [sortConfig, setSortConfig] = React.useState({ key: 'energyMeV', direction: 'ascending' });
-const [filterText, setFilterText] = React.useState('');
+    const [activeTable, setActiveTable] = React.useState('gamma');
+    const [sortConfig, setSortConfig] = React.useState({ key: 'energyMeV', direction: 'ascending' });
+    const [filterText, setFilterText] = React.useState('');
 
-const parseEnergy = React.useCallback((energyStr) => {
-if (!energyStr) return null;
-const energyRegex = /([\d.]+)\s*(MeV|keV)/i;
-const energyMatch = energyStr.match(energyRegex);
-if (!energyMatch) return null;
-let energyMeV = safeParseFloat(energyMatch[1]);
-if (energyMatch[2].toLowerCase() === 'kev') energyMeV /= 1000;
-return { energyMeV, displayEnergy: energyStr };
-}, []);
+    // Fallback Category Styles
+    const CATEGORY_STYLES = {
+        'Medical': { border: 'border-l-emerald-400', bg: 'bg-emerald-100', text: 'text-emerald-800' },
+        'Industrial': { border: 'border-l-amber-400', bg: 'bg-amber-100', text: 'text-amber-800' },
+        'NORM': { border: 'border-l-blue-400', bg: 'bg-blue-100', text: 'text-blue-800' },
+        'SNM': { border: 'border-l-rose-500', bg: 'bg-rose-100', text: 'text-rose-800' },
+        'Fission Product': { border: 'border-l-purple-500', bg: 'bg-purple-100', text: 'text-purple-800' },
+        'default': { border: 'border-l-slate-400', bg: 'bg-slate-100', text: 'text-slate-700' }
+    };
 
-const flattenedData = React.useMemo(() => {
-const data = { gamma: [], alpha: [], beta: [] };
-radionuclides.forEach(nuclide => {
-Object.keys(data).forEach(type => {
-    nuclide.emissionEnergies?.[type]?.forEach(energyStr => {
-        const parsed = parseEnergy(energyStr);
-        if (parsed) data[type].push({ nuclideSymbol: nuclide.symbol, nuclideName: nuclide.name, category: nuclide.category, ...parsed });
-    });
-});
-if (nuclide.daughterEmissions) {
-    const daughterNuclide = radionuclides.find(n => n.symbol === nuclide.daughterEmissions.from);
-    const daughterCategory = daughterNuclide ? daughterNuclide.category : 'N/A';
-    Object.keys(data).forEach(type => {
-        nuclide.daughterEmissions?.[type]?.forEach(energyStr => {
-            const parsed = parseEnergy(energyStr);
-            if (parsed) {
-                const daughterName = `${nuclide.daughterEmissions.from} (from ${nuclide.symbol})`;
-                data[type].push({ nuclideSymbol: nuclide.daughterEmissions.from, nuclideName: daughterName, category: daughterCategory, ...parsed });
-            }
-        });
-    });
-}
-});
-return data;
-}, [radionuclides, parseEnergy]);
+    const parseEnergy = React.useCallback((energyStr) => {
+        if (!energyStr) return null;
+        const energyRegex = /([\d.]+)\s*(MeV|keV)/i;
+        const energyMatch = energyStr.match(energyRegex);
+        if (!energyMatch) return null;
+        let energyMeV = safeParseFloat(energyMatch[1]);
+        if (energyMatch[2].toLowerCase() === 'kev') energyMeV /= 1000;
+        return { energyMeV, displayEnergy: energyStr };
+    }, []);
 
-const sortedAndFilteredData = React.useMemo(() => {
-let dataToProcess = [...flattenedData[activeTable]];
-if (filterText) {
-dataToProcess = dataToProcess.filter(item => item.nuclideName.toLowerCase().includes(filterText.toLowerCase()));
-}
-if (sortConfig.key !== null) {
-dataToProcess.sort((a, b) => {
-    const valA = a[sortConfig.key] || '';
-    const valB = b[sortConfig.key] || '';
-    if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
-    if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
-    return 0;
-});
-}
-return dataToProcess;
-}, [flattenedData, activeTable, sortConfig, filterText]);
-
-const requestSort = (key) => {
-let direction = 'ascending';
-if (sortConfig.key === key && sortConfig.direction === 'ascending') direction = 'descending';
-setSortConfig({ key, direction });
-};
-
-const getSortIndicator = (key) => (sortConfig.key !== key ? '↕' : sortConfig.direction === 'ascending' ? '▲' : '▼');
-
-const handleExportCSV = () => {
-if (sortedAndFilteredData.length === 0) return;
-const headers = ['Nuclide', 'Energy', 'Category'];
-const rows = sortedAndFilteredData.map(item => [`"${item.nuclideName}"`, item.displayEnergy, item.category].join(','));
-const csvContent = [headers.join(','), ...rows].join('\n');
-const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-const link = document.createElement("a");
-link.setAttribute("href", URL.createObjectURL(blob));
-link.setAttribute("download", `${activeTable}_emissions_data.csv`);
-document.body.appendChild(link);
-link.click();
-document.body.removeChild(link);
-};
-
-return (
-<div className="animate-fade-in">
-<div className="flex w-full p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg mb-4 border border-slate-200 dark:border-slate-700">
-    {['alpha', 'beta', 'gamma'].map(type => (
-        <button key={type} onClick={() => setActiveTable(type)} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors capitalize ${activeTable === type ? 'bg-white dark:bg-slate-700 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>
-            {type === 'gamma' ? 'γ' : type === 'beta' ? 'β' : 'α'} {type}
-        </button>
-    ))}
-</div>
-
-<div className="flex justify-between items-center mb-2 gap-4">
-    <div className="relative flex-grow">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Icon path={ICONS.search} className="w-4 h-4 text-slate-400" /></div>
-        <input type="text" placeholder={`Filter by nuclide name...`} value={filterText} onChange={(e) => setFilterText(e.target.value)} className="w-full p-2 pl-9 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm" />
-    </div>
-    <button onClick={handleExportCSV} className="px-3 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center gap-2 flex-shrink-0">
-        <Icon path={ICONS.database} className="w-4 h-4" /> Export CSV
-    </button>
-</div>
-
-<div className="overflow-y-auto max-h-[55vh] border border-slate-200 dark:border-slate-700 rounded-lg">
-    <table className="w-full text-sm text-left">
-        <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0">
-            <tr>
-                <th className="p-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort('nuclideName')}>Nuclide {getSortIndicator('nuclideName')}</th>
-                <th className="p-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort('energyMeV')}>Energy {getSortIndicator('energyMeV')}</th>
-                <th className="p-3 cursor-pointer whitespace-nowrap" onClick={() => requestSort('category')}>Category {getSortIndicator('category')}</th>
-            </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-            {sortedAndFilteredData.map((item, index) => {
-                const categoryStyle = CATEGORY_STYLES[item.category] || CATEGORY_STYLES['default'];
-                const bgColor = categoryStyle.border.replace('border-l-', 'bg-').replace('-400', '-100').replace('-600', '-900/50');
-                const textColor = categoryStyle.border.replace('border-l-', 'text-').replace('-400', '-700').replace('-600', '-300');
-
-                return (
-                    <tr key={`${item.nuclideSymbol}-${item.displayEnergy}-${index}`} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <td className="p-3 font-medium">
-                            <button onClick={() => { const nuclideToFind = radionuclides.find(n => n.symbol === item.nuclideSymbol); if (nuclideToFind) onNuclideClick(nuclideToFind);}} className="text-sky-600 dark:text-sky-400 hover:underline">
-                                {item.nuclideName}
-                            </button>
-                        </td>
-                        <td className="p-3 font-mono">{item.displayEnergy}</td>
-                        <td className="p-3"><span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${bgColor} ${textColor}`}>{item.category || 'N/A'}</span></td>
-                    </tr>
-                );
-            })}
-        </tbody>
-    </table>
-</div>
-</div>
-);
-};
-
-            /**
-* @description Integrated Peak Identifier module. Combines a smart search tool (with fingerprinting) and data tables.
-*/
-const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
-const { addHistory } = useCalculationHistory();
-const { addToast } = useToast();
-
-const [peakIdMode, setPeakIdMode] = React.useState('search');
-
-// Search Tool State
-const [searchEnergy, setSearchEnergy] = React.useState('');
-const [resolution, setResolution] = React.useState('low'); // 'high' (HPGe) or 'low' (NaI)
-const [minYield, setMinYield] = React.useState('1');
-const [matches, setMatches] = React.useState([]);
-const [analysis, setAnalysis] = React.useState(null);
-
-// --- LIBRARY GENERATION (Integrated) ---
-const PEAK_LIBRARY = React.useMemo(() => {
-    const lib = [];
-    
-    // 1. Ingest from DB
-    if (radionuclides) {
-        radionuclides.forEach(n => {
-            // Parse Gamma
-            if (n.emissionEnergies && n.emissionEnergies.gamma) {
-                n.emissionEnergies.gamma.forEach(eStr => {
-                    // Regex to pull number: "0.662 MeV" -> 0.662
-                    const match = eStr.match(/([\d.]+)/);
-                    if (match) {
-                        let energy = safeParseFloat(match[1]);
-                        // Convert MeV to keV for peak search consistency
-                        if (eStr.includes('MeV')) energy *= 1000; 
-                        
-                        lib.push({ 
-                            symbol: n.symbol, 
-                            name: n.name, 
-                            energy: energy, 
-                            yield: 0, // Default to 0 (Unknown)
-                            confirm: null,
-                            isUnknownYield: true // Flag to track source
-                        });
-                    }
+    // 1. Heavy Lifting: Flatten Data Once
+    const flattenedData = React.useMemo(() => {
+        const data = { gamma: [], alpha: [], beta: [] };
+        radionuclides.forEach(nuclide => {
+            Object.keys(data).forEach(type => {
+                nuclide.emissionEnergies?.[type]?.forEach(energyStr => {
+                    const parsed = parseEnergy(energyStr);
+                    if (parsed) data[type].push({ nuclideSymbol: nuclide.symbol, nuclideName: nuclide.name, category: nuclide.category, ...parsed });
+                });
+            });
+            if (nuclide.daughterEmissions) {
+                const daughterNuclide = radionuclides.find(n => n.symbol === nuclide.daughterEmissions.from);
+                const daughterCategory = daughterNuclide ? daughterNuclide.category : 'N/A';
+                Object.keys(data).forEach(type => {
+                    nuclide.daughterEmissions?.[type]?.forEach(energyStr => {
+                        const parsed = parseEnergy(energyStr);
+                        if (parsed) {
+                            const daughterName = `${nuclide.daughterEmissions.from} (from ${nuclide.symbol})`;
+                            data[type].push({ nuclideSymbol: nuclide.daughterEmissions.from, nuclideName: daughterName, category: daughterCategory, ...parsed });
+                        }
+                    });
                 });
             }
         });
-    }
+        return data;
+    }, [radionuclides, parseEnergy]);
 
-    // 2. Fallback/Enrichment with High Quality Data
-    const COMMON_ISOTOPES = [
-        { symbol: 'Cs-137', name: 'Cesium-137', energy: 661.7, yield: 85.1, confirm: 'Single Peak' },
-        { symbol: 'Co-60', name: 'Cobalt-60', energy: 1173.2, yield: 99.8, confirm: 'Look for 1332.5 keV' },
-        { symbol: 'Co-60', name: 'Cobalt-60', energy: 1332.5, yield: 99.9, confirm: 'Look for 1173.2 keV' },
-        { symbol: 'Am-241', name: 'Americium-241', energy: 59.5, yield: 35.9, confirm: 'Check for Alpha' },
-        { symbol: 'I-131', name: 'Iodine-131', energy: 364.5, yield: 81.2, confirm: 'Look for 284, 637 keV' },
-        { symbol: 'Tc-99m', name: 'Technetium-99m', energy: 140.5, yield: 89.0, confirm: 'Medical Short-lived' },
-        { symbol: 'K-40', name: 'Potassium-40', energy: 1460.8, yield: 10.7, confirm: 'Background NORM' },
-        { symbol: 'Ra-226', name: 'Radium-226', energy: 186.2, yield: 3.6, confirm: 'Check for 351, 609 keV' },
-        { symbol: 'U-235', name: 'Uranium-235', energy: 185.7, yield: 57.2, confirm: 'Look for 143, 163, 205 keV' },
-        { symbol: 'Ir-192', name: 'Iridium-192', energy: 316.5, yield: 82.7, confirm: 'Look for 468, 308 keV' },
-        { symbol: 'Ir-192', name: 'Iridium-192', energy: 468.1, yield: 47.8, confirm: 'Look for 316, 308 keV' },
-    ];
-    
-    COMMON_ISOTOPES.forEach(iso => {
-        // Check if this peak exists in the DB-generated list (approximate match)
-        const existingIndex = lib.findIndex(l => l.symbol === iso.symbol && Math.abs(l.energy - iso.energy) < 2);
+    // 2. Filter & Sort Efficiently
+    const sortedAndFilteredData = React.useMemo(() => {
+        let dataToProcess = flattenedData[activeTable] || [];
         
-        if (existingIndex > -1) {
-            // Overwrite the DB entry with the high-quality data (better energy precision + known yield)
-            lib[existingIndex] = { ...lib[existingIndex], ...iso, isUnknownYield: false };
-        } else {
-            // If not in DB, add it
-            lib.push({ ...iso, isUnknownYield: false });
+        if (filterText) {
+            const lowerFilter = filterText.toLowerCase();
+            dataToProcess = dataToProcess.filter(item => 
+                item.nuclideName.toLowerCase().includes(lowerFilter) || 
+                item.displayEnergy.toLowerCase().includes(lowerFilter)
+            );
         }
-    });
-    
-    return lib;
-}, [radionuclides]);
+        
+        if (sortConfig.key) {
+            dataToProcess.sort((a, b) => {
+                const valA = a[sortConfig.key];
+                const valB = b[sortConfig.key];
+                
+                if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
+                return 0;
+            });
+        }
+        return dataToProcess;
+    }, [flattenedData, activeTable, sortConfig, filterText]);
 
-const LEAD_XRAYS = [
-    { name: 'Pb K-α2', energy: 72.80 },
-    { name: 'Pb K-α1', energy: 74.97 },
-    { name: 'Pb K-β3', energy: 84.45 },
-    { name: 'Pb K-β1', energy: 84.94 },
-    { name: 'Pb K-β2', energy: 87.36 },
-];
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') direction = 'descending';
+        setSortConfig({ key, direction });
+    };
 
-// --- SEARCH LOGIC ---
-React.useEffect(() => {
-    const energyVal = safeParseFloat(searchEnergy);
-    if (!searchEnergy || isNaN(energyVal)) { setMatches([]); setAnalysis(null); return; }
-    
-    // Tighter tolerance for High Res (0.3% or 1 keV), looser for Low Res (7% or 20 keV)
-    let tolerance = resolution === 'high' 
-        ? Math.max(1.0, energyVal * 0.003) 
-        : Math.max(20.0, energyVal * 0.07);
-    
-    const yieldCutoff = safeParseFloat(minYield) || 0;
-    
-    const results = PEAK_LIBRARY.filter(iso => {
-        const delta = Math.abs(iso.energy - energyVal);
-        // Allow if within tolerance AND (Yield is high enough OR Yield is Unknown)
-        const yieldPass = iso.isUnknownYield ? true : (iso.yield >= yieldCutoff);
-        return delta <= tolerance && yieldPass;
-    });
-    
-    results.sort((a, b) => {
-        // Sort priority: Exact Energy match first, then Yield
-        const deltaA = Math.abs(a.energy - energyVal);
-        const deltaB = Math.abs(b.energy - energyVal);
-        if (Math.abs(deltaA - deltaB) > 1.0) return deltaA - deltaB;
-        return b.yield - a.yield;
-    });
-    
-    setMatches(results);
-    
-    // Analyze artifacts
-    const targetMeV = energyVal / 1000;
-    const mc2 = 0.511;
-    const comptonEdge = targetMeV / (1 + (mc2 / (2 * targetMeV)));
-    const singleEscape = targetMeV > 1.022 ? targetMeV - 0.511 : null;
-    const doubleEscape = targetMeV > 1.022 ? targetMeV - 1.022 : null;
-    const leadXrayMatch = LEAD_XRAYS.find(xray => Math.abs(xray.energy - energyVal) <= tolerance);
-    
-    setAnalysis({
-        comptonEdge: (comptonEdge * 1000).toFixed(1),
-        singleEscape: singleEscape ? (singleEscape * 1000).toFixed(1) : null,
-        doubleEscape: doubleEscape ? (doubleEscape * 1000).toFixed(1) : null,
-        isLeadXray: leadXrayMatch ? leadXrayMatch.name : null,
-    });
-    
-}, [searchEnergy, resolution, minYield, PEAK_LIBRARY]);
+    const getSortIndicator = (key) => (sortConfig.key !== key ? '↕' : sortConfig.direction === 'ascending' ? '▲' : '▼');
 
-const handleSave = () => {
-    if (matches.length > 0) {
-        addHistory({ id: Date.now(), type: 'Peak ID', icon: ICONS.gammaSpec, inputs: `${searchEnergy} keV (${resolution})`, result: `Match: ${matches[0].symbol}`, view: VIEWS.PEAK_ID });
-        addToast("Saved!");
-    }
-};
+    const handleExportCSV = () => {
+        if (sortedAndFilteredData.length === 0) return;
+        const headers = ['Nuclide', 'Energy', 'Category'];
+        const rows = sortedAndFilteredData.map(item => [`"${item.nuclideName}"`, item.displayEnergy, item.category].join(','));
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.setAttribute("href", URL.createObjectURL(blob));
+        link.setAttribute("download", `${activeTable}_emissions_data.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
-const handleClearInputs = () => {
-    setSearchEnergy(''); setResolution('low'); setMinYield('1'); setMatches([]); setAnalysis(null);
-};
+    return (
+        <div className="animate-fade-in p-4 bg-white dark:bg-slate-800 rounded-xl shadow-lg max-w-4xl mx-auto">
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Emission Data Tables</h2>
+            
+            <div className="flex w-full p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg mb-4 border border-slate-200 dark:border-slate-700">
+                {['alpha', 'beta', 'gamma'].map(type => (
+                    <button key={type} onClick={() => setActiveTable(type)} className={`flex-1 p-2 rounded-md text-sm font-semibold transition-colors capitalize ${activeTable === type ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>
+                        {type === 'gamma' ? 'γ' : type === 'beta' ? 'β' : 'α'} {type}
+                    </button>
+                ))}
+            </div>
 
-return (
-    <div className="p-4 animate-fade-in">
-        <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Peak Identifier</h2>
-                <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                    <Icon path={ICONS.clear} className="w-3 h-3"/> Clear
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+                <div className="relative flex-grow w-full">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Icon path={ICONS.search} className="w-4 h-4 text-slate-400" /></div>
+                    <input type="text" placeholder={`Filter by nuclide or energy...`} value={filterText} onChange={(e) => setFilterText(e.target.value)} className="w-full p-2 pl-9 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm focus:ring-2 focus:ring-sky-500" />
+                </div>
+                <button onClick={handleExportCSV} className="w-full sm:w-auto px-4 py-2 text-sm bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 transition flex items-center justify-center gap-2">
+                    <Icon path={ICONS.database} className="w-4 h-4" /> Export CSV
                 </button>
             </div>
-        
-            <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                <button onClick={() => setPeakIdMode('search')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${peakIdMode === 'search' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Search</button>
-                <button onClick={() => setPeakIdMode('tables')} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${peakIdMode === 'tables' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Data Tables</button>
+
+            <div className="overflow-y-auto max-h-[60vh] border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
+                <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
+                        <tr>
+                            <th className="p-3 cursor-pointer whitespace-nowrap hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" onClick={() => requestSort('nuclideName')}>Nuclide {getSortIndicator('nuclideName')}</th>
+                            <th className="p-3 cursor-pointer whitespace-nowrap hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" onClick={() => requestSort('energyMeV')}>Emission Energy {getSortIndicator('energyMeV')}</th>
+                            <th className="p-3 cursor-pointer whitespace-nowrap hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" onClick={() => requestSort('category')}>Category {getSortIndicator('category')}</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
+                        {sortedAndFilteredData.length > 0 ? (
+                            sortedAndFilteredData.map((item, index) => {
+                                const style = CATEGORY_STYLES[item.category] || CATEGORY_STYLES['default'];
+                                const badgeClass = `px-2 py-0.5 text-xs font-semibold rounded-full border ${style.border ? style.border.replace('border-l-', 'border-') : 'border-slate-300'} ${style.bg || 'bg-slate-100'} ${style.text || 'text-slate-700'}`;
+
+                                return (
+                                    <tr key={`${item.nuclideSymbol}-${item.displayEnergy}-${index}`} className="hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors">
+                                        <td className="p-3 font-medium">
+                                            <button onClick={() => { const nuclideToFind = radionuclides.find(n => n.symbol === item.nuclideSymbol); if (nuclideToFind) onNuclideClick(nuclideToFind);}} className="text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-2">
+                                                {item.nuclideName}
+                                                <Icon path={ICONS.arrowRight || "M9 5l7 7-7 7"} className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            </button>
+                                        </td>
+                                        <td className="p-3 font-mono text-slate-700 dark:text-slate-300">{item.displayEnergy}</td>
+                                        <td className="p-3"><span className={badgeClass}>{item.category || 'Other'}</span></td>
+                                    </tr>
+                                );
+                            })
+                        ) : (
+                            <tr>
+                                <td colSpan="3" className="p-8 text-center text-slate-500 dark:text-slate-400">
+                                    No emissions found matching "{filterText}"
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
+            <p className="text-xs text-slate-400 text-right mt-2">Showing {sortedAndFilteredData.length} records</p>
+        </div>
+    );
+};
+
+/**
+ * @description Smart Peak Search Tool. Identifies potential isotopes based on energy peaks.
+ */
+const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+
+    // Search Tool State
+    const [searchEnergy, setSearchEnergy] = React.useState('');
+    const [resolution, setResolution] = React.useState('low'); // 'high' (HPGe) or 'low' (NaI)
+    const [minYield, setMinYield] = React.useState('1');
+    const [matches, setMatches] = React.useState([]);
+    const [analysis, setAnalysis] = React.useState(null);
+
+    // --- LIBRARY GENERATION ---
+    const PEAK_LIBRARY = React.useMemo(() => {
+        const lib = [];
         
-            {peakIdMode === 'search' ? (
+        // 1. Ingest from DB
+        if (radionuclides) {
+            radionuclides.forEach(n => {
+                if (n.emissionEnergies && n.emissionEnergies.gamma) {
+                    n.emissionEnergies.gamma.forEach(eStr => {
+                        const match = eStr.match(/([\d.]+)/);
+                        if (match) {
+                            let energy = safeParseFloat(match[1]);
+                            if (eStr.includes('MeV')) energy *= 1000; 
+                            
+                            lib.push({ 
+                                symbol: n.symbol, 
+                                name: n.name, 
+                                energy: energy, 
+                                yield: 0, 
+                                confirm: null,
+                                isUnknownYield: true 
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // 2. Fallback/Enrichment with High Quality Data
+        const COMMON_ISOTOPES = [
+            { symbol: 'Cs-137', name: 'Cesium-137', energy: 661.7, yield: 85.1, confirm: 'Single Peak' },
+            { symbol: 'Co-60', name: 'Cobalt-60', energy: 1173.2, yield: 99.8, confirm: 'Look for 1332.5 keV' },
+            { symbol: 'Co-60', name: 'Cobalt-60', energy: 1332.5, yield: 99.9, confirm: 'Look for 1173.2 keV' },
+            { symbol: 'Am-241', name: 'Americium-241', energy: 59.5, yield: 35.9, confirm: 'Check for Alpha' },
+            { symbol: 'I-131', name: 'Iodine-131', energy: 364.5, yield: 81.2, confirm: 'Look for 284, 637 keV' },
+            { symbol: 'Tc-99m', name: 'Technetium-99m', energy: 140.5, yield: 89.0, confirm: 'Medical Short-lived' },
+            { symbol: 'K-40', name: 'Potassium-40', energy: 1460.8, yield: 10.7, confirm: 'Background NORM' },
+            { symbol: 'Ra-226', name: 'Radium-226', energy: 186.2, yield: 3.6, confirm: 'Check for 351, 609 keV' },
+            { symbol: 'U-235', name: 'Uranium-235', energy: 185.7, yield: 57.2, confirm: 'Look for 143, 163, 205 keV' },
+            { symbol: 'Ir-192', name: 'Iridium-192', energy: 316.5, yield: 82.7, confirm: 'Look for 468, 308 keV' },
+            { symbol: 'Ir-192', name: 'Iridium-192', energy: 468.1, yield: 47.8, confirm: 'Look for 316, 308 keV' },
+        ];
+        
+        COMMON_ISOTOPES.forEach(iso => {
+            const existingIndex = lib.findIndex(l => l.symbol === iso.symbol && Math.abs(l.energy - iso.energy) < 2);
+            if (existingIndex > -1) {
+                lib[existingIndex] = { ...lib[existingIndex], ...iso, isUnknownYield: false };
+            } else {
+                lib.push({ ...iso, isUnknownYield: false });
+            }
+        });
+        
+        return lib;
+    }, [radionuclides]);
+
+    const LEAD_XRAYS = [
+        { name: 'Pb K-α2', energy: 72.80 },
+        { name: 'Pb K-α1', energy: 74.97 },
+        { name: 'Pb K-β3', energy: 84.45 },
+        { name: 'Pb K-β1', energy: 84.94 },
+        { name: 'Pb K-β2', energy: 87.36 },
+    ];
+
+    // --- SEARCH LOGIC ---
+    React.useEffect(() => {
+        const energyVal = safeParseFloat(searchEnergy);
+        if (!searchEnergy || isNaN(energyVal)) { setMatches([]); setAnalysis(null); return; }
+        
+        // SAFETY FIX: Robust tolerance calculation
+        // High Res (HPGe): Min 1 keV or 0.3%
+        // Low Res (NaI): Min 10 keV (for low E noise) or 7%
+        let tolerance = resolution === 'high' 
+            ? Math.max(1.0, energyVal * 0.003) 
+            : Math.max(10.0, energyVal * 0.07);
+        
+        const yieldCutoff = safeParseFloat(minYield) || 0;
+        
+        const results = PEAK_LIBRARY.filter(iso => {
+            const delta = Math.abs(iso.energy - energyVal);
+            const yieldPass = iso.isUnknownYield ? true : (iso.yield >= yieldCutoff);
+            return delta <= tolerance && yieldPass;
+        });
+        
+        results.sort((a, b) => {
+            const deltaA = Math.abs(a.energy - energyVal);
+            const deltaB = Math.abs(b.energy - energyVal);
+            if (Math.abs(deltaA - deltaB) > 1.0) return deltaA - deltaB;
+            return b.yield - a.yield;
+        });
+        
+        setMatches(results);
+        
+        // Analyze artifacts
+        const targetMeV = energyVal / 1000;
+        const mc2 = 0.511;
+        const comptonEdge = targetMeV / (1 + (mc2 / (2 * targetMeV)));
+        const singleEscape = targetMeV > 1.022 ? targetMeV - 0.511 : null;
+        const doubleEscape = targetMeV > 1.022 ? targetMeV - 1.022 : null;
+        const leadXrayMatch = LEAD_XRAYS.find(xray => Math.abs(xray.energy - energyVal) <= tolerance);
+        
+        setAnalysis({
+            comptonEdge: (comptonEdge * 1000).toFixed(1),
+            singleEscape: singleEscape ? (singleEscape * 1000).toFixed(1) : null,
+            doubleEscape: doubleEscape ? (doubleEscape * 1000).toFixed(1) : null,
+            isLeadXray: leadXrayMatch ? leadXrayMatch.name : null,
+        });
+        
+    }, [searchEnergy, resolution, minYield, PEAK_LIBRARY]);
+
+    const handleSave = () => {
+        if (matches.length > 0) {
+            addHistory({ id: Date.now(), type: 'Peak ID', icon: ICONS.gammaSpec, inputs: `${searchEnergy} keV (${resolution})`, result: `Match: ${matches[0].symbol}`, view: VIEWS.PEAK_ID });
+            addToast("Saved!");
+        }
+    };
+
+    const handleClearInputs = () => {
+        setSearchEnergy(''); setResolution('low'); setMinYield('1'); setMatches([]); setAnalysis(null);
+    };
+
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Peak Identifier</h2>
+                    <button onClick={handleClearInputs} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                        <Icon path={ICONS.clear} className="w-3 h-3"/> Clear
+                    </button>
+                </div>
+            
                 <div className="animate-fade-in">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div><label className="block text-sm font-medium">Peak Energy (keV)</label><input type="number" value={searchEnergy} onChange={e => setSearchEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-bold text-lg" autoFocus/></div>
+                        <div><label className="block text-sm font-medium">Peak Energy (keV)</label><input type="number" value={searchEnergy} onChange={e => setSearchEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-bold text-lg" autoFocus placeholder="e.g. 662"/></div>
                         <div className="grid grid-cols-2 gap-2">
                             <div><label className="block text-sm font-medium">Min Yield %</label><input type="number" value={minYield} onChange={e => setMinYield(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                             <div><label className="block text-sm font-medium">Detector</label><select value={resolution} onChange={e => setResolution(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="low">NaI (Low)</option><option value="high">HPGe (High)</option></select></div>
@@ -3670,14 +3685,14 @@ return (
                     </div>
         
                     {analysis && (
-                        <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg">
+                        <div className="mb-6 p-4 bg-slate-100 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
                             <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">Artifact Analysis</h3>
                             <div className="grid grid-cols-3 gap-2 text-center text-sm">
                                 <div><p className="text-xs text-slate-400">Compton Edge</p><p className="font-mono">{analysis.comptonEdge} keV</p></div>
                                 {analysis.singleEscape && <div><p className="text-xs text-slate-400">Single Esc.</p><p className="font-mono">{analysis.singleEscape} keV</p></div>}
                                 {analysis.doubleEscape && <div><p className="text-xs text-slate-400">Double Esc.</p><p className="font-mono">{analysis.doubleEscape} keV</p></div>}
                             </div>
-                            {analysis.isLeadXray && <p className="mt-2 text-xs font-bold text-amber-600 text-center">Consistent with {analysis.isLeadXray} X-ray (Shielding)</p>}
+                            {analysis.isLeadXray && <p className="mt-2 text-xs font-bold text-amber-600 dark:text-amber-400 text-center">Possible {analysis.isLeadXray} X-ray (Shielding Artifact)</p>}
                         </div>
                     )}
         
@@ -3696,9 +3711,9 @@ return (
                                                     <span className="bg-slate-200 dark:bg-slate-600 px-1 rounded text-slate-600 dark:text-slate-300">Y: {m.yield}%</span>
                                                 )}
                                             </div>
-                                            {m.confirm && <p className="text-xs text-amber-600 mt-1 italic"><Icon path={ICONS.gammaSpec} className="w-3 h-3 inline mr-1"/>{m.confirm}</p>}
+                                            {m.confirm && <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic"><Icon path={ICONS.gammaSpec} className="w-3 h-3 inline mr-1"/>{m.confirm}</p>}
                                         </div>
-                                        <span className={`text-xs px-2 py-1 rounded-full font-bold ${Math.abs(m.energy - safeParseFloat(searchEnergy)) < 1 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>Δ {Math.abs(m.energy - safeParseFloat(searchEnergy)).toFixed(1)}</span>
+                                        <span className={`text-xs px-2 py-1 rounded-full font-bold ${Math.abs(m.energy - safeParseFloat(searchEnergy)) < 1 ? 'bg-green-100 text-green-700' : 'bg-slate-100 dark:bg-slate-900 text-slate-500'}`}>Δ {Math.abs(m.energy - safeParseFloat(searchEnergy)).toFixed(1)}</span>
                                     </div>
                                 </div>
                             ))
@@ -3708,12 +3723,9 @@ return (
                     </div>
                     {matches.length > 0 && <div className="mt-4 flex justify-center"><button onClick={handleSave} className="text-sm font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1"><Icon path={ICONS.notepad} className="w-4 h-4"/> Save Top Match</button></div>}
                 </div>
-            ) : (
-                <PeakDataTables radionuclides={radionuclides} onNuclideClick={onNuclideClick} />
-            )}
+            </div>
         </div>
-    </div>
-);
+    );
 };
 
 /**
