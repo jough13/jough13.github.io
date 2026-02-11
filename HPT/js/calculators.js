@@ -6363,6 +6363,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
  * 2. (Find Thickness) Calculates required shielding thickness for a specific radionuclide.
  * 3. (Beta Range) Calculates stopping distance for beta particles.
  */
+
 const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
     // --- Constants ---
     const MODE_GAMMA_DOSE = 'gammaDose';
@@ -6851,115 +6852,119 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
     );
 };
             
-            /**
-            * @description A calculator for determining allowable stay time and total dose received.
-            * The dose rate can be calculated from a specific source or entered manually.
-            */
-            
-            const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
-            const INPUT_MODE_SOURCE = 'fromSource';
-            const INPUT_MODE_MANUAL = 'manualRate';
-            
-            const { settings } = React.useContext(SettingsContext);
-            const { addHistory } = useCalculationHistory();
-            const { addToast } = useToast();
-            
-            const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
-            const distanceUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['mm', 'cm', 'm'] : ['in', 'ft', 'm'], [settings.unitSystem]);
-            const doseRateUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['µSv/hr', 'mSv/hr', 'Sv/hr'] : ['µrem/hr', 'mrem/hr', 'rem/hr'], [settings.unitSystem]);
-            const doseUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['µSv', 'mSv', 'Sv'] : ['µrem', 'mrem', 'rem'], [settings.unitSystem]);
-            
-            const [inputMode, setInputMode] = React.useState(() => localStorage.getItem('stayTime_inputMode') || INPUT_MODE_SOURCE);
-            const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('stayTime_nuclideSymbol') || '');
-            
-            const [activity, setActivity] = React.useState(() => localStorage.getItem('stayTime_activity') || '1');
-            const [activityUnit, setActivityUnit] = React.useState(activityUnits[1]);
-            const [distance, setDistance] = React.useState(() => localStorage.getItem('stayTime_distance') || '1');
-            const [distanceUnit, setDistanceUnit] = React.useState(distanceUnits[2]);
-            const [transmission, setTransmission] = React.useState(() => localStorage.getItem('stayTime_transmission') || '1.0');
-            
-            const [manualDoseRate, setManualDoseRate] = React.useState(() => localStorage.getItem('stayTime_manualDoseRate') || '10');
-            const [manualDoseRateUnit, setManualDoseRateUnit] = React.useState(doseRateUnits[1]);
-            
-            const [doseLimit, setDoseLimit] = React.useState(() => localStorage.getItem('stayTime_doseLimit') || '100');
-            const [doseLimitUnit, setDoseLimitUnit] = React.useState(doseUnits[1]);
-            
-            const [plannedTime, setPlannedTime] = React.useState(() => localStorage.getItem('stayTime_plannedTime') || '10');
-            const [plannedTimeUnit, setPlannedTimeUnit] = React.useState(() => localStorage.getItem('stayTime_plannedTimeUnit') || 'minutes');
-            
-            const [result, setResult] = React.useState(null);
-            const [error, setError] = React.useState('');
-            
-            // --- Persistence ---
-            React.useEffect(() => {
-            localStorage.setItem('stayTime_inputMode', inputMode);
-            localStorage.setItem('stayTime_nuclideSymbol', nuclideSymbol);
-            localStorage.setItem('stayTime_activity', activity);
-            localStorage.setItem('stayTime_distance', distance);
-            localStorage.setItem('stayTime_transmission', transmission);
-            localStorage.setItem('stayTime_manualDoseRate', manualDoseRate);
-            localStorage.setItem('stayTime_doseLimit', doseLimit);
-            localStorage.setItem('stayTime_plannedTime', plannedTime);
-            localStorage.setItem('stayTime_plannedTimeUnit', plannedTimeUnit);
-            }, [inputMode, nuclideSymbol, activity, distance, transmission, manualDoseRate, doseLimit, plannedTime, plannedTimeUnit]);
-            
-            React.useEffect(() => { if (!activityUnits.includes(activityUnit)) setActivityUnit(activityUnits[1]); }, [activityUnits, activityUnit]);
-            React.useEffect(() => { if (!distanceUnits.includes(distanceUnit)) setDistanceUnit(distanceUnits[2]); }, [distanceUnits, distanceUnit]);
-            React.useEffect(() => { if (!doseRateUnits.includes(manualDoseRateUnit)) setManualDoseRateUnit(doseRateUnits[1]); }, [doseRateUnits, manualDoseRateUnit]);
-            React.useEffect(() => { if (!doseUnits.includes(doseLimitUnit)) setDoseLimitUnit(doseUnits[1]); }, [doseUnits, doseLimitUnit]);
-            
-            React.useEffect(() => {
-            setResult(null);
-            setError('');
-            }, [inputMode]);
-            
-            React.useEffect(() => {
+/**
+ * @description A calculator for determining allowable stay time and total dose received.
+ * Features: Theoretical (Source) vs. Measured (Manual) modes, and a live countdown timer.
+ */
+const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
+    const INPUT_MODE_SOURCE = 'fromSource';
+    const INPUT_MODE_MANUAL = 'manualRate';
+    
+    const { settings } = React.useContext(SettingsContext);
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    // --- UNITS & FACTORS ---
+    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
+    const distanceUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['mm', 'cm', 'm'] : ['in', 'ft', 'm'], [settings.unitSystem]);
+    const doseRateUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['µSv/hr', 'mSv/hr', 'Sv/hr'] : ['µrem/hr', 'mrem/hr', 'rem/hr', 'R/hr'], [settings.unitSystem]);
+    const doseUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['µSv', 'mSv', 'Sv'] : ['µrem', 'mrem', 'rem'], [settings.unitSystem]);
+    
+    // Conversion Factors (Base: Ci, m, mrem)
+    const activityFactorsCi = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'TBq': 1/0.037, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
+    const distanceFactorsM = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
+    const timeFactorsHours = { 'minutes': 1 / 60, 'hours': 1, 'days': 24 };
+    const doseRateFactors_mrem_hr = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'R/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
+    const doseFactors_mrem = { 'µrem': 0.001, 'mrem': 1, 'rem': 1000, 'µSv': 0.1, 'mSv': 100, 'Sv': 100000 };
+    const timeUnits_ordered = ['minutes', 'hours', 'days'];
+
+    // --- STATE ---
+    const [inputMode, setInputMode] = React.useState(() => localStorage.getItem('stayTime_inputMode') || INPUT_MODE_MANUAL); // Default to Manual (Safer)
+    const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('stayTime_nuclideSymbol') || '');
+    
+    const [activity, setActivity] = React.useState(() => localStorage.getItem('stayTime_activity') || '1');
+    const [activityUnit, setActivityUnit] = React.useState(activityUnits[1]);
+    const [distance, setDistance] = React.useState(() => localStorage.getItem('stayTime_distance') || '1');
+    const [distanceUnit, setDistanceUnit] = React.useState(distanceUnits[2]);
+    const [transmission, setTransmission] = React.useState(() => localStorage.getItem('stayTime_transmission') || '1.0');
+    
+    const [manualDoseRate, setManualDoseRate] = React.useState(() => localStorage.getItem('stayTime_manualDoseRate') || '10');
+    const [manualDoseRateUnit, setManualDoseRateUnit] = React.useState(doseRateUnits[1]);
+    
+    const [doseLimit, setDoseLimit] = React.useState(() => localStorage.getItem('stayTime_doseLimit') || '100');
+    const [doseLimitUnit, setDoseLimitUnit] = React.useState(doseUnits[1]);
+    
+    const [plannedTime, setPlannedTime] = React.useState(() => localStorage.getItem('stayTime_plannedTime') || '10');
+    const [plannedTimeUnit, setPlannedTimeUnit] = React.useState(() => localStorage.getItem('stayTime_plannedTimeUnit') || 'minutes');
+    
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+
+    // Timer State
+    const [isTimerRunning, setIsTimerRunning] = React.useState(false);
+    const [timeLeft, setTimeLeft] = React.useState(0);
+    
+    // --- Persistence ---
+    React.useEffect(() => {
+        localStorage.setItem('stayTime_inputMode', inputMode);
+        localStorage.setItem('stayTime_nuclideSymbol', nuclideSymbol);
+        localStorage.setItem('stayTime_activity', activity);
+        localStorage.setItem('stayTime_distance', distance);
+        localStorage.setItem('stayTime_transmission', transmission);
+        localStorage.setItem('stayTime_manualDoseRate', manualDoseRate);
+        localStorage.setItem('stayTime_doseLimit', doseLimit);
+        localStorage.setItem('stayTime_plannedTime', plannedTime);
+        localStorage.setItem('stayTime_plannedTimeUnit', plannedTimeUnit);
+    }, [inputMode, nuclideSymbol, activity, distance, transmission, manualDoseRate, doseLimit, plannedTime, plannedTimeUnit]);
+    
+    React.useEffect(() => { if (!activityUnits.includes(activityUnit)) setActivityUnit(activityUnits[1]); }, [activityUnits, activityUnit]);
+    React.useEffect(() => { if (!distanceUnits.includes(distanceUnit)) setDistanceUnit(distanceUnits[2]); }, [distanceUnits, distanceUnit]);
+    React.useEffect(() => { if (!doseRateUnits.includes(manualDoseRateUnit)) setManualDoseRateUnit(doseRateUnits[1]); }, [doseRateUnits, manualDoseRateUnit]);
+    React.useEffect(() => { if (!doseUnits.includes(doseLimitUnit)) setDoseLimitUnit(doseUnits[1]); }, [doseUnits, doseLimitUnit]);
+    
+    // Handle Preselection
+    React.useEffect(() => {
+        if (preselectedNuclide) {
             const gammaNuclides = radionuclides.filter(n => n.gammaConstant);
-            if (preselectedNuclide && gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
-            setNuclideSymbol(preselectedNuclide);
-            setInputMode(INPUT_MODE_SOURCE);
+            if (gammaNuclides.find(n => n.symbol === preselectedNuclide)) {
+                setNuclideSymbol(preselectedNuclide);
+                setInputMode(INPUT_MODE_SOURCE);
             }
-            }, [preselectedNuclide, radionuclides]);
-            
-            // --- Factors ---
-            const activityFactorsCi = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'TBq': 1/0.037, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
-            const distanceFactorsM = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
-            const timeFactorsHours = { 'minutes': 1 / 60, 'hours': 1, 'days': 24 };
-            const doseRateFactors_mrem_hr = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
-            const doseFactors_mrem = { 'µrem': 0.001, 'mrem': 1, 'rem': 1000, 'µSv': 0.1, 'mSv': 100, 'Sv': 100000 };
-            const timeUnits_ordered = ['minutes', 'hours', 'days'];
-            const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-            
-            // --- Calculation ---
-            const handleCalculate = React.useCallback(() => {
-            let effectiveDoseRate_mrem_hr = 0;
-            try {
+        }
+    }, [preselectedNuclide, radionuclides]);
+    
+    const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
+    
+    // --- Calculation ---
+    const handleCalculate = React.useCallback(() => {
+        let effectiveDoseRate_mrem_hr = 0;
+        try {
             const transValue = safeParseFloat(transmission);
             if (isNaN(transValue) || transValue < 0 || transValue > 1) { throw new Error('Transmission must be between 0 and 1.'); }
             
             if (inputMode === INPUT_MODE_SOURCE) {
-            const nuclide = gammaNuclides.find(n => n.symbol === nuclideSymbol);
-            if (!nuclide) { throw new Error('Please select a radionuclide.'); }
-            const activityValue = safeParseFloat(activity);
-            const distanceValue = safeParseFloat(distance);
-            
-            if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) { throw new Error('Please enter valid, positive numbers for activity and distance.'); }
-            
-            const gammaConstant = safeParseFloat(nuclide.gammaConstant);
-            const activityInCi = activityValue * activityFactorsCi[activityUnit];
-            const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
-            
-            // Inverse Square + Transmission
-            const doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
-            effectiveDoseRate_mrem_hr = doseRateR_hr * 1000 * transValue;
-            
+                const nuclide = gammaNuclides.find(n => n.symbol === nuclideSymbol);
+                if (!nuclide) { throw new Error('Please select a radionuclide.'); }
+                const activityValue = safeParseFloat(activity);
+                const distanceValue = safeParseFloat(distance);
+                
+                if (isNaN(activityValue) || isNaN(distanceValue) || distanceValue <= 0 || activityValue < 0) { throw new Error('Please enter valid, positive numbers for activity and distance.'); }
+                
+                const gammaConstant = safeParseFloat(nuclide.gammaConstant);
+                const activityInCi = activityValue * activityFactorsCi[activityUnit];
+                const distanceInM = distanceValue * distanceFactorsM[distanceUnit];
+                
+                // Inverse Square + Transmission
+                const doseRateR_hr = (gammaConstant * activityInCi) / Math.pow(distanceInM, 2);
+                effectiveDoseRate_mrem_hr = doseRateR_hr * 1000 * transValue;
+                
             } else {
-            const manualRate = safeParseFloat(manualDoseRate);
-            if (isNaN(manualRate) || manualRate < 0) { throw new Error('Please enter a valid, non-negative dose rate.'); }
-            const baseRate = manualRate * doseRateFactors_mrem_hr[manualDoseRateUnit];
-            
-            // Apply transmission to manual rate too
-            effectiveDoseRate_mrem_hr = baseRate * transValue;
+                const manualRate = safeParseFloat(manualDoseRate);
+                if (isNaN(manualRate) || manualRate < 0) { throw new Error('Please enter a valid, non-negative dose rate.'); }
+                const baseRate = manualRate * doseRateFactors_mrem_hr[manualDoseRateUnit];
+                
+                // Apply transmission to manual rate too
+                effectiveDoseRate_mrem_hr = baseRate * transValue;
             }
             
             const limitVal = safeParseFloat(doseLimit);
@@ -6967,7 +6972,7 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
             if (isNaN(limitVal) || isNaN(plannedTimeValue) || limitVal <= 0 || plannedTimeValue < 0) { throw new Error('Please enter valid, positive numbers for dose limit and planned time.'); }
             
             if (effectiveDoseRate_mrem_hr <= 1e-9) {
-             setResult({ rawDoseRate_mrem_hr: 0, stayTime: 'Infinite', rawTotalDose_mrem: 0, isSafe: true });
+             setResult({ rawDoseRate_mrem_hr: 0, stayTime: 'Infinite', seconds: Infinity, rawTotalDose_mrem: 0, isSafe: true });
              return;
             }
             
@@ -6976,6 +6981,8 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
             
             let formattedStayTime = "";
             const totalMinutes = stayTimeHours * 60;
+            const totalSeconds = stayTimeHours * 3600;
+
             if (totalMinutes > 6000) {
                formattedStayTime = `> 100 hours`;
             } else if (totalMinutes > 60) {
@@ -6992,141 +6999,189 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
             const totalDoseReceived_mrem = effectiveDoseRate_mrem_hr * plannedTimeInHours;
             const isSafe = totalDoseReceived_mrem <= limit_mrem;
             
-            setResult({ rawDoseRate_mrem_hr: effectiveDoseRate_mrem_hr, stayTime: formattedStayTime, rawTotalDose_mrem: totalDoseReceived_mrem, isSafe: isSafe });
-            } catch(e) {
+            setResult({ 
+                rawDoseRate_mrem_hr: effectiveDoseRate_mrem_hr, 
+                stayTime: formattedStayTime, 
+                seconds: totalSeconds,
+                rawTotalDose_mrem: totalDoseReceived_mrem, 
+                isSafe: isSafe 
+            });
+        } catch(e) {
             setError(e.message);
             setResult(null);
-            }
-            }, [inputMode, nuclideSymbol, activity, activityUnit, distance, distanceUnit, transmission, manualDoseRate, manualDoseRateUnit, doseLimit, doseLimitUnit, plannedTime, plannedTimeUnit, gammaNuclides]);
-            
-            React.useEffect(() => {
-            setResult(null);
-            setError('');
-            if (inputMode === INPUT_MODE_SOURCE && !nuclideSymbol) { return; }
-            handleCalculate();
-            }, [handleCalculate]);
-            
-            const handleClearInputs = () => {
-            setInputMode(INPUT_MODE_SOURCE);
-            setNuclideSymbol('');
-            setActivity('1');
-            setDistance('1');
-            setTransmission('1.0');
-            setManualDoseRate('10');
-            setDoseLimit('100');
-            setPlannedTime('10');
-            setError('');
-            setResult(null);
-            
-            const keysToClear = ['stayTime_inputMode', 'stayTime_nuclideSymbol', 'stayTime_activity', 'stayTime_distance', 'stayTime_transmission', 'stayTime_manualDoseRate', 'stayTime_doseLimit', 'stayTime_plannedTime'];
-            keysToClear.forEach(key => localStorage.removeItem(key));
-            };
-            
-            const handleSaveToHistory = () => {
-            if (result) {
+        }
+    }, [inputMode, nuclideSymbol, activity, activityUnit, distance, distanceUnit, transmission, manualDoseRate, manualDoseRateUnit, doseLimit, doseLimitUnit, plannedTime, plannedTimeUnit, gammaNuclides]);
+    
+    // Auto-Calc Trigger
+    React.useEffect(() => {
+        setResult(null); setError('');
+        if (inputMode === INPUT_MODE_SOURCE && !nuclideSymbol) return;
+        // Basic debounce via useEffect dependency
+        const timer = setTimeout(handleCalculate, 50);
+        return () => clearTimeout(timer);
+    }, [handleCalculate]);
+
+    // Timer Logic
+    React.useEffect(() => {
+        let interval = null;
+        if (isTimerRunning && timeLeft > 0) {
+            interval = setInterval(() => setTimeLeft(t => t - 1), 1000);
+        } else if (timeLeft === 0 && isTimerRunning) {
+            setIsTimerRunning(false);
+            addToast("Time Expired!", "warning");
+        }
+        return () => clearInterval(interval);
+    }, [isTimerRunning, timeLeft]);
+
+    const handleStartTimer = () => {
+        if (!result) return;
+        setTimeLeft(Math.floor(result.seconds));
+        setIsTimerRunning(true);
+    };
+
+    const formatCountdown = (sec) => {
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+    
+    const handleClearInputs = () => {
+        setInputMode(INPUT_MODE_MANUAL);
+        setNuclideSymbol('');
+        setActivity('1');
+        setDistance('1');
+        setTransmission('1.0');
+        setManualDoseRate('10');
+        setDoseLimit('100');
+        setPlannedTime('10');
+        setError('');
+        setResult(null);
+        setIsTimerRunning(false);
+        
+        const keysToClear = ['stayTime_inputMode', 'stayTime_nuclideSymbol', 'stayTime_activity', 'stayTime_distance', 'stayTime_transmission', 'stayTime_manualDoseRate', 'stayTime_doseLimit', 'stayTime_plannedTime'];
+        keysToClear.forEach(key => localStorage.removeItem(key));
+    };
+    
+    const handleSaveToHistory = () => {
+        if (result) {
             const formattedDoseRate = formatDoseValue(result.rawDoseRate_mrem_hr, 'doseRate', settings);
             addHistory({
-             id: Date.now(),
-             type: 'Stay Time',
-             icon: ICONS.stopwatch,
-             inputs: `${formattedDoseRate.value} ${formattedDoseRate.unit}, ${doseLimit} ${doseLimitUnit} limit`,
-             result: result.stayTime,
-             view: VIEWS.STAY_TIME
+                id: Date.now(),
+                type: 'Stay Time',
+                icon: ICONS.stopwatch,
+                inputs: `${formattedDoseRate.value} ${formattedDoseRate.unit}, ${doseLimit} ${doseLimitUnit} limit`,
+                result: result.stayTime,
+                view: VIEWS.STAY_TIME
             });
             addToast("Calculation saved to history!");
-            }
-            };
-            
-            return (
-            <div className="p-4 animate-fade-in">
+        }
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Stay Time Calculator</h2>
-                <ClearButton onClick={handleClearInputs} />
-            </div>
-            
-            <div className="flex justify-center mb-6">
-                <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1 w-full">
-                    <button onClick={() => setInputMode(INPUT_MODE_SOURCE)} className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${inputMode === INPUT_MODE_SOURCE ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Calculate from Source</button>
-                    <button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Known Dose Rate</button>
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Stay Time Calculator</h2>
+                    <ClearButton onClick={handleClearInputs} />
                 </div>
-            </div>
-            
-            <div className="space-y-4">
-                {inputMode === INPUT_MODE_SOURCE ? (
-                    <div className="space-y-4 animate-fade-in">
-                        <div className="min-h-[42px]">
-                            {nuclideSymbol ?
-                                <CalculatorNuclideInfo nuclide={gammaNuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => setNuclideSymbol('')} /> :
-                                <SearchableSelect options={gammaNuclides} onSelect={setNuclideSymbol} placeholder="Select a gamma source..." />
-                            }
+                
+                <div className="flex justify-center mb-6">
+                    <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1 w-full">
+                        <button onClick={() => setInputMode(INPUT_MODE_SOURCE)} className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${inputMode === INPUT_MODE_SOURCE ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>From Source (Theor.)</button>
+                        <button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Known Rate (Meas.)</button>
+                    </div>
+                </div>
+                
+                <div className="space-y-4">
+                    {inputMode === INPUT_MODE_SOURCE ? (
+                        <div className="space-y-4 animate-fade-in">
+                             <ContextualNote type="warning"><strong>Warning:</strong> Calculates theoretical unshielded dose rate. Does not account for self-shielding or scatter. Use measured rates for critical safety decisions.</ContextualNote>
+                            <div className="min-h-[42px]">
+                                {nuclideSymbol ?
+                                    <CalculatorNuclideInfo nuclide={gammaNuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => setNuclideSymbol('')} /> :
+                                    <SearchableSelect options={gammaNuclides} onSelect={setNuclideSymbol} placeholder="Select a gamma source..." />
+                                }
+                            </div>
+                
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="text-xs font-bold mb-1 block">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            </div>
                         </div>
-            
+                    ) : (
+                        <div className="animate-fade-in">
+                            <label className="text-xs font-bold mb-1 block">Work Area Dose Rate (Unshielded)</label>
+                            <div className="flex"><input type="number" value={manualDoseRate} onChange={e => setManualDoseRate(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={manualDoseRateUnit} onChange={e => setManualDoseRateUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                        </div>
+                    )}
+                
+                    {/* Shared Transmission Input */}
+                    <div>
+                        <Tooltip text="Factor to account for shielding. 1.0 = Unshielded. 0.5 = 1 HVL.">
+                            <label className="text-xs font-bold mb-1 block cursor-help underline decoration-dotted">Transmission Factor (0-1)</label>
+                        </Tooltip>
+                        <input type="number" step="0.1" min="0" max="1" value={transmission} onChange={e => setTransmission(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g., 0.5 for 1 HVL"/>
+                    </div>
+                
+                    {/* Planning Section */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 bg-slate-50 dark:bg-slate-800/50">
+                        <div className="flex items-center gap-2 mb-1"><Icon path={ICONS.stopwatch} className="w-4 h-4 text-slate-400"/><span className="text-sm font-bold text-slate-600 dark:text-slate-300">ALARA Planning</span></div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                            <div><label className="text-xs font-bold mb-1 block">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            <div><label className="text-xs font-bold mb-1 block">Dose Limit</label><div className="flex"><input type="number" value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full p-2 rounded-l bg-white dark:bg-slate-700 text-sm"/><select value={doseLimitUnit} onChange={e => setDoseLimitUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            <div><label className="text-xs font-bold mb-1 block">Planned Time</label><div className="flex"><input type="number" value={plannedTime} onChange={e => setPlannedTime(e.target.value)} className="w-full p-2 rounded-l bg-white dark:bg-slate-700 text-sm"/><select value={plannedTimeUnit} onChange={e => setPlannedTimeUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{timeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                         </div>
                     </div>
-                ) : (
-                    <div className="animate-fade-in">
-                        <label className="text-xs font-bold mb-1 block">Work Area Dose Rate (Unshielded)</label>
-                        <div className="flex"><input type="number" value={manualDoseRate} onChange={e => setManualDoseRate(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={manualDoseRateUnit} onChange={e => setManualDoseRateUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
-                    </div>
-                )}
-            
-                {/* Shared Transmission Input */}
-                <div>
-                    <Tooltip text="Factor to account for shielding. 1.0 = Unshielded. 0.5 = 1 HVL.">
-                        <label className="text-xs font-bold mb-1 block cursor-help underline decoration-dotted">Transmission Factor (0-1)</label>
-                    </Tooltip>
-                    <input type="number" step="0.1" min="0" max="1" value={transmission} onChange={e => setTransmission(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g., 0.5 for 1 HVL"/>
-                </div>
-            
-                {/* Planning Section */}
-                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 bg-slate-50 dark:bg-slate-800/50">
-                    <div className="flex items-center gap-2 mb-1"><Icon path={ICONS.stopwatch} className="w-4 h-4 text-slate-400"/><span className="text-sm font-bold text-slate-600 dark:text-slate-300">ALARA Planning</span></div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-xs font-bold mb-1 block">Dose Limit</label><div className="flex"><input type="number" value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full p-2 rounded-l bg-white dark:bg-slate-700 text-sm"/><select value={doseLimitUnit} onChange={e => setDoseLimitUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                        <div><label className="text-xs font-bold mb-1 block">Planned Time</label><div className="flex"><input type="number" value={plannedTime} onChange={e => setPlannedTime(e.target.value)} className="w-full p-2 rounded-l bg-white dark:bg-slate-700 text-sm"/><select value={plannedTimeUnit} onChange={e => setPlannedTimeUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{timeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                    </div>
-                </div>
-            
-                {error && <p className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
-            
-                {result && (
-                    <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative overflow-hidden">
-                        <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to history"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
-            
-                        <p className="text-xs uppercase font-bold text-slate-500 mb-2">Maximum Stay Time</p>
-                        <div className="flex items-center justify-center gap-2 mb-4">
-                            <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{result.stayTime}</span>
-                            <CopyButton textToCopy={result.stayTime} />
-                        </div>
-            
-                        <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-600 pt-3">
-                            <div>
-                                <p>Effective Rate:</p>
-                                <p className="font-bold text-sm text-slate-800 dark:text-white">
-                                    {formatDoseValue(result.rawDoseRate_mrem_hr, 'doseRate', settings).value} {formatDoseValue(result.rawDoseRate_mrem_hr, 'doseRate', settings).unit}
-                                </p>
+                
+                    {error && <p className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
+                
+                    {result && (
+                        <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative overflow-hidden">
+                            <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to history"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
+                
+                            <p className="text-xs uppercase font-bold text-slate-500 mb-2">Maximum Stay Time</p>
+                            
+                            {/* LIVE TIMER UI */}
+                            {isTimerRunning ? (
+                                <div className="mb-4 animate-pulse">
+                                    <span className="text-5xl font-black text-red-500 font-mono tracking-wider">{formatCountdown(timeLeft)}</span>
+                                    <div className="mt-2"><button onClick={() => setIsTimerRunning(false)} className="px-4 py-1 text-xs font-bold bg-red-100 text-red-700 rounded-full hover:bg-red-200">STOP TIMER</button></div>
+                                </div>
+                            ) : (
+                                <div className="mb-4 group relative">
+                                    <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{result.stayTime}</span>
+                                    {result.seconds < Infinity && (
+                                        <button onClick={handleStartTimer} className="absolute -right-8 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-sky-500 hover:text-sky-700">
+                                            <Icon path={ICONS.play || "M8 5v14l11-7z"} className="w-6 h-6" />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                
+                            <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-600 pt-3">
+                                <div>
+                                    <p>Effective Rate:</p>
+                                    <p className="font-bold text-sm text-slate-800 dark:text-white">
+                                        {formatDoseValue(result.rawDoseRate_mrem_hr, 'doseRate', settings).value} {formatDoseValue(result.rawDoseRate_mrem_hr, 'doseRate', settings).unit}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p>Proj. Dose:</p>
+                                    <p className={`font-bold text-sm ${result.isSafe ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
+                                        {formatDoseValue(result.rawTotalDose_mrem, 'dose', settings).value} {formatDoseValue(result.rawTotalDose_mrem, 'dose', settings).unit}
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <p>Proj. Dose:</p>
-                                <p className={`font-bold text-sm ${result.isSafe ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
-                                    {formatDoseValue(result.rawTotalDose_mrem, 'dose', settings).value} {formatDoseValue(result.rawTotalDose_mrem, 'dose', settings).unit}
-                                </p>
-                            </div>
+                
+                            {!result.isSafe && <p className="text-xs font-bold text-red-500 mt-2 bg-red-50 dark:bg-red-900/30 p-1 rounded">Planned time exceeds dose limit!</p>}
                         </div>
-            
-                        {!result.isSafe && <p className="text-xs font-bold text-red-500 mt-2 bg-red-50 dark:bg-red-900/30 p-1 rounded">Planned time exceeds dose limit!</p>}
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
-            </div>
-            </div>
-            );
-            };      
-            
+        </div>
+    );
+};      
+        
             const FluenceDoseConverter = ({ calcMode, setCalcMode, energy, setEnergy, inputValue, setInputValue, inputUnit, setInputUnit, result, setResult, error, setError }) => {
             const { addHistory } = useCalculationHistory();
             const { addToast } = useToast();
