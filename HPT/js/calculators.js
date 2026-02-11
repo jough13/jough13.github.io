@@ -6356,500 +6356,500 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
         </div>
     );
 };
+
+/**
+ * @description A calculator for photon shielding with three modes:
+ * 1. (Gamma Dose) Calculates final dose rate from a specific radionuclide.
+ * 2. (Find Thickness) Calculates required shielding thickness for a specific radionuclide.
+ * 3. (Beta Range) Calculates stopping distance for beta particles.
+ */
+const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
+    // --- Constants ---
+    const MODE_GAMMA_DOSE = 'gammaDose';
+    const MODE_FIND_THICKNESS = 'findThickness';
+    const MODE_BETA_RANGE = 'betaRange';
+    
+    const DEFINE_BY_SOURCE = 'bySource';
+    const DEFINE_BY_RATE = 'byRate';
+    
+    const INPUT_MODE_DB = 'fromSource';
+    const INPUT_MODE_MANUAL = 'manual';
+    
+    // --- Context & Hooks ---
+    const { settings } = React.useContext(SettingsContext);
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    // --- Units ---
+    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
+    const distanceUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['mm', 'cm', 'm'] : ['in', 'ft', 'm'], [settings.unitSystem]);
+    const doseRateUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['µSv/hr', 'mSv/hr', 'Sv/hr'] : ['µrem/hr', 'mrem/hr', 'rem/hr', 'mR/hr', 'R/hr'], [settings.unitSystem]);
+    
+    // --- State ---
+    const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('shielding_calcMode') || MODE_GAMMA_DOSE);
+    const [definitionMode, setDefinitionMode] = React.useState(DEFINE_BY_SOURCE);
+    const [inputMode, setInputMode] = React.useState(INPUT_MODE_DB);
+    const [useManualHVL, setUseManualHVL] = React.useState(false);
+    const [useBuildup, setUseBuildup] = React.useState(false);
+    
+    const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('shielding_nuclideSymbol') || '');
+    const [activity, setActivity] = React.useState('1');
+    const [activityUnit, setActivityUnit] = React.useState(activityUnits[1]);
+    const [distance, setDistance] = React.useState('1');
+    const [distanceUnit, setDistanceUnit] = React.useState(distanceUnits[2]);
+    
+    const [unshieldedRate, setUnshieldedRate] = React.useState('100');
+    const [unshieldedRateUnit, setUnshieldedRateUnit] = React.useState(doseRateUnits[1]);
+    
+    const [genericReference, setGenericReference] = React.useState('Cs-137');
+    
+    const [manualGamma, setManualGamma] = React.useState('');
+    const [manualHVL, setManualHVL] = React.useState('');
+    const [manualBetaEnergy, setManualBetaEnergy] = React.useState('');
+    
+    const [shieldMaterial, setShieldMaterial] = React.useState('Lead');
+    const [shieldThickness, setShieldThickness] = React.useState('1');
+    const [thicknessUnit, setThicknessUnit] = React.useState('cm');
+    const [targetDoseRate, setTargetDoseRate] = React.useState('2');
+    const [targetDoseRateUnit, setTargetDoseRateUnit] = React.useState(doseRateUnits[1]);
+    
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+    
+    // --- Persistence ---
+    React.useEffect(() => {
+        localStorage.setItem('shielding_calcMode', calcMode);
+        localStorage.setItem('shielding_nuclideSymbol', nuclideSymbol);
+    }, [calcMode, nuclideSymbol]);
+    
+    const shieldingNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant && HVL_DATA[n.symbol]).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
+    const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
+    
+    const availableMaterials = React.useMemo(() => {
+        if (calcMode === MODE_BETA_RANGE) return Object.keys(SHIELD_PROPS);
+        if (useManualHVL) return ['Lead', 'Concrete', 'Steel', 'Water', 'Aluminum', 'Tungsten', 'Plastic', 'Glass'];
+        if (definitionMode === DEFINE_BY_RATE) return ['Lead', 'Concrete', 'Steel', 'Water', 'Aluminum'];
+        if (inputMode === INPUT_MODE_DB && nuclideSymbol && HVL_DATA[nuclideSymbol]) {
+            return Object.keys(HVL_DATA[nuclideSymbol]).filter(k => k !== 'sourceRef');
+        }
+        return ['Lead', 'Concrete', 'Steel', 'Water', 'Aluminum', 'Tungsten'];
+    }, [calcMode, inputMode, nuclideSymbol, definitionMode, useManualHVL]);
+    
+    React.useEffect(() => {
+        if (!availableMaterials.includes(shieldMaterial)) setShieldMaterial(availableMaterials[0]);
+    }, [availableMaterials, calcMode]);
+    
+    // Factors
+    const activityFactors = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'TBq': 1/0.037, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
+    const distanceFactors = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
+    const thicknessFactors = { 'mm': 0.1, 'cm': 1, 'in': 2.54 };
+    const doseRateFactors_mrem_hr = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'mR/hr': 1, 'R/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
+    
+    // --- Core Calculation Logic ---
+    React.useEffect(() => {
+        try {
+            setError(''); setResult(null);
             
-            /**
-            * @description A calculator for photon shielding with three modes:
-            * 1. (From Source) Calculates final dose rate from a specific radionuclide.
-            * 2. (Find Thickness) Calculates required shielding thickness for a specific radionuclide.
-            * 3. (Generic Rate) Calculates final OR initial dose rate from a user-inputted HVL.
-            */
+            // 1. BETA CALCULATION
+            if (calcMode === MODE_BETA_RANGE) {
+                let E_max = 0;
+                if (inputMode === INPUT_MODE_DB) {
+                    if (!nuclideSymbol) return;
+                    const n = radionuclides.find(r => r.symbol === nuclideSymbol);
+                    if (n?.emissionEnergies?.beta) E_max = parseEnergyToMeV(n.emissionEnergies.beta);
+                } else {
+                    E_max = safeParseFloat(manualBetaEnergy);
+                }
+                
+                if (!E_max || E_max <= 0) return;
+                
+                const mat = SHIELD_PROPS[shieldMaterial];
+                if (!mat) { setError("Invalid shield material."); return; }
+                if (mat.density <= 0) { setError("Cannot calculate range for 'None' density."); return; }
+                
+                // Katz-Penfold Range (mg/cm2)
+                let range_mg_cm2;
+                if (E_max > 0.8) range_mg_cm2 = 542 * E_max - 133;
+                else if (E_max >= 0.15) range_mg_cm2 = 407 * Math.pow(E_max, 1.38);
+                else range_mg_cm2 = 407 * Math.pow(E_max, 1.38);
+                
+                const density_mg_cm3 = mat.density * 1000;
+                const thickness_cm = range_mg_cm2 / density_mg_cm3;
+                
+                let warning = null;
+                if (mat.type === 'High-Z') {
+                    warning = `High-Z material (${shieldMaterial}) generates Bremsstrahlung X-rays. Use Plastic/Lucite instead.`;
+                }
+                
+                setResult({ type: 'beta', thickness_cm, material: shieldMaterial, range_mg_cm2, warning });
+                return;
+            }
             
-            const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
-                // --- Constants ---
-                const MODE_GAMMA_DOSE = 'gammaDose';
-                const MODE_FIND_THICKNESS = 'findThickness';
-                const MODE_BETA_RANGE = 'betaRange';
+            // 2. GAMMA CALCULATIONS
+            let unshieldedRate_R_hr = 0;
+            
+            if (definitionMode === DEFINE_BY_RATE) {
+                const rateVal = safeParseFloat(unshieldedRate);
+                if (isNaN(rateVal) || rateVal < 0) { if(unshieldedRate) setError("Rate must be positive."); return; }
+                unshieldedRate_R_hr = (rateVal * doseRateFactors_mrem_hr[unshieldedRateUnit]) / 1000;
+            } else {
+                const actVal = safeParseFloat(activity);
+                const distVal = safeParseFloat(distance);
                 
-                const DEFINE_BY_SOURCE = 'bySource';
-                const DEFINE_BY_RATE = 'byRate';
+                if (isNaN(actVal) || isNaN(distVal) || actVal <= 0 || distVal <= 0) {
+                    if (activity && distance) setError("Inputs must be valid positive numbers.");
+                    return;
+                }
                 
-                const INPUT_MODE_DB = 'fromSource';
-                const INPUT_MODE_MANUAL = 'manual';
-                
-                // --- Context & Hooks ---
-                const { settings } = React.useContext(SettingsContext);
-                const { addHistory } = useCalculationHistory();
-                const { addToast } = useToast();
-                
-                // --- Units ---
-                const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
-                const distanceUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['mm', 'cm', 'm'] : ['in', 'ft', 'm'], [settings.unitSystem]);
-                const doseRateUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['µSv/hr', 'mSv/hr', 'Sv/hr'] : ['µrem/hr', 'mrem/hr', 'rem/hr', 'mR/hr', 'R/hr'], [settings.unitSystem]);
-                
-                // --- State ---
-                const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('shielding_calcMode') || MODE_GAMMA_DOSE);
-                const [definitionMode, setDefinitionMode] = React.useState(DEFINE_BY_SOURCE);
-                const [inputMode, setInputMode] = React.useState(INPUT_MODE_DB);
-                const [useManualHVL, setUseManualHVL] = React.useState(false);
-                const [useBuildup, setUseBuildup] = React.useState(false);
-                
-                const [nuclideSymbol, setNuclideSymbol] = React.useState(() => localStorage.getItem('shielding_nuclideSymbol') || '');
-                const [activity, setActivity] = React.useState('1');
-                const [activityUnit, setActivityUnit] = React.useState(activityUnits[1]);
-                const [distance, setDistance] = React.useState('1');
-                const [distanceUnit, setDistanceUnit] = React.useState(distanceUnits[2]);
-                
-                const [unshieldedRate, setUnshieldedRate] = React.useState('100');
-                const [unshieldedRateUnit, setUnshieldedRateUnit] = React.useState(doseRateUnits[1]);
-                
-                const [genericReference, setGenericReference] = React.useState('Cs-137');
-                
-                const [manualGamma, setManualGamma] = React.useState('');
-                const [manualHVL, setManualHVL] = React.useState('');
-                const [manualBetaEnergy, setManualBetaEnergy] = React.useState('');
-                
-                const [shieldMaterial, setShieldMaterial] = React.useState('Lead');
-                const [shieldThickness, setShieldThickness] = React.useState('1');
-                const [thicknessUnit, setThicknessUnit] = React.useState('cm');
-                const [targetDoseRate, setTargetDoseRate] = React.useState('2');
-                const [targetDoseRateUnit, setTargetDoseRateUnit] = React.useState(doseRateUnits[1]);
-                
-                const [result, setResult] = React.useState(null);
-                const [error, setError] = React.useState('');
-                
-                // --- Persistence ---
-                React.useEffect(() => {
-                    localStorage.setItem('shielding_calcMode', calcMode);
-                    localStorage.setItem('shielding_nuclideSymbol', nuclideSymbol);
-                }, [calcMode, nuclideSymbol]);
-              
-                const shieldingNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant && HVL_DATA[n.symbol]).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-                const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0).sort((a,b) => a.name.localeCompare(b.name)), [radionuclides] );
-                
-                const availableMaterials = React.useMemo(() => {
-                    if (calcMode === MODE_BETA_RANGE) return Object.keys(SHIELD_PROPS);
-                    if (useManualHVL) return ['Lead', 'Concrete', 'Steel', 'Water', 'Aluminum', 'Tungsten', 'Plastic', 'Glass'];
-                    if (definitionMode === DEFINE_BY_RATE) return ['Lead', 'Concrete', 'Steel', 'Water', 'Aluminum'];
-                    if (inputMode === INPUT_MODE_DB && nuclideSymbol && HVL_DATA[nuclideSymbol]) {
-                        return Object.keys(HVL_DATA[nuclideSymbol]).filter(k => k !== 'sourceRef');
+                let gammaConst = 0;
+                if (inputMode === INPUT_MODE_DB) {
+                    if (nuclideSymbol) {
+                        const n = radionuclides.find(r => r.symbol === nuclideSymbol);
+                        gammaConst = safeParseFloat(n?.gammaConstant);
                     }
-                    return ['Lead', 'Concrete', 'Steel', 'Water', 'Aluminum', 'Tungsten'];
-                }, [calcMode, inputMode, nuclideSymbol, definitionMode, useManualHVL]);
+                } else {
+                    gammaConst = safeParseFloat(manualGamma);
+                }
                 
-                React.useEffect(() => {
-                    if (!availableMaterials.includes(shieldMaterial)) setShieldMaterial(availableMaterials[0]);
-                }, [availableMaterials, calcMode]);
+                if (!gammaConst || isNaN(gammaConst)) {
+                    if(inputMode === INPUT_MODE_MANUAL) setError("Invalid Gamma Constant.");
+                    return;
+                }
                 
-                // Factors
-                const activityFactors = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'TBq': 1/0.037, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
-                const distanceFactors = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
-                const thicknessFactors = { 'mm': 0.1, 'cm': 1, 'in': 2.54 };
-                const doseRateFactors_mrem_hr = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'mR/hr': 1, 'R/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
-                
-                // --- Core Calculation Logic ---
-                React.useEffect(() => {
-                    try {
-                        setError(''); setResult(null);
-                        
-                        // 1. BETA CALCULATION
-                        if (calcMode === MODE_BETA_RANGE) {
-                            let E_max = 0;
-                            if (inputMode === INPUT_MODE_DB) {
-                                if (!nuclideSymbol) return;
-                                const n = radionuclides.find(r => r.symbol === nuclideSymbol);
-                                if (n?.emissionEnergies?.beta) E_max = parseEnergyToMeV(n.emissionEnergies.beta);
-                            } else {
-                                E_max = safeParseFloat(manualBetaEnergy);
-                            }
-                            
-                            if (!E_max || E_max <= 0) return;
-                            
-                            const mat = SHIELD_PROPS[shieldMaterial];
-                            if (!mat) { setError("Invalid shield material."); return; }
-                            
-                            let range_mg_cm2;
-                            if (E_max > 0.8) range_mg_cm2 = 542 * E_max - 133;
-                            else if (E_max >= 0.15) range_mg_cm2 = 407 * Math.pow(E_max, 1.38);
-                            else range_mg_cm2 = 407 * Math.pow(E_max, 1.38);
-                            
-                            const density_mg_cm3 = mat.density * 1000;
-                            const thickness_cm = range_mg_cm2 / density_mg_cm3;
-                            
-                            let warning = null;
-                            if (mat.type === 'High-Z') {
-                                warning = `High-Z material (${shieldMaterial}) generates Bremsstrahlung X-rays. Use Plastic/Lucite instead.`;
-                            }
-                            
-                            setResult({ type: 'beta', thickness_cm, material: shieldMaterial, range_mg_cm2, warning });
-                            return;
-                        }
-                        
-                        // 2. GAMMA CALCULATIONS
-                        let unshieldedRate_R_hr = 0;
-                        
-                        if (definitionMode === DEFINE_BY_RATE) {
-                            const rateVal = safeParseFloat(unshieldedRate);
-                            if (isNaN(rateVal) || rateVal < 0) { if(unshieldedRate) setError("Rate must be positive."); return; }
-                            unshieldedRate_R_hr = (rateVal * doseRateFactors_mrem_hr[unshieldedRateUnit]) / 1000;
-                        } else {
-                            const actVal = safeParseFloat(activity);
-                            const distVal = safeParseFloat(distance);
-                            
-                            if (isNaN(actVal) || isNaN(distVal) || actVal <= 0 || distVal <= 0) {
-                                if (activity && distance) setError("Inputs must be valid positive numbers.");
-                                return;
-                            }
-                            
-                            let gammaConst = 0;
-                            if (inputMode === INPUT_MODE_DB) {
-                                if (nuclideSymbol) {
-                                    const n = radionuclides.find(r => r.symbol === nuclideSymbol);
-                                    gammaConst = safeParseFloat(n?.gammaConstant);
-                                }
-                            } else {
-                                gammaConst = safeParseFloat(manualGamma);
-                            }
-                            
-                            if (!gammaConst || isNaN(gammaConst)) {
-                                if(inputMode === INPUT_MODE_MANUAL) setError("Invalid Gamma Constant.");
-                                return;
-                            }
-                            
-                            const actCi = actVal * activityFactors[activityUnit];
-                            const distM = distVal * distanceFactors[distanceUnit];
-                            unshieldedRate_R_hr = (gammaConst * actCi) / Math.pow(distM, 2);
-                        }
-                        
-                        let hvl_cm = 0;
-                        if (useManualHVL) {
-                            hvl_cm = safeParseFloat(manualHVL);
-                        } else if (definitionMode === DEFINE_BY_RATE) {
-                            hvl_cm = HVL_DATA[genericReference]?.[shieldMaterial];
-                        } else if (inputMode === INPUT_MODE_DB && nuclideSymbol) {
-                            hvl_cm = HVL_DATA[nuclideSymbol]?.[shieldMaterial];
-                        } else {
-                            hvl_cm = safeParseFloat(manualHVL);
-                        }
-                        
-                        if ((!useManualHVL && !hvl_cm) || isNaN(hvl_cm) || hvl_cm <= 0) {
-                            if (shieldMaterial && definitionMode === DEFINE_BY_RATE) { /* Wait */ }
-                            else if (shieldMaterial && nuclideSymbol) {
-                                setError(`HVL data unavailable for ${shieldMaterial}. Enable "Override HVL" to enter it manually.`);
-                            }
-                            return;
-                        }
+                const actCi = actVal * activityFactors[activityUnit];
+                const distM = distVal * distanceFactors[distanceUnit];
+                unshieldedRate_R_hr = (gammaConst * actCi) / Math.pow(distM, 2);
+            }
+            
+            let hvl_cm = 0;
+            if (useManualHVL) {
+                hvl_cm = safeParseFloat(manualHVL);
+            } else if (definitionMode === DEFINE_BY_RATE) {
+                hvl_cm = HVL_DATA[genericReference]?.[shieldMaterial];
+            } else if (inputMode === INPUT_MODE_DB && nuclideSymbol) {
+                hvl_cm = HVL_DATA[nuclideSymbol]?.[shieldMaterial];
+            } else {
+                hvl_cm = safeParseFloat(manualHVL);
+            }
+            
+            if ((!useManualHVL && !hvl_cm) || isNaN(hvl_cm) || hvl_cm <= 0) {
+                if (shieldMaterial && definitionMode === DEFINE_BY_RATE) { /* Wait */ }
+                else if (shieldMaterial && nuclideSymbol) {
+                    setError(`HVL data unavailable for ${shieldMaterial}. Enable "Override HVL" to enter it manually.`);
+                }
+                return;
+            }
 
-                        // --- TVL CALCULATION (NEW) ---
-                        // TVL is approximately 3.32 * HVL
-                        const tvl_cm = hvl_cm * 3.3219;
-                        
-                        if (calcMode === MODE_GAMMA_DOSE) {
-                            const thickVal = safeParseFloat(shieldThickness);
-                            if (isNaN(thickVal) || thickVal < 0) return;
-                            const thickCm = thickVal * thicknessFactors[thicknessUnit];
-                            
-                            let buildup = 1;
-                            
-                            // --- 1. SAFETY LOGIC START ---
-                            let warning = null; // Initialize warning variable
-                            
-                            if (useBuildup) {
-                                const mu = Math.log(2) / hvl_cm;
-                                const mfp = mu * thickCm; // Mean Free Paths
-                                
-                                buildup = 1 + mfp;
+            // TVL Calculation
+            const tvl_cm = hvl_cm * 3.3219;
+            
+            if (calcMode === MODE_GAMMA_DOSE) {
+                const thickVal = safeParseFloat(shieldThickness);
+                if (isNaN(thickVal) || thickVal < 0) return;
+                const thickCm = thickVal * thicknessFactors[thicknessUnit];
+                
+                let buildup = 1;
+                let warning = null;
+                
+                if (useBuildup) {
+                    const mu = Math.log(2) / hvl_cm;
+                    const mfp = mu * thickCm; // Mean Free Paths
+                    buildup = 1 + mfp;
 
-                                // Trigger warning if shielding is thick (> 1.5 HVL is a safe heuristic breakpoint)
-                                if (thickCm > (1.5 * hvl_cm)) {
-                                    warning = "Caution: Linear buildup approximation underestimates dose for thick shields (>1.5 HVL).";
-                                }
-                            }
+                    if (thickCm > (1.5 * hvl_cm)) {
+                        warning = "Caution: Linear buildup approximation underestimates dose for thick shields (>1.5 HVL).";
+                    }
+                }
                                                         
-                            let transmission = Math.pow(0.5, thickCm / hvl_cm);
-                            if (transmission < 1e-9) transmission = 0;
-                            
-                            const shieldedRate_R_hr = unshieldedRate_R_hr * transmission * buildup;
-                            const shieldedRate_mrem_hr = shieldedRate_R_hr * 1000;
-                            
-                            let reductionFactor = transmission > 0 ? (1 / transmission) : 99999; 
-                            if (reductionFactor > 10000) reductionFactor = 10000;
-                            
-                            // Pass the warning to the result object
-                            setResult({
-                                type: 'gamma_dose',
-                                unshielded_mrem_hr: unshieldedRate_R_hr * 1000,
-                                shielded_mrem_hr: shieldedRate_mrem_hr < 1e-9 ? 0 : shieldedRate_mrem_hr,
-                                transmission: transmission,
-                                reduction: reductionFactor,
-                                buildup: buildup,
-                                hvl: hvl_cm,
-                                tvl: tvl_cm, 
-                                warning: warning
-                            });
+                let transmission = Math.pow(0.5, thickCm / hvl_cm);
+                if (transmission < 1e-9) transmission = 0;
+                
+                const shieldedRate_R_hr = unshieldedRate_R_hr * transmission * buildup;
+                const shieldedRate_mrem_hr = shieldedRate_R_hr * 1000;
+                
+                let reductionFactor = transmission > 0 ? (1 / transmission) : 99999; 
+                if (reductionFactor > 10000) reductionFactor = 10000;
+                
+                setResult({
+                    type: 'gamma_dose',
+                    unshielded_mrem_hr: unshieldedRate_R_hr * 1000,
+                    shielded_mrem_hr: shieldedRate_mrem_hr < 1e-9 ? 0 : shieldedRate_mrem_hr,
+                    transmission: transmission,
+                    reduction: reductionFactor,
+                    buildup: buildup,
+                    hvl: hvl_cm,
+                    tvl: tvl_cm, 
+                    warning: warning
+                });
 
-                            
-                        } else if (calcMode === MODE_FIND_THICKNESS) {
-                            const targetVal = safeParseFloat(targetDoseRate);
-                            if (isNaN(targetVal) || targetVal <= 0) return;
-                            const target_R_hr = (targetVal * doseRateFactors_mrem_hr[targetDoseRateUnit]) / 1000;
-                            
-                            if (target_R_hr >= unshieldedRate_R_hr) {
-                                setResult({ type: 'thickness', val: 0, msg: "Target > Unshielded Rate", unshielded_mrem_hr: unshieldedRate_R_hr * 1000, hvl: hvl_cm, tvl: tvl_cm });
-                                return;
-                            }
-                            
-                            let reqThickCm = hvl_cm * Math.log2(unshieldedRate_R_hr / target_R_hr);
-                            
-                            if (useBuildup) {
-                                for(let i=0; i<5; i++) {
-                                    const mfp = (Math.log(2) / hvl_cm) * reqThickCm;
-                                    const B = 1 + mfp;
-                                    reqThickCm = hvl_cm * Math.log2((unshieldedRate_R_hr * B) / target_R_hr);
-                                }
-                            }
-                            
-                            setResult({
-                                type: 'thickness',
-                                val: reqThickCm,
-                                unshielded_mrem_hr: unshieldedRate_R_hr * 1000,
-                                hvl: hvl_cm,
-                                tvl: tvl_cm // Added TVL
-                            });
-                        }
-                        
-                    } catch (e) { setError(e.message); setResult(null); }
-                }, [calcMode, definitionMode, inputMode, nuclideSymbol, manualGamma, manualHVL, manualBetaEnergy, activity, activityUnit, distance, distanceUnit, unshieldedRate, unshieldedRateUnit, genericReference, shieldMaterial, shieldThickness, thicknessUnit, targetDoseRate, targetDoseRateUnit, useManualHVL, useBuildup]);
                 
-                const handleSaveToHistory = () => {
-                    if (!result) return;
-                    let resStr = "";
-                    if (result.type === 'beta' || result.type === 'thickness') {
-                        const fmt = formatSensibleUnit(result.val || result.thickness_cm, 'distance');
-                        resStr = `${fmt.value} ${fmt.unit} ${shieldMaterial}`;
-                    } else {
-                        const fmt = formatDoseValue(result.shielded_mrem_hr, 'doseRate', settings);
-                        resStr = `${fmt.value} ${fmt.unit}`;
+            } else if (calcMode === MODE_FIND_THICKNESS) {
+                const targetVal = safeParseFloat(targetDoseRate);
+                if (isNaN(targetVal) || targetVal <= 0) return;
+                const target_R_hr = (targetVal * doseRateFactors_mrem_hr[targetDoseRateUnit]) / 1000;
+                
+                if (target_R_hr >= unshieldedRate_R_hr) {
+                    setResult({ type: 'thickness', val: 0, msg: "Target > Unshielded Rate", unshielded_mrem_hr: unshieldedRate_R_hr * 1000, hvl: hvl_cm, tvl: tvl_cm });
+                    return;
+                }
+                
+                let reqThickCm = hvl_cm * Math.log2(unshieldedRate_R_hr / target_R_hr);
+                
+                // SAFETY FIX: Finite Check on Iterative Buildup
+                if (useBuildup) {
+                    for(let i=0; i<10; i++) {
+                        const mfp = (Math.log(2) / hvl_cm) * reqThickCm;
+                        const B = 1 + mfp;
+                        // Avoid runaway
+                        if (!isFinite(B) || B > 1e6) break;
+                        reqThickCm = hvl_cm * Math.log2((unshieldedRate_R_hr * B) / target_R_hr);
                     }
-                    addHistory({ id: Date.now(), type: 'Shielding', icon: ICONS.shield, inputs: `${shieldMaterial} calculation`, result: resStr, view: VIEWS.SHIELDING });
-                    addToast("Saved to history!");
-                };
+                }
                 
-                const handleClearInputs = () => {
-                    setCalcMode(MODE_GAMMA_DOSE);
-                    setDefinitionMode(DEFINE_BY_SOURCE);
-                    setInputMode(INPUT_MODE_DB);
-                    setUseManualHVL(false);
-                    setUseBuildup(false);
-                    setNuclideSymbol('');
-                    setActivity('1');
-                    setUnshieldedRate('100');
-                    setShieldMaterial('Lead');
-                    setShieldThickness('1');
-                    setResult(null);
-                    setError('');
-                };
+                setResult({
+                    type: 'thickness',
+                    val: reqThickCm,
+                    unshielded_mrem_hr: unshieldedRate_R_hr * 1000,
+                    hvl: hvl_cm,
+                    tvl: tvl_cm 
+                });
+            }
+            
+        } catch (e) { setError(e.message); setResult(null); }
+    }, [calcMode, definitionMode, inputMode, nuclideSymbol, manualGamma, manualHVL, manualBetaEnergy, activity, activityUnit, distance, distanceUnit, unshieldedRate, unshieldedRateUnit, genericReference, shieldMaterial, shieldThickness, thicknessUnit, targetDoseRate, targetDoseRateUnit, useManualHVL, useBuildup]);
+    
+    const handleSaveToHistory = () => {
+        if (!result) return;
+        let resStr = "";
+        if (result.type === 'beta' || result.type === 'thickness') {
+            const fmt = formatSensibleUnit(result.val || result.thickness_cm, 'distance');
+            resStr = `${fmt.value} ${fmt.unit} ${shieldMaterial}`;
+        } else {
+            const fmt = formatDoseValue(result.shielded_mrem_hr, 'doseRate', settings);
+            resStr = `${fmt.value} ${fmt.unit}`;
+        }
+        addHistory({ id: Date.now(), type: 'Shielding', icon: ICONS.shield, inputs: `${shieldMaterial} calculation`, result: resStr, view: VIEWS.SHIELDING });
+        addToast("Saved to history!");
+    };
+    
+    const handleClearInputs = () => {
+        setCalcMode(MODE_GAMMA_DOSE);
+        setDefinitionMode(DEFINE_BY_SOURCE);
+        setInputMode(INPUT_MODE_DB);
+        setUseManualHVL(false);
+        setUseBuildup(false);
+        setNuclideSymbol('');
+        setActivity('1');
+        setUnshieldedRate('100');
+        setShieldMaterial('Lead');
+        setShieldThickness('1');
+        setResult(null);
+        setError('');
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shielding Calculator</h2>
+                    <ClearButton onClick={handleClearInputs} />
+                </div>
                 
-                return (
-                    <div className="p-4 animate-fade-in">
-                        <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shielding Calculator</h2>
-                                <ClearButton onClick={handleClearInputs} />
+                <ContextualNote type="info">Calculates attenuation of photons using Half-Value Layers (HVL). </ContextualNote>
+                
+                {/* MAIN TABS */}
+                <div className="grid grid-cols-3 gap-2 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6">
+                    {[
+                        { id: MODE_GAMMA_DOSE, label: 'Gamma Dose' },
+                        { id: MODE_FIND_THICKNESS, label: 'Find Thickness' },
+                        { id: MODE_BETA_RANGE, label: 'Beta Range' }
+                    ].map(tab => (
+                        <button key={tab.id} onClick={() => setCalcMode(tab.id)}
+                            className={`py-2 rounded-md text-sm font-bold transition-all
+                            ${calcMode === tab.id ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+                
+                <div className="space-y-5">
+                    {/* 1. GAMMA DEFINITION MODE */}
+                    {calcMode !== MODE_BETA_RANGE && (
+                        <div className="flex justify-center mb-2">
+                            <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
+                                <button onClick={() => setDefinitionMode(DEFINE_BY_SOURCE)} className={`px-4 py-1 text-xs font-bold rounded transition-colors ${definitionMode === DEFINE_BY_SOURCE ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Define Source</button>
+                                <button onClick={() => setDefinitionMode(DEFINE_BY_RATE)} className={`px-4 py-1 text-xs font-bold rounded transition-colors ${definitionMode === DEFINE_BY_RATE ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Known Dose Rate</button>
                             </div>
-                            
-                            {/* MAIN TABS */}
-                            <div className="grid grid-cols-3 gap-2 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6">
-                                {[
-                                    { id: MODE_GAMMA_DOSE, label: 'Gamma Dose' },
-                                    { id: MODE_FIND_THICKNESS, label: 'Find Thickness' },
-                                    { id: MODE_BETA_RANGE, label: 'Beta Range' }
-                                ].map(tab => (
-                                    <button key={tab.id} onClick={() => setCalcMode(tab.id)}
-                                        className={`py-2 rounded-md text-sm font-bold transition-all
-                                        ${calcMode === tab.id ? 'bg-sky-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'}`}>
-                                        {tab.label}
+                        </div>
+                    )}
+                    
+                    {/* 2. SOURCE INPUTS */}
+                    {calcMode === MODE_BETA_RANGE || (definitionMode === DEFINE_BY_SOURCE) ? (
+                        <>
+                            {calcMode !== MODE_BETA_RANGE && (
+                                <div className="flex justify-end -mt-4 mb-2">
+                                    <button onClick={() => setInputMode(inputMode === INPUT_MODE_DB ? INPUT_MODE_MANUAL : INPUT_MODE_DB)} className="text-xs text-sky-600 hover:underline">
+                                        Switch to {inputMode === INPUT_MODE_DB ? 'Manual' : 'Database'}
                                     </button>
-                                ))}
-                            </div>
-                            
-                            <div className="space-y-5">
-                                {/* 1. GAMMA DEFINITION MODE */}
-                                {calcMode !== MODE_BETA_RANGE && (
-                                    <div className="flex justify-center mb-2">
-                                        <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
-                                            <button onClick={() => setDefinitionMode(DEFINE_BY_SOURCE)} className={`px-4 py-1 text-xs font-bold rounded transition-colors ${definitionMode === DEFINE_BY_SOURCE ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Define Source</button>
-                                            <button onClick={() => setDefinitionMode(DEFINE_BY_RATE)} className={`px-4 py-1 text-xs font-bold rounded transition-colors ${definitionMode === DEFINE_BY_RATE ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Known Dose Rate</button>
-                                        </div>
-                                    </div>
-                                )}
-                                
-                                {/* 2. SOURCE INPUTS */}
-                                {calcMode === MODE_BETA_RANGE || (definitionMode === DEFINE_BY_SOURCE) ? (
-                                    <>
-                                        {calcMode !== MODE_BETA_RANGE && (
-                                            <div className="flex justify-end -mt-4 mb-2">
-                                                <button onClick={() => setInputMode(inputMode === INPUT_MODE_DB ? INPUT_MODE_MANUAL : INPUT_MODE_DB)} className="text-xs text-sky-600 hover:underline">
-                                                    Switch to {inputMode === INPUT_MODE_DB ? 'Manual' : 'Database'}
-                                                </button>
-                                            </div>
-                                        )}
-                                        
-                                        {inputMode === INPUT_MODE_DB || calcMode === MODE_BETA_RANGE ? (
-                                            <div className="min-h-[42px]">
-                                                {nuclideSymbol ?
-                                                    <CalculatorNuclideInfo nuclide={radionuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => setNuclideSymbol('')} />
-                                                    : <SearchableSelect options={calcMode === MODE_BETA_RANGE ? betaNuclides : shieldingNuclides} onSelect={setNuclideSymbol} placeholder="Select radionuclide..." />
-                                                }
-                                            </div>
-                                        ) : (
-                                            <div className="grid grid-cols-2 gap-4 animate-fade-in">
-                                                <div><label className="text-xs font-bold">Gamma Constant (Γ)</label><input type="number" value={manualGamma} onChange={e => setManualGamma(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" placeholder="R·m²/hr·Ci" /></div>
-                                                <div><label className="text-xs font-bold">Half-Value Layer (cm)</label><input type="number" value={manualHVL} onChange={e => { setManualHVL(e.target.value); setUseManualHVL(true); }} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
-                                            </div>
-                                        )}
-                                        
-                                        {calcMode === MODE_BETA_RANGE && !nuclideSymbol && (
-                                            <div><label className="text-xs font-bold">Max Beta Energy (MeV)</label><input type="number" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
-                                        )}
-                                        
-                                        {calcMode !== MODE_BETA_RANGE && (
-                                            <div className="grid grid-cols-2 gap-4 animate-fade-in">
-                                                <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u=><option key={u}>{u}</option>)}</select></div></div>
-                                                <div><label className="text-xs font-bold mb-1 block">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u=><option key={u}>{u}</option>)}</select></div></div>
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <div className="animate-fade-in">
-                                        <label className="text-xs font-bold mb-1 block">Initial (Unshielded) Dose Rate</label>
-                                        <div className="flex">
-                                            <input type="number" value={unshieldedRate} onChange={e => setUnshieldedRate(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/>
-                                            <select value={unshieldedRateUnit} onChange={e => setUnshieldedRateUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u=><option key={u}>{u}</option>)}</select>
-                                        </div>
-                                        
-                                        {!useManualHVL && (
-                                            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/30 text-xs text-blue-800 dark:text-blue-200 rounded border border-blue-100 dark:border-blue-800">
-                                                <p><strong>Note:</strong> Since the isotope is unknown, we must assume an energy to estimate shielding effectiveness.</p>
-                                                <div className="mt-2 flex items-center gap-2">
-                                                    <span className="font-semibold">Assume:</span>
-                                                    <select value={genericReference} onChange={e => setGenericReference(e.target.value)} className="p-1 rounded border border-blue-200 dark:border-blue-700 dark:bg-slate-800">
-                                                        <option value="I-125">Low Energy (I-125 / 30 keV)</option>
-                                                        <option value="Cs-137">Medium Energy (Cs-137 / 662 keV)</option>
-                                                        <option value="Co-60">High Energy (Co-60 / 1.25 MeV)</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                
-                                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Shielding Configuration</label>
-                                        {calcMode !== MODE_BETA_RANGE && (inputMode === INPUT_MODE_DB || definitionMode === DEFINE_BY_RATE) && (
-                                            <label className="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" checked={useManualHVL} onChange={e => setUseManualHVL(e.target.checked)} className="form-checkbox h-3 w-3 rounded text-sky-600" /> Override HVL</label>
-                                        )}
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs font-medium mb-1 block">Material</label>
-                                            <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm">
-                                                {availableMaterials.map(m => <option key={m} value={m}>{m}</option>)}
-                                            </select>
-                                        </div>
-                                        
-                                        {calcMode === MODE_GAMMA_DOSE && (
-                                            <div><label className="text-xs font-medium mb-1 block">Thickness</label><div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(thicknessFactors).map(u=><option key={u}>{u}</option>)}</select></div></div>
-                                        )}
-                                        
-                                        {useManualHVL && calcMode !== MODE_BETA_RANGE && (
-                                            <div className="col-span-2"><label className="text-xs font-medium mb-1 block">Manual HVL (cm)</label><input type="number" value={manualHVL} onChange={e => setManualHVL(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
-                                        )}
-                                        
-                                        {calcMode === MODE_FIND_THICKNESS && (
-                                            <div className="col-span-2"><label className="text-xs font-medium mb-1 block">Target Dose Rate</label><div className="flex"><input type="number" value={targetDoseRate} onChange={e => setTargetDoseRate(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={targetDoseRateUnit} onChange={e => setTargetDoseRateUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u=><option key={u}>{u}</option>)}</select></div></div>
-                                        )}
-                                    </div>
-                                    
-                                    {calcMode !== MODE_BETA_RANGE && (
-                                        <div className="flex justify-end pt-2">
-                                            <Tooltip text="Approximation (B = 1 + μx). Conservative for < 3 mfp."><label className="flex items-center gap-2 text-xs font-semibold cursor-pointer text-slate-600 dark:text-slate-400"><input type="checkbox" checked={useBuildup} onChange={e => setUseBuildup(e.target.checked)} className="form-checkbox h-3 w-3 rounded text-sky-600" /> Apply Buildup Factor</label></Tooltip>
-                                        </div>
-                                    )}
                                 </div>
+                            )}
+                            
+                            {inputMode === INPUT_MODE_DB || calcMode === MODE_BETA_RANGE ? (
+                                <div className="min-h-[42px]">
+                                    {nuclideSymbol ?
+                                        <CalculatorNuclideInfo nuclide={radionuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => setNuclideSymbol('')} />
+                                        : <SearchableSelect options={calcMode === MODE_BETA_RANGE ? betaNuclides : shieldingNuclides} onSelect={setNuclideSymbol} placeholder="Select radionuclide..." />
+                                    }
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                                    <div><label className="text-xs font-bold">Gamma Constant (Γ)</label><input type="number" value={manualGamma} onChange={e => setManualGamma(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" placeholder="R·m²/hr·Ci" /></div>
+                                    <div><label className="text-xs font-bold">Half-Value Layer (cm)</label><input type="number" value={manualHVL} onChange={e => { setManualHVL(e.target.value); setUseManualHVL(true); }} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
+                                </div>
+                            )}
+                            
+                            {calcMode === MODE_BETA_RANGE && !nuclideSymbol && (
+                                <div><label className="text-xs font-bold">Max Beta Energy (MeV)</label><input type="number" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
+                            )}
+                            
+                            {calcMode !== MODE_BETA_RANGE && (
+                                <div className="grid grid-cols-2 gap-4 animate-fade-in">
+                                    <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u=><option key={u}>{u}</option>)}</select></div></div>
+                                    <div><label className="text-xs font-bold mb-1 block">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u=><option key={u}>{u}</option>)}</select></div></div>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="animate-fade-in">
+                            <label className="text-xs font-bold mb-1 block">Initial (Unshielded) Dose Rate</label>
+                            <div className="flex">
+                                <input type="number" value={unshieldedRate} onChange={e => setUnshieldedRate(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/>
+                                <select value={unshieldedRateUnit} onChange={e => setUnshieldedRateUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u=><option key={u}>{u}</option>)}</select>
                             </div>
                             
-                            {error && <p className="text-red-500 text-sm text-center mt-4 bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
-                            
-                            {result && (
-                                <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative overflow-hidden">
-                                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to history"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
-                                    
-                                    {result.type === 'gamma_dose' && (
-                                        <>
-                                            <p className="text-xs uppercase font-bold text-slate-500 mb-2">Shielded Dose Rate</p>
-                                            <div className="flex items-center justify-center gap-2 mb-4">
-                                                <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{formatDoseValue(result.shielded_mrem_hr, 'doseRate', settings).value}</span>
-                                                <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{formatDoseValue(result.shielded_mrem_hr, 'doseRate', settings).unit}</span>
-                                                <CopyButton textToCopy={formatDoseValue(result.shielded_mrem_hr, 'doseRate', settings).value} />
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-600 pt-3">
-                                                <p>Unshielded: <strong>{formatDoseValue(result.unshielded_mrem_hr, 'doseRate', settings).value} {formatDoseValue(result.unshielded_mrem_hr, 'doseRate', settings).unit}</strong></p>
-                                                
-                                                {/* TVL & HVL DISPLAY */}
-                                                <p>HVL: <strong>{result.hvl ? result.hvl.toFixed(3) : 'N/A'} cm</strong></p>
-                                                <p>TVL: <strong>{result.tvl ? result.tvl.toFixed(3) : 'N/A'} cm</strong></p>
-                                                
-                                                <p>Shielding Factor: <strong>{result.reduction > 10 ? Math.round(result.reduction) : result.reduction.toFixed(1)}x</strong></p>
-                                                <p>Transmission: <strong>{(result.transmission * 100).toFixed(1)}%</strong></p>
-                                                {useBuildup && <p>Buildup Factor: <strong>{result.buildup.toFixed(2)}</strong></p>}
-                                            </div>
-                                        </>
-                                    )}
-                                    
-                                    {result.type === 'thickness' && (
-                                        <>
-                                            {result.val === 0 ? (
-                                                <p className="text-amber-600 font-bold">No shielding required</p>
-                                            ) : (
-                                                <>
-                                                    <p className="text-xs uppercase font-bold text-slate-500 mb-2">Required Thickness</p>
-                                                    <div className="flex items-center justify-center gap-2 mb-2">
-                                                        <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{formatSensibleUnit(result.val, 'distance').value}</span>
-                                                        <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{formatSensibleUnit(result.val, 'distance').unit}</span>
-                                                    </div>
-                                                    <p className="text-sm text-slate-500">of {shieldMaterial}</p>
-                                                    <p className="text-xs text-slate-400 mt-1">
-                                                        HVL: {result.hvl ? result.hvl.toFixed(3) : 'N/A'} cm | TVL: {result.tvl ? result.tvl.toFixed(3) : 'N/A'} cm
-                                                    </p>
-                                                </>
-                                            )}
-                                        </>
-                                    )}
-                                    
-                                    {result.type === 'beta' && (
-                                        <>
-                                            <p className="text-xs uppercase font-bold text-slate-500 mb-2">Range (Stopping Thickness)</p>
-                                            <div className="flex items-center justify-center gap-2 mb-2">
-                                                <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{formatSensibleUnit(result.thickness_cm, 'distance').value}</span>
-                                                <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{formatSensibleUnit(result.thickness_cm, 'distance').unit}</span>
-                                            </div>
-                                            <p className="text-sm text-slate-500">of {result.material}</p>
-                                        </>
-                                    )}
-                                    
-                                    {/* WARNINGS */}
-                                    <div className="space-y-2 mt-4 text-left">
-                                        {result.warning && <div className="p-2 bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 text-xs rounded font-medium border-l-4 border-amber-500">{result.warning}</div>}
-                                        {result.msg && <div className="p-2 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 text-xs rounded">{result.msg}</div>}
+                            {!useManualHVL && (
+                                <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/30 text-xs text-blue-800 dark:text-blue-200 rounded border border-blue-100 dark:border-blue-800">
+                                    <p><strong>Note:</strong> Since the isotope is unknown, we must assume an energy to estimate shielding effectiveness.</p>
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <span className="font-semibold">Assume:</span>
+                                        <select value={genericReference} onChange={e => setGenericReference(e.target.value)} className="p-1 rounded border border-blue-200 dark:border-blue-700 dark:bg-slate-800">
+                                            <option value="I-125">Low Energy (I-125 / 30 keV)</option>
+                                            <option value="Cs-137">Medium Energy (Cs-137 / 662 keV)</option>
+                                            <option value="Co-60">High Energy (Co-60 / 1.25 MeV)</option>
+                                        </select>
                                     </div>
                                 </div>
                             )}
                         </div>
+                    )}
+                    
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                        <div className="flex justify-between items-center">
+                            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Shielding Configuration</label>
+                            {calcMode !== MODE_BETA_RANGE && (inputMode === INPUT_MODE_DB || definitionMode === DEFINE_BY_RATE) && (
+                                <label className="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" checked={useManualHVL} onChange={e => setUseManualHVL(e.target.checked)} className="form-checkbox h-3 w-3 rounded text-sky-600" /> Override HVL</label>
+                            )}
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-medium mb-1 block">Material</label>
+                                <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm">
+                                    {availableMaterials.map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                            </div>
+                            
+                            {calcMode === MODE_GAMMA_DOSE && (
+                                <div><label className="text-xs font-medium mb-1 block">Thickness</label><div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(thicknessFactors).map(u=><option key={u}>{u}</option>)}</select></div></div>
+                            )}
+                            
+                            {useManualHVL && calcMode !== MODE_BETA_RANGE && (
+                                <div className="col-span-2"><label className="text-xs font-medium mb-1 block">Manual HVL (cm)</label><input type="number" value={manualHVL} onChange={e => setManualHVL(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
+                            )}
+                            
+                            {calcMode === MODE_FIND_THICKNESS && (
+                                <div className="col-span-2"><label className="text-xs font-medium mb-1 block">Target Dose Rate</label><div className="flex"><input type="number" value={targetDoseRate} onChange={e => setTargetDoseRate(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={targetDoseRateUnit} onChange={e => setTargetDoseRateUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u=><option key={u}>{u}</option>)}</select></div></div>
+                            )}
+                        </div>
+                        
+                        {calcMode !== MODE_BETA_RANGE && (
+                            <div className="flex justify-end pt-2">
+                                <Tooltip text="Approximation (B = 1 + μx). Conservative for < 3 mfp."><label className="flex items-center gap-2 text-xs font-semibold cursor-pointer text-slate-600 dark:text-slate-400"><input type="checkbox" checked={useBuildup} onChange={e => setUseBuildup(e.target.checked)} className="form-checkbox h-3 w-3 rounded text-sky-600" /> Apply Buildup Factor</label></Tooltip>
+                            </div>
+                        )}
                     </div>
-                );
-            };
+                </div>
+                
+                {error && <p className="text-red-500 text-sm text-center mt-4 bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
+                
+                {result && (
+                    <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative overflow-hidden">
+                        <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to history"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
+                        
+                        {result.type === 'gamma_dose' && (
+                            <>
+                                <p className="text-xs uppercase font-bold text-slate-500 mb-2">Shielded Dose Rate</p>
+                                <div className="flex items-center justify-center gap-2 mb-4">
+                                    <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{formatDoseValue(result.shielded_mrem_hr, 'doseRate', settings).value}</span>
+                                    <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{formatDoseValue(result.shielded_mrem_hr, 'doseRate', settings).unit}</span>
+                                    <CopyButton textToCopy={formatDoseValue(result.shielded_mrem_hr, 'doseRate', settings).value} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-600 pt-3">
+                                    <p>Unshielded: <strong>{formatDoseValue(result.unshielded_mrem_hr, 'doseRate', settings).value} {formatDoseValue(result.unshielded_mrem_hr, 'doseRate', settings).unit}</strong></p>
+                                    
+                                    {/* TVL & HVL DISPLAY */}
+                                    <p>HVL: <strong>{result.hvl ? result.hvl.toFixed(3) : 'N/A'} cm</strong></p>
+                                    <p>TVL: <strong>{result.tvl ? result.tvl.toFixed(3) : 'N/A'} cm</strong></p>
+                                    
+                                    <p>Shielding Factor: <strong>{result.reduction > 10 ? Math.round(result.reduction) : result.reduction.toFixed(1)}x</strong></p>
+                                    <p>Transmission: <strong>{(result.transmission * 100).toFixed(1)}%</strong></p>
+                                    {useBuildup && <p>Buildup Factor: <strong>{result.buildup.toFixed(2)}</strong></p>}
+                                </div>
+                            </>
+                        )}
+                        
+                        {result.type === 'thickness' && (
+                            <>
+                                {result.val === 0 ? (
+                                    <p className="text-amber-600 font-bold">No shielding required</p>
+                                ) : (
+                                    <>
+                                        <p className="text-xs uppercase font-bold text-slate-500 mb-2">Required Thickness</p>
+                                        <div className="flex items-center justify-center gap-2 mb-2">
+                                            <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{formatSensibleUnit(result.val, 'distance').value}</span>
+                                            <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{formatSensibleUnit(result.val, 'distance').unit}</span>
+                                        </div>
+                                        <p className="text-sm text-slate-500">of {shieldMaterial}</p>
+                                        <p className="text-xs text-slate-400 mt-1">
+                                            HVL: {result.hvl ? result.hvl.toFixed(3) : 'N/A'} cm | TVL: {result.tvl ? result.tvl.toFixed(3) : 'N/A'} cm
+                                        </p>
+                                    </>
+                                )}
+                            </>
+                        )}
+                        
+                        {result.type === 'beta' && (
+                            <>
+                                <p className="text-xs uppercase font-bold text-slate-500 mb-2">Range (Stopping Thickness)</p>
+                                <div className="flex items-center justify-center gap-2 mb-2">
+                                    <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{formatSensibleUnit(result.thickness_cm, 'distance').value}</span>
+                                    <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{formatSensibleUnit(result.thickness_cm, 'distance').unit}</span>
+                                </div>
+                                <p className="text-sm text-slate-500">of {result.material}</p>
+                            </>
+                        )}
+                        
+                        {/* WARNINGS */}
+                        <div className="space-y-2 mt-4 text-left">
+                            {result.warning && <div className="p-2 bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 text-xs rounded font-medium border-l-4 border-amber-500">{result.warning}</div>}
+                            {result.msg && <div className="p-2 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 text-xs rounded">{result.msg}</div>}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
             
             /**
             * @description A calculator for determining allowable stay time and total dose received.
