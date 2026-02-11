@@ -8229,72 +8229,71 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
     );
 };
             
-            /**
-            * @description A professional-grade scientific calculator component.
-            */
-            
-            const ScientificCalculator = ({ calcState, setCalcState }) => {
-            const { addToast } = useToast();
-            const calculatorRef = React.useRef(null);
-            
-            // --- State ---
-            const [customConstants, setCustomConstants] = React.useState(() => {
-            try { return JSON.parse(localStorage.getItem('user_calc_constants') || '[]'); }
-            catch { return []; }
-            });
-            const [isAddMode, setIsAddMode] = React.useState(false);
-            const [newConstName, setNewConstName] = React.useState('');
-            const [newConstVal, setNewConstVal] = React.useState('');
-            const [angleMode, setAngleMode] = React.useState('deg'); // Default to DEG (more common for techs)
-            const [activeKey, setActiveKey] = React.useState(null);
-            
-            // Ensure state has new fields
-            React.useEffect(() => {
-            setCalcState(prev => ({
+/**
+ * @description A professional-grade scientific calculator component.
+ */
+const ScientificCalculator = ({ calcState, setCalcState }) => {
+    const { addToast } = useToast();
+    const calculatorRef = React.useRef(null);
+    
+    // --- State ---
+    const [customConstants, setCustomConstants] = React.useState(() => {
+        try { return JSON.parse(localStorage.getItem('user_calc_constants') || '[]'); }
+        catch { return []; }
+    });
+    const [isAddMode, setIsAddMode] = React.useState(false);
+    const [newConstName, setNewConstName] = React.useState('');
+    const [newConstVal, setNewConstVal] = React.useState('');
+    const [angleMode, setAngleMode] = React.useState('deg'); // Default to DEG (more common for techs)
+    const [activeKey, setActiveKey] = React.useState(null);
+    
+    // Ensure state has new fields
+    React.useEffect(() => {
+        setCalcState(prev => ({
             ...prev,
             lastAnswer: prev.lastAnswer || 0,
             memory: prev.memory || 0,
             isError: false
-            }));
-            }, [setCalcState]);
-            
-            // Save constants
-            React.useEffect(() => {
-            localStorage.setItem('user_calc_constants', JSON.stringify(customConstants));
-            }, [customConstants]);
-            
-            const { expression, result, history, memory, lastAnswer, isError } = calcState;
-            
-            // --- Helper: Format Display Number ---
-            const formatNumber = (numStr) => {
-            if (!numStr) return '';
-            if (numStr.includes('e') || isError) return numStr;
-            const num = safeParseFloat(numStr);
-            if (isNaN(num)) return numStr;
-            // Limit precision to fit screen, but keep decimals
-            return num.toLocaleString('en-US', { maximumFractionDigits: 10, maximumSignificantDigits: 12 });
-            };
-            
-            // --- Core Logic ---
-            const safeEvaluate = (expr, currentMode, currentAns) => {
-            try {
+        }));
+    }, [setCalcState]);
+    
+    // Save constants
+    React.useEffect(() => {
+        localStorage.setItem('user_calc_constants', JSON.stringify(customConstants));
+    }, [customConstants]);
+    
+    const { expression, result, history, memory, lastAnswer, isError } = calcState;
+    
+    // --- Helper: Format Display Number ---
+    const formatNumber = (numStr) => {
+        if (!numStr) return '';
+        if (numStr === 'Infinity' || numStr === '-Infinity') return numStr;
+        if (numStr.includes('e') || isError) return numStr;
+        const num = safeParseFloat(numStr);
+        if (isNaN(num)) return numStr;
+        // Limit precision to fit screen, but keep decimals
+        return num.toLocaleString('en-US', { maximumFractionDigits: 10, maximumSignificantDigits: 12 });
+    };
+    
+    // --- Core Logic ---
+    const safeEvaluate = (expr, currentMode, currentAns) => {
+        try {
             // Clean up visual operators for mathjs
             let cleanExpr = expr.replace(/×/g, '*').replace(/÷/g, '/');
             
             const scope = {
-              Ans: currentAns,
-              ...math,
-              ln: math.log,
-              // Trig overrides for DEG mode: Only convert if input is a NUMBER.
-              // If user types 'sin(90 deg)', x is a Unit, so we skip conversion to avoid error.
-              sin: (x) => (currentMode === 'deg' && typeof x === 'number') ? math.sin(math.unit(x, 'deg')) : math.sin(x),
-              cos: (x) => (currentMode === 'deg' && typeof x === 'number') ? math.cos(math.unit(x, 'deg')) : math.cos(x),
-              tan: (x) => (currentMode === 'deg' && typeof x === 'number') ? math.tan(math.unit(x, 'deg')) : math.tan(x),
-              
-              // Inverse trig returns radians, so we convert TO degrees if in DEG mode
-              asin: (x) => currentMode === 'deg' ? math.asin(x) * (180 / Math.PI) : math.asin(x),
-              acos: (x) => currentMode === 'deg' ? math.acos(x) * (180 / Math.PI) : math.acos(x),
-              atan: (x) => currentMode === 'deg' ? math.atan(x) * (180 / Math.PI) : math.atan(x),
+                Ans: currentAns,
+                ...math,
+                ln: math.log,
+                // Trig overrides for DEG mode: Only convert if input is a NUMBER.
+                sin: (x) => (currentMode === 'deg' && typeof x === 'number') ? math.sin(math.unit(x, 'deg')) : math.sin(x),
+                cos: (x) => (currentMode === 'deg' && typeof x === 'number') ? math.cos(math.unit(x, 'deg')) : math.cos(x),
+                tan: (x) => (currentMode === 'deg' && typeof x === 'number') ? math.tan(math.unit(x, 'deg')) : math.tan(x),
+                
+                // Inverse trig returns radians, so we convert TO degrees if in DEG mode
+                asin: (x) => currentMode === 'deg' ? math.asin(x) * (180 / Math.PI) : math.asin(x),
+                acos: (x) => currentMode === 'deg' ? math.acos(x) * (180 / Math.PI) : math.acos(x),
+                atan: (x) => currentMode === 'deg' ? math.atan(x) * (180 / Math.PI) : math.atan(x),
             };
             
             const evalResult = math.evaluate(cleanExpr, scope);
@@ -8302,7 +8301,6 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             // Math.js returns objects {re, im} for complex results like sqrt(-1) or asin(2)
             if (typeof evalResult === 'object' || isNaN(evalResult)) {
                 // If it has a real part and negligible imaginary part, use real.
-                // Otherwise, throw error because UI can't handle complex numbers.
                 if (evalResult && evalResult.re !== undefined && Math.abs(evalResult.im || 0) < 1e-9) {
                     return evalResult.re;
                 }
@@ -8310,48 +8308,51 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             }
             
             return evalResult;
-            } catch (e) {
-                // Catch all calculation errors (Syntax, Domain, etc.)
-                throw new Error('Error');
-            }
-            };
-            
-            const handleCalculate = React.useCallback(() => {
-            setCalcState(currentState => {
+        } catch (e) {
+            throw new Error('Error');
+        }
+    };
+    
+    const handleCalculate = React.useCallback(() => {
+        setCalcState(currentState => {
             if (!currentState.expression) return currentState;
             try {
-              const evalResult = safeEvaluate(currentState.expression, angleMode, currentState.lastAnswer);
-            
-              let resultStr;
-              if (Math.abs(evalResult) < 1e-9 || Math.abs(evalResult) > 1e12) {
-                  resultStr = evalResult.toExponential(6).replace('e+', 'e');
-              } else {
-                  resultStr = safeParseFloat(evalResult.toPrecision(12)).toString(); // Clean trailing zeros
-              }
-            
-              // Add to history (Limit to 50 items)
-              const newHistoryItem = { expr: currentState.expression, res: resultStr };
-              const newHistory = [newHistoryItem, ...(currentState.history || [])].slice(0, 50);
-            
-              return {
-                  ...currentState,
-                  result: resultStr,
-                  lastAnswer: evalResult,
-                  history: newHistory,
-                  expression: '',
-                  isError: false
-              };
+                const evalResult = safeEvaluate(currentState.expression, angleMode, currentState.lastAnswer);
+                
+                let resultStr;
+                if (!isFinite(evalResult)) {
+                    resultStr = 'Infinity';
+                } else if (Math.abs(evalResult) < 1e-9 && evalResult !== 0) {
+                    resultStr = evalResult.toExponential(6).replace('e+', 'e');
+                } else if (Math.abs(evalResult) > 1e12) {
+                    resultStr = evalResult.toExponential(6).replace('e+', 'e');
+                } else {
+                    resultStr = safeParseFloat(evalResult.toPrecision(12)).toString(); // Clean trailing zeros
+                }
+                
+                // Add to history (Limit to 50 items)
+                const newHistoryItem = { expr: currentState.expression, res: resultStr };
+                const newHistory = [newHistoryItem, ...(currentState.history || [])].slice(0, 50);
+                
+                return {
+                    ...currentState,
+                    result: resultStr,
+                    lastAnswer: isFinite(evalResult) ? evalResult : 0,
+                    history: newHistory,
+                    expression: '',
+                    isError: false
+                };
             } catch (e) {
-              return { ...currentState, result: 'Error', isError: true };
+                return { ...currentState, result: 'Error', isError: true };
             }
-            });
-            }, [setCalcState, angleMode]);
-            
-            const handleInput = React.useCallback((val) => {
-            setCalcState(currentState => {
+        });
+    }, [setCalcState, angleMode]);
+    
+    const handleInput = React.useCallback((val) => {
+        setCalcState(currentState => {
             if (currentState.isError) {
-              const initExpr = val === '.' ? '0.' : val;
-              return { ...currentState, expression: initExpr, result: '', isError: false };
+                const initExpr = val === '.' ? '0.' : val;
+                return { ...currentState, expression: initExpr, result: '', isError: false };
             }
             
             let newExpression = currentState.expression;
@@ -8359,299 +8360,313 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             
             // Smart Decimal: Prefix "0." if empty or after operator
             if (val === '.') {
-              const segments = newExpression.split(/[\+\-\*\/\^\%\(\)×÷]/);
-              const currentSegment = segments[segments.length - 1];
-              if (currentSegment.includes('.')) return currentState; // Prevent 1.2.3
-              if (newExpression === '' || /[\+\-\*\/\^\%\(×÷]$/.test(newExpression)) {
-                   return { ...currentState, expression: newExpression + '0.', result: '' };
-              }
+                const segments = newExpression.split(/[\+\-\*\/\^\%\(\)×÷]/);
+                const currentSegment = segments[segments.length - 1];
+                if (currentSegment.includes('.')) return currentState; // Prevent 1.2.3
+                if (newExpression === '' || /[\+\-\*\/\^\%\(×÷]$/.test(newExpression)) {
+                    return { ...currentState, expression: newExpression + '0.', result: '' };
+                }
             }
             
             // Smart Start: If result exists and typing operator, use Ans
             if (newExpression === '' && currentState.result !== '') {
-              if (isOperator) {
-                  newExpression = 'Ans';
-              } else if (val === 'e') { // EXP shortcut
-                  return { ...currentState, expression: 'Ans*10^', result: '' };
-              } else if (!isNaN(parseInt(val)) || val === '.') {
-                  // Typing number overwrites result (implicit AC)
-                  const startVal = val === '.' ? '0.' : val;
-                  return { ...currentState, expression: startVal, result: '' };
-              }
+                if (isOperator) {
+                    newExpression = 'Ans';
+                } else if (val === 'e') { // EXP shortcut
+                    return { ...currentState, expression: 'Ans*10^', result: '' };
+                } else if (!isNaN(parseInt(val)) || val === '.') {
+                    // Typing number overwrites result (implicit AC)
+                    const startVal = val === '.' ? '0.' : val;
+                    return { ...currentState, expression: startVal, result: '' };
+                }
             }
             
             // Smart EXP key
             if (val === 'e' && newExpression.endsWith('Ans')) {
-              return { ...currentState, expression: newExpression + '*10^', result: '' };
+                return { ...currentState, expression: newExpression + '*10^', result: '' };
             }
             
             return { ...currentState, expression: newExpression + val, result: '' };
-            });
-            
-            if (calculatorRef.current) calculatorRef.current.focus();
-            
-            }, [setCalcState]);
-            
-            const handleClear = () => setCalcState(s => ({ ...s, expression: '', result: '', isError: false }));
-            const handleBackspace = () => setCalcState(s => ({ ...s, expression: s.expression.slice(0, -1) }));
-            
-            // Memory
-            const memClear = () => { setCalcState(s => ({ ...s, memory: 0 })); addToast("Memory Cleared"); };
-            const memRecall = () => { setCalcState(s => ({ ...s, expression: s.expression + s.memory })); };
-            const memAdd = () => {
-            try {
+        });
+        
+        if (calculatorRef.current) calculatorRef.current.focus();
+    }, [setCalcState]);
+    
+    const handleClear = () => setCalcState(s => ({ ...s, expression: '', result: '', isError: false }));
+    const handleBackspace = () => setCalcState(s => ({ ...s, expression: s.expression.slice(0, -1) }));
+    
+    // Memory
+    const memClear = () => { setCalcState(s => ({ ...s, memory: 0 })); addToast("Memory Cleared"); };
+    const memRecall = () => { setCalcState(s => ({ ...s, expression: s.expression + s.memory })); };
+    const memAdd = () => {
+        try {
             const valToStore = calcState.expression ? safeEvaluate(calcState.expression, angleMode, lastAnswer) : (safeParseFloat(calcState.result) || 0);
+            if (!isFinite(valToStore)) throw new Error();
             setCalcState(s => ({ ...s, memory: s.memory + valToStore }));
             addToast(`M+ (${(calcState.memory + valToStore).toPrecision(4)})`);
-            } catch { addToast("Invalid value"); }
-            };
-            const memSub = () => {
-            try {
+        } catch { addToast("Invalid value"); }
+    };
+    const memSub = () => {
+        try {
             const valToStore = calcState.expression ? safeEvaluate(calcState.expression, angleMode, lastAnswer) : (safeParseFloat(calcState.result) || 0);
+            if (!isFinite(valToStore)) throw new Error();
             setCalcState(s => ({ ...s, memory: s.memory - valToStore }));
             addToast(`M- (${(calcState.memory - valToStore).toPrecision(4)})`);
-            } catch { addToast("Invalid value"); }
-            };
-            
-            const handleHistoryClick = (histItem) => {
-            handleInput(histItem.res); // Insert the result
-            addToast("Value inserted from history");
-            };
-            
-            const copyResult = () => {
-            const textToCopy = result || expression;
-            if (textToCopy) {
+        } catch { addToast("Invalid value"); }
+    };
+    
+    const handleHistoryClick = (histItem) => {
+        handleInput(histItem.res); // Insert the result
+        addToast("Value inserted from history");
+    };
+    
+    const copyResult = () => {
+        const textToCopy = result || expression;
+        if (textToCopy) {
             navigator.clipboard.writeText(textToCopy);
             addToast("Copied to clipboard");
-            }
-            };
-            
-            const handleKeyDown = React.useCallback((event) => {
-            const { key } = event;
-            if (event.target.tagName === 'INPUT') return;
-            
-            let mappedKey = key;
-            if (key === 'Enter') mappedKey = '=';
-            if (key === 'Escape') mappedKey = 'AC';
-            if (key === 'Backspace' || key === 'Delete') mappedKey = 'DEL';
-            
-            setActiveKey(mappedKey);
-            setTimeout(() => setActiveKey(null), 150);
-            
-            if (/[0-9+\-*/.^()%!]/.test(key)) { event.preventDefault(); handleInput(key); }
-            else if (key === 'Enter' || key === '=') { event.preventDefault(); handleCalculate(); }
-            else if (key === 'Backspace' || key === 'Delete') { event.preventDefault(); handleBackspace(); }
-            else if (key === 'Escape') { event.preventDefault(); handleClear(); }
-            else if (key === 'e' || key === 'E') { event.preventDefault(); handleInput('e'); }
-            }, [handleInput, handleCalculate, handleBackspace, handleClear]);
-            
-            const insertConstant = (constVal, name) => {
-            handleInput(constVal);
-            addToast(`${name} inserted`);
-            };
-            
-            const handleAddConstant = () => {
-            if (!newConstName || !newConstVal) { addToast("Name and Value required"); return; }
-            if (isNaN(safeParseFloat(newConstVal))) { addToast("Value must be a number"); return; }
-            setCustomConstants(prev => [...prev, { name: newConstName, value: newConstVal }]);
-            setNewConstName(''); setNewConstVal(''); setIsAddMode(false);
-            addToast("Constant Saved");
-            };
-            
-            const handleDeleteConstant = (index, name) => {
-            setCustomConstants(prev => prev.filter((_, i) => i !== index));
-            addToast(`Deleted ${name}`);
-            };
-            
-            const btnClass = "p-3 text-sm font-bold rounded-lg transition-all shadow-sm border-b-2 active:border-b-0 active:translate-y-[2px] active:brightness-90 duration-75 select-none";
-            const getBtnStyle = (baseStyle, keyVal) => {
-            const isActive = activeKey === keyVal;
-            return `${baseStyle} ${isActive ? 'brightness-90 border-b-0 translate-y-[2px]' : ''}`;
-            };
-            
-            const styles = {
-            num: `${btnClass} bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700`,
-            op: `${btnClass} bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-slate-100 border-slate-400 dark:border-slate-900 hover:bg-slate-400 dark:hover:bg-slate-500`,
-            func: `${btnClass} bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs border-slate-300 dark:border-slate-900 hover:bg-slate-300 dark:hover:bg-slate-600`,
-            mem: `${btnClass} bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100 text-xs border-amber-300 dark:border-amber-900 hover:bg-amber-300 dark:hover:bg-amber-600`,
-            action: `${btnClass} bg-sky-600 text-white border-sky-800 hover:bg-sky-500`,
-            danger: `${btnClass} bg-red-500 text-white border-red-700 hover:bg-red-600`,
-            del: `${btnClass} bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-200 border-red-300 dark:border-red-900 hover:bg-red-300 dark:hover:bg-red-800`
-            };
-            
-            return (
-            <div
+        }
+    };
+    
+    const handleKeyDown = React.useCallback((event) => {
+        const { key } = event;
+        if (event.target.tagName === 'INPUT') return;
+        
+        let mappedKey = key;
+        if (key === 'Enter') mappedKey = '=';
+        if (key === 'Escape') mappedKey = 'AC';
+        if (key === 'Backspace' || key === 'Delete') mappedKey = 'DEL';
+        
+        setActiveKey(mappedKey);
+        setTimeout(() => setActiveKey(null), 150);
+        
+        if (/[0-9+\-*/.^()%!]/.test(key)) { event.preventDefault(); handleInput(key); }
+        else if (key === 'Enter' || key === '=') { event.preventDefault(); handleCalculate(); }
+        else if (key === 'Backspace' || key === 'Delete') { event.preventDefault(); handleBackspace(); }
+        else if (key === 'Escape') { event.preventDefault(); handleClear(); }
+        else if (key === 'e' || key === 'E') { event.preventDefault(); handleInput('e'); }
+    }, [handleInput, handleCalculate, handleBackspace, handleClear]);
+    
+    const insertConstant = (constVal, name) => {
+        handleInput(constVal);
+        addToast(`${name} inserted`);
+    };
+    
+    const handleAddConstant = () => {
+        if (!newConstName || !newConstVal) { addToast("Name and Value required"); return; }
+        if (isNaN(safeParseFloat(newConstVal))) { addToast("Value must be a number"); return; }
+        setCustomConstants(prev => [...prev, { name: newConstName, value: newConstVal }]);
+        setNewConstName(''); setNewConstVal(''); setIsAddMode(false);
+        addToast("Constant Saved");
+    };
+    
+    const handleDeleteConstant = (index, name) => {
+        setCustomConstants(prev => prev.filter((_, i) => i !== index));
+        addToast(`Deleted ${name}`);
+    };
+    
+    const btnClass = "p-3 text-sm font-bold rounded-lg transition-all shadow-sm border-b-2 active:border-b-0 active:translate-y-[2px] active:brightness-90 duration-75 select-none";
+    const getBtnStyle = (baseStyle, keyVal) => {
+        const isActive = activeKey === keyVal;
+        return `${baseStyle} ${isActive ? 'brightness-90 border-b-0 translate-y-[2px]' : ''}`;
+    };
+    
+    const styles = {
+        num: `${btnClass} bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-900 hover:bg-slate-200 dark:hover:bg-slate-700`,
+        op: `${btnClass} bg-slate-300 dark:bg-slate-600 text-slate-800 dark:text-slate-100 border-slate-400 dark:border-slate-900 hover:bg-slate-400 dark:hover:bg-slate-500`,
+        func: `${btnClass} bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs border-slate-300 dark:border-slate-900 hover:bg-slate-300 dark:hover:bg-slate-600`,
+        mem: `${btnClass} bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100 text-xs border-amber-300 dark:border-amber-900 hover:bg-amber-300 dark:hover:bg-amber-600`,
+        action: `${btnClass} bg-sky-600 text-white border-sky-800 hover:bg-sky-500`,
+        danger: `${btnClass} bg-red-500 text-white border-red-700 hover:bg-red-600`,
+        del: `${btnClass} bg-red-200 dark:bg-red-900/50 text-red-800 dark:text-red-200 border-red-300 dark:border-red-900 hover:bg-red-300 dark:hover:bg-red-800`
+    };
+    
+    return (
+        <div
             ref={calculatorRef}
             onKeyDown={handleKeyDown}
             tabIndex="0"
             className="focus:outline-none rounded-2xl p-6 shadow-xl bg-sky-50 dark:bg-slate-900 border-2 border-sky-600 dark:border-sky-700 transition-colors"
-            >
+        >
             {/* LCD Screen */}
             <div className="bg-slate-100 dark:bg-black rounded-xl p-4 mb-4 border-4 border-slate-300 dark:border-slate-700 shadow-inner relative">
-            
-              {/* Header Row */}
-              <div className="flex justify-between items-start mb-2 h-6">
-                  <div className="flex gap-2">
-                      <button
-                          onClick={() => setAngleMode(prev => prev === 'rad' ? 'deg' : 'rad')}
-                          className="text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded shadow-sm hover:bg-slate-300 transition"
-                      >
-                          {angleMode.toUpperCase()}
-                      </button>
-                      {memory !== 0 && (
-                          <span className="text-[10px] font-bold bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100 px-1.5 py-0.5 rounded shadow-sm animate-pulse">M</span>
-                      )}
-                  </div>
-                  <div className="flex gap-2">
-                      {(result || expression) && (
-                          <Tooltip text="Copy Result">
-                              <button onClick={copyResult} className="text-slate-400 hover:text-sky-600 transition">
-                                  <Icon path={ICONS.copy} className="w-3.5 h-3.5" />
-                              </button>
-                          </Tooltip>
-                      )}
-                      <Tooltip text="Shortcuts: 'e'=EXP, Backspace=DEL" position="left">
-                          <span className="text-slate-400 cursor-help"><Icon path={ICONS.help} className="w-3.5 h-3.5" /></span>
-                      </Tooltip>
-                  </div>
-              </div>
-            
-              {/* History (Paper Tape Style) */}
-              <div className="h-24 overflow-y-auto flex flex-col-reverse pr-1 custom-scrollbar gap-1">
-                  {history.map((h, i) => (
-                      <div
-                          key={i}
-                          onClick={() => handleHistoryClick(h)}
-                          className="flex justify-between items-center text-[10px] font-mono cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 px-1 rounded transition-colors group"
-                          title="Click to insert value"
-                      >
-                          <span className="text-slate-400 dark:text-slate-500 truncate max-w-[60%]">{h.expr}</span>
-                          <span className="text-slate-600 dark:text-slate-300 font-bold group-hover:text-sky-600 dark:group-hover:text-sky-400">= {h.res}</span>
-                      </div>
-                  ))}
-              </div>
-            
-              {/* Current Expression */}
-              <div className="text-right h-8 overflow-hidden flex items-end justify-end mt-1">
-                  <span className="text-sm font-mono text-slate-500 dark:text-slate-400 whitespace-pre">
-                      {expression || (result ? 'Ans' : '')}
-                  </span>
-              </div>
-            
-              {/* Main Result */}
-              <div className="text-right">
-                  <span className={`text-3xl font-mono font-bold tracking-tight break-all ${isError ? 'text-red-500' : 'text-slate-800 dark:text-slate-100'}`}>
-                      {result ? formatNumber(result) : (expression || '0')}
-                  </span>
-              </div>
+                
+                {/* Header Row */}
+                <div className="flex justify-between items-start mb-2 h-6">
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setAngleMode(prev => prev === 'rad' ? 'deg' : 'rad')}
+                            className="text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded shadow-sm hover:bg-slate-300 transition"
+                        >
+                            {angleMode.toUpperCase()}
+                        </button>
+                        {memory !== 0 && (
+                            <span className="text-[10px] font-bold bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100 px-1.5 py-0.5 rounded shadow-sm animate-pulse">M</span>
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        {(result || expression) && (
+                            <Tooltip text="Copy Result">
+                                <button onClick={copyResult} className="text-slate-400 hover:text-sky-600 transition">
+                                    <Icon path={ICONS.copy} className="w-3.5 h-3.5" />
+                                </button>
+                            </Tooltip>
+                        )}
+                        <Tooltip text="Shortcuts: 'e'=EXP, Backspace=DEL" position="left">
+                            <span className="text-slate-400 cursor-help"><Icon path={ICONS.help} className="w-3.5 h-3.5" /></span>
+                        </Tooltip>
+                    </div>
+                </div>
+                
+                {/* History (Paper Tape Style) */}
+                <div className="h-24 overflow-y-auto flex flex-col-reverse pr-1 custom-scrollbar gap-1">
+                    {history.map((h, i) => (
+                        <div
+                            key={i}
+                            onClick={() => handleHistoryClick(h)}
+                            className="flex justify-between items-center text-[10px] font-mono cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 px-1 rounded transition-colors group"
+                            title="Click to insert value"
+                        >
+                            <span className="text-slate-400 dark:text-slate-500 truncate max-w-[60%]">{h.expr}</span>
+                            <span className="text-slate-600 dark:text-slate-300 font-bold group-hover:text-sky-600 dark:group-hover:text-sky-400">= {h.res}</span>
+                        </div>
+                    ))}
+                </div>
+                
+                {/* Current Expression */}
+                <div className="text-right h-8 overflow-hidden flex items-end justify-end mt-1">
+                    <span className="text-sm font-mono text-slate-500 dark:text-slate-400 whitespace-pre">
+                        {expression || (result ? 'Ans' : '')}
+                    </span>
+                </div>
+                
+                {/* Main Result */}
+                <div className="text-right">
+                    <span className={`text-3xl font-mono font-bold tracking-tight break-all ${isError ? 'text-red-500' : 'text-slate-800 dark:text-slate-100'}`}>
+                        {result ? formatNumber(result) : (expression || '0')}
+                    </span>
+                </div>
             </div>
             
             {/* Keypad */}
             <div className="grid grid-cols-5 gap-2">
-              <button onClick={memClear} className={styles.mem}>MC</button>
-              <button onClick={memRecall} className={styles.mem}>MR</button>
-              <button onClick={memAdd} className={styles.mem}>M+</button>
-              <button onClick={memSub} className={styles.mem}>M-</button>
-              <button onClick={handleClear} className={getBtnStyle(styles.danger, 'AC')}>AC</button>
-            
-              <button onClick={() => handleInput('sin(')} className={styles.func}>sin</button>
-              <button onClick={() => handleInput('cos(')} className={styles.func}>cos</button>
-              <button onClick={() => handleInput('tan(')} className={styles.func}>tan</button>
-              <button onClick={() => handleInput('log10(')} className={styles.func}>log</button>
-              <button onClick={() => handleInput('ln(')} className={styles.func}>ln</button>
-            
-              <button onClick={() => handleInput('^2')} className={styles.func}>x²</button>
-              <button onClick={() => handleInput('^')} className={styles.func}>xʸ</button>
-              <button onClick={() => handleInput('sqrt(')} className={styles.func}>√</button>
-              <button onClick={() => handleInput('1/')} className={styles.func}>1/x</button>
-              <button onClick={() => handleInput('!')} className={styles.func}>n!</button>
-            
-              <button onClick={() => handleInput('(')} className={styles.func}>(</button>
-              <button onClick={() => handleInput(')')} className={styles.func}>)</button>
-              <button onClick={() => handleInput('7')} className={getBtnStyle(styles.num, '7')}>7</button>
-              <button onClick={() => handleInput('8')} className={getBtnStyle(styles.num, '8')}>8</button>
-              <button onClick={() => handleInput('9')} className={getBtnStyle(styles.num, '9')}>9</button>
-            
-              <button onClick={handleBackspace} className={getBtnStyle(styles.del, 'DEL')}>DEL</button>
-              <button onClick={() => handleInput('/')} className={getBtnStyle(styles.op, '/')}>÷</button>
-              <button onClick={() => handleInput('4')} className={getBtnStyle(styles.num, '4')}>4</button>
-              <button onClick={() => handleInput('5')} className={getBtnStyle(styles.num, '5')}>5</button>
-              <button onClick={() => handleInput('6')} className={getBtnStyle(styles.num, '6')}>6</button>
-            
-              <button onClick={() => handleInput('*')} className={getBtnStyle(styles.op, '*')}>×</button>
-              <button onClick={() => handleInput('-')} className={getBtnStyle(styles.op, '-')}>-</button>
-              <button onClick={() => handleInput('1')} className={getBtnStyle(styles.num, '1')}>1</button>
-              <button onClick={() => handleInput('2')} className={getBtnStyle(styles.num, '2')}>2</button>
-              <button onClick={() => handleInput('3')} className={getBtnStyle(styles.num, '3')}>3</button>
-            
-              <button onClick={() => handleInput('+')} className={getBtnStyle(styles.op, '+')}>+</button>
-              <Tooltip text="Scientific Notation (e.g., 5e6)">
-                  <button onClick={() => handleInput('e')} className={getBtnStyle(styles.func, 'e')}>EXP</button>
-              </Tooltip>
-              <button onClick={() => handleInput('0')} className={getBtnStyle(styles.num, '0')}>0</button>
-              <button onClick={() => handleInput('.')} className={getBtnStyle(styles.num, '.')}>.</button>
-              <Tooltip text="Insert previous answer">
-                  <button onClick={() => handleInput('Ans')} className={`${styles.func} font-bold text-sky-700`}>Ans</button>
-              </Tooltip>
+                <button onClick={memClear} className={styles.mem}>MC</button>
+                <button onClick={memRecall} className={styles.mem}>MR</button>
+                <button onClick={memAdd} className={styles.mem}>M+</button>
+                <button onClick={memSub} className={styles.mem}>M-</button>
+                <button onClick={handleClear} className={getBtnStyle(styles.danger, 'AC')}>AC</button>
+                
+                <button onClick={() => handleInput('sin(')} className={styles.func}>sin</button>
+                <button onClick={() => handleInput('cos(')} className={styles.func}>cos</button>
+                <button onClick={() => handleInput('tan(')} className={styles.func}>tan</button>
+                <button onClick={() => handleInput('log10(')} className={styles.func}>log</button>
+                <button onClick={() => handleInput('ln(')} className={styles.func}>ln</button>
+                
+                <button onClick={() => handleInput('^2')} className={styles.func}>x²</button>
+                <button onClick={() => handleInput('^')} className={styles.func}>xʸ</button>
+                <button onClick={() => handleInput('sqrt(')} className={styles.func}>√</button>
+                <button onClick={() => handleInput('1/')} className={styles.func}>1/x</button>
+                <button onClick={() => handleInput('!')} className={styles.func}>n!</button>
+                
+                <button onClick={() => handleInput('(')} className={styles.func}>(</button>
+                <button onClick={() => handleInput(')')} className={styles.func}>)</button>
+                <button onClick={() => handleInput('7')} className={getBtnStyle(styles.num, '7')}>7</button>
+                <button onClick={() => handleInput('8')} className={getBtnStyle(styles.num, '8')}>8</button>
+                <button onClick={() => handleInput('9')} className={getBtnStyle(styles.num, '9')}>9</button>
+                
+                <button onClick={handleBackspace} className={getBtnStyle(styles.del, 'DEL')}>DEL</button>
+                <button onClick={() => handleInput('/')} className={getBtnStyle(styles.op, '/')}>÷</button>
+                <button onClick={() => handleInput('4')} className={getBtnStyle(styles.num, '4')}>4</button>
+                <button onClick={() => handleInput('5')} className={getBtnStyle(styles.num, '5')}>5</button>
+                <button onClick={() => handleInput('6')} className={getBtnStyle(styles.num, '6')}>6</button>
+                
+                <button onClick={() => handleInput('*')} className={getBtnStyle(styles.op, '*')}>×</button>
+                <button onClick={() => handleInput('-')} className={getBtnStyle(styles.op, '-')}>-</button>
+                <button onClick={() => handleInput('1')} className={getBtnStyle(styles.num, '1')}>1</button>
+                <button onClick={() => handleInput('2')} className={getBtnStyle(styles.num, '2')}>2</button>
+                <button onClick={() => handleInput('3')} className={getBtnStyle(styles.num, '3')}>3</button>
+                
+                <button onClick={() => handleInput('+')} className={getBtnStyle(styles.op, '+')}>+</button>
+                <Tooltip text="Scientific Notation (e.g., 5e6)">
+                    <button onClick={() => handleInput('e')} className={getBtnStyle(styles.func, 'e')}>EXP</button>
+                </Tooltip>
+                <button onClick={() => handleInput('0')} className={getBtnStyle(styles.num, '0')}>0</button>
+                <button onClick={() => handleInput('.')} className={getBtnStyle(styles.num, '.')}>.</button>
+                <Tooltip text="Insert previous answer">
+                    <button onClick={() => handleInput('Ans')} className={`${styles.func} font-bold text-sky-700`}>Ans</button>
+                </Tooltip>
             </div>
             
             <button onClick={handleCalculate} className={`${getBtnStyle(styles.action, '=')} w-full mt-2 text-xl shadow-lg`}>=</button>
             
             {/* Quick Constants */}
             <div className="mt-4 pt-4 border-t border-slate-300 dark:border-slate-600">
-              <div className="flex justify-between items-center mb-2">
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Physics Constants</p>
-                  <button
-                      onClick={() => setIsAddMode(!isAddMode)}
-                      className="text-xs font-bold text-sky-600 hover:underline flex items-center gap-1"
-                  >
-                      {isAddMode ? 'Cancel' : '+ Add Custom'}
-                  </button>
-              </div>
-            
-              {isAddMode && (
-                  <div className="mb-3 p-2 bg-white dark:bg-slate-800 rounded border border-sky-200 dark:border-sky-800 animate-fade-in flex gap-2 items-center">
-                      <input type="text" placeholder="Name" className="w-1/3 p-1 text-sm border rounded dark:bg-slate-700 dark:border-slate-600" value={newConstName} onChange={(e) => setNewConstName(e.target.value)} />
-                      <input type="text" placeholder="Value" className="w-1/3 p-1 text-sm border rounded dark:bg-slate-700 dark:border-slate-600" value={newConstVal} onChange={(e) => setNewConstVal(e.target.value)} />
-                      <button onClick={handleAddConstant} className="flex-1 p-1 bg-sky-600 text-white text-xs font-bold rounded hover:bg-sky-700">Save</button>
-                  </div>
-              )}
-            
-              <div className="flex flex-wrap gap-2 justify-center">
-                  <Tooltip text="Pi (approx. 3.14159)"><button onClick={() => insertConstant('3.14159265', 'π')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">π</button></Tooltip>
-                  <Tooltip text="Euler's Number (approx. 2.71828)"><button onClick={() => insertConstant('2.71828182', 'e')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">e</button></Tooltip>
-                  <Tooltip text="Curie (3.7e10 Bq)"><button onClick={() => insertConstant('3.7e10', 'Ci')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">Ci</button></Tooltip>
-                  <Tooltip text="Avogadro's Number (6.022e23)"><button onClick={() => insertConstant('6.022e23', 'Na')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">Nₐ</button></Tooltip>
-                  <Tooltip text="Elementary Charge (1.602e-19 C)"><button onClick={() => insertConstant('1.60217663e-19', 'e (charge)')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">qₑ</button></Tooltip>
-                  <Tooltip text="Planck's Constant (6.626e-34 J⋅s)"><button onClick={() => insertConstant('6.62607015e-34', 'h')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">h</button></Tooltip>
-                  <Tooltip text="Atomic Mass Unit (1.66e-27 kg)"><button onClick={() => insertConstant('1.66053906e-27', 'u')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">u</button></Tooltip>
-                  <Tooltip text="Roentgen to C/kg (2.58e-4)"><button onClick={() => insertConstant('2.58e-4', 'R -> C/kg')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">R</button></Tooltip>
-            
-                  {customConstants.map((c, idx) => (
-                      <Tooltip key={idx} text={`Value: ${c.value} (Right-click to delete)`}>
-                          <button
-                              onClick={() => insertConstant(c.value, c.name)}
-                              onContextMenu={(e) => { e.preventDefault(); handleDeleteConstant(idx, c.name); }}
-                              className="px-3 py-1.5 text-xs bg-sky-100 dark:bg-sky-900 font-mono font-bold text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700 rounded hover:bg-sky-200 dark:hover:bg-sky-800 transition"
-                          >
-                              {c.name}
-                          </button>
-                      </Tooltip>
-                  ))}
-              </div>
+                <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Physics Constants</p>
+                    <button
+                        onClick={() => setIsAddMode(!isAddMode)}
+                        className="text-xs font-bold text-sky-600 hover:underline flex items-center gap-1"
+                    >
+                        {isAddMode ? 'Cancel' : '+ Add Custom'}
+                    </button>
+                </div>
+                
+                {isAddMode && (
+                    <div className="mb-3 p-2 bg-white dark:bg-slate-800 rounded border border-sky-200 dark:border-sky-800 animate-fade-in flex gap-2 items-center">
+                        <input type="text" placeholder="Name" className="w-1/3 p-1 text-sm border rounded dark:bg-slate-700 dark:border-slate-600" value={newConstName} onChange={(e) => setNewConstName(e.target.value)} />
+                        <input type="text" placeholder="Value" className="w-1/3 p-1 text-sm border rounded dark:bg-slate-700 dark:border-slate-600" value={newConstVal} onChange={(e) => setNewConstVal(e.target.value)} />
+                        <button onClick={handleAddConstant} className="flex-1 p-1 bg-sky-600 text-white text-xs font-bold rounded hover:bg-sky-700">Save</button>
+                    </div>
+                )}
+                
+                <div className="flex flex-wrap gap-2 justify-center">
+                    <Tooltip text="Pi (approx. 3.14159)"><button onClick={() => insertConstant('3.14159265', 'π')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">π</button></Tooltip>
+                    <Tooltip text="Euler's Number (approx. 2.71828)"><button onClick={() => insertConstant('2.71828182', 'e')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">e</button></Tooltip>
+                    <Tooltip text="Curie (3.7e10 Bq)"><button onClick={() => insertConstant('3.7e10', 'Ci')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">Ci</button></Tooltip>
+                    <Tooltip text="Avogadro's Number (6.022e23)"><button onClick={() => insertConstant('6.022e23', 'Na')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">Nₐ</button></Tooltip>
+                    <Tooltip text="Elementary Charge (1.602e-19 C)"><button onClick={() => insertConstant('1.60217663e-19', 'e (charge)')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">qₑ</button></Tooltip>
+                    <Tooltip text="Planck's Constant (6.626e-34 J⋅s)"><button onClick={() => insertConstant('6.62607015e-34', 'h')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">h</button></Tooltip>
+                    <Tooltip text="Atomic Mass Unit (1.66e-27 kg)"><button onClick={() => insertConstant('1.66053906e-27', 'u')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">u</button></Tooltip>
+                    <Tooltip text="Roentgen to C/kg (2.58e-4)"><button onClick={() => insertConstant('2.58e-4', 'R -> C/kg')} className="px-3 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 font-mono rounded hover:bg-slate-300 dark:hover:bg-slate-600 transition">R</button></Tooltip>
+                    
+                    {customConstants.map((c, idx) => (
+                        <Tooltip key={idx} text={`Value: ${c.value} (Right-click to delete)`}>
+                            <button
+                                onClick={() => insertConstant(c.value, c.name)}
+                                onContextMenu={(e) => { e.preventDefault(); handleDeleteConstant(idx, c.name); }}
+                                className="px-3 py-1.5 text-xs bg-sky-100 dark:bg-sky-900 font-mono font-bold text-sky-800 dark:text-sky-200 border border-sky-300 dark:border-sky-700 rounded hover:bg-sky-200 dark:hover:bg-sky-800 transition"
+                            >
+                                {c.name}
+                            </button>
+                        </Tooltip>
+                    ))}
+                </div>
             </div>
-            </div>
-            );
-            };
-
+        </div>
+    );
+};
                                
-    // 1. MDA Calculator (Currie Equation)
-        const MdaCalculator = ({ bkgCounts, setBkgCounts, countTime, setCountTime, bkgTime, setBkgTime, efficiency, setEfficiency, effUnit, setEffUnit, probeArea, setProbeArea, result, setResult }) => {
-            const { addHistory } = useCalculationHistory();
-            const { addToast } = useToast();
-            
-            React.useEffect(() => {
-            try {
+/**
+ * @description A unified module for standard laboratory statistics calculations.
+ * Includes: MDA (Currie), Chi-Squared, Dead Time, RPD, and FWHM.
+ */
+
+// 1. MDA Calculator (Currie Equation)
+const MdaCalculator = ({ bkgCounts, setBkgCounts, countTime, setCountTime, bkgTime, setBkgTime, efficiency, setEfficiency, effUnit, setEffUnit, probeArea, setProbeArea, result, setResult }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    // Units config for display
+    const MDA_UNIT_CONFIG = { 
+        'counts': { label: 'LLD (counts)', category: 'Counts' }, 
+        'cpm': { label: 'LLD Rate (cpm)', category: 'Rate' }, 
+        'dpm': { label: 'Activity (dpm)', category: 'Activity' }, 
+        'pCi': { label: 'Activity (pCi)', category: 'Activity' }, 
+        'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration' }
+    };
+
+    React.useEffect(() => {
+        try {
             const Rb = safeParseFloat(bkgCounts) / safeParseFloat(bkgTime); // Rate Bkg
             const Ts = safeParseFloat(countTime);
             const Tb = safeParseFloat(bkgTime);
@@ -8670,27 +8685,26 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             let Lc, Ld;
             
             if (Math.abs(Ts - Tb) < 0.01) {
-              // Paired Observations (Ts = Tb) -> Simplified Currie
-              // Ld = 2.71 + 4.65 * sqrt(BkgCounts)
-              const B = Rb * Tb;
-              Lc = 2.33 * Math.sqrt(B);
-              Ld = 2.71 + 4.65 * Math.sqrt(B);
+                // Paired Observations (Ts = Tb) -> Simplified Currie
+                // Ld = 2.71 + 4.65 * sqrt(BkgCounts)
+                const B = Rb * Tb;
+                Lc = 2.33 * Math.sqrt(B);
+                Ld = 2.71 + 4.65 * Math.sqrt(B);
             } else {
-              // Unpaired (Different times) -> NUREG-1507 exact formulation
-              // Ld (rate) = (2.71/Ts) + 3.29 * sqrt( Rb * (1/Ts + 1/Tb) )
-              const term1 = 2.71 / Ts;
-              const term2 = 3.29 * Math.sqrt(Rb * (1/Ts + 1/Tb));
-              const Ld_rate = term1 + term2;
-              Ld = Ld_rate * Ts; // Convert back to counts for display consistency
-            
-              // Lc (rate) = 1.645 * sqrt( Rb * (1/Ts + 1/Tb) )
-              const Lc_rate = 1.645 * Math.sqrt(Rb * (1/Ts + 1/Tb));
-              Lc = Lc_rate * Ts;
+                // Unpaired (Different times) -> NUREG-1507 exact formulation
+                // Ld (rate) = (2.71/Ts) + 3.29 * sqrt( Rb * (1/Ts + 1/Tb) )
+                const term1 = 2.71 / Ts;
+                const term2 = 3.29 * Math.sqrt(Rb * (1/Ts + 1/Tb));
+                const Ld_rate = term1 + term2;
+                Ld = Ld_rate * Ts; // Convert back to counts for display consistency
+                
+                // Lc (rate) = 1.645 * sqrt( Rb * (1/Ts + 1/Tb) )
+                const Lc_rate = 1.645 * Math.sqrt(Rb * (1/Ts + 1/Tb));
+                Lc = Lc_rate * Ts;
             }
             
             // Calculate MDA (Activity)
             // MDA = Ld / (T * Eff * Yield * 2.22) -> Yield assumed 1 for now
-            // Result in dpm = Ld / (T * Eff) if T is min
             const Ld_rate_cpm = Ld / Ts;
             const mda_dpm = Ld_rate_cpm / effDec;
             const mda_pCi = mda_dpm / 2.22;
@@ -8698,80 +8712,81 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             
             setResult({ Lc: Math.round(Lc), Ld: Math.round(Ld), mda_dpm, mda_pCi, mdc: mdc_dpm_100cm2 });
             
-            } catch (e) { setResult(null); }
-            }, [bkgCounts, countTime, bkgTime, efficiency, effUnit, probeArea]);
-            
-            const handleSave = () => {
-            if (result) {
+        } catch (e) { setResult(null); }
+    }, [bkgCounts, countTime, bkgTime, efficiency, effUnit, probeArea]);
+    
+    const handleSave = () => {
+        if (result) {
             addHistory({ id: Date.now(), type: 'MDA Calc', icon: ICONS.microscope, inputs: `Bkg: ${bkgCounts}c/${bkgTime}m`, result: `MDA: ${result.mda_dpm.toFixed(1)} dpm`, view: VIEWS.LAB_STATS });
             addToast("Saved!");
-            }
-            };
-            
-            return (
-            <div className="space-y-4">
+        }
+    };
+    
+    return (
+        <div className="space-y-4">
             <ContextualNote type="info"><strong>Currie Equation:</strong> Calculates the <i>a priori</i> detection limit (Ld) ensuring 95% confidence of detection.</ContextualNote>
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                  <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" value={countTime} onChange={e => setCountTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                  <div>
-                      <label className="block text-sm font-medium">Efficiency</label>
-                      <div className="flex">
-                          <input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                          <select value={effUnit} onChange={e => setEffUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs"><option>%</option><option>dec</option></select>
-                      </div>
-                  </div>
-              </div>
-              <div><label className="block text-sm font-medium">Probe Area (cm²) <span className="text-xs text-slate-400 font-normal">(For MDC)</span></label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                    <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" value={countTime} onChange={e => setCountTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                    <div>
+                        <label className="block text-sm font-medium">Efficiency</label>
+                        <div className="flex">
+                            <input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                            <select value={effUnit} onChange={e => setEffUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs"><option>%</option><option>dec</option></select>
+                        </div>
+                    </div>
+                </div>
+                <div><label className="block text-sm font-medium">Probe Area (cm²) <span className="text-xs text-slate-400 font-normal">(For MDC)</span></label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
             </div>
             
             {result && (
-              <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in shadow-sm">
-                  <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
+                <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in shadow-sm">
+                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
             
-                  <div className="text-center mb-4">
-                      <p className="text-xs uppercase font-bold text-slate-500">Minimum Detectable Activity</p>
-                      <div className="flex items-center justify-center gap-2">
-                          <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.mda_dpm.toFixed(1)}</span>
-                          <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">dpm</span>
-                      </div>
-                      <p className="text-xs text-slate-500">({result.mda_pCi.toFixed(2)} pCi)</p>
-                  </div>
+                    <div className="text-center mb-4">
+                        <p className="text-xs uppercase font-bold text-slate-500">Minimum Detectable Activity</p>
+                        <div className="flex items-center justify-center gap-2">
+                            <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.mda_dpm.toFixed(1)}</span>
+                            <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">dpm</span>
+                        </div>
+                        <p className="text-xs text-slate-500">({result.mda_pCi.toFixed(2)} pCi)</p>
+                    </div>
             
-                  <div className="grid grid-cols-2 gap-4 text-center border-t border-slate-200 dark:border-slate-600 pt-4">
-                      <div>
-                          <p className="text-xs text-slate-500">Critical Level (Lc)</p>
-                          <p className="font-mono font-bold">{result.Lc} counts</p>
-                      </div>
-                      <div>
-                          <p className="text-xs text-slate-500">Detection Limit (Ld)</p>
-                          <p className="font-mono font-bold">{result.Ld} counts</p>
-                      </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600 text-center">
-                      <p className="text-xs text-slate-500">Surface MDC</p>
-                      <p className="font-bold text-slate-700 dark:text-slate-200">{result.mdc.toFixed(0)} dpm/100cm²</p>
-                  </div>
-              </div>
+                    <div className="grid grid-cols-2 gap-4 text-center border-t border-slate-200 dark:border-slate-600 pt-4">
+                        <div>
+                            <p className="text-xs text-slate-500">Critical Level (Lc)</p>
+                            <p className="font-mono font-bold">{result.Lc} counts</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-500">Detection Limit (Ld)</p>
+                            <p className="font-mono font-bold">{result.Ld} counts</p>
+                        </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600 text-center">
+                        <p className="text-xs text-slate-500">Surface MDC</p>
+                        <p className="font-bold text-slate-700 dark:text-slate-200">{result.mdc.toFixed(0)} dpm/100cm²</p>
+                    </div>
+                </div>
             )}
-            </div>
-            );
-            };
-            
-            // 2. UPDATED: ChiSquaredCalculator (Visual Polish)
-            const ChiSquaredCalculator = ({ chiSquaredData, setChiSquaredData, alpha, setAlpha, result, setResult, error, setError }) => {
-            const { addHistory } = useCalculationHistory();
-            const { addToast } = useToast();
-            // (Keep your existing CRITICAL_VALUES and UPPER_BOUNDS constants here...)
-            const CHI_SQUARED_CRITICAL_VALUES = { '0.10': { lowerP: 0.05, upperP: 0.95, 1: 0.004, 2: 0.103, 3: 0.352, 4: 0.711, 5: 1.145, 6: 1.635, 7: 2.167, 8: 2.733, 9: 3.325, 10: 3.940, 11: 4.575, 12: 5.226, 13: 5.892, 14: 6.571, 15: 7.261, 16: 7.962, 17: 8.672, 18: 9.390, 19: 10.117, 20: 10.851, 21: 11.591, 22: 12.338, 23: 13.091, 24: 13.848, 25: 14.611, 26: 15.379, 27: 16.151, 28: 16.928, 29: 17.708, 30: 18.493, 40: 26.509 }, '0.05': { lowerP: 0.025, upperP: 0.975, 1: 0.001, 2: 0.051, 3: 0.216, 4: 0.484, 5: 0.831, 6: 1.237, 7: 1.690, 8: 2.180, 9: 2.700, 10: 3.247, 11: 3.816, 12: 4.404, 13: 5.009, 14: 5.629, 15: 6.262, 16: 6.908, 17: 7.564, 18: 8.231, 19: 8.907, 20: 9.591, 21: 10.283, 22: 10.982, 23: 11.689, 24: 12.401, 25: 13.120, 26: 13.844, 27: 14.573, 28: 15.308, 29: 16.047, 30: 16.791, 40: 24.433 }, '0.01': { lowerP: 0.005, upperP: 0.995, 1: 0.000, 2: 0.010, 3: 0.072, 4: 0.207, 5: 0.412, 6: 0.676, 7: 0.989, 8: 1.344, 9: 1.735, 10: 2.156, 11: 2.603, 12: 3.074, 13: 3.565, 14: 4.075, 15: 4.601, 16: 5.142, 17: 5.697, 18: 6.265, 19: 6.844, 20: 7.434, 21: 8.034, 22: 8.643, 23: 9.260, 24: 9.886, 25: 10.520, 26: 11.160, 27: 11.808, 28: 12.461, 29: 13.121, 30: 13.787, 40: 20.707 } };
-            const UPPER_BOUNDS = { '0.10': { 1: 3.841, 2: 5.991, 3: 7.815, 4: 9.488, 5: 11.070, 6: 12.592, 7: 14.067, 8: 15.507, 9: 16.919, 10: 18.307, 11: 19.675, 12: 21.026, 13: 22.362, 14: 23.685, 15: 24.996, 16: 26.296, 17: 27.587, 18: 28.869, 19: 30.144, 20: 31.410, 21: 32.671, 22: 33.924, 23: 35.172, 24: 36.415, 25: 37.652, 26: 38.885, 27: 40.113, 28: 41.337, 29: 42.557, 30: 43.773, 40: 55.758 }, '0.05': { 1: 5.024, 2: 7.378, 3: 9.348, 4: 11.143, 5: 12.833, 6: 14.449, 7: 16.013, 8: 17.535, 9: 19.023, 10: 20.483, 11: 21.920, 12: 23.337, 13: 24.736, 14: 26.119, 15: 27.488, 16: 28.845, 17: 30.191, 18: 31.526, 19: 32.852, 20: 34.170, 21: 35.479, 22: 36.781, 23: 38.076, 24: 39.364, 25: 40.646, 26: 41.923, 27: 43.195, 28: 44.461, 29: 45.722, 30: 46.979, 40: 59.342 }, '0.01': { 1: 7.879, 2: 10.597, 3: 12.838, 4: 14.860, 5: 16.750, 6: 18.548, 7: 20.278, 8: 21.955, 9: 23.589, 10: 25.188, 11: 26.757, 12: 28.300, 13: 29.819, 14: 31.319, 15: 32.801, 16: 34.267, 17: 35.718, 18: 37.156, 19: 38.582, 20: 39.997, 21: 41.401, 22: 42.796, 23: 44.181, 24: 45.559, 25: 46.928, 26: 48.290, 27: 49.645, 28: 50.993, 29: 52.336, 30: 53.672, 40: 66.766 } };
-            
-            React.useEffect(() => {
-            try {
+        </div>
+    );
+};
+
+// 2. ChiSquaredCalculator
+const ChiSquaredCalculator = ({ chiSquaredData, setChiSquaredData, alpha, setAlpha, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    // Hardcoded tables for standalone functionality
+    const CHI_SQUARED_CRITICAL_VALUES = { '0.10': { lowerP: 0.05, upperP: 0.95, 1: 0.004, 2: 0.103, 3: 0.352, 4: 0.711, 5: 1.145, 6: 1.635, 7: 2.167, 8: 2.733, 9: 3.325, 10: 3.940, 11: 4.575, 12: 5.226, 13: 5.892, 14: 6.571, 15: 7.261, 16: 7.962, 17: 8.672, 18: 9.390, 19: 10.117, 20: 10.851, 21: 11.591, 22: 12.338, 23: 13.091, 24: 13.848, 25: 14.611, 26: 15.379, 27: 16.151, 28: 16.928, 29: 17.708, 30: 18.493, 40: 26.509 }, '0.05': { lowerP: 0.025, upperP: 0.975, 1: 0.001, 2: 0.051, 3: 0.216, 4: 0.484, 5: 0.831, 6: 1.237, 7: 1.690, 8: 2.180, 9: 2.700, 10: 3.247, 11: 3.816, 12: 4.404, 13: 5.009, 14: 5.629, 15: 6.262, 16: 6.908, 17: 7.564, 18: 8.231, 19: 8.907, 20: 9.591, 21: 10.283, 22: 10.982, 23: 11.689, 24: 12.401, 25: 13.120, 26: 13.844, 27: 14.573, 28: 15.308, 29: 16.047, 30: 16.791, 40: 24.433 }, '0.01': { lowerP: 0.005, upperP: 0.995, 1: 0.000, 2: 0.010, 3: 0.072, 4: 0.207, 5: 0.412, 6: 0.676, 7: 0.989, 8: 1.344, 9: 1.735, 10: 2.156, 11: 2.603, 12: 3.074, 13: 3.565, 14: 4.075, 15: 4.601, 16: 5.142, 17: 5.697, 18: 6.265, 19: 6.844, 20: 7.434, 21: 8.034, 22: 8.643, 23: 9.260, 24: 9.886, 25: 10.520, 26: 11.160, 27: 11.808, 28: 12.461, 29: 13.121, 30: 13.787, 40: 20.707 } };
+    const UPPER_BOUNDS = { '0.10': { 1: 3.841, 2: 5.991, 3: 7.815, 4: 9.488, 5: 11.070, 6: 12.592, 7: 14.067, 8: 15.507, 9: 16.919, 10: 18.307, 11: 19.675, 12: 21.026, 13: 22.362, 14: 23.685, 15: 24.996, 16: 26.296, 17: 27.587, 18: 28.869, 19: 30.144, 20: 31.410, 21: 32.671, 22: 33.924, 23: 35.172, 24: 36.415, 25: 37.652, 26: 38.885, 27: 40.113, 28: 41.337, 29: 42.557, 30: 43.773, 40: 55.758 }, '0.05': { 1: 5.024, 2: 7.378, 3: 9.348, 4: 11.143, 5: 12.833, 6: 14.449, 7: 16.013, 8: 17.535, 9: 19.023, 10: 20.483, 11: 21.920, 12: 23.337, 13: 24.736, 14: 26.119, 15: 27.488, 16: 28.845, 17: 30.191, 18: 31.526, 19: 32.852, 20: 34.170, 21: 35.479, 22: 36.781, 23: 38.076, 24: 39.364, 25: 40.646, 26: 41.923, 27: 43.195, 28: 44.461, 29: 45.722, 30: 46.979, 40: 59.342 }, '0.01': { 1: 7.879, 2: 10.597, 3: 12.838, 4: 14.860, 5: 16.750, 6: 18.548, 7: 20.278, 8: 21.955, 9: 23.589, 10: 25.188, 11: 26.757, 12: 28.300, 13: 29.819, 14: 31.319, 15: 32.801, 16: 34.267, 17: 35.718, 18: 37.156, 19: 38.582, 20: 39.997, 21: 41.401, 22: 42.796, 23: 44.181, 24: 45.559, 25: 46.928, 26: 48.290, 27: 49.645, 28: 50.993, 29: 52.336, 30: 53.672, 40: 66.766 } };
+    
+    React.useEffect(() => {
+        try {
             setError('');
             const dataPoints = chiSquaredData.split(/[\s,]+/).filter(v => v.trim() !== '').map(Number);
             if (dataPoints.some(isNaN)) { if (chiSquaredData.trim().length > 0) setError("Data contains non-numeric values."); setResult(null); return; }
@@ -8786,58 +8801,59 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             let lowerCrit, upperCrit;
             const tableRow = CHI_SQUARED_CRITICAL_VALUES?.[alpha];
             if (tableRow && tableRow[df] !== undefined) {
-              if (Array.isArray(tableRow[df])) [lowerCrit, upperCrit] = tableRow[df];
-              else { lowerCrit = tableRow[df]; upperCrit = UPPER_BOUNDS[alpha][df] || Infinity; } // Handle your logic
+                lowerCrit = tableRow[df]; 
+                upperCrit = UPPER_BOUNDS[alpha][df] || Infinity;
             } else {
-              // Wilson-Hilferty approx
-              const zScoreMap = { '0.10': 1.645, '0.05': 1.960, '0.01': 2.576 };
-              const z = zScoreMap[alpha];
-              const term1 = 2 / (9 * df);
-              lowerCrit = df * Math.pow(1 - term1 - z * Math.sqrt(term1), 3);
-              upperCrit = df * Math.pow(1 - term1 + z * Math.sqrt(term1), 3);
+                // Wilson-Hilferty approx
+                const zScoreMap = { '0.10': 1.645, '0.05': 1.960, '0.01': 2.576 };
+                const z = zScoreMap[alpha];
+                const term1 = 2 / (9 * df);
+                lowerCrit = df * Math.pow(1 - term1 - z * Math.sqrt(term1), 3);
+                upperCrit = df * Math.pow(1 - term1 + z * Math.sqrt(term1), 3);
             }
             
             const pass = chiSquared >= lowerCrit && chiSquared <= upperCrit;
             setResult({ n, df, mean: mean.toFixed(2), chiSquared: chiSquared.toFixed(4), lowerBound: lowerCrit.toFixed(3), upperBound: upperCrit.toFixed(3), conclusion: pass ? 'PASS' : 'FAIL' });
-            } catch (e) { setError("Calculation Error"); setResult(null); }
-            }, [chiSquaredData, alpha]);
-            
-            const handleSave = () => {
-            if (result) {
+        } catch (e) { setError("Calculation Error"); setResult(null); }
+    }, [chiSquaredData, alpha]);
+    
+    const handleSave = () => {
+        if (result) {
             addHistory({ id: Date.now(), type: 'χ² Test', icon: ICONS.labStats, inputs: `N=${result.n}, α=${alpha}`, result: `χ²=${result.chiSquared} (${result.conclusion})`, view: VIEWS.LAB_STATS });
             addToast("Saved!");
-            }
-            };
-            
-            return (
-            <div className="space-y-4">
+        }
+    };
+    
+    return (
+        <div className="space-y-4">
+            <ContextualNote type="info">Checks detector stability. Enter 20 consecutive measurements.</ContextualNote>
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-              <div><label className="block text-sm font-medium">Count Data</label><textarea value={chiSquaredData} onChange={e => setChiSquaredData(e.target.value)} rows="5" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste counts..."></textarea></div>
-              <div><label className="block text-sm font-medium">Significance Level (α)</label><select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="0.10">0.10 (90%)</option><option value="0.05">0.05 (95%)</option><option value="0.01">0.01 (99%)</option></select></div>
+                <div><label className="block text-sm font-medium">Count Data</label><textarea value={chiSquaredData} onChange={e => setChiSquaredData(e.target.value)} rows="5" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-mono text-sm" placeholder="Paste counts..."></textarea></div>
+                <div><label className="block text-sm font-medium">Significance Level (α)</label><select value={alpha} onChange={e => setAlpha(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="0.10">0.10 (90%)</option><option value="0.05">0.05 (95%)</option><option value="0.01">0.01 (99%)</option></select></div>
             </div>
             
             {result && (
-              <div className={`p-5 rounded-lg mt-4 text-center animate-fade-in shadow-sm ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-                  <div className="flex justify-end -mt-3 -mr-3 mb-1"><button onClick={handleSave} className="text-slate-500 hover:text-black dark:hover:text-white"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
-                  <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>SYSTEM {result.conclusion}ES</p>
-                  <div className="mt-4 grid grid-cols-3 gap-2 text-sm border-t border-black/10 pt-4">
-                      <div><p className="text-xs text-slate-500">Lower Limit</p><p className="font-mono font-bold">{result.lowerBound}</p></div>
-                      <div><p className="text-xs text-slate-500">Calculated χ²</p><p className="font-mono font-bold text-lg">{result.chiSquared}</p></div>
-                      <div><p className="text-xs text-slate-500">Upper Limit</p><p className="font-mono font-bold">{result.upperBound}</p></div>
-                  </div>
-              </div>
+                <div className={`p-5 rounded-lg mt-4 text-center animate-fade-in shadow-sm ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
+                    <div className="flex justify-end -mt-3 -mr-3 mb-1"><button onClick={handleSave} className="text-slate-500 hover:text-black dark:hover:text-white"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
+                    <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>SYSTEM {result.conclusion}ES</p>
+                    <div className="mt-4 grid grid-cols-3 gap-2 text-sm border-t border-black/10 pt-4">
+                        <div><p className="text-xs text-slate-500">Lower Limit</p><p className="font-mono font-bold">{result.lowerBound}</p></div>
+                        <div><p className="text-xs text-slate-500">Calculated χ²</p><p className="font-mono font-bold text-lg">{result.chiSquared}</p></div>
+                        <div><p className="text-xs text-slate-500">Upper Limit</p><p className="font-mono font-bold">{result.upperBound}</p></div>
+                    </div>
+                </div>
             )}
-            </div>
-            );
-            };
-            
-            // 3. UPDATED: DeadTimeCorrector (Visual Polish)
-            const DeadTimeCorrector = ({ observedCpm, setObservedCpm, deadTime, setDeadTime, result, setResult, error, setError }) => {
-            const { addHistory } = useCalculationHistory();
-            const { addToast } = useToast();
-            
-            React.useEffect(() => {
-            try {
+        </div>
+    );
+};
+
+// 3. DeadTimeCorrector
+const DeadTimeCorrector = ({ observedCpm, setObservedCpm, deadTime, setDeadTime, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    React.useEffect(() => {
+        try {
             setError('');
             const R = safeParseFloat(observedCpm); const tau = safeParseFloat(deadTime);
             if (isNaN(R) || isNaN(tau) || R < 0 || tau < 0) { setResult(null); return; }
@@ -8849,212 +8865,212 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             
             const N_cpm = (R_cps / denom) * 60;
             setResult({ trueCpm: N_cpm, loss: (1 - R/N_cpm)*100 });
-            } catch(e) { setError(e.message); setResult(null); }
-            }, [observedCpm, deadTime]);
-            
-            const handleSave = () => {
-            if (result) {
+        } catch(e) { setError(e.message); setResult(null); }
+    }, [observedCpm, deadTime]);
+    
+    const handleSave = () => {
+        if (result) {
             addHistory({ id: Date.now(), type: 'Dead Time', icon: ICONS.stopwatch, inputs: `Obs: ${observedCpm}, τ: ${deadTime}µs`, result: `True: ${Math.round(result.trueCpm)} cpm`, view: VIEWS.LAB_STATS });
             addToast("Saved!");
-            }
-            };
-            
-            return (
-            <div className="space-y-4">
+        }
+    };
+    
+    return (
+        <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-              <div><label className="block text-sm font-medium">Observed CPM</label><input type="number" value={observedCpm} onChange={e => setObservedCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-              <div><label className="block text-sm font-medium">Dead Time (µs)</label><input type="number" value={deadTime} onChange={e => setDeadTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Observed CPM</label><input type="number" value={observedCpm} onChange={e => setObservedCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Dead Time (µs)</label><input type="number" value={deadTime} onChange={e => setDeadTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
             </div>
             {error && <p className="text-red-500 text-center text-sm">{error}</p>}
             {result && (
-              <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg text-center shadow-sm">
-                  <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
-                  <p className="text-xs uppercase font-bold text-slate-500">True Count Rate</p>
-                  <p className="text-3xl font-extrabold text-sky-600 dark:text-sky-400 my-1">{Math.round(result.trueCpm).toLocaleString()}</p>
-                  <p className="text-sm text-slate-500 font-medium">cpm</p>
-                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
-                      <p className={`font-bold ${result.loss > 10 ? 'text-amber-500' : 'text-slate-600 dark:text-slate-300'}`}>{result.loss.toFixed(2)}% Loss</p>
-                  </div>
-              </div>
+                <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg text-center shadow-sm">
+                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
+                    <p className="text-xs uppercase font-bold text-slate-500">True Count Rate</p>
+                    <p className="text-3xl font-extrabold text-sky-600 dark:text-sky-400 my-1">{Math.round(result.trueCpm).toLocaleString()}</p>
+                    <p className="text-sm text-slate-500 font-medium">cpm</p>
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
+                        <p className={`font-bold ${result.loss > 10 ? 'text-amber-500' : 'text-slate-600 dark:text-slate-300'}`}>{result.loss.toFixed(2)}% Loss</p>
+                    </div>
+                </div>
             )}
-            </div>
-            );
-            };
-            
-            // 4. RpdCalculator
-            const RpdCalculator = ({ sample1, setSample1, sample2, setSample2, result, setResult }) => {
-            const { addHistory } = useCalculationHistory();
-            const { addToast } = useToast();
-            
-            React.useEffect(() => {
-            const s1 = safeParseFloat(sample1); const s2 = safeParseFloat(sample2);
-            if (!isNaN(s1) && !isNaN(s2) && (s1+s2 > 0)) {
+        </div>
+    );
+};
+
+// 4. RpdCalculator
+const RpdCalculator = ({ sample1, setSample1, sample2, setSample2, result, setResult }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    React.useEffect(() => {
+        const s1 = safeParseFloat(sample1); const s2 = safeParseFloat(sample2);
+        if (!isNaN(s1) && !isNaN(s2) && (s1+s2 > 0)) {
             const rpd = Math.abs(s1 - s2) / ((s1 + s2)/2) * 100;
             setResult({ rpd: rpd.toFixed(2), pass: rpd <= 20 });
-            } else { setResult(null); }
-            }, [sample1, sample2]);
-            
-            const handleSave = () => {
-            if (result) {
+        } else { setResult(null); }
+    }, [sample1, sample2]);
+    
+    const handleSave = () => {
+        if (result) {
             addHistory({ id: Date.now(), type: 'RPD', icon: ICONS.compare, inputs: `${sample1} vs ${sample2}`, result: `${result.rpd}%`, view: VIEWS.LAB_STATS });
             addToast("Saved!");
-            }
-            };
-            
-            return (
-            <div className="space-y-4">
+        }
+    };
+    
+    return (
+        <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-              <div><label className="block text-sm font-medium">Sample 1</label><input type="number" value={sample1} onChange={e => setSample1(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-              <div><label className="block text-sm font-medium">Sample 2</label><input type="number" value={sample2} onChange={e => setSample2(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Sample 1</label><input type="number" value={sample1} onChange={e => setSample1(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Sample 2</label><input type="number" value={sample2} onChange={e => setSample2(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
             </div>
             {result && (
-              <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg text-center shadow-sm">
-                  <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
-                  <p className="text-xs uppercase font-bold text-slate-500">Relative Percent Difference</p>
-                  <p className={`text-4xl font-extrabold my-2 ${result.pass ? 'text-sky-600 dark:text-sky-400' : 'text-amber-500'}`}>{result.rpd}%</p>
-                  {result.pass ? <p className="text-green-600 font-bold text-sm">Acceptable (≤ 20%)</p> : <p className="text-amber-600 font-bold text-sm">Investigate (&gt; 20%)</p>}
-              </div>
+                <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg text-center shadow-sm">
+                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
+                    <p className="text-xs uppercase font-bold text-slate-500">Relative Percent Difference</p>
+                    <p className={`text-4xl font-extrabold my-2 ${result.pass ? 'text-sky-600 dark:text-sky-400' : 'text-amber-500'}`}>{result.rpd}%</p>
+                    {result.pass ? <p className="text-green-600 font-bold text-sm">Acceptable (≤ 20%)</p> : <p className="text-amber-600 font-bold text-sm">Investigate (&gt; 20%)</p>}
+                </div>
             )}
-            </div>
-            );
-            };
-            
-            // 5. FwhmCalculator
-            const FwhmCalculator = ({ centroid, setCentroid, lower, setLower, upper, setUpper, result, setResult }) => {
-            const { addHistory } = useCalculationHistory();
-            const { addToast } = useToast();
-            
-            React.useEffect(() => {
-            const c = safeParseFloat(centroid); const l = safeParseFloat(lower); const u = safeParseFloat(upper);
-            if (!isNaN(c) && !isNaN(l) && !isNaN(u) && c > 0) {
+        </div>
+    );
+};
+
+// 5. FwhmCalculator
+const FwhmCalculator = ({ centroid, setCentroid, lower, setLower, upper, setUpper, result, setResult }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    React.useEffect(() => {
+        const c = safeParseFloat(centroid); const l = safeParseFloat(lower); const u = safeParseFloat(upper);
+        if (!isNaN(c) && !isNaN(l) && !isNaN(u) && c > 0) {
             const fwhm = u - l;
             setResult({ fwhm: fwhm.toFixed(2), res: (fwhm/c)*100 });
-            } else { setResult(null); }
-            }, [centroid, lower, upper]);
-            
-            const handleSave = () => {
-            if (result) {
+        } else { setResult(null); }
+    }, [centroid, lower, upper]);
+    
+    const handleSave = () => {
+        if (result) {
             addHistory({ id: Date.now(), type: 'Resolution', icon: ICONS.gammaSpec, inputs: `Peak: ${centroid}`, result: `${result.res.toFixed(2)}%`, view: VIEWS.LAB_STATS });
             addToast("Saved!");
-            }
-            };
-            
-            return (
-            <div className="space-y-4">
+        }
+    };
+    
+    return (
+        <div className="space-y-4">
             <div className="grid grid-cols-3 gap-2 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-              <div><label className="block text-xs font-bold mb-1">Centroid</label><input type="number" value={centroid} onChange={e => setCentroid(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
-              <div><label className="block text-xs font-bold mb-1">Lower ½</label><input type="number" value={lower} onChange={e => setLower(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
-              <div><label className="block text-xs font-bold mb-1">Upper ½</label><input type="number" value={upper} onChange={e => setUpper(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="block text-xs font-bold mb-1">Centroid</label><input type="number" value={centroid} onChange={e => setCentroid(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="block text-xs font-bold mb-1">Lower ½</label><input type="number" value={lower} onChange={e => setLower(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="block text-xs font-bold mb-1">Upper ½</label><input type="number" value={upper} onChange={e => setUpper(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
             </div>
             {result && (
-              <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg text-center shadow-sm">
-                  <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
-                  <div className="grid grid-cols-2 gap-4">
-                      <div><p className="text-xs uppercase font-bold text-slate-500">FWHM</p><p className="text-2xl font-bold text-slate-700 dark:text-slate-200">{result.fwhm}</p></div>
-                      <div><p className="text-xs uppercase font-bold text-slate-500">Resolution</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.res.toFixed(2)}%</p></div>
-                  </div>
-              </div>
+                <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg text-center shadow-sm">
+                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><button onClick={handleSave} className="text-slate-400 hover:text-sky-600"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><p className="text-xs uppercase font-bold text-slate-500">FWHM</p><p className="text-2xl font-bold text-slate-700 dark:text-slate-200">{result.fwhm}</p></div>
+                        <div><p className="text-xs uppercase font-bold text-slate-500">Resolution</p><p className="text-2xl font-bold text-sky-600 dark:text-sky-400">{result.res.toFixed(2)}%</p></div>
+                    </div>
+                </div>
             )}
-            </div>
-            );
-            };
-            
-            // 6. MAIN CONTAINER: LabStatistics
-            const LabStatistics = () => {
-            const [activeTab, setActiveTab] = React.useState('mda');
-            
-            // MDA State
-            const [mda_bkgCounts, setMda_bkgCounts] = React.useState('50');
-            const [mda_countTime, setMda_countTime] = React.useState('1');
-            const [mda_bkgTime, setMda_bkgTime] = React.useState('1');
-            const [mda_eff, setMda_eff] = React.useState('10');
-            const [mda_effUnit, setMda_effUnit] = React.useState('%');
-            const [mda_area, setMda_area] = React.useState('100');
-            const [mda_result, setMda_result] = React.useState(null);
-            
-            // ChiSq State
-            const [chi_data, setChi_data] = React.useState('');
-            const [chi_alpha, setChi_alpha] = React.useState('0.05');
-            const [chi_result, setChi_result] = React.useState(null);
-            const [chi_error, setChi_error] = React.useState('');
-            
-            // DeadTime State
-            const [dt_obs, setDt_obs] = React.useState('50000');
-            const [dt_tau, setDt_tau] = React.useState('100');
-            const [dt_result, setDt_result] = React.useState(null);
-            const [dt_error, setDt_error] = React.useState('');
-            
-            // RPD State
-            const [rpd_s1, setRpd_s1] = React.useState('1250');
-            const [rpd_s2, setRpd_s2] = React.useState('1180');
-            const [rpd_result, setRpd_result] = React.useState(null);
-            
-            // FWHM State
-            const [fw_cent, setFw_cent] = React.useState('661.7');
-            const [fw_low, setFw_low] = React.useState('658.2');
-            const [fw_up, setFw_up] = React.useState('665.2');
-            const [fw_result, setFw_result] = React.useState(null);
-            
-            const handleClear = () => {
-            if(activeTab === 'mda') { setMda_bkgCounts('50'); setMda_result(null); }
-            if(activeTab === 'chi') { setChi_data(''); setChi_result(null); }
-            if(activeTab === 'dt') { setDt_obs('50000'); setDt_result(null); }
-            if(activeTab === 'rpd') { setRpd_s1(''); setRpd_result(null); }
-            if(activeTab === 'fwhm') { setFw_cent(''); setFw_result(null); }
-            };
-            
-            return (
-            <div className="p-4 animate-fade-in">
+        </div>
+    );
+};
+
+// 6. MAIN CONTAINER: LabStatistics
+const LabStatistics = () => {
+    const [activeTab, setActiveTab] = React.useState('mda');
+    
+    // MDA State
+    const [mda_bkgCounts, setMda_bkgCounts] = React.useState('50');
+    const [mda_countTime, setMda_countTime] = React.useState('1');
+    const [mda_bkgTime, setMda_bkgTime] = React.useState('1');
+    const [mda_eff, setMda_eff] = React.useState('10');
+    const [mda_effUnit, setMda_effUnit] = React.useState('%');
+    const [mda_area, setMda_area] = React.useState('100');
+    const [mda_result, setMda_result] = React.useState(null);
+    
+    // ChiSq State
+    const [chi_data, setChi_data] = React.useState('');
+    const [chi_alpha, setChi_alpha] = React.useState('0.05');
+    const [chi_result, setChi_result] = React.useState(null);
+    const [chi_error, setChi_error] = React.useState('');
+    
+    // DeadTime State
+    const [dt_obs, setDt_obs] = React.useState('50000');
+    const [dt_tau, setDt_tau] = React.useState('100');
+    const [dt_result, setDt_result] = React.useState(null);
+    const [dt_error, setDt_error] = React.useState('');
+    
+    // RPD State
+    const [rpd_s1, setRpd_s1] = React.useState('1250');
+    const [rpd_s2, setRpd_s2] = React.useState('1180');
+    const [rpd_result, setRpd_result] = React.useState(null);
+    
+    // FWHM State
+    const [fw_cent, setFw_cent] = React.useState('661.7');
+    const [fw_low, setFw_low] = React.useState('658.2');
+    const [fw_up, setFw_up] = React.useState('665.2');
+    const [fw_result, setFw_result] = React.useState(null);
+    
+    const handleClear = () => {
+        if(activeTab === 'mda') { setMda_bkgCounts('50'); setMda_result(null); }
+        if(activeTab === 'chi') { setChi_data(''); setChi_result(null); }
+        if(activeTab === 'dt') { setDt_obs('50000'); setDt_result(null); }
+        if(activeTab === 'rpd') { setRpd_s1(''); setRpd_result(null); }
+        if(activeTab === 'fwhm') { setFw_cent(''); setFw_result(null); }
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
             <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-              <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold text-slate-800 dark:text-white">Lab Statistics</h2>
-                  <ClearButton onClick={handleClear} />
-              </div>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Lab Statistics</h2>
+                    <ClearButton onClick={handleClear} />
+                </div>
             
-               <div className="grid grid-cols-3 md:grid-cols-5 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6">
-                   {['mda', 'chi', 'dt', 'rpd', 'fwhm'].map(id => {
-                       const labels = { mda: 'MDA/MDC', chi: 'Chi-Sq', dt: 'Dead Time', rpd: 'RPD', fwhm: 'Resolution' };
-                       return (
-                           <button key={id} onClick={() => setActiveTab(id)}
-                               className={`p-2 rounded-md text-xs sm:text-sm font-bold text-center transition-all duration-200
-                               ${activeTab === id
-                                   ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-                                   : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-600'
-                               }`}>
-                               {labels[id]}
-                           </button>
-                       )
-                   })}
-               </div>
+                <div className="grid grid-cols-3 md:grid-cols-5 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6">
+                    {['mda', 'chi', 'dt', 'rpd', 'fwhm'].map(id => {
+                        const labels = { mda: 'MDA/MDC', chi: 'Chi-Sq', dt: 'Dead Time', rpd: 'RPD', fwhm: 'Resolution' };
+                        return (
+                            <button key={id} onClick={() => setActiveTab(id)}
+                                className={`p-2 rounded-md text-xs sm:text-sm font-bold text-center transition-all duration-200
+                                ${activeTab === id
+                                    ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-300/50 dark:hover:bg-slate-600'
+                                }`}>
+                                {labels[id]}
+                            </button>
+                        )
+                    })}
+                </div>
             
-              <div className="mt-2">
-                  {activeTab === 'mda' && <MdaCalculator
-                      bkgCounts={mda_bkgCounts} setBkgCounts={setMda_bkgCounts} countTime={mda_countTime} setCountTime={setMda_countTime}
-                      bkgTime={mda_bkgTime} setBkgTime={setMda_bkgTime} efficiency={mda_eff} setEfficiency={setMda_eff}
-                      effUnit={mda_effUnit} setEffUnit={setMda_effUnit} probeArea={mda_area} setProbeArea={setMda_area}
-                      result={mda_result} setResult={setMda_result}
-                  />}
-                  {activeTab === 'chi' && <ChiSquaredCalculator
-                      chiSquaredData={chi_data} setChiSquaredData={setChi_data} alpha={chi_alpha} setAlpha={setChi_alpha}
-                      result={chi_result} setResult={setChi_result} error={chi_error} setError={setChi_error}
-                  />}
-                  {activeTab === 'dt' && <DeadTimeCorrector
-                      observedCpm={dt_obs} setObservedCpm={setDt_obs} deadTime={dt_tau} setDeadTime={setDt_tau}
-                      result={dt_result} setResult={setDt_result} error={dt_error} setError={setDt_error}
-                  />}
-                  {activeTab === 'rpd' && <RpdCalculator
-                      sample1={rpd_s1} setSample1={setRpd_s1} sample2={rpd_s2} setSample2={setRpd_s2}
-                      result={rpd_result} setResult={setRpd_result}
-                  />}
-                  {activeTab === 'fwhm' && <FwhmCalculator
-                      centroid={fw_cent} setCentroid={setFw_cent} lower={fw_low} setLower={setFw_low} upper={fw_up} setUpper={setFw_up}
-                      result={fw_result} setResult={setFw_result}
-                  />}
-              </div>
+                <div className="mt-2">
+                    {activeTab === 'mda' && <MdaCalculator
+                        bkgCounts={mda_bkgCounts} setBkgCounts={setMda_bkgCounts} countTime={mda_countTime} setCountTime={setMda_countTime}
+                        bkgTime={mda_bkgTime} setBkgTime={setMda_bkgTime} efficiency={mda_eff} setEfficiency={setMda_eff}
+                        effUnit={mda_effUnit} setEffUnit={setMda_effUnit} probeArea={mda_area} setProbeArea={setMda_area}
+                        result={mda_result} setResult={setMda_result}
+                    />}
+                    {activeTab === 'chi' && <ChiSquaredCalculator
+                        chiSquaredData={chi_data} setChiSquaredData={setChi_data} alpha={chi_alpha} setAlpha={setChi_alpha}
+                        result={chi_result} setResult={setChi_result} error={chi_error} setError={setChi_error}
+                    />}
+                    {activeTab === 'dt' && <DeadTimeCorrector
+                        observedCpm={dt_obs} setObservedCpm={setDt_obs} deadTime={dt_tau} setDeadTime={setDt_tau}
+                        result={dt_result} setResult={setDt_result} error={dt_error} setError={setDt_error}
+                    />}
+                    {activeTab === 'rpd' && <RpdCalculator
+                        sample1={rpd_s1} setSample1={setRpd_s1} sample2={rpd_s2} setSample2={setRpd_s2}
+                        result={rpd_result} setResult={setRpd_result}
+                    />}
+                    {activeTab === 'fwhm' && <FwhmCalculator
+                        centroid={fw_cent} setCentroid={setFw_cent} lower={fw_low} setLower={setFw_low} upper={fw_up} setUpper={setFw_up}
+                        result={fw_result} setResult={setFw_result}
+                    />}
+                </div>
             </div>
-            </div>
-            );
-            };
+        </div>
+    );
+};
 
             /**
              * @description Displays a full decay series chain.
