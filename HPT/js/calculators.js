@@ -7854,90 +7854,90 @@ const NeutronCalculator = ({radionuclides}) => {
     );
 };
             
-            /**
-            * @description A unified calculator for determining detection limits for both
-            * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc.
-            */
-            
-            const MDACalculator = ({ onNavClick, onDeepLink }) => {
-            const MDA_MODE_STATIC = 'static';
-            const MDA_MODE_SCAN = 'scan';
-            const { addHistory } = useCalculationHistory();
-            const { addToast } = useToast();
-            
-            // --- State Management ---
-            const [mdaMode, setMdaMode] = React.useState(() => localStorage.getItem('mda_mdaMode') || MDA_MODE_STATIC);
-            
-            // Shared State
-            const [backgroundMode, setBackgroundMode] = React.useState('rate'); // 'rate' or 'counts'
-            const [backgroundCpm, setBackgroundCpm] = React.useState(() => localStorage.getItem('mda_backgroundCpm') || '50');
-            const [bkgCounts, setBkgCounts] = React.useState('50');
-            const [bkgTime, setBkgTime] = React.useState('1');
-            
-            const [instrumentEff, setInstrumentEff] = React.useState(() => localStorage.getItem('mda_instrumentEff') || '20');
-            const [surfaceEff, setSurfaceEff] = React.useState(() => localStorage.getItem('mda_surfaceEff') || '50');
-            const [probeArea, setProbeArea] = React.useState(() => localStorage.getItem('mda_probeArea') || '15');
-            
-            // Static State
-            const [grossTime, setGrossTime] = React.useState(() => localStorage.getItem('mda_grossTime') || '1');
-            const [outputUnit, setOutputUnit] = React.useState(() => localStorage.getItem('mda_outputUnit') || 'dpm/100cm²');
-            const [sampleVolume, setSampleVolume] = React.useState(() => localStorage.getItem('mda_sampleVolume') || '1');
-            const [sampleMass, setSampleMass] = React.useState(() => localStorage.getItem('mda_sampleMass') || '100');
-            const [targetLimit, setTargetLimit] = React.useState(() => localStorage.getItem('mda_targetLimit') || '');
-            
-            // Scan State
-            const [scanSpeed, setScanSpeed] = React.useState(() => localStorage.getItem('mda_scanSpeed') || '5');
-            const [probeDimension, setProbeDimension] = React.useState(() => localStorage.getItem('mda_probeDimension') || '4.4');
-            const [dprime, setDprime] = React.useState(() => localStorage.getItem('mda_dprime') || '1.38');
-            const [surveyorEff, setSurveyorEff] = React.useState(() => localStorage.getItem('mda_surveyorEff') || '0.5');
-            
-            const [result, setResult] = React.useState(null);
-            const [error, setError] = React.useState('');
-            
-            // --- Data and Constants ---
-            const MDA_UNIT_CONFIG = { 'counts': { label: 'LLD (counts)', category: 'Counts', requires: [] }, 'cpm': { label: 'LLD Rate (cpm)', category: 'Rate', requires: [] }, 'dpm': { label: 'Activity (dpm)', category: 'Activity', requires: ['efficiency'] }, 'Bq': { label: 'Activity (Bq)', category: 'Activity', requires: ['efficiency'] }, 'µCi': { label: 'Activity (µCi)', category: 'Activity', requires: ['efficiency'] }, 'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration', requires: ['efficiency', 'area'] }, 'Bq/L': { label: 'Liquid (Bq/L)', category: 'Concentration', requires: ['efficiency', 'volume'] }, 'pCi/g': { label: 'Solid (pCi/g)', category: 'Concentration', requires: ['efficiency', 'mass'] } };
-            const dpmFactors = { 'dpm': 1, 'Bq': 1 / 60, 'µCi': 1 / 2.22e6 };
-            
-            const PROBE_PRESETS = {
-            'custom': { label: 'Custom / Manual', area: '', dim: '' },
-            '44-9': { label: 'Pancake GM (Ludlum 44-9)', area: '15', dim: '4.4' },
-            '43-5': { label: 'Alpha Scint. (Ludlum 43-5)', area: '50', dim: '7.6' },
-            '43-37': { label: 'Floor Monitor (Gas Prop)', area: '584', dim: '13' },
-            '43-68': { label: 'Handheld Gas Prop', area: '100', dim: '10' },
-            '43-89': { label: 'Alpha/Beta Scint (Square)', area: '100', dim: '10' },
-            '43-93': { label: 'Alpha/Beta Scint (Round)', area: '100', dim: '11' }
-            };
-            
-            React.useEffect(() => {
-            localStorage.setItem('mda_mdaMode', mdaMode);
-            localStorage.setItem('mda_backgroundCpm', backgroundCpm);
-            localStorage.setItem('mda_instrumentEff', instrumentEff);
-            localStorage.setItem('mda_surfaceEff', surfaceEff);
-            localStorage.setItem('mda_probeArea', probeArea);
-            localStorage.setItem('mda_grossTime', grossTime);
-            localStorage.setItem('mda_outputUnit', outputUnit);
-            localStorage.setItem('mda_sampleVolume', sampleVolume);
-            localStorage.setItem('mda_sampleMass', sampleMass);
-            localStorage.setItem('mda_scanSpeed', scanSpeed);
-            localStorage.setItem('mda_probeDimension', probeDimension);
-            localStorage.setItem('mda_dprime', dprime);
-            localStorage.setItem('mda_surveyorEff', surveyorEff);
-            localStorage.setItem('mda_targetLimit', targetLimit);
-            }, [mdaMode, backgroundCpm, instrumentEff, surfaceEff, probeArea, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, probeDimension, dprime, surveyorEff, targetLimit]);
-            
-            React.useEffect(() => { setResult(null); setError(''); }, [mdaMode]);
-            
-            const handlePresetChange = (key) => {
-            const p = PROBE_PRESETS[key];
-            if (p && key !== 'custom') {
+/**
+ * @description A unified calculator for determining detection limits for both
+ * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc.
+ */
+
+const MDACalculator = ({ onNavClick, onDeepLink }) => {
+    const MDA_MODE_STATIC = 'static';
+    const MDA_MODE_SCAN = 'scan';
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    
+    // --- State Management ---
+    const [mdaMode, setMdaMode] = React.useState(() => localStorage.getItem('mda_mdaMode') || MDA_MODE_STATIC);
+    
+    // Shared State
+    const [backgroundMode, setBackgroundMode] = React.useState('rate'); // 'rate' or 'counts'
+    const [backgroundCpm, setBackgroundCpm] = React.useState(() => localStorage.getItem('mda_backgroundCpm') || '50');
+    const [bkgCounts, setBkgCounts] = React.useState('50');
+    const [bkgTime, setBkgTime] = React.useState('1');
+    
+    const [instrumentEff, setInstrumentEff] = React.useState(() => localStorage.getItem('mda_instrumentEff') || '20');
+    const [surfaceEff, setSurfaceEff] = React.useState(() => localStorage.getItem('mda_surfaceEff') || '50');
+    const [probeArea, setProbeArea] = React.useState(() => localStorage.getItem('mda_probeArea') || '15');
+    
+    // Static State
+    const [grossTime, setGrossTime] = React.useState(() => localStorage.getItem('mda_grossTime') || '1');
+    const [outputUnit, setOutputUnit] = React.useState(() => localStorage.getItem('mda_outputUnit') || 'dpm/100cm²');
+    const [sampleVolume, setSampleVolume] = React.useState(() => localStorage.getItem('mda_sampleVolume') || '1');
+    const [sampleMass, setSampleMass] = React.useState(() => localStorage.getItem('mda_sampleMass') || '100');
+    const [targetLimit, setTargetLimit] = React.useState(() => localStorage.getItem('mda_targetLimit') || '');
+    
+    // Scan State
+    const [scanSpeed, setScanSpeed] = React.useState(() => localStorage.getItem('mda_scanSpeed') || '5');
+    const [probeDimension, setProbeDimension] = React.useState(() => localStorage.getItem('mda_probeDimension') || '4.4');
+    const [dprime, setDprime] = React.useState(() => localStorage.getItem('mda_dprime') || '1.38');
+    const [surveyorEff, setSurveyorEff] = React.useState(() => localStorage.getItem('mda_surveyorEff') || '0.5');
+    
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+    
+    // --- Data and Constants ---
+    const MDA_UNIT_CONFIG = { 'counts': { label: 'LLD (counts)', category: 'Counts', requires: [] }, 'cpm': { label: 'LLD Rate (cpm)', category: 'Rate', requires: [] }, 'dpm': { label: 'Activity (dpm)', category: 'Activity', requires: ['efficiency'] }, 'Bq': { label: 'Activity (Bq)', category: 'Activity', requires: ['efficiency'] }, 'µCi': { label: 'Activity (µCi)', category: 'Activity', requires: ['efficiency'] }, 'dpm/100cm²': { label: 'Surface (dpm/100cm²)', category: 'Concentration', requires: ['efficiency', 'area'] }, 'Bq/L': { label: 'Liquid (Bq/L)', category: 'Concentration', requires: ['efficiency', 'volume'] }, 'pCi/g': { label: 'Solid (pCi/g)', category: 'Concentration', requires: ['efficiency', 'mass'] } };
+    const dpmFactors = { 'dpm': 1, 'Bq': 1 / 60, 'µCi': 1 / 2.22e6 };
+    
+    const PROBE_PRESETS = {
+        'custom': { label: 'Custom / Manual', area: '', dim: '' },
+        '44-9': { label: 'Pancake GM (Ludlum 44-9)', area: '15', dim: '4.4' },
+        '43-5': { label: 'Alpha Scint. (Ludlum 43-5)', area: '50', dim: '7.6' },
+        '43-37': { label: 'Floor Monitor (Gas Prop)', area: '584', dim: '13' },
+        '43-68': { label: 'Handheld Gas Prop', area: '100', dim: '10' },
+        '43-89': { label: 'Alpha/Beta Scint (Square)', area: '100', dim: '10' },
+        '43-93': { label: 'Alpha/Beta Scint (Round)', area: '100', dim: '11' }
+    };
+    
+    React.useEffect(() => {
+        localStorage.setItem('mda_mdaMode', mdaMode);
+        localStorage.setItem('mda_backgroundCpm', backgroundCpm);
+        localStorage.setItem('mda_instrumentEff', instrumentEff);
+        localStorage.setItem('mda_surfaceEff', surfaceEff);
+        localStorage.setItem('mda_probeArea', probeArea);
+        localStorage.setItem('mda_grossTime', grossTime);
+        localStorage.setItem('mda_outputUnit', outputUnit);
+        localStorage.setItem('mda_sampleVolume', sampleVolume);
+        localStorage.setItem('mda_sampleMass', sampleMass);
+        localStorage.setItem('mda_scanSpeed', scanSpeed);
+        localStorage.setItem('mda_probeDimension', probeDimension);
+        localStorage.setItem('mda_dprime', dprime);
+        localStorage.setItem('mda_surveyorEff', surveyorEff);
+        localStorage.setItem('mda_targetLimit', targetLimit);
+    }, [mdaMode, backgroundCpm, instrumentEff, surfaceEff, probeArea, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, probeDimension, dprime, surveyorEff, targetLimit]);
+    
+    React.useEffect(() => { setResult(null); setError(''); }, [mdaMode]);
+    
+    const handlePresetChange = (key) => {
+        const p = PROBE_PRESETS[key];
+        if (p && key !== 'custom') {
             setProbeArea(p.area);
             setProbeDimension(p.dim);
             addToast(`Loaded settings for ${p.label}`);
-            }
-            };
-            
-            const handleTabSwitch = (newMode) => {
-            if (newMode === MDA_MODE_SCAN && backgroundMode === 'counts') {
+        }
+    };
+    
+    const handleTabSwitch = (newMode) => {
+        if (newMode === MDA_MODE_SCAN && backgroundMode === 'counts') {
             const cts = safeParseFloat(bkgCounts);
             const tm = safeParseFloat(bkgTime);
             if (!isNaN(cts) && !isNaN(tm) && tm > 0) {
@@ -7945,146 +7945,161 @@ const NeutronCalculator = ({radionuclides}) => {
                 setBackgroundMode('rate');
                 addToast("Background rate synced from counts.");
             }
-            }
-            setMdaMode(newMode);
-            };
-            
-            const getTotalEfficiency = (iEff, sEff) => (iEff / 100.0) * (sEff / 100.0);
-            
-            const handleStaticCalculate = React.useCallback(() => {
-            let bkgRate = 0;
-            let Tb = 0;
-            
-            if (backgroundMode === 'rate') {
+        }
+        setMdaMode(newMode);
+    };
+    
+    const getTotalEfficiency = (iEff, sEff) => (iEff / 100.0) * (sEff / 100.0);
+    
+    const handleStaticCalculate = React.useCallback(() => {
+        let bkgRate = 0;
+        let Tb = 0;
+        
+        if (backgroundMode === 'rate') {
             bkgRate = safeParseFloat(backgroundCpm);
             Tb = 0; 
-            } else {
+        } else {
             const counts = safeParseFloat(bkgCounts);
             Tb = safeParseFloat(bkgTime);
             if (isNaN(counts) || isNaN(Tb) || Tb <= 0) throw new Error("Invalid background counts/time.");
             bkgRate = counts / Tb;
-            }
-            
-            const Ts = safeParseFloat(grossTime);
-            const ei = safeParseFloat(instrumentEff);
-            const es = safeParseFloat(surfaceEff);
-            const A = safeParseFloat(probeArea);
-            const V = safeParseFloat(sampleVolume);
-            const M = safeParseFloat(sampleMass);
-            
-            if (isNaN(bkgRate) || isNaN(Ts) || Ts <= 0) throw new Error('Please enter valid, positive numbers for background and time.');
-            
-            let Ld_counts;
-            if (backgroundMode === 'counts' && Math.abs(Ts - Tb) > 0.01 * Ts) {
+        }
+        
+        const Ts = safeParseFloat(grossTime);
+        const ei = safeParseFloat(instrumentEff);
+        const es = safeParseFloat(surfaceEff);
+        const A = safeParseFloat(probeArea);
+        const V = safeParseFloat(sampleVolume);
+        const M = safeParseFloat(sampleMass);
+        
+        if (isNaN(bkgRate) || isNaN(Ts) || Ts <= 0) throw new Error('Please enter valid, positive numbers for background and time.');
+        
+        // Currie Equation
+        let Ld_counts;
+        if (backgroundMode === 'counts' && Math.abs(Ts - Tb) > 0.01 * Ts) {
+            // Paired observations with different times
             Ld_counts = (2.71) + 3.29 * Math.sqrt(bkgRate * Ts * (1 + Ts/Tb));
-            } else {
+        } else {
+            // Well-known background (Rate) or equal times
             Ld_counts = 2.71 + 4.65 * Math.sqrt(bkgRate * Ts);
-            }
-            
-            if (isNaN(ei) || isNaN(es) || ei <= 0 || es <= 0) throw new Error('Valid efficiencies are required.');
-            const E_total = getTotalEfficiency(ei, es);
-            const mda_dpm = (Ld_counts / Ts) / E_total;
-            
-            let finalMDA;
-            if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
+        }
+        
+        if (isNaN(ei) || isNaN(es) || ei <= 0 || es <= 0) throw new Error('Valid efficiencies are required.');
+        const E_total = getTotalEfficiency(ei, es);
+        const mda_dpm = (Ld_counts / Ts) / E_total;
+        
+        let finalMDA;
+        if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
             finalMDA = mda_dpm * dpmFactors[outputUnit];
-            } else if (outputUnit === 'dpm/100cm²') {
+        } else if (outputUnit === 'dpm/100cm²') {
             if (isNaN(A) || A <= 0) throw new Error('Probe Area is required.');
             finalMDA = mda_dpm * (100 / A);
-            } else if (outputUnit === 'Bq/L') {
+        } else if (outputUnit === 'Bq/L') {
             if (isNaN(V) || V <= 0) throw new Error('Sample Volume is required.');
             finalMDA = (mda_dpm / 60) / V;
-            } else if (outputUnit === 'pCi/g') {
+        } else if (outputUnit === 'pCi/g') {
             if (isNaN(M) || M <= 0) throw new Error('Sample Mass is required.');
             finalMDA = (mda_dpm / 2.22) / M;
-            } else if (outputUnit === 'cpm') {
+        } else if (outputUnit === 'cpm') {
             finalMDA = Ld_counts / Ts;
-            } else if (outputUnit === 'counts') {
+        } else if (outputUnit === 'counts') {
             finalMDA = Ld_counts;
-            }
-            
-            let timeToTarget = null;
-            const target = safeParseFloat(targetLimit);
-            if (outputUnit !== 'counts' && !isNaN(target) && target > 0 && finalMDA > target) {
+        }
+        
+        let timeToTarget = null;
+        const target = safeParseFloat(targetLimit);
+        if (outputUnit !== 'counts' && !isNaN(target) && target > 0 && finalMDA > target) {
+            // Inverse Currie Approximation for Time: t = (k^2 * R_b) / (Limit * Eff)^2 ... roughly
+            // Simplified: T_new = T_old * (MDA_old / Limit)^2
             timeToTarget = Ts * Math.pow(finalMDA / target, 2);
-            }
-            
-            setResult({ 
+        }
+        
+        setResult({ 
             type: 'static', 
             LLD: Ld_counts.toPrecision(3), 
             MDA: finalMDA.toPrecision(3), 
             unit: outputUnit,
             timeToTarget: timeToTarget ? timeToTarget.toFixed(1) : null
-            });
-            
-            }, [backgroundMode, bkgCounts, bkgTime, backgroundCpm, grossTime, instrumentEff, surfaceEff, outputUnit, probeArea, sampleVolume, sampleMass, targetLimit]);
-            
-            const handleScanCalculate = React.useCallback(() => {
-            const bkgRate = safeParseFloat(backgroundCpm);
-            const dimension_cm = safeParseFloat(probeDimension);
-            const eff_i = safeParseFloat(instrumentEff);
-            const eff_s = safeParseFloat(surfaceEff);
-            const speed_cms = safeParseFloat(scanSpeed);
-            const dp = safeParseFloat(dprime);
-            const p = safeParseFloat(surveyorEff);
-            const total_area_cm2 = safeParseFloat(probeArea);
-            
-            if (isNaN(bkgRate) || isNaN(eff_i) || isNaN(eff_s) || isNaN(speed_cms) || isNaN(dimension_cm) || bkgRate < 0 || eff_i <= 0 || eff_s <= 0 || speed_cms <= 0 || dimension_cm <= 0) {
+        });
+        
+    }, [backgroundMode, bkgCounts, bkgTime, backgroundCpm, grossTime, instrumentEff, surfaceEff, outputUnit, probeArea, sampleVolume, sampleMass, targetLimit]);
+    
+    const handleScanCalculate = React.useCallback(() => {
+        const bkgRate = safeParseFloat(backgroundCpm);
+        const dimension_cm = safeParseFloat(probeDimension);
+        const eff_i = safeParseFloat(instrumentEff);
+        const eff_s = safeParseFloat(surfaceEff);
+        const speed_cms = safeParseFloat(scanSpeed);
+        const dp = safeParseFloat(dprime);
+        const p = safeParseFloat(surveyorEff); // Surveyor Efficiency
+        const total_area_cm2 = safeParseFloat(probeArea);
+        
+        if (isNaN(bkgRate) || isNaN(eff_i) || isNaN(eff_s) || isNaN(speed_cms) || isNaN(dimension_cm) || bkgRate < 0 || eff_i <= 0 || eff_s <= 0 || speed_cms <= 0 || dimension_cm <= 0) {
             throw new Error('Please enter valid, positive numbers.');
-            }
-            if (isNaN(total_area_cm2) || total_area_cm2 <= 0) throw new Error("Probe Area required.");
-            
-            const residence_time_s = dimension_cm / speed_cms;
-            const b_cps = bkgRate / 60.0;
-            const E_total = getTotalEfficiency(eff_i, eff_s);
-            const B_i = b_cps * residence_time_s;
-            const mdcr_instrument_cpm = dp * Math.sqrt(B_i) * (60 / residence_time_s);
-            const mdcr_surveyor_cpm = mdcr_instrument_cpm / Math.sqrt(p);
-            const scan_mda = mdcr_surveyor_cpm / (E_total * (total_area_cm2 / 100.0));
-            
-            setResult({
+        }
+        if (isNaN(total_area_cm2) || total_area_cm2 <= 0) throw new Error("Probe Area required.");
+        
+        // MARSSIM / NUREG-1507 Scan MDC Logic
+        const residence_time_s = dimension_cm / speed_cms;
+        const b_cps = bkgRate / 60.0;
+        const E_total = getTotalEfficiency(eff_i, eff_s);
+        
+        // Counts in observation interval
+        const B_i = b_cps * residence_time_s;
+        
+        // MDCR (Instrument) = d' * sqrt(b_i) * (60/i)
+        const mdcr_instrument_cpm = dp * Math.sqrt(B_i) * (60 / residence_time_s);
+        
+        // MDCR (Surveyor) = MDCR_i / sqrt(p)
+        const mdcr_surveyor_cpm = mdcr_instrument_cpm / Math.sqrt(p);
+        
+        // Scan MDC = MDCR_surv / (E_tot * Area_factor)
+        const scan_mda = mdcr_surveyor_cpm / (E_total * (total_area_cm2 / 100.0));
+        
+        setResult({
             type: 'scan',
             obs_interval: residence_time_s.toPrecision(2),
             scan_mda: scan_mda.toPrecision(3),
             scan_mdcr: mdcr_surveyor_cpm.toFixed(0),
             isAlphaWarn: bkgRate < 5
-            });
-            }, [backgroundCpm, probeDimension, instrumentEff, surfaceEff, scanSpeed, dprime, surveyorEff, probeArea]);
-            
-            const handleSaveToHistory = () => {
-            if (!result) return;
-            let inputs = mdaMode === MDA_MODE_STATIC ? `Time: ${grossTime} min` : `Speed: ${scanSpeed} cm/s`;
-            let resString = mdaMode === MDA_MODE_STATIC ? `${result.MDA} ${result.unit}` : `${result.scan_mda} dpm/100cm²`;
-            addHistory({ id: Date.now(), type: mdaMode === MDA_MODE_STATIC ? 'Static MDA' : 'Scan MDC', icon: ICONS.search, inputs: inputs, result: resString, view: VIEWS.MDA });
-            addToast("Calculation saved to history!");
-            };
-            
-            React.useEffect(() => {
-            try {
+        });
+    }, [backgroundCpm, probeDimension, instrumentEff, surfaceEff, scanSpeed, dprime, surveyorEff, probeArea]);
+    
+    const handleSaveToHistory = () => {
+        if (!result) return;
+        let inputs = mdaMode === MDA_MODE_STATIC ? `Time: ${grossTime} min` : `Speed: ${scanSpeed} cm/s`;
+        let resString = mdaMode === MDA_MODE_STATIC ? `${result.MDA} ${result.unit}` : `${result.scan_mda} dpm/100cm²`;
+        addHistory({ id: Date.now(), type: mdaMode === MDA_MODE_STATIC ? 'Static MDA' : 'Scan MDC', icon: ICONS.search, inputs: inputs, result: resString, view: VIEWS.MDA });
+        addToast("Calculation saved to history!");
+    };
+    
+    React.useEffect(() => {
+        try {
             setError(''); setResult(null);
             if (mdaMode === MDA_MODE_STATIC) handleStaticCalculate();
             else handleScanCalculate();
-            } catch (e) { setError(e.message); setResult(null); }
-            }, [mdaMode, backgroundMode, backgroundCpm, bkgCounts, bkgTime, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, dprime, surveyorEff, probeArea, instrumentEff, surfaceEff, probeDimension, targetLimit, handleStaticCalculate, handleScanCalculate]);
-            
-            const handleClearInputs = () => {
-            setMdaMode(MDA_MODE_STATIC);
-            setBackgroundCpm('50'); setBkgCounts('50'); setBkgTime('1');
-            setInstrumentEff('20'); setSurfaceEff('50'); setProbeArea('15');
-            setGrossTime('1'); setOutputUnit('dpm/100cm²'); setTargetLimit('');
-            setScanSpeed('5'); setProbeDimension('4.4');
-            setResult(null); setError('');
-            const keys = ['mda_mdaMode', 'mda_backgroundCpm', 'mda_instrumentEff', 'mda_surfaceEff', 'mda_probeArea', 'mda_grossTime', 'mda_outputUnit', 'mda_targetLimit', 'mda_scanSpeed'];
-            keys.forEach(k => localStorage.removeItem(k));
-            };
-            
-            return (
-            <div className="p-4 animate-fade-in">
+        } catch (e) { setError(e.message); setResult(null); }
+    }, [mdaMode, backgroundMode, backgroundCpm, bkgCounts, bkgTime, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, dprime, surveyorEff, probeArea, instrumentEff, surfaceEff, probeDimension, targetLimit, handleStaticCalculate, handleScanCalculate]);
+    
+    const handleClearInputs = () => {
+        setMdaMode(MDA_MODE_STATIC);
+        setBackgroundCpm('50'); setBkgCounts('50'); setBkgTime('1');
+        setInstrumentEff('20'); setSurfaceEff('50'); setProbeArea('15');
+        setGrossTime('1'); setOutputUnit('dpm/100cm²'); setTargetLimit('');
+        setScanSpeed('5'); setProbeDimension('4.4');
+        setResult(null); setError('');
+        const keys = ['mda_mdaMode', 'mda_backgroundCpm', 'mda_instrumentEff', 'mda_surfaceEff', 'mda_probeArea', 'mda_grossTime', 'mda_outputUnit', 'mda_targetLimit', 'mda_scanSpeed'];
+        keys.forEach(k => localStorage.removeItem(k));
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
             <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Detection Limit Calculator</h2>
                     <ClearButton onClick={handleClearInputs} />
                 </div>
+
                 <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
                     <button onClick={() => handleTabSwitch(MDA_MODE_STATIC)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_STATIC ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Static Count MDA</button>
                     <button onClick={() => handleTabSwitch(MDA_MODE_SCAN)} className={`w-1/2 p-2 rounded-md text-sm font-semibold transition-colors ${mdaMode === MDA_MODE_SCAN ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Scan Survey MDC</button>
@@ -8146,9 +8161,17 @@ const NeutronCalculator = ({radionuclides}) => {
                     </div>
                 ) : (
                     <div className="space-y-4 animate-fade-in">
+                        <ContextualNote type="info">Calculates Scan MDC based on NUREG-1507 / MARSSIM.  <strong>d'</strong> is the detectability index (default 1.38 for 95% detection/60% false positive).</ContextualNote>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div><label className="block text-sm font-medium">Scan Speed (cm/s)</label><input type="number" value={scanSpeed} onChange={e => setScanSpeed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                             <div><label className="block text-sm font-medium">Probe Dimension (Scan Direction)</label><input type="number" value={probeDimension} onChange={e => setProbeDimension(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Surveyor Efficiency (p)</label><input type="number" value={surveyorEff} onChange={e => setSurveyorEff(e.target.value)} step="0.1" min="0" max="1" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div>
+                                <Tooltip text="Detectability Index (d'). 1.38 = 95% True Positive / 60% False Positive (Standard).">
+                                    <label className="block text-sm font-medium cursor-help underline decoration-dotted">Index (d')</label>
+                                </Tooltip>
+                                <input type="number" value={dprime} onChange={e => setDprime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                            </div>
                         </div>
                     </div>
                 )}
@@ -8202,9 +8225,9 @@ const NeutronCalculator = ({radionuclides}) => {
                     </div>
                 )}
             </div>
-            </div>
-            );
-            };
+        </div>
+    );
+};
             
             /**
             * @description A professional-grade scientific calculator component.
