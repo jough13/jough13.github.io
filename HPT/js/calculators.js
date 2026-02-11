@@ -5504,6 +5504,7 @@ const KusnetzCalculator = ({ flowRate, setFlowRate, sampleTime, setSampleTime, d
  * @description The main container for the Radon Tools suite.
  * It manages the shared state for the sub-calculators and handles tab navigation.
  */
+
 const RadonCalculator = ({ onNavClick }) => {
     const { settings } = React.useContext(SettingsContext);
     const [activeTab, setActiveTab] = React.useState('concentration');
@@ -5638,720 +5639,722 @@ const RadonCalculator = ({ onNavClick }) => {
     );
 };
 
-        /**
-        * @description A versatile dose rate calculator handling Gamma (Point/Line/Area), Beta, and Internal Dose.
-        * Features: Auto-calculation, Field Calc (Inverse Square), Geometry Visualizations, and Bremsstrahlung fix.
-        */
-        
-        const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
-// --- Constants ---
-const CALC_MODE_GAMMA = 'gamma';
-const CALC_MODE_BETA = 'beta';
-const CALC_MODE_BREMS = 'bremsstrahlung';
-const CALC_MODE_INTERNAL = 'internal';
-const CALC_MODE_FIELD = 'field'; 
+/**
+ * @description A versatile dose rate calculator handling Gamma (Point/Line/Area), Beta, and Internal Dose.
+ * Features: Auto-calculation, Field Calc (Inverse Square), Geometry Visualizations, and Bremsstrahlung fix.
+ */
+const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
+    // --- Constants ---
+    const CALC_MODE_GAMMA = 'gamma';
+    const CALC_MODE_BETA = 'beta';
+    const CALC_MODE_BREMS = 'bremsstrahlung';
+    const CALC_MODE_INTERNAL = 'internal';
+    const CALC_MODE_FIELD = 'field'; 
 
-const INPUT_MODE_DB = 'fromSource';
-const INPUT_MODE_MANUAL = 'manual';
+    const INPUT_MODE_DB = 'fromSource';
+    const INPUT_MODE_MANUAL = 'manual';
 
-const GEOMETRY_POINT = 'point';
-const GEOMETRY_LINE = 'line';
-const GEOMETRY_AREA = 'area';
+    const GEOMETRY_POINT = 'point';
+    const GEOMETRY_LINE = 'line';
+    const GEOMETRY_AREA = 'area';
 
-const BETA_MODE_SKIN = 'skin';
-const BETA_MODE_AIR = 'air';
+    const BETA_MODE_SKIN = 'skin';
+    const BETA_MODE_AIR = 'air';
 
-const METHOD_10CFR20 = '10CFR20';
-const METHOD_FGR11 = 'FGR11';
+    const METHOD_10CFR20 = '10CFR20';
+    const METHOD_FGR11 = 'FGR11';
 
-const { settings } = React.useContext(SettingsContext);
-const { addHistory } = useCalculationHistory();
-const { addToast } = useToast();
+    const { settings } = React.useContext(SettingsContext);
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
 
-// --- HELPER: Format Number ---
-const formatNumber = (num) => {
-    if (num === null || num === undefined || isNaN(num)) return '-';
-    if (num === 0) return '0';
-    if (Math.abs(num) < 0.001 || Math.abs(num) >= 10000) {
-        return num.toExponential(3);
-    }
-    return safeParseFloat(num.toPrecision(4)).toString();
-};
-
-// --- Units ---
-const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
-const distanceUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['mm', 'cm', 'm'] : ['in', 'ft', 'm'], [settings.unitSystem]);
-const doseRateUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['µSv/hr', 'mSv/hr', 'Sv/hr'] : ['µrem/hr', 'mrem/hr', 'rem/hr', 'mR/hr', 'R/hr'], [settings.unitSystem]);
-const intakeUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq'] : ['pCi', 'nCi', 'µCi', 'mCi', 'Ci'], [settings.unitSystem]);
-
-// --- State ---
-const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('doseRate_calcMode') || CALC_MODE_GAMMA);
-const [inputMode, setInputMode] = React.useState(INPUT_MODE_DB);
-const [geometryMode, setGeometryMode] = React.useState(GEOMETRY_POINT);
-const [doseMethod, setDoseMethod] = React.useState(METHOD_10CFR20);
-
-// Inputs
-const [activity, setActivity] = React.useState('1');
-const [activityUnit, setActivityUnit] = React.useState(activityUnits[0]);
-const [distance, setDistance] = React.useState('1');
-const [distanceUnit, setDistanceUnit] = React.useState(distanceUnits[2]);
-const [transmission, setTransmission] = React.useState('1.0');
-
-// Geometry Specific
-const [lineLength, setLineLength] = React.useState('1');
-const [lineLengthUnit, setLineLengthUnit] = React.useState('m');
-const [linearActivityUnit, setLinearActivityUnit] = React.useState('mCi/m');
-const [diskRadius, setDiskRadius] = React.useState('10');
-const [diskRadiusUnit, setDiskRadiusUnit] = React.useState('cm');
-const [arealActivityUnit, setArealActivityUnit] = React.useState('µCi/cm²');
-
-// Beta/Brems Specific
-const [shieldMaterial, setShieldMaterial] = React.useState('Plastic');
-const [betaMode, setBetaMode] = React.useState(BETA_MODE_SKIN);
-const [skinActivity, setSkinActivity] = React.useState('1000');
-const [skinActivityUnit, setSkinActivityUnit] = React.useState('dpm/100cm²');
-
-// Internal Specific
-const [intakeRoute, setIntakeRoute] = React.useState('inhalation');
-const [solubility, setSolubility] = React.useState('');
-const [intakeAmount, setIntakeAmount] = React.useState('1');
-const [intakeUnit, setIntakeUnit] = React.useState(intakeUnits[2]);
-
-// Field Calc Specific
-const [field_d1, setField_d1] = React.useState('1');
-const [field_d1Unit, setField_d1Unit] = React.useState('ft');
-const [field_r1, setField_r1] = React.useState('100');
-const [field_r1Unit, setField_r1Unit] = React.useState('mrem/hr');
-const [field_targetType, setField_targetType] = React.useState('findRate'); 
-const [field_d2, setField_d2] = React.useState('10'); 
-const [field_d2Unit, setField_d2Unit] = React.useState('ft');
-const [field_r2, setField_r2] = React.useState('2'); 
-const [field_r2Unit, setField_r2Unit] = React.useState('mrem/hr');
-
-// Manual Data
-const [nuclideSymbol, setNuclideSymbol] = React.useState('');
-const [manualGammaConstant, setManualGammaConstant] = React.useState('');
-const [manualBetaEnergy, setManualBetaEnergy] = React.useState('');
-
-const [result, setResult] = React.useState(null);
-const [error, setError] = React.useState('');
-
-// --- Persistence Effects ---
-React.useEffect(() => {
-    localStorage.setItem('doseRate_calcMode', calcMode);
-}, [calcMode]);
-
-React.useEffect(() => {
-    setResult(null);
-    setError('');
-}, [calcMode, inputMode, geometryMode, betaMode]); 
-
-React.useEffect(() => {
-    if (!activityUnits.includes(activityUnit)) setActivityUnit(activityUnits[0]);
-    if (!distanceUnits.includes(distanceUnit)) setDistanceUnit(distanceUnits[0]);
-}, [settings.unitSystem]);
-
-React.useEffect(() => { if (preselectedNuclide) { setNuclideSymbol(preselectedNuclide.symbol); setInputMode(INPUT_MODE_DB); } }, [preselectedNuclide]);
-
-// Data Filtering
-const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
-const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0 || n.daughterEmissions?.beta?.length > 0).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
-const dosimetryNuclides = React.useMemo(() => radionuclides.filter(n => n.dosimetry?.ALI).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
-
-const availableNuclides = React.useMemo(() => {
-    switch (calcMode) {
-        case CALC_MODE_GAMMA: return gammaNuclides;
-        case CALC_MODE_BETA:
-        case CALC_MODE_BREMS: return betaNuclides;
-        case CALC_MODE_INTERNAL: return dosimetryNuclides;
-        default: return [];
-    }
-}, [calcMode, gammaNuclides, betaNuclides, dosimetryNuclides]);
-
-const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
-
-const availableClasses = React.useMemo(() => {
-    if (!selectedNuclide || !selectedNuclide.dosimetry) return [];
-    const sourceObject = doseMethod === METHOD_FGR11 ? selectedNuclide.dosimetry.DCF : selectedNuclide.dosimetry.ALI;
-    if (!sourceObject) return [];
-    return Object.keys(sourceObject).filter(k => k.startsWith('inhalation_')).map(k => k.split('_')[1]);
-}, [selectedNuclide, doseMethod]);
-
-React.useEffect(() => {
-    if (calcMode === CALC_MODE_INTERNAL && intakeRoute === 'inhalation' && availableClasses.length > 0) {
-        if (!solubility || !availableClasses.includes(solubility)) setSolubility(availableClasses[0]);
-    }
-}, [calcMode, intakeRoute, availableClasses, solubility]);
-
-// --- HELPER: Geometry Visualizer ---
-const GeometryVisualizer = ({ mode }) => {
-    if (mode === GEOMETRY_POINT) {
-        return (
-            <div className="flex justify-center my-4 opacity-80">
-                <svg width="200" height="60" viewBox="0 0 200 60">
-                    <circle cx="20" cy="30" r="5" fill="#0ea5e9" />
-                    <text x="20" y="50" fontSize="10" textAnchor="middle" fill="#64748b">Source</text>
-                    <line x1="25" y1="30" x2="175" y2="30" stroke="#94a3b8" strokeWidth="2" markerEnd="url(#arrow)" />
-                    <text x="100" y="25" fontSize="10" textAnchor="middle" fill="#64748b">Distance (d)</text>
-                    <rect x="180" y="20" width="10" height="20" fill="#f43f5e" />
-                    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" /></marker></defs>
-                </svg>
-            </div>
-        );
-    }
-    if (mode === GEOMETRY_LINE) {
-        return (
-            <div className="flex justify-center my-4 opacity-80">
-                <svg width="200" height="80" viewBox="0 0 200 80">
-                    <line x1="20" y1="10" x2="20" y2="70" stroke="#0ea5e9" strokeWidth="4" />
-                    <text x="15" y="45" fontSize="10" textAnchor="end" fill="#0ea5e9">L</text>
-                    <line x1="20" y1="40" x2="175" y2="40" stroke="#94a3b8" strokeWidth="2" markerEnd="url(#arrow)" />
-                    <text x="100" y="35" fontSize="10" textAnchor="middle" fill="#64748b">Distance (Perpendicular to Center)</text>
-                    <rect x="180" y="30" width="10" height="20" fill="#f43f5e" />
-                    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" /></marker></defs>
-                </svg>
-            </div>
-        );
-    }
-    if (mode === GEOMETRY_AREA) {
-        return (
-            <div className="flex justify-center my-4 opacity-80">
-                <svg width="200" height="80" viewBox="0 0 200 80">
-                    <ellipse cx="40" cy="40" rx="10" ry="30" stroke="#0ea5e9" strokeWidth="2" fill="none" />
-                    <text x="40" y="80" fontSize="10" textAnchor="middle" fill="#0ea5e9">Disk (R)</text>
-                    <line x1="40" y1="40" x2="175" y2="40" stroke="#94a3b8" strokeWidth="2" markerEnd="url(#arrow)" />
-                    <text x="100" y="35" fontSize="10" textAnchor="middle" fill="#64748b">Distance (Perpendicular to Center)</text>
-                    <rect x="180" y="30" width="10" height="20" fill="#f43f5e" />
-                    <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" /></marker></defs>
-                </svg>
-            </div>
-        );
-    }
-    return null;
-};
-
-// --- HELPER: Render Reference Card ---
-const renderDosimetryReference = () => {
-    if (!selectedNuclide || !selectedNuclide.dosimetry || !selectedNuclide.dosimetry.ALI) return null;
-
-    const ali = selectedNuclide.dosimetry.ALI;
-    // DAC = ALI (uCi) / 2.4e9 mL
-    // DCF (mrem/uCi) = 5000 / ALI
-    const calcDAC = (aliVal) => aliVal ? (aliVal / 2.4e9).toExponential(2) : '-';
-    const calcDCF = (aliVal) => aliVal ? (5000 / aliVal).toFixed(2) : '-';
-
-    return (
-        <div className="mt-6 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-xs animate-fade-in border border-slate-200 dark:border-slate-600">
-            <h4 className="font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-2">
-                <Icon path={ICONS.database} className="w-4 h-4"/> Regulatory Data (10 CFR 20)
-            </h4>
-            <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="border-b border-slate-300 dark:border-slate-500 text-slate-500">
-                            <th className="py-1">Pathway</th><th className="py-1">ALI (µCi)</th><th className="py-1">DAC (µCi/ml)</th><th className="py-1">DCF (mrem/µCi)</th>
-                        </tr>
-                    </thead>
-                    <tbody className="font-mono text-slate-700 dark:text-slate-200">
-                        {ali.ingestion && <tr><td className="py-1 font-sans">Ingestion</td><td className="py-1">{ali.ingestion.toLocaleString()}</td><td className="py-1 text-slate-400">-</td><td className="py-1 text-sky-600 dark:text-sky-400">{calcDCF(ali.ingestion)}</td></tr>}
-                        {ali.inhalation_D && <tr><td className="py-1 font-sans">Inhal (Class D)</td><td className="py-1">{ali.inhalation_D.toLocaleString()}</td><td className="py-1">{calcDAC(ali.inhalation_D)}</td><td className="py-1 text-sky-600 dark:text-sky-400">{calcDCF(ali.inhalation_D)}</td></tr>}
-                        {ali.inhalation_W && <tr><td className="py-1 font-sans">Inhal (Class W)</td><td className="py-1">{ali.inhalation_W.toLocaleString()}</td><td className="py-1">{calcDAC(ali.inhalation_W)}</td><td className="py-1 text-sky-600 dark:text-sky-400">{calcDCF(ali.inhalation_W)}</td></tr>}
-                        {ali.inhalation_Y && <tr><td className="py-1 font-sans">Inhal (Class Y)</td><td className="py-1">{ali.inhalation_Y.toLocaleString()}</td><td className="py-1">{calcDAC(ali.inhalation_Y)}</td><td className="py-1 text-sky-600 dark:text-sky-400">{calcDCF(ali.inhalation_Y)}</td></tr>}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-};
-
-// --- ROBUST CONVERSION FACTORS ---
-const BQ_TO_CI = 1 / 3.7e10; 
-const activityFactorsCi = React.useMemo(() => ({
-    'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6,
-    'TBq': BQ_TO_CI * 1e12, 'GBq': BQ_TO_CI * 1e9, 'MBq': BQ_TO_CI * 1e6, 'kBq': BQ_TO_CI * 1e3, 'Bq': BQ_TO_CI
-}), [BQ_TO_CI]);
-
-const distanceFactorsM = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048, 'km': 1000 };
-const linearActivityFactorsCi_per_m = { 'µCi/cm': 1e-4, 'mCi/cm': 0.1, 'Ci/cm': 100, 'µCi/m': 1e-6, 'mCi/m': 1e-3, 'Ci/m': 1 };
-const arealActivityFactorsCi_per_m2 = { 'µCi/cm²': 0.01, 'mCi/cm²': 10, 'Ci/cm²': 10000, 'µCi/m²': 1e-6, 'mCi/m²': 1e-3, 'Ci/m²': 1 };
-const doseRateFactors_mrem_hr = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'mR/hr': 1, 'R/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
-const intakeUnitFactors = { 'pCi': 1e-6, 'nCi': 1e-3, 'µCi': 1, 'mCi': 1000, 'Ci': 1e6, 'Bq': 1/37000, 'kBq': 1/37, 'MBq': 1000/37, 'GBq': 1e6/37 };
-const intakeUnitFactorsBq = { 'pCi': 0.037, 'nCi': 37, 'µCi': 37000, 'mCi': 3.7e7, 'Ci': 3.7e10, 'Bq': 1, 'kBq': 1000, 'MBq': 1e6, 'GBq': 1e9 };
-const concentrationFactors_uCi_per_cm2 = { 'dpm/100cm²': 1 / 2.22e8, 'µCi/cm²': 1, 'mCi/cm²': 1000, 'Ci/cm²': 1e6, 'Bq/cm²': 1 / 37000 };
-
-const handleCalculate = React.useCallback(() => {
-    setError(''); setResult(null);
-    
-    // --- FIELD CALC (Inverse Square) ---
-    if (calcMode === CALC_MODE_FIELD) {
-        const d1 = safeParseFloat(field_d1) * distanceFactorsM[field_d1Unit];
-        const r1 = safeParseFloat(field_r1) * doseRateFactors_mrem_hr[field_r1Unit];
-        
-        if (isNaN(d1) || isNaN(r1) || d1 <= 0 || r1 < 0) {
-            setError("Inputs must be positive numbers."); return;
+    // --- HELPER: Format Number ---
+    const formatNumber = (num) => {
+        if (num === null || num === undefined || isNaN(num)) return '-';
+        if (num === 0) return '0';
+        if (Math.abs(num) < 0.001 || Math.abs(num) >= 10000) {
+            return num.toExponential(3);
         }
-        
-        const k = r1 * (d1 * d1);
-        
-        if (field_targetType === 'findRate') {
-            const d2 = safeParseFloat(field_d2) * distanceFactorsM[field_d2Unit];
-            if (isNaN(d2) || d2 <= 0) { setError("Target distance must be > 0."); return; }
-            const r2 = k / (d2 * d2);
-            setResult({ type: 'field', val: r2, unit: 'doseRate', label: 'Projected Dose Rate' });
-        } else {
-            const r2 = safeParseFloat(field_r2) * doseRateFactors_mrem_hr[field_r2Unit];
-            if (isNaN(r2) || r2 <= 0) { setError("Target rate must be > 0."); return; }
-            const d2_sq = k / r2;
-            const d2 = Math.sqrt(d2_sq);
-            setResult({ type: 'field', val: d2 / distanceFactorsM[field_d2Unit], unit: 'distance', label: 'Distance to Boundary' });
+        return safeParseFloat(num.toPrecision(4)).toString();
+    };
+
+    // --- Units ---
+    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
+    const distanceUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['mm', 'cm', 'm'] : ['in', 'ft', 'm'], [settings.unitSystem]);
+    const doseRateUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['µSv/hr', 'mSv/hr', 'Sv/hr'] : ['µrem/hr', 'mrem/hr', 'rem/hr', 'mR/hr', 'R/hr'], [settings.unitSystem]);
+    const intakeUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq'] : ['pCi', 'nCi', 'µCi', 'mCi', 'Ci'], [settings.unitSystem]);
+
+    // --- State ---
+    const [calcMode, setCalcMode] = React.useState(() => localStorage.getItem('doseRate_calcMode') || CALC_MODE_GAMMA);
+    const [inputMode, setInputMode] = React.useState(INPUT_MODE_DB);
+    const [geometryMode, setGeometryMode] = React.useState(GEOMETRY_POINT);
+    const [doseMethod, setDoseMethod] = React.useState(METHOD_10CFR20);
+
+    // Inputs
+    const [activity, setActivity] = React.useState('1');
+    const [activityUnit, setActivityUnit] = React.useState(activityUnits[0]);
+    const [distance, setDistance] = React.useState('1');
+    const [distanceUnit, setDistanceUnit] = React.useState(distanceUnits[2]);
+    const [transmission, setTransmission] = React.useState('1.0');
+
+    // Geometry Specific
+    const [lineLength, setLineLength] = React.useState('1');
+    const [lineLengthUnit, setLineLengthUnit] = React.useState('m');
+    const [linearActivityUnit, setLinearActivityUnit] = React.useState('mCi/m');
+    const [diskRadius, setDiskRadius] = React.useState('10');
+    const [diskRadiusUnit, setDiskRadiusUnit] = React.useState('cm');
+    const [arealActivityUnit, setArealActivityUnit] = React.useState('µCi/cm²');
+
+    // Beta/Brems Specific
+    const [shieldMaterial, setShieldMaterial] = React.useState('Plastic');
+    const [betaMode, setBetaMode] = React.useState(BETA_MODE_SKIN);
+    const [skinActivity, setSkinActivity] = React.useState('1000');
+    const [skinActivityUnit, setSkinActivityUnit] = React.useState('dpm/100cm²');
+
+    // Internal Specific
+    const [intakeRoute, setIntakeRoute] = React.useState('inhalation');
+    const [solubility, setSolubility] = React.useState('');
+    const [intakeAmount, setIntakeAmount] = React.useState('1');
+    const [intakeUnit, setIntakeUnit] = React.useState(intakeUnits[2]);
+
+    // Field Calc Specific
+    const [field_d1, setField_d1] = React.useState('1');
+    const [field_d1Unit, setField_d1Unit] = React.useState('ft');
+    const [field_r1, setField_r1] = React.useState('100');
+    const [field_r1Unit, setField_r1Unit] = React.useState('mrem/hr');
+    const [field_targetType, setField_targetType] = React.useState('findRate'); 
+    const [field_d2, setField_d2] = React.useState('10'); 
+    const [field_d2Unit, setField_d2Unit] = React.useState('ft');
+    const [field_r2, setField_r2] = React.useState('2'); 
+    const [field_r2Unit, setField_r2Unit] = React.useState('mrem/hr');
+
+    // Manual Data
+    const [nuclideSymbol, setNuclideSymbol] = React.useState('');
+    const [manualGammaConstant, setManualGammaConstant] = React.useState('');
+    const [manualBetaEnergy, setManualBetaEnergy] = React.useState('');
+
+    const [result, setResult] = React.useState(null);
+    const [error, setError] = React.useState('');
+
+    // --- Persistence Effects ---
+    React.useEffect(() => {
+        localStorage.setItem('doseRate_calcMode', calcMode);
+    }, [calcMode]);
+
+    React.useEffect(() => {
+        setResult(null);
+        setError('');
+    }, [calcMode, inputMode, geometryMode, betaMode]); 
+
+    React.useEffect(() => {
+        if (!activityUnits.includes(activityUnit)) setActivityUnit(activityUnits[0]);
+        if (!distanceUnits.includes(distanceUnit)) setDistanceUnit(distanceUnits[0]);
+    }, [settings.unitSystem]);
+
+    React.useEffect(() => { if (preselectedNuclide) { setNuclideSymbol(preselectedNuclide.symbol); setInputMode(INPUT_MODE_DB); } }, [preselectedNuclide]);
+
+    // Data Filtering
+    const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
+    const betaNuclides = React.useMemo(() => radionuclides.filter(n => n.emissionEnergies?.beta?.length > 0 || n.daughterEmissions?.beta?.length > 0).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
+    const dosimetryNuclides = React.useMemo(() => radionuclides.filter(n => n.dosimetry?.ALI).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
+
+    const selectedNuclide = React.useMemo(() => radionuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, radionuclides]);
+
+    const availableClasses = React.useMemo(() => {
+        if (!selectedNuclide || !selectedNuclide.dosimetry) return [];
+        const sourceObject = doseMethod === METHOD_FGR11 ? selectedNuclide.dosimetry.DCF : selectedNuclide.dosimetry.ALI;
+        if (!sourceObject) return [];
+        return Object.keys(sourceObject).filter(k => k.startsWith('inhalation_')).map(k => k.split('_')[1]);
+    }, [selectedNuclide, doseMethod]);
+
+    React.useEffect(() => {
+        if (calcMode === CALC_MODE_INTERNAL && intakeRoute === 'inhalation' && availableClasses.length > 0) {
+            if (!solubility || !availableClasses.includes(solubility)) setSolubility(availableClasses[0]);
         }
-        return;
-    }
-    
-    // --- GAMMA / BETA / INTERNAL Logic ---
-    const A_val = safeParseFloat(activity);
-    const d_val = safeParseFloat(distance);
-    
-    if (calcMode !== CALC_MODE_INTERNAL && (isNaN(d_val) || d_val <= 0)) {
-        if(distance) setError("Distance must be > 0."); return;
-    }
-    
-    switch (calcMode) {
-        case CALC_MODE_GAMMA: {
-            let gammaConstant = 0;
-            if (inputMode === INPUT_MODE_DB) {
-                if (!selectedNuclide) return;
-                gammaConstant = safeParseFloat(selectedNuclide.gammaConstant);
-            } else {
-                gammaConstant = safeParseFloat(manualGammaConstant);
-            }
-            if (!gammaConstant || isNaN(gammaConstant)) return;
+    }, [calcMode, intakeRoute, availableClasses, solubility]);
+
+    // --- HELPER: Geometry Visualizer ---
+    const GeometryVisualizer = ({ mode }) => {
+        if (mode === GEOMETRY_POINT) {
+            return (
+                <div className="flex justify-center my-4 opacity-80">
+                    <svg width="200" height="60" viewBox="0 0 200 60">
+                        <circle cx="20" cy="30" r="5" fill="#0ea5e9" />
+                        <text x="20" y="50" fontSize="10" textAnchor="middle" fill="#64748b">Source</text>
+                        <line x1="25" y1="30" x2="175" y2="30" stroke="#94a3b8" strokeWidth="2" markerEnd="url(#arrow)" />
+                        <text x="100" y="25" fontSize="10" textAnchor="middle" fill="#64748b">Distance (d)</text>
+                        <rect x="180" y="20" width="10" height="20" fill="#f43f5e" />
+                        <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" /></marker></defs>
+                    </svg>
+                </div>
+            );
+        }
+        if (mode === GEOMETRY_LINE) {
+            return (
+                <div className="flex justify-center my-4 opacity-80">
+                    <svg width="200" height="80" viewBox="0 0 200 80">
+                        <line x1="20" y1="10" x2="20" y2="70" stroke="#0ea5e9" strokeWidth="4" />
+                        <text x="15" y="45" fontSize="10" textAnchor="end" fill="#0ea5e9">L</text>
+                        <line x1="20" y1="40" x2="175" y2="40" stroke="#94a3b8" strokeWidth="2" markerEnd="url(#arrow)" />
+                        <text x="100" y="35" fontSize="10" textAnchor="middle" fill="#64748b">Distance (Perpendicular to Center)</text>
+                        <rect x="180" y="30" width="10" height="20" fill="#f43f5e" />
+                        <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" /></marker></defs>
+                    </svg>
+                </div>
+            );
+        }
+        if (mode === GEOMETRY_AREA) {
+            return (
+                <div className="flex justify-center my-4 opacity-80">
+                    <svg width="200" height="80" viewBox="0 0 200 80">
+                        <ellipse cx="40" cy="40" rx="10" ry="30" stroke="#0ea5e9" strokeWidth="2" fill="none" />
+                        <text x="40" y="80" fontSize="10" textAnchor="middle" fill="#0ea5e9">Disk (R)</text>
+                        <line x1="40" y1="40" x2="175" y2="40" stroke="#94a3b8" strokeWidth="2" markerEnd="url(#arrow)" />
+                        <text x="100" y="35" fontSize="10" textAnchor="middle" fill="#64748b">Distance (Perpendicular to Center)</text>
+                        <rect x="180" y="30" width="10" height="20" fill="#f43f5e" />
+                        <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" /></marker></defs>
+                    </svg>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    // --- HELPER: Render Reference Card ---
+    const renderDosimetryReference = () => {
+        if (!selectedNuclide || !selectedNuclide.dosimetry || !selectedNuclide.dosimetry.ALI) return null;
+
+        const ali = selectedNuclide.dosimetry.ALI;
+        // DAC = ALI (uCi) / 2.4e9 mL
+        // DCF (mrem/uCi) = 5000 / ALI
+        const calcDAC = (aliVal) => aliVal ? (aliVal / 2.4e9).toExponential(2) : '-';
+        const calcDCF = (aliVal) => aliVal ? (5000 / aliVal).toFixed(2) : '-';
+
+        return (
+            <div className="mt-6 p-4 bg-slate-100 dark:bg-slate-700 rounded-lg text-xs animate-fade-in border border-slate-200 dark:border-slate-600">
+                <h4 className="font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-2">
+                    <Icon path={ICONS.database} className="w-4 h-4"/> Regulatory Data (10 CFR 20)
+                </h4>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-slate-300 dark:border-slate-500 text-slate-500">
+                                <th className="py-1">Pathway</th><th className="py-1">ALI (µCi)</th><th className="py-1">DAC (µCi/ml)</th><th className="py-1">DCF (mrem/µCi)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="font-mono text-slate-700 dark:text-slate-200">
+                            {ali.ingestion && <tr><td className="py-1 font-sans">Ingestion</td><td className="py-1">{ali.ingestion.toLocaleString()}</td><td className="py-1 text-slate-400">-</td><td className="py-1 text-sky-600 dark:text-sky-400">{calcDCF(ali.ingestion)}</td></tr>}
+                            {ali.inhalation_D && <tr><td className="py-1 font-sans">Inhal (Class D)</td><td className="py-1">{ali.inhalation_D.toLocaleString()}</td><td className="py-1">{calcDAC(ali.inhalation_D)}</td><td className="py-1 text-sky-600 dark:text-sky-400">{calcDCF(ali.inhalation_D)}</td></tr>}
+                            {ali.inhalation_W && <tr><td className="py-1 font-sans">Inhal (Class W)</td><td className="py-1">{ali.inhalation_W.toLocaleString()}</td><td className="py-1">{calcDAC(ali.inhalation_W)}</td><td className="py-1 text-sky-600 dark:text-sky-400">{calcDCF(ali.inhalation_W)}</td></tr>}
+                            {ali.inhalation_Y && <tr><td className="py-1 font-sans">Inhal (Class Y)</td><td className="py-1">{ali.inhalation_Y.toLocaleString()}</td><td className="py-1">{calcDAC(ali.inhalation_Y)}</td><td className="py-1 text-sky-600 dark:text-sky-400">{calcDCF(ali.inhalation_Y)}</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    };
+
+    // --- ROBUST CONVERSION FACTORS ---
+    const BQ_TO_CI = 1 / 3.7e10; 
+    const activityFactorsCi = React.useMemo(() => ({
+        'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6,
+        'TBq': BQ_TO_CI * 1e12, 'GBq': BQ_TO_CI * 1e9, 'MBq': BQ_TO_CI * 1e6, 'kBq': BQ_TO_CI * 1e3, 'Bq': BQ_TO_CI
+    }), [BQ_TO_CI]);
+
+    const distanceFactorsM = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048, 'km': 1000 };
+    const linearActivityFactorsCi_per_m = { 'µCi/cm': 1e-4, 'mCi/cm': 0.1, 'Ci/cm': 100, 'µCi/m': 1e-6, 'mCi/m': 1e-3, 'Ci/m': 1 };
+    const arealActivityFactorsCi_per_m2 = { 'µCi/cm²': 0.01, 'mCi/cm²': 10, 'Ci/cm²': 10000, 'µCi/m²': 1e-6, 'mCi/m²': 1e-3, 'Ci/m²': 1 };
+    const doseRateFactors_mrem_hr = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'mR/hr': 1, 'R/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
+    const intakeUnitFactors = { 'pCi': 1e-6, 'nCi': 1e-3, 'µCi': 1, 'mCi': 1000, 'Ci': 1e6, 'Bq': 1/37000, 'kBq': 1/37, 'MBq': 1000/37, 'GBq': 1e6/37 };
+    const intakeUnitFactorsBq = { 'pCi': 0.037, 'nCi': 37, 'µCi': 37000, 'mCi': 3.7e7, 'Ci': 3.7e10, 'Bq': 1, 'kBq': 1000, 'MBq': 1e6, 'GBq': 1e9 };
+    const concentrationFactors_uCi_per_cm2 = { 'dpm/100cm²': 1 / 2.22e8, 'µCi/cm²': 1, 'mCi/cm²': 1000, 'Ci/cm²': 1e6, 'Bq/cm²': 1 / 37000 };
+
+    const handleCalculate = React.useCallback(() => {
+        setError(''); setResult(null);
         
-            const transValue = safeParseFloat(transmission) || 1.0;
-            const d_m = d_val * distanceFactorsM[distanceUnit];
-            let doseRateR_hr = 0;
-        
-            if (geometryMode === GEOMETRY_POINT) {
-                const A_Ci = A_val * activityFactorsCi[activityUnit];
-                doseRateR_hr = (gammaConstant * A_Ci) / Math.pow(d_m, 2);
-            } else if (geometryMode === GEOMETRY_LINE) {
-                const len_val = safeParseFloat(lineLength);
-                const len_m = len_val * distanceFactorsM[lineLengthUnit];
-                const A_L_Ci_m = A_val * linearActivityFactorsCi_per_m[linearActivityUnit];
-                doseRateR_hr = (gammaConstant * A_L_Ci_m / d_m) * 2 * Math.atan(len_m / (2 * d_m));
-            } else if (geometryMode === GEOMETRY_AREA) {
-                const r_val = safeParseFloat(diskRadius);
-                const r_m = r_val * distanceFactorsM[diskRadiusUnit];
-                const A_A_Ci_m2 = A_val * arealActivityFactorsCi_per_m2[arealActivityUnit];
-                doseRateR_hr = Math.PI * gammaConstant * A_A_Ci_m2 * Math.log((Math.pow(r_m, 2) + Math.pow(d_m, 2)) / Math.pow(d_m, 2));
+        // --- FIELD CALC (Inverse Square) ---
+        if (calcMode === CALC_MODE_FIELD) {
+            const d1 = safeParseFloat(field_d1) * distanceFactorsM[field_d1Unit];
+            const r1 = safeParseFloat(field_r1) * doseRateFactors_mrem_hr[field_r1Unit];
+            
+            if (isNaN(d1) || isNaN(r1) || d1 <= 0 || r1 <= 0) { // Safety: Rate must be > 0 to have a source
+                if (field_d1 && field_r1) setError("Inputs must be positive numbers.");
+                return;
             }
             
-            setResult({ 
-                type: 'gamma', 
-                rawDoseRate_mrem_hr: doseRateR_hr * 1000 * transValue, 
-                usedGamma: gammaConstant,
-                label: "Est. Dose Eq. (1 R ≈ 1 rem)" 
-            });
-            break;
+            const k = r1 * (d1 * d1);
+            
+            if (field_targetType === 'findRate') {
+                const d2 = safeParseFloat(field_d2) * distanceFactorsM[field_d2Unit];
+                if (isNaN(d2) || d2 <= 0) { setError("Target distance must be > 0."); return; }
+                const r2 = k / (d2 * d2);
+                setResult({ type: 'field', val: r2, unit: 'doseRate', label: 'Projected Dose Rate' });
+            } else {
+                const r2 = safeParseFloat(field_r2) * doseRateFactors_mrem_hr[field_r2Unit];
+                if (isNaN(r2) || r2 <= 0) { setError("Target rate must be > 0."); return; }
+                const d2_sq = k / r2;
+                const d2 = Math.sqrt(d2_sq);
+                setResult({ type: 'field', val: d2 / distanceFactorsM[field_d2Unit], unit: 'distance', label: 'Distance to Boundary' });
+            }
+            return;
         }
         
-        case CALC_MODE_BETA: 
-        case CALC_MODE_BREMS: {
-            let E_max = 0;
-            if (inputMode === INPUT_MODE_DB) {
-                if (!selectedNuclide) return;
-                if (selectedNuclide.emissionEnergies?.beta?.length > 0) {
-                    E_max = parseEnergyToMeV(selectedNuclide.emissionEnergies.beta);
-                } else if (selectedNuclide.daughterEmissions?.beta?.length > 0) {
-                    const str = selectedNuclide.daughterEmissions.beta[0];
-                    E_max = safeParseFloat(str.split(' ')[0]);
-                }
-            } else {
-                E_max = safeParseFloat(manualBetaEnergy);
-            }
-            if (!E_max || isNaN(E_max)) return;
+        // --- GAMMA / BETA / INTERNAL Logic ---
+        const A_val = safeParseFloat(activity);
+        const d_val = safeParseFloat(distance);
         
-            if (calcMode === CALC_MODE_BETA) {
-                if (betaMode === BETA_MODE_SKIN) {
-                    const skin_val = safeParseFloat(skinActivity);
-                    if (isNaN(skin_val)) return;
-                    const conc_uCi_cm2 = skin_val * concentrationFactors_uCi_per_cm2[skinActivityUnit];
-                    
-                    let doseRate_rad_hr = 0;
-                    let note = "";
-                    if (E_max < 0.07) {
-                        doseRate_rad_hr = 0;
-                        note = `E_max (${E_max.toFixed(3)} MeV) is too low to penetrate the dead skin layer. Dose is zero.`;
-                    } else {
-                        let factor = 9.0;
-                        if (E_max < 0.6) factor = 9.0 * ((E_max - 0.07) / (0.6 - 0.07));
-                        doseRate_rad_hr = factor * conc_uCi_cm2;
+        if (calcMode !== CALC_MODE_INTERNAL && (isNaN(d_val) || d_val <= 0)) {
+            if(distance) setError("Distance must be > 0."); return;
+        }
+        
+        switch (calcMode) {
+            case CALC_MODE_GAMMA: {
+                let gammaConstant = 0;
+                if (inputMode === INPUT_MODE_DB) {
+                    if (!selectedNuclide) return;
+                    gammaConstant = safeParseFloat(selectedNuclide.gammaConstant);
+                } else {
+                    gammaConstant = safeParseFloat(manualGammaConstant);
+                }
+                if (!gammaConstant || isNaN(gammaConstant)) return;
+            
+                const transValue = safeParseFloat(transmission) || 1.0;
+                const d_m = d_val * distanceFactorsM[distanceUnit];
+                let doseRateR_hr = 0;
+            
+                if (geometryMode === GEOMETRY_POINT) {
+                    const A_Ci = A_val * activityFactorsCi[activityUnit];
+                    doseRateR_hr = (gammaConstant * A_Ci) / Math.pow(d_m, 2);
+                } else if (geometryMode === GEOMETRY_LINE) {
+                    const len_val = safeParseFloat(lineLength);
+                    const len_m = len_val * distanceFactorsM[lineLengthUnit];
+                    const A_L_Ci_m = A_val * linearActivityFactorsCi_per_m[linearActivityUnit];
+                    // Line Source: (Gamma * A_L / d) * 2 * atan(L/2d)
+                    doseRateR_hr = (gammaConstant * A_L_Ci_m / d_m) * 2 * Math.atan(len_m / (2 * d_m));
+                } else if (geometryMode === GEOMETRY_AREA) {
+                    const r_val = safeParseFloat(diskRadius);
+                    const r_m = r_val * distanceFactorsM[diskRadiusUnit];
+                    const A_A_Ci_m2 = A_val * arealActivityFactorsCi_per_m2[arealActivityUnit];
+                    // Disk Source: PI * Gamma * A_A * ln((R^2+d^2)/d^2)
+                    doseRateR_hr = Math.PI * gammaConstant * A_A_Ci_m2 * Math.log((Math.pow(r_m, 2) + Math.pow(d_m, 2)) / Math.pow(d_m, 2));
+                }
+                
+                setResult({ 
+                    type: 'gamma', 
+                    rawDoseRate_mrem_hr: doseRateR_hr * 1000 * transValue, 
+                    usedGamma: gammaConstant,
+                    label: "Est. Dose Eq. (1 R ≈ 1 rem)" 
+                });
+                break;
+            }
+            
+            case CALC_MODE_BETA: 
+            case CALC_MODE_BREMS: {
+                let E_max = 0;
+                if (inputMode === INPUT_MODE_DB) {
+                    if (!selectedNuclide) return;
+                    if (selectedNuclide.emissionEnergies?.beta?.length > 0) {
+                        const str = selectedNuclide.emissionEnergies.beta[0];
+                        E_max = safeParseFloat(str.split(' ')[0]); // Rough parse if not pre-calculated
+                    } else if (selectedNuclide.daughterEmissions?.beta?.length > 0) {
+                        const str = selectedNuclide.daughterEmissions.beta[0];
+                        E_max = safeParseFloat(str.split(' ')[0]);
                     }
-                    setResult({ 
-                        type: 'beta_skin', 
-                        rawDoseRate_mrem_hr: doseRate_rad_hr * 1000, 
-                        e_max: E_max, 
-                        sourceNote: note,
-                        label: "Skin Dose Rate" 
-                    });
+                } else {
+                    E_max = safeParseFloat(manualBetaEnergy);
+                }
+                if (!E_max || isNaN(E_max)) return;
+            
+                if (calcMode === CALC_MODE_BETA) {
+                    if (betaMode === BETA_MODE_SKIN) {
+                        const skin_val = safeParseFloat(skinActivity);
+                        if (isNaN(skin_val)) return;
+                        const conc_uCi_cm2 = skin_val * concentrationFactors_uCi_per_cm2[skinActivityUnit];
+                        
+                        let doseRate_rad_hr = 0;
+                        let note = "";
+                        // Shallow Dose Rule of Thumb
+                        if (E_max < 0.07) {
+                            doseRate_rad_hr = 0;
+                            note = `E_max (${E_max.toFixed(3)} MeV) is too low to penetrate the dead skin layer. Dose is zero.`;
+                        } else {
+                            let factor = 9.0;
+                            if (E_max < 0.6) factor = 9.0 * ((E_max - 0.07) / (0.6 - 0.07)); // Approximate scaling
+                            doseRate_rad_hr = factor * conc_uCi_cm2;
+                        }
+                        setResult({ 
+                            type: 'beta_skin', 
+                            rawDoseRate_mrem_hr: doseRate_rad_hr * 1000, 
+                            e_max: E_max, 
+                            sourceNote: note,
+                            label: "Skin Dose Rate" 
+                        });
+
+                    } else {
+                        // Dose in Air (External Point Source)
+                        const A_Ci = A_val * activityFactorsCi[activityUnit];
+                        const d_ft = (d_val * distanceFactorsM[distanceUnit]) * 3.28084;
+                        const d_m = d_val * distanceFactorsM[distanceUnit];
+                        
+                        // Katz-Penfold Range
+                        let range_g_cm2 = E_max > 0.8 ? (0.542 * E_max - 0.133) : (0.407 * Math.pow(E_max, 1.38));
+                        const density_air_g_cm3 = 0.001225; 
+                        const range_m = (range_g_cm2 / density_air_g_cm3) / 100;
+                        
+                        const isBeyondRange = d_m >= range_m;
+                        
+                        let doseRate_rad_hr = 0;
+                        let warnings = [];
+
+                        if (isBeyondRange) {
+                            warnings.push("Target is beyond maximum beta range in air.");
+                        } else {
+                            // "300 Rule" -> 300 * A(Ci) / d(ft)^2
+                            doseRate_rad_hr = (300 * A_Ci) / Math.pow(d_ft, 2);
+                            
+                            if (d_m < 0.30) {
+                                warnings.push("Warning: Inverse square law is inaccurate for Beta geometry < 1 ft (30cm). Result may overestimate.");
+                            } else {
+                                warnings.push("Approximation: Uses '300 Rule'. Ignores air attenuation (conservative).");
+                            }
+                        }
+
+                        setResult({ 
+                            type: 'beta_air', 
+                            rawDoseRate_mrem_hr: doseRate_rad_hr * 1000, 
+                            e_max: E_max, 
+                            isBeyondRange, 
+                            range_m: range_m.toPrecision(2),
+                            warning: warnings.join(" "), 
+                            label: "Dose Rate in Air"
+                        });
+                    }
 
                 } else {
-                    // Dose in Air (External Point Source)
+                    // Bremsstrahlung
+                    const matProps = SHIELD_PROPS[shieldMaterial];
+                    if (!matProps) { setError("Invalid shield material."); return; }
                     const A_Ci = A_val * activityFactorsCi[activityUnit];
-                    const d_ft = (d_val * distanceFactorsM[distanceUnit]) * 3.28084;
                     const d_m = d_val * distanceFactorsM[distanceUnit];
                     
-                    let range_g_cm2 = E_max > 0.8 ? (0.542 * E_max - 0.133) : (0.407 * Math.pow(E_max, 1.38));
-                    const density_air_g_cm3 = 0.001225; 
-                    const range_m = (range_g_cm2 / density_air_g_cm3) / 100;
+                    // Brems Rule: 6e-4 * Z * E^2 * Activity
+                    const doseRate_R_hr_1m = (6e-4 * matProps.Z * Math.pow(E_max, 2) * A_Ci);
+                    const finalRate = doseRate_R_hr_1m / Math.pow(d_m, 2);
+                    const fraction = 3.5e-4 * matProps.Z * E_max;
                     
-                    const isBeyondRange = d_m >= range_m;
+                    let note = "";
+                    if (matProps.type === 'High-Z') note = "Warning: High-Z shield generates significantly more Bremsstrahlung. Consider Plastic/Aluminum.";
                     
-                    // --- SAFETY LOGIC START ---
-                    // Warning triggers
-                    const isCloseGeometry = d_m < 0.30; // Less than 30 cm (~1 ft)
-                    
-                    let doseRate_rad_hr = 0;
-                    let warnings = [];
-
-                    if (isBeyondRange) {
-                        warnings.push("Target is beyond maximum beta range in air.");
-                    } else {
-                        // Apply formula
-                        doseRate_rad_hr = (300 * A_Ci) / Math.pow(d_ft, 2);
-                        
-                        // Generate Physics warnings
-                        if (isCloseGeometry) {
-                            warnings.push("Warning: Inverse square law is inaccurate for Beta geometry < 1 ft (30cm). Result may overestimate.");
-                        } else {
-                            warnings.push("Approximation: Uses '300 Rule'. Ignores air attenuation (conservative).");
-                        }
-                    }
-
                     setResult({ 
-                        type: 'beta_air', 
-                        rawDoseRate_mrem_hr: doseRate_rad_hr * 1000, 
-                        e_max: E_max, 
-                        isBeyondRange, 
-                        range_m: range_m.toPrecision(2),
-                        // Pass array of warnings or join them
-                        warning: warnings.join(" "), 
-                        label: "Dose Rate in Air"
+                        type: 'bremsstrahlung', 
+                        rawDoseRate_mrem_hr: finalRate * 1000, 
+                        bremsstrahlungFraction: (fraction * 100).toPrecision(2),
+                        sourceNote: note,
+                        label: "X-Ray Dose Rate (Brems.)"
                     });
                 }
-
-            } else {
-                // Bremsstrahlung
-                const matProps = SHIELD_PROPS[shieldMaterial];
-                if (!matProps) { setError("Invalid shield material."); return; }
-                const A_Ci = A_val * activityFactorsCi[activityUnit];
-                const d_m = d_val * distanceFactorsM[distanceUnit];
-                const doseRate_R_hr_1m = (6e-4 * matProps.Z * Math.pow(E_max, 2) * A_Ci);
-                const finalRate = doseRate_R_hr_1m / Math.pow(d_m, 2);
-                const fraction = 3.5e-4 * matProps.Z * E_max;
+                break;
+            }
+            
+            case CALC_MODE_INTERNAL: {
+                if (!selectedNuclide) return;
+                const I_val = safeParseFloat(intakeAmount);
+                if (isNaN(I_val) || I_val <= 0) return;
+            
+                const dataKey = intakeRoute === 'ingestion' ? 'ingestion' : `inhalation_${solubility}`;
+                let cede_mrem = 0;
+                
+                if (doseMethod === METHOD_10CFR20) {
+                    const I_uCi = I_val * intakeUnitFactors[intakeUnit];
+                    const ALI = selectedNuclide.dosimetry.ALI?.[dataKey];
+                    if (!ALI) { setError(`ALI not found for ${dataKey}`); setResult(null); return; }
+                    cede_mrem = (I_uCi / ALI) * 5000;
+                } else {
+                    const I_Bq = I_val * intakeUnitFactorsBq[intakeUnit];
+                    const DCF = selectedNuclide.dosimetry.DCF?.[dataKey];
+                    if (!DCF) { setError(`DCF not found for ${dataKey}`); setResult(null); return; }
+                    cede_mrem = (I_Bq * DCF) * 100000;
+                }
                 setResult({ 
-                    type: 'bremsstrahlung', 
-                    rawDoseRate_mrem_hr: finalRate * 1000, 
-                    bremsstrahlungFraction: (fraction * 100).toPrecision(2),
-                    label: "X-Ray Dose Rate (Brems.)"
+                    type: 'internal', 
+                    rawDose_mrem: cede_mrem, 
+                    method: doseMethod,
+                    label: "Committed Dose (CEDE)"
                 });
+                break;
             }
-            break;
-        }
-        
-        case CALC_MODE_INTERNAL: {
-            if (!selectedNuclide) return;
-            const I_val = safeParseFloat(intakeAmount);
-            if (isNaN(I_val) || I_val <= 0) return;
-        
-            const dataKey = intakeRoute === 'ingestion' ? 'ingestion' : `inhalation_${solubility}`;
-            let cede_mrem = 0;
             
-            if (doseMethod === METHOD_10CFR20) {
-                const I_uCi = I_val * intakeUnitFactors[intakeUnit];
-                const ALI = selectedNuclide.dosimetry.ALI?.[dataKey];
-                if (!ALI) { setError(`ALI not found for ${dataKey}`); setResult(null); return; }
-                cede_mrem = (I_uCi / ALI) * 5000;
-            } else {
-                const I_Bq = I_val * intakeUnitFactorsBq[intakeUnit];
-                const DCF = selectedNuclide.dosimetry.DCF?.[dataKey];
-                if (!DCF) { setError(`DCF not found for ${dataKey}`); setResult(null); return; }
-                cede_mrem = (I_Bq * DCF) * 100000;
+            default: break;
+        }
+    }, [calcMode, field_d1, field_d1Unit, field_r1, field_r1Unit, field_d2, field_d2Unit, field_r2, field_r2Unit, field_targetType, activity, activityUnit, distance, distanceUnit, geometryMode, inputMode, nuclideSymbol, manualGammaConstant, manualBetaEnergy, transmission, lineLength, lineLengthUnit, linearActivityUnit, diskRadius, diskRadiusUnit, arealActivityUnit, betaMode, skinActivity, skinActivityUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, doseMethod, selectedNuclide, activityFactorsCi]);
+
+    // AUTO-CALCULATION TRIGGER
+    React.useEffect(() => {
+        handleCalculate();
+    }, [handleCalculate]);
+
+    const handleSaveToHistory = () => {
+        if (result) {
+            const formattedResult = formatDoseValue(
+                result.rawDoseRate_mrem_hr !== undefined ? result.rawDoseRate_mrem_hr : result.rawDose_mrem, 
+                result.type === 'internal' ? 'dose' : 'doseRate', 
+                settings
+            );
+            
+            let inputDetail = '';
+            
+            if (calcMode === CALC_MODE_FIELD) {
+                inputDetail = `Field: ${field_r1} ${field_r1Unit} @ ${field_d1} ${field_d1Unit}`;
+            } 
+            else if (calcMode === CALC_MODE_INTERNAL) {
+                inputDetail = `${intakeAmount} ${intakeUnit} ${nuclideSymbol} (${intakeRoute})`;
+            } 
+            else {
+                const source = nuclideSymbol || 'Manual Source';
+                inputDetail = `${activity} ${activityUnit} ${source} @ ${distance} ${distanceUnit}`;
+                
+                if (shieldMaterial !== 'None' && calcMode === CALC_MODE_BREMS) {
+                    inputDetail += ` w/ ${shieldMaterial}`;
+                }
             }
-            setResult({ 
-                type: 'internal', 
-                rawDose_mrem: cede_mrem, 
-                method: doseMethod,
-                label: "Committed Dose (CEDE)"
+            
+            addHistory({ 
+                id: Date.now(), 
+                type: 'Dose Calculation', 
+                icon: ICONS.doseRate, 
+                inputs: inputDetail, 
+                result: `${formattedResult.value} ${formattedResult.unit}`, 
+                view: VIEWS.DOSE_RATE 
             });
-            break;
+            addToast("Saved to history!");
         }
-        
-        default: break;
-    }
-}, [calcMode, field_d1, field_d1Unit, field_r1, field_r1Unit, field_d2, field_d2Unit, field_r2, field_r2Unit, field_targetType, activity, activityUnit, distance, distanceUnit, geometryMode, inputMode, nuclideSymbol, manualGammaConstant, manualBetaEnergy, transmission, lineLength, lineLengthUnit, linearActivityUnit, diskRadius, diskRadiusUnit, arealActivityUnit, betaMode, skinActivity, skinActivityUnit, shieldMaterial, intakeRoute, solubility, intakeAmount, intakeUnit, doseMethod, selectedNuclide, activityFactorsCi]);
+    };
 
-// AUTO-CALCULATION TRIGGER
-React.useEffect(() => {
-    handleCalculate();
-}, [handleCalculate]);
+    const handleClear = () => {
+        setCalcMode(CALC_MODE_GAMMA);
+        setInputMode(INPUT_MODE_DB);
+        setGeometryMode(GEOMETRY_POINT);
+        setNuclideSymbol('');
+        setActivity('1');
+        setDistance('1');
+        setTransmission('1.0');
+        setField_r1('100'); setField_d1('1'); setField_d2('10'); setField_r2('2');
+        setIntakeAmount('1');
+        setResult(null);
+        setError('');
+    };
 
-const handleSaveToHistory = () => {
-    if (result) {
-        const formattedResult = formatDoseValue(
-            result.rawDoseRate_mrem_hr || result.rawDose_mrem, 
-            result.type === 'internal' ? 'dose' : 'doseRate', 
-            settings
-        );
-        
-        let inputDetail = '';
-        
-        if (calcMode === CALC_MODE_FIELD) {
-            inputDetail = `Field: ${field_r1} ${field_r1Unit} @ ${field_d1} ${field_d1Unit}`;
-        } 
-        else if (calcMode === CALC_MODE_INTERNAL) {
-            inputDetail = `${intakeAmount} ${intakeUnit} ${nuclideSymbol} (${intakeRoute})`;
-        } 
-        else {
-            const source = nuclideSymbol || 'Manual Source';
-            inputDetail = `${activity} ${activityUnit} ${source} @ ${distance} ${distanceUnit}`;
-            
-            if (shieldMaterial !== 'None' && calcMode === CALC_MODE_BREMS) {
-                inputDetail += ` w/ ${shieldMaterial}`;
-            }
-        }
-        
-        addHistory({ 
-            id: Date.now(), 
-            type: 'Dose Calculation', 
-            icon: ICONS.doseRate, 
-            inputs: inputDetail, 
-            result: `${formattedResult.value} ${formattedResult.unit}`, 
-            view: VIEWS.DOSE_RATE 
-        });
-        addToast("Saved to history!");
-    }
-};
-
-const handleClear = () => {
-    setCalcMode(CALC_MODE_GAMMA);
-    setInputMode(INPUT_MODE_DB);
-    setGeometryMode(GEOMETRY_POINT);
-    setNuclideSymbol('');
-    setActivity('1');
-    setDistance('1');
-    setTransmission('1.0');
-    setField_r1('100'); setField_d1('1'); setField_d2('10'); setField_r2('2');
-    setIntakeAmount('1');
-    setResult(null);
-    setError('');
-};
-
-return (
-    <div className="p-4 animate-fade-in">
-        <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Dose Calculator</h2>
-                <ClearButton onClick={handleClear} />
-            </div>
-            
-            <div className="grid grid-cols-3 md:grid-cols-5 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6 overflow-x-auto">
-                <button onClick={() => setCalcMode(CALC_MODE_FIELD)} className={`py-2 rounded-md text-xs font-bold transition-all ${calcMode === CALC_MODE_FIELD ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Field Calc</button>
-                <button onClick={() => setCalcMode(CALC_MODE_GAMMA)} className={`py-2 rounded-md text-xs font-bold transition-all ${calcMode === CALC_MODE_GAMMA ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Gamma</button>
-                <button onClick={() => setCalcMode(CALC_MODE_BETA)} className={`py-2 rounded-md text-xs font-bold transition-all ${calcMode === CALC_MODE_BETA ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Beta</button>
-                <button onClick={() => setCalcMode(CALC_MODE_BREMS)} className={`py-2 rounded-md text-xs font-bold transition-all ${calcMode === CALC_MODE_BREMS ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Brems.</button>
-                <button onClick={() => setCalcMode(CALC_MODE_INTERNAL)} className={`py-2 rounded-md text-xs font-bold transition-all ${calcMode === CALC_MODE_INTERNAL ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Internal</button>
-            </div>
-            
-            {/* --- FIELD CALC (INVERSE SQUARE) UI --- */}
-            {calcMode === CALC_MODE_FIELD && (
-                <div className="space-y-4 animate-fade-in">
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
-                        <h3 className="text-sm font-bold mb-3">Known Point</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div><label className="block text-xs font-medium">Rate (I₁)</label><div className="flex"><input type="number" min="0" value={field_r1} onChange={e => setField_r1(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_r1Unit} onChange={e => setField_r1Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                            <div><label className="block text-xs font-medium">Distance (d₁)</label><div className="flex"><input type="number" min="0" value={field_d1} onChange={e => setField_d1(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_d1Unit} onChange={e => setField_d1Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                        </div>
-                    </div>
-                    
-                    <div className="flex justify-center bg-slate-100 dark:bg-slate-900 rounded p-1 text-xs">
-                        <button onClick={() => setField_targetType('findRate')} className={`flex-1 py-1 rounded ${field_targetType === 'findRate' ? 'bg-white dark:bg-slate-600 shadow font-bold text-sky-600' : ''}`}>Find New Rate (I₂)</button>
-                        <button onClick={() => setField_targetType('findDist')} className={`flex-1 py-1 rounded ${field_targetType === 'findDist' ? 'bg-white dark:bg-slate-600 shadow font-bold text-sky-600' : ''}`}>Find Distance (d₂)</button>
-                    </div>
-                    
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
-                        {field_targetType === 'findRate' ? (
-                            <div><label className="block text-xs font-medium">Target Distance (d₂)</label><div className="flex"><input type="number" min="0" value={field_d2} onChange={e => setField_d2(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_d2Unit} onChange={e => setField_d2Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                        ) : (
-                            <div><label className="block text-xs font-medium">Target Rate (I₂)</label><div className="flex"><input type="number" min="0" value={field_r2} onChange={e => setField_r2(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_r2Unit} onChange={e => setField_r2Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                        )}
-                    </div>
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Dose Calculator</h2>
+                    <ClearButton onClick={handleClear} />
                 </div>
-            )}
-            
-            {/* --- GAMMA UI --- */}
-            {calcMode === CALC_MODE_GAMMA && (
-                <div className="space-y-4 animate-fade-in">
-                    {/* Geometry Selection */}
-                    <div className="flex justify-center">
-                        <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
-                            <button onClick={() => setGeometryMode(GEOMETRY_POINT)} className={`px-3 py-1 text-xs font-bold rounded ${geometryMode === GEOMETRY_POINT ? 'bg-white dark:bg-slate-700 shadow text-sky-600' : ''}`}>Point</button>
-                            <button onClick={() => setGeometryMode(GEOMETRY_LINE)} className={`px-3 py-1 text-xs font-bold rounded ${geometryMode === GEOMETRY_LINE ? 'bg-white dark:bg-slate-700 shadow text-sky-600' : ''}`}>Line</button>
-                            <button onClick={() => setGeometryMode(GEOMETRY_AREA)} className={`px-3 py-1 text-xs font-bold rounded ${geometryMode === GEOMETRY_AREA ? 'bg-white dark:bg-slate-700 shadow text-sky-600' : ''}`}>Disk</button>
-                        </div>
-                    </div>
-                    
-                    {/* VISUALIZER */}
-                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg">
-                        <GeometryVisualizer mode={geometryMode} />
-                    </div>
                 
-                    {/* Common Inputs */}
-                    <div className="flex justify-center mb-2"><div className="flex bg-slate-100 dark:bg-slate-900 rounded p-1 text-xs"><button onClick={() => setInputMode(INPUT_MODE_DB)} className={`px-3 py-1 rounded ${inputMode === INPUT_MODE_DB ? 'bg-white dark:bg-slate-700 shadow' : ''}`}>Database</button><button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`px-3 py-1 rounded ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-700 shadow' : ''}`}>Manual</button></div></div>
-                    
-                    <div>
-                        {inputMode === INPUT_MODE_DB ? (
-                            <div className="mt-1 min-h-[42px]">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={gammaNuclides} onSelect={setNuclideSymbol} placeholder="Select a gamma source..." />}</div>
-                        ) : (
-                            <div className="animate-fade-in"><label className="block text-xs font-medium mb-1">Gamma Constant (Γ)</label><div className="flex"><input type="number" min="0" value={manualGammaConstant} onChange={e => setManualGammaConstant(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" placeholder="R·m²/hr·Ci" /></div></div>
-                        )}
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        {geometryMode === GEOMETRY_POINT && (
-                            <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                        )}
-                        {geometryMode === GEOMETRY_LINE && (
-                            <div className="col-span-2 grid grid-cols-2 gap-4">
-                                    <div><label className="block text-xs font-medium">Length (L)</label><div className="flex"><input type="number" min="0" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                                    <div><label className="block text-xs font-medium">Linear Activity</label><select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"><option>µCi/cm</option><option>mCi/cm</option><option>Ci/cm</option><option>µCi/m</option><option>mCi/m</option><option>Ci/m</option></select></div>
-                                </div>
-                        )}
-                        {geometryMode === GEOMETRY_AREA && (
-                            <div className="col-span-2 grid grid-cols-2 gap-4">
-                                    <div><label className="block text-xs font-medium">Radius (R)</label><div className="flex"><input type="number" min="0" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                                    <div><label className="block text-xs font-medium">Areal Activity</label><select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"><option>µCi/cm²</option><option>mCi/cm²</option><option>Ci/cm²</option><option>µCi/m²</option><option>mCi/m²</option><option>Ci/m²</option></select></div>
-                                </div>
-                        )}
-                        <div><label className="block text-xs font-medium">Distance (d or h)</label><div className="flex"><input type="number" min="0" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                <ContextualNote type="info">A multi-purpose dose calculator. Uses 10 CFR 20 ALI values or FGR-11 DCFs for internal dose.</ContextualNote>
+
+                <div className="grid grid-cols-3 md:grid-cols-5 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-6 overflow-x-auto">
+                    <button onClick={() => setCalcMode(CALC_MODE_FIELD)} className={`py-2 rounded-md text-xs font-bold transition-all ${calcMode === CALC_MODE_FIELD ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Field Calc</button>
+                    <button onClick={() => setCalcMode(CALC_MODE_GAMMA)} className={`py-2 rounded-md text-xs font-bold transition-all ${calcMode === CALC_MODE_GAMMA ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Gamma</button>
+                    <button onClick={() => setCalcMode(CALC_MODE_BETA)} className={`py-2 rounded-md text-xs font-bold transition-all ${calcMode === CALC_MODE_BETA ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Beta</button>
+                    <button onClick={() => setCalcMode(CALC_MODE_BREMS)} className={`py-2 rounded-md text-xs font-bold transition-all ${calcMode === CALC_MODE_BREMS ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Brems.</button>
+                    <button onClick={() => setCalcMode(CALC_MODE_INTERNAL)} className={`py-2 rounded-md text-xs font-bold transition-all ${calcMode === CALC_MODE_INTERNAL ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300'}`}>Internal</button>
+                </div>
+                
+                {/* --- FIELD CALC (INVERSE SQUARE) UI --- */}
+                {calcMode === CALC_MODE_FIELD && (
+                    <div className="space-y-4 animate-fade-in">
                         
-                        <div className="col-span-2">
-                            <label className="block text-xs font-medium mb-1">Transmission (0-1)</label>
-                            <input type="number" step="0.1" min="0" max="1" value={transmission} onChange={e => setTransmission(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g. 0.5"/>
+
+[Image of inverse square law diagram]
+
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            <h3 className="text-sm font-bold mb-3">Known Point</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-xs font-medium">Rate (I₁)</label><div className="flex"><input type="number" min="0" value={field_r1} onChange={e => setField_r1(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_r1Unit} onChange={e => setField_r1Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="block text-xs font-medium">Distance (d₁)</label><div className="flex"><input type="number" min="0" value={field_d1} onChange={e => setField_d1(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_d1Unit} onChange={e => setField_d1Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex justify-center bg-slate-100 dark:bg-slate-900 rounded p-1 text-xs">
+                            <button onClick={() => setField_targetType('findRate')} className={`flex-1 py-1 rounded ${field_targetType === 'findRate' ? 'bg-white dark:bg-slate-600 shadow font-bold text-sky-600' : ''}`}>Find New Rate (I₂)</button>
+                            <button onClick={() => setField_targetType('findDist')} className={`flex-1 py-1 rounded ${field_targetType === 'findDist' ? 'bg-white dark:bg-slate-600 shadow font-bold text-sky-600' : ''}`}>Find Distance (d₂)</button>
+                        </div>
+                        
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
+                            {field_targetType === 'findRate' ? (
+                                <div><label className="block text-xs font-medium">Target Distance (d₂)</label><div className="flex"><input type="number" min="0" value={field_d2} onChange={e => setField_d2(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_d2Unit} onChange={e => setField_d2Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            ) : (
+                                <div><label className="block text-xs font-medium">Target Rate (I₂)</label><div className="flex"><input type="number" min="0" value={field_r2} onChange={e => setField_r2(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_r2Unit} onChange={e => setField_r2Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            )}
                         </div>
                     </div>
-                </div>
-            )}
-            
-            {/* --- BETA UI --- */}
-            {(calcMode === CALC_MODE_BETA || calcMode === CALC_MODE_BREMS) && (
-                <div className="space-y-4 animate-fade-in">
-                    {/* Input Mode */}
-                    <div className="flex justify-center mb-2"><div className="flex bg-slate-100 dark:bg-slate-900 rounded p-1 text-xs"><button onClick={() => setInputMode(INPUT_MODE_DB)} className={`px-3 py-1 rounded ${inputMode === INPUT_MODE_DB ? 'bg-white dark:bg-slate-700 shadow' : ''}`}>Database</button><button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`px-3 py-1 rounded ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-700 shadow' : ''}`}>Manual E_max</button></div></div>
-                    
-                    {inputMode === INPUT_MODE_DB ? (
-                        <div className="min-h-[42px]">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={betaNuclides} onSelect={setNuclideSymbol} placeholder="Select a beta source..." />}</div>
-                    ) : (
-                        <div><label className="block text-xs font-medium">Max Beta Energy (MeV)</label><input type="number" min="0" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm"/></div>
-                    )}
+                )}
                 
-                    {calcMode === CALC_MODE_BETA && (
-                        <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-900 rounded-lg"><button onClick={() => setBetaMode(BETA_MODE_SKIN)} className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${betaMode === BETA_MODE_SKIN ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Skin Dose (Contamination)</button><button onClick={() => setBetaMode(BETA_MODE_AIR)} className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${betaMode === BETA_MODE_AIR ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Dose in Air (External)</button></div>
-                    )}
-                
-                    {calcMode === CALC_MODE_BETA && betaMode === BETA_MODE_SKIN && (
-                        <div><label className="block text-xs font-medium">Contamination Level</label><div className="flex"><input type="number" min="0" value={skinActivity} onChange={e => setSkinActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={skinActivityUnit} onChange={e => setSkinActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{['dpm/100cm²', 'µCi/cm²'].map(u=><option key={u}>{u}</option>)}</select></div></div>
-                    )}
-                
-                    {calcMode === CALC_MODE_BETA && betaMode === BETA_MODE_AIR && (
-                        <div className="grid grid-cols-2 gap-4">
-                            <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                            <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" min="0" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                {/* --- GAMMA UI --- */}
+                {calcMode === CALC_MODE_GAMMA && (
+                    <div className="space-y-4 animate-fade-in">
+                        {/* Geometry Selection */}
+                        <div className="flex justify-center">
+                            <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
+                                <button onClick={() => setGeometryMode(GEOMETRY_POINT)} className={`px-3 py-1 text-xs font-bold rounded ${geometryMode === GEOMETRY_POINT ? 'bg-white dark:bg-slate-700 shadow text-sky-600' : ''}`}>Point</button>
+                                <button onClick={() => setGeometryMode(GEOMETRY_LINE)} className={`px-3 py-1 text-xs font-bold rounded ${geometryMode === GEOMETRY_LINE ? 'bg-white dark:bg-slate-700 shadow text-sky-600' : ''}`}>Line</button>
+                                <button onClick={() => setGeometryMode(GEOMETRY_AREA)} className={`px-3 py-1 text-xs font-bold rounded ${geometryMode === GEOMETRY_AREA ? 'bg-white dark:bg-slate-700 shadow text-sky-600' : ''}`}>Disk</button>
+                            </div>
                         </div>
-                    )}
+                        
+                        {/* VISUALIZER */}
+                        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-lg">
+                            <GeometryVisualizer mode={geometryMode} />
+                        </div>
+                    
+                        {/* Common Inputs */}
+                        <div className="flex justify-center mb-2"><div className="flex bg-slate-100 dark:bg-slate-900 rounded p-1 text-xs"><button onClick={() => setInputMode(INPUT_MODE_DB)} className={`px-3 py-1 rounded ${inputMode === INPUT_MODE_DB ? 'bg-white dark:bg-slate-700 shadow' : ''}`}>Database</button><button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`px-3 py-1 rounded ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-700 shadow' : ''}`}>Manual</button></div></div>
+                        
+                        <div>
+                            {inputMode === INPUT_MODE_DB ? (
+                                <div className="mt-1 min-h-[42px]">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={gammaNuclides} onSelect={setNuclideSymbol} placeholder="Select a gamma source..." />}</div>
+                            ) : (
+                                <div className="animate-fade-in"><label className="block text-xs font-medium mb-1">Gamma Constant (Γ)</label><div className="flex"><input type="number" min="0" value={manualGammaConstant} onChange={e => setManualGammaConstant(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" placeholder="R·m²/hr·Ci" /></div></div>
+                            )}
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            {geometryMode === GEOMETRY_POINT && (
+                                <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            )}
+                            {geometryMode === GEOMETRY_LINE && (
+                                <div className="col-span-2 grid grid-cols-2 gap-4">
+                                        <div><label className="block text-xs font-medium">Length (L)</label><div className="flex"><input type="number" min="0" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                        <div><label className="block text-xs font-medium">Linear Activity</label><select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"><option>µCi/cm</option><option>mCi/cm</option><option>Ci/cm</option><option>µCi/m</option><option>mCi/m</option><option>Ci/m</option></select></div>
+                                    </div>
+                            )}
+                            {geometryMode === GEOMETRY_AREA && (
+                                <div className="col-span-2 grid grid-cols-2 gap-4">
+                                        <div><label className="block text-xs font-medium">Radius (R)</label><div className="flex"><input type="number" min="0" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                        <div><label className="block text-xs font-medium">Areal Activity</label><select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"><option>µCi/cm²</option><option>mCi/cm²</option><option>Ci/cm²</option><option>µCi/m²</option><option>mCi/m²</option><option>Ci/m²</option></select></div>
+                                    </div>
+                            )}
+                            <div><label className="block text-xs font-medium">Distance (d or h)</label><div className="flex"><input type="number" min="0" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            
+                            <div className="col-span-2">
+                                <label className="block text-xs font-medium mb-1">Transmission (0-1)</label>
+                                <input type="number" step="0.1" min="0" max="1" value={transmission} onChange={e => setTransmission(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g. 0.5"/>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 
-                    {calcMode === CALC_MODE_BREMS && (
-                        <div className="space-y-4">
-                            <div><label className="block text-xs font-medium">Shielding Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm">{Object.keys(SHIELD_PROPS).filter(m => m !== 'None').map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+                {/* --- BETA UI --- */}
+                {(calcMode === CALC_MODE_BETA || calcMode === CALC_MODE_BREMS) && (
+                    <div className="space-y-4 animate-fade-in">
+                        {/* Input Mode */}
+                        <div className="flex justify-center mb-2"><div className="flex bg-slate-100 dark:bg-slate-900 rounded p-1 text-xs"><button onClick={() => setInputMode(INPUT_MODE_DB)} className={`px-3 py-1 rounded ${inputMode === INPUT_MODE_DB ? 'bg-white dark:bg-slate-700 shadow' : ''}`}>Database</button><button onClick={() => setInputMode(INPUT_MODE_MANUAL)} className={`px-3 py-1 rounded ${inputMode === INPUT_MODE_MANUAL ? 'bg-white dark:bg-slate-700 shadow' : ''}`}>Manual E_max</button></div></div>
+                        
+                        {inputMode === INPUT_MODE_DB ? (
+                            <div className="min-h-[42px]">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={betaNuclides} onSelect={setNuclideSymbol} placeholder="Select a beta source..." />}</div>
+                        ) : (
+                            <div><label className="block text-xs font-medium">Max Beta Energy (MeV)</label><input type="number" min="0" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm"/></div>
+                        )}
+                    
+                        {calcMode === CALC_MODE_BETA && (
+                            <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-900 rounded-lg"><button onClick={() => setBetaMode(BETA_MODE_SKIN)} className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${betaMode === BETA_MODE_SKIN ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Skin Dose (Contamination)</button><button onClick={() => setBetaMode(BETA_MODE_AIR)} className={`flex-1 py-1.5 text-sm font-medium rounded transition-colors ${betaMode === BETA_MODE_AIR ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Dose in Air (External)</button></div>
+                        )}
+                    
+                        {calcMode === CALC_MODE_BETA && betaMode === BETA_MODE_SKIN && (
+                            <div><label className="block text-xs font-medium">Contamination Level</label><div className="flex"><input type="number" min="0" value={skinActivity} onChange={e => setSkinActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={skinActivityUnit} onChange={e => setSkinActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{['dpm/100cm²', 'µCi/cm²'].map(u=><option key={u}>{u}</option>)}</select></div></div>
+                        )}
+                    
+                        {calcMode === CALC_MODE_BETA && betaMode === BETA_MODE_AIR && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                                 <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" min="0" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             </div>
-                        </div>
-                    )}
-                </div>
-            )}
-            
-            {/* --- INTERNAL UI --- */}
-            {calcMode === CALC_MODE_INTERNAL && (
-                <div className="space-y-4 animate-fade-in">
-                    <div className="min-h-[42px]">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={dosimetryNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide..." />}</div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-xs font-medium">Method</label><select value={doseMethod} onChange={e => setDoseMethod(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm"><option value={METHOD_10CFR20}>10 CFR 20 (ALI)</option><option value={METHOD_FGR11}>FGR 11 (DCF)</option></select></div>
-                        <div><label className="block text-xs font-medium">Route</label><select value={intakeRoute} onChange={e => setIntakeRoute(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm"><option value="inhalation">Inhalation</option><option value="ingestion">Ingestion</option></select></div>
-                        {intakeRoute === 'inhalation' && (<div><label className="block text-xs font-medium">Lung Class</label><select value={solubility} onChange={e => setSolubility(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" disabled={availableClasses.length === 0}>{availableClasses.length > 0 ? availableClasses.map(c=><option key={c}>{c}</option>) : <option>N/A</option>}</select></div>)}
-                        <div><label className="block text-xs font-medium">Intake Amount</label><div className="flex"><input type="number" min="0" value={intakeAmount} onChange={e => setIntakeAmount(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={intakeUnit} onChange={e => setIntakeUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{intakeUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                    </div>
-                </div>
-            )}
-            
-            {/* --- RESULTS --- */}
-            {result && (
-                <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative">
-                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to history"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
-                    <p className="text-xs uppercase font-bold text-slate-500 mb-2">{result.label || "Calculated Dose Rate"}</p>
-                    <div className="flex items-center justify-center gap-2">
-                        {result.type === 'field' ? (
-                            <>
-                                <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{formatNumber(result.val)}</span>
-                                <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit === 'doseRate' ? field_r1Unit : field_d2Unit}</span>
-                            </>
-                        ) : (
-                            <>
-                                <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">
-                                    {formatDoseValue(
-                                        result.rawDoseRate_mrem_hr !== undefined ? result.rawDoseRate_mrem_hr : result.rawDose_mrem, 
-                                        result.type === 'internal' ? 'dose' : 'doseRate', 
-                                        settings
-                                    ).value}
-                                </span>
-                                <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">
-                                    {formatDoseValue(
-                                        result.rawDoseRate_mrem_hr !== undefined ? result.rawDoseRate_mrem_hr : result.rawDose_mrem, 
-                                        result.type === 'internal' ? 'dose' : 'doseRate', 
-                                        settings
-                                    ).unit}
-                                </span>
-                            </>
+                        )}
+                    
+                        {calcMode === CALC_MODE_BREMS && (
+                            <div className="space-y-4">
+                                <div><label className="block text-xs font-medium">Shielding Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm">{Object.keys(SHIELD_PROPS).filter(m => m !== 'None').map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                    <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" min="0" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                </div>
+                            </div>
                         )}
                     </div>
-                    
-                    {/* Contextual Info */}
-                    {result.usedGamma && <p className="text-xs text-slate-400 mt-2">Gamma Constant: {result.usedGamma} R·m²/hr·Ci</p>}
-                    {result.sourceNote && <p className="text-xs text-amber-600 mt-2 italic">{result.sourceNote}</p>}
-                    {result.bremsstrahlungFraction && <p className="text-xs text-slate-500 mt-2">Radiative Fraction: ~{result.bremsstrahlungFraction}%</p>}
-                    
-                    {/* Beta Air Warning Block */}
-                    {result.type === 'beta_air' && (
-                        <div className="mt-2 border-t border-slate-200 dark:border-slate-600 pt-2">
-                            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Max Range in Air: {result.range_m} m</p>
-                            {result.warning && (
-                                <p className={`text-xs mt-2 p-1 rounded font-bold ${result.isBeyondRange ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' : 'text-sky-600 bg-sky-50 dark:bg-sky-900/20'}`}>
-                                    {result.warning}
-                                </p>
+                )}
+                
+                {/* --- INTERNAL UI --- */}
+                {calcMode === CALC_MODE_INTERNAL && (
+                    <div className="space-y-4 animate-fade-in">
+                        <div className="min-h-[42px]">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={dosimetryNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide..." />}</div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div><label className="block text-xs font-medium">Method</label><select value={doseMethod} onChange={e => setDoseMethod(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm"><option value={METHOD_10CFR20}>10 CFR 20 (ALI)</option><option value={METHOD_FGR11}>FGR 11 (DCF)</option></select></div>
+                            <div><label className="block text-xs font-medium">Route</label><select value={intakeRoute} onChange={e => setIntakeRoute(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm"><option value="inhalation">Inhalation</option><option value="ingestion">Ingestion</option></select></div>
+                            {intakeRoute === 'inhalation' && (<div><label className="block text-xs font-medium">Lung Class</label><select value={solubility} onChange={e => setSolubility(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" disabled={availableClasses.length === 0}>{availableClasses.length > 0 ? availableClasses.map(c=><option key={c}>{c}</option>) : <option>N/A</option>}</select></div>)}
+                            <div><label className="block text-xs font-medium">Intake Amount</label><div className="flex"><input type="number" min="0" value={intakeAmount} onChange={e => setIntakeAmount(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={intakeUnit} onChange={e => setIntakeUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{intakeUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* --- RESULTS --- */}
+                {result && (
+                    <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative">
+                        <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to history"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
+                        <p className="text-xs uppercase font-bold text-slate-500 mb-2">{result.label || "Calculated Dose Rate"}</p>
+                        <div className="flex items-center justify-center gap-2">
+                            {result.type === 'field' ? (
+                                <>
+                                    <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">{formatNumber(result.val)}</span>
+                                    <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit === 'doseRate' ? field_r1Unit : field_d2Unit}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-4xl font-extrabold text-sky-600 dark:text-sky-400">
+                                        {formatDoseValue(
+                                            result.rawDoseRate_mrem_hr !== undefined ? result.rawDoseRate_mrem_hr : result.rawDose_mrem, 
+                                            result.type === 'internal' ? 'dose' : 'doseRate', 
+                                            settings
+                                        ).value}
+                                    </span>
+                                    <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">
+                                        {formatDoseValue(
+                                            result.rawDoseRate_mrem_hr !== undefined ? result.rawDoseRate_mrem_hr : result.rawDose_mrem, 
+                                            result.type === 'internal' ? 'dose' : 'doseRate', 
+                                            settings
+                                        ).unit}
+                                    </span>
+                                </>
                             )}
                         </div>
-                    )}
-                </div>
-            )}
-            
-            {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+                        
+                        {/* Contextual Info */}
+                        {result.usedGamma && <p className="text-xs text-slate-400 mt-2">Gamma Constant: {result.usedGamma} R·m²/hr·Ci</p>}
+                        {result.sourceNote && <p className="text-xs text-amber-600 mt-2 italic">{result.sourceNote}</p>}
+                        {result.bremsstrahlungFraction && <p className="text-xs text-slate-500 mt-2">Radiative Fraction: ~{result.bremsstrahlungFraction}%</p>}
+                        
+                        {/* Beta Air Warning Block */}
+                        {result.type === 'beta_air' && (
+                            <div className="mt-2 border-t border-slate-200 dark:border-slate-600 pt-2">
+                                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Max Range in Air: {result.range_m} m</p>
+                                {result.warning && (
+                                    <p className={`text-xs mt-2 p-1 rounded font-bold ${result.isBeyondRange ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/20' : 'text-sky-600 bg-sky-50 dark:bg-sky-900/20'}`}>
+                                        {result.warning}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+                
+                {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
 
-            {/* INTERNAL DOSIMETRY REFERENCE CARD */}
-            {calcMode === CALC_MODE_INTERNAL && result && selectedNuclide && renderDosimetryReference()}
+                {/* INTERNAL DOSIMETRY REFERENCE CARD */}
+                {calcMode === CALC_MODE_INTERNAL && result && selectedNuclide && renderDosimetryReference()}
+            </div>
         </div>
-    </div>
-);
+    );
 };
             
             /**
