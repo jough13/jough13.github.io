@@ -5073,569 +5073,570 @@ const EquilibriumCalculator = ({ radionuclides, theme }) => {
         </div>
     );
 };
-        
-        /**
-        * @description Updated Radon Concentration Calculator with EPA Context Bar and Occupancy Presets.
-        */
-        const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConcentration, unit, setUnit, equilibriumFactor, setEquilibriumFactor, workingLevel, setWorkingLevel, occupancyFactor, setOccupancyFactor, result, setResult, error, setError }) => {
-        const { addHistory } = useCalculationHistory();
-        const { addToast } = useToast();
-        const { settings } = React.useContext(SettingsContext);
-        
-        const Bq_per_m3_in_pCi_per_L = 37;
-        const PAEC_J_per_m3_in_WL = 2.08e-5;
-        const dose_conversion_mrem_per_WLM = 1250;
-        
-        React.useEffect(() => {
+
+/**
+ * @description Updated Radon Concentration Calculator with EPA Context Bar and Occupancy Presets.
+ */
+const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConcentration, unit, setUnit, equilibriumFactor, setEquilibriumFactor, workingLevel, setWorkingLevel, occupancyFactor, setOccupancyFactor, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    const { settings } = React.useContext(SettingsContext);
+    
+    const Bq_per_m3_in_pCi_per_L = 37;
+    const PAEC_J_per_m3_in_WL = 2.08e-5;
+    const dose_conversion_mrem_per_WLM = 1250; // ICRP 65 / NCRP (approx)
+    
+    React.useEffect(() => {
         localStorage.setItem('radon_calcMode', calcMode);
         localStorage.setItem('radon_concentration', concentration);
         localStorage.setItem('radon_unit', unit);
         localStorage.setItem('radon_equilibriumFactor', equilibriumFactor);
         localStorage.setItem('radon_workingLevel', workingLevel);
         localStorage.setItem('radon_occupancyFactor', occupancyFactor);
-        }, [calcMode, concentration, unit, equilibriumFactor, workingLevel, occupancyFactor]);
-        
-        React.useEffect(() => {
+    }, [calcMode, concentration, unit, equilibriumFactor, workingLevel, occupancyFactor]);
+    
+    React.useEffect(() => {
         try {
-        setError('');
-        const conc_val = safeParseFloat(concentration);
-        const ef_val = safeParseFloat(equilibriumFactor);
-        const wl_val = safeParseFloat(workingLevel);
-        const of_val = safeParseFloat(occupancyFactor);
-        
-        let final_pCi_L, final_Bq_m3, final_WL, final_EF;
-        
-        switch(calcMode) {
-        case 'doseFromConc':
-        if (isNaN(conc_val) || isNaN(ef_val)) throw new Error('Concentration and Equilibrium Factor must be numbers.');
-        final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L;
-        final_EF = ef_val;
-        final_WL = (final_pCi_L / 100) * final_EF;
-        if (workingLevel !== final_WL.toPrecision(3)) setWorkingLevel(final_WL.toPrecision(3));
-        break;
-        case 'findWL':
-        if (isNaN(conc_val) || isNaN(ef_val)) throw new Error('Concentration and Equilibrium Factor must be numbers.');
-        final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L;
-        final_EF = ef_val;
-        final_WL = (final_pCi_L / 100) * final_EF;
-        setWorkingLevel(final_WL.toPrecision(3));
-        break;
-        case 'findConc':
-        if (isNaN(wl_val) || isNaN(ef_val)) throw new Error('Working Level and Equilibrium Factor must be numbers.');
-        if (ef_val <= 0) throw new Error('Equilibrium Factor must be greater than zero.');
-        final_WL = wl_val;
-        final_EF = ef_val;
-        final_pCi_L = (final_WL * 100) / final_EF;
-        const final_conc_display = unit === 'pCi/L' ? final_pCi_L : final_pCi_L * Bq_per_m3_in_pCi_per_L;
-        setConcentration(final_conc_display.toPrecision(3));
-        break;
-        case 'findEF':
-            if (isNaN(wl_val) || isNaN(conc_val)) throw new Error('Working Level and Concentration must be numbers.');
-            final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L;
-            if (final_pCi_L <= 0) throw new Error('Concentration must be greater than zero.');
-            final_WL = wl_val;
-            final_EF = (final_WL * 100) / final_pCi_L;
-            setEquilibriumFactor(final_EF.toPrecision(3));
-            break;
-        default: break;
-        }
-        
-        if (isNaN(of_val)) throw new Error('Occupancy Factor must be a number.');
-        
-        final_Bq_m3 = final_pCi_L * Bq_per_m3_in_pCi_per_L;
-        const paec_J_m3 = final_WL * PAEC_J_per_m3_in_WL;
-        
-        // WLM = (WL * Hours) / 170
-        const hours_per_year = 8760 * of_val;
-        const wlm_per_year = (final_WL * hours_per_year) / 170;
-        const annualDose_mrem = wlm_per_year * dose_conversion_mrem_per_WLM;
-        
-        setResult({
-        pCi_L: final_pCi_L.toPrecision(3),
-        Bq_m3: final_Bq_m3.toPrecision(3),
-        workingLevels: final_WL.toPrecision(3),
-        equilibriumFactor: final_EF.toPrecision(3),
-        paec_J_m3: paec_J_m3.toExponential(2),
-        wlm_year: wlm_per_year.toPrecision(3),
-        annualDose: formatDoseValue(annualDose_mrem, 'dose', settings)
-        });
-        
+            setError('');
+            const conc_val = safeParseFloat(concentration);
+            const ef_val = safeParseFloat(equilibriumFactor);
+            const wl_val = safeParseFloat(workingLevel);
+            const of_val = safeParseFloat(occupancyFactor);
+            
+            let final_pCi_L, final_Bq_m3, final_WL, final_EF;
+            
+            switch(calcMode) {
+                case 'doseFromConc':
+                    if (isNaN(conc_val) || isNaN(ef_val)) { setResult(null); return; }
+                    final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L;
+                    final_EF = ef_val;
+                    final_WL = (final_pCi_L / 100) * final_EF;
+                    if (workingLevel !== final_WL.toPrecision(3)) setWorkingLevel(final_WL.toPrecision(3));
+                    break;
+                case 'findWL':
+                    if (isNaN(conc_val) || isNaN(ef_val)) { setResult(null); return; }
+                    final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L;
+                    final_EF = ef_val;
+                    final_WL = (final_pCi_L / 100) * final_EF;
+                    setWorkingLevel(final_WL.toPrecision(3));
+                    break;
+                case 'findConc':
+                    if (isNaN(wl_val) || isNaN(ef_val)) { setResult(null); return; }
+                    if (ef_val <= 0) throw new Error('Equilibrium Factor must be > 0.');
+                    final_WL = wl_val;
+                    final_EF = ef_val;
+                    final_pCi_L = (final_WL * 100) / final_EF;
+                    const final_conc_display = unit === 'pCi/L' ? final_pCi_L : final_pCi_L * Bq_per_m3_in_pCi_per_L;
+                    setConcentration(final_conc_display.toPrecision(3));
+                    break;
+                case 'findEF':
+                    if (isNaN(wl_val) || isNaN(conc_val)) { setResult(null); return; }
+                    final_pCi_L = unit === 'pCi/L' ? conc_val : conc_val / Bq_per_m3_in_pCi_per_L;
+                    if (final_pCi_L <= 0) throw new Error('Concentration must be > 0.');
+                    final_WL = wl_val;
+                    final_EF = (final_WL * 100) / final_pCi_L;
+                    setEquilibriumFactor(final_EF.toPrecision(3));
+                    break;
+                default: break;
+            }
+            
+            if (isNaN(of_val)) throw new Error('Occupancy Factor must be a number.');
+            
+            final_Bq_m3 = final_pCi_L * Bq_per_m3_in_pCi_per_L;
+            const paec_J_m3 = final_WL * PAEC_J_per_m3_in_WL;
+            
+            // WLM = (WL * Hours) / 170
+            const hours_per_year = 8760 * of_val;
+            const wlm_per_year = (final_WL * hours_per_year) / 170;
+            const annualDose_mrem = wlm_per_year * dose_conversion_mrem_per_WLM;
+            
+            setResult({
+                pCi_L: final_pCi_L.toPrecision(3),
+                Bq_m3: final_Bq_m3.toPrecision(3),
+                workingLevels: final_WL.toPrecision(3),
+                equilibriumFactor: final_EF.toPrecision(3),
+                paec_J_m3: paec_J_m3.toExponential(2),
+                wlm_year: wlm_per_year.toPrecision(3),
+                annualDose: formatDoseValue(annualDose_mrem, 'dose', settings)
+            });
+            
         } catch (e) { setError(e.message); setResult(null); }
-        }, [concentration, unit, equilibriumFactor, workingLevel, occupancyFactor, calcMode, setConcentration, setEquilibriumFactor, setWorkingLevel, setResult, setError, settings]);
-        
-        const handleSaveToHistory = () => {
+    }, [concentration, unit, equilibriumFactor, workingLevel, occupancyFactor, calcMode, setConcentration, setEquilibriumFactor, setWorkingLevel, setResult, setError, settings]);
+    
+    const handleSaveToHistory = () => {
         if (result) {
-        addHistory({
-        id: Date.now(),
-        type: 'Radon Dose',
-        icon: ICONS.radon,
-        inputs: `${result.pCi_L} pCi/L, F=${result.equilibriumFactor}`,
-        result: `${result.annualDose.value} ${result.annualDose.unit}/yr`,
-        view: VIEWS.RADON
-        });
-        addToast("Calculation saved to history!");
+            addHistory({
+                id: Date.now(),
+                type: 'Radon Dose',
+                icon: ICONS.radon,
+                inputs: `${result.pCi_L} pCi/L, F=${result.equilibriumFactor}`,
+                result: `${result.annualDose.value} ${result.annualDose.unit}/yr`,
+                view: VIEWS.RADON
+            });
+            addToast("Saved to history!");
         }
-        };
-        
-        const getHeroMetric = () => {
+    };
+    
+    const getHeroMetric = () => {
         if (!result) return null;
         switch (calcMode) {
-        case 'findWL': return { label: 'Calculated Working Level', value: result.workingLevels, unit: 'WL' };
-        case 'findConc': return unit === 'pCi/L' ? { label: 'Calculated Concentration', value: result.pCi_L, unit: 'pCi/L' } : { label: 'Calculated Concentration', value: result.Bq_m3, unit: 'Bq/m³' };
-        case 'findEF': return { label: 'Calculated Equilibrium Factor', value: result.equilibriumFactor, unit: 'F' };
-        case 'doseFromConc': default: return { label: 'Estimated Annual Dose', value: result.annualDose.value, unit: result.annualDose.unit, subtext: `(${result.wlm_year} WLM/year)` };
+            case 'findWL': return { label: 'Calculated Working Level', value: result.workingLevels, unit: 'WL' };
+            case 'findConc': return unit === 'pCi/L' ? { label: 'Calculated Concentration', value: result.pCi_L, unit: 'pCi/L' } : { label: 'Calculated Concentration', value: result.Bq_m3, unit: 'Bq/m³' };
+            case 'findEF': return { label: 'Calculated Equilibrium Factor', value: result.equilibriumFactor, unit: 'F' };
+            case 'doseFromConc': default: return { label: 'Estimated Annual Dose', value: result.annualDose.value, unit: result.annualDose.unit, subtext: `(${result.wlm_year} WLM/year)` };
         }
-        };
-        
-        const hero = getHeroMetric();
-        
-        // --- VISUAL CONTEXT LOGIC (EPA Action Level) ---
-        
-        const getSafetyContext = (pCiL_str) => {
+    };
+    
+    const hero = getHeroMetric();
+    
+    // --- VISUAL CONTEXT LOGIC (EPA Action Level) ---
+    const getSafetyContext = (pCiL_str) => {
         const val = safeParseFloat(pCiL_str);
-        if (val < 2.0) return { color: 'bg-green-500', width: '25%', label: 'Normal (< 2.0)' };
-        if (val < 4.0) return { color: 'bg-yellow-400', width: '50%', label: 'Warning (2.0 - 4.0)' };
-        if (val < 8.0) return { color: 'bg-orange-500', width: '75%', label: 'Action Level (> 4.0)' };
-        return { color: 'bg-red-500', width: '100%', label: 'High (> 8.0)' };
-        };
-        
-        const safety = result ? getSafetyContext(result.pCi_L) : null;
-        
-        return (
+        if (val < 2.0) return { color: 'bg-green-500', width: '25%', label: 'Normal (< 2.0)', advice: 'No action needed.' };
+        if (val < 4.0) return { color: 'bg-yellow-400', width: '50%', label: 'Warning (2.0 - 4.0)', advice: 'Consider mitigation.' };
+        if (val < 8.0) return { color: 'bg-orange-500', width: '75%', label: 'Action Level (> 4.0)', advice: 'Mitigation recommended.' };
+        return { color: 'bg-red-500', width: '100%', label: 'High (> 8.0)', advice: 'Mitigation Required.' };
+    };
+    
+    const safety = result ? getSafetyContext(result.pCi_L) : null;
+    
+    return (
         <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
-        <button onClick={() => setCalcMode('doseFromConc')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'doseFromConc' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose from Conc.</button>
-        <button onClick={() => setCalcMode('findWL')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'findWL' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Find WL</button>
-        <button onClick={() => setCalcMode('findConc')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'findConc' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Find Concentration</button>
-        <button onClick={() => setCalcMode('findEF')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'findEF' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Find Equilibrium</button>
-        </div>
-        
-        <div className="space-y-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-        <div>
-        <label className="block text-sm font-medium">Radon Concentration</label>
-        <div className="flex">
-            <input type="number" value={concentration} onChange={e => setConcentration(e.target.value)} disabled={calcMode === 'findConc'} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 disabled:bg-slate-200 dark:disabled:bg-slate-800" />
-            <select value={unit} onChange={e => setUnit(e.target.value)} disabled={calcMode === 'findConc'} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 disabled:opacity-50"><option>pCi/L</option><option>Bq/m³</option></select>
-        </div>
-        </div>
-        <div>
-        <Tooltip text="The fraction of radon progeny in equilibrium with the parent radon gas. 0.4 is a standard assumption for homes; 0.5-0.7 for clean rooms/labs.">
-            <label className="block text-sm font-medium cursor-help underline decoration-dotted">Equilibrium Factor (F)</label>
-        </Tooltip>
-        <input type="number" value={equilibriumFactor} onChange={e => setEquilibriumFactor(e.target.value)} step="0.05" min="0" max="1" disabled={calcMode === 'findEF'} placeholder="e.g., 0.4" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 disabled:bg-slate-200 dark:disabled:bg-slate-800" />
-        </div>
-        <div>
-        <label className="block text-sm font-medium">Working Level (WL)</label>
-        <input type="number" value={workingLevel} onChange={e => setWorkingLevel(e.target.value)} disabled={calcMode === 'findWL' || calcMode === 'doseFromConc'} placeholder="e.g., 0.02" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 disabled:bg-slate-200 dark:disabled:bg-slate-800" />
-        </div>
-        
-        {/* Occupancy Section with Presets */}
-        <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
-        <div className="flex justify-between items-end mb-1">
-            <label className="block text-sm font-medium">Occupancy Factor (0-1)</label>
-            <div className="flex gap-2">
-                    <button onClick={() => setOccupancyFactor('0.75')} className="px-2 py-0.5 text-xs bg-slate-200 dark:bg-slate-600 rounded hover:bg-slate-300 dark:hover:bg-slate-500 transition">Home (75%)</button>
-                    <button onClick={() => setOccupancyFactor('0.228')} className="px-2 py-0.5 text-xs bg-slate-200 dark:bg-slate-600 rounded hover:bg-slate-300 dark:hover:bg-slate-500 transition">Work (2k hr)</button>
+            <ContextualNote type="info">Calculates dose from radon progeny inhalation. Assumes standard conversion (1 WLM ≈ 1250 mrem).</ContextualNote>
+            
+            <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
+                <button onClick={() => setCalcMode('doseFromConc')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'doseFromConc' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose from Conc.</button>
+                <button onClick={() => setCalcMode('findWL')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'findWL' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Find WL</button>
+                <button onClick={() => setCalcMode('findConc')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'findConc' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Find Concentration</button>
+                <button onClick={() => setCalcMode('findEF')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'findEF' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Find Equilibrium</button>
             </div>
-        </div>
-        <input type="number" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} step="0.05" min="0" max="1" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
-        </div>
-        </div>
-        
-        {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
-        
-        {result && (
-        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in">
-        <div className="text-center pb-4 mb-4 border-b border-slate-300 dark:border-slate-600">
-            <div className="flex justify-between items-center -mt-2 -mb-2">
-                <div></div>
-                <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{hero.label}</p>
-                <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                    <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                        <Icon path={ICONS.notepad} className="w-5 h-5" />
-                    </button>
-                </Tooltip>
-            </div>
-            <div className="flex items-center justify-center mt-2">
-                <p className="text-4xl font-bold text-sky-600 dark:text-sky-400">{hero.value} <span className="text-2xl opacity-75">{hero.unit}</span></p>
-                <CopyButton textToCopy={hero.value} />
-            </div>
-            {hero.subtext && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{hero.subtext}</p>}
-        </div>
-        
-        {/* VISUAL CONTEXT BAR */}
-        <div className="mb-4">
-            <div className="flex justify-between text-xs font-semibold mb-1 text-slate-500 dark:text-slate-400">
-                <span>EPA Context</span>
-                <span>{safety.label}</span>
-            </div>
-            <div className="h-4 w-full bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden relative border border-slate-300 dark:border-slate-500">
-                <div className={`h-full ${safety.color} transition-all duration-500`} style={{ width: safety.width }}></div>
-                {/* Marker line at 4 pCi/L (Warning/Action threshold) */}
-                <div className="absolute top-0 bottom-0 w-0.5 bg-black/50 dark:bg-white/50" style={{ left: '50%' }} title="Action Level (4.0 pCi/L)"></div>
-            </div>
-            <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                <span>0</span>
-                <span className="font-bold">4.0 pCi/L</span>
-                <span>8.0+</span>
-            </div>
-        </div>
-        
-        <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Calculation Details</h3>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            {calcMode !== 'findConc' && ( <><span className="font-semibold text-slate-500 dark:text-slate-400">Concentration:</span><p className="font-mono text-right">{result.pCi_L} pCi/L</p></> )}
-            {calcMode !== 'findEF' && ( <><span className="font-semibold text-slate-500 dark:text-slate-400">Equilibrium (F):</span><p className="font-mono text-right">{result.equilibriumFactor}</p></> )}
-            {calcMode !== 'findWL' && calcMode !== 'doseFromConc' && ( <><span className="font-semibold text-slate-500 dark:text-slate-400">Working Level:</span><p className="font-mono text-right">{result.workingLevels}</p></> )}
-            <span className="font-semibold text-slate-500 dark:text-slate-400">PAEC:</span><p className="font-mono text-right">{result.paec_J_m3} J/m³</p>
-        </div>
-        </div>
-        )}
-        </div>
-        );
-        };
-        
-        // 2. Updated RadonIngrowthCalculator (Added Leakage Note)
-        const RadonIngrowthCalculator = ({ result, setResult, error, setError, amount, setAmount, unit, setUnit, time, setTime, timeUnit, setTimeUnit }) => {
-        const { addHistory } = useCalculationHistory();
-        const { addToast } = useToast();
-        const { settings } = React.useContext(SettingsContext);
-        
-        const RA226_SPECIFIC_ACTIVITY_BQ_PER_G = 3.66e10;
-        const RN222_HALFLIFE_SECONDS = 3.8235 * 24 * 3600;
-        const RN222_LAMBDA_PER_SECOND = Math.log(2) / RN222_HALFLIFE_SECONDS;
-        
-        const massFactors_g = { 'ng': 1e-9, 'µg': 1e-6, 'mg': 1e-3, 'g': 1 };
-        const activityFactors_Bq = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'µCi': 37000, 'mCi': 3.7e7, 'Ci': 3.7e10 };
-        const timeUnits = { 'minutes': 60, 'hours': 3600, 'days': 86400, 'weeks': 604800 };
-        
-        React.useEffect(() => {
-        try {
-        setError('');
-        const val = safeParseFloat(amount);
-        const t_val = safeParseFloat(time);
-        
-        if (isNaN(val) || val <= 0 || isNaN(t_val) || t_val < 0) {
-            if(amount && time) setError("Inputs must be positive numbers.");
-            setResult(null); return;
-        }
-        
-        let ra226_activity_Bq = 0;
-        const isMass = Object.keys(massFactors_g).includes(unit);
-        
-        if (isMass) {
-            const mass_g = val * massFactors_g[unit];
-            ra226_activity_Bq = mass_g * RA226_SPECIFIC_ACTIVITY_BQ_PER_G;
-        } else {
-            ra226_activity_Bq = val * (activityFactors_Bq[unit] || 0);
-        }
-        
-        const time_s = t_val * (timeUnits[timeUnit] || 0);
-        
-        const rn222_activity_Bq = ra226_activity_Bq * (1 - Math.exp(-RN222_LAMBDA_PER_SECOND * time_s));
-        const percentEquilibrium = (rn222_activity_Bq / ra226_activity_Bq) * 100;
-        
-        const configKey = settings.unitSystem === 'si' ? 'activity_si' : 'activity_conventional';
-        
-        const ra226_base = settings.unitSystem === 'si' ? ra226_activity_Bq : ra226_activity_Bq / 3.7e10;
-        const rn222_base = settings.unitSystem === 'si' ? rn222_activity_Bq : rn222_activity_Bq / 3.7e10;
-        
-        setResult({
-            ra226_activity: formatSensibleUnit(ra226_base, configKey),
-            rn222_activity: formatSensibleUnit(rn222_base, configKey),
-            percentEquilibrium: percentEquilibrium.toFixed(2)
-        });
-        
-        } catch (e) { setError("Calculation failed."); setResult(null); }
-        }, [amount, unit, time, timeUnit, settings.unitSystem]);
-        
-        const handleSaveToHistory = () => {
-        if (result) {
-        addHistory({ id: Date.now(), type: 'Radon Ingrowth', icon: ICONS.radon, inputs: `${amount} ${unit} Ra-226, ${time} ${timeUnit}`, result: `${result.rn222_activity.value} ${result.rn222_activity.unit} Rn-222`, view: VIEWS.RADON });
-        addToast("Calculation saved to history!");
-        }
-        };
-        
-        return (
-        <div className="space-y-4">
-        <ContextualNote type="info">
-            <strong>Assumptions:</strong> Calculates theoretical max ingrowth in a hermetically sealed container. Actual levels will be lower if the container leaks Rn-222 gas.
-        </ContextualNote>
-        
-        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-            <div>
-                <label className="block text-sm font-medium">Source Quantity</label>
-                <div className="flex">
-                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
-                    <select value={unit} onChange={e => setUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
-                        <optgroup label="Mass">{Object.keys(massFactors_g).map(u => <option key={u} value={u}>{u}</option>)}</optgroup>
-                        <optgroup label="Activity">{(settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq'] : ['µCi', 'mCi', 'Ci']).map(u => <option key={u} value={u}>{u}</option>)}</optgroup>
-                    </select>
+            
+            <div className="space-y-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <div>
+                    <label className="block text-sm font-medium">Radon Concentration</label>
+                    <div className="flex">
+                        <input type="number" value={concentration} onChange={e => setConcentration(e.target.value)} disabled={calcMode === 'findConc'} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 disabled:bg-slate-200 dark:disabled:bg-slate-800" />
+                        <select value={unit} onChange={e => setUnit(e.target.value)} disabled={calcMode === 'findConc'} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 disabled:opacity-50"><option>pCi/L</option><option>Bq/m³</option></select>
+                    </div>
                 </div>
-            </div>
-            <div>
-                <label className="block text-sm font-medium">Ingrowth Time</label>
-                <div className="flex">
-                    <input type="number" value={time} onChange={e => setTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
-                    <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
-                </div>
-            </div>
-        </div>
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-        {result && (
-            <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
-                <div className="flex justify-between items-center -mt-2 -mb-2">
-                    <div></div>
-                    <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Resulting Rn-222 Activity</p>
-                    <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                        <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                            <Icon path={ICONS.notepad} className="w-5 h-5" />
-                        </button>
+                <div>
+                    <Tooltip text="The fraction of radon progeny in equilibrium with the parent radon gas. 0.4 is a standard assumption for homes; 0.5-0.7 for clean rooms/labs.">
+                        <label className="block text-sm font-medium cursor-help underline decoration-dotted">Equilibrium Factor (F)</label>
                     </Tooltip>
+                    <input type="number" value={equilibriumFactor} onChange={e => setEquilibriumFactor(e.target.value)} step="0.05" min="0" max="1" disabled={calcMode === 'findEF'} placeholder="e.g., 0.4" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 disabled:bg-slate-200 dark:disabled:bg-slate-800" />
                 </div>
-                <div className="flex items-center justify-center mt-2">
-                    <p className="text-4xl font-bold text-sky-600 dark:text-sky-400">{result.rn222_activity.value} <span className="text-2xl opacity-75">{result.rn222_activity.unit}</span></p>
-                    <CopyButton textToCopy={result.rn222_activity.value} />
+                <div>
+                    <label className="block text-sm font-medium">Working Level (WL)</label>
+                    <input type="number" value={workingLevel} onChange={e => setWorkingLevel(e.target.value)} disabled={calcMode === 'findWL' || calcMode === 'doseFromConc'} placeholder="e.g., 0.02" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 disabled:bg-slate-200 dark:disabled:bg-slate-800" />
                 </div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-2">Parent Activity: {result.ra226_activity.value} {result.ra226_activity.unit}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">({result.percentEquilibrium}% of secular equilibrium)</p>
+                
+                {/* Occupancy Section with Presets */}
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <div className="flex justify-between items-end mb-1">
+                        <label className="block text-sm font-medium">Occupancy Factor (0-1)</label>
+                        <div className="flex gap-2">
+                            <button onClick={() => setOccupancyFactor('0.75')} className="px-2 py-0.5 text-xs bg-slate-200 dark:bg-slate-600 rounded hover:bg-slate-300 dark:hover:bg-slate-500 transition">Home (75%)</button>
+                            <button onClick={() => setOccupancyFactor('0.228')} className="px-2 py-0.5 text-xs bg-slate-200 dark:bg-slate-600 rounded hover:bg-slate-300 dark:hover:bg-slate-500 transition">Work (2k hr)</button>
+                        </div>
+                    </div>
+                    <input type="number" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} step="0.05" min="0" max="1" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                </div>
             </div>
-        )}
+            
+            {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+            
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 animate-fade-in">
+                    <div className="text-center pb-4 mb-4 border-b border-slate-300 dark:border-slate-600">
+                        <div className="flex justify-between items-center -mt-2 -mb-2">
+                            <div></div>
+                            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{hero.label}</p>
+                            <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
+                                <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
+                                    <Icon path={ICONS.notepad} className="w-5 h-5" />
+                                </button>
+                            </Tooltip>
+                        </div>
+                        <div className="flex items-center justify-center mt-2">
+                            <p className="text-4xl font-bold text-sky-600 dark:text-sky-400">{hero.value} <span className="text-2xl opacity-75">{hero.unit}</span></p>
+                            <CopyButton textToCopy={hero.value} />
+                        </div>
+                        {hero.subtext && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{hero.subtext}</p>}
+                    </div>
+                    
+                    {/* VISUAL CONTEXT BAR */}
+                    <div className="mb-4">
+                        <div className="flex justify-between text-xs font-semibold mb-1 text-slate-500 dark:text-slate-400">
+                            <span>EPA Context</span>
+                            <span>{safety.label}</span>
+                        </div>
+                        <div className="h-4 w-full bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden relative border border-slate-300 dark:border-slate-500">
+                            <div className={`h-full ${safety.color} transition-all duration-500`} style={{ width: safety.width }}></div>
+                            <div className="absolute top-0 bottom-0 w-0.5 bg-black/50 dark:bg-white/50" style={{ left: '50%' }} title="Action Level (4.0 pCi/L)"></div>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                            <span>0</span>
+                            <span className="font-bold">4.0 pCi/L</span>
+                            <span>8.0+</span>
+                        </div>
+                        <p className="text-center text-xs font-bold text-slate-500 dark:text-slate-300 mt-1">{safety.advice}</p>
+                    </div>
+                    
+                    <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Calculation Details</h3>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        {calcMode !== 'findConc' && ( <><span className="font-semibold text-slate-500 dark:text-slate-400">Concentration:</span><p className="font-mono text-right">{result.pCi_L} pCi/L</p></> )}
+                        {calcMode !== 'findEF' && ( <><span className="font-semibold text-slate-500 dark:text-slate-400">Equilibrium (F):</span><p className="font-mono text-right">{result.equilibriumFactor}</p></> )}
+                        {calcMode !== 'findWL' && calcMode !== 'doseFromConc' && ( <><span className="font-semibold text-slate-500 dark:text-slate-400">Working Level:</span><p className="font-mono text-right">{result.workingLevels}</p></> )}
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">PAEC:</span><p className="font-mono text-right">{result.paec_J_m3} J/m³</p>
+                    </div>
+                </div>
+            )}
         </div>
-        );
-        };
-        
-        // 3. Updated KusnetzCalculator (Hard Validation)
-        const KusnetzCalculator = ({ flowRate, setFlowRate, sampleTime, setSampleTime, delayTime, setDelayTime, grossCounts, setGrossCounts, countDuration, setCountDuration, backgroundCpm, setBackgroundCpm, efficiency, setEfficiency, result, setResult, error, setError }) => {
-        const { addHistory } = useCalculationHistory();
-        const { addToast } = useToast();
-        const KUSNETZ_FACTORS = { 40: 150, 45: 138, 50: 128, 55: 119, 60: 112, 65: 105, 70: 100, 75: 95, 80: 90, 85: 86, 90: 82 };
-        
-        React.useEffect(() => {
+    );
+};
+
+// 2. Updated RadonIngrowthCalculator (Added Leakage Note)
+const RadonIngrowthCalculator = ({ result, setResult, error, setError, amount, setAmount, unit, setUnit, time, setTime, timeUnit, setTimeUnit }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    const { settings } = React.useContext(SettingsContext);
+    
+    const RA226_SPECIFIC_ACTIVITY_BQ_PER_G = 3.66e10;
+    const RN222_HALFLIFE_SECONDS = 3.8235 * 24 * 3600;
+    const RN222_LAMBDA_PER_SECOND = Math.log(2) / RN222_HALFLIFE_SECONDS;
+    
+    const massFactors_g = { 'ng': 1e-9, 'µg': 1e-6, 'mg': 1e-3, 'g': 1 };
+    const activityFactors_Bq = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'µCi': 37000, 'mCi': 3.7e7, 'Ci': 3.7e10 };
+    const timeUnits = { 'minutes': 60, 'hours': 3600, 'days': 86400, 'weeks': 604800 };
+    
+    React.useEffect(() => {
+        try {
+            setError('');
+            const val = safeParseFloat(amount);
+            const t_val = safeParseFloat(time);
+            
+            if (isNaN(val) || val <= 0 || isNaN(t_val) || t_val < 0) {
+                if(amount && time) setError("Inputs must be positive numbers.");
+                setResult(null); return;
+            }
+            
+            let ra226_activity_Bq = 0;
+            const isMass = Object.keys(massFactors_g).includes(unit);
+            
+            if (isMass) {
+                const mass_g = val * massFactors_g[unit];
+                ra226_activity_Bq = mass_g * RA226_SPECIFIC_ACTIVITY_BQ_PER_G;
+            } else {
+                ra226_activity_Bq = val * (activityFactors_Bq[unit] || 0);
+            }
+            
+            const time_s = t_val * (timeUnits[timeUnit] || 0);
+            
+            const rn222_activity_Bq = ra226_activity_Bq * (1 - Math.exp(-RN222_LAMBDA_PER_SECOND * time_s));
+            const percentEquilibrium = (rn222_activity_Bq / ra226_activity_Bq) * 100;
+            
+            const configKey = settings.unitSystem === 'si' ? 'activity_si' : 'activity_conventional';
+            
+            const ra226_base = settings.unitSystem === 'si' ? ra226_activity_Bq : ra226_activity_Bq / 3.7e10;
+            const rn222_base = settings.unitSystem === 'si' ? rn222_activity_Bq : rn222_activity_Bq / 3.7e10;
+            
+            setResult({
+                ra226_activity: formatSensibleUnit(ra226_base, configKey),
+                rn222_activity: formatSensibleUnit(rn222_base, configKey),
+                percentEquilibrium: percentEquilibrium.toFixed(2)
+            });
+            
+        } catch (e) { setError("Calculation failed."); setResult(null); }
+    }, [amount, unit, time, timeUnit, settings.unitSystem]);
+    
+    const handleSaveToHistory = () => {
+        if (result) {
+            addHistory({ id: Date.now(), type: 'Radon Ingrowth', icon: ICONS.radon, inputs: `${amount} ${unit} Ra-226, ${time} ${timeUnit}`, result: `${result.rn222_activity.value} ${result.rn222_activity.unit} Rn-222`, view: VIEWS.RADON });
+            addToast("Calculation saved to history!");
+        }
+    };
+    
+    return (
+        <div className="space-y-4">
+            <ContextualNote type="info">
+                <strong>Assumptions:</strong> Calculates theoretical max ingrowth in a hermetically sealed container. Actual levels will be lower if the container leaks Rn-222 gas.
+            </ContextualNote>
+            
+            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                <div>
+                    <label className="block text-sm font-medium">Source Quantity</label>
+                    <div className="flex">
+                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                        <select value={unit} onChange={e => setUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">
+                            <optgroup label="Mass">{Object.keys(massFactors_g).map(u => <option key={u} value={u}>{u}</option>)}</optgroup>
+                            <optgroup label="Activity">{(settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq'] : ['µCi', 'mCi', 'Ci']).map(u => <option key={u} value={u}>{u}</option>)}</optgroup>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium">Ingrowth Time</label>
+                    <div className="flex">
+                        <input type="number" value={time} onChange={e => setTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                        <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
+                    </div>
+                </div>
+            </div>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in">
+                    <div className="flex justify-between items-center -mt-2 -mb-2">
+                        <div></div>
+                        <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Resulting Rn-222 Activity</p>
+                        <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
+                            <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
+                                <Icon path={ICONS.notepad} className="w-5 h-5" />
+                            </button>
+                        </Tooltip>
+                    </div>
+                    <div className="flex items-center justify-center mt-2">
+                        <p className="text-4xl font-bold text-sky-600 dark:text-sky-400">{result.rn222_activity.value} <span className="text-2xl opacity-75">{result.rn222_activity.unit}</span></p>
+                        <CopyButton textToCopy={result.rn222_activity.value} />
+                    </div>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-2">Parent Activity: {result.ra226_activity.value} {result.ra226_activity.unit}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">({result.percentEquilibrium}% of secular equilibrium)</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// 3. Updated KusnetzCalculator (Hard Validation)
+const KusnetzCalculator = ({ flowRate, setFlowRate, sampleTime, setSampleTime, delayTime, setDelayTime, grossCounts, setGrossCounts, countDuration, setCountDuration, backgroundCpm, setBackgroundCpm, efficiency, setEfficiency, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    const KUSNETZ_FACTORS = { 40: 150, 45: 138, 50: 128, 55: 119, 60: 112, 65: 105, 70: 100, 75: 95, 80: 90, 85: 86, 90: 82 };
+    
+    React.useEffect(() => {
         localStorage.setItem('kusnetz_flowRate', flowRate); localStorage.setItem('kusnetz_sampleTime', sampleTime); localStorage.setItem('kusnetz_delayTime', delayTime);
         localStorage.setItem('kusnetz_grossCounts', grossCounts); localStorage.setItem('kusnetz_countDuration', countDuration);
         localStorage.setItem('kusnetz_backgroundCpm', backgroundCpm); localStorage.setItem('kusnetz_efficiency', efficiency);
-        }, [flowRate, sampleTime, delayTime, grossCounts, countDuration, backgroundCpm, efficiency]);
-        
-        const interpolate = (x, points) => {
+    }, [flowRate, sampleTime, delayTime, grossCounts, countDuration, backgroundCpm, efficiency]);
+    
+    const interpolate = (x, points) => {
         const keys = Object.keys(points).map(Number).sort((a, b) => a - b);
         if (x <= keys[0]) return points[keys[0]]; if (x >= keys[keys.length - 1]) return points[keys[keys.length - 1]];
         const x1 = Math.max(...keys.filter(k => k <= x)); const x2 = Math.min(...keys.filter(k => k > x));
         const y1 = points[x1]; const y2 = points[x2];
         return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
-        };
-        
-        React.useEffect(() => {
+    };
+    
+    React.useEffect(() => {
         try {
-        setError('');
-        const params = { V_flow: safeParseFloat(flowRate), T_sample: safeParseFloat(sampleTime), T_delay: safeParseFloat(delayTime), C_gross: safeParseFloat(grossCounts), T_count: safeParseFloat(countDuration), cpm_bkg: safeParseFloat(backgroundCpm), eff: safeParseFloat(efficiency) };
-        
-        if (Object.values(params).some(isNaN) || params.V_flow <= 0 || params.T_sample <= 0 || params.T_delay <= 0 || params.eff <= 0) {
-            if (Object.values(params).every(p => p || p === 0)) setError("Please enter valid positive numbers.");
-            setResult(null); return;
-        }
-        
-        // --- VALIDATION: Hard Stop for Invalid Time ---
-        if (params.T_delay < 40 || params.T_delay > 90) {
-            setError("Delay time must be between 40 and 90 minutes for the Kusnetz Method.");
-            setResult(null);
-            return;
-        }
-        
-        const totalVolume_L = params.V_flow * params.T_sample;
-        const gross_cpm = params.C_gross / params.T_count;
-        const net_cpm = gross_cpm - params.cpm_bkg;
-        const k_factor = interpolate(params.T_delay, KUSNETZ_FACTORS);
-        const workingLevel = net_cpm / (k_factor * (params.eff / 100) * totalVolume_L);
-        
-        setResult({ workingLevel: workingLevel.toPrecision(3), k_factor: k_factor.toFixed(1), totalVolume_L: totalVolume_L.toPrecision(3), net_cpm: net_cpm.toPrecision(3) });
+            setError('');
+            const params = { V_flow: safeParseFloat(flowRate), T_sample: safeParseFloat(sampleTime), T_delay: safeParseFloat(delayTime), C_gross: safeParseFloat(grossCounts), T_count: safeParseFloat(countDuration), cpm_bkg: safeParseFloat(backgroundCpm), eff: safeParseFloat(efficiency) };
+            
+            if (Object.values(params).some(isNaN) || params.V_flow <= 0 || params.T_sample <= 0 || params.T_delay <= 0 || params.eff <= 0) {
+                if (Object.values(params).every(p => p || p === 0)) setError("Please enter valid positive numbers.");
+                setResult(null); return;
+            }
+            
+            // --- VALIDATION: Hard Stop for Invalid Time ---
+            if (params.T_delay < 40 || params.T_delay > 90) {
+                setError("Delay time must be between 40 and 90 minutes for the Kusnetz Method.");
+                setResult(null);
+                return;
+            }
+            
+            const totalVolume_L = params.V_flow * params.T_sample;
+            const gross_cpm = params.C_gross / params.T_count;
+            const net_cpm = gross_cpm - params.cpm_bkg;
+            const k_factor = interpolate(params.T_delay, KUSNETZ_FACTORS);
+            const workingLevel = net_cpm / (k_factor * (params.eff / 100) * totalVolume_L);
+            
+            setResult({ workingLevel: workingLevel.toPrecision(3), k_factor: k_factor.toFixed(1), totalVolume_L: totalVolume_L.toPrecision(3), net_cpm: net_cpm.toPrecision(3) });
         } catch (e) { setError("Calculation error."); setResult(null); }
-        }, [flowRate, sampleTime, delayTime, grossCounts, countDuration, backgroundCpm, efficiency, setResult, setError]);
-        
-        const handleSaveToHistory = () => {
+    }, [flowRate, sampleTime, delayTime, grossCounts, countDuration, backgroundCpm, efficiency, setResult, setError]);
+    
+    const handleSaveToHistory = () => {
         if (result) {
-        addHistory({ id: Date.now(), type: 'Kusnetz Method (WL)', icon: ICONS.radon, inputs: `Delay: ${delayTime} min, Vol: ${result.totalVolume_L} L`, result: `${result.workingLevel} WL`, view: VIEWS.RADON });
-        addToast("Calculation saved to history!");
+            addHistory({ id: Date.now(), type: 'Kusnetz Method (WL)', icon: ICONS.radon, inputs: `Delay: ${delayTime} min, Vol: ${result.totalVolume_L} L`, result: `${result.workingLevel} WL`, view: VIEWS.RADON });
+            addToast("Calculation saved to history!");
         }
-        };
-        
-        return (
+    };
+    
+    return (
         <div className="space-y-4">
-        <p className="text-sm text-slate-600 dark:text-slate-400">Determine the Working Level (WL) of radon progeny.</p>
-        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-sm font-medium">Flow Rate (LPM)</label><input type="number" value={flowRate} onChange={e => setFlowRate(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" value={sampleTime} onChange={e => setSampleTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                <div><label className="block text-sm font-medium">Gross Counts</label><input type="number" value={grossCounts} onChange={e => setGrossCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                <div><label className="block text-sm font-medium">Count Duration (min)</label><input type="number" value={countDuration} onChange={e => setCountDuration(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                <div><label className="block text-sm font-medium">Background (cpm)</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                <div><label className="block text-sm font-medium">Alpha Efficiency (%)</label><input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-            </div>
-            <div><Tooltip text="Time between end-of-sampling and start-of-count. Standard method requires 40-90 mins."><label className="block text-sm font-medium">Delay Time (minutes)</label></Tooltip><input type="number" value={delayTime} onChange={e => setDelayTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-        </div>
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-        {result && (
-            <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in space-y-3">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                    <span className="font-semibold text-slate-600 dark:text-slate-300">Net Count Rate:</span><span className="font-mono text-right">{result.net_cpm} cpm</span>
-                    <span className="font-semibold text-slate-600 dark:text-slate-300">Total Air Volume:</span><span className="font-mono text-right">{result.totalVolume_L} L</span>
-                    <span className="font-semibold text-slate-600 dark:text-slate-300">Interpolated K Factor:</span><span className="font-mono text-right">{result.k_factor}</span>
+            <ContextualNote type="info">Determine the Working Level (WL) of radon progeny using the standard Kusnetz time-delay method.</ContextualNote>
+            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="block text-sm font-medium">Flow Rate (LPM)</label><input type="number" value={flowRate} onChange={e => setFlowRate(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                    <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" value={sampleTime} onChange={e => setSampleTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                    <div><label className="block text-sm font-medium">Gross Counts</label><input type="number" value={grossCounts} onChange={e => setGrossCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                    <div><label className="block text-sm font-medium">Count Duration (min)</label><input type="number" value={countDuration} onChange={e => setCountDuration(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                    <div><label className="block text-sm font-medium">Background (cpm)</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                    <div><label className="block text-sm font-medium">Alpha Efficiency (%)</label><input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                 </div>
-                <div className="text-center pt-3 border-t border-slate-300 dark:border-slate-600">
-                    <div className="flex justify-between items-center -mt-2 -mb-2">
-                        <div></div>
-                        <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Progeny Concentration</p>
-                        <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                        <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                            <Icon path={ICONS.notepad} className="w-5 h-5" />
-                        </button>
-                        </Tooltip>
+                <div><Tooltip text="Time between end-of-sampling and start-of-count. Standard method requires 40-90 mins."><label className="block text-sm font-medium cursor-help underline decoration-dotted">Delay Time (minutes)</label></Tooltip><input type="number" value={delayTime} onChange={e => setDelayTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+            </div>
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {result && (
+                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in space-y-3">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <span className="font-semibold text-slate-600 dark:text-slate-300">Net Count Rate:</span><span className="font-mono text-right">{result.net_cpm} cpm</span>
+                        <span className="font-semibold text-slate-600 dark:text-slate-300">Total Air Volume:</span><span className="font-mono text-right">{result.totalVolume_L} L</span>
+                        <span className="font-semibold text-slate-600 dark:text-slate-300">Interpolated K Factor:</span><span className="font-mono text-right">{result.k_factor}</span>
                     </div>
-                    <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.workingLevel}</p>
-                    <p className="text-md font-medium text-slate-600 dark:text-slate-300">Working Levels (WL)</p>
+                    <div className="text-center pt-3 border-t border-slate-300 dark:border-slate-600">
+                        <div className="flex justify-between items-center -mt-2 -mb-2">
+                            <div></div>
+                            <p className="font-semibold block text-sm text-slate-500 dark:text-slate-400">Calculated Progeny Concentration</p>
+                            <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
+                                <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
+                                    <Icon path={ICONS.notepad} className="w-5 h-5" />
+                                </button>
+                            </Tooltip>
+                        </div>
+                        <p className="text-3xl font-bold text-sky-600 dark:text-sky-400">{result.workingLevel}</p>
+                        <p className="text-md font-medium text-slate-600 dark:text-slate-300">Working Levels (WL)</p>
+                    </div>
                 </div>
-            </div>
-        )}
+            )}
         </div>
-        );
-        };
-        
-        /**
-        * @description The main container for the Radon Tools suite.
-        * It manages the shared state for the sub-calculators and handles tab navigation.
-        */
-        const RadonCalculator = ({ onNavClick }) => {
-        const { settings } = React.useContext(SettingsContext);
-        const [activeTab, setActiveTab] = React.useState('concentration');
-        
-        const isSI = settings.unitSystem === 'si';
-        
-        // --- 1. Concentration Tab State ---
-        const [conc_calcMode, setConc_calcMode] = React.useState(() => localStorage.getItem('radon_calcMode') || 'doseFromConc');
-        const [conc_concentration, setConc_concentration] = React.useState(() => localStorage.getItem('radon_concentration') || '4');
-        const [conc_unit, setConc_unit] = React.useState(() => {
+    );
+};
+
+/**
+ * @description The main container for the Radon Tools suite.
+ * It manages the shared state for the sub-calculators and handles tab navigation.
+ */
+const RadonCalculator = ({ onNavClick }) => {
+    const { settings } = React.useContext(SettingsContext);
+    const [activeTab, setActiveTab] = React.useState('concentration');
+    
+    const isSI = settings.unitSystem === 'si';
+    
+    // --- 1. Concentration Tab State ---
+    const [conc_calcMode, setConc_calcMode] = React.useState(() => localStorage.getItem('radon_calcMode') || 'doseFromConc');
+    const [conc_concentration, setConc_concentration] = React.useState(() => localStorage.getItem('radon_concentration') || '4');
+    const [conc_unit, setConc_unit] = React.useState(() => {
         const saved = localStorage.getItem('radon_unit');
         return saved || (isSI ? 'Bq/m³' : 'pCi/L');
-        });
-        const [conc_equilibriumFactor, setConc_equilibriumFactor] = React.useState(() => localStorage.getItem('radon_equilibriumFactor') || '0.4');
-        const [conc_workingLevel, setConc_workingLevel] = React.useState(() => localStorage.getItem('radon_workingLevel') || '0.02');
-        const [conc_occupancyFactor, setConc_occupancyFactor] = React.useState(() => localStorage.getItem('radon_occupancyFactor') || '1');
-        const [conc_result, setConc_result] = React.useState(null);
-        const [conc_error, setConc_error] = React.useState('');
-        
-        // --- 2. Ingrowth Tab State ---
-        const [ingrowth_amount, setIngrowth_amount] = React.useState('1');
-        const [ingrowth_unit, setIngrowth_unit] = React.useState('µg');
-        const [ingrowth_time, setIngrowth_time] = React.useState('30');
-        const [ingrowth_timeUnit, setIngrowth_timeUnit] = React.useState('days');
-        const [ingrowth_result, setIngrowth_result] = React.useState(null);
-        const [ingrowth_error, setIngrowth_error] = React.useState('');
-        
-        // --- 3. Kusnetz Tab State ---
-        const [kusnetz_flowRate, setKusnetz_flowRate] = React.useState(() => localStorage.getItem('kusnetz_flowRate') || '2');
-        const [kusnetz_sampleTime, setKusnetz_sampleTime] = React.useState(() => localStorage.getItem('kusnetz_sampleTime') || '5');
-        const [kusnetz_delayTime, setKusnetz_delayTime] = React.useState(() => localStorage.getItem('kusnetz_delayTime') || '40');
-        const [kusnetz_grossCounts, setKusnetz_grossCounts] = React.useState(() => localStorage.getItem('kusnetz_grossCounts') || '100');
-        const [kusnetz_countDuration, setKusnetz_countDuration] = React.useState(() => localStorage.getItem('kusnetz_countDuration') || '1');
-        const [kusnetz_backgroundCpm, setKusnetz_backgroundCpm] = React.useState(() => localStorage.getItem('kusnetz_backgroundCpm') || '0');
-        const [kusnetz_efficiency, setKusnetz_efficiency] = React.useState(() => localStorage.getItem('kusnetz_efficiency') || '30');
-        const [kusnetz_result, setKusnetz_result] = React.useState(null);
-        const [kusnetz_error, setKusnetz_error] = React.useState('');
-        
-        // Auto-switch units if system setting changes
-                    React.useEffect(() => {
-                if (isSI) {
-                    if (conc_unit === 'pCi/L') {
-                        setConc_unit('Bq/m³');
-                        setConc_concentration('148'); // Approx 4 pCi/L
-                    }
-                    if (['µCi', 'mCi', 'Ci'].includes(ingrowth_unit)) {
-                        setIngrowth_unit('kBq');
-                        setIngrowth_amount('1');
-                    }
-                } else {
-                    if (conc_unit === 'Bq/m³') {
-                        setConc_unit('pCi/L');
-                        setConc_concentration('4'); // EPA Action Level
-                    }
-                    if (['Bq', 'kBq', 'MBq', 'GBq'].includes(ingrowth_unit)) {
-                        setIngrowth_unit('µCi');
-                        setIngrowth_amount('1');
-                    }
-                }
-            }, [isSI]);
-        
-        const handleClearActiveCalculator = () => {
-        if (activeTab === 'concentration') {
-        setConc_concentration('4'); setConc_unit(isSI ? 'Bq/m³' : 'pCi/L');
-        setConc_equilibriumFactor('0.4'); setConc_workingLevel('0.02');
-        setConc_occupancyFactor('1'); setConc_result(null); setConc_error('');
-        } else if (activeTab === 'ingrowth') {
-        setIngrowth_amount('1'); setIngrowth_unit('µg'); setIngrowth_time('30');
-        setIngrowth_result(null); setIngrowth_error('');
+    });
+    const [conc_equilibriumFactor, setConc_equilibriumFactor] = React.useState(() => localStorage.getItem('radon_equilibriumFactor') || '0.4');
+    const [conc_workingLevel, setConc_workingLevel] = React.useState(() => localStorage.getItem('radon_workingLevel') || '0.02');
+    const [conc_occupancyFactor, setConc_occupancyFactor] = React.useState(() => localStorage.getItem('radon_occupancyFactor') || '1');
+    const [conc_result, setConc_result] = React.useState(null);
+    const [conc_error, setConc_error] = React.useState('');
+    
+    // --- 2. Ingrowth Tab State ---
+    const [ingrowth_amount, setIngrowth_amount] = React.useState('1');
+    const [ingrowth_unit, setIngrowth_unit] = React.useState('µg');
+    const [ingrowth_time, setIngrowth_time] = React.useState('30');
+    const [ingrowth_timeUnit, setIngrowth_timeUnit] = React.useState('days');
+    const [ingrowth_result, setIngrowth_result] = React.useState(null);
+    const [ingrowth_error, setIngrowth_error] = React.useState('');
+    
+    // --- 3. Kusnetz Tab State ---
+    const [kusnetz_flowRate, setKusnetz_flowRate] = React.useState(() => localStorage.getItem('kusnetz_flowRate') || '2');
+    const [kusnetz_sampleTime, setKusnetz_sampleTime] = React.useState(() => localStorage.getItem('kusnetz_sampleTime') || '5');
+    const [kusnetz_delayTime, setKusnetz_delayTime] = React.useState(() => localStorage.getItem('kusnetz_delayTime') || '40');
+    const [kusnetz_grossCounts, setKusnetz_grossCounts] = React.useState(() => localStorage.getItem('kusnetz_grossCounts') || '100');
+    const [kusnetz_countDuration, setKusnetz_countDuration] = React.useState(() => localStorage.getItem('kusnetz_countDuration') || '1');
+    const [kusnetz_backgroundCpm, setKusnetz_backgroundCpm] = React.useState(() => localStorage.getItem('kusnetz_backgroundCpm') || '0');
+    const [kusnetz_efficiency, setKusnetz_efficiency] = React.useState(() => localStorage.getItem('kusnetz_efficiency') || '30');
+    const [kusnetz_result, setKusnetz_result] = React.useState(null);
+    const [kusnetz_error, setKusnetz_error] = React.useState('');
+    
+    // Auto-switch units if system setting changes
+    React.useEffect(() => {
+        if (isSI) {
+            if (conc_unit === 'pCi/L') {
+                setConc_unit('Bq/m³');
+                setConc_concentration('148'); // Approx 4 pCi/L
+            }
+            if (['µCi', 'mCi', 'Ci'].includes(ingrowth_unit)) {
+                setIngrowth_unit('kBq');
+                setIngrowth_amount('1');
+            }
         } else {
-        setKusnetz_flowRate('2'); setKusnetz_sampleTime('5'); setKusnetz_delayTime('40');
-        setKusnetz_grossCounts('100'); setKusnetz_countDuration('1'); setKusnetz_backgroundCpm('0');
-        setKusnetz_efficiency('30'); setKusnetz_result(null); setKusnetz_error('');
+            if (conc_unit === 'Bq/m³') {
+                setConc_unit('pCi/L');
+                setConc_concentration('4'); // EPA Action Level
+            }
+            if (['Bq', 'kBq', 'MBq', 'GBq'].includes(ingrowth_unit)) {
+                setIngrowth_unit('µCi');
+                setIngrowth_amount('1');
+            }
         }
-        };
-        
-        return (
+    }, [isSI]);
+    
+    const handleClearActiveCalculator = () => {
+        if (activeTab === 'concentration') {
+            setConc_concentration('4'); setConc_unit(isSI ? 'Bq/m³' : 'pCi/L');
+            setConc_equilibriumFactor('0.4'); setConc_workingLevel('0.02');
+            setConc_occupancyFactor('1'); setConc_result(null); setConc_error('');
+        } else if (activeTab === 'ingrowth') {
+            setIngrowth_amount('1'); setIngrowth_unit('µg'); setIngrowth_time('30');
+            setIngrowth_result(null); setIngrowth_error('');
+        } else {
+            setKusnetz_flowRate('2'); setKusnetz_sampleTime('5'); setKusnetz_delayTime('40');
+            setKusnetz_grossCounts('100'); setKusnetz_countDuration('1'); setKusnetz_backgroundCpm('0');
+            setKusnetz_efficiency('30'); setKusnetz_result(null); setKusnetz_error('');
+        }
+    };
+    
+    return (
         <div className="p-4 animate-fade-in">
-        <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-        <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Radon Tools</h2>
-            <button onClick={handleClearActiveCalculator} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-                Clear Inputs
-            </button>
+            <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Radon Tools</h2>
+                    <button onClick={handleClearActiveCalculator} className="text-xs text-sky-600 dark:text-sky-400 hover:underline font-semibold flex items-center gap-1">
+                        <Icon path={ICONS.clear} className="w-3 h-3"/>
+                        Clear Inputs
+                    </button>
+                </div>
+                <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                    <button onClick={() => setActiveTab('concentration')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'concentration' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Concentration</button>
+                    <button onClick={() => setActiveTab('ingrowth')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'ingrowth' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Ingrowth</button>
+                    <button onClick={() => setActiveTab('kusnetz')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'kusnetz' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Kusnetz (WL)</button>
+                </div>
+                
+                {activeTab === 'concentration' &&
+                    <ConcentrationDoseModule
+                        calcMode={conc_calcMode} setCalcMode={setConc_calcMode}
+                        concentration={conc_concentration} setConcentration={setConc_concentration}
+                        unit={conc_unit} setUnit={setConc_unit}
+                        equilibriumFactor={conc_equilibriumFactor} setEquilibriumFactor={setConc_equilibriumFactor}
+                        workingLevel={conc_workingLevel} setWorkingLevel={setConc_workingLevel}
+                        occupancyFactor={conc_occupancyFactor} setOccupancyFactor={setConc_occupancyFactor}
+                        result={conc_result} setResult={setConc_result}
+                        error={conc_error} setError={setConc_error}
+                    />
+                }
+                
+                {activeTab === 'ingrowth' &&
+                    <RadonIngrowthCalculator
+                        amount={ingrowth_amount} setAmount={setIngrowth_amount}
+                        unit={ingrowth_unit} setUnit={setIngrowth_unit}
+                        time={ingrowth_time} setTime={setIngrowth_time}
+                        timeUnit={ingrowth_timeUnit} setTimeUnit={setIngrowth_timeUnit}
+                        result={ingrowth_result} setResult={setIngrowth_result}
+                        error={ingrowth_error} setError={setIngrowth_error}
+                    />
+                }
+                
+                {activeTab === 'kusnetz' &&
+                    <KusnetzCalculator
+                        flowRate={kusnetz_flowRate} setFlowRate={setKusnetz_flowRate}
+                        sampleTime={kusnetz_sampleTime} setSampleTime={setKusnetz_sampleTime}
+                        delayTime={kusnetz_delayTime} setDelayTime={setKusnetz_delayTime}
+                        grossCounts={kusnetz_grossCounts} setGrossCounts={setKusnetz_grossCounts}
+                        countDuration={kusnetz_countDuration} setCountDuration={setKusnetz_countDuration}
+                        backgroundCpm={kusnetz_backgroundCpm} setBackgroundCpm={setKusnetz_backgroundCpm}
+                        efficiency={kusnetz_efficiency} setEfficiency={setKusnetz_efficiency}
+                        result={kusnetz_result} setResult={setKusnetz_result}
+                        error={kusnetz_error} setError={setKusnetz_error}
+                    />
+                }
+            </div>
         </div>
-        <div className="flex w-full p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-            <button onClick={() => setActiveTab('concentration')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'concentration' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Concentration</button>
-            <button onClick={() => setActiveTab('ingrowth')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'ingrowth' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Ingrowth</button>
-            <button onClick={() => setActiveTab('kusnetz')} className={`w-1/3 p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'kusnetz' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Kusnetz (WL)</button>
-        </div>
-        
-        {activeTab === 'concentration' &&
-            <ConcentrationDoseModule
-                calcMode={conc_calcMode} setCalcMode={setConc_calcMode}
-                concentration={conc_concentration} setConcentration={setConc_concentration}
-                unit={conc_unit} setUnit={setConc_unit}
-                equilibriumFactor={conc_equilibriumFactor} setEquilibriumFactor={setConc_equilibriumFactor}
-                workingLevel={conc_workingLevel} setWorkingLevel={setConc_workingLevel}
-                occupancyFactor={conc_occupancyFactor} setOccupancyFactor={setConc_occupancyFactor}
-                result={conc_result} setResult={setConc_result}
-                error={conc_error} setError={setConc_error}
-            />
-        }
-        
-        {activeTab === 'ingrowth' &&
-            <RadonIngrowthCalculator
-                amount={ingrowth_amount} setAmount={setIngrowth_amount}
-                unit={ingrowth_unit} setUnit={setIngrowth_unit}
-                time={ingrowth_time} setTime={setIngrowth_time}
-                timeUnit={ingrowth_timeUnit} setTimeUnit={setIngrowth_timeUnit}
-                result={ingrowth_result} setResult={setIngrowth_result}
-                error={ingrowth_error} setError={setIngrowth_error}
-            />
-        }
-        
-        {activeTab === 'kusnetz' &&
-            <KusnetzCalculator
-                flowRate={kusnetz_flowRate} setFlowRate={setKusnetz_flowRate}
-                sampleTime={kusnetz_sampleTime} setSampleTime={setKusnetz_sampleTime}
-                delayTime={kusnetz_delayTime} setDelayTime={setKusnetz_delayTime}
-                grossCounts={kusnetz_grossCounts} setGrossCounts={setKusnetz_grossCounts}
-                countDuration={kusnetz_countDuration} setCountDuration={setKusnetz_countDuration}
-                backgroundCpm={kusnetz_backgroundCpm} setBackgroundCpm={setKusnetz_backgroundCpm}
-                efficiency={kusnetz_efficiency} setEfficiency={setKusnetz_efficiency}
-                result={kusnetz_result} setResult={setKusnetz_result}
-                error={kusnetz_error} setError={setKusnetz_error}
-            />
-        }
-        </div>
-        </div>
-        );
-        };
+    );
+};
 
         /**
         * @description A versatile dose rate calculator handling Gamma (Point/Line/Area), Beta, and Internal Dose.
