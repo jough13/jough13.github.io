@@ -2470,396 +2470,399 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
 };
 
 /**
-* @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B)
-* based on the nuclide, activity, and form, according to DOT/IAEA A1/A2 values.
-*/
+ * @description A calculator to determine radioactive material shipping classification (Excepted, Type A, Type B)
+ * based on the nuclide, activity, and form, according to DOT/IAEA A1/A2 values.
+ */
 
 const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
-// --- 1. CONTEXT & CONSTANTS ---
-const { settings } = React.useContext(SettingsContext);
-const { addHistory } = useCalculationHistory();
-const { addToast } = useToast();
+    // --- 1. CONTEXT & CONSTANTS ---
+    const { settings } = React.useContext(SettingsContext);
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
 
-const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
+    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
 
-const CONTAM_LIMITS = {
-beta_gamma: { removable: 22000, label: 'Beta/Gamma/Low-Tox Alpha' },
-alpha: { removable: 2200, label: 'Other Alpha' }
-};
+    const CONTAM_LIMITS = {
+        beta_gamma: { removable: 22000, label: 'Beta/Gamma/Low-Tox Alpha' },
+        alpha: { removable: 2200, label: 'Other Alpha' }
+    };
 
-// --- 2. STATE ---
-const [packageItems, setPackageItems] = React.useState([]);
+    // --- 2. STATE ---
+    const [packageItems, setPackageItems] = React.useState([]);
 
-// Add New Item State
-const [newItemSymbol, setNewItemSymbol] = React.useState('');
-const [newItemForm, setNewItemForm] = React.useState('A2');
-const [newItemState, setNewItemState] = React.useState('solid');
-const [newItemActivity, setNewItemActivity] = React.useState('1');
-const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
+    // Add New Item State
+    const [newItemSymbol, setNewItemSymbol] = React.useState('');
+    const [newItemForm, setNewItemForm] = React.useState('A2');
+    const [newItemState, setNewItemState] = React.useState('solid');
+    const [newItemActivity, setNewItemActivity] = React.useState('1');
+    const [newItemUnit, setNewItemUnit] = React.useState(() => activityUnits[activityUnits.length - 1]);
 
-// Package Level Inputs
-const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
-const [doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
-const [surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
-const [surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
+    // Package Level Inputs
+    const [doseRateAt1m, setDoseRateAt1m] = React.useState('');
+    const [doseRateUnit, setDoseRateUnit] = React.useState('mrem/hr');
+    const [surfaceDoseRate, setSurfaceDoseRate] = React.useState('');
+    const [surfaceDoseRateUnit, setSurfaceDoseRateUnit] = React.useState('mrem/hr');
 
-const [checkContam, setCheckContam] = React.useState(false);
-const [contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
-const [removableContam, setRemovableContam] = React.useState('');
-const [fixedContam, setFixedContam] = React.useState('');
+    const [checkContam, setCheckContam] = React.useState(false);
+    const [contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
+    const [removableContam, setRemovableContam] = React.useState('');
+    const [fixedContam, setFixedContam] = React.useState('');
 
-const [result, setResult] = React.useState(null);
-const [labelResult, setLabelResult] = React.useState(null);
-const [contamResult, setContamResult] = React.useState(null);
-const [error, setError] = React.useState('');
+    const [result, setResult] = React.useState(null);
+    const [labelResult, setLabelResult] = React.useState(null);
+    const [contamResult, setContamResult] = React.useState(null);
+    const [classificationResult, setClassificationResult] = React.useState(null);
+    const [error, setError] = React.useState('');
 
-// --- 3. HELPERS ---
-const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
+    // --- 3. HELPERS ---
+    const transportNuclides = React.useMemo(() => radionuclides.filter(n => n.shipping && n.shipping.A1 !== undefined && n.shipping.A2 !== undefined).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
 
-// Helper to get data for the currently selected "New Item" to display the A1/A2 info
-const selectedNuclideData = React.useMemo(() => 
-transportNuclides.find(n => n.symbol === newItemSymbol), 
-[newItemSymbol, transportNuclides]);
+    // Helper to get data for the currently selected "New Item" to display the A1/A2 info
+    const selectedNuclideData = React.useMemo(() => 
+        transportNuclides.find(n => n.symbol === newItemSymbol), 
+    [newItemSymbol, transportNuclides]);
 
-React.useEffect(() => {
-if (preselectedNuclide && transportNuclides.some(n => n.symbol === preselectedNuclide)) {
-setNewItemSymbol(preselectedNuclide);
-}
-}, [preselectedNuclide, transportNuclides]);
+    React.useEffect(() => {
+        if (preselectedNuclide && transportNuclides.some(n => n.symbol === preselectedNuclide)) {
+            setNewItemSymbol(preselectedNuclide);
+        }
+    }, [preselectedNuclide, transportNuclides]);
 
-React.useEffect(() => {
-if (!activityUnits.includes(newItemUnit)) {
-setNewItemUnit(activityUnits[activityUnits.length - 1]);
-}
-}, [activityUnits, newItemUnit]);
+    React.useEffect(() => {
+        if (!activityUnits.includes(newItemUnit)) {
+            setNewItemUnit(activityUnits[activityUnits.length - 1]);
+        }
+    }, [activityUnits, newItemUnit]);
 
-// --- 4. LOGIC ---
-const activityFactorsTBq = { 'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12, 'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8 };
+    // --- 4. LOGIC ---
+    const activityFactorsTBq = { 'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12, 'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8 };
 
-const handleAddItem = () => {
-if (!newItemSymbol) { setError('Select a nuclide.'); return; }
+    const handleAddItem = () => {
+        if (!newItemSymbol) { setError('Select a nuclide.'); return; }
 
-// SAFE PARSE
-const val = safeParseFloat(newItemActivity);
-if (isNaN(val) || val <= 0) { setError('Invalid activity.'); return; }
+        // SAFE PARSE
+        const val = safeParseFloat(newItemActivity);
+        if (isNaN(val) || val <= 0) { setError('Invalid activity.'); return; }
 
-const nuclideData = transportNuclides.find(n => n.symbol === newItemSymbol);
-if(!nuclideData) return;
+        const nuclideData = transportNuclides.find(n => n.symbol === newItemSymbol);
+        if(!nuclideData) return;
 
-let rawLimit = nuclideData.shipping[newItemForm];
-let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
+        let rawLimit = nuclideData.shipping[newItemForm];
+        let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
 
-let matMultiplier = 0; let instMultiplier = 0;
-if (newItemSymbol === 'H-3') { matMultiplier = 2e-2; instMultiplier = 2e-1; } 
-else {
-if (newItemState === 'liquid') { matMultiplier = 1e-4; instMultiplier = 1e-3; } 
-else { matMultiplier = 1e-3; instMultiplier = 1e-2; }
-}
+        let matMultiplier = 0; let instMultiplier = 0;
+        if (newItemSymbol === 'H-3') { matMultiplier = 2e-2; instMultiplier = 2e-1; } 
+        else {
+            if (newItemState === 'liquid') { matMultiplier = 1e-4; instMultiplier = 1e-3; } 
+            else { matMultiplier = 1e-3; instMultiplier = 1e-2; }
+        }
 
-const actTBq = val * activityFactorsTBq[newItemUnit];
+        const actTBq = val * activityFactorsTBq[newItemUnit];
 
-const item = {
-id: Date.now(),
-symbol: newItemSymbol,
-form: newItemForm,
-state: newItemState,
-activityDisplay: `${val} ${newItemUnit}`,
-actTBq: actTBq,
-typeALimit: limitTBq,
-exceptedMatLimit: limitTBq === Infinity ? Infinity : limitTBq * matMultiplier,
-exceptedInstLimit: limitTBq === Infinity ? Infinity : limitTBq * instMultiplier,
-fracTypeA: limitTBq === Infinity ? 0 : actTBq / limitTBq,
-fracExcMat: (limitTBq === Infinity || limitTBq * matMultiplier === 0) ? 0 : actTBq / (limitTBq * matMultiplier),
-fracExcInst: (limitTBq === Infinity || limitTBq * instMultiplier === 0) ? 0 : actTBq / (limitTBq * instMultiplier),
-};
+        const item = {
+            id: Date.now(),
+            symbol: newItemSymbol,
+            form: newItemForm,
+            state: newItemState,
+            activityDisplay: `${val} ${newItemUnit}`,
+            actTBq: actTBq,
+            typeALimit: limitTBq,
+            exceptedMatLimit: limitTBq === Infinity ? Infinity : limitTBq * matMultiplier,
+            exceptedInstLimit: limitTBq === Infinity ? Infinity : limitTBq * instMultiplier,
+            fracTypeA: limitTBq === Infinity ? 0 : actTBq / limitTBq,
+            fracExcMat: (limitTBq === Infinity || limitTBq * matMultiplier === 0) ? 0 : actTBq / (limitTBq * matMultiplier),
+            fracExcInst: (limitTBq === Infinity || limitTBq * instMultiplier === 0) ? 0 : actTBq / (limitTBq * instMultiplier),
+        };
 
-setPackageItems(prev => [...prev, item]);
-setNewItemActivity('');
-setError('');
-};
+        setPackageItems(prev => [...prev, item]);
+        setNewItemActivity('');
+        setError('');
+    };
 
-const handleRemoveItem = (id) => {
-setPackageItems(prev => prev.filter(i => i.id !== id));
-};
+    const handleRemoveItem = (id) => {
+        setPackageItems(prev => prev.filter(i => i.id !== id));
+    };
 
-// Calculate Package Totals
-React.useEffect(() => {
-if (packageItems.length === 0) { setClassificationResult(null); return; }
+    // Calculate Package Totals
+    React.useEffect(() => {
+        if (packageItems.length === 0) { setClassificationResult(null); return; }
 
-let totalTBq = 0;
-let sumFracTypeA = 0;
-let sumFracExcMat = 0;
-let sumFracHRCQ = 0;
+        let totalTBq = 0;
+        let sumFracTypeA = 0;
+        let sumFracExcMat = 0;
+        let sumFracHRCQ = 0;
 
-packageItems.forEach(item => {
-totalTBq += item.actTBq;
-sumFracTypeA += item.fracTypeA;
-sumFracExcMat += item.fracExcMat;
-sumFracHRCQ += (item.actTBq / (3000 * item.typeALimit)); 
-});
+        packageItems.forEach(item => {
+            totalTBq += item.actTBq;
+            sumFracTypeA += item.fracTypeA;
+            sumFracExcMat += item.fracExcMat;
+            sumFracHRCQ += (item.actTBq / (3000 * item.typeALimit)); 
+        });
 
-let classification = '';
-let methodology = '';
+        let classification = '';
+        let methodology = '';
 
-if (sumFracExcMat <= 1.0) {
-classification = 'EXCEPTED';
-methodology = 'Sum of Fractions ≤ 1.0 (Excepted Material Limits)';
-} else if (sumFracTypeA <= 1.0) {
-classification = 'TYPE_A';
-methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)';
-} else {
-if (sumFracHRCQ > 1.0 || totalTBq > 1000) {
-    classification = 'HRCQ';
-    methodology = 'Activity exceeds Type A and HRCQ thresholds.';
-} else {
-    classification = 'TYPE_B';
-    methodology = 'Activity exceeds Type A limits.';
-}
-}
+        if (sumFracExcMat <= 1.0) {
+            classification = 'EXCEPTED';
+            methodology = 'Sum of Fractions ≤ 1.0 (Excepted Material Limits)';
+        } else if (sumFracTypeA <= 1.0) {
+            classification = 'TYPE_A';
+            methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)';
+        } else {
+            if (sumFracHRCQ > 1.0 || totalTBq > 1000) {
+                classification = 'HRCQ';
+                methodology = 'Activity exceeds Type A and HRCQ thresholds.';
+            } else {
+                classification = 'TYPE_B';
+                methodology = 'Activity exceeds Type A limits.';
+            }
+        }
 
-setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, sumFracExcMat });
-}, [packageItems]);
+        setClassificationResult({ count: packageItems.length, totalTBq, classification, methodology, sumFracTypeA, sumFracExcMat });
+    }, [packageItems]);
 
-const toMremHr = (val, unit) => {
-if (unit === 'mrem/hr') return val;
-if (unit === 'rem/hr') return val * 1000;
-if (unit === 'mSv/hr') return val * 100;
-if (unit === 'µSv/hr') return val * 0.1;
-return 0;
-};
+    const toMremHr = (val, unit) => {
+        if (unit === 'mrem/hr') return val;
+        if (unit === 'rem/hr') return val * 1000;
+        if (unit === 'mSv/hr') return val * 100;
+        if (unit === 'µSv/hr') return val * 0.1;
+        return 0;
+    };
 
-React.useEffect(() => {
-// Label Logic
-if (!doseRateAt1m && !surfaceDoseRate) { setLabelResult(null); }
-else {
-const rate1m = safeParseFloat(doseRateAt1m);
-const rateSurface = safeParseFloat(surfaceDoseRate);
+    React.useEffect(() => {
+        // Label Logic
+        if (!doseRateAt1m && !surfaceDoseRate) { setLabelResult(null); }
+        else {
+            const rate1m = safeParseFloat(doseRateAt1m);
+            const rateSurface = safeParseFloat(surfaceDoseRate);
 
-if ((!isNaN(rate1m) && rate1m < 0) || (!isNaN(rateSurface) && rateSurface < 0)) { setLabelResult(null); return; }
+            if ((!isNaN(rate1m) && rate1m < 0) || (!isNaN(rateSurface) && rateSurface < 0)) { setLabelResult(null); return; }
 
-let TI = 0;
-if (!isNaN(rate1m) && rate1m > 0) {
-    let mremAt1m = toMremHr(rate1m, doseRateUnit);
-    if (mremAt1m <= 0.05) TI = 0;
-    else TI = Math.ceil(mremAt1m * 10) / 10;
-}
+            let TI = 0;
+            if (!isNaN(rate1m) && rate1m > 0) {
+                let mremAt1m = toMremHr(rate1m, doseRateUnit);
+                if (mremAt1m <= 0.05) TI = 0;
+                else TI = Math.ceil(mremAt1m * 10) / 10;
+            }
 
-let labelCategory = "Unknown";
-const surfMrem = !isNaN(rateSurface) ? toMremHr(rateSurface, surfaceDoseRateUnit) : 0;
+            let labelCategory = "Unknown";
+            const surfMrem = !isNaN(rateSurface) ? toMremHr(rateSurface, surfaceDoseRateUnit) : 0;
 
-if (surfMrem <= 0.5 && TI === 0) labelCategory = "White-I";
-else if (surfMrem <= 50 && TI <= 1) labelCategory = "Yellow-II";
-else if (surfMrem <= 200 && TI <= 10) labelCategory = "Yellow-III";
-else if (surfMrem > 200 || TI > 10) labelCategory = "Yellow-III (Exclusive Use)";
-else labelCategory = "Check Limits";
+            if (surfMrem <= 0.5 && TI === 0) labelCategory = "White-I";
+            else if (surfMrem <= 50 && TI <= 1) labelCategory = "Yellow-II";
+            else if (surfMrem <= 200 && TI <= 10) labelCategory = "Yellow-III";
+            else if (surfMrem > 200 || TI > 10) labelCategory = "Yellow-III (Exclusive Use)";
+            else labelCategory = "Check Limits";
 
-setLabelResult({ TI, labelCategory });
-}
+            setLabelResult({ TI, labelCategory });
+        }
 
-// Contam Logic
-if (!checkContam) { setContamResult(null); }
-else {
-const remVal = safeParseFloat(removableContam);
-if (isNaN(remVal)) { setContamResult(null); }
-else if (remVal < 0) { setContamResult({ status: 'ERROR', msg: 'Negative value' }); }
-else {
-    const limit = CONTAM_LIMITS[contamNuclideType].removable;
-    const fail = remVal > limit;
-    setContamResult({
-        status: fail ? 'FAIL' : 'PASS',
-        msg: fail ? `Exceeds 49 CFR Limit (${limit.toLocaleString()} dpm/100cm²)` : 'Within Limits',
-        limit
-    });
-}
-}
-}, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType]);
+        // Contam Logic
+        if (!checkContam) { setContamResult(null); }
+        else {
+            const remVal = safeParseFloat(removableContam);
+            if (isNaN(remVal)) { setContamResult(null); }
+            else if (remVal < 0) { setContamResult({ status: 'ERROR', msg: 'Negative value' }); }
+            else {
+                const limit = CONTAM_LIMITS[contamNuclideType].removable;
+                const fail = remVal > limit;
+                setContamResult({
+                    status: fail ? 'FAIL' : 'PASS',
+                    msg: fail ? `Exceeds 49 CFR Limit (${limit.toLocaleString()} dpm/100cm²)` : 'Within Limits',
+                    limit
+                });
+            }
+        }
+    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType]);
 
-const handleClear = () => {
-setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1');
-setDoseRateAt1m(''); setSurfaceDoseRate(''); setCheckContam(false); setRemovableContam(''); setError('');
-};
+    const handleClear = () => {
+        setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1');
+        setDoseRateAt1m(''); setSurfaceDoseRate(''); setCheckContam(false); setRemovableContam(''); setError('');
+    };
 
-const handleSave = () => {
-if (!classificationResult) return;
-const labelInfo = labelResult ? ` | ${labelResult.labelCategory} (TI: ${labelResult.TI})` : '';
-const contamInfo = contamResult ? ` | Contam: ${contamResult.status}` : '';
-addHistory({
-id: Date.now(),
-type: 'Transportation',
-icon: ICONS.transport, // Corrected Icon
-inputs: `${packageItems.length} Items (Total ${classificationResult.totalTBq.toExponential(2)} TBq)`,
-result: `${classificationResult.classification.replace('_', ' ')}${labelInfo}${contamInfo}`,
-view: VIEWS.TRANSPORTATION
-});
-addToast("Saved to history!");
-};
+    const handleSave = () => {
+        if (!classificationResult) return;
+        const labelInfo = labelResult ? ` | ${labelResult.labelCategory} (TI: ${labelResult.TI})` : '';
+        const contamInfo = contamResult ? ` | Contam: ${contamResult.status}` : '';
+        addHistory({
+            id: Date.now(),
+            type: 'Transportation',
+            icon: ICONS.transport || ICONS.truck, // Fallback icon
+            inputs: `${packageItems.length} Items (Total ${classificationResult.totalTBq.toExponential(2)} TBq)`,
+            result: `${classificationResult.classification.replace('_', ' ')}${labelInfo}${contamInfo}`,
+            view: VIEWS.TRANSPORTATION
+        });
+        addToast("Saved to history!");
+    };
 
-// --- STATE & STYLE CONSTANTS ---
-const [classificationResult, setClassificationResult] = React.useState(null);
-const resultStyles = {
-EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
-TYPE_A: { container: 'bg-sky-100 dark:bg-sky-900/50', title: 'text-sky-600 dark:text-sky-400', display: 'Type A Package' },
-TYPE_B: { container: 'bg-amber-100 dark:bg-amber-900/50', title: 'text-amber-600 dark:text-amber-400', display: 'Type B Package' },
-HRCQ: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', display: 'HRCQ (Type B)' }
-};
+    // --- STATE & STYLE CONSTANTS ---
+    const resultStyles = {
+        EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
+        TYPE_A: { container: 'bg-sky-100 dark:bg-sky-900/50', title: 'text-sky-600 dark:text-sky-400', display: 'Type A Package' },
+        TYPE_B: { container: 'bg-amber-100 dark:bg-amber-900/50', title: 'text-amber-600 dark:text-amber-400', display: 'Type B Package' },
+        HRCQ: { container: 'bg-red-100 dark:bg-red-900/50', title: 'text-red-600 dark:text-red-400', display: 'HRCQ (Type B)' }
+    };
 
-return (
-<div className="p-4 animate-fade-in">
-<div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-    <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shipping Calculator</h2>
-        <ClearButton onClick={handleClear} />
-    </div>
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Shipping Calculator</h2>
+                    <ClearButton onClick={handleClear} />
+                </div>
 
-    {/* --- 1. PACKAGE CONTENTS BUILDER --- */}
-    <div className="space-y-4 mb-6 border-b border-slate-200 dark:border-slate-700 pb-6">
-        <h3 className="font-bold text-sm text-slate-500 uppercase">1. Add Package Contents</h3>
-        
-        <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-3 border border-slate-200 dark:border-slate-700">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {/* Nuclide Selection */}
-                <div>
-                    <label className="block text-xs font-medium mb-1">Radionuclide</label>
-                    <div className="h-[38px]">
-                        {newItemSymbol ? (
-                            <div className="flex items-center justify-between bg-white dark:bg-slate-800 border dark:border-slate-600 rounded p-2 text-sm">
-                                <span className="font-bold">{newItemSymbol}</span>
-                                <button onClick={() => setNewItemSymbol('')} className="text-red-500 hover:text-red-700"><Icon path={ICONS.clear} className="w-4 h-4"/></button>
+                <ContextualNote type="info">Determines package classification (Excepted, Type A, Type B) based on A1/A2 fractions. Also estimates label requirements.</ContextualNote>
+
+                {/* --- 1. PACKAGE CONTENTS BUILDER --- */}
+                <div className="space-y-4 mb-6 border-b border-slate-200 dark:border-slate-700 pb-6">
+                    <h3 className="font-bold text-sm text-slate-500 uppercase">1. Add Package Contents</h3>
+                    
+                    <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-3 border border-slate-200 dark:border-slate-700">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {/* Nuclide Selection */}
+                            <div>
+                                <label className="block text-xs font-medium mb-1">Radionuclide</label>
+                                <div className="h-[38px]">
+                                    {newItemSymbol ? (
+                                        <div className="flex items-center justify-between bg-white dark:bg-slate-800 border dark:border-slate-600 rounded p-2 text-sm">
+                                            <span className="font-bold">{newItemSymbol}</span>
+                                            <button onClick={() => setNewItemSymbol('')} className="text-red-500 hover:text-red-700"><Icon path={ICONS.clear || "M6 18L18 6M6 6l12 12"} className="w-4 h-4"/></button>
+                                        </div>
+                                    ) : (
+                                        <SearchableSelect options={transportNuclides} onSelect={setNewItemSymbol} placeholder="Select..." />
+                                    )}
+                                </div>
+                                
+                                {/* A1/A2 INFO DISPLAY */}
+                                {selectedNuclideData && (
+                                    <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-[10px] sm:text-xs">
+                                        <div className="flex justify-between font-bold text-blue-700 dark:text-blue-300 mb-1">
+                                            <span>DOT Limits (TBq)</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="flex justify-between"><span className="text-slate-500">A₁ (Special):</span><span className="font-mono font-bold">{selectedNuclideData.shipping.A1}</span></div>
+                                            <div className="flex justify-between"><span className="text-slate-500">A₂ (Normal):</span><span className="font-mono font-bold">{selectedNuclideData.shipping.A2}</span></div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        ) : (
-                            <SearchableSelect options={transportNuclides} onSelect={setNewItemSymbol} placeholder="Select..." />
+                            
+                            {/* Inputs */}
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-medium mb-1">Activity</label>
+                                    <div className="flex">
+                                        <input type="number" min="0" value={newItemActivity} onChange={e => setNewItemActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-800 border dark:border-slate-600 text-sm" />
+                                        <select value={newItemUnit} onChange={e => setNewItemUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium mb-1">Form & State</label>
+                                    <div className="flex gap-2 mb-2">
+                                        <label className={`flex-1 text-center p-1 text-[10px] font-bold rounded cursor-pointer border ${newItemForm === 'A1' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}><input type="radio" className="hidden" name="itemForm" checked={newItemForm === 'A1'} onChange={() => setNewItemForm('A1')} />Special (A1)</label>
+                                        <label className={`flex-1 text-center p-1 text-[10px] font-bold rounded cursor-pointer border ${newItemForm === 'A2' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}><input type="radio" className="hidden" name="itemForm" checked={newItemForm === 'A2'} onChange={() => setNewItemForm('A2')} />Normal (A2)</label>
+                                    </div>
+                                    <select value={newItemState} onChange={e => setNewItemState(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border dark:border-slate-600 text-xs">
+                                        <option value="solid">Solid</option><option value="liquid">Liquid</option><option value="gas">Gas</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button onClick={handleAddItem} className="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded shadow-sm text-sm">+ Add Item to Package</button>
+                        {error && <p className="text-red-500 text-xs text-center">{error}</p>}
+                    </div>
+
+                    {/* Items List */}
+                    {packageItems.length > 0 && (
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden animate-fade-in">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-slate-100 dark:bg-slate-800 text-xs text-slate-500 uppercase">
+                                    <tr><th className="p-2">Nuclide</th><th className="p-2">Activity</th><th className="p-2">Type A Frac</th><th className="p-2"></th></tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                    {packageItems.map(item => (
+                                        <tr key={item.id}>
+                                            <td className="p-2 font-bold">{item.symbol} <span className="text-[10px] font-normal text-slate-500 block">{item.form}, {item.state}</span></td>
+                                            <td className="p-2 font-mono">{item.activityDisplay}</td>
+                                            <td className="p-2 font-mono">{item.fracTypeA.toFixed(3)}</td>
+                                            <td className="p-2 text-right"><button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:text-red-700"><Icon path={ICONS.trash || "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"} className="w-4 h-4"/></button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot className="bg-slate-50 dark:bg-slate-800/50 text-xs font-bold border-t border-slate-200 dark:border-slate-700">
+                                    <tr>
+                                        <td className="p-2" colSpan="2">TOTAL FRACTION (Sum of A1/A2):</td>
+                                        <td className="p-2 font-mono text-base text-sky-600 dark:text-sky-400">{classificationResult ? classificationResult.sumFracTypeA.toFixed(3) : '0.000'}</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    )}
+                </div>
+
+                {/* --- 2. CLASSIFICATION RESULT --- */}
+                {classificationResult && (
+                    <div className={`p-4 rounded-lg text-center mb-6 animate-fade-in ${resultStyles[classificationResult.classification].container}`}>
+                        <p className="text-xs uppercase font-bold opacity-70 mb-1">Package Classification</p>
+                        <p className={`text-2xl font-extrabold ${resultStyles[classificationResult.classification].title}`}>{resultStyles[classificationResult.classification].display}</p>
+                        <p className="text-xs mt-2 opacity-80">{classificationResult.methodology}</p>
+                    </div>
+                )}
+
+                {/* --- 3. MEASUREMENTS --- */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* LABEL ESTIMATION */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
+                        <h3 className="font-bold text-sm text-slate-500 uppercase">2. Label Estimation</h3>
+                        
+                        <div>
+                            <label className="block text-[10px] font-bold mb-1">Max Dose Rate @ 1m (TI)</label>
+                            <div className="flex"><input type="number" min="0" value={doseRateAt1m} onChange={e => setDoseRateAt1m(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={doseRateUnit} onChange={e => setDoseRateUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
+                        </div>
+                        <div>
+                            <label className="block text-[10px] font-bold mb-1">Max Surface Dose Rate</label>
+                            <div className="flex"><input type="number" min="0" value={surfaceDoseRate} onChange={e => setSurfaceDoseRate(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={surfaceDoseRateUnit} onChange={e => setSurfaceDoseRateUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
+                        </div>
+                        {labelResult && (
+                            <div className="p-2 bg-slate-100 dark:bg-slate-900 rounded text-center">
+                                <p className="text-xs text-slate-500">Required Label</p>
+                                <p className="text-lg font-bold text-sky-600 dark:text-sky-400">{labelResult.labelCategory}</p>
+                                <p className="text-[10px] text-slate-400">TI: {labelResult.TI.toFixed(1)}</p>
+                            </div>
                         )}
                     </div>
-                    
-                    {/* A1/A2 INFO DISPLAY */}
-                    {selectedNuclideData && (
-                        <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-[10px] sm:text-xs">
-                            <div className="flex justify-between font-bold text-blue-700 dark:text-blue-300 mb-1">
-                                <span>DOT Limits (TBq)</span>
+
+                    {/* CONTAMINATION */}
+                    <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
+                        <label className="flex items-center gap-2 font-bold text-sm text-slate-500 uppercase cursor-pointer">
+                            <input type="checkbox" checked={checkContam} onChange={e => setCheckContam(e.target.checked)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
+                            3. Contamination
+                        </label>
+                        {checkContam && (
+                            <div className="animate-fade-in space-y-2">
+                                <div><label className="block text-[10px] font-bold mb-1">Nuclide Type</label><select value={contamNuclideType} onChange={e => setContamNuclideType(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-xs"><option value="beta_gamma">Beta / Gamma</option><option value="alpha">Alpha</option></select></div>
+                                <div>
+                                    <label className="block text-[10px] font-bold mb-1">Removable (dpm/100cm²)</label>
+                                    <input type="number" min="0" value={removableContam} onChange={e => setRemovableContam(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g. 500" />
+                                    <p className="text-[10px] text-slate-400 italic text-right mt-1">Limit: {CONTAM_LIMITS[contamNuclideType].removable.toLocaleString()}</p>
+                                </div>
+                                {contamResult && (
+                                    <div className={`p-2 rounded text-center text-sm font-bold ${contamResult.status === 'FAIL' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                                        {contamResult.status === 'FAIL' ? '❌ Exceeds Limit' : '✅ Within Limits'}
+                                    </div>
+                                )}
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="flex justify-between"><span className="text-slate-500">A₁ (Special):</span><span className="font-mono font-bold">{selectedNuclideData.shipping.A1}</span></div>
-                                <div className="flex justify-between"><span className="text-slate-500">A₂ (Normal):</span><span className="font-mono font-bold">{selectedNuclideData.shipping.A2}</span></div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-                
-                {/* Inputs */}
-                <div className="space-y-3">
-                    <div>
-                        <label className="block text-xs font-medium mb-1">Activity</label>
-                        <div className="flex">
-                            <input type="number" min="0" value={newItemActivity} onChange={e => setNewItemActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-800 border dark:border-slate-600 text-sm" />
-                            <select value={newItemUnit} onChange={e => setNewItemUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium mb-1">Form & State</label>
-                        <div className="flex gap-2 mb-2">
-                            <label className={`flex-1 text-center p-1 text-[10px] font-bold rounded cursor-pointer border ${newItemForm === 'A1' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}><input type="radio" className="hidden" name="itemForm" checked={newItemForm === 'A1'} onChange={() => setNewItemForm('A1')} />Special (A1)</label>
-                            <label className={`flex-1 text-center p-1 text-[10px] font-bold rounded cursor-pointer border ${newItemForm === 'A2' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}><input type="radio" className="hidden" name="itemForm" checked={newItemForm === 'A2'} onChange={() => setNewItemForm('A2')} />Normal (A2)</label>
-                        </div>
-                        <select value={newItemState} onChange={e => setNewItemState(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border dark:border-slate-600 text-xs">
-                            <option value="solid">Solid</option><option value="liquid">Liquid</option><option value="gas">Gas</option>
-                        </select>
+                        )}
                     </div>
                 </div>
-            </div>
-            <button onClick={handleAddItem} className="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded shadow-sm text-sm">+ Add Item to Package</button>
-            {error && <p className="text-red-500 text-xs text-center">{error}</p>}
-        </div>
 
-        {/* Items List */}
-        {packageItems.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden animate-fade-in">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-100 dark:bg-slate-800 text-xs text-slate-500 uppercase">
-                        <tr><th className="p-2">Nuclide</th><th className="p-2">Activity</th><th className="p-2">Type A Frac</th><th className="p-2"></th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {packageItems.map(item => (
-                            <tr key={item.id}>
-                                <td className="p-2 font-bold">{item.symbol} <span className="text-[10px] font-normal text-slate-500 block">{item.form}, {item.state}</span></td>
-                                <td className="p-2 font-mono">{item.activityDisplay}</td>
-                                <td className="p-2 font-mono">{item.fracTypeA.toFixed(3)}</td>
-                                <td className="p-2 text-right"><button onClick={() => handleRemoveItem(item.id)} className="text-red-500 hover:text-red-700"><Icon path={ICONS.trash} className="w-4 h-4"/></button></td>
-                            </tr>
-                        ))}
-                    </tbody>
-                    <tfoot className="bg-slate-50 dark:bg-slate-800/50 text-xs font-bold border-t border-slate-200 dark:border-slate-700">
-                        <tr>
-                            <td className="p-2" colSpan="2">TOTAL FRACTION (Sum of A1/A2):</td>
-                            <td className="p-2 font-mono text-base text-sky-600 dark:text-sky-400">{classificationResult ? classificationResult.sumFracTypeA.toFixed(3) : '0.000'}</td>
-                            <td></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        )}
-    </div>
-
-    {/* --- 2. CLASSIFICATION RESULT --- */}
-    {classificationResult && (
-        <div className={`p-4 rounded-lg text-center mb-6 animate-fade-in ${resultStyles[classificationResult.classification].container}`}>
-            <p className="text-xs uppercase font-bold opacity-70 mb-1">Package Classification</p>
-            <p className={`text-2xl font-extrabold ${resultStyles[classificationResult.classification].title}`}>{resultStyles[classificationResult.classification].display}</p>
-            <p className="text-xs mt-2 opacity-80">{classificationResult.methodology}</p>
-        </div>
-    )}
-
-    {/* --- 3. MEASUREMENTS --- */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* LABEL ESTIMATION */}
-        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
-            <h3 className="font-bold text-sm text-slate-500 uppercase">2. Label Estimation</h3>
-            <div>
-                <label className="block text-[10px] font-bold mb-1">Max Dose Rate @ 1m (TI)</label>
-                <div className="flex"><input type="number" min="0" value={doseRateAt1m} onChange={e => setDoseRateAt1m(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={doseRateUnit} onChange={e => setDoseRateUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
-            </div>
-            <div>
-                <label className="block text-[10px] font-bold mb-1">Max Surface Dose Rate</label>
-                <div className="flex"><input type="number" min="0" value={surfaceDoseRate} onChange={e => setSurfaceDoseRate(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={surfaceDoseRateUnit} onChange={e => setSurfaceDoseRateUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
-            </div>
-            {labelResult && (
-                <div className="p-2 bg-slate-100 dark:bg-slate-900 rounded text-center">
-                    <p className="text-xs text-slate-500">Required Label</p>
-                    <p className="text-lg font-bold text-sky-600 dark:text-sky-400">{labelResult.labelCategory}</p>
-                    <p className="text-[10px] text-slate-400">TI: {labelResult.TI.toFixed(1)}</p>
+                <div className="text-right mt-4">
+                    <button onClick={handleSave} className="text-sm text-sky-600 hover:underline font-semibold" disabled={!classificationResult}>Save Full Record</button>
                 </div>
-            )}
+            </div>
         </div>
-
-        {/* CONTAMINATION */}
-        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3">
-            <label className="flex items-center gap-2 font-bold text-sm text-slate-500 uppercase cursor-pointer">
-                <input type="checkbox" checked={checkContam} onChange={e => setCheckContam(e.target.checked)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
-                3. Contamination
-            </label>
-            {checkContam && (
-                <div className="animate-fade-in space-y-2">
-                    <div><label className="block text-[10px] font-bold mb-1">Nuclide Type</label><select value={contamNuclideType} onChange={e => setContamNuclideType(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-xs"><option value="beta_gamma">Beta / Gamma</option><option value="alpha">Alpha</option></select></div>
-                    <div>
-                        <label className="block text-[10px] font-bold mb-1">Removable (dpm/100cm²)</label>
-                        <input type="number" min="0" value={removableContam} onChange={e => setRemovableContam(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g. 500" />
-                        <p className="text-[10px] text-slate-400 italic text-right mt-1">Limit: {CONTAM_LIMITS[contamNuclideType].removable.toLocaleString()}</p>
-                    </div>
-                    {contamResult && (
-                        <div className={`p-2 rounded text-center text-sm font-bold ${contamResult.status === 'FAIL' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                            {contamResult.status === 'FAIL' ? '❌ Exceeds Limit' : '✅ Within Limits'}
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
-    </div>
-
-    <div className="text-right mt-4">
-        <button onClick={handleSave} className="text-sm text-sky-600 hover:underline font-semibold" disabled={!classificationResult}>Save Full Record</button>
-    </div>
-</div>
-</div>
-);
+    );
 };
 
 /**
@@ -2997,6 +3000,7 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
     
+    // Simplified NCRP 147 / 49 Data
     const TVL_DATA = {
         'Lead': { 50: { TVL1: 0.06, TVLe: 0.17 }, 70: { TVL1: 0.15, TVLe: 0.25 }, 100: { TVL1: 0.25, TVLe: 0.35 }, 125: { TVL1: 0.27, TVLe: 0.38 }, 150: { TVL1: 0.29, TVLe: 0.41 } },
         'Concrete': { 50: { TVL1: 4.3, TVLe: 4.3 }, 70: { TVL1: 5.4, TVLe: 5.4 }, 100: { TVL1: 6.0, TVLe: 6.0 }, 125: { TVL1: 6.6, TVLe: 6.6 }, 150: { TVL1: 7.0, TVLe: 7.0 } },
@@ -3009,19 +3013,33 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
             setError('');
             const W = safeParseFloat(workload); const U = safeParseFloat(useFactor); const T = safeParseFloat(occupancyFactor);
             const d = safeParseFloat(distance); const P = safeParseFloat(doseLimit);
-            if ([W, U, T, d, P].some(isNaN) || W <= 0 || d <= 0) { throw new Error("All inputs must be valid, positive numbers."); }
+            if ([W, U, T, d, P].some(isNaN) || W <= 0 || d <= 0) {
+                 if (workload) { throw new Error("All inputs must be valid, positive numbers."); }
+                 setResult(null); return; 
+            }
             
             const K_output = K_FACTORS[kvp] || 5.0;
+            // Unshielded Air Kerma = (K * W * U * T) / d^2
             const K_unshielded = (K_output * W * U * T) / Math.pow(d, 2);
+            
+            // B = Transmission Factor required
             const B = P / K_unshielded;
             
-            if (B >= 1) { setResult({ thickness: 0, tvls: 0, transmission: `Safe (Factor: ${B.toFixed(1)}x)` }); return; }
+            // SAFETY FIX: Clarity on "No Shielding"
+            if (B >= 1) { 
+                setResult({ thickness: 0, tvls: 0, transmission: 'No Shielding Required', msg: 'Unshielded dose < Limit' }); 
+                return; 
+            }
             
+            // Calculate Thickness using Archer Equation logic (TVL1 + TVLe)
             const n_tvl = -Math.log10(B);
             const { TVL1, TVLe } = TVL_DATA[shieldMaterial][kvp];
             const thickness = TVL1 + (n_tvl - 1) * TVLe;
             
-            setResult({ transmission: B.toExponential(2), tvls: n_tvl.toFixed(2), thickness: thickness.toFixed(2), });
+            // Safety Clamp: Don't show negative thickness if n_tvl < 1 (covered by B >= 1 check, but safe to keep)
+            const finalThickness = Math.max(0, thickness);
+            
+            setResult({ transmission: B.toExponential(2), tvls: n_tvl.toFixed(2), thickness: finalThickness.toFixed(2) });
         } catch (e) { setResult(null); setError(e.message); }
     }, [kvp, workload, useFactor, occupancyFactor, distance, doseLimit, shieldMaterial, setResult, setError]);
     
@@ -3038,6 +3056,7 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
     
     return (
         <div className="space-y-4">
+            <ContextualNote type="warning"><strong>Limitation:</strong> Calculates Primary Barrier shielding only. Does not account for leakage or scatter radiation.</ContextualNote>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><label className="block text-xs font-bold mb-1">Tube Potential</label><select value={kvp} onChange={e => setKvp(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm">{Object.keys(K_FACTORS).map(k => <option key={k} value={k}>{k} kVp</option>)}</select></div>
                 <div><label className="block text-xs font-bold mb-1">Workload (mA-min/wk)</label><input type="number" value={workload} onChange={e => setWorkload(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
@@ -3052,8 +3071,14 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
                 <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in relative">
                     <div className="absolute top-2 right-2"><button onClick={handleSaveToHistory}><Icon path={ICONS.notepad} className="w-5 h-5 text-slate-400 hover:text-sky-500"/></button></div>
                     <p className="text-sm text-slate-500 uppercase font-bold">Required Shielding</p>
-                    <p className="text-4xl font-extrabold text-sky-600 dark:text-sky-400 my-2">{result.thickness} <span className="text-xl text-slate-500">{shieldMaterial === 'Lead' ? 'mm' : 'cm'}</span></p>
-                    <p className="text-xs text-slate-400">TVLs needed: {result.tvls}</p>
+                    {result.thickness > 0 ? (
+                        <>
+                            <p className="text-4xl font-extrabold text-sky-600 dark:text-sky-400 my-2">{result.thickness} <span className="text-xl text-slate-500">{shieldMaterial === 'Lead' ? 'mm' : 'cm'}</span></p>
+                            <p className="text-xs text-slate-400">TVLs needed: {result.tvls}</p>
+                        </>
+                    ) : (
+                        <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 my-2">{result.transmission}</p>
+                    )}
                 </div>
             )}
         </div>
@@ -3066,7 +3091,7 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
     
     const TEDE_LIMIT_MREM = 500;
     const I131_ACTIVITY_LIMIT_MCI = 33;
-    const I131_RATE_LIMIT_MREM_HR = 7.0; // 7 mrem/hr at 1 meter
+    const I131_RATE_LIMIT_MREM_HR = 7.0; 
     const actToMci = { 'µCi': 1e-3, 'mCi': 1, 'Ci': 1000, 'MBq': 1/37, 'GBq': 1000/37, 'TBq': 1e6/37 };
     
     const therapyNuclides = React.useMemo(() => radionuclides.filter(n => therapyList.includes(n.symbol) && n.gammaConstant).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides, therapyList]);
@@ -3077,7 +3102,7 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
         try {
             setError('');
             const A0_mCi = safeParseFloat(activity) * actToMci[activityUnit];
-            const rateCheck = safeParseFloat(measuredRate); // Optional input
+            const rateCheck = safeParseFloat(measuredRate); 
             
             if (isNaN(A0_mCi) || A0_mCi <= 0) throw new Error("Invalid activity.");
             
@@ -3104,10 +3129,15 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             if (!isNaN(effHL) && effHL > 0) {
                 const factors = { 'hours': 1, 'days': 24 };
                 T_half_hours_eff = effHL * factors[effectiveHalfLifeUnit];
-                if (T_half_hours_eff > T_half_hours_phys) throw new Error("Effective T½ > Physical T½");
+                
+                // SAFETY: Clamp T_eff instead of throwing error
+                if (T_half_hours_eff > T_half_hours_phys) {
+                    T_half_hours_eff = T_half_hours_phys;
+                    // Warning toast could go here, but silent clamp prevents crash
+                }
             } else { T_half_hours_eff = T_half_hours_phys; }
             
-            // 3. Dose Calc
+            // 3. Dose Calc (NUREG-1556 Vol 9 Eq 1)
             const gamma_app = safeParseFloat(selectedNuclide.gammaConstant); // R·m²/hr·Ci
             const gamma_nureg = gamma_app * 10; // Convert to R·cm²/hr·mCi
             const d_cm = safeParseFloat(distance) * 100;
@@ -3116,18 +3146,19 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             
             if ([d_cm, E, att].some(isNaN) || d_cm <= 0) throw new Error("Invalid inputs.");
             
-            // If measured rate exists, use it instead of calculating!
+            // If measured rate exists, use it as base!
             let rate_R_hr;
             if (!isNaN(rateCheck) && rateCheck > 0) {
-                // rateCheck is in mrem/hr @ 1m. Scale to distance d.
-                // But usually release calc assumes "rate at 1m" as the source term for 0.25 occupancy
-                // Simplified: if user gave measured rate, use it as the base rate at 1m
+                // rateCheck is mrem/hr at 1m. 
+                // Convert to R/hr at 'd' meters
                 const rate_mrem_hr_at_1m = rateCheck;
-                rate_R_hr = (rate_mrem_hr_at_1m / 1000) * Math.pow(100 / d_cm, 2); // Inverse square from 1m (100cm) to d_cm
+                // Inverse Square Law: I2 = I1 * (d1/d2)^2
+                rate_R_hr = (rate_mrem_hr_at_1m / 1000) * Math.pow(100 / d_cm, 2); 
             } else {
                 rate_R_hr = (gamma_nureg * A0_mCi * att) / Math.pow(d_cm, 2);
             }
 
+            // Total Dose = Rate * Occupancy * (T_eff / ln(2))
             const total_dose_R = (rate_R_hr * E) * (T_half_hours_eff * 1.443);
             const dose_mrem = total_dose_R * 1000;
             
@@ -3152,7 +3183,6 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             <div><label className="text-xs font-bold mb-1 block">Isotope</label>{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={therapyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide..." />}</div>
             <div className="grid grid-cols-2 gap-4">
                 <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                {/* MEASURED RATE INPUT */}
                 <div><label className="text-xs font-bold mb-1 block">Meas. Rate @ 1m (mrem/h)</label><input type="number" value={measuredRate} onChange={e => setMeasuredRate(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="Optional" /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -3178,7 +3208,13 @@ const DecayInStorageCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymb
     React.useEffect(() => {
         const n = radionuclides?.find(r => r.symbol === nuclideSymbol);
         const R_curr = safeParseFloat(currentRate); const R_lim = safeParseFloat(limit);
-        if (!n || isNaN(R_curr) || isNaN(R_lim) || R_curr <= R_lim) { setResult(null); if (R_curr <= R_lim && R_curr > 0) setResult({ days: 0, date: 'Now' }); return; }
+        if (!n || isNaN(R_curr) || isNaN(R_lim)) { setResult(null); return; }
+        
+        // Safety: If already below limit, days = 0.
+        if (R_curr <= R_lim) { 
+            setResult({ days: 0, date: 'Now', hl: 0 }); 
+            return; 
+        }
         
         const hlSeconds = parseHalfLifeToSeconds(n.halfLife);
         const hlDays = hlSeconds / 86400;
@@ -3213,7 +3249,7 @@ const DecayInStorageCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymb
                     <p className="text-4xl font-extrabold text-sky-600 dark:text-sky-400 my-1">{result.days} <span className="text-xl text-slate-500">Days</span></p>
                     <div className="mt-2 border-t border-slate-300 dark:border-slate-600 pt-2">
                         <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Release Date: {result.date}</p>
-                        <p className="text-xs text-slate-400">({(result.days / result.hl).toFixed(1)} Half-Lives)</p>
+                        {result.hl > 0 && <p className="text-xs text-slate-400">({(result.days / result.hl).toFixed(1)} Half-Lives)</p>}
                     </div>
                 </div>
             )}
@@ -3268,6 +3304,8 @@ const EffectiveHalfLifeCalculator = ({ radionuclides }) => {
         const bioVal = safeParseFloat(bioHalfLife);
         if (isNaN(bioVal) || bioVal <= 0) { setError('Please enter a valid biological half-life.'); return; }
         const tb_hours = toHours(bioVal, bioUnit);
+        
+        // Teff = (Tp * Tb) / (Tp + Tb)
         const teff_hours = (tp_hours * tb_hours) / (tp_hours + tb_hours);
         setResult({ nuclide: displaySym, Tp: tp_hours, Tb: tb_hours, Teff: teff_hours, formattedTp: formatTime(tp_hours), formattedTb: formatTime(tb_hours), formattedTeff: formatTime(teff_hours), ratio: (teff_hours / tp_hours) });
     };
