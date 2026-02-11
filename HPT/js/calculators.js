@@ -3366,13 +3366,14 @@ const EffectiveHalfLifeCalculator = ({ radionuclides }) => {
 
 /**
  * @description A component to display sortable and filterable data tables of all radionuclide emissions.
+ * Place this COMPONENT in the same file as PeakIdentifier.
  */
 const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
     const [activeTable, setActiveTable] = React.useState('gamma');
     const [sortConfig, setSortConfig] = React.useState({ key: 'energyMeV', direction: 'ascending' });
     const [filterText, setFilterText] = React.useState('');
 
-    // Fallback Category Styles
+    // Local fallback styles in case the global ones aren't available in this scope
     const CATEGORY_STYLES = {
         'Medical': { border: 'border-l-emerald-400', bg: 'bg-emerald-100', text: 'text-emerald-800' },
         'Industrial': { border: 'border-l-amber-400', bg: 'bg-amber-100', text: 'text-amber-800' },
@@ -3395,6 +3396,8 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
     // 1. Heavy Lifting: Flatten Data Once
     const flattenedData = React.useMemo(() => {
         const data = { gamma: [], alpha: [], beta: [] };
+        if (!radionuclides) return data;
+        
         radionuclides.forEach(nuclide => {
             Object.keys(data).forEach(type => {
                 nuclide.emissionEnergies?.[type]?.forEach(energyStr => {
@@ -3467,10 +3470,9 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
     };
 
     return (
-        <div className="animate-fade-in p-4 bg-white dark:bg-slate-800 rounded-xl shadow-lg max-w-4xl mx-auto">
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4">Emission Data Tables</h2>
+        <div className="animate-fade-in space-y-4">
             
-            <div className="flex w-full p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg mb-4 border border-slate-200 dark:border-slate-700">
+            <div className="flex w-full p-1 bg-slate-100 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
                 {['alpha', 'beta', 'gamma'].map(type => (
                     <button key={type} onClick={() => setActiveTable(type)} className={`flex-1 p-2 rounded-md text-sm font-semibold transition-colors capitalize ${activeTable === type ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>
                         {type === 'gamma' ? 'γ' : type === 'beta' ? 'β' : 'α'} {type}
@@ -3478,7 +3480,7 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
                 ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="relative flex-grow w-full">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Icon path={ICONS.search} className="w-4 h-4 text-slate-400" /></div>
                     <input type="text" placeholder={`Filter by nuclide or energy...`} value={filterText} onChange={(e) => setFilterText(e.target.value)} className="w-full p-2 pl-9 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm focus:ring-2 focus:ring-sky-500" />
@@ -3500,8 +3502,13 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
                         {sortedAndFilteredData.length > 0 ? (
                             sortedAndFilteredData.map((item, index) => {
+                                // Safe style lookup
                                 const style = CATEGORY_STYLES[item.category] || CATEGORY_STYLES['default'];
-                                const badgeClass = `px-2 py-0.5 text-xs font-semibold rounded-full border ${style.border ? style.border.replace('border-l-', 'border-') : 'border-slate-300'} ${style.bg || 'bg-slate-100'} ${style.text || 'text-slate-700'}`;
+                                // Fallback construction of class strings if style objects vary
+                                const borderClass = style.border ? style.border.replace('border-l-', 'border-') : 'border-slate-300';
+                                const bgClass = style.bg || 'bg-slate-100';
+                                const textClass = style.text || 'text-slate-700';
+                                const badgeClass = `px-2 py-0.5 text-xs font-semibold rounded-full border ${borderClass} ${bgClass} ${textClass} dark:bg-slate-800`;
 
                                 return (
                                     <tr key={`${item.nuclideSymbol}-${item.displayEnergy}-${index}`} className="hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors">
