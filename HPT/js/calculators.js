@@ -7182,158 +7182,169 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
     );
 };      
         
-            const FluenceDoseConverter = ({ calcMode, setCalcMode, energy, setEnergy, inputValue, setInputValue, inputUnit, setInputUnit, result, setResult, error, setError }) => {
-            const { addHistory } = useCalculationHistory();
-            const { addToast } = useToast();
-            const { settings } = React.useContext(SettingsContext);
-            
-            // Dynamic Units
-            const doseUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['µSv', 'mSv', 'Sv'] : ['µrem', 'mrem', 'rem'], [settings.unitSystem]);
-            
-            // Auto-switch default input unit
-            React.useEffect(() => {
-            if (calcMode === 'doseToFluence') {
+/**
+ * @description Integrated Neutron Tools: Fluence-Dose, Activation, Composite, and Shielding.
+ */
+
+// --- 1. Fluence <-> Dose Converter ---
+const FluenceDoseConverter = ({ calcMode, setCalcMode, energy, setEnergy, inputValue, setInputValue, inputUnit, setInputUnit, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    const { settings } = React.useContext(SettingsContext);
+    
+    // Dynamic Units
+    const doseUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['µSv', 'mSv', 'Sv'] : ['µrem', 'mrem', 'rem'], [settings.unitSystem]);
+    
+    // Auto-switch default input unit
+    React.useEffect(() => {
+        if (calcMode === 'doseToFluence') {
             if (!doseUnits.includes(inputUnit)) setInputUnit(doseUnits[1]);
-            } else {
+        } else {
             setInputUnit('n/cm²');
-            }
-            }, [calcMode, settings.unitSystem]);
-            
-            const logLogInterpolate = (targetX, x1, y1, x2, y2) => y1 * Math.pow(targetX / x1, Math.log(y2 / y1) / Math.log(x2 / x1));
-            const doseFactorsRem = { 'µrem': 1e-6, 'mrem': 1e-3, 'rem': 1, 'µSv': 1e-4, 'mSv': 0.1, 'Sv': 100 };
-            
-            React.useEffect(() => {
-            try {
+        }
+    }, [calcMode, settings.unitSystem]);
+    
+    const logLogInterpolate = (targetX, x1, y1, x2, y2) => y1 * Math.pow(targetX / x1, Math.log(y2 / y1) / Math.log(x2 / x1));
+    const doseFactorsRem = { 'µrem': 1e-6, 'mrem': 1e-3, 'rem': 1, 'µSv': 1e-4, 'mSv': 0.1, 'Sv': 100 };
+    
+    React.useEffect(() => {
+        try {
             setError('');
             const val = safeParseFloat(inputValue);
             const energyVal = safeParseFloat(energy);
             
             if (isNaN(val) || isNaN(energyVal) || val < 0 || energyVal <= 0) {
-              if(inputValue) setError('Inputs must be positive numbers.');
-              setResult(null); return;
+                if(inputValue) setError('Inputs must be positive numbers.');
+                setResult(null); return;
             }
             
-            // Interpolate Fluence-to-Rem factor
+            // Interpolate Fluence-to-Rem factor (n/cm2 per rem)
+            // Note: NEUTRON_CONVERSION_FACTORS must be sorted by energyMeV ascending
             let p1 = NEUTRON_CONVERSION_FACTORS[0], p2 = NEUTRON_CONVERSION_FACTORS[NEUTRON_CONVERSION_FACTORS.length - 1];
+            
             if (energyVal < p1.energyMeV) { p2 = p1; }
             else if (energyVal > p2.energyMeV) { p1 = p2; }
             else {
-              for (let i = 0; i < NEUTRON_CONVERSION_FACTORS.length - 1; i++) {
-                  if (energyVal >= NEUTRON_CONVERSION_FACTORS[i].energyMeV && energyVal <= NEUTRON_CONVERSION_FACTORS[i + 1].energyMeV) {
-                      p1 = NEUTRON_CONVERSION_FACTORS[i];
-                      p2 = NEUTRON_CONVERSION_FACTORS[i + 1];
-                      break;
-                  }
-              }
+                for (let i = 0; i < NEUTRON_CONVERSION_FACTORS.length - 1; i++) {
+                    if (energyVal >= NEUTRON_CONVERSION_FACTORS[i].energyMeV && energyVal <= NEUTRON_CONVERSION_FACTORS[i + 1].energyMeV) {
+                        p1 = NEUTRON_CONVERSION_FACTORS[i];
+                        p2 = NEUTRON_CONVERSION_FACTORS[i + 1];
+                        break;
+                    }
+                }
             }
             
-            const fluencePerRem = (p1.energyMeV === p2.energyMeV) ? p1.fluencePerRem : logLogInterpolate(energyVal, p1.energyMeV, p1.fluencePerRem, p2.energyMeV, p2.fluencePerRem);
+            const fluencePerRem = (p1.energyMeV === p2.energyMeV) 
+                ? p1.fluencePerRem 
+                : logLogInterpolate(energyVal, p1.energyMeV, p1.fluencePerRem, p2.energyMeV, p2.fluencePerRem);
             
             if (calcMode === 'fluenceToDose') {
-              const dose_rem = val / fluencePerRem;
-              const formatted = formatDoseValue(dose_rem * 1000, 'dose', settings);
-              setResult({
-                  val: formatted.value,
-                  unit: formatted.unit,
-                  label: 'Equivalent Dose',
-                  factor: fluencePerRem.toExponential(2)
-              });
+                const dose_rem = val / fluencePerRem;
+                const formatted = formatDoseValue(dose_rem * 1000, 'dose', settings);
+                setResult({
+                    val: formatted.value,
+                    unit: formatted.unit,
+                    label: 'Equivalent Dose',
+                    factor: fluencePerRem.toExponential(2)
+                });
             } else {
-              const dose_rem = val * doseFactorsRem[inputUnit];
-              const fluence = dose_rem * fluencePerRem;
-              setResult({
-                  val: fluence.toExponential(3),
-                  unit: 'n/cm²',
-                  label: 'Required Fluence',
-                  factor: fluencePerRem.toExponential(2)
-              });
+                const dose_rem = val * doseFactorsRem[inputUnit];
+                const fluence = dose_rem * fluencePerRem;
+                setResult({
+                    val: fluence.toExponential(3),
+                    unit: 'n/cm²',
+                    label: 'Required Fluence',
+                    factor: fluencePerRem.toExponential(2)
+                });
             }
-            } catch (e) { setError('Calculation error.'); setResult(null); }
-            }, [calcMode, energy, inputValue, inputUnit, settings.unitSystem]);
-            
-            const handleSaveToHistory = () => {
-            if (result) {
+        } catch (e) { setError('Calculation error.'); setResult(null); }
+    }, [calcMode, energy, inputValue, inputUnit, settings.unitSystem]);
+    
+    const handleSaveToHistory = () => {
+        if (result) {
             addHistory({ id: Date.now(), type: 'Neutron Conversion', icon: ICONS.neutron, inputs: `${inputValue} ${inputUnit} (${energy} MeV)`, result: `${result.val} ${result.unit}`, view: VIEWS.NEUTRON });
             addToast("Calculation saved to history!");
-            }
-            };
-            
-            return (
-            <div className="space-y-4">
+        }
+    };
+    
+    return (
+        <div className="space-y-4">
+            <ContextualNote type="info">Converts between neutron fluence and dose equivalent using 10 CFR 20 (NCRP 38) quality factors.</ContextualNote>
             <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg">
-             <button onClick={() => setCalcMode('fluenceToDose')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'fluenceToDose' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Fluence → Dose</button>
-             <button onClick={() => setCalcMode('doseToFluence')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'doseToFluence' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose → Fluence</button>
+                <button onClick={() => setCalcMode('fluenceToDose')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'fluenceToDose' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Fluence → Dose</button>
+                <button onClick={() => setCalcMode('doseToFluence')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'doseToFluence' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Dose → Fluence</button>
             </div>
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-             <div><label className="block text-sm font-medium">Neutron Energy</label><select value={energy} onChange={e => setEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{NEUTRON_CONVERSION_FACTORS.map(f => <option key={f.energyMeV} value={f.energyMeV}>{f.label}</option>)}</select></div>
-             <div>
-                 <label className="block text-sm font-medium">{calcMode === 'fluenceToDose' ? 'Neutron Fluence' : 'Dose'}</label>
-                 <div className="flex">
-                     <input type="number" value={inputValue} onChange={e => setInputValue(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
-                     {calcMode === 'doseToFluence' ? (
-                         <select value={inputUnit} onChange={e => setInputUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{doseUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
-                     ) : (
-                         <div className="mt-1 px-3 flex items-center bg-slate-200 dark:bg-slate-600 rounded-r-md text-sm text-slate-500 dark:text-slate-300">n/cm²</div>
-                     )}
-                 </div>
-             </div>
+                <div><label className="block text-sm font-medium">Neutron Energy</label><select value={energy} onChange={e => setEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{NEUTRON_CONVERSION_FACTORS.map(f => <option key={f.energyMeV} value={f.energyMeV}>{f.label}</option>)}</select></div>
+                <div>
+                    <label className="block text-sm font-medium">{calcMode === 'fluenceToDose' ? 'Neutron Fluence' : 'Dose'}</label>
+                    <div className="flex">
+                        <input type="number" value={inputValue} onChange={e => setInputValue(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                        {calcMode === 'doseToFluence' ? (
+                            <select value={inputUnit} onChange={e => setInputUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{doseUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                        ) : (
+                            <div className="mt-1 px-3 flex items-center bg-slate-200 dark:bg-slate-600 rounded-r-md text-sm text-slate-500 dark:text-slate-300">n/cm²</div>
+                        )}
+                    </div>
+                </div>
             </div>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             {result && (
-             <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative overflow-hidden">
-                 <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to history"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
-            
-                 <p className="text-xs uppercase font-bold text-slate-500 dark:text-slate-400 mb-2">{result.label}</p>
-                 <div className="flex items-center justify-center gap-2 mb-2">
-                     <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.val}</span>
-                     <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit}</span>
-                     <CopyButton textToCopy={result.val} />
-                 </div>
-                 <p className="text-xs text-slate-500 dark:text-slate-400">Factor: {result.factor} n/cm² per rem</p>
-             </div>
+                <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative overflow-hidden">
+                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to history"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
+                    
+                    <p className="text-xs uppercase font-bold text-slate-500 dark:text-slate-400 mb-2">{result.label}</p>
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                        <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.val}</span>
+                        <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit}</span>
+                        <CopyButton textToCopy={result.val} />
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Factor: {result.factor} n/cm² per rem</p>
+                </div>
             )}
-            </div>
-            );
-            };
-            
-            const ActivationCalculator = ({ radionuclides, inputMode, setInputMode, targetMass, setTargetMass, massUnit, setMassUnit, abundance, setAbundance, neutronFlux, setNeutronFlux, irradiationTime, setIrradiationTime, timeUnit, setTimeUnit, result, setResult, error, setError, targetSymbol, setTargetSymbol, manualAW, setManualAW, manualCS, setManualCS, manualHL, setManualHL, manualHLUnit, setManualHLUnit, manualProductName, setManualProductName }) => {
-            const { addHistory } = useCalculationHistory();
-            const { addToast } = useToast();
-            const { settings } = React.useContext(SettingsContext);
-            
-            const massUnits = { 'µg': 1e-6, 'mg': 1e-3, 'g': 1, 'kg': 1000 };
-            const timeUnits = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400 };
-            
-            // Auto-set abundance
-            React.useEffect(() => {
-            if (inputMode === 'fromDB') {
+        </div>
+    );
+};
+
+// --- 2. Activation Calculator ---
+const ActivationCalculator = ({ radionuclides, inputMode, setInputMode, targetMass, setTargetMass, massUnit, setMassUnit, abundance, setAbundance, neutronFlux, setNeutronFlux, irradiationTime, setIrradiationTime, timeUnit, setTimeUnit, result, setResult, error, setError, targetSymbol, setTargetSymbol, manualAW, setManualAW, manualCS, setManualCS, manualHL, setManualHL, manualHLUnit, setManualHLUnit, manualProductName, setManualProductName }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    const { settings } = React.useContext(SettingsContext);
+    
+    const massUnits = { 'µg': 1e-6, 'mg': 1e-3, 'g': 1, 'kg': 1000 };
+    const timeUnits = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400 };
+    
+    // Auto-set abundance
+    React.useEffect(() => {
+        if (inputMode === 'fromDB') {
             const data = NEUTRON_ACTIVATION_DATA.find(t => t.targetSymbol === targetSymbol);
             if (data) setAbundance(data.abundance.toString());
-            }
-            }, [targetSymbol, inputMode]);
-            
-            React.useEffect(() => {
-            try {
+        }
+    }, [targetSymbol, inputMode]);
+    
+    React.useEffect(() => {
+        try {
             setError('');
             let atomicWeight, crossSection, halfLife_s, productName;
             
             if (inputMode === 'fromDB') {
-             const targetData = NEUTRON_ACTIVATION_DATA.find(t => t.targetSymbol === targetSymbol);
-             if (!targetData) throw new Error('Target material data not found.');
-             const productData = radionuclides.find(r => r.symbol === targetData.productSymbol);
-             if (!productData) throw new Error(`Product ${targetData.productSymbol} data missing.`);
+                const targetData = NEUTRON_ACTIVATION_DATA.find(t => t.targetSymbol === targetSymbol);
+                if (!targetData) throw new Error('Target material data not found.');
+                const productData = radionuclides.find(r => r.symbol === targetData.productSymbol);
+                if (!productData) throw new Error(`Product ${targetData.productSymbol} data missing.`);
             
-             atomicWeight = targetData.atomicWeight;
-             crossSection = targetData.thermalCrossSection_barns;
-             halfLife_s = parseHalfLifeToSeconds(productData.halfLife);
-             productName = `${productData.name} (${productData.symbol})`;
+                atomicWeight = targetData.atomicWeight;
+                crossSection = targetData.thermalCrossSection_barns;
+                halfLife_s = parseHalfLifeToSeconds(productData.halfLife);
+                productName = `${productData.name} (${productData.symbol})`;
             } else {
-             atomicWeight = safeParseFloat(manualAW);
-             crossSection = safeParseFloat(manualCS);
-             const hl_val = safeParseFloat(manualHL);
-             halfLife_s = hl_val * (parseHalfLifeToSeconds(`1 ${manualHLUnit}`));
-             productName = manualProductName || 'Product';
-             if ([atomicWeight, crossSection, hl_val].some(isNaN)) { if(manualAW) setError('Invalid manual inputs.'); setResult(null); return; }
+                atomicWeight = safeParseFloat(manualAW);
+                crossSection = safeParseFloat(manualCS);
+                const hl_val = safeParseFloat(manualHL);
+                halfLife_s = hl_val * (parseHalfLifeToSeconds(`1 ${manualHLUnit}`));
+                productName = manualProductName || 'Product';
+                if ([atomicWeight, crossSection, hl_val].some(isNaN)) { if(manualAW) setError('Invalid manual inputs.'); setResult(null); return; }
             }
             
             const mass_g = safeParseFloat(targetMass) * massUnits[massUnit];
@@ -7342,8 +7353,8 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
             const abund = safeParseFloat(abundance) / 100.0;
             
             if ([mass_g, flux, t_s, abund].some(isNaN) || mass_g <= 0 || flux < 0 || t_s < 0 || abund <= 0) {
-             if (targetMass && neutronFlux) setError('Inputs must be valid positive numbers.');
-             setResult(null); return;
+                if (targetMass && neutronFlux) setError('Inputs must be valid positive numbers.');
+                setResult(null); return;
             }
             
             const AVOGADRO = 6.02214076e23;
@@ -7351,7 +7362,7 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
             const lambda = Math.log(2) / halfLife_s;
             const sigma_cm2 = crossSection * 1e-24;
             
-            // A = N * sigma * phi * (1 - e^-lambda*t)
+            // Saturation Activity Formula: A = N * sigma * phi * (1 - e^-lambda*t)
             const sat_activity = num_target_atoms * sigma_cm2 * flux;
             const saturation_fraction = 1 - Math.exp(-lambda * t_s);
             const activity_Bq = sat_activity * saturation_fraction;
@@ -7361,126 +7372,127 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
             const formatted = formatSensibleUnit(baseAct, configKey);
             
             setResult({
-             productName,
-             displayVal: formatted.value,
-             unit: formatted.unit,
-             saturationPct: (saturation_fraction * 100)
+                productName,
+                displayVal: formatted.value,
+                unit: formatted.unit,
+                saturationPct: (saturation_fraction * 100)
             });
             
-            } catch (e) { setError(e.message); setResult(null); }
-            }, [inputMode, targetSymbol, targetMass, massUnit, abundance, neutronFlux, irradiationTime, timeUnit, manualAW, manualCS, manualHL, manualHLUnit, manualProductName, settings.unitSystem]);
-            
-            const handleSaveToHistory = () => {
-            if (result) {
+        } catch (e) { setError(e.message); setResult(null); }
+    }, [inputMode, targetSymbol, targetMass, massUnit, abundance, neutronFlux, irradiationTime, timeUnit, manualAW, manualCS, manualHL, manualHLUnit, manualProductName, settings.unitSystem]);
+    
+    const handleSaveToHistory = () => {
+        if (result) {
             let inputs = '';
-            
             if (inputMode === 'fromDB') {
-            inputs = `${targetMass} ${massUnit} ${targetSymbol} @ ${neutronFlux} n/cm²s`;
+                inputs = `${targetMass} ${massUnit} ${targetSymbol} @ ${neutronFlux} n/cm²s`;
             } else {
-            // Include mass and flux even for manual targets
-            inputs = `${targetMass} ${massUnit} Manual Target @ ${neutronFlux} n/cm²s`;
+                inputs = `${targetMass} ${massUnit} Manual Target @ ${neutronFlux} n/cm²s`;
             }
             
             addHistory({ 
-            id: Date.now(), 
-            type: 'Activation', 
-            icon: ICONS.neutron, 
-            inputs: inputs, 
-            result: `${result.displayVal} ${result.unit} ${result.productName}`, 
-            view: VIEWS.NEUTRON 
+                id: Date.now(), 
+                type: 'Activation', 
+                icon: ICONS.neutron, 
+                inputs: inputs, 
+                result: `${result.displayVal} ${result.unit} ${result.productName}`, 
+                view: VIEWS.NEUTRON 
             });
             addToast("Calculation saved!");
-            }
-            };
+        }
+    };
+    
+    return (
+        <div className="space-y-4">
+            <ContextualNote type="info">Calculates induced activity using the saturation equation. Assumes "thin target" approximation (no flux depression).</ContextualNote>
             
-            return (
-            <div className="space-y-4">
             <div className="flex justify-center mb-2">
-             <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
-                 <button onClick={() => setInputMode('fromDB')} className={`px-4 py-1 text-xs font-bold rounded transition-colors ${inputMode === 'fromDB' ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Database</button>
-                 <button onClick={() => setInputMode('manual')} className={`px-4 py-1 text-xs font-bold rounded transition-colors ${inputMode === 'manual' ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Manual</button>
-             </div>
+                <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
+                    <button onClick={() => setInputMode('fromDB')} className={`px-4 py-1 text-xs font-bold rounded transition-colors ${inputMode === 'fromDB' ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Database</button>
+                    <button onClick={() => setInputMode('manual')} className={`px-4 py-1 text-xs font-bold rounded transition-colors ${inputMode === 'manual' ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Manual</button>
+                </div>
             </div>
             
             {inputMode === 'fromDB' ? (
-             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg animate-fade-in">
-                 <label className="block text-sm font-medium">Target Isotope</label>
-                 <select value={targetSymbol} onChange={e => setTargetSymbol(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{NEUTRON_ACTIVATION_DATA.map(t => <option key={t.targetSymbol} value={t.targetSymbol}>{t.name} ({t.abundance}% nat.)</option>)}</select>
-             </div>
+                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg animate-fade-in">
+                    <label className="block text-sm font-medium">Target Isotope</label>
+                    <select value={targetSymbol} onChange={e => setTargetSymbol(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{NEUTRON_ACTIVATION_DATA.map(t => <option key={t.targetSymbol} value={t.targetSymbol}>{t.name} ({t.abundance}% nat.)</option>)}</select>
+                </div>
             ) : (
-             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 animate-fade-in">
-                 <div className="grid grid-cols-2 gap-4">
-                     <div><label className="block text-sm font-medium">Atomic Weight</label><input type="number" value={manualAW} onChange={e => setManualAW(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                     <div><label className="block text-sm font-medium">Cross-Section (b)</label><input type="number" value={manualCS} onChange={e => setManualCS(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                 </div>
-                 <div><label className="block text-sm font-medium">Product Half-Life</label><div className="flex"><input type="number" value={manualHL} onChange={e => setManualHL(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={manualHLUnit} onChange={e => setManualHLUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{longTimeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-             </div>
+                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 animate-fade-in">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="block text-sm font-medium">Atomic Weight</label><input type="number" value={manualAW} onChange={e => setManualAW(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                        <div><label className="block text-sm font-medium">Cross-Section (b)</label><input type="number" value={manualCS} onChange={e => setManualCS(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                    </div>
+                    <div><label className="block text-sm font-medium">Product Half-Life</label><div className="flex"><input type="number" value={manualHL} onChange={e => setManualHL(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={manualHLUnit} onChange={e => setManualHLUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{['seconds', 'minutes', 'hours', 'days', 'years'].map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                </div>
             )}
             
             <div className="space-y-4">
-             <div className="grid grid-cols-2 gap-4">
-                 <div>
-                     <label className="block text-sm font-medium">Total Mass</label>
-                     <div className="flex">
-                         <input type="number" value={targetMass} onChange={e => setTargetMass(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                         <select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
-                     </div>
-                 </div>
-                 <div>
-                     <Tooltip text="Percentage of the total mass that is the target isotope. Defaults to natural abundance.">
-                         <label className="block text-sm font-medium cursor-help underline decoration-dotted">Abundance (%)</label>
-                     </Tooltip>
-                     <input type="number" value={abundance} onChange={e => setAbundance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
-                 </div>
-             </div>
-             <div><label className="block text-sm font-medium">Thermal Flux (n/cm²·s)</label><input type="text" value={neutronFlux} onChange={e => setNeutronFlux(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-             <div>
-                 <label className="block text-sm font-medium">Irradiation Time</label>
-                 <div className="flex">
-                     <input type="number" value={irradiationTime} onChange={e => setIrradiationTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                     <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
-                 </div>
-             </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium">Total Mass</label>
+                        <div className="flex">
+                            <input type="number" value={targetMass} onChange={e => setTargetMass(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                            <select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
+                        </div>
+                    </div>
+                    <div>
+                        <Tooltip text="Percentage of the total mass that is the target isotope. Defaults to natural abundance.">
+                            <label className="block text-sm font-medium cursor-help underline decoration-dotted">Abundance (%)</label>
+                        </Tooltip>
+                        <input type="number" value={abundance} onChange={e => setAbundance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                    </div>
+                </div>
+                <div><label className="block text-sm font-medium">Thermal Flux (n/cm²·s)</label><input type="text" value={neutronFlux} onChange={e => setNeutronFlux(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div>
+                    <label className="block text-sm font-medium">Irradiation Time</label>
+                    <div className="flex">
+                        <input type="number" value={irradiationTime} onChange={e => setIrradiationTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                        <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
+                    </div>
+                </div>
             </div>
             
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             
             {result && (
-             <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative overflow-hidden">
-                 <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to Recent Calculations" widthClass="w-auto"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
+                <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative overflow-hidden">
+                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to Recent Calculations" widthClass="w-auto"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
             
-                 <p className="text-xs uppercase font-bold text-slate-500 mb-2">Produced Activity</p>
-                 <div className="flex items-center justify-center gap-2 mb-2">
-                     <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.displayVal}</span>
-                     <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit}</span>
-                     <CopyButton textToCopy={result.displayVal} />
-                 </div>
-                 <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-4">of {result.productName}</p>
+                    <p className="text-xs uppercase font-bold text-slate-500 mb-2">Produced Activity</p>
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                        <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.displayVal}</span>
+                        <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.unit}</span>
+                        <CopyButton textToCopy={result.displayVal} />
+                    </div>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-4">of {result.productName}</p>
             
-                 {/* Saturation Bar */}
-                 <div className="relative pt-1">
-                    <div className="flex mb-1 items-center justify-between">
-                      <span className="text-xs font-semibold inline-block text-sky-600 dark:text-sky-400">Saturation</span>
-                      <span className="text-xs font-semibold inline-block text-sky-600 dark:text-sky-400">{result.saturationPct.toFixed(1)}%</span>
+                    {/* Saturation Bar */}
+                    <div className="relative pt-1">
+                        <div className="flex mb-1 items-center justify-between">
+                            <span className="text-xs font-semibold inline-block text-sky-600 dark:text-sky-400">Saturation</span>
+                            <span className="text-xs font-semibold inline-block text-sky-600 dark:text-sky-400">{result.saturationPct.toFixed(1)}%</span>
+                        </div>
+                        <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-sky-200 dark:bg-slate-600">
+                            <div style={{ width: `${result.saturationPct}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-sky-500"></div>
+                        </div>
                     </div>
-                    <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-sky-200 dark:bg-slate-600">
-                      <div style={{ width: `${result.saturationPct}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-sky-500"></div>
-                    </div>
-                 </div>
-             </div>
+                </div>
             )}
-            </div>
-            );
-            };
-            
-            const CompositeActivationCalculator = ({ radionuclides, material, setMaterial, totalMass, setTotalMass, massUnit, setMassUnit, neutronFlux, setNeutronFlux, irradiationTime, setIrradiationTime, timeUnit, setTimeUnit, result, setResult, error, setError }) => {
-            const { addHistory } = useCalculationHistory();
-            const { addToast } = useToast();
-            const massUnits = { 'µg': 1e-6, 'mg': 1e-3, 'g': 1, 'kg': 1000 };
-            const timeUnits = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400 };
-            
-            React.useEffect(() => {
-            try {
+        </div>
+    );
+};
+
+// --- 3. Composite Activation Calculator ---
+const CompositeActivationCalculator = ({ radionuclides, material, setMaterial, totalMass, setTotalMass, massUnit, setMassUnit, neutronFlux, setNeutronFlux, irradiationTime, setIrradiationTime, timeUnit, setTimeUnit, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    const massUnits = { 'µg': 1e-6, 'mg': 1e-3, 'g': 1, 'kg': 1000 };
+    const timeUnits = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400 };
+    
+    React.useEffect(() => {
+        try {
             setError('');
             const materialData = COMPOSITE_MATERIALS_DATA[material];
             if (!materialData) throw new Error("Selected material data not found.");
@@ -7491,358 +7503,356 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
             
             const activationProducts = [];
             for (const component of materialData.composition) {
-            const targetData = NEUTRON_ACTIVATION_DATA.find(t => t.targetSymbol === component.targetSymbol);
-            if (!targetData) continue;
-            const productData = radionuclides.find(r => r.symbol === targetData.productSymbol);
-            if (!productData || productData.halfLife === 'Stable') continue;
-            
-            const component_mass_g = total_mass_g * component.massFraction;
-            const AVOGADRO = 6.02214076e23; const BARN_TO_CM2 = 1e-24;
-            const num_target_atoms = (component_mass_g / targetData.atomicWeight) * AVOGADRO;
-            const product_half_life_s = parseHalfLifeToSeconds(productData.halfLife);
-            const product_lambda = Math.log(2) / product_half_life_s;
-            const cross_section_cm2 = targetData.thermalCrossSection_barns * BARN_TO_CM2;
-            const saturation_factor = 1 - Math.exp(-product_lambda * time_s);
-            const activity_Bq = num_target_atoms * cross_section_cm2 * flux_n_cm2_s * saturation_factor;
-            
-            if (activity_Bq > 1e-3) { activationProducts.push({ product: productData, targetElement: component.element, activity_Bq: activity_Bq, activity_Ci: activity_Bq / 3.7e10 }); }
+                const targetData = NEUTRON_ACTIVATION_DATA.find(t => t.targetSymbol === component.targetSymbol);
+                if (!targetData) continue;
+                const productData = radionuclides.find(r => r.symbol === targetData.productSymbol);
+                if (!productData || productData.halfLife === 'Stable') continue;
+                
+                const component_mass_g = total_mass_g * component.massFraction;
+                const AVOGADRO = 6.02214076e23; const BARN_TO_CM2 = 1e-24;
+                const num_target_atoms = (component_mass_g / targetData.atomicWeight) * AVOGADRO;
+                const product_half_life_s = parseHalfLifeToSeconds(productData.halfLife);
+                const product_lambda = Math.log(2) / product_half_life_s;
+                const cross_section_cm2 = targetData.thermalCrossSection_barns * BARN_TO_CM2;
+                const saturation_factor = 1 - Math.exp(-product_lambda * time_s);
+                const activity_Bq = num_target_atoms * cross_section_cm2 * flux_n_cm2_s * saturation_factor;
+                
+                if (activity_Bq > 1e-3) { activationProducts.push({ product: productData, targetElement: component.element, activity_Bq: activity_Bq, activity_Ci: activity_Bq / 3.7e10 }); }
             }
             activationProducts.sort((a, b) => b.activity_Bq - a.activity_Bq);
             setResult(activationProducts);
-            } catch (e) { setError(e.message); setResult(null); }
-            }, [material, totalMass, massUnit, neutronFlux, irradiationTime, timeUnit, radionuclides, setResult, setError]);
-            
-            const handleSaveToHistory = () => {
-            if (result) {
+        } catch (e) { setError(e.message); setResult(null); }
+    }, [material, totalMass, massUnit, neutronFlux, irradiationTime, timeUnit, radionuclides, setResult, setError]);
+    
+    const handleSaveToHistory = () => {
+        if (result) {
             addHistory({ id: Date.now(), type: 'Composite Activation', icon: ICONS.neutron, inputs: `${totalMass} ${massUnit} of ${material}`, result: `${result.length} products found`, view: VIEWS.NEUTRON });
             addToast("Calculation saved to history!");
-            }
-            };
-            
-            return (
-            <div className="space-y-4">
+        }
+    };
+    
+    return (
+        <div className="space-y-4">
+            <ContextualNote type="info">Estimates activation products in complex materials (concrete, steel, etc.) based on typical composition.</ContextualNote>
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-            <div><label className="block text-sm font-medium">Composite Material</label><select value={material} onChange={e => setMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(COMPOSITE_MATERIALS_DATA).map(m => <option key={m} value={m}>{m}</option>)}</select></div>
-            <div>
-             <label className="block text-sm font-medium">Total Mass</label>
-             <div className="flex">
-                 <input type="number" value={totalMass} onChange={e => setTotalMass(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                 <select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
-             </div>
-            </div>
-            <div><label className="block text-sm font-medium">Thermal Neutron Flux (n/cm²·s)</label><input type="text" value={neutronFlux} onChange={e => setNeutronFlux(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            <div>
-             <label className="block text-sm font-medium">Irradiation Time</label>
-             <div className="flex">
-                 <input type="number" value={irradiationTime} onChange={e => setIrradiationTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                 <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
-             </div>
-            </div>
+                <div><label className="block text-sm font-medium">Composite Material</label><select value={material} onChange={e => setMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(COMPOSITE_MATERIALS_DATA).map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+                <div>
+                    <label className="block text-sm font-medium">Total Mass</label>
+                    <div className="flex">
+                        <input type="number" value={totalMass} onChange={e => setTotalMass(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                        <select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
+                    </div>
+                </div>
+                <div><label className="block text-sm font-medium">Thermal Neutron Flux (n/cm²·s)</label><input type="text" value={neutronFlux} onChange={e => setNeutronFlux(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div>
+                    <label className="block text-sm font-medium">Irradiation Time</label>
+                    <div className="flex">
+                        <input type="number" value={irradiationTime} onChange={e => setIrradiationTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                        <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
+                    </div>
+                </div>
             </div>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             {result && (<div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg animate-fade-in">
-            <div className="flex justify-between items-center -mt-2">
-              <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-2">Principal Activation Products</h3>
-              <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                 <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
-                     <Icon path={ICONS.notepad} className="w-5 h-5" />
-                 </button>
-              </Tooltip>
-            </div>
-            <div className="space-y-2">{result.length > 0 ? result.map(p => (<div key={p.product.symbol} className="grid grid-cols-3 items-center text-sm border-b border-slate-200 dark:border-slate-600 pb-1 last:border-0"><span className="font-semibold text-sky-600 dark:text-sky-400">{p.product.name}</span><span className="text-xs text-center text-slate-500 dark:text-slate-400">(from {p.targetElement})</span><span className="font-mono text-right">{p.activity_Ci.toExponential(2)} Ci</span></div>)) : <p className="text-center text-sm text-slate-500 dark:text-slate-400">No significant activation products found.</p>}</div>
+                <div className="flex justify-between items-center -mt-2">
+                    <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200 mb-2">Principal Activation Products</h3>
+                    <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
+                        <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors">
+                            <Icon path={ICONS.notepad} className="w-5 h-5" />
+                        </button>
+                    </Tooltip>
+                </div>
+                <div className="space-y-2">{result.length > 0 ? result.map(p => (<div key={p.product.symbol} className="grid grid-cols-3 items-center text-sm border-b border-slate-200 dark:border-slate-600 pb-1 last:border-0"><span className="font-semibold text-sky-600 dark:text-sky-400">{p.product.name}</span><span className="text-xs text-center text-slate-500 dark:text-slate-400">(from {p.targetElement})</span><span className="font-mono text-right">{p.activity_Ci.toExponential(2)} Ci</span></div>)) : <p className="text-center text-sm text-slate-500 dark:text-slate-400">No significant activation products found.</p>}</div>
             </div>)}
-            </div>
-            );
-            };
-            
-            const NeutronShieldingCalculator = ({ selectedEnergy, setSelectedEnergy, initialFlux, setInitialFlux, shieldMaterial, setShieldMaterial, shieldThickness, setShieldThickness, thicknessUnit, setThicknessUnit, result, setResult, error, setError }) => {
-            const { addHistory } = useCalculationHistory();
-            const { addToast } = useToast();
-            const thicknessFactors_cm = { 'mm': 0.1, 'cm': 1, 'in': 2.54, 'ft': 30.48 };
-            
-            // Source Spectrum state, defaults to fission
-            const [spectrum, setSpectrum] = React.useState('fission'); // 'fission' or 'fusion14'
-            
-            // useEffect hook for intelligent spectrum switching
-            // This automatically selects the most likely spectrum when the energy changes.
-            React.useEffect(() => {
-            const energyMeV = safeParseFloat(selectedEnergy);
-            if (isNaN(energyMeV)) return;
-            
-            // Threshold for Fusion spectrum (typically D-T reactions are > 10 MeV)
-            const fusionThreshold = 10; // in MeV
-            
-            if (energyMeV >= fusionThreshold) {
+        </div>
+    );
+};
+
+// --- 4. Neutron Shielding Calculator ---
+const NeutronShieldingCalculator = ({ selectedEnergy, setSelectedEnergy, initialFlux, setInitialFlux, shieldMaterial, setShieldMaterial, shieldThickness, setShieldThickness, thicknessUnit, setThicknessUnit, result, setResult, error, setError }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    const thicknessFactors_cm = { 'mm': 0.1, 'cm': 1, 'in': 2.54, 'ft': 30.48 };
+    
+    // Source Spectrum state
+    const [spectrum, setSpectrum] = React.useState('fission'); // 'fission' or 'fusion14'
+    
+    // Auto-select spectrum based on energy
+    React.useEffect(() => {
+        const energyMeV = safeParseFloat(selectedEnergy);
+        if (isNaN(energyMeV)) return;
+        const fusionThreshold = 10; // MeV
+        if (energyMeV >= fusionThreshold) {
             setSpectrum('fusion14');
-            } else {
-            // Default to fission/AmBe for all other non-thermal energies
+        } else {
             setSpectrum('fission');
-            }
-            }, [selectedEnergy]); // Dependency: run this whenever the energy changes
-            
-            const getHvl = (mat) => {
-            const data = NEUTRON_SHIELDING_DATA[mat];
-            if (!data) return null;
-            
-            const energyMeV = safeParseFloat(selectedEnergy);
-            // If energy is explicitly thermal, force thermal HVL, ignoring the toggle
-            if (energyMeV < 1e-4) return data.thermal;
-            
-            // Otherwise, use the automatically-set (or manually overridden) spectrum toggle
-            return spectrum === 'fission' ? data.fission : data.fusion14;
-            };
-            
-            // Interpolation and Calculation logic remains the same...
-            const logLogInterpolate = (targetX, x1, y1, x2, y2) => y1 * Math.pow(targetX / x1, Math.log(y2 / y1) / Math.log(x2 / x1));
-            
-            React.useEffect(() => {
-            try {
+        }
+    }, [selectedEnergy]);
+    
+    const getHvl = (mat) => {
+        const data = NEUTRON_SHIELDING_DATA[mat];
+        if (!data) return null;
+        
+        const energyMeV = safeParseFloat(selectedEnergy);
+        // Thermal neutrons (< 0.1 eV approx)
+        if (energyMeV < 1e-6) return data.thermal;
+        
+        return spectrum === 'fission' ? data.fission : data.fusion14;
+    };
+    
+    const logLogInterpolate = (targetX, x1, y1, x2, y2) => y1 * Math.pow(targetX / x1, Math.log(y2 / y1) / Math.log(x2 / x1));
+    
+    React.useEffect(() => {
+        try {
             setError('');
             const flux_val = safeParseFloat(initialFlux); const thickness_val = safeParseFloat(shieldThickness); const energyVal = safeParseFloat(selectedEnergy);
             if (isNaN(flux_val) || isNaN(thickness_val) || isNaN(energyVal) || flux_val < 0 || thickness_val < 0 || energyVal <= 0) {
-            if(initialFlux && shieldThickness && selectedEnergy) setError("Please enter valid positive numbers.");
-            setResult(null); return;
+                if(initialFlux && shieldThickness && selectedEnergy) setError("Please enter valid positive numbers.");
+                setResult(null); return;
             }
             
             const hvl_cm = getHvl(shieldMaterial);
             if (!hvl_cm || hvl_cm >= 99) { throw new Error("This material is ineffective as a shield for the selected neutron energy."); }
             
+            // Re-use interpolation logic for dose factor
             let p1 = NEUTRON_CONVERSION_FACTORS[0], p2 = NEUTRON_CONVERSION_FACTORS[NEUTRON_CONVERSION_FACTORS.length - 1];
             if (energyVal < p1.energyMeV) { p2 = p1; }
             else if (energyVal > p2.energyMeV) { p1 = p2; }
             else {
-            for (let i = 0; i < NEUTRON_CONVERSION_FACTORS.length - 1; i++) {
-             if (energyVal >= NEUTRON_CONVERSION_FACTORS[i].energyMeV && energyVal <= NEUTRON_CONVERSION_FACTORS[i + 1].energyMeV) {
-                 p1 = NEUTRON_CONVERSION_FACTORS[i]; p2 = NEUTRON_CONVERSION_FACTORS[i + 1]; break;
-             }
-            }
+                for (let i = 0; i < NEUTRON_CONVERSION_FACTORS.length - 1; i++) {
+                    if (energyVal >= NEUTRON_CONVERSION_FACTORS[i].energyMeV && energyVal <= NEUTRON_CONVERSION_FACTORS[i + 1].energyMeV) {
+                        p1 = NEUTRON_CONVERSION_FACTORS[i]; p2 = NEUTRON_CONVERSION_FACTORS[i + 1]; break;
+                    }
+                }
             }
             const fluencePerRem = (p1.energyMeV === p2.energyMeV) ? p1.fluencePerRem : logLogInterpolate(energyVal, p1.energyMeV, p1.fluencePerRem, p2.energyMeV, p2.fluencePerRem);
-            const FLUX_TO_DOSE_RATE_FACTOR = (1 / fluencePerRem) * 1000 * 3600;
+            const FLUX_TO_DOSE_RATE_FACTOR = (1 / fluencePerRem) * 1000 * 3600; // rem/hr -> mrem/hr if flux is n/cm2s? No wait.
+            // 1 rem = fluencePerRem (n/cm2). 
+            // Flux (n/cm2/s) -> Dose Rate (mrem/hr)
+            // Dose Rate = (Flux * 3600) / fluencePerRem * 1000
             
             const thickness_cm = thickness_val * thicknessFactors_cm[thicknessUnit];
             const final_flux = flux_val * Math.pow(0.5, thickness_cm / hvl_cm);
-            const initial_dose_rate_mrem_hr = flux_val * FLUX_TO_DOSE_RATE_FACTOR;
-            const final_dose_rate_mrem_hr = final_flux * FLUX_TO_DOSE_RATE_FACTOR;
+            const initial_dose_rate_mrem_hr = (flux_val * 3600 / fluencePerRem) * 1000;
+            const final_dose_rate_mrem_hr = (final_flux * 3600 / fluencePerRem) * 1000;
             
             setResult({
-            initialFlux: flux_val.toExponential(3),
-            finalFlux: final_flux.toExponential(3),
-            initialDose: formatSensibleUnit(initial_dose_rate_mrem_hr, 'doseRate'),
-            finalDose: formatSensibleUnit(final_dose_rate_mrem_hr, 'doseRate'),
-            hvlUsed: hvl_cm
+                initialFlux: flux_val.toExponential(3),
+                finalFlux: final_flux.toExponential(3),
+                initialDose: formatSensibleUnit(initial_dose_rate_mrem_hr, 'doseRate'),
+                finalDose: formatSensibleUnit(final_dose_rate_mrem_hr, 'doseRate'),
+                hvlUsed: hvl_cm
             });
-            } catch(e) { setError(e.message); setResult(null); }
-            }, [initialFlux, shieldMaterial, shieldThickness, thicknessUnit, selectedEnergy, spectrum, setResult, setError]);
-            
-            // Save handler 
-            const handleSaveToHistory = () => {
-            if (result) {
+        } catch(e) { setError(e.message); setResult(null); }
+    }, [initialFlux, shieldMaterial, shieldThickness, thicknessUnit, selectedEnergy, spectrum, setResult, setError]);
+    
+    // Save handler 
+    const handleSaveToHistory = () => {
+        if (result) {
             const inputs = `${initialFlux} n/cm²s (${selectedEnergy} MeV) + ${shieldThickness} ${thicknessUnit} ${shieldMaterial}`;
             addHistory({ 
-              id: Date.now(), 
-              type: 'Neutron Shielding', 
-              icon: ICONS.shield, 
-              inputs: inputs, 
-              result: `Final: ${result.finalDose.value} ${result.finalDose.unit}`, 
-              view: VIEWS.NEUTRON 
+                id: Date.now(), 
+                type: 'Neutron Shielding', 
+                icon: ICONS.shield, 
+                inputs: inputs, 
+                result: `Final: ${result.finalDose.value} ${result.finalDose.unit}`, 
+                view: VIEWS.NEUTRON 
             });
             addToast("Calculation saved to history!");
-            }
-            };
-            
-            // Component JSX with updated UI
-            return (
-            <div className="space-y-4">
+        }
+    };
+    
+    return (
+        <div className="space-y-4">
+            <ContextualNote type="warning"><strong>Warning:</strong> Uses removal cross-section approximations (modeled as HVL). Effective for fast neutrons in hydrogenous shields, but does not account for thermal neutron capture gammas.</ContextualNote>
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-            <div>
-            <label className="block text-sm font-medium">Neutron Energy</label>
-            <select value={selectedEnergy} onChange={e => setSelectedEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{NEUTRON_CONVERSION_FACTORS.map(f => <option key={f.energyMeV} value={f.energyMeV}>{f.label}</option>)}</select>
-            </div>
-            
-            {/* A toggle for the spectrum, disabled for thermal neutrons */}
-            {safeParseFloat(selectedEnergy) >= 1e-4 && (
-            <div>
-                <label className="block text-sm font-medium mb-1">Assumed Source Spectrum</label>
-                <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
-                    <button onClick={() => setSpectrum('fission')} className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${spectrum === 'fission' ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Fission / AmBe (~2 MeV)</button>
-                    <button onClick={() => setSpectrum('fusion14')} className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${spectrum === 'fusion14' ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>D-T Fusion (~14 MeV)</button>
+                <div>
+                    <label className="block text-sm font-medium">Neutron Energy</label>
+                    <select value={selectedEnergy} onChange={e => setSelectedEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{NEUTRON_CONVERSION_FACTORS.map(f => <option key={f.energyMeV} value={f.energyMeV}>{f.label}</option>)}</select>
                 </div>
-            </div>
-            )}
-            
-            <div><label className="block text-sm font-medium">Initial Neutron Flux (n/cm²·s)</label><input type="text" value={initialFlux} onChange={e => setInitialFlux(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-            <div><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(NEUTRON_SHIELDING_DATA).map(m => <option key={m} value={m}>{m}</option>)}</select></div>
-            <div>
-             <label className="block text-sm font-medium">Shield Thickness</label>
-             <div className="flex">
-                 <input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
-                 <select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(thicknessFactors_cm).map(u => <option key={u} value={u}>{u}</option>)}</select>
-             </div>
-            </div>
+                
+                {/* A toggle for the spectrum, disabled for thermal neutrons */}
+                {safeParseFloat(selectedEnergy) >= 1e-4 && (
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Assumed Source Spectrum</label>
+                        <div className="flex bg-slate-100 dark:bg-slate-900 rounded-lg p-1">
+                            <button onClick={() => setSpectrum('fission')} className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${spectrum === 'fission' ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>Fission / AmBe (~2 MeV)</button>
+                            <button onClick={() => setSpectrum('fusion14')} className={`flex-1 py-1 text-xs font-bold rounded transition-colors ${spectrum === 'fusion14' ? 'bg-white dark:bg-slate-700 text-sky-600 shadow-sm' : 'text-slate-500'}`}>D-T Fusion (~14 MeV)</button>
+                        </div>
+                    </div>
+                )}
+                
+                <div><label className="block text-sm font-medium">Initial Neutron Flux (n/cm²·s)</label><input type="text" value={initialFlux} onChange={e => setInitialFlux(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(NEUTRON_SHIELDING_DATA).map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+                <div>
+                    <label className="block text-sm font-medium">Shield Thickness</label>
+                    <div className="flex">
+                        <input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                        <select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(thicknessFactors_cm).map(u => <option key={u} value={u}>{u}</option>)}</select>
+                    </div>
+                </div>
             </div>
             {error && <p className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
             {result && (
-            <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative overflow-hidden">
-             <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to Recent Calculations" widthClass="w-auto"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
-             <p className="text-xs uppercase font-bold text-slate-500 mb-2">Shielded Dose Rate</p>
-             <div className="flex items-center justify-center gap-2 mb-2">
-                 <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.finalDose.value}</span>
-                 <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.finalDose.unit}</span>
-                 <CopyButton textToCopy={result.finalDose.value} />
-             </div>
-             <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-600 pt-3">
-                 <p>Unshielded: <strong>{result.initialDose.value} {result.initialDose.unit}</strong></p>
-                 <p>HVL Used: <strong>{result.hvlUsed} cm</strong></p>
-             </div>
-            </div>
+                <div className="mt-6 p-6 bg-slate-100 dark:bg-slate-700 rounded-lg text-center animate-fade-in shadow-sm relative overflow-hidden">
+                    <div className="flex justify-end -mt-3 -mr-3 mb-2"><Tooltip text="Save to Recent Calculations" widthClass="w-auto"><button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-600 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></Tooltip></div>
+                    <p className="text-xs uppercase font-bold text-slate-500 mb-2">Shielded Dose Rate</p>
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                        <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">{result.finalDose.value}</span>
+                        <span className="text-lg font-semibold text-slate-600 dark:text-slate-300">{result.finalDose.unit}</span>
+                        <CopyButton textToCopy={result.finalDose.value} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300 border-t border-slate-200 dark:border-slate-600 pt-3">
+                        <p>Unshielded: <strong>{result.initialDose.value} {result.initialDose.unit}</strong></p>
+                        <p>HVL Used: <strong>{result.hvlUsed} cm</strong></p>
+                    </div>
+                </div>
             )}
-            </div>
-            );
-            };
-            
-            const NeutronCalculator = ({radionuclides}) => {
-            const [activeTab, setActiveTab] = React.useState('fluenceDose');
-            const { settings } = React.useContext(SettingsContext);
-            
-            // State for FluenceDoseConverter
-            const [fluence_calcMode, setFluence_calcMode] = React.useState('fluenceToDose');
-            const [fluence_energy, setFluence_energy] = React.useState('1');
-            const [fluence_inputValue, setFluence_inputValue] = React.useState('1e6');
-            const [fluence_inputUnit, setFluence_inputUnit] = React.useState('n/cm²');
-            const [fluence_result, setFluence_result] = React.useState(null);
-            const [fluence_error, setFluence_error] = React.useState('');
-            
-            // State for ActivationCalculator
-            const [act_inputMode, setAct_inputMode] = React.useState('fromDB');
-            const [act_targetMass, setAct_targetMass] = React.useState('1');
-            const [act_massUnit, setAct_massUnit] = React.useState('g');
-            const [act_abundance, setAct_abundance] = React.useState('100');
-            const [act_neutronFlux, setAct_neutronFlux] = React.useState('1e12');
-            const [act_irradiationTime, setAct_irradiationTime] = React.useState('1');
-            const [act_timeUnit, setAct_timeUnit] = React.useState('hours');
-            const [act_result, setAct_result] = React.useState(null);
-            const [act_error, setAct_error] = React.useState('');
-            const [act_targetSymbol, setAct_targetSymbol] = React.useState('Co-59');
-            const [act_manualAW, setAct_manualAW] = React.useState('58.933');
-            const [act_manualCS, setAct_manualCS] = React.useState('37.2');
-            const [act_manualHL, setAct_manualHL] = React.useState('5.27');
-            const [act_manualHLUnit, setAct_manualHLUnit] = React.useState('years');
-            const [act_manualProductName, setAct_manualProductName] = React.useState('Co-60');
-            
-            // State for CompositeActivationCalculator
-            const [comp_material, setComp_material] = React.useState('Ordinary Concrete');
-            const [comp_totalMass, setComp_totalMass] = React.useState('100');
-            const [comp_massUnit, setComp_massUnit] = React.useState('kg');
-            const [comp_neutronFlux, setComp_neutronFlux] = React.useState('1e12');
-            const [comp_irradiationTime, setComp_irradiationTime] = React.useState('8');
-            const [comp_timeUnit, setComp_timeUnit] = React.useState('hours');
-            const [comp_result, setComp_result] = React.useState(null);
-            const [comp_error, setComp_error] = React.useState('');
-            
-            // State for NeutronShieldingCalculator
-            const [shield_selectedEnergy, setShield_selectedEnergy] = React.useState('2.5');
-            const [shield_initialFlux, setShield_initialFlux] = React.useState('1e6');
-            const [shield_shieldMaterial, setShield_shieldMaterial] = React.useState('Polyethylene');
-            const [shield_shieldThickness, setShield_shieldThickness] = React.useState('10');
-            const [shield_thicknessUnit, setShield_thicknessUnit] = React.useState('cm');
-            const [shield_result, setShield_result] = React.useState(null);
-            const [shield_error, setShield_error] = React.useState('');
-            
-            const handleFluenceClear = () => {
-            setFluence_calcMode('fluenceToDose'); setFluence_energy('1'); setFluence_inputValue('1e6');
-            setFluence_result(null); setFluence_error('');
-            };
-            const handleActivationClear = () => {
-            setAct_inputMode('fromDB'); setAct_targetMass('1'); setAct_massUnit('g'); setAct_neutronFlux('1e12');
-            setAct_irradiationTime('1'); setAct_timeUnit('hours'); setAct_targetSymbol('Co-59');
-            setAct_abundance('100');
-            setAct_manualAW('58.933'); setAct_manualCS('37.2'); setAct_manualHL('5.27'); setAct_manualHLUnit('years');
-            setAct_manualProductName('Co-60'); setAct_result(null); setAct_error('');
-            };
-            const handleCompositeClear = () => {
-            setComp_material('Ordinary Concrete'); setComp_totalMass('100'); setComp_massUnit('kg');
-            setComp_neutronFlux('1e12'); setComp_irradiationTime('8'); setComp_timeUnit('hours');
-            setComp_result(null); setComp_error('');
-            };
-            const handleShieldingClear = () => {
-            setShield_selectedEnergy('2.5'); setShield_initialFlux('1e6'); setShield_shieldMaterial('Polyethylene');
-            setShield_shieldThickness('10'); setShield_thicknessUnit('cm'); setShield_result(null); setShield_error('');
-            };
-            
-            const handleClearActiveCalculator = () => {
-            switch (activeTab) {
-            case 'fluenceDose': handleFluenceClear(); break;
-            case 'activation': handleActivationClear(); break;
-            case 'composite': handleCompositeClear(); break;
-            case 'shielding': handleShieldingClear(); break;
+        </div>
+    );
+};
+
+// --- Main Container ---
+const NeutronCalculator = ({radionuclides}) => {
+    const [activeTab, setActiveTab] = React.useState('fluenceDose');
+    const { settings } = React.useContext(SettingsContext);
+    
+    // State wrappers for sub-components (hoisted to keep alive on tab switch if needed, or local)
+    // For simplicity, defining state locally in sub-components is cleaner unless persistence across tabs is required.
+    // However, the original code hoisted them. To match the requested structure, I will keep the container simple and let sub-components manage state, OR hoist if persistence is desired.
+    // Given the complexity, let's let sub-components manage their own state to avoid a massive prop drilling file.
+    // BUT the original code passed props. I will hoist state as requested in the prompt's style.
+    
+    // ... Actually, to ensure the code is "complete" and copy-pasteable as a block, 
+    // I will use the hoisted state pattern from the user's snippet.
+    
+    // State for FluenceDoseConverter
+    const [fluence_calcMode, setFluence_calcMode] = React.useState('fluenceToDose');
+    const [fluence_energy, setFluence_energy] = React.useState('1');
+    const [fluence_inputValue, setFluence_inputValue] = React.useState('1e6');
+    const [fluence_inputUnit, setFluence_inputUnit] = React.useState('n/cm²');
+    const [fluence_result, setFluence_result] = React.useState(null);
+    const [fluence_error, setFluence_error] = React.useState('');
+    
+    // State for ActivationCalculator
+    const [act_inputMode, setAct_inputMode] = React.useState('fromDB');
+    const [act_targetMass, setAct_targetMass] = React.useState('1');
+    const [act_massUnit, setAct_massUnit] = React.useState('g');
+    const [act_abundance, setAct_abundance] = React.useState('100');
+    const [act_neutronFlux, setAct_neutronFlux] = React.useState('1e12');
+    const [act_irradiationTime, setAct_irradiationTime] = React.useState('1');
+    const [act_timeUnit, setAct_timeUnit] = React.useState('hours');
+    const [act_result, setAct_result] = React.useState(null);
+    const [act_error, setAct_error] = React.useState('');
+    const [act_targetSymbol, setAct_targetSymbol] = React.useState('Co-59');
+    const [act_manualAW, setAct_manualAW] = React.useState('58.933');
+    const [act_manualCS, setAct_manualCS] = React.useState('37.2');
+    const [act_manualHL, setAct_manualHL] = React.useState('5.27');
+    const [act_manualHLUnit, setAct_manualHLUnit] = React.useState('years');
+    const [act_manualProductName, setAct_manualProductName] = React.useState('Co-60');
+    
+    // State for CompositeActivationCalculator
+    const [comp_material, setComp_material] = React.useState('Ordinary Concrete');
+    const [comp_totalMass, setComp_totalMass] = React.useState('100');
+    const [comp_massUnit, setComp_massUnit] = React.useState('kg');
+    const [comp_neutronFlux, setComp_neutronFlux] = React.useState('1e12');
+    const [comp_irradiationTime, setComp_irradiationTime] = React.useState('8');
+    const [comp_timeUnit, setComp_timeUnit] = React.useState('hours');
+    const [comp_result, setComp_result] = React.useState(null);
+    const [comp_error, setComp_error] = React.useState('');
+    
+    // State for NeutronShieldingCalculator
+    const [shield_selectedEnergy, setShield_selectedEnergy] = React.useState('2.5');
+    const [shield_initialFlux, setShield_initialFlux] = React.useState('1e6');
+    const [shield_shieldMaterial, setShield_shieldMaterial] = React.useState('Polyethylene');
+    const [shield_shieldThickness, setShield_shieldThickness] = React.useState('10');
+    const [shield_thicknessUnit, setShield_thicknessUnit] = React.useState('cm');
+    const [shield_result, setShield_result] = React.useState(null);
+    const [shield_error, setShield_error] = React.useState('');
+    
+    const handleClearActiveCalculator = () => {
+        switch (activeTab) {
+            case 'fluenceDose': 
+                setFluence_calcMode('fluenceToDose'); setFluence_energy('1'); setFluence_inputValue('1e6');
+                setFluence_result(null); setFluence_error(''); break;
+            case 'activation': 
+                setAct_inputMode('fromDB'); setAct_targetMass('1'); setAct_massUnit('g'); setAct_neutronFlux('1e12');
+                setAct_irradiationTime('1'); setAct_timeUnit('hours'); setAct_targetSymbol('Co-59'); setAct_abundance('100');
+                setAct_result(null); setAct_error(''); break;
+            case 'composite': 
+                setComp_material('Ordinary Concrete'); setComp_totalMass('100'); setComp_massUnit('kg');
+                setComp_neutronFlux('1e12'); setComp_irradiationTime('8'); setComp_timeUnit('hours');
+                setComp_result(null); setComp_error(''); break;
+            case 'shielding': 
+                setShield_selectedEnergy('2.5'); setShield_initialFlux('1e6'); setShield_shieldMaterial('Polyethylene');
+                setShield_shieldThickness('10'); setShield_thicknessUnit('cm'); setShield_result(null); setShield_error(''); break;
             default: break;
-            }
-            };
-            
-            return (
-            <div className="p-4 animate-fade-in">
+        }
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
             <div className="max-w-md mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-              <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold text-slate-800 dark:text-white">Neutron Tools</h2>
-                  <ClearButton onClick={handleClearActiveCalculator} />
-              </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
-                  <button onClick={() => setActiveTab('fluenceDose')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'fluenceDose' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Fluence</button>
-                  <button onClick={() => setActiveTab('activation')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'activation' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Activation</button>
-                  <button onClick={() => setActiveTab('composite')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'composite' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Composite</button>
-                  <button onClick={() => setActiveTab('shielding')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'shielding' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Shielding</button>
-              </div>
-              {activeTab === 'fluenceDose' && <FluenceDoseConverter
-                  calcMode={fluence_calcMode} setCalcMode={setFluence_calcMode}
-                  energy={fluence_energy} setEnergy={setFluence_energy}
-                  inputValue={fluence_inputValue} setInputValue={setFluence_inputValue}
-                  inputUnit={fluence_inputUnit} setInputUnit={setFluence_inputUnit}
-                  result={fluence_result} setResult={setFluence_result}
-                  error={fluence_error} setError={setFluence_error}
-              />}
-              {activeTab === 'activation' && <ActivationCalculator
-                  radionuclides={radionuclides}
-                  inputMode={act_inputMode} setInputMode={setAct_inputMode}
-                  targetMass={act_targetMass} setTargetMass={setAct_targetMass}
-                  massUnit={act_massUnit} setMassUnit={setAct_massUnit}
-                  abundance={act_abundance} setAbundance={setAct_abundance}
-                  neutronFlux={act_neutronFlux} setNeutronFlux={setAct_neutronFlux}
-                  irradiationTime={act_irradiationTime} setIrradiationTime={setAct_irradiationTime}
-                  timeUnit={act_timeUnit} setTimeUnit={setAct_timeUnit}
-                  result={act_result} setResult={setAct_result}
-                  error={act_error} setError={setAct_error}
-                  targetSymbol={act_targetSymbol} setTargetSymbol={setAct_targetSymbol}
-                  manualAW={act_manualAW} setManualAW={setAct_manualAW}
-                  manualCS={act_manualCS} setManualCS={setAct_manualCS}
-                  manualHL={act_manualHL} setManualHL={setAct_manualHL}
-                  manualHLUnit={act_manualHLUnit} setManualHLUnit={setAct_manualHLUnit}
-                  manualProductName={act_manualProductName} setManualProductName={setAct_manualProductName}
-              />}
-              {activeTab === 'composite' && <CompositeActivationCalculator
-                  radionuclides={radionuclides}
-                  material={comp_material} setMaterial={setComp_material}
-                  totalMass={comp_totalMass} setTotalMass={setComp_totalMass}
-                  massUnit={comp_massUnit} setMassUnit={setComp_massUnit}
-                  neutronFlux={comp_neutronFlux} setNeutronFlux={setComp_neutronFlux}
-                  irradiationTime={comp_irradiationTime} setIrradiationTime={setComp_irradiationTime}
-                  timeUnit={comp_timeUnit} setTimeUnit={setComp_timeUnit}
-                  result={comp_result} setResult={setComp_result}
-                  error={comp_error} setError={setComp_error}
-              />}
-              {activeTab === 'shielding' && <NeutronShieldingCalculator
-                  selectedEnergy={shield_selectedEnergy} setSelectedEnergy={setShield_selectedEnergy}
-                  initialFlux={shield_initialFlux} setInitialFlux={setShield_initialFlux}
-                  shieldMaterial={shield_shieldMaterial} setShieldMaterial={setShield_shieldMaterial}
-                  shieldThickness={shield_shieldThickness} setShieldThickness={setShield_shieldThickness}
-                  thicknessUnit={shield_thicknessUnit} setThicknessUnit={setShield_thicknessUnit}
-                  result={shield_result} setResult={setShield_result}
-                  error={shield_error} setError={setShield_error}
-              />}
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Neutron Tools</h2>
+                    <ClearButton onClick={handleClearActiveCalculator} />
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-1 p-1 bg-slate-200 dark:bg-slate-700 rounded-lg mb-4">
+                    <button onClick={() => setActiveTab('fluenceDose')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'fluenceDose' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Fluence</button>
+                    <button onClick={() => setActiveTab('activation')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'activation' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Activation</button>
+                    <button onClick={() => setActiveTab('composite')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'composite' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Composite</button>
+                    <button onClick={() => setActiveTab('shielding')} className={`p-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'shielding' ? 'bg-white dark:bg-slate-800 text-sky-600' : 'text-slate-600 dark:text-slate-300'}`}>Shielding</button>
+                </div>
+                {activeTab === 'fluenceDose' && <FluenceDoseConverter
+                    calcMode={fluence_calcMode} setCalcMode={setFluence_calcMode}
+                    energy={fluence_energy} setEnergy={setFluence_energy}
+                    inputValue={fluence_inputValue} setInputValue={setFluence_inputValue}
+                    inputUnit={fluence_inputUnit} setInputUnit={setFluence_inputUnit}
+                    result={fluence_result} setResult={setFluence_result}
+                    error={fluence_error} setError={setFluence_error}
+                />}
+                {activeTab === 'activation' && <ActivationCalculator
+                    radionuclides={radionuclides}
+                    inputMode={act_inputMode} setInputMode={setAct_inputMode}
+                    targetMass={act_targetMass} setTargetMass={setAct_targetMass}
+                    massUnit={act_massUnit} setMassUnit={setAct_massUnit}
+                    abundance={act_abundance} setAbundance={setAct_abundance}
+                    neutronFlux={act_neutronFlux} setNeutronFlux={setAct_neutronFlux}
+                    irradiationTime={act_irradiationTime} setIrradiationTime={setAct_irradiationTime}
+                    timeUnit={act_timeUnit} setTimeUnit={setAct_timeUnit}
+                    result={act_result} setResult={setAct_result}
+                    error={act_error} setError={setAct_error}
+                    targetSymbol={act_targetSymbol} setTargetSymbol={setAct_targetSymbol}
+                    manualAW={act_manualAW} setManualAW={setAct_manualAW}
+                    manualCS={act_manualCS} setManualCS={setAct_manualCS}
+                    manualHL={act_manualHL} setManualHL={setAct_manualHL}
+                    manualHLUnit={act_manualHLUnit} setManualHLUnit={setAct_manualHLUnit}
+                    manualProductName={act_manualProductName} setManualProductName={setAct_manualProductName}
+                />}
+                {activeTab === 'composite' && <CompositeActivationCalculator
+                    radionuclides={radionuclides}
+                    material={comp_material} setMaterial={setComp_material}
+                    totalMass={comp_totalMass} setTotalMass={setComp_totalMass}
+                    massUnit={comp_massUnit} setMassUnit={setComp_massUnit}
+                    neutronFlux={comp_neutronFlux} setNeutronFlux={setComp_neutronFlux}
+                    irradiationTime={comp_irradiationTime} setIrradiationTime={setComp_irradiationTime}
+                    timeUnit={comp_timeUnit} setTimeUnit={setComp_timeUnit}
+                    result={comp_result} setResult={setComp_result}
+                    error={comp_error} setError={setComp_error}
+                />}
+                {activeTab === 'shielding' && <NeutronShieldingCalculator
+                    selectedEnergy={shield_selectedEnergy} setSelectedEnergy={setShield_selectedEnergy}
+                    initialFlux={shield_initialFlux} setInitialFlux={setShield_initialFlux}
+                    shieldMaterial={shield_shieldMaterial} setShieldMaterial={setShield_shieldMaterial}
+                    shieldThickness={shield_shieldThickness} setShieldThickness={setShield_shieldThickness}
+                    thicknessUnit={shield_thicknessUnit} setThicknessUnit={setShield_thicknessUnit}
+                    result={shield_result} setResult={setShield_result}
+                    error={shield_error} setError={setShield_error}
+                />}
             </div>
-            </div>
-            );
-            };
+        </div>
+    );
+};
             
             /**
             * @description A unified calculator for determining detection limits for both
