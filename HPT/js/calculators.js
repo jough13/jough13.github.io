@@ -4649,428 +4649,430 @@ const ActivityAndMassTools = ({ radionuclides }) => {
     );
 };
         
-        /**
-        * @description A calculator to determine the activities of a parent-daughter pair over time,
-        * and to analyze the type of equilibrium present based on their half-lives.
-        * Now includes Auto-Branching logic and Secular Equilibrium shortcuts.
-        */
+/**
+ * @description A calculator to determine the activities of a parent-daughter pair over time,
+ * and to analyze the type of equilibrium present based on their half-lives.
+ * Now includes Auto-Branching logic and Secular Equilibrium shortcuts.
+ */
 
-        const EquilibriumCalculator = ({ radionuclides, theme }) => {
-            const { addHistory } = useCalculationHistory();
-            const { addToast } = useToast();
-            const { settings } = React.useContext(SettingsContext);
+const EquilibriumCalculator = ({ radionuclides, theme }) => {
+    const { addHistory } = useCalculationHistory();
+    const { addToast } = useToast();
+    const { settings } = React.useContext(SettingsContext);
+    
+    // --- STATE ---
+    const [parentNuclide, setParentNuclide] = React.useState(() => {
+        const savedSymbol = localStorage.getItem('equilibrium_parentSymbol');
+        if (!savedSymbol) return null;
+        return radionuclides.find(n => n.symbol === savedSymbol) || null;
+    });
+    
+    // NEW: Branching State
+    const [decayPaths, setDecayPaths] = React.useState([]);
+    const [selectedPathIndex, setSelectedPathIndex] = React.useState(0);
+    const [daughterNuclide, setDaughterNuclide] = React.useState(null);
+    
+    const [initialActivity, setInitialActivity] = React.useState(() => localStorage.getItem('equilibrium_initialActivity') || '100');
+    const [initialDaughterActivity, setInitialDaughterActivity] = React.useState(() => localStorage.getItem('equilibrium_initialDaughterActivity') || '0');
+    const [branchingFraction, setBranchingFraction] = React.useState(() => localStorage.getItem('equilibrium_branchingFraction') || '1.0');
+    
+    const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['MBq', 'GBq', 'TBq', 'Bq'] : ['mCi', 'Ci', 'µCi'], [settings.unitSystem]);
+    const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('equilibrium_activityUnit') || activityUnits[0]);
+    
+    const [timeElapsed, setTimeElapsed] = React.useState(() => localStorage.getItem('equilibrium_timeElapsed') || '10');
+    const [timeUnit, setTimeUnit] = React.useState(() => localStorage.getItem('equilibrium_timeUnit') || 'days');
+
+    const [result, setResult] = React.useState(null);
+    const [chartData, setChartData] = React.useState(null);
+    const [error, setError] = React.useState('');
+    const [analysis, setAnalysis] = React.useState(null);
+    const [useLogScale, setUseLogScale] = React.useState(() => JSON.parse(localStorage.getItem('equilibrium_useLogScale')) || false);
+    
+    const timeUnitsOrdered = ['minutes', 'hours', 'days', 'years'];
+
+    // --- EFFECTS ---
+    React.useEffect(() => {
+        localStorage.setItem('equilibrium_parentSymbol', parentNuclide ? parentNuclide.symbol : '');
+        localStorage.setItem('equilibrium_initialActivity', initialActivity);
+        localStorage.setItem('equilibrium_initialDaughterActivity', initialDaughterActivity);
+        localStorage.setItem('equilibrium_branchingFraction', branchingFraction);
+        localStorage.setItem('equilibrium_activityUnit', activityUnit);
+        localStorage.setItem('equilibrium_timeElapsed', timeElapsed);
+        localStorage.setItem('equilibrium_timeUnit', timeUnit);
+        localStorage.setItem('equilibrium_useLogScale', JSON.stringify(useLogScale));
+    }, [parentNuclide, initialActivity, initialDaughterActivity, branchingFraction, activityUnit, timeElapsed, timeUnit, useLogScale]);
+    
+    React.useEffect(() => {
+        if (!activityUnits.includes(activityUnit)) setActivityUnit(activityUnits[0]);
+    }, [settings.unitSystem]);
+    
+    // Filter for Parents
+    const parentNuclides = React.useMemo(() => {
+        return radionuclides.filter(parent => {
+            if (!parent.daughter || parent.halfLife === 'Stable') return false;
+            const daughterName = parent.daughter.split('(')[0].split('/')[0].split(' or ')[0].trim();
+            const normDaughter = normalizeString(daughterName);
+            const daughter = radionuclides.find(n => normalizeString(n.name) === normDaughter || normalizeString(n.symbol) === normDaughter);
+            return daughter && daughter.halfLife !== 'Stable';
+        }).sort((a, b) => a.name.localeCompare(b.name));
+    }, [radionuclides]);
+    
+    // --- 1. HANDLE PARENT CHANGE & PARSE PATHS ---
+    const handleParentChange = (symbol) => {
+        const parent = parentNuclides.find(p => p.symbol === symbol);
+        setResult(null); setChartData(null); setError(''); setParentNuclide(parent || null);
+    };
+
+    React.useEffect(() => {
+        if (parentNuclide) {
+            const dStr = parentNuclide.daughter || '';
+            const rawFraction = parentNuclide.branchingFraction || 1.0;
+            let newPaths = [];
+
+            if (dStr.includes(' or ')) {
+                const parts = dStr.split(' or ');
+                const path1Name = parts[0].split('(')[0].trim();
+                const path2Name = parts[1].split('(')[0].trim();
+
+                newPaths.push({ name: path1Name, fraction: rawFraction, label: parts[0].trim() });
+                const remainder = rawFraction < 1.0 ? (1.0 - rawFraction) : 0;
+                newPaths.push({ name: path2Name, fraction: safeParseFloat(remainder.toFixed(4)), label: parts[1].trim() });
+                
+                setDecayPaths(newPaths);
+                setSelectedPathIndex(0);
+                setBranchingFraction(newPaths[0].fraction.toString());
+            } 
+            else {
+                const cleanName = dStr.split('(')[0].trim();
+                newPaths.push({ name: cleanName, fraction: rawFraction, label: dStr });
+                setDecayPaths(newPaths);
+                setSelectedPathIndex(0);
+                
+                // Legacy overrides
+                if (parentNuclide.symbol === 'Mo-99' && !parentNuclide.branchingFraction) {
+                    setBranchingFraction('0.875');
+                } else {
+                    setBranchingFraction(rawFraction.toString());
+                }
+            }
+        } else {
+            setDecayPaths([]);
+            setDaughterNuclide(null);
+        }
+    }, [parentNuclide]);
+
+    // --- 2. HANDLE PATH CHANGE ---
+    const handlePathChange = (e) => {
+        const idx = parseInt(e.target.value);
+        setSelectedPathIndex(idx);
+        if (decayPaths[idx]) {
+            setBranchingFraction(decayPaths[idx].fraction.toString());
+        }
+    };
+
+    // --- 3. RESOLVE DAUGHTER DATA & ANALYZE ---
+    React.useEffect(() => {
+        if (!parentNuclide || decayPaths.length === 0) {
+            setAnalysis(null); setDaughterNuclide(null); return;
+        }
+        
+        const activePath = decayPaths[selectedPathIndex];
+        if(!activePath) return;
+
+        const normDaughter = normalizeString(activePath.name);
+        const foundDaughter = radionuclides.find(n => normalizeString(n.name) === normDaughter || normalizeString(n.symbol) === normDaughter);
+        
+        if (!foundDaughter) {
+            setAnalysis({ type: 'Analysis Error', message: `Data for ${activePath.name} not found in database.` });
+            setDaughterNuclide(null);
+            return;
+        }
+        setDaughterNuclide(foundDaughter);
+        
+        const T1_seconds = parseHalfLifeToSeconds(parentNuclide.halfLife);
+        const T2_seconds = parseHalfLifeToSeconds(foundDaughter.halfLife);
+        
+        let type, message, theoreticalRatio = null, timeToEq = null, timeToMax = null;
+        
+        if (T1_seconds < T2_seconds) {
+            type = 'No Equilibrium';
+            message = `Parent half-life (${parentNuclide.halfLife}) is shorter than daughter half-life (${foundDaughter.halfLife}). No equilibrium will occur.`;
+        } else if (T1_seconds > 100 * T2_seconds) {
+            type = 'Secular Equilibrium';
+            theoreticalRatio = 1.0;
+            timeToEq = (7 * T2_seconds); // ~99% saturation
+            message = `Parent half-life is much longer than daughter's. Daughter activity will eventually equal parent activity (adjusted for branching).`;
+        } else {
+            type = 'Transient Equilibrium';
+            const lambda1 = Math.log(2) / T1_seconds;
+            const lambda2 = Math.log(2) / T2_seconds;
+            theoreticalRatio = lambda2 / (lambda2 - lambda1);
+            timeToMax = Math.log(lambda2 / lambda1) / (lambda2 - lambda1);
+            timeToEq = timeToMax * 2; 
+            message = `Half-lives are comparable. Daughter will rise, exceed parent, then decay in lock-step.`;
+        }
+        
+        setAnalysis({ type, message, theoreticalRatio, timeToEq, timeToMax });
+        
+    }, [parentNuclide, decayPaths, selectedPathIndex, radionuclides]);
+    
+    // --- CALCULATION ---
+    const handleCalculate = () => {
+        if (!parentNuclide || !daughterNuclide) return;
+        
+        const N0_parent = safeParseFloat(initialActivity);
+        const N0_daughter = safeParseFloat(initialDaughterActivity);
+        const br = safeParseFloat(branchingFraction);
+        const t_input = safeParseFloat(timeElapsed);
+        
+        if ([N0_parent, N0_daughter, br, t_input].some(isNaN) || N0_parent < 0 || N0_daughter < 0 || br < 0 || br > 1 || t_input < 0) {
+            setError('Please enter valid inputs.'); return;
+        }
+        setError('');
+        
+        const T1_seconds = parseHalfLifeToSeconds(parentNuclide.halfLife);
+        const T2_seconds = parseHalfLifeToSeconds(daughterNuclide.halfLife);
+        const unitConversions = { 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+        const t_seconds = t_input * unitConversions[timeUnit];
+        const lambda1 = Math.log(2) / T1_seconds;
+        const lambda2 = Math.log(2) / T2_seconds;
+        
+        // Bateman Calculation
+        const A_parent = N0_parent * Math.exp(-lambda1 * t_seconds);
+        const initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * t_seconds);
+        let daughterIngrowth;
+        
+        if (Math.abs(lambda1 - lambda2) < 1e-12) {
+            daughterIngrowth = br * N0_parent * lambda1 * t_seconds * Math.exp(-lambda1 * t_seconds);
+        } else {
+            daughterIngrowth = br * (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * t_seconds) - Math.exp(-lambda2 * t_seconds));
+        }
+        
+        const A_daughter = initialDaughterDecay + daughterIngrowth;
+        const currentRatio = A_parent > 0 ? (A_daughter / A_parent) : 0;
+        
+        setResult({
+            parent: { name: parentNuclide.name, activity: A_parent.toPrecision(4) },
+            daughter: { name: daughterNuclide.name, activity: A_daughter.toPrecision(4) },
+            currentRatio: currentRatio.toFixed(4)
+        });
+        
+        // --- Chart Generation ---
+        const labels = [], parentData = [], daughterData = [];
+        const plotTime = t_seconds;
+        const steps = 100;
+        
+        for (let i = 0; i <= steps; i++) {
+            const timePoint = (plotTime / steps) * i;
+            const displayTimeVal = timePoint / unitConversions[timeUnit];
+            labels.push(displayTimeVal < 10 ? displayTimeVal.toPrecision(2) : Math.round(displayTimeVal).toString());
             
-            // --- STATE ---
-            const [parentNuclide, setParentNuclide] = React.useState(() => {
-                const savedSymbol = localStorage.getItem('equilibrium_parentSymbol');
-                if (!savedSymbol) return null;
-                return radionuclides.find(n => n.symbol === savedSymbol) || null;
+            const curr_A_parent = N0_parent * Math.exp(-lambda1 * timePoint);
+            parentData.push(curr_A_parent);
+            
+            const curr_initD_decay = N0_daughter * Math.exp(-lambda2 * timePoint);
+            let curr_D_ingrowth;
+            if (Math.abs(lambda1 - lambda2) < 1e-12) {
+                curr_D_ingrowth = br * N0_parent * lambda1 * timePoint * Math.exp(-lambda1 * timePoint);
+            } else {
+                curr_D_ingrowth = br * (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * timePoint) - Math.exp(-lambda2 * timePoint));
+            }
+            daughterData.push(curr_initD_decay + curr_D_ingrowth);
+        }
+        
+        setChartData({ labels, parentData, daughterData, parentName: parentNuclide.name, daughterName: daughterNuclide.name, timeUnit });
+    };
+    
+    // Auto-calculate
+    React.useEffect(() => {
+        if (parentNuclide && daughterNuclide) handleCalculate();
+    }, [parentNuclide, daughterNuclide, initialActivity, initialDaughterActivity, branchingFraction, timeElapsed, timeUnit]);
+    
+    const handleSaveToHistory = () => {
+        if (result && parentNuclide) {
+            addHistory({
+                id: Date.now(),
+                type: 'Equilibrium',
+                icon: ICONS.activity,
+                inputs: `${initialActivity} ${activityUnit} ${parentNuclide.symbol} (t=${timeElapsed} ${timeUnit})`,
+                result: `D: ${result.daughter.activity}, Ratio: ${result.currentRatio}`,
+                view: VIEWS.EQUILIBRIUM
             });
-            
-            // NEW: Branching State
-            const [decayPaths, setDecayPaths] = React.useState([]);
-            const [selectedPathIndex, setSelectedPathIndex] = React.useState(0);
-            const [daughterNuclide, setDaughterNuclide] = React.useState(null);
-            
-            const [initialActivity, setInitialActivity] = React.useState(() => localStorage.getItem('equilibrium_initialActivity') || '100');
-            const [initialDaughterActivity, setInitialDaughterActivity] = React.useState(() => localStorage.getItem('equilibrium_initialDaughterActivity') || '0');
-            const [branchingFraction, setBranchingFraction] = React.useState(() => localStorage.getItem('equilibrium_branchingFraction') || '1.0');
-            
-            const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['MBq', 'GBq', 'TBq', 'Bq'] : ['mCi', 'Ci', 'µCi'], [settings.unitSystem]);
-            const [activityUnit, setActivityUnit] = React.useState(() => localStorage.getItem('equilibrium_activityUnit') || activityUnits[0]);
-            
-            const [timeElapsed, setTimeElapsed] = React.useState(() => localStorage.getItem('equilibrium_timeElapsed') || '10');
-            const [timeUnit, setTimeUnit] = React.useState(() => localStorage.getItem('equilibrium_timeUnit') || 'days');
-
-            const [result, setResult] = React.useState(null);
-            const [chartData, setChartData] = React.useState(null);
-            const [error, setError] = React.useState('');
-            const [analysis, setAnalysis] = React.useState(null);
-            const [useLogScale, setUseLogScale] = React.useState(() => JSON.parse(localStorage.getItem('equilibrium_useLogScale')) || false);
-            
-            const timeUnitsOrdered = ['minutes', 'hours', 'days', 'years'];
-
-            // --- EFFECTS ---
-            React.useEffect(() => {
-                localStorage.setItem('equilibrium_parentSymbol', parentNuclide ? parentNuclide.symbol : '');
-                localStorage.setItem('equilibrium_initialActivity', initialActivity);
-                localStorage.setItem('equilibrium_initialDaughterActivity', initialDaughterActivity);
-                localStorage.setItem('equilibrium_branchingFraction', branchingFraction);
-                localStorage.setItem('equilibrium_activityUnit', activityUnit);
-                localStorage.setItem('equilibrium_timeElapsed', timeElapsed);
-                localStorage.setItem('equilibrium_timeUnit', timeUnit);
-                localStorage.setItem('equilibrium_useLogScale', JSON.stringify(useLogScale));
-            }, [parentNuclide, initialActivity, initialDaughterActivity, branchingFraction, activityUnit, timeElapsed, timeUnit, useLogScale]);
-            
-            React.useEffect(() => {
-                if (!activityUnits.includes(activityUnit)) setActivityUnit(activityUnits[0]);
-            }, [settings.unitSystem]);
-            
-            // Filter for Parents
-            const parentNuclides = React.useMemo(() => {
-                return radionuclides.filter(parent => {
-                    if (!parent.daughter || parent.halfLife === 'Stable') return false;
-                    const daughterName = parent.daughter.split('(')[0].split('/')[0].split(' or ')[0].trim();
-                    const normDaughter = normalizeString(daughterName);
-                    const daughter = radionuclides.find(n => normalizeString(n.name) === normDaughter || normalizeString(n.symbol) === normDaughter);
-                    return daughter && daughter.halfLife !== 'Stable';
-                }).sort((a, b) => a.name.localeCompare(b.name));
-            }, [radionuclides]);
-            
-            // --- 1. HANDLE PARENT CHANGE & PARSE PATHS ---
-            const handleParentChange = (symbol) => {
-                const parent = parentNuclides.find(p => p.symbol === symbol);
-                setResult(null); setChartData(null); setError(''); setParentNuclide(parent || null);
-            };
-
-            React.useEffect(() => {
-                if (parentNuclide) {
-                    const dStr = parentNuclide.daughter || '';
-                    const rawFraction = parentNuclide.branchingFraction || 1.0;
-                    let newPaths = [];
-
-                    if (dStr.includes(' or ')) {
-                        const parts = dStr.split(' or ');
-                        const path1Name = parts[0].split('(')[0].trim();
-                        const path2Name = parts[1].split('(')[0].trim();
-
-                        newPaths.push({ name: path1Name, fraction: rawFraction, label: parts[0].trim() });
-                        const remainder = rawFraction < 1.0 ? (1.0 - rawFraction) : 0;
-                        newPaths.push({ name: path2Name, fraction: safeParseFloat(remainder.toFixed(4)), label: parts[1].trim() });
-                        
-                        setDecayPaths(newPaths);
-                        setSelectedPathIndex(0);
-                        setBranchingFraction(newPaths[0].fraction.toString());
-                    } 
-                    else {
-                        const cleanName = dStr.split('(')[0].trim();
-                        newPaths.push({ name: cleanName, fraction: rawFraction, label: dStr });
-                        setDecayPaths(newPaths);
-                        setSelectedPathIndex(0);
-                        
-                        // Legacy overrides
-                        if (parentNuclide.symbol === 'Mo-99' && !parentNuclide.branchingFraction) {
-                            setBranchingFraction('0.875');
-                        } else {
-                            setBranchingFraction(rawFraction.toString());
-                        }
-                    }
-                } else {
-                    setDecayPaths([]);
-                    setDaughterNuclide(null);
-                }
-            }, [parentNuclide]);
-
-            // --- 2. HANDLE PATH CHANGE ---
-            const handlePathChange = (e) => {
-                const idx = parseInt(e.target.value);
-                setSelectedPathIndex(idx);
-                if (decayPaths[idx]) {
-                    setBranchingFraction(decayPaths[idx].fraction.toString());
-                }
-            };
-
-            // --- 3. RESOLVE DAUGHTER DATA & ANALYZE ---
-            React.useEffect(() => {
-                if (!parentNuclide || decayPaths.length === 0) {
-                    setAnalysis(null); setDaughterNuclide(null); return;
-                }
+            addToast("Calculation saved to history!");
+        }
+    };
+    
+    const setTimeTarget = (targetSeconds) => {
+        const unitConv = { 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+        const bestUnit = getBestHalfLifeUnit(targetSeconds);
+        // Ensure we stick to standard units the user expects
+        const safeUnit = bestUnit === 'seconds' ? 'minutes' : bestUnit;
+        setTimeUnit(safeUnit);
+        setTimeElapsed((targetSeconds / unitConv[safeUnit]).toPrecision(4));
+    };
+    
+    const handleClearInputs = () => {
+        setParentNuclide(null); setDaughterNuclide(null);
+        setInitialActivity('100'); setInitialDaughterActivity('0');
+        setBranchingFraction('1.0');
+        setTimeElapsed('10'); setTimeUnit('days');
+        setResult(null); setChartData(null); setError(''); setAnalysis(null);
+    };
+    
+    return (
+        <div className="p-4 animate-fade-in">
+            <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Equilibrium Analyzer</h2>
+                    <ClearButton onClick={handleClearInputs} />
+                </div>
                 
-                const activePath = decayPaths[selectedPathIndex];
-                if(!activePath) return;
-
-                const normDaughter = normalizeString(activePath.name);
-                const foundDaughter = radionuclides.find(n => normalizeString(n.name) === normDaughter || normalizeString(n.symbol) === normDaughter);
-                
-                if (!foundDaughter) {
-                    setAnalysis({ type: 'Analysis Error', message: `Data for ${activePath.name} not found in database.` });
-                    setDaughterNuclide(null);
-                    return;
-                }
-                setDaughterNuclide(foundDaughter);
-                
-                const T1_seconds = parseHalfLifeToSeconds(parentNuclide.halfLife);
-                const T2_seconds = parseHalfLifeToSeconds(foundDaughter.halfLife);
-                
-                let type, message, theoreticalRatio = null, timeToEq = null, timeToMax = null;
-                
-                if (T1_seconds < T2_seconds) {
-                    type = 'No Equilibrium';
-                    message = `Parent half-life (${parentNuclide.halfLife}) is shorter than daughter half-life (${foundDaughter.halfLife}). No equilibrium will occur.`;
-                } else if (T1_seconds > 100 * T2_seconds) {
-                    type = 'Secular Equilibrium';
-                    theoreticalRatio = 1.0;
-                    timeToEq = (7 * T2_seconds); // ~99% saturation
-                    message = `Parent half-life is much longer than daughter's. Daughter activity will eventually equal parent activity (adjusted for branching).`;
-                } else {
-                    type = 'Transient Equilibrium';
-                    const lambda1 = Math.log(2) / T1_seconds;
-                    const lambda2 = Math.log(2) / T2_seconds;
-                    theoreticalRatio = lambda2 / (lambda2 - lambda1);
-                    timeToMax = Math.log(lambda2 / lambda1) / (lambda2 - lambda1);
-                    timeToEq = timeToMax * 2; 
-                    message = `Half-lives are comparable. Daughter will rise, exceed parent, then decay in lock-step.`;
-                }
-                
-                setAnalysis({ type, message, theoreticalRatio, timeToEq, timeToMax });
-                
-            }, [parentNuclide, decayPaths, selectedPathIndex, radionuclides]);
-            
-            // --- CALCULATION ---
-            const handleCalculate = () => {
-                if (!parentNuclide || !daughterNuclide) return;
-                
-                const N0_parent = safeParseFloat(initialActivity);
-                const N0_daughter = safeParseFloat(initialDaughterActivity);
-                const br = safeParseFloat(branchingFraction);
-                const t_input = safeParseFloat(timeElapsed);
-                
-                if ([N0_parent, N0_daughter, br, t_input].some(isNaN) || N0_parent < 0 || N0_daughter < 0 || br < 0 || br > 1 || t_input < 0) {
-                    setError('Please enter valid inputs.'); return;
-                }
-                setError('');
-                
-                const T1_seconds = parseHalfLifeToSeconds(parentNuclide.halfLife);
-                const T2_seconds = parseHalfLifeToSeconds(daughterNuclide.halfLife);
-                const unitConversions = { 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
-                const t_seconds = t_input * unitConversions[timeUnit];
-                const lambda1 = Math.log(2) / T1_seconds;
-                const lambda2 = Math.log(2) / T2_seconds;
-                
-                // Bateman Calculation
-                const A_parent = N0_parent * Math.exp(-lambda1 * t_seconds);
-                const initialDaughterDecay = N0_daughter * Math.exp(-lambda2 * t_seconds);
-                let daughterIngrowth;
-                
-                if (Math.abs(lambda1 - lambda2) < 1e-12) {
-                    daughterIngrowth = br * N0_parent * lambda1 * t_seconds * Math.exp(-lambda1 * t_seconds);
-                } else {
-                    daughterIngrowth = br * (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * t_seconds) - Math.exp(-lambda2 * t_seconds));
-                }
-                
-                const A_daughter = initialDaughterDecay + daughterIngrowth;
-                const currentRatio = A_parent > 0 ? (A_daughter / A_parent) : 0;
-                
-                setResult({
-                    parent: { name: parentNuclide.name, activity: A_parent.toPrecision(4) },
-                    daughter: { name: daughterNuclide.name, activity: A_daughter.toPrecision(4) },
-                    currentRatio: currentRatio.toFixed(4)
-                });
-                
-                // --- Chart Generation ---
-                const labels = [], parentData = [], daughterData = [];
-                const plotTime = t_seconds;
-                const steps = 100;
-                
-                for (let i = 0; i <= steps; i++) {
-                    const timePoint = (plotTime / steps) * i;
-                    const displayTimeVal = timePoint / unitConversions[timeUnit];
-                    labels.push(displayTimeVal < 10 ? displayTimeVal.toPrecision(2) : Math.round(displayTimeVal).toString());
-                    
-                    const curr_A_parent = N0_parent * Math.exp(-lambda1 * timePoint);
-                    parentData.push(curr_A_parent);
-                    
-                    const curr_initD_decay = N0_daughter * Math.exp(-lambda2 * timePoint);
-                    let curr_D_ingrowth;
-                    if (Math.abs(lambda1 - lambda2) < 1e-12) {
-                        curr_D_ingrowth = br * N0_parent * lambda1 * timePoint * Math.exp(-lambda1 * timePoint);
-                    } else {
-                        curr_D_ingrowth = br * (lambda2 / (lambda2 - lambda1)) * N0_parent * (Math.exp(-lambda1 * timePoint) - Math.exp(-lambda2 * timePoint));
-                    }
-                    daughterData.push(curr_initD_decay + curr_D_ingrowth);
-                }
-                
-                setChartData({ labels, parentData, daughterData, parentName: parentNuclide.name, daughterName: daughterNuclide.name, timeUnit });
-            };
-            
-            // Auto-calculate
-            React.useEffect(() => {
-                if (parentNuclide && daughterNuclide) handleCalculate();
-            }, [parentNuclide, daughterNuclide, initialActivity, initialDaughterActivity, branchingFraction, timeElapsed, timeUnit]);
-            
-            const handleSaveToHistory = () => {
-                if (result && parentNuclide) {
-                    addHistory({
-                        id: Date.now(),
-                        type: 'Equilibrium',
-                        icon: ICONS.activity,
-                        inputs: `${initialActivity} ${activityUnit} ${parentNuclide.symbol} (t=${timeElapsed} ${timeUnit})`,
-                        result: `D: ${result.daughter.activity}, Ratio: ${result.currentRatio}`,
-                        view: VIEWS.EQUILIBRIUM
-                    });
-                    addToast("Calculation saved to history!");
-                }
-            };
-            
-            const setTimeTarget = (targetSeconds) => {
-                const unitConv = { 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
-                const bestUnit = getBestHalfLifeUnit(targetSeconds);
-                setTimeUnit(bestUnit === 'seconds' ? 'minutes' : bestUnit);
-                setTimeElapsed((targetSeconds / unitConv[bestUnit === 'seconds' ? 'minutes' : bestUnit]).toPrecision(4));
-            };
-            
-            const handleClearInputs = () => {
-                setParentNuclide(null); setDaughterNuclide(null);
-                setInitialActivity('100'); setInitialDaughterActivity('0');
-                setBranchingFraction('1.0');
-                setTimeElapsed('10'); setTimeUnit('days');
-                setResult(null); setChartData(null); setError(''); setAnalysis(null);
-            };
-            
-            return (
-                <div className="p-4 animate-fade-in">
-                    <div className="max-w-2xl mx-auto bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
-                        <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-bold text-slate-800 dark:text-white">Equilibrium Analyzer</h2>
-                            <ClearButton onClick={handleClearInputs} />
+                <div className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Parent Nuclide</label>
+                        <div className="mt-1 min-h-[42px]">
+                            {parentNuclide ?
+                                <CalculatorNuclideInfo nuclide={parentNuclide} onClear={() => setParentNuclide(null)} />
+                                : <SearchableSelect options={parentNuclides} onSelect={handleParentChange} placeholder="Search for a parent nuclide..."/>}
                         </div>
-                        
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Parent Nuclide</label>
-                                <div className="mt-1 min-h-[42px]">
-                                    {parentNuclide ?
-                                        <CalculatorNuclideInfo nuclide={parentNuclide} onClear={() => setParentNuclide(null)} />
-                                        : <SearchableSelect options={parentNuclides} onSelect={handleParentChange} placeholder="Search for a parent nuclide..."/>}
-                                </div>
-                            </div>
+                    </div>
 
-                            {/* --- PATH SELECTOR --- */}
-                            {decayPaths.length > 1 && (
-                                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
-                                    <label className="block text-xs font-bold text-amber-800 dark:text-amber-200 mb-1">Select Decay Path</label>
-                                    <select 
-                                        value={selectedPathIndex} 
-                                        onChange={handlePathChange}
-                                        className="w-full p-2 text-sm rounded border-amber-300 bg-white dark:bg-slate-800 focus:ring-amber-500"
-                                    >
-                                        {decayPaths.map((path, idx) => (
-                                            <option key={idx} value={idx}>
-                                                {path.label} ({(path.fraction * 100).toFixed(2)}%)
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
-                            
-                            {analysis && (
-                                <div className="p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg animate-fade-in border border-sky-100 dark:border-sky-800">
-                                    <h3 className="text-lg font-bold text-sky-600 dark:text-sky-400 mb-2">{analysis.type}</h3>
-                                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">{analysis.message}</p>
-                            
-                                    {(analysis.theoreticalRatio || analysis.timeToMax || analysis.timeToEq) && (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm border-t border-sky-200 dark:border-sky-800 pt-3">
-                                            {analysis.theoreticalRatio && (
-                                                <div><p className="font-semibold text-slate-500 dark:text-slate-400">Equilibrium Ratio (A₂/A₁):</p><p className="font-mono">{(analysis.theoreticalRatio * safeParseFloat(branchingFraction)).toFixed(4)}</p></div>
-                                            )}
-                                            {analysis.timeToEq && (
-                                                <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded shadow-sm">
-                                                    <div>
-                                                        <p className="font-semibold text-slate-500 dark:text-slate-400">Time to ~Equilibrium (99%):</p>
-                                                        <p className="font-mono font-bold">{formatHalfLife(analysis.timeToEq.toString() + ' seconds', getBestHalfLifeUnit(analysis.timeToEq))}</p>
-                                                    </div>
-                                                    <button onClick={() => setTimeTarget(analysis.timeToEq)} className="text-xs px-3 py-1.5 bg-emerald-600 text-white font-bold rounded hover:bg-emerald-700 transition">Jump to Eq</button>
-                                                </div>
-                                            )}
-                                            {analysis.timeToMax && (
-                                                <div className="col-span-1 sm:col-span-2 flex items-center justify-between mt-2 bg-white dark:bg-slate-800 p-2 rounded shadow-sm">
-                                                    <div>
-                                                        <p className="font-semibold text-sky-600 dark:text-sky-400">Time to Peak Daughter Activity:</p>
-                                                        <p className="font-mono font-bold">{formatHalfLife(analysis.timeToMax.toString() + ' seconds', getBestHalfLifeUnit(analysis.timeToMax))}</p>
-                                                    </div>
-                                                    <button onClick={() => setTimeTarget(analysis.timeToMax)} className="text-xs px-3 py-1.5 bg-sky-600 text-white font-bold rounded hover:bg-sky-700 transition">Jump to Peak</button>
-                                                </div>
-                                            )}
+                    {/* --- PATH SELECTOR --- */}
+                    {decayPaths.length > 1 && (
+                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+                            <label className="block text-xs font-bold text-amber-800 dark:text-amber-200 mb-1">Select Decay Path</label>
+                            <select 
+                                value={selectedPathIndex} 
+                                onChange={handlePathChange}
+                                className="w-full p-2 text-sm rounded border-amber-300 bg-white dark:bg-slate-800 focus:ring-amber-500"
+                            >
+                                {decayPaths.map((path, idx) => (
+                                    <option key={idx} value={idx}>
+                                        {path.label} ({(path.fraction * 100).toFixed(2)}%)
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    
+                    {analysis && (
+                        <div className="p-4 bg-sky-50 dark:bg-sky-900/20 rounded-lg animate-fade-in border border-sky-100 dark:border-sky-800">
+                            <h3 className="text-lg font-bold text-sky-600 dark:text-sky-400 mb-2">{analysis.type}</h3>
+                            <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">{analysis.message}</p>
+                    
+                            {(analysis.theoreticalRatio || analysis.timeToMax || analysis.timeToEq) && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm border-t border-sky-200 dark:border-sky-800 pt-3">
+                                    {analysis.theoreticalRatio && (
+                                        <div><p className="font-semibold text-slate-500 dark:text-slate-400">Equilibrium Ratio (A₂/A₁):</p><p className="font-mono">{(analysis.theoreticalRatio * safeParseFloat(branchingFraction)).toFixed(4)}</p></div>
+                                    )}
+                                    {analysis.timeToEq && (
+                                        <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-2 rounded shadow-sm">
+                                            <div>
+                                                <p className="font-semibold text-slate-500 dark:text-slate-400">Time to ~Equilibrium (99%):</p>
+                                                <p className="font-mono font-bold">{formatHalfLife(analysis.timeToEq.toString() + ' seconds', getBestHalfLifeUnit(analysis.timeToEq))}</p>
+                                            </div>
+                                            <button onClick={() => setTimeTarget(analysis.timeToEq)} className="text-xs px-3 py-1.5 bg-emerald-600 text-white font-bold rounded hover:bg-emerald-700 transition">Jump to Eq</button>
+                                        </div>
+                                    )}
+                                    {analysis.timeToMax && (
+                                        <div className="col-span-1 sm:col-span-2 flex items-center justify-between mt-2 bg-white dark:bg-slate-800 p-2 rounded shadow-sm">
+                                            <div>
+                                                <p className="font-semibold text-sky-600 dark:text-sky-400">Time to Peak Daughter Activity:</p>
+                                                <p className="font-mono font-bold">{formatHalfLife(analysis.timeToMax.toString() + ' seconds', getBestHalfLifeUnit(analysis.timeToMax))}</p>
+                                            </div>
+                                            <button onClick={() => setTimeTarget(analysis.timeToMax)} className="text-xs px-3 py-1.5 bg-sky-600 text-white font-bold rounded hover:bg-sky-700 transition">Jump to Peak</button>
                                         </div>
                                     )}
                                 </div>
                             )}
-                            
-                            {parentNuclide && (
-                                <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium">Initial Parent Activity</label>
-                                            <div className="flex">
-                                                <input type="number" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
-                                                <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-sm">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium">Initial Daughter Activity</label>
-                                            <div className="flex">
-                                                <input type="number" value={initialDaughterActivity} onChange={e => setInitialDaughterActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
-                                                <div className="flex items-center justify-center px-3 bg-slate-200 dark:bg-slate-600 rounded-r-md text-sm text-slate-500 dark:text-slate-300">{activityUnit}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                            
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium">Time Elapsed</label>
-                                            <div className="flex gap-2 mt-1">
-                                                <input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
-                                                <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
-                                                    {timeUnitsOrdered.map(u => <option key={u} value={u}>{u}</option>)}
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <Tooltip text="The fraction of parent decays that result in this daughter. Example: Mo-99 -> Tc-99m is ~0.875.">
-                                                <label className="block text-sm font-medium cursor-help underline decoration-dotted">Branching Fraction (0-1)</label>
-                                            </Tooltip>
-                                            <input type="number" value={branchingFraction} onChange={e => setBranchingFraction(e.target.value)} step="0.01" min="0" max="1" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            
-                            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-                            
-                            {result && (
-                                <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg space-y-2">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <p className="font-semibold text-center text-sm flex-grow">Activity at {timeElapsed} {timeUnit}</p>
-                                        <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
-                                            <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors -mr-2">
-                                                <Icon path={ICONS.notepad} className="w-5 h-5" />
-                                            </button>
-                                        </Tooltip>
-                                    </div>
-                            
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-2 bg-white dark:bg-slate-800 rounded shadow-sm text-center">
-                                            <p className="text-xs text-slate-500">Parent ({result.parent.name})</p>
-                                            <p className="font-bold text-sky-600 dark:text-sky-400">{result.parent.activity}</p>
-                                        </div>
-                                        <div className="p-2 bg-white dark:bg-slate-800 rounded shadow-sm text-center border-b-2 border-rose-500">
-                                            <p className="text-xs text-slate-500">Daughter ({result.daughter.name})</p>
-                                            <p className="font-bold text-rose-600 dark:text-rose-400">{result.daughter.activity}</p>
-                                        </div>
-                                    </div>
-                            
-                                    <div className="text-center pt-2">
-                                        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Current Ratio (A₂/A₁): <span className="font-bold font-mono">{result.currentRatio}</span></span>
-                                    </div>
-                                </div>
-                            )}
-                            
-                            {chartData && (
-                                <>
-                                    <div className="flex justify-end mt-4">
-                                        <label className="flex items-center gap-2 text-sm cursor-pointer">
-                                            <input type="checkbox" checked={useLogScale} onChange={() => setUseLogScale(!useLogScale)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
-                                            Use Logarithmic Scale
-                                        </label>
-                                    </div>
-                                    <DecayChart chartData={chartData} useLogScale={useLogScale} theme={theme} />
-                                </>
-                            )}
                         </div>
-                    </div>
+                    )}
+                    
+                    {parentNuclide && (
+                        <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium">Initial Parent Activity</label>
+                                    <div className="flex">
+                                        <input type="number" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                                        <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-sm">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium">Initial Daughter Activity</label>
+                                    <div className="flex">
+                                        <input type="number" value={initialDaughterActivity} onChange={e => setInitialDaughterActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                                        <div className="flex items-center justify-center px-3 bg-slate-200 dark:bg-slate-600 rounded-r-md text-sm text-slate-500 dark:text-slate-300">{activityUnit}</div>
+                                    </div>
+                                </div>
+                            </div>
+                    
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium">Time Elapsed</label>
+                                    <div className="flex gap-2 mt-1">
+                                        <input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                                        <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
+                                            {timeUnitsOrdered.map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <Tooltip text="The fraction of parent decays that result in this daughter. Example: Mo-99 -> Tc-99m is ~0.875.">
+                                        <label className="block text-sm font-medium cursor-help underline decoration-dotted">Branching Fraction (0-1)</label>
+                                    </Tooltip>
+                                    <input type="number" value={branchingFraction} onChange={e => setBranchingFraction(e.target.value)} step="0.01" min="0" max="1" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                    
+                    {result && (
+                        <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg space-y-2">
+                            <div className="flex justify-between items-center mb-2">
+                                <p className="font-semibold text-center text-sm flex-grow">Activity at {timeElapsed} {timeUnit}</p>
+                                <Tooltip text="Save to Recent Calculations" widthClass="w-auto">
+                                    <button onClick={handleSaveToHistory} className="p-2 text-slate-400 hover:text-sky-500 transition-colors -mr-2">
+                                        <Icon path={ICONS.notepad} className="w-5 h-5" />
+                                    </button>
+                                </Tooltip>
+                            </div>
+                    
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-2 bg-white dark:bg-slate-800 rounded shadow-sm text-center">
+                                    <p className="text-xs text-slate-500">Parent ({result.parent.name})</p>
+                                    <p className="font-bold text-sky-600 dark:text-sky-400">{result.parent.activity}</p>
+                                </div>
+                                <div className="p-2 bg-white dark:bg-slate-800 rounded shadow-sm text-center border-b-2 border-rose-500">
+                                    <p className="text-xs text-slate-500">Daughter ({result.daughter.name})</p>
+                                    <p className="font-bold text-rose-600 dark:text-rose-400">{result.daughter.activity}</p>
+                                </div>
+                            </div>
+                    
+                            <div className="text-center pt-2">
+                                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Current Ratio (A₂/A₁): <span className="font-bold font-mono">{result.currentRatio}</span></span>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {chartData && (
+                        <>
+                            <div className="flex justify-end mt-4">
+                                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                    <input type="checkbox" checked={useLogScale} onChange={() => setUseLogScale(!useLogScale)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
+                                    Use Logarithmic Scale
+                                </label>
+                            </div>
+                            <DecayChart chartData={chartData} useLogScale={useLogScale} theme={theme} />
+                        </>
+                    )}
                 </div>
-            );
-        };
+            </div>
+        </div>
+    );
+};
         
         /**
         * @description Updated Radon Concentration Calculator with EPA Context Bar and Occupancy Presets.
