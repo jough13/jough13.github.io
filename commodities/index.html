@@ -33,8 +33,6 @@
             background: linear-gradient(to left, rgb(31 41 55), transparent);
         }
 
-
-
         .sticky-header { position: sticky; top: 0; z-index: 10; }
         .sortable { cursor: pointer; position: relative; user-select: none; }
         .sortable .sort-arrow { display: inline-block; width: 1em; height: 1em; opacity: 0.4; position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); }
@@ -1064,24 +1062,42 @@
         function getFilteredData() {
             const searchInput = document.getElementById("searchInput");
             const textFilter = searchInput.value.toUpperCase();
+            
+            // Create a "clean" version of the search term (remove hyphens and spaces)
+            // This allows matching "123456789" against "12-34-56-789"
+            const cleanFilter = textFilter.replace(/[-\s]/g, '');
+
             const radionuclideFilter = document.getElementById('radionuclideFilter');
             const nuclideFilter = radionuclideFilter.value;
             const nrcExemptOnly = document.getElementById('nrcExemptFilter').checked;
             const dotExemptOnly = document.getElementById('dotExemptFilter').checked;
+
             return tableData.filter(item => {
                 const nuclideMatch = nuclideFilter === 'all' || item.radionuclide === nuclideFilter;
                 const nrcExemptMatch = !nrcExemptOnly || (item.nrc_exemption_val !== null && item.activity_val <= item.nrc_exemption_val);
                 const dotExemptMatch = !dotExemptOnly || (item.dot_exemption_val !== null && item.activity_val <= item.dot_exemption_val);
+                
                 let textMatch = false;
                 if (textFilter === "") {
                     textMatch = true;
                 } else {
-                    const searchableValues = [item.name, item.nsn, item.niin];
-                    textMatch = searchableValues.some(val => val && val.toUpperCase().includes(textFilter));
+                    // 1. Check Name normally (using the original textFilter so spaces/hyphens in names still matter)
+                    const nameMatch = item.name && item.name.toUpperCase().includes(textFilter);
+
+                    // 2. Check NSN: Strip hyphens/spaces from the item's NSN data, compare to clean search term
+                    const nsnClean = item.nsn ? item.nsn.replace(/[-\s]/g, '') : '';
+                    const nsnMatch = nsnClean.includes(cleanFilter);
+
+                    // 3. Check NIIN: Compare cleaned NIIN data to cleaned search term
+                    const niinClean = item.niin ? item.niin.replace(/[-\s]/g, '') : '';
+                    const niinMatch = niinClean.includes(cleanFilter);
+
+                    textMatch = nameMatch || nsnMatch || niinMatch;
                 }
                 return nuclideMatch && textMatch && nrcExemptMatch && dotExemptMatch;
             });
         }
+
         function filterTable() {
             const filteredData = getFilteredData();
             const noResultsDiv = document.getElementById("noResults");
