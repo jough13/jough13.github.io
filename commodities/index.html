@@ -818,6 +818,9 @@
         // --- GLOBAL STATE ---
         let tableData = [];
         let currentSort = { column: null, direction: 'asc' };
+
+        // Track selections permanently
+        const selectedIds = new Set();
         
         // --- UTILITY FUNCTIONS ---
         const CI_TO_BQ = 3.7e10;
@@ -972,7 +975,7 @@
                 un2911_pkg_limit_bq_str: un2911PkgLimitVal !== null ? formatBq(un2911PkgLimitVal) : 'Unlimited',
             };
         }
-        
+
         function highlightText(text, searchTerm) {
             if (!searchTerm || !text) {
                 return text ? escapeHTML(text) : ''; 
@@ -1002,23 +1005,36 @@
             const tableBody = document.querySelector('#lookupTable tbody');
             const isSiUnits = document.getElementById('unitToggle').checked;
             const searchTerm = document.getElementById('searchInput').value;
+            
             tableBody.innerHTML = '';
+            
             const rows = data.map((item) => {
+                // NEW: Check if this ID is in our Set
+                const isSelected = selectedIds.has(String(item.id));
+                
                 const nrcExemption = isSiUnits ? item.nrc_exemption_bq_str : item.nrc_exemption_ci_str;
                 const dotExemption = isSiUnits ? item.dot_exemption_bq_str : item.dot_exemption_ci_str;
                 const un2911Limit = isSiUnits ? item.un2911_limit_bq_str : item.un2911_limit_ci_str;
                 const un2911PkgLimit = isSiUnits ? item.un2911_pkg_limit_bq_str : item.un2911_pkg_limit_ci_str;
                 const activity = isSiUnits ? item.activity_bq_str : item.activity_ci_str;
+                
                 const rowClasses = ['border-b', 'dark:border-gray-700', 'hover:bg-gray-50', 'dark:hover:bg-gray-600'];
                 if (item.isCustom) { rowClasses.push('custom-row'); } 
                 else { rowClasses.push('bg-white', 'dark:bg-gray-800'); }
+                // Add highlighting class if selected
+                if (isSelected) { rowClasses.push('selected-row'); }
+
                 const customIcon = item.isCustom ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="inline-block ml-2 text-blue-600 dark:text-blue-300" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>` : '';
+                
                 const highlightedName = highlightText(item.name, searchTerm);
                 const highlightedNsn = highlightText(item.nsn, searchTerm);
                 const highlightedNiin = highlightText(item.niin, searchTerm);
+
                 return `
                     <tr class="${rowClasses.join(' ')}" data-id="${item.id}">
-                        <td class="px-6 py-4 text-center" data-label="Select"><input type="checkbox" class="row-checkbox" data-id="${item.id}"></td>
+                        <td class="px-6 py-4 text-center" data-label="Select">
+                            <input type="checkbox" class="row-checkbox" data-id="${item.id}" ${isSelected ? 'checked' : ''}>
+                        </td>
                         <td class="px-6 py-4 font-medium text-gray-900 dark:text-white text-left" data-label="Name">${highlightedName}${customIcon}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center expandable" data-label="NSN">${highlightedNsn || ''}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-center expandable" data-label="NIIN">${highlightedNiin || ''}</td>
@@ -1033,6 +1049,7 @@
             }).join('');
             tableBody.innerHTML = rows;
         }
+
         function performSort() {
             const filteredData = getFilteredData();
             filteredData.sort((a, b) => {
@@ -1368,20 +1385,31 @@
                     }
                 }
             });
+
             tableBody.addEventListener('change', (event) => {
                  if (event.target.classList.contains('row-checkbox')) {
-                    const row = event.target.closest('tr');
-                    if (event.target.checked) {
+                    const checkbox = event.target;
+                    const row = checkbox.closest('tr');
+                    const id = String(checkbox.dataset.id);
+                    
+                    // Sync with Set
+                    if (checkbox.checked) {
+                        selectedIds.add(id);
                         row.classList.add('selected-row');
                     } else {
+                        selectedIds.delete(id);
                         row.classList.remove('selected-row');
                     }
-                    const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
+                    
+                    // Count based on Set size, not visible checkboxes
+                    const selectedCount = selectedIds.size;
+                    
                     compareBtn.disabled = selectedCount < 2;
                     exportSelectionBtn.disabled = selectedCount === 0;
                     clearSelectionBtn.disabled = selectedCount === 0;
                     disposalRequestBtn.disabled = selectedCount === 0;
                     saveSelectionBtn.disabled = selectedCount === 0;
+                    
                     updateSelectionState();
                 }
             });
@@ -1724,20 +1752,47 @@
                     pocContainer.insertAdjacentHTML('beforeend', newPocCardHtml);
                 }
             });
+
             function calculateDisposalPackageAnalysis() {
                 const analysisContainer = document.getElementById('packageAnalysis');
                 if (!analysisContainer) return;
+
                 const itemCards = document.querySelectorAll('.disposal-item');
-                let dotExemptSum = 0; let un2911PkgSum = 0; let typeASum = 0;
+                let dotExemptSum = 0; 
+                let un2911PkgSum = 0; 
+                let typeASum = 0;
+                let anyItemExceeds2911 = false; // Track if any single item fails UN2911
+
                 let analysisDetails = [];
+
                 itemCards.forEach(card => {
                     const itemId = card.dataset.itemId;
                     const itemData = tableData.find(d => d.id == itemId);
                     const quantityInput = card.querySelector('.quantity-input');
                     const quantity = quantityInput ? parseFloat(quantityInput.value) : 0;
+
                     if (!itemData || isNaN(quantity) || quantity <= 0) { return; }
+
                     const totalActivity = itemData.activity_val * quantity;
-                    let detailRow = { name: itemData.name, qty: quantity, activity: formatCi(totalActivity), dot: 'N/A', un2911: 'N/A', typeA: 'N/A' };
+                    const activityPerItem = itemData.activity_val; // NEW: Track single item activity
+
+                    // Check Regulatory Item Limit for UN2911
+                    let itemStatus2911 = 'OK';
+                    if (itemData.un2911_limit_val && activityPerItem > itemData.un2911_limit_val) {
+                        anyItemExceeds2911 = true;
+                        itemStatus2911 = 'EXCEEDS ITEM LIMIT';
+                    }
+
+                    let detailRow = { 
+                        name: itemData.name, 
+                        qty: quantity, 
+                        activity: formatCi(totalActivity), 
+                        dot: 'N/A', 
+                        un2911: 'N/A', 
+                        typeA: 'N/A',
+                        itemStatus: itemStatus2911 // NEW: Pass status to table
+                    };
+
                     if (itemData.dot_exemption_val) {
                         const fraction = totalActivity / itemData.dot_exemption_val;
                         dotExemptSum += fraction;
@@ -1755,21 +1810,31 @@
                     }
                     analysisDetails.push(detailRow);
                 });
+
                 let classification = '';
                 let classificationColor = '';
+
+                // Updated logic checks Item Limits BEFORE Package Limits
                 if (dotExemptSum <= 1) {
                     classification = 'Exempt from regulation per 49 CFR § 173.436.';
                     classificationColor = 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
-                } else if (un2911PkgSum <= 1) {
+                } else if (un2911PkgSum <= 1 && !anyItemExceeds2911) {
+                    // Only UN2911 if Package Sum <= 1 AND no single item exceeds item limit
                     classification = 'Limited Quantity Excepted Package (UN 2911)';
                     classificationColor = 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200';
                 } else if (typeASum <= 1) {
                     classification = 'Type A Package';
+                    // Add warning if it was pushed here due to item limit
+                    if (anyItemExceeds2911 && un2911PkgSum <= 1) {
+                        classification += ' (Item exceeds UN2911 limit)';
+                    }
                     classificationColor = 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200';
                 } else {
                     classification = 'Exceeds Type A limits. Requires Type B package.';
                     classificationColor = 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
                 }
+
+                // Render...
                 let content = `
                     <details class="group" open>
                         <summary class="text-lg font-semibold cursor-pointer list-none group-open:mb-4">
@@ -1786,17 +1851,26 @@
                                     <table class="w-full text-sm text-left">
                                         <thead class="bg-gray-100 dark:bg-gray-700">
                                             <tr>
-                                                <th class="px-2 py-1">Item</th><th class="px-2 py-1 text-center">Qty</th>
-                                                <th class="px-2 py-1 text-center">Total Activity</th><th class="px-2 py-1 text-center">Exempt Fraction</th>
-                                                <th class="px-2 py-1 text-center">UN 2911 Fraction</th><th class="px-2 py-1 text-center">Type A Fraction</th>
+                                                <th class="px-2 py-1">Item</th>
+                                                <th class="px-2 py-1 text-center">Qty</th>
+                                                <th class="px-2 py-1 text-center">Total Act.</th>
+                                                <th class="px-2 py-1 text-center">Exempt Frac.</th>
+                                                <th class="px-2 py-1 text-center">UN 2911 Frac.</th>
+                                                <th class="px-2 py-1 text-center">Type A Frac.</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             ${analysisDetails.map(row => `
                                                 <tr class="border-b dark:border-gray-700">
-                                                    <td class="px-2 py-1">${row.name}</td><td class="px-2 py-1 text-center">${row.qty}</td>
-                                                    <td class="px-2 py-1 text-center">${row.activity}</td><td class="px-2 py-1 text-center">${row.dot}</td>
-                                                    <td class="px-2 py-1 text-center">${row.un2911}</td><td class="px-2 py-1 text-center">${row.typeA}</td>
+                                                    <td class="px-2 py-1">
+                                                        ${row.name}
+                                                        ${row.itemStatus !== 'OK' ? '<br><span class="text-xs text-red-500 font-bold">(' + row.itemStatus + ')</span>' : ''}
+                                                    </td>
+                                                    <td class="px-2 py-1 text-center">${row.qty}</td>
+                                                    <td class="px-2 py-1 text-center">${row.activity}</td>
+                                                    <td class="px-2 py-1 text-center">${row.dot}</td>
+                                                    <td class="px-2 py-1 text-center">${row.un2911}</td>
+                                                    <td class="px-2 py-1 text-center">${row.typeA}</td>
                                                 </tr>`).join('')}
                                             <tr class="font-bold bg-gray-50 dark:bg-gray-800">
                                                 <td class="px-2 py-1 text-right" colspan="3">Total Sum of Fractions:</td>
@@ -1812,6 +1886,7 @@
                     </details>`;
                 analysisContainer.innerHTML = content;
             }
+
             printRequestBtn.addEventListener('click', async () => {
                 const form = document.getElementById('disposalRequestForm');
                 const getValue = (id) => {
