@@ -1007,11 +1007,18 @@
         <h3>Import Data</h3>
         <p style="color:var(--text-muted);">Paste data code.</p>
         <textarea id="importText" class="form-control" style="height:200px; font-size:0.8rem;"></textarea>
-        <div style="text-align:right; margin-top:10px;">
-            <button class="btn-sync" style="width:auto;" onclick="closeModal('importModal')">Cancel</button>
-            <button class="btn" onclick="runImport()">Load</button>
+        
+        <div style="display:flex; justify-content:space-between; margin-top:10px;">
+            <button class="btn-sync btn-danger" style="width:auto;" onclick="runImport(true)">
+                <i class="fa-solid fa-radiation"></i> Wipe & Restore
+            </button>
+            
+            <div style="display:flex; gap:10px;">
+                <button class="btn-sync" style="width:auto;" onclick="closeModal('importModal')">Cancel</button>
+                <button class="btn" onclick="runImport(false)">Merge Load</button>
+            </div>
         </div>
-    </div>
+        </div>
 </div>
 
 <div id="exemptModal" class="modal-overlay">
