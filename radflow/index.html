@@ -303,7 +303,7 @@ td input.live-edit[style*="flex:1"] { min-width: 150px !important; } /* Force de
 }
 
         /* Sidebar & Buttons */
-        .sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; z-index: 10; overflow-y: auto; }
+        .sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 1.5rem; display: flex; flex-direction: column; z-index: 20; overflow-y: auto; }
         .nav-item { padding: 0.8rem 0.5rem; margin-bottom: 0.5rem; border-radius: 8px; cursor: pointer; color: var(--text-muted); font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s; }
         .nav-item:hover { background: var(--bg-card); color: var(--text-main); }
         .nav-item.active { background: var(--accent-dim); color: var(--accent); }
@@ -5637,7 +5637,11 @@ function addProject() {
         const t = document.getElementById('pTitle').value; 
         const d = document.getElementById('pDesc').value; 
         const dt = document.getElementById('pDate').value; 
-        const c = parseFloat(document.getElementById('pCost').value)||0; 
+        const c = parseFloat(document.getElementById('pCost').value) || 0;
+            if (c < 0) {
+                showToast("Initial budget cannot be negative", "error");
+                return;
+            }
         
         // 2. Get Logistics
         const uic = document.getElementById('pUic').value;
@@ -5747,7 +5751,7 @@ function addExpense(keepOpen = false) {
             id: Date.now() + Math.floor(Math.random() * 1000),
             projId: pid, 
             desc: desc, 
-            amount: parseFloat(amt), 
+            amount: roundMoney(parseFloat(amt)),
             date: dt, 
             status: st, 
             updated: Date.now(),
