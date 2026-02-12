@@ -972,15 +972,32 @@
                 un2911_pkg_limit_bq_str: un2911PkgLimitVal !== null ? formatBq(un2911PkgLimitVal) : 'Unlimited',
             };
         }
+        
         function highlightText(text, searchTerm) {
             if (!searchTerm || !text) {
                 return text ? escapeHTML(text) : ''; 
             }
-            const escapedText = escapeHTML(text);
-            const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`(${escapeHTML(escapedSearchTerm)})`, 'gi');
-            return escapedText.replace(regex, `<span class="highlight">$1</span>`);
+
+            // 1. Clean up the search term (remove hyphens/spaces for loose matching)
+            const cleanSearch = searchTerm.replace(/[-\s]/g, '');
+            
+            // 2. If the search term is empty after cleaning (e.g., user just typed a hyphen), do nothing
+            if (!cleanSearch) return escapeHTML(text);
+
+            // 3. Create a flexible regex pattern from the clean search term
+            //    "123" becomes /1[-\s]*2[-\s]*3/gi
+            //    This matches "123", "1-2-3", "1 2 3", etc.
+            const pattern = cleanSearch.split('').map(char => {
+                // Escape special regex characters if the user types them (like . or *)
+                return char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[-\\s]*';
+            }).join('');
+
+            const regex = new RegExp(`(${pattern})`, 'gi');
+            
+            // 4. Run the replace on the original text
+            return escapeHTML(text).replace(regex, `<span class="highlight">$1</span>`);
         }
+
         function populateTable(data) {
             const tableBody = document.querySelector('#lookupTable tbody');
             const isSiUnits = document.getElementById('unitToggle').checked;
