@@ -1,0 +1,5062 @@
+    const APP_VER = "RadFlow v26.0";
+
+    // --- MATH HELPER ---
+    // Rounds to 2 decimal places to prevent floating point errors (e.g. 10.99999 -> 11.00)
+    const roundMoney = (num) => {
+        return Math.round((num + Number.EPSILON) * 100) / 100;
+    };
+
+    // --- CUSTOM UI HELPERS ---
+       
+    function showAlert(msg, title="System Alert") {
+        document.getElementById('cmHead').innerHTML = `<i class="fa-solid fa-circle-info" style="color:var(--info)"></i> <span>${title}</span>`;
+        document.getElementById('cmBody').innerHTML = msg;
+        document.getElementById('cmFoot').innerHTML = `<button class="btn" onclick="closeCustomAlert()">OK</button>`;
+        document.getElementById('customAlertOverlay').style.display = 'flex';
+    }
+
+    function showPrompt(msg, onConfirm, title="Input Required", placeholder="", isDanger=false) {
+        // 1. Set Title & Icon
+        const icon = isDanger ? '<i class="fa-solid fa-trash-can"></i>' : '<i class="fa-solid fa-pen-to-square"></i>';
+        const color = isDanger ? 'var(--danger)' : 'var(--accent)';
+        
+        document.getElementById('cmHead').innerHTML = `<span style="color:${color}">${icon}</span> <span>${title}</span>`;
+
+        // 2. Inject Message + Input Field
+        document.getElementById('cmBody').innerHTML = `
+            <div style="margin-bottom:15px; color:var(--text-muted);">${msg}</div>
+            <input id="cmInput" class="form-control" placeholder="${placeholder}" autocomplete="off">
+        `;
+
+        // 3. Configure Buttons
+        const btnStyle = isDanger ? 'background:var(--danger)' : 'background:var(--accent)';
+        const yesBtn = `<button class="btn" id="btnPromptYes" style="${btnStyle}">Confirm</button>`;
+        const noBtn = `<button class="btn btn-sec" onclick="closeCustomAlert()">Cancel</button>`;
+        
+        document.getElementById('cmFoot').innerHTML = noBtn + yesBtn;
+        document.getElementById('customAlertOverlay').style.display = 'flex';
+
+        // 4. Focus Input & Handle Enter Key
+        const input = document.getElementById('cmInput');
+        setTimeout(() => input.focus(), 50);
+        
+        input.onkeydown = function(e) {
+            if(e.key === 'Enter') document.getElementById('btnPromptYes').click();
+        };
+
+        // 5. Handle Confirm Click
+        document.getElementById('btnPromptYes').onclick = function() {
+            const val = input.value.trim(); // Capture text
+            closeCustomAlert();
+            if(onConfirm) onConfirm(val); // Send text back to callback
+        };
+    }
+
+    function showConfirm(msg, onYes, title="Confirmation Required", isDanger=false) {
+        document.getElementById('cmHead').innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:${isDanger?'var(--danger)':'var(--warning)'}"></i> <span>${title}</span>`;
+        document.getElementById('cmBody').innerHTML = msg;
+        
+        // We attach the 'onYes' function to the Confirm button dynamically
+        const btnColor = isDanger ? 'background:var(--danger)' : 'background:var(--accent)';
+        const yesBtn = `<button class="btn" id="btnConfirmYes" style="${btnColor}">Confirm</button>`;
+        const noBtn = `<button class="btn btn-sec" onclick="closeCustomAlert()">Cancel</button>`;
+        
+        document.getElementById('cmFoot').innerHTML = noBtn + yesBtn;
+        document.getElementById('customAlertOverlay').style.display = 'flex';
+
+        // Bind the click event
+        document.getElementById('btnConfirmYes').onclick = function() {
+            closeCustomAlert();
+            if(onYes) onYes();
+        };
+    }
+
+    function closeCustomAlert() {
+        document.getElementById('customAlertOverlay').style.display = 'none';
+    }
+
+    const toastBox = document.createElement('div');
+    toastBox.className = 'toast-container';
+    document.body.appendChild(toastBox);
+
+    document.title = APP_VER;
+    document.getElementById('app-title-display').innerText = APP_VER;
+
+    const COST_DB = {
+        labor: {
+            'sb': { name: 'Senior Broker', rate: 125.90, unit: 'Hour' },
+            'st': { name: 'Senior Technician', rate: 85.83, unit: 'Hour' },
+            'jt': { name: 'Junior Technician', rate: 79.68, unit: 'Hour' }
+        },
+        trans: {
+            'truck': { name: 'Truck (Exclusive)', rate: 6.04, unit: 'Mile' },
+            'van': { name: 'Van (Delivery)', rate: 4.64, unit: 'Mile' }
+        },
+        disposal: {
+            'bulk': { name: 'Bulk Waste - Exempt', rate: 34.10, unit: 'Cubic Feet' },
+            'classA': { name: 'Class A Sealed Source', rate: 384.33, unit: 'Source' },
+            'classB': { name: 'Class B Sealed Source', rate: 469.50, unit: 'Source' },
+            'classC': { name: 'Class C Sealed Source', rate: 557.24, unit: 'Source' },
+            'daw': { name: 'Dry Active Waste (DAW)', rate: 162.29, unit: 'Cubic Feet' },
+            'exempt': { name: 'Exempt Commodities', rate: 159.40, unit: 'Cubic Feet' },
+            'llmw': { name: 'Low-Level Mixed Waste', rate: 435.45, unit: 'Cubic Feet' },
+            'lsc': { name: 'Mixed Waste - LSC Vials', rate: 1327.26, unit: 'Cubic Feet' },
+            'h3': { name: 'Tritium Recycling', rate: 20.75, unit: 'Curie' },
+            'sol': { name: 'Acetate/Nitrate Sol.', rate: 407.53, unit: 'Gallon' }
+        },
+        container: {
+            'tri': { name: '1 CY Tri-Wall', rate: 110.45, unit: 'Container' },
+            '30gal': { name: '30 Gal Drum (Type A)', rate: 115.19, unit: 'Container' },
+            '5gal': { name: '5 Gal Drum (Type A)', rate: 39.89, unit: 'Container' },
+            '55gal': { name: '55 Gal Drum (Type A)', rate: 126.68, unit: 'Container' },
+            'b25': { name: 'B25 Box (IP-1)', rate: 2026.90, unit: 'Container' },
+            'b25a': { name: 'B25 Box (Type A)', rate: 4118.86, unit: 'Container' }
+        },
+        sample: {
+            'gamma': { name: 'Gamma Spectroscopy', rate: 117.47, unit: 'Sample' },
+            'h3': { name: 'Tritium Analysis', rate: 53.15, unit: 'Sample' },
+            'sr': { name: 'Strontium Analysis', rate: 158.15, unit: 'Sample' },
+            'tclp': { name: 'TCLP', rate: 1105.07, unit: 'Sample' }
+        }
+    };
+
+    const ISOTOPE_DB = {
+    'Th-232': { hl: 1.405e10, name: 'Thorium-232' }, 
+    'U-238':  { hl: 4.468e9, name: 'Uranium-238' }, 
+    'Co-60': { hl: 5.27, name: 'Cobalt-60' },
+    'Cs-137': { hl: 30.17, name: 'Cesium-137' },
+    'Ir-192': { hl: 0.202, name: 'Iridium-192' },
+    'Am-241': { hl: 432.2, name: 'Americium-241' },
+    'Sr-90':  { hl: 28.79, name: 'Strontium-90' },
+    'H-3':    { hl: 12.32, name: 'Tritium' },
+    'C-14':   { hl: 5730, name: 'Carbon-14' },
+    'Ni-63':  { hl: 100.1, name: 'Nickel-63' }, 
+    'Kr-85':  { hl: 10.756, name: 'Krypton-85' }, 
+    'Po-210': { hl: 0.379, name: 'Polonium-210' }, 
+    'Ra-226': { hl: 1600, name: 'Radium-226' },
+    'I-131':  { hl: 0.022, name: 'Iodine-131' }, 
+    'Tc-99m': { hl: 0.00068, name: 'Technetium-99m' },
+    'Cf-252': { hl: 2.645, name: 'Californium-252' },
+    'Unknown': { hl: 0, name: 'Unknown / Mixed' }
+};
+
+    const getTodayStr = () => {
+        const d = new Date();
+        const offset = d.getTimezoneOffset() * 60000;
+        return new Date(d.getTime() - offset).toISOString().split('T')[0];
+    };
+
+const STARTER_DATA = {
+    projects: [
+        { 
+            id: 101, title: "Class B Resin Shipment", uic: "N00014", location: "Norfolk, VA", region: "East", 
+            reqDate: "2025-06-15", jmcId: "2025-045", rcn: "25-0012", pickupStatus: "Scheduled", 
+            status: "Active", health: "green", due: "2025-12-30", 
+            desc: "Transport of CNS 8-120B Cask containing exhausted resin liners.", 
+            links:[], 
+            tasks: [
+                {id: 1, text: "Verify Cask Cert", done: true, assign: "JD", prio: "high"}, 
+                {id: 2, text: "Notify Broker", done: true, assign: "AS", prio: "med"}, 
+                {id: 3, text: "Schedule 100-ton Crane", done: false, assign: "JD", prio: "high"}
+            ],
+            updatesSent: ["2025-10-01"]
+        },
+        { 
+            id: 102, title: "Lab 4 Cleanout", uic: "N66001", location: "San Diego, CA", region: "West", 
+            reqDate: "2025-08-01", jmcId: "2025-099", rcn: "25-0104", pickupStatus: "Requested", 
+            status: "Planning", health: "yellow", due: "2026-02-15", 
+            desc: "Volume reduction and segregation of legacy Dry Active Waste (DAW).", 
+            links:[], 
+            tasks: [
+                {id: 1, text: "Order 10 B-25 Boxes", done: false, assign: "AS", prio: "low"},
+                {id: 2, text: "Survey Lab Corners", done: true, assign: "JD", prio: "med"}
+            ],
+            updatesSent: []
+        },
+        { 
+            id: 103, title: "Building 5 Decommissioning", uic: "N4523A", location: "Bremerton, WA", region: "West", 
+            reqDate: "2025-04-10", jmcId: "2025-012", rcn: "25-0003", pickupStatus: "Shipped", 
+            status: "Active", health: "green", due: "2025-11-20", 
+            desc: "Large scale D&D of former radiography bay. Concrete scabbling required.", 
+            links: [
+                {name: "Survey Map", url: "file:///S:/RadSafety/B5_Map.pdf"},
+                {name: "MARSSIM Plan", url: "https://www.nrc.gov/marssim"}
+            ], 
+            tasks: [
+                {id: 1, text: "Hire Scabbling Contractor", done: true, assign: "Admin", prio: "high"},
+                {id: 2, text: "Final Status Survey (FSS)", done: false, assign: "AS", prio: "high"},
+                {id: 3, text: "Dispose of Rubble", done: false, assign: "JD", prio: "med"}
+            ],
+            updatesSent: ["2025-09-15", "2025-08-01"]
+        },
+        { 
+            id: 104, title: "Quarterly Source Roundup", uic: "N00014", location: "Washington, DC", region: "East", 
+            reqDate: "2025-01-10", jmcId: "2025-001", rcn: "25-0001", pickupStatus: "Complete", 
+            status: "Complete", health: "green", due: "2025-03-01", 
+            desc: "Consolidation of unwanted check sources from R&D labs.", 
+            links:[], 
+            tasks: [
+                {id: 1, text: "Collect Pu-239 sources", done: true, assign: "JD", prio: "high"}
+            ],
+            updatesSent: []
+        },
+        { 
+            id: 105, title: "Yokosuka Emergency Support", uic: "N62742", location: "Yokosuka, Japan", region: "Far-East", 
+            reqDate: "2025-11-01", jmcId: "2025-200", rcn: "25-0400", pickupStatus: "Pending", 
+            status: "Review", health: "red", due: "2025-12-01", 
+            desc: "Emergency technical support for detection anomaly. Funding critical.", 
+            links:[], 
+            tasks: [
+                {id: 1, text: "Secure Travel Orders", done: true, assign: "Admin", prio: "high"},
+                {id: 2, text: "Ship Equipment", done: false, assign: "AS", prio: "high"}
+            ],
+            updatesSent: ["2025-10-20"]
+        },
+        { 
+            id: 106, title: "Base-wide Tritium Sign Disposal", uic: "N00250", location: "Rota, Spain", region: "Europe", 
+            reqDate: "2025-09-01", jmcId: "2025-088", rcn: "25-0210", pickupStatus: "Staged", 
+            status: "Active", health: "green", due: "2026-01-15", 
+            desc: "Consolidation of expired H-3 exit signs from barracks renovation.", 
+            links:[], 
+            tasks: [
+                {id: 1, text: "Wipe Test 150 Signs", done: false, assign: "M. Scott", prio: "med"},
+                {id: 2, text: "Package into Tri-walls", done: false, assign: "M. Scott", prio: "low"}
+            ],
+            updatesSent: []
+        },
+        { 
+            id: 107, title: "NDT Source Exchange (SSN-774)", uic: "N4523A", location: "Pearl Harbor, HI", region: "Far-East", 
+            reqDate: "2025-02-14", jmcId: "2025-030", rcn: "25-0055", pickupStatus: "Shipped", 
+            status: "Complete", health: "green", due: "2025-02-28", 
+            desc: "Urgent exchange of decayed Ir-192 radiography camera source.", 
+            links: [
+                {name: "Source Cert (New)", url: "file:///S:/Certs/Ir192_New.pdf"}
+            ], 
+            tasks: [
+                {id: 1, text: "Receive New Source", done: true, assign: "JD", prio: "high"},
+                {id: 2, text: "Return Old Source", done: true, assign: "JD", prio: "high"}
+            ],
+            updatesSent: ["2025-02-20"]
+        },
+        { 
+            id: 108, title: "Medical Irradiator Decomm", uic: "N00014", location: "Bethesda, MD", region: "East", 
+            reqDate: "2025-07-01", jmcId: "2025-110", rcn: "25-0500", pickupStatus: "Planning", 
+            status: "Planning", health: "yellow", due: "2026-06-30", 
+            desc: "Removal of legacy Cs-137 blood irradiator. Security escort required.", 
+            links:[], 
+            tasks: [
+                {id: 1, text: "Submit security plan", done: false, assign: "Admin", prio: "high"},
+                {id: 2, text: "Hire riggers", done: false, assign: "AS", prio: "med"}
+            ],
+            updatesSent: []
+        }
+    ],
+
+    // --- NEW: INVENTORY WITH ALL FIELDS ---
+    inventory: [
+        // 1. Proj 101: Resin (High Dose, Heavy)
+        {
+            id: "HIC-24-01", desc: "Dewatered Resin Liner (Class B)", iso: "Co-60", act: "35 Ci", dose: 4500, 
+            fill: 95, status: "Staged", projId: 101, logDate: "2025-01-01",
+            nsn: "", weight: "2400 lbs", vol: "50 cu ft", licensed: "Yes", rcra: "No",
+            mfr: "EnergySolutions", serial: "PL-882-X", location: "High Bay", phys: "Solid",
+            qty: 1, ssdr: "N/A", constituents: ""
+        }, 
+        
+        // 2. Unassigned: Check Source
+        {
+            id: "CHK-99", desc: "Button Source (Legacy)", iso: "Cs-137", act: "10 uCi", dose: 0.5, 
+            fill: 0, status: "Stored", projId: null, logDate: "2025-01-15",
+            nsn: "6665-00-123-4567", weight: "0.1 kg", vol: "N/A", licensed: "No", rcra: "No",
+            mfr: "Spectrum", serial: "Unk", location: "Cab 4", phys: "Solid",
+            qty: 1, ssdr: "N/A", constituents: ""
+        },
+
+        // 3. Proj 103: Debris (Volume, Weight)
+        {
+            id: "BOX-25-01", desc: "Concrete Scabbling Rubble", iso: "Cs-137", act: "200 mCi", dose: 150, 
+            fill: 100, status: "Shipped", projId: 103, logDate: "2025-03-10",
+            nsn: "", weight: "4500 lbs", vol: "90 cu ft", licensed: "No", rcra: "No",
+            mfr: "N/A", serial: "N/A", location: "Yard", phys: "Debris",
+            qty: 1, ssdr: "N/A", constituents: ""
+        },
+
+        // 4. Proj 102: Mixed Waste (RCRA, Constituents)
+        {
+            id: "DRM-25-10", desc: "Liquid Scintillation Vials (Cocktail)", iso: "H-3", act: "50 mCi", dose: 0.1, 
+            fill: 100, status: "Stored", projId: 102, logDate: "2025-08-05",
+            nsn: "", weight: "50 lbs", vol: "7.5 gal", licensed: "No", rcra: "Yes",
+            mfr: "Packard", serial: "N/A", location: "Haz Locker", phys: "Liquid",
+            qty: 1, ssdr: "N/A", constituents: "Toluene, Xylene"
+        },
+
+        // 5. Proj 106: Tritium Signs (Quantity, Gas)
+        {
+            id: "BOX-25-88", desc: "Consolidated Exit Signs (Expired)", iso: "H-3", act: "245 Ci", dose: 1.2, 
+            fill: 85, status: "Staged", projId: 106, logDate: "2025-09-10",
+            nsn: "9905-01-555-1212", weight: "120 lbs", vol: "1 Tri-wall", licensed: "Yes", rcra: "No",
+            mfr: "Isolite", serial: "Various", location: "Warehouse B", phys: "Gas",
+            qty: 35, ssdr: "NR-123-S-101-U", constituents: ""
+        },
+
+        // 6. Proj 107: Radiography Source (SSDR, Special Form)
+        {
+            id: "CAM-774-A", desc: "Ir-192 Source Assembly (Pigtail)", iso: "Ir-192", act: "85 Ci", dose: 6500, 
+            fill: 100, status: "Shipped", projId: 107, logDate: "2025-02-15",
+            nsn: "", weight: "0.5 kg", vol: "Capsule", licensed: "Yes", rcra: "No",
+            mfr: "QSA Global", serial: "66592-A", location: "Camera 2", phys: "Solid",
+            qty: 1, ssdr: "MA-1059-S-105-S", constituents: ""
+        },
+
+        // 7. Proj 108: Irradiator (Massive Weight/Activity)
+        {
+            id: "IRR-01-X", desc: "JLS Blood Irradiator (Shielded)", iso: "Cs-137", act: "1200 Ci", dose: 85000, 
+            fill: 100, status: "Stored", projId: 108, logDate: "2025-07-10",
+            nsn: "", weight: "6000 lbs", vol: "Unit", licensed: "Yes", rcra: "No",
+            mfr: "JL Shepherd", serial: "Unit-99", location: "Hospital Bsmt", phys: "Solid",
+            qty: 1, ssdr: "CA-0598-D-102-S", constituents: ""
+        }
+    ],
+
+    allocations: [
+        { id: 1, projId: 101, date: "2025-01-01", amount: 85000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" },
+        { id: 2, projId: 102, date: "2025-01-10", amount: 12000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" },
+        { id: 3, projId: 103, date: "2025-02-01", amount: 150000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" },
+        { id: 4, projId: 103, date: "2025-06-01", amount: 50000, desc: "Command Top-up", type: 'adj', fundSource: "Command Funded" },
+        { id: 5, projId: 104, date: "2025-01-05", amount: 5000, desc: "Initial Budget", type: 'base', fundSource: "Other" },
+        { id: 6, projId: 105, date: "2025-10-15", amount: 25000, desc: "Emergency Auth", type: 'base', fundSource: "Navy General Fund" },
+        { id: 7, projId: 106, date: "2025-08-01", amount: 8000, desc: "Initial Budget", type: 'base', fundSource: "Command Funded" },
+        { id: 8, projId: 107, date: "2025-01-20", amount: 3500, desc: "Exchange Fee", type: 'base', fundSource: "Navy General Fund" },
+        { id: 9, projId: 108, date: "2025-06-15", amount: 250000, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" }
+    ],
+
+    expenses: [
+        {id: 1, projId: 101, desc: "Cask Rental", amount: 15000, date: "2025-11-01", status: "Paid", fundSource: "Navy General Fund"},
+        {id: 2, projId: 103, desc: "Contract Labor (Week 1)", amount: 12500, date: "2025-04-15", status: "Invoiced", fundSource: "Navy General Fund"},
+        {id: 3, projId: 103, desc: "Contract Labor (Week 2)", amount: 12500, date: "2025-04-22", status: "Invoiced", fundSource: "Navy General Fund"},
+        {id: 4, projId: 103, desc: "Specialized Tooling", amount: 8400, date: "2025-05-01", status: "Paid", fundSource: "Command Funded"},
+        {id: 5, projId: 104, desc: "FedEx Shipping", amount: 450, date: "2025-02-15", status: "Paid", fundSource: "Other"},
+        {id: 6, projId: 105, desc: "Last Minute Airfare", amount: 4200, date: "2025-10-25", status: "Encumbered", fundSource: "Navy General Fund"},
+        {id: 7, projId: 107, desc: "Source Exchange Fee", amount: 3200, date: "2025-02-28", status: "Paid", fundSource: "Navy General Fund"}
+    ],
+
+    exemptLog: [
+        {id: "2025-001", date: "2025-03-14", cmd: "PSNS & IMF", desc: "Electron Tube, JAN-CTL-6551", qty: "12", iso: "Kr-85", act: "30 µCi", basis: "10 CFR § 30.15", path: "E-Waste Recycling", rev: "J. Doe", authDate: "2025-07-25"},
+        {id: "2025-002", date: "2025-05-07", cmd: "NAVSTA NORFOLK", desc: "Lensatic Compass", qty: "1", iso: "H-3", act: "120 mCi", basis: "10 CFR § 30.19", path: "Transfer", rev: "A. Smith", authDate: ""},
+        {id: "2025-003", date: "2025-06-12", cmd: "NSWCDD", desc: "Smoke Detectors (Expired)", qty: "50", iso: "Am-241", act: "50 uCi", basis: "10 CFR § 30.20", path: "Municipal Trash", rev: "J. Doe", authDate: "2025-06-15"},
+        {id: "2025-004", date: "2025-08-22", cmd: "NAS JAX", desc: "Gas Chromatograph Foil", qty: "2", iso: "Ni-63", act: "15 mCi", basis: "10 CFR § 31.5", path: "Transfer", rev: "AS", authDate: "2025-09-01"},
+        {id: "2025-005", date: "2025-09-05", cmd: "FRC WEST", desc: "Thoriated Welding Rods", qty: "5 lbs", iso: "Th-232", act: "0.5 uCi", basis: "10 CFR § 40.13", path: "Scrap Metal", rev: "JD", authDate: "2025-09-10"},
+        {id: "2025-006", date: "2025-10-12", cmd: "NAVSEA", desc: "Spark Gaps (F-18)", qty: "8", iso: "Kr-85", act: "2 mCi", basis: "10 CFR § 30.15", path: "Transfer", rev: "AS", authDate: ""},
+        {id: "2025-007", date: "2025-11-01", cmd: "BUMED", desc: "LSC Vials (Deregulated)", qty: "10 gal", iso: "H-3/C-14", act: "<0.05 uCi/g", basis: "10 CFR § 20.2005", path: "Incineration", rev: "JD", authDate: "2025-11-05"},
+        {id: "2025-008", date: "2025-11-15", cmd: "NUWC DIV", desc: "Static Eliminators (Brushes)", qty: "2", iso: "Po-210", act: "500 uCi", basis: "10 CFR § 31.3", path: "Transfer", rev: "Admin", authDate: ""}
+    ],
+
+    references: [
+        { id: 1, title: "10 CFR Part 20", desc: "Standards for Protection Against Radiation", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/cfr/part020/index.html", locked: true },
+        { id: 2, title: "10 CFR Part 61", desc: "Licensing Requirements for Land Disposal", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/cfr/part061/index.html", locked: true },
+        { id: 3, title: "10 CFR Part 71", desc: "Packaging and Transportation of Radioactive Material", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/cfr/part071/index.html", locked: true },
+        { id: 4, title: "49 CFR § 173.403", desc: "Class 7 (Radioactive) Definitions", type: "Trans", url: "https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-173/subpart-I/section-173.403", locked: true },
+        { id: 5, title: "49 CFR Part 172", desc: "Hazmat Tables, Marking, Labeling & Placarding", type: "Trans", url: "https://www.ecfr.gov/current/title-49/subtitle-B/chapter-I/subchapter-C/part-172", locked: true },
+        { id: 6, title: "OPNAV M-5090.1", desc: "Environmental Readiness Program Manual", type: "Site", url: "https://www.navsea.navy.mil/Portals/103/Documents/SUPSALV/Environmental/5090.1.pdf", locked: true },
+        { id: 7, title: "DoD Low-Level Radioactive Waste (LLRW) Program", desc: "DoDI 4715.27 - Management of LLRW", type: "Site", url: "https://www.esd.whs.mil/Portals/54/Documents/DD/issuances/dodi/471527p.pdf?ver=2019-04-12-075155-183", locked: true },
+        { id: 8, title: "DoDI 4715.06", desc: "Environmental Compliance in the DoD", type: "Site", url: "https://www.esd.whs.mil/Portals/54/Documents/DD/issuances/dodi/471506p.pdf", locked: true },
+        { id: 9, title: "EPA RCRA Manual", desc: "Resource Conservation and Recovery Act Orientation", type: "Reg", url: "https://www.epa.gov/hwgenerators/resource-conservation-and-recovery-act-rcra-orientation-manual", locked: true },
+        { id: 10, title: "NRC Fact Sheets", desc: "Library of NRC Fact Sheets and Backgrounders", type: "Reg", url: "https://www.nrc.gov/reading-rm/doc-collections/fact-sheets/index.html", locked: true },
+        { id: 11, title: "NRC Form 540", desc: "Uniform Low-Level Radioactive Waste Manifest", type: "Form", url: "https://www.nrc.gov/reading-rm/doc-collections/forms/nrc540info.html", locked: true },
+        { id: 12, title: "Rad Pro Calculator", desc: "Online decay and shielding calculator", type: "Tool", url: "http://www.radprocalculator.com/", locked: true }
+    ],
+
+    team: ["JD", "AS", "Admin", "M. Scott", "D. Schrute"],
+    
+    chat: [
+        {user: "System", time: "01/01 08:00 AM", text: "System initialized."},
+        {user: "Admin", time: "01/01 09:15 AM", text: "Welcome to the new fiscal year tracker. Please update your project statuses."},
+        {user: "JD", time: "01/02 10:00 AM", text: "Working on the Cask shipment. Crane is scheduled tentatively."},
+        {user: "System", time: "03/10 02:30 PM", text: "Project <b>Building 5 Decommissioning</b> moved to Active."},
+        {user: "AS", time: "04/05 11:45 AM", text: "Heads up: Medical Irradiator project is coming down the pipe. Big budget item."}
+    ],
+    
+    wiki: "LOGBOOK:\n- Use this space for daily operational notes.\n- 01/15: Annual calibration due for meter SN: 44521.\n- 02/20: Updated waste acceptance criteria received from WCS.\n- 09/01: Tritium exit sign project approved for Rota."
+};
+
+    let projects = []; let deletedProjects = []; let inventory = []; let deletedInventory = []; let expenses = []; let allocations = []; let chatLog = []; let team = []; let wikiText = "";
+
+    let references = [];
+
+    let estItems = []; let exemptLog = [];
+
+    // The Graveyard
+    let tombstones = [];
+
+    let showComplete = false; let viewMode = 'list'; let hpState = {iso:'Co-60', a0:'', date:''};
+
+    let showMasterTasksDone = true; // Default to showing everything
+        function toggleMasterTasksDone() { 
+        showMasterTasksDone = !showMasterTasksDone; 
+        render(); 
+    }
+
+    // Try to load the saved user, or default to the first team member (or "Admin")
+    let currentUser = localStorage.getItem('rad_curr_user') || 'Admin';
+
+    let sortState = { table: '', col: 0, dir: 1 };
+
+    let mainProjSort = 'status'; // Default sort
+
+    function setMainProjSort(val) {
+    mainProjSort = val;
+    render();
+}
+
+    // Dashboard Widget States ---
+    let dashTaskSort = 'prio';   // Options: 'prio', 'oldest', 'newest'
+    let dashInvSort = 'act'; // Default to Concentration/Activity
+
+    let dashProjSort = 'newest'; 
+
+    function setDashSort(type, mode) {
+        if(type === 'task') dashTaskSort = mode;
+        if(type === 'inv') dashInvSort = mode;
+        
+        // NEW: Handle Project Sort
+        if(type === 'proj') dashProjSort = mode; 
+        
+        render(); 
+    }
+
+    const esc = (t) => {
+    if (t === null || t === undefined) return '';
+    return t.toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+};
+
+    let budgetScope = 'all'; // 'range' or 'all'
+
+    function toggleBudgetScope() {
+        budgetScope = budgetScope === 'range' ? 'all' : 'range';
+        render(); // Re-render to update the table numbers
+    }
+
+let finStart = "";
+    let finEnd = "";
+
+    function applyFinFilter() {
+        finStart = document.getElementById('fin-start').value;
+        finEnd = document.getElementById('fin-end').value;
+        render(); // Re-render the dashboard with new filters
+    }
+
+    function clearFinFilter() {
+        finStart = "";
+        finEnd = "";
+        document.getElementById('fin-start').value = "";
+        document.getElementById('fin-end').value = "";
+        render();
+    }
+
+// --- SEARCH HIGHLIGHTER ---
+    const high = (text, term) => {
+        const safe = esc(text); 
+        if (!term || term.length < 2) return safe; 
+        
+        const regex = new RegExp(`(${term})`, 'gi');
+
+        return safe.replace(regex, '<mark style="padding:0 2px; background:var(--accent-dim); color:var(--accent); font-weight:bold; border-radius:2px;">$1</mark>');
+    };
+
+// Escapes characters that break JavaScript strings inside HTML attributes
+const jsEsc = (t) => {
+    if (t === null || t === undefined) return '';
+    return t.toString().replace(/['"\\]/g, '\\$&');
+};
+    
+    function formatLink(url) {
+        let clean = url.trim().replace(/^"|"$/g, '');
+        
+        // SECURITY FIX: Block javascript: protocols to prevent XSS
+        if (/^javascript:/i.test(clean)) {
+            console.warn("Blocked malicious link protocol");
+            return 'about:blank'; 
+        }
+
+        // Handle local file paths (e.g. C:\Users\...)
+        if (/^[a-zA-Z]:\\/.test(clean) || /^[a-zA-Z]:\//.test(clean)) {
+            return 'file:///' + clean;
+        }
+        
+        // Add https protocol if missing
+        if (!clean.startsWith('http') && !clean.startsWith('file:') && !clean.startsWith('//')) {
+             if (clean.startsWith('www.')) return 'https://' + clean;
+        }
+        
+        return clean;
+    }
+
+    function showToast(msg, type='success') {
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        t.innerHTML = `<span>${msg}</span><i class="fa-solid fa-xmark" style="cursor:pointer" onclick="this.parentElement.remove()"></i>`;
+        toastBox.appendChild(t);
+        setTimeout(() => { t.style.animation = 'fadeOut 0.3s forwards'; setTimeout(() => t.remove(), 300); }, 3000);
+    }
+
+    function logSystemAction(msg) {
+    const now = new Date();
+    const dateStr = (now.getMonth()+1).toString().padStart(2,'0') + '/' + now.getDate().toString().padStart(2,'0');
+    const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    
+    const finalMsg = `${msg} <span style="opacity:0.6; font-size:0.85em;">by ${esc(currentUser)}</span>`;
+
+    chatLog.push({
+        user: "System", 
+        time: `${dateStr} ${timeStr}`, 
+        timestamp: Date.now(), // FIX: Precise sorting value
+        text: finalMsg
+    });
+    saveLocally();
+    render(); 
+}
+
+    function generateLogId() {
+        const yr = new Date().getFullYear();
+        
+        // 1. Filter: Find only IDs that belong to the current year
+        const currentYearIds = exemptLog.filter(x => x.id && x.id.toString().startsWith(yr.toString()));
+        
+        let max = 0;
+        
+        // 2. Scan: Loop through them to find the highest sequence number
+        currentYearIds.forEach(x => {
+            // Assuming format "YYYY-NNN", split by '-'
+            const parts = x.id.split('-');
+            
+            // Check if we have a second part and it is a number
+            if(parts.length > 1) {
+                const num = parseInt(parts[1], 10);
+                if(!isNaN(num) && num > max) {
+                    max = num;
+                }
+            }
+        });
+
+        // 3. Increment: Add 1 to the highest number found
+        return `${yr}-${(max + 1).toString().padStart(3, '0')}`;
+    }
+
+    function addExemptEntry() {
+        const entry = {
+            id: document.getElementById('exLogId').value || generateLogId(),
+            date: document.getElementById('exDate').value,
+            cmd: document.getElementById('exCmd').value,
+            desc: document.getElementById('exDesc').value,
+            qty: document.getElementById('exQty').value,
+            iso: document.getElementById('exIso').value,
+            act: document.getElementById('exAct').value,
+            basis: document.getElementById('exBasis').value,
+            path: document.getElementById('exPath').value,
+            rev: document.getElementById('exRev').value,
+            authDate: document.getElementById('exAuthDate').value,
+            updated: Date.now()
+        };
+        exemptLog.push(entry);
+        saveLocally();
+        render();
+        closeModal('exemptModal');
+        showToast("Log Entry Added");
+    }
+    
+    function downloadExemptCSV() {
+        let csv = "Log #,Date Received,Command,Description,Qty,Nuclide,Activity,Basis,Pathway,Reviewer,Date Authorized\n";
+        exemptLog.forEach(e => {
+            const cleanDesc = `"${(e.desc||'').replace(/"/g, '""')}"`;
+            csv += `${e.id},${e.date},"${e.cmd}",${cleanDesc},${e.qty},${e.iso},"${e.act}","${e.basis}","${e.path}","${e.rev}",${e.authDate}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `exempt_log_${getTodayStr()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function getProjectBudget(pid) {
+        return allocations.filter(a => a.projId === pid).reduce((sum, a) => sum + (parseFloat(a.amount)||0), 0);
+    }
+
+function toggleCustomIso(val) {
+    const input = document.getElementById('invIsoCustom');
+    if (val === 'Custom') {
+        input.style.display = 'block';
+        input.focus();
+    } else {
+        input.style.display = 'none';
+        input.value = ''; // Clear it if they switch back
+    }
+}
+    
+    function populateIsoSelects() {
+    // Generate the list from DB
+    let opts = Object.keys(ISOTOPE_DB).map(k => `<option value="${k}">${ISOTOPE_DB[k].name}</option>`).join('');
+    
+    // Add the Custom option at the end
+    opts += `<option value="Custom">-- Custom / Other --</option>`;
+
+    document.getElementById('calc-iso').innerHTML = opts;
+    document.getElementById('invIso').innerHTML = opts;
+}
+
+    function getFundColor(f) {
+        if(!f) return 'var(--text-muted)';
+        if(f.includes('Navy')) return 'var(--navy)';
+        if(f.includes('Command')) return 'var(--cmd)';
+        return 'var(--text-muted)';
+    }
+    function getFundShort(f) {
+        if(!f) return 'OTH';
+        if(f.includes('Navy')) return 'NGF';
+        if(f.includes('Command')) return 'CMD';
+        return 'OTH';
+    }
+
+function expandChart() {
+        // 1. Open the modal
+        openModal('chartModal');
+        
+        // 2. Temporarily point the chart logic to the large container
+        const originalContainer = document.getElementById('monthly-spend-chart');
+        const largeContainer = document.getElementById('large-chart-container');
+        
+        // We create a temporary div ID for the render function to find
+        largeContainer.innerHTML = '<div id="temp-large-chart" class="bar-chart-v" style="height:100%"></div>';
+        
+        // 3. Hijack the render function logic slightly
+        // We need to pass the target ID to renderMonthlyChart. 
+        // Since we can't easily change the function signature everywhere, 
+        // we'll copy the logic specifically for this view or modify renderMonthlyChart.
+        
+        // EASIER WAY: Modify renderMonthlyChart to accept a targetID
+        renderMonthlyChart(null, 'temp-large-chart'); 
+    }
+
+function calculateDecay() {
+    const iso = document.getElementById('calc-iso').value;
+
+    if (iso === 'Custom') {
+        showToast("Cannot calculate decay for 'Custom' (Half-life unknown)", "error");
+        document.getElementById('calc-result').innerText = "---";
+        return;
+    }
+
+    const a0 = parseFloat(document.getElementById('calc-a0').value);
+    const dStr = document.getElementById('calc-date').value;
+
+    
+    // --- FIX: Define tStr so the math below works ---
+    const tStr = document.getElementById('calc-target-date').value; 
+    
+    if(!iso || !a0 || !dStr) {
+        document.getElementById('calc-result').innerText = "---";
+        return;
+    }
+
+    const hl = ISOTOPE_DB[iso].hl; 
+    const d1 = new Date(dStr + 'T00:00:00');
+
+    // If tStr is empty (default), create a 'Now' date but reset time to 00:00:00
+    let d2;
+    if(tStr) {
+        d2 = new Date(tStr);
+    } else {
+        d2 = new Date();
+        d2.setHours(0,0,0,0); // Normalize to midnight for accurate day-diff
+    }
+
+const years = (d2 - d1) / (1000 * 60 * 60 * 24 * 365.25);
+    
+    const lambda = Math.log(2) / hl;
+    const at = a0 * Math.exp(-lambda * years);
+    
+    document.getElementById('calc-result').innerText = at < 1 ? at.toFixed(4) : at.toFixed(2);
+    
+    const timeLabel = years < 0 ? "years prior" : "years decay";
+    showToast(`Calculated: ${Math.abs(years).toFixed(2)} ${timeLabel}`);
+}
+
+    // Clear Estimate
+    function clearEstimate() {
+        showConfirm("Clear all current estimator line items?", () => {
+            estItems = [];
+            saveLocally();
+            calcEstimate();
+            showToast("Estimate Cleared");
+        }, "Clear Workspace");
+    }
+
+    function getDominantSource(pid) {
+        const allocs = allocations.filter(a => a.projId === pid);
+        if(!allocs.length) return { name: "Unfunded", short: "---", color: "var(--text-muted)" };
+        const sums = {};
+        allocs.forEach(a => {
+            const s = a.fundSource || "Navy General Fund";
+            sums[s] = (sums[s] || 0) + (parseFloat(a.amount)||0);
+        });
+        const sorted = Object.keys(sums).sort((a,b) => sums[b] - sums[a]);
+        const dom = sorted[0];
+        return { name: dom, short: getFundShort(dom), color: getFundColor(dom) };
+    }
+
+    function getDueStatus(dateStr) {
+    if(!dateStr) return { text: "No Date", color: "var(--text-muted)" };
+    
+    // --- FIX: Compare "YYYY-MM-DD" strings directly to avoid Timezone math ---
+    const todayStr = getTodayStr(); // Uses local time already
+    
+    if (dateStr === todayStr) return { text: "Due Today", color: "var(--warning)" };
+    if (dateStr < todayStr) return { text: "Overdue", color: "var(--danger)" };
+    
+    // Calculate days left for future only
+    const d1 = new Date(dateStr);
+    const d2 = new Date(todayStr);
+    const diff = (d1 - d2) / (1000 * 60 * 60 * 24);
+    
+    return { text: `${Math.ceil(diff)} Days Left`, color: "var(--info)" };
+}
+
+function updateEstItem(id, field, val) {
+    const item = estItems.find(i => i.id === id);
+    if(!item) return;
+
+    if(field === 'qty') item.qty = parseFloat(val) || 0;
+    if(field === 'rate') item.rate = parseFloat(val) || 0;
+
+    // Recalculate Row Total
+    item.total = roundMoney(item.rate * item.qty);
+    
+    // 1. UPDATE DOM DIRECTLY (Don't re-render table)
+    const rowTotalEl = document.getElementById(`est-row-total-${id}`);
+    if(rowTotalEl) {
+        rowTotalEl.innerText = "$" + item.total.toLocaleString(undefined, {minimumFractionDigits:2});
+    }
+
+    saveLocally();
+    
+    // 2. ONLY UPDATE GRAND TOTALS
+    updateEstTotals(); 
+}
+
+function updateEstTotals() {
+    const total = estItems.reduce((sum, item) => sum + item.total, 0);
+    document.getElementById('est-grand-total').innerText = "$" + total.toLocaleString(undefined, {minimumFractionDigits:2});
+    document.getElementById('est-count').innerText = estItems.length;
+}
+
+    function updateEstUnit() {
+        const cat = document.getElementById('est-cat').value;
+        const itemKey = document.getElementById('est-item').value;
+        const itemData = COST_DB[cat][itemKey];
+        document.getElementById('est-unit').innerText = itemData.unit;
+        document.getElementById('est-rate').value = itemData.rate;
+    }
+
+    function addEstItem() {
+        const cat = document.getElementById('est-cat').value;
+        const itemKey = document.getElementById('est-item').value;
+        const qty = parseFloat(document.getElementById('est-qty').value);
+        const rate = parseFloat(document.getElementById('est-rate').value);
+        if(!qty || !rate) return;
+        const itemData = COST_DB[cat][itemKey];
+        estItems.push({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            name: itemData.name,
+            cat: cat.charAt(0).toUpperCase() + cat.slice(1),
+            rate: rate,
+            qty: qty,
+            total: roundMoney(rate * qty)
+        });
+        document.getElementById('est-qty').value = '';
+
+	saveLocally();
+
+        calcEstimate();
+    }
+    function removeEstItem(id) {
+        if(confirm("Remove this line item?")) {
+            estItems = estItems.filter(i => i.id !== id);
+
+	    saveLocally();
+
+            calcEstimate();
+        }
+    }
+
+function updateEstItems() {
+    const cat = document.getElementById('est-cat').value;
+    const itemSel = document.getElementById('est-item');
+    const items = COST_DB[cat];
+    
+    // Clear and Populate
+    itemSel.innerHTML = '';
+    if(items) {
+        Object.keys(items).forEach(k => {
+            itemSel.innerHTML += `<option value="${k}">${items[k].name}</option>`;
+        });
+    }
+    // Trigger the unit update for the first item in the new list
+    updateEstUnit();
+}
+
+function calcEstimate() {
+    const tbody = document.getElementById('est-list');
+    
+    // We render the full table ONLY here (or when adding/deleting items)
+    tbody.innerHTML = estItems.map(i => `
+        <tr>
+            <td>${esc(i.cat)}</td>
+            <td>${esc(i.name)}</td>
+            <td style="text-align:right">
+                <div style="display:flex; align-items:center; justify-content:flex-end; gap:5px;">
+                    <span style="font-size:0.8rem; color:var(--text-muted);">$</span>
+                    <input class="live-edit" type="number" step="0.01" style="width:80px; text-align:right;" value="${i.rate}" oninput="updateEstItem(${i.id}, 'rate', this.value)">
+                </div>
+            </td>
+            <td style="text-align:right">
+                <input class="live-edit" type="number" style="width:60px; text-align:right;" value="${i.qty}" oninput="updateEstItem(${i.id}, 'qty', this.value)">
+            </td>
+            <td style="text-align:right; font-weight:bold;" id="est-row-total-${i.id}">$${i.total.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+            <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="removeEstItem(${i.id})"></i></td>
+        </tr>`).join('');
+
+    updateEstTotals();
+}
+    
+function saveEstimateAction(mode) {
+        const pidVal = document.getElementById('est-proj-select').value;
+        const fund = document.getElementById('est-fund-select').value;
+        
+        if(!pidVal) { showToast("Select a project first", "error"); return; }
+        const pid = parseInt(pidVal);
+        const p = projects.find(x => x.id === pid);
+        const pName = p ? p.title : "Unknown Project";
+
+        let currentTotal = estItems.reduce((acc, item) => acc + item.total, 0);
+        if(currentTotal <= 0) { showToast("Calculate an estimate first", "error"); return; }
+
+        // CAPTURE THE DATA SNAPSHOT (The IGE)
+        const estimateSnapshot = JSON.parse(JSON.stringify(estItems));
+
+        if (mode === 'funding') {
+            allocations.push({
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                projId: pid,
+                date: getTodayStr(),
+                amount: parseFloat(currentTotal.toFixed(2)),
+                desc: "Estimated Budget Added",
+                type: "adj",
+                fundSource: fund,
+                details: estimateSnapshot
+            });
+            // --- Smart Log ---
+            logSystemAction(`Funding Estimate <b>$${currentTotal.toLocaleString()}</b> added to <b>${esc(pName)}</b>.`);
+            showToast("Added to Project Funding");
+        } 
+        else if (mode === 'expense') {
+            expenses.push({
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                projId: pid,
+                desc: "Estimated Cost",
+                amount: parseFloat(currentTotal.toFixed(2)),
+                date: getTodayStr(),
+                status: "Encumbered", 
+                fundSource: fund,
+                details: estimateSnapshot
+            });
+            // --- Smart Log ---
+            logSystemAction(`Cost Estimate <b>$${currentTotal.toLocaleString()}</b> posted to <b>${esc(pName)}</b>.`);
+            showToast("Posted as Expense");
+        } 
+        else if (mode === 'estimate') {
+            expenses.push({
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                projId: pid,
+                desc: "Cost Estimate (Draft)",
+                amount: parseFloat(currentTotal.toFixed(2)),
+                date: getTodayStr(),
+                status: "Estimate", 
+                fundSource: fund,
+                details: estimateSnapshot
+            });
+            // --- Smart Log ---
+            logSystemAction(`Draft Estimate <b>$${currentTotal.toLocaleString()}</b> saved for <b>${esc(pName)}</b>.`);
+            showToast("Saved as Draft Estimate");
+        }
+        
+        // WIPE THE TOOL
+        resetEstimator();
+
+        saveLocally();
+        render(); 
+        nav('finance');
+        if(mode === 'funding') switchFinTab('alloc');
+        else switchFinTab('exp');
+    }
+
+    // Helper to clean up the estimator after use
+    function resetEstimator() {
+        estItems = [];
+        document.getElementById('est-proj-select').value = ""; // Clear Project
+        document.getElementById('est-qty').value = "";
+        calcEstimate(); // Clears the table UI
+    }
+
+    function loadEstimateToEditor(id, type) {
+        // 1. Safety Check: Don't accidentally wipe current work
+        if(estItems.length > 0) {
+            if(!confirm("Overwrite your current estimator items with this saved data?")) return;
+        }
+
+        // 2. Find the Data
+        const list = type === 'alloc' ? allocations : expenses;
+        const rec = list.find(x => x.id === id);
+        
+        if(!rec || !rec.details) return;
+
+        // 3. Load Data into Global State (Deep Copy)
+        estItems = JSON.parse(JSON.stringify(rec.details));
+        
+        // 4. Set the Dropdowns
+        if(rec.projId) {
+            // We set this BEFORE navigation so nav('estimator') picks it up
+            const projSelect = document.getElementById('est-proj-select');
+            if(projSelect) projSelect.value = rec.projId;
+        }
+        if(rec.fundSource) {
+            const fundSelect = document.getElementById('est-fund-select');
+            if(fundSelect) fundSelect.value = rec.fundSource;
+        }
+
+        // 5. Switch View and Save
+        closeModal('estimateViewModal');
+        nav('estimator', true);
+        saveLocally();
+        
+        showToast("Estimate loaded into editor");
+    }
+
+    let chartScale = 'month'; 
+
+    function setChartScale(s) {
+        chartScale = s;
+        // Update Button Styles
+        ['week','month','quarter','year'].forEach(k => {
+            const btn = document.getElementById('btn-scale-'+k);
+            if(k === s) { btn.style.background = 'var(--accent)'; btn.style.color = 'white'; }
+            else { btn.style.background = 'transparent'; btn.style.color = 'var(--text-muted)'; }
+        });
+        render(); // Re-render the whole view
+    }
+
+    // Open the IGE Viewer Modal
+
+    function viewEstimate(id, type) {
+        // Find the record
+        const list = type === 'alloc' ? allocations : expenses;
+        const rec = list.find(x => x.id === id);
+        if(!rec || !rec.details) { showToast("No details attached", "error"); return; }
+
+        // Populate Metadata
+        document.getElementById('ige-meta-desc').innerText = rec.desc;
+        document.getElementById('ige-meta-date').innerText = `Date: ${rec.date} | Source: ${rec.fundSource || 'N/A'}`;
+        document.getElementById('ige-view-total').innerText = "$" + rec.amount.toLocaleString(undefined, {minimumFractionDigits:2});
+
+        // Populate Table
+        const tbody = document.getElementById('ige-view-list');
+        tbody.innerHTML = rec.details.map(d => `
+            <tr>
+                <td>${esc(d.cat)}</td>
+                <td>${esc(d.name)}</td>
+                <td style="text-align:right">$${d.rate}</td>
+                <td style="text-align:right">${d.qty}</td>
+                <td style="text-align:right">$${d.total.toFixed(2)}</td>
+            </tr>
+        `).join('');
+
+        // --- Setup Buttons (Download AND Load) ---
+        const btnContainer = document.getElementById('ige-dl-btn-container');
+        
+        let buttonsHtml = `
+            <button class="btn" style="padding:4px 10px; font-size:0.8rem; margin-right:5px;" onclick="downloadIGE(${id}, '${type}')">
+                <i class="fa-solid fa-file-excel"></i> CSV
+            </button>
+            <button class="btn" style="padding:4px 10px; font-size:0.8rem; background:var(--warning); color:var(--text-main);" onclick="loadEstimateToEditor(${id}, '${type}')">
+                <i class="fa-solid fa-pen-to-square"></i> Edit/Load
+            </button>`;
+        
+        btnContainer.innerHTML = buttonsHtml;
+
+        openModal('estimateViewModal');
+    }
+
+    // NEW: Generate CSV from attached details
+    function downloadIGE(id, type) {
+        const list = type === 'alloc' ? allocations : expenses;
+        const rec = list.find(x => x.id === id);
+        if(!rec || !rec.details) return;
+
+        let csv = "Category,Item,Rate,Quantity,Total Cost\n";
+        rec.details.forEach(d => {
+            // Escape double quotes by doubling them (" becomes "")
+            const safeName = d.name.replace(/"/g, '""'); 
+            csv += `"${d.cat}","${safeName}",${d.rate},${d.qty},${d.total}\n`;
+        });
+        
+        // Add footer totals
+        csv += `,,,TOTAL,${rec.amount}\n`;
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `IGE_${rec.date}_${type}_${id}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
+        let chartData = data;
+        
+        // Handle fallback data if null passed
+        if(!chartData) {
+            const isDateInScope = (dateStr) => {
+                if (!finStart && !finEnd) return true;
+                if (finStart && dateStr < finStart) return false;
+                if (finEnd && dateStr > finEnd) return false;
+                return true;
+            };
+            chartData = expenses.filter(e => isDateInScope(e.date) && e.status !== 'Estimate');
+        } else {
+             // If data WAS passed (like from render function), make sure we filter it too
+             chartData = chartData.filter(e => e.status !== 'Estimate');
+        }
+
+        const container = document.getElementById(targetId);
+        
+        if(chartData.length === 0) {
+            container.innerHTML = '<div style="width:100%; text-align:center; color:var(--text-muted); padding:40px;">No activity in this period.</div>';
+            return;
+        }
+
+        // 1. Filter: Ensure date string exists AND parses to a valid number
+        const validData = chartData.filter(e => e.date && !isNaN(new Date(e.date).getTime()));
+
+        // 2. Safety Check: If filtering leaves us with nothing, show "No Activity" to prevent crash
+        if(validData.length === 0) {
+            container.innerHTML = '<div style="width:100%; text-align:center; color:var(--text-muted); padding:40px;">No valid dates found in this period.</div>';
+            return;
+        }
+
+        // 3. Map: Now it is safe to create timestamps
+        const timestamps = validData.map(e => new Date(e.date + 'T12:00:00').getTime());
+
+        if(finStart) timestamps.push(new Date(finStart + 'T12:00:00').getTime());
+        if(finEnd) timestamps.push(new Date(finEnd + 'T12:00:00').getTime());
+        
+        const minDate = new Date(Math.min(...timestamps));
+        const maxDate = new Date(Math.max(...timestamps));
+
+        const timeline = [];
+        let maxVal = 0;
+        
+        let current = new Date(minDate); 
+        // Snap start date based on scale
+        if(chartScale === 'month') current.setDate(1); 
+        if(chartScale === 'year') { current.setMonth(0); current.setDate(1); }
+        if(chartScale === 'week') { 
+            const day = current.getDay(); 
+            const diff = current.getDate() - day + (day == 0 ? -6 : 1); 
+            current.setDate(diff);
+        }
+
+        let loopGuard = 0; // 1. Initialize counter
+        const MAX_LOOPS = 1000; // 2. Set a safe limit (1000 months is ~83 years)
+
+        while(current <= maxDate) {
+            // 3. Check the guard
+            if(loopGuard++ > MAX_LOOPS) {
+                console.warn("Chart generation stopped: Date range is too large or invalid.");
+                showToast("Date range too wide to chart", "error"); // Optional: Alert the user
+                break; 
+            }
+            
+            let lbl, nextDate;
+            const y = current.getFullYear();
+            
+            if(chartScale === 'week') {
+                const start = new Date(current);
+                nextDate = new Date(current); nextDate.setDate(nextDate.getDate() + 7);
+                lbl = `${start.getMonth()+1}/${start.getDate()}`;
+            } 
+            else if(chartScale === 'quarter') {
+                const q = Math.floor(current.getMonth() / 3) + 1;
+                lbl = `Q${q} ${y}`;
+                nextDate = new Date(current); nextDate.setMonth(nextDate.getMonth() + 3);
+            } 
+            else if(chartScale === 'year') {
+                lbl = `${y}`;
+                nextDate = new Date(current); nextDate.setFullYear(nextDate.getFullYear() + 1);
+            } 
+            else { 
+                const m = current.getMonth();
+                lbl = current.toLocaleString('default', { month: 'short' }) + " '" + y.toString().substr(2);
+                nextDate = new Date(current); nextDate.setMonth(nextDate.getMonth() + 1);
+            }
+
+            
+            const bucketVal = chartData.reduce((acc, e) => {
+    const d = new Date(e.date + 'T12:00:00');
+    
+    return (d >= current && d < nextDate) ? acc + (parseFloat(e.amount)||0) : acc;
+}, 0);
+
+            if(bucketVal > maxVal) maxVal = bucketVal;
+            timeline.push({ label: lbl, val: bucketVal });
+
+            current = nextDate; 
+        }
+
+        if(maxVal === 0) maxVal = 100;
+        const fmt = (n) => n >= 1000 ? (n/1000).toFixed(1) + 'k' : n;
+
+        const axisHtml = `
+            <div class="chart-y-axis">
+                <div>$${fmt(maxVal)}</div>
+                <div>$${fmt(maxVal/2)}</div>
+                <div>$0</div>
+            </div>`;
+
+        const barsHtml = `<div class="bar-chart-v" id="inner-chart-scroll-${targetId}">` + timeline.map(item => {
+            const h = (item.val / maxVal) * 100;
+            const opacity = item.val > 0 ? '1' : '0.3'; 
+            const bg = item.val > 0 ? 'var(--money)' : 'var(--bg-input)';
+            const valLbl = item.val > 0 ? `<div class="bar-top-lbl">$${fmt(item.val)}</div>` : '';
+            
+            return `<div class="bar-col">
+                        <div class="bar-v" style="height:${h}%; background:${bg}; opacity:${opacity};">${valLbl}</div>
+                        <div class="bar-lbl">${item.label}</div>
+                    </div>`;
+        }).join('') + `</div>`;
+
+        container.innerHTML = `<div class="chart-wrapper" style="height:100%">${axisHtml}${barsHtml}</div>`;
+
+        setTimeout(() => {
+            const scroller = document.getElementById(`inner-chart-scroll-${targetId}`);
+            if(scroller) scroller.scrollLeft = scroller.scrollWidth; 
+        }, 50);
+    }
+
+// --- ITEM DETAIL & BINDER LOGIC ---
+
+let currentInvId = null; // Track which item is open
+
+function viewInventory(id) {
+    const i = inventory.find(x => x.id == id);
+    if(!i) return;
+
+    currentInvId = i.id; 
+    
+    // Header
+    document.getElementById('vid_title').innerText = "Item " + i.id;
+    
+    // CHANGED: Set values for input fields
+    document.getElementById('vid_iso').value = i.iso || "";
+    document.getElementById('vid_act').value = i.act || "";
+    
+    // Core Inputs
+    document.getElementById('vid_desc').value = i.desc || "";
+    document.getElementById('vid_id').value = i.id;
+    document.getElementById('vid_stat').value = i.status || 'Stored';
+    document.getElementById('vid_dose').value = i.dose || 0;
+    
+    // Phase 2: Regulatory
+    document.getElementById('vid_nsn').value = i.nsn || "";
+    document.getElementById('vid_weight').value = i.weight || "";
+    document.getElementById('vid_vol').value = i.vol || "";
+    document.getElementById('vid_lic').value = i.licensed || "No";
+    document.getElementById('vid_licNum').value = i.licenseNum || "";
+    document.getElementById('vid_rcra').value = i.rcra || "No";
+
+    // Phase 3: Origin & Location
+    document.getElementById('vid_mfr').value = i.mfr || "";
+    document.getElementById('vid_serial').value = i.serial || "";
+    document.getElementById('vid_loc').value = i.location || "";
+    document.getElementById('vid_phys').value = i.phys || "";
+
+    document.getElementById('vid_qty').value = i.qty || 1;
+    document.getElementById('vid_fill').value = i.fill || 0;
+
+    document.getElementById('vid_ssdr').value = i.ssdr || "";
+    document.getElementById('vid_const').value = i.constituents || "";
+
+    renderInvLinks(i);
+    openModal('invDetailModal');
+}
+
+function saveInvDetail(isManual = false) {
+    const i = inventory.find(x => x.id == currentInvId);
+    if(!i) return;
+
+    // CHANGED: Capture new Isotope (normalized) and Activity
+    i.iso = normalizeIso(document.getElementById('vid_iso').value);
+    i.act = document.getElementById('vid_act').value;
+
+    // Capture Core
+    i.desc = document.getElementById('vid_desc').value;
+    i.status = document.getElementById('vid_stat').value;
+    i.dose = parseFloat(document.getElementById('vid_dose').value) || 0;
+    
+    // Capture Regulatory
+    i.nsn = document.getElementById('vid_nsn').value;
+    i.weight = document.getElementById('vid_weight').value;
+    i.vol = document.getElementById('vid_vol').value;
+    i.licensed = document.getElementById('vid_lic').value;
+    i.licenseNum = document.getElementById('vid_licNum').value;
+    i.rcra = document.getElementById('vid_rcra').value;
+    
+    // Capture Origin & Location
+    i.mfr = document.getElementById('vid_mfr').value;
+    i.serial = document.getElementById('vid_serial').value;
+    i.location = document.getElementById('vid_loc').value;
+    i.phys = document.getElementById('vid_phys').value;
+
+    i.qty = parseFloat(document.getElementById('vid_qty').value) || 1;
+    i.fill = parseInt(document.getElementById('vid_fill').value) || 0;
+
+    i.ssdr = document.getElementById('vid_ssdr').value;
+    i.constituents = document.getElementById('vid_const').value;
+
+    i.updated = Date.now();
+    
+    saveLocally();
+    render(); // Refresh main table
+    
+    if(isManual) {
+        showToast("Item Details Saved");
+    }
+}
+
+function renderInvLinks(item) {
+    const list = document.getElementById('vid_links');
+    const links = item.links || []; // Handle existing items with no links
+    
+    if(links.length === 0) {
+        list.innerHTML = '<div style="color:var(--text-muted); font-style:italic; text-align:center;">No documents attached.</div>';
+        return;
+    }
+
+    list.innerHTML = links.map((l, idx) => `
+    <div style="background:white; padding:8px; border:1px solid var(--border); border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+        <a href="${formatLink(l.url)}" target="_blank" style="text-decoration:none; color:var(--navy); font-weight:bold;">
+            <i class="fa-solid fa-file"></i> ${esc(l.name)}
+        </a>
+        <i class="fa-solid fa-trash" style="color:var(--danger); cursor:pointer;" onclick="delInvLink(${idx})"></i>
+    </div>
+`).join('');
+}
+
+function addInvLink() {
+    const item = inventory.find(x => x.id == currentInvId);
+    if(!item) return;
+
+    const name = document.getElementById('vid_linkName').value;
+    const url = document.getElementById('vid_linkUrl').value;
+    
+    if(!name || !url) return showToast("Enter name and URL");
+
+    // Initialize array if it doesn't exist
+    if(!item.links) item.links = [];
+    
+    item.links.push({ name, url });
+    
+    // Clear inputs and save
+    document.getElementById('vid_linkName').value = '';
+    document.getElementById('vid_linkUrl').value = '';
+    
+    saveLocally();
+    renderInvLinks(item);
+    showToast("Document Added");
+}
+
+function delInvLink(idx) {
+    const item = inventory.find(x => x.id == currentInvId);
+    if(confirm("Remove this document link?")) {
+        item.links.splice(idx, 1);
+        saveLocally();
+        renderInvLinks(item);
+    }
+}
+
+function toggleFillSlider() {
+        const isChecked = document.getElementById('invTrackFill').checked;
+        document.getElementById('invFillContainer').style.display = isChecked ? 'block' : 'none';
+        document.getElementById('invFillLabel').style.display = isChecked ? 'block' : 'none';
+        
+        // If unchecked, reset to 0 internally so we don't save stale data
+        if(!isChecked) {
+            document.getElementById('invFill').value = 0;
+            document.getElementById('invFillLabel').innerText = '0%';
+        }
+    }
+
+    function quickAdd(type, pid) {
+        if(type === 'task') {
+            viewProject(pid);
+            setTimeout(() => { document.getElementById('newT').focus(); }, 200);
+        }
+        if(type === 'expense') {
+            openModal('expenseModal');
+            document.getElementById('expProj').value = pid;
+        }
+    }
+
+    // NEW: Helper for Updates Date List
+    function addUpdateDate(pid, val) {
+        if(!val) return;
+        const p = projects.find(x => x.id === pid);
+        if(!p.updatesSent) p.updatesSent = [];
+        p.updatesSent.push(val);
+        // Sort dates descending
+        p.updatesSent.sort().reverse();
+
+        p.updated = Date.now();
+
+        saveLocally();
+        viewProject(pid);
+    }
+
+// --- HELPER: Normalize Isotope Name ---
+// This ensures that "ni-63" or "Ni63" correctly maps to "Ni-63" for the DB lookup
+function normalizeIso(input) {
+    if(!input) return "";
+    let clean = input.trim();
+    
+    // Check direct DB match (case insensitive)
+    const dbKey = Object.keys(ISOTOPE_DB).find(k => k.toLowerCase() === clean.toLowerCase());
+    if(dbKey) return dbKey;
+
+    // Check if user forgot the hyphen (e.g. "Co60")
+    // This inserts a hyphen between letters and numbers if missing
+    if(/^[a-zA-Z]+\d+$/.test(clean)) {
+        clean = clean.replace(/([a-zA-Z]+)(\d+)/, '$1-$2');
+        const retryKey = Object.keys(ISOTOPE_DB).find(k => k.toLowerCase() === clean.toLowerCase());
+        if(retryKey) return retryKey;
+    }
+
+    // Formatting Fallback: Capitalize first letter
+    return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+    
+    function removeUpdateDate(pid, idx) {
+        const p = projects.find(x => x.id === pid);
+        p.updatesSent.splice(idx, 1);
+
+        p.updated = Date.now();
+
+        saveLocally();
+        viewProject(pid);
+    }
+
+    function render(filter = "") {
+        // 1. Auto-detect filter if not provided
+        if (!filter) {
+            const activeView = document.querySelector('.view-section.active');
+            if (activeView) {
+                const searchInput = activeView.querySelector('.search-bar');
+                if (searchInput) filter = searchInput.value;
+            }
+        }
+        
+        filter = filter.toLowerCase();
+        document.getElementById('todayDate').innerText = new Date().toDateString();
+        document.getElementById('btnShowComp').innerHTML = showComplete ? '<i class="fa-solid fa-eye-slash"></i> Hide Done' : '<i class="fa-solid fa-eye"></i> Show Done';
+        
+        // --- 1. SUPERCHARGED PROJECT FILTERING ---
+        let filteredProjs = projects.filter(p => {
+            // A. STRICT STATUS FILTER (triggered by charts)
+            if (filter.startsWith('status:')) {
+                const targetStatus = filter.replace('status:', '').trim().toLowerCase();
+                return p.status.toLowerCase() === targetStatus;
+            }
+
+            // B. STANDARD FUZZY SEARCH (typed by user)
+            const searchStr = (
+                p.title + (p.desc||"") + (p.uic||"") + (p.jmcId||"") + 
+                (p.rcn||"") + (p.contractor||"") + 
+                (p.status||"") + (p.health||"") + 
+                (p.region||"") + (p.poc||"") + (p.poc2||"")
+            ).toLowerCase();
+            return searchStr.includes(filter);
+        });
+
+        // Auto-show 'Complete' if the chart filter is active
+        // This ensures clicking the "Complete" slice actually shows data
+        const isChartFilter = filter.toLowerCase().includes('status:complete');
+        
+        if (!showComplete && !isChartFilter) {
+             filteredProjs = filteredProjs.filter(p => p.status !== 'Complete'); 
+        }
+
+        // MAIN PROJECT SORTING ---
+        if (mainProjSort === 'title') {
+            filteredProjs.sort((a,b) => a.title.localeCompare(b.title));
+        } else if (mainProjSort === 'due') {
+            // Sort by Date (Empty dates go last)
+            filteredProjs.sort((a,b) => (a.due||'9999').localeCompare(b.due||'9999'));
+        } else if (mainProjSort === 'status') {
+            // Custom Order: Active -> Review -> Planning -> Complete
+            const sMap = { 'Active': 0, 'Review': 1, 'Planning': 2, 'Complete': 3 };
+            filteredProjs.sort((a,b) => (sMap[a.status]||9) - (sMap[b.status]||9));
+        } else if (mainProjSort === 'health') {
+            // Red -> Yellow -> Green
+            const hMap = { 'red': 0, 'yellow': 1, 'green': 2 };
+            filteredProjs.sort((a,b) => (hMap[a.health]||9) - (hMap[b.health]||9));
+        } else if (mainProjSort === 'newest') {
+            filteredProjs.sort((a,b) => b.id - a.id); // ID is timestamp
+        } else if (mainProjSort === 'oldest') {
+            filteredProjs.sort((a,b) => a.id - b.id);
+        }
+
+        const filteredInv = inventory.filter(i => {
+            // If filtering projects by status, ignore that filter for inventory so it stays visible
+            if (filter.startsWith('status:')) return true; 
+
+            const searchStr = (
+                i.id + (i.desc||"") + (i.iso||"") + (i.status||"") + 
+                (i.location||"") + (i.serial||"") + (i.act||"")
+            ).toLowerCase();
+            return searchStr.includes(filter);
+        });
+        
+        const dashProjDiv = document.getElementById('dash-projects');
+        const projContainer = document.getElementById('full-project-list');
+        
+        // --- 2. DASHBOARD WIDGETS (Active Projects with Sorting) ---
+        
+        let displayProjs = [...filteredProjs]; 
+
+        if(dashProjSort === 'newest') { displayProjs.reverse(); } 
+        else if (dashProjSort === 'health') {
+            const hMap = { 'red': 0, 'yellow': 1, 'green': 2 };
+            displayProjs.sort((a,b) => (hMap[a.health]||2) - (hMap[b.health]||2));
+        }
+        else if (dashProjSort === 'status') {
+             const sMap = { 'Active': 0, 'Review': 1, 'Planning': 2, 'Complete': 3 };
+             displayProjs.sort((a,b) => (sMap[a.status]||4) - (sMap[b.status]||4));
+        }
+
+        const recentProjs = displayProjs.slice(0, 10);
+
+        // TOGGLE BUTTON STATE (New)
+        const eyeIcon = showComplete ? '<i class="fa-solid fa-eye-slash"></i>' : '<i class="fa-solid fa-eye"></i>';
+        const eyeTitle = showComplete ? 'Hide Completed' : 'Show Completed';
+
+        // UPDATED HEADER HTML (With new Button)
+        const projHeaderHtml = `
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span>Active Projects</span>
+                    <select class="sort-select" onchange="setDashSort('proj', this.value)">
+                        <option value="newest" ${dashProjSort==='newest'?'selected':''}>Newest</option>
+                        <option value="oldest" ${dashProjSort==='oldest'?'selected':''}>Oldest</option>
+                        <option value="health" ${dashProjSort==='health'?'selected':''}>Health</option>
+                        <option value="status" ${dashProjSort==='status'?'selected':''}>Status</option>
+                    </select>
+                    <button class="btn-rect" onclick="toggleShowComp()" title="${eyeTitle}" style="width:24px; padding:0;">
+                        ${eyeIcon}
+                    </button>
+                </div>
+                <span style="font-size:0.75rem; cursor:pointer; color:var(--accent); font-weight:bold; white-space:nowrap; margin-left:15px;" onclick="nav('projects')">View All &rarr;</span>
+            </div>`;
+
+        const projListHtml = recentProjs.length ? recentProjs.map(p => {
+            const pct = p.tasks && p.tasks.length ? Math.round((p.tasks.filter(t=>t.done).length/p.tasks.length)*100) : 0;
+            return `
+            <div class="list-item" onclick="viewProject(${p.id})">
+                <div style="flex:1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="font-weight:600;">
+                            <span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span>
+                            ${high(p.title, filter)}
+                        </div>
+                        <span style="font-size:0.7rem; color:var(--text-muted); margin-right:10px;">${p.status}</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+                </div>
+                <div class="quick-actions">
+                    <div class="qa-btn qa-task" onclick="event.stopPropagation(); quickAdd('task', ${p.id})" title="Add Task"><i class="fa-solid fa-check"></i></div>
+                    <div class="qa-btn qa-exp" onclick="event.stopPropagation(); quickAdd('expense', ${p.id})" title="Add Expense"><i class="fa-solid fa-dollar-sign"></i></div>
+                </div>
+            </div>`;
+        }).join('') : '<div style="color:var(--text-muted); padding:10px;">No Matches</div>';
+
+        // 6. Inject into DOM
+        const projWidget = document.getElementById('dash-projects').parentElement;
+        projWidget.querySelector('.widget-head').innerHTML = projHeaderHtml; 
+        document.getElementById('dash-projects').innerHTML = projListHtml;
+
+        // --- 3. PROJECT VIEW (List vs Kanban) ---
+        if (viewMode === 'list') {
+            projContainer.innerHTML = filteredProjs.map(p => {
+                const src = getDominantSource(p.id);
+                return `<div class="list-item" onclick="viewProject(${p.id})"><span><span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span>${high(p.title, filter)} <span class="tag" style="background:${src.color}; color:white; border:none; margin-left:8px;">${src.short}</span></span><span>${p.status} | Due: ${p.due}</span></div>`;
+            }).join('');
+        } else {
+            const cols = { 'Planning': [], 'Active': [], 'Review': [], 'Complete': [] };
+            filteredProjs.forEach(p => { if (cols[p.status]) cols[p.status].push(p); });
+            const hCols = { 'Planning': 'var(--plan)', 'Active': 'var(--accent)', 'Review': 'var(--info)', 'Complete': 'var(--comp)' };
+            projContainer.innerHTML = `<div class="kanban-board">${Object.keys(cols).map(status => `
+                <div class="kanban-col" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)" ondrop="drop(event, '${status}')">
+                    <div class="kanban-head" style="color:${hCols[status]}; border-bottom-color:${hCols[status]}">${status} (${cols[status].length})</div>
+                    ${cols[status].map(p => { 
+                        const spent = expenses.filter(e => e.projId === p.id).reduce((s, e) => s + parseFloat(e.amount), 0); 
+                        const budget = getProjectBudget(p.id);
+                        const isOver = spent > budget && budget > 0;
+                        const src = getDominantSource(p.id);
+                        return `<div class="kanban-card ${isOver?'over-budget':''}" draggable="true" ondragstart="drag(event, ${p.id})" onclick="viewProject(${p.id})">
+                            <div style="font-weight:bold; font-size:0.9rem; margin-bottom:5px;">${esc(p.title)}</div>
+                            <div style="margin-bottom:5px;"><span class="tag" style="background:${src.color}; color:white; border:none;">${src.short}</span></div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;"><span class="rag-dot" style="background:${p.health==='red'?'var(--danger)':(p.health==='yellow'?'var(--warning)':'var(--accent)')}"></span><span class="tag">${(p.tasks||[]).filter(t=>!t.done).length} open</span></div>
+                        </div>`; 
+                    }).join('')}
+                </div>`).join('')}</div>`;
+        }
+
+        // --- 4. TASKS & INVENTORY WIDGETS (Dynamic Sorting) ---
+        
+        // A. PREPARE TASKS
+        let allTasks = [];
+        filteredProjs.forEach(p => { 
+            if(p.tasks) {
+                p.tasks.forEach(t => { 
+                    // Search: Task Text OR Project Title OR Assignee OR Priority
+                    const taskStr = (t.text + p.title + (t.assign||"") + t.prio).toLowerCase();
+                    
+                    if(!t.done && taskStr.includes(filter)) {
+                        allTasks.push({ task: t, proj: p });
+                    }
+                });
+            }
+        });
+
+        if(dashTaskSort === 'prio') {
+            const pMap = {'high':0, 'med':1, 'low':2};
+            allTasks.sort((a,b) => (pMap[a.task.prio]||1) - (pMap[b.task.prio]||1));
+        } else if (dashTaskSort === 'oldest') {
+            allTasks.sort((a,b) => a.task.id - b.task.id); 
+        } else if (dashTaskSort === 'newest') {
+            allTasks.sort((a,b) => b.task.id - a.task.id);
+        }
+
+        // UPDATED TASK HEADER (With View All Link)
+        const taskHeaderHtml = `
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span>Pending Actions</span>
+                    <select class="sort-select" onchange="setDashSort('task', this.value)">
+                        <option value="prio" ${dashTaskSort==='prio'?'selected':''}>Highest Prio</option>
+                        <option value="newest" ${dashTaskSort==='newest'?'selected':''}>Newest</option>
+                        <option value="oldest" ${dashTaskSort==='oldest'?'selected':''}>Oldest</option>
+                    </select>
+                </div>
+                <span style="font-size:0.75rem; cursor:pointer; color:var(--accent); font-weight:bold; white-space:nowrap; margin-left:15px;" onclick="nav('all-tasks')">View All &rarr;</span>
+            </div>`;
+
+        const taskListHtml = allTasks.slice(0, 10).map(item => {
+            const t = item.task;
+            const p = item.proj;
+            let borderCol = 'var(--border)';
+            if(t.prio === 'high') borderCol = 'var(--danger)';
+            if(t.prio === 'med') borderCol = 'var(--warning)';
+
+            return `<div class="list-item" style="border-left-color:${borderCol}" onclick="viewProject(${p.id})">
+                        <span>${esc(t.text)} <span class="tag">${esc(t.assign||'?')}</span></span>
+                        <span style="font-size:0.7rem; color:var(--text-muted)">${esc(p.title)}</span>
+                    </div>`; 
+        }).join('') || '<div style="color:var(--text-muted); padding:10px;">No Pending Actions</div>';
+        
+        const taskWidget = document.getElementById('dash-tasks').parentElement;
+        taskWidget.querySelector('.widget-head').innerHTML = taskHeaderHtml;
+        document.getElementById('dash-tasks').innerHTML = taskListHtml;
+
+
+        // B. PREPARE INVENTORY
+        // Sorting Logic
+        if(dashInvSort === 'dose') { filteredInv.sort((a,b) => b.dose - a.dose); } 
+        else if (dashInvSort === 'fill') { filteredInv.sort((a,b) => (b.fill||0) - (a.fill||0)); } 
+        else if (dashInvSort === 'recent') { filteredInv.sort((a,b) => (b.logDate || "").localeCompare(a.logDate || "")); }
+        else if (dashInvSort === 'act') { filteredInv.sort((a,b) => getActValue(b.act) - getActValue(a.act)); } 
+        
+        // --- PROJECT SORTS ---
+        else if (dashInvSort === 'proj-old') { 
+            // Sort by Project ID (Ascending) -> Oldest Projects First
+            filteredInv.sort((a,b) => {
+                const pA = projects.find(p => p.id === a.projId)?.id || 9999999999999;
+                const pB = projects.find(p => p.id === b.projId)?.id || 9999999999999;
+                return pA - pB;
+            });
+        }
+        else if (dashInvSort === 'proj-new') { 
+            // Sort by Project ID (Descending) -> Newest Projects First
+            filteredInv.sort((a,b) => {
+                const pA = projects.find(p => p.id === a.projId)?.id || 0;
+                const pB = projects.find(p => p.id === b.projId)?.id || 0;
+                return pB - pA;
+            });
+        }
+        else if (dashInvSort === 'proj-due') { 
+            // Sort by Project Due Date (Ascending) -> Soonest Due First
+            filteredInv.sort((a,b) => {
+                const pA = projects.find(p => p.id === a.projId)?.due || "9999-99-99";
+                const pB = projects.find(p => p.id === b.projId)?.due || "9999-99-99";
+                return pA.localeCompare(pB);
+            });
+        }
+
+        // UPDATED INVENTORY HEADER (New Sort Options + View All Link)
+        const invHeaderHtml = `
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span>Inventory</span>
+                    <select class="sort-select" onchange="setDashSort('inv', this.value)" style="width:110px;">
+                        <option value="act" ${dashInvSort==='act'?'selected':''}>Highest Activity</option>
+                        <option value="dose" ${dashInvSort==='dose'?'selected':''}>Highest Dose</option>
+                        <option value="proj-due" ${dashInvSort==='proj-due'?'selected':''}>Proj Due Date</option>
+                        <option value="proj-new" ${dashInvSort==='proj-new'?'selected':''}>Proj Newest</option>
+                        <option value="proj-old" ${dashInvSort==='proj-old'?'selected':''}>Proj Oldest</option>
+                        <option value="fill" ${dashInvSort==='fill'?'selected':''}>Fullest</option>
+                        <option value="recent" ${dashInvSort==='recent'?'selected':''}>Newest Item</option>
+                    </select>
+                </div>
+                <span style="font-size:0.75rem; cursor:pointer; color:var(--accent); font-weight:bold; white-space:nowrap; margin-left:15px;" onclick="nav('inventory')">View All &rarr;</span>
+            </div>`;
+
+        const invListHtml = filteredInv.slice(0, 10).map(i => {
+            // Logic to determine what to show on the right side
+            let valDisplay = `<b>${i.act}</b>`; // Default to Concentration/Activity
+            let subDisplay = i.dose > 0 ? `${i.dose} mR/hr` : ''; // Subtext
+
+            if(dashInvSort === 'dose') {
+                 valDisplay = `<b>${i.dose} mR/hr</b>`;
+                 subDisplay = i.act;
+            }
+            else if(dashInvSort === 'fill') {
+                 valDisplay = `<b>${i.fill||0}% Full</b>`;
+                 subDisplay = i.act;
+            }
+            else if(dashInvSort.startsWith('proj')) {
+                 const pTitle = projects.find(p => p.id === i.projId)?.title || "Unassigned";
+                 valDisplay = `<span class="tag" style="max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(pTitle)}</span>`;
+                 subDisplay = i.act;
+            }
+            
+            // Highlight high activity items (arbitrary threshold > 1 Ci just for visual pop)
+            const isHot = getActValue(i.act) >= 1; 
+
+            return `<div class="list-item" onclick="viewInventory('${jsEsc(i.id)}')">
+                <div style="display:flex; flex-direction:column; overflow:hidden;">
+                    <span style="${isHot ? 'color:var(--rad); font-weight:bold;' : ''}">${high(i.id, filter)}</span>
+                    <span style="font-size:0.7rem; color:var(--text-muted); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${high(i.desc, filter)}</span>
+                </div>
+                <div style="text-align:right;">
+                    <div>${valDisplay}</div>
+                    <div style="font-size:0.65rem; color:var(--text-muted);">${subDisplay}</div>
+                </div>
+            </div>`;
+        }).join('') || '<div style="color:var(--text-muted); padding:10px;">No Inventory</div>';
+
+        const invWidget = document.getElementById('dash-inv').parentElement;
+        invWidget.querySelector('.widget-head').innerHTML = invHeaderHtml;
+        document.getElementById('dash-inv').innerHTML = invListHtml;
+
+        // --- 5. GLOBAL FINANCIALS (For Dashboard Widget ONLY) ---
+        // Note: We wrap the final SUM in roundMoney
+        const globalBudg = roundMoney(allocations.reduce((s, a) => s + (parseFloat(a.amount)||0), 0));
+        const globalSpent = roundMoney(expenses.filter(e => e.status !== 'Estimate').reduce((s, e) => s + (parseFloat(e.amount)||0), 0));
+        const globalRem = roundMoney(globalBudg - globalSpent);
+        const globalActive = new Set(expenses.map(e => e.projId)).size;
+        
+        const dashSources = {};
+        expenses.forEach(e => { const s = e.fundSource || 'Other'; dashSources[s] = (dashSources[s]||0) + parseFloat(e.amount); });
+        const dashSourceHtml = Object.keys(dashSources).map(k => `<div style="font-size:0.7rem; display:flex; justify-content:space-between; color:var(--text-muted);"><span><span class="legend-dot" style="background:${getFundColor(k)}"></span>${k}</span><span>$${dashSources[k].toLocaleString()}</span></div>`).join('');
+
+        document.getElementById('dash-fin').innerHTML = `<div class="mini-fin-grid"><div class="mini-fin-box"><div class="mini-fin-val" style="color:var(--info);">$${globalBudg.toLocaleString()}</div><div class="mini-fin-lbl">Budget</div></div><div class="mini-fin-box"><div class="mini-fin-val" style="color:var(--warning);">$${globalSpent.toLocaleString()}</div><div class="mini-fin-lbl">Spent</div></div><div class="mini-fin-box"><div class="mini-fin-val" style="color:${globalRem<0?'var(--danger)':'var(--money)'};">$${globalRem.toLocaleString()}</div><div class="mini-fin-lbl">Rem.</div></div><div class="mini-fin-box"><div class="mini-fin-val" style="color:var(--rad);">${globalActive}</div><div class="mini-fin-lbl">Active</div></div></div><div style="margin-top:10px; padding-top:5px; border-top:1px dashed var(--border);">${dashSourceHtml || '<span style="font-size:0.7rem; color:var(--text-muted)">No data</span>'}</div>`;
+
+        // --- 6. CHARTS (Project Status & Budget) ---
+        const statuses = { 'Planning': 0, 'Active': 0, 'Review': 0, 'Complete': 0 };
+        projects.forEach(p => { if (statuses[p.status] !== undefined) statuses[p.status]++; });
+        const totalProjs = projects.length || 1;
+        const sColors = { 'Planning': 'var(--plan)', 'Active': 'var(--accent)', 'Review': 'var(--info)', 'Complete': 'var(--comp)' };
+        
+        document.getElementById('chart-proj').innerHTML = Object.keys(statuses).map(k => { 
+            const pct = (statuses[k] / totalProjs) * 100;
+            
+            // LOGIC: Check if this status is currently active
+            // We look for 'status:Active', not just 'Active'
+            const currentSearch = document.getElementById('main-search') ? document.getElementById('main-search').value : '';
+            const targetSearch = `status:${k}`;
+            const isActive = currentSearch.toLowerCase() === targetSearch.toLowerCase();
+            
+            // If active -> Clear it. If not active -> Set it using the status: prefix
+            const clickAction = isActive 
+                ? "document.getElementById('main-search').value=''; handleSearch('');" 
+                : `document.getElementById('main-search').value='${targetSearch}'; handleSearch('${targetSearch}');`;
+
+            const opacity = (filter.startsWith('status:') && !isActive) ? '0.3' : '1';
+
+            return pct > 0 ? `<div class="chart-seg" style="width:${pct}%; background:${sColors[k]}; cursor:pointer; opacity:${opacity};" 
+                                   title="${k}: ${statuses[k]} (Click to filter)" 
+                                   onclick="${clickAction}"></div>` : ''; 
+        }).join('');
+        
+        document.getElementById('legend-proj').innerHTML = Object.keys(statuses).map(k => statuses[k] > 0 ? `<div><span class="legend-dot" style="background:${sColors[k]}"></span>${k} (${statuses[k]})</div>` : '').join('');
+        
+        // If budget is 0 but we spent money, show 100% (Full bar)
+        const spentPct = globalBudg > 0 
+            ? Math.min((globalSpent/globalBudg)*100, 100) 
+            : (globalSpent > 0 ? 100 : 0);
+
+        document.getElementById('chart-money').innerHTML = `<div class="chart-seg" style="width:${spentPct}%; background:var(--money);" title="Spent: $${globalSpent.toLocaleString()} / Budget: $${globalBudg.toLocaleString()}"></div>`;
+
+        // ============================================================
+        //  FINANCE VIEW LOGIC (WITH DATE FILTERS)
+        // ============================================================
+        
+        // 1. Define Filter Function
+        const isDateInScope = (dateStr) => {
+            if (!dateStr) return false;
+            // If user hasn't set filters, show everything
+            if (!finStart && !finEnd) return true;
+            
+            // Compare string dates "YYYY-MM-DD" directly
+            if (finStart && dateStr < finStart) return false;
+            if (finEnd && dateStr > finEnd) return false;
+            return true;
+        };
+
+        // 2. Create FILTERED lists
+        const finExps = expenses.filter(e => isDateInScope(e.date));
+        const finAllocs = allocations.filter(a => isDateInScope(a.date));
+
+        // 3. Calculate Totals based on FILTERED data
+        const finTotalBudg = roundMoney(finAllocs.reduce((s, a) => s + (parseFloat(a.amount)||0), 0));
+        const finTotalSpent = roundMoney(finExps.filter(e => e.status !== 'Estimate').reduce((s, e) => s + (parseFloat(e.amount)||0), 0));
+        const finRemaining = roundMoney(finTotalBudg - finTotalSpent);
+        const finActiveSpenders = new Set(finExps.map(e => e.projId)).size;
+        
+        // 4. Update Finance View Top Cards
+        document.getElementById('fin-total-budget').innerText = "$" + finTotalBudg.toLocaleString();
+        document.getElementById('fin-total-spent').innerText = "$" + finTotalSpent.toLocaleString();
+        document.getElementById('fin-total-rem').innerText = "$" + finRemaining.toLocaleString();
+        document.getElementById('fin-total-rem').style.color = finRemaining < 0 ? "var(--danger)" : "var(--money)";
+        document.getElementById('fin-proj-count').innerText = finActiveSpenders;
+
+        // 5. Update Monthly Chart (Pass filtered data!)
+        renderMonthlyChart(finExps);
+
+        // 6. Update Source Breakdown (Visualization Upgrade)
+        const finSources = {};
+        finExps.forEach(e => { const s = e.fundSource || 'Other'; finSources[s] = (finSources[s]||0) + parseFloat(e.amount); });
+
+        document.getElementById('finance-source-breakdown').innerHTML = Object.keys(finSources).map(k => {
+            const amt = finSources[k];
+            const pct = finTotalSpent > 0 ? Math.round((amt / finTotalSpent) * 100) : 0;
+            const color = getFundColor(k);
+            
+            // Choose icon based on source type
+            let icon = 'fa-coins';
+            if(k.includes('Navy')) icon = 'fa-anchor';
+            if(k.includes('Command')) icon = 'fa-building-shield';
+
+            return `
+            <div class="fund-card" style="border-left-color:${color}">
+                <div class="fund-head">
+                    <span style="color:${color}"><i class="fa-solid ${icon}"></i> ${esc(k)}</span>
+                    <span>${pct}%</span>
+                </div>
+                <div class="fund-meta">
+                    <span>Total Spent</span>
+                    <span style="font-weight:bold; color:var(--text-main);">$${amt.toLocaleString()}</span>
+                </div>
+                <div class="fund-bar-bg">
+                    <div class="fund-bar-fill" style="width:${pct}%; background:${color}"></div>
+                </div>
+            </div>`;
+        }).join('') || '<div style="color:var(--text-muted); font-size:0.8rem; text-align:center; padding:20px;">No expenses recorded in this period.</div>';
+
+        // 7. Update Expense Table (Filtered) with TOTALS FOOTER
+        const sortedExps = getSortedData(finExps, 'table-exp');
+        
+        // A. Initialize the counter
+        let expTotal = 0;
+
+        // B. Generate Rows & Accumulate Total
+        const expRows = sortedExps.map(e => {
+            // Add to running total (safely handle missing values)
+            expTotal += (e.amount || 0);
+
+            const fund = e.fundSource || 'Other';
+            let fundStyle = 'background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1';
+            if(fund.includes('Navy')) fundStyle = 'background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe';
+            if(fund.includes('Command')) fundStyle = 'background:#f3e8ff; color:#6b21a8; border:1px solid #e9d5ff';
+            const pTitle = projects.find(p => p.id === e.projId)?.title || "General";
+            
+            const isEst = e.status === 'Estimate';
+            const rowStyle = isEst ? 'font-style:italic; opacity:0.7;' : '';
+            const igeIcon = e.details 
+                ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:8px;" onclick="viewEstimate(${e.id}, 'expense')" title="View Estimate Details"></i>` 
+                : '';
+
+            const fmtAmount = (e.amount || 0).toLocaleString('en-US', {style:'currency', currency:'USD'});
+
+            return `<tr style="${rowStyle}">
+                <td><input class="live-edit" type="date" value="${e.date}" onchange="updItem('expense', ${e.id}, 'date', this.value)"></td>
+                <td><span class="proj-link" onclick="viewProject(${e.projId})">${esc(pTitle)}</span></td>
+                <td><div class="tag" style="font-size:0.75rem; padding:4px 8px; border-radius:12px; display:inline-block; ${fundStyle}">${esc(fund)}</div></td>
+                <td><div style="display:flex; align-items:center; width:100%;"><input class="live-edit" style="flex:1; min-width:0;" value="${esc(e.desc)}" onchange="updItem('expense', ${e.id}, 'desc', this.value, this)"> ${igeIcon}</div></td>
+                <td><input class="live-edit" type="text" style="text-align:right;" value="${fmtAmount}" onchange="updItem('expense', ${e.id}, 'amount', this.value)"></td>
+                <td>
+                    <select class="live-edit" onchange="updItem('expense', ${e.id}, 'status', this.value)">
+                        <option ${e.status==='Invoiced'?'selected':''}>Invoiced</option>
+                        <option ${e.status==='Paid'?'selected':''}>Paid</option>
+                        <option ${e.status==='Encumbered'?'selected':''}>Encumbered</option>
+                        <option ${e.status==='Estimate'?'selected':''}>Estimate</option>
+                    </select>
+                </td>
+                <td><div style="display:flex; gap:10px;"><i class="fa-solid fa-copy" style="cursor:pointer; color:var(--info)" onclick="cloneExpense(${e.id})" title="Duplicate"></i> <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delExpense(${e.id})" title="Delete"></i></div></td>
+            </tr>`;
+        }).join('');
+
+        // C. Generate the Footer HTML
+        // Note: colspan="4" covers Date, Project, Fund, Desc.
+        // The Total sits in the 5th column (Amount).
+        // colspan="2" covers Status and Actions.
+        const expFooter = `
+            <tr style="background:var(--bg-body); border-top:2px solid var(--border); font-weight:bold; color:var(--text-main);">
+                <td colspan="4" style="text-align:right; padding-right:15px;">Visible Total:</td>
+                <td style="text-align:right; color:var(--money);">${expTotal.toLocaleString('en-US', {style:'currency', currency:'USD'})}</td>
+                <td colspan="2"></td>
+            </tr>`;
+
+        // D. Combine and Render
+        // If rows exist, show rows + footer. If empty, show "No expenses found".
+        document.getElementById('expense-list').innerHTML = expRows 
+            ? (expRows + expFooter) 
+            : '<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--text-muted); font-style:italic;">No expenses found matching criteria.</td></tr>';
+        
+        // 8. Update Allocation Table (Filtered) with TOTALS FOOTER
+        const sortedAllocs = getSortedData(finAllocs, 'table-alloc');
+        
+        let allocTotal = 0; // Init Counter
+
+        const allocRows = sortedAllocs.map(a => {
+            allocTotal += (a.amount || 0); // Accumulate
+
+            const fund = a.fundSource || 'Navy General Fund';
+            const pTitle = projects.find(p => p.id === a.projId)?.title || "General";
+            const igeIcon = a.details 
+                ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:8px;" onclick="viewEstimate(${a.id}, 'alloc')" title="View Estimate Details"></i>` 
+                : '';
+            const fmtAmount = (a.amount || 0).toLocaleString('en-US', {style:'currency', currency:'USD'});
+
+            return `<tr>
+                <td><input class="live-edit" type="date" value="${a.date}" onchange="updItem('alloc', ${a.id}, 'date', this.value)"></td>
+                <td><span class="proj-link" onclick="viewProject(${a.projId})">${esc(pTitle)}</span></td>
+                <td><div class="tag">${esc(fund)}</div></td>
+                <td><div style="display:flex; align-items:center; width:100%;"><input class="live-edit" style="flex:1; min-width:0;" value="${esc(a.desc)}" onchange="updItem('alloc', ${a.id}, 'desc', this.value, this)"> ${igeIcon}</div></td>
+                <td><input class="live-edit" type="text" style="text-align:right;" value="${fmtAmount}" onchange="updItem('alloc', ${a.id}, 'amount', this.value)"></td>
+                <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delAlloc(${a.id})"></i></td>
+            </tr>`;
+        }).join('');
+
+        // Generate Footer
+        const allocFooter = `
+            <tr style="background:var(--bg-body); border-top:2px solid var(--border); font-weight:bold; color:var(--text-main);">
+                <td colspan="4" style="text-align:right; padding-right:15px;">Visible Funding:</td>
+                <td style="text-align:right; color:var(--navy);">${allocTotal.toLocaleString('en-US', {style:'currency', currency:'USD'})}</td>
+                <td></td>
+            </tr>`;
+
+        // Render
+        document.getElementById('alloc-list').innerHTML = allocRows 
+            ? (allocRows + allocFooter) 
+            : '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted); font-style:italic;">No funding records found.</td></tr>';
+
+        // 9. Update Budget Rollup Logic (With Sorting!)
+let grandInit = 0, grandAdj = 0, grandTot = 0, grandSpent = 0;
+
+// A. Update the Scope Toggle Button
+const btnScope = document.getElementById('btn-budget-scope');
+if(btnScope) {
+    btnScope.innerHTML = budgetScope === 'range' ? '<i class="fa-solid fa-filter"></i> In Range' : '<i class="fa-solid fa-infinity"></i> Lifetime';
+    btnScope.style.background = budgetScope === 'range' ? 'var(--bg-input)' : 'var(--navy)';
+    btnScope.style.color = budgetScope === 'range' ? 'var(--text-muted)' : 'white';
+    btnScope.style.borderColor = budgetScope === 'range' ? 'var(--border)' : 'var(--navy)';
+}
+
+// B. Define Stats Helper
+const getProjStats = (pid) => {
+    const sourceAllocs = budgetScope === 'all' ? allocations : finAllocs;
+    const sourceExps   = budgetScope === 'all' ? expenses    : finExps;
+    const pAllocs = sourceAllocs.filter(a => a.projId === pid);
+    const pExps = sourceExps.filter(e => e.projId === pid);
+    
+    const init = pAllocs.filter(a => a.type === 'base' || (!a.type && a.desc.toLowerCase().includes('initial'))).reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
+    const adj = pAllocs.filter(a => a.type !== 'base' && (a.type || !a.desc.toLowerCase().includes('initial'))).reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
+    const spent = pExps.filter(e => e.status !== 'Estimate').reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
+    
+    return { init, adj, total: init+adj, spent, rem: (init+adj)-spent };
+};
+
+// C. BUILD DATA ARRAY FIRST (Don't draw HTML yet)
+let budgetData = projects.map(p => {
+    const s = getProjStats(p.id);
+    const src = getDominantSource(p.id);
+
+    const dStat = getDueStatus(p.due); 
+    
+    let burn = 0;
+    if(s.total > 0) burn = Math.round((s.spent / s.total) * 100);
+    else if(s.spent > 0) burn = 100;
+    
+    // Return a clean object we can sort
+    return { 
+        id: p.id, title: p.title, health: p.health, 
+        srcName: src.short, srcColor: src.color,
+        init: s.init, adj: s.adj, total: s.total, spent: s.spent, rem: s.rem, burn: burn 
+    };
+});
+
+// D. SORT THE ARRAY (If table-budget is active)
+if (sortState.table === 'table-budget') {
+    budgetData.sort((a, b) => {
+        // Map column index to our new object keys
+        const keys = ['title', 'srcName', 'init', 'adj', 'total', 'spent', 'rem', 'burn'];
+        const k = keys[sortState.col];
+        
+        let valA = a[k], valB = b[k];
+        
+        if (typeof valA === 'string') {
+            return valA.localeCompare(valB) * sortState.dir;
+        }
+        return (valA - valB) * sortState.dir;
+    });
+}
+
+// E. CALCULATE TOTALS & GENERATE HTML (FIXED)
+let rollupHtml = budgetData.map(row => {
+    // Accumulate Grands (Order doesn't matter for totals)
+    grandInit += row.init; grandAdj += row.adj; grandTot += row.total; grandSpent += row.spent;
+
+    // Burn Color Logic
+    let burnBg = 'var(--col-act)'; let burnColor = 'var(--accent)'; let burnBorder = 'var(--accent)';    
+    if(row.burn > 100) { burnBg = 'var(--danger)'; burnColor = 'white'; burnBorder = 'var(--danger)'; }
+    else if (row.burn > 80) { burnBg = 'var(--warning)'; burnColor = 'white'; burnBorder = 'var(--warning)'; }
+
+    // FIX: Added ( || 0) to all .toLocaleString calls below
+    return `<tr>
+    <td><span class="rag-dot" style="background:${row.health==='red'?'var(--danger)':(row.health==='yellow'?'var(--warning)':'var(--accent)')}"></span><span class="proj-link" onclick="viewProject(${row.id})">${esc(row.title)}</span></td>
+    <td style="text-align:center"><div class="tag" style="background:${row.srcColor}; color:white; border:none;">${row.srcName}</div></td>
+    <td style="text-align:right; color:var(--text-muted);">$${(row.init||0).toLocaleString()}</td>
+    <td style="text-align:right; color:${row.adj>=0?'var(--info)':'var(--warning)'}">${row.adj>0?'+':''}${(row.adj||0).toLocaleString()}</td>
+    <td style="text-align:right; font-weight:bold;">$${(row.total||0).toLocaleString()}</td>
+    <td style="text-align:right; color:var(--warning);">$${(row.spent||0).toLocaleString()}</td>
+    <td style="text-align:right; font-weight:bold; color:${row.rem<0?'var(--danger)':'var(--money)'}">$${(row.rem||0).toLocaleString()}</td>
+    <td style="text-align:center"><div class="tag" style="width:45px; text-align:center; display:inline-block; background:${burnBg}; color:${burnColor}; border-color:${burnBorder}; font-weight:bold;">${row.burn}%</div></td>
+    </tr>`;
+}).join('');
+
+        const genStats = getProjStats(null);
+        if(genStats.total !== 0 || genStats.spent !== 0) {
+            grandInit += genStats.init; grandAdj += genStats.adj; grandTot += genStats.total; grandSpent += genStats.spent;
+            const genRem = genStats.total - genStats.spent;
+            rollupHtml += `<tr style="background:var(--bg-body);"><td><i>General / Overhead</i></td><td style="text-align:center">-</td><td style="text-align:right; color:var(--text-muted);">$${genStats.init.toLocaleString()}</td><td style="text-align:right;">${genStats.adj.toLocaleString()}</td><td style="text-align:right; font-weight:bold;">$${genStats.total.toLocaleString()}</td><td style="text-align:right; color:var(--warning);">$${genStats.spent.toLocaleString()}</td><td style="text-align:right; font-weight:bold; color:${genRem<0?'var(--danger)':'var(--money)'}">$${genRem.toLocaleString()}</td><td style="text-align:center">-</td></tr>`;
+        }
+        document.getElementById('budget-rollup-list').innerHTML = rollupHtml || '<tr><td colspan="7" style="text-align:center; padding:10px; color:var(--text-muted)">No financial data found in this period.</td></tr>';
+        
+        const grandRem = grandTot - grandSpent;
+        const grandBurn = grandTot > 0 ? Math.round((grandSpent/grandTot)*100) : 0;
+        document.getElementById('budget-rollup-foot').innerHTML = `<tr><td>TOTALS</td><td></td><td style="text-align:right">$${grandInit.toLocaleString()}</td><td style="text-align:right">$${grandAdj.toLocaleString()}</td><td style="text-align:right">$${grandTot.toLocaleString()}</td><td style="text-align:right">$${grandSpent.toLocaleString()}</td><td style="text-align:right; color:${grandRem<0?'var(--danger)':'var(--money)'}">$${grandRem.toLocaleString()}</td><td style="text-align:center">${grandBurn}%</td></tr>`;
+
+        // ============================================================
+        //  END FINANCE LOGIC
+        // ============================================================
+
+
+        // --- 7. EXEMPT LOG & INVENTORY TABLES ---
+        
+        // 1. Get Data (Sorted by column click or default)
+        const sortedExempt = getSortedData(exemptLog, 'table-exempt');
+
+        // 2. Apply Search Filter (The missing piece)
+        const filteredExempt = sortedExempt.filter(e => {
+            const searchStr = (e.id + e.cmd + e.desc + e.iso + e.act + e.basis + e.path + (e.date||'')).toLowerCase();
+            return searchStr.includes(filter);
+        });
+
+        // 3. Render
+        document.getElementById('exempt-list').innerHTML = filteredExempt.map(e => {
+            // Status Logic
+            const isAuth = e.authDate && e.authDate.trim() !== "";
+            const statusBadge = isAuth 
+                ? '<span class="tag" style="background:var(--accent); color:white; border:none;">Authorized</span>' 
+                : '<span class="tag" style="background:var(--warning); color:white; border:none;">Pending</span>';
+            
+            // Render Row (Keeping all your Live Edit inputs)
+            return `<tr>
+                <td>${high(e.id, filter)}</td> <td><input class="live-edit" type="date" value="${e.date}" onchange="updItem('exempt', '${e.id}', 'date', this.value)"></td>
+                <td><input class="live-edit" value="${esc(e.cmd)}" onchange="updItem('exempt', '${e.id}', 'cmd', this.value, this)"></td>
+                <td><input class="live-edit" value="${esc(e.desc)}" onchange="updItem('exempt', '${e.id}', 'desc', this.value, this)"></td>
+                <td><input class="live-edit" value="${esc(e.iso)}" onchange="updItem('exempt', '${e.id}', 'iso', this.value, this)"></td>
+                <td><input class="live-edit" value="${esc(e.act)}" onchange="updItem('exempt', '${e.id}', 'act', this.value, this)"></td>
+                <td><input class="live-edit" value="${esc(e.basis)}" onchange="updItem('exempt', '${e.id}', 'basis', this.value, this)"></td>
+                <td><input class="live-edit" value="${esc(e.path)}" onchange="updItem('exempt', '${e.id}', 'path', this.value, this)"></td>
+                <td><input class="live-edit" type="date" value="${e.authDate||''}" onchange="updItem('exempt', '${e.id}', 'authDate', this.value)"></td>
+                <td style="text-align:center;" id="ex-status-${e.id}">${statusBadge}</td>
+                <td><i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delExempt('${e.id}')"></i></td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="11" style="text-align:center; padding:20px; color:var(--text-muted);">No records found.</td></tr>';
+
+        // --- UPDATED INVENTORY ROW GENERATION ---
+        const sortedInv = getSortedData(filteredInv, 'table-inv');
+        
+        // 1. CAPTURE CURRENT SCROLL (Fix for jumping)
+        const invScrollBox = document.getElementById('inv-table-container');
+        const prevScroll = invScrollBox ? invScrollBox.scrollLeft : 0;
+
+        // WRAPPER DIV FOR HORIZONTAL SCROLL (Added ID 'inv-table-container')
+        const tableHtml = `
+        <div id="inv-table-container" style="overflow-x:auto; white-space:nowrap; border:1px solid var(--border); border-radius:6px;">
+            <table class="sci-table" id="table-inv" style="margin:0;">
+                <thead>
+                    <tr>
+                        <th style="width:30px; text-align:center;"><input type="checkbox" onclick="toggleAllInv()"></th>
+                        
+                        <th onclick="sortTable('table-inv', 0)">ID <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 1)">Desc <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 2)">Isotope <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 3)">Act <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 4)">Dose <i class="fa-solid fa-sort"></i></th>
+                        
+                        <th onclick="sortTable('table-inv', 5)">NSN <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 6)">Wgt <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 7)">Vol <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 8)">Lic? <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 9)">RCRA? <i class="fa-solid fa-sort"></i></th>
+
+                        <th onclick="sortTable('table-inv', 10)">Mfr <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 11)">Serial <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 12)">Loc <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 13)">Form <i class="fa-solid fa-sort"></i></th>
+
+                        <th onclick="sortTable('table-inv', 14)">Qty <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 15)">SSDR <i class="fa-solid fa-sort"></i></th>
+
+                        <th onclick="sortTable('table-inv', 16)">Fill <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 17)">Project <i class="fa-solid fa-sort"></i></th>
+                        <th onclick="sortTable('table-inv', 18)">Status <i class="fa-solid fa-sort"></i></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sortedInv.length > 0 ? sortedInv.map(i => {
+                        const pOptions = '<option value="">--</option>' + projects.map(p => `<option value="${p.id}" ${i.projId===p.id?'selected':''}>${esc(p.title)}</option>`).join('');
+                        const linkIcon = i.projId ? `<i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--info)" onclick="viewProject(${i.projId})"></i>` : '';
+                        const safeId = jsEsc(i.id);
+
+                        return `<tr>
+                            <td style="text-align:center;">
+                                <input type="checkbox" class="inv-chk" data-id="${safeId}" onclick="toggleInvSelect('${safeId}')">
+                            </td>
+
+                            <td><div style="display:flex; align-items:center; gap:5px;"><i class="fa-solid fa-eye" style="cursor:pointer; color:var(--info);" onclick="viewInventory('${safeId}')"></i><input class="live-edit" value="${esc(i.id)}" onchange="updItem('inventory', '${safeId}', 'id', this.value)"></div></td>
+                            <td><input class="live-edit" style="width:120px;" value="${esc(i.desc||'')}" onchange="updItem('inventory', '${safeId}', 'desc', this.value)"></td>
+                            
+                            <td><input class="live-edit" style="width:70px;" value="${esc(i.iso)}" onchange="updItem('inventory', '${safeId}', 'iso', this.value)"></td>
+                            <td><input class="live-edit" style="width:80px;" value="${esc(i.act)}" onchange="updItem('inventory', '${safeId}', 'act', this.value)"></td>
+                            <td><input class="live-edit" style="width:60px;" value="${i.dose}" onchange="updItem('inventory', '${safeId}', 'dose', this.value)"></td>
+
+                            <td><input class="live-edit" style="width:90px;" value="${esc(i.nsn||'')}" onchange="updItem('inventory', '${safeId}', 'nsn', this.value)"></td>
+                            <td><input class="live-edit" style="width:60px;" value="${esc(i.weight||'')}" onchange="updItem('inventory', '${safeId}', 'weight', this.value)"></td>
+                            <td><input class="live-edit" style="width:60px;" value="${esc(i.vol||'')}" onchange="updItem('inventory', '${safeId}', 'vol', this.value)"></td>
+                            <td><select class="live-edit" style="width:50px;" onchange="updItem('inventory', '${safeId}', 'licensed', this.value)"><option ${i.licensed!=='Yes'?'selected':''}>No</option><option ${i.licensed==='Yes'?'selected':''}>Yes</option></select></td>
+                            <td><select class="live-edit" style="width:50px; color:${i.rcra==='Yes'?'var(--danger)':'inherit'}; font-weight:${i.rcra==='Yes'?'bold':'normal'}" onchange="updItem('inventory', '${safeId}', 'rcra', this.value)"><option ${i.rcra!=='Yes'?'selected':''}>No</option><option value="Yes" ${i.rcra==='Yes'?'selected':''}>Yes</option></select></td>
+
+                            <td><input class="live-edit" style="width:80px;" value="${esc(i.mfr||'')}" onchange="updItem('inventory', '${safeId}', 'mfr', this.value)"></td>
+                            <td><input class="live-edit" style="width:80px;" value="${esc(i.serial||'')}" onchange="updItem('inventory', '${safeId}', 'serial', this.value)"></td>
+                            <td><input class="live-edit" style="width:80px;" value="${esc(i.location||'')}" onchange="updItem('inventory', '${safeId}', 'location', this.value)"></td>
+                            <td><select class="live-edit" style="width:70px;" onchange="updItem('inventory', '${safeId}', 'phys', this.value)">
+                                <option value="">--</option>
+                                <option ${i.phys==='Solid'?'selected':''}>Solid</option><option ${i.phys==='Liquid'?'selected':''}>Liquid</option>
+                                <option ${i.phys==='Gas'?'selected':''}>Gas</option><option ${i.phys==='Powder'?'selected':''}>Powder</option>
+                                <option ${i.phys==='Sludge'?'selected':''}>Sludge</option><option ${i.phys==='Debris'?'selected':''}>Debris</option>
+                                <option ${i.phys==='Glass'?'selected':''}>Glass</option><option ${i.phys==='Other'?'selected':''}>Other</option>
+                            </select></td>
+
+                            <td><input type="number" class="live-edit" style="width:50px;" value="${i.qty||1}" onchange="updItem('inventory', '${safeId}', 'qty', this.value)"></td>
+                            <td><input class="live-edit" style="width:90px;" value="${esc(i.ssdr||'')}" onchange="updItem('inventory', '${safeId}', 'ssdr', this.value)"></td>
+
+                            <td style="width:100px;">
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <input type="number" class="live-edit" style="width:40px;" value="${i.fill||0}" onchange="updItem('inventory', '${safeId}', 'fill', this.value)">%
+                                </div>
+                                <div class="progress-bar" style="height:4px;"><div class="fill" id="bar-fill-${safeId}" style="width:${i.fill||0}%; background:${(i.fill||0)>90?'var(--danger)':(i.fill>75?'var(--warning)':'var(--info)')}"></div></div>
+                            </td>
+                            <td><div style="display:flex; align-items:center; gap:5px;"><select class="live-edit" style="width:100px;" onchange="updItem('inventory', '${safeId}', 'projId', this.value)">${pOptions}</select>${linkIcon}</div></td>
+                            <td><select class="live-edit" onchange="updItem('inventory', '${safeId}', 'status', this.value)"><option ${i.status==='Stored'?'selected':''}>Stored</option><option ${i.status==='Staged'?'selected':''}>Staged</option><option ${i.status==='Shipped'?'selected':''}>Shipped</option></select></td>
+                            <td>
+    <div style="display:flex; gap:10px; justify-content:center;">
+        <i class="fa-solid fa-copy" style="cursor:pointer; color:var(--info)" onclick="cloneInventory('${safeId}')" title="Clone Item"></i>
+        <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="delInventory('${safeId}')" title="Delete"></i>
+    </div>
+</td>
+                        </tr>`;
+                    }).join('') : '<tr><td colspan="19" style="text-align:center; padding:30px; color:var(--text-muted); font-size:1.1rem;"><i class="fa-solid fa-box-open" style="margin-bottom:10px; display:block; font-size:2rem; opacity:0.3;"></i>No inventory items found.</td></tr>'}
+                </tbody>
+            </table>
+        </div>`;
+        
+        document.getElementById('full-inv-list').innerHTML = tableHtml;
+
+        // 2. RESTORE SCROLL (Apply captured value)
+        if(document.getElementById('inv-table-container')) {
+            document.getElementById('inv-table-container').scrollLeft = prevScroll;
+        }
+        
+        document.getElementById('chatFeed').innerHTML = chatLog.map(c => 
+            `<div class="msg"><div class="msg-meta"><span>${esc(c.user)}</span><span>${c.time}</span></div><div>${c.user === 'System' ? c.text : esc(c.text)}</div></div>`
+        ).join('');
+
+        document.getElementById('chatFeed').scrollTop = 9999;
+        document.getElementById('wiki-text').value = wikiText;
+
+        // --- 8. REFERENCE LIBRARY RENDER ---
+        const refGrid = document.getElementById('ref-grid');
+        if(refGrid) {
+            let filteredRefs = references.filter(r => 
+                (r.title.toLowerCase().includes(filter) || r.desc.toLowerCase().includes(filter))
+            );
+            
+            if(refFilter !== 'all') {
+                filteredRefs = filteredRefs.filter(r => r.type === refFilter);
+            }
+
+            refGrid.innerHTML = filteredRefs.map(r => {
+                const typeColors = { 'Reg': 'var(--navy)', 'Trans': 'var(--warning)', 'Form': 'var(--rad)', 'Site': 'var(--accent)', 'Tool': 'var(--comp)' };
+                const color = typeColors[r.type] || 'var(--text-muted)';
+                const icon = r.locked ? '<i class="fa-solid fa-lock" title="System Link"></i>' : `<i class="fa-solid fa-trash" style="cursor:pointer; color:var(--text-muted)" onclick="delReference(${r.id})" title="Remove"></i>`;
+
+                return `
+                <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:15px; display:flex; flex-direction:column; position:relative; transition:transform 0.2s; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
+                    <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:10px;">
+                        <span class="tag" style="background:${color}; color:white; border:none; margin:0;">${r.type}</span>
+                        <div style="font-size:0.8rem;">${icon}</div>
+                    </div>
+                    <div style="font-weight:bold; color:var(--text-main); margin-bottom:5px;">${high(r.title, filter)}</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px; flex:1;">${high(r.desc, filter)}</div>
+                    <a href="${r.url}" target="_blank" class="btn" style="text-align:center; text-decoration:none; background:var(--bg-input); color:var(--text-main); border:1px solid var(--border);">
+                        <i class="fa-solid fa-external-link-alt"></i> Open
+                    </a>
+                </div>`;
+            }).join('') || '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-muted);">No references found.</div>';
+        }
+    
+    // --- 9. RENDER MASTER TASK LIST ---
+        const taskView = document.getElementById('view-all-tasks');
+        if(taskView && taskView.classList.contains('active')) {
+            
+            // UPDATE BUTTON TEXT
+            const btn = document.getElementById('btnTaskShowDone');
+            if(btn) btn.innerHTML = showMasterTasksDone ? '<i class="fa-solid fa-eye"></i> Show Done' : '<i class="fa-solid fa-eye-slash"></i> Hide Done';
+
+            let masterTasks = [];
+            projects.forEach(p => {
+                if(p.tasks) {
+                    p.tasks.forEach(t => {
+                        // 1. Check Search Filter
+                        const matchesSearch = (t.text + p.title + (t.assign||"")).toLowerCase().includes(filter);
+                        
+                        // 2. Check "Show Done" Toggle
+                        const matchesDone = showMasterTasksDone ? true : !t.done;
+
+                        if(matchesSearch && matchesDone) {
+                            masterTasks.push({ ...t, projTitle: p.title, projId: p.id, projDue: p.due });
+                        }
+                    });
+                }
+            });
+
+            // Sort Default: Priority -> Due Date
+            const pMap = {'high':0, 'med':1, 'low':2};
+
+            // Apply Dynamic Sorting via Header Clicks
+            masterTasks = getSortedData(masterTasks, 'table-all-tasks');
+
+            document.getElementById('full-task-list').innerHTML = masterTasks.map(t => {
+                const dueStat = getDueStatus(t.projDue);
+                
+                return `
+                <tr style="${t.done ? 'opacity:0.5; text-decoration:line-through;' : ''}">
+                    <td style="text-align:center;">
+                        <i class="fa-solid ${t.done?'fa-square-check checked':'fa-square'} task-chk" 
+                           onclick="togTask(${t.projId},${t.id}); render();" 
+                           style="font-size:1.2rem; cursor:pointer; color:${t.done?'var(--accent)':'var(--text-muted)'}"></i>
+                    </td>
+                    <td style="text-align:center;">
+                        <span class="tag" style="background:${t.prio==='high'?'var(--danger)':(t.prio==='med'?'var(--warning)':'var(--bg-input)')}; color:${t.prio==='low'?'var(--text-muted)':'white'}; border:none; text-transform:uppercase;">${t.prio}</span>
+                    </td>
+                    <td>
+                        <input class="live-edit" value="${esc(t.text)}" onchange="updTask(${t.projId}, ${t.id}, 'text', this.value)">
+                    </td>
+                    <td>
+                        <span class="proj-link" onclick="viewProject(${t.projId})">${esc(t.projTitle)}</span>
+                    </td>
+                    <td>
+                        <select class="live-edit" style="width:100px;" onchange="updTask(${t.projId}, ${t.id}, 'assign', this.value)">
+                            <option value="">--</option>
+                            ${team.map(m => `<option value="${esc(m)}" ${t.assign===m?'selected':''}>${esc(m)}</option>`).join('')}
+                        </select>
+                    </td>
+                    <td>
+                        <span style="font-size:0.75rem; color:${dueStat.color}">${dueStat.text}</span>
+                    </td>
+                    <td>
+                        <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--text-muted)" onclick="delTask(${t.projId},${t.id})"></i>
+                    </td>
+                </tr>`;
+            }).join('') || '<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--text-muted);">No matching tasks found.</td></tr>';
+        }
+    }
+
+function downloadBackup() {
+    const data = JSON.stringify({
+        projects, inventory, deletedInventory, expenses, allocations, 
+        chat: chatLog, team, wiki: wikiText, 
+        hpState, viewMode, showComplete, estItems, exemptLog
+    }, null, 2); // Pretty print for readability
+
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `RadFlow_Backup_${getTodayStr()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Backup Downloaded");
+}
+
+// --- HELPER: Parse Radioactivity & Concentrations ---
+// Handles: "10 mCi", "5 uCi", "50 pCi/g", "100 uCi/ml"
+function getActValue(str) {
+    if (!str) return 0;
+    const s = str.toString().toLowerCase().trim();
+    if (s.includes('unknown') || s.includes('n/a') || s.includes('tbd')) return -1;
+
+    // Regex: Captures Number + Unit (allowing letters, µ, and /)
+    const match = s.match(/^([\d\.]+(?:[eE][-+]?\d+)?)\s*([a-zA-Zµ\/]+)$/);
+    if (!match) return 0;
+    
+    const val = parseFloat(match[1]);
+    let unit = match[2]; 
+
+    // STRIP CONCENTRATION (e.g. "pCi/g" -> "pci")
+    // We only care about the numerator for magnitude sorting
+    if (unit.includes('/')) {
+        unit = unit.split('/')[0];
+    }
+    
+    // Standardize Prefixes
+    if (unit === 'ci') return val;
+    if (unit === 'mci' || unit === 'm') return val * 1e-3;
+    if (unit === 'uci' || unit === 'u' || unit === 'µ' || unit === 'µci') return val * 1e-6;
+    if (unit === 'nci' || unit === 'n') return val * 1e-9;
+    if (unit === 'pci' || unit === 'p') return val * 1e-12; // Added Pico support
+    
+    if (unit === 'gbq') return val / 37;
+    if (unit === 'mbq') return (val / 37) * 1e-3;
+    if (unit === 'kbq') return (val / 37) * 1e-6;
+    if (unit === 'bq') return (val / 37) * 1e-9;
+    
+    return val; 
+}
+
+function viewProject(id) {
+    const p = projects.find(x => x.id === id); 
+    if(!p) return;
+    
+    // SAVE CURRENT PROJECT ID
+    localStorage.setItem('rad_active_proj', id);
+
+    // 1. Update Browser Title (Context-Aware)
+    document.title = `${p.title} | ${APP_VER}`;
+    
+    // 2. Navigation Logic (Remember where we came from)
+    const activeEl = document.querySelector('.view-section.active');
+    const currentView = activeEl ? activeEl.id.replace('view-', '') : 'dashboard';
+    
+    // Only update the "Back Destination" if we are coming from a different screen
+    // (This prevents the button from pointing to itself if you click a notification)
+    if(currentView !== 'project-detail') {
+        localStorage.setItem('rad_back_dest', currentView);
+    }
+    
+    // Retrieve safely (Default to dashboard if lost)
+    const backDest = localStorage.getItem('rad_back_dest') || 'dashboard';
+    
+    // 3. Financial Math (Excluding Draft Estimates)
+    const projExp = expenses.filter(e => e.projId === id);
+    let spentNavy = 0, spentCmd = 0, spentOther = 0;
+    
+    projExp.forEach(e => {
+        // CRITICAL FIX: Don't count drafts as actual spending
+        if(e.status === 'Estimate') return; 
+        
+        const val = Math.abs(parseFloat(e.amount)||0);
+        const src = (e.fundSource||'');
+        if(src.includes('Navy')) spentNavy += val;
+        else if(src.includes('Command')) spentCmd += val;
+        else spentOther += val;
+    });
+    
+    const projAllocs = allocations.filter(a => a.projId === id);
+    let budgetNavy = 0, budgetCmd = 0, budgetOther = 0;
+    projAllocs.forEach(a => {
+        const val = parseFloat(a.amount)||0;
+        const src = (a.fundSource||'');
+        if(src.includes('Navy')) budgetNavy += val;
+        else if(src.includes('Command')) budgetCmd += val;
+        else budgetOther += val;
+    });
+
+    // 4. Generate Lists
+    const teamOpts = team.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+    
+    // Inventory Assets (Updated with Quantity & "ea." label)
+    const assignedItems = inventory.filter(i => i.projId === id);
+    const assetsHtml = assignedItems.length ? assignedItems.map(i => `
+        <div class="list-item" style="font-size:0.8rem; display:flex; justify-content:space-between; align-items:center;">
+             <div style="cursor:pointer; flex-grow:1;" onclick="viewInventory('${jsEsc(i.id)}')">
+                <span style="font-weight:bold; color:var(--text-main);"><i class="fa-solid fa-box"></i> ${esc(i.id)}:</span> 
+                <span>${esc(i.desc || 'No description')}</span>
+                
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                    ${esc(i.iso)} | ${esc(i.act)} ea. | <b style="color:var(--text-main);">Qty: ${i.qty || 1}</b> | ${i.dose} mR/hr
+                </div>
+            </div>
+            
+            <div style="padding-left:10px;">
+                <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--text-muted); transition:color 0.2s;" 
+                   onclick="delInventory('${jsEsc(i.id)}')" 
+                   onmouseover="this.style.color='var(--danger)'" 
+                   onmouseout="this.style.color='var(--text-muted)'"
+                   title="Remove Item"></i>
+            </div>
+        </div>`).join('') : '<div style="color:var(--text-muted); font-size:0.8rem; font-style:italic;">No assets assigned.</div>';
+
+    // Funding History (Allocations) with IGE Icon check
+    const allocHtml = projAllocs.length ? projAllocs.map(a => {
+        const igeIcon = a.details ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:5px;" onclick="viewEstimate(${a.id}, 'alloc')" title="View IGE"></i>` : '';
+        return `<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:4px 0; border-bottom:1px solid var(--border);">
+            <span>${esc(a.desc)} ${igeIcon} <span class="tag">${esc(a.fundSource||'Navy General Fund')}</span></span>
+            <span>$${a.amount.toLocaleString()}</span>
+        </div>`;
+    }).join('') : '<div style="font-style:italic; font-size:0.8rem; color:var(--text-muted)">No funding records.</div>';
+
+    // Pending Estimates (Drafts) List
+    const estimates = projExp.filter(e => e.status === 'Estimate');
+    const estHtml = estimates.length ? estimates.map(e => {
+        const igeIcon = e.details ? `<i class="fa-solid fa-file-invoice" style="cursor:pointer; color:var(--accent); margin-left:5px;" onclick="viewEstimate(${e.id}, 'expense')" title="View IGE"></i>` : '';
+        
+        return `<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:4px 0; border-bottom:1px solid var(--border); color:var(--text-muted); font-style:italic;">
+            <span>${esc(e.desc)} ${igeIcon} <span class="tag" style="background:var(--bg-input); color:var(--text-muted); border:1px solid var(--border);">Draft</span></span>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span>$${e.amount.toLocaleString()}</span>
+                <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--text-muted);" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='var(--text-muted)'" onclick="delExpense(${e.id})" title="Delete Estimate"></i>
+            </div>
+        </div>`;
+    }).join('') : '';
+
+    // Tasks (Sorted by Done state then Priority)
+    const sortedTasks = (p.tasks||[]).sort((a,b) => {
+        if(a.done !== b.done) return a.done ? 1 : -1;
+        const pMap = {'high':0, 'med':1, 'low':2};
+        return (pMap[a.prio]||1) - (pMap[b.prio]||1);
+    });
+
+    const tHtml = sortedTasks.map(t => `
+        <div class="task-row">
+            <div style="display:flex; align-items:center; gap:10px; width:100%;">
+                <i class="fa-solid fa-fire prio-flag ${t.prio==='high'?'prio-high':(t.prio==='med'?'prio-med':(t.prio==='low'?'prio-low':'prio-none'))}" onclick="cycPrio(${p.id}, ${t.id})"></i>
+                <i class="fa-solid ${t.done?'fa-square-check checked':'fa-square'} task-chk" onclick="togTask(${p.id},${t.id})"></i>
+                <input class="task-input ${t.done?'checked':''}" value="${esc(t.text)}" onchange="updTask(${p.id}, ${t.id}, 'text', this.value)">
+                <select class="assign-select" onchange="updTask(${p.id}, ${t.id}, 'assign', this.value)"><option value="">--</option>${team.map(m => `<option value="${esc(m)}" ${t.assign===m?'selected':''}>${esc(m)}</option>`).join('')}</select>
+            </div>
+            <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger); margin-left:10px;" onclick="delTask(${p.id},${t.id})"></i>
+        </div>`).join('');
+
+    // Digital Binder Links
+    const lHtml = (p.links || []).map((l, i) => `
+        <div class="link-row">
+            <i class="fa-solid fa-link"></i> 
+            <a href="${formatLink(l.url)}" target="_blank">${esc(l.name)}</a> 
+            <i class="fa-solid fa-trash" style="margin-left:auto; cursor:pointer; font-size:0.8rem; color:var(--text-muted);" onclick="delLink(${p.id}, ${i})"></i>
+        </div>`).join('');
+    
+    // Due Date Status Badge
+    const status = getDueStatus(p.due);
+    const dueBadge = `<span class="tag" style="background:${status.color}; color:white; border:none; font-weight:bold;">${status.text}</span>`;
+    
+    // Updates Sent Tags
+    const updatesListHtml = (p.updatesSent || []).map((date, idx) => 
+        `<span class="tag" style="border:1px solid var(--border); color:var(--text-main);">${date} <i class="fa-solid fa-xmark" style="cursor:pointer; margin-left:5px; color:var(--danger)" onclick="removeUpdateDate(${p.id}, ${idx})"></i></span>`
+    ).join(' ');
+
+    // Progress Bar Percentages
+    const navyPct = budgetNavy > 0 ? Math.min((spentNavy/budgetNavy)*100, 100) : 0;
+    const cmdPct = budgetCmd > 0 ? Math.min((spentCmd/budgetCmd)*100, 100) : 0;
+    const otherPct = budgetOther > 0 ? Math.min((spentOther/budgetOther)*100, 100) : 0;
+
+    // 5. Inject HTML
+    document.getElementById('view-project-detail').innerHTML = `
+    <div class="header">
+        <button class="btn-sync" style="width:auto" onclick="nav(localStorage.getItem('rad_back_dest') || 'dashboard')">&larr; Back</button>
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="background:var(--info)" onclick="cloneProject(${p.id})">Clone</button>
+            <button class="btn" style="background:var(--danger)" onclick="delProj(${p.id})">Delete</button>
+        </div>
+    </div>
+    <div class="widget">
+        <input class="edit-h1" value="${esc(p.title)}" onchange="updItem('project', ${p.id}, 'title', this.value, this)">
+        <textarea class="edit-p" onchange="updItem('project', ${p.id}, 'desc', this.value, this)">${esc(p.desc)}</textarea>
+        
+        <div class="input-grid">
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">STATUS</label><select class="form-control" style="margin:0;" onchange="updItem('project', ${p.id},'status',this.value)"><option ${p.status==='Planning'?'selected':''}>Planning</option><option ${p.status==='Active'?'selected':''}>Active</option><option ${p.status==='Review'?'selected':''}>Review</option><option ${p.status==='Complete'?'selected':''}>Complete</option></select></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">HEALTH</label><select class="form-control" style="margin:0;" onchange="updItem('project', ${p.id},'health',this.value)"><option value="green" ${p.health==='green'?'selected':''}>🟢 On Track</option><option value="yellow" ${p.health==='yellow'?'selected':''}>🟡 Risk</option><option value="red" ${p.health==='red'?'selected':''}>🔴 Critical</option></select></div>
+            <div><label style="font-size:0.7rem; color:var(--text-muted)">DUE DATE ${dueBadge}</label><input type="date" class="form-control" style="margin:0;" value="${p.due}" onchange="updItem('project', ${p.id}, 'due', this.value)"></div>
+        </div>
+
+        <div style="border:1px solid var(--border); padding:15px; border-radius:8px; margin:20px 0; background:transparent;">
+            <div style="font-size:0.85rem; font-weight:bold; color:var(--text-main); text-transform:uppercase; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:5px;">
+                <i class="fa-solid fa-truck-fast"></i> Logistics & Contracting
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; margin-bottom:10px;">
+                <h4 style="margin:0; border-bottom:2px solid var(--accent); padding-bottom:5px;">Logistics & Contracting</h4>
+                <button class="btn" style="padding:4px 12px; font-size:0.8rem;" onclick="saveProjDetails(${p.id})">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Details
+                </button>
+            </div>
+
+            <div class="input-grid" style="margin-bottom:10px;">
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">UIC / COMMAND</label>
+                    <input id="ed_uic" class="form-control" value="${esc(p.uic||'')}" placeholder="N00000" onchange="saveProjDetails(${p.id}, true)">
+                </div>
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">LOCATION</label>
+                    <input id="ed_loc" class="form-control" value="${esc(p.location||'')}" placeholder="City, State" onchange="saveProjDetails(${p.id}, true)">
+                </div>
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">REGION</label>
+                    <select id="ed_reg" class="form-control" onchange="saveProjDetails(${p.id}, true)">
+                        <option value="">--</option>
+                        <option ${p.region==='East'?'selected':''}>East</option>
+                        <option ${p.region==='West'?'selected':''}>West</option>
+                        <option ${p.region==='Far-East'?'selected':''}>Far-East</option>
+                        <option ${p.region==='Europe'?'selected':''}>Europe</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="background:var(--bg-card); border:1px solid var(--border); padding:15px; border-radius:6px; margin-bottom:15px;">
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; letter-spacing:0.5px;">PRIMARY POC</label>
+                    ${p.pocEmail ? `<a href="mailto:${p.pocEmail}" style="font-size:0.75rem; color:var(--accent); text-decoration:none;"><i class="fa-solid fa-envelope"></i> Email</a>` : ''}
+                </div>
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <div style="flex:1"><input id="ed_poc" class="form-control" style="margin:0" value="${esc(p.poc||'')}" placeholder="Name" onchange="saveProjDetails(${p.id}, true)"></div>
+                    <div style="flex:1"><input id="ed_pocEm" class="form-control" style="margin:0" value="${esc(p.pocEmail||'')}" placeholder="Email" onchange="saveProjDetails(${p.id}, true)"></div>
+                    <div style="width:140px">
+                        <input id="ed_pocPh" class="form-control" style="margin:0" value="${esc(p.pocPhone||'')}" placeholder="Phone" oninput="maskPhone(event)" onchange="saveProjDetails(${p.id}, true)">
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <label style="font-size:0.7rem; color:var(--text-muted); font-weight:bold; letter-spacing:0.5px;">ALTERNATE POC</label>
+                    ${p.pocEmail2 ? `<a href="mailto:${p.pocEmail2}" style="font-size:0.75rem; color:var(--accent); text-decoration:none;"><i class="fa-solid fa-envelope"></i> Email</a>` : ''}
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1"><input id="ed_poc2" class="form-control" style="margin:0" value="${esc(p.poc2||'')}" placeholder="Alt Name" onchange="saveProjDetails(${p.id}, true)"></div>
+                    <div style="flex:1"><input id="ed_pocEm2" class="form-control" style="margin:0" value="${esc(p.pocEmail2||'')}" placeholder="Alt Email" onchange="saveProjDetails(${p.id}, true)"></div>
+                    <div style="width:140px"><input id="ed_pocPh2" class="form-control" style="margin:0" value="${esc(p.pocPhone2||'')}" placeholder="Alt Phone" onchange="saveProjDetails(${p.id}, true)"></div>
+                </div>
+
+            </div>
+
+            <div class="input-grid">
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">MIPR #</label>
+                    <input id="ed_mipr" class="form-control" value="${esc(p.mipr||'')}" placeholder="N000..." onchange="saveProjDetails(${p.id}, true)">
+                </div>
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">JMC ID</label>
+                    <input id="ed_jmc" class="form-control" value="${esc(p.jmcId||'')}" placeholder="Tracking #" onchange="saveProjDetails(${p.id}, true)">
+                </div>
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">CONTRACTOR</label>
+                    <input id="ed_cont" class="form-control" value="${esc(p.contractor||'')}" placeholder="Company Name" onchange="saveProjDetails(${p.id}, true)">
+                </div>
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">STATUS</label>
+                    <select id="ed_stat" class="form-control" onchange="saveProjDetails(${p.id}, true)">
+                        <option ${p.contractStatus==='Pre-Prop'?'selected':''}>Pre-Prop</option>
+                        <option ${p.contractStatus==='Prop-Rec'?'selected':''}>Prop-Rec</option>
+                        <option ${p.contractStatus==='Awarded'?'selected':''}>Awarded</option>
+                        <option ${p.contractStatus==='Closed'?'selected':''}>Closed</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="input-grid">
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">POP START</label>
+                    <input id="ed_popS" type="date" class="form-control" value="${p.popStart||''}" onchange="saveProjDetails(${p.id}, true)">
+                </div>
+                <div>
+                    <label style="font-size:0.7rem; color:var(--text-muted)">POP END</label>
+                    <input id="ed_popE" type="date" class="form-control" value="${p.popEnd||''}" onchange="saveProjDetails(${p.id}, true)">
+                </div>
+                
+                <div style="flex:2;">
+                    <label style="font-size:0.7rem; color:var(--text-muted)">UPDATES SENT</label>
+                    <div style="display:flex; gap:5px; margin-bottom:5px; align-items:center;">
+                        <input type="date" id="newUpdateDate_${p.id}" class="form-control" style="margin:0; width:130px;">
+                        <button class="btn-rect" style="background:var(--accent); color:white; border:none;" onclick="addUpdateDate(${p.id}, document.getElementById('newUpdateDate_${p.id}').value)">Add</button>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:5px;">${updatesListHtml}</div>
+                </div>
+            </div>
+
+            <div style="margin-top:10px;">
+                <label style="font-size:0.7rem; color:var(--text-muted)">LOGISTICS NOTES / COMMENTS</label>
+                <textarea id="ed_notes" class="form-control" style="height:60px; resize:vertical;" onchange="saveProjDetails(${p.id}, true)">${esc(p.logisticsNotes||'')}</textarea>
+            </div>
+
+        <div style="background:var(--bg-card); padding:15px; border-radius:8px; margin:20px 0; border:1px solid var(--border);">
+            <div style="margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="font-size:0.8rem; font-weight:bold; color:var(--navy);">Navy General Fund ($${budgetNavy.toLocaleString()})</span>
+                    <span style="font-size:0.8rem; color:${spentNavy>budgetNavy?'var(--danger)':'var(--text-muted)'};">$${spentNavy.toLocaleString()} Spent</span>
+                </div>
+                <div class="progress-bar" style="background:var(--navy-dim);">
+                    <div class="progress-fill" style="width:${navyPct}%; background:var(--navy);"></div>
+                </div>
+            </div>
+
+            <div style="margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="font-size:0.8rem; font-weight:bold; color:var(--cmd);">Command Funded ($${budgetCmd.toLocaleString()})</span>
+                    <span style="font-size:0.8rem; color:${spentCmd>budgetCmd?'var(--danger)':'var(--text-muted)'};">$${spentCmd.toLocaleString()} Spent</span>
+                </div>
+                <div class="progress-bar" style="background:var(--cmd-dim);">
+                    <div class="progress-fill" style="width:${cmdPct}%; background:var(--cmd);"></div>
+                </div>
+            </div>
+
+            <div style="margin-bottom:15px; ${budgetOther === 0 && spentOther === 0 ? 'display:none' : ''}">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="font-size:0.8rem; font-weight:bold; color:var(--text-muted);">Other Funding ($${budgetOther.toLocaleString()})</span>
+                    <span style="font-size:0.8rem; color:${spentOther>budgetOther?'var(--danger)':'var(--text-muted)'};">$${spentOther.toLocaleString()} Spent</span>
+                </div>
+                <div class="progress-bar" style="background:var(--other-dim);">
+                    <div class="progress-fill" style="width:${otherPct}%; background:var(--other);"></div>
+                </div>
+            </div>
+            
+            <div style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--border);">
+                <div style="font-size:0.7rem; font-weight:bold; color:var(--text-muted); margin-bottom:5px;">FUNDING HISTORY</div>
+                ${allocHtml}
+                ${estHtml ? '<div style="margin-top:10px; font-size:0.7rem; font-weight:bold; color:var(--text-muted); margin-bottom:5px;">PENDING ESTIMATES (DRAFT)</div>' + estHtml : ''}
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <div>
+                <h3>Action Items</h3>
+                <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                    <input id="newT" class="form-control" style="margin:0" placeholder="Task">
+                    <select id="newTA" class="form-control" style="margin:0; width:100px;"><option value="">Assign</option>${teamOpts}</select>
+                    <button class="btn" onclick="addTask(${p.id})">Add</button>
+                </div>
+                <div>${tHtml}</div>
+            </div>
+
+            <div>
+                <h3>Digital Binder</h3>
+                <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                    <input id="newLinkName" class="form-control" style="margin:0" placeholder="Name">
+                    <input id="newLinkUrl" class="form-control" style="margin:0" placeholder="URL or C:\\Path\\To\\File">
+                    <button class="btn" onclick="addLink(${p.id})">Link</button>
+                </div>
+                <div style="margin-bottom:25px;">${lHtml}</div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:5px; margin-bottom:10px;">
+    <h3 style="margin:0;">Assigned Assets</h3>
+    <button class="btn-sm" onclick="openAddInvForProject(${p.id})">
+        <i class="fa-solid fa-plus"></i> Add Item
+    </button>
+</div>
+
+<div>${assetsHtml}</div>
+            </div>
+        </div>
+
+        <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:10px;">
+            <div style="font-size:0.8rem; font-weight:bold; color:var(--text-muted); margin-bottom:10px;">
+                <i class="fa-solid fa-clock-rotate-left"></i> PROJECT HISTORY
+            </div>
+            <div style="max-height:150px; overflow-y:auto; background:var(--bg-input); padding:10px; border-radius:6px; font-size:0.75rem; color:var(--text-muted);">
+                ${chatLog.filter(c => c.text.includes(p.title)).map(c => 
+                    `<div style="margin-bottom:4px; border-bottom:1px dashed var(--border); padding-bottom:2px;">
+                        <b>${c.time.split(' ')[0]}</b>: ${c.text.replace(p.title, 'this project')}
+                    </div>`
+                ).reverse().join('') || 'No history recorded.'}
+            </div>
+        </div>
+
+    </div>`;
+    
+    // 6. Switch View 
+    // Only navigate (and scroll) if we aren't already there. 
+    // This prevents the "Jump to Top" glitch when checking tasks.
+    if (!document.getElementById('view-project-detail').classList.contains('active')) {
+        nav('project-detail');
+    }
+}
+
+function openAddInvForProject(pid) {
+    // 1. Open the Inventory Modal
+    openModal('invModal');
+    
+    // 2. Clear fields for a fresh entry
+    document.getElementById('invId').value = '';
+    document.getElementById('invDesc').value = '';
+    document.getElementById('invDate').value = getTodayStr(); // Ensure you have this helper or use new Date().toISOString().split('T')[0]
+    
+    // 3. Auto-Select the Project
+    const projSelect = document.getElementById('invProj');
+    if(projSelect) {
+        projSelect.value = pid;
+        // Visual flash to show it was selected
+        projSelect.style.borderColor = 'var(--accent)';
+        setTimeout(() => projSelect.style.borderColor = 'var(--border)', 1000);
+    }
+}
+
+    function drag(ev, id) { ev.dataTransfer.setData("text", id); ev.target.classList.add('dragging'); }
+    function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
+    function leaveDrop(ev) { ev.currentTarget.classList.remove('drag-over'); }
+    function drop(ev, status) {
+        ev.preventDefault(); ev.currentTarget.classList.remove('drag-over');
+        const id = parseInt(ev.dataTransfer.getData("text"));
+        const p = projects.find(x => x.id === id);
+        if (p && p.status !== status) {
+            const oldStatus = p.status; p.status = status;
+            if(status === 'Complete') { p.health = 'green'; }
+            logSystemAction(`Project <b>${esc(p.title)}</b> moved from ${oldStatus} to ${status}.`);
+            showToast(`Moved to ${status}`); saveLocally(); render();
+        }
+    }
+
+// Helper to quick-set dates
+    function setDateInput(id, offset) {
+        const d = new Date();
+        d.setDate(d.getDate() + offset);
+        // Format YYYY-MM-DD
+        const str = d.toISOString().split('T')[0];
+        document.getElementById(id).value = str;
+    }
+
+    function switchHpTab(tab) {
+        // SAVE THE TAB
+        localStorage.setItem('rad_hp_active_tab', tab);
+
+        ['decay','dist','shield','stay','alara'].forEach(t => document.getElementById('hp-tab-'+t).style.display = 'none');
+        document.getElementById('hp-tab-'+tab).style.display = 'block';
+        if(tab === 'dist') {
+            const sel = document.getElementById('dist-inv-select');
+            sel.innerHTML = '<option value="">-- Select Item --</option>';
+            inventory.forEach(i => { sel.innerHTML += `<option value="${i.id}">${esc(i.id)} (${i.dose} mR/hr)</option>`; });
+        }
+    }
+
+    function loadInvToCalc() {
+        const id = document.getElementById('dist-inv-select').value; if(!id) return;
+        const item = inventory.find(x => x.id == id);
+        if(item) { document.getElementById('dist-d1').value = item.dose; document.getElementById('dist-r1').value = 1; showToast(`Loaded ${item.id}`); }
+    }
+    function calcInverseSquare() {
+        const i1 = parseFloat(document.getElementById('dist-d1').value);
+        const d1 = parseFloat(document.getElementById('dist-r1').value) || 1; // Default to 1 if empty
+        const d2 = parseFloat(document.getElementById('dist-r2').value);
+        if(i1 && d1 && d2) {
+            if (d2 <= 0) { showToast("Target distance must be > 0", "error"); return; }
+            const i2 = i1 * Math.pow((d1/d2), 2);
+            let display = i2 < 1 ? i2.toFixed(4) : i2.toFixed(2);
+            document.getElementById('dist-result').innerText = display + " mR/hr";
+        }
+    }
+    function calcShielding() {
+        const iso = document.getElementById('shield-iso').value;
+        const mat = document.getElementById('shield-mat').value;
+        const i0 = parseFloat(document.getElementById('shield-i0').value);
+        const x = parseFloat(document.getElementById('shield-x').value);
+        const hvls = {'Co-60': {'Pb': 1.2, 'Fe': 2.1, 'Conc': 6.3}, 'Cs-137': {'Pb': 0.65, 'Fe': 1.6, 'Conc': 4.8}, 'Ir-192': {'Pb': 0.5, 'Fe': 1.3, 'Conc': 4.3}};
+        if(i0 && x) {
+            const hvl = hvls[iso][mat];
+            const i = i0 * Math.pow(0.5, x/hvl);
+            let display = i < 1 ? i.toFixed(4) : i.toFixed(2);
+            document.getElementById('shield-result').innerText = display + " mR/hr";
+            document.getElementById('shield-hvl').innerText = `HVL (${mat}): ${hvl} cm`;
+            showToast("Shielding calculated");
+        }
+    }
+    
+    function calcStayTime() {
+        const rate = parseFloat(document.getElementById('stay-rate').value);
+        const limit = parseFloat(document.getElementById('stay-limit').value);
+        if(!rate || rate <= 0) {
+            document.getElementById('stay-result').innerText = "---";
+            return;
+        }
+        const hours = limit / rate;
+        const mins = Math.floor(hours * 60);
+        const displayHrs = Math.floor(mins / 60);
+        const displayMins = mins % 60;
+        document.getElementById('stay-result').innerText = `${displayHrs}h ${displayMins}m`;
+    }
+
+    function calcAlara() {
+        const rate = parseFloat(document.getElementById('alara-rate').value);
+        const time = parseFloat(document.getElementById('alara-time').value);
+        const crew = parseFloat(document.getElementById('alara-crew').value);
+        
+        if(!rate || !time || !crew) { showToast("Please fill all fields", "error"); return; }
+        
+        const indivDose = rate * (time/60);
+        const totalDose = indivDose * crew;
+        
+        document.getElementById('alara-result').innerText = totalDose.toFixed(1) + " mR";
+        document.getElementById('alara-indiv').innerText = `Individual Dose: ${indivDose.toFixed(1)} mR`;
+    }
+
+    function cloneInventory(id) {
+        const original = inventory.find(x => x.id == id); // Loose match for ID
+        if(!original) return;
+        
+        // 1. Create Copy
+        const copy = JSON.parse(JSON.stringify(original));
+        
+        // 2. Modify Unique Fields
+        copy.id = copy.id + "-CPY"; 
+        copy.desc = (copy.desc || "") + " (Copy)";
+        copy.updated = Date.now();
+        
+        // 3. Collision Prevention (Recursive)
+        let counter = 1;
+        let baseId = copy.id;
+        while(inventory.some(x => x.id === copy.id)) {
+            copy.id = baseId + counter++;
+        }
+        
+        inventory.push(copy);
+        logSystemAction(`Inventory item <b>${esc(original.id)}</b> cloned.`);
+        saveLocally();
+        render();
+        showToast("Item Cloned");
+    }
+
+    function cloneExpense(id) {
+        const original = expenses.find(x => x.id === id);
+        if(original) {
+            const copy = JSON.parse(JSON.stringify(original));
+            copy.id = Date.now() + Math.floor(Math.random() * 1000);
+
+            copy.updated = Date.now();
+
+            copy.date = getTodayStr(); 
+            copy.desc = copy.desc + " (Copy)";
+            copy.status = "Invoiced"; 
+            expenses.push(copy);
+            saveLocally();
+            render();
+            showToast("Expense Duplicated");
+        }
+    }
+
+    function runConv() {
+        const val = parseFloat(document.getElementById('conv-in').value);
+        const type = document.getElementById('conv-type').value;
+        const out = document.getElementById('conv-out');
+        if(isNaN(val)) { out.innerText = "---"; return; }
+        let res = 0;
+        if(type === 'ci-gbq') res = val * 37;
+        if(type === 'gbq-ci') res = val / 37;
+        if(type === 'mr-usv') res = val * 10;
+        if(type === 'usv-mr') res = val / 10;
+        out.innerText = res.toFixed(3);
+    }
+
+    function switchFinTab(tab) {
+        // SAVE THE TAB
+        localStorage.setItem('rad_fin_active_tab', tab); 
+        
+        document.getElementById('fin-tab-overview').style.display = tab === 'overview' ? 'block' : 'none';
+        document.getElementById('fin-tab-exp').style.display = tab === 'exp' ? 'block' : 'none';
+        document.getElementById('fin-tab-alloc').style.display = tab === 'alloc' ? 'block' : 'none';
+    }
+
+    function openBudgetManager() {
+        const list = document.getElementById('budgetManagerList');
+        list.innerHTML = '';
+        if(projects.length === 0) {
+            list.innerHTML = '<div style="color:var(--text-muted); padding:10px;">No active projects.</div>';
+        } else {
+            projects.forEach(p => {
+                const initAlloc = allocations.find(a => a.projId === p.id && (a.type === 'base' || a.desc === "Initial Budget"));
+                const val = initAlloc ? initAlloc.amount : 0;
+                
+                const row = document.createElement('div');
+                row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center'; row.style.padding = '8px'; row.style.borderBottom = '1px solid var(--border)';
+                row.innerHTML = `<span style="font-weight:bold; font-size:0.9rem;">${esc(p.title)}</span><input type="number" step="0.01" class="form-control" style="width:120px; margin:0;" value="${val}" onchange="updateBaseAlloc(${p.id}, this.value)">`;
+                list.appendChild(row);
+            });
+        }
+        openModal('budgetModal');
+    }
+
+    function updateBaseAlloc(pid, val) {
+        // FIX: Add "|| 0" to handle empty strings/NaN
+        const amount = parseFloat(val) || 0; 
+        
+        const existing = allocations.find(a => a.projId === pid && (a.type === 'base' || a.desc === "Initial Budget"));
+        if(existing) {
+            existing.amount = amount;
+            existing.type = 'base';
+
+            existing.updated = Date.now();
+
+        } else {
+            allocations.push({ id: Date.now() + Math.floor(Math.random() * 1000), projId: pid, date: getTodayStr(), amount: amount, desc: "Initial Budget", type: 'base', fundSource: "Navy General Fund" });
+        }
+        saveLocally(); render();
+    }
+
+    function downloadInvCSV() {
+        // Headers matching your data model
+        let csv = "ID,Description,Isotope,Activity,Dose Rate (mR/hr),Fill %,Status,Project ID,Project Title,Location,Serial,Manufacturer,Date Logged\n";
+        
+        inventory.forEach(i => {
+            // Lookup Project Title
+            const p = projects.find(x => x.id === i.projId);
+            const pTitle = p ? p.title.replace(/,/g, '') : "Unassigned"; // Remove commas to prevent CSV break
+            
+            // Sanitize Description
+            const safeDesc = (i.desc || "").replace(/"/g, '""'); // Escape quotes
+            
+            csv += `"${i.id}","${safeDesc}",${i.iso},"${i.act}",${i.dose},${i.fill||0},${i.status},${i.projId||''},"${pTitle}","${i.location||''}","${i.serial||''}","${i.mfr||''}","${i.logDate||''}"\n`;
+        });
+
+        // Create and Click Download Link
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `RadFlow_Inventory_${getTodayStr()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast("Inventory Exported to Excel");
+    }
+
+    function downloadCSV() {
+        let csv = "Date,Project,Funding Source,Description,Amount,Status\n";
+        expenses.forEach(e => {
+            const rawTitle = projects.find(p => p.id === e.projId)?.title || "General/Overhead";
+            const pName = rawTitle.replace(/"/g, '""');
+            const safeDesc = `"${e.desc.replace(/"/g, '""')}"`; 
+            const fund = e.fundSource || "Other";
+            csv += `${e.date},"${pName}","${fund}",${safeDesc},${e.amount},${e.status}\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `radflow_expenses_${getTodayStr()}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast("Excel file downloaded");
+    }
+
+    let sortDir = 1;
+    function sortTable(tableId, col) {
+    // If clicking the same column, flip direction. Otherwise, reset to ascending (1).
+    if (sortState.table === tableId && sortState.col === col) {
+        sortState.dir *= -1;
+    } else {
+        sortState.table = tableId;
+        sortState.col = col;
+        sortState.dir = 1;
+    }
+    render(); // Re-draw the view with the new sort order applied
+}
+
+// --- HELPER: SORT DATA ARRAY ---
+function getSortedData(data, tableId) {
+    // If this table isn't the one currently being sorted, return data as-is
+    if (sortState.table !== tableId) return data;
+
+    // Create a shallow copy so we don't mutate the original ID order permanently
+    return [...data].sort((a, b) => {
+        let valA, valB;
+
+        // --- 1. EXPENSE TABLE ---
+        if (tableId === 'table-exp') {
+            const keys = ['date', 'projId', 'fundSource', 'desc', 'amount', 'status'];
+            valA = a[keys[sortState.col]];
+            valB = b[keys[sortState.col]];
+            
+            if(sortState.col === 1) { 
+                valA = projects.find(p => p.id === valA)?.title || '';
+                valB = projects.find(p => p.id === valB)?.title || '';
+            }
+        } 
+        // --- 2. ALLOCATION TABLE ---
+        else if (tableId === 'table-alloc') {
+            const keys = ['date', 'projId', 'fundSource', 'desc', 'amount'];
+            valA = a[keys[sortState.col]];
+            valB = b[keys[sortState.col]];
+            if(sortState.col === 1) { 
+                valA = projects.find(p => p.id === valA)?.title || '';
+                valB = projects.find(p => p.id === valB)?.title || '';
+            }
+        }
+        // --- 3. INVENTORY TABLE ---
+        else if (tableId === 'table-inv') {
+            const keys = [
+                'id', 'desc', 'iso', 'act', 'dose', 'nsn', 'weight', 'vol', 'licensed', 'rcra',
+                'mfr', 'serial', 'location', 'phys',
+                'qty', 'ssdr', 
+                'fill', 'projId', 'status' 
+            ];
+            
+            // Special: Sort by Activity Magnitude
+            if (sortState.col === 3) return (getActValue(a.act) - getActValue(b.act)) * sortState.dir;
+
+            // Special: Mixed Numbers
+            if ([4, 6, 7, 14, 16].includes(sortState.col)) {
+                const getNum = (v) => {
+                    const s = (v||'').toString();
+                    const match = s.match(/[\d\.]+/); 
+                    return match ? parseFloat(match[0]) : -1;
+                };
+                const k = keys[sortState.col];
+                return (getNum(a[k]) - getNum(b[k])) * sortState.dir;
+            }
+            valA = a[keys[sortState.col]]; valB = b[keys[sortState.col]];
+        }
+        // --- 4. EXEMPT LOG TABLE ---
+        else if (tableId === 'table-exempt') {
+            const keys = ['id', 'date', 'cmd', 'desc', 'iso', 'act', 'basis', 'path', 'authDate'];
+            valA = a[keys[sortState.col]];
+            valB = b[keys[sortState.col]];
+        }
+        // --- 5. MASTER TASK LIST (FIXED) ---
+        else if (tableId === 'table-all-tasks') {
+            // Columns: 0=Done, 1=Prio, 2=Task, 3=Project, 4=Assignee, 5=Due
+            const keys = ['done', 'prio', 'text', 'projTitle', 'assign', 'projDue'];
+            
+            // Special: Priority (High -> Med -> Low)
+            if(sortState.col === 1) { 
+                // BUG FIX: Changed High to 1 (not 0) so it doesn't default to 99
+                const pMap = {'high':1, 'med':2, 'low':3};
+                return ((pMap[a.prio]||99) - (pMap[b.prio]||99)) * sortState.dir;
+            }
+            
+            // Special: Done Checkbox
+            if(sortState.col === 0) return (a.done === b.done) ? 0 : (a.done?1:-1) * sortState.dir;
+            
+            valA = a[keys[sortState.col]];
+            valB = b[keys[sortState.col]];
+        }
+        // Fallback
+        else { return 0; }
+
+        // --- GENERIC COMPARISON ENGINE ---
+        if (valA == null) valA = '';
+        if (valB == null) valB = '';
+
+        const numA = parseFloat(valA);
+        const numB = parseFloat(valB);
+        
+        if (!isNaN(numA) && !isNaN(numB) && typeof valA !== 'string') {
+            return (numA - numB) * sortState.dir;
+        }
+
+        const strA = valA.toString().toLowerCase();
+        const strB = valB.toString().toLowerCase();
+        if (strA < strB) return -1 * sortState.dir;
+        if (strA > strB) return 1 * sortState.dir;
+        return 0;
+    });
+}
+
+function saveProjDetails(id, silent = false) {
+    const p = projects.find(x => x.id === id);
+    if(!p) return;
+
+    const getVal = (eid) => { const el = document.getElementById(eid); return el ? el.value : ''; };
+
+    // 1. Logistics
+    p.uic = getVal('ed_uic');
+    p.location = getVal('ed_loc');
+    p.region = getVal('ed_reg');
+
+    // 2. POCs
+    p.poc = getVal('ed_poc');
+    p.pocEmail = getVal('ed_pocEm');
+    p.pocPhone = getVal('ed_pocPh');
+    p.poc2 = getVal('ed_poc2');
+    p.pocEmail2 = getVal('ed_pocEm2');
+    p.pocPhone2 = getVal('ed_pocPh2');
+
+    // 3. Contracting
+    p.mipr = getVal('ed_mipr');
+    p.jmcId = getVal('ed_jmc');
+    p.contractor = getVal('ed_cont');
+    p.contractStatus = getVal('ed_stat');
+    
+    // 4. Dates & Notes (NEW ADDITIONS)
+    p.popStart = getVal('ed_popS');
+    p.popEnd = getVal('ed_popE');
+    p.logisticsNotes = getVal('ed_notes');
+
+    saveLocally();
+    
+    if(!silent) {
+        showToast("Project Details Saved");
+        render();
+        viewProject(id);
+    }
+}
+
+function updItem(type, id, key, val, elem) { 
+
+
+    if (['amount', 'act', 'dose', 'qty', 'fill', 'weight', 'vol'].includes(key)) {
+        const clean = val.toString().replace(/[^0-9.-]/g, ''); 
+        val = parseFloat(clean);
+        if(isNaN(val)) val = 0; 
+    }
+
+    // 1. Update the Data Model
+    let targetItem;
+    if (type === 'project') targetItem = projects.find(x => x.id === id);
+    else if (type === 'inventory') targetItem = inventory.find(x => x.id == id); 
+    else if (type === 'expense') targetItem = expenses.find(x => x.id === id);
+    else if (type === 'alloc') targetItem = allocations.find(x => x.id === id);
+    else if (type === 'exempt') targetItem = exemptLog.find(x => x.id === id);
+
+    if(targetItem) targetItem.updated = Date.now();
+
+    if (type === 'project') { 
+        const p = projects.find(x => x.id === id); 
+        
+        // --- NEW: CELEBRATION LOGIC ---
+        // Triggers only when status changes TO 'Complete'
+        if(key === 'status' && val === 'Complete' && p.status !== 'Complete') {
+            if(typeof fireConfetti === 'function') fireConfetti();
+            showToast("Congratulations! Project Complete! 🎉");
+        }
+        // ------------------------------
+
+        p[key] = val; 
+    }
+    
+    if (type === 'inventory') { 
+        const i = inventory.find(x => x.id == id); 
+        if(key === 'iso') val = normalizeIso(val);
+        if(key === 'qty') val = parseFloat(val) || 0;
+        if(key === 'fill') {
+            val = parseInt(val);
+            if(isNaN(val)) val = 0;
+            if(val < 0) val = 0; if(val > 100) val = 100;
+            const bar = document.getElementById(`bar-fill-${id}`);
+            if(bar) {
+                bar.style.width = val + '%';
+                bar.style.background = val > 90 ? 'var(--danger)' : (val > 75 ? 'var(--warning)' : 'var(--info)');
+            }
+        }
+        if(key === 'dose') val = parseFloat(val); 
+        if(key === 'projId') val = val ? parseInt(val) : null; 
+        i[key] = val; 
+    }
+
+    if (type === 'expense' || type === 'alloc') { 
+        const list = type === 'expense' ? expenses : allocations;
+        const item = list.find(x => x.id === id);
+        
+        if(key === 'amount') {
+            const cleanVal = val.toString().replace(/[^0-9.-]/g,"");
+            let numVal = parseFloat(cleanVal) || 0;
+            if(isNaN(numVal)) numVal = 0;
+            
+            item[key] = numVal; 
+
+            if(elem) {
+                elem.value = numVal.toLocaleString('en-US', {style:'currency', currency:'USD'});
+            }
+            
+            saveLocally();
+            return; 
+        }
+        
+        item[key] = val; 
+    }
+    
+    if (type === 'exempt') { 
+        const ex = exemptLog.find(x => x.id === id); 
+        ex[key] = val; 
+        
+        if(key === 'authDate') {
+            const badgeCell = document.getElementById(`ex-status-${id}`);
+            if(badgeCell) {
+                const isAuth = val && val.trim() !== "";
+                badgeCell.innerHTML = isAuth 
+                    ? '<span class="tag" style="background:var(--accent); color:white; border:none;">Authorized</span>' 
+                    : '<span class="tag" style="background:var(--warning); color:white; border:none;">Pending</span>';
+            }
+        }
+    }
+    
+    saveLocally(); 
+    
+    if(elem) {
+        const oldBorder = elem.style.borderColor;
+        elem.style.borderColor = 'var(--accent)';
+        setTimeout(() => elem.style.borderColor = oldBorder, 500);
+    }
+
+    const skipRenderFields = ['desc', 'text', 'iso', 'act', 'basis', 'path', 'cmd', 'logisticsNotes', 'date', 'qty', 'rev', 'dose', 'fill', 'authDate'];
+    
+    if(!skipRenderFields.includes(key)) {
+        render();
+    }
+}
+    
+    function delExempt(id) {
+        showConfirm("Delete this exempt log entry?", () => {
+
+            registerDeletion(id);
+
+            exemptLog = exemptLog.filter(x => x.id !== id);
+            saveLocally();
+            render();
+            showToast("Entry Deleted");
+        }, "Delete Entry", true);
+    }
+    
+    function updTask(pId, tId, key, val) { 
+        const p = projects.find(x => x.id === pId);
+        const t = p.tasks.find(x => x.id === tId);
+        t[key] = val; 
+
+        p.updated = Date.now();
+        
+        if(key === 'assign' && val) {
+            logSystemAction(`Task <b>${esc(t.text)}</b> assigned to <b>${esc(val)}</b> in <b>${esc(p.title)}</b>.`);
+        }
+
+        saveLocally(); 
+    }
+    
+function cycPrio(pId, tId) { 
+        const p = projects.find(x=>x.id===pId); 
+        const t = p.tasks.find(x=>x.id===tId); 
+        const m = {'high':'low','med':'high','low':'med','undefined':'med'}; 
+        t.prio = m[t.prio] || 'med'; 
+        
+        p.updated = Date.now(); 
+        
+        saveLocally(); viewProject(pId); 
+    }
+    
+function cloneProject(id) {
+    const original = projects.find(x => x.id === id);
+    
+    // 1. Create the Copy (Standard Logic)
+    const copy = JSON.parse(JSON.stringify(original));
+    
+    // GENERATE NEW ID (Using random logic)
+    copy.id = Date.now() + Math.floor(Math.random() * 1000); 
+
+    if(copy.tasks) {
+        copy.tasks = copy.tasks.map(t => ({
+            ...t,
+            id: Date.now() + Math.floor(Math.random() * 100000) // New unique ID
+        }));
+    }
+    
+    copy.title = "Copy of " + copy.title; 
+    copy.updated = Date.now();
+    copy.status = "Planning"; 
+    copy.health = "green"; 
+    
+    // Reset fields
+    copy.due = "";         
+    copy.jmcId = "";       
+    copy.rcn = "";
+    copy.updatesSent = []; 
+    copy.links = [];
+    copy.tasks.forEach(t => t.done = false); 
+    
+    // 2. Scan for Active Inventory in the Old Project
+    // We only care about items that are NOT 'Shipped' (i.e. Stored or Staged)
+    const activeInv = inventory.filter(i => i.projId === id && i.status !== 'Shipped');
+
+    // 3. Define the Final Save Step (Wrapped in a function to reuse it)
+    const finalizeClone = (transferInv = false) => {
+        projects.push(copy);
+        
+        // Copy Initial Budget if exists
+        const base = allocations.find(a => a.projId === id && (a.type === 'base' || a.desc === 'Initial Budget'));
+        if (base) {
+            allocations.push({ 
+                id: Date.now() + Math.floor(Math.random() * 1000), 
+                projId: copy.id, 
+                date: getTodayStr(), 
+                amount: base.amount, 
+                desc: "Initial Budget", 
+                type: 'base', 
+                fundSource: base.fundSource,
+                updated: Date.now()
+            });
+        }
+
+        // --- THE TRANSFER LOGIC ---
+        if(transferInv && activeInv.length > 0) {
+            activeInv.forEach(item => {
+                item.projId = copy.id; // Move item to new project
+                item.updated = Date.now();
+            });
+            logSystemAction(`Project <b>${esc(original.title)}</b> cloned to <b>${esc(copy.title)}</b> with ${activeInv.length} inventory items transferred.`);
+            showToast(`Project Cloned & ${activeInv.length} Items Moved`); 
+        } else {
+            logSystemAction(`Project <b>${esc(original.title)}</b> cloned to <b>${esc(copy.title)}</b>.`);
+            showToast("Project Cloned (Inventory left behind)"); 
+        }
+
+        saveLocally(); 
+        render();
+        viewProject(copy.id); 
+    };
+
+    // 4. Decision Time
+    if(activeInv.length > 0) {
+        // If we have inventory, ASK the user
+        showConfirm(
+            `This project has <b>${activeInv.length}</b> active inventory items.<br>Move them to the new project?`, 
+            () => finalizeClone(true), // Yes: Transfer
+            "Transfer Inventory?",
+            false // Not a 'danger' alert, just a question
+        );
+        
+        // Inject the custom third button
+        setTimeout(() => {
+            const footer = document.getElementById('cmFoot');
+            const cloneEmptyBtn = document.createElement('button');
+            cloneEmptyBtn.className = 'btn';
+            
+            // --- UPDATED STYLES HERE ---
+            // Use a standard blue that fits the theme, and white text
+            cloneEmptyBtn.style.background = 'var(--info)';
+            cloneEmptyBtn.style.color = '#fff';
+            cloneEmptyBtn.style.border = 'none';
+            // Add a slight hover effect
+            cloneEmptyBtn.onmouseover = () => { cloneEmptyBtn.style.background = '#0056b3'; };
+            cloneEmptyBtn.onmouseout = () => { cloneEmptyBtn.style.background = 'var(--info)'; };
+            // ---------------------------
+
+            cloneEmptyBtn.style.marginRight = '10px';
+            cloneEmptyBtn.innerText = "No, Clone Empty";
+            cloneEmptyBtn.onclick = () => {
+                closeCustomAlert();
+                finalizeClone(false); // Run clone WITHOUT transfer
+            };
+            // Insert before the Confirm button
+            footer.insertBefore(cloneEmptyBtn, footer.lastElementChild);
+        }, 50);
+
+    } else {
+        // No inventory? Just clone immediately.
+        finalizeClone(false);
+    }
+}
+
+function togTask(pId, tId) {
+    
+    const t = p.tasks.find(x=>x.id===tId);
+    t.done = !t.done; 
+    p.updated = Date.now();
+    
+    const status = t.done ? "completed" : "re-opened";
+    logSystemAction(`Task <b>${esc(t.text)}</b> marked ${status} in <b>${esc(p.title)}</b>.`);
+
+    saveLocally(); 
+
+    // Only go to project view if we are NOT in the master list
+    if(document.getElementById('view-all-tasks').classList.contains('active')) {
+        render(); // Just re-render the list in place
+    } else {
+        viewProject(pId); // Refresh project view
+    }
+}
+    
+function addTask(pId) { 
+        const t = document.getElementById('newT').value; 
+        const a = document.getElementById('newTA').value; 
+        if(t) { 
+            const p = projects.find(x=>x.id===pId);
+            p.tasks.push({id: Date.now() + Math.floor(Math.random() * 1000), text:t, done:false, assign:a, prio:'med'}); 
+
+            p.updated = Date.now();
+            
+            logSystemAction(`Task <b>${esc(t)}</b> added to <b>${esc(p.title)}</b>.`);
+
+            saveLocally(); viewProject(pId); 
+        } 
+    }
+    
+function delTask(pId, tId) { 
+        const p = projects.find(x=>x.id===pId);
+        const t = p.tasks.find(x=>x.id===tId);
+        
+        if(t) {
+
+            p.updated = Date.now();
+
+            logSystemAction(`Task <b>${esc(t.text)}</b> deleted from <b>${esc(p.title)}</b>.`);
+            
+            p.tasks = p.tasks.filter(x=>x.id!==tId); 
+            saveLocally(); viewProject(pId);
+
+            if(document.getElementById('view-all-tasks').classList.contains('active')) {
+            render(); 
+        } else {
+            // If we are inside the project (or anywhere else), refresh the project view
+            viewProject(pId); 
+        }
+        }
+    }
+    
+function delProj(id) { 
+    const p = projects.find(x => x.id === id);
+    if(!p) return;
+    
+    showPrompt(
+        `Permanently delete <b>${esc(p.title)}</b>?<br>This will archive the project and remove active records.<br><br><b>Reason for deletion:</b>`,
+        (val) => {
+            const reason = val || "No reason provided";
+
+            // 1. CAPTURE DATA SNAPSHOT (So we can Revive it later)
+            const snapExpenses = expenses.filter(x => x.projId === id);
+            const snapAllocations = allocations.filter(x => x.projId === id);
+
+            snapExpenses.forEach(e => registerDeletion(e.id));
+            snapAllocations.forEach(a => registerDeletion(a.id));
+
+            // 2. Archive to Graveyard
+            deletedProjects.push({
+                ...p, // <--- Copies uic, poc, mipr, etc. automatically.
+                
+                // Overwrite/Add specific archive metadata
+                snapshotData: {
+                    expenses: snapExpenses,
+                    allocations: snapAllocations
+                },
+                deletedBy: currentUser,
+                deletedDate: Date.now(),
+                deleteReason: reason
+            });
+
+            logSystemAction(`Project <b>${esc(p.title)}</b> deleted.`);
+            registerDeletion(id);
+    
+            snapExpenses.forEach(e => registerDeletion(e.id));
+            snapAllocations.forEach(a => registerDeletion(a.id));
+    
+            // Also remove them from the active arrays immediately
+            expenses = expenses.filter(x => x.projId !== id); 
+            allocations = allocations.filter(x => x.projId !== id);
+            
+            // 3. Delete Active Records
+            projects = projects.filter(x => x.id !== id); 
+            expenses = expenses.filter(x => x.projId !== id); 
+            allocations = allocations.filter(x => x.projId !== id);
+            
+            // Unlink Inventory (We don't snapshot this, as items physically move)
+            inventory.forEach(i => { if(i.projId === id) i.projId = null; });
+            
+            saveLocally(); 
+            render(); 
+            nav('dashboard'); 
+            showToast("Project Deleted & Archived");
+        },
+        "Delete Project", 
+        "e.g. Cancelled by sponsor...", 
+        true 
+    );
+}
+
+function reviveProject(id) {
+    // 1. Find the Corpse
+    const graveIndex = deletedProjects.findIndex(x => x.id === id);
+    if(graveIndex === -1) return;
+    
+    const corpse = deletedProjects[graveIndex];
+
+    showConfirm(
+        `Revive project <b>${esc(corpse.title)}</b>?<br>This will restore the project and its financial records to the active dashboard.`,
+        () => {
+            // 2. Restore Project Shell
+            const restored = {
+                ...corpse, // <--- COPIES EVERYTHING (Logistics, POCs, Dates, Notes, etc.)
+                
+                // Reset status for a clean revival
+                status: 'Planning', 
+                health: corpse.health || 'green',
+                updated: Date.now(),
+                
+                // Strip out the graveyard metadata so it looks like a normal project again
+                snapshotData: undefined,
+                deletedBy: undefined,
+                deletedDate: undefined,
+                deleteReason: undefined
+            };
+            projects.push(restored);
+
+            // 3. Restore Financials (If snapshot exists)
+            if(corpse.snapshotData) {
+                if(corpse.snapshotData.expenses) {
+                    expenses.push(...corpse.snapshotData.expenses);
+                }
+                if(corpse.snapshotData.allocations) {
+                    allocations.push(...corpse.snapshotData.allocations);
+                }
+            }
+
+            // 4. Remove from Graveyard
+            deletedProjects.splice(graveIndex, 1);
+
+            logSystemAction(`Project <b>${esc(corpse.title)}</b> was revived from the graveyard.`);
+            
+            saveLocally();
+            render();
+            closeModal('graveyardModal');
+            showToast("Project Revived");
+            viewProject(restored.id);
+        },
+        "Revive Project"
+    );
+}
+    
+    // Using sanitizer in addLink
+    function addLink(pId) { 
+        const n = document.getElementById('newLinkName').value; 
+        let u = document.getElementById('newLinkUrl').value; 
+        if(n && u) { 
+            // Sanitize input before saving
+            u = formatLink(u);
+            const p = projects.find(x=>x.id===pId); 
+
+            p.updated = Date.now();
+
+            if(!p.links) p.links=[]; 
+            p.links.push({name:n, url:u}); 
+            saveLocally(); 
+            viewProject(pId); 
+        } 
+    }
+    
+function addProject() { 
+        // 1. Get Basic Info
+        const t = document.getElementById('pTitle').value; 
+        const d = document.getElementById('pDesc').value; 
+        const dt = document.getElementById('pDate').value; 
+        const c = parseFloat(document.getElementById('pCost').value) || 0;
+            if (c < 0) {
+                showToast("Initial budget cannot be negative", "error");
+                return;
+            }
+        
+        // 2. Get Logistics
+        const uic = document.getElementById('pUic').value;
+        const loc = document.getElementById('pLoc').value;
+        const reg = document.getElementById('pRegion').value;
+
+        const poc = document.getElementById('pPoc').value;
+        const pocEmail = document.getElementById('pPocEmail').value;
+        const pocPhone = document.getElementById('pPocPhone').value;
+
+        const poc2 = document.getElementById('pPoc2').value;
+        const pocEmail2 = document.getElementById('pPocEmail2').value;
+        const pocPhone2 = document.getElementById('pPocPhone2').value;
+
+        // 3. Get Contract Info
+        const mipr = document.getElementById('pMipr').value;
+        const jmc = document.getElementById('pJmc').value;
+        const cont = document.getElementById('pCont').value;
+        const stat = document.getElementById('pContStat').value;
+        
+        // 4. Get POP Dates
+        const popS = document.getElementById('pPopStart').value;
+        const popE = document.getElementById('pPopEnd').value;
+
+        if(t) { 
+            const pid = Date.now() + Math.floor(Math.random() * 1000);
+            projects.push({
+                id: pid, 
+                title: t, 
+                desc: d, 
+                due: dt, 
+                status: "Planning", 
+                health: "green", 
+                
+                uic: uic, 
+                location: loc,
+                region: reg,
+
+                // Primary
+                poc: poc,
+                pocEmail: pocEmail,
+                pocPhone: pocPhone,
+
+                // Alternate
+                poc2: poc2,
+                pocEmail2: pocEmail2,
+                pocPhone2: pocPhone2,
+                
+                mipr: mipr,
+                jmcId: jmc,
+                contractor: cont,
+                contractStatus: stat,
+                
+                popStart: popS,
+                popEnd: popE,
+
+                updated: Date.now(),
+
+                tasks: [], 
+                links: []
+            }); 
+            
+            // Create Initial Budget Allocation if cost > 0
+            if(c > 0) {
+                allocations.push({
+                    id: Date.now() + Math.floor(Math.random() * 1000),
+                    projId: pid, 
+                    date: dt || getTodayStr(), 
+                    amount: c, 
+                    desc: "Initial Budget", 
+                    type: 'base', 
+                    fundSource: "Navy General Fund",
+                    updated: Date.now()
+                });
+            }
+            
+            logSystemAction(`Project <b>${esc(t)}</b> created.`);
+
+            saveLocally(); 
+            closeModal('projectModal'); 
+            render(); 
+            showToast("Project Created"); 
+            
+            // Optional: Immediately open the new project to verify details
+            // viewProject(pid); 
+        } else {
+            showToast("Project Title is required", "error");
+        }
+    }
+    
+function addExpense(keepOpen = false) { 
+        const pidVal = document.getElementById('expProj').value; 
+        const pid = pidVal === "" ? null : parseInt(pidVal); 
+        const desc = document.getElementById('expDesc').value; 
+        const amt = document.getElementById('expAmt').value; 
+        const dt = document.getElementById('expDate').value; 
+        const st = document.getElementById('expStatus').value; 
+        const fund = document.getElementById('expFund').value || "Other";
+
+        // VALIDATION CHECK
+        if(!desc || !amt || !dt) {
+            showToast("Please fill in Description, Amount, and Date.", "error");
+            return; 
+        }
+
+        expenses.push({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            projId: pid, 
+            desc: desc, 
+            amount: roundMoney(parseFloat(amt)),
+            date: dt, 
+            status: st, 
+            updated: Date.now(),
+            fundSource: fund
+        }); 
+
+        // --- Smart Project Naming ---
+        const p = projects.find(x => x.id === pid);
+        const pName = p ? p.title : "General Overhead"; // If no PID, call it Overhead
+        
+        logSystemAction(`Expense <b>$${amt}</b> added to <b>${esc(pName)}</b>.`);
+        // ---------------------------------
+
+        showToast("Expense Logged");
+        saveLocally(); 
+        
+        // CLEAR FORM DATA (Only specific fields)
+        document.getElementById('expDesc').value = '';
+        document.getElementById('expAmt').value = '';
+        // Note: We KEEP the Date and Project selected for rapid entry!
+
+        if(keepOpen) {
+            // Re-render background, but don't close modal
+            render();
+            document.getElementById('expDesc').focus(); // Move focus back to start
+        } else {
+            closeModal('expenseModal'); 
+            render();
+
+        if(pid && document.getElementById('view-project-detail').classList.contains('active')) {
+            viewProject(pid);
+        }
+    }
+}
+    
+    function addAllocation() {
+        const pidVal = document.getElementById('allocProj').value;
+        const pid = pidVal === "" ? null : parseInt(pidVal);
+        const desc = document.getElementById('allocDesc').value;
+        const amt = document.getElementById('allocAmt').value;
+        const dt = document.getElementById('allocDate').value;
+        const fund = document.getElementById('allocFund').value;
+
+        if(!desc || !amt || !dt) {
+            showToast("Missing Description, Amount, or Date.", "error");
+            return;
+        }
+
+        allocations.push({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            projId:pid, 
+            desc:desc, 
+            amount:parseFloat(amt), 
+            date:dt, 
+            updated: Date.now(),
+            type: 'adj', 
+            fundSource: fund
+        });
+
+        // --- Smart Project Naming ---
+        const p = projects.find(x => x.id === pid);
+        const pName = p ? p.title : "General Overhead";
+        
+        logSystemAction(`Funding <b>$${amt}</b> allocated to <b>${esc(pName)}</b>.`);
+        // ---------------------------------
+
+        showToast("Funding Added");
+        saveLocally(); 
+        
+        document.getElementById('allocDesc').value = '';
+        document.getElementById('allocAmt').value = '';
+        document.getElementById('allocDate').value = getTodayStr();
+
+        closeModal('allocModal'); 
+        render();
+    }
+    
+    function delExpense(id) { 
+        const e = expenses.find(x => x.id === id);
+        if(!e) return;
+
+        showConfirm("Remove this expense record?", () => {
+            const p = projects.find(x => x.id === e.projId);
+            const pName = p ? p.title : "General";
+            logSystemAction(`Expense <b>$${e.amount.toLocaleString()}</b> deleted from <b>${esc(pName)}</b>.`);
+
+            registerDeletion(id);
+            
+            expenses = expenses.filter(x => x.id !== id); 
+            saveLocally(); 
+            render(); 
+            showToast("Item Removed"); 
+            
+            // Smart Refresh: If looking at the project, refresh it
+            if(e.projId && document.getElementById('view-project-detail').classList.contains('active')) {
+                viewProject(e.projId);
+            }
+        }, "Confirm Deletion", true);
+    }
+
+    function delAlloc(id) { 
+        const a = allocations.find(x => x.id === id);
+        if(!a) return;
+
+        showConfirm("Remove this funding allocation?", () => {
+            const p = projects.find(x => x.id === a.projId);
+            const pName = p ? p.title : "General";
+            logSystemAction(`Funding <b>$${a.amount.toLocaleString()}</b> deleted from <b>${esc(pName)}</b>.`);
+
+            registerDeletion(id);
+
+            allocations = allocations.filter(x => x.id !== id); 
+            saveLocally(); 
+            render(); 
+            showToast("Funding Removed");
+            
+            // Smart Refresh
+            if(a.projId && document.getElementById('view-project-detail').classList.contains('active')) {
+                viewProject(a.projId);
+            }
+        }, "Confirm Deletion", true);
+    }
+    
+// --- Helper to Clear & Close ---
+function cancelAddInventory() {
+    // 1. Reset Core Fields
+    document.getElementById('invId').value = '';
+    document.getElementById('invDesc').value = ''; 
+    document.getElementById('invIso').value = 'Co-60'; 
+    
+    document.getElementById('invIsoCustom').value = '';
+    document.getElementById('invIsoCustom').style.display = 'none';
+    
+    document.getElementById('invAct').value = '';
+    document.getElementById('invDose').value = '';
+    document.getElementById('invFill').value = '0';
+    document.getElementById('invFillLabel').innerText = '0%';
+    document.getElementById('invDate').value = '';
+
+    // 2. Reset Extended Fields
+    const extras = ['invNsn','invWeight','invVol','invLicNum','invMfr','invSerial','invLoc','invPhys','invSsdr','invConst'];
+    extras.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = '';
+    });
+
+    // 3. Reset Dropdowns
+    document.getElementById('invQty').value = '1';
+    document.getElementById('invLic').value = 'No';
+    document.getElementById('invRcra').value = 'No';
+
+    document.getElementById('invTrackFill').checked = false;
+    toggleFillSlider(); // This will hide the UI elements
+
+    // 4. Close the Window
+    closeModal('invModal');
+}
+
+// --- BULK ACTION LOGIC ---
+    let selectedInv = new Set();
+
+    function toggleInvSelect(id) {
+        if(selectedInv.has(id)) selectedInv.delete(id);
+        else selectedInv.add(id);
+        updateBulkUI();
+    }
+
+    function toggleAllInv() {
+        // If all currently visible are selected, clear. Otherwise, select all visible.
+        // We use the rendered table rows to determine "visible" (in case of filtering)
+        const visibleIds = Array.from(document.querySelectorAll('.inv-chk')).map(el => el.getAttribute('data-id'));
+        const allSelected = visibleIds.every(id => selectedInv.has(id));
+        
+        if(allSelected) {
+            visibleIds.forEach(id => selectedInv.delete(id));
+        } else {
+            visibleIds.forEach(id => selectedInv.add(id));
+        }
+        updateBulkUI();
+    }
+
+    function deselectAllInv() {
+        selectedInv.clear();
+        updateBulkUI();
+    }
+
+    function updateBulkUI() {
+        const bar = document.getElementById('bulk-toolbar');
+        const count = document.getElementById('bulk-count');
+        
+        // Update Checkboxes
+        document.querySelectorAll('.inv-chk').forEach(chk => {
+            chk.checked = selectedInv.has(chk.getAttribute('data-id'));
+        });
+
+        // Show/Hide Toolbar
+        if(selectedInv.size > 0) {
+            bar.style.display = 'flex';
+            count.innerText = selectedInv.size;
+        } else {
+            bar.style.display = 'none';
+        }
+    }
+
+    function bulkAction(mode) {
+        const visibleIds = Array.from(document.querySelectorAll('.inv-chk'))
+                            .map(el => el.getAttribute('data-id'));
+        const ids = Array.from(selectedInv).filter(id => visibleIds.includes(id));
+    
+        if(ids.length === 0) return;
+
+        if(mode === 'delete') {
+            showConfirm(`Delete ${ids.length} items?`, () => {
+                ids.forEach(id => {
+                     // Archive logic (simplified version of delInventory)
+                     const item = inventory.find(x => x.id == id);
+                     if(item) {
+                         deletedInventory.push({...item, deletedDate: Date.now(), deletedBy: currentUser});
+                         registerDeletion(id);
+                     }
+                });
+                
+                // Remove from active list
+                inventory = inventory.filter(x => !selectedInv.has(x.id.toString()));
+                
+                deselectAllInv();
+                saveLocally();
+                render();
+                showToast("Bulk Delete Complete");
+            }, "Bulk Delete", true);
+        }
+
+        if(mode === 'status') {
+            showPrompt("Enter new status (Stored, Staged, Shipped):", (val) => {
+                if(['Stored','Staged','Shipped'].includes(val)) {
+                    inventory.forEach(i => { if(selectedInv.has(i.id.toString())) i.status = val; });
+                    saveLocally();
+                    render();
+                    showToast("Bulk Status Updated");
+                } else {
+                    showToast("Invalid Status (Use: Stored, Staged, Shipped)", "error");
+                }
+            }, "Bulk Status Change", "Stored");
+        }
+
+        if(mode === 'project') {
+            // Build a simple project list for the prompt info (user has to type ID or rough Title)
+            // Ideally we'd make a custom modal, but for now we'll use ID input
+            showPrompt("Enter Target Project ID:", (val) => {
+                const pid = parseInt(val);
+                const p = projects.find(x => x.id === pid);
+                if(p) {
+                    inventory.forEach(i => { if(selectedInv.has(i.id.toString())) i.projId = pid; });
+                    saveLocally();
+                    render();
+                    showToast(`Moved ${ids.length} items to ${esc(p.title)}`);
+                    deselectAllInv();
+                } else {
+                    showToast("Project ID not found", "error");
+                }
+            }, "Move to Project", "e.g. 101");
+        }
+    }
+
+// --- Add Inventory (With Auto-Close & Refresh) ---
+function addInventory() { 
+    // 1. Get Core Inputs
+    const id = document.getElementById('invId').value; 
+    const desc = document.getElementById('invDesc').value; 
+    
+    let iso = document.getElementById('invIso').value;
+    
+    if(iso === 'Custom') {
+        const customInput = document.getElementById('invIsoCustom').value;
+        iso = normalizeIso(customInput); // <--- Forces "co60" to become "Co-60"
+    }
+    
+    const act = document.getElementById('invAct').value;
+    const doseVal = document.getElementById('invDose').value;
+    const dose = doseVal === "" ? 0 : (isNaN(parseFloat(doseVal)) ? doseVal : parseFloat(doseVal));
+    const trackFill = document.getElementById('invTrackFill').checked;
+    const fill = trackFill ? (parseFloat(document.getElementById('invFill').value) || 0) : null;
+    
+    const pidVal = document.getElementById('invProj').value;
+    const pid = pidVal ? parseInt(pidVal) : null;
+    const stat = document.getElementById('invStatus').value;
+    
+    const dateRaw = document.getElementById('invDate').value;
+    const dateVal = dateRaw ? dateRaw : getTodayStr();
+
+    // 2. Extended Fields
+    const nsn = document.getElementById('invNsn').value;
+    const weight = document.getElementById('invWeight').value;
+    const vol = document.getElementById('invVol').value;
+    const lic = document.getElementById('invLic').value;
+    const licNum = document.getElementById('invLicNum').value;
+    const rcra = document.getElementById('invRcra').value;
+
+    const mfr = document.getElementById('invMfr').value;
+    const serial = document.getElementById('invSerial').value;
+    const loc = document.getElementById('invLoc').value;
+    const phys = document.getElementById('invPhys').value;
+    const qty = parseFloat(document.getElementById('invQty').value) || 1;
+    const ssdr = document.getElementById('invSsdr').value;
+    const constituents = document.getElementById('invConst').value;
+
+    // 3. Validation
+    if(!id) {
+        showToast("Error: Item ID is required", "error"); 
+        return;
+    }
+
+    // Duplicate Check
+    if(inventory.some(x => x.id.toLowerCase() === id.toLowerCase())) {
+        showToast("Error: Item ID already exists", "error");
+        return;
+    }
+
+    // 4. Save
+    inventory.push({
+        id: id, desc: desc, iso: iso, act: act, dose: dose, fill: fill, status: stat, projId: pid, logDate: dateVal,
+        nsn: nsn, weight: weight, vol: vol, licensed: lic, licenseNum: licNum, rcra: rcra,
+        mfr: mfr, serial: serial, location: loc, phys: phys,
+        qty: qty, ssdr: ssdr, constituents: constituents,
+        links: [], updated: Date.now()
+    }); 
+    
+    logSystemAction(`Inventory <b>${esc(id)}</b> added.`);
+    showToast("Item Added");
+    saveLocally();
+    render();
+
+    // 5. CRITICAL FIX: Refresh Project View if open
+    // We check if the user is currently looking at the Project Details screen for this project
+    const activeView = localStorage.getItem('rad_active_view');
+    const activeProjId = parseInt(localStorage.getItem('rad_active_proj'));
+
+    if(activeView === 'project-detail' && activeProjId === pid) {
+        viewProject(pid); // Force a re-render of the project page
+    }
+    
+    // 6. Wipe and Close
+    cancelAddInventory(); 
+}
+
+function delInventory(id) {
+    showConfirm(`Permanently delete item <b>${id}</b>?<br>It will be moved to the Graveyard.`, () => {
+        const i = inventory.find(x => x.id == id);
+        
+        if(i) {
+            // 1. Archive the Item
+            deletedInventory.push({
+                ...i,
+                deletedDate: Date.now(),
+                deletedBy: (typeof currentUser !== 'undefined' ? currentUser : 'User')
+            });
+            
+            logSystemAction(`Inventory <b>${esc(i.id)}</b> moved to graveyard.`);
+            
+            // Capture Project ID (so we can refresh the project view later)
+            const pid = i.projId;
+
+            // 2. Remove from Active List
+            registerDeletion(id); 
+            inventory = inventory.filter(x => x.id != id);
+            
+            saveLocally();
+            render(); // Refresh Main Inventory Table
+
+            // 3. UI HANDLING
+            
+            // A. If the Item Detail Popup is open, CLOSE IT.
+            if(typeof currentInvId !== 'undefined' && currentInvId == id) {
+                closeModal('invDetailModal');
+            }
+
+            // B. If we are looking at the Project Detail View, REFRESH IT.
+            // (This fixes the "Ghost" issue)
+            const projectView = document.getElementById('view-project-detail');
+            if(projectView && projectView.classList.contains('active') && pid) {
+                viewProject(pid); 
+            }
+            
+            showToast("Item Moved to Graveyard");
+        }
+    }, "Delete Item", true);
+}
+
+function decayInventory() {
+    if(!confirm("Permanently update all inventory activities to current date?")) return;
+    
+    let count = 0;
+    let skipped = 0;
+
+    inventory.forEach(i => {
+        // 1. SAFE LOOKUP: Find the matching DB key regardless of case
+        const dbKey = Object.keys(ISOTOPE_DB).find(k => k.toLowerCase() === (i.iso || "").toLowerCase());
+        
+        // Only proceed if we found a match AND have a date
+        if(dbKey && i.logDate) {
+            const hl = ISOTOPE_DB[dbKey].hl;
+            
+            // 2. PARSE ACTIVITY (Using the helper we added in the previous step)
+            // If you haven't added 'getActValue' yet, standard regex match works too
+            const match = i.act.match(/^([\d\.]+(?:[eE][-+]?\d+)?)\s*([a-zA-Zµ\/]+)$/);
+            
+            if(match) {
+                let val = parseFloat(match[1]);
+                const unit = match[2]; 
+                
+                const d1 = new Date(i.logDate);
+                const d2 = new Date();
+                const years = (d2 - d1) / (1000 * 60 * 60 * 24 * 365.25);
+                
+                if(years > 0) {
+                    const lambda = Math.log(2) / hl;
+                    const newAct = val * Math.exp(-lambda * years);
+                    
+                    // Update the item
+                    i.act = (newAct < 0.001 ? newAct.toExponential(2) : newAct.toFixed(3)) + " " + unit;
+                    i.logDate = getTodayStr(); 
+                    
+                    // Optional: Fix the casing in the record while we are here
+                    i.iso = dbKey; 
+                    
+                    count++;
+                }
+            } else {
+                skipped++; // Format error (e.g. "10 bananas")
+            }
+        } else {
+            skipped++; // Isotope not in DB
+        }
+    });
+
+    saveLocally(); 
+    render(); 
+    
+    let msg = `Updated ${count} items.`;
+    if(skipped > 0) msg += ` (Skipped ${skipped} items - check spelling)`;
+    
+    showToast(msg, skipped > 0 ? "warning" : "success");
+}
+
+function setCurrentUser(val) {
+        currentUser = val;
+        localStorage.setItem('rad_curr_user', currentUser);
+        document.getElementById('sidebar-user-display').innerText = currentUser;
+        showToast(`Identity set to: ${currentUser}`);
+    }
+    
+    function delLink(pId, idx) { const p = projects.find(x=>x.id===pId);
+        
+        p.updated = Date.now();
+
+        p.links.splice(idx, 1); saveLocally(); viewProject(pId); }
+    
+function openGraveyard() {
+    const list = document.getElementById('graveyard-list');
+    
+    // --- 1. THEMED HEADER (3 Ghosts, No Bird) ---
+    let html = `
+        <div style="text-align:center; margin-bottom:40px; position:relative; padding:20px 0;">
+            
+            <div style="position:absolute; top:-10px; left:20%; animation:floatGhost 5s infinite ease-in-out;">
+                <i class="fa-solid fa-ghost" style="font-size:2rem; color:var(--text-muted); opacity:0.15;"></i>
+            </div>
+            
+            <div style="position:absolute; top:10px; right:20%; animation:floatGhost 4s infinite ease-in-out; animation-delay: 1s;">
+                <i class="fa-solid fa-ghost" style="font-size:2.5rem; color:var(--text-muted); opacity:0.2;"></i>
+            </div>
+
+            <div style="position:absolute; top:50px; right:12%; animation:floatGhost 6s infinite ease-in-out; animation-delay: 2.5s;">
+                <i class="fa-solid fa-ghost" style="font-size:1.5rem; color:var(--text-muted); opacity:0.1;"></i>
+            </div>
+
+            <i class="fa-solid fa-dungeon" style="font-size:4rem; color:var(--text-muted); margin-bottom:15px; opacity:0.8;"></i>
+            <h2 style="margin:0; color:var(--text-main); font-size:2rem; letter-spacing:-1px;">The Graveyard</h2>
+            <div style="color:var(--text-muted); font-size:0.9rem; margin-top:5px;">
+                Restoring deleted data requires administrative override.
+            </div>
+        </div>
+    `;
+
+    // --- 2. DELETED PROJECTS SECTION ---
+    html += `
+        <div style="background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:30px; box-shadow:0 4px 6px rgba(0,0,0,0.02);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+                <h3 style="margin:0; font-size:1.1rem;"><i class="fa-solid fa-folder-minus" style="color:var(--warning)"></i> Archived Projects</h3>
+                <span class="tag">${deletedProjects.length} Records</span>
+            </div>`;
+    
+    if(deletedProjects.length === 0) {
+        html += '<div style="font-style:italic; color:var(--text-muted); text-align:center; padding:20px;">No projects in the crypt.</div>';
+    } else {
+        html += `<table class="sci-table">
+            <thead>
+                <tr>
+                    <th style="width:40%">Project Details</th>
+                    <th style="text-align:center;">Deleted By</th>
+                    <th style="text-align:center;">Date of Death</th>
+                    <th style="text-align:center; width:100px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${deletedProjects.map(p => `
+                <tr>
+                    <td>
+                        <div style="font-weight:bold; font-size:1rem; margin-bottom:4px;">${esc(p.title)}</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted);">Reason: <i>${esc(p.deleteReason || 'None provided')}</i></div>
+                    </td>
+                    <td style="text-align:center;">
+                        <span class="tag" style="background:var(--bg-input); border:none;">${esc(p.deletedBy)}</span>
+                    </td>
+                    <td style="text-align:center; color:var(--text-muted); font-size:0.85rem;">
+                        ${new Date(p.deletedDate).toLocaleDateString()}
+                    </td>
+                    <td style="text-align:center;">
+                        <button class="btn-rect" onclick="reviveProject(${p.id})" style="width:100%; justify-content:center; background:var(--accent-dim); color:var(--accent); border:1px solid var(--accent);">
+                            <i class="fa-solid fa-heart-pulse"></i> Revive
+                        </button>
+                    </td>
+                </tr>`).join('')}
+            </tbody>
+        </table>`;
+    }
+    html += `</div>`;
+
+    // --- 3. DELETED INVENTORY SECTION ---
+    html += `
+        <div style="background:var(--bg-panel); border:1px solid var(--border); border-radius:12px; padding:20px; box-shadow:0 4px 6px rgba(0,0,0,0.02);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+                <h3 style="margin:0; font-size:1.1rem;"><i class="fa-solid fa-box-archive" style="color:var(--text-muted)"></i> Archived Inventory</h3>
+                <span class="tag">${deletedInventory.length} Records</span>
+            </div>`;
+    
+    if(!deletedInventory || deletedInventory.length === 0) {
+        html += '<div style="font-style:italic; color:var(--text-muted); text-align:center; padding:20px;">No inventory items buried here.</div>';
+    } else {
+        html += `<table class="sci-table">
+            <thead>
+                <tr>
+                    <th>ID / Serial</th>
+                    <th>Description</th>
+                    <th style="text-align:center;">Deleted By</th>
+                    <th style="text-align:center;">Date</th>
+                    <th style="text-align:center; width:100px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${deletedInventory.map(i => `
+                <tr>
+                    <td>
+                        <div style="font-weight:bold; color:var(--text-main);">${esc(i.id)}</div>
+                        <div style="font-size:0.7rem; color:var(--text-muted);">${esc(i.serial||'No Serial')}</div>
+                    </td>
+                    <td style="font-size:0.85rem;">${esc(i.desc)}</td>
+                    <td style="text-align:center;">
+                        <span class="tag" style="background:var(--bg-input); border:none;">${esc(i.deletedBy||'Admin')}</span>
+                    </td>
+                    <td style="text-align:center; color:var(--text-muted); font-size:0.85rem;">
+                        ${new Date(i.deletedDate).toLocaleDateString()}
+                    </td>
+                    <td style="text-align:center;">
+                        <button class="btn-rect" onclick="reviveInventory('${i.id}')" style="width:100%; justify-content:center;">
+                            <i class="fa-solid fa-rotate-left"></i> Restore
+                        </button>
+                    </td>
+                </tr>`).join('')}
+            </tbody>
+        </table>`;
+    }
+    html += `</div>`;
+    
+    list.innerHTML = html;
+    openModal('graveyardModal');
+}
+
+function reviveInventory(id) {
+    const idx = deletedInventory.findIndex(x => x.id == id);
+    if(idx === -1) return;
+    
+    const item = deletedInventory[idx];
+    
+    // Check for ID collision (if you re-used the ID 912 while the old 912 was dead)
+    if(inventory.some(x => x.id == item.id)) {
+        showToast("Cannot restore: ID already exists active.", "error");
+        return;
+    }
+
+    // Restore
+    delete item.deletedDate;
+    delete item.deletedBy;
+    item.updated = Date.now();
+    
+    inventory.push(item);
+    deletedInventory.splice(idx, 1);
+    
+    logSystemAction(`Inventory <b>${esc(item.id)}</b> restored from graveyard.`);
+    saveLocally();
+    render();
+    openGraveyard(); // Refresh the modal
+    showToast("Item Restored");
+}
+
+    function renderTeamSettings() { 
+        // 1. Render the Delete List
+        document.getElementById('teamList').innerHTML = team.map((m, i) => 
+            `<div style="display:flex; justify-content:space-between; margin-bottom:5px; background:var(--bg-input); padding:5px; border-radius:4px;">
+                ${esc(m)} 
+                <i class="fa-solid fa-trash" style="cursor:pointer; color:var(--danger)" onclick="remTeam(${i})"></i>
+            </div>`
+        ).join(''); 
+
+        // 2. Render the "Who am I?" Dropdown
+        const sel = document.getElementById('userIdentitySelect');
+        if(sel) {
+            sel.innerHTML = team.map(m => `<option value="${esc(m)}" ${currentUser===m?'selected':''}>${esc(m)}</option>`).join('');
+        }
+        
+        // 3. Update Sidebar Display
+        document.getElementById('sidebar-user-display').innerText = currentUser;
+    }
+
+    function addTeamMember() { 
+        const m = document.getElementById('newMember').value; 
+        if(m) { 
+            if(team.includes(m)) {
+                showToast("User already exists", "error");
+                return;
+            }
+            team.push(m); 
+            saveLocally(); 
+            renderTeamSettings(); 
+            document.getElementById('newMember').value=''; 
+            showToast("User added");
+        } 
+    }
+
+    function remTeam(idx) { 
+        const userToDelete = team[idx];
+        
+        // Safety Check: Prevent deleting the user you are currently logged in as
+        if(userToDelete === currentUser) {
+            showAlert("You cannot delete the user you are currently acting as.<br>Switch identity first.", "Action Blocked");
+            return;
+        }
+
+        // CONFIRMATION DIALOG ADDED
+        showConfirm(
+            `Remove <b>${esc(userToDelete)}</b> from the team list?`,
+            () => {
+                team.splice(idx, 1); 
+                saveLocally(); 
+                renderTeamSettings();
+                showToast("User removed");
+            },
+            "Remove User"
+        );
+    }
+
+    let refFilter = 'all';
+
+    function filterRefs(type) {
+        refFilter = type;
+        // Update Button Styles
+        ['all','Reg','Trans','Form','Site'].forEach(t => {
+            const btn = document.getElementById('btn-ref-'+t);
+            if(btn) {
+                if(t === type) { btn.style.background = 'var(--accent)'; btn.style.color = 'white'; btn.style.border = 'none'; }
+                else { btn.style.background = 'var(--bg-input)'; btn.style.color = 'var(--text-muted)'; btn.style.border = '1px solid var(--border)'; }
+            }
+        });
+        render();
+    }
+
+    function addReference() {
+        const t = document.getElementById('refTitle').value;
+        const u = document.getElementById('refUrl').value;
+        const d = document.getElementById('refDesc').value;
+        const cat = document.getElementById('refType').value;
+
+        if(!t || !u) { showToast("Title and URL required", "error"); return; }
+
+        references.push({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            title: t,
+            url: formatLink(u), // Use existing sanitizer
+            desc: d,
+            type: cat,
+            updated: Date.now(),
+            locked: false // User created items are unlocked
+        });
+
+        saveLocally();
+        closeModal('refModal');
+        render();
+        showToast("Reference Added");
+        
+        // Clear inputs
+        document.getElementById('refTitle').value = '';
+        document.getElementById('refUrl').value = '';
+        document.getElementById('refDesc').value = '';
+    }
+
+    function delReference(id) {
+        showConfirm("Remove this reference link?", () => {
+
+            registerDeletion(id);
+
+            references = references.filter(r => r.id !== id);
+            saveLocally();
+            render();
+            showToast("Reference Removed");
+        }, "Remove Link");
+    }
+    
+    function toggleProjView() { viewMode = viewMode === 'list' ? 'board' : 'list'; saveLocally(); render(); }
+    function toggleShowComp() { showComplete = !showComplete; saveLocally(); render(); }
+    
+    function saveHPState() { 
+        // Save ALL HP related inputs
+        hpState = {};
+        const inputs = document.querySelectorAll('#view-hp input, #view-hp select');
+        inputs.forEach(el => {
+            if(el.id) hpState[el.id] = el.value;
+        });
+        saveLocally(); 
+    }
+    
+    function saveWiki() { wikiText = document.getElementById('wiki-text').value; saveLocally(); }
+
+    function handleChat(e) { 
+    if(e.key==='Enter'){ 
+        const t=document.getElementById('chatInput').value; 
+        if(t){ 
+            const now = new Date();
+            // 1. Get Date (MM/DD)
+            const dateStr = (now.getMonth()+1).toString().padStart(2,'0') + '/' + now.getDate().toString().padStart(2,'0');
+            // 2. Get Time
+            const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+            chatLog.push({
+                user: currentUser, 
+                time: `${dateStr} ${timeStr}`, 
+                timestamp: Date.now(), // FIX: Precise sorting value
+                text: t
+            }); 
+
+            document.getElementById('chatInput').value=''; 
+            saveLocally(); 
+            render(); 
+        }
+    }
+}
+
+function nav(id, force=false) { 
+        // --- 1. SAFETY CHECK (Estimator Guard) ---
+        const currentView = document.querySelector('.view-section.active');
+        if(!force && currentView && currentView.id === 'view-estimator' && id !== 'estimator') {
+            if(estItems.length > 0) {
+                showConfirm(
+                    "You have unsaved line items in the estimator. Discard them?", 
+                    () => { resetEstimator(); nav(id, true); },
+                    "Discard Unsaved Estimate?", true
+                );
+                return; 
+            }
+        }
+        
+        window.scrollTo(0, 0);
+        document.querySelector('.main').scrollTop = 0;
+
+        // 2. Reset Sort Direction
+        sortDir = 1; 
+
+        // 3. Switch the Main View
+        document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active')); 
+
+        const chatPanel = document.querySelector('.chat-panel');
+        
+        if(id === 'chat') {
+            chatPanel.classList.add('active'); // Show Chat Panel
+        } else {
+            chatPanel.classList.remove('active'); // Hide Chat Panel
+            
+            // Only activate a standard view if we are NOT in chat mode
+            const view = document.getElementById('view-' + id);
+            if(view) view.classList.add('active');
+        }
+
+        // 4. Highlight the Sidebar Button
+        document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active')); 
+        const btn = document.getElementById('nav-' + (id === 'project-detail' ? 'proj' : id));
+        if(btn) btn.classList.add('active');
+
+        // 5. Specific Tool Initialization logic
+        // 5. Specific Tool Initialization logic
+        if(id === 'hp') { 
+            // Load saved tab or default to 'decay'
+            const lastTab = localStorage.getItem('rad_hp_active_tab') || 'decay';
+            switchHpTab(lastTab); 
+            loadHPState(); 
+        }
+        if(id === 'finance') { 
+            // Load saved tab or default to 'overview'
+            const lastTab = localStorage.getItem('rad_fin_active_tab') || 'overview';
+            switchFinTab(lastTab); 
+        }
+        if(id === 'estimator') {
+             const sel = document.getElementById('est-proj-select');
+             const currentVal = sel.value; 
+             let html = '<option value="">-- Select Project --</option>';
+             projects.forEach(p => html += `<option value="${p.id}">${esc(p.title)}</option>`);
+             sel.innerHTML = html;
+             if(currentVal) sel.value = currentVal; 
+             updateEstItems(); calcEstimate(); 
+        }
+
+        // 6. Update Browser Tab Title
+        let title = APP_VER;
+        switch(id) {
+            case 'dashboard': title = "Dash | " + APP_VER; break;
+            case 'projects': title = "Projects | " + APP_VER; break;
+            case 'all-tasks': title = "Task Master | " + APP_VER; break;
+            case 'finance': title = "Cost | " + APP_VER; break;
+            case 'estimator': title = "Estimator | " + APP_VER; break;
+            case 'inventory': title = "Inv | " + APP_VER; break;
+            case 'hp': title = "HP Tools | " + APP_VER; break;
+            case 'exempt': title = "Exempt Log | " + APP_VER; break;
+            case 'logbook': title = "Logbook | " + APP_VER; break;
+            case 'references': title = "Library | " + APP_VER; break;
+        }
+        document.title = title;
+
+        localStorage.setItem('rad_active_view', id);
+    
+        // Force Render for Master Task List ---
+    // This ensures the list populates immediately when you switch to this view
+    if (id === 'all-tasks') {
+        render();
+    }
+}
+    
+function openModal(id) { 
+        document.getElementById(id).classList.add('active'); 
+        
+        // --- Render Team Settings when opening the modal ---
+        if(id === 'settingsModal') {
+            renderTeamSettings();
+        }
+
+        if(id === 'projectModal') {
+            document.getElementById('pTitle').value = '';
+            document.getElementById('pDesc').value = '';
+            document.getElementById('pDate').value = '';
+            document.getElementById('pCost').value = '';
+
+            // Clear Primary
+            document.getElementById('pPoc').value = '';
+            document.getElementById('pPocEmail').value = '';
+            document.getElementById('pPocPhone').value = '';
+
+            // Clear Alternate
+            document.getElementById('pPoc2').value = '';
+            document.getElementById('pPocEmail2').value = '';
+            document.getElementById('pPocPhone2').value = '';
+
+            if(document.getElementById('pUic')) document.getElementById('pUic').value = '';
+            if(document.getElementById('pLoc')) document.getElementById('pLoc').value = '';
+            setTimeout(() => document.getElementById('pTitle').focus(), 50);
+        }
+
+        if(id === 'invModal') {
+            const sel = document.getElementById('invProj');
+            sel.innerHTML = '<option value="">-- None --</option>'; 
+            // Alphabetical Sort
+            const sortedP = [...projects].sort((a,b) => a.title.localeCompare(b.title));
+            sortedP.forEach(p => {
+                sel.innerHTML += `<option value="${p.id}">${esc(p.title)}</option>`;
+            });
+        }
+
+        if(id === 'expenseModal' || id === 'allocModal') { 
+            const sel = document.getElementById(id === 'expenseModal' ? 'expProj' : 'allocProj'); 
+            sel.innerHTML = '<option value="">-- General --</option>'; 
+            // Alphabetical Sort
+            const sortedP = [...projects].sort((a,b) => a.title.localeCompare(b.title));
+            sortedP.forEach(p => sel.innerHTML += `<option value="${p.id}">${esc(p.title)}</option>`); 
+            
+            if(id === 'expenseModal') {
+                document.getElementById('expDesc').value = '';
+                document.getElementById('expAmt').value = '';
+                document.getElementById('expDate').value = getTodayStr(); 
+            } else {
+                document.getElementById('allocDesc').value = '';
+                document.getElementById('allocAmt').value = '';
+                document.getElementById('allocDate').value = getTodayStr();
+            }
+        }
+    }
+
+let searchDebounce;
+    function handleSearch(val) {
+        clearTimeout(searchDebounce);
+        // Wait 300ms after typing stops before refreshing the view
+        searchDebounce = setTimeout(() => {
+            render(val);
+        }, 300);
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    
+    function openExportModal() { 
+        const data = JSON.stringify({
+            projects, inventory, expenses, allocations, 
+            chat: chatLog, team, wiki: wikiText, 
+            hpState, viewMode, showComplete, estItems, exemptLog,
+            deletedProjects 
+        });
+
+        document.getElementById('exportText').value = data;
+        openModal('exportModal');
+    }
+
+    function copyExport() {
+        const copyText = document.getElementById("exportText");
+        copyText.select();
+        document.execCommand("copy");
+        showToast("Copied to clipboard", "info");
+    }
+
+    function openImportModal() {
+        document.getElementById('importText').value = '';
+        openModal('importModal');
+    }
+
+// --- SCHEMA VALIDATOR ---
+function validateSchema(d) {
+    const errors = [];
+    
+    // 1. Define required lists (Auto-fix if missing)
+    const lists = ['projects', 'inventory', 'expenses', 'allocations', 'chat', 
+                   'team', 'estItems', 'exemptLog', 'references', 
+                   'tombstones', 'deletedProjects', 'deletedInventory'];
+
+    lists.forEach(key => {
+        if (d[key] === undefined || d[key] === null) {
+            d[key] = []; // Auto-repair: Create empty array if missing
+        } else if (!Array.isArray(d[key])) {
+            errors.push(`Critical: '${key}' must be a list, found ${typeof d[key]}.`);
+        }
+    });
+
+    // 2. Stop immediately if top-level structure is broken
+    if (errors.length > 0) throw new Error(errors.join("\n"));
+
+    // 3. Deep Scan: Integrity Checks
+    // Check Projects
+    d.projects.forEach((p, i) => {
+        if (!p.id) errors.push(`Project #${i} is missing an ID.`);
+        if (!p.title) p.title = "Untitled Project"; // Soft repair
+        if (!Array.isArray(p.tasks)) p.tasks = [];  // Soft repair
+        if (!Array.isArray(p.links)) p.links = [];  // Soft repair
+    });
+
+    // Check Inventory
+    d.inventory.forEach((item, i) => {
+        if (!item.id) errors.push(`Inventory item #${i} is missing an ID.`);
+    });
+
+    // Check Expenses
+    d.expenses.forEach((e, i) => {
+        if (!e.amount && e.amount !== 0) errors.push(`Expense #${i} is missing an amount.`);
+    });
+
+    if (errors.length > 0) {
+        // Return only the first 3 errors to keep the alert readable
+        throw new Error("Data Integrity Failed:\n- " + errors.slice(0, 3).join("\n- ") + (errors.length > 3 ? "\n...and more." : ""));
+    }
+
+    return d; // Return the sanitized data object
+}
+
+function runImport() {
+    try {
+        const raw = document.getElementById('importText').value;
+        if(!raw) throw new Error("No data pasted.");
+
+        // 1. PARSE & VALIDATE
+        let d = JSON.parse(raw);
+        
+        // Use the validateSchema helper we created earlier
+        // (Ensure you added the validateSchema function above this one as discussed!)
+        d = validateSchema(d); 
+
+        // 2. CONFLICT-AWARE MERGE ENGINE
+        const mergeList = (currentList, importedList) => {
+            if(!importedList) return currentList;
+            
+            let updates = 0;
+            let adds = 0;
+            let zombies = 0;
+
+            importedList.forEach(importItem => {
+                // A. CHECK GRAVEYARD (Zombie Protection)
+                // If we deleted this item locally, we don't want an old import bringing it back to life.
+                const stone = tombstones.find(t => t.id === importItem.id);
+                const tImport = importItem.updated || 0;
+
+                if (stone) {
+                    // If the import is OLDER than our deletion, block it.
+                    if (stone.date > tImport) {
+                        zombies++;
+                        return; // Skip this item
+                    }
+                    // If import is NEWER than deletion, it's a valid Restoration. Allow it.
+                }
+
+                // B. STANDARD MERGE
+                const idx = currentList.findIndex(x => x.id === importItem.id);
+                
+                if(idx > -1) {
+                    const local = currentList[idx];
+                    const tLocal = local.updated || 0;
+
+                    // Only overwrite if the import is newer
+                    if(tImport > tLocal) {
+                        currentList[idx] = importItem;
+                        updates++;
+                    }
+                } else {
+                    currentList.push(importItem);
+                    adds++;
+                }
+            });
+            console.log(`Merge Stats: ${adds} added, ${updates} updated, ${zombies} zombies blocked.`);
+            return currentList;
+        };
+        
+        // 3. MERGE TOMBSTONES FIRST
+        // We need to know what the other user deleted before we process their data.
+        if(d.tombstones) {
+            d.tombstones.forEach(t => {
+                const exists = tombstones.find(local => local.id === t.id);
+                if(!exists) tombstones.push(t);
+                else if(t.date > exists.date) exists.date = t.date;
+            });
+        }
+
+        // 4. EXECUTE MERGES
+        mergeList(projects, d.projects);
+        mergeList(inventory, d.inventory);
+        mergeList(expenses, d.expenses);
+        mergeList(allocations, d.allocations);
+        mergeList(exemptLog, d.exemptLog);
+        mergeList(deletedProjects, d.deletedProjects);
+        mergeList(references, d.references);
+
+        // 5. APPLY "THE REAPER"
+        // If the import contained new tombstones, we must now delete those items from our active lists.
+        const applyGraves = (list) => {
+            return list.filter(item => {
+                const grave = tombstones.find(t => t.id === item.id);
+                // If a grave exists AND it is newer than the item's last update...
+                if(grave && grave.date > (item.updated || 0)) {
+                    console.log(`Reaper: Removing ${item.id} based on imported tombstone.`);
+                    return false; // DELETE IT
+                }
+                return true; // KEEP IT
+            });
+        };
+
+        projects = applyGraves(projects);
+        inventory = applyGraves(inventory);
+        expenses = applyGraves(expenses);
+        allocations = applyGraves(allocations);
+        exemptLog = applyGraves(exemptLog);
+        references = applyGraves(references);
+
+        // 6. MERGE SIMPLE LISTS (Append Only)
+        if(d.chat) {
+    d.chat.forEach(c => {
+        // Avoid duplicate chat messages
+        const exists = chatLog.some(x => x.time === c.time && x.text === c.text);
+        if(!exists) {
+            // Retroactive Fix: If importing old data without a timestamp, try to generate one
+            // (Note: this still guesses the year for legacy data, but fixes mixed sorting)
+            if(!c.timestamp) c.timestamp = new Date(c.time).getTime() || 0;
+            chatLog.push(c);
+        }
+    });
+    
+    // Sort using the precise timestamp first
+    chatLog.sort((a,b) => {
+        const tA = a.timestamp || new Date(a.time).getTime();
+        const tB = b.timestamp || new Date(b.time).getTime();
+        return tA - tB;
+    });
+}
+        
+        if(d.team) {
+            d.team.forEach(m => { if(!team.includes(m)) team.push(m); });
+        }
+        
+        if(d.wiki && d.wiki !== wikiText && !wikiText.includes(d.wiki)) {
+            wikiText += "\n\n--- IMPORTED NOTES ---\n" + d.wiki;
+        }
+
+        // 7. CLEANUP & SAVE
+        // Normalize isotope names in case the import had bad spelling
+        inventory.forEach(i => { if(i.iso) i.iso = normalizeIso(i.iso); });
+
+        saveLocally(); 
+        render(); 
+        loadHPState();
+        closeModal('importModal');
+        
+        // 8. USER FEEDBACK
+        showToast("Data Merged (Newer versions kept)");
+
+    } catch(e) { 
+        console.error(e);
+        showAlert("<b>Import Failed:</b><br>" + e.message, "Error");
+    }
+}
+
+    function saveLocally() { 
+    localStorage.setItem('rad25_7_data', JSON.stringify({
+        projects, inventory, deletedInventory, expenses, allocations, 
+        chat: chatLog, team, wiki: wikiText, 
+        hpState, viewMode, showComplete, estItems, exemptLog,
+        tombstones, deletedProjects
+    })); 
+}
+
+    function loadHPState() {
+        // Updated state loader
+        if(!hpState) return;
+        Object.keys(hpState).forEach(k => {
+            const el = document.getElementById(k);
+            if(el) el.value = hpState[k];
+        });
+        // Recalculate if possible
+        if(hpState['calc-a0']) calculateDecay();
+        if(hpState['dist-d1']) calcInverseSquare();
+        if(hpState['shield-i0']) calcShielding();
+        if(hpState['stay-rate']) calcStayTime();
+        if(hpState['alara-rate']) calcAlara();
+    }
+
+    function loadLocally() { 
+        populateIsoSelects(); 
+        
+        // 1. Load Theme
+        const theme = localStorage.getItem('rad_theme'); 
+        if (theme === 'dark') document.body.setAttribute('data-theme', 'dark'); 
+        
+        // 2. Load Data
+        const d = JSON.parse(localStorage.getItem('rad25_7_data')); 
+        const hasInitialized = localStorage.getItem('rad_init_flag');
+
+        if(d) { 
+            // Load standard arrays
+            projects=d.projects||[]; inventory=d.inventory||[]; 
+            expenses=d.expenses||[]; allocations=d.allocations||[]; 
+            chatLog=d.chat||[]; team=d.team||[]; 
+            wikiText=d.wiki||""; hpState=d.hpState||{}; 
+            estItems=d.estItems||[]; exemptLog=d.exemptLog||[];
+
+            // Load Tombstones
+            tombstones = d.tombstones || [];
+
+            deletedProjects = d.deletedProjects || [];
+
+            deletedInventory = d.deletedInventory || [];
+
+            viewMode=d.viewMode||'list'; showComplete=d.showComplete||false; 
+
+            // Load User References
+            references = d.references || [];
+
+            // Create a Set of existing IDs to quickly check what the user already has
+            const currentRefIds = new Set(references.map(r => r.id));
+            
+            STARTER_DATA.references.forEach(starterRef => {
+                // If the user is missing a "starter" reference, add it now.
+                // This allows you to push new links in future updates.
+                if (!currentRefIds.has(starterRef.id)) {
+                    references.push(starterRef);
+                    // Optional: Sort by ID so new ones don't just appear randomly at the end
+                    references.sort((a,b) => a.id - b.id);
+                }
+            });
+            
+            // Migrations (Legacy data cleanup)
+            allocations.forEach(a => { if(!a.type && a.desc.toLowerCase().includes('initial')) a.type = 'base'; });
+            projects.forEach(p => {
+                if(p.cost && !allocations.find(a => a.projId === p.id)) {
+                    let cleanCost = p.cost.toString().replace(/,/g, '');
+                    allocations.push({id: Date.now() + Math.random(), projId: p.id, date: p.due, amount: parseFloat(cleanCost), desc: "Initial Budget", type: 'base'});
+                    delete p.cost;
+                }
+                if(!p.updatesSent) {
+                    p.updatesSent = [];
+                    if(p.updatesDate) { p.updatesSent.push(p.updatesDate); delete p.updatesDate; }
+                }
+            });
+        } 
+        else {
+            // First time load logic
+            if(!hasInitialized) {
+                resetData(false); 
+                localStorage.setItem('rad_init_flag', 'true');
+            } else {
+                projects=[]; inventory=[]; expenses=[]; allocations=[]; chatLog=[]; team=[]; estItems=[]; exemptLog=[];
+            }
+        }
+        
+        render(); 
+        loadHPState();
+        updateEstItems(); 
+        calcEstimate(); 
+
+        document.getElementById('sidebar-user-display').innerText = currentUser;
+
+    const lastView = localStorage.getItem('rad_active_view');
+    const lastProj = localStorage.getItem('rad_active_proj');
+
+    if (lastView === 'project-detail' && lastProj) {
+        // If they were looking at a specific project, verify it still exists
+        const pExists = projects.some(p => p.id == lastProj);
+        if(pExists) {
+            viewProject(parseInt(lastProj));
+        } else {
+            nav('dashboard'); // Fallback if project was deleted
+        }
+    } else if (lastView) {
+        // Restore standard tabs (Inventory, Finance, etc.)
+        nav(lastView);
+    } else {
+        // Default to dashboard
+        nav('dashboard');
+    }
+}
+
+    function registerDeletion(id) {
+    // Check if already tombstoned to avoid duplicates
+    const exists = tombstones.find(t => t.id === id);
+    if(!exists) {
+        tombstones.push({ id: id, date: Date.now() });
+    } else {
+        // Update timestamp if deleted again (rare but possible)
+        exists.date = Date.now();
+    }
+}
+    
+function resetData(ask=true) { 
+        // Helper function that performs the actual reset
+        const doReset = () => {
+            projects = JSON.parse(JSON.stringify(STARTER_DATA.projects)); 
+            inventory = JSON.parse(JSON.stringify(STARTER_DATA.inventory)); 
+            expenses = JSON.parse(JSON.stringify(STARTER_DATA.expenses)); 
+            references = JSON.parse(JSON.stringify(STARTER_DATA.references));
+            allocations = JSON.parse(JSON.stringify(STARTER_DATA.allocations)); 
+            chatLog = JSON.parse(JSON.stringify(STARTER_DATA.chat)); 
+            team = JSON.parse(JSON.stringify(STARTER_DATA.team));
+            wikiText = STARTER_DATA.wiki; 
+            exemptLog = JSON.parse(JSON.stringify(STARTER_DATA.exemptLog || []));
+            
+            saveLocally(); 
+            
+            // Reload to ensure all states (like ID generators) reset cleanly
+            location.reload(); 
+        };
+
+        if(ask) {
+            // Use custom confirm modal
+            showConfirm(
+                "Reset all data to Example Defaults?<br><b>This cannot be undone.</b>", 
+                doReset, 
+                "Factory Reset", 
+                true // Danger style
+            );
+        } else {
+            doReset();
+        }
+    }
+
+// --- CONFETTI ENGINE (Final Snappy Version) ---
+function fireConfetti() {
+    const colors = ['#dc2626', '#d97706', '#059669', '#2563eb', '#7c3aed', '#f43f5e'];
+    
+    for(let i=0; i<200; i++) {
+        const p = document.createElement('div');
+        p.style.position = 'fixed';
+        p.style.left = '50%';
+        p.style.top = '50%'; 
+        p.style.width = '6px';
+        p.style.height = '6px';
+        p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        p.style.zIndex = '9999';
+        p.style.borderRadius = '50%';
+        p.style.pointerEvents = 'none'; 
+        document.body.appendChild(p);
+
+        const angle = Math.random() * Math.PI * 2; 
+        const velocity = Math.random() * 300 + 50; 
+        
+        const flyX = Math.cos(angle) * velocity;
+        const flyY = Math.sin(angle) * velocity; 
+        const driftX = (Math.random() - 0.5) * 50;
+
+        p.animate([
+            // 1. POP
+            { 
+                transform: `translate(0,0) scale(1)`, 
+                opacity: 1, 
+                offset: 0, 
+                easing: 'cubic-bezier(0.25, 1, 0.5, 1)' 
+            },
+            
+            // 2. PEAK
+            { 
+                transform: `translate(${flyX}px, ${flyY}px) scale(1)`, 
+                opacity: 1, 
+                offset: 0.15, 
+                easing: 'linear' 
+            },
+            
+            // 3. HOVER
+            { 
+                transform: `translate(${flyX + driftX * 0.5}px, ${flyY + 40}px) scale(0.9)`, 
+                opacity: 1, 
+                offset: 0.55, 
+                easing: 'ease-in' 
+            },
+            
+            // 4. FADE OUT
+            { 
+                transform: `translate(${flyX + driftX}px, ${flyY + 250}px) scale(0)`, 
+                opacity: 0, 
+                offset: 1 
+            }
+        ], { 
+            // Reduced duration by ~1500ms
+            duration: 2500 + Math.random() * 2000, 
+            fill: 'forwards'
+        }).onfinish = () => p.remove();
+    }
+}
+
+// --- PHONE MASK HELPER ---
+    const maskPhone = (e) => {
+        // Strip non-numbers
+        let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,4})/);
+        // Rebuild as (123) 456-7890
+        e.target.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '');
+    };
+
+function clearData() { 
+        showConfirm(
+            "Clear all application data?<br>This will wipe everything and cannot be undone.", 
+            () => { 
+                projects=[]; inventory=[]; expenses=[]; allocations=[]; 
+                chatLog=[]; team=[]; wikiText=""; hpState={}; 
+                estItems=[]; exemptLog=[]; deletedProjects=[]; deletedInventory=[]; tombstones=[]; references=[];
+                
+                currentInvId = null;
+                localStorage.removeItem('rad_active_proj');
+                localStorage.removeItem('rad_active_view');
+                localStorage.removeItem('rad_hp_active_tab');
+                localStorage.removeItem('rad_fin_active_tab');
+
+                saveLocally(); 
+                nav('dashboard'); // FORCE HOME
+                render(); 
+                showToast("System Wiped & Reset");
+            }, 
+            "Clear All Data", 
+            true
+        );
+    }
+
+    function toggleTheme() { const b=document.body; const newTheme = b.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; if(newTheme === 'dark') b.setAttribute('data-theme', 'dark'); else b.removeAttribute('data-theme'); localStorage.setItem('rad_theme', newTheme); }
+
+// --- GLOBAL SHORTCUTS & BEHAVIOR ---
+
+// 1. Close Modals on "Escape" key
+document.addEventListener('keydown', (e) => {
+    if (e.key === "Escape") {
+
+        if(document.getElementById('customAlertOverlay').style.display === 'flex') {
+             closeCustomAlert(); return; 
+        }
+        
+        const active = document.querySelector('.modal-overlay.active');
+        if (active) closeModal(active.id);
+    }
+});
+
+// 2. Close Modals on Click Outside
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeModal(overlay.id);
+    });
+});
+
+// 3. Global "Ctrl+S" Override
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault(); // Stop browser from saving the file
+        
+        // Detect which modal is open and trigger its primary button
+        if(document.getElementById('projectModal').classList.contains('active')) addProject();
+        else if(document.getElementById('invModal').classList.contains('active')) addInventory();
+        else if(document.getElementById('expenseModal').classList.contains('active')) addExpense();
+        else if(document.getElementById('allocModal').classList.contains('active')) addAllocation();
+        else if(document.getElementById('exemptModal').classList.contains('active')) addExemptEntry();
+        else if(document.getElementById('refModal').classList.contains('active')) addReference();
+        else if(document.getElementById('est-proj-select') && document.getElementById('est-proj-select').value) {
+            // If in Estimator and project selected, save locally
+            saveLocally(); 
+            showToast("Estimator Saved");
+        }
+        else {
+            // Fallback: Just save/sync everything
+            saveLocally();
+            showToast("System Synced & Saved");
+        }
+    }
+});
+    
+loadLocally();
