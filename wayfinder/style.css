@@ -127,13 +127,7 @@ body.light-mode .crt::before { display: none; }
 
 .log-datestamp { color: #707090; margin-right: 8px; }
 .planet-icon-img { width: 64px; height: 64px; object-fit: contain; margin: 10px auto; }
-#playerStats {
-    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; 
-    gap: 15px; padding: 10px;
-    background-color: var(--panel-bg);
-    border-radius: 8px; border: 1px solid var(--border-color);
-}
-#core-stats-wrapper { display: flex; justify-content: space-evenly; flex-wrap: nowrap; gap: 5px 15px; flex-grow: 1; }
+
 .combatant-icon { width: 48px; height: 48px; object-fit: contain; display: block; margin: 0 auto 10px; }
 #contextual-actions, #action-buttons-container { display: flex; gap: 10px; flex-direction: row; }
 
@@ -156,7 +150,14 @@ body.light-mode .crt::before { display: none; }
     grid-template-areas: "canvas log" "stats stats";
     flex: 1; min-height: 0;
 }
-#gameCanvas { grid-area: canvas; background-image: url('assets/starfield.png'); border: 1px solid var(--border-color); }
+#gameCanvas { grid-area: canvas; background-image: url('assets/starfield.png'); border: 1px solid var(--border-color);     width: 100%;
+    /* 25 tiles width / 15 tiles height = 1.666 aspect ratio */
+    aspect-ratio: 25 / 15; 
+    max-height: 80vh; /* Don't let it get taller than the screen */
+    object-fit: contain; /* Ensures valid scaling */
+    background-color: #000; /* Letterboxing color */
+}
+
 #messageArea { grid-area: log; height: 100%; } 
 #playerStats { grid-area: stats; }
 
@@ -169,14 +170,129 @@ body.light-mode .crt::before { display: none; }
 
 @media (max-width: 768px) {
     #gameContainer {
-        grid-template-columns: 1fr; grid-template-rows: auto auto auto; 
-        grid-template-areas: "canvas" "log" "stats";
+        /* Switch to a single column stack */
+        display: flex; 
+        flex-direction: column;
+        height: auto; /* Allow scrolling on the body */
+        overflow-y: auto;
+    }
+
+    #gameCanvas {
+        /* On mobile, let the canvas take full width, but keep aspect ratio */
+        width: 100%;
+        aspect-ratio: 25 / 15;
+    }
+    
+    #messageArea {
+        /* Give the log a fixed height on mobile so it's readable */
+        height: 200px; 
+        overflow-y: scroll;
+        flex-shrink: 0;
     }
 }
+
+#playerStats {
+    /* Changed from 'space-between' to 'center' for better balance when wrapping */
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    flex-wrap: wrap; 
+    gap: 15px; 
+    padding: 15px;
+    background-color: var(--panel-bg);
+    border-radius: 8px; 
+    border: 1px solid var(--border-color);
+}
+
+/* New: container for left/right zones to wrap nicely */
+#left-stats-zone, #right-stats-zone { 
+    display: flex; 
+    align-items: center; 
+    gap: 15px; 
+    flex-wrap: wrap; 
+    justify-content: center; 
+}
+
+#core-stats-wrapper { 
+    display: flex; 
+    /* CRITICAL FIX: Changed from 'nowrap' to 'wrap' to fix the bleeding */
+    flex-wrap: wrap; 
+    justify-content: center; 
+    /* Better spacing: 10px vertical, 25px horizontal between stats */
+    gap: 10px 25px; 
+    flex-grow: 1;
+    /* Add border separators for clean separation from other zones */
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    padding: 0 15px;
+}
+
+/* Hide side borders on small screens where stats stack vertically */
+@media (max-width: 1000px) {
+    #core-stats-wrapper {
+        border-left: none;
+        border-right: none;
+        border-top: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color);
+        padding: 15px 0;
+        margin: 5px 0;
+    }
+}
+
+.stat-item { 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    text-align: center; 
+    /* Give stats a minimum width so they don't squish too much */
+    min-width: 60px; 
+}
+
+/* Ensure Action buttons wrap nicely if screen is tight */
+#action-buttons-container { 
+    display: flex; 
+    gap: 8px; 
+    flex-direction: row; 
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Make stats pop a bit more */
+.stat { 
+    color: var(--accent-color); 
+    font-weight: bold; 
+    font-size: 15px; 
+    line-height: 1.2;
+    /* Ensure long titles (like Notoriety) truncate gracefully if absolutely needed */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px; 
+    display: block;
+    text-shadow: 0 0 5px rgba(0, 224, 224, 0.2); 
+}
+
+.stat-label { 
+    color: #8888AA; 
+    font-size: 11px; /* Slightly readable */
+    font-weight: 600;
+    line-height: 1; 
+    margin-bottom: 5px; 
+    text-transform: uppercase; 
+    white-space: nowrap; 
+    letter-spacing: 0.5px; /* Clean look */
+}
+
 #main-view-wrapper { grid-area: canvas; overflow-y: hidden; min-height: 0; }
 #left-stats-zone, #right-stats-zone { display: flex; align-items: center; gap: 15px; }
-.stat-item { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 5px; }
-.stat { color: var(--accent-color); font-weight: bold; font-size: 14px; line-height: 1; }
+
+.stat { color: var(--accent-color); font-weight: bold; font-size: 14px; line-height: 1;     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    display: block;
+}
+
 .stat-label { color: #8888AA; font-size: 10px; line-height: 1; margin-bottom: 4px; text-transform: uppercase; white-space: nowrap; }
 .sector-coords { font-size: 12px; line-height: 14px; color: #6A6A8A; margin-top: 1px; }
 
