@@ -743,10 +743,11 @@
             }, [addToast]);
             
             const scrollToMainContent = () => {
-            
-            if (mainContentRef.current) {
-            mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
+              // Only scroll on mobile devices (e.g., width < 768px) 
+              // to prevent jarring jumps on desktop where content is already visible.
+              if (window.innerWidth < 768 && mainContentRef.current) {
+                mainContentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
             };
             
             const handleNavClick = (view, opHpTab = null) => {
