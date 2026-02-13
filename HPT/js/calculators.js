@@ -92,7 +92,16 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
             const num_half_lives = time_seconds / T_half_seconds;
             const bestUnit = getBestHalfLifeUnit(time_seconds) || 'seconds'; // Fallback to seconds
             
-            const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+            const unitConversions = { 
+                'seconds': 1, 
+                'minutes': 60, 
+                'hours': 3600, 
+                'days': 86400, 
+                'years': 31557600,
+                'kiloyears': 31557600 * 1e3,
+                'megayears': 31557600 * 1e6,
+                'gigayears': 31557600 * 1e9
+            };
             // Ensure we match the key regardless of case (e.g. "Days" vs "days")
             const conversionFactor = unitConversions[bestUnit.toLowerCase()] || 1; 
             
@@ -252,6 +261,7 @@ const offset = now.getTimezoneOffset() * 60000;
 const localIso = new Date(now - offset).toISOString().slice(0, 16);
 return localIso;
 };
+
 const DecayTools = ({ radionuclides, preselectedNuclide, theme }) => {
 const { settings } = React.useContext(SettingsContext);
 const [activeCalculator, setActiveCalculator] = React.useState(() => localStorage.getItem('decayTools_activeTab') || 'standard');
@@ -286,7 +296,11 @@ const [corr_originalActivityUnit, setCorr_originalActivityUnit] = React.useState
 const [corr_originalDate, setCorr_originalDate] = React.useState(() => localStorage.getItem('corr_originalDate') || getNowString());
 const [corr_targetDate, setCorr_targetDate] = React.useState(() => localStorage.getItem('corr_targetDate') || getNowString());
 
-const [dtl_selectedNuclide, setDtl_selectedNuclide] = React.useState(() => { const saved = localStorage.getItem('dtl_nuclideSymbol'); return saved ? radionuclides.find(n => n.symbol === saved) : null; });
+const [dtl_selectedNuclide, setDtl_selectedNuclide] = React.useState(() => { 
+    const saved = localStorage.getItem('dtl_nuclideSymbol'); 
+    return saved ? radionuclides.find(n => n.symbol === saved) || null : null; 
+});
+
 const [dtl_initialActivity, setDtl_initialActivity] = React.useState(() => localStorage.getItem('dtl_initialActivity') || '10');
 const [dtl_initialUnit, setDtl_initialUnit] = React.useState(() => localStorage.getItem('dtl_initialUnit') || activityUnits[1]);
 const [dtl_finalActivity, setDtl_finalActivity] = React.useState(() => localStorage.getItem('dtl_finalActivity') || '0.001');
@@ -332,24 +346,14 @@ setStd_remainingUnit(activityUnits[1]); // Reset unit
 setStd_timeElapsed('1');
 setStd_timeUnit('days');
 setStd_useLogScale(false);
-Object.keys(localStorage).forEach(key => {
-    if (key.startsWith('decayCalc_')) {
-        localStorage.removeItem(key);
-    }
-});
 };
 
 const handleCorrectionClear = () => {
-setCorr_nuclideSymbol('');
-setCorr_originalActivity('10');
-setCorr_originalActivityUnit(activityUnits[1]);
-setCorr_originalDate('2020-01-01');
-setCorr_targetDate(getNowString());
-Object.keys(localStorage).forEach(key => {
-    if (key.startsWith('corr_')) {
-        localStorage.removeItem(key);
-    }
-});
+    setCorr_nuclideSymbol('');
+    setCorr_originalActivity('10');
+    setCorr_originalActivityUnit(activityUnits[1]);
+    setCorr_originalDate(getNowString());
+    setCorr_targetDate(getNowString());
 };
 
 const handleDecayToLimitClear = () => {
@@ -489,13 +493,17 @@ const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             const absSeconds = Math.abs(timeElapsed_s);
             const direction = timeElapsed_s >= 0 ? 'elapsed' : 'ago'; // Label for past/future
             
-            let timeLabel = `${(absSeconds / 86400).toFixed(2)} days`;
+            let timeLabel = '';
             if (absSeconds < 60) {
                  timeLabel = `${absSeconds.toFixed(1)} seconds`;
             } else if (absSeconds < 3600) {
                  timeLabel = `${(absSeconds / 60).toFixed(1)} min`;
             } else if (absSeconds < 86400) {
                  timeLabel = `${(absSeconds / 3600).toFixed(2)} hours`;
+            } else if (absSeconds < 31557600) { // Less than a standard year
+                 timeLabel = `${(absSeconds / 86400).toFixed(2)} days`;
+            } else {
+                 timeLabel = `${(absSeconds / 31557600).toFixed(2)} years`;
             }
 
             setResult({ 
@@ -648,7 +656,10 @@ const StandardDecayCalculator = ({
     const MODE_INITIAL = 'findInitial';
     const MODE_DAUGHTER = 'findDaughterActivity';
 
-    const unitConversions = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+    const unitConversions = { 
+        'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600,
+        'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 
+    };
     
     // Memoize factors to prevent re-calc
     const activityFactors = React.useMemo(() => ({
@@ -889,7 +900,6 @@ const StandardDecayCalculator = ({
             const steps = 100;
             const plotFactor = getFactor(initialUnit); 
             const CUTOFF = plotA0_Bq * 1e-10;
-            let labelDecimals = plotTimeConverted >= 100 ? 0 : 1;
 
             const tenHalfLives = 15 * T_half_seconds;
             const effectivePlotTime = Math.min(plotTimeAbs, tenHalfLives);
@@ -899,7 +909,15 @@ const StandardDecayCalculator = ({
                 if (i === steps) timePoint_seconds = plotTimeAbs; 
 
                 const timePoint_display = timePoint_seconds / unitConversions[bestChartUnit];
-                labels.push(safeParseFloat(timePoint_display.toFixed(labelDecimals)).toString());
+        
+                let label = timePoint_display.toFixed(2);
+                if (plotTimeConverted < 0.1) {
+                    label = timePoint_display.toExponential(2);
+                } else if (plotTimeConverted >= 100) {
+                    label = timePoint_display.toFixed(0);
+                }
+                
+                labels.push(label);
 
                 let p_val_bq = (plotA0_Bq * Math.exp(-lambda * timePoint_seconds));
                 p_val_bq = Math.max(0, p_val_bq);
@@ -1155,8 +1173,18 @@ const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, re
 
     // Move constants outside or memoize to avoid re-creation
     const toMicroCurie = React.useMemo(() => ({ 
-        'pCi': 1e-6, 'nCi': 1e-3, 'µCi': 1, 'mCi': 1e3, 'Ci': 1e6, 
-        'Bq': 2.7e-5, 'kBq': 0.027, 'MBq': 27, 'GBq': 27000 
+        'pCi': 1e-6, 
+        'nCi': 1e-3, 
+        'µCi': 1, 
+        'uCi': 1, // Keyboard fallback
+        'mCi': 1e3, 
+        'Ci': 1e6, 
+        // Let JS calculate the exact floating point for precision
+        'Bq': 1 / 3.7e4, 
+        'kBq': 1e3 / 3.7e4, 
+        'MBq': 1e6 / 3.7e4, 
+        'GBq': 1e9 / 3.7e4,
+        'TBq': 1e12 / 3.7e4 
     }), []);
 
     const volConversions = React.useMemo(() => ({ 
@@ -1415,9 +1443,10 @@ const SurfaceContaminationCalculator = ({
             let totalMaxDPM = null;
 
             // 2. Calculate Removable (Wipe)
-            if (wipeGrossCpm && wipeBackgroundCpm && instrumentEff) {
-                if (wEff <= 0) throw new Error("Efficiency must be positive.");
-                if (wFactor <= 0 || wFactor > 1) throw new Error("Smear Factor must be 0-1.");
+            if (wipeGrossCpm !== '' && wipeBackgroundCpm !== '' && instrumentEff !== '' && smearEff !== '') {
+                if (isNaN(wGross) || isNaN(wBkg) || isNaN(wEff) || isNaN(wFactor)) throw new Error("Wipe inputs must be valid numbers.");
+                if (wEff <= 0) throw new Error("Efficiency must be greater than 0.");
+                if (wFactor <= 0 || wFactor > 1) throw new Error("Smear Factor must be between 0 and 1 (e.g., 0.1).");
 
                 const netWipe = Math.max(0, wGross - wBkg);
                 const totalWipeEff = (wEff / 100) * wFactor;
@@ -1425,7 +1454,12 @@ const SurfaceContaminationCalculator = ({
             }
 
             // 3. Calculate Total (Static List)
-            if (sPoints.length > 0 && instrumentEff && area > 0) {
+            if (sPoints.length > 0 && instrumentEff !== '' && probeArea !== '') {
+                // Ensure we don't calculate if the shared inputs are invalid
+                if (isNaN(wEff) || isNaN(area) || isNaN(wBkg)) throw new Error("Static inputs must be valid numbers.");
+                if (wEff <= 0) throw new Error("Efficiency must be greater than 0.");
+                if (area <= 0) throw new Error("Probe area must be greater than 0.");
+
                 const sEffDec = wEff / 100; // Reusing instrumentEff for now
                 
                 const dpmValues = sPoints.map(gross => {
