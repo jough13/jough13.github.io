@@ -2190,15 +2190,24 @@ function parseValueToCi(valueStr) {
       return Infinity;
    }
 
-   // 2. Handle missing spaces (e.g. "10mCi" -> "10 mCi")
-   // Regex now supports Scientific Notation (e.g. 1.2e-5)
-   const parts = valueStr.match(/([0-9.eE+-]+)\s*([a-zA-Zµ]+)/);
+   // Remove commas BEFORE doing any regex matching so "1,000" becomes "1000"
+   const cleanStr = valueStr.replace(/,/g, '');
+
+   // 2. Handle missing spaces and scientific notation (e.g. 1.2e-5)
+   const parts = cleanStr.match(/([0-9.eE+-]+)\s*([a-zA-Zµ]+)/);
 
    if (!parts) {
       // Fallback for just a number (assume Ci)
-      const val = parseFloat(valueStr.replace(/,/g, ''));
+      const val = parseFloat(cleanStr);
       return isNaN(val) ? null : val;
    }
+
+   const value = parseFloat(parts[1]);
+   const unit = parts[2] || 'Ci';
+   const multiplier = ciMultipliers[unit.trim().toLowerCase()] || 1;
+
+   return isNaN(value) ? null : value * multiplier;
+}
 
    const value = parseFloat(parts[1]);
    const unit = parts[2] || 'Ci';
