@@ -2237,7 +2237,7 @@ const RADIONUCLIDE_DATA = [{
          DAC: {
             inhalation_D: 5e-6,
             inhalation_W: 6e-7,
-            inhalation_D: 2e-7
+            inhalation_Y: 2e-7
          },
          sourceRef: 'Estimated'
       },
@@ -6283,8 +6283,8 @@ const RADIONUCLIDE_DATA = [{
              inhalation_W: 400
          },
          DAC: {
-             inhalation_D: '2e-7',
-             inhalation_W: '2e-7'
+             inhalation_D: 2e-7,
+             inhalation_W: 2e-7
          }
       }
    },
