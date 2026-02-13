@@ -4370,7 +4370,10 @@ const MassActivityModule = ({ radionuclides, selectedNuclide, setSelectedNuclide
     
     const massUnits = { 'µg': 1e-6, 'mg': 1e-3, 'g': 1, 'kg': 1000, 'lb': 453.592 };
     const activityFactorsBq = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4, 'kCi': 3.7e13 };
-    const saUnitFactors = { 'Bq/g': 1, 'kBq/g': 1e3, 'MBq/g': 1e6, 'GBq/g': 1e9, 'Ci/g': 3.7e10, 'mCi/g': 3.7e7, 'µCi/g': 37000 };
+    const saUnitFactors = { 
+        'Bq/g': 1, 'kBq/g': 1e3, 'MBq/g': 1e6, 'GBq/g': 1e9, 
+        'Ci/g': 3.7e10, 'mCi/g': 3.7e7, 'µCi/g': 37000, 'uCi/g': 37000 
+    };
     
     const getOrCalculateSA = (nuclide) => {
         if (useManualSA) {
@@ -4806,7 +4809,7 @@ const EquilibriumCalculator = ({ radionuclides, theme }) => {
     const [analysis, setAnalysis] = React.useState(null);
     const [useLogScale, setUseLogScale] = React.useState(() => JSON.parse(localStorage.getItem('equilibrium_useLogScale')) || false);
     
-    const timeUnitsOrdered = ['minutes', 'hours', 'days', 'years'];
+    const timeUnitsOrdered = ['minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
 
     // --- EFFECTS ---
     React.useEffect(() => {
@@ -4950,7 +4953,10 @@ const EquilibriumCalculator = ({ radionuclides, theme }) => {
         
         const T1_seconds = parseHalfLifeToSeconds(parentNuclide.halfLife);
         const T2_seconds = parseHalfLifeToSeconds(daughterNuclide.halfLife);
-        const unitConversions = { 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+        const unitConversions = { 
+            'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600,
+            'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 
+        };
         const t_seconds = t_input * unitConversions[timeUnit];
         const lambda1 = Math.log(2) / T1_seconds;
         const lambda2 = Math.log(2) / T2_seconds;
@@ -5021,7 +5027,10 @@ const EquilibriumCalculator = ({ radionuclides, theme }) => {
     };
     
     const setTimeTarget = (targetSeconds) => {
-        const unitConv = { 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600 };
+        const unitConv = { 
+            'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600,
+            'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 
+        };
         const bestUnit = getBestHalfLifeUnit(targetSeconds);
         // Ensure we stick to standard units the user expects
         const safeUnit = bestUnit === 'seconds' ? 'minutes' : bestUnit;
@@ -5425,7 +5434,7 @@ const RadonIngrowthCalculator = ({ result, setResult, error, setError, amount, s
     
     const massFactors_g = { 'ng': 1e-9, 'µg': 1e-6, 'mg': 1e-3, 'g': 1 };
     const activityFactors_Bq = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'µCi': 37000, 'mCi': 3.7e7, 'Ci': 3.7e10 };
-    const timeUnits = { 'minutes': 60, 'hours': 3600, 'days': 86400, 'weeks': 604800 };
+    const timeUnits = { 'minutes': 60, 'hours': 3600, 'days': 86400, 'weeks': 604800, 'years': 31557600 };
     
     React.useEffect(() => {
         try {
@@ -5761,6 +5770,7 @@ const RadonCalculator = ({ onNavClick }) => {
  * @description A versatile dose rate calculator handling Gamma (Point/Line/Area), Beta, and Internal Dose.
  * Features: Auto-calculation, Field Calc (Inverse Square), Geometry Visualizations, and Bremsstrahlung fix.
  */
+
 const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     // --- Constants ---
     const CALC_MODE_GAMMA = 'gamma';
@@ -5975,17 +5985,17 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     // --- ROBUST CONVERSION FACTORS ---
     const BQ_TO_CI = 1 / 3.7e10; 
     const activityFactorsCi = React.useMemo(() => ({
-        'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6,
+        'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'uCi': 1e-6,
         'TBq': BQ_TO_CI * 1e12, 'GBq': BQ_TO_CI * 1e9, 'MBq': BQ_TO_CI * 1e6, 'kBq': BQ_TO_CI * 1e3, 'Bq': BQ_TO_CI
     }), [BQ_TO_CI]);
 
     const distanceFactorsM = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048, 'km': 1000 };
-    const linearActivityFactorsCi_per_m = { 'µCi/cm': 1e-4, 'mCi/cm': 0.1, 'Ci/cm': 100, 'µCi/m': 1e-6, 'mCi/m': 1e-3, 'Ci/m': 1 };
-    const arealActivityFactorsCi_per_m2 = { 'µCi/cm²': 0.01, 'mCi/cm²': 10, 'Ci/cm²': 10000, 'µCi/m²': 1e-6, 'mCi/m²': 1e-3, 'Ci/m²': 1 };
-    const doseRateFactors_mrem_hr = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'mR/hr': 1, 'R/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
-    const intakeUnitFactors = { 'pCi': 1e-6, 'nCi': 1e-3, 'µCi': 1, 'mCi': 1000, 'Ci': 1e6, 'Bq': 1/37000, 'kBq': 1/37, 'MBq': 1000/37, 'GBq': 1e6/37 };
-    const intakeUnitFactorsBq = { 'pCi': 0.037, 'nCi': 37, 'µCi': 37000, 'mCi': 3.7e7, 'Ci': 3.7e10, 'Bq': 1, 'kBq': 1000, 'MBq': 1e6, 'GBq': 1e9 };
-    const concentrationFactors_uCi_per_cm2 = { 'dpm/100cm²': 1 / 2.22e8, 'µCi/cm²': 1, 'mCi/cm²': 1000, 'Ci/cm²': 1e6, 'Bq/cm²': 1 / 37000 };
+    const linearActivityFactorsCi_per_m = { 'µCi/cm': 1e-4, 'uCi/cm': 1e-4, 'mCi/cm': 0.1, 'Ci/cm': 100, 'µCi/m': 1e-6, 'uCi/m': 1e-6, 'mCi/m': 1e-3, 'Ci/m': 1 };
+    const arealActivityFactorsCi_per_m2 = { 'µCi/cm²': 0.01, 'uCi/cm²': 0.01, 'mCi/cm²': 10, 'Ci/cm²': 10000, 'µCi/m²': 1e-6, 'uCi/m²': 1e-6, 'mCi/m²': 1e-3, 'Ci/m²': 1 };
+    const doseRateFactors_mrem_hr = { 'µrem/hr': 0.001, 'urem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'mR/hr': 1, 'R/hr': 1000, 'µSv/hr': 0.1, 'uSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
+    const intakeUnitFactors = { 'pCi': 1e-6, 'nCi': 1e-3, 'µCi': 1, 'uCi': 1, 'mCi': 1000, 'Ci': 1e6, 'Bq': 1/37000, 'kBq': 1/37, 'MBq': 1000/37, 'GBq': 1e6/37 };
+    const intakeUnitFactorsBq = { 'pCi': 0.037, 'nCi': 37, 'µCi': 37000, 'uCi': 37000, 'mCi': 3.7e7, 'Ci': 3.7e10, 'Bq': 1, 'kBq': 1000, 'MBq': 1e6, 'GBq': 1e9 };
+    const concentrationFactors_uCi_per_cm2 = { 'dpm/100cm²': 1 / 2.22e8, 'µCi/cm²': 1, 'uCi/cm²': 1, 'mCi/cm²': 1000, 'Ci/cm²': 1e6, 'Bq/cm²': 1 / 37000 };
 
     const handleCalculate = React.useCallback(() => {
         setError(''); setResult(null);
@@ -6005,8 +6015,12 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
             if (field_targetType === 'findRate') {
                 const d2 = safeParseFloat(field_d2) * distanceFactorsM[field_d2Unit];
                 if (isNaN(d2) || d2 <= 0) { setError("Target distance must be > 0."); return; }
-                const r2 = k / (d2 * d2);
-                setResult({ type: 'field', val: r2, unit: 'doseRate', label: 'Projected Dose Rate' });
+                const r2_mrem = k / (d2 * d2);
+                
+                // Convert back to the display unit!
+                const r2_final = r2_mrem / doseRateFactors_mrem_hr[field_r1Unit];
+                
+                setResult({ type: 'field', val: r2_final, unit: 'doseRate', label: 'Projected Dose Rate' });
             } else {
                 const r2 = safeParseFloat(field_r2) * doseRateFactors_mrem_hr[field_r2Unit];
                 if (isNaN(r2) || r2 <= 0) { setError("Target rate must be > 0."); return; }
@@ -6213,26 +6227,31 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     const handleSaveToHistory = () => {
         if (result) {
-            const formattedResult = formatDoseValue(
-                result.rawDoseRate_mrem_hr !== undefined ? result.rawDoseRate_mrem_hr : result.rawDose_mrem, 
-                result.type === 'internal' ? 'dose' : 'doseRate', 
-                settings
-            );
-            
+            let finalResultStr = '';
             let inputDetail = '';
-            
+
+            // Handle Field Mode uniquely because it doesn't use rawDoseRate_mrem_hr
             if (calcMode === CALC_MODE_FIELD) {
                 inputDetail = `Field: ${field_r1} ${field_r1Unit} @ ${field_d1} ${field_d1Unit}`;
-            } 
-            else if (calcMode === CALC_MODE_INTERNAL) {
-                inputDetail = `${intakeAmount} ${intakeUnit} ${nuclideSymbol} (${intakeRoute})`;
-            } 
-            else {
-                const source = nuclideSymbol || 'Manual Source';
-                inputDetail = `${activity} ${activityUnit} ${source} @ ${distance} ${distanceUnit}`;
+                const targetUnit = result.unit === 'doseRate' ? field_r1Unit : field_d2Unit;
+                finalResultStr = `${formatNumber(result.val)} ${targetUnit}`;
+            } else {
+                // Standard Format for Gamma/Beta/Brems/Internal
+                const formattedResult = formatDoseValue(
+                    result.rawDoseRate_mrem_hr !== undefined ? result.rawDoseRate_mrem_hr : result.rawDose_mrem, 
+                    result.type === 'internal' ? 'dose' : 'doseRate', 
+                    settings
+                );
+                finalResultStr = `${formattedResult.value} ${formattedResult.unit}`;
                 
-                if (shieldMaterial !== 'None' && calcMode === CALC_MODE_BREMS) {
-                    inputDetail += ` w/ ${shieldMaterial}`;
+                if (calcMode === CALC_MODE_INTERNAL) {
+                    inputDetail = `${intakeAmount} ${intakeUnit} ${nuclideSymbol} (${intakeRoute})`;
+                } else {
+                    const source = nuclideSymbol || 'Manual Source';
+                    inputDetail = `${activity} ${activityUnit} ${source} @ ${distance} ${distanceUnit}`;
+                    if (shieldMaterial !== 'None' && calcMode === CALC_MODE_BREMS) {
+                        inputDetail += ` w/ ${shieldMaterial}`;
+                    }
                 }
             }
             
@@ -6241,7 +6260,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                 type: 'Dose Calculation', 
                 icon: ICONS.doseRate, 
                 inputs: inputDetail, 
-                result: `${formattedResult.value} ${formattedResult.unit}`, 
+                result: finalResultStr, 
                 view: VIEWS.DOSE_RATE 
             });
             addToast("Saved to history!");
@@ -6596,11 +6615,14 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                 const thickness_cm = range_mg_cm2 / density_mg_cm3;
                 
                 let warning = null;
+                let msg = null;
                 if (mat.type === 'High-Z') {
                     warning = `High-Z material (${shieldMaterial}) generates Bremsstrahlung X-rays. Use Plastic/Lucite instead.`;
+                } else if (mat.type === 'Low-Z') {
+                    msg = `Low-Z material selected. This is ideal for minimizing Bremsstrahlung X-ray production.`;
                 }
                 
-                setResult({ type: 'beta', thickness_cm, material: shieldMaterial, range_mg_cm2, warning });
+                setResult({ type: 'beta', thickness_cm, material: shieldMaterial, range_mg_cm2, warning, msg });
                 return;
             }
             
@@ -6969,7 +6991,7 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
         </div>
     );
 };
-            
+
 /**
  * @description A calculator for determining allowable stay time and total dose received.
  * Features: Theoretical (Source) vs. Measured (Manual) modes, and a live countdown timer.
@@ -7298,8 +7320,8 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
             </div>
         </div>
     );
-};      
-        
+};
+
 /**
  * @description Integrated Neutron Tools: Fluence-Dose, Activation, Composite, and Shielding.
  */
