@@ -435,7 +435,7 @@ const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
     // MEMOIZED: Prevent recreating this object on every render
     const activityFactorsBq = React.useMemo(() => ({ 
         'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 
-        'µCi': 3.7e4, 'mCi': 3.7e7, 'Ci': 3.7e10, 
+        'µCi': 3.7e4, 'uCi': 3.7e4, 'mCi': 3.7e7, 'Ci': 3.7e10,
         'dps': 1, 'dpm': 1/60 
     }), []);
 
@@ -612,8 +612,15 @@ const StandardDecayCalculator = ({
     const { addToast } = useToast();
 
     // --- Decoupled Daughter Unit State ---
-    // Initialize with 'mCi' or whatever the parent defaults to, but keep independent
-    const [daughterUnit, setDaughterUnit] = React.useState('mCi');
+    // Initializes intelligently based on the active unit system (e.g., mCi or MBq)
+    const [daughterUnit, setDaughterUnit] = React.useState(activityUnits[1]);
+
+    // Catch global unit system swaps (SI vs Conventional) and reset safely
+    React.useEffect(() => {
+        if (!activityUnits.includes(daughterUnit)) {
+            setDaughterUnit(activityUnits[1]);
+        }
+    }, [activityUnits, daughterUnit]);
 
     // --- Branching Path State ---
     const [decayPaths, setDecayPaths] = React.useState([]);
