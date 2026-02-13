@@ -7374,7 +7374,10 @@ const FluenceDoseConverter = ({ calcMode, setCalcMode, energy, setEnergy, inputV
     }, [calcMode, settings.unitSystem]);
     
     const logLogInterpolate = (targetX, x1, y1, x2, y2) => y1 * Math.pow(targetX / x1, Math.log(y2 / y1) / Math.log(x2 / x1));
-    const doseFactorsRem = { 'µrem': 1e-6, 'mrem': 1e-3, 'rem': 1, 'µSv': 1e-4, 'mSv': 0.1, 'Sv': 100 };
+    const doseFactorsRem = { 
+            'µrem': 1e-6, 'urem': 1e-6, 'mrem': 1e-3, 'rem': 1, 
+            'µSv': 1e-4, 'uSv': 1e-4, 'mSv': 0.1, 'Sv': 100 
+        };
     
     React.useEffect(() => {
         try {
@@ -7741,6 +7744,7 @@ const CompositeActivationCalculator = ({ radionuclides, material, setMaterial, t
 const NeutronShieldingCalculator = ({ selectedEnergy, setSelectedEnergy, initialFlux, setInitialFlux, shieldMaterial, setShieldMaterial, shieldThickness, setShieldThickness, thicknessUnit, setThicknessUnit, result, setResult, error, setError }) => {
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
+    const { settings } = React.useContext(SettingsContext);
     const thicknessFactors_cm = { 'mm': 0.1, 'cm': 1, 'in': 2.54, 'ft': 30.48 };
     
     // Source Spectrum state
@@ -7808,12 +7812,12 @@ const NeutronShieldingCalculator = ({ selectedEnergy, setSelectedEnergy, initial
             setResult({
                 initialFlux: flux_val.toExponential(3),
                 finalFlux: final_flux.toExponential(3),
-                initialDose: formatSensibleUnit(initial_dose_rate_mrem_hr, 'doseRate'),
-                finalDose: formatSensibleUnit(final_dose_rate_mrem_hr, 'doseRate'),
+                initialDose: formatDoseValue(initial_dose_rate_mrem_hr, 'doseRate', settings),
+                finalDose: formatDoseValue(final_dose_rate_mrem_hr, 'doseRate', settings),
                 hvlUsed: hvl_cm
             });
         } catch(e) { setError(e.message); setResult(null); }
-    }, [initialFlux, shieldMaterial, shieldThickness, thicknessUnit, selectedEnergy, spectrum, setResult, setError]);
+    }, [initialFlux, shieldMaterial, shieldThickness, thicknessUnit, selectedEnergy, spectrum, settings, setResult, setError]);
     
     // Save handler 
     const handleSaveToHistory = () => {
@@ -8022,7 +8026,7 @@ const NeutronCalculator = ({radionuclides}) => {
         </div>
     );
 };
-            
+
 /**
  * @description A unified calculator for determining detection limits for both
  * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc.
@@ -8397,10 +8401,11 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         </div>
     );
 };
-            
+
 /**
  * @description A professional-grade scientific calculator component.
  */
+
 const ScientificCalculator = ({ calcState, setCalcState }) => {
     const { addToast } = useToast();
     const calculatorRef = React.useRef(null);
@@ -8525,7 +8530,7 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
             }
             
             let newExpression = currentState.expression;
-            const isOperator = ['+', '-', '*', '/', '^', '%', '!', '^', '×', '÷'].includes(val);
+            const isOperator = ['+', '-', '*', '/', '^', '%', '!', '^2', '×', '÷'].includes(val);
             
             // Smart Decimal: Prefix "0." if empty or after operator
             if (val === '.') {
@@ -8814,7 +8819,7 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
         </div>
     );
 };
-                               
+ 
 /**
  * @description A unified module for standard laboratory statistics calculations.
  * Includes: MDA (Currie), Chi-Squared, Dead Time, RPD, and FWHM.
@@ -9004,7 +9009,7 @@ const ChiSquaredCalculator = ({ chiSquaredData, setChiSquaredData, alpha, setAlp
             {result && (
                 <div className={`p-5 rounded-lg mt-4 text-center animate-fade-in shadow-sm ${result.conclusion === 'PASS' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
                     <div className="flex justify-end -mt-3 -mr-3 mb-1"><button onClick={handleSave} className="text-slate-500 hover:text-black dark:hover:text-white"><Icon path={ICONS.notepad} className="w-5 h-5"/></button></div>
-                    <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>SYSTEM {result.conclusion}ES</p>
+                    <p className={`text-3xl font-extrabold ${result.conclusion === 'PASS' ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>SYSTEM {result.conclusion === 'PASS' ? 'PASSES' : 'FAILS'}</p>
                     <div className="mt-4 grid grid-cols-3 gap-2 text-sm border-t border-black/10 pt-4">
                         <div><p className="text-xs text-slate-500">Lower Limit</p><p className="font-mono font-bold">{result.lowerBound}</p></div>
                         <div><p className="text-xs text-slate-500">Calculated χ²</p><p className="font-mono font-bold text-lg">{result.chiSquared}</p></div>
@@ -9307,16 +9312,14 @@ const DecaySeriesViewer = ({ seriesId, decaySeriesData, radionuclides, onBack, o
 
                     {/* If the step has branches, render them vertically stacked */}
                     {step.branches && (
-                        <div className="flex items-start">
-                            <div className="flex flex-col justify-center space-y-4 ml-2">
-                                {step.branches.map((branch, branchIndex) => (
-                                    <div key={branchIndex} className="flex items-center">
-                                         {/* Split label e.g., "alpha/beta" -> ["alpha", "beta"] */}
-                                        <DecayArrow decayType={step.decayType ? step.decayType.split('/')[branchIndex]?.trim() : ''} />
-                                        <RenderChain chain={branch} />
-                                    </div>
-                                ))}
-                            </div>
+                        <div className="flex flex-col justify-center space-y-4 ml-2">
+                            {step.branches.map((branch, branchIndex) => (
+                                <div key={branchIndex} className="flex items-center">
+                                    {/* Split label e.g., "alpha/beta" -> ["alpha", "beta"] */}
+                                    <DecayArrow decayType={step.decayType ? step.decayType.split('/')[branchIndex]?.trim() : ''} />
+                                    <RenderChain chain={branch} />
+                                </div>
+                            ))}
                         </div>
                     )}
 
