@@ -6118,7 +6118,7 @@ const RADIONUCLIDE_DATA = [{
          A2: 4,
          unit: 'TBq'
       },
-      gammaConstant: '0.1227 R·m²/hr·Ci',
+      gammaConstant: '0.0795 R·m²/hr·Ci',
       sourceRef: {
          halfLife: 'nndc',
          decayConstant: 'nndc',
