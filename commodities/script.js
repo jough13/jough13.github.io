@@ -2209,13 +2209,6 @@ function parseValueToCi(valueStr) {
    return isNaN(value) ? null : value * multiplier;
 }
 
-   const value = parseFloat(parts[1]);
-   const unit = parts[2] || 'Ci';
-   const multiplier = ciMultipliers[unit.trim().toLowerCase()] || 1;
-
-   return isNaN(value) ? null : value * multiplier;
-}
-
 function formatCi(valueCi) {
    if (valueCi === null || typeof valueCi === 'undefined') return '--';
    if (valueCi === Infinity) return 'Unlimited';
