@@ -6996,6 +6996,7 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
  * @description A calculator for determining allowable stay time and total dose received.
  * Features: Theoretical (Source) vs. Measured (Manual) modes, and a live countdown timer.
  */
+
 const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
     const INPUT_MODE_SOURCE = 'fromSource';
     const INPUT_MODE_MANUAL = 'manualRate';
@@ -7011,11 +7012,20 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
     const doseUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['µSv', 'mSv', 'Sv'] : ['µrem', 'mrem', 'rem'], [settings.unitSystem]);
     
     // Conversion Factors (Base: Ci, m, mrem)
-    const activityFactorsCi = { 'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'TBq': 1/0.037, 'µCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 };
+    const activityFactorsCi = { 
+        'Bq': 1 / 3.7e10, 'kBq': 1 / 3.7e7, 'MBq': 1 / 37000, 'GBq': 1 / 37, 'TBq': 1/0.037, 
+        'µCi': 1e-6, 'uCi': 1e-6, 'mCi': 1e-3, 'Ci': 1 
+    };
     const distanceFactorsM = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
     const timeFactorsHours = { 'minutes': 1 / 60, 'hours': 1, 'days': 24 };
-    const doseRateFactors_mrem_hr = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'R/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
-    const doseFactors_mrem = { 'µrem': 0.001, 'mrem': 1, 'rem': 1000, 'µSv': 0.1, 'mSv': 100, 'Sv': 100000 };
+    const doseRateFactors_mrem_hr = { 
+        'µrem/hr': 0.001, 'urem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'mR/hr': 1, 'R/hr': 1000, 
+        'µSv/hr': 0.1, 'uSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 
+    };
+    const doseFactors_mrem = { 
+        'µrem': 0.001, 'urem': 0.001, 'mrem': 1, 'rem': 1000, 
+        'µSv': 0.1, 'uSv': 0.1, 'mSv': 100, 'Sv': 100000 
+    };
     const timeUnits_ordered = ['minutes', 'hours', 'days'];
 
     // --- STATE ---
@@ -7043,6 +7053,7 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
     // Timer State
     const [isTimerRunning, setIsTimerRunning] = React.useState(false);
     const [timeLeft, setTimeLeft] = React.useState(0);
+    const [targetEndTime, setTargetEndTime] = React.useState(null); // Absolute end time
     
     // --- Persistence ---
     React.useEffect(() => {
@@ -7161,21 +7172,39 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
         return () => clearTimeout(timer);
     }, [handleCalculate]);
 
-    // Timer Logic
+    // Timer Logic (Clock-Synced)
     React.useEffect(() => {
         let interval = null;
-        if (isTimerRunning && timeLeft > 0) {
-            interval = setInterval(() => setTimeLeft(t => t - 1), 1000);
-        } else if (timeLeft === 0 && isTimerRunning) {
-            setIsTimerRunning(false);
-            addToast("Time Expired!", "warning");
+        
+        if (isTimerRunning && targetEndTime) {
+            // Check the clock immediately, then every second
+            const checkTime = () => {
+                const now = Date.now();
+                const remainingSeconds = Math.max(0, Math.floor((targetEndTime - now) / 1000));
+                
+                setTimeLeft(remainingSeconds);
+                
+                if (remainingSeconds <= 0) {
+                    setIsTimerRunning(false);
+                    setTargetEndTime(null);
+                    addToast("Time Expired!", "warning");
+                    clearInterval(interval);
+                }
+            };
+            
+            interval = setInterval(checkTime, 1000);
+            checkTime(); // Call once immediately to sync
         }
-        return () => clearInterval(interval);
-    }, [isTimerRunning, timeLeft]);
+        
+        return () => { if (interval) clearInterval(interval); };
+    }, [isTimerRunning, targetEndTime]);
 
     const handleStartTimer = () => {
-        if (!result) return;
-        setTimeLeft(Math.floor(result.seconds));
+        if (!result || !result.isSafe) return; // Prevent starting if infinite or unsafe
+        
+        const secondsToRun = Math.floor(result.seconds);
+        setTimeLeft(secondsToRun);
+        setTargetEndTime(Date.now() + (secondsToRun * 1000)); // Lock in the absolute finish time
         setIsTimerRunning(true);
     };
 
