@@ -2592,27 +2592,38 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     }, [activityUnits, newItemUnit]);
 
     // --- 4. LOGIC ---
-    const activityFactorsTBq = { 'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12, 'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8 };
+    const activityFactorsTBq = { 
+            'TBq': 1, 'GBq': 0.001, 'MBq': 1e-6, 'kBq': 1e-9, 'Bq': 1e-12, 
+            'Ci': 0.037, 'mCi': 3.7e-5, 'µCi': 3.7e-8, 'uCi': 3.7e-8 
+        };
 
-    const handleAddItem = () => {
-        if (!newItemSymbol) { setError('Select a nuclide.'); return; }
+        const handleAddItem = () => {
+            if (!newItemSymbol) { setError('Select a nuclide.'); return; }
 
-        // SAFE PARSE
-        const val = safeParseFloat(newItemActivity);
-        if (isNaN(val) || val <= 0) { setError('Invalid activity.'); return; }
+            // SAFE PARSE
+            const val = safeParseFloat(newItemActivity);
+            if (isNaN(val) || val <= 0) { setError('Invalid activity.'); return; }
 
-        const nuclideData = transportNuclides.find(n => n.symbol === newItemSymbol);
-        if(!nuclideData) return;
+            const nuclideData = transportNuclides.find(n => n.symbol === newItemSymbol);
+            if(!nuclideData) return;
 
-        let rawLimit = nuclideData.shipping[newItemForm];
-        let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
+            let rawLimit = nuclideData.shipping[newItemForm];
+            let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
 
-        let matMultiplier = 0; let instMultiplier = 0;
-        if (newItemSymbol === 'H-3') { matMultiplier = 2e-2; instMultiplier = 2e-1; } 
-        else {
-            if (newItemState === 'liquid') { matMultiplier = 1e-4; instMultiplier = 1e-3; } 
-            else { matMultiplier = 1e-3; instMultiplier = 1e-2; }
-        }
+            let matMultiplier = 0; let instMultiplier = 0;
+            if (newItemSymbol === 'H-3') { 
+                matMultiplier = 2e-2; instMultiplier = 2e-1; 
+            } else if (newItemState === 'liquid') { 
+                matMultiplier = 1e-4; instMultiplier = 1e-3; 
+            } else if (newItemState === 'gas') {
+                if (newItemForm === 'A1') { // Special Form Gas
+                    matMultiplier = 1e-3; instMultiplier = 1e-3;
+                } else { // Normal Form Gas
+                    matMultiplier = 1e-4; instMultiplier = 1e-3;
+                }
+            } else { // Solid
+                matMultiplier = 1e-3; instMultiplier = 1e-2; 
+            }
 
         const actTBq = val * activityFactorsTBq[newItemUnit];
 
@@ -3088,13 +3099,18 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
                 return; 
             }
             
-            // Calculate Thickness using Archer Equation logic (TVL1 + TVLe)
+            // Calculate Thickness using Piecewise TVL logic
             const n_tvl = -Math.log10(B);
             const { TVL1, TVLe } = TVL_DATA[shieldMaterial][kvp];
-            const thickness = TVL1 + (n_tvl - 1) * TVLe;
             
-            // Safety Clamp: Don't show negative thickness if n_tvl < 1 (covered by B >= 1 check, but safe to keep)
-            const finalThickness = Math.max(0, thickness);
+            let finalThickness = 0;
+            if (n_tvl <= 1) {
+                // If less than 1 TVL is required, only use the first TVL value
+                finalThickness = n_tvl * TVL1;
+            } else {
+                // If more than 1 TVL is required, use TVL1 for the first, and TVLe for the rest
+                finalThickness = TVL1 + (n_tvl - 1) * TVLe;
+            }
             
             setResult({ transmission: B.toExponential(2), tvls: n_tvl.toFixed(2), thickness: finalThickness.toFixed(2) });
         } catch (e) { setResult(null); setError(e.message); }
@@ -3219,10 +3235,12 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             const total_dose_R = (rate_R_hr * E) * (T_half_hours_eff * 1.443);
             const dose_mrem = total_dose_R * 1000;
             
+            const limitDisplay = settings.unitSystem === 'si' ? '5 mSv' : '500 mrem';
+            
             setResult({
                 title: dose_mrem <= TEDE_LIMIT_MREM ? 'PASS (Tier 2)' : 'FAIL',
                 pass: dose_mrem <= TEDE_LIMIT_MREM,
-                details: [`Total Dose: ${formatDoseValue(dose_mrem, 'dose', settings).value} ${formatDoseValue(dose_mrem, 'dose', settings).unit}`, `(Limit: 500 mrem)`],
+                details: [`Total Dose: ${formatDoseValue(dose_mrem, 'dose', settings).value} ${formatDoseValue(dose_mrem, 'dose', settings).unit}`, `(Limit: ${limitDisplay})`],
                 rawDose: dose_mrem
             });
         } catch (e) { setResult(null); setError(e.message); }
@@ -3617,6 +3635,7 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
         // 1. Ingest from DB
         if (radionuclides) {
             radionuclides.forEach(n => {
+                // Parse Parent Gammas
                 if (n.emissionEnergies && n.emissionEnergies.gamma) {
                     n.emissionEnergies.gamma.forEach(eStr => {
                         const match = eStr.match(/([\d.]+)/);
@@ -3630,6 +3649,26 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
                                 energy: energy, 
                                 yield: 0, 
                                 confirm: null,
+                                isUnknownYield: true 
+                            });
+                        }
+                    });
+                }
+                
+                // Parse Daughter Gammas (Missing Logic Added)
+                if (n.daughterEmissions && n.daughterEmissions.gamma) {
+                    n.daughterEmissions.gamma.forEach(eStr => {
+                        const match = eStr.match(/([\d.]+)/);
+                        if (match) {
+                            let energy = safeParseFloat(match[1]);
+                            if (eStr.includes('MeV')) energy *= 1000; 
+                            
+                            lib.push({ 
+                                symbol: n.daughterEmissions.from, 
+                                name: `${n.daughterEmissions.from} (from ${n.symbol})`, 
+                                energy: energy, 
+                                yield: 0, 
+                                confirm: `Daughter of ${n.symbol}`,
                                 isUnknownYield: true 
                             });
                         }
