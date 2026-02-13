@@ -1642,18 +1642,18 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
     }), []);
             
     // Updated Fallbacks to be Conservative (Co-60 energies)
-    // Old Lead value (0.6) was too thin for high-energy emitters.
     const FALLBACK_HVL = React.useMemo(() => ({ 
-        'Lead': 1.2,      // Conservative (approx Co-60)
+        'Lead': 1.2,      
         'Steel': 2.2, 
         'Aluminum': 6.5, 
+        'Concrete': 6.0,   // Added missing Concrete fallback
         'Water': 14.0 
     }), []);
 
     // Conversion Factors
     const BQ_TO_CI = 1 / 3.7e10; 
     const activityFactorsCi = React.useMemo(() => ({
-        'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6,
+        'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'uCi': 1e-6, // Added 'uCi' fallback
         'TBq': BQ_TO_CI * 1e12, 'GBq': BQ_TO_CI * 1e9, 'MBq': BQ_TO_CI * 1e6, 'kBq': BQ_TO_CI * 1e3, 'Bq': BQ_TO_CI
     }), [BQ_TO_CI]);
 
@@ -2096,7 +2096,7 @@ const SimpleEfficiencyCalculator = ({
             const stdDev = Math.sqrt(c) / t;
 
             setResult({ 
-                label: 'Net Rate', 
+                label: 'Count Rate', 
                 value: rate.toFixed(1) + ' cpm',
                 subtext: `± ${stdDev.toFixed(1)} cpm (1σ)`
             });
@@ -2384,7 +2384,7 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
     const [eff_result, setEff_result] = React.useState(null);
     const [eff_error, setEff_error] = React.useState('');
 
-    // --- STATE: Inverse Square (NEW 6th Module) ---
+    // --- STATE: Inverse Square ---
     const [inv_mode, setInv_mode] = React.useState('calcD2');
     const [inv_i1, setInv_i1] = React.useState('');
     const [inv_d1, setInv_d1] = React.useState('');
@@ -2392,6 +2392,22 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
     const [inv_d2, setInv_d2] = React.useState('');
     const [inv_result, setInv_result] = React.useState(null);
     const [inv_error, setInv_error] = React.useState('');
+
+    // --- SYNC EFFECTS ---
+    
+    // 1. Sync Leak Test background/efficiency to localStorage
+    React.useEffect(() => {
+        localStorage.setItem('leakTest_grossCpm', lt_grossCpm);
+        localStorage.setItem('leakTest_backgroundCpm', lt_backgroundCpm);
+        localStorage.setItem('leakTest_instrumentEff', lt_instrumentEff);
+    }, [lt_grossCpm, lt_backgroundCpm, lt_instrumentEff]);
+
+    // 2. Unit System Swap Safety for Airborne Calculator
+    React.useEffect(() => {
+        if (!activityUnits.includes(ac_activityUnit)) {
+            setAc_activityUnit(activityUnits[0]);
+        }
+    }, [activityUnits, ac_activityUnit]);
 
     // Full Clear Handler
     const handleClear = () => {
