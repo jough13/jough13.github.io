@@ -2241,7 +2241,7 @@ function formatBq(valueCi) {
 
    // Fix rounding edge cases (e.g. 999.9 -> 1.00 next unit)
    let displayValue = parseFloat(valueBq.toPrecision(3));
-   if (displayValue >= 999 && unitIndex < units.length - 1) {
+   if (displayValue >= 1000 && unitIndex < units.length - 1) {
       displayValue = 1;
       unitIndex++;
    }
@@ -3413,6 +3413,8 @@ document.addEventListener('DOMContentLoaded', () => {
       let typeASum = 0;
       let anyItemExceeds2911 = false; // Track if any single item fails UN2911
 
+      let missingLimitData = false;
+
       let analysisDetails = [];
 
       itemCards.forEach(card => {
@@ -3712,23 +3714,32 @@ document.addEventListener('DOMContentLoaded', () => {
       clearSavedBtn.disabled = false;
    });
 
-   loadSelectionBtn.addEventListener('click', () => {
+loadSelectionBtn.addEventListener('click', () => {
       const savedSelection = safeGetItem('savedSelection');
       const savedIds = JSON.parse(savedSelection || '[]');
       if (!savedIds || savedIds.length === 0) return;
-      clearSelectionBtn.click();
-      savedIds.forEach(id => {
-         const checkbox = document.querySelector(`.row-checkbox[data-id="${id}"]`);
-         if (checkbox) {
-            checkbox.checked = true;
-            const changeEvent = new Event('change', {
-               bubbles: true
-            });
-            checkbox.dispatchEvent(changeEvent);
-         }
-      });
+      
+      // 1. Clear current selection
+      selectedIds.clear();
+      
+      // 2. Add saved IDs directly to the memory Set
+      savedIds.forEach(id => selectedIds.add(String(id)));
+      
+      // 3. Re-render the table to show the checks, and update the "Select All" box
+      performSort(); 
+      updateSelectionState();
+      
+      // 4. Update the Action Buttons
+      const selectedCount = selectedIds.size;
+      compareBtn.disabled = selectedCount < 2;
+      exportSelectionBtn.disabled = selectedCount === 0;
+      clearSelectionBtn.disabled = selectedCount === 0;
+      disposalRequestBtn.disabled = selectedCount === 0;
+      saveSelectionBtn.disabled = selectedCount === 0;
+
       showToast('Selection loaded.', 'info');
    });
+
    clearSavedBtn.addEventListener('click', () => {
       showConfirmationModal('Are you sure you want to clear your saved selection?', () => {
          safeRemoveItem('savedSelection');
