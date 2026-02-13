@@ -3906,7 +3906,10 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData, theme, onNuclid
     const timeUnitsList = ['seconds', 'minutes', 'hours', 'days', 'years', 'kiloyears', 'megayears', 'gigayears'];
     
     // Factors
-    const activityFactorsBq = { 'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 'µCi': 3.7e4, 'mCi': 3.7e7, 'Ci': 3.7e10 };
+    const activityFactorsBq = { 
+        'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 
+        'µCi': 3.7e4, 'uCi': 3.7e4, 'mCi': 3.7e7, 'Ci': 3.7e10 
+    };
     const massFactorsG = { 'µg': 1e-6, 'mg': 1e-3, 'g': 1, 'kg': 1000 };
     const unitConversionsTime = { 'seconds': 1, 'minutes': 60, 'hours': 3600, 'days': 86400, 'years': 31557600, 'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 };
     
@@ -4112,6 +4115,20 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData, theme, onNuclid
         setError('');
         setIsLoading(false);
     };
+
+    const handleSave = () => {
+        if (results.items && results.items.length > 0) {
+            addHistory({ 
+                id: Date.now(), 
+                type: 'Series Decay', 
+                icon: ICONS.activity, 
+                inputs: `${inputValue} ${inputUnit} ${activeSeriesObj.label}`, 
+                result: `${results.total.toExponential(2)} ${results.displayUnit} @ ${timeElapsed} ${timeUnit}`, 
+                view: VIEWS.DECAY_SERIES || 'decaySeries'
+            });
+            addToast("Saved to history!");
+        }
+    };
     
     return (
         <div className="p-4 animate-fade-in">
@@ -4200,7 +4217,12 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData, theme, onNuclid
                     <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                         {results.items && results.items.length > 0 ? (
                             <>
-                                <h3 className="text-lg font-semibold mb-2">Results at {timeElapsed} {timeUnit}</h3>
+                                <div className="flex justify-between items-center mb-2">
+                                    <h3 className="text-lg font-semibold">Results at {timeElapsed} {timeUnit}</h3>
+                                    <button onClick={handleSave} className="text-xs font-bold text-sky-600 hover:underline flex items-center gap-1">
+                                        <Icon path={ICONS.notepad} className="w-3 h-3" /> Save Result
+                                    </button>
+                                </div>
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-slate-100 dark:bg-slate-700 sticky top-0 z-10">
                                         <tr><th className="p-2">Nuclide</th><th className="p-2 text-right">Activity ({results.displayUnit})</th></tr>
