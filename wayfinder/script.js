@@ -1101,6 +1101,20 @@ function animateParticles() {
                  const worldY = chunkY * this.CHUNK_SIZE + y;
                  const locationKey = `${worldX},${worldY}`;
 
+                 // NEW: SPAWN NEXUS ---
+                 if (mystery_first_nexus_location && 
+                     worldX === mystery_first_nexus_location.x && 
+                     worldY === mystery_first_nexus_location.y) {
+                     
+                     chunkData[y][x] = {
+                         char: NEXUS_CHAR_VAL,
+                         type: 'nexus',
+                         name: "The First Nexus",
+                         activated: mystery_nexus_activated
+                     };
+                     continue; // Skip standard generation for this tile
+                 }
+
                  if (this.staticLocations.has(locationKey)) {
                      const location = this.staticLocations.get(locationKey);
                      chunkData[y][x] = {
@@ -1285,6 +1299,9 @@ function updateWorldState(x, y, changes) {
 
  const MAX_LOG_MESSAGES = 50; // The maximum number of messages to keep in the log
  let messageLog = []; // This array will hold our message history
+
+ let currentTradeItemIndex = -1;
+ let currentTradeQty = 1;
 
  let currentTradeContext = null;
  let currentCombatContext = null;
@@ -1537,49 +1554,55 @@ function updateWorldState(x, y, changes) {
   */
 
  function renderUIStats() {
-     fuelStatElement.textContent = `${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`;
-     shieldsStatElement.textContent = `${Math.floor(playerShields)}/${MAX_SHIELDS}`;
-     hullStatElement.textContent = `${Math.floor(playerHull)}/${MAX_PLAYER_HULL}`;
-     creditsStatElement.textContent = playerCredits;
-     cargoStatElement.textContent = `${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}`;
-     levelXpStatElement.textContent = `${playerLevel} (${playerXP}/${xpToNextLevel})`;
-     shipClassStatElement.textContent = SHIP_CLASSES[playerShip.shipClass].name;
-     notorietyStatElement.textContent = playerNotorietyTitle;
-     stardateStatElement.textContent = `SD ${currentGameDate.toFixed(2)}`;
 
-     // --- Threat Level Indicator ---
+    // 0. Update the System Menu Stats
+    document.getElementById('menuLevel').textContent = playerLevel;
+    document.getElementById('menuXP').textContent = Math.floor(playerXP) + " / " + xpToNextLevel;
+    document.getElementById('menuShip').textContent = SHIP_CLASSES[playerShip.shipClass].name;
+    document.getElementById('menuRep').textContent = playerNotorietyTitle;
+
+     // 1. Calculate Percentages for Bars
+     const fuelPct = Math.max(0, (playerFuel / MAX_FUEL) * 100);
+     const shieldPct = Math.max(0, (playerShields / MAX_SHIELDS) * 100);
+     const hullPct = Math.max(0, (playerHull / MAX_PLAYER_HULL) * 100);
+
+     // 2. Update Bar Widths
+     document.getElementById('fuelBar').style.width = `${fuelPct}%`;
+     document.getElementById('shieldBar').style.width = `${shieldPct}%`;
+     document.getElementById('hullBar').style.width = `${hullPct}%`;
+
+     // 3. Update Text Values (Overlaying the bars)
+     document.getElementById('fuelVal').textContent = Math.floor(playerFuel);
+     document.getElementById('shieldVal').textContent = `${Math.floor(playerShields)}`;
+     document.getElementById('hullVal').textContent = `${Math.floor(playerHull)}`;
+
+     // 4. Update HUD Text Stats
+     document.getElementById('creditsStat').textContent = playerCredits;
+     document.getElementById('cargoStat').textContent = `${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}`;
+     
+     // 5. Update Header Info
      const dist = Math.sqrt((playerX * playerX) + (playerY * playerY));
-     let threat = "SAFE";
-     let color = "#00FF00"; // Green
+     let threatColor = "#00E0E0"; // Safe Cyan
+     if (dist > 800) threatColor = "#FF4444"; 
+     else if (dist > 400) threatColor = "#FFAA00";
 
-     if (dist > 800) {
-         threat = "DEADLY";
-         color = "#FF0000";
-     } // Red
-     else if (dist > 400) {
-         threat = "HIGH";
-         color = "#FF5555";
-     } // Light Red
-     else if (dist > 150) {
-         threat = "MODERATE";
-         color = "#FFFF00";
-     } // Yellow
+     const sectorEl = document.getElementById('sectorNameStat');
+     sectorEl.innerHTML = currentSectorName;
+     sectorEl.style.color = threatColor;
+     
+     document.getElementById('sectorCoordsStat').textContent = `[${playerX}, ${playerY}]`;
 
-     // Use innerHTML to add the colored tag
-     sectorNameStatElement.innerHTML = `${currentSectorName} <span style="color:${color}; font-size: 0.8em; margin-left: 8px;">[${threat}]</span>`;
-     sectorCoordsStatElement.textContent = `(${playerX},${playerY})`;
-
+     // 6. Log Handling
      messageAreaElement.innerHTML = messageLog.join('<br>');
      messageAreaElement.scrollTop = 0;
  }
-
 
  /**
   * Handles switching between different game views.
   * @param {string} newState - The state to switch to, from GAME_STATES.
   */
 
- function changeGameState(newState) {
+function changeGameState(newState) {
      // 1. Hide all main view containers
      document.getElementById('gameCanvas').style.display = 'none';
      document.getElementById('systemView').style.display = 'none';
@@ -1597,15 +1620,7 @@ function updateWorldState(x, y, changes) {
          document.getElementById('combatView').style.display = 'flex';
      }
 
-     // 3. --- DYNAMIC SCROLLBAR LOGIC ---
-     const wrapper = document.getElementById('main-view-wrapper');
-     if (newState === GAME_STATES.GALACTIC_MAP) {
-         // Lock scrolling when flying the ship so the map doesn't jitter
-         wrapper.style.overflowY = 'hidden';
-     } else {
-         // Allow scrolling for text-heavy views (Planets, Systems, Combat)
-         wrapper.style.overflowY = 'auto';
-     }
+     // The new CSS handles scrolling for panels automatically.
 
      currentGameState = newState;
      render();
@@ -1615,43 +1630,56 @@ function updateWorldState(x, y, changes) {
      const planetView = document.getElementById('planetView');
      const planet = currentSystemData.planets[selectedPlanetIndex];
 
-     // --- NEW LOGIC: Check for both resource types ---
+     // Logic checks for buttons
      const bioResources = planet.biome.resources.filter(r => BIOLOGICAL_RESOURCES.has(r));
      const mineralResources = planet.biome.resources.filter(r => !BIOLOGICAL_RESOURCES.has(r));
 
      const canMine = planet.biome.landable && mineralResources.length > 0;
-     const mineButton = canMine ?
-         `<li><button class="action-button" onclick="minePlanet()">Mine for Minerals</button></li>` :
-         `<li><button class="action-button" disabled>No Mineral Deposits</button></li>`;
+     const mineButtonState = canMine ? '' : 'disabled';
+     const mineLabel = canMine ? 'Mine Minerals' : 'No Minerals Detected';
 
      const canScan = planet.biome.landable && bioResources.length > 0;
-     const scanButton = canScan ?
-         `<li><button class="action-button" onclick="scanPlanetForLife()">Scan for Lifeforms</button></li>` :
-         `<li><button class="action-button" disabled>No Biological Signs</button></li>`;
-     // --- END NEW LOGIC ---
+     const scanButtonState = canScan ? '' : 'disabled';
+     const scanLabel = canScan ? 'Scan Lifeforms' : 'No Bio-Signs';
 
+     // Clean HTML Structure
      let html = `
-    <div class="planet-view-content">
-        <div class="planet-view-header">
-            <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-icon-img">
-            <div>
-                <h2>${planet.biome.name}</h2>
-                <p>${planet.biome.description}</p>
+        <div class="planet-view-content">
+            <div class="planet-header">
+                <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-large-img">
+                <h2 class="planet-title">${planet.biome.name}</h2>
+                <p class="planet-desc">${planet.biome.description}</p>
+            </div>
+
+            <div style="width: 100%; text-align: left; margin-bottom: 10px; font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 1px;">
+                Ship Interface // Surface Ops
+            </div>
+
+            <div class="planet-actions-grid">
+                <button class="action-button" onclick="minePlanet()" ${mineButtonState}>
+                    ${mineLabel}
+                </button>
+                
+                <button class="action-button" onclick="scanPlanetForLife()" ${scanButtonState}>
+                    ${scanLabel}
+                </button>
+                
+                <button class="action-button" disabled>
+                    Establish Colony <br><span style="font-size:10px; opacity:0.7">(Coming Soon)</span>
+                </button>
+                
+                <button class="action-button" disabled>
+                    Geo-Survey <br><span style="font-size:10px; opacity:0.7">(Requires Drones)</span>
+                </button>
+
+                <button class="action-button full-width-btn" onclick="returnToOrbit()">
+                    &lt;&lt; Return to Orbit
+                </button>
             </div>
         </div>
-        <div class="planet-actions">
-            <h3>Available Actions:</h3>
-            <ul>
-                ${mineButton}
-                ${scanButton}
-                <li><button class="action-button" disabled>Establish Colony (Coming Soon)</button></li>
-            </ul>
-        </div>
-        <button class="action-button" onclick="returnToOrbit()">Return to Orbit</button>
-    </div>
     `;
+
      planetView.innerHTML = html;
-     // We'll also update the main UI elements
      renderUIStats();
  }
 
@@ -1936,18 +1964,14 @@ function updateWorldState(x, y, changes) {
          logMessage("Save game found. Press (F7) or use Load button.");
      }
 
-     // Fade in the main game UI
-     document.getElementById("page-wrapper").style.opacity = "1";
+     // The new layout is visible by default behind the title screen.
  }
-
- /**
-  * Gathers all critical game state variables and saves them to localStorage.
-  */
 
 /**
  * Gathers all critical game state variables and saves them to localStorage.
  * optimized to use State Deltas instead of raw chunks to prevent storage overflow.
  */
+
 function saveGame() {
     // 1. Construct the state object
     const gameState = {
@@ -2133,28 +2157,35 @@ function loadGame() {
  }
 
  function renderMissionTracker() {
-     const container = document.getElementById('mission-tracker');
+     const textEl = document.getElementById('missionText');
+     
      if (!playerActiveMission) {
-         container.innerHTML = `<span class="stat-label">Mission</span><span class="stat">None</span>`;
+         textEl.textContent = "No Active Contract";
+         textEl.style.color = "#555";
          return;
      }
 
      let objectiveText = "Objective Unknown";
-     const objective = playerActiveMission.objectives[0]; // Assuming one objective for now
+     const objective = playerActiveMission.objectives[0];
      const progress = playerActiveMission.progress[`${objective.type.toLowerCase()}_0`];
 
      if (playerActiveMission.isComplete) {
          objectiveText = `Return to ${playerActiveMission.giver}`;
      } else if (objective.type === 'BOUNTY') {
-         objectiveText = `Eliminate Pirates (${progress.current}/${progress.required})`;
+         objectiveText = `Hunt Pirates (${progress.current}/${progress.required})`;
      } else if (objective.type === 'DELIVERY') {
          objectiveText = `Deliver to ${objective.destinationName}`;
      } else if (objective.type === 'SURVEY') {
          objectiveText = `Survey Anomaly`;
+     } else if (objective.type === 'ACQUIRE') {
+         // Fix for acquire missions display
+         const currentAmt = playerCargo[objective.itemID] || 0;
+         objectiveText = `Acquire ${COMMODITIES[objective.itemID].name} (${currentAmt}/${objective.count})`;
      }
-     container.innerHTML = `<span class="stat-label">Mission: ${playerActiveMission.title}</span><span class="stat">${objectiveText}</span>`;
- }
 
+     textEl.textContent = `${playerActiveMission.title}: ${objectiveText}`;
+     textEl.style.color = "#FFD700";
+ }
 
  /**
   * Generates a procedural and deterministic name for a sector based on its coordinates.
@@ -2204,38 +2235,56 @@ function loadGame() {
      TIER3_ROOT: ["Oblivion", "Annihilation", "Desolation", "Ruin", "Terror", "Horror", "Madness", "Silence", "Emptiness", "Nothingness", "End", "Omega", "Ultima", "Finality", "Doom", "Blight", "Scourge", "Plague", "Curse", "Hex", "Bane", "Wrath", "Fury", "Storm", "Tempest", "Vortex", "Singularity", "Anomaly", "Paradox", "Enigma", "Labyrinth", "Maze", "Prison", "Tomb", "Crypt", "Sepulcher", "Citadel", "Fortress", "Bastion", "Stronghold", "Domain", "Realm", "Kingdom", "Empire", "Cataclysm", "Apocalypse", "Judgement", "Nadir", "Zero"]
  };
 
- function renderSystemMap() {
+ function leaveSystem() {
+    changeGameState(GAME_STATES.GALACTIC_MAP);
+    selectedPlanetIndex = -1; // Deselect planets
+    handleInteraction(); // Refresh the text log for the sector you are in
+}
+
+function renderSystemMap() {
      const systemView = document.getElementById('systemView');
-     if (!currentSystemData) {
-         /* ... error handling ... */
-         return;
-     }
+     if (!currentSystemData) return;
 
      let html = `<h2>${currentSystemData.name}</h2>`;
-     html += `<p>System Coordinates: (${currentSystemData.x}, ${currentSystemData.y})</p>`;
-     html += '<div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 20px;">';
+     html += `<p style="color:#888; margin-bottom:20px;">System Coordinates: [${currentSystemData.x}, ${currentSystemData.y}]</p>`;
+     
+     // The Planet Grid
+     html += '<div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; align-items: stretch;">';
 
      currentSystemData.planets.forEach((planet, index) => {
          const borderStyle = (index === selectedPlanetIndex) ? '2px solid #00E0E0' : '1px solid #303060';
+         const bgStyle = (index === selectedPlanetIndex) ? 'rgba(0, 224, 224, 0.1)' : 'rgba(0,0,0,0.5)';
+         
          const landButtonHTML = planet.biome.landable ?
-             `<button class="action-button" style="margin-top: 10px;" onclick="landOnPlanet(${index})">Land</button>` :
-             '<div style="margin-top: 10px; padding: 10px; color: #505070; font-size: 12px;">Cannot Land</div>';
+             `<button class="action-button" style="margin-top: 10px;" onclick="landOnPlanet(${index})">LAND</button>` :
+             `<button class="action-button" disabled style="margin-top: 10px; border-color:#444; color:#666;">UNINHABITABLE</button>`;
 
          html += `
-            <div onclick="selectPlanet(${index})" ondblclick="examinePlanet(${index})" style="border: ${borderStyle}; padding: 15px; border-radius: 8px; text-align: center; flex: 1; min-width: 120px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between;">
+            <div onclick="selectPlanet(${index})" ondblclick="examinePlanet(${index})" 
+                 style="border: ${borderStyle}; background: ${bgStyle}; padding: 15px; border-radius: 8px; text-align: center; flex: 1; min-width: 140px; max-width: 220px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s;">
+                
                 <div>
-                    <div style="font-size: 12px; color: #8888AA;">Planet ${index + 1}</div>
-                    
+                    <div style="font-size: 14px; font-weight:bold; color: #8888AA; margin-bottom: 8px;">PLANET ${index + 1}</div>
                     <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-icon-img">
-                    
-                    <div style="font-weight: bold; color: #00E0E0;">${planet.biome.name}</div>
+                    <div style="font-weight: bold; color: #00E0E0; margin-top: 5px;">${planet.biome.name}</div>
                 </div>
                 ${landButtonHTML}
             </div>
         `;
      });
      html += '</div>';
-     html += `<p style="margin-top: 30px;">(Click to select, Double-Click to Examine. 'L' to Leave)</p>`;
+
+     // --- Navigation Footer ---
+     html += `
+        <div style="margin-top: 40px; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto;">
+             <div style="text-align:center; margin-bottom:10px; font-size:12px; color:#666;">(Double-Click a planet to Scan)</div>
+             
+             <button class="action-button full-width-btn" onclick="leaveSystem()">
+                &lt;&lt; ENGAGE HYPERDRIVE (LEAVE SYSTEM)
+            </button>
+        </div>
+     `;
+
      systemView.innerHTML = html;
      renderUIStats();
  }
@@ -2678,6 +2727,20 @@ function loadGame() {
                  });
                  unlockLoreEntry("PHENOMENON_STAR");
                  break;
+            case NEXUS_CHAR_VAL:
+                 bM = "You are hovering before a colossus of shifting geometry. The First Nexus.";
+                 if (mystery_nexus_activated) {
+                     bM += "\nIt pulses with a silent, rhythmic light. It knows you are here.";
+                 } else {
+                     bM += "\nIt is dormant, but the Wayfinder Core in your hold is vibrating in unison.";
+                 }
+                 availableActions.push({
+                     label: 'Commune',
+                     key: 'x', // 'x' for Xeno/Nexus
+                     onclick: handleNexusEncounter
+                 });
+                 unlockLoreEntry("MYSTERY_FIRST_NEXUS");
+                 break;
              case ASTEROID_CHAR_VAL:
                  bM = `Asteroid field.`;
                  availableActions.push({
@@ -2729,6 +2792,40 @@ function loadGame() {
 
      logMessage(bM);
      renderContextualActions(availableActions);
+ }
+
+ function handleNexusEncounter() {
+     // Check if we have the key
+     if (!playerCargo.WAYFINDER_CORE && !mystery_nexus_activated) {
+         logMessage("The Nexus is silent. You feel you lack the 'key' to wake it.");
+         return;
+     }
+
+     if (mystery_nexus_activated) {
+         logMessage("The Nexus whispers to you... 'Wait for the Cycle to turn.' (Content TBD in v1.0)");
+         return;
+     }
+
+     // ACTIVATE THE NEXUS
+     mystery_nexus_activated = true;
+     playerXP += 5000; // Massive XP boost
+     playerCredits += 50000; // Massive Wealth
+     
+     // Update the world tile to reflect activation
+     updateWorldState(playerX, playerY, { activated: true });
+
+     // FX
+     spawnParticles(playerX, playerY, 'explosion'); 
+     setTimeout(() => spawnParticles(playerX, playerY, 'gain'), 500);
+
+     let msg = "<span style='color:#40E0D0'>THE NEXUS AWAKENS.</span>\n";
+     msg += "A beam of pure information blasts into your mind. You see the birth of stars, the death of galaxies, and the path of the Precursors.\n";
+     msg += "Your ship's computer is flooded with ancient data algorithms.\n";
+     msg += "\n<span style='color:#FFD700'>REWARD: +5000 XP, +50,000 Credits.</span>";
+     msg += "\n(You have reached the current end of the story content.)";
+
+     logMessage(msg);
+     checkLevelUp();
  }
 
  function scanLocation() {
@@ -3305,36 +3402,165 @@ function loadGame() {
      return promptMsg;
  }
 
- function displayTradeScreen(mode) {
-     // Get location data from the chunkManager
-     const location = chunkManager.getTile(playerX, playerY);
+ // --- NEW VISUAL TRADING SYSTEM ---
 
-     // Check if it's a valid location with services
-     if (!location || location.type !== 'location' || !((mode === 'buy' && location.sells && location.sells.length > 0) || (mode === 'sell' && location.buys && location.buys.length > 0))) {
-         logMessage(`No items to ${mode} here.`);
-         currentTradeContext = null;
-         return;
-     }
-     currentTradeContext = {
-         locationName: location.name,
-         mode: mode,
-         step: 'selectItem',
-         locationData: location
-     };
-     let tM = `--- ${mode.toUpperCase()} AT ${location.name.toUpperCase()} --- (Cr: ${playerCredits})\nCargo: ${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}\n`;
-     const items = mode === 'buy' ? location.sells : location.buys;
-     if (items.length === 0) tM += `Nothing available to ${mode}.\n`;
-     else items.forEach((item, idx) => {
-         const com = COMMODITIES[item.id];
-         unlockLoreEntry(`COMMODITY_${item.id}`);
-         const pr = calculatePrice(com.basePrice, item.priceMod);
-         const st = mode === 'buy' ? `Stock: ${item.stock}` : `Demand: ${item.stock}`;
-         const pH = mode === 'sell' ? `You have: ${playerCargo[item.id]||0}` : '';
-         tM += `${idx+1}. ${com.name} (${pr}c) [${st}] ${pH}\n`;
-     });
-     tM += "Enter # to select, or 'L' to leave.";
-     logMessage(tM);
- }
+function openTradeModal(mode) {
+    const location = chunkManager.getTile(playerX, playerY);
+
+    // Validation
+    if (!location || location.type !== 'location' || !((mode === 'buy' && location.sells?.length) || (mode === 'sell' && location.buys?.length))) {
+        logMessage(`No items to ${mode} here.`);
+        return;
+    }
+
+    // Set Context
+    currentTradeContext = {
+        locationData: location,
+        mode: mode,
+        items: mode === 'buy' ? location.sells : location.buys
+    };
+    currentTradeItemIndex = -1;
+    currentTradeQty = 1;
+
+    // Show UI
+    document.getElementById('tradeOverlay').style.display = 'flex';
+    document.getElementById('tradeTitle').textContent = `${mode.toUpperCase()} AT ${location.name.toUpperCase()}`;
+    
+    // Render List
+    renderTradeList();
+    resetTradeDetails();
+}
+
+function closeTradeModal() {
+    document.getElementById('tradeOverlay').style.display = 'none';
+    currentTradeContext = null;
+    // Return focus to map
+    handleInteraction();
+}
+
+function renderTradeList() {
+    const listEl = document.getElementById('tradeList');
+    listEl.innerHTML = '';
+
+    currentTradeContext.items.forEach((item, index) => {
+        const com = COMMODITIES[item.id];
+        const price = calculatePrice(com.basePrice, item.priceMod);
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        if (index === currentTradeItemIndex) row.classList.add('selected');
+        
+        // Show Stock (if buying) or Player Inventory (if selling)
+        let stockInfo = "";
+        if (currentTradeContext.mode === 'buy') stockInfo = `Stock: ${item.stock}`;
+        else stockInfo = `Have: ${playerCargo[item.id] || 0}`;
+
+        row.innerHTML = `
+            <span>${com.name}</span>
+            <span style="color:#888;">${price}c | ${stockInfo}</span>
+        `;
+        row.onclick = () => selectTradeItem(index);
+        listEl.appendChild(row);
+    });
+}
+
+function selectTradeItem(index) {
+    currentTradeItemIndex = index;
+    currentTradeQty = 1;
+    renderTradeList(); // Update highlight
+    
+    const itemEntry = currentTradeContext.items[index];
+    const com = COMMODITIES[itemEntry.id];
+    
+    // Unlock Lore
+    unlockLoreEntry(`COMMODITY_${itemEntry.id}`);
+
+    // Update Detail Text
+    document.getElementById('tradeItemName').textContent = com.name;
+    document.getElementById('tradeItemDesc').textContent = com.description;
+    document.getElementById('tradeQtyInput').value = 1;
+
+    // Enable button
+    document.getElementById('tradeConfirmBtn').disabled = false;
+
+    updateTradeTotal();
+}
+
+function updateTradeTotal() {
+    if (currentTradeItemIndex === -1) return;
+
+    const itemEntry = currentTradeContext.items[currentTradeItemIndex];
+    const com = COMMODITIES[itemEntry.id];
+    const price = calculatePrice(com.basePrice, itemEntry.priceMod);
+    
+    // Get Qty from input
+    let qty = parseInt(document.getElementById('tradeQtyInput').value);
+    if (isNaN(qty) || qty < 1) qty = 1;
+    currentTradeQty = qty;
+
+    // Update UI Stats
+    document.getElementById('tradeUnitPrice').textContent = `${price}c`;
+    
+    if (currentTradeContext.mode === 'buy') {
+        document.getElementById('tradeStock').textContent = `${itemEntry.stock} (Cap: ${PLAYER_CARGO_CAPACITY - currentCargoLoad})`;
+    } else {
+        document.getElementById('tradeStock').textContent = `${playerCargo[itemEntry.id] || 0} (Demand: ${itemEntry.stock})`;
+    }
+
+    const total = price * qty;
+    const totalEl = document.getElementById('tradeTotalCost');
+    totalEl.textContent = total;
+
+    // Validate Colors
+    if (currentTradeContext.mode === 'buy' && total > playerCredits) {
+        totalEl.style.color = '#FF4444'; // Red if can't afford
+        document.getElementById('tradeConfirmBtn').disabled = true;
+    } else {
+        totalEl.style.color = '#00E0E0';
+        document.getElementById('tradeConfirmBtn').disabled = false;
+    }
+}
+
+function adjustTradeQty(delta) {
+    const input = document.getElementById('tradeQtyInput');
+    let val = parseInt(input.value) || 0;
+    val = Math.max(1, val + delta);
+    input.value = val;
+    updateTradeTotal();
+}
+
+function setTradeMax() {
+    if (currentTradeItemIndex === -1) return;
+    const itemEntry = currentTradeContext.items[currentTradeItemIndex];
+    const com = COMMODITIES[itemEntry.id];
+    const price = calculatePrice(com.basePrice, itemEntry.priceMod);
+    
+    let max = 0;
+    
+    if (currentTradeContext.mode === 'buy') {
+        const afford = Math.floor(playerCredits / price);
+        const space = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+        max = Math.min(itemEntry.stock, afford, space);
+    } else {
+        const have = playerCargo[itemEntry.id] || 0;
+        max = Math.min(have, itemEntry.stock); // Can only sell what station wants
+    }
+
+    document.getElementById('tradeQtyInput').value = Math.max(1, max);
+    updateTradeTotal();
+}
+
+function executeTrade() {
+    if (currentTradeItemIndex === -1) return;
+    
+    // Reuse your existing logic function!
+    // We just pass the string value of the quantity
+    handleTradeQuantity(currentTradeQty.toString());
+    
+    // Refresh the UI to reflect new stock/credits
+    renderTradeList();
+    selectTradeItem(currentTradeItemIndex);
+    renderUIStats();
+}
 
  function handleTradeSelection(input) {
      if (!currentTradeContext || currentTradeContext.step !== 'selectItem') return;
@@ -3423,6 +3649,28 @@ function loadGame() {
              finalMessage = `Purchased ${qty} ${commodity.name} for ${totalCost}c.`;
          }
 
+         // --- WAYFINDER QUEST TRIGGER ---
+     if (commodityID === 'WAYFINDER_CORE' && !mystery_first_nexus_location) {
+         // 1. Calculate a distant location for the Nexus
+         // It should be far away (e.g., 500-1000 tiles out)
+         const dist = 500 + Math.floor(seededRandom(WORLD_SEED) * 500);
+         const angle = seededRandom(WORLD_SEED + 1) * Math.PI * 2;
+         
+         const nexusX = Math.floor(Math.cos(angle) * dist);
+         const nexusY = Math.floor(Math.sin(angle) * dist);
+
+         mystery_first_nexus_location = { x: nexusX, y: nexusY };
+         
+         unlockLoreEntry("MYSTERY_WAYFINDER_QUEST_COMPLETED");
+         
+         finalMessage += "\n\n<span style='color:#40E0D0; font-weight:bold;'>! ARTIFACT ACTIVATED !</span>\nThe Wayfinder Core hums violently! Coordinates projected into navigation computer: \n" + 
+                         `SECTOR (${Math.floor(nexusX/SECTOR_SIZE)}, ${Math.floor(nexusY/SECTOR_SIZE)}) \n` +
+                         `COORDS: ${nexusX}, ${nexusY}`;
+         
+         logMessage(finalMessage); // Log immediately so they see the coords
+         return; // Return early to avoid overwriting the message
+     }
+
      } else {
          const playerHas = playerCargo[commodityID] || 0;
 
@@ -3450,9 +3698,9 @@ function loadGame() {
          }
      }
 
-     currentTradeContext = null;
      logMessage(finalMessage);
-     checkLevelUp();
+    checkLevelUp();
+
  }
 
  /**
@@ -4631,42 +4879,21 @@ function loadGame() {
      return true;
  }
 
- function handleTradeInput(key) {
-     if (currentTradeContext.step === 'selectQuantity') {
-         let updatePrompt = false;
+function handleTradeInput(key) {
+    // 1. Check for Exit Keys
+    // We allow 'Escape' or 'l' (Leave) to close the modal instantly
+    if (key === 'escape' || key === 'l') {
+        closeTradeModal();
+        return true;
+    }
 
-         // FIX: Added "|| key === 'm'" to allow typing 'm' for MAX
-         if ((!isNaN(parseInt(key)) || key === 'm') && key.length === 1 && currentQuantityInput.length < 3) {
-             currentQuantityInput += key;
-             updatePrompt = true;
-         } else if (key === 'backspace' && currentQuantityInput.length > 0) {
-             currentQuantityInput = currentQuantityInput.slice(0, -1);
-             updatePrompt = true;
-         } else if (key === 'enter') {
-             // This sends the "m" (or number) to the logic function we wrote earlier
-             handleTradeQuantity(currentQuantityInput || "0");
-         } else if (key === 'l') {
-             currentTradeContext = null;
-             currentQuantityInput = "";
-             handleInteraction();
-         }
-
-         if (updatePrompt) {
-             let promptMsg = getTradeQuantityPromptBaseMessage();
-             promptMsg += `Enter quantity, or 'm' for MAX. Current: ${currentQuantityInput}`;
-             logMessage(promptMsg);
-         }
-
-     } else if (currentTradeContext.step === 'selectItem') {
-         if (!isNaN(parseInt(key))) handleTradeSelection(key);
-         else if (key === 'l') {
-             currentTradeContext = null;
-             currentQuantityInput = "";
-             handleInteraction();
-         }
-     }
-     return true;
- }
+    // 2. Block Other Inputs
+    // Since the actual trading (typing numbers, clicking buy) happens via 
+    // HTML clicks and inputs, we don't need to handle keys here.
+    // We simply return true to tell the game: 
+    // "We are in a menu, do NOT move the ship with WASD."
+    return true;
+}
 
  function handleShipyardInput(key) {
      if (currentShipyardContext.step === 'selectShip') {
@@ -4723,11 +4950,11 @@ function loadGame() {
      if (currentLocation) {
          switch (key) {
              case 'b':
-                 displayTradeScreen('buy');
-                 return true;
-             case 's':
-                 displayTradeScreen('sell');
-                 return true;
+                openTradeModal('buy'); // Changed from displayTradeScreen
+                return true;
+            case 's':
+                openTradeModal('sell'); // Changed from displayTradeScreen
+                return true;
              case 'o':
                  if (currentLocation.isMajorHub) {
                      displayOutfittingScreen();
@@ -4966,6 +5193,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveButtonElement = document.getElementById('saveButton');
     loadButtonElement = document.getElementById('loadButton');
     const themeButtonElement = document.getElementById('themeButton');
+    
 
     // 3. Setup Canvas with High DPI Support
     gameCanvas = document.getElementById('gameCanvas');
@@ -4977,6 +5205,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set internal resolution to match screen density
     gameCanvas.width = MAP_WIDTH * TILE_SIZE * dpr;
     gameCanvas.height = MAP_HEIGHT * TILE_SIZE * dpr;
+
+    // Setup System Menu Toggle
+    const menuBtn = document.getElementById('menuToggle');
+    const sysMenu = document.getElementById('systemMenu');
+    
+    menuBtn.addEventListener('click', () => {
+        sysMenu.classList.toggle('hidden');
+    });
+
+    // Close menu if clicking outside
+    document.addEventListener('click', (e) => {
+        if (!sysMenu.contains(e.target) && e.target !== menuBtn) {
+            sysMenu.classList.add('hidden');
+        }
+    });
 
     // Scale drawing operations so logic still uses 1.0 coordinates
     ctx.scale(dpr, dpr);
@@ -4997,18 +5240,16 @@ document.addEventListener('DOMContentLoaded', () => {
     loadButtonElement.addEventListener('click', loadGame);
     themeButtonElement.addEventListener('click', toggleTheme);
     document.getElementById("codexCloseButton").addEventListener("click", () => toggleCodex(false));
+    document.getElementById('closeTradeBtn').addEventListener('click', closeTradeModal);
 
     // Title Screen Buttons
     const startButton = document.getElementById('startButton');
-    const randomSeedButton = document.getElementById('randomSeedButton');
+    
     const seedInput = document.getElementById('seedInput');
 
     startButton.addEventListener('click', () => startGame(seedInput.value));
     seedInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') startGame(seedInput.value);
-    });
-    randomSeedButton.addEventListener('click', () => {
-        seedInput.value = Math.floor(Math.random() * 99999999);
     });
 
     // PFP Customization
@@ -5040,6 +5281,23 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.add('light-mode');
         themeButtonElement.textContent = "Dark Mode";
     }
+
+    window.addEventListener('resize', () => {
+        // Recalculate dimensions
+        const newDpr = window.devicePixelRatio || 1;
+        gameCanvas.width = MAP_WIDTH * TILE_SIZE * newDpr;
+        gameCanvas.height = MAP_HEIGHT * TILE_SIZE * newDpr;
+        
+        // Reset Context settings because resizing wipes them
+        ctx.scale(newDpr, newDpr);
+        ctx.imageRendering = "pixelated";
+        ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle'; 
+        
+        // Force a redraw
+        render();
+    });
 
     // 6. Initialize Game Logic (Now safely uses the Canvas setup above)
     initializeGame();
