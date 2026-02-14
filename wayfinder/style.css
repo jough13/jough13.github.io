@@ -970,3 +970,83 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     color: #ffaa00; /* Amber for the bar feel */
     font-weight: bold;
 }
+
+/* --- MOBILE CONTROLS & RESPONSIVENESS --- */
+
+/* 1. Virtual D-Pad (Hidden on Desktop) */
+#mobileControls {
+    display: none; /* Hide by default */
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 50;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    opacity: 0.8;
+}
+
+.dpad-row { display: flex; gap: 5px; }
+
+.dpad-btn {
+    width: 50px;
+    height: 50px;
+    background: rgba(0, 20, 20, 0.9);
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    border-radius: 8px;
+    font-size: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    user-select: none; /* Prevent text highlighting */
+    touch-action: manipulation; /* Improve touch response */
+}
+
+.dpad-btn:active {
+    background: var(--accent-color);
+    color: #000;
+}
+
+/* 2. Mobile Layout Tweaks (Triggered on screens < 768px) */
+@media (max-width: 768px) {
+    /* Show D-Pad */
+    #mobileControls { display: flex; }
+
+    /* Adjust Main Container */
+    #app-container {
+        grid-template-rows: 40px 1fr 180px; /* Smaller Header, Taller Footer */
+    }
+
+    /* Stack the Footer (Log on top, Buttons below) */
+    #bottom-deck {
+        grid-template-columns: 1fr; 
+        grid-template-rows: 1fr auto;
+        padding: 5px;
+    }
+
+    /* Make buttons bigger for fingers */
+    .control-button { padding: 15px; font-size: 14px; }
+    
+    /* Move D-Pad to bottom-right or overlay for easier reach */
+    #mobileControls {
+        bottom: 10px;
+        left: 10px;
+    }
+
+    /* Compact Header */
+    #top-hud { padding: 0 5px; font-size: 10px; }
+    .hud-group { gap: 8px; }
+    .hud-stat { width: auto; }
+    .label { display: none; /* Hide labels like "FUEL" to save space */ }
+    .bar-container { width: 40px; }
+    .sector-title { font-size: 14px; }
+    
+    /* Make Modals Full Width */
+    .trade-window { width: 98%; max-height: 95vh; }
+    
+    /* Adjust Combat Views */
+    .combatants-wrapper { gap: 5px; }
+    .combatant-icon { width: 60px; height: 60px; }
+}
