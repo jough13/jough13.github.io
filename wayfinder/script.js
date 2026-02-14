@@ -4421,6 +4421,45 @@ function initializeDOMElements() {
     // 2. Button Listeners
     saveButtonElement = document.getElementById('saveButton');
     if(saveButtonElement) saveButtonElement.onclick = saveGame; 
+
+    // --- Mobile D-Pad Listeners ---
+    // We reuse handleGalacticMapInput to simulate key presses
+    const btnUp = document.getElementById('btnUp');
+    const btnDown = document.getElementById('btnDown');
+    const btnLeft = document.getElementById('btnLeft');
+    const btnRight = document.getElementById('btnRight');
+
+    if (btnUp) {
+        // We use 'click' for broad compatibility, or 'touchstart' for responsiveness
+        // preventing default on touchstart stops double-tap zooming
+        const bindMove = (btn, key) => {
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); 
+                if (currentGameState === GAME_STATES.GALACTIC_MAP) handleGalacticMapInput(key);
+            });
+            btn.addEventListener('click', (e) => {
+                if (currentGameState === GAME_STATES.GALACTIC_MAP) handleGalacticMapInput(key);
+            });
+        };
+
+        bindMove(btnUp, 'w');
+        bindMove(btnDown, 's');
+        bindMove(btnLeft, 'a');
+        bindMove(btnRight, 'd');
+    }
+
+    const btnWait = document.getElementById('btnWait');
+    
+    if (btnWait) {
+        btnWait.addEventListener('click', (e) => {
+            if (currentGameState === GAME_STATES.GALACTIC_MAP) {
+                // Trigger the "Wait" logic manually
+                logMessage("Holding position. Systems recharging...");
+                advanceGameTime(0.15); 
+                render();
+            }
+        });
+    }
     
     // SAFETY FIX: Check if loadButton exists before accessing it
     // (This prevents the crash that was breaking your new menu)
@@ -4459,6 +4498,7 @@ function initializeDOMElements() {
     }
 
     // 4. System Menu Toggle
+
     const menuBtn = document.getElementById('menuToggle');
     const sysMenu = document.getElementById('systemMenu');
     if (menuBtn && sysMenu) {
