@@ -1,97 +1,181 @@
 <!DOCTYPE html>
 <html lang="en">
-   <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Wayfinder: Echoes of the Void - v0.9.3 (Post-Nexus Story) - 16Sep25</title>
-      <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-      <link rel="stylesheet" href="style.css">
-   </head>
-   <body class="crt">
-      <div id="titleOverlay">
-         <div id="titleContainer">
-            <h1 class="game-title">Wayfinder: Echoes of the Void</h1>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wayfinder: Echoes of the Void</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="crt">
+
+    <div id="titleOverlay">
+        <div id="titleContainer">
+            <h1 class="game-title">Wayfinder</h1>
+            <p class="subtitle">Echoes of the Void</p>
+            
             <div class="player-customization">
-               <div class="pfp-selector">
-                  <button id="prevPfpBtn" class="pfp-arrow-btn">&lt;</button>
-                  <img src="assets/pfp_01.png" id="pfpImage" alt="Profile Picture">
-                  <button id="nextPfpBtn" class="pfp-arrow-btn">&gt;</button>
-               </div>
-               <input type="text" id="playerNameInput" class="seed-input" placeholder="Enter Your Captain's Name">
+                <div class="pfp-selector">
+                    <button id="prevPfpBtn" class="pfp-arrow-btn">&lt;</button>
+                    <img src="assets/pfp_01.png" id="pfpImage" alt="Profile">
+                    <button id="nextPfpBtn" class="pfp-arrow-btn">&gt;</button>
+                </div>
+                <input type="text" id="playerNameInput" class="seed-input" placeholder="Captain Name">
             </div>
-            <p class="seed-prompt-text">Enter a World Seed to begin your journey</p>
-            <input type="text" id="seedInput" class="seed-input" placeholder="Leave blank for a random world">
+
+            <p class="seed-prompt-text">Enter World Seed (Optional)</p>
+            <input type="text" id="seedInput" class="seed-input" placeholder="Random Seed">
+            
             <div class="title-buttons">
-               <button id="startButton" class="title-button">Embark</button>
-               <button id="randomSeedButton" class="title-button">Randomize Seed</button>
+                <button id="startButton" class="title-button">Initialize Systems</button>
             </div>
+        </div>
+    </div>
+
+    <div id="app-container">
+        
+        <header id="top-hud">
+            <div class="hud-group left">
+                <div class="hud-stat">
+                    <span class="label">HULL</span>
+                    <div class="bar-container"><div id="hullBar" class="bar-fill hull"></div></div>
+                    <span id="hullVal" class="value-text">100%</span>
+                </div>
+                <div class="hud-stat">
+                    <span class="label">SHLD</span>
+                    <div class="bar-container"><div id="shieldBar" class="bar-fill shield"></div></div>
+                    <span id="shieldVal" class="value-text">100%</span>
+                </div>
+                <div class="hud-stat">
+                    <span class="label">FUEL</span>
+                    <div class="bar-container"><div id="fuelBar" class="bar-fill fuel"></div></div>
+                    <span id="fuelVal" class="value-text">100%</span>
+                </div>
+            </div>
+
+            <div class="hud-group center">
+                <span id="sectorNameStat" class="sector-title">DEEP SPACE</span>
+                <span id="sectorCoordsStat" class="coords">(0,0)</span>
+            </div>
+
+            <div class="hud-group right">
+                <div class="hud-stat compact">
+                    <span class="label">CR</span>
+                    <span id="creditsStat" class="value-text gold">0</span>
+                </div>
+                <div class="hud-stat compact">
+                    <span class="label">CARGO</span>
+                    <span id="cargoStat" class="value-text">0/0</span>
+                </div>
+                <button id="menuToggle" class="icon-btn">SYS</button>
+            </div>
+        </header>
+
+        <div id="systemMenu" class="hidden">
+            <div class="sys-header">COMMANDER DATA</div>
+            <div id="sys-stats-display" style="font-size: 13px; color: #88a; margin-bottom: 10px; padding-bottom:10px; border-bottom:1px solid #333;">
+               LVL: <span id="menuLevel">1</span> <span style="color:#555">|</span> XP: <span id="menuXP">0</span><br>
+               SHIP: <span id="menuShip">Light Freighter</span><br>
+               REP: <span id="menuRep">Neutral</span>
+            </div>
+
+            <button id="saveButton" class="sys-btn">Save Game</button>
+            <button id="loadButton" class="sys-btn">Load Game</button>
+            <button id="themeButton" class="sys-btn">Toggle Theme</button>
+            <div id="versionInfo">v0.9.4</div>
          </div>
-      </div>
-      <div id="page-wrapper">
-         <h1 class="game-title">Wayfinder: Echoes of the Void</h1>
-         <div id="gameContainer">
-            <div id="main-view-wrapper">
-               <canvas id="gameCanvas"></canvas>
-               <div id="systemView"></div>
-               <div id="planetView"></div>
-               <div id="combatView"></div>
+
+        <main id="main-view">
+            <div class="side-border left"></div>
+            <div class="side-border right"></div>
+
+            <canvas id="gameCanvas"></canvas>
+
+            <div id="tradeOverlay" style="display:none;">
+                <div class="trade-window">
+                    <div class="trade-header">
+                        <span id="tradeTitle">COMMODITY EXCHANGE</span>
+                        <button id="closeTradeBtn" class="icon-btn">X</button>
+                    </div>
+                    
+                    <div class="trade-body">
+                        <div id="tradeList" class="trade-list-container">
+                            </div>
+
+                        <div id="tradeDetails" class="trade-panel-right">
+                            <h3 id="tradeItemName">SELECT ITEM</h3>
+                            <p id="tradeItemDesc" style="font-size:12px; color:#888;">Select a commodity to view details.</p>
+                            
+                            <div class="trade-math-area">
+                                <div class="trade-stat-row">
+                                    <span>Unit Price:</span> <span id="tradeUnitPrice" class="value-text">0c</span>
+                                </div>
+                                <div class="trade-stat-row">
+                                    <span>Stock/Cargo:</span> <span id="tradeStock" class="value-text">0</span>
+                                </div>
+                            </div>
+
+                            <div class="qty-control-row">
+                                <button class="qty-btn" onclick="adjustTradeQty(-1)">-</button>
+                                <input type="number" id="tradeQtyInput" value="1" min="1" oninput="updateTradeTotal()">
+                                <button class="qty-btn" onclick="adjustTradeQty(1)">+</button>
+                                <button class="qty-btn max-btn" onclick="setTradeMax()">MAX</button>
+                            </div>
+
+                            <div class="total-cost-display">
+                                TOTAL: <span id="tradeTotalCost">0</span>c
+                            </div>
+
+                            <div class="trade-btn-group">
+                                <button id="tradeConfirmBtn" class="action-button" onclick="executeTrade()" disabled>CONFIRM</button>
+                                <button class="action-button" onclick="closeTradeModal()" style="border-color:#555; color:#888;">CANCEL / LEAVE</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div id="messageArea">Welcome, Explorer!</div>
-            <div id="playerStats">
-               <div id="left-stats-zone">
-                  <div class="stat-item" id="mission-tracker"></div>
-               </div>
-               <div id="core-stats-wrapper">
-                  <div class="stat-item"><span class="stat-label">Fuel</span><span id="fuelStat" class="stat">0/0</span></div>
-                  <div class="stat-item"><span class="stat-label">Shields</span><span id="shieldsStat" class="stat">0/0</span></div>
-                  <div class="stat-item"><span class="stat-label">Hull</span><span id="hullStat" class="stat">0/0</span></div>
-                  <div class="stat-item"><span class="stat-label">Credits</span><span id="creditsStat" class="stat">0</span></div>
-                  <div class="stat-item"><span class="stat-label">Cargo</span><span id="cargoStat" class="stat">0/0</span></div>
-                  <div class="stat-item">
-                     <span class="stat-label">Level / XP</span>
-                     <span id="levelXpStat" class="stat">1 (0/0)</span>
-                  </div>
-                  <div class="stat-item"><span class="stat-label">Ship Class</span><span id="shipClassStat" class="stat">Unknown</span></div>
-                  <div class="stat-item"><span class="stat-label">Notoriety</span><span id="notorietyStat" class="stat">Unknown</span></div>
-               </div>
-               <div id="right-stats-zone">
-                  <div class="stat-item"> 
-                     <span class="stat-label">Location</span>
-                     <span id="sectorNameStat" class="stat">Deep Space</span>
-                     <span id="sectorCoordsStat" class="sector-coords">(0,0)</span>
-                  </div>
-                  <div class="stat-item">
-                     <span class="stat-label">Stardate</span>
-                     <span id="stardateStat" class="stat">2458.00</span>
-                  </div>
-                  <div class="stat-item" id="contextual-actions"></div>
-                  <div class="stat-item" id="action-buttons-container">
-                     <button id="saveButton" class="control-button">Save</button>
-                     <button id="loadButton" class="control-button">Load</button>
-                     <button id="themeButton" class="control-button">Light Mode</button>
-                  </div>
-               </div>
-            </div>
+
+            <div id="systemView" class="view-panel"></div>
+            <div id="planetView" class="view-panel"></div>
+            <div id="combatView" class="view-panel"></div>
+            
             <div id="codexOverlay">
-               <button id="codexCloseButton">&times;</button>
-               <div id="codexTitle">Codex Galactica</div>
-               <div id="codexContent">
-                  <div id="codexCategories"></div>
-                  <div id="codexEntries"></div>
-                  <div id="codexEntryText">Select an entry to read.</div>
-               </div>
+                <div class="codex-header">
+                    <span>GALACTIC DATABASE</span>
+                    <button id="codexCloseButton">&times;</button>
+                </div>
+                <div id="codexContent">
+                    <div id="codexCategories"></div>
+                    <div id="codexEntries"></div>
+                    <div id="codexEntryText">Select an entry...</div>
+                </div>
             </div>
-         </div>
-         <div class="controls-info">
-            WASD: Move | E: Scan | J: Codex
-         </div>
-         <div id="versionInfo">Wayfinder: Echoes of the Void - v0.9.3</div>
-      </div>
-      <script src="script.js"></script>
-      <script>
-         window.addEventListener("load", () => {
-             document.getElementById("page-wrapper").style.opacity = "1";
-         });
-      </script> 
-   </body>
+        </main>
+
+        <footer id="bottom-deck">
+            <div id="messageArea" class="log-panel">System Initialized...</div>
+            
+            <div id="context-panel">
+                <div id="mission-tracker" class="mission-box">
+                    <span class="label">MISSION</span>
+                    <span id="missionText" class="value">No Active Mission</span>
+                </div>
+                <div id="contextual-actions" class="action-row"></div>
+            </div>
+        </footer>
+
+    </div>
+
+    <div style="display:none;">
+        <span id="levelXpStat"></span>
+        <span id="shipClassStat"></span>
+        <span id="notorietyStat"></span>
+        <span id="stardateStat"></span>
+        <span id="fuelStat"></span>
+        <span id="shieldsStat"></span>
+        <span id="hullStat"></span>
+    </div>
+
+    <script src="script.js"></script>
+</body>
 </html>
