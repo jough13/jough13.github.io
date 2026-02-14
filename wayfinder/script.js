@@ -1,8 +1,8 @@
  // --- Game Configuration ---
 
- const GAME_VERSION = "v0.9.4";
- const MAP_WIDTH = 25; // WAS 40 (Shows fewer tiles horizontally)
- const MAP_HEIGHT = 15; // WAS 25 (Shows fewer tiles vertically)
+ const GAME_VERSION = "v0.9.5"; // Bumped version
+ const MAP_WIDTH = 40;  // WAS 25. Increased to fill horizontal space.
+ const MAP_HEIGHT = 22; // WAS 15. Increased to see more vertically.
  const PLAYER_CHAR_VAL = '@';
  const EMPTY_SPACE_CHAR_VAL = '.';
  const STAR_CHAR_VAL = '*';
