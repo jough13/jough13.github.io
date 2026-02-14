@@ -14,20 +14,38 @@
             <h1 class="game-title">Wayfinder</h1>
             <p class="subtitle">Echoes of the Void</p>
             
-            <div class="player-customization">
-                <div class="pfp-selector">
-                    <button id="prevPfpBtn" class="pfp-arrow-btn">&lt;</button>
-                    <img src="assets/pfp_01.png" id="pfpImage" alt="Profile">
-                    <button id="nextPfpBtn" class="pfp-arrow-btn">&gt;</button>
+            <div id="saveSelectContainer" style="display:none;">
+                <div class="save-list-header">SELECT COMMANDER</div>
+                <div id="saveList" class="save-list">
+                    </div>
+                
+                <div class="title-controls">
+                    <button id="showNewGameBtn" class="title-button small-btn">New Campaign</button>
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="autoLoginCheck">
+                        <span class="checkmark"></span>
+                        Auto-Login
+                    </label>
                 </div>
-                <input type="text" id="playerNameInput" class="seed-input" placeholder="Captain Name">
             </div>
 
-            <p class="seed-prompt-text">Enter World Seed (Optional)</p>
-            <input type="text" id="seedInput" class="seed-input" placeholder="Random Seed">
-            
-            <div class="title-buttons">
-                <button id="startButton" class="title-button">Initialize Systems</button>
+            <div id="newGameContainer">
+                <div class="player-customization">
+                    <div class="pfp-selector">
+                        <button id="prevPfpBtn" class="pfp-arrow-btn">&lt;</button>
+                        <img src="assets/pfp_01.png" id="pfpImage" alt="Profile">
+                        <button id="nextPfpBtn" class="pfp-arrow-btn">&gt;</button>
+                    </div>
+                    <input type="text" id="playerNameInput" class="seed-input" placeholder="Captain Name">
+                </div>
+
+                <p class="seed-prompt-text">Enter World Seed (Optional)</p>
+                <input type="text" id="seedInput" class="seed-input" placeholder="Random Seed">
+                
+                <div class="title-buttons">
+                    <button id="startButton" class="title-button">Initialize Systems</button>
+                    <button id="backToSavesBtn" class="title-button small-btn" style="display:none; background:#333;">Back to Saves</button>
+                </div>
             </div>
         </div>
     </div>
@@ -79,10 +97,11 @@
                REP: <span id="menuRep">Neutral</span>
             </div>
 
-            <button id="saveButton" class="sys-btn">Save Game</button>
-            <button id="loadButton" class="sys-btn">Load Game</button>
+            <button id="saveButton" class="sys-btn">Manual Save</button>
+            <button id="loadButton" class="sys-btn">Load Manual Save</button>
+            <button id="mainMenuButton" class="sys-btn">Main Menu</button>
             <button id="themeButton" class="sys-btn">Toggle Theme</button>
-            <div id="versionInfo">v0.9.4</div>
+            <div id="versionInfo">v0.9.5</div>
          </div>
 
         <main id="main-view">
@@ -97,38 +116,52 @@
                         <span id="tradeTitle">COMMODITY EXCHANGE</span>
                         <button id="closeTradeBtn" class="icon-btn">X</button>
                     </div>
-                    
                     <div class="trade-body">
-                        <div id="tradeList" class="trade-list-container">
-                            </div>
-
+                        <div id="tradeList" class="trade-list-container"></div>
                         <div id="tradeDetails" class="trade-panel-right">
                             <h3 id="tradeItemName">SELECT ITEM</h3>
                             <p id="tradeItemDesc" style="font-size:12px; color:#888;">Select a commodity to view details.</p>
-                            
                             <div class="trade-math-area">
-                                <div class="trade-stat-row">
-                                    <span>Unit Price:</span> <span id="tradeUnitPrice" class="value-text">0c</span>
-                                </div>
-                                <div class="trade-stat-row">
-                                    <span>Stock/Cargo:</span> <span id="tradeStock" class="value-text">0</span>
-                                </div>
+                                <div class="trade-stat-row"><span>Unit Price:</span> <span id="tradeUnitPrice" class="value-text">0c</span></div>
+                                <div class="trade-stat-row"><span>Stock/Cargo:</span> <span id="tradeStock" class="value-text">0</span></div>
                             </div>
-
                             <div class="qty-control-row">
                                 <button class="qty-btn" onclick="adjustTradeQty(-1)">-</button>
                                 <input type="number" id="tradeQtyInput" value="1" min="1" oninput="updateTradeTotal()">
                                 <button class="qty-btn" onclick="adjustTradeQty(1)">+</button>
                                 <button class="qty-btn max-btn" onclick="setTradeMax()">MAX</button>
                             </div>
-
-                            <div class="total-cost-display">
-                                TOTAL: <span id="tradeTotalCost">0</span>c
-                            </div>
-
+                            <div class="total-cost-display">TOTAL: <span id="tradeTotalCost">0</span>c</div>
                             <div class="trade-btn-group">
                                 <button id="tradeConfirmBtn" class="action-button" onclick="executeTrade()" disabled>CONFIRM</button>
                                 <button class="action-button" onclick="closeTradeModal()" style="border-color:#555; color:#888;">CANCEL / LEAVE</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cargoOverlay" style="display:none;">
+                <div class="trade-window"> 
+                    <div class="trade-header">
+                        <span>CARGO MANIFEST</span>
+                        <button id="closeCargoBtn" class="icon-btn">X</button>
+                    </div>
+                    <div class="trade-body">
+                        <div id="cargoList" class="trade-list-container"></div>
+                        
+                        <div id="cargoDetails" class="trade-panel-right">
+                            <h3 id="cargoItemName">SELECT CARGO</h3>
+                            <p id="cargoItemDesc" style="font-size:12px; color:#888;">Select an item to inspect or jettison.</p>
+                            
+                            <div class="trade-math-area">
+                                <div class="trade-stat-row"><span>Quantity:</span> <span id="cargoItemQty" class="value-text">0</span></div>
+                                <div class="trade-stat-row"><span>Base Value:</span> <span id="cargoItemVal" class="value-text">0c</span></div>
+                            </div>
+
+                            <div style="margin-top:auto">
+                                <p style="color:#FF4444; font-size:11px; margin-bottom:5px;">WARNING: Jettisoned cargo is lost forever.</p>
+                                <button id="jettisonBtn" class="action-button" style="border-color:#FF4444; color:#FF4444;" disabled>JETTISON 1 UNIT</button>
                             </div>
                         </div>
                     </div>
@@ -154,7 +187,6 @@
 
         <footer id="bottom-deck">
             <div id="messageArea" class="log-panel">System Initialized...</div>
-            
             <div id="context-panel">
                 <div id="mission-tracker" class="mission-box">
                     <span class="label">MISSION</span>
@@ -163,19 +195,37 @@
                 <div id="contextual-actions" class="action-row"></div>
             </div>
         </footer>
-
     </div>
 
     <div style="display:none;">
-        <span id="levelXpStat"></span>
-        <span id="shipClassStat"></span>
-        <span id="notorietyStat"></span>
-        <span id="stardateStat"></span>
-        <span id="fuelStat"></span>
-        <span id="shieldsStat"></span>
-        <span id="hullStat"></span>
+        <span id="levelXpStat"></span><span id="shipClassStat"></span>
+        <span id="notorietyStat"></span><span id="stardateStat"></span>
+        <span id="fuelStat"></span><span id="shieldsStat"></span><span id="hullStat"></span>
     </div>
 
+    <div id="confirmationOverlay" style="display:none;">
+        <div class="confirm-window">
+            <div class="confirm-header">! COMMAND AUTHORIZATION REQUIRED !</div>
+            <div class="confirm-body">
+                <p id="confirmMessage">Are you sure?</p>
+                <div class="confirm-actions">
+                    <button id="confirmYesBtn" class="action-button danger-btn">CONFIRM DELETION</button>
+                    <button id="confirmNoBtn" class="action-button">CANCEL</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <script src="config.js"></script>
+    <script src="items.js"></script>
+    <script src="biomes.js"></script>
+    <script src="ships.js"></script>
+    <script src="locations.js"></script>
+    <script src="rumors.js"></script>
+    <script src="lore.js"></script>
+    
     <script src="script.js"></script>
 </body>
 </html>
