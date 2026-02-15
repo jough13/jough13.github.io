@@ -1,5 +1,3 @@
-
-
 // --- ACTIVE ENEMIES ---
 let activeEnemies = []; 
 
@@ -1348,17 +1346,35 @@ function renderSystemMap() {
  }
 
  function renderGalacticMap() {
-    // --- 1. Calculate the camera/viewport position ---
-    const viewportCenterX = Math.floor(MAP_WIDTH / 2);
-    const viewportCenterY = Math.floor(MAP_HEIGHT / 2);
-    const startX = playerX - viewportCenterX;
-    const startY = playerY - viewportCenterY;
+    // --- 1. Calculate Camera Position ---
+    // We want the player in the center of the VIEWPORT
+    const halfViewW = Math.floor(VIEWPORT_WIDTH_TILES / 2);
+    const halfViewH = Math.floor(VIEWPORT_HEIGHT_TILES / 2);
 
-    // --- 2. Clear the canvas ---
-    // Use clearRect to ensure transparency works if needed, then fill background
+    // Calculate the top-left corner of the camera
+    let camX = playerX - halfViewW;
+    let camY = playerY - halfViewH;
+
+    // OPTIONAL: Clamp Camera to Map Bounds? 
+    // If we clamp, the player moves to the edge of the screen at map borders.
+    // If we don't clamp, we see empty void outside the map. 
+    // Let's CLAMP it for a cleaner look, but ensure we don't crash if map is smaller than view.
+    const maxCamX = MAP_WIDTH - VIEWPORT_WIDTH_TILES;
+    const maxCamY = MAP_HEIGHT - VIEWPORT_HEIGHT_TILES;
+    
+    // Basic clamping (prevents showing area outside 0,0 - 40,22)
+    // Note: If you want an "Infinite" feel, remove these Math.max/min lines.
+    camX = Math.max(0, Math.min(camX, maxCamX));
+    camY = Math.max(0, Math.min(camY, maxCamY));
+
+    // Handle case where viewport > map (unlikely but safe)
+    if (VIEWPORT_WIDTH_TILES > MAP_WIDTH) camX = -(VIEWPORT_WIDTH_TILES - MAP_WIDTH) / 2;
+    if (VIEWPORT_HEIGHT_TILES > MAP_HEIGHT) camY = -(VIEWPORT_HEIGHT_TILES - MAP_HEIGHT) / 2;
+
+    // --- 2. Clear Canvas ---
     ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
     
-    // Determine background based on sensor pulse (Subtle flash effect)
+    // Pulse Effect Background
     if (sensorPulseActive) {
         const pulseIntensity = (1 - (sensorPulseRadius / MAX_PULSE_RADIUS)) * 0.2;
         ctx.fillStyle = `rgba(0, 40, 40, ${0.4 + pulseIntensity})`;
@@ -1367,12 +1383,19 @@ function renderSystemMap() {
     }
     ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
 
-    // --- 3. Draw Tiles ---
-    for (let y = 0; y < MAP_HEIGHT; y++) {
-        for (let x = 0; x < MAP_WIDTH; x++) {
-            const mapX = startX + x;
-            const mapY = startY + y;
-            const tileData = chunkManager.getTile(mapX, mapY);
+    // --- 3. Draw Tiles (Iterate over Viewport, not Map) ---
+    for (let y = 0; y < VIEWPORT_HEIGHT_TILES; y++) {
+        for (let x = 0; x < VIEWPORT_WIDTH_TILES; x++) {
+            // Calculate World Coordinate
+            const worldX = Math.floor(camX + x);
+            const worldY = Math.floor(camY + y);
+
+            // Bounds Check (Don't try to get tiles outside map array)
+            if (worldX < 0 || worldX >= MAP_WIDTH || worldY < 0 || worldY >= MAP_HEIGHT) {
+                continue; 
+            }
+
+            const tileData = chunkManager.getTile(worldX, worldY);
             const tileChar = getTileChar(tileData);
 
             switch (tileChar) {
@@ -1393,6 +1416,7 @@ function renderSystemMap() {
                     break;
             }
 
+            // Draw at Screen Coordinate (x, y) relative to Viewport
             ctx.fillText(
                 tileChar,
                 x * TILE_SIZE + TILE_SIZE / 2,
@@ -1401,9 +1425,10 @@ function renderSystemMap() {
         }
     }
 
-    // --- 4. Draw Sensor Pulse (Underlay) ---
-    const playerScreenX = viewportCenterX * TILE_SIZE + TILE_SIZE / 2;
-    const playerScreenY = viewportCenterY * TILE_SIZE + TILE_SIZE / 2;
+    // --- 4. Draw Sensor Pulse (Relative to Camera) ---
+    // Where is the player on the SCREEN?
+    const playerScreenX = (playerX - camX) * TILE_SIZE + TILE_SIZE / 2;
+    const playerScreenY = (playerY - camY) * TILE_SIZE + TILE_SIZE / 2;
 
     if (sensorPulseActive) {
         ctx.beginPath();
@@ -1413,41 +1438,39 @@ function renderSystemMap() {
         ctx.stroke();
     }
 
-    // --- 5. Draw Particles ---
-    // We map World Coords -> Screen Coords dynamically
+    // --- 5. Draw Particles (Relative to Camera) ---
     activeParticles.forEach(p => {
-        // Calculate screen position relative to camera
-        const screenX = (p.x - startX) * TILE_SIZE;
-        const screenY = (p.y - startY) * TILE_SIZE;
+        // Calculate screen position relative to camera (camX, camY)
+        const screenX = (p.x - camX) * TILE_SIZE;
+        const screenY = (p.y - camY) * TILE_SIZE;
 
-        // Only draw if within bounds (simple optimization)
-        if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width + TILE_SIZE &&
-            screenY >= -TILE_SIZE && screenY <= gameCanvas.height + TILE_SIZE) {
+        // Draw only if visible in viewport
+        if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width &&
+            screenY >= -TILE_SIZE && screenY <= gameCanvas.height) {
             
             ctx.fillStyle = p.color;
-            ctx.globalAlpha = p.life; // Fade out
-            ctx.fillRect(screenX, screenY, p.size, p.size); // Tiny square
-            ctx.globalAlpha = 1.0; // Reset alpha
+            ctx.globalAlpha = p.life; 
+            ctx.fillRect(screenX, screenY, p.size, p.size);
+            ctx.globalAlpha = 1.0; 
         }
     });
 
-    // --- 5.5 NEW: Draw Enemies ---
-    // We map World Coords -> Screen Coords same as particles
+    // --- 5.5 Draw Enemies (Relative to Camera) ---
     activeEnemies.forEach(enemy => {
-        const screenX = (enemy.x - startX) * TILE_SIZE + TILE_SIZE / 2;
-        const screenY = (enemy.y - startY) * TILE_SIZE + TILE_SIZE / 2;
+        const screenX = (enemy.x - camX) * TILE_SIZE + TILE_SIZE / 2;
+        const screenY = (enemy.y - camY) * TILE_SIZE + TILE_SIZE / 2;
 
-        // Check if visible on screen
-        if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width + TILE_SIZE &&
-            screenY >= -TILE_SIZE && screenY <= gameCanvas.height + TILE_SIZE) {
+        if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width &&
+            screenY >= -TILE_SIZE && screenY <= gameCanvas.height) {
             
-            ctx.fillStyle = '#FF5555'; // Pirate Red
-            ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`; // Ensure font size matches
+            ctx.fillStyle = '#FF5555'; 
+            ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`; 
             ctx.fillText(PIRATE_CHAR_VAL, screenX, screenY);
         }
     });
 
-    // --- 6. Draw the Player ---
+    // --- 6. Draw Player (Relative to Camera) ---
+    // We calculated playerScreenX/Y earlier for the pulse
     if (currentCombatContext) {
         ctx.fillStyle = '#FF5555';
         ctx.fillText(PIRATE_CHAR_VAL, playerScreenX, playerScreenY);
@@ -1456,10 +1479,9 @@ function renderSystemMap() {
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
     }
 
-    // --- 7. Update UI ---
+    // --- 7. Update UI Stats ---
     sectorNameStatElement.innerHTML = currentSectorName; 
     
-    // Threat level logic
     const dist = Math.sqrt((playerX * playerX) + (playerY * playerY));
     let threat = "SAFE";
     let color = "#00FF00"; 
@@ -4439,27 +4461,59 @@ function handleTradeInput(key) {
 
 // --- INITIALIZATION HELPERS ---
 
+// --- GLOBALS FOR VIEWPORT ---
+let VIEWPORT_WIDTH_TILES = MAP_WIDTH;
+let VIEWPORT_HEIGHT_TILES = MAP_HEIGHT;
+
 function setupCanvas() {
     gameCanvas = document.getElementById('gameCanvas');
     ctx = gameCanvas.getContext('2d');
     
-    // Initial Setup
     const dpr = window.devicePixelRatio || 1;
-    gameCanvas.width = MAP_WIDTH * TILE_SIZE * dpr;
-    gameCanvas.height = MAP_HEIGHT * TILE_SIZE * dpr;
+    
+    // CHECK FOR MOBILE
+    const isMobile = window.innerWidth <= 768;
+
+    if (isMobile) {
+        // Mobile: Zoomed in "Portrait" view
+        // 13 tiles wide, 17 tiles high (Good balance for phones)
+        VIEWPORT_WIDTH_TILES = 13; 
+        VIEWPORT_HEIGHT_TILES = 17;
+    } else {
+        // Desktop: Full Map
+        VIEWPORT_WIDTH_TILES = MAP_WIDTH;
+        VIEWPORT_HEIGHT_TILES = MAP_HEIGHT;
+    }
+
+    // Set Canvas Resolution based on Viewport Size, not Map Size
+    gameCanvas.width = VIEWPORT_WIDTH_TILES * TILE_SIZE * dpr;
+    gameCanvas.height = VIEWPORT_HEIGHT_TILES * TILE_SIZE * dpr;
+    
     ctx.scale(dpr, dpr);
-    gameCanvas.style.width = '';
-    gameCanvas.style.height = '';
     gameCanvas.style.imageRendering = "pixelated";
+    
+    // Re-apply font settings after resize
     ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle'; 
 
-    // --- PRESERVED: Resize Listener ---
+    // Handle Window Resizing (Switching between Desktop/Mobile on the fly)
     window.addEventListener('resize', () => {
+        // Debounce slightly or just re-run setup
+        const newIsMobile = window.innerWidth <= 768;
+        
+        // Only re-setup if category changed or on initial load logic
+        if (newIsMobile) {
+            VIEWPORT_WIDTH_TILES = 13;
+            VIEWPORT_HEIGHT_TILES = 17;
+        } else {
+            VIEWPORT_WIDTH_TILES = MAP_WIDTH;
+            VIEWPORT_HEIGHT_TILES = MAP_HEIGHT;
+        }
+
         const newDpr = window.devicePixelRatio || 1;
-        gameCanvas.width = MAP_WIDTH * TILE_SIZE * newDpr;
-        gameCanvas.height = MAP_HEIGHT * TILE_SIZE * newDpr;
+        gameCanvas.width = VIEWPORT_WIDTH_TILES * TILE_SIZE * newDpr;
+        gameCanvas.height = VIEWPORT_HEIGHT_TILES * TILE_SIZE * newDpr;
         
         ctx.scale(newDpr, newDpr);
         ctx.imageRendering = "pixelated";
@@ -4467,7 +4521,7 @@ function setupCanvas() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle'; 
         
-        render();
+        if (currentGameState === GAME_STATES.GALACTIC_MAP) render();
     });
 }
 
