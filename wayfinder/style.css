@@ -1057,3 +1057,53 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     50% { opacity: 0.3; }
     100% { opacity: 1; }
 }
+
+/* --- MOBILE VERTICAL OPTIMIZATION --- */
+@media (max-width: 768px) {
+    /* 1. Stack the layout vertically */
+    #app-container {
+        grid-template-rows: 50px 1fr 200px; /* Header | Map | Taller Footer */
+        height: 100vh;
+        width: 100vw;
+    }
+
+    /* 2. Adjust Main View to center the canvas */
+    #main-view {
+        align-items: flex-start; /* Align to top to save space */
+        padding-top: 10px;
+        background: #050510; /* Match bg to hide letterboxing */
+    }
+
+    /* 3. Ensure Canvas fills width but respects aspect ratio */
+    #gameCanvas {
+        width: 95vw; /* Almost full width */
+        height: auto; /* Let height adjust automatically */
+        max-width: none;
+        max-height: 60vh; /* Don't let it push the footer off screen */
+        border: 1px solid #333;
+        background-color: #000;
+        box-shadow: 0 0 15px rgba(0, 224, 224, 0.2);
+    }
+
+    /* 4. Adjust Footer for vertical reading */
+    #bottom-deck {
+        grid-template-columns: 1fr; 
+        grid-template-rows: auto auto; /* Log on top, Context below */
+        gap: 5px;
+        padding: 5px;
+        font-size: 12px;
+    }
+    
+    .log-panel {
+        height: 80px; /* Smaller log height */
+        font-size: 12px;
+    }
+
+    /* 5. Reposition D-Pad to float over the bottom right of the map */
+    #mobileControls {
+        bottom: 220px; /* Above the footer */
+        right: 10px;
+        left: auto; /* Unset left */
+        opacity: 0.9;
+    }
+}
