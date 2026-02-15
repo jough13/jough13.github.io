@@ -1,6 +1,111 @@
 
- // --- Lore Database (EXPANDED) ---
+ // --- Lore Database ---
  const LORE_DATABASE = {
+    // --- SHIP ENTRIES ---
+    LORE_SHIP_LIGHT_FREIGHTER: {
+        title: "Light Freighter Class",
+        category: "Starships",
+        text: "The backbone of galactic logistics, the Light Freighter is the most common vessel in Concord space. Versatile, modular, and easy to repair, it is favored by independent captains and small courier firms. While it lacks the firepower of military craft or the massive holds of corporate haulers, its reliability is legendary. Many captains claim a well-tuned freighter can hold together on duct tape and prayers alone.",
+        unlocked: false
+    },
+    LORE_SHIP_COURIER: {
+        title: "Courier Class",
+        category: "Starships",
+        text: "A significant step up from the ubiquitous Light Freighter, the Courier-class vessel is built for professionals who value time over raw tonnage. With upgraded engines and a reinforced chassis, it strikes a perfect balance between speed, durability, and cargo capacity. It is the preferred ship for independent contractors moving high-value, time-sensitive goods through dangerous sectors where a slow freighter would be an easy target.",
+        unlocked: false
+    },
+    LORE_SHIP_INTERCEPTOR: {
+        title: "Interceptor Class",
+        category: "Starships",
+        text: "A stripped-down chassis built around an oversized engine and reactor core. Interceptors are designed for one thing: speed. Favored by bounty hunters and pirates for their ability to run down prey (or escape Concord patrols), they sacrifice armor and cargo space for agility. Pilots of these vessels often have short lifespans, as a single hull breach is usually fatal.",
+        unlocked: false
+    },
+    LORE_SHIP_EXPLORER: {
+        title: "Explorer Class",
+        category: "Starships",
+        text: "Designed for long-duration voyages into the unknown, Explorer-class vessels feature advanced life-support recycling, extended fuel tanks, and high-gain sensor arrays. They are often used by survey teams mapping the Silentium Expanse or xeno-archaeologists searching for Precursor ruins. They are not built for combat, relying instead on seeing the enemy first and running away.",
+        unlocked: false
+    },
+    LORE_SHIP_VOID_SKIFF: {
+        title: "Void-Skiff",
+        category: "Starships",
+        text: "Less a ship and more a cockpit strapped to a thruster bank, Void-Skiffs are the cheapest FTL-capable craft available. Often cobbled together from salvage, they are notoriously unsafe, lacking redundant shielding or ejection systems. They are popular among the desperate, the reckless, and 'zoom-racers' who fly dangerous courses through asteroid belts for sport.",
+        unlocked: false
+    },
+    LORE_SHIP_ROCK_HOPPER: {
+        title: "Rock-Hopper",
+        category: "Starships",
+        text: "An industrial mining barge, the Rock-Hopper is built like a flying brick. Heavily armored to withstand asteroid impacts and equipped with high-yield mining lasers, it is slow and ungraceful. However, its hull is thick enough to shrug off light pirate fire, and its cargo hold is cavernous for a ship of its size. K'tharr mining castes use a variant of this frame plated in ceremonial armor.",
+        unlocked: false
+    },
+    LORE_SHIP_STAR_GALLEON: {
+        title: "Star-Galleon",
+        category: "Starships",
+        text: "The ultimate status symbol, Star-Galleons are massive, opulent vessels used by corporate executives, high-ranking diplomats, and successful warlords. They boast military-grade shielding and point-defense systems, allowing their passengers to travel in safety and luxury. The interiors are often finished with real wood and synthetic marble, costing more than the hull itself.",
+        unlocked: false
+    },
+    LORE_SHIP_HEAVY_HAULER: {
+        title: "Heavy Hauler",
+        category: "Starships",
+        text: "The 'Big Rigs' of the void. Heavy Haulers are massive, sluggish vessels designed to move immense quantities of raw materials between stellar hubs. They require a large crew to operate and are sitting ducks without escort fighters. Pirate clans love to ambush them, as a single captured Heavy Hauler can sustain a pirate base for months.",
+        unlocked: false
+    },
+
+    // --- NEW COMPONENT ENTRIES ---
+    LORE_COMP_PULSE_LASER: {
+        title: "Pulse Laser Technology",
+        category: "Ship Components",
+        text: "The standard armament for civilian and paramilitary vessels. Pulse lasers fire discrete packets of coherent light plasma. While they lack the shield-stripping power of ion weapons or the hull-shredding impact of mass drivers, they are energy-efficient, reliable, and effective against a balanced mix of targets.",
+        unlocked: false
+    },
+    LORE_COMP_KINETIC_WEAPON: {
+        title: "Kinetic Weaponry",
+        category: "Ship Components",
+        text: "Simple, brutal, and effective. Kinetic weapons accelerate solid slugs using chemical propellants or magnetic rails. They ignore the energy resistance of shields to deliver pure impact trauma. However, they require ammunition storage and are less accurate at extreme ranges due to projectile travel time.",
+        unlocked: false
+    },
+    LORE_COMP_ION_WEAPON: {
+        title: "Ion Weaponry",
+        category: "Ship Components",
+        text: "Ion cannons fire streams of highly charged particles designed to overload electromagnetic shields and fuse ship circuitry. They cause minimal physical damage to armor, making them the weapon of choice for pirates looking to disable a ship without destroying the valuable cargo inside.",
+        unlocked: false
+    },
+    LORE_COMP_BEAM_LASER: {
+        title: "Beam Laser Technology",
+        category: "Ship Components",
+        text: "Unlike pulse lasers, beam weapons project a continuous stream of thermal energy. They are incredibly accurate, hitting instantly at the speed of light, making them perfect for targeting fast-moving interceptors. The downside is the immense heat buildup, requiring heavy heatsinks that limit sustained fire.",
+        unlocked: false
+    },
+    LORE_COMP_MASS_DRIVER: {
+        title: "Mass Driver Tech",
+        category: "Ship Components",
+        text: "A scaled-up magnetic accelerator that fires heavy ferric slugs. Mass Drivers deliver devastating kinetic energy, capable of cracking heavy armor and shattering internal bulkheads. Their slow fire rate and high power draw make them risky to use, but a single solid hit can end a dogfight.",
+        unlocked: false
+    },
+    LORE_COMP_MISSILE_LAUNCHER: {
+        title: "Guided Missile Tech",
+        category: "Ship Components",
+        text: "Self-propelled ordnance with tracking sensors. Missiles deliver the highest damage payload of any ship-mounted weapon, but are limited by ammunition capacity and the target's point-defense systems. Countermeasures like flares and chaff are standard issue to combat these threats.",
+        unlocked: false
+    },
+    LORE_COMP_SHIELD_GENERATOR: {
+        title: "Deflector Shields",
+        category: "Ship Components",
+        text: "Shield generators project a localized gravimetric field around a vessel, absorbing or deflecting incoming energy and debris. The technology is a scaled-down version of the planetary defense grids used during the Terran Wars. Better generators offer faster recharge rates or higher absorption thresholds.",
+        unlocked: false
+    },
+    LORE_COMP_ENGINE: {
+        title: "Sublight Drives",
+        category: "Ship Components",
+        text: "While FTL drives fold space, sublight engines move the ship through it. Most modern drives use ion-fusion hybrids to generate thrust. Efficiency is key; a fuel-hungry engine can leave a captain stranded in deep space. Precursor drives theoretically utilized gravitic propulsion, eliminating the need for reaction mass entirely.",
+        unlocked: false
+    },
+    LORE_COMP_SCANNER: {
+        title: "Sensor Arrays",
+        category: "Ship Components",
+        text: "A ship's eyes in the dark. Sensor suites combine LIDAR, gravimetric, and subspace passive listening devices. High-grade scanners can detect the mineral composition of a planet from orbit, spot the heat signature of a cloaked ship, or analyze the esoteric radiation of a cosmic anomaly.",
+        unlocked: false
+    },
      FACTION_CONCORD: {
          title: "Galactic Concord",
          category: "Factions",
@@ -186,3 +291,4 @@
          unlocked: false
      }
  };
+ 
