@@ -607,6 +607,14 @@ function updateEnemies() {
     for (let i = activeEnemies.length - 1; i >= 0; i--) {
         const enemy = activeEnemies[i];
 
+        // 0. RANDOM "HESITATION" MECHANIC (Allows Outrunning)
+        // 30% chance the pirate's engines stall or they stop to scan, 
+        // effectively making them slower than the player (0.7 speed vs 1.0 speed).
+        // This allows you to open the distance if you just keep running.
+        if (Math.random() < 0.30) {
+            continue; // Skip this enemy's turn
+        }
+
         const dx = playerX - enemy.x;
         const dy = playerY - enemy.y;
 
@@ -636,6 +644,7 @@ function updateEnemies() {
             const isPlayer = (targetX === playerX && targetY === playerY);
             
             // Is it a valid space to fly through?
+            // (Enemies can fly through Empty Space or Nebulas)
             const isNavigable = (tileChar === EMPTY_SPACE_CHAR_VAL || tileChar === NEBULA_CHAR_VAL);
 
             // 3. EXECUTE MOVE
@@ -835,19 +844,14 @@ function changeGameState(newState) {
      const scanButtonState = canScan ? '' : 'disabled';
      const scanLabel = canScan ? 'Scan Lifeforms' : 'No Bio-Signs';
 
+     // Check if player has at least 1 drone
+     const hasDrone = (playerCargo.MINING_DRONE || 0) > 0;
+     const surveyButtonState = hasDrone ? '' : 'disabled';
+     const surveyLabel = hasDrone ? 'Launch Geo-Survey' : 'Geo-Survey <br><span style="font-size:10px; opacity:0.7">(Requires Drone)</span>';
+     
      // Clean HTML Structure
      let html = `
         <div class="planet-view-content">
-            <div class="planet-header">
-                <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-large-img">
-                <h2 class="planet-title">${planet.biome.name}</h2>
-                <p class="planet-desc">${planet.biome.description}</p>
-            </div>
-
-            <div style="width: 100%; text-align: left; margin-bottom: 10px; font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 1px;">
-                Ship Interface // Surface Ops
-            </div>
-
             <div class="planet-actions-grid">
                 <button class="action-button" onclick="minePlanet()" ${mineButtonState}>
                     ${mineLabel}
@@ -861,8 +865,8 @@ function changeGameState(newState) {
                     Establish Colony <br><span style="font-size:10px; opacity:0.7">(Coming Soon)</span>
                 </button>
                 
-                <button class="action-button" disabled>
-                    Geo-Survey <br><span style="font-size:10px; opacity:0.7">(Requires Drones)</span>
+                <button class="action-button" onclick="performGeoSurvey()" ${surveyButtonState}>
+                    ${surveyLabel}
                 </button>
 
                 <button class="action-button full-width-btn" onclick="returnToOrbit()">
@@ -2006,9 +2010,54 @@ function renderSystemMap() {
      logMessage(scanMessage);
  }
 
+ function performGeoSurvey() {
+     // 1. Validation
+     if (currentGameState !== GAME_STATES.PLANET_VIEW) return;
+     if ((playerCargo.MINING_DRONE || 0) < 1) {
+         logMessage("Launch failed: No Survey Drones in cargo.");
+         return;
+     }
+     
+     // 2. Consume Drone
+     playerCargo.MINING_DRONE--;
+     updateCurrentCargoLoad();
+
+     // 3. Calculate Reward
+     // Surveying always yields data, and sometimes finds raw resources too.
+     const xpGain = 45;
+     playerXP += xpGain;
+     
+     let surveyMsg = "Drone deployed. Telemetry received.\n";
+     surveyMsg += `<span style='color:#00FF00'>+${xpGain} XP.</span>\n`;
+     
+     // Reward 1: Planetary Data (The main goal)
+     if (currentCargoLoad + 1 <= PLAYER_CARGO_CAPACITY) {
+         playerCargo.PLANETARY_DATA = (playerCargo.PLANETARY_DATA || 0) + 1;
+         surveyMsg += "Acquired: 1x Planetary Data cartridge.\n";
+         updateCurrentCargoLoad();
+     } else {
+         surveyMsg += "Sensors recorded data, but cargo hold is full! Data disk ejected.\n";
+     }
+
+     // Reward 2: Random Bonus (20% chance for extra minerals)
+     if (Math.random() < 0.20) {
+         const bonusAmt = Math.floor(Math.random() * 5) + 2;
+         if (currentCargoLoad + bonusAmt <= PLAYER_CARGO_CAPACITY) {
+             playerCargo.RARE_METALS = (playerCargo.RARE_METALS || 0) + bonusAmt;
+             surveyMsg += `<span style='color:#FFFF00'>Bonus: Drone recovered ${bonusAmt}x Rare Metals!</span>`;
+             updateCurrentCargoLoad();
+         }
+     }
+
+     checkLevelUp();
+     logMessage(surveyMsg);
+     renderPlanetView(); // Re-render to update drone count button
+ }
+
  /**
   * Handles the logic for scanning a planet for biological lifeforms and samples.
   */
+
  function scanPlanetForLife() {
      if (currentGameState !== GAME_STATES.PLANET_VIEW) return;
      const planet = currentSystemData.planets[selectedPlanetIndex];
