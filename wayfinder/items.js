@@ -1,5 +1,27 @@
  
  const COMMODITIES = {
+    // --- CONTRABAND ITEMS ---
+    BLACK_MARKET_CHIPS: {
+        name: "Unshackled AI Chips",
+        basePrice: 800,
+        description: "Illegal processing units with safety limiters removed. Highly sought after by hackers.",
+        illegal: true, // <--- New Flag
+        unlocked: true
+    },
+    ANCIENT_RELICS: {
+        name: "Xeno-Relics",
+        basePrice: 1200,
+        description: "Contraband artifacts from the Precursor era. Possession is a federal crime.",
+        illegal: true,
+        unlocked: true
+    },
+    PROHIBITED_STIMS: {
+        name: "Combat Stims",
+        basePrice: 400,
+        description: "Military-grade performance enhancers. Banned in civilian sectors.",
+        illegal: true,
+        unlocked: true
+    },
     MINING_DRONE: {
         name: "Survey Drone",
         basePrice: 150,
