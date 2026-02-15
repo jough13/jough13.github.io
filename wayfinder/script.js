@@ -542,29 +542,25 @@ function updateWorldState(x, y, changes) {
     }, 3000);
 }
 
- function logMessage(newMessage, isImportant = false) {
-     if (!newMessage || newMessage.trim() === "") {
-         render();
-         return;
-     }
+function logMessage(newMessage, isImportant = false) {
+    if (!newMessage || newMessage.trim() === "") { render(); return; }
+    
+    // SAFETY CHECK: If game hasn't started (Title Screen), use "0.00"
+    let dateStr = "0.00";
+    if (typeof currentGameDate !== 'undefined' && currentGameDate !== null) {
+        dateStr = currentGameDate.toFixed(2);
+    }
 
-     // --- Mirror to Console ---
-     // Strips HTML tags so the console log is readable
-     const cleanText = newMessage.replace(/<[^>]*>?/gm, '');
-     console.log(`[SD ${currentGameDate.toFixed(2)}] ${cleanText}`);
-
-     // Format the stardate and prepend it to the message
-     const timestamp = `<span class="log-datestamp">[SD ${currentGameDate.toFixed(2)}]</span>`;
-     const messageWithTimestamp = `${timestamp}${newMessage}`;
-
-     messageLog.unshift(messageWithTimestamp);
-
-     if (messageLog.length > MAX_LOG_MESSAGES) {
-         messageLog.pop();
-     }
-
-     render();
- }
+    const timestamp = `<span class="log-datestamp">[SD ${dateStr}]</span>`;
+    messageLog.unshift(`${timestamp}${newMessage}`);
+    
+    if (messageLog.length > MAX_LOG_MESSAGES) messageLog.pop();
+    
+    // Only try to render if the function exists (prevents rare startup crashes)
+    if (typeof render === 'function') {
+        render();
+    }
+}
 
  function renderContextualActions(actions) {
      const container = document.getElementById('contextual-actions');
@@ -4775,9 +4771,10 @@ function checkSaveStateAndRenderTitle(forceMenu = false) {
     const titleOverlay = document.getElementById('titleOverlay');
     const newGameCont = document.getElementById('newGameContainer');
     const saveSelectCont = document.getElementById('saveSelectContainer');
+    const bootEl = document.getElementById('systemBoot');
 
-    // AUTO-LOGIN LOGIC
-    // We check !forceMenu so we don't instantly reload a save after deleting one
+    // 1. AUTO-LOGIN (Fast Track)
+    // If auto-login is on, we skip the delay so you get into the game fast.
     if (!forceMenu && autoLoginEnabled && (autoSave || manualSave)) {
         console.log("Auto-login enabled. Loading...");
         try {
@@ -4796,18 +4793,30 @@ function checkSaveStateAndRenderTitle(forceMenu = false) {
         }
     }
 
-    // RENDER SAVE SLOTS
-    if (manualSave || autoSave) {
-        if (newGameCont) newGameCont.style.display = 'none';
-        if (saveSelectCont) {
-            saveSelectCont.style.display = 'block';
-            renderSaveSlots(manualSave, autoSave);
+    // 2. CALCULATE DELAY
+    // If booting up (forceMenu is false), wait 3 seconds for effect.
+    // If just refreshing after a delete (forceMenu is true), wait 2 seconds.
+    const loadingDelay = forceMenu ? 2000 : 3000;
+
+    // 3. START THE TIMER
+    setTimeout(() => {
+        // Hide the "Initializing..." text
+        if (bootEl) bootEl.style.display = 'none';
+
+        // Show the correct menu
+        if (manualSave || autoSave) {
+            // Has Saves -> Show Save Select
+            if (newGameCont) newGameCont.style.display = 'none';
+            if (saveSelectCont) {
+                saveSelectCont.style.display = 'block';
+                renderSaveSlots(manualSave, autoSave);
+            }
+        } else {
+            // No Saves -> Show New Game
+            if (newGameCont) newGameCont.style.display = 'block';
+            if (saveSelectCont) saveSelectCont.style.display = 'none';
         }
-    } else {
-        // No saves, show New Game
-        if (newGameCont) newGameCont.style.display = 'block';
-        if (saveSelectCont) saveSelectCont.style.display = 'none';
-    }
+    }, loadingDelay);
 }
 
 function deleteSave(key) {
