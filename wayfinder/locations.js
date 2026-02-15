@@ -40,7 +40,14 @@
             priceMod: 1.0,
             stock: 40
         }],
-        buys: [{
+        buys: [
+            {
+            id: "PLANETARY_DATA",
+            priceMod: 1.2, // Good profit margin
+            stock: 5
+            },
+            {
+            
                 id: "MINERALS",
                 priceMod: 1.2,
                 stock: 50
