@@ -1090,7 +1090,6 @@ function changeGameState(newState) {
     codexEntryTextElement = document.getElementById('codexEntryText');
     stardateStatElement = document.getElementById('stardateStat');
     saveButtonElement = document.getElementById('saveButton');
-    // Note: Event listeners are now handled in initializeDOMElements to prevent duplication
 
     // 3. Player State Reset
     playerX = Math.floor(MAP_WIDTH / 2);
@@ -1283,6 +1282,7 @@ const SECTOR_NAME_PARTS = {
  };
 
  function leaveSystem() {
+    soundManager.playWarp();
     changeGameState(GAME_STATES.GALACTIC_MAP);
     selectedPlanetIndex = -1; // Deselect planets
     handleInteraction(); // Refresh the text log for the sector you are in
@@ -1629,6 +1629,8 @@ function renderSystemMap() {
      let warpMessage = `The wormhole violently ejects you into an unknown region of deep space!`;
      warpMessage += `\n<span style='color:#00DD00;'>Wormhole Traversed! +${XP_WORMHOLE_TRAVERSE} XP!</span>`;
      logMessage(warpMessage);
+
+     soundManager.playWarp();
 
      // 8. Handle Post-Jump State
      checkLevelUp(); // Check if the XP gain caused a level up
@@ -2210,6 +2212,8 @@ function movePlayer(dx, dy) {
      });
 
      if (minedSomething) {
+        soundManager.playMining();
+        triggerHaptic(50);
          // Make planet mining a bit more rewarding than asteroids
          const xpGained = XP_PER_MINING_OP * 2;
          playerXP += xpGained;
@@ -3081,6 +3085,7 @@ function handleCombatAction(action) {
         }
 
         if (Math.random() < currentHitChance) {
+            soundManager.playLaser();
             let actualDamage = damageDealt;
 
             // Apply Shield Bonus (if applicable)
@@ -3128,6 +3133,8 @@ function handleCombatAction(action) {
         
         // Haptic Feedback for Ability
         if (typeof triggerHaptic === "function") triggerHaptic([50, 50, 50]);
+
+        soundManager.playAbilityActivate();
 
         // Execute Specific Ability Effect
         if (ability.id === 'REPAIR') {
@@ -3209,6 +3216,9 @@ function handleCombatAction(action) {
         updatePlayerNotoriety(5);
 
         spawnParticles(playerX, playerY, 'explosion');
+
+        soundManager.playExplosion();
+
         setTimeout(() => spawnParticles(playerX, playerY, 'explosion'), 200);
         setTimeout(() => spawnParticles(playerX, playerY, 'gain'), 400);
 
@@ -3278,6 +3288,8 @@ function handleCombatAction(action) {
             
             // Heavy Haptic for taking damage
             if (typeof triggerHaptic === "function") triggerHaptic([100, 50, 100]);
+
+            soundManager.playExplosion();
 
             if (playerIsEvading) enemyLog += "Pirate hits through your maneuvers! ";
             else enemyLog += "Pirate attack hits! ";
@@ -4666,6 +4678,13 @@ function setupCanvas() {
 }
 
 function initializeDOMElements() {
+
+        document.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+            soundManager.playUIClick();
+        }
+    });
+
     // 1. Map ID References
     messageAreaElement = document.getElementById('messageArea');
     fuelStatElement = document.getElementById('fuelStat');
@@ -4686,7 +4705,24 @@ function initializeDOMElements() {
     
     // 2. Button Listeners
     saveButtonElement = document.getElementById('saveButton');
-    if(saveButtonElement) saveButtonElement.onclick = saveGame; 
+    if(saveButtonElement) saveButtonElement.onclick = saveGame;
+
+    if (startButton) {
+        startButton.addEventListener('click', () => {
+            soundManager.init(); // <--- START AUDIO ENGINE
+            initializeGame(); 
+            startGame(seedInput ? seedInput.value : "");
+            hideTitleScreen();
+        });
+    }
+
+    const soundBtn = document.getElementById('soundButton');
+    if (soundBtn) {
+        soundBtn.addEventListener('click', () => {
+            const isEnabled = soundManager.toggleMute();
+            soundBtn.textContent = isEnabled ? "Mute Audio" : "Enable Audio";
+        });
+    }
 
     // --- Mobile D-Pad Listeners ---
     // We reuse handleGalacticMapInput to simulate key presses
