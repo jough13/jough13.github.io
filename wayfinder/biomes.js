@@ -31,9 +31,16 @@ const PLANET_BIOMES = {
          name: "Toxic Jungle",
          landable: true,
          description: "A world teeming with aggressive, alien flora.",
-         resources: ['GENETIC_SAMPLES', 'KTHARR_SPICES'],
+         resources: ['GENETIC_SAMPLES', 'KTHARR_SPICES', 'SENTIENT_MYCELIUM'],
          image: 'assets/toxic_jungle.png'
      },
+     OCEANIC: {
+        name: "Ocean World",
+        landable: true,
+        description: "A planet covered entirely in deep, turbulent water.",
+        resources: ['FOOD_SUPPLIES', 'GENETIC_SAMPLES', 'HYDROGEN_3'],
+        image: 'assets/ocean_world.png'
+    },
      CRYSTAL: {
          name: "Crystalline Anomaly",
          landable: true,
