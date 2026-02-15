@@ -4737,7 +4737,8 @@ function setupCanvas() {
 
 function initializeDOMElements() {
 
-        document.addEventListener('click', (e) => {
+    // Global Click Listener for UI Sounds
+    document.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON') {
             soundManager.playUIClick();
         }
@@ -4761,16 +4762,32 @@ function initializeDOMElements() {
     codexEntryTextElement = document.getElementById('codexEntryText');
     stardateStatElement = document.getElementById('stardateStat');
     
-    // 2. Button Listeners
+    // 2. Button Listeners & Start Game Logic
     saveButtonElement = document.getElementById('saveButton');
-    if(saveButtonElement) saveButtonElement.onclick = saveGame;
+    if (saveButtonElement) saveButtonElement.onclick = saveGame;
+
+    // --- FIX: Define variables BEFORE using them ---
+    const seedInput = document.getElementById('seedInput');
+    const startButton = document.getElementById('startButton');
 
     if (startButton) {
         startButton.addEventListener('click', () => {
-            soundManager.init(); // <--- START AUDIO ENGINE
+            soundManager.init(); // Initialize Audio Context
             initializeGame(); 
             startGame(seedInput ? seedInput.value : "");
             hideTitleScreen();
+        });
+    }
+    
+    // Enter key support for seed input
+    if (seedInput) {
+        seedInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                soundManager.init(); // Initialize Audio Context
+                initializeGame();
+                startGame(seedInput.value);
+                hideTitleScreen();
+            }
         });
     }
 
@@ -4783,15 +4800,12 @@ function initializeDOMElements() {
     }
 
     // --- Mobile D-Pad Listeners ---
-    // We reuse handleGalacticMapInput to simulate key presses
     const btnUp = document.getElementById('btnUp');
     const btnDown = document.getElementById('btnDown');
     const btnLeft = document.getElementById('btnLeft');
     const btnRight = document.getElementById('btnRight');
 
     if (btnUp) {
-        // We use 'click' for broad compatibility, or 'touchstart' for responsiveness
-        // preventing default on touchstart stops double-tap zooming
         const bindMove = (btn, key) => {
             btn.addEventListener('touchstart', (e) => {
                 e.preventDefault(); 
@@ -4809,11 +4823,9 @@ function initializeDOMElements() {
     }
 
     const btnWait = document.getElementById('btnWait');
-    
     if (btnWait) {
         btnWait.addEventListener('click', (e) => {
             if (currentGameState === GAME_STATES.GALACTIC_MAP) {
-                // Trigger the "Wait" logic manually
                 logMessage("Holding position. Systems recharging...");
                 advanceGameTime(0.15); 
                 render();
@@ -4821,8 +4833,6 @@ function initializeDOMElements() {
         });
     }
     
-    // SAFETY FIX: Check if loadButton exists before accessing it
-    // (This prevents the crash that was breaking your new menu)
     const loadBtn = document.getElementById('loadButton');
     if (loadBtn) loadBtn.onclick = loadGame; 
 
@@ -4835,30 +4845,7 @@ function initializeDOMElements() {
     const closeCargoBtn = document.getElementById('closeCargoBtn');
     if(closeCargoBtn) closeCargoBtn.addEventListener('click', closeCargoModal);
 
-    // 3. Start Game Logic
-    const seedInput = document.getElementById('seedInput');
-    const startButton = document.getElementById('startButton');
-
-    if (startButton) {
-        startButton.addEventListener('click', () => {
-            initializeGame(); 
-            startGame(seedInput ? seedInput.value : "");
-            hideTitleScreen();
-        });
-    }
-    
-    if (seedInput) {
-        seedInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                initializeGame();
-                startGame(seedInput.value);
-                hideTitleScreen();
-            }
-        });
-    }
-
     // 4. System Menu Toggle
-
     const menuBtn = document.getElementById('menuToggle');
     const sysMenu = document.getElementById('systemMenu');
     if (menuBtn && sysMenu) {
@@ -4874,12 +4861,9 @@ function initializeDOMElements() {
 
     // 5. Save on Window Close
     window.addEventListener('beforeunload', () => {
-        // Only save if we are actually in-game
         if (typeof currentGameState !== 'undefined' && 
-            currentGameState !== 'title_screen' && // string check must match your GAME_STATES constant values
-            currentGameState !== 'GAME_OVER') { // if you have a game over state
-            
-            // Perform a silent save
+            currentGameState !== 'title_screen' && 
+            currentGameState !== 'GAME_OVER') { 
             performSave('wayfinderAutoSave');
         }
     });
