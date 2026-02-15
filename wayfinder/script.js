@@ -773,7 +773,23 @@ function updateEnemies() {
      // 6. Log Handling
      messageAreaElement.innerHTML = messageLog.join('<br>');
      messageAreaElement.scrollTop = 0;
- }
+
+     // --- 7. Visual Warning System ---
+    const overlay = document.getElementById('statusOverlay');
+    if (overlay) {
+        overlay.className = 'status-overlay'; // Reset class
+        
+        if (playerHull < (MAX_PLAYER_HULL * 0.25)) {
+            overlay.classList.add('critical-hull');
+            overlay.style.opacity = '1';
+        } else if (playerFuel < (MAX_FUEL * 0.20)) {
+            overlay.classList.add('critical-fuel');
+            overlay.style.opacity = '1';
+        } else {
+            overlay.style.opacity = '0';
+        }
+    }
+}
 
  // --- VISIBILITY MANAGER ---
 function updateSideBorderVisibility() {
@@ -1611,13 +1627,18 @@ function renderSystemMap() {
      }
 
      // 3. Calculate Fuel Cost
+     // We define this early so we can check if you can afford the move
      const currentEngine = COMPONENTS_DATABASE[playerShip.components.engine];
      const actualFuelPerMove = BASE_FUEL_PER_MOVE * (currentEngine.stats.fuelEfficiency || 1.0);
 
-     // 4. Check Fuel Availability
+     // 4. Check Fuel Availability (THE FIX)
+     // If you don't have enough fuel to make the jump:
      if (playerFuel < actualFuelPerMove && (dx !== 0 || dy !== 0)) {
          logMessage("<span style='color:red'>CRITICAL: OUT OF FUEL!</span>");
-         logMessage("Drifting in void. Press 'Z' to activate Distress Beacon.");
+         logMessage("Main engines offline. Life support failing...");
+         
+         // Trigger the Game Over screen immediately
+         triggerGameOver("Stranded: Fuel Depleted");
          return;
      }
 
@@ -1626,35 +1647,36 @@ function renderSystemMap() {
      playerY += dy;
 
      // 6. Deduct Fuel and Advance Time
-    if (dx !== 0 || dy !== 0) {
+     if (dx !== 0 || dy !== 0) {
         playerFuel -= actualFuelPerMove;
         playerFuel = parseFloat(playerFuel.toFixed(1)); 
         if (playerFuel < 0) playerFuel = 0;
-        advanceGameTime(0.01);
+        
+        advanceGameTime(0.01); // Time passes when you move
 
         // --- Thruster Particles ---
-        // We spawn them at the OLD position (approx) pushing backwards
+        // Spawn particles behind the ship (opposite to dx, dy)
         spawnParticles(playerX - dx, playerY - dy, 'thruster', { x: dx, y: dy });
-    }
+     }
 
      // 7. Update Sector Information
      updateSectorState();
      
-     // 8. NEW: Move Enemies
+     // 8. Move Enemies
      // This makes every pirate on the map take a step towards you
      if (typeof updateEnemies === "function") {
          updateEnemies();
      }
 
-     // 9. NEW: Check for Collision (Did you run into them, or did they catch you?)
+     // 9. Check for Collision (Did you run into them, or did they catch you?)
      // We filter to see if any enemy is NOW at your location
-     // (Check if activeEnemies exists to prevent crash if you haven't added the variable yet)
      if (typeof activeEnemies !== 'undefined') {
          const enemyAtLoc = activeEnemies.find(e => e.x === playerX && e.y === playerY);
          if (enemyAtLoc) {
              startCombat();
+             // Remove the map icon since we are now "in" the combat screen
              removeEnemyAt(playerX, playerY);
-             return; // Stop processing movement/interaction
+             return; 
          }
      }
 
@@ -1662,18 +1684,17 @@ function renderSystemMap() {
      const encounterRoll = Math.random();
 
      if (encounterRoll < PIRATE_ENCOUNTER_CHANCE) {
-         // NEW: Instead of instant combat, we SPAWN a pirate nearby
+         // Spawn a pirate nearby to chase the player
          if (typeof spawnPirateNearPlayer === "function") {
              spawnPirateNearPlayer();
          } else {
-             // Fallback if helper isn't defined yet
-             startCombat();
+             startCombat(); // Fallback to instant combat if function missing
          }
      } else if (encounterRoll < PIRATE_ENCOUNTER_CHANCE + 0.015) {
          // Good Luck: 1.5% Chance for Space Debris
          triggerRandomEvent();
      } else {
-         // Normal: Just look at the tile
+         // Normal: Just look at the tile (Planet? Star? Empty?)
          handleInteraction();
      }
  }
@@ -3011,7 +3032,7 @@ function checkLevelUp() {
      logMessage(encounterMsg);
  }
 
- function handleCombatAction(action) {
+function handleCombatAction(action) {
      if (!currentCombatContext) return;
 
      let combatLog = "";
@@ -3019,31 +3040,38 @@ function checkLevelUp() {
 
      // --- Player's Turn ---
      if (action === 'fight') {
+         // 1. Calculate Damage
+         // We use the stats of the currently equipped weapon
          const weaponStats = COMPONENTS_DATABASE[playerShip.components.weapon].stats;
          let damageDealt = weaponStats.damage;
          let currentHitChance = weaponStats.hitChance;
 
+         // Check for Charge Buff
          if (playerIsChargingAttack) {
              damageDealt = Math.floor(damageDealt * CHARGE_DAMAGE_MULTIPLIER);
              currentHitChance += CHARGE_HIT_BONUS;
              combatLog += "Charged shot unleashed! ";
-             playerIsChargingAttack = false;
+             playerIsChargingAttack = false; // Consume charge
          }
 
+         // 2. Roll for Hit
          if (Math.random() < currentHitChance) {
              let actualDamage = damageDealt;
 
+             // Apply Shield Bonus (if applicable)
              if (weaponStats.vsShieldBonus && currentCombatContext.pirateShields > 0) {
                  actualDamage += weaponStats.vsShieldBonus;
              }
 
+             // 3. Apply Damage to Enemy
              if (currentCombatContext.pirateShields > 0) {
+                 // Hitting Shields
                  const shieldDamage = actualDamage;
                  currentCombatContext.pirateShields -= shieldDamage;
                  combatLog += `Hit pirate shields for ${Math.floor(shieldDamage)}!`;
 
+                 // Shield Spillover Logic
                  if (currentCombatContext.pirateShields < 0) {
-                     // Capture the spillover damage
                      const spilloverDamage = Math.abs(currentCombatContext.pirateShields);
                      const hullDamage = Math.floor(spilloverDamage * HULL_DAMAGE_BONUS_MULTIPLIER);
 
@@ -3052,6 +3080,7 @@ function checkLevelUp() {
                      combatLog += ` Shields down! Hull takes ${hullDamage} spillover damage!`;
                  }
              } else {
+                 // Direct Hull Hit
                  actualDamage = Math.floor(actualDamage * HULL_DAMAGE_BONUS_MULTIPLIER);
                  currentCombatContext.pirateHull -= actualDamage;
                  combatLog += `Hit pirate hull for ${actualDamage}!`;
@@ -3062,7 +3091,7 @@ function checkLevelUp() {
      } else if (action === 'charge') {
          playerIsChargingAttack = true;
          combatLog += "Charging weapon systems...";
-         enemyAttacks = true;
+         enemyAttacks = true; // Enemy still gets to attack while you charge
      } else if (action === 'evade') {
          playerFuel -= EVASION_FUEL_COST;
          playerFuel = parseFloat(playerFuel.toFixed(1));
@@ -3071,14 +3100,15 @@ function checkLevelUp() {
      } else if (action === 'run') {
          playerFuel -= RUN_FUEL_COST;
          playerFuel = parseFloat(playerFuel.toFixed(1));
+         // Attempt Escape
          if (Math.random() < RUN_ESCAPE_CHANCE) {
              logMessage(`Escaped! Used ${RUN_FUEL_COST} fuel.`);
-             updatePlayerNotoriety(-1);
+             updatePlayerNotoriety(-1); // Running away is not impressive
              currentCombatContext = null;
              playerIsChargingAttack = false;
              playerIsEvading = false;
              changeGameState(GAME_STATES.GALACTIC_MAP);
-             handleInteraction();
+             handleInteraction(); // Re-check tile (might just be empty space now)
              return;
          } else {
              combatLog += `Failed to escape!`;
@@ -3091,6 +3121,7 @@ function checkLevelUp() {
      if (currentCombatContext.pirateHull <= 0) {
          const mult = currentCombatContext.difficultyMultiplier || 1.0;
 
+         // Randomize Rewards
          const baseCredits = PIRATE_CREDIT_REWARD_MIN + Math.floor(Math.random() * (PIRATE_CREDIT_REWARD_MAX - PIRATE_CREDIT_REWARD_MIN + 1));
          const baseXP = XP_PER_PIRATE_MIN + Math.floor(Math.random() * (XP_PER_PIRATE_MAX - XP_PER_PIRATE_MIN + 1));
 
@@ -3101,9 +3132,10 @@ function checkLevelUp() {
          playerXP += xG;
          updatePlayerNotoriety(5);
 
-        spawnParticles(playerX, playerY, 'explosion');
-        setTimeout(() => spawnParticles(playerX, playerY, 'explosion'), 200);
-        setTimeout(() => spawnParticles(playerX, playerY, 'gain'), 400);
+         // Victory FX
+         spawnParticles(playerX, playerY, 'explosion');
+         setTimeout(() => spawnParticles(playerX, playerY, 'explosion'), 200);
+         setTimeout(() => spawnParticles(playerX, playerY, 'gain'), 400);
 
          let victoryLog = `Pirate defeated! Salvaged ${cW}c. Gained ${xG} XP.`;
          if (mult > 1.2) victoryLog += " (Deep Space Bonus!)";
@@ -3114,6 +3146,7 @@ function checkLevelUp() {
          toastHTML += `<span style="font-size:12px">+${xG} XP</span>`;
          showToast(toastHTML, "success");
 
+         // Check Bounty Missions
          if (playerActiveMission && playerActiveMission.type === "BOUNTY" && !playerActiveMission.isComplete) {
              let objectiveUpdated = false;
              playerActiveMission.objectives.forEach((obj, index) => {
@@ -3125,7 +3158,6 @@ function checkLevelUp() {
                          objectiveProgress.current++;
                          victoryLog += `\n<span style='color:#00FF00;'>Bounty Updated: (${objectiveProgress.current}/${objectiveProgress.required})</span>`;
                          
-                         // Extra Toast for Mission Progress
                          showToast(`BOUNTY UPDATE: ${objectiveProgress.current}/${objectiveProgress.required}`, "info");
                          
                          if (objectiveProgress.current >= objectiveProgress.required) {
@@ -3141,9 +3173,11 @@ function checkLevelUp() {
              }
          }
 
+         // Cleanup Combat State
          currentCombatContext = null;
          playerIsChargingAttack = false;
          playerIsEvading = false;
+         
          logMessage(victoryLog);
          checkLevelUp();
          changeGameState(GAME_STATES.GALACTIC_MAP);
@@ -3159,21 +3193,27 @@ function checkLevelUp() {
          if (playerIsEvading) {
              pirateEffectiveHitChance -= EVASION_DODGE_BONUS;
          }
+         
+         // Roll for Pirate Hit
          if (Math.random() < pirateEffectiveHitChance) {
              const mult = currentCombatContext.difficultyMultiplier || 1.0;
              const baseDamage = PIRATE_ATTACK_DAMAGE_MIN + Math.floor(Math.random() * (PIRATE_ATTACK_DAMAGE_MAX - PIRATE_ATTACK_DAMAGE_MIN + 1));
-             const pD = Math.floor(baseDamage * mult); // Scale the damage!
+             let pD = Math.floor(baseDamage * mult); // Scale the damage!
              
+             // Flavor Text
              if (playerIsEvading) enemyLog += "Pirate hits through your maneuvers! ";
              else enemyLog += "Pirate attack hits! ";
 
+             // Apply Damage to Player
              if (playerShields > 0) {
                  playerShields -= pD;
                  enemyLog += `Shields take ${pD} damage.`;
+                 // Shield Break Logic
                  if (playerShields < 0) {
-                     playerHull += playerShields;
+                     const spillOver = Math.abs(playerShields);
+                     playerHull -= spillOver;
                      playerShields = 0;
-                     enemyLog += ` Shields down!`;
+                     enemyLog += ` Shields down! Hull takes ${spillOver} damage!`;
                  }
              } else {
                  playerHull -= pD;
@@ -3184,33 +3224,23 @@ function checkLevelUp() {
          }
          logMessage(enemyLog);
      }
+     
+     // Reset Evasion for next turn
      playerIsEvading = false;
 
-     // --- Check for Player Defeat ---
+     // --- Check for Player Defeat (GAME OVER IMPLEMENTATION) ---
      if (playerHull <= 0) {
          playerHull = 0;
-         let defeatLog = `Ship critically damaged! Emergency warp to Starbase Alpha...`;
-         let cLs = Math.floor(playerCredits * 0.1);
-         playerCredits = Math.max(0, playerCredits - cLs);
-         defeatLog += `\nLost ${cLs}c.`;
-         updatePlayerNotoriety(-10);
-         playerShields = 1;
-         playerHull = 1;
+         renderUIStats(); // Force UI update so bar shows empty
+         
+         // 1. Log the final hit
+         logMessage(`Critical Hit! Hull failing... signal lost.`, "color: #FF4444");
 
-         const starbaseCoords = LOCATIONS_DATA["Starbase Alpha"].coords;
-         playerX = starbaseCoords.x;
-         playerY = starbaseCoords.y;
-
-         // This line ensures the UI knows we moved sectors ---
-         updateSectorState();
-
-         currentCombatContext = null;
-         playerIsChargingAttack = false;
-         playerIsEvading = false;
-         logMessage(defeatLog);
-         changeGameState(GAME_STATES.GALACTIC_MAP);
-         handleInteraction();
-         return;
+         // 2. Trigger the Game Over Screen
+         triggerGameOver("Destruction by Hostile Fire");
+         
+         // 3. Exit the function so combat doesn't continue
+         return; 
      }
 
      render();
@@ -4807,9 +4837,57 @@ function performSave(storageKey) {
     }
 }
 
-// --- UPDATED LOAD LOGIC ---
+// --- GAME OVER LOGIC ---
 
-// This replaces the old loadGame() attached to the button
+function triggerGameOver(reason) {
+    // 1. Stop the game loop / interaction
+    // (In a turn-based game, we just block input via a state flag or overlay)
+    
+    // 2. Calculate Penalty (10% XP and 25% Credits)
+    const creditPenalty = Math.floor(playerCredits * 0.25);
+    
+    // 3. Update UI
+    document.getElementById('deathReason').innerHTML = `Cause of Death: <span style="color:#ff5555">${reason}</span>`;
+    document.getElementById('deathLevel').textContent = playerLevel;
+    document.getElementById('deathCreditPenalty').textContent = `-${creditPenalty}c`;
+    
+    // 4. Show Screen
+    document.getElementById('gameOverOverlay').style.display = 'flex';
+}
+
+function respawnPlayer() {
+    // 1. Apply Penalty
+    playerCredits = Math.floor(playerCredits * 0.75);
+    playerXP = Math.max(0, playerXP - 100); // Small XP hit
+
+    // 2. Reset Stats
+    playerHull = MAX_PLAYER_HULL;
+    playerShields = MAX_SHIELDS;
+    playerFuel = MAX_FUEL;
+
+    // 3. Move to Starbase Alpha (Safe Zone)
+    // We hardcode this to the Starbase location from locations.js
+    playerX = MAP_WIDTH - 7;
+    playerY = MAP_HEIGHT - 5;
+    
+    // 4. Clear Enemies near spawn (optional safety)
+    removeEnemyAt(playerX, playerY);
+
+    // 5. Reset UI and State
+    document.getElementById('gameOverOverlay').style.display = 'none';
+    currentGameState = GAME_STATES.GALACTIC_MAP;
+    
+    logMessage(`<span style="color:#00FF00">CLONE ACTIVATED. Welcome back, Commander.</span>`);
+    render();
+    saveGame(); // Auto-save on respawn
+}
+
+function quitToTitle() {
+    location.reload(); // Simplest way to "Quit"
+}
+
+// --- LOAD LOGIC ---
+
 function loadGame() {
     // This button is now "Load Manual Save" inside the game menu
     const savedString = localStorage.getItem('wayfinderSaveData');
