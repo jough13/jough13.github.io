@@ -13,6 +13,10 @@
             priceMod: 0.9,
             stock: 100
         }, {
+            id: "MINING_DRONE",
+            priceMod: 1.0,
+            stock: 10
+        }, {
             id: "TECH_PARTS",
             priceMod: 1.1,
             stock: 30
