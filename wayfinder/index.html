@@ -14,6 +14,10 @@
             <h1 class="game-title">Wayfinder</h1>
             <p class="subtitle">Echoes of the Void</p>
             
+            <div id="systemBoot" style="margin-top:20px; color:var(--accent-color); font-family:var(--main-font); animation: blink 1s infinite;">
+                SYSTEM INITIALIZING...
+            </div>
+            
             <div id="saveSelectContainer" style="display:none;">
                 <div class="save-list-header">SELECT COMMANDER</div>
                 <div id="saveList" class="save-list">
@@ -29,7 +33,7 @@
                 </div>
             </div>
 
-            <div id="newGameContainer">
+            <div id="newGameContainer" style="display:none;">
                 <div class="player-customization">
                     <div class="pfp-selector">
                         <button id="prevPfpBtn" class="pfp-arrow-btn">&lt;</button>
