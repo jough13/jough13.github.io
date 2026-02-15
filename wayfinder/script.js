@@ -811,6 +811,13 @@ function updateSideBorderVisibility() {
     if (rightBorder) rightBorder.style.display = shouldShow ? 'block' : 'none';
 }
 
+function triggerHaptic(pattern) {
+    // Only works if device supports it and user has interacted with page
+    if (navigator.vibrate) {
+        navigator.vibrate(pattern);
+    }
+}
+
  /**
   * Handles switching between different game views.
   * @param {string} newState - The state to switch to, from GAME_STATES.
@@ -1613,7 +1620,7 @@ function renderSystemMap() {
      handleInteraction(); // Describe what is at the new location immediately
  }
 
- function movePlayer(dx, dy) {
+function movePlayer(dx, dy) {
      // 1. Check for blocking UI states
      if (currentTradeContext || currentOutfitContext || currentMissionContext || currentEncounterContext || currentShipyardContext) {
          logMessage("Complete current action first.");
@@ -1634,6 +1641,9 @@ function renderSystemMap() {
      // 4. Check Fuel Availability (THE FIX)
      // If you don't have enough fuel to make the jump:
      if (playerFuel < actualFuelPerMove && (dx !== 0 || dy !== 0)) {
+         // --- HAPTIC FEEDBACK: OUT OF FUEL ---
+         triggerHaptic(200);
+
          logMessage("<span style='color:red'>CRITICAL: OUT OF FUEL!</span>");
          logMessage("Main engines offline. Life support failing...");
          
@@ -1673,6 +1683,9 @@ function renderSystemMap() {
      if (typeof activeEnemies !== 'undefined') {
          const enemyAtLoc = activeEnemies.find(e => e.x === playerX && e.y === playerY);
          if (enemyAtLoc) {
+             // --- HAPTIC FEEDBACK: COLLISION ---
+             triggerHaptic(200);
+
              startCombat();
              // Remove the map icon since we are now "in" the combat screen
              removeEnemyAt(playerX, playerY);
@@ -2339,6 +2352,9 @@ function renderSystemMap() {
      }
 
      if (minedSomething) {
+         // --- HAPTIC FEEDBACK: SUCCESS ---
+         triggerHaptic(50); 
+
          playerXP += XP_PER_MINING_OP;
          spawnParticles(playerX, playerY, 'mining'); 
          minedResourcesMessage += `\n+${XP_PER_MINING_OP} XP.`;
@@ -2373,17 +2389,12 @@ function renderSystemMap() {
 
  }
 
-
- /**
-  * Handles the random outcomes of salvaging a derelict ship.
-  * @param {object} derelictObject - The tile data for the derelict.
-  */
-
  /**
   * Handles the random outcomes of salvaging a derelict ship using a weighted system.
   * This function now depends on the 'getWeightedRandomOutcome' helper function.
   * @param {object} derelictObject - The tile data for the derelict.
   */
+
  function handleDerelictEncounter(derelictObject) {
      const outcomes = [{
              weight: 5, // <-- Most common
@@ -3063,6 +3074,9 @@ function handleCombatAction(action) {
                  actualDamage += weaponStats.vsShieldBonus;
              }
 
+             // --- HAPTIC FEEDBACK: HIT ENEMY ---
+             triggerHaptic(50);
+
              // 3. Apply Damage to Enemy
              if (currentCombatContext.pirateShields > 0) {
                  // Hitting Shields
@@ -3203,6 +3217,9 @@ function handleCombatAction(action) {
              // Flavor Text
              if (playerIsEvading) enemyLog += "Pirate hits through your maneuvers! ";
              else enemyLog += "Pirate attack hits! ";
+
+             // --- HAPTIC FEEDBACK: PLAYER TAKES DAMAGE ---
+             triggerHaptic([100, 50, 100]); // Heavy double rumble
 
              // Apply Damage to Player
              if (playerShields > 0) {
