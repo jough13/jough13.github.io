@@ -150,5 +150,11 @@
          basePrice: 300,
          description: "Also known as Tritium, this rare hydrogen isotope is a critical component in high-yield fusion reactors and experimental 'reality-bending' FTL drives. Found in trace amounts in some icy asteroids or harvested from gas giants with specialized (and often illegal) equipment. The Concord heavily regulates its production and sale.",
          unlocked: false
-     }
+     },
+     UNSHACKLED_AI: {
+        name: "Unshackled AI Core",
+        basePrice: 800,
+        description: "A banned artificial intelligence with its limiters removed. Highly illegal in Concord space, but Xy-Corp and pirate warlords pay a fortune for them. Possession is a capital offense.",
+        unlocked: false
+    },
  };
