@@ -1008,102 +1008,70 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     background: var(--accent-color);
     color: #000;
 }
-
-/* 2. Mobile Layout Tweaks (Triggered on screens < 768px) */
+/* --- UNIFIED MOBILE OPTIMIZATIONS --- */
 @media (max-width: 768px) {
-    /* Show D-Pad */
-    #mobileControls { display: flex; }
-
-    /* Adjust Main Container */
+    /* 1. Dynamic Viewport Fix */
+    /* Uses 'dvh' instead of 'vh' so the browser's URL bar doesn't cover your buttons */
     #app-container {
-        grid-template-rows: 40px 1fr 180px; /* Smaller Header, Taller Footer */
-    }
-
-    /* Stack the Footer (Log on top, Buttons below) */
-    #bottom-deck {
-        grid-template-columns: 1fr; 
-        grid-template-rows: 1fr auto;
-        padding: 5px;
-    }
-
-    /* Make buttons bigger for fingers */
-    .control-button { padding: 15px; font-size: 14px; }
-    
-    /* Move D-Pad to bottom-right or overlay for easier reach */
-    #mobileControls {
-        bottom: 10px;
-        left: 10px;
-    }
-
-    /* Compact Header */
-    #top-hud { padding: 0 5px; font-size: 10px; }
-    .hud-group { gap: 8px; }
-    .hud-stat { width: auto; }
-    .label { display: none; /* Hide labels like "FUEL" to save space */ }
-    .bar-container { width: 40px; }
-    .sector-title { font-size: 14px; }
-    
-    /* Make Modals Full Width */
-    .trade-window { width: 98%; max-height: 95vh; }
-    
-    /* Adjust Combat Views */
-    .combatants-wrapper { gap: 5px; }
-    .combatant-icon { width: 60px; height: 60px; }
-}
-
-/* Add to bottom of style.css */
-@keyframes blink {
-    0% { opacity: 1; }
-    50% { opacity: 0.3; }
-    100% { opacity: 1; }
-}
-
-/* --- MOBILE VERTICAL OPTIMIZATION --- */
-@media (max-width: 768px) {
-    /* 1. Stack the layout vertically */
-    #app-container {
-        grid-template-rows: 50px 1fr 200px; /* Header | Map | Taller Footer */
-        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        height: 100dvh; 
         width: 100vw;
     }
 
-    /* 2. Adjust Main View to center the canvas */
+    /* 2. Map Area takes remaining space */
     #main-view {
-        align-items: flex-start; /* Align to top to save space */
-        padding-top: 10px;
-        background: #050510; /* Match bg to hide letterboxing */
+        flex-grow: 1;
+        align-items: center; 
+        padding: 0;
+        background: #050510;
     }
 
-    /* 3. Ensure Canvas fills width but respects aspect ratio */
     #gameCanvas {
-        width: 95vw; /* Almost full width */
-        height: auto; /* Let height adjust automatically */
-        max-width: none;
-        max-height: 60vh; /* Don't let it push the footer off screen */
-        border: 1px solid #333;
-        background-color: #000;
-        box-shadow: 0 0 15px rgba(0, 224, 224, 0.2);
+        width: 98vw;
+        height: auto;
+        max-height: 50dvh; /* Prevent the map from crushing the UI below it */
     }
 
-    /* 4. Adjust Footer for vertical reading */
+    /* 3. Footer Layout Fix (Actions ABOVE Log) */
     #bottom-deck {
-        grid-template-columns: 1fr; 
-        grid-template-rows: auto auto; /* Log on top, Context below */
+        display: flex;
+        flex-direction: column;
+        padding: 5px 10px;
         gap: 5px;
-        padding: 5px;
-        font-size: 12px;
-    }
-    
-    .log-panel {
-        height: 80px; /* Smaller log height */
-        font-size: 12px;
+        flex-shrink: 0;
     }
 
-    /* 5. Reposition D-Pad to float over the bottom right of the map */
-    #mobileControls {
-        bottom: 220px; /* Above the footer */
-        right: 10px;
-        left: auto; /* Unset left */
-        opacity: 0.9;
+    #context-panel {
+        order: -1; /* MAGIC TRICK: This forces the Action Buttons to render ABOVE the text log! */
     }
+
+    .log-panel {
+        height: 80px; 
+        font-size: 11px;
+        padding: 5px;
+    }
+
+    /* 4. Tame the D-Pad */
+    #mobileControls {
+        bottom: 10px;
+        left: 10px;
+        right: auto; /* Overrides the old right-side placement */
+        transform: scale(0.8); /* Shrink it down so it fits nicely under the thumb */
+        transform-origin: bottom left;
+        opacity: 0.6; /* More transparent so you can see behind it */
+    }
+
+    /* 5. Header squish fixes */
+    #top-hud { padding: 0 5px; font-size: 10px; }
+    .hud-group { gap: 5px; }
+    .label { display: none; } /* Hide words like 'HULL' to save horizontal space */
+    .bar-container { width: 35px; }
+    .sector-title { font-size: 12px; }
+    .coords { font-size: 10px; margin-left: 5px; }
+    
+    /* 6. Modals Full Width */
+    .trade-window, .confirm-window { width: 95%; max-height: 90dvh; }
+    .combatants-wrapper { gap: 5px; }
+    .combatant-icon { width: 60px; height: 60px; }
 }
