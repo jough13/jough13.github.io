@@ -1050,3 +1050,10 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     .combatants-wrapper { gap: 5px; }
     .combatant-icon { width: 60px; height: 60px; }
 }
+
+/* Add to bottom of style.css */
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+}
