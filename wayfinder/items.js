@@ -1,5 +1,17 @@
  
  const COMMODITIES = {
+    MINING_DRONE: {
+        name: "Survey Drone",
+        basePrice: 150,
+        description: "A single-use automated probe equipped with deep-core sensors. Deployed from orbit to analyze planetary composition.",
+        unlocked: true
+    },
+    PLANETARY_DATA: {
+        name: "Planetary Data",
+        basePrice: 400,
+        description: "High-resolution geological and biological scans. Highly detailed and valuable to corporate surveyors and academic institutions.",
+        unlocked: true
+    },
      FUEL_CELLS: {
          name: "Fuel Cells",
          basePrice: 10,
