@@ -109,6 +109,8 @@
          </div>
 
         <main id="main-view">
+            <div id="statusOverlay" class="status-overlay"></div>
+
             <div class="side-border left"></div>
             <div class="side-border right"></div>
 
@@ -166,9 +168,16 @@
                                 <div class="trade-stat-row"><span>Stock/Cargo:</span> <span id="tradeStock" class="value-text">0</span></div>
                             </div>
                             <div class="qty-control-row">
+                                <button class="qty-btn" onclick="adjustTradeQty(-10)" style="font-size:10px;">-10</button>
+                                
                                 <button class="qty-btn" onclick="adjustTradeQty(-1)">-</button>
+                                
                                 <input type="number" id="tradeQtyInput" value="1" min="1" oninput="updateTradeTotal()">
+                                
                                 <button class="qty-btn" onclick="adjustTradeQty(1)">+</button>
+                                
+                                <button class="qty-btn" onclick="adjustTradeQty(10)" style="font-size:10px;">+10</button>
+                                
                                 <button class="qty-btn max-btn" onclick="setTradeMax()">MAX</button>
                             </div>
                             <div class="total-cost-display">TOTAL: <span id="tradeTotalCost">0</span>c</div>
@@ -265,6 +274,8 @@
     <script src="locations.js"></script>
     <script src="rumors.js"></script>
     <script src="lore.js"></script>
+
+    <script src="audio.js"></script>
     
     <script src="script.js"></script>
 </body>
