@@ -1075,3 +1075,26 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     .combatants-wrapper { gap: 5px; }
     .combatant-icon { width: 60px; height: 60px; }
 }
+
+/* --- CRITICAL STATUS OVERLAYS --- */
+.status-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none; z-index: 1000;
+    opacity: 0; transition: opacity 0.5s;
+}
+
+.critical-fuel {
+    box-shadow: inset 0 0 50px rgba(255, 165, 0, 0.6); /* Orange Glow */
+    animation: pulse-warning 2s infinite;
+}
+
+.critical-hull {
+    box-shadow: inset 0 0 50px rgba(255, 0, 0, 0.6); /* Red Glow */
+    animation: pulse-warning 1s infinite;
+}
+
+@keyframes pulse-warning {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.3; }
+}
