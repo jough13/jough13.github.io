@@ -6,6 +6,9 @@ function removeEnemyAt(x, y) {
     activeEnemies = activeEnemies.filter(e => e.x !== x || e.y !== y);
 }
 
+// --- ECONOMY GLOBALS ---
+let activeMarketTrend = null; // Stores the current "Hot Tip" { station: "Name", item: "ID", expiry: 0 }
+
  // --- PARTICLE SYSTEM GLOBALS ---
 let activeParticles = [];
 let lastParticleTime = 0;
@@ -1739,6 +1742,13 @@ function movePlayer(dx, dy) {
          const location = tileObject;
          bM = `Arrived at ${location.name}.`;
 
+         // ---CUSTOMS SCAN TRIGGER ---
+         // Only Major Hubs have customs scanners
+         if (location.isMajorHub) {
+             const cleared = performCustomsScan();
+             if (!cleared) return; // Stop interaction if caught
+         }
+
          if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) {
                 availableActions.push({
                     label: 'Buy',
@@ -2553,29 +2563,97 @@ function movePlayer(dx, dy) {
      updateWorldState(playerX, playerY, { studied: true });
  }
 
- function calculatePrice(basePrice, priceMod) {
+ function calculatePrice(basePrice, priceMod, itemID, locationName, mode) {
      // 1. Base Calculation
      let price = basePrice * priceMod;
 
-     // 2. Dynamic Market Fluctuation
-     // We use a sine wave based on currentGameDate to simulate market trends.
-     // Different commodities react differently based on their name length (pseudo-random hash).
-     // The cycle is roughly every 20 Stardate units.
-     const uniqueOffset = basePrice;
-     const fluctuation = Math.sin((currentGameDate + uniqueOffset) / 5);
+     // 2. Illegal Goods Markup (Risk Premium)
+     // If selling illegal goods, they are worth 2.5x more on the black market
+     const itemData = COMMODITIES[itemID];
+     if (itemData && itemData.illegal && mode === 'sell') {
+         price *= 2.5; 
+     }
 
-     // Fluctuate by +/- 15%
-     const marketFactor = 1 + (fluctuation * 0.15);
+     // 3. Dynamic Market Trends (Hot Commodities)
+     // If this station is the target of a rumor, double the price!
+     if (activeMarketTrend && 
+         activeMarketTrend.station === locationName && 
+         activeMarketTrend.item === itemID && 
+         currentGameDate < activeMarketTrend.expiry) {
+         
+         price *= 2.0;
+         // Visual flare in the UI would go here (e.g., gold text)
+     } else {
+         // Standard Fluctuation (Sine Wave)
+         const uniqueOffset = basePrice;
+         const fluctuation = Math.sin((currentGameDate + uniqueOffset) / 5);
+         const marketFactor = 1 + (fluctuation * 0.15);
+         price *= marketFactor;
+     }
 
-     return Math.max(1, Math.round(price * marketFactor));
+     return Math.max(1, Math.round(price));
  }
 
- function getTradeQuantityPromptBaseMessage() {
+ function performCustomsScan() {
+    // 1. Check for Contraband
+    let contrabandFound = [];
+    for (const itemID in playerCargo) {
+        if (playerCargo[itemID] > 0 && COMMODITIES[itemID].illegal) {
+            contrabandFound.push(itemID);
+        }
+    }
+
+    if (contrabandFound.length === 0) return true; // Clean scan, proceed
+
+    // 2. Risk Calculation (Base 30% chance + 10% per illegal item type)
+    const catchChance = 0.30 + (contrabandFound.length * 0.10);
+    
+    logMessage("Scanning vessel signature...", true);
+
+    if (Math.random() < catchChance) {
+        // --- CAUGHT! ---
+        soundManager.playError();
+        triggerHaptic([200, 100, 200]);
+        
+        let fine = 0;
+        contrabandFound.forEach(id => {
+            const qty = playerCargo[id];
+            const val = COMMODITIES[id].basePrice;
+            fine += (qty * val * 0.5); // Fine is 50% of base value
+            playerCargo[id] = 0; // Confiscated!
+        });
+        
+        fine = Math.floor(fine);
+        playerCredits = Math.max(0, playerCredits - fine);
+        updateCurrentCargoLoad();
+        
+        // Huge Notoriety Hit (You are now a criminal)
+        updatePlayerNotoriety(5); 
+
+        // Alert Modal
+        showConfirmationModal(
+            `CUSTOMS ALERT: Contraband detected! Cargo confiscated. Fined ${fine} credits.`,
+            () => { /* Just close */ }
+        );
+        
+        logMessage(`<span style="color:#FF4444">CUSTOMS VIOLATION:</span> ${fine}c fine assessed. Contraband seized.`);
+        renderUIStats();
+        return false; // Docking denied/interrupted
+    } else {
+        // --- EVADED ---
+        logMessage(`<span style="color:#FFFF00">Scan Complete.</span> Sensors failed to detect concealed cargo.`);
+        return true;
+    }
+}
+
+function getTradeQuantityPromptBaseMessage() {
      const lD = currentTradeContext.locationData;
      const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys;
      const itemEntry = itemsList[currentTradeContext.itemIndex];
      const commodity = COMMODITIES[itemEntry.id];
-     const price = calculatePrice(commodity.basePrice, itemEntry.priceMod);
+     
+     // UPDATED CALL
+     const price = calculatePrice(commodity.basePrice, itemEntry.priceMod, itemEntry.id, lD.name, currentTradeContext.mode);
 
      let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`;
 
@@ -2639,18 +2717,24 @@ function renderTradeList() {
 
     currentTradeContext.items.forEach((item, index) => {
         const com = COMMODITIES[item.id];
-        const price = calculatePrice(com.basePrice, item.priceMod);
+        
+        // UPDATED CALL
+        const price = calculatePrice(com.basePrice, item.priceMod, item.id, currentTradeContext.locationData.name, currentTradeContext.mode);
+        
         const row = document.createElement('div');
         row.className = 'trade-item-row';
         if (index === currentTradeItemIndex) row.classList.add('selected');
         
-        // Show Stock (if buying) or Player Inventory (if selling)
+        // Special styling for illegal/trending items
+        let nameStyle = "";
+        if (com.illegal) nameStyle = "color:#FF5555"; // Red for contraband
+        
         let stockInfo = "";
         if (currentTradeContext.mode === 'buy') stockInfo = `Stock: ${item.stock}`;
         else stockInfo = `Have: ${playerCargo[item.id] || 0}`;
 
         row.innerHTML = `
-            <span>${com.name}</span>
+            <span style="${nameStyle}">${com.name}</span>
             <span style="color:#888;">${price}c | ${stockInfo}</span>
         `;
         row.onclick = () => selectTradeItem(index);
@@ -2659,32 +2743,29 @@ function renderTradeList() {
 }
 
 function selectTradeItem(index) {
-    // 1. Update the Visual Global (for the UI)
     currentTradeItemIndex = index;
-    
-    // 2. CRITICAL FIX: Update the Logic Context (for handleTradeQuantity)
-    if (currentTradeContext) {
-        currentTradeContext.itemIndex = index;
-    }
+    if (currentTradeContext) currentTradeContext.itemIndex = index;
 
     currentTradeQty = 1;
-    renderTradeList(); // Update highlight to show what's selected
+    renderTradeList(); 
     
-    // Safety check in case the context is missing (prevents rare crashes)
     if (!currentTradeContext || !currentTradeContext.items[index]) return;
 
     const itemEntry = currentTradeContext.items[index];
     const com = COMMODITIES[itemEntry.id];
     
-    // Unlock Lore
     unlockLoreEntry(`COMMODITY_${itemEntry.id}`);
 
     // Update Detail Text
     document.getElementById('tradeItemName').textContent = com.name;
-    document.getElementById('tradeItemDesc').textContent = com.description;
+    
+    // Add "ILLEGAL" warning to description if needed
+    let desc = com.description;
+    if (com.illegal) desc = "[CONTRABAND] " + desc;
+    document.getElementById('tradeItemDesc').textContent = desc;
+    
     document.getElementById('tradeQtyInput').value = 1;
 
-    // Enable button
     const confirmBtn = document.getElementById('tradeConfirmBtn');
     if (confirmBtn) confirmBtn.disabled = false;
 
@@ -2696,14 +2777,14 @@ function updateTradeTotal() {
 
     const itemEntry = currentTradeContext.items[currentTradeItemIndex];
     const com = COMMODITIES[itemEntry.id];
-    const price = calculatePrice(com.basePrice, itemEntry.priceMod);
     
-    // Get Qty from input
+    // UPDATED CALL
+    const price = calculatePrice(com.basePrice, itemEntry.priceMod, itemEntry.id, currentTradeContext.locationData.name, currentTradeContext.mode);
+    
     let qty = parseInt(document.getElementById('tradeQtyInput').value);
     if (isNaN(qty) || qty < 1) qty = 1;
     currentTradeQty = qty;
 
-    // Update UI Stats
     document.getElementById('tradeUnitPrice').textContent = `${price}c`;
     
     if (currentTradeContext.mode === 'buy') {
@@ -2716,9 +2797,8 @@ function updateTradeTotal() {
     const totalEl = document.getElementById('tradeTotalCost');
     totalEl.textContent = total;
 
-    // Validate Colors
     if (currentTradeContext.mode === 'buy' && total > playerCredits) {
-        totalEl.style.color = '#FF4444'; // Red if can't afford
+        totalEl.style.color = '#FF4444';
         document.getElementById('tradeConfirmBtn').disabled = true;
     } else {
         totalEl.style.color = '#00E0E0';
@@ -2738,7 +2818,9 @@ function setTradeMax() {
     if (currentTradeItemIndex === -1) return;
     const itemEntry = currentTradeContext.items[currentTradeItemIndex];
     const com = COMMODITIES[itemEntry.id];
-    const price = calculatePrice(com.basePrice, itemEntry.priceMod);
+    
+    // UPDATED CALL
+    const price = calculatePrice(com.basePrice, itemEntry.priceMod, itemEntry.id, currentTradeContext.locationData.name, currentTradeContext.mode);
     
     let max = 0;
     
@@ -2748,7 +2830,7 @@ function setTradeMax() {
         max = Math.min(itemEntry.stock, afford, space);
     } else {
         const have = playerCargo[itemEntry.id] || 0;
-        max = Math.min(have, itemEntry.stock); // Can only sell what station wants
+        max = Math.min(have, itemEntry.stock); 
     }
 
     document.getElementById('tradeQtyInput').value = Math.max(1, max);
@@ -2793,9 +2875,7 @@ function executeTrade() {
   * @param {string} inputString - The numerical string entered by the player.
   */
 
- function handleTradeQuantity(inputString) {
-     // 1. --- PRE-FLIGHT CHECKS ---
-     // Ensure we are in the correct state before processing
+function handleTradeQuantity(inputString) {
      if (!currentTradeContext || currentTradeContext.step !== 'selectQuantity') return;
 
      const locationData = currentTradeContext.locationData;
@@ -2805,20 +2885,17 @@ function executeTrade() {
      const commodityID = itemEntry.id;
      const commodity = COMMODITIES[commodityID];
 
-     // Calculate Dynamic Price
-     const price = calculatePrice(commodity.basePrice, itemEntry.priceMod);
+     // UPDATED CALL
+     const price = calculatePrice(commodity.basePrice, itemEntry.priceMod, commodityID, locationData.name, tradeMode);
 
      let qty = 0;
 
-     // 2. --- PARSE INPUT (Handle 'Max') ---
      if (inputString.toLowerCase() === 'm' || inputString.toLowerCase() === 'max') {
          if (tradeMode === 'buy') {
-             // Max buyable based on Credits, Stock, and Cargo Space
              const affordMax = Math.floor(playerCredits / price);
              const spaceMax = PLAYER_CARGO_CAPACITY - currentCargoLoad;
              qty = Math.min(itemEntry.stock, affordMax, spaceMax);
          } else {
-             // Max sellable based on Player Inventory and Station Demand
              const playerHas = playerCargo[commodityID] || 0;
              qty = Math.min(playerHas, itemEntry.stock);
          }
@@ -2826,9 +2903,8 @@ function executeTrade() {
          qty = parseInt(inputString);
      }
 
-     currentQuantityInput = ""; // Clear buffer
+     currentQuantityInput = ""; 
 
-     // Basic Validation
      if (isNaN(qty) || qty <= 0) {
          logMessage("Transaction canceled.");
          return;
@@ -2836,11 +2912,9 @@ function executeTrade() {
 
      let finalMessage = "";
 
-     // 3. --- EXECUTE TRANSACTION LOGIC ---
      if (tradeMode === 'buy') {
          const totalCost = price * qty;
 
-         // --- BUY VALIDATION ---
          if (qty > itemEntry.stock) {
              finalMessage = "Purchase failed: Not enough stock.";
              if (typeof showToast === "function") showToast("STOCK ERROR: Insufficient Supply", "error");
@@ -2863,25 +2937,16 @@ function executeTrade() {
                  showToast(`ACQUIRED: ${qty}x ${commodity.name}<br><span style='font-size:12px'>-${totalCost} Credits</span>`, "success");
              }
 
-             // --- WAYFINDER QUEST TRIGGER ---
-             // (Moved inside success block so it doesn't trigger on failed buys)
              if (commodityID === 'WAYFINDER_CORE' && !mystery_first_nexus_location) {
                  const dist = 500 + Math.floor(seededRandom(WORLD_SEED) * 500);
                  const angle = seededRandom(WORLD_SEED + 1) * Math.PI * 2;
-                 
                  const nexusX = Math.floor(Math.cos(angle) * dist);
                  const nexusY = Math.floor(Math.sin(angle) * dist);
-
                  mystery_first_nexus_location = { x: nexusX, y: nexusY };
-                 
                  unlockLoreEntry("MYSTERY_WAYFINDER_QUEST_COMPLETED");
-                 
-                 finalMessage += "\n\n<span style='color:#40E0D0; font-weight:bold;'>! ARTIFACT ACTIVATED !</span>\nThe Wayfinder Core hums violently! Coordinates projected into navigation computer: \n" + 
-                                 `SECTOR (${Math.floor(nexusX/SECTOR_SIZE)}, ${Math.floor(nexusY/SECTOR_SIZE)}) \n` +
-                                 `COORDS: ${nexusX}, ${nexusY}`;
-                 
+                 finalMessage += "\n\n<span style='color:#40E0D0; font-weight:bold;'>! ARTIFACT ACTIVATED !</span>\nThe Wayfinder Core hums violently! Coordinates projected into navigation computer.";
                  logMessage(finalMessage); 
-                 return; // Return early to preserve the special message
+                 return; 
              }
          }
 
@@ -2889,7 +2954,6 @@ function executeTrade() {
          // --- SELL LOGIC ---
          const playerHas = playerCargo[commodityID] || 0;
 
-         // --- SELL VALIDATION ---
          if (qty > playerHas) {
              finalMessage = `Sale failed: You only have ${playerHas}.`;
              if (typeof showToast === "function") showToast("INVENTORY ERROR: Item Not Found", "error");
@@ -2910,7 +2974,6 @@ function executeTrade() {
                  showToast(`SOLD: ${qty}x ${commodity.name}<br><span style='font-size:12px'>+${totalGain} Credits</span>`, "success");
              }
 
-             // XP Calculation for Profit
              const profitPerUnit = price - commodity.basePrice;
              if (profitPerUnit > 0) {
                  const xpGained = Math.floor(profitPerUnit * qty * XP_PER_PROFIT_UNIT);
@@ -3397,50 +3460,45 @@ function handleCombatAction(action) {
  }
 
 function visitCantina() {
-    // 1. Check Credits
     const cost = 10;
     if (playerCredits < cost) {
-        logMessage("Bartender: \"No credits, no service. Get out.\"");
+        logMessage("Bartender: \"No credits, no service.\"");
         return;
     }
-
-    // 2. Pay up
     playerCredits -= cost;
 
-    // 3. NEW: Mechanics - Small Heal & Fuel Boost
-    let healAmount = 0;
-    if (playerHull < MAX_PLAYER_HULL) {
-        healAmount = Math.min(5, MAX_PLAYER_HULL - playerHull);
-        playerHull += healAmount;
+    // Small Heal/Refuel
+    if (playerHull < MAX_PLAYER_HULL) playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 5);
+    if (playerFuel < MAX_FUEL) playerFuel = Math.min(MAX_FUEL, playerFuel + 10);
+
+    // --- NEW: GENERATE MARKET RUMOR ---
+    // 50% chance to get a valuable trade tip
+    if (Math.random() < 0.5) {
+        // Find a random location that isn't here
+        const locationKeys = Object.keys(LOCATIONS_DATA).filter(k => k !== chunkManager.getTile(playerX, playerY).name);
+        const targetStation = locationKeys[Math.floor(Math.random() * locationKeys.length)];
+        
+        // Pick a random legal commodity
+        const commodityKeys = Object.keys(COMMODITIES).filter(k => !COMMODITIES[k].illegal);
+        const targetItem = commodityKeys[Math.floor(Math.random() * commodityKeys.length)];
+        
+        // Set the Global Trend
+        activeMarketTrend = {
+            station: targetStation,
+            item: targetItem,
+            expiry: currentGameDate + 50 // Valid for 50 ticks
+        };
+
+        logMessage(`<span class="cantina-header">Cantina Visit (-${cost}c)</span>`);
+        logMessage(`Bartender whispers: "Big demand at <strong>${targetStation}</strong>. They're paying double for <strong>${COMMODITIES[targetItem].name}</strong> right now."`);
+        showToast("TRADE INTEL ACQUIRED", "success");
+    } else {
+        // Standard Flavor Text
+        const randomRumor = RUMORS[Math.floor(Math.random() * RUMORS.length)];
+        logMessage(`<span class="cantina-header">Cantina Visit (-${cost}c)</span>`);
+        logMessage(`<span class="rumor-text">"${randomRumor}"</span>`);
     }
-    // "One for the road" - small fuel boost
-    let fuelBoost = 0; 
-    if (playerFuel < MAX_FUEL) {
-        fuelBoost = Math.min(10, MAX_FUEL - playerFuel);
-        playerFuel += fuelBoost;
-    }
-    
-    // 4. Flavor Text
-    const randomRumor = RUMORS[Math.floor(Math.random() * RUMORS.length)];
-    const bartenders = [
-        "A gruff K'tharr slides a glowing drink down the bar.",
-        "A drone bartender beeps and serves a nutrient shake.",
-        "The air is thick with smoke as you grab a booth."
-    ];
-    const intro = bartenders[Math.floor(Math.random() * bartenders.length)];
 
-    // 5. Log it
-    logMessage(`<span class="cantina-header">Cantina Visit (-${cost}c)</span>`);
-    logMessage(intro);
-    
-    let effectMsg = "";
-    if (healAmount > 0) effectMsg += ` <span style="color:#00FF00">Repaired ${healAmount} Hull.</span>`;
-    if (fuelBoost > 0) effectMsg += ` <span style="color:#FFFF00">Gained ${fuelBoost} Fuel.</span>`;
-    if (effectMsg) logMessage(effectMsg);
-
-    logMessage(`<span class="rumor-text">"${randomRumor}"</span>`);
-
-    // 6. Refresh UI
     renderUIStats();
 }
 
