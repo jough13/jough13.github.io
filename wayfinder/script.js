@@ -603,55 +603,63 @@ function logMessage(newMessage, isImportant = false) {
 }
 
 function updateEnemies() {
-    activeEnemies.forEach(enemy => {
-        // 1. Calculate distance to player
+    // Loop backwards so we can remove enemies safely if combat starts
+    for (let i = activeEnemies.length - 1; i >= 0; i--) {
+        const enemy = activeEnemies[i];
+
         const dx = playerX - enemy.x;
         const dy = playerY - enemy.y;
-        
-        // 2. Determine intended movement direction (Simple AI: move along largest axis)
-        let moveX = 0;
-        let moveY = 0;
 
-        if (Math.abs(dx) > Math.abs(dy)) {
-            moveX = Math.sign(dx);
+        // 1. Determine Move Preference (Try the longer distance first)
+        const moves = [];
+        
+        if (Math.abs(dx) >= Math.abs(dy)) {
+            // Prefer moving Horizontally first, then Vertically
+            if (dx !== 0) moves.push({ x: Math.sign(dx), y: 0 });
+            if (dy !== 0) moves.push({ x: 0, y: Math.sign(dy) });
         } else {
-            moveY = Math.sign(dy);
+            // Prefer moving Vertically first, then Horizontally
+            if (dy !== 0) moves.push({ x: 0, y: Math.sign(dy) });
+            if (dx !== 0) moves.push({ x: Math.sign(dx), y: 0 });
         }
 
-        // 3. Calculate target coordinates
-        const targetX = enemy.x + moveX;
-        const targetY = enemy.y + moveY;
+        // 2. Try the moves in order
+        let moved = false;
+        for (const move of moves) {
+            const targetX = enemy.x + move.x;
+            const targetY = enemy.y + move.y;
 
-        // 4. CRITICAL FIX: Check for Collision with World Objects
-        // We only allow the move if the target is:
-        // A) The Player's current location (Attack!)
-        // B) Empty Space
-        // C) A Nebula (Pirates hide in clouds)
-        
-        const targetTile = chunkManager.getTile(targetX, targetY);
-        const tileChar = getTileChar(targetTile);
-        
-        // Check if the target is the player
-        const isPlayer = (targetX === playerX && targetY === playerY);
-        
-        // Check if the tile is a valid "flyable" zone
-        // (Prevents flying through Stars, Planets, Stations, or Anomalies)
-        const isNavigable = (tileChar === EMPTY_SPACE_CHAR_VAL || tileChar === NEBULA_CHAR_VAL);
+            const targetTile = chunkManager.getTile(targetX, targetY);
+            const tileChar = getTileChar(targetTile);
 
-        if (isPlayer || isNavigable) {
-            enemy.x = targetX;
-            enemy.y = targetY;
-        } else {
-            // Optional: AI could try the "other" axis here if blocked, 
-            // but for now, they just wait if their path is blocked by a Star/Planet.
+            // Is this the player?
+            const isPlayer = (targetX === playerX && targetY === playerY);
+            
+            // Is it a valid space to fly through?
+            const isNavigable = (tileChar === EMPTY_SPACE_CHAR_VAL || tileChar === NEBULA_CHAR_VAL);
+
+            // 3. EXECUTE MOVE
+            if (isPlayer || isNavigable) {
+                enemy.x = targetX;
+                enemy.y = targetY;
+                moved = true;
+                break; // We found a valid move, stop checking alternatives
+            }
         }
 
-        // 5. Check Combat Trigger (Did they catch you?)
+        // 4. CHECK COMBAT TRIGGER
+        // If the enemy successfully moved onto the player's tile, trigger combat!
         if (enemy.x === playerX && enemy.y === playerY) {
-            startCombat(); 
-            removeEnemyAt(playerX, playerY); // Remove the specific enemy instance
+            // Log a warning for flavor
+            logMessage(`<span style='color:#FF5555'>ALERT: Pirate vessel engaging!</span>`);
+            
+            // Remove the enemy active map instance
+            activeEnemies.splice(i, 1);
+            
+            // Switch to Combat View
+            startCombat();
         }
-    });
+    }
 }
 
  /**
@@ -1351,25 +1359,11 @@ function renderSystemMap() {
     const halfViewW = Math.floor(VIEWPORT_WIDTH_TILES / 2);
     const halfViewH = Math.floor(VIEWPORT_HEIGHT_TILES / 2);
 
-    // Calculate the top-left corner of the camera
+    // Camera Top-Left (camX, camY) is Player minus Half-Screen
+    // We DO NOT clamp these values anymore. This allows the camera 
+    // to view negative coordinates (left/up) and infinite positive coordinates (right/down).
     let camX = playerX - halfViewW;
     let camY = playerY - halfViewH;
-
-    // OPTIONAL: Clamp Camera to Map Bounds? 
-    // If we clamp, the player moves to the edge of the screen at map borders.
-    // If we don't clamp, we see empty void outside the map. 
-    // Let's CLAMP it for a cleaner look, but ensure we don't crash if map is smaller than view.
-    const maxCamX = MAP_WIDTH - VIEWPORT_WIDTH_TILES;
-    const maxCamY = MAP_HEIGHT - VIEWPORT_HEIGHT_TILES;
-    
-    // Basic clamping (prevents showing area outside 0,0 - 40,22)
-    // Note: If you want an "Infinite" feel, remove these Math.max/min lines.
-    camX = Math.max(0, Math.min(camX, maxCamX));
-    camY = Math.max(0, Math.min(camY, maxCamY));
-
-    // Handle case where viewport > map (unlikely but safe)
-    if (VIEWPORT_WIDTH_TILES > MAP_WIDTH) camX = -(VIEWPORT_WIDTH_TILES - MAP_WIDTH) / 2;
-    if (VIEWPORT_HEIGHT_TILES > MAP_HEIGHT) camY = -(VIEWPORT_HEIGHT_TILES - MAP_HEIGHT) / 2;
 
     // --- 2. Clear Canvas ---
     ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
@@ -1383,21 +1377,21 @@ function renderSystemMap() {
     }
     ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
 
-    // --- 3. Draw Tiles (Iterate over Viewport, not Map) ---
+    // --- 3. Draw Tiles (Iterate over Viewport Loop) ---
+    // We loop through SCREEN coordinates and map them to WORLD coordinates
     for (let y = 0; y < VIEWPORT_HEIGHT_TILES; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH_TILES; x++) {
-            // Calculate World Coordinate
+            // Screen (x,y) + Camera (camX, camY) = World (worldX, worldY)
             const worldX = Math.floor(camX + x);
             const worldY = Math.floor(camY + y);
 
-            // Bounds Check (Don't try to get tiles outside map array)
-            if (worldX < 0 || worldX >= MAP_WIDTH || worldY < 0 || worldY >= MAP_HEIGHT) {
-                continue; 
-            }
+            // REMOVED: The check "if (worldX < 0 || worldX >= MAP_WIDTH...)"
+            // Removing that check allows chunkManager to generate new sectors forever.
 
             const tileData = chunkManager.getTile(worldX, worldY);
             const tileChar = getTileChar(tileData);
 
+            // [Color Logic]
             switch (tileChar) {
                 case STAR_CHAR_VAL: ctx.fillStyle = '#FFFF99'; break;
                 case PLANET_CHAR_VAL: ctx.fillStyle = '#88CCFF'; break;
@@ -1416,7 +1410,7 @@ function renderSystemMap() {
                     break;
             }
 
-            // Draw at Screen Coordinate (x, y) relative to Viewport
+            // Draw at Screen Coordinate
             ctx.fillText(
                 tileChar,
                 x * TILE_SIZE + TILE_SIZE / 2,
@@ -1425,11 +1419,12 @@ function renderSystemMap() {
         }
     }
 
-    // --- 4. Draw Sensor Pulse (Relative to Camera) ---
-    // Where is the player on the SCREEN?
+    // --- 4. Draw Objects Relative to Camera ---
+    // ScreenPos = (WorldPos - CameraPos) * TileSize
     const playerScreenX = (playerX - camX) * TILE_SIZE + TILE_SIZE / 2;
     const playerScreenY = (playerY - camY) * TILE_SIZE + TILE_SIZE / 2;
 
+    // Draw Pulse
     if (sensorPulseActive) {
         ctx.beginPath();
         ctx.arc(playerScreenX, playerScreenY - (TILE_SIZE/4), sensorPulseRadius, 0, 2 * Math.PI);
@@ -1438,16 +1433,12 @@ function renderSystemMap() {
         ctx.stroke();
     }
 
-    // --- 5. Draw Particles (Relative to Camera) ---
+    // Draw Particles
     activeParticles.forEach(p => {
-        // Calculate screen position relative to camera (camX, camY)
         const screenX = (p.x - camX) * TILE_SIZE;
         const screenY = (p.y - camY) * TILE_SIZE;
-
-        // Draw only if visible in viewport
-        if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width &&
-            screenY >= -TILE_SIZE && screenY <= gameCanvas.height) {
-            
+        // Optimization: Only draw if on screen
+        if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width && screenY >= -TILE_SIZE) {
             ctx.fillStyle = p.color;
             ctx.globalAlpha = p.life; 
             ctx.fillRect(screenX, screenY, p.size, p.size);
@@ -1455,22 +1446,18 @@ function renderSystemMap() {
         }
     });
 
-    // --- 5.5 Draw Enemies (Relative to Camera) ---
+    // Draw Enemies
     activeEnemies.forEach(enemy => {
         const screenX = (enemy.x - camX) * TILE_SIZE + TILE_SIZE / 2;
         const screenY = (enemy.y - camY) * TILE_SIZE + TILE_SIZE / 2;
-
-        if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width &&
-            screenY >= -TILE_SIZE && screenY <= gameCanvas.height) {
-            
+        if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width) {
             ctx.fillStyle = '#FF5555'; 
             ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`; 
             ctx.fillText(PIRATE_CHAR_VAL, screenX, screenY);
         }
     });
 
-    // --- 6. Draw Player (Relative to Camera) ---
-    // We calculated playerScreenX/Y earlier for the pulse
+    // Draw Player
     if (currentCombatContext) {
         ctx.fillStyle = '#FF5555';
         ctx.fillText(PIRATE_CHAR_VAL, playerScreenX, playerScreenY);
@@ -1479,9 +1466,7 @@ function renderSystemMap() {
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
     }
 
-    // --- 7. Update UI Stats ---
-    sectorNameStatElement.innerHTML = currentSectorName; 
-    
+    // --- 5. Update UI Stats ---
     const dist = Math.sqrt((playerX * playerX) + (playerY * playerY));
     let threat = "SAFE";
     let color = "#00FF00"; 
@@ -1499,7 +1484,7 @@ function renderSystemMap() {
  let currentSectorName = "Sol Sector"; // Changed to let
 
  function updateCurrentCargoLoad() {
-     /* Same as v0.6.7 */
+
      currentCargoLoad = 0;
      for (const cID in playerCargo) currentCargoLoad += playerCargo[cID];
  }
@@ -4471,44 +4456,44 @@ function setupCanvas() {
     
     const dpr = window.devicePixelRatio || 1;
     
-    // CHECK FOR MOBILE
+    // 1. Detect Screen Size
     const isMobile = window.innerWidth <= 768;
 
+    // 2. Set Viewport Size (Camera Size)
     if (isMobile) {
-        // Mobile: Zoomed in "Portrait" view
-        // 13 tiles wide, 17 tiles high (Good balance for phones)
+        // Mobile: Zoomed "Portrait" view (Big tiles)
         VIEWPORT_WIDTH_TILES = 13; 
         VIEWPORT_HEIGHT_TILES = 17;
     } else {
-        // Desktop: Full Map
-        VIEWPORT_WIDTH_TILES = MAP_WIDTH;
-        VIEWPORT_HEIGHT_TILES = MAP_HEIGHT;
+        // Desktop: "Cinematic" Camera view
+        // We set this SMALLER than the Map (40x22) to force the camera to follow the player.
+        VIEWPORT_WIDTH_TILES = 25; 
+        VIEWPORT_HEIGHT_TILES = 15;
     }
 
-    // Set Canvas Resolution based on Viewport Size, not Map Size
+    // 3. Set Canvas Resolution
     gameCanvas.width = VIEWPORT_WIDTH_TILES * TILE_SIZE * dpr;
     gameCanvas.height = VIEWPORT_HEIGHT_TILES * TILE_SIZE * dpr;
     
     ctx.scale(dpr, dpr);
     gameCanvas.style.imageRendering = "pixelated";
     
-    // Re-apply font settings after resize
+    // Re-apply font settings
     ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle'; 
 
-    // Handle Window Resizing (Switching between Desktop/Mobile on the fly)
+    // 4. Handle resizing dynamically
     window.addEventListener('resize', () => {
-        // Debounce slightly or just re-run setup
         const newIsMobile = window.innerWidth <= 768;
         
-        // Only re-setup if category changed or on initial load logic
         if (newIsMobile) {
             VIEWPORT_WIDTH_TILES = 13;
             VIEWPORT_HEIGHT_TILES = 17;
         } else {
-            VIEWPORT_WIDTH_TILES = MAP_WIDTH;
-            VIEWPORT_HEIGHT_TILES = MAP_HEIGHT;
+            // Match the settings above
+            VIEWPORT_WIDTH_TILES = 25;
+            VIEWPORT_HEIGHT_TILES = 15;
         }
 
         const newDpr = window.devicePixelRatio || 1;
@@ -4516,10 +4501,10 @@ function setupCanvas() {
         gameCanvas.height = VIEWPORT_HEIGHT_TILES * TILE_SIZE * newDpr;
         
         ctx.scale(newDpr, newDpr);
-        ctx.imageRendering = "pixelated";
         ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle'; 
+        ctx.imageRendering = "pixelated";
         
         if (currentGameState === GAME_STATES.GALACTIC_MAP) render();
     });
