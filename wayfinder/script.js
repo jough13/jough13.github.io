@@ -84,13 +84,17 @@ function spawnParticles(x, y, type, dir = { x: 0, y: 0 }) {
 }
 
 function animateParticles() {
+    // Stop the loop if there are no particles and no active pulse
     if (activeParticles.length === 0 && !sensorPulseActive) {
         particleAnimationId = null;
-        render(); // Final clean draw
+        // Perform a final clear/draw only if we are currently looking at the map
+        if (currentGameState === GAME_STATES.GALACTIC_MAP) {
+            render(); 
+        }
         return;
     }
 
-    // Update Particles
+    // Update Particles (Movement & Decay)
     for (let i = activeParticles.length - 1; i >= 0; i--) {
         const p = activeParticles[i];
         p.x += p.vx;
@@ -102,7 +106,14 @@ function animateParticles() {
         }
     }
 
-    render(); // Redraw the screen
+    // Only redraw the screen if we are actually looking at the Galactic Map.
+    // This prevents the game from trying to re-render the System Map or Planet View 
+    // repeatedly (which causes UI freezing and high CPU usage).
+    if (currentGameState === GAME_STATES.GALACTIC_MAP) {
+        render(); 
+    }
+    
+    // Continue the loop
     particleAnimationId = requestAnimationFrame(animateParticles);
 }
 
@@ -595,21 +606,52 @@ function logMessage(newMessage, isImportant = false) {
 
 function updateEnemies() {
     activeEnemies.forEach(enemy => {
-        // Simple AI: Move towards player
+        // 1. Calculate distance to player
         const dx = playerX - enemy.x;
         const dy = playerY - enemy.y;
         
-        // Move 1 tile in the direction of the largest distance
+        // 2. Determine intended movement direction (Simple AI: move along largest axis)
+        let moveX = 0;
+        let moveY = 0;
+
         if (Math.abs(dx) > Math.abs(dy)) {
-            enemy.x += Math.sign(dx);
+            moveX = Math.sign(dx);
         } else {
-            enemy.y += Math.sign(dy);
+            moveY = Math.sign(dy);
         }
 
-        // Check Collision (Pirate caught you!)
+        // 3. Calculate target coordinates
+        const targetX = enemy.x + moveX;
+        const targetY = enemy.y + moveY;
+
+        // 4. CRITICAL FIX: Check for Collision with World Objects
+        // We only allow the move if the target is:
+        // A) The Player's current location (Attack!)
+        // B) Empty Space
+        // C) A Nebula (Pirates hide in clouds)
+        
+        const targetTile = chunkManager.getTile(targetX, targetY);
+        const tileChar = getTileChar(targetTile);
+        
+        // Check if the target is the player
+        const isPlayer = (targetX === playerX && targetY === playerY);
+        
+        // Check if the tile is a valid "flyable" zone
+        // (Prevents flying through Stars, Planets, Stations, or Anomalies)
+        const isNavigable = (tileChar === EMPTY_SPACE_CHAR_VAL || tileChar === NEBULA_CHAR_VAL);
+
+        if (isPlayer || isNavigable) {
+            enemy.x = targetX;
+            enemy.y = targetY;
+        } else {
+            // Optional: AI could try the "other" axis here if blocked, 
+            // but for now, they just wait if their path is blocked by a Star/Planet.
+        }
+
+        // 5. Check Combat Trigger (Did they catch you?)
         if (enemy.x === playerX && enemy.y === playerY) {
             startCombat(); 
-            removeEnemyAt(playerX, playerY); // Remove them after the fight starts
+            removeEnemyAt(playerX, playerY); // Remove the specific enemy instance
         }
     });
 }
@@ -1247,18 +1289,26 @@ function renderSystemMap() {
  }
 
  function render() {
+     // 1. CRITICAL SAFETY CHECK
+     // If the game hasn't started yet (Title Screen), do not attempt to render.
+     // This prevents errors where the code tries to access player properties (like ship/fuel)
+     // that haven't been initialized yet.
+     if (currentGameState === GAME_STATES.TITLE_SCREEN) return;
+
+     // 2. State Dispatcher
+     // Route the render call to the specific function for the current view.
      switch (currentGameState) {
          case GAME_STATES.GALACTIC_MAP:
-             renderGalacticMap();
+             renderGalacticMap(); // Draws the canvas, particles, and map UI
              break;
          case GAME_STATES.SYSTEM_MAP:
-             renderSystemMap();
+             renderSystemMap(); // Draws the DOM-based solar system view
              break;
          case GAME_STATES.PLANET_VIEW:
-             renderPlanetView();
+             renderPlanetView(); // Draws the surface operations view
              break;
          case GAME_STATES.COMBAT:
-             renderCombatView();
+             renderCombatView(); // Draws the combat UI
              break;
      }
  }
@@ -2811,26 +2861,36 @@ function executeTrade() {
      // In the future, this could also handle mission timers, etc.
  }
 
+function checkLevelUp() {
+    let leveledUp = false;
+    let loopSafety = 0; // Safety counter to prevent infinite loops
 
- function checkLevelUp() {
-     let leveledUp = false;
-     // Changed 'if' to 'while' to handle massive XP gains (e.g. from missions)
-     while (playerXP >= xpToNextLevel) {
-         playerLevel++;
-         playerXP -= xpToNextLevel;
-         xpToNextLevel = calculateXpToNextLevel(playerLevel);
-         leveledUp = true;
-     }
+    // We use a while loop to handle massive XP gains (e.g. from missions)
+    // The safety check ensures we don't freeze if xpToNextLevel calculation fails
+    while (playerXP >= xpToNextLevel && loopSafety < 100) {
+        playerLevel++;
+        playerXP -= xpToNextLevel;
+        xpToNextLevel = calculateXpToNextLevel(playerLevel);
+        leveledUp = true;
+        loopSafety++;
+    }
 
-     if (leveledUp) {
-         logMessage(`LEVEL UP! You are now Level ${playerLevel}!\nShields and Fuel fully restored!`);
-         playerShields = MAX_SHIELDS;
-         playerFuel = MAX_FUEL;
-         renderUIStats(); // Force an immediate UI update
-         return true;
-     }
-     return false;
- }
+    if (loopSafety >= 100) {
+        console.warn("Infinite loop protection triggered in checkLevelUp.");
+    }
+
+    if (leveledUp) {
+        logMessage(`LEVEL UP! You are now Level ${playerLevel}!\nShields and Fuel fully restored!`);
+        
+        // Restore stats on level up
+        playerShields = MAX_SHIELDS;
+        playerFuel = MAX_FUEL;
+        
+        renderUIStats(); // Force an immediate UI update
+        return true;
+    }
+    return false;
+}
 
  function updateSectorState() {
      const newSectorX = Math.floor(playerX / SECTOR_SIZE);
@@ -3163,7 +3223,7 @@ function executeTrade() {
  }
 
 function visitCantina() {
-    // 1. Check Credits (Drinks aren't free!)
+    // 1. Check Credits
     const cost = 10;
     if (playerCredits < cost) {
         logMessage("Bartender: \"No credits, no service. Get out.\"");
@@ -3172,25 +3232,41 @@ function visitCantina() {
 
     // 2. Pay up
     playerCredits -= cost;
+
+    // 3. NEW: Mechanics - Small Heal & Fuel Boost
+    let healAmount = 0;
+    if (playerHull < MAX_PLAYER_HULL) {
+        healAmount = Math.min(5, MAX_PLAYER_HULL - playerHull);
+        playerHull += healAmount;
+    }
+    // "One for the road" - small fuel boost
+    let fuelBoost = 0; 
+    if (playerFuel < MAX_FUEL) {
+        fuelBoost = Math.min(10, MAX_FUEL - playerFuel);
+        playerFuel += fuelBoost;
+    }
     
-    // 3. Pick a random rumor
-    // We access the global RUMORS array from rumors.js
+    // 4. Flavor Text
     const randomRumor = RUMORS[Math.floor(Math.random() * RUMORS.length)];
-    
-    // 4. Flavor Text generation
     const bartenders = [
-        "A gruff K'tharr slides a glass of glowing slime down the bar.",
-        "A drone bartender beeps happily and dispenses a fizzy ale.",
-        "A shadowy figure in the corner beckons you over."
+        "A gruff K'tharr slides a glowing drink down the bar.",
+        "A drone bartender beeps and serves a nutrient shake.",
+        "The air is thick with smoke as you grab a booth."
     ];
     const intro = bartenders[Math.floor(Math.random() * bartenders.length)];
 
-    // 5. Log it with our new style
+    // 5. Log it
     logMessage(`<span class="cantina-header">Cantina Visit (-${cost}c)</span>`);
     logMessage(intro);
+    
+    let effectMsg = "";
+    if (healAmount > 0) effectMsg += ` <span style="color:#00FF00">Repaired ${healAmount} Hull.</span>`;
+    if (fuelBoost > 0) effectMsg += ` <span style="color:#FFFF00">Gained ${fuelBoost} Fuel.</span>`;
+    if (effectMsg) logMessage(effectMsg);
+
     logMessage(`<span class="rumor-text">"${randomRumor}"</span>`);
 
-    // 6. Refresh UI to show credit deduction
+    // 6. Refresh UI
     renderUIStats();
 }
 
