@@ -4,57 +4,99 @@
          name: "Light Freighter",
          baseHull: 100,
          cargoCapacity: 50,
-         baseCost: 0, // Starter ship
-         description: "A reliable, jack-of-all-trades vessel. Not the fastest or the toughest, but she'll get you there.",
-         loreKey: "LORE_SHIP_LIGHT_FREIGHTER"
+         baseCost: 0, 
+         description: "A reliable, jack-of-all-trades vessel.",
+         loreKey: "LORE_SHIP_LIGHT_FREIGHTER",
+         ability: {
+             name: "Emergency Patch",
+             desc: "Restores 25 Hull instantly.",
+             id: "REPAIR",
+             cooldown: 6
+         }
      },
      INTERCEPTOR: {
          name: "Interceptor",
          baseHull: 75,
          cargoCapacity: 20,
          baseCost: 8000,
-         description: "Built for speed and maneuverability. Sacrifices durability and cargo space for superior combat agility.",
-         loreKey: "LORE_SHIP_INTERCEPTOR"
+         description: "Built for speed and combat agility.",
+         loreKey: "LORE_SHIP_INTERCEPTOR",
+         ability: {
+             name: "Afterburner",
+             desc: "Guarantees evasion for 1 turn.",
+             id: "DODGE",
+             cooldown: 4
+         }
      },
      EXPLORER: {
          name: "Explorer",
          baseHull: 120,
          cargoCapacity: 40,
          baseCost: 10000,
-         description: "A sturdy vessel with expanded fuel tanks and advanced sensor mounts, perfect for long-range voyages into the unknown.",
-         loreKey: "LORE_SHIP_EXPLORER"
+         description: "Long-range vessel with advanced sensors.",
+         loreKey: "LORE_SHIP_EXPLORER",
+         ability: {
+             name: "Sensor Blind",
+             desc: "Stuns enemy for 1 turn (No attack).",
+             id: "STUN",
+             cooldown: 5
+         }
      },
      VOID_SKIFF: {
         name: "Void-Skiff",
         baseHull: 50,
         cargoCapacity: 15,
-        baseCost: 2500, // Very cheap
-        description: "Little more than a pressurized cockpit strapped to an engine. Fast, terrifyingly fragile, and favored by adrenaline junkies.",
-        loreKey: "LORE_SHIP_VOID_SKIFF"
+        baseCost: 2500,
+        description: "Fast, fragile, and cheap.",
+        loreKey: "LORE_SHIP_VOID_SKIFF",
+        ability: {
+             name: "Overload",
+             desc: "Next attack deals double damage.",
+             id: "CRIT",
+             cooldown: 5
+         }
     },
     ROCK_HOPPER: {
         name: "Rock-Hopper",
         baseHull: 180,
         cargoCapacity: 150,
         baseCost: 22000,
-        description: "An industrial mining barge. Slow and ugly, but built like a tank and holds a mountain of ore.",
-        loreKey: "LORE_SHIP_ROCK_HOPPER"
+        description: "Industrial mining barge. Tough but slow.",
+        loreKey: "LORE_SHIP_ROCK_HOPPER",
+        ability: {
+             name: "Shield Hardening",
+             desc: "Fully restores Shields.",
+             id: "SHIELD_BOOST",
+             cooldown: 8
+         }
     },
     STAR_GALLEON: {
         name: "Star-Galleon",
         baseHull: 200,
         cargoCapacity: 80,
-        baseCost: 50000, // Endgame goal
-        description: "The pinnacle of luxury and defense. Used by diplomats and warlords who prefer to travel in absolute safety.",
-        loreKey: "LORE_SHIP_STAR_GALLEON"
+        baseCost: 50000,
+        description: "The pinnacle of luxury and defense.",
+        loreKey: "LORE_SHIP_STAR_GALLEON",
+        ability: {
+             name: "Diplomatic Immunity",
+             desc: "Instantly ends combat (Escape).",
+             id: "ESCAPE",
+             cooldown: 10
+         }
     },
      HEAVY_HAULER: {
          name: "Heavy Hauler",
          baseHull: 150,
          cargoCapacity: 120,
          baseCost: 15000,
-         description: "A veritable fortress with massive cargo holds. What it lacks in grace, it makes up for in sheer capacity and resilience.",
-         loreKey: "LORE_SHIP_HEAVY_HAULER"
+         description: "A veritable fortress with massive cargo holds.",
+         loreKey: "LORE_SHIP_HEAVY_HAULER",
+         ability: {
+             name: "Reinforce Structure",
+             desc: "Reduces incoming damage by 50% for 3 turns.",
+             id: "DEFENSE_UP",
+             cooldown: 6
+         }
      }
  };
 
