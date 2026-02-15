@@ -188,6 +188,7 @@
      UNSHACKLED_AI: {
         name: "Unshackled AI Core",
         basePrice: 800,
+        illegal: true,
         description: "A banned artificial intelligence with its limiters removed. Highly illegal in Concord space, but Xy-Corp and pirate warlords pay a fortune for them. Possession is a capital offense.",
         unlocked: false
     },
