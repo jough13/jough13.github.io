@@ -128,6 +128,28 @@
                 </div>
             </div>
 
+            <div id="gameOverOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(20,0,0,0.9); z-index:4000; align-items:center; justify-content:center;">
+    <div class="confirm-window" style="border-color: var(--danger); box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);">
+        <div class="confirm-header" style="background: var(--danger); color: #000; animation: blink 0.5s infinite;">SIGNAL LOST</div>
+        <div class="confirm-body">
+            <h1 style="color: var(--danger); font-family: var(--title-font); font-size: 32px; margin: 10px 0;">CRITICAL FAILURE</h1>
+            <p id="deathReason" style="font-size: 16px; color: #fff; margin-bottom: 20px;">Cause: Unknown</p>
+            
+            <div class="trade-math-area" style="border-color: #552222;">
+                <div class="trade-stat-row"><span>Final Level:</span> <span id="deathLevel" class="value-text" style="color:#fff"></span></div>
+                <div class="trade-stat-row"><span>Credits Lost:</span> <span id="deathCreditPenalty" class="value-text" style="color:var(--danger)"></span></div>
+            </div>
+
+            <p style="font-size: 12px; color: #888; margin-top: 15px;">Emergency Clone Protocol Available.</p>
+            
+            <div class="confirm-actions" style="flex-direction: column; gap: 10px;">
+                <button id="respawnBtn" class="action-button" onclick="respawnPlayer()">INITIATE CLONE (RESPAWN)</button>
+                <button class="action-button danger-btn" onclick="quitToTitle()">TERMINATE SIGNAL (QUIT)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
             <div id="tradeOverlay" style="display:none;">
                 <div class="trade-window">
                     <div class="trade-header">
