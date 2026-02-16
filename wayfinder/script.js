@@ -1486,46 +1486,51 @@ function renderSystemMap() {
  }
 
  function renderGalacticMap() {
-    // --- 1. Calculate Camera Position ---
-    // We want the player in the center of the VIEWPORT
+    // --- 1. Check Theme Status ---
+    const isLightMode = document.body.classList.contains('light-mode');
+
+    // --- 2. Calculate Camera Position ---
     const halfViewW = Math.floor(VIEWPORT_WIDTH_TILES / 2);
     const halfViewH = Math.floor(VIEWPORT_HEIGHT_TILES / 2);
-
-    // Camera Top-Left (camX, camY) is Player minus Half-Screen
-    // We DO NOT clamp these values anymore. This allows the camera 
-    // to view negative coordinates (left/up) and infinite positive coordinates (right/down).
     let camX = playerX - halfViewW;
     let camY = playerY - halfViewH;
 
-    // --- 2. Clear Canvas ---
+    // --- 3. Clear Canvas & Set Background ---
     ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
     
     // Pulse Effect Background
     if (sensorPulseActive) {
         const pulseIntensity = (1 - (sensorPulseRadius / MAX_PULSE_RADIUS)) * 0.2;
-        ctx.fillStyle = `rgba(0, 40, 40, ${0.4 + pulseIntensity})`;
+        
+        // Dynamic Pulse Color based on Theme
+        if (isLightMode) {
+            // Light Mode: Subtle Teal Pulse on White
+            ctx.fillStyle = `rgba(0, 119, 119, ${0.05 + pulseIntensity})`;
+        } else {
+            // Dark Mode: Dark Green/Cyan Pulse on Black
+            ctx.fillStyle = `rgba(0, 40, 40, ${0.4 + pulseIntensity})`;
+        }
     } else {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        // STANDARD BACKGROUND FILL
+        // Light Mode: Solid Paper White
+        // Dark Mode: Transparent Black (0.4 alpha) to let the CSS background show through
+        ctx.fillStyle = isLightMode ? '#FFFFFF' : 'rgba(0, 0, 0, 0.4)';
     }
     ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
 
-    // --- 3. Draw Tiles (Iterate over Viewport Loop) ---
-    // We loop through SCREEN coordinates and map them to WORLD coordinates
+    // --- 4. Draw Tiles ---
     for (let y = 0; y < VIEWPORT_HEIGHT_TILES; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH_TILES; x++) {
-            // Screen (x,y) + Camera (camX, camY) = World (worldX, worldY)
             const worldX = Math.floor(camX + x);
             const worldY = Math.floor(camY + y);
-
-            // REMOVED: The check "if (worldX < 0 || worldX >= MAP_WIDTH...)"
-            // Removing that check allows chunkManager to generate new sectors forever.
 
             const tileData = chunkManager.getTile(worldX, worldY);
             const tileChar = getTileChar(tileData);
 
             // [Color Logic]
             switch (tileChar) {
-                case STAR_CHAR_VAL: ctx.fillStyle = '#FFFF99'; break;
+                // Stars: Darker Gold in Light Mode for visibility
+                case STAR_CHAR_VAL: ctx.fillStyle = isLightMode ? '#DDBB00' : '#FFFF99'; break;
                 case PLANET_CHAR_VAL: ctx.fillStyle = '#88CCFF'; break;
                 case STARBASE_CHAR_VAL: ctx.fillStyle = '#FF88FF'; break;
                 case OUTPOST_CHAR_VAL: ctx.fillStyle = '#AADD99'; break;
@@ -1538,7 +1543,8 @@ function renderSystemMap() {
                 case PIRATE_CHAR_VAL: ctx.fillStyle = '#FF5555'; break;
                 case EMPTY_SPACE_CHAR_VAL:
                 default:
-                    ctx.fillStyle = '#909090';
+                    // DOTS: Dark Grey in Light Mode, Light Grey in Dark Mode
+                    ctx.fillStyle = isLightMode ? '#444455' : '#909090';
                     break;
             }
 
@@ -1551,12 +1557,11 @@ function renderSystemMap() {
         }
     }
 
-    // --- 4. Draw Objects Relative to Camera ---
-    // ScreenPos = (WorldPos - CameraPos) * TileSize
+    // --- 5. Draw Objects Relative to Camera ---
     const playerScreenX = (playerX - camX) * TILE_SIZE + TILE_SIZE / 2;
     const playerScreenY = (playerY - camY) * TILE_SIZE + TILE_SIZE / 2;
 
-    // Draw Pulse
+    // Draw Pulse Ring
     if (sensorPulseActive) {
         ctx.beginPath();
         ctx.arc(playerScreenX, playerScreenY - (TILE_SIZE/4), sensorPulseRadius, 0, 2 * Math.PI);
@@ -1569,7 +1574,6 @@ function renderSystemMap() {
     activeParticles.forEach(p => {
         const screenX = (p.x - camX) * TILE_SIZE;
         const screenY = (p.y - camY) * TILE_SIZE;
-        // Optimization: Only draw if on screen
         if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width && screenY >= -TILE_SIZE) {
             ctx.fillStyle = p.color;
             ctx.globalAlpha = p.life; 
@@ -1594,11 +1598,12 @@ function renderSystemMap() {
         ctx.fillStyle = '#FF5555';
         ctx.fillText(PIRATE_CHAR_VAL, playerScreenX, playerScreenY);
     } else {
-        ctx.fillStyle = '#FFFFFF'; 
+        // PLAYER ICON: Black in Light Mode, White in Dark Mode
+        ctx.fillStyle = isLightMode ? '#000000' : '#FFFFFF'; 
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
     }
 
-    // --- 5. Update UI Stats ---
+    // --- 6. Update UI Stats ---
     const dist = Math.sqrt((playerX * playerX) + (playerY * playerY));
     let threat = "SAFE";
     let color = "#00FF00"; 
@@ -4840,7 +4845,7 @@ function handleTradeInput(key) {
  });
 
  // --- Theme Toggle Function ---
- function toggleTheme() {
+function toggleTheme() {
      const body = document.body;
      const isLight = body.classList.toggle('light-mode');
      const themeBtn = document.getElementById('themeButton');
@@ -4850,6 +4855,13 @@ function handleTradeInput(key) {
 
      // Save preference
      localStorage.setItem('wayfinderTheme', isLight ? 'light' : 'dark');
+
+     // --- FORCE RENDER IMMEDIATELY ---
+     // This ensures the canvas redraws with the new colors right now,
+     // without waiting for the player to move.
+     if (typeof render === 'function') {
+         render();
+     }
  }
 
 // --- INITIALIZATION HELPERS ---
@@ -5352,11 +5364,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. Setup DOM & Event Listeners (Includes PFP, Buttons, Trade)
     initializeDOMElements();
 
-    // 4. Apply Theme Preference
-    const savedTheme = localStorage.getItem('wayfinderTheme');
-    if (savedTheme === 'light') {
-        document.body.classList.add('light-mode');
-        document.getElementById('themeButton').textContent = "Dark Mode";
+    // 4. Sync Theme Button State
+    // The theme class is now applied in index.html to prevent flicker.
+    // We just need to ensure the button text matches the reality.
+    if (document.body.classList.contains('light-mode')) {
+        const themeBtn = document.getElementById('themeButton');
+        if (themeBtn) themeBtn.textContent = "Dark Mode";
     }
 
     // 5. Setup Auto-Login UI (The new feature)
