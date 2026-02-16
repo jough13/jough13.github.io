@@ -6,6 +6,12 @@ function removeEnemyAt(x, y) {
     activeEnemies = activeEnemies.filter(e => e.x !== x || e.y !== y);
 }
 
+// A sector resets after this much "time" has passed since you last touched it.
+// 50.0 stardate units is roughly 5000 moves or several jumps.
+const RESOURCE_RESPAWN_TIME = 50.0;
+
+let playerPerks = new Set(); // Stores IDs like "DEEP_CORE_MINING"
+
 // --- ECONOMY GLOBALS ---
 let activeMarketTrend = null; // Stores the current "Hot Tip" { station: "Name", item: "ID", expiry: 0 }
 
@@ -317,7 +323,9 @@ function animateParticles() {
      GALACTIC_MAP: 'galactic_map',
      SYSTEM_MAP: 'system_map',
      PLANET_VIEW: 'planet_view',
-     COMBAT: 'combat' // Add this new state
+     COMBAT: 'combat',
+     GAME_OVER: 'game_over',
+     LEVEL_UP: 'level_up'
  };
 
  let currentGameState;
@@ -331,7 +339,39 @@ function animateParticles() {
  let playerIsChargingAttack;
  let playerIsEvading;
 
- let worldStateDeltas = {}; 
+ let worldStateDeltas = {};
+
+ function performGarbageCollection() {
+    const keys = Object.keys(worldStateDeltas);
+    let cleanedCount = 0;
+
+    keys.forEach(key => {
+        const delta = worldStateDeltas[key];
+
+        // SAFETY CHECK: Never delete critical story/lore flags
+        // If the tile is the Nexus (activated) or a unique anomaly (studied), keep it forever.
+        if (delta.activated || delta.studied || delta.isUnique) {
+            return; 
+        }
+
+        // TIME CHECK: If enough time has passed...
+        if (delta.lastInteraction && (currentGameDate - delta.lastInteraction > RESOURCE_RESPAWN_TIME)) {
+            
+            // Delete the delta. 
+            // The next time chunkManager generates this tile, it will use the seed 
+            // (which means the asteroid/star comes back full).
+            delete worldStateDeltas[key];
+            cleanedCount++;
+            
+            // OPTIONAL: If we really wanted to, we could force the chunk to reload here,
+            // but since this happens for "old" tiles, they are likely off-screen anyway.
+        }
+    });
+
+    if (cleanedCount > 0) {
+        console.log(`Universe Cleanup: ${cleanedCount} sectors regenerated.`);
+    }
+}
 
 /**
  * Helper to update both the current loaded tile AND the saveable delta.
@@ -339,6 +379,7 @@ function animateParticles() {
  * @param {number} y - World Y coordinate
  * @param {object} changes - Object containing flags to set (e.g. { minedThisVisit: true })
  */
+
 function updateWorldState(x, y, changes) {
     // 1. Update the in-memory tile so the UI reacts immediately
     const tile = chunkManager.getTile(x, y);
@@ -592,20 +633,58 @@ function logMessage(newMessage, isImportant = false) {
  }
 
  function spawnPirateNearPlayer() {
-    // Spawn randomly 5-10 tiles away
+    // 1. Determine Spawn Location (randomly 5-10 tiles away)
     const angle = Math.random() * Math.PI * 2;
     const dist = 5 + Math.floor(Math.random() * 5);
     const eX = Math.floor(playerX + Math.cos(angle) * dist);
     const eY = Math.floor(playerY + Math.sin(angle) * dist);
 
+    // 2. Determine Faction & Ship Type
+    const faction = getFactionAtSector(currentSectorX, currentSectorY);
+    let potentialShips = [];
+    let enemyType = 'PIRATE'; // Default display type
+    let warningMsg = "";
+
+    // -- FACTION LOGIC --
+    if (faction === "KTHARR") {
+        // K'tharr are territorial. If you have low rep, they attack.
+        // Or if it's random "pirate encounter" logic, we spawn a K'tharr Patrol.
+        if (playerNotoriety < 50) { 
+            enemyType = "KTHARR_PATROL";
+            // Filter PIRATE_SHIP_CLASSES for keys starting with KTHARR
+            potentialShips = Object.keys(PIRATE_SHIP_CLASSES).filter(k => k.startsWith('KTHARR'));
+            warningMsg = "ALERT: K'tharr Hegemony Patrol intercepting!";
+        }
+    } else if (faction === "CONCORD") {
+        // Concord only attacks if you are a criminal (Negative Rep)
+        if (playerNotoriety < -50) {
+            enemyType = "CONCORD_SECURITY";
+            potentialShips = Object.keys(PIRATE_SHIP_CLASSES).filter(k => k.startsWith('CONCORD'));
+            warningMsg = "ALERT: Concord Security attempting arrest!";
+        }
+    }
+
+    // -- FALLBACK / PIRATE LOGIC --
+    // If no specific faction spawned (or you are friendly with them), spawn a standard Pirate
+    if (potentialShips.length === 0) {
+        enemyType = "PIRATE";
+        // Filter for standard pirates (RAIDER, STRIKER, BRUISER)
+        potentialShips = ["RAIDER", "STRIKER", "BRUISER"];
+        warningMsg = "WARNING: Pirate vessel detected on sensors!";
+    }
+
+    // 3. Select Specific Ship Class
+    const shipKey = potentialShips[Math.floor(Math.random() * potentialShips.length)];
+
     activeEnemies.push({
         x: eX,
         y: eY,
         id: Date.now(),
-        type: 'PIRATE'
+        type: enemyType,
+        shipClassKey: shipKey // <--- New property to tell Combat what to spawn
     });
     
-    logMessage("<span style='color:#FF5555'>WARNING: Pirate vessel detected on sensors!</span>");
+    logMessage(`<span style='color:#FF5555'>${warningMsg}</span>`);
 }
 
 function updateEnemies() {
@@ -1062,6 +1141,8 @@ function changeGameState(newState) {
     playerCompletedMissions = new Set();
     discoveredLoreEntries = new Set();
     missionsAvailableAtStation = [];
+
+    playerPerks = new Set();
     
     // Clear Caches
     systemCache = {}; 
@@ -1216,13 +1297,11 @@ function changeGameState(newState) {
 
  /**
   * Generates a procedural and deterministic name for a sector based on its coordinates.
-  * @param {number} sectorX - The x-coordinate of the sector.
-  * @param {number} sectorY - The y-coordinate of the sector.
-  * @returns {string} The generated name for the sector.
+  * Now includes Faction Territory suffixes.
   */
  function generateSectorName(sectorX, sectorY) {
      if (sectorX === 0 && sectorY === 0) {
-         return "Sol Sector"; // The starting sector should always be the same.
+         return "Sol Sector (Concord HQ)"; 
      }
 
      // Create a unique seed for this specific sector coordinate pair.
@@ -1233,22 +1312,30 @@ function changeGameState(newState) {
 
      let prefixPool, rootPool;
 
-     if (distance < 10) { // Tier 1: Closer to home, more familiar names.
+     if (distance < 10) { // Tier 1: Core Worlds
          prefixPool = SECTOR_NAME_PARTS.TIER1_PREFIX;
          rootPool = SECTOR_NAME_PARTS.TIER1_ROOT;
-     } else if (distance < 30) { // Tier 2: The frontier, more exotic names.
+     } else if (distance < 30) { // Tier 2: The Frontier
          prefixPool = SECTOR_NAME_PARTS.TIER2_PREFIX;
          rootPool = SECTOR_NAME_PARTS.TIER2_ROOT;
-     } else { // Tier 3: Deep, uncharted space, ancient and mysterious names.
+     } else { // Tier 3: Deep Space
          prefixPool = SECTOR_NAME_PARTS.TIER3_PREFIX;
          rootPool = SECTOR_NAME_PARTS.TIER3_ROOT;
      }
 
-     // Use the seeded random number to pick a name part from the chosen pools.
+     // Pick name parts
      const prefix = prefixPool[Math.floor(seededRandom(seed) * prefixPool.length)];
-     const root = rootPool[Math.floor(seededRandom(seed + 1) * rootPool.length)]; // Slightly change seed for variety
+     const root = rootPool[Math.floor(seededRandom(seed + 1) * rootPool.length)];
+     
+     let fullName = `${prefix} ${root}`;
 
-     return `${prefix} ${root}`;
+     // Append Faction Suffix
+     const faction = getFactionAtSector(sectorX, sectorY);
+     if (faction === "KTHARR") fullName += " [Hegemony]";
+     else if (faction === "CONCORD") fullName += " [Concord]";
+     else if (faction === "VOID_VULTURES") fullName += " [Lawless]";
+
+     return fullName;
  }
 
 
@@ -1656,7 +1743,12 @@ function movePlayer(dx, dy) {
      // 3. Calculate Fuel Cost
      // We define this early so we can check if you can afford the move
      const currentEngine = COMPONENTS_DATABASE[playerShip.components.engine];
-     const actualFuelPerMove = BASE_FUEL_PER_MOVE * (currentEngine.stats.fuelEfficiency || 1.0);
+     let actualFuelPerMove = BASE_FUEL_PER_MOVE * (currentEngine.stats.fuelEfficiency || 1.0);
+
+     // --- PERK HOOK ---
+        if (playerPerks.has('EFFICIENT_THRUSTERS')) {
+            actualFuelPerMove *= 0.8; // 20% reduction
+        }
 
      // 4. Check Fuel Availability (THE FIX)
      // If you don't have enough fuel to make the jump:
@@ -2157,7 +2249,12 @@ function movePlayer(dx, dy) {
      });
 
      if (foundSomething) {
-         const xpGained = XP_PER_MINING_OP; // Use same base XP as mining
+        let xpGained = XP_PER_MINING_OP;
+    
+        // --- PERK HOOK ---
+        if (playerPerks.has('XENO_BIOLOGIST')) {
+            xpGained *= 2; // Double XP
+        }
          playerXP += xpGained;
          scanMessage += `\n+${xpGained} XP.`;
          advanceGameTime(0.10); // Scanning takes a bit of time
@@ -2337,7 +2434,14 @@ function movePlayer(dx, dy) {
      // Apply Scaling to Yield
      const density = asteroid.density || 0.5;
      const baseYield = 5 + Math.floor(Math.random() * 15 * density);
-     const yieldAmount = Math.floor(baseYield * richnessMultiplier);
+     
+     let yieldAmount = Math.floor(baseYield * richnessMultiplier);
+
+        // --- PERK HOOK ---
+        if (playerPerks.has('DEEP_CORE_MINING')) {
+            yieldAmount += 3;
+            // visual flare logic can go here
+        }
 
      if (yieldAmount > 0) {
          if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
@@ -2573,6 +2677,12 @@ function movePlayer(dx, dy) {
      if (itemData && itemData.illegal && mode === 'sell') {
          price *= 2.5; 
      }
+
+     // --- PERK HOOK ---
+    if (playerPerks.has('SILVER_TONGUE')) {
+        if (mode === 'buy') price *= 0.9; // 10% cheaper
+        if (mode === 'sell') price *= 1.1; // 10% more profit
+    }
 
      // 3. Dynamic Market Trends (Hot Commodities)
      // If this station is the target of a rumor, double the price!
@@ -3032,34 +3142,90 @@ function handleTradeQuantity(inputString) {
  }
 
 function checkLevelUp() {
-    let leveledUp = false;
-    let loopSafety = 0; // Safety counter to prevent infinite loops
+    // 1. Check Threshold
+    if (playerXP < xpToNextLevel) return false;
 
-    // We use a while loop to handle massive XP gains (e.g. from missions)
-    // The safety check ensures we don't freeze if xpToNextLevel calculation fails
-    while (playerXP >= xpToNextLevel && loopSafety < 100) {
-        playerLevel++;
-        playerXP -= xpToNextLevel;
-        xpToNextLevel = calculateXpToNextLevel(playerLevel);
-        leveledUp = true;
-        loopSafety++;
-    }
+    // 2. Consume XP and Level Up
+    playerXP -= xpToNextLevel;
+    playerLevel++;
+    xpToNextLevel = calculateXpToNextLevel(playerLevel);
+    
+    // 3. Heal Player (Standard Reward)
+    playerShields = MAX_SHIELDS;
+    playerFuel = MAX_FUEL;
+    
+    // 4. Trigger Perk Selection UI
+    soundManager.playTone(600, 'sine', 0.1); 
+    setTimeout(() => soundManager.playTone(800, 'sine', 0.2), 100);
+    
+    changeGameState('level_up'); // We use string literal if you haven't updated const yet
+    renderLevelUpScreen();
+    
+    return true;
+}
 
-    if (loopSafety >= 100) {
-        console.warn("Infinite loop protection triggered in checkLevelUp.");
-    }
-
-    if (leveledUp) {
-        logMessage(`LEVEL UP! You are now Level ${playerLevel}!\nShields and Fuel fully restored!`);
+function renderLevelUpScreen() {
+    const overlay = document.getElementById('levelUpOverlay');
+    const container = document.getElementById('perkCardsContainer');
+    container.innerHTML = '';
+    
+    // 1. Get 3 Random Perks (that we don't already have)
+    const availablePerks = Object.values(PERKS_DATABASE).filter(p => !playerPerks.has(p.id));
+    
+    // Shuffle
+    const shuffled = availablePerks.sort(() => 0.5 - Math.random());
+    const choices = shuffled.slice(0, 3);
+    
+    // 2. Render Cards
+    choices.forEach(perk => {
+        const card = document.createElement('div');
+        card.style.cssText = `
+            width: 200px; padding: 20px; background: #111; border: 1px solid #444;
+            border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: center;
+        `;
+        card.innerHTML = `
+            <div style="font-size:40px; margin-bottom:10px;">${perk.icon}</div>
+            <h3 style="color:#00E0E0; margin:0 0 10px 0; font-family:'Orbitron'">${perk.name}</h3>
+            <p style="color:#888; font-size:12px; line-height:1.4;">${perk.description}</p>
+            <div style="margin-top:15px; font-size:10px; color:#555; text-transform:uppercase;">${perk.category} Class</div>
+        `;
         
-        // Restore stats on level up
-        playerShields = MAX_SHIELDS;
-        playerFuel = MAX_FUEL;
+        // Hover Effect
+        card.onmouseover = () => { card.style.borderColor = '#FFD700'; card.style.background = '#222'; };
+        card.onmouseout = () => { card.style.borderColor = '#444'; card.style.background = '#111'; };
         
-        renderUIStats(); // Force an immediate UI update
-        return true;
-    }
-    return false;
+        // Click Logic
+        card.onclick = () => selectPerk(perk.id);
+        
+        container.appendChild(card);
+    });
+    
+    overlay.style.display = 'flex';
+}
+
+function selectPerk(perkId) {
+    playerPerks.add(perkId);
+    
+    logMessage(`<span style="color:#FFD700">UPGRADE INSTALLED: ${PERKS_DATABASE[perkId].name}</span>`);
+    showToast(`${PERKS_DATABASE[perkId].name} Acquired!`, 'success');
+    
+    document.getElementById('levelUpOverlay').style.display = 'none';
+    
+    // Resume Game
+    changeGameState(GAME_STATES.GALACTIC_MAP);
+    renderUIStats();
+    saveGame(); // Auto-save on level up
+}
+
+function getFactionAtSector(sectorX, sectorY) {
+    // Use a unique seed for faction generation
+    const seed = WORLD_SEED + (sectorX * 31337) + (sectorY * 0xCAFEBABE);
+    const value = seededRandom(seed);
+
+    if (value < 0.15) return "KTHARR";
+    if (value < 0.30) return "CONCORD";
+    if (value > 0.85) return "VOID_VULTURES"; // Pirate space!
+    return "INDEPENDENT"; // Most space is unclaimed
 }
 
  function updateSectorState() {
@@ -3070,6 +3236,9 @@ function checkLevelUp() {
          currentSectorX = newSectorX;
          currentSectorY = newSectorY;
          currentSectorName = generateSectorName(currentSectorX, currentSectorY);
+
+         // Run cleanup when entering a new sector
+         performGarbageCollection();
 
          logMessage(`Now entering the ${currentSectorName} sector.`);
 
@@ -3085,9 +3254,17 @@ function checkLevelUp() {
      }
  }
 
- function startCombat() {
-     const pirateShipOutcomes = Object.values(PIRATE_SHIP_CLASSES);
-     const pirateShip = getWeightedRandomOutcome(pirateShipOutcomes);
+// Quick tweak for startCombat inside script.js
+function startCombat(specificEnemyEntity = null) {
+     let pirateShip;
+     
+     if (specificEnemyEntity && specificEnemyEntity.shipClassKey) {
+         pirateShip = PIRATE_SHIP_CLASSES[specificEnemyEntity.shipClassKey];
+     } else {
+         // Fallback to random
+         const pirateShipOutcomes = Object.values(PIRATE_SHIP_CLASSES).filter(s => !s.id.includes('KTHARR') && !s.id.includes('CONCORD'));
+         pirateShip = getWeightedRandomOutcome(pirateShipOutcomes);
+     }
 
      playerAbilityCooldown = 0;
 
@@ -3137,6 +3314,12 @@ function handleCombatAction(action) {
     if (action === 'fight') {
         const weaponStats = COMPONENTS_DATABASE[playerShip.components.weapon].stats;
         let damageDealt = weaponStats.damage;
+
+        // --- PERK HOOK ---
+        if (playerPerks.has('WEAPON_OVERCLOCK')) {
+            damageDealt = Math.floor(damageDealt * 1.15); // +15%
+        }
+
         let currentHitChance = weaponStats.hitChance;
 
         // Check for Charge Buff
@@ -4766,7 +4949,7 @@ function initializeDOMElements() {
     saveButtonElement = document.getElementById('saveButton');
     if (saveButtonElement) saveButtonElement.onclick = saveGame;
 
-    // --- FIX: Define variables BEFORE using them ---
+    // --- Define variables BEFORE using them ---
     const seedInput = document.getElementById('seedInput');
     const startButton = document.getElementById('startButton');
 
@@ -4778,6 +4961,29 @@ function initializeDOMElements() {
             hideTitleScreen();
         });
     }
+
+    createLevelUpDOM();
+
+    function createLevelUpDOM() {
+    // Create the overlay container if it doesn't exist
+    if (!document.getElementById('levelUpOverlay')) {
+        const div = document.createElement('div');
+        div.id = 'levelUpOverlay';
+        div.style.cssText = `
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.95); z-index: 5000;
+            flex-direction: column; align-items: center; justify-content: center;
+        `;
+        div.innerHTML = `
+            <div style="text-align:center; margin-bottom:30px;">
+                <h1 style="color:#FFD700; font-family:'Orbitron'; font-size:40px; margin:0;">LEVEL UP!</h1>
+                <p style="color:#FFF; font-family:'Roboto Mono';">Select a specialized upgrade for your captain.</p>
+            </div>
+            <div id="perkCardsContainer" style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;"></div>
+        `;
+        document.body.appendChild(div);
+    }
+}
     
     // Enter key support for seed input
     if (seedInput) {
@@ -4957,6 +5163,7 @@ function autoSaveGame() {
 
 // 3. Shared Save Logic
 function performSave(storageKey) {
+    performGarbageCollection();
     const gameState = {
         version: GAME_VERSION,
         realTimestamp: Date.now(), // Store real time for the UI
@@ -4964,6 +5171,8 @@ function performSave(storageKey) {
         // Stats
         playerX, playerY, playerFuel, playerCredits, playerShields, playerHull,
         playerNotoriety, playerLevel, playerXP, playerName, playerPfp,
+
+        playerPerks: Array.from(playerPerks), // Convert Set to Array
         
         // Inventory & World
         playerShip, playerCargo,
@@ -4995,7 +5204,7 @@ function performSave(storageKey) {
 
 function triggerGameOver(reason) {
     // 1. Stop the game loop / interaction
-    // (In a turn-based game, we just block input via a state flag or overlay)
+    changeGameState(GAME_STATES.GAME_OVER);
     
     // 2. Calculate Penalty (10% XP and 25% Credits)
     const creditPenalty = Math.floor(playerCredits * 0.25);
@@ -5075,6 +5284,8 @@ function loadGameData(jsonString) {
         playerNotoriety = savedState.playerNotoriety;
         playerLevel = savedState.playerLevel;
         playerXP = savedState.playerXP;
+
+        playerPerks = new Set(savedState.playerPerks || []); // Convert Array back to Set
         
         WORLD_SEED = savedState.WORLD_SEED;
         playerActiveMission = savedState.playerActiveMission;
