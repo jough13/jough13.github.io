@@ -4811,15 +4811,27 @@ function handleTradeInput(key) {
      return true;
  }
 
- document.addEventListener('keydown', function(event) {
+ // --- INPUT HANDLING WITH SMOOTHING ---
+let lastInputTime = 0;
+const INPUT_DELAY = 120; // 120ms cooldown between moves (Adjust this to change "weight")
+
+document.addEventListener('keydown', function(event) {
      const key = event.key.toLowerCase();
+
+     // 1. TIMING CHECK (The Smoother)
+     // We only throttle movement keys. Menu keys (Escape, I, etc.) should be instant.
+     const isMovementKey = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key);
+     const now = Date.now();
+
+     if (isMovementKey && (now - lastInputTime < INPUT_DELAY)) {
+         return; // Ignore input if too fast
+     }
 
      if (currentGameState === GAME_STATES.TITLE_SCREEN) return;
 
      let inputHandled = false;
 
-     // --- 1. Top-level "Blocking" Contexts (Menus, Overlays, etc.) ---
-     // These take priority over game states.
+     // --- 2. Top-level "Blocking" Contexts (Menus, Overlays, etc.) ---
      if (codexOverlayElement.style.display === 'flex') {
          inputHandled = handleCodexInput(key);
      } else if (currentOutfitContext && currentOutfitContext.step === 'viewingCargo') {
@@ -4835,8 +4847,7 @@ function handleTradeInput(key) {
          inputHandled = handleShipyardInput(key);
      }
 
-     // --- 2. Game State Contexts ---
-     // If no menu was open, check the core game state.
+     // --- 3. Game State Contexts ---
      else if (currentGameState === GAME_STATES.COMBAT) {
          inputHandled = handleCombatInput(key);
      } else if (currentGameState === GAME_STATES.GALACTIC_MAP) {
@@ -4847,11 +4858,11 @@ function handleTradeInput(key) {
          inputHandled = handlePlanetViewInput(key);
      }
 
-     // --- 3. Prevent Default ---
-     // If we determined the input was for the game, prevent
-     // the browser from doing anything with it (like scrolling).
+     // --- 4. Finalize ---
      if (inputHandled) {
          event.preventDefault();
+         // Only update the timer if we actually moved
+         if (isMovementKey) lastInputTime = now;
      }
  });
 
@@ -5244,7 +5255,7 @@ function triggerGameOver(reason) {
 function respawnPlayer() {
     // 1. Apply Penalty
     playerCredits = Math.floor(playerCredits * 0.75);
-    playerXP = Math.max(0, playerXP - 100); // Small XP hit
+    playerXP = Math.max(0, playerXP - 100); 
 
     // 2. Reset Stats
     playerHull = MAX_PLAYER_HULL;
@@ -5252,19 +5263,35 @@ function respawnPlayer() {
     playerFuel = MAX_FUEL;
 
     // 3. Move to Starbase Alpha (Safe Zone)
-    // We hardcode this to the Starbase location from locations.js
+    // We use the coordinates defined in your locations.js
     playerX = MAP_WIDTH - 7;
     playerY = MAP_HEIGHT - 5;
     
-    // 4. Clear Enemies near spawn (optional safety)
+    // --- RESET WORLD CACHE ---
+    // This forces the map to stop looking at your death-site and load the Starbase area
+    chunkManager.loadedChunks = {}; 
+    chunkManager.lastChunkKey = null;
+    chunkManager.lastChunkRef = null;
+
+    currentSectorX = Math.floor(playerX / SECTOR_SIZE);
+    currentSectorY = Math.floor(playerY / SECTOR_SIZE);
+    currentSectorName = generateSectorName(currentSectorX, currentSectorY);
+
+    // 4. Clear Enemies near spawn
     removeEnemyAt(playerX, playerY);
 
     // 5. Reset UI and State
     document.getElementById('gameOverOverlay').style.display = 'none';
-    currentGameState = GAME_STATES.GALACTIC_MAP;
+    
+    // Ensure we switch back to the map state
+    changeGameState(GAME_STATES.GALACTIC_MAP);
     
     logMessage(`<span style="color:#00FF00">CLONE ACTIVATED. Welcome back, Commander.</span>`);
+    
+    // Force immediate render and interaction check
+    handleInteraction(); 
     render();
+    
     saveGame(); // Auto-save on respawn
 }
 
