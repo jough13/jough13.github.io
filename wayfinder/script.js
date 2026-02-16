@@ -5358,25 +5358,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Initialize Managers
     chunkManager.initializeStaticLocations();
 
-    // 2. Setup Canvas & Graphics (Includes your Resize Listener)
+    // 2. Setup Canvas
     setupCanvas(); 
 
-    // 3. Setup DOM & Event Listeners (Includes PFP, Buttons, Trade)
+    // 3. Setup DOM
     initializeDOMElements();
 
-    // 4. Sync Theme Button State
-    // The theme class is now applied in index.html to prevent flicker.
-    // We just need to ensure the button text matches the reality.
-    if (document.body.classList.contains('light-mode')) {
-        const themeBtn = document.getElementById('themeButton');
-        if (themeBtn) themeBtn.textContent = "Dark Mode";
+    // 4. Apply Theme
+    const savedTheme = localStorage.getItem('wayfinderTheme');
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-mode');
+        document.getElementById('themeButton').textContent = "Dark Mode";
     }
 
-    // 5. Setup Auto-Login UI (The new feature)
+    // 5. Setup Auto-Login
     setupAutoLoginUI();
 
-    // 6. Determine Start Screen State (Check for saves)
+    // 6. Check Save State
     checkSaveStateAndRenderTitle();
+
+    // --- 7. FIX: REVEAL THE GAME (ANTI-FLASH) ---
+    // Small timeout ensures the browser has painted the styles before we fade in
+    setTimeout(() => {
+        document.body.classList.add('loaded');
+    }, 50); 
 });
 
 // --- HELPER FUNCTIONS ---
