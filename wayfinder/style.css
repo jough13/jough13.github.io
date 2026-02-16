@@ -1412,3 +1412,134 @@ body.light-mode .toast span[style*="#00FF00"] {
 body.light-mode .toast span[style*="#00E0E0"] {
     color: #007777 !important;
 }
+
+/* --- LIGHT MODE: PLANET VIEW OVERRIDES --- */
+body.light-mode .planet-view-content {
+    background: #FFFFFF;          /* Clean White Card */
+    border: 1px solid #CCC;       /* Subtle Border */
+    border-left: 4px solid var(--accent-color); /* Keep the accent strip */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);    /* Soft, modern shadow */
+    color: #333;                  /* Dark Text */
+}
+
+/* Fix the Planet Title (Was White with Glow) */
+body.light-mode .planet-title {
+    color: var(--accent-color);   /* Dark Teal */
+    text-shadow: none;            /* Remove neon glow */
+    font-weight: 900;
+}
+
+/* Fix the Description Text (Was Grey/White) */
+body.light-mode .planet-desc {
+    color: #555;                  /* Readable Dark Grey */
+    font-weight: 600;
+}
+
+/* Fix the Planet Image Container */
+body.light-mode .planet-large-img {
+    background: #F0F0F0;          /* Light grey backdrop for the icon */
+    border-color: #CCC;
+}
+
+/* Fix the Separator Line */
+body.light-mode .planet-header {
+    border-bottom-color: #EEE;
+}
+
+/* --- LIGHT MODE: MODAL & COMBAT POLISH --- */
+
+/* 1. TRADE WINDOW FIXES */
+/* The header was dark teal, now light grey */
+body.light-mode .trade-header {
+    background: #E0E0E0;
+    color: #111;
+    border-bottom: 1px solid #BBB;
+    text-shadow: none;
+}
+
+/* The "Math Area" was a black box, now off-white */
+body.light-mode .trade-math-area {
+    background: #F9F9F9;
+    border: 1px solid #DDD;
+    color: #333;
+}
+
+/* Input fields (Quantity) were black */
+body.light-mode #tradeQtyInput {
+    background: #FFFFFF;
+    color: #000;
+    border: 1px solid #CCC;
+}
+
+/* Quantity Buttons (+/-) */
+body.light-mode .qty-btn {
+    background: #F0F0F0;
+    color: #333;
+    border: 1px solid #CCC;
+}
+body.light-mode .qty-btn:hover {
+    background: var(--accent-color);
+    color: #FFF;
+}
+
+/* 2. COMBAT VIEW FIXES */
+/* Combat Buttons were Dark Red background (#330000) -> Now Light Red Tint */
+body.light-mode .combat-action-btn {
+    background: #FFF0F0;      /* Very pale red */
+    color: #CC0000;           /* Dark Red Text */
+    border-color: #CC0000;
+    box-shadow: 0 2px 0 #E0C0C0;
+}
+
+body.light-mode .combat-action-btn:hover:not(:disabled) {
+    background: #CC0000;
+    color: #FFF;
+}
+
+body.light-mode .combat-action-btn:disabled {
+    background: #F0F0F0;
+    color: #AAA;
+    border-color: #DDD;
+}
+
+/* Ship Icons (Prevent black box behind pixel art) */
+body.light-mode .combatant-icon {
+    background: #F0F0F0;
+    border-color: #CCC;
+}
+
+/* 3. CONFIRMATION MODAL (CRITICAL FIX) */
+/* The body text was hardcoded to White (#FFF), making it invisible on white bg */
+body.light-mode .confirm-window {
+    background: #FFFFFF;
+    border-color: var(--danger);
+    color: #000; /* Force text black */
+}
+
+body.light-mode .confirm-body {
+    color: #333; /* Ensure message text is visible */
+}
+
+/* 4. SYSTEM MENU BUTTONS */
+/* These were hardcoded to #222 */
+body.light-mode .sys-btn {
+    background: #F8F8F8;
+    color: #333;
+    border: 1px solid #CCC;
+}
+body.light-mode .sys-btn:hover {
+    background: #FFF;
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* 5. CONTEXT ACTION BUTTONS (Bottom Right) */
+body.light-mode .control-button {
+    background: #F8F8F8;
+    color: var(--accent-color);
+    border: 1px solid #CCC;
+}
+body.light-mode .control-button:hover {
+    background: var(--accent-color);
+    color: #FFF;
+}
