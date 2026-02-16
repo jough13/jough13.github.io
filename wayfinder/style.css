@@ -1,3 +1,8 @@
+/* Ensures the browser canvas is dark by default to prevent white flashes */
+html {
+    background-color: #050510; 
+}
+
 :root {
     --bg-color: #050510;
     --panel-bg: #0b0b18;
@@ -43,13 +48,6 @@
 
 .side-border.right {
     right: calc(50% - 402px);
-}
-
-body.light-mode {
-    --bg-color: #e0e0e0;
-    --panel-bg: #f0f0f0;
-    --text-color: #101020;
-    --border-color: #888;
 }
 
 * { box-sizing: border-box; }
@@ -271,12 +269,13 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     z-index: 5; 
 }
 
-/* CRT Scanline Effect */
+/* --- CRT Scanline Effect (Subtle Modern Version) --- */
 .crt::before {
     content: " "; display: block; position: absolute;
     top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%),
-                linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+    /* Opacity reduced to 0.025 (2.5%) for barely-there texture */
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.015) 50%), /* Lowered from 0.025 */
+                linear-gradient(90deg, rgba(255, 0, 0, 0.01), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.01));
     z-index: 999; background-size: 100% 2px, 3px 100%; pointer-events: none;
 }
 
@@ -435,10 +434,19 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .codex-list-item:hover { color: #FFF; background: #222; }
 .codex-list-item.active { color: var(--accent-color); background: #111; border-left: 2px solid var(--accent-color); }
 
-/* --- SCROLLBARS --- */
-::-webkit-scrollbar { width: 10px; } /* Slightly wider for touch/mouse */
-::-webkit-scrollbar-track { background: #000; }
-::-webkit-scrollbar-thumb { background: #333; border: 1px solid #000; }
+/* --- SCROLLBARS (Retro-Teal) --- */
+::-webkit-scrollbar { width: 8px; } /* Slightly thinner for elegance */
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+::-webkit-scrollbar-thumb { 
+    background: var(--accent-color); 
+    border-radius: 4px;
+    box-shadow: 0 0 5px var(--accent-color); /* Glowing effect */
+}
+::-webkit-scrollbar-thumb:hover { 
+    background: #FFF; 
+    box-shadow: 0 0 10px #FFF;
+}
+
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
 
 /* --- TRADE MODAL STYLES (Responsive Fix) --- */
@@ -1097,4 +1105,310 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     0% { opacity: 0.3; }
     50% { opacity: 0.8; }
     100% { opacity: 0.3; }
+}
+
+/* --- LIGHT MODE OVERRIDES (Pure White Paper Theme) --- */
+body.light-mode {
+    /* The Palette - Absolute White */
+    --bg-color: #FFFFFF;      
+    --panel-bg: #FFFFFF;      
+    --border-color: #E0E0E0;  /* Very subtle grey borders */
+    --accent-color: #007777;  /* Dark Teal (Matches Scrollbar) */
+    --text-color: #111111;    /* Pure Black Text */
+    
+    /* Status Colors - Darker for visibility on white */
+    --success: #008800;
+    --danger: #CC0000;
+    --warning: #D35400;
+}
+
+/* 1. Main Backgrounds */
+body.light-mode #main-view {
+    background-color: #FFFFFF !important; /* Force Pure White */
+    border: none; /* Remove any potential border shadows */
+}
+body.light-mode #titleOverlay, 
+body.light-mode .trade-window,
+body.light-mode .confirm-window,
+body.light-mode #codexOverlay {
+    background-color: #FFFFFF; /* No more grey! */
+}
+
+/* 2. The Log Panel */
+body.light-mode .log-panel {
+    background: #FFFFFF;
+    color: #000000;
+    border-color: #EEE;
+    box-shadow: none; /* Flatten the look */
+}
+
+/* --- TEXT READABILITY FIXES (The "Blue Text" Fix) --- */
+/* This forces any Light Blue or Cyan text in the logs to match the Dark Teal scrollbar */
+body.light-mode .log-panel span[style*="#A2D2FF"],
+body.light-mode .log-panel span[style*="#a2d2ff"], 
+body.light-mode .log-panel span[style*="#00E0E0"],
+body.light-mode .log-panel span[style*="#00e0e0"],
+body.light-mode .log-panel span[style*="#88CCFF"],
+body.light-mode .log-panel span[style*="#40E0D0"] {
+    color: var(--accent-color) !important; 
+    font-weight: 800; /* Extra bold for readability */
+}
+
+/* Fix "Yellow/Gold" text to be readable Orange/Brown */
+body.light-mode .log-panel span[style*="#FFFF00"],
+body.light-mode .log-panel span[style*="#FFD700"] {
+    color: #B35900 !important;
+}
+
+/* Fix "Bright Green" text to be Forest Green */
+body.light-mode .log-panel span[style*="#00FF00"],
+body.light-mode .log-panel span[style*="#00DD00"] {
+    color: #007700 !important;
+}
+
+/* 3. Buttons */
+body.light-mode .action-button, 
+body.light-mode .sys-btn, 
+body.light-mode .control-button,
+body.light-mode .title-button {
+    background: #FFFFFF; 
+    color: #333;      
+    border: 1px solid #CCC;
+    box-shadow: 0 2px 0 #EEE;
+}
+
+body.light-mode .action-button:hover:not(:disabled) {
+    background: #F9F9F9;
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* 4. Save Slots (Clean White Cards) */
+body.light-mode .save-slot-card {
+    background: #FFFFFF;
+    border: 1px solid #DDD;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+body.light-mode .save-name { color: #000; }
+body.light-mode .save-meta { color: #555; }
+
+/* 5. Inputs */
+body.light-mode .seed-input {
+    background: #FFF;
+    color: #000;
+    border: 1px solid #CCC;
+}
+
+/* 6. Scrollbars */
+body.light-mode ::-webkit-scrollbar-track {
+    background: #FFFFFF;
+}
+
+/* --- LIGHT MODE: TITLE SCREEN & SAVE MENU FIXES --- */
+
+/* 1. Ensure the overlay background matches the theme */
+body.light-mode #titleOverlay {
+    background: #F4F4F4; /* Clean light grey */
+}
+
+/* 2. The Save Slot Card (The "Black Box" fix) */
+body.light-mode .save-slot-card {
+    background: #FFFFFF;
+    border: 1px solid #CCC;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Soft paper shadow */
+}
+
+body.light-mode .save-slot-card:hover {
+    background: #FAFAFA;
+    border-color: var(--accent-color);
+    box-shadow: 0 6px 12px rgba(0, 119, 119, 0.15);
+}
+
+/* 3. Save Text Colors */
+body.light-mode .save-name {
+    color: #111;
+}
+
+body.light-mode .save-meta {
+    color: #666;
+}
+
+/* 4. Badges (Auto/Manual) */
+body.light-mode .save-type-badge {
+    background: #EEE;
+    color: #555;
+    border: 1px solid #DDD;
+}
+
+body.light-mode .auto-badge {
+    background: #FFF8E1; /* Pale Orange Paper */
+    color: #D35400;      /* Dark Orange Ink */
+    border-color: #FAE5D3;
+}
+
+/* 5. Input Fields (Name/Seed) */
+body.light-mode .seed-input {
+    background: #FFFFFF;
+    color: #222;
+    border: 1px solid #AAA;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+body.light-mode .seed-input::placeholder {
+    color: #999;
+}
+
+/* 6. Checkbox & Labels */
+body.light-mode .checkbox-container {
+    color: #444;
+}
+
+body.light-mode .checkmark {
+    background-color: #FFF;
+    border: 1px solid #999;
+}
+
+body.light-mode .subtitle {
+    color: #555;
+    font-weight: bold;
+}
+
+/* 7. Delete Button on the Save Card */
+body.light-mode .save-delete-btn {
+    border-color: #D00000;
+    color: #D00000;
+}
+body.light-mode .save-delete-btn:hover {
+    background: #D00000;
+    color: #FFF;
+}
+
+body.light-mode .game-title {
+    text-shadow: 0 4px 0 rgba(0,0,0,0.1); /* Clean drop shadow instead of glow */
+    color: #007777; /* Dark Teal */
+}
+
+body.light-mode .save-list-header {
+    color: #444;
+    border-bottom-color: #BBB;
+}
+
+/* --- LIGHT MODE: SHARP HEADER TEXT --- */
+body.light-mode .sector-title {
+    color: var(--accent-color); /* Uses the Dark Teal */
+    text-shadow: none;          /* Removes the "blurry" glow */
+    font-weight: 900;           /* Extra bold for readability */
+    letter-spacing: 1px;        /* Tighten it up slightly */
+    
+    /* Optional: A crisp hard shadow for a "printed" look */
+    filter: drop-shadow(1px 1px 0px rgba(0,0,0,0.1));
+}
+
+/* Also sharpen the coordinates next to it */
+body.light-mode .coords {
+    color: #444;
+    font-weight: bold;
+    text-shadow: none;
+}
+/* --- ANIMATIONS & LIGHT MODE TITLE POLISH --- */
+
+/* 1. Missing Blink Animation (Fixes "SYSTEM INITIALIZING..." not blinking) */
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* 2. Light Mode: Dynamic Background ("Paper Drift") */
+/* Adds a very slow, subtle shifting gradient so the white isn't "dead" */
+body.light-mode #titleOverlay {
+    background: linear-gradient(120deg, #FFFFFF 0%, #F0F0F0 50%, #FFFFFF 100%);
+    background-size: 200% 200%;
+    animation: paper-drift 15s ease infinite;
+}
+
+@keyframes paper-drift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* 3. Light Mode: Logo "Breathing" Effect */
+/* Makes the logo pulse slightly in size and shadow, like ink settling on paper */
+body.light-mode .game-title {
+    animation: ink-pulse 4s ease-in-out infinite;
+}
+
+@keyframes ink-pulse {
+    0% { 
+        transform: scale(1); 
+        text-shadow: none; 
+        color: var(--accent-color);
+    }
+    50% { 
+        transform: scale(1.02); 
+        /* Subtle shadow pulse */
+        text-shadow: 2px 4px 0px rgba(0, 119, 119, 0.1); 
+    }
+    100% { 
+        transform: scale(1); 
+        text-shadow: none; 
+    }
+}
+
+/* 4. Light Mode: Loading Text Cursor Effect */
+/* Adds a blinking cursor block next to "SYSTEM INITIALIZING..." */
+body.light-mode #systemBoot {
+    border-right: 3px solid var(--accent-color);
+    padding-right: 5px;
+    display: inline-block;
+    animation: cursor-blink 1s step-end infinite;
+}
+
+@keyframes cursor-blink {
+    0%, 100% { border-color: transparent; }
+    50% { border-color: var(--accent-color); }
+}
+
+/* --- LIGHT MODE: TOAST NOTIFICATIONS --- */
+body.light-mode .toast {
+    background: #FFFFFF;          /* Pure White Card */
+    color: #333333;               /* Dark Grey Text */
+    border: 1px solid #E0E0E0;    /* Subtle grey border */
+    border-left: 5px solid var(--accent-color); /* Thick Teal Indicator */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1); /* Soft, clean shadow */
+    font-weight: 600;
+}
+
+/* Success Toasts (Green) */
+body.light-mode .toast.success {
+    border-left-color: var(--success); /* Uses the Dark Green variable */
+    color: var(--success);             /* Text matches border */
+    background: #F4FFF4;               /* Very faint green tint */
+}
+
+/* Error Toasts (Red) */
+body.light-mode .toast.error {
+    border-left-color: var(--danger);  /* Uses the Dark Red variable */
+    color: var(--danger);
+    background: #FFF4F4;               /* Very faint red tint */
+}
+
+/* --- TOAST INTERIOR TEXT FIXES --- */
+/* These rules target the specific <span> styles you use in JS (like Gold for credits)
+   and forces them to be readable on the white background. */
+
+/* Fix "Gold/Yellow" text (Credits) to be Dark Orange/Brown */
+body.light-mode .toast span[style*="#FFD700"], 
+body.light-mode .toast span[style*="#FFFF00"] {
+    color: #B35900 !important; 
+}
+
+/* Fix "Bright Green" text (XP) to be Forest Green */
+body.light-mode .toast span[style*="#00FF00"] {
+    color: #007700 !important;
+}
+
+/* Fix "Cyan/Blue" text (Items) to be Dark Teal */
+body.light-mode .toast span[style*="#00E0E0"] {
+    color: #007777 !important;
 }
