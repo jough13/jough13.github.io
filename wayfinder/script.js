@@ -2087,12 +2087,23 @@ function movePlayer(dx, dy) {
          const tileChar = getTileChar(tileObject);
          switch (tileChar) {
              case EMPTY_SPACE_CHAR_VAL:
-                 scanMessage += "Vast emptiness. Faint cosmic background radiation.";
-                 if (scanBonus > 0 && Math.random() < (scanBonus * 2)) {
-                     scanMessage += "\n<span style='color:#FFFF99;'>Detailed Scan: Trace signature detected... faint energy echo... probably nothing.</span>";
-                 }
-                 objectTypeForXP = 'empty_space';
-                 break;
+                const voidFlavor = [
+                    "Vast emptiness. Faint cosmic background radiation.",
+                    "Sensors detect nothing but distant starlight and dust.",
+                    "The void is silent here. A little too silent.",
+                    "Stellar density is low. Navigation is clear.",
+                    "Long-range scanners show no immediate signatures.",
+                    "Drifting through the quiet dark between stars.",
+                    "Hull structural integrity holding. The silence is heavy.",
+                    "No local gravity wells detected. Smooth sailing."
+                ];
+                scanMessage += voidFlavor[Math.floor(Math.random() * voidFlavor.length)];
+                
+                if (scanBonus > 0 && Math.random() < (scanBonus * 2)) {
+                    scanMessage += "\n<span style='color:#FFFF99;'>Detailed Scan: Trace energy echo... probably just solar wind.</span>";
+                }
+                objectTypeForXP = 'empty_space';
+                break;
              case STAR_CHAR_VAL:
                  scanMessage += `Brilliant star.`;
                  if (scanBonus > 0) {
@@ -5582,3 +5593,18 @@ function hideTitleScreen() {
         titleOverlay.style.display = 'none';
     }, 500);
 }
+
+['tradeOverlay', 'cargoOverlay', 'codexOverlay', 'levelUpOverlay'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('click', (e) => {
+                // Only close if clicking the dark overlay itself, not the window inside it
+                if (e.target === el) {
+                    if (id === 'tradeOverlay') closeTradeModal();
+                    else if (id === 'cargoOverlay') closeCargoModal();
+                    else if (id === 'codexOverlay') toggleCodex(false);
+                    // levelUpOverlay cannot be dismissed, you must pick a perk!
+                }
+            });
+        }
+    });
