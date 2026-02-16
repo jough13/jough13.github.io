@@ -8,6 +8,30 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="crt">
+    <script>
+        (function() {
+            // 1. Check Local Storage (User Preference)
+            const savedTheme = localStorage.getItem('wayfinderTheme');
+            const systemPrefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+
+            // 2. Logic: User Save > System Preference > Default (Dark)
+            let isLight = false;
+            
+            if (savedTheme === 'light') {
+                isLight = true;
+            } else if (savedTheme === null && systemPrefersLight) {
+                // If no save exists, follow the system
+                isLight = true;
+                // Optional: Save this as the preference so it persists
+                localStorage.setItem('wayfinderTheme', 'light');
+            }
+
+            // 3. Apply Immediately
+            if (isLight) {
+                document.body.classList.add('light-mode');
+            }
+        })();
+    </script>
 
     <div id="titleOverlay">
         <div id="titleContainer">
