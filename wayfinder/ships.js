@@ -100,25 +100,64 @@
      }
  };
 
-   // --- Pirate Ship Classes Database ---
+   // --- Enemy Ship Classes Database ---
+   // Now includes Faction Specific Ships
  const PIRATE_SHIP_CLASSES = {
+     // --- STANDARD PIRATES ---
      RAIDER: {
-         name: "Raider",
+         id: "RAIDER",
+         name: "Pirate Raider",
          baseHull: 60,
          baseShields: 20,
          weight: 5
      },
      STRIKER: {
-         name: "Striker",
+         id: "STRIKER",
+         name: "Pirate Striker",
          baseHull: 45,
          baseShields: 35,
          weight: 3 
      },
      BRUISER: {
-         name: "Bruiser",
+         id: "BRUISER",
+         name: "Pirate Bruiser",
          baseHull: 80,
          baseShields: 15,
          weight: 1 
+     },
+
+     // --- K'THARR HEGEMONY ---
+     // High Hull (Armor), Low Shields, High Damage
+     KTHARR_SCOUT: {
+         id: "KTHARR_SCOUT",
+         name: "K'tharr Vanguard",
+         baseHull: 90,
+         baseShields: 10,
+         weight: 3
+     },
+     KTHARR_DESTROYER: {
+         id: "KTHARR_DESTROYER",
+         name: "K'tharr War-Hulk",
+         baseHull: 150,
+         baseShields: 20,
+         weight: 1
+     },
+
+     // --- CONCORD SECURITY ---
+     // High Shields, Average Hull, Balanced
+     CONCORD_PATROL: {
+         id: "CONCORD_PATROL",
+         name: "Concord Patrol",
+         baseHull: 60,
+         baseShields: 60,
+         weight: 3
+     },
+     CONCORD_ENFORCER: {
+         id: "CONCORD_ENFORCER",
+         name: "Concord Enforcer",
+         baseHull: 80,
+         baseShields: 100,
+         weight: 1
      }
  };
 
