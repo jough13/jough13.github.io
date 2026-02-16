@@ -39,7 +39,7 @@ const PERKS_DATABASE = {
         icon: "💰",
         category: "Trade"
     },
-    scavenger_protocol: {
+    SCAVENGER_PROTOCOL: {
         id: "SCAVENGER_PROTOCOL",
         name: "Scavenger Protocol",
         description: "Derelicts and Anomalies yield double credits/loot.",
