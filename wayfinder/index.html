@@ -6,32 +6,59 @@
     <title>Wayfinder: Echoes of the Void</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    
+    <style>
+        /* Force body to be invisible immediately */
+        body {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease-in; /* Smooth fade-in */
+            background-color: #050510; /* Match your dark theme default to prevent white flash */
+        }
+        
+        /* Ensure the fade-in class overrides the default */
+        body.loaded {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
 </head>
 <body class="crt">
     <script>
-        (function() {
-            // 1. Check Local Storage (User Preference)
-            const savedTheme = localStorage.getItem('wayfinderTheme');
-            const systemPrefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+    // 1. Immediate Theme Check (Run before visual render)
+    (function() {
+        const savedTheme = localStorage.getItem('wayfinderTheme');
+        const systemLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+        
+        let isLight = false;
+        if (savedTheme === 'light') isLight = true;
+        else if (!savedTheme && systemLight) isLight = true;
 
-            // 2. Logic: User Save > System Preference > Default (Dark)
-            let isLight = false;
-            
-            if (savedTheme === 'light') {
-                isLight = true;
-            } else if (savedTheme === null && systemPrefersLight) {
-                // If no save exists, follow the system
-                isLight = true;
-                // Optional: Save this as the preference so it persists
-                localStorage.setItem('wayfinderTheme', 'light');
-            }
+        // 2. Set the "Curtain" Color on the HTML tag immediately
+        // This ensures the background is already White (or Dark) before the fade-in starts.
+        if (isLight) {
+            document.documentElement.style.backgroundColor = '#FFFFFF';
+        } else {
+            document.documentElement.style.backgroundColor = '#050510';
+        }
+    })();
+</script>
 
-            // 3. Apply Immediately
-            if (isLight) {
-                document.body.classList.add('light-mode');
-            }
-        })();
-    </script>
+<style>
+    /* Force body to be invisible immediately */
+    body {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.5s ease-in;
+        /* REMOVED background-color here! We let the script above handle it. */
+    }
+    
+    /* When JS adds this class, the content fades in */
+    body.loaded {
+        opacity: 1;
+        visibility: visible;
+    }
+</style>
 
     <div id="titleOverlay">
         <div id="titleContainer">
