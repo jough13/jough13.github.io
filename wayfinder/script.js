@@ -4895,63 +4895,66 @@ let VIEWPORT_HEIGHT_TILES = MAP_HEIGHT;
 function setupCanvas() {
     gameCanvas = document.getElementById('gameCanvas');
     ctx = gameCanvas.getContext('2d');
-    
-    const dpr = window.devicePixelRatio || 1;
-    
-    // 1. Detect Screen Size
-    const isMobile = window.innerWidth <= 768;
 
-    // 2. Set Viewport Size (Camera Size)
-    if (isMobile) {
-        // Mobile: Zoomed "Portrait" view (Big tiles)
-        VIEWPORT_WIDTH_TILES = 13; 
-        VIEWPORT_HEIGHT_TILES = 17;
-    } else {
-        // Desktop: "Cinematic" Camera view
-        // We set this SMALLER than the Map (40x22) to force the camera to follow the player.
-        VIEWPORT_WIDTH_TILES = 25; 
-        VIEWPORT_HEIGHT_TILES = 15;
-    }
+    // We wrap the logic in a sub-function so we can call it on resize!
+    function updateCanvasSize() {
+        const dpr = window.devicePixelRatio || 1;
+        const isMobile = window.innerWidth <= 768;
 
-    // 3. Set Canvas Resolution
-    gameCanvas.width = VIEWPORT_WIDTH_TILES * TILE_SIZE * dpr;
-    gameCanvas.height = VIEWPORT_HEIGHT_TILES * TILE_SIZE * dpr;
-    
-    ctx.scale(dpr, dpr);
-    gameCanvas.style.imageRendering = "pixelated";
-    
-    // Re-apply font settings
-    ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle'; 
-
-    // 4. Handle resizing dynamically
-    window.addEventListener('resize', () => {
-        const newIsMobile = window.innerWidth <= 768;
-        
-        if (newIsMobile) {
-            VIEWPORT_WIDTH_TILES = 13;
+        if (isMobile) {
+            // Mobile stays locked to a portrait-friendly view
+            VIEWPORT_WIDTH_TILES = 13; 
             VIEWPORT_HEIGHT_TILES = 17;
         } else {
-            // Match the settings above
-            VIEWPORT_WIDTH_TILES = 25;
-            VIEWPORT_HEIGHT_TILES = 15;
+            // --- DYNAMIC DESKTOP VIEWPORT ---
+            // Calculate how many tiles can fit in the available screen space.
+            // We subtract 100px for side margins, and 250px for the Top HUD and Bottom Deck.
+            let tilesX = Math.floor((window.innerWidth - 100) / TILE_SIZE);
+            let tilesY = Math.floor((window.innerHeight - 250) / TILE_SIZE);
+
+            // Ensure the grid is always an ODD number so the player is perfectly centered
+            if (tilesX % 2 === 0) tilesX--;
+            if (tilesY % 2 === 0) tilesY--;
+
+            // Set safe minimums so the map doesn't break if the window is tiny
+            VIEWPORT_WIDTH_TILES = Math.max(21, tilesX); 
+            VIEWPORT_HEIGHT_TILES = Math.max(11, tilesY);
         }
 
-        const newDpr = window.devicePixelRatio || 1;
-        gameCanvas.width = VIEWPORT_WIDTH_TILES * TILE_SIZE * newDpr;
-        gameCanvas.height = VIEWPORT_HEIGHT_TILES * TILE_SIZE * newDpr;
+        // Calculate exact pixel dimensions
+        const physicalWidth = VIEWPORT_WIDTH_TILES * TILE_SIZE;
+        const physicalHeight = VIEWPORT_HEIGHT_TILES * TILE_SIZE;
+
+        // 1. Set Internal Canvas Resolution
+        gameCanvas.width = physicalWidth * dpr;
+        gameCanvas.height = physicalHeight * dpr;
         
-        ctx.scale(newDpr, newDpr);
+        // 2. Set CSS Display Size (Prevents weird stretching/squishing)
+        gameCanvas.style.width = `${physicalWidth}px`;
+        gameCanvas.style.height = `${physicalHeight}px`;
+
+        // 3. MAGIC TRICK: Tell CSS exactly how wide the map is!
+        document.documentElement.style.setProperty('--canvas-width', `${physicalWidth}px`);
+
+        // Apply rendering contexts
+        ctx.scale(dpr, dpr);
         ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle'; 
-        ctx.imageRendering = "pixelated";
-        
-        if (currentGameState === GAME_STATES.GALACTIC_MAP) render();
-    });
-}
+        gameCanvas.style.imageRendering = "pixelated";
 
+        // Force a redraw if we resize while looking at the map
+        if (typeof currentGameState !== 'undefined' && currentGameState === GAME_STATES.GALACTIC_MAP) {
+            render();
+        }
+    }
+
+    // Run it immediately on load
+    updateCanvasSize();
+
+    // Re-run it automatically whenever the user resizes their browser window!
+    window.addEventListener('resize', updateCanvasSize);
+}
 function initializeDOMElements() {
 
     // Global Click Listener for UI Sounds
