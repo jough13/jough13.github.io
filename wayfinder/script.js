@@ -1183,6 +1183,8 @@ function changeGameState(newState) {
     discoveredLoreEntries = new Set();
     missionsAvailableAtStation = [];
 
+    setRandomPlayerPortrait();
+
     playerPerks = new Set();
     
     // Clear Caches
@@ -5091,6 +5093,15 @@ function setupCanvas() {
     // Re-run it automatically whenever the user resizes their browser window!
     window.addEventListener('resize', updateCanvasSize);
 }
+
+function setRandomPlayerPortrait() {
+    const portraitEl = document.getElementById('playerPortrait'); // Ensure your HTML <img> has this ID
+    if (portraitEl && PLAYER_PORTRAITS.length > 0) {
+        const randomIndex = Math.floor(Math.random() * PLAYER_PORTRAITS.length);
+        portraitEl.src = PLAYER_PORTRAITS[randomIndex];
+    }
+}
+
 function initializeDOMElements() {
 
     // Global Click Listener for UI Sounds
@@ -5251,32 +5262,32 @@ function initializeDOMElements() {
     const pfpImage = document.getElementById('pfpImage');
     const prevPfpBtn = document.getElementById('prevPfpBtn');
     const nextPfpBtn = document.getElementById('nextPfpBtn');
-    const pfpOptions = [
-        'assets/pfp_01.png', 'assets/pfp_02.png', 'assets/pfp_03.png',
-        'assets/pfp_04.png', 'assets/pfp_05.png', 'assets/pfp_06.png'
-    ];
-    let currentPfpIndex = 0;
+
+    // NEW: Start with a random index instead of 0
+    let currentPfpIndex = Math.floor(Math.random() * PLAYER_PORTRAITS.length);
 
     function updatePfp() {
-        playerPfp = pfpOptions[currentPfpIndex];
+        // Use the list from config.js
+        playerPfp = PLAYER_PORTRAITS[currentPfpIndex];
         if(pfpImage) pfpImage.src = playerPfp;
     }
     
     if (prevPfpBtn) {
         prevPfpBtn.addEventListener('click', () => {
-            currentPfpIndex = (currentPfpIndex - 1 + pfpOptions.length) % pfpOptions.length;
+            currentPfpIndex = (currentPfpIndex - 1 + PLAYER_PORTRAITS.length) % PLAYER_PORTRAITS.length;
             updatePfp();
         });
     }
     
     if (nextPfpBtn) {
         nextPfpBtn.addEventListener('click', () => {
-            currentPfpIndex = (currentPfpIndex + 1) % pfpOptions.length;
+            currentPfpIndex = (currentPfpIndex + 1) % PLAYER_PORTRAITS.length;
             updatePfp();
         });
     }
     
-    updatePfp(); 
+    // Apply the random face immediately
+    updatePfp();
 }
 
 // ==========================================
