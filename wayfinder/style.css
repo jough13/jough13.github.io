@@ -42,12 +42,13 @@ html {
     opacity: 0.6; 
 }
 
+/* Placed exactly halfway between the screen edge and the canvas edge */
 .side-border.left {
-    left: calc(50% - 402px); 
+    left: calc(25% - (var(--canvas-width, 800px) / 4)); 
 }
 
 .side-border.right {
-    right: calc(50% - 402px);
+    right: calc(25% - (var(--canvas-width, 800px) / 4));
 }
 
 * { box-sizing: border-box; }
