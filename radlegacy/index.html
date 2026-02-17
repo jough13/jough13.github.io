@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RadLegacy Navigator v7.4 | Dual-View Edition</title>
+    <title>RadLegacy Navigator v8.1 | Final Master Build</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         /* --- DYNAMIC THEME VARIABLES --- */
@@ -19,6 +19,8 @@
             --success-glow: #16a34a;
             --danger-glow: #dc2626;
             --warning-glow: #d97706;
+            --accent-neutral: #1e3a8a; 
+            --accent-neutral-bg: rgba(30, 58, 138, 0.1);
             --shadow: rgba(0,0,0,0.1);
         }
 
@@ -34,6 +36,8 @@
             --success-glow: #22c55e;
             --danger-glow: #ef4444;
             --warning-glow: #f59e0b;
+            --accent-neutral: #60a5fa; 
+            --accent-neutral-bg: rgba(96, 165, 250, 0.1);
             --shadow: rgba(0,0,0,0.4);
         }
 
@@ -73,7 +77,7 @@
         .search-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--gold-bright); }
 
         .nav-list { flex-grow: 1; overflow-y: auto; padding: 1rem; }
-        .nav-item { padding: 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; margin-bottom: 5px; border: 1px solid transparent; line-height: 1.4; transition: 0.2s; }
+        .nav-item { padding: 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; margin-bottom: 5px; border: 1px solid transparent; line-height: 1.4; transition: 0.2s; word-break: break-word; }
         .nav-item:hover { background: var(--bg-card-hover); }
         .nav-item.active { background: var(--slate-border); border-color: var(--gold-bright); }
 
@@ -100,7 +104,6 @@
 
         .workspace-split { display: flex; flex-grow: 1; overflow: hidden; }
         
-        /* --- DUAL VIEW SYSTEM --- */
         .site-grid { flex: 1; overflow-y: auto; padding: 1.5rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; align-content: start; }
         
         .site-list-container { flex: 1; overflow-y: auto; padding: 1.5rem; }
@@ -108,42 +111,40 @@
         .site-table th { position: sticky; top: 0; background: var(--bg-sidebar); padding: 12px; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid var(--slate-border); z-index: 5; user-select: none; transition: 0.2s; }
         .site-table th:hover { color: var(--gold-bright); background: var(--bg-card-hover); }
         .site-table-row { background: var(--bg-card); transition: 0.2s; cursor: pointer; border-bottom: 1px solid var(--slate-border); }
-        .site-table-row td { padding: 12px; font-size: 0.85rem; color: var(--text-main); }
+        .site-table-row td { padding: 12px; font-size: 0.85rem; color: var(--text-main); word-break: break-word; }
         .site-table-row:hover { background: var(--bg-card-hover); }
-        /* Selection and Report Indicators for List View */
+        
         .site-table-row.selected { background: var(--bg-card-hover); }
         .site-table-row.selected td:first-child { border-left: 4px solid var(--gold-bright); }
         .site-table-row.in-report td:first-child { border-left: 4px solid var(--warning-glow); }
         .site-table-row.selected.in-report td:first-child { border-left: 4px solid var(--gold-bright); }
         
-        /* Grid Card Styles */
-        .site-card { background: var(--bg-card); border: 1px solid var(--slate-border); border-radius: 8px; padding: 1.2rem; cursor: pointer; position: relative; transition: all 0.2s ease-in-out; box-shadow: 0 2px 5px var(--shadow); }
+        .site-card { background: var(--bg-card); border: 1px solid var(--slate-border); border-radius: 8px; padding: 1.2rem; cursor: pointer; position: relative; transition: all 0.2s ease-in-out; box-shadow: 0 2px 5px var(--shadow); word-break: break-word; }
         .site-card:hover { border-color: var(--gold-bright); transform: translateY(-3px); box-shadow: 0 8px 15px var(--shadow); }
         .site-card.selected { border-left: 4px solid var(--gold-bright); background: var(--bg-card-hover); }
         .site-card.in-report { border-top: 4px solid var(--warning-glow); } 
         
-        .status-dot { position: absolute; top: 1.2rem; right: 1.2rem; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
-        .site-title { font-weight: bold; margin-bottom: 5px; color: var(--gold-bright); padding-right: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 5px;}
+        .status-dot { position: absolute; top: 1.2rem; right: 1.2rem; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 8px currentColor; z-index: 2; }
+        .site-title { font-weight: bold; margin-bottom: 5px; color: var(--gold-bright); padding-right: 35px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 
         #knowledge-panel { width: 450px; min-width: 450px; background: var(--bg-sidebar); border-left: 1px solid var(--slate-border); overflow-y: auto; padding: 2rem; display: none; position: relative; box-shadow: -5px 0 15px var(--shadow); z-index: 10; }
         .panel-close { position: absolute; top: 1.5rem; right: 1.5rem; cursor: pointer; font-size: 1.5rem; color: var(--text-muted); transition: 0.2s; }
         .panel-close:hover { color: var(--danger-glow); }
         
-        .panel-header { margin-bottom: 1.5rem; padding-right: 2rem; }
+        .panel-header { margin-bottom: 1.5rem; padding-right: 2rem; word-break: break-word;}
         .panel-header h2 { font-size: 1.3rem; margin: 0 0 0.5rem 0; color: var(--gold-bright); line-height: 1.2; }
         
-        .kp-block { margin-bottom: 1.5rem; background: var(--bg-card); padding: 15px; border-radius: 8px; border: 1px solid var(--slate-border); }
+        .kp-block { margin-bottom: 1.5rem; background: var(--bg-card); padding: 15px; border-radius: 8px; border: 1px solid var(--slate-border); word-break: break-word;}
         .kp-label { font-size: 0.7rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;}
         .kp-text { font-size: 0.85rem; line-height: 1.6; color: var(--text-main); }
 
         .pill { background: var(--bg-card-hover); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; margin: 2px; display: inline-block; border: 1px solid var(--slate-border); }
-        .pill.ropc { background: rgba(239, 68, 68, 0.1); color: var(--danger-glow); border: 1px solid var(--danger-glow); }
+        .pill.ropc { background: var(--accent-neutral-bg); color: var(--accent-neutral); border: 1px solid var(--accent-neutral); }
         .pill.list-pill { font-size: 0.6rem; padding: 2px 6px; }
 
         .btn-copy { background: var(--bg-card-hover); border: 1px solid var(--slate-border); color: var(--text-main); padding: 10px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold; transition: 0.2s; flex: 1; display: flex; justify-content: center; gap: 8px;}
         .btn-copy:hover { border-color: var(--gold-bright); background: var(--gold-bright); color: var(--bg-primary); }
 
-        /* --- TOAST NOTIFICATIONS --- */
         .toast-container { position: fixed; bottom: 25px; right: 25px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { background: var(--bg-sidebar); border-left: 5px solid var(--success-glow); color: var(--text-main); padding: 14px 20px; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-size: 0.85rem; font-weight: bold; opacity: 0; transform: translateX(100%); animation: slideIn 0.4s forwards, fadeOut 0.4s 3s forwards; display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--slate-border); }
         .toast.warning { border-left-color: var(--warning-glow); }
@@ -151,13 +152,18 @@
         @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
         @keyframes fadeOut { to { opacity: 0; transform: translateY(20px); } }
 
-        /* --- REPORT BUILDER OVERLAY --- */
-        #report-modal { display: none; position: absolute; inset: 0; background: var(--bg-primary); z-index: 50; overflow-y: auto; padding: 2rem; }
-        .report-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--gold-bright); padding-bottom: 1rem; margin-bottom: 2rem; }
-        .report-header h1 { margin: 0; color: var(--gold-bright); }
-        .report-site-block { border: 1px solid var(--slate-border); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; background: var(--bg-card); position: relative;}
+        .modal-overlay { display: none; position: absolute; inset: 0; background: var(--bg-primary); z-index: 50; overflow-y: auto; padding: 2rem; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--gold-bright); padding-bottom: 1rem; margin-bottom: 2rem; }
+        .modal-header h1 { margin: 0; color: var(--gold-bright); }
+        
+        .report-site-block { border: 1px solid var(--slate-border); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; background: var(--bg-card); position: relative; word-break: break-word;}
         .report-remove-btn { position: absolute; top: 1.5rem; right: 1.5rem; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger-glow); color: var(--danger-glow); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; font-weight: bold;}
         .report-remove-btn:hover { background: var(--danger-glow); color: white; }
+
+        .manual-section { margin-bottom: 2rem; }
+        .manual-section h3 { color: var(--accent-neutral); margin-bottom: 0.5rem; }
+        .manual-section p, .manual-section li { font-size: 0.9rem; line-height: 1.6; color: var(--text-main); }
+        .manual-code { background: var(--bg-card); padding: 2px 6px; border-radius: 4px; font-family: monospace; border: 1px solid var(--slate-border); color: var(--gold-bright); }
 
         @media print {
             body * { visibility: hidden; }
@@ -165,7 +171,7 @@
             #report-modal { position: absolute; left: 0; top: 0; padding: 0; width: 100%; background: white; color: black; }
             .report-site-block { break-inside: avoid; page-break-inside: avoid; border: 1px solid #ccc; box-shadow: none; background: white; color: black;}
             .no-print { display: none !important; }
-            .report-header { border-bottom: 2px solid black; }
+            .modal-header { border-bottom: 2px solid black; }
             h1, h2, h3, .kp-label { color: black !important; }
         }
     </style>
@@ -194,8 +200,17 @@
         <aside>
             <div class="aside-header">
                 <h1>RECORDS NAVIGATOR</h1>
-                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top:5px;">Loaded <span id="recordCount" style="color: var(--text-main); font-weight:bold;">0</span> records.</div>
+                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top:5px;">
+                    <span id="recordCount" style="color: var(--text-main); font-weight:bold;">0</span> 
+                </div>
                 
+                <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 8px;">
+                    Local Memory Used: <span id="storageLabel">0%</span>
+                    <div style="width: 100%; background: var(--slate-border); height: 4px; border-radius: 2px; margin-top: 3px;">
+                        <div id="storageBar" style="width: 0%; background: var(--success-glow); height: 100%; border-radius: 2px; transition: width 0.3s, background 0.3s;"></div>
+                    </div>
+                </div>
+
                 <div style="margin-top: 15px; display: flex; gap: 5px;">
                     <button class="db-action-btn btn-add" onclick="document.getElementById('fileUpload').click()">+ Add</button>
                     <button class="db-action-btn btn-backup" onclick="exportBackup()">💾 Backup</button>
@@ -205,7 +220,10 @@
             </div>
             
             <div class="search-container">
-                <label style="font-size: 0.65rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">Command</label>
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;">
+                    <label style="font-size: 0.65rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">Command</label>
+                    <span onclick="resetFilters()" style="font-size: 0.65rem; cursor: pointer; color: var(--accent-neutral); font-weight: bold;">Reset Filters</span>
+                </div>
                 <select id="locationFilter"><option value="ALL">All Installations</option></select>
                 
                 <label style="font-size: 0.65rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">Rad Status</label>
@@ -214,7 +232,12 @@
                 <label style="font-size: 0.65rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">Nuclide (ROPC)</label>
                 <select id="nuclideFilter"><option value="ALL">All Nuclides</option></select>
 
-                <input type="text" id="siteSearch" class="search-input" placeholder="Search site, building, or ROPC..." style="margin-top: 5px;">
+                <input type="search" id="siteSearch" class="search-input" placeholder="Deep Search (Names, History, etc)..." style="margin-top: 5px; margin-bottom: 0;">
+
+                <label style="font-size: 0.7rem; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 6px; margin-top: 10px; cursor: pointer;">
+                    <input type="checkbox" id="hideSafeToggle" onchange="renderView()">
+                    Hide Non-Impacted / Remediated
+                </label>
             </div>
             <div class="nav-list" id="siteListNav"></div>
         </aside>
@@ -223,7 +246,8 @@
             <div class="top-nav">
                 <div id="navTitle" style="font-weight: bold; color: var(--gold-bright); letter-spacing: 1px;">GLOBAL COMMAND VIEW</div>
                 <div style="display: flex; align-items: center; gap: 15px;">
-                    <button class="theme-toggle" style="border-color: var(--warning-glow); color: var(--warning-glow);" onclick="openReportView()">
+                    <button class="theme-toggle" onclick="openManual()">ℹ️ Manual</button>
+                    <button class="theme-toggle" style="border-color: var(--accent-neutral); color: var(--accent-neutral);" onclick="openReportView()">
                         📄 View Report (<span id="reportCount">0</span>)
                     </button>
                     <button class="theme-toggle" id="btn-view-toggle" onclick="toggleViewMode()">
@@ -267,16 +291,53 @@
                 </div>
             </div>
 
-            <div id="report-modal">
-                <div class="report-header">
+            <div id="report-modal" class="modal-overlay">
+                <div class="modal-header">
                     <h1>Consolidated Site Report</h1>
                     <div class="no-print" style="display: flex; gap: 10px;">
-                        <button class="db-action-btn btn-add" onclick="window.print()" style="font-size:0.8rem; padding: 8px 15px;">🖨️ Print / Save PDF</button>
-                        <button class="db-action-btn btn-wipe" onclick="clearReportCart()" style="font-size:0.8rem; padding: 8px 15px;">🗑️ Clear Report</button>
+                        <button class="db-action-btn btn-export" onclick="exportReportCSV()" style="font-size:0.8rem; padding: 8px 15px; margin: 0;">⬇ Export to CSV</button>
+                        <button class="db-action-btn btn-add" onclick="window.print()" style="font-size:0.8rem; padding: 8px 15px;">🖨️ Print PDF</button>
+                        <button class="db-action-btn btn-wipe" onclick="clearReportCart()" style="font-size:0.8rem; padding: 8px 15px;">🗑️ Clear</button>
                         <button class="db-action-btn btn-add" onclick="closeReportView()" style="font-size:0.8rem; padding: 8px 15px;">✖ Close</button>
                     </div>
                 </div>
                 <div id="report-body"></div>
+            </div>
+
+            <div id="manual-modal" class="modal-overlay">
+                <div class="modal-header">
+                    <h1>User Manual & Data Guidelines</h1>
+                    <div class="no-print" style="display: flex; gap: 10px;">
+                        <button class="db-action-btn btn-add" onclick="closeManual()" style="font-size:0.8rem; padding: 8px 15px;">✖ Close</button>
+                    </div>
+                </div>
+                <div style="max-width: 800px;">
+                    <div class="manual-section">
+                        <h3>1. Uploading Data</h3>
+                        <p>The Navigator accepts `.xlsx`, `.xls`, and `.csv` files. You can drag and drop multiple files at once. If you upload an Excel workbook with multiple tabs, the engine will automatically read every single tab.</p>
+                        <p>To restore a previously saved state (including your custom field notes), upload a `.json` backup file generated by this tool.</p>
+                    </div>
+                    <div class="manual-section">
+                        <h3>2. Data Structure & Fuzzy Matching</h3>
+                        <p>The tool uses a "Fuzzy Parsing" engine to read your spreadsheets. It looks for specific column headers but will gracefully adapt to variations. To ensure perfect data mapping, use the following column headers in your files:</p>
+                        <ul>
+                            <li><span class="manual-code">Major Location/Command</span> (Fallbacks: <i>Command, Location</i>. If missing, defaults to the Excel Tab Name)</li>
+                            <li><span class="manual-code">Sub-Location/Site Name</span> (Fallbacks: <i>Site Name, Site</i>)</li>
+                            <li><span class="manual-code">Site Identifier/Number/Description</span> (Fallbacks: <i>Description, Site Description</i>)</li>
+                            <li><span class="manual-code">Radiological Classificiation</span> (Fallbacks: <i>Radiological Classification, Status, Class</i>)</li>
+                            <li><span class="manual-code">ROPCs</span> (Fallbacks: <i>Nuclides, Isotopes, Radionuclides</i>)</li>
+                            <li><span class="manual-code">Justificiation</span> (Fallbacks: <i>Justification</i>)</li>
+                            <li><span class="manual-code">Current Land Use/Restrictions</span> (Fallbacks: <i>Land Use, Restrictions</i>)</li>
+                            <li><span class="manual-code">Comments/Notes</span> (Fallbacks: <i>Comments, Notes</i>)</li>
+                            <li><span class="manual-code">HRA Report Title</span> and <span class="manual-code">HRA Report Issue Date</span></li>
+                        </ul>
+                    </div>
+                    <div class="manual-section">
+                        <h3>3. Data Normalization Engines</h3>
+                        <p><strong>Rad Status:</strong> The tool scans your classification column and standardizes it into one of six core categories: <i>Impacted, Potentially Impacted, Area of Interest, Non-Impacted, Previously Remediated,</i> or <i>Other</i>.</p>
+                        <p><strong>Nuclides:</strong> The ROPC engine reads human-entered strings (e.g., "Depleted Uranium", "U-238", "Cesium") and translates them into uniform tags (e.g., "DU", "Cs-137") for accurate filtering.</p>
+                    </div>
+                </div>
             </div>
 
         </main>
@@ -291,13 +352,43 @@
         let uniqueNuclides = new Set();
         let reportCart = new Set();
 
-        // --- NEW VIEW MODE STATE ---
         let viewMode = 'grid'; 
         let sortCol = 'siteName';
         let sortAsc = true;
 
-        function getSiteId(site) {
-            return `${site.location}:::${site.siteName}`;
+        function getSiteId(site) { return `${site.location}:::${site.siteName}`; }
+
+        function sanitize(str) {
+            if (!str) return '';
+            return str.toString().replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function safeCSV(str) {
+            if (!str) return '""';
+            return `"${str.toString().replace(/"/g, '""').replace(/[\n\r]+/g, ' ')}"`;
+        }
+
+        function updateStorageMeter() {
+            let total = 0;
+            for(let x in localStorage) {
+                if(localStorage.hasOwnProperty(x)) {
+                    total += ((localStorage[x].length + x.length) * 2);
+                }
+            }
+            const max = 5 * 1024 * 1024; 
+            let percent = (total / max) * 100;
+            if (percent > 100) percent = 100;
+            
+            document.getElementById('storageLabel').innerText = percent.toFixed(1) + '%';
+            document.getElementById('storageBar').style.width = percent + '%';
+            
+            if (percent > 90) {
+                document.getElementById('storageBar').style.background = 'var(--danger-glow)';
+            } else if (percent > 75) {
+                document.getElementById('storageBar').style.background = 'var(--warning-glow)';
+            } else {
+                document.getElementById('storageBar').style.background = 'var(--success-glow)';
+            }
         }
 
         function showToast(message, type = 'success') {
@@ -311,8 +402,10 @@
 
         function applyTheme(theme) {
             document.body.setAttribute('data-theme', theme);
-            document.getElementById('theme-icon').innerText = (theme === 'dark') ? '☀️' : '🌙';
-            document.getElementById('theme-text').innerText = (theme === 'dark') ? 'Light Mode' : 'Dark Mode';
+            const icon = document.getElementById('theme-icon');
+            const text = document.getElementById('theme-text');
+            icon.innerText = (theme === 'dark') ? '☀️' : '🌙';
+            text.innerText = (theme === 'dark') ? 'Light Mode' : 'Dark Mode';
             localStorage.setItem('radNavigatorTheme', theme);
         }
 
@@ -334,13 +427,34 @@
         }
 
         function setSort(col) {
-            if (sortCol === col) {
-                sortAsc = !sortAsc; // toggle direction
-            } else {
-                sortCol = col;
-                sortAsc = true;
-            }
+            if (sortCol === col) { sortAsc = !sortAsc; } 
+            else { sortCol = col; sortAsc = true; }
             renderView();
+        }
+
+        function resetFilters() {
+            document.getElementById('locationFilter').value = 'ALL';
+            document.getElementById('statusFilter').value = 'ALL';
+            document.getElementById('nuclideFilter').value = 'ALL';
+            document.getElementById('siteSearch').value = '';
+            document.getElementById('hideSafeToggle').checked = false;
+            renderView();
+            showToast("Filters reset to default view.", "success");
+        }
+
+        function openManual() { document.getElementById('manual-modal').style.display = 'block'; }
+        function closeManual() { document.getElementById('manual-modal').style.display = 'none'; }
+
+        function cleanOrphanedReportItems() {
+            const validIds = new Set(db.map(s => getSiteId(s)));
+            let cartChanged = false;
+            reportCart.forEach(id => {
+                if (!validIds.has(id)) {
+                    reportCart.delete(id);
+                    cartChanged = true;
+                }
+            });
+            if (cartChanged) localStorage.setItem('radReportCart', JSON.stringify(Array.from(reportCart)));
         }
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -348,33 +462,39 @@
             viewMode = localStorage.getItem('radViewMode') || 'grid';
             updateViewToggleButton();
 
+            if (localStorage.getItem('radFilterHideSafe') === 'true') {
+                document.getElementById('hideSafeToggle').checked = true;
+            }
+
             const savedCart = localStorage.getItem('radReportCart');
             if(savedCart) {
                 try { reportCart = new Set(JSON.parse(savedCart)); } catch(e) {}
             }
-            document.getElementById('reportCount').innerText = reportCart.size;
 
             const savedData = localStorage.getItem('radLegacyData');
             if (savedData) {
                 try {
                     db = JSON.parse(savedData);
                     if (db.length > 0) {
+                        cleanOrphanedReportItems(); 
                         db.forEach(site => {
                             uniqueLocations.add(site.location);
                             uniqueStatuses.add(site.classification);
                             site.ropcs.forEach(nuc => uniqueNuclides.add(nuc));
                         });
+                        
                         updateUI();
+                        updateStorageMeter();
                         return;
                     }
                 } catch (e) {
                     console.error("Error parsing saved data.", e);
                 }
             }
+            // If no data loaded, ensure the drop-zone is visible
             document.getElementById('drop-zone').style.display = 'flex';
         });
 
-        // --- REPORT LOGIC ---
         function toggleCurrentSiteReport() {
             if (!activeSiteObj) return;
             const sId = getSiteId(activeSiteObj);
@@ -388,6 +508,7 @@
             localStorage.setItem('radReportCart', JSON.stringify(Array.from(reportCart)));
             updateReportUI();
             renderView(); 
+            updateStorageMeter();
         }
 
         function removeFromReport(sId) {
@@ -397,6 +518,7 @@
             openReportView(); 
             updateReportUI();
             renderView();
+            updateStorageMeter();
         }
 
         function clearReportCart() {
@@ -407,6 +529,7 @@
                 closeReportView();
                 updateReportUI();
                 renderView();
+                updateStorageMeter();
             }
         }
 
@@ -463,7 +586,6 @@
 
         function closeReportView() { document.getElementById('report-modal').style.display = 'none'; }
 
-        // --- JSON BACKUP LOGIC ---
         function exportBackup() {
             if (db.length === 0) return showToast("No data to backup.", "warning");
             showToast("Generating backup file...", "success");
@@ -476,7 +598,7 @@
 
             let backupData = {
                 timestamp: new Date().toISOString(),
-                version: "7.4",
+                version: "8.1",
                 database: db,
                 notes: notes,
                 reportCart: Array.from(reportCart) 
@@ -485,7 +607,8 @@
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
             const downloadAnchorNode = document.createElement('a');
             downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", "RadLegacy_Backup_" + new Date().toISOString().split('T')[0] + ".json");
+            const dateStr = new Date().toISOString().split('T')[0];
+            downloadAnchorNode.setAttribute("download", `RadLegacy_Backup_${dateStr}.json`);
             document.body.appendChild(downloadAnchorNode);
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
@@ -530,8 +653,13 @@
                                 uniqueStatuses.add(site.classification);
                                 site.ropcs.forEach(nuc => uniqueNuclides.add(nuc));
                             });
+                            
+                            cleanOrphanedReportItems();
+
                             try { localStorage.setItem('radLegacyData', JSON.stringify(db)); } catch(err) {}
+                            
                             updateUI();
+                            updateStorageMeter();
                             showToast("Backup successfully restored!", "success");
                         }
                     } catch (err) {
@@ -547,35 +675,64 @@
             if(confirm("Are you sure you want to clear all loaded HRA data? Note: This will NOT delete your custom User Field Notes.")) {
                 localStorage.removeItem('radLegacyData');
                 db = []; currentFilteredView = []; uniqueLocations.clear(); uniqueStatuses.clear(); uniqueNuclides.clear();
-                closePanel(); updateUI();
-                document.getElementById('drop-zone').style.display = 'flex';
+                cleanOrphanedReportItems(); 
+                closePanel(); 
+                
+                // IMPORTANT BUG FIX: Need to clear the UI explicitly when wiping
+                document.getElementById('locationFilter').innerHTML = '<option value="ALL">All Installations</option>';
+                document.getElementById('statusFilter').innerHTML = '<option value="ALL">All Statuses</option>';
+                document.getElementById('nuclideFilter').innerHTML = '<option value="ALL">All Nuclides</option>';
+                document.getElementById('recordCount').innerText = '0';
+                document.getElementById('dataContainer').innerHTML = '';
+                document.getElementById('siteListNav').innerHTML = '';
+                
+                updateStorageMeter();
                 document.getElementById('dashboard').style.display = 'none';
+                document.getElementById('drop-zone').style.display = 'flex';
                 showToast("Database successfully wiped.", "warning");
             }
         }
 
-        function exportFilteredCSV() {
-            if (currentFilteredView.length === 0) return showToast("No sites currently in view to export.", "warning");
-            showToast(`Exporting ${currentFilteredView.length} sites to CSV...`, "success");
-            let csvContent = "Command,Site Name,Rad Status,ROPCs,Justification,Current Land Use,Reference\n";
-            currentFilteredView.forEach(s => {
-                let cmd = `"${(s.location || "").replace(/"/g, '""')}"`;
-                let name = `"${(s.siteName || "").replace(/"/g, '""')}"`;
-                let status = `"${s.classification}"`;
-                let ropcs = `"${s.ropcs.join('; ')}"`;
-                let just = `"${(s.justification || "").replace(/"/g, '""')}"`;
-                let use = `"${(s.landUse || "").replace(/"/g, '""')}"`;
-                let ref = `"${(s.report || "").replace(/"/g, '""')}"`;
-                csvContent += `${cmd},${name},${status},${ropcs},${just},${use},${ref}\n`;
+        function generateCSVDownload(dataset, filename) {
+            let csvContent = "Command,Site Name,Rad Status,ROPCs,Justification,Current Land Use,Reference,User Field Notes\n";
+            dataset.forEach(s => {
+                let cmd = safeCSV(s.location);
+                let name = safeCSV(s.siteName);
+                let status = safeCSV(s.classification);
+                let ropcs = safeCSV(s.ropcs.join('; '));
+                let just = safeCSV(s.justification);
+                let use = safeCSV(s.landUse);
+                let ref = safeCSV(s.report);
+                
+                const notesKey = `radNote_${s.location}_${s.siteName}`;
+                const notesRaw = localStorage.getItem(notesKey) || "";
+                let notesClean = safeCSV(notesRaw);
+
+                csvContent += `${cmd},${name},${status},${ropcs},${just},${use},${ref},${notesClean}\n`;
             });
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.setAttribute("href", url);
-            link.setAttribute("download", "RadLegacy_Filtered_Export.csv");
+            link.setAttribute("download", filename);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        }
+
+        function exportFilteredCSV() {
+            if (currentFilteredView.length === 0) return showToast("No sites currently in view to export.", "warning");
+            showToast(`Exporting ${currentFilteredView.length} sites to CSV...`, "success");
+            const dateStr = new Date().toISOString().split('T')[0];
+            generateCSVDownload(currentFilteredView, `RadLegacy_Filtered_Export_${dateStr}.csv`);
+        }
+
+        function exportReportCSV() {
+            const reportSites = db.filter(s => reportCart.has(getSiteId(s)));
+            if (reportSites.length === 0) return showToast("Your report cart is empty.", "warning");
+            showToast(`Exporting ${reportSites.length} report sites to CSV...`, "success");
+            const dateStr = new Date().toISOString().split('T')[0];
+            generateCSVDownload(reportSites, `RadLegacy_Dossier_${dateStr}.csv`);
         }
 
         function copyBriefing() {
@@ -588,6 +745,7 @@
             if (activeSiteObj) {
                 const storageKey = `radNote_${activeSiteObj.location}_${activeSiteObj.siteName}`;
                 localStorage.setItem(storageKey, e.target.value);
+                updateStorageMeter(); 
             }
         });
         document.getElementById('userCustomNotes').addEventListener('blur', function(e) {
@@ -601,12 +759,26 @@
             activeSiteObj = null;
         }
 
+        function triggerSiteClick(sId) {
+            if (activeSiteObj && getSiteId(activeSiteObj) === sId) {
+                closePanel(); 
+            } else {
+                const site = db.find(s => getSiteId(s) === sId);
+                if (site) selectSite(site);
+            }
+        }
+
         document.getElementById('dataContainer').addEventListener('click', function(e) {
-            // Only close if clicking directly on the background, not on a card or table row
-            if (e.target === this || e.target.classList.contains('site-table')) closePanel();
+            const row = e.target.closest('.site-table-row');
+            if (row) {
+                triggerSiteClick(row.getAttribute('data-siteid'));
+                return;
+            }
+            if (e.target === this || e.target.classList.contains('site-table') || e.target.className === 'site-grid') {
+                closePanel();
+            }
         });
 
-        // --- FILE INGESTION LOGIC ---
         const dropZone = document.getElementById('drop-zone');
         const fileUpload = document.getElementById('fileUpload');
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
@@ -669,33 +841,64 @@
         }
 
         function processData(data) {
-            const validData = data.filter(row => (row['Sub-Location/Site Name'] || row['Major Location/Command']));
+            const validData = data.filter(row => {
+                const siteName = row['Sub-Location/Site Name'] || row['Site Name'] || row['Site'];
+                const command = row['Major Location/Command'] || row['Command'] || row['Location'];
+                return (siteName && siteName.toString().trim() !== '') || (command && command.toString().trim() !== '');
+            });
+
             const newEntries = validData.map(row => {
-                let rawCommand = row['Major Location/Command'] || row.__tabName || 'UNKNOWN COMMAND';
-                let scrubbedCommand = rawCommand.toString().trim().toUpperCase();
-                let ropcs = parseNuclides(row['ROPCs']);
-                const classificationVal = normalizeStatus(row['Radiological Classificiation'] || row['Radiological Classification']);
+                let rawCommand = row['Major Location/Command'] || row['Command'] || row['Location'] || row.__tabName || 'UNKNOWN COMMAND';
+                let scrubbedCommand = sanitize(rawCommand).trim().toUpperCase();
+
+                let rawRopcs = row['ROPCs'] || row['Nuclides'] || row['Isotopes'] || row['Radionuclides'] || '';
+                let ropcs = parseNuclides(rawRopcs);
+                
+                const rawClass = row['Radiological Classificiation'] || row['Radiological Classification'] || row['Status'] || row['Classification'] || 'Unknown';
+                const classificationVal = normalizeStatus(rawClass);
+
+                const rawDesc = row['Site Identifier/Number/Description'] || row['Description'] || row['Site Description'] || 'No description provided.';
+                const title = row['HRA Report Title'] || row['Report Title'] || 'Unknown Report';
+                const date = row['HRA Report Issue Date'] || row['Report Date'] || row['Date'] || 'No Date';
+                const just = row['Justificiation'] || row['Justification'] || 'No justification provided.';
+                const use = row['Current Land Use/Restrictions'] || row['Land Use'] || row['Restrictions'] || 'N/A';
+                const comments = row['Comments/Notes'] || row['Comments'] || row['Notes'] || 'None';
+
                 return {
                     location: scrubbedCommand,
-                    siteName: row['Sub-Location/Site Name'] || 'Unnamed Site',
-                    desc: row['Site Identifier/Number/Description'] || 'No description provided.',
-                    report: `${row['HRA Report Title']} (${row['HRA Report Issue Date']})`,
+                    siteName: sanitize(row['Sub-Location/Site Name'] || row['Site Name'] || row['Site'] || 'Unnamed Site').trim(),
+                    desc: sanitize(rawDesc),
+                    report: sanitize(`${title} (${date})`),
                     classification: classificationVal,
                     ropcs: ropcs,
-                    justification: row['Justificiation'] || 'No justification provided.',
-                    landUse: row['Current Land Use/Restrictions'] || 'N/A',
-                    comments: row['Comments/Notes'] || 'None'
+                    justification: sanitize(just),
+                    landUse: sanitize(use),
+                    comments: sanitize(comments)
                 };
             });
-            db = db.concat(newEntries);
+
+            const existingIds = new Set(db.map(s => getSiteId(s)));
+            const uniqueNewEntries = newEntries.filter(s => !existingIds.has(getSiteId(s)));
+            const duplicatesIgnored = newEntries.length - uniqueNewEntries.length;
+
+            db = db.concat(uniqueNewEntries);
+            
             db.forEach(site => {
                 uniqueLocations.add(site.location);
                 uniqueStatuses.add(site.classification);
                 site.ropcs.forEach(nuc => uniqueNuclides.add(nuc));
             });
+
             try { localStorage.setItem('radLegacyData', JSON.stringify(db)); } catch (e) {}
+            
             updateUI();
-            showToast(`Successfully added ${newEntries.length} sites.`, "success");
+            updateStorageMeter();
+            
+            if (duplicatesIgnored > 0) {
+                showToast(`Added ${uniqueNewEntries.length} sites. (Ignored ${duplicatesIgnored} duplicates).`, "success");
+            } else {
+                showToast(`Successfully added ${uniqueNewEntries.length} sites.`, "success");
+            }
         }
 
         function updateUI() {
@@ -714,10 +917,17 @@
             nucSelect.innerHTML = '<option value="ALL">All Nuclides</option>';
             Array.from(uniqueNuclides).sort().forEach(nuc => nucSelect.add(new Option(nuc, nuc)));
 
+            if (localStorage.getItem('radFilterLoc')) document.getElementById('locationFilter').value = localStorage.getItem('radFilterLoc');
+            if (localStorage.getItem('radFilterStatus')) document.getElementById('statusFilter').value = localStorage.getItem('radFilterStatus');
+            if (localStorage.getItem('radFilterNuc')) document.getElementById('nuclideFilter').value = localStorage.getItem('radFilterNuc');
+            if (localStorage.getItem('radFilterSearch')) document.getElementById('siteSearch').value = localStorage.getItem('radFilterSearch');
+
             updateReportUI();
-            document.getElementById('recordCount').innerText = db.length;
+            
+            // --- CRITICAL FIX: The two missing lines that unhide the Dashboard! ---
             document.getElementById('drop-zone').style.display = 'none';
             document.getElementById('dashboard').style.display = 'flex';
+            
             renderView();
         }
 
@@ -729,12 +939,18 @@
             return 'var(--text-muted)';
         }
 
-        // --- DUAL RENDER LOGIC ---
         function renderView() {
             const fLoc = document.getElementById('locationFilter').value;
             const fStatus = document.getElementById('statusFilter').value;
             const fNuclide = document.getElementById('nuclideFilter').value;
             const fText = document.getElementById('siteSearch').value.toLowerCase();
+            const hideSafe = document.getElementById('hideSafeToggle').checked;
+
+            localStorage.setItem('radFilterLoc', fLoc);
+            localStorage.setItem('radFilterStatus', fStatus);
+            localStorage.setItem('radFilterNuc', fNuclide);
+            localStorage.setItem('radFilterSearch', fText);
+            localStorage.setItem('radFilterHideSafe', hideSafe);
 
             closePanel();
 
@@ -742,14 +958,20 @@
                 const matchLoc = fLoc === 'ALL' || s.location === fLoc;
                 const matchStatus = fStatus === 'ALL' || s.classification === fStatus;
                 const matchNuclide = fNuclide === 'ALL' || s.ropcs.includes(fNuclide);
+                
+                const isSafe = s.classification === 'Non-Impacted' || s.classification === 'Previously Remediated';
+                if (hideSafe && isSafe) return false;
+
                 const matchText = fText === '' || 
                                   s.siteName.toLowerCase().includes(fText) ||
                                   s.desc.toLowerCase().includes(fText) ||
+                                  s.justification.toLowerCase().includes(fText) ||
+                                  s.landUse.toLowerCase().includes(fText) ||
                                   s.ropcs.join(' ').toLowerCase().includes(fText);
+
                 return matchLoc && matchStatus && matchNuclide && matchText;
             });
 
-            // 1. Sort the filtered view
             currentFilteredView.sort((a, b) => {
                 let valA = a[sortCol];
                 let valB = b[sortCol];
@@ -757,9 +979,9 @@
                     valA = valA.join(', ');
                     valB = valB.join(', ');
                 }
-                if (valA < valB) return sortAsc ? -1 : 1;
-                if (valA > valB) return sortAsc ? 1 : -1;
-                return 0;
+                
+                let cmp = String(valA).localeCompare(String(valB), undefined, { numeric: true, sensitivity: 'base' });
+                return sortAsc ? cmp : -cmp;
             });
 
             const container = document.getElementById('dataContainer');
@@ -767,7 +989,14 @@
             container.innerHTML = ""; nav.innerHTML = "";
             document.getElementById('navTitle').innerText = fLoc === 'ALL' ? 'GLOBAL COMMAND VIEW' : fLoc;
 
-            // Nav Bar logic stays the same
+            document.getElementById('recordCount').innerText = `${currentFilteredView.length} of ${db.length}`;
+
+            if (currentFilteredView.length === 0) {
+                container.className = 'site-list-container';
+                container.innerHTML = `<div style="padding: 3rem; color: var(--text-muted); font-style: italic; text-align: center; width: 100%;">No sites match your current filter criteria. Try resetting your filters.</div>`;
+                return;
+            }
+
             currentFilteredView.forEach(site => {
                 const sId = getSiteId(site);
                 const isSelectedForReport = reportCart.has(sId);
@@ -775,11 +1004,10 @@
                 navItem.className = 'nav-item';
                 navItem.setAttribute('data-siteid', sId);
                 navItem.innerHTML = `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:bold;">${isSelectedForReport ? '⭐ ' : ''}${site.siteName}</div><div style="color: var(--text-muted); font-size:0.7rem; margin-top:2px;">${site.location}</div>`;
-                navItem.onclick = () => selectSite(site);
+                navItem.onclick = () => triggerSiteClick(sId);
                 nav.appendChild(navItem);
             });
 
-            // 2. Render as Grid or List
             if (viewMode === 'grid') {
                 container.className = 'site-grid';
                 currentFilteredView.forEach(site => {
@@ -800,13 +1028,11 @@
                             ${site.ropcs.length > 3 ? `<span class="pill" style="background:transparent; border:1px solid var(--slate-border);">+${site.ropcs.length - 3} more</span>` : ''}
                         </div>
                     `;
-                    card.onclick = (e) => { e.stopPropagation(); selectSite(site); };
+                    card.onclick = (e) => { e.stopPropagation(); triggerSiteClick(sId); };
                     container.appendChild(card);
                 });
             } else {
                 container.className = 'site-list-container';
-                
-                // Build Table Header
                 let getArrow = (col) => sortCol === col ? (sortAsc ? ' 🔼' : ' 🔽') : ' ↕';
                 
                 let tableHTML = `
@@ -821,17 +1047,14 @@
                         </thead>
                         <tbody>
                 `;
-                
-                // Build Table Rows
                 currentFilteredView.forEach(site => {
                     const sId = getSiteId(site);
                     const isSelectedForReport = reportCart.has(sId);
-                    
                     let ropcHTML = site.ropcs.map(i => `<span class="pill ropc list-pill">${i}</span>`).join('');
                     if (site.ropcs.length === 0) ropcHTML = '<span style="color:var(--text-muted); font-size:0.75rem;">None</span>';
 
                     tableHTML += `
-                        <tr class="site-table-row ${isSelectedForReport ? 'in-report' : ''}" data-siteid="${sId}" onclick="triggerSiteClick('${sId}')">
+                        <tr class="site-table-row ${isSelectedForReport ? 'in-report' : ''}" data-siteid="${sId}">
                             <td style="font-weight:bold;">
                                 <div style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${getStatusColor(site.classification)}; margin-right:8px;"></div>
                                 ${isSelectedForReport ? '⭐ ' : ''}${site.siteName}
@@ -842,18 +1065,8 @@
                         </tr>
                     `;
                 });
-                
                 tableHTML += `</tbody></table>`;
                 container.innerHTML = tableHTML;
-            }
-        }
-
-        // Helper function so table rows can trigger the full object click
-        window.triggerSiteClick = function(sId) {
-            const site = db.find(s => getSiteId(s) === sId);
-            if (site) {
-                // stopPropagation isn't native in an inline string call easily, so just select
-                selectSite(site);
             }
         }
 
@@ -877,7 +1090,6 @@
             const storageKey = `radNote_${site.location}_${site.siteName}`;
             document.getElementById('userCustomNotes').value = localStorage.getItem(storageKey) || '';
 
-            // Update highlighting dynamically for cards, rows, and nav
             const sId = getSiteId(site);
             document.querySelectorAll('.site-card, .site-table-row, .nav-item').forEach(el => {
                 if (el.getAttribute('data-siteid') === sId) {
