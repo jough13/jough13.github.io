@@ -22,6 +22,30 @@
             visibility: visible;
         }
     </style>
+    <script>
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            // Create a terrifyingly visible error box
+            const div = document.createElement('div');
+            div.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: #000; color: #FF0000; z-index: 9999;
+                padding: 40px; font-family: monospace; white-space: pre-wrap;
+                border: 5px solid #FF0000; overflow: auto;
+            `;
+            
+            div.innerHTML = `
+                <h1 style="font-size:40px; margin-bottom:20px;">CRITICAL SYSTEM FAILURE</h1>
+                <h2 style="color:#FFF;">${msg}</h2>
+                <p style="color:#888;">Location: ${url.split('/').pop()}:${lineNo}:${columnNo}</p>
+                <div style="border-top:1px solid #333; margin-top:20px; padding-top:20px; color:#AAA;">
+                    ${error ? error.stack : 'No stack trace available.'}
+                </div>
+                <button onclick="location.reload()" style="margin-top:40px; padding:20px; background:#300; color:#F00; border:1px solid #F00; cursor:pointer;">ATTEMPT SYSTEM REBOOT</button>
+            `;
+            document.body.appendChild(div);
+            return false;
+        };
+    </script>
 </head>
 <body class="crt">
     <script>
@@ -332,5 +356,8 @@
     <script src="audio.js"></script>
     
     <script src="script.js"></script>
+
+    <div id="damageFlash" class="damage-flash"></div>
+    
 </body>
 </html>
