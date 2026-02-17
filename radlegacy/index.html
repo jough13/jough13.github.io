@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadLegacy Navigator v7.4 | Dual-View Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* --- DYNAMIC THEME VARIABLES --- */
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-sidebar: #ffffff;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f1f5f9;
+            --gold-bright: #001f3f; 
+            --slate-border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --success-glow: #16a34a;
+            --danger-glow: #dc2626;
+            --warning-glow: #d97706;
+            --shadow: rgba(0,0,0,0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #020617;
+            --bg-sidebar: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #2d3a4f;
+            --gold-bright: #fbbf24; 
+            --slate-border: #334155;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --success-glow: #22c55e;
+            --danger-glow: #ef4444;
+            --warning-glow: #f59e0b;
+            --shadow: rgba(0,0,0,0.4);
+        }
+
+        body { font-family: 'Inter', system-ui, sans-serif; margin: 0; display: flex; height: 100vh; background: var(--bg-primary); color: var(--text-main); overflow: hidden; transition: background 0.3s, color 0.3s; }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--slate-border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        #drop-zone {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.9);
+            display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 100;
+        }
+        .upload-box {
+            border: 2px dashed var(--gold-bright); padding: 4rem; text-align: center; border-radius: 12px;
+            background: var(--bg-sidebar); transition: 0.3s;
+        }
+        .upload-box:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); cursor: pointer; }
+        .upload-box h2 { margin: 0 0 10px 0; color: var(--gold-bright); letter-spacing: 1px; }
+        .upload-box p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px; }
+        .file-input { display: none; }
+        .btn { background: var(--gold-bright); color: #fff; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; transition: 0.2s; }
+        [data-theme="light"] .btn { color: #ffffff; background: #001f3f; } 
+
+        #dashboard { display: none; width: 100%; height: 100%; flex-direction: row; }
+
+        aside { width: 340px; min-width: 340px; background: var(--bg-sidebar); border-right: 1px solid var(--slate-border); display: flex; flex-direction: column; z-index: 2; }
+        .aside-header { padding: 1.5rem; border-bottom: 1px solid var(--slate-border); }
+        .aside-header h1 { font-size: 1rem; letter-spacing: 2px; color: var(--gold-bright); margin: 0; }
+        
+        .search-container { padding: 1rem; border-bottom: 1px solid var(--slate-border); }
+        .search-input, select, textarea { 
+            width: 100%; padding: 10px; background: var(--bg-card-hover); border: 1px solid var(--slate-border); 
+            color: var(--text-main); border-radius: 6px; margin-bottom: 10px; box-sizing: border-box; font-family: inherit; font-size: 0.85rem;
+        }
+        .search-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--gold-bright); }
+
+        .nav-list { flex-grow: 1; overflow-y: auto; padding: 1rem; }
+        .nav-item { padding: 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; margin-bottom: 5px; border: 1px solid transparent; line-height: 1.4; transition: 0.2s; }
+        .nav-item:hover { background: var(--bg-card-hover); }
+        .nav-item.active { background: var(--slate-border); border-color: var(--gold-bright); }
+
+        main { flex-grow: 1; display: flex; flex-direction: column; background: var(--bg-primary); overflow: hidden; position: relative; }
+        .top-nav { height: 64px; min-height: 64px; background: var(--bg-sidebar); border-bottom: 1px solid var(--slate-border); display: flex; align-items: center; padding: 0 2rem; justify-content: space-between; z-index: 2; }
+
+        .theme-toggle { background: var(--bg-card-hover); border: 1px solid var(--slate-border); color: var(--text-main); padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 0.75rem; font-weight: bold; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .theme-toggle:hover { border-color: var(--gold-bright); }
+
+        .db-action-btn { padding: 6px 10px; border-radius: 6px; font-size: 0.65rem; font-weight: bold; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; flex: 1; justify-content: center; }
+        .btn-add { background: var(--bg-card-hover); border: 1px solid var(--slate-border); color: var(--text-main); }
+        .btn-add:hover { border-color: var(--gold-bright); }
+        
+        .btn-backup { background: rgba(37, 99, 235, 0.1); border: 1px solid #2563eb; color: #2563eb; }
+        .btn-backup:hover { background: #2563eb; color: white; }
+        [data-theme="dark"] .btn-backup { border-color: #3b82f6; color: #3b82f6; }
+        [data-theme="dark"] .btn-backup:hover { background: #3b82f6; color: white; }
+
+        .btn-wipe { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger-glow); color: var(--danger-glow); }
+        .btn-wipe:hover { background: var(--danger-glow); color: white; }
+        
+        .btn-export { background: rgba(22, 163, 74, 0.1); border: 1px solid var(--success-glow); color: var(--success-glow); margin-top: 5px; width: 100%; justify-content: center; }
+        .btn-export:hover { background: var(--success-glow); color: white; }
+
+        .workspace-split { display: flex; flex-grow: 1; overflow: hidden; }
+        
+        /* --- DUAL VIEW SYSTEM --- */
+        .site-grid { flex: 1; overflow-y: auto; padding: 1.5rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; align-content: start; }
+        
+        .site-list-container { flex: 1; overflow-y: auto; padding: 1.5rem; }
+        .site-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .site-table th { position: sticky; top: 0; background: var(--bg-sidebar); padding: 12px; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid var(--slate-border); z-index: 5; user-select: none; transition: 0.2s; }
+        .site-table th:hover { color: var(--gold-bright); background: var(--bg-card-hover); }
+        .site-table-row { background: var(--bg-card); transition: 0.2s; cursor: pointer; border-bottom: 1px solid var(--slate-border); }
+        .site-table-row td { padding: 12px; font-size: 0.85rem; color: var(--text-main); }
+        .site-table-row:hover { background: var(--bg-card-hover); }
+        /* Selection and Report Indicators for List View */
+        .site-table-row.selected { background: var(--bg-card-hover); }
+        .site-table-row.selected td:first-child { border-left: 4px solid var(--gold-bright); }
+        .site-table-row.in-report td:first-child { border-left: 4px solid var(--warning-glow); }
+        .site-table-row.selected.in-report td:first-child { border-left: 4px solid var(--gold-bright); }
+        
+        /* Grid Card Styles */
+        .site-card { background: var(--bg-card); border: 1px solid var(--slate-border); border-radius: 8px; padding: 1.2rem; cursor: pointer; position: relative; transition: all 0.2s ease-in-out; box-shadow: 0 2px 5px var(--shadow); }
+        .site-card:hover { border-color: var(--gold-bright); transform: translateY(-3px); box-shadow: 0 8px 15px var(--shadow); }
+        .site-card.selected { border-left: 4px solid var(--gold-bright); background: var(--bg-card-hover); }
+        .site-card.in-report { border-top: 4px solid var(--warning-glow); } 
+        
+        .status-dot { position: absolute; top: 1.2rem; right: 1.2rem; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+        .site-title { font-weight: bold; margin-bottom: 5px; color: var(--gold-bright); padding-right: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 5px;}
+
+        #knowledge-panel { width: 450px; min-width: 450px; background: var(--bg-sidebar); border-left: 1px solid var(--slate-border); overflow-y: auto; padding: 2rem; display: none; position: relative; box-shadow: -5px 0 15px var(--shadow); z-index: 10; }
+        .panel-close { position: absolute; top: 1.5rem; right: 1.5rem; cursor: pointer; font-size: 1.5rem; color: var(--text-muted); transition: 0.2s; }
+        .panel-close:hover { color: var(--danger-glow); }
+        
+        .panel-header { margin-bottom: 1.5rem; padding-right: 2rem; }
+        .panel-header h2 { font-size: 1.3rem; margin: 0 0 0.5rem 0; color: var(--gold-bright); line-height: 1.2; }
+        
+        .kp-block { margin-bottom: 1.5rem; background: var(--bg-card); padding: 15px; border-radius: 8px; border: 1px solid var(--slate-border); }
+        .kp-label { font-size: 0.7rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;}
+        .kp-text { font-size: 0.85rem; line-height: 1.6; color: var(--text-main); }
+
+        .pill { background: var(--bg-card-hover); color: var(--text-main); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; margin: 2px; display: inline-block; border: 1px solid var(--slate-border); }
+        .pill.ropc { background: rgba(239, 68, 68, 0.1); color: var(--danger-glow); border: 1px solid var(--danger-glow); }
+        .pill.list-pill { font-size: 0.6rem; padding: 2px 6px; }
+
+        .btn-copy { background: var(--bg-card-hover); border: 1px solid var(--slate-border); color: var(--text-main); padding: 10px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: bold; transition: 0.2s; flex: 1; display: flex; justify-content: center; gap: 8px;}
+        .btn-copy:hover { border-color: var(--gold-bright); background: var(--gold-bright); color: var(--bg-primary); }
+
+        /* --- TOAST NOTIFICATIONS --- */
+        .toast-container { position: fixed; bottom: 25px; right: 25px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { background: var(--bg-sidebar); border-left: 5px solid var(--success-glow); color: var(--text-main); padding: 14px 20px; border-radius: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-size: 0.85rem; font-weight: bold; opacity: 0; transform: translateX(100%); animation: slideIn 0.4s forwards, fadeOut 0.4s 3s forwards; display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--slate-border); }
+        .toast.warning { border-left-color: var(--warning-glow); }
+        .toast.error { border-left-color: var(--danger-glow); }
+        @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(20px); } }
+
+        /* --- REPORT BUILDER OVERLAY --- */
+        #report-modal { display: none; position: absolute; inset: 0; background: var(--bg-primary); z-index: 50; overflow-y: auto; padding: 2rem; }
+        .report-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--gold-bright); padding-bottom: 1rem; margin-bottom: 2rem; }
+        .report-header h1 { margin: 0; color: var(--gold-bright); }
+        .report-site-block { border: 1px solid var(--slate-border); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; background: var(--bg-card); position: relative;}
+        .report-remove-btn { position: absolute; top: 1.5rem; right: 1.5rem; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger-glow); color: var(--danger-glow); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; font-weight: bold;}
+        .report-remove-btn:hover { background: var(--danger-glow); color: white; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #report-modal, #report-modal * { visibility: visible; }
+            #report-modal { position: absolute; left: 0; top: 0; padding: 0; width: 100%; background: white; color: black; }
+            .report-site-block { break-inside: avoid; page-break-inside: avoid; border: 1px solid #ccc; box-shadow: none; background: white; color: black;}
+            .no-print { display: none !important; }
+            .report-header { border-bottom: 2px solid black; }
+            h1, h2, h3, .kp-label { color: black !important; }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('radNavigatorTheme') || 'light';
+            document.body.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <div id="drop-zone">
+        <div class="upload-box" onclick="document.getElementById('fileUpload').click()">
+            <h2>RADLEGACY DATA INGESTION</h2>
+            <p>Drag & Drop your Consolidated HRA Tracker (.xlsx, .csv)<br>or a saved .json Backup File.</p>
+            <button class="btn">Select File(s)</button>
+            <input type="file" id="fileUpload" class="file-input" accept=".xlsx, .xls, .csv, .json" multiple>
+        </div>
+    </div>
+
+    <div id="dashboard">
+        <aside>
+            <div class="aside-header">
+                <h1>RECORDS NAVIGATOR</h1>
+                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top:5px;">Loaded <span id="recordCount" style="color: var(--text-main); font-weight:bold;">0</span> records.</div>
+                
+                <div style="margin-top: 15px; display: flex; gap: 5px;">
+                    <button class="db-action-btn btn-add" onclick="document.getElementById('fileUpload').click()">+ Add</button>
+                    <button class="db-action-btn btn-backup" onclick="exportBackup()">💾 Backup</button>
+                    <button class="db-action-btn btn-wipe" onclick="wipeDatabase()">× Wipe</button>
+                </div>
+                <button class="db-action-btn btn-export" onclick="exportFilteredCSV()">⬇ Export Current View</button>
+            </div>
+            
+            <div class="search-container">
+                <label style="font-size: 0.65rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">Command</label>
+                <select id="locationFilter"><option value="ALL">All Installations</option></select>
+                
+                <label style="font-size: 0.65rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">Rad Status</label>
+                <select id="statusFilter"><option value="ALL">All Statuses</option></select>
+
+                <label style="font-size: 0.65rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase;">Nuclide (ROPC)</label>
+                <select id="nuclideFilter"><option value="ALL">All Nuclides</option></select>
+
+                <input type="text" id="siteSearch" class="search-input" placeholder="Search site, building, or ROPC..." style="margin-top: 5px;">
+            </div>
+            <div class="nav-list" id="siteListNav"></div>
+        </aside>
+
+        <main>
+            <div class="top-nav">
+                <div id="navTitle" style="font-weight: bold; color: var(--gold-bright); letter-spacing: 1px;">GLOBAL COMMAND VIEW</div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <button class="theme-toggle" style="border-color: var(--warning-glow); color: var(--warning-glow);" onclick="openReportView()">
+                        📄 View Report (<span id="reportCount">0</span>)
+                    </button>
+                    <button class="theme-toggle" id="btn-view-toggle" onclick="toggleViewMode()">
+                        🔲 Grid View
+                    </button>
+                    <button class="theme-toggle" onclick="toggleTheme()">
+                        <span id="theme-icon">🌙</span> <span id="theme-text">Dark Mode</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="workspace-split">
+                <div id="dataContainer" class="site-grid"></div>
+
+                <div id="knowledge-panel">
+                    <span class="panel-close" onclick="closePanel()">×</span>
+                    <div class="panel-header">
+                        <div id="kp-class" style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 1px; font-weight:bold;">Classification</div>
+                        <h2 id="kp-title">Site Name</h2>
+                        <div id="kp-tags" style="margin-top:10px;"></div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button class="btn-copy" onclick="copyBriefing()">📋 Copy Brief</button>
+                        <button class="btn-copy" id="btn-toggle-report" onclick="toggleCurrentSiteReport()" style="background: transparent; border-color: var(--slate-border); color: var(--text-main);">➕ Add to Report</button>
+                    </div>
+
+                    <div class="kp-block"><div class="kp-label">Description / Identifier</div><div class="kp-text" id="kp-desc">...</div></div>
+                    <div class="kp-block" style="border-left: 4px solid var(--gold-bright);"><div class="kp-label">Historical Justification</div><div class="kp-text" id="kp-just">...</div></div>
+                    <div class="kp-block"><div class="kp-label">Current Land Use / Restrictions</div><div class="kp-text" id="kp-land">...</div></div>
+                    <div class="kp-block"><div class="kp-label">Comments / Notes</div><div class="kp-text" id="kp-notes">...</div></div>
+                    <div class="kp-block" style="background: transparent; border: none; padding: 0; margin-bottom: 2rem;">
+                        <div class="kp-label">Reference Document</div>
+                        <div class="kp-text" style="color: var(--gold-bright); font-weight:bold; font-size: 0.8rem;" id="kp-doc">...</div>
+                    </div>
+
+                    <div class="kp-block" style="border: 1px dashed var(--gold-bright);">
+                        <div class="kp-label" style="color: var(--gold-bright);">User Field Notes / Links</div>
+                        <textarea id="userCustomNotes" placeholder="Paste FlankSpeed links, surveyor names, or custom notes here. This autosaves locally to your browser." style="min-height: 80px; resize: vertical; margin-bottom: 0;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div id="report-modal">
+                <div class="report-header">
+                    <h1>Consolidated Site Report</h1>
+                    <div class="no-print" style="display: flex; gap: 10px;">
+                        <button class="db-action-btn btn-add" onclick="window.print()" style="font-size:0.8rem; padding: 8px 15px;">🖨️ Print / Save PDF</button>
+                        <button class="db-action-btn btn-wipe" onclick="clearReportCart()" style="font-size:0.8rem; padding: 8px 15px;">🗑️ Clear Report</button>
+                        <button class="db-action-btn btn-add" onclick="closeReportView()" style="font-size:0.8rem; padding: 8px 15px;">✖ Close</button>
+                    </div>
+                </div>
+                <div id="report-body"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        let db = []; 
+        let currentFilteredView = []; 
+        let activeSiteObj = null; 
+        let uniqueLocations = new Set();
+        let uniqueStatuses = new Set();
+        let uniqueNuclides = new Set();
+        let reportCart = new Set();
+
+        // --- NEW VIEW MODE STATE ---
+        let viewMode = 'grid'; 
+        let sortCol = 'siteName';
+        let sortAsc = true;
+
+        function getSiteId(site) {
+            return `${site.location}:::${site.siteName}`;
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.remove(); }, 3500); 
+        }
+
+        function applyTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            document.getElementById('theme-icon').innerText = (theme === 'dark') ? '☀️' : '🌙';
+            document.getElementById('theme-text').innerText = (theme === 'dark') ? 'Light Mode' : 'Dark Mode';
+            localStorage.setItem('radNavigatorTheme', theme);
+        }
+
+        function toggleTheme() {
+            const next = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            applyTheme(next);
+        }
+
+        function toggleViewMode() {
+            viewMode = viewMode === 'grid' ? 'list' : 'grid';
+            localStorage.setItem('radViewMode', viewMode);
+            updateViewToggleButton();
+            renderView();
+        }
+
+        function updateViewToggleButton() {
+            const btn = document.getElementById('btn-view-toggle');
+            btn.innerHTML = viewMode === 'grid' ? '🔲 Grid View' : '📄 List View';
+        }
+
+        function setSort(col) {
+            if (sortCol === col) {
+                sortAsc = !sortAsc; // toggle direction
+            } else {
+                sortCol = col;
+                sortAsc = true;
+            }
+            renderView();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            applyTheme(localStorage.getItem('radNavigatorTheme') || 'light');
+            viewMode = localStorage.getItem('radViewMode') || 'grid';
+            updateViewToggleButton();
+
+            const savedCart = localStorage.getItem('radReportCart');
+            if(savedCart) {
+                try { reportCart = new Set(JSON.parse(savedCart)); } catch(e) {}
+            }
+            document.getElementById('reportCount').innerText = reportCart.size;
+
+            const savedData = localStorage.getItem('radLegacyData');
+            if (savedData) {
+                try {
+                    db = JSON.parse(savedData);
+                    if (db.length > 0) {
+                        db.forEach(site => {
+                            uniqueLocations.add(site.location);
+                            uniqueStatuses.add(site.classification);
+                            site.ropcs.forEach(nuc => uniqueNuclides.add(nuc));
+                        });
+                        updateUI();
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Error parsing saved data.", e);
+                }
+            }
+            document.getElementById('drop-zone').style.display = 'flex';
+        });
+
+        // --- REPORT LOGIC ---
+        function toggleCurrentSiteReport() {
+            if (!activeSiteObj) return;
+            const sId = getSiteId(activeSiteObj);
+            if (reportCart.has(sId)) {
+                reportCart.delete(sId);
+                showToast("Removed from Report", "warning");
+            } else {
+                reportCart.add(sId);
+                showToast("Added to Master Report", "success");
+            }
+            localStorage.setItem('radReportCart', JSON.stringify(Array.from(reportCart)));
+            updateReportUI();
+            renderView(); 
+        }
+
+        function removeFromReport(sId) {
+            reportCart.delete(sId);
+            localStorage.setItem('radReportCart', JSON.stringify(Array.from(reportCart)));
+            showToast("Site removed from report", "warning");
+            openReportView(); 
+            updateReportUI();
+            renderView();
+        }
+
+        function clearReportCart() {
+            if(confirm("Clear all sites from your master report?")) {
+                reportCart.clear();
+                localStorage.removeItem('radReportCart');
+                showToast("Report cleared.", "warning");
+                closeReportView();
+                updateReportUI();
+                renderView();
+            }
+        }
+
+        function updateReportUI() {
+            document.getElementById('reportCount').innerText = reportCart.size;
+            if (activeSiteObj) {
+                const sId = getSiteId(activeSiteObj);
+                const btn = document.getElementById('btn-toggle-report');
+                if (reportCart.has(sId)) {
+                    btn.innerText = "➖ Remove from Report";
+                    btn.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
+                    btn.style.color = "var(--danger-glow)";
+                    btn.style.borderColor = "var(--danger-glow)";
+                } else {
+                    btn.innerText = "➕ Add to Report";
+                    btn.style.backgroundColor = "transparent";
+                    btn.style.color = "var(--text-main)";
+                    btn.style.borderColor = "var(--slate-border)";
+                }
+            }
+        }
+
+        function openReportView() {
+            if (reportCart.size === 0) return showToast("Your report is empty. Select a site and click 'Add to Report'.", "warning");
+            const body = document.getElementById('report-body');
+            body.innerHTML = '';
+            const reportSites = db.filter(s => reportCart.has(getSiteId(s)));
+            reportSites.sort((a,b) => a.location.localeCompare(b.location) || a.siteName.localeCompare(b.siteName));
+
+            reportSites.forEach(s => {
+                const notesKey = `radNote_${s.location}_${s.siteName}`;
+                const notes = localStorage.getItem(notesKey) || 'No custom notes entered.';
+                body.innerHTML += `
+                    <div class="report-site-block">
+                        <button class="report-remove-btn no-print" onclick="removeFromReport('${getSiteId(s)}')">Remove</button>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase; margin-bottom: 5px;">${s.location}</div>
+                        <h2 style="margin-top: 0; color: var(--gold-bright); margin-bottom: 15px;">${s.siteName}</h2>
+                        <div style="display: flex; gap: 20px; margin-bottom: 15px; font-size: 0.9rem;">
+                            <div><strong>Classification:</strong> ${s.classification}</div>
+                            <div><strong>ROPCs:</strong> ${s.ropcs.length > 0 ? s.ropcs.join(', ') : 'None'}</div>
+                        </div>
+                        <div style="margin-bottom: 10px; font-size: 0.9rem;"><strong>Description:</strong> ${s.desc}</div>
+                        <div style="margin-bottom: 10px; font-size: 0.9rem;"><strong>Justification:</strong> ${s.justification}</div>
+                        <div style="margin-bottom: 10px; font-size: 0.9rem;"><strong>Land Use:</strong> ${s.landUse}</div>
+                        <div style="margin-bottom: 15px; font-size: 0.9rem;"><strong>Reference:</strong> ${s.report}</div>
+                        <div style="background: var(--bg-primary); padding: 15px; border-radius: 6px; border: 1px dashed var(--slate-border); font-size: 0.85rem;">
+                            <strong style="color: var(--gold-bright);">User Field Notes:</strong><br>${notes.replace(/\n/g, '<br>')}
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('report-modal').style.display = 'block';
+        }
+
+        function closeReportView() { document.getElementById('report-modal').style.display = 'none'; }
+
+        // --- JSON BACKUP LOGIC ---
+        function exportBackup() {
+            if (db.length === 0) return showToast("No data to backup.", "warning");
+            showToast("Generating backup file...", "success");
+
+            let notes = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key.startsWith('radNote_')) notes[key] = localStorage.getItem(key);
+            }
+
+            let backupData = {
+                timestamp: new Date().toISOString(),
+                version: "7.4",
+                database: db,
+                notes: notes,
+                reportCart: Array.from(reportCart) 
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "RadLegacy_Backup_" + new Date().toISOString().split('T')[0] + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        async function handleFiles(files) {
+            if (files.length === 0) return;
+            let allParsedData = [];
+            for (let i = 0; i < files.length; i++) {
+                let file = files[i];
+                if (file.name.endsWith('.json')) {
+                    await loadBackupFile(file);
+                    fileUpload.value = '';
+                    return; 
+                } else {
+                    const data = await readFileData(file);
+                    allParsedData = allParsedData.concat(data);
+                }
+            }
+            if (allParsedData.length > 0) processData(allParsedData);
+            fileUpload.value = ''; 
+        }
+
+        function loadBackupFile(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const backup = JSON.parse(e.target.result);
+                        if (backup.database) {
+                            db = backup.database;
+                            if (backup.notes) {
+                                for (const [key, value] of Object.entries(backup.notes)) localStorage.setItem(key, value);
+                            }
+                            if (backup.reportCart) {
+                                reportCart = new Set(backup.reportCart);
+                                localStorage.setItem('radReportCart', JSON.stringify(backup.reportCart));
+                            }
+                            uniqueLocations.clear(); uniqueStatuses.clear(); uniqueNuclides.clear();
+                            db.forEach(site => {
+                                uniqueLocations.add(site.location);
+                                uniqueStatuses.add(site.classification);
+                                site.ropcs.forEach(nuc => uniqueNuclides.add(nuc));
+                            });
+                            try { localStorage.setItem('radLegacyData', JSON.stringify(db)); } catch(err) {}
+                            updateUI();
+                            showToast("Backup successfully restored!", "success");
+                        }
+                    } catch (err) {
+                        showToast("Invalid backup file.", "error");
+                    }
+                    resolve();
+                };
+                reader.readAsText(file);
+            });
+        }
+
+        function wipeDatabase() {
+            if(confirm("Are you sure you want to clear all loaded HRA data? Note: This will NOT delete your custom User Field Notes.")) {
+                localStorage.removeItem('radLegacyData');
+                db = []; currentFilteredView = []; uniqueLocations.clear(); uniqueStatuses.clear(); uniqueNuclides.clear();
+                closePanel(); updateUI();
+                document.getElementById('drop-zone').style.display = 'flex';
+                document.getElementById('dashboard').style.display = 'none';
+                showToast("Database successfully wiped.", "warning");
+            }
+        }
+
+        function exportFilteredCSV() {
+            if (currentFilteredView.length === 0) return showToast("No sites currently in view to export.", "warning");
+            showToast(`Exporting ${currentFilteredView.length} sites to CSV...`, "success");
+            let csvContent = "Command,Site Name,Rad Status,ROPCs,Justification,Current Land Use,Reference\n";
+            currentFilteredView.forEach(s => {
+                let cmd = `"${(s.location || "").replace(/"/g, '""')}"`;
+                let name = `"${(s.siteName || "").replace(/"/g, '""')}"`;
+                let status = `"${s.classification}"`;
+                let ropcs = `"${s.ropcs.join('; ')}"`;
+                let just = `"${(s.justification || "").replace(/"/g, '""')}"`;
+                let use = `"${(s.landUse || "").replace(/"/g, '""')}"`;
+                let ref = `"${(s.report || "").replace(/"/g, '""')}"`;
+                csvContent += `${cmd},${name},${status},${ropcs},${just},${use},${ref}\n`;
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "RadLegacy_Filtered_Export.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function copyBriefing() {
+            if (!activeSiteObj) return;
+            const briefText = `RADLEGACY SITE BRIEFING\n=======================\nCOMMAND: ${activeSiteObj.location}\nSITE NAME: ${activeSiteObj.siteName}\nSTATUS: ${activeSiteObj.classification.toUpperCase()}\nROPCs: ${activeSiteObj.ropcs.length > 0 ? activeSiteObj.ropcs.join(', ') : 'None Identified'}\n\nDESCRIPTION:\n${activeSiteObj.desc}\n\nHISTORICAL JUSTIFICATION:\n${activeSiteObj.justification}\n\nCURRENT USE / RESTRICTIONS:\n${activeSiteObj.landUse}\n\nREFERENCE: ${activeSiteObj.report}`;
+            navigator.clipboard.writeText(briefText).then(() => showToast("Briefing copied to clipboard!", "success")).catch(err => alert("Failed to copy. Your browser may block clipboard access."));
+        }
+
+        document.getElementById('userCustomNotes').addEventListener('input', function(e) {
+            if (activeSiteObj) {
+                const storageKey = `radNote_${activeSiteObj.location}_${activeSiteObj.siteName}`;
+                localStorage.setItem(storageKey, e.target.value);
+            }
+        });
+        document.getElementById('userCustomNotes').addEventListener('blur', function(e) {
+            if (activeSiteObj) showToast("Field notes saved locally.", "success");
+        });
+
+        function closePanel() {
+            document.getElementById('knowledge-panel').style.display = "none";
+            document.querySelectorAll('.site-card, .site-table-row').forEach(c => c.classList.remove('selected'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            activeSiteObj = null;
+        }
+
+        document.getElementById('dataContainer').addEventListener('click', function(e) {
+            // Only close if clicking directly on the background, not on a card or table row
+            if (e.target === this || e.target.classList.contains('site-table')) closePanel();
+        });
+
+        // --- FILE INGESTION LOGIC ---
+        const dropZone = document.getElementById('drop-zone');
+        const fileUpload = document.getElementById('fileUpload');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
+        dropZone.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+        fileUpload.addEventListener('change', e => handleFiles(e.target.files));
+
+        function readFileData(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+                    let fileRows = [];
+                    workbook.SheetNames.forEach(sheetName => {
+                        const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {defval: ""});
+                        json.forEach(row => row.__tabName = sheetName.trim());
+                        fileRows = fileRows.concat(json);
+                    });
+                    resolve(fileRows);
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function normalizeStatus(raw) {
+            if (!raw) return "Other";
+            const l = raw.toLowerCase();
+            if (l.includes('previously') || l.includes('remediat')) return "Previously Remediated";
+            if (l.includes('non-impacted') || l.includes('non impacted') || l.includes('not impacted')) return "Non-Impacted";
+            if (l.includes('potentially')) return "Potentially Impacted";
+            if (l.includes('interest') || l.includes('aoi')) return "Area of Interest";
+            if (l.includes('impacted')) return "Impacted";
+            return "Other";
+        }
+
+        function parseNuclides(rawString) {
+            if (!rawString || rawString.trim() === '' || rawString.toLowerCase() === 'none') return [];
+            const str = rawString.toLowerCase();
+            const found = new Set();
+            if (str.includes('am-241') || str.includes('americium')) found.add('Am-241');
+            if (str.includes('c-14') || str.includes('carbon-14')) found.add('C-14');
+            if (str.includes('co-60') || str.includes('cobalt')) found.add('Co-60');
+            if (str.includes('cs-137') || str.includes('cesium')) found.add('Cs-137');
+            if (str.includes('h-3') || str.includes('tritium')) found.add('H-3');
+            if (str.includes('kr-85') || str.includes('krypton')) found.add('Kr-85');
+            if (str.includes('ni-63') || str.includes('nickel')) found.add('Ni-63');
+            if (str.includes('pb-210') || str.includes('lead')) found.add('Pb-210');
+            if (str.includes('pm-147') || str.includes('promethium')) found.add('Pm-147');
+            if (str.includes('pu-238')) found.add('Pu-238');
+            if (str.includes('pu-239') || str.includes('plutonium')) found.add('Pu-239');
+            if (str.includes('ra-226') || str.includes('radium')) found.add('Ra-226');
+            if (str.includes('sr-90') || str.includes('strontium')) found.add('Sr-90');
+            if (str.includes('th-232') || str.includes('thorium') || str.includes('thof2')) found.add('Th-232');
+            if (str.includes('u-235')) found.add('U-235');
+            if (str.match(/\bdu\b/) || str.includes('depleted uranium')) found.add('DU');
+            else if (str.includes('u-238') || str.includes('uranium')) found.add('U-238');
+            if (str.includes('g-ram') || str.includes('general radioactive material')) found.add('G-RAM');
+            
+            if (found.size === 0) return ['Unspecified'];
+            return Array.from(found).sort();
+        }
+
+        function processData(data) {
+            const validData = data.filter(row => (row['Sub-Location/Site Name'] || row['Major Location/Command']));
+            const newEntries = validData.map(row => {
+                let rawCommand = row['Major Location/Command'] || row.__tabName || 'UNKNOWN COMMAND';
+                let scrubbedCommand = rawCommand.toString().trim().toUpperCase();
+                let ropcs = parseNuclides(row['ROPCs']);
+                const classificationVal = normalizeStatus(row['Radiological Classificiation'] || row['Radiological Classification']);
+                return {
+                    location: scrubbedCommand,
+                    siteName: row['Sub-Location/Site Name'] || 'Unnamed Site',
+                    desc: row['Site Identifier/Number/Description'] || 'No description provided.',
+                    report: `${row['HRA Report Title']} (${row['HRA Report Issue Date']})`,
+                    classification: classificationVal,
+                    ropcs: ropcs,
+                    justification: row['Justificiation'] || 'No justification provided.',
+                    landUse: row['Current Land Use/Restrictions'] || 'N/A',
+                    comments: row['Comments/Notes'] || 'None'
+                };
+            });
+            db = db.concat(newEntries);
+            db.forEach(site => {
+                uniqueLocations.add(site.location);
+                uniqueStatuses.add(site.classification);
+                site.ropcs.forEach(nuc => uniqueNuclides.add(nuc));
+            });
+            try { localStorage.setItem('radLegacyData', JSON.stringify(db)); } catch (e) {}
+            updateUI();
+            showToast(`Successfully added ${newEntries.length} sites.`, "success");
+        }
+
+        function updateUI() {
+            const locSelect = document.getElementById('locationFilter');
+            locSelect.innerHTML = '<option value="ALL">All Installations</option>';
+            Array.from(uniqueLocations).sort().forEach(loc => locSelect.add(new Option(loc, loc)));
+            
+            const statusSelect = document.getElementById('statusFilter');
+            statusSelect.innerHTML = '<option value="ALL">All Statuses</option>';
+            const orderedStatuses = ["Area of Interest", "Impacted", "Non-Impacted", "Potentially Impacted", "Previously Remediated", "Other"];
+            orderedStatuses.forEach(st => {
+                if (uniqueStatuses.has(st)) statusSelect.add(new Option(st, st));
+            });
+
+            const nucSelect = document.getElementById('nuclideFilter');
+            nucSelect.innerHTML = '<option value="ALL">All Nuclides</option>';
+            Array.from(uniqueNuclides).sort().forEach(nuc => nucSelect.add(new Option(nuc, nuc)));
+
+            updateReportUI();
+            document.getElementById('recordCount').innerText = db.length;
+            document.getElementById('drop-zone').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'flex';
+            renderView();
+        }
+
+        function getStatusColor(classification) {
+            const c = classification.toLowerCase();
+            if (c === 'impacted') return 'var(--danger-glow)';
+            if (c === 'potentially impacted' || c === 'area of interest') return 'var(--warning-glow)';
+            if (c === 'previously remediated' || c === 'non-impacted') return 'var(--success-glow)';
+            return 'var(--text-muted)';
+        }
+
+        // --- DUAL RENDER LOGIC ---
+        function renderView() {
+            const fLoc = document.getElementById('locationFilter').value;
+            const fStatus = document.getElementById('statusFilter').value;
+            const fNuclide = document.getElementById('nuclideFilter').value;
+            const fText = document.getElementById('siteSearch').value.toLowerCase();
+
+            closePanel();
+
+            currentFilteredView = db.filter(s => {
+                const matchLoc = fLoc === 'ALL' || s.location === fLoc;
+                const matchStatus = fStatus === 'ALL' || s.classification === fStatus;
+                const matchNuclide = fNuclide === 'ALL' || s.ropcs.includes(fNuclide);
+                const matchText = fText === '' || 
+                                  s.siteName.toLowerCase().includes(fText) ||
+                                  s.desc.toLowerCase().includes(fText) ||
+                                  s.ropcs.join(' ').toLowerCase().includes(fText);
+                return matchLoc && matchStatus && matchNuclide && matchText;
+            });
+
+            // 1. Sort the filtered view
+            currentFilteredView.sort((a, b) => {
+                let valA = a[sortCol];
+                let valB = b[sortCol];
+                if (sortCol === 'ropcs') {
+                    valA = valA.join(', ');
+                    valB = valB.join(', ');
+                }
+                if (valA < valB) return sortAsc ? -1 : 1;
+                if (valA > valB) return sortAsc ? 1 : -1;
+                return 0;
+            });
+
+            const container = document.getElementById('dataContainer');
+            const nav = document.getElementById('siteListNav');
+            container.innerHTML = ""; nav.innerHTML = "";
+            document.getElementById('navTitle').innerText = fLoc === 'ALL' ? 'GLOBAL COMMAND VIEW' : fLoc;
+
+            // Nav Bar logic stays the same
+            currentFilteredView.forEach(site => {
+                const sId = getSiteId(site);
+                const isSelectedForReport = reportCart.has(sId);
+                const navItem = document.createElement('div');
+                navItem.className = 'nav-item';
+                navItem.setAttribute('data-siteid', sId);
+                navItem.innerHTML = `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:bold;">${isSelectedForReport ? '⭐ ' : ''}${site.siteName}</div><div style="color: var(--text-muted); font-size:0.7rem; margin-top:2px;">${site.location}</div>`;
+                navItem.onclick = () => selectSite(site);
+                nav.appendChild(navItem);
+            });
+
+            // 2. Render as Grid or List
+            if (viewMode === 'grid') {
+                container.className = 'site-grid';
+                currentFilteredView.forEach(site => {
+                    const sId = getSiteId(site);
+                    const isSelectedForReport = reportCart.has(sId);
+                    const card = document.createElement('div');
+                    card.className = `site-card ${isSelectedForReport ? 'in-report' : ''}`;
+                    card.setAttribute('data-siteid', sId);
+                    card.innerHTML = `
+                        <div class="status-dot" style="background:${getStatusColor(site.classification)}; color:${getStatusColor(site.classification)}"></div>
+                        <div class="site-title">${isSelectedForReport ? '⭐ ' : ''}${site.siteName}</div>
+                        <div style="font-size:0.7rem; color: var(--text-muted); margin-bottom:10px; font-weight:bold; text-transform:uppercase;">${site.classification}</div>
+                        <div style="font-size:0.8rem; color: var(--text-main); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; line-height:1.4;">
+                            ${site.desc}
+                        </div>
+                        <div style="margin-top:12px;">
+                            ${site.ropcs.slice(0, 3).map(i => `<span class="pill ropc">${i}</span>`).join('')}
+                            ${site.ropcs.length > 3 ? `<span class="pill" style="background:transparent; border:1px solid var(--slate-border);">+${site.ropcs.length - 3} more</span>` : ''}
+                        </div>
+                    `;
+                    card.onclick = (e) => { e.stopPropagation(); selectSite(site); };
+                    container.appendChild(card);
+                });
+            } else {
+                container.className = 'site-list-container';
+                
+                // Build Table Header
+                let getArrow = (col) => sortCol === col ? (sortAsc ? ' 🔼' : ' 🔽') : ' ↕';
+                
+                let tableHTML = `
+                    <table class="site-table">
+                        <thead>
+                            <tr>
+                                <th onclick="setSort('siteName')">Site Name${getArrow('siteName')}</th>
+                                <th onclick="setSort('location')">Command${getArrow('location')}</th>
+                                <th onclick="setSort('classification')">Status${getArrow('classification')}</th>
+                                <th onclick="setSort('ropcs')">ROPCs${getArrow('ropcs')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                // Build Table Rows
+                currentFilteredView.forEach(site => {
+                    const sId = getSiteId(site);
+                    const isSelectedForReport = reportCart.has(sId);
+                    
+                    let ropcHTML = site.ropcs.map(i => `<span class="pill ropc list-pill">${i}</span>`).join('');
+                    if (site.ropcs.length === 0) ropcHTML = '<span style="color:var(--text-muted); font-size:0.75rem;">None</span>';
+
+                    tableHTML += `
+                        <tr class="site-table-row ${isSelectedForReport ? 'in-report' : ''}" data-siteid="${sId}" onclick="triggerSiteClick('${sId}')">
+                            <td style="font-weight:bold;">
+                                <div style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${getStatusColor(site.classification)}; margin-right:8px;"></div>
+                                ${isSelectedForReport ? '⭐ ' : ''}${site.siteName}
+                            </td>
+                            <td style="font-size:0.75rem; font-weight:bold;">${site.location}</td>
+                            <td style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted);">${site.classification}</td>
+                            <td>${ropcHTML}</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += `</tbody></table>`;
+                container.innerHTML = tableHTML;
+            }
+        }
+
+        // Helper function so table rows can trigger the full object click
+        window.triggerSiteClick = function(sId) {
+            const site = db.find(s => getSiteId(s) === sId);
+            if (site) {
+                // stopPropagation isn't native in an inline string call easily, so just select
+                selectSite(site);
+            }
+        }
+
+        function selectSite(site) {
+            activeSiteObj = site;
+            updateReportUI();
+            
+            document.getElementById('knowledge-panel').style.display = "block";
+            document.getElementById('kp-title').innerText = site.siteName;
+            document.getElementById('kp-class').innerText = site.classification;
+            document.getElementById('kp-desc').innerText = site.desc;
+            document.getElementById('kp-just').innerText = site.justification;
+            document.getElementById('kp-land').innerText = site.landUse;
+            document.getElementById('kp-notes').innerText = site.comments;
+            document.getElementById('kp-doc').innerText = site.report.replace('undefined', 'No Date');
+
+            document.getElementById('kp-tags').innerHTML = site.ropcs.length > 0 
+                ? site.ropcs.map(i => `<span class="pill ropc">${i}</span>`).join('') 
+                : '<span class="pill" style="background:transparent; border:1px solid var(--slate-border); color:var(--text-muted)">None Identified</span>';
+
+            const storageKey = `radNote_${site.location}_${site.siteName}`;
+            document.getElementById('userCustomNotes').value = localStorage.getItem(storageKey) || '';
+
+            // Update highlighting dynamically for cards, rows, and nav
+            const sId = getSiteId(site);
+            document.querySelectorAll('.site-card, .site-table-row, .nav-item').forEach(el => {
+                if (el.getAttribute('data-siteid') === sId) {
+                    el.classList.add('selected');
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+        }
+
+        document.getElementById('locationFilter').addEventListener('change', renderView);
+        document.getElementById('statusFilter').addEventListener('change', renderView);
+        document.getElementById('nuclideFilter').addEventListener('change', renderView);
+        document.getElementById('siteSearch').addEventListener('input', renderView);
+    </script>
+</body>
+</html>
