@@ -163,6 +163,33 @@
 
   // --- Ship Components Database ---
  const COMPONENTS_DATABASE = {
+    // --- UTILITY MODULES (New Slot) ---
+    UTIL_NONE: {
+        name: "Empty Slot",
+        type: "utility",
+        slot: "utility",
+        description: "No utility module installed.",
+        cost: 0,
+        stats: {}
+    },
+    UTIL_REINFORCED_PLATING: {
+        name: "Reinforced Plating",
+        type: "utility",
+        slot: "utility",
+        description: "Adds thick ablative armor plates. (+40 Max Hull)",
+        cost: 1500,
+        stats: { hullBonus: 40 },
+        loreKey: "LORE_COMP_SHIELD_GENERATOR" // Reusing a generic key for now
+    },
+    UTIL_CARGO_POD: {
+        name: "Ext. Cargo Pod",
+        type: "utility",
+        slot: "utility",
+        description: "Bolted-on storage racks. (+20 Cargo Capacity)",
+        cost: 2000,
+        stats: { cargoBonus: 20 },
+        loreKey: "LORE_SHIP_LIGHT_FREIGHTER" // Reusing a generic key for now
+    },
      WEAPON_PULSE_LASER_MK1: {
          name: "Pulse Laser Mk1",
          type: "weapon",
