@@ -315,6 +315,14 @@ function animateParticles() {
 
  // --- Global State Variables - Declare globally, instantiate in initializeGame ---
 
+ let playerFactionStanding = {
+    "CONCORD": 0,
+    "KTHARR": 0,
+    "INDEPENDENT": 0,
+    "VOID_VULTURES": 0,
+    "XYCORP": 0
+};
+
  let playerName = "Captain"; // Default name
  let playerPfp = "assets/pfp_01.png"; // Default profile picture
 
@@ -647,26 +655,35 @@ function logMessage(newMessage, isImportant = false) {
 
     // -- FACTION LOGIC --
     if (faction === "KTHARR") {
-        // K'tharr are territorial. If you have low rep, they attack.
-        // Or if it's random "pirate encounter" logic, we spawn a K'tharr Patrol.
-        if (playerNotoriety < 50) { 
+        // K'tharr are territorial. Only attack if standing is Hostile (< -20)
+        if (playerFactionStanding["KTHARR"] < -20) { 
             enemyType = "KTHARR_PATROL";
             // Filter PIRATE_SHIP_CLASSES for keys starting with KTHARR
             potentialShips = Object.keys(PIRATE_SHIP_CLASSES).filter(k => k.startsWith('KTHARR'));
-            warningMsg = "ALERT: K'tharr Hegemony Patrol intercepting!";
+            warningMsg = "ALERT: K'tharr Hegemony Patrol intercepting! (Hostile Standing)";
+        } else {
+            // If neutral or friendly, they ignore you.
+            logMessage(`<span style='color:#FFFF00'>Sensors: K'tharr patrol detects you but holds fire. (Standing: ${playerFactionStanding["KTHARR"]})</span>`);
+            return; 
         }
     } else if (faction === "CONCORD") {
-        // Concord only attacks if you are a criminal (Negative Rep)
-        if (playerNotoriety < -50) {
+        // Concord only attacks if you are a criminal (Standing < -50)
+        if (playerFactionStanding["CONCORD"] < -50) {
             enemyType = "CONCORD_SECURITY";
             potentialShips = Object.keys(PIRATE_SHIP_CLASSES).filter(k => k.startsWith('CONCORD'));
             warningMsg = "ALERT: Concord Security attempting arrest!";
+        } else {
+             // Concord ignores law-abiding citizens
+             return;
         }
     }
 
     // -- FALLBACK / PIRATE LOGIC --
     // If no specific faction spawned (or you are friendly with them), spawn a standard Pirate
+    // This runs if faction was VOID_VULTURES, INDEPENDENT, or if the code above didn't trigger
     if (potentialShips.length === 0) {
+        // If we fell through to here, it means we are in Pirate space, Independent space,
+        // or we just want a random pirate encounter.
         enemyType = "PIRATE";
         // Filter for standard pirates (RAIDER, STRIKER, BRUISER)
         potentialShips = ["RAIDER", "STRIKER", "BRUISER"];
@@ -793,10 +810,25 @@ function updateEnemies() {
  }
 
 
- function applyPlayerShipStats() {
-     const shipClassData = SHIP_CLASSES[playerShip.shipClass];
-     MAX_PLAYER_HULL = shipClassData.baseHull;
-     PLAYER_CARGO_CAPACITY = shipClassData.cargoCapacity;
+function applyPlayerShipStats() {
+    const shipClassData = SHIP_CLASSES[playerShip.shipClass];
+    
+    // 1. Get Base Stats
+    let calculatedMaxHull = shipClassData.baseHull;
+    let calculatedMaxCargo = shipClassData.cargoCapacity;
+
+    // 2. Check Utility Slot
+    const utilityId = playerShip.components.utility || "UTIL_NONE";
+    const utility = COMPONENTS_DATABASE[utilityId];
+
+    if (utility && utility.stats) {
+        if (utility.stats.hullBonus) calculatedMaxHull += utility.stats.hullBonus;
+        if (utility.stats.cargoBonus) calculatedMaxCargo += utility.stats.cargoBonus;
+    }
+
+    // 3. Apply to Globals
+    MAX_PLAYER_HULL = calculatedMaxHull;
+    PLAYER_CARGO_CAPACITY = calculatedMaxCargo;
 
      const weapon = COMPONENTS_DATABASE[playerShip.components.weapon];
      const shield = COMPONENTS_DATABASE[playerShip.components.shield];
@@ -822,7 +854,15 @@ function updateEnemies() {
     document.getElementById('menuLevel').textContent = playerLevel;
     document.getElementById('menuXP').textContent = Math.floor(playerXP) + " / " + xpToNextLevel;
     document.getElementById('menuShip').textContent = SHIP_CLASSES[playerShip.shipClass].name;
-    document.getElementById('menuRep').textContent = playerNotorietyTitle;
+    
+    // --- NEW: Display Faction Standing ---
+    const concordRep = playerFactionStanding["CONCORD"] || 0;
+    const ktharrRep = playerFactionStanding["KTHARR"] || 0;
+    const standingText = `Concord: ${concordRep} | K'tharr: ${ktharrRep}`;
+    
+    const repEl = document.getElementById('menuRep');
+    repEl.textContent = standingText;
+    repEl.style.fontSize = "10px"; // Slightly smaller to fit two names
 
      // 1. Calculate Percentages for Bars
      const fuelPct = Math.max(0, (playerFuel / MAX_FUEL) * 100);
@@ -1081,6 +1121,7 @@ function changeGameState(newState) {
             <button class="combat-action-btn ${isCharging ? 'charge-active' : ''}" onclick="handleCombatAction('charge')" ${isCharging ? 'disabled' : ''}>Charge Weapon</button>
             <button class="combat-action-btn" onclick="handleCombatAction('evade')" ${!canEvade ? 'disabled' : ''}>Evade (${EVASION_FUEL_COST} Fuel)</button>
             <button class="combat-action-btn" onclick="handleCombatAction('run')" ${!canRun ? 'disabled' : ''}>Run (${RUN_FUEL_COST} Fuel)</button>
+            <button class="combat-action-btn" onclick="handleCombatAction('hail')">Hail Frequency</button>
         </div>
         <div style="text-align:center; font-size:11px; color:#666; margin-top:-15px;">${ability.desc}</div>
     `;
@@ -1189,7 +1230,8 @@ function changeGameState(newState) {
             weapon: "WEAPON_PULSE_LASER_MK1",
             shield: "SHIELD_BASIC_ARRAY_A",
             engine: "ENGINE_STD_DRIVE_MK1",
-            scanner: "SCANNER_BASIC_SUITE"
+            scanner: "SCANNER_BASIC_SUITE",
+            utility: "UTIL_NONE"
         },
         ammo: {}
     };
@@ -1207,6 +1249,15 @@ function changeGameState(newState) {
     playerHull = MAX_PLAYER_HULL;
     playerShields = MAX_SHIELDS;
     playerNotoriety = 0;
+
+    // --- NEW: Reset Faction Standing ---
+    playerFactionStanding = {
+        "CONCORD": 0,
+        "KTHARR": 0,
+        "INDEPENDENT": 0,
+        "VOID_VULTURES": 0,
+        "XYCORP": 0
+    };
 
     updateNotorietyTitle();
     playerActiveMission = null;
@@ -1258,6 +1309,7 @@ function changeGameState(newState) {
   * @param {number} seed - The seed for the generator.
   * @returns {number} A pseudo-random number between 0 and 1.
   */
+
  function seededRandom(seed) {
      // A simple algorithm to create a predictable pseudo-random number.
      let x = Math.sin(seed++) * 10000;
@@ -3350,9 +3402,9 @@ function handleCombatAction(action) {
             soundManager.playLaser();
             let actualDamage = damageDealt;
 
-            // Apply Shield Bonus (if applicable)
-            if (weaponStats.vsShieldBonus && currentCombatContext.pirateShields > 0) {
-                actualDamage += weaponStats.vsShieldBonus;
+            // Apply Shield Bonus (if applicable) - FIXED: Prevents NaN if property is undefined
+            if (currentCombatContext.pirateShields > 0) {
+                actualDamage += (weaponStats.vsShieldBonus || 0);
             }
 
             // Haptic Feedback for Hit
@@ -3382,7 +3434,6 @@ function handleCombatAction(action) {
         }
 
     } else if (action === 'ability') {
-        // --- NEW: ABILITY LOGIC ---
         if (playerAbilityCooldown > 0) {
             logMessage("Ability is on cooldown!");
             return;
@@ -3407,7 +3458,6 @@ function handleCombatAction(action) {
         else if (ability.id === 'DODGE') {
             playerIsEvading = true; 
             combatLog += `Engaging max thrusters! Evasion protocols maximized. `;
-            // We set evasion to true, which boosts dodge chance in the enemy turn block
         } 
         else if (ability.id === 'STUN') {
             enemyAttacks = false; // CRITICAL: Skips enemy turn below
@@ -3434,6 +3484,48 @@ function handleCombatAction(action) {
             playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 20);
             combatLog += `Structural integrity reinforced. (+20 Shield/Hull) `;
         }
+
+    } else if (action === 'hail') {
+        // --- NEW: DIPLOMATIC HAIL LOGIC ---
+        let faction = "PIRATE";
+        // We assume the ship ID (e.g. "KTHARR_SCOUT") tells us the faction
+        const shipId = currentCombatContext.ship.id || "PIRATE";
+        
+        if (shipId.includes("KTHARR")) faction = "KTHARR";
+        else if (shipId.includes("CONCORD")) faction = "CONCORD";
+        
+        const standing = playerFactionStanding[faction] || 0;
+        
+        combatLog += "Open channel: ";
+
+        if (faction === "PIRATE") {
+            combatLog += "\"Save your breath, spacer. Only credits talk here!\" (Diplomacy Failed)";
+        } 
+        else if (standing > 20) {
+            // SUCCESS
+            combatLog += "\"Visual ID confirmed. Apologies, Commander. We did not recognize you.\" ";
+            combatLog += "<span style='color:#00FF00'>Hostiles disengaging.</span>";
+            
+            // End Combat Peacefully
+            currentCombatContext = null;
+            changeGameState(GAME_STATES.GALACTIC_MAP);
+            handleInteraction();
+            return; // Exit immediately
+        } 
+        else if (standing > -10) {
+            // NEUTRAL
+            combatLog += "\"You have no authority here. Prepare to be boarded.\" (Standing too low)";
+        } 
+        else {
+            // HATED
+            combatLog += "\"You! The High Command has a price on your head! DIE!\" ";
+            // Buff the enemy for making them mad
+            currentCombatContext.difficultyMultiplier += 0.2;
+            combatLog += "(Enemy Enraged: Damage +20%)";
+        }
+        
+        // Hailing takes a turn, so the enemy still attacks!
+        enemyAttacks = true; 
 
     } else if (action === 'charge') {
         playerIsChargingAttack = true;
@@ -3539,8 +3631,6 @@ function handleCombatAction(action) {
         // If player is evading (either via 'Evade' action or 'Afterburner' ability)
         if (playerIsEvading) {
             pirateEffectiveHitChance -= EVASION_DODGE_BONUS;
-            // If using Afterburner (DODGE ability), we might want even higher evasion?
-            // For now, the standard bonus is quite high (0.35 reduction).
         }
         
         if (Math.random() < pirateEffectiveHitChance) {
@@ -3564,10 +3654,16 @@ function handleCombatAction(action) {
                     playerHull -= spillOver;
                     playerShields = 0;
                     enemyLog += ` Shields down! Hull takes ${spillOver} damage!`;
+                    
+                    // --- NEW: Visual Juice ---
+                    if (typeof triggerDamageEffect === "function") triggerDamageEffect();
                 }
             } else {
                 playerHull -= pD;
                 enemyLog += `Hull takes ${pD} damage!`;
+                
+                // --- NEW: Visual Juice ---
+                if (typeof triggerDamageEffect === "function") triggerDamageEffect();
             }
         } else {
             enemyLog += "Pirate attack missed!";
@@ -3631,6 +3727,21 @@ function handleCombatAction(action) {
      shipyardMsg += "Enter # to inspect a ship, or (L) to leave.";
      logMessage(shipyardMsg);
  }
+
+ function triggerDamageEffect() {
+    // 1. Shake the screen
+    const app = document.getElementById('app-container');
+    app.classList.remove('shake-effect'); // Reset
+    void app.offsetWidth; // Force reflow (magic trick to restart animation)
+    app.classList.add('shake-effect');
+
+    // 2. Red Flash
+    const flash = document.getElementById('damageFlash');
+    if(flash) {
+        flash.style.opacity = '1';
+        setTimeout(() => { flash.style.opacity = '0'; }, 100);
+    }
+}
 
  function displayShipPurchaseConfirmation(shipId) {
      const ship = SHIP_CLASSES[shipId];
@@ -3808,6 +3919,7 @@ function repairShip() {
      outfitMsg += ` 2. Shield: ${COMPONENTS_DATABASE[playerShip.components.shield].name}\n`;
      outfitMsg += ` 3. Engine: ${COMPONENTS_DATABASE[playerShip.components.engine].name}\n`;
      outfitMsg += ` 4. Scanner: ${COMPONENTS_DATABASE[playerShip.components.scanner].name}\n\n`;
+     outfitMsg += ` 5. Utility: ${COMPONENTS_DATABASE[playerShip.components.utility].name}\n`;
      outfitMsg += "Select slot # to upgrade, or (L) to Leave.";
 
      logMessage(outfitMsg);
@@ -4357,21 +4469,43 @@ function toggleCodex(show) {
 
  function grantMissionRewards() {
      if (!playerActiveMission || !playerActiveMission.isComplete) return;
+     
+     // Get location data to determine faction
      const currentLocation = getCombinedLocationData(playerY, playerX);
+     
      if (!currentLocation || currentLocation.name !== playerActiveMission.giver) {
          logMessage("You must be at " + playerActiveMission.giver + " to claim this reward.");
          return;
      }
+
      const mission = playerActiveMission;
      playerCredits += mission.rewards.credits;
      playerXP += mission.rewards.xp;
+     
+     // Update Global Notoriety
      updatePlayerNotoriety(mission.rewards.notoriety);
+     
+     // --- NEW: Update Faction Standing ---
+     let standingMsg = "";
+     if (currentLocation.faction) {
+         if (typeof playerFactionStanding[currentLocation.faction] === 'undefined') {
+             playerFactionStanding[currentLocation.faction] = 0;
+         }
+         
+         // Use the mission notoriety as a baseline for Rep gain (min 5)
+         const repGain = Math.max(5, Math.abs(mission.rewards.notoriety || 5));
+         playerFactionStanding[currentLocation.faction] += repGain;
+         standingMsg = `\n  ${currentLocation.faction} Standing: +${repGain}`;
+     }
+
      playerCompletedMissions.add(mission.id);
+     
      let rewardMsg = `Mission '${mission.title}' Complete!\nRewards:\n  +${mission.rewards.credits} Credits\n  +${mission.rewards.xp} XP`;
 
      if (mission.rewards.notoriety !== 0) {
          rewardMsg += `\n  Notoriety ${mission.rewards.notoriety > 0 ? '+' : ''}${mission.rewards.notoriety}`;
      }
+     rewardMsg += standingMsg;
 
      playerActiveMission = null;
      currentMissionContext = null;
@@ -4379,6 +4513,7 @@ function toggleCodex(show) {
      checkLevelUp();
      handleInteraction();
      renderMissionTracker(); // Mission tracker updated here
+     renderUIStats(); // Update the menu text
  }
 
  function triggerRandomEvent() {
@@ -4560,6 +4695,7 @@ function jettisonItem(key) {
          else if (key === '2') displayComponentsForSlot('shield');
          else if (key === '3') displayComponentsForSlot('engine');
          else if (key === '4') displayComponentsForSlot('scanner');
+         else if (key === '5') displayComponentsForSlot('utility');
          else if (key === 'l') {
              currentOutfitContext = null;
              handleInteraction();
