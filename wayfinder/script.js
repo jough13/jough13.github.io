@@ -354,16 +354,6 @@ function animateParticles() {
      }
  };
 
- // --- Global State Variables - Declare globally, instantiate in initializeGame ---
-
- let playerFactionStanding = {
-    "CONCORD": 0,
-    "KTHARR": 0,
-    "INDEPENDENT": 0,
-    "VOID_VULTURES": 0,
-    "XYCORP": 0
-};
-
  let playerName = "Captain"; // Default name
  let playerPfp = "assets/pfp_01.png"; // Default profile picture
 
@@ -984,6 +974,45 @@ function formatNumber(num) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+/**
+ * Centralized logic for item pricing.
+ * Ensures Outposts, Stations, and Perks all affect price identically.
+ */
+function calculateItemPrice(item, isBuy, location) {
+    if (!item) return 0;
+
+    // 1. Start with Base Price
+    let price = item.basePrice || 0;
+
+    // 2. Apply Location Multiplier
+    // Outposts (H) are generally more expensive to buy from, cheaper to sell to (bad margins)
+    let locMult = 1.0;
+    if (location.type === OUTPOST_CHAR_VAL) {
+        locMult = isBuy ? 1.2 : 0.8; // Buy high, sell low (it's an outpost!)
+    }
+    
+    // 3. Apply Buy vs Sell Logic
+    // Standard game logic: Shops sell at 100%, You sell to them at 50%
+    if (!isBuy) {
+        price = price * 0.5;
+    }
+
+    // 4. Apply Multiplier
+    price = price * locMult;
+
+    // 5. Apply Perks (Silver Tongue)
+    if (typeof playerPerks !== 'undefined' && playerPerks.has('SILVER_TONGUE')) {
+        price = isBuy ? (price * 0.9) : (price * 1.1);
+    }
+
+    // 6. Rounding & Safety
+    // Ensure you never sell for 0 credits unless the item is worthless
+    price = Math.floor(price);
+    if (price < 1) price = 1; 
+
+    return price;
+}
+
 function triggerHaptic(pattern) {
     // Only works if device supports it and user has interacted with page
     if (navigator.vibrate) {
@@ -1308,13 +1337,12 @@ function changeGameState(newState) {
     playerShields = MAX_SHIELDS;
     playerNotoriety = 0;
 
-    // --- NEW: Reset Faction Standing ---
+    // --- Reset Faction Standing ---
     playerFactionStanding = {
         "CONCORD": 0,
         "KTHARR": 0,
         "INDEPENDENT": 0,
-        "VOID_VULTURES": 0,
-        "XYCORP": 0
+        "ECLIPSE": 0 
     };
 
     updateNotorietyTitle();
@@ -1606,28 +1634,49 @@ function renderSystemMap() {
     let camX = playerX - halfViewW;
     let camY = playerY - halfViewH;
 
-    // --- 3. Clear Canvas & Set Background ---
+    // --- 3. Clear Canvas ---
     ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
     
-    // Pulse Effect Background
+    // --- 4A. DRAW FACTION BACKGROUNDS (LAYER 0) ---
+    // We draw this FIRST so it appears behind the stars.
+    
+    // Pulse Effect Background Overlay
     if (sensorPulseActive) {
         const pulseIntensity = (1 - (sensorPulseRadius / MAX_PULSE_RADIUS)) * 0.2;
-        
-        // Dynamic Pulse Color based on Theme
-        if (isLightMode) {
-            // Light Mode: Subtle Teal Pulse on White
-            ctx.fillStyle = `rgba(0, 119, 119, ${0.05 + pulseIntensity})`;
-        } else {
-            // Dark Mode: Dark Green/Cyan Pulse on Black
-            ctx.fillStyle = `rgba(0, 40, 40, ${0.4 + pulseIntensity})`;
-        }
+        ctx.fillStyle = isLightMode 
+            ? `rgba(0, 119, 119, ${0.05 + pulseIntensity})` 
+            : `rgba(0, 40, 40, ${0.4 + pulseIntensity})`;
+        ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
     } else {
-        // STANDARD BACKGROUND FILL
+        // Base Background
         ctx.fillStyle = isLightMode ? '#FFFFFF' : 'rgba(0, 0, 0, 0.4)';
+        ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
     }
-    ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
 
-    // --- 4. Draw Tiles ---
+    // Faction Territory Tinting
+    const tileSize = TILE_SIZE;
+    
+    for (let y = 0; y < VIEWPORT_HEIGHT_TILES; y++) {
+        for (let x = 0; x < VIEWPORT_WIDTH_TILES; x++) {
+            const worldX = Math.floor(camX + x);
+            const worldY = Math.floor(camY + y);
+            
+            // CONVERT TO SECTOR COORDINATES
+            const sectorX = Math.floor(worldX / SECTOR_SIZE);
+            const sectorY = Math.floor(worldY / SECTOR_SIZE);
+            
+            // CALL THE RENAMED FUNCTION
+            const factionKey = getFactionAtSector(sectorX, sectorY); 
+            const faction = FACTIONS[factionKey];
+            
+            if (faction && factionKey !== 'INDEPENDENT') {
+                ctx.fillStyle = faction.bg;
+                ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+            }
+        }
+    }
+
+    // --- 4B. DRAW TILES & OBJECTS (LAYER 1) ---
     for (let y = 0; y < VIEWPORT_HEIGHT_TILES; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH_TILES; x++) {
             const worldX = Math.floor(camX + x);
@@ -1636,26 +1685,23 @@ function renderSystemMap() {
             const tileData = chunkManager.getTile(worldX, worldY);
             const tileChar = getTileChar(tileData);
 
-            // --- XERXES SPECIAL RENDER (NEW) ---
-            if (tileData && tileData.name === "Xerxes") {
+            // --- XERXES SPECIAL RENDER ---
+            if (tileData && tileData.name && tileData.name.includes("Xerxes")) {
                 ctx.save();
-                const pulse = (Math.sin(Date.now() / 500) + 1) / 2; // Slow, deep pulse
-                
+                const pulse = (Math.sin(Date.now() / 500) + 1) / 2;
                 ctx.shadowBlur = 20 + (pulse * 10);
-                ctx.shadowColor = '#8A2BE2'; // BlueViolet Glow
-                ctx.fillStyle = '#9933FF';   // Bright Purple Core
+                ctx.shadowColor = '#8A2BE2'; 
+                ctx.fillStyle = '#9933FF';
                 
-                // Draw a larger "Planet" circle
                 ctx.font = `bold ${TILE_SIZE * 1.2}px 'Orbitron', monospace`;
                 ctx.fillText("●", x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
                 
                 ctx.restore();
-                continue; // Skip standard character rendering
+                continue; 
             }
 
-            // [Standard Color Logic]
+            // Standard Tile Colors
             switch (tileChar) {
-                // Stars: Darker Gold in Light Mode for visibility
                 case STAR_CHAR_VAL: ctx.fillStyle = isLightMode ? '#DDBB00' : '#FFFF99'; break;
                 case PLANET_CHAR_VAL: ctx.fillStyle = '#88CCFF'; break;
                 case STARBASE_CHAR_VAL: 
@@ -1666,11 +1712,7 @@ function renderSystemMap() {
                     ctx.fillStyle = '#00FFFF';
                     const sizeMod = 1.0 + (pulse * 0.1); 
                     ctx.font = `bold ${TILE_SIZE * 1.3 * sizeMod}px 'Orbitron', monospace`;
-                    ctx.fillText(
-                        tileChar,
-                        x * TILE_SIZE + TILE_SIZE / 2,
-                        y * TILE_SIZE + TILE_SIZE / 2
-                    );
+                    ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
                     ctx.restore(); 
                     break;
                 case OUTPOST_CHAR_VAL: ctx.fillStyle = '#AADD99'; break;
@@ -1683,13 +1725,12 @@ function renderSystemMap() {
                 case PIRATE_CHAR_VAL: ctx.fillStyle = '#FF5555'; break;
                 case EMPTY_SPACE_CHAR_VAL:
                 default:
-                    // DOTS: Dark Grey in Light Mode, Light Grey in Dark Mode
                     ctx.fillStyle = isLightMode ? '#444455' : '#909090';
                     break;
             }
 
-            // Draw at Screen Coordinate
-            if (tileChar !== STARBASE_CHAR_VAL) { // Starbase already drew itself
+            // Draw the Character (if it wasn't the starbase we already drew)
+            if (tileChar !== STARBASE_CHAR_VAL) {
                 ctx.fillText(
                     tileChar,
                     x * TILE_SIZE + TILE_SIZE / 2,
@@ -1699,7 +1740,7 @@ function renderSystemMap() {
         }
     }
 
-    // --- 5. Draw Objects Relative to Camera ---
+    // --- 5. Draw Dynamic Entities (LAYER 2) ---
     const playerScreenX = (playerX - camX) * TILE_SIZE + TILE_SIZE / 2;
     const playerScreenY = (playerY - camY) * TILE_SIZE + TILE_SIZE / 2;
 
@@ -1741,7 +1782,6 @@ function renderSystemMap() {
         ctx.fillStyle = '#FF5555';
         ctx.fillText(PIRATE_CHAR_VAL, playerScreenX, playerScreenY);
     } else {
-        // PLAYER ICON: Black in Light Mode, White in Dark Mode
         ctx.fillStyle = isLightMode ? '#000000' : '#FFFFFF'; 
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
     }
@@ -1755,7 +1795,6 @@ function renderSystemMap() {
     else if (dist > 150) { threat = "MODERATE"; color = "#FFFF00"; } 
     
     sectorNameStatElement.innerHTML = `${currentSectorName} <span style="color:${color}; font-size: 0.8em; margin-left: 8px;">[${threat}]</span>`;
-    // INVERTED Y FOR DISPLAY ONLY
     sectorCoordsStatElement.textContent = `(${playerX},${-playerY})`;
 
     document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
@@ -2024,6 +2063,31 @@ function movePlayer(dx, dy) {
  }
 
  function handleInteraction() {
+    // --- FIX: Use Renamed Function & Sector Coordinates ---
+    // We use currentSectorX/Y because the faction map works on the 480x480 sector grid,
+    // not the individual tile grid.
+    const currentFaction = getFactionAtSector(currentSectorX, currentSectorY);
+    
+    // Check if we just entered a new zone
+    const standing = playerFactionStanding[currentFaction] || 0;
+    
+    // Hostile Territory Warning
+    // (Note: We added a check to ensure we aren't already in combat to prevent spam)
+    if (standing < -20 && Math.random() < 0.05 && !currentCombatContext) { 
+        let shipKey = "INTERCEPTOR"; 
+        
+        if (currentFaction === 'ECLIPSE') shipKey = "INTERCEPTOR"; 
+        if (currentFaction === 'KTHARR') shipKey = "KTHARR_SCOUT";
+        if (currentFaction === 'CONCORD') shipKey = "CONCORD_PATROL";
+        
+        // Safety check: ensure faction exists in config before accessing name
+        const factionName = FACTIONS[currentFaction] ? FACTIONS[currentFaction].name : currentFaction;
+        
+        logMessage(`WARNING: Entered hostile ${factionName} space! Interceptors launching!`, "color:#FF5555");
+        startCombat({ shipClassKey: shipKey }); 
+        return;
+    }
+
      const tileObject = chunkManager.getTile(playerX, playerY);
      const tileChar = getTileChar(tileObject);
      let bM = ""; 
@@ -2032,10 +2096,10 @@ function movePlayer(dx, dy) {
      if (tileObject && tileObject.type === 'location') {
          const location = tileObject;
          
-        // ---Use .includes() to catch "Planet Xerxes" or just "Xerxes" ---
+        // --- XERXES INTERCEPT ---
          if (location.name.includes("Xerxes")) {
              openXerxesView();
-             return; // Stop standard processing
+             return; 
          }
 
          bM = `Arrived at ${location.name}.`;
@@ -2049,14 +2113,13 @@ function movePlayer(dx, dy) {
          // 2. Open the Visual Station View immediately for Hubs
          if (location.isMajorHub) {
              openStationView(); 
-             return; // Stop processing other automatic interactions
+             return; 
          }
 
          // ---CUSTOMS SCAN TRIGGER ---
-         // Only Major Hubs have customs scanners
          if (location.isMajorHub) {
              const cleared = performCustomsScan();
-             if (!cleared) return; // Stop interaction if caught
+             if (!cleared) return; 
          }
 
          if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) {
@@ -2087,7 +2150,6 @@ function movePlayer(dx, dy) {
                  key: 'y',
                  onclick: displayShipyard
              });
-             // Available at both Major Hubs AND Outposts
             availableActions.push({ 
                 label: 'Cantina (10c)', 
                 key: 'v', 
@@ -2100,7 +2162,7 @@ function movePlayer(dx, dy) {
              const repairCost = hullToRepair * HULL_REPAIR_COST_PER_POINT;
              availableActions.push({
                  label: `Repair Hull (${formatNumber(repairCost)}c)`,
-                 key: 'r', // 'r' for repair
+                 key: 'r', 
                  onclick: repairShip
              });
          }
@@ -2172,7 +2234,7 @@ function movePlayer(dx, dy) {
                  }
                  availableActions.push({
                      label: 'Commune',
-                     key: 'x', // 'x' for Xeno/Nexus
+                     key: 'x', 
                      onclick: handleNexusEncounter
                  });
                  unlockLoreEntry("MYSTERY_FIRST_NEXUS");
@@ -2209,17 +2271,15 @@ function movePlayer(dx, dy) {
                  if (tileObject.studied) {
                      bM = "This anomaly has dissipated.";
                  } else {
-                     handleAnomalyEncounter(tileObject); // This stays
+                     handleAnomalyEncounter(tileObject); 
                  }
                  unlockLoreEntry("XENO_ANOMALIES");
                  break;
              case DERELICT_CHAR_VAL:
                  // 1. Unlock Lore
                  unlockLoreEntry("XENO_DERELICTS");
-                 
                  // 2. Open the new Visual Modal
                  openDerelictView();
-                 
                  // 3. Return (Stop processing generic text logs)
                  return;
          }
@@ -3291,13 +3351,24 @@ function handleTradeQuantity(inputString) {
   * This is our new "master" function for passing time.
   * @param {number} timeAmount - The amount of stardate to pass (e.g., 0.01 for one move).
   */
- function advanceGameTime(timeAmount) {
+
+function advanceGameTime(timeAmount) {
      currentGameDate += timeAmount;
 
      // Call all "per-tick" updates here
      regenerateShields(timeAmount);
 
-     // In the future, this could also handle mission timers, etc.
+     // --- NEW: K'THARR BIO-REGEN ---
+     // If the player has the bio-nodes, slowly heal Hull
+     const utilId = playerShip.components.utility;
+     if (utilId && COMPONENTS_DATABASE[utilId] && COMPONENTS_DATABASE[utilId].stats.passiveRegen) {
+         if (playerHull < MAX_PLAYER_HULL) {
+             // Regen 1 hull point every 1.0 stardate (approx 100 moves)
+             // Adjusted by timeAmount (usually 0.01 per move)
+             const healAmount = timeAmount * 1.0; 
+             playerHull = Math.min(MAX_PLAYER_HULL, playerHull + healAmount);
+         }
+     }
  }
 
 function checkLevelUp() {
@@ -3372,15 +3443,45 @@ function selectPerk(perkId) {
     saveGame(); // Auto-save on level up
 }
 
+/**
+ * Determines the faction controlling a specific sector.
+ * Uses Sector Coordinates (e.g. 0,0 or -20, 5), NOT World/Tile Coordinates.
+ */
 function getFactionAtSector(sectorX, sectorY) {
-    // Use a unique seed for faction generation
-    const seed = WORLD_SEED + (sectorX * 31337) + (sectorY * 0xCAFEBABE);
-    const value = seededRandom(seed);
+    // 1. CONCORD CORE (Hard Lock)
+    // Keep the starter area safe and predictable
+    const dist = Math.sqrt(sectorX*sectorX + sectorY*sectorY);
+    
+    // Use the radius from config, or default to 15
+    const safeRadius = (typeof FACTIONS !== 'undefined' && FACTIONS.CONCORD) ? FACTIONS.CONCORD.homeRadius : 15;
+    
+    if (dist <= safeRadius) return 'CONCORD'; 
 
-    if (value < 0.15) return "KTHARR";
-    if (value < 0.30) return "CONCORD";
-    if (value > 0.85) return "VOID_VULTURES"; // Pirate space!
-    return "INDEPENDENT"; // Most space is unclaimed
+    // 2. PSEUDO-NOISE GENERATOR (Bubbly Borders)
+    // We use Math.sin/cos to create a consistent, wavy "noise" value between -1 and 1.
+    const noise = Math.sin(sectorX * 0.12) + Math.cos(sectorY * 0.18); 
+    
+    // 3. APPLY DISTORTION
+    // "15" is the intensity. It can shift a border by up to 15 sectors!
+    const distortion = noise * 12; 
+    
+    // Calculate "Effective" Position
+    const effectiveX = sectorX + distortion;
+
+    // 4. DETERMINE TERRITORY
+    // West Bubble (Eclipse Cartel)
+    if (effectiveX < -22) return 'ECLIPSE';
+    
+    // East Bubble (K'tharr Hegemony)
+    if (effectiveX > 22) return 'KTHARR';
+    
+    // 5. RARE "ISLANDS" (Deep Space Enclaves)
+    const islandNoise = Math.sin(sectorX * 0.4) * Math.cos(sectorY * 0.4);
+    if (islandNoise > 0.92) return 'ECLIPSE'; // Isolated Smuggler Den
+    if (islandNoise < -0.92) return 'KTHARR'; // Isolated Forward Base
+
+    // Default
+    return 'INDEPENDENT';
 }
 
  function updateSectorState() {
@@ -4117,6 +4218,12 @@ function showOutfittingOptions(slot) {
     
     for (const compId in COMPONENTS_DATABASE) {
         const comp = COMPONENTS_DATABASE[compId];
+        if (comp.reqFaction) {
+             const standing = playerFactionStanding[comp.reqFaction] || 0;
+             if (standing < comp.minRep) {
+                 continue; // Skip this item if rep is too low
+             }
+        }
         if (comp.slot === slot && playerShip.components[slot] !== compId) {
             
             const itemDiv = document.createElement('div');
@@ -6367,27 +6474,65 @@ function openTradeModal(mode) {
 }
 
 // Helper to render individual rows consistently
-function renderTradeRow(itemId, qty, isBuy, location, container) {
-    const com = COMMODITIES[itemId];
-    const itemEntry = isBuy ? location.sells.find(s => s.id === itemId) : location.buys.find(b => b.id === itemId);
-    
-    // Price calculation logic
-    const priceMod = itemEntry ? itemEntry.priceMod : 0.5; // Low price if station doesn't specifically buy it
-    const finalPrice = calculatePrice(com.basePrice, priceMod, itemId, location.name, isBuy ? 'buy' : 'sell');
-    
+function renderTradeRow(itemId, qty, isBuy, location, listEl) {
+    const item = COMMODITIES[itemId];
+    if (!item) return;
+
+    // --- FACTION CHECK ---
+    let isLocked = false;
+    let lockReason = "";
+
+    if (isBuy && item.reqFaction) {
+        const currentRep = playerFactionStanding[item.reqFaction] || 0;
+        if (currentRep < item.minRep) {
+            isLocked = true;
+            lockReason = `Requires ${item.reqFaction} Rep > ${item.minRep}`;
+        }
+    }
+
     const row = document.createElement('div');
     row.className = 'trade-item-row';
-    
-    const label = isBuy ? `Stock: ${qty}` : `Hold: ${qty}`;
-    
-    // FIX: Using CSS Variables instead of Hex Codes for Light Mode support
+    if (isLocked) row.style.opacity = "0.5";
+
+    // --- FIX: USE CENTRALIZED CALCULATION ---
+    const price = calculateItemPrice(item, isBuy, location);
+
+    // Lock UI
+    let actionButtonHtml = "";
+    if (isLocked) {
+        actionButtonHtml = `<button class="trade-btn locked" disabled>🔒 LOCKED</button>`;
+    } else {
+        const actionLabel = isBuy ? `BUY (${formatNumber(price)}c)` : `SELL (${formatNumber(price)}c)`;
+        const actionClass = isBuy ? 'buy' : 'sell';
+        const disabled = (isBuy && playerCredits < price) || (!isBuy && qty <= 0);
+        
+        // Pass the calculated price to the execute function to be safe
+        actionButtonHtml = `
+            <button class="trade-btn ${actionClass}" ${disabled ? 'disabled' : ''} 
+                onclick="executeTrade('${itemId}', ${isBuy})">
+                ${actionLabel}
+            </button>
+        `;
+    }
+
     row.innerHTML = `
-        <span style="${com.illegal ? 'color:var(--danger)' : ''}">${com.name}</span> 
-        <span style="color:#888;">${formatNumber(finalPrice)}c | ${label}</span>
+        <div class="trade-item-icon">${item.icon || '📦'}</div>
+        <div class="trade-item-details">
+            <div class="trade-item-name">
+                ${item.name} 
+                ${isLocked ? `<span style="color:#FF5555; font-size:10px;">(${lockReason})</span>` : ''}
+            </div>
+            <div class="trade-item-sub">
+                ${isBuy ? `In Stock: ${qty}` : `Owned: ${qty}`} | 
+                <span style="color:var(--gold-text)">Val: ${formatNumber(item.basePrice)}c</span>
+            </div>
+        </div>
+        <div class="trade-item-actions">
+            ${actionButtonHtml}
+        </div>
     `;
     
-    row.onclick = () => showTradeDetails(itemId, finalPrice, qty, isBuy, location);
-    container.appendChild(row);
+    listEl.appendChild(row);
 }
 
 function showTradeDetails(itemId, price, stock, isBuy, location) {
@@ -6442,41 +6587,57 @@ function showTradeDetails(itemId, price, stock, isBuy, location) {
     }
 }
 
-function executeTrade(itemId, price, qty, isBuy) {
-    if (qty <= 0) return;
+function executeTrade(itemId, isBuy) {
+    const location = chunkManager.getTile(playerX, playerY);
+    const item = COMMODITIES[itemId];
+    
+    // Calculate price using the centralized helper
+    const price = calculateItemPrice(item, isBuy, location);
 
     if (isBuy) {
-        playerCredits -= (price * qty);
-        if (!playerCargo[itemId]) playerCargo[itemId] = 0;
-        playerCargo[itemId] += qty;
-        
-        // Decrease station stock (simulation)
-        const location = chunkManager.getTile(playerX, playerY);
-        const item = location.sells.find(i => i.id === itemId);
-        if (item) item.stock -= qty;
-
-        showToast(`BOUGHT ${qty}x ${COMMODITIES[itemId].name} for ${formatNumber(price * qty)}c`, "success");
+        // --- BUY LOGIC ---
+        if (playerCredits >= price) {
+            if (currentCargoLoad + 1 <= PLAYER_CARGO_CAPACITY) {
+                playerCredits -= price;
+                playerCargo[itemId] = (playerCargo[itemId] || 0) + 1;
+                updateCurrentCargoLoad();
+                
+                if (typeof soundManager !== 'undefined') soundManager.playUIClick();
+                
+                // RESTORED: Success Toast
+                showToast(`Bought ${item.name} for ${formatNumber(price)}c`, "success");
+                
+                // Refresh UI
+                openTradeModal('buy');
+                renderUIStats();
+            } else {
+                showToast("Cargo Hold Full!", "warning");
+                if (typeof soundManager !== 'undefined') soundManager.playError();
+            }
+        } else {
+            showToast("Insufficient Credits!", "error"); // Added this one too for clarity
+            if (typeof soundManager !== 'undefined') soundManager.playError();
+        }
     } else {
-        playerCredits += (price * qty);
-        playerCargo[itemId] -= qty;
-        if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
-        
-        showToast(`SOLD ${qty}x ${COMMODITIES[itemId].name} for ${formatNumber(price * qty)}c`, "success");
-    }
+        // --- SELL LOGIC ---
+        if (playerCargo[itemId] > 0) {
+            playerCargo[itemId]--;
+            playerCredits += price;
+            updateCurrentCargoLoad();
+            
+            const profitXP = Math.max(1, Math.floor(price * XP_PER_PROFIT_UNIT));
+            playerXP += profitXP;
+            checkLevelUp();
 
-    updateCurrentCargoLoad();
-    renderUIStats();
-    
-    // Refresh the modal to show updated inventory/credits
-    openTradeModal(isBuy ? 'buy' : 'sell');
-    
-    // Re-show details for the item just traded
-    const location = chunkManager.getTile(playerX, playerY);
-    const newStock = isBuy 
-        ? (location.sells.find(i => i.id === itemId)?.stock || 0)
-        : (playerCargo[itemId] || 0);
-        
-    showTradeDetails(itemId, price, newStock, isBuy, location);
+            if (typeof soundManager !== 'undefined') soundManager.playUIClick();
+            
+            // RESTORED: Success Toast
+            showToast(`Sold ${item.name} for ${formatNumber(price)}c`, "success");
+            
+            openTradeModal('sell');
+            renderUIStats();
+        }
+    }
 }
 
 // --- MODAL INFO BAR HELPER ---
