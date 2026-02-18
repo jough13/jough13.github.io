@@ -2018,15 +2018,6 @@ function movePlayer(dx, dy) {
              showToast(`DOCKED: ${location.name.toUpperCase()}<br><span style="font-size:12px; color:#aaa;">Press <strong>E</strong> for Station Services</span>`, "success");
          }
 
-         // --- DOCKING FEEDBACK ---
-         if (location.isMajorHub) {
-             // Play a sound if available
-             if (typeof soundManager !== 'undefined') soundManager.playUIHover();
-             
-             // Show a prominent notification
-             showToast(`DOCKED: ${location.name.toUpperCase()}<br><span style="font-size:12px">Press 'E' for Station Services</span>`, "success");
-         }
-
          // ---CUSTOMS SCAN TRIGGER ---
          // Only Major Hubs have customs scanners
          if (location.isMajorHub) {
