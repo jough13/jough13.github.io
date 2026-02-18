@@ -1,4 +1,23 @@
- 
+const LOOT_TABLES = {
+    DERELICT_COMMON: [
+        { weight: 5, type: "FLAVOR", text: "The vessel is stripped bare. Nothing but dust and ghosts." },
+        { weight: 3, type: "ITEM", id: "TECH_PARTS", min: 5, max: 15, text: "You salvage a crate of components." },
+        { weight: 2, type: "XP", amount: 30, text: "Ship logs downloaded." },
+        { weight: 1, type: "CREDITS", min: 200, max: 800, text: "Found a concealed credit chit." }
+    ],
+    DERELICT_RARE: [
+        { weight: 3, type: "ITEM", id: "ANCIENT_RELICS", min: 1, max: 1, text: "In the captain's safe... a Precursor relic!" },
+        { weight: 2, type: "ITEM", id: "PROHIBITED_STIMS", min: 2, max: 5, text: "Smuggler's stash located." },
+        { weight: 1, type: "TRAP_PLASMA", damage: 15, text: "Booby trap! Plasma vent rupture." },
+        { weight: 1, type: "TRAP_PIRATE", text: "Distress beacon was a lure! Ambush!" }
+    ],
+    ANOMALY_SCIENCE: [
+        { weight: 4, type: "XP", amount: 50, text: "Sensors record valuable telemetry." },
+        { weight: 2, type: "HEAL", text: "Exotic radiation revitalizes your ship's systems." },
+        { weight: 2, type: "ITEM", id: "VOID_CRYSTALS", min: 1, max: 3, text: "Matter stabilized. Crystals recovered." }
+    ]
+};
+
  const COMMODITIES = {
     // --- CONTRABAND ITEMS ---
     BLACK_MARKET_CHIPS: {
