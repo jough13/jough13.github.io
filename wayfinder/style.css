@@ -30,37 +30,44 @@ html, body {
 
 /* --- WHISPY SIDE BORDERS (Dynamic Positioning) --- */
 .side-border {
-    position: absolute; 
-    top: 0; 
-    bottom: 0;
+    position: fixed; /* Changed from absolute to fixed so they ignore container clipping */
+    top: 50px;       /* Starts below the Header */
+    bottom: 150px;   /* Ends above the Footer */
     width: 2px;
-    z-index: 50; /* LOWERED from 100 to stay behind menus */
+    z-index: 50; 
     pointer-events: none; 
+    transition: left 0.5s ease-out, right 0.5s ease-out;
+}
+
+/* LEFT BORDER */
+.side-border.left {
+    /* Calculate the gap: (Screen Width - Game Width) / 4 */
+    /* This places the border exactly in the middle of the empty space on the left */
+    left: calc((100vw - var(--canvas-width, 100vw)) / 4);
     
     background: linear-gradient(to bottom, 
         transparent 0%, 
-        transparent 15%, 
-        var(--accent-color) 25%, 
-        var(--accent-color) 75%, 
-        transparent 85%, 
+        var(--accent-color) 20%, 
+        var(--accent-color) 80%, 
         transparent 100%
     );
-    
-    box-shadow: 0 0 10px var(--accent-color), 0 0 20px rgba(0, 224, 224, 0.4);
-    opacity: 0.6; 
+    opacity: 0.6;
+    box-shadow: -2px 0 10px var(--accent-color);
 }
 
-/* FIX: Use 50% (Center) as the anchor, then move out by half the canvas width */
-.side-border.left {
-    /* 50% of screen - Half of Canvas - Width of Border */
-    left: calc(50% - (var(--canvas-width, 800px) / 2) - 2px);
-    right: auto; /* Clear legacy properties */
-}
-
+/* RIGHT BORDER */
 .side-border.right {
-    /* 50% of screen + Half of Canvas */
-    left: calc(50% + (var(--canvas-width, 800px) / 2));
-    right: auto; /* Clear legacy properties */
+    /* Same math, but for the right side */
+    right: calc((100vw - var(--canvas-width, 100vw)) / 4);
+    
+    background: linear-gradient(to bottom, 
+        transparent 0%, 
+        var(--accent-color) 20%, 
+        var(--accent-color) 80%, 
+        transparent 100%
+    );
+    opacity: 0.6;
+    box-shadow: 2px 0 10px var(--accent-color);
 }
 
 /* Force inputs and buttons to inherit the cool fonts */
