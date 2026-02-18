@@ -417,5 +417,20 @@
              scanBonus: 0.05
          },
          loreKey: "LORE_COMP_SCANNER"
-     }
+     },
+      // --- ECLIPSE CARTEL EXCLUSIVES ---
+    SMUGGLERS_HOLD: {
+        name: "Eclipse Cargo Bay",
+        type: "utility",   // REQUIRED: Tells the game it's an installable module
+        slot: "utility",   // REQUIRED: Tells the game where it fits
+        description: "Shielded cargo bays. +10 Cargo. Immune to standard scans.",
+        cost: 4000,        // CHANGED: 'basePrice' -> 'cost'
+        stats: {
+            cargoBonus: 10, // Gives a functional bonus
+            isSmuggler: true // Flag for future logic
+        },
+        reqFaction: "ECLIPSE", // Keeps the faction lock
+        minRep: 20,
+        loreKey: "LORE_COMP_SCANNER" // Placeholder lore
+    }
  };
