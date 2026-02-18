@@ -418,19 +418,50 @@
          },
          loreKey: "LORE_COMP_SCANNER"
      },
-      // --- ECLIPSE CARTEL EXCLUSIVES ---
+// --- ECLIPSE CARTEL EXCLUSIVES ---
     SMUGGLERS_HOLD: {
         name: "Eclipse Cargo Bay",
-        type: "utility",   // REQUIRED: Tells the game it's an installable module
-        slot: "utility",   // REQUIRED: Tells the game where it fits
+        type: "utility",
+        slot: "utility",
         description: "Shielded cargo bays. +10 Cargo. Immune to standard scans.",
-        cost: 4000,        // CHANGED: 'basePrice' -> 'cost'
+        cost: 4000,
         stats: {
-            cargoBonus: 10, // Gives a functional bonus
-            isSmuggler: true // Flag for future logic
+            cargoBonus: 10,
+            isSmuggler: true
         },
-        reqFaction: "ECLIPSE", // Keeps the faction lock
+        reqFaction: "ECLIPSE",
         minRep: 20,
         loreKey: "LORE_COMP_SCANNER" // Placeholder lore
+    },
+
+    // --- CONCORD EXCLUSIVES ---
+    MILITARY_SHIELD_MOD: {
+        name: "Concord Shield Mod",
+        type: "utility",       // REQUIRED
+        slot: "utility",       // REQUIRED
+        description: "Military-grade capacitors. Increases Max Shields by 30.",
+        cost: 5000,            // Changed basePrice -> cost
+        stats: {
+            shieldBonus: 30    // Functional Stat
+        },
+        reqFaction: "CONCORD",
+        minRep: 30,
+        loreKey: "LORE_COMP_SHIELD_GENERATOR"
+    },
+
+    // --- K'THARR EXCLUSIVES ---
+    BIO_REPAIR_NODES: {
+        name: "Living Hull Tissue",
+        type: "utility",       // REQUIRED
+        slot: "utility",       // REQUIRED
+        description: "K'tharr biotech that reinforces hull structure (+40 Hull).",
+        cost: 8000,            // Changed basePrice -> cost
+        stats: {
+            hullBonus: 40,     // Functional Stat
+            passiveRegen: true // Flag for future logic (we can add a tick later)
+        },
+        reqFaction: "KTHARR",
+        minRep: 50,
+        loreKey: "LORE_COMP_ENGINE"
     }
- };
+};
