@@ -1670,3 +1670,105 @@ body.light-mode .trade-item-row.selected {
     color: #006064;           /* Deep Teal */
     border-left-color: #006064;
 }
+
+/* --- LEVEL UP MODAL STYLES --- */
+
+/* The Dark Overlay Background */
+#levelUpOverlay {
+    display: none; 
+    position: fixed; 
+    top: 0; left: 0; right: 0; bottom: 0;
+    /* Default Dark Mode Backdrop */
+    background: rgba(0, 0, 0, 0.95); 
+    z-index: 5000;
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center;
+}
+
+/* The Perk Card Container */
+.perk-card {
+    width: 200px; 
+    padding: 20px; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    transition: all 0.2s; 
+    text-align: center;
+    font-family: var(--main-font);
+    
+    /* Default Dark Mode Look */
+    background: #111; 
+    border: 1px solid #444;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.perk-card:hover {
+    border-color: #FFD700; /* Gold Border */
+    background: #222;
+    transform: translateY(-5px); /* Pop up slightly */
+}
+
+.perk-icon { font-size: 40px; margin-bottom: 10px; }
+
+.perk-title {
+    color: var(--accent-color); 
+    margin: 0 0 10px 0; 
+    font-family: var(--title-font);
+    font-size: 18px;
+}
+
+.perk-desc {
+    color: #888; 
+    font-size: 12px; 
+    line-height: 1.4;
+}
+
+.perk-category {
+    margin-top: 15px; 
+    font-size: 10px; 
+    color: #555; 
+    text-transform: uppercase; 
+    letter-spacing: 1px;
+}
+
+/* --- LIGHT MODE: LEVEL UP OVERRIDES --- */
+
+body.light-mode #levelUpOverlay {
+    background: rgba(255, 255, 255, 0.95); /* White fog backdrop */
+}
+
+body.light-mode .perk-card {
+    background: #FFFFFF;
+    border: 1px solid #CCC;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1); /* Soft shadow */
+}
+
+body.light-mode .perk-card:hover {
+    background: #F9F9F9;
+    border-color: var(--accent-color); /* Teal border on hover */
+}
+
+body.light-mode .perk-title {
+    color: var(--accent-color); /* Dark Teal */
+    font-weight: 900;
+}
+
+body.light-mode .perk-desc {
+    color: #444; /* Dark Grey text */
+    font-weight: 600;
+}
+
+body.light-mode .perk-category {
+    color: #888;
+}
+
+/* Fix the Header Text in the Modal */
+body.light-mode #levelUpOverlay h1 {
+    color: var(--accent-color) !important; /* Force Teal instead of Gold */
+    text-shadow: none !important;
+}
+
+body.light-mode #levelUpOverlay p {
+    color: #333 !important; /* Force Black text instead of White */
+    font-weight: bold;
+}
