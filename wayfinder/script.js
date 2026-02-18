@@ -1117,15 +1117,23 @@ function changeGameState(newState) {
      const weapon = COMPONENTS_DATABASE[playerShip.components.weapon];
      const shipClass = SHIP_CLASSES[playerShip.shipClass];
      const ability = shipClass.ability;
-
-     const isCharging = playerIsChargingAttack;
-     const canEvade = playerFuel >= EVASION_FUEL_COST;
-     const canRun = playerFuel >= RUN_FUEL_COST;
      
      // Ability State
      const abilityReady = playerAbilityCooldown <= 0;
-     const abilityLabel = abilityReady ? `${ability.name}` : `${ability.name} (${playerAbilityCooldown})`;
      const abilityStyle = abilityReady ? "border-color:#FFD700; color:#FFD700;" : "opacity:0.5;";
+
+     // Enemy Intent Data
+     const intent = currentCombatContext.nextMove || { icon: '?', label: 'Unknown' };
+     
+     // --- NEW: TACTICAL HEADER ---
+     // Shows what the enemy is doing next!
+     let tacticalDisplay = `
+        <div style="background:rgba(50,0,0,0.5); border:1px solid #FF5555; padding:10px; margin-bottom:15px; text-align:center; color:#FFAAAA; font-family:var(--main-font); font-size:12px;">
+            <div style="font-size:10px; color:#FF5555; letter-spacing:2px; margin-bottom:5px;">ENEMY INTENT</div>
+            <span style="font-size:20px;">${intent.icon}</span> 
+            <span style="font-weight:bold; color:#FFF;">${intent.label.toUpperCase()}</span>
+        </div>
+     `;
 
      const playerShieldPercent = (playerShields / MAX_SHIELDS) * 100;
      const playerHullPercent = (playerHull / MAX_PLAYER_HULL) * 100;
@@ -1134,44 +1142,44 @@ function changeGameState(newState) {
 
      let html = `
         <div class="combat-header">! HOSTILE ENGAGEMENT !</div>
+        
+        ${tacticalDisplay}
 
         <div class="combatants-wrapper">
             <div class="combatant-panel">
-                <h3><img src="${playerPfp}" alt="Player Avatar" class="combatant-icon">${playerName}</h3>
+                <h3><img src="${playerPfp}" alt="Player" class="combatant-icon">${playerName}</h3>
                 <div class="ship-class-label">${shipClass.name}</div>
-
-                <div class="stat-bar-label"><span>Shields</span><span>${Math.floor(playerShields)} / ${MAX_SHIELDS}</span></div>
+                <div class="stat-bar-label"><span>Shields</span><span>${Math.floor(playerShields)}</span></div>
                 <div class="stat-bar"><div class="stat-bar-fill shield-bar-fill" style="width: ${playerShieldPercent}%;"></div></div>
-
-                <div class="stat-bar-label"><span>Hull</span><span>${Math.floor(playerHull)} / ${MAX_PLAYER_HULL}</span></div>
+                <div class="stat-bar-label"><span>Hull</span><span>${Math.floor(playerHull)}</span></div>
                 <div class="stat-bar"><div class="stat-bar-fill hull-bar-fill" style="width: ${playerHullPercent}%;"></div></div>
             </div>
 
             <div class="combatant-panel">
-                <h3><img src="assets/pirate.png" alt="Pirate Vessel" class="combatant-icon">Hostile Ship</h3>
+                <h3><img src="assets/pirate.png" alt="Enemy" class="combatant-icon">Hostile</h3>
                 <div class="ship-class-label">${currentCombatContext.ship.name}</div>
-                <div class="stat-bar-label"><span>Shields</span><span>${currentCombatContext.pirateShields} / ${currentCombatContext.pirateMaxShields}</span></div>
+                
+                <div class="stat-bar-label"><span>Shields</span><span>${Math.floor(currentCombatContext.pirateShields)}</span></div>
                 <div class="stat-bar"><div class="stat-bar-fill shield-bar-fill" style="width: ${pirateShieldPercent}%;"></div></div>
                 
-                <div class="stat-bar-label"><span>Hull</span><span>${Math.max(0, currentCombatContext.pirateHull)} / ${currentCombatContext.pirateMaxHull}</span></div>
+                <div class="stat-bar-label"><span>Hull</span><span>${Math.floor(currentCombatContext.pirateHull)}</span></div>
                 <div class="stat-bar"><div class="stat-bar-fill pirate-hull-bar-fill" style="width: ${pirateHullPercent}%;"></div></div>
+                
+                <div style="display:flex; gap:5px; justify-content:center; margin-top:10px; opacity:0.7;">
+                    <div title="Engines" style="width:10px; height:10px; background:#00E0E0; border-radius:50%;"></div>
+                    <div title="Weapons" style="width:10px; height:10px; background:#FF5555; border-radius:50%;"></div>
+                    <div title="Sensors" style="width:10px; height:10px; background:#FFFF00; border-radius:50%;"></div>
+                </div>
             </div>
         </div>
 
         <div class="combat-actions">
             <button class="combat-action-btn" onclick="handleCombatAction('fight')">Attack (${weapon.name})</button>
-            
-            <button class="combat-action-btn" style="${abilityStyle}" 
-                    onclick="handleCombatAction('ability')" ${!abilityReady ? 'disabled' : ''}>
-                ★ ${abilityLabel}
-            </button>
-
-            <button class="combat-action-btn ${isCharging ? 'charge-active' : ''}" onclick="handleCombatAction('charge')" ${isCharging ? 'disabled' : ''}>Charge Weapon</button>
-            <button class="combat-action-btn" onclick="handleCombatAction('evade')" ${!canEvade ? 'disabled' : ''}>Evade (${EVASION_FUEL_COST} Fuel)</button>
-            <button class="combat-action-btn" onclick="handleCombatAction('run')" ${!canRun ? 'disabled' : ''}>Run (${RUN_FUEL_COST} Fuel)</button>
-            <button class="combat-action-btn" onclick="handleCombatAction('hail')">Hail Frequency</button>
+            <button class="combat-action-btn" style="${abilityStyle}" onclick="handleCombatAction('ability')" ${!abilityReady ? 'disabled' : ''}>★ ${ability.name}</button>
+            <button class="combat-action-btn" onclick="handleCombatAction('charge')">Charge Weapon</button>
+            <button class="combat-action-btn" onclick="handleCombatAction('evade')">Evade (${EVASION_FUEL_COST} Fuel)</button>
+            <button class="combat-action-btn" onclick="handleCombatAction('run')">Run (${RUN_FUEL_COST} Fuel)</button>
         </div>
-        <div style="text-align:center; font-size:11px; color:#666; margin-top:-15px;">${ability.desc}</div>
     `;
 
      combatView.innerHTML = html;
@@ -3401,115 +3409,228 @@ function getFactionAtSector(sectorX, sectorY) {
      }
  }
 
-// Quick tweak for startCombat inside script.js
 function startCombat(specificEnemyEntity = null) {
      let pirateShip;
-     
+     let aiType = "AGGRESSIVE"; // Default behavior
+
+     // 1. Determine Enemy Ship & AI Profile
      if (specificEnemyEntity && specificEnemyEntity.shipClassKey) {
          pirateShip = PIRATE_SHIP_CLASSES[specificEnemyEntity.shipClassKey];
+         
+         // Simple AI mapping based on ship name keywords
+         if (specificEnemyEntity.shipClassKey.includes("INTERCEPTOR") || specificEnemyEntity.shipClassKey.includes("SCOUT")) {
+             aiType = "TACTICAL";
+         } else if (specificEnemyEntity.shipClassKey.includes("GUNSHIP") || specificEnemyEntity.shipClassKey.includes("DREADNOUGHT")) {
+             aiType = "AGGRESSIVE";
+         } else {
+             aiType = "BALANCED";
+         }
      } else {
-         // Fallback to random
+         // Fallback generation
          const pirateShipOutcomes = Object.values(PIRATE_SHIP_CLASSES).filter(s => !s.id.includes('KTHARR') && !s.id.includes('CONCORD'));
          pirateShip = getWeightedRandomOutcome(pirateShipOutcomes);
      }
 
      playerAbilityCooldown = 0;
 
-     // --- Calculate Distance from Start (0,0) ---
-     // We use the Pythagorean theorem: a^2 + b^2 = c^2
+     // 2. Scaling Logic
      const distanceFromCenter = Math.sqrt((playerX * playerX) + (playerY * playerY));
-
-     // Scaling Factor: Every 50 tiles (approx 1 sector), enemies get slightly stronger
      const difficultyMultiplier = 1 + (distanceFromCenter / 200);
 
-     // --- Apply Scaling to Enemy Stats ---
      const baseHull = pirateShip.baseHull + Math.floor(Math.random() * 10) - 5;
      const baseShields = pirateShip.baseShields + Math.floor(Math.random() * 10) - 5;
 
      const scaledHull = Math.floor(baseHull * difficultyMultiplier);
      const scaledShields = Math.floor(baseShields * difficultyMultiplier);
 
+     // 3. Initialize Combat Context with Subsystems
      currentCombatContext = {
          ship: pirateShip,
+         // Core Stats
          pirateShields: Math.max(10, scaledShields),
          pirateMaxShields: Math.max(10, scaledShields),
          pirateHull: Math.max(20, scaledHull),
          pirateMaxHull: Math.max(20, scaledHull),
-         // Save the multiplier to scale rewards later
-         difficultyMultiplier: difficultyMultiplier
+         
+         // Meta Data
+         difficultyMultiplier: difficultyMultiplier,
+         aiProfile: aiType,
+         turnCount: 0,
+         
+         // NEW: Subsystem Foundation (Future-proofing)
+         subsystems: {
+             engines: { name: "Ion Drives", hp: 30, status: 'ONLINE' },
+             weapons: { name: "Beam Emitters", hp: 30, status: 'ONLINE' },
+             sensors: { name: "Targeting Array", hp: 20, status: 'ONLINE' }
+         },
+         
+         // NEW: The "Intent" System (Telegraphing moves)
+         nextMove: null 
      };
+
+     // 4. Generate First Move
+     generateEnemyIntent();
 
      const taunts = ["Your cargo or your life, spacer!", "Heh, fresh meat for the void!", "This sector is ours! Pay the toll!"];
      const pirateTaunt = taunts[Math.floor(Math.random() * taunts.length)];
 
      changeGameState(GAME_STATES.COMBAT);
 
-     // Dynamic message based on difficulty
-     let encounterMsg = `"${pirateTaunt}"\nHostile Pirate encountered!`;
+     let encounterMsg = `"${pirateTaunt}"\nHostile ${aiType} vessel encountered!`;
      if (difficultyMultiplier > 1.5) encounterMsg += "\n<span style='color:#FF5555'>Warning: Deep Space Threat Detected!</span>";
 
      logMessage(encounterMsg);
  }
 
+ // --- NEW AI LOGIC ---
+function generateEnemyIntent() {
+    const ctx = currentCombatContext;
+    const roll = Math.random();
+    
+    // Default Move
+    let intent = { type: 'ATTACK', label: 'Charging Weapons', icon: '⚔️' };
+
+    if (ctx.aiProfile === 'AGGRESSIVE') {
+        if (roll < 0.25) intent = { type: 'HEAVY_CHARGE', label: 'Powering Heavy Laser', icon: '⚠️' }; // Big hit next turn
+        else if (roll < 0.4) intent = { type: 'BUFF_DAMAGE', label: 'Overclocking Weapons', icon: '⚡' };
+        else intent = { type: 'ATTACK', label: 'Locking Weapons', icon: '⚔️' };
+    } 
+    else if (ctx.aiProfile === 'TACTICAL') {
+        if (ctx.pirateShields < ctx.pirateMaxShields * 0.3 && roll < 0.5) {
+            intent = { type: 'RECHARGE', label: 'Rerouting to Shields', icon: '🛡️' };
+        } else if (roll < 0.3) {
+            intent = { type: 'EVADE', label: 'Evasive Pattern', icon: '💨' };
+        } else {
+            intent = { type: 'ATTACK', label: 'Targeting Systems', icon: '⚔️' };
+        }
+    }
+    else { // BALANCED
+        if (roll < 0.2) intent = { type: 'DEFEND', label: 'Bracing for Impact', icon: '🧱' };
+        else intent = { type: 'ATTACK', label: 'Engaging Hostile', icon: '⚔️' };
+    }
+
+    ctx.nextMove = intent;
+}
+
+function handleVictory() {
+    const mult = currentCombatContext.difficultyMultiplier || 1.0;
+    const baseCredits = 100 + Math.floor(Math.random() * 200);
+    const baseXP = 50 + Math.floor(Math.random() * 50);
+
+    const credits = Math.floor(baseCredits * mult);
+    const xp = Math.floor(baseXP * mult);
+
+    playerCredits += credits;
+    playerXP += xp;
+    updatePlayerNotoriety(5);
+
+    // FX
+    spawnParticles(playerX, playerY, 'explosion');
+    soundManager.playExplosion();
+    setTimeout(() => spawnParticles(playerX, playerY, 'gain'), 400);
+
+    let msg = `Victory! Enemy destroyed.\nSalvaged: ${credits}c\nExperience: +${xp}`;
+    
+    // --- NEW: LOOT DROP CHANCE ---
+    if (Math.random() < 0.4) {
+        // 40% chance for cargo loot
+        const lootTable = [
+            {id: 'TECH_PARTS', qty: [2, 5]},
+            {id: 'FUEL_CELLS', qty: [3, 8]},
+            {id: 'RARE_METALS', qty: [1, 2]}
+        ];
+        const loot = lootTable[Math.floor(Math.random() * lootTable.length)];
+        const qty = loot.qty[0] + Math.floor(Math.random() * (loot.qty[1] - loot.qty[0]));
+        
+        if (currentCargoLoad + qty <= PLAYER_CARGO_CAPACITY) {
+            playerCargo[loot.id] = (playerCargo[loot.id] || 0) + qty;
+            updateCurrentCargoLoad();
+            msg += `\nLooted: ${qty}x ${COMMODITIES[loot.id].name}`;
+        } else {
+            msg += `\nLoot found (${COMMODITIES[loot.id].name}) but cargo full!`;
+        }
+    }
+
+    logMessage(msg);
+    showToast("TARGET DESTROYED", "success");
+    checkLevelUp();
+    
+    currentCombatContext = null;
+    changeGameState(GAME_STATES.GALACTIC_MAP);
+    handleInteraction();
+}
+
 function handleCombatAction(action) {
     if (!currentCombatContext) return;
 
     let combatLog = "";
-    let enemyAttacks = true; // Default: Enemy gets to attack this turn
+    
+    // Default: Enemy gets to act unless Stunned or Dead
+    let enemyCanAct = true; 
 
-    // --- Player's Turn ---
+    // --- 1. PLAYER TURN ---
     if (action === 'fight') {
         const weaponStats = COMPONENTS_DATABASE[playerShip.components.weapon].stats;
         let damageDealt = weaponStats.damage;
 
-        // --- PERK HOOK ---
+        // Perk: Weapon Overclock
         if (playerPerks.has('WEAPON_OVERCLOCK')) {
-            damageDealt = Math.floor(damageDealt * 1.15); // +15%
+            damageDealt = Math.floor(damageDealt * 1.15); 
         }
 
-        let currentHitChance = weaponStats.hitChance;
-
-        // Check for Charge Buff
+        // Charge Logic
         if (playerIsChargingAttack) {
             damageDealt = Math.floor(damageDealt * CHARGE_DAMAGE_MULTIPLIER);
-            currentHitChance += CHARGE_HIT_BONUS;
+            playerIsChargingAttack = false; 
             combatLog += "Charged shot unleashed! ";
-            playerIsChargingAttack = false; // Consume charge
         }
 
-        if (Math.random() < currentHitChance) {
+        // TACTICAL CHECK: Adjust based on Enemy Intent
+        // If enemy is blocking/defending, reduce damage
+        if (currentCombatContext.nextMove && currentCombatContext.nextMove.type === 'DEFEND') {
+            damageDealt = Math.floor(damageDealt * 0.5);
+            combatLog += "(Enemy Braced) ";
+        }
+
+        // Hit Chance Calculation
+        let hitChance = weaponStats.hitChance;
+        
+        // TACTICAL CHECK: If enemy is evading, harder to hit
+        if (currentCombatContext.nextMove && currentCombatContext.nextMove.type === 'EVADE') {
+            hitChance -= 0.25;
+            combatLog += "(Enemy Evading) ";
+        }
+
+        if (Math.random() < hitChance) {
             soundManager.playLaser();
-            let actualDamage = damageDealt;
-
-            // Apply Shield Bonus (if applicable)
+            
+            // Shield vs Hull Logic
             if (currentCombatContext.pirateShields > 0) {
-                actualDamage += (weaponStats.vsShieldBonus || 0);
-            }
-
-            // Haptic Feedback for Hit
-            if (typeof triggerHaptic === "function") triggerHaptic(50);
-
-            // Apply Damage to Enemy
-            if (currentCombatContext.pirateShields > 0) {
-                const shieldDamage = actualDamage;
-                currentCombatContext.pirateShields -= shieldDamage;
-                combatLog += `Hit pirate shields for ${Math.floor(shieldDamage)}!`;
+                // Apply optional shield bonus if defined in weapon
+                let shieldDmg = damageDealt + (weaponStats.vsShieldBonus || 0);
+                
+                currentCombatContext.pirateShields -= shieldDmg;
+                combatLog += `Shields hit for ${Math.floor(shieldDmg)}!`;
 
                 if (currentCombatContext.pirateShields < 0) {
-                    const spilloverDamage = Math.abs(currentCombatContext.pirateShields);
-                    const hullDamage = Math.floor(spilloverDamage * HULL_DAMAGE_BONUS_MULTIPLIER);
-
-                    currentCombatContext.pirateHull -= hullDamage;
+                    const spillover = Math.abs(currentCombatContext.pirateShields);
+                    // Hull takes extra damage from spillover (optional mechanic from your code)
+                    const hullDmg = Math.floor(spillover * HULL_DAMAGE_BONUS_MULTIPLIER);
+                    
+                    currentCombatContext.pirateHull -= hullDmg;
                     currentCombatContext.pirateShields = 0;
-                    combatLog += ` Shields down! Hull takes ${hullDamage} spillover damage!`;
+                    combatLog += ` Shields down! Hull takes ${hullDmg} damage!`;
                 }
             } else {
-                actualDamage = Math.floor(actualDamage * HULL_DAMAGE_BONUS_MULTIPLIER);
-                currentCombatContext.pirateHull -= actualDamage;
-                combatLog += `Hit pirate hull for ${actualDamage}!`;
+                // Direct Hull Hit
+                let hullDmg = Math.floor(damageDealt * HULL_DAMAGE_BONUS_MULTIPLIER);
+                currentCombatContext.pirateHull -= hullDmg;
+                combatLog += `Direct hull hit for ${hullDmg}!`;
             }
+
+            if (typeof triggerHaptic === "function") triggerHaptic(50);
         } else {
-            combatLog += "Your attack missed!";
+            combatLog += "Attack missed!";
         }
 
     } else if (action === 'ability') {
@@ -3519,265 +3640,195 @@ function handleCombatAction(action) {
         }
 
         const ability = SHIP_CLASSES[playerShip.shipClass].ability;
-        playerAbilityCooldown = ability.cooldown; // Set cooldown
+        playerAbilityCooldown = ability.cooldown; 
         
-        combatLog += `<span style='color:#FFD700'>ABILITY ACTIVATED: ${ability.name}!</span> `;
-        
-        // Haptic Feedback for Ability
-        if (typeof triggerHaptic === "function") triggerHaptic([50, 50, 50]);
-
         soundManager.playAbilityActivate();
-
-        // Execute Specific Ability Effect
+        combatLog += `<span style='color:#FFD700'>ABILITY: ${ability.name}!</span> `;
+        
+        // --- Ability Effects ---
         if (ability.id === 'REPAIR') {
             const heal = 25;
             playerHull = Math.min(MAX_PLAYER_HULL, playerHull + heal);
-            combatLog += `Emergency patches applied. Hull +${heal}. `;
+            combatLog += `Hull Repaired +${heal}. `;
         } 
         else if (ability.id === 'DODGE') {
             playerIsEvading = true; 
-            combatLog += `Engaging max thrusters! Evasion protocols maximized. `;
+            combatLog += `Evasion protocols maximized. `;
         } 
         else if (ability.id === 'STUN') {
-            enemyAttacks = false; // CRITICAL: Skips enemy turn below
-            combatLog += `Target sensors blinded! They cannot fire this turn. `;
+            // TACTICAL OVERRIDE: Change enemy intent to Stunned
+            currentCombatContext.nextMove = { type: 'STUNNED', label: 'Systems Offline', icon: '💤' };
+            combatLog += `Target sensors blinded! Intent disrupted. `;
         } 
         else if (ability.id === 'CRIT') {
-            const dmg = 40; // Flat burst damage
+            const dmg = 40; 
             currentCombatContext.pirateHull -= dmg;
-            combatLog += `Systems overloaded! Dealt ${dmg} direct damage! `;
+            combatLog += `Systems overloaded! Dealt ${dmg} damage! `;
         } 
         else if (ability.id === 'SHIELD_BOOST') {
             playerShields = MAX_SHIELDS;
-            combatLog += `Shield generator overcharged. Shields at 100%. `;
+            combatLog += `Shields restored to 100%. `;
         } 
         else if (ability.id === 'ESCAPE') {
-            logMessage("Diplomatic protocols engaged. Hostilities ceased.");
+            logMessage("Emergency Jump Initiated.");
             currentCombatContext = null;
             changeGameState(GAME_STATES.GALACTIC_MAP);
             handleInteraction();
-            return; // Exit function immediately
+            return; 
         } 
         else if (ability.id === 'DEFENSE_UP') {
             playerShields = Math.min(MAX_SHIELDS, playerShields + 20);
             playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 20);
-            combatLog += `Structural integrity reinforced. (+20 Shield/Hull) `;
+            combatLog += `Integrity reinforced (+20). `;
         }
 
     } else if (action === 'hail') {
-        // --- DIPLOMATIC HAIL LOGIC ---
+        // --- DIPLOMACY LOGIC ---
+        // (Kept from your snippet)
         let faction = "PIRATE";
-        // We assume the ship ID (e.g. "KTHARR_SCOUT") tells us the faction
         const shipId = currentCombatContext.ship.id || "PIRATE";
-        
         if (shipId.includes("KTHARR")) faction = "KTHARR";
         else if (shipId.includes("CONCORD")) faction = "CONCORD";
         
-        const standing = playerFactionStanding[faction] || 0;
+        const standing = playerFactionStanding ? (playerFactionStanding[faction] || 0) : 0;
         
         combatLog += "Open channel: ";
-
         if (faction === "PIRATE") {
-            combatLog += "\"Save your breath, spacer. Only credits talk here!\" (Diplomacy Failed)";
-        } 
-        else if (standing > 20) {
-            // SUCCESS
-            combatLog += "\"Visual ID confirmed. Apologies, Commander. We did not recognize you.\" ";
-            combatLog += "<span style='color:#00FF00'>Hostiles disengaging.</span>";
-            
-            // End Combat Peacefully
+            combatLog += "\"Only credits talk here!\" (Diplomacy Failed)";
+        } else if (standing > 20) {
+            combatLog += "\"Visual ID confirmed. Apologies, Commander.\" <span style='color:#00FF00'>Hostiles disengaging.</span>";
             currentCombatContext = null;
             changeGameState(GAME_STATES.GALACTIC_MAP);
             handleInteraction();
-            return; // Exit immediately
-        } 
-        else if (standing > -10) {
-            // NEUTRAL
-            combatLog += "\"You have no authority here. Prepare to be boarded.\" (Standing too low)";
-        } 
-        else {
-            // HATED
-            combatLog += "\"You! The High Command has a price on your head! DIE!\" ";
-            // Buff the enemy for making them mad
+            return; 
+        } else {
+            combatLog += "\"You have no authority here.\" ";
+            // Enrage mechanic
             currentCombatContext.difficultyMultiplier += 0.2;
-            combatLog += "(Enemy Enraged: Damage +20%)";
+            combatLog += "(Enemy Enraged)";
         }
-        
-        // Hailing takes a turn, so the enemy still attacks!
-        enemyAttacks = true; 
+        // Enemy still attacks after a hail!
+        enemyCanAct = true;
 
     } else if (action === 'charge') {
         playerIsChargingAttack = true;
         combatLog += "Charging weapon systems...";
-        enemyAttacks = true; 
     } else if (action === 'evade') {
-        playerFuel -= EVASION_FUEL_COST;
-        playerFuel = parseFloat(playerFuel.toFixed(1));
-        playerIsEvading = true;
-        combatLog += `Attempting evasive maneuvers...`;
+        if (playerFuel >= EVASION_FUEL_COST) {
+            playerFuel -= EVASION_FUEL_COST;
+            playerIsEvading = true;
+            combatLog += `Evasive maneuvers engaged!`;
+        } else {
+            combatLog += `Not enough fuel to evade!`;
+        }
     } else if (action === 'run') {
         playerFuel -= RUN_FUEL_COST;
-        playerFuel = parseFloat(playerFuel.toFixed(1));
-        
         if (Math.random() < RUN_ESCAPE_CHANCE) {
             logMessage(`Escaped! Used ${RUN_FUEL_COST} fuel.`);
             updatePlayerNotoriety(-1);
-
-            // FIX: Remove the enemy entity from the map so we don't immediately collide again
-            removeEnemyAt(playerX, playerY);
-
-            currentCombatContext = null;
-            playerIsChargingAttack = false;
-            playerIsEvading = false;
+            if(typeof removeEnemyAt === 'function') removeEnemyAt(playerX, playerY); // Clean up map
             
+            currentCombatContext = null;
             changeGameState(GAME_STATES.GALACTIC_MAP);
             handleInteraction();
             return;
         } else {
-            combatLog += `Failed to escape!`;
+            combatLog += `Escape failed!`;
         }
     }
 
     logMessage(combatLog);
 
-    // --- Check for Player Victory ---
+    // --- 2. VICTORY CHECK ---
     if (currentCombatContext.pirateHull <= 0) {
-        const mult = currentCombatContext.difficultyMultiplier || 1.0;
-
-        const baseCredits = PIRATE_CREDIT_REWARD_MIN + Math.floor(Math.random() * (PIRATE_CREDIT_REWARD_MAX - PIRATE_CREDIT_REWARD_MIN + 1));
-        const baseXP = XP_PER_PIRATE_MIN + Math.floor(Math.random() * (XP_PER_PIRATE_MAX - XP_PER_PIRATE_MIN + 1));
-
-        const cW = Math.floor(baseCredits * mult);
-        const xG = Math.floor(baseXP * mult);
-
-        playerCredits += cW;
-        playerXP += xG;
-        updatePlayerNotoriety(5);
-
-        spawnParticles(playerX, playerY, 'explosion');
-
-        soundManager.playExplosion();
-
-        setTimeout(() => spawnParticles(playerX, playerY, 'explosion'), 200);
-        setTimeout(() => spawnParticles(playerX, playerY, 'gain'), 400);
-
-        let victoryLog = `Pirate defeated! Salvaged ${cW}c. Gained ${xG} XP.`;
-        if (mult > 1.2) victoryLog += " (Deep Space Bonus!)";
-        
-        let toastHTML = `<strong>TARGET DESTROYED</strong><br>`;
-        toastHTML += `<span style="color:#FFD700">+${cW} Credits</span><br>`;
-        toastHTML += `<span style="font-size:12px">+${xG} XP</span>`;
-        if (typeof showToast === "function") showToast(toastHTML, "success");
-
-        if (playerActiveMission && playerActiveMission.type === "BOUNTY" && !playerActiveMission.isComplete) {
-            let objectiveUpdated = false;
-            playerActiveMission.objectives.forEach((obj, index) => {
-                if (obj.type === "ELIMINATE") {
-                    const progressKey = `eliminate_${index}`;
-                    const objectiveProgress = playerActiveMission.progress[progressKey];
-
-                    if (objectiveProgress && !objectiveProgress.complete) {
-                        objectiveProgress.current++;
-                        victoryLog += `\n<span style='color:#00FF00;'>Bounty Updated: (${objectiveProgress.current}/${objectiveProgress.required})</span>`;
-                        if (typeof showToast === "function") showToast(`BOUNTY UPDATE: ${objectiveProgress.current}/${objectiveProgress.required}`, "info");
-                        
-                        if (objectiveProgress.current >= objectiveProgress.required) {
-                            objectiveProgress.complete = true;
-                        }
-                        objectiveUpdated = true;
-                    }
-                }
-            });
-
-            if (objectiveUpdated) {
-                checkMissionObjectiveCompletion();
-            }
-        }
-
-        currentCombatContext = null;
-        playerIsChargingAttack = false;
-        playerIsEvading = false;
-        // Reset Cooldown on Victory
-        playerAbilityCooldown = 0; 
-        
-        logMessage(victoryLog);
-        checkLevelUp();
-        changeGameState(GAME_STATES.GALACTIC_MAP);
-        handleInteraction();
-        renderMissionTracker();
+        handleVictory(); // Use the helper function we defined earlier
         return;
     }
 
-    // --- Enemy's Turn ---
-    let enemyLog = "";
-    if (enemyAttacks) {
-        let pirateEffectiveHitChance = PIRATE_HIT_CHANCE;
-        
-        // If player is evading (either via 'Evade' action or 'Afterburner' ability)
-        if (playerIsEvading) {
-            pirateEffectiveHitChance -= EVASION_DODGE_BONUS;
+    // --- 3. ENEMY TURN (Tactical Resolution) ---
+    // We resolve the Intent that was set at the END of the LAST turn
+    if (enemyCanAct) {
+        let enemyLog = "";
+        const intent = currentCombatContext.nextMove || { type: 'ATTACK' };
+        const mult = currentCombatContext.difficultyMultiplier || 1.0;
+
+        // A. Resolve Special States
+        if (intent.type === 'STUNNED') {
+            enemyLog += "Target is stunned and cannot fire.";
         }
-        
-        if (Math.random() < pirateEffectiveHitChance) {
-            const mult = currentCombatContext.difficultyMultiplier || 1.0;
-            const baseDamage = PIRATE_ATTACK_DAMAGE_MIN + Math.floor(Math.random() * (PIRATE_ATTACK_DAMAGE_MAX - PIRATE_ATTACK_DAMAGE_MIN + 1));
-            let pD = Math.floor(baseDamage * mult); 
-            
-            // Heavy Haptic for taking damage
-            if (typeof triggerHaptic === "function") triggerHaptic([100, 50, 100]);
+        else if (intent.type === 'HEAVY_CHARGE') {
+            enemyLog += "⚠️ WARNING: Enemy weapon charging massive blast!";
+            currentCombatContext.charged = true; 
+        }
+        else if (intent.type === 'RECHARGE') {
+            const heal = Math.floor(10 * mult);
+            currentCombatContext.pirateShields = Math.min(currentCombatContext.pirateMaxShields, currentCombatContext.pirateShields + heal);
+            enemyLog += `Enemy regenerated ${heal} shields.`;
+        }
+        else {
+            // B. Resolve Attacks (ATTACK, BUFF_DAMAGE, or resolved CHARGE)
+            let baseDmg = PIRATE_ATTACK_DAMAGE_MIN + Math.random() * (PIRATE_ATTACK_DAMAGE_MAX - PIRATE_ATTACK_DAMAGE_MIN);
+            let pD = Math.floor(baseDmg * mult);
 
-            soundManager.playExplosion();
+            // Apply Modifiers
+            if (currentCombatContext.charged) {
+                pD *= 2.5; // Massive damage
+                currentCombatContext.charged = false;
+                enemyLog += "⚠️ HEAVY BEAM FIRED! ";
+            } else if (intent.type === 'BUFF_DAMAGE') {
+                pD *= 1.5;
+                enemyLog += "Overclocked hit! ";
+            }
 
-            if (playerIsEvading) enemyLog += "Pirate hits through your maneuvers! ";
-            else enemyLog += "Pirate attack hits! ";
+            // Player Evasion Calculation
+            let hitChance = PIRATE_HIT_CHANCE;
+            if (playerIsEvading) hitChance -= EVASION_DODGE_BONUS;
 
-            if (playerShields > 0) {
-                playerShields -= pD;
-                enemyLog += `Shields take ${pD} damage.`;
-                if (playerShields < 0) {
-                    const spillOver = Math.abs(playerShields);
-                    playerHull -= spillOver;
-                    playerShields = 0;
-                    enemyLog += ` Shields down! Hull takes ${spillOver} damage!`;
-                    
-                    // Visual Juice
+            if (Math.random() < hitChance) {
+                soundManager.playExplosion();
+                if (typeof triggerHaptic === "function") triggerHaptic([100, 50]);
+
+                if (playerIsEvading) enemyLog += "Hit through evasion! ";
+                else enemyLog += "Hit! ";
+
+                if (playerShields > 0) {
+                    playerShields -= pD;
+                    enemyLog += `Shields took ${Math.floor(pD)}.`;
+                    if (playerShields < 0) {
+                        const spill = Math.abs(playerShields);
+                        playerHull -= spill;
+                        playerShields = 0;
+                        enemyLog += ` Breach! Hull took ${Math.floor(spill)}.`;
+                        if (typeof triggerDamageEffect === "function") triggerDamageEffect();
+                    }
+                } else {
+                    playerHull -= pD;
+                    enemyLog += `Hull took ${Math.floor(pD)} damage!`;
                     if (typeof triggerDamageEffect === "function") triggerDamageEffect();
                 }
             } else {
-                playerHull -= pD;
-                enemyLog += `Hull takes ${pD} damage!`;
-                
-                // Visual Juice
-                if (typeof triggerDamageEffect === "function") triggerDamageEffect();
+                enemyLog += "Enemy fire missed!";
             }
-        } else {
-            enemyLog += "Pirate attack missed!";
         }
-        logMessage(enemyLog);
+        if (enemyLog) logMessage(enemyLog);
     }
-    
-    // Reset Evasion for next turn
+
+    // Reset Player Evasion
     playerIsEvading = false;
 
-    // --- Cooldown Tick ---
-    if (playerAbilityCooldown > 0) {
-        playerAbilityCooldown--;
-    }
-
-    // --- Check for Player Defeat ---
+    // --- 4. DEFEAT CHECK ---
     if (playerHull <= 0) {
-        playerHull = 0;
-        renderUIStats(); 
-        
-        logMessage(`Critical Hit! Hull failing... signal lost.`, "color: #FF4444");
-        triggerGameOver("Destruction by Hostile Fire");
-        return; 
+        triggerGameOver("Destruction in Combat");
+        return;
     }
 
+    // --- 5. PREPARE NEXT TURN (Generate NEW Intent) ---
+    // This is crucial for the UI to update the "Enemy Intent" bar for the NEXT turn
+    generateEnemyIntent(); 
+
+    // Re-render UI
     render();
 }
-
- // --- Shipyard Functions ---
 
 // --- Shipyard Functions (With Comma Support) ---
 
