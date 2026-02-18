@@ -139,3 +139,41 @@ const PLAYER_PORTRAITS = [
    "assets/pfp_05.png",
    "assets/pfp_06.png"
 ];
+
+// --- FACTION CONFIGURATION ---
+const FACTIONS = {
+    CONCORD: {
+        name: "Concord Dominion",
+        color: "#00AAFF", // Blue
+        bg: "rgba(0, 100, 255, 0.08)", 
+        homeRadius: 15, 
+        description: "The central government. Values law, order, and taxes."
+    },
+    ECLIPSE: { // RENAMED from VOID_VULTURES
+        name: "Eclipse Cartel",
+        color: "#FF4444", // Red
+        bg: "rgba(255, 50, 50, 0.08)",
+        zone: "WEST", // X < -20
+        description: "A shadow organization controlling the black markets of the outer rim."
+    },
+    KTHARR: {
+        name: "K'tharr Ascendancy",
+        color: "#00FF44", // Green
+        bg: "rgba(0, 255, 50, 0.08)",
+        zone: "EAST", // X > 20
+        description: "A xenophobic warrior caste. Highly territorial."
+    },
+    INDEPENDENT: {
+        name: "Free Systems",
+        color: "#FFFF00", // Yellow
+        bg: "transparent",
+        description: "Lawless fringe worlds."
+    }
+};
+
+// Start the player with neutral standing
+let playerFactionStanding = {
+    CONCORD: 0,
+    ECLIPSE: -10, // They don't trust outsiders
+    KTHARR: -50   // They hate humans
+};
