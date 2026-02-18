@@ -364,6 +364,34 @@
                 </div>
             </div>
 
+            <div id="xerxesOverlay" style="display:none;">
+                <div class="trade-window" style="max-width: 800px; border-color: #9933FF; box-shadow: 0 0 30px rgba(138, 43, 226, 0.3);">
+                    <div class="trade-header" style="background: rgba(30, 0, 60, 0.95); border-bottom: 1px solid #9933FF;">
+                        <span style="color: #DDA0DD; font-weight:900; letter-spacing:3px;">XERXES PRIME</span>
+                        <button onclick="closeXerxesView()" class="icon-btn" style="color:#DDA0DD; border-color:#9933FF;">X</button>
+                    </div>
+                    
+                    <div id="xerxesInfoBar" class="modal-info-bar" style="border-bottom: 1px solid #551188;"></div>
+                    
+                    <div class="station-body" style="background: #050010;">
+                        <div class="station-visual-panel" style="background: #080015; border-right: 1px solid #551188;">
+                            <canvas id="xerxesCanvas" width="200" height="200" style="border-color:#551188; box-shadow: 0 0 20px rgba(138, 43, 226, 0.2);"></canvas>
+                            <div class="station-badge" style="background:#220044; color:#DDA0DD; border-color:#9933FF;">ROGUE WORLD</div>
+                            <p class="station-desc" style="color:#AA88CC; font-style:italic;">
+                                "A sunless world drifting in the void. Ancient geothermal spires pierce the eternal night, lighting a city of thieves and exiles."
+                            </p>
+                        </div>
+                        
+                        <div id="xerxesMenu" class="station-menu-grid">
+                            </div>
+                    </div>
+                    
+                    <div id="xerxesLog" style="padding: 10px; background: rgba(20, 0, 40, 0.6); color: #DDA0DD; font-family: monospace; font-size: 12px; height: 80px; overflow-y: auto; border-top: 1px solid #551188;">
+                        > Atmosphere toxic. Docking clamps engaged at The Spire.
+                    </div>
+                </div>
+            </div>
+
             <div id="genericModalOverlay" style="display:none;">
                 <div class="trade-window">
                     <div class="trade-header">
