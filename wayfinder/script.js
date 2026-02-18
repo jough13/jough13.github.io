@@ -1339,6 +1339,7 @@ function changeGameState(newState) {
     mystery_wayfinder_finalLocation = null;
     mystery_first_nexus_location = null;
     mystery_nexus_activated = false;
+    xerxesPuzzleLevel = 0;
 
     updateCurrentCargoLoad();
 
@@ -5592,6 +5593,7 @@ function performSave(storageKey) {
         // Mystery & Deltas
         mystery_wayfinder_progress, mystery_wayfinder_finalLocation,
         mystery_first_nexus_location, mystery_nexus_activated,
+        xerxesPuzzleLevel,
         worldStateDeltas: worldStateDeltas || {},
         currentSectorName, // Save sector name for the UI card
 
@@ -5722,6 +5724,8 @@ function loadGameData(jsonString) {
         mystery_wayfinder_finalLocation = savedState.mystery_wayfinder_finalLocation;
         mystery_first_nexus_location = savedState.mystery_first_nexus_location;
         mystery_nexus_activated = savedState.mystery_nexus_activated;
+        // Load the level, default to 0 if missing (backward compatibility)
+        xerxesPuzzleLevel = savedState.xerxesPuzzleLevel || 0;
         
         playerShip = savedState.playerShip;
         playerCargo = savedState.playerCargo;
@@ -6624,7 +6628,7 @@ function handleDerelictAction(action) {
 
 // --- XERXES ROGUE PLANET LOGIC ---
 
-let xerxesPuzzleSolved = false; // Simple state tracker
+let xerxesPuzzleLevel = 0; // 0 = Locked, 1 = Gate Open, 2 = Level 2, etc.
 
 function openXerxesView() {
     updateModalInfoBar('xerxesInfoBar');
@@ -6682,9 +6686,9 @@ function renderXerxesMenu() {
     const menu = document.getElementById('xerxesMenu');
     menu.innerHTML = '';
     
-    // 1. Standard Options
+    // 1. Standard Services (Always Available)
     const stdBtns = [
-        { icon: '⛽', label: 'Black Market Fuel', sub: 'Refuel (Premium Price)', action: 'xerxesRefuel' },
+        { icon: '⛽', label: 'Black Market Fuel', sub: 'Refuel (Premium)', action: 'xerxesRefuel' },
         { icon: '🔧', label: 'Shadow Dock', sub: 'Repair Hull', action: 'xerxesRepair' }
     ];
     
@@ -6697,25 +6701,37 @@ function renderXerxesMenu() {
         `;
     });
 
-    // 2. The Puzzle / Spire Button
-    if (!xerxesPuzzleSolved) {
+    // 2. The Shop (Unlocked if Level >= 1)
+    if (xerxesPuzzleLevel >= 1) {
+        menu.innerHTML += `
+            <button class="station-action-btn xerxes-btn" style="border-left: 3px solid #00FF00;" onclick="openTradeModal('buy')">
+                <div class="btn-icon">💎</div>
+                <div class="btn-label">The Inner Sanctum<br><span class="btn-sub" style="color:var(--success)">Market Access Granted</span></div>
+            </button>
+        `;
+    }
+
+    // 3. The Puzzle / Progression Button
+    if (xerxesPuzzleLevel < SPIRE_PUZZLES.length) {
+        // We have a puzzle available for this level
+        const pz = SPIRE_PUZZLES[xerxesPuzzleLevel];
         menu.innerHTML += `
             <button class="station-action-btn xerxes-btn xerxes-spire-btn" onclick="enterTheSpire()">
                 <div class="btn-icon">👁️</div>
-                <div class="btn-label">The Obsidian Spire<br><span class="btn-sub" style="color:#DDA0DD">Gate Sealed. Approach?</span></div>
+                <div class="btn-label">${pz.title}<br><span class="btn-sub" style="color:#DDA0DD">Decrypt Layer ${xerxesPuzzleLevel + 1}</span></div>
             </button>
         `;
     } else {
-        // UNLOCKED STATE: Special Shop / Reward
+        // All puzzles solved (Future Proofing)
         menu.innerHTML += `
-            <button class="station-action-btn xerxes-btn xerxes-spire-btn" onclick="openTradeModal('buy')">
-                <div class="btn-icon">💎</div>
-                <div class="btn-label">The Inner Sanctum<br><span class="btn-sub" style="color:#00FF00">Access Granted (Trade)</span></div>
+            <button class="station-action-btn xerxes-btn" disabled style="opacity:0.5; border-color:#555;">
+                <div class="btn-icon">🔒</div>
+                <div class="btn-label">Spire Core Sealed<br><span class="btn-sub">Awaiting Future Update</span></div>
             </button>
         `;
     }
     
-    // 3. Leave
+    // 4. Leave
     menu.innerHTML += `
         <button class="station-action-btn xerxes-btn" onclick="closeXerxesView()">
             <div class="btn-icon">🚀</div>
@@ -6749,51 +6765,97 @@ function xerxesLog(msg, type) {
 }
 
 // --- THE PUZZLE LOGIC ---
+// --- DYNAMIC PUZZLE LOGIC ---
+
 function enterTheSpire() {
+    // Safety check: Are we out of puzzles?
+    if (xerxesPuzzleLevel >= SPIRE_PUZZLES.length) return;
+
+    // Load data for the CURRENT level
+    const puzzle = SPIRE_PUZZLES[xerxesPuzzleLevel];
+
     const log = document.getElementById('xerxesLog');
-    log.innerHTML = ""; // Clear log for the event
+    log.innerHTML = ""; // Clear log
     
-    xerxesLog("You stand before the massive Obsidian Gate.", "neutral");
-    xerxesLog("A synthetic voice booms: 'I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. What am I?'", "neutral");
+    xerxesLog(`Approaching ${puzzle.title}...`, "neutral");
+    xerxesLog(`Encryption Layer ${xerxesPuzzleLevel + 1} Active.`, "neutral");
     
-    // Change Menu to Riddle Options
+    // Display the specific riddle for this level
+    xerxesLog(`"${puzzle.riddle}"`, "neutral");
+    
+    // Render Input Field
     const menu = document.getElementById('xerxesMenu');
     menu.innerHTML = `
-        <button class="station-action-btn xerxes-btn" onclick="solveSpire(false)">
-            <div class="btn-label">A Dream</div>
-        </button>
-        <button class="station-action-btn xerxes-btn" onclick="solveSpire(true)">
-            <div class="btn-label">A Map</div>
-        </button>
-        <button class="station-action-btn xerxes-btn" onclick="solveSpire(false)">
-            <div class="btn-label">The Void</div>
-        </button>
-        <button class="station-action-btn xerxes-btn" onclick="renderXerxesMenu()">
-            <div class="btn-label">Back away...</div>
-        </button>
+        <div style="grid-column: span 2; padding: 10px;">
+            <p style="text-align:center; color:#AA88CC; font-size:12px; margin-bottom:5px;">AWAITING PASSPHRASE</p>
+            <input type="text" id="spireInput" placeholder="TYPE ANSWER..." autocomplete="off" 
+                   style="width: 100%; padding: 15px; background: #000; border: 1px solid #9933FF; color: #DDA0DD; font-family: var(--title-font); font-size: 16px; text-align: center; margin-bottom: 10px;">
+            
+            <button class="station-action-btn xerxes-btn" onclick="checkSpireAnswer()">
+                <div class="btn-label" style="width:100%; text-align:center;">TRANSMIT</div>
+            </button>
+            
+            <button class="station-action-btn xerxes-btn" onclick="renderXerxesMenu()" style="margin-top:10px;">
+                <div class="btn-label" style="width:100%; text-align:center;">ABORT</div>
+            </button>
+        </div>
     `;
+    
+    setTimeout(() => document.getElementById('spireInput').focus(), 100);
 }
 
-function solveSpire(isCorrect) {
-    if (isCorrect) {
-        soundManager.playAbilityActivate(); // Success sound
-        xerxesLog("The gate grinds open. Access Granted.", "good");
-        xerxesPuzzleSolved = true;
+function checkSpireAnswer() {
+    if (xerxesPuzzleLevel >= SPIRE_PUZZLES.length) return;
+
+    const puzzle = SPIRE_PUZZLES[xerxesPuzzleLevel];
+    const inputEl = document.getElementById('spireInput');
+    const answer = inputEl.value.trim().toLowerCase();
+    
+    // Check against the array of valid answers for THIS level
+    if (puzzle.answers.includes(answer)) {
+        // --- SUCCESS ---
+        soundManager.playAbilityActivate();
         
-        // Give a one-time XP reward
-        playerXP += 200;
-        showToast("PUZZLE SOLVED: +200 XP", "success");
-        checkLevelUp();
-        
-        renderXerxesMenu(); // Redraw menu with the unlocked shop
-    } else {
-        soundManager.playError();
-        xerxesLog("The gate remains shut. Automated turrets track your movement.", "bad");
-        playerHull -= 10; // Penalty!
+        // 1. Give Rewards
+        if (puzzle.rewardXP > 0) {
+            playerXP += puzzle.rewardXP;
+            showToast(`DECRYPTED: +${puzzle.rewardXP} XP`, "success");
+        }
+        if (puzzle.rewardCredit > 0) {
+            playerCredits += puzzle.rewardCredit;
+            showToast(`DATA CACHE: +${puzzle.rewardCredit}c`, "success");
+        }
+
+        // 2. Advance Level
+        xerxesPuzzleLevel++;
         updateModalInfoBar('xerxesInfoBar');
+        checkLevelUp();
+
+        // 3. Feedback
+        xerxesLog(puzzle.flavorSuccess, "good");
+        
+        // 4. Return to Menu (which will now update to show the NEXT level or Shop)
+        setTimeout(renderXerxesMenu, 1500); 
+        
+    } else {
+        // --- FAILURE ---
+        soundManager.playError();
+        xerxesLog(`'${inputEl.value}' rejected. Security countermeasures active.`, "bad");
+        
+        if (typeof triggerHaptic === "function") triggerHaptic(200);
+        
+        playerHull -= 15;
+        updateModalInfoBar('xerxesInfoBar');
+        
+        // Flash Error
+        inputEl.value = "";
+        inputEl.placeholder = "INVALID...";
+        inputEl.style.borderColor = "#FF5555"; 
+        setTimeout(() => inputEl.style.borderColor = "#9933FF", 500);
+
         if (playerHull <= 0) {
             closeXerxesView();
-            triggerGameOver("Vaporized by Xerxes Defense Grid");
+            triggerGameOver(`Vaporized by ${puzzle.title} Protocols`);
         }
     }
 }
