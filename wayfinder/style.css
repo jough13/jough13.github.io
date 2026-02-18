@@ -1615,26 +1615,24 @@ body.light-mode .control-button:hover {
     transition: opacity 0.1s;
 }
 
-/* --- LIGHT MODE: CODEX FIXES --- */
-/* Fix the dark header bar */
+/* --- LIGHT MODE: CODEX--- */
+
 body.light-mode .codex-header {
     background: #E0E0E0;      /* Light Grey instead of Dark Teal */
     color: #111;              /* Dark Text */
     border-bottom: 1px solid #BBB;
 }
 
-/* Fix the borders between the columns */
 body.light-mode #codexCategories, 
 body.light-mode #codexEntries {
     border-right-color: #CCC; /* Soft Grey instead of Black */
 }
 
-/* Fix the List Items */
 body.light-mode .codex-list-item {
     color: #444; /* Dark Grey text */
 }
 
-/* Fix Hover (No more black bar) */
+/* Hover (No more black bar) */
 body.light-mode .codex-list-item:hover {
     background: #F0F0F0;      /* Very Light Grey */
     color: var(--accent-color);
@@ -1647,7 +1645,7 @@ body.light-mode .codex-list-item.active {
     border-left-color: #006064;
 }
 
-/* --- LIGHT MODE: TRADE LIST --- */
+/* --- LIGHT MODE: TRADE LIST FIXES --- */
 
 body.light-mode .trade-item-row {
     border-bottom-color: #EEE;
