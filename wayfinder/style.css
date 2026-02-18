@@ -12,6 +12,9 @@ html {
     --success: #00FF00;
     --danger: #FF4444;
     --warning: #FFAA00;
+    --item-name-color: #FFFFFF;
+    --item-desc-color: #888888;
+    --gold-text: #FFD700;
     
     /* --- FONTS --- */
     --main-font: 'Roboto Mono', monospace;  /* Data, Logs, Body */
@@ -498,11 +501,12 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 
 /* --- TRADE MODAL STYLES (Responsive Fix) --- */
-#tradeOverlay, #cargoOverlay {
+/* ADDED: #stationOverlay and #genericModalOverlay to this list */
+#tradeOverlay, #cargoOverlay, #stationOverlay, #genericModalOverlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.85); /* This creates the dimming effect */
-    z-index: 2000; /* This puts it on top of the map */
+    background: rgba(0, 0, 0, 0.85); 
+    z-index: 2000; 
     display: flex; justify-content: center; align-items: center;
     padding: 10px;
 }
@@ -1161,14 +1165,32 @@ body.light-mode {
     /* The Palette - Absolute White */
     --bg-color: #FFFFFF;      
     --panel-bg: #FFFFFF;      
-    --border-color: #E0E0E0;  /* Very subtle grey borders */
-    --accent-color: #007777;  /* Dark Teal (Matches Scrollbar) */
-    --text-color: #111111;    /* Pure Black Text */
+    --border-color: #E0E0E0;  
+    --accent-color: #007777;  
+    --text-color: #111111;    
     
-    /* Status Colors - Darker for visibility on white */
+    /* Status Colors */
     --success: #008800;
     --danger: #CC0000;
     --warning: #D35400;
+    
+    --item-name-color: #111111; /* Pure Black */
+    --item-desc-color: #555555; /* Dark Grey */
+    --gold-text: #B35900;       /* Dark Amber (High Contrast) */
+}
+
+body.light-mode #app-container,
+body.light-mode #main-view,
+body.light-mode footer,
+body.light-mode .panel {
+    background-color: #FFFFFF !important;
+    color: #111111 !important;
+    border-color: #E0E0E0 !important;
+}
+
+body.light-mode #game-log {
+    background-color: #F9F9F9; /* Very slight off-white for the log */
+    color: #111111;
 }
 
 /* 1. Main Backgrounds */
@@ -1772,3 +1794,201 @@ body.light-mode #levelUpOverlay p {
     color: #333 !important; /* Force Black text instead of White */
     font-weight: bold;
 }
+
+/* --- STATION HUB STYLES --- */
+.station-body {
+    display: flex;
+    flex-direction: row;
+    height: 500px;
+    background: #050510;
+}
+
+.station-visual-panel {
+    width: 35%;
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #080815;
+}
+
+#stationCanvas {
+    width: 180px; height: 180px;
+    border: 2px solid #333;
+    border-radius: 8px;
+    background: #000;
+    margin-bottom: 15px;
+    image-rendering: pixelated;
+    box-shadow: 0 0 15px rgba(0, 224, 224, 0.1);
+}
+
+.station-badge {
+    background: #222;
+    color: var(--accent-color);
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-family: var(--title-font);
+    font-size: 12px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.station-desc {
+    font-size: 12px;
+    color: #888;
+    text-align: center;
+    line-height: 1.5;
+    font-style: italic;
+}
+
+.station-menu-grid {
+    width: 65%;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    align-content: start;
+    overflow-y: auto;
+}
+
+.station-action-btn {
+    background: #111;
+    border: 1px solid #333;
+    border-left: 3px solid #333;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.station-action-btn:hover {
+    background: #1a1a25;
+    border-color: var(--accent-color);
+    transform: translateX(5px);
+}
+
+.btn-icon { font-size: 24px; }
+.btn-label { 
+    font-family: var(--title-font); 
+    color: #FFF; 
+    font-size: 14px; 
+}
+.btn-sub { 
+    display: block; 
+    font-family: var(--main-font); 
+    font-size: 10px; 
+    color: #666; 
+    margin-top: 3px; 
+}
+
+/* Specific Button Colors */
+.repair-btn:hover { border-color: var(--success); }
+.leave-btn:hover { border-color: var(--danger); }
+
+/* --- LIGHT MODE STATION OVERRIDES --- */
+body.light-mode .station-body,
+body.light-mode .station-badge {
+    background: #F0F0F0;       /* Light Grey Background */
+    color: var(--accent-color); /* Dark Teal Text */
+    border-color: #CCC;        /* Subtle Border */
+    font-weight: 900;          /* Make text bold and crisp */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+body.light-mode .station-visual-panel { background: #FFFFFF; }
+body.light-mode #stationCanvas { border-color: #CCC; background: #F0F0F0; }
+body.light-mode .station-action-btn { background: #FFF; border: 1px solid #CCC; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+body.light-mode .station-action-btn:hover { background: #F9F9F9; border-color: var(--accent-color); }
+body.light-mode .btn-label { color: #222; }
+
+/* Responsive Station View */
+@media (max-width: 768px) {
+    .station-body { flex-direction: column; height: auto; }
+    .station-visual-panel { width: 100%; border-right: none; border-bottom: 1px solid #333; flex-direction: row; gap: 15px; padding: 10px; }
+    #stationCanvas { width: 80px; height: 80px; margin-bottom: 0; }
+    .station-menu-grid { width: 100%; grid-template-columns: 1fr; }
+}
+
+/* --- LIGHT MODE TEXT VISIBILITY FIXES --- */
+
+/* Make the station flavor text dark and readable */
+body.light-mode .station-desc {
+    color: #333; 
+    font-weight: 600;
+}
+
+/* Make the button subtitles (e.g. "Buy Commodities") darker */
+body.light-mode .btn-sub {
+    color: #555;
+    font-weight: 500;
+}
+
+/* Ensure paragraph text in the generic sub-modals is also dark */
+body.light-mode #genericDetailContent p {
+    color: #333 !important;
+}
+
+.trade-list-header {
+    font-family: var(--title-font);
+    font-size: 10px;
+    color: var(--accent-color);
+    padding: 8px 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--border-color);
+    letter-spacing: 1px;
+}
+
+body.light-mode .trade-list-header {
+    background: #F0F0F0;
+    color: #555;
+    font-weight: 900;
+}
+
+/* --- MODAL INFO BAR (PLAYER STATS OVERLAY) --- */
+.modal-info-bar {
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid var(--border-color);
+    padding: 8px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--main-font);
+    font-size: 11px;
+    color: #888;
+    flex-shrink: 0; /* Prevent it from being crushed */
+}
+
+/* Light Mode Override */
+body.light-mode .modal-info-bar {
+    background: #F0F0F0;
+    color: #555;
+    border-bottom-color: #CCC;
+}
+
+/* Individual Data Points */
+.info-bar-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.info-bar-label {
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 9px;
+    opacity: 0.8;
+}
+
+.info-bar-value {
+    color: var(--accent-color);
+    font-weight: bold;
+    font-size: 12px;
+}
+
+/* Specific Colors for specific stats */
+.info-credits { color: var(--gold-text); }
+.info-ship { color: #FFF; }
+body.light-mode .info-ship { color: #222; }
