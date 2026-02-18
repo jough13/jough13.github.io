@@ -1,5 +1,12 @@
  // --- Game Configuration ---
 
+ // STARTING VALUES (Based on Light Freighter + Standard Drive Mk1)
+let MAX_FUEL = 220; 
+let PLAYER_CARGO_CAPACITY = 50; 
+let MAX_SHIELDS = 50; 
+let MAX_PLAYER_HULL = 100; 
+let playerHull = 100;
+
  const GAME_VERSION = "v0.9.5";
  const MAP_WIDTH = 40;  
  const MAP_HEIGHT = 22; 
