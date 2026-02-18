@@ -268,6 +268,74 @@
                 </div>
             </div>
 
+            <div id="stationOverlay" style="display:none;">
+                <div class="trade-window" style="max-width: 800px;">
+                    <div class="trade-header">
+                        <span id="stationNameTitle">STATION NAME</span>
+                        <button onclick="closeStationView()" class="icon-btn">X</button>
+                    </div>
+                    <div class="station-body">
+                        <div class="station-visual-panel">
+                            <canvas id="stationCanvas" width="200" height="200"></canvas>
+                            <div id="stationFactionBadge" class="station-badge">FACTION</div>
+                            <p id="stationDescText" class="station-desc">Station description goes here...</p>
+                        </div>
+                        
+                        <div class="station-menu-grid">
+                            <button class="station-action-btn" onclick="openTradeModal('buy')">
+                                <div class="btn-icon">🛒</div>
+                                <div class="btn-label">Marketplace<br><span class="btn-sub">Buy Commodities</span></div>
+                            </button>
+                            <button class="station-action-btn" onclick="openTradeModal('sell')">
+                                <div class="btn-icon">💰</div>
+                                <div class="btn-label">Sell Cargo<br><span class="btn-sub">Offload Goods</span></div>
+                            </button>
+                            <button class="station-action-btn" onclick="displayMissionBoard()">
+                                <div class="btn-icon">📜</div>
+                                <div class="btn-label">Mission Board<br><span class="btn-sub">Contracts & Bounties</span></div>
+                            </button>
+                            <button class="station-action-btn" onclick="displayShipyard()">
+                                <div class="btn-icon">🚀</div>
+                                <div class="btn-label">Shipyard<br><span class="btn-sub">Buy New Hulls</span></div>
+                            </button>
+                            <button class="station-action-btn" onclick="displayOutfittingScreen()">
+                                <div class="btn-icon">⚙️</div>
+                                <div class="btn-label">Outfitting<br><span class="btn-sub">Upgrades & Parts</span></div>
+                            </button>
+                            <button class="station-action-btn" onclick="visitCantina()">
+                                <div class="btn-icon">🍸</div>
+                                <div class="btn-label">Cantina<br><span class="btn-sub">Rumors & Rest (10c)</span></div>
+                            </button>
+                            <button class="station-action-btn repair-btn" onclick="repairShip()">
+                                <div class="btn-icon">🔧</div>
+                                <div class="btn-label">Repair Hull<br><span class="btn-sub" id="repairCostLabel">Check Cost</span></div>
+                            </button>
+                            <button class="station-action-btn leave-btn" onclick="closeStationView()">
+                                <div class="btn-icon">👋</div>
+                                <div class="btn-label">Undock<br><span class="btn-sub">Return to Space</span></div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="genericModalOverlay" style="display:none;">
+                <div class="trade-window">
+                    <div class="trade-header">
+                        <span id="genericModalTitle">TITLE</span>
+                        <button onclick="closeGenericModal()" class="icon-btn">X</button>
+                    </div>
+                    <div class="trade-body">
+                        <div id="genericModalList" class="trade-list-container"></div>
+                        <div id="genericModalDetails" class="trade-panel-right">
+                            <h3 id="genericDetailTitle">SELECT ITEM</h3>
+                            <div id="genericDetailContent"></div>
+                            <div class="trade-btn-group" id="genericModalActions"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="cargoOverlay" style="display:none;">
                 <div class="trade-window"> 
                     <div class="trade-header">
