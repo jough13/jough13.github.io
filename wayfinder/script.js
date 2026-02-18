@@ -20,6 +20,10 @@ let activeParticles = [];
 let lastParticleTime = 0;
 let particleAnimationId = null;
 
+function getThemeColor(varName, fallback) {
+    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback;
+}
+
 /**
  * Spawns subtle particles at a specific world coordinate.
  * @param {number} x - World Grid X
@@ -282,6 +286,26 @@ function animateParticles() {
          }
          this.loadedChunks[chunkKey] = chunkData;
          return chunkData;
+     },
+
+     pruneChunks(playerChunkX, playerChunkY) {
+         const MAX_CHUNK_DIST = 5; // Keep 5 chunks in every direction (approx 80 tiles)
+         const keys = Object.keys(this.loadedChunks);
+         let prunedCount = 0;
+
+         keys.forEach(key => {
+             const [cx, cy] = key.split(',').map(Number);
+             const dist = Math.sqrt(Math.pow(cx - playerChunkX, 2) + Math.pow(cy - playerChunkY, 2));
+
+             if (dist > MAX_CHUNK_DIST) {
+                 delete this.loadedChunks[key];
+                 prunedCount++;
+             }
+         });
+
+         if (prunedCount > 0) {
+             // Optional: console.log(`Memory Manager: Unloaded ${prunedCount} distant chunks.`);
+         }
      },
 
      getTile(worldX, worldY) {
@@ -1619,7 +1643,11 @@ function renderSystemMap() {
     if (sensorPulseActive) {
         ctx.beginPath();
         ctx.arc(playerScreenX, playerScreenY - (TILE_SIZE/4), sensorPulseRadius, 0, 2 * Math.PI);
-        ctx.strokeStyle = `rgba(0, 224, 224, ${1 - (sensorPulseRadius / MAX_PULSE_RADIUS)})`; 
+        
+        const accentColor = getThemeColor('--accent-color', '#00E0E0');
+        
+        ctx.strokeStyle = accentColor;
+
         ctx.lineWidth = 2;
         ctx.stroke();
     }
@@ -1842,6 +1870,12 @@ function movePlayer(dx, dy) {
 
      // 7. Update Sector Information
      updateSectorState();
+
+     // Only run this occasionally to save CPU (e.g., every time we cross a chunk boundary)
+    // or just run it every move (it's fast enough for simple 2D arrays).
+    const pCX = Math.floor(playerX / chunkManager.CHUNK_SIZE);
+    const pCY = Math.floor(playerY / chunkManager.CHUNK_SIZE);
+    chunkManager.pruneChunks(pCX, pCY);
      
      // 8. Move Enemies
      // This makes every pirate on the map take a step towards you
