@@ -18,16 +18,25 @@ html {
     --title-font: 'Orbitron', sans-serif;   /* Headers, Titles, HUD labels */
 }
 
+/* --- GLOBAL LAYOUT FIXES (No Scrollbars) --- */
+html, body {
+    margin: 0; padding: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: hidden; /* FORCE KILL MAIN SCROLLBAR */
+    background-color: var(--bg-color);
+    font-family: var(--main-font);
+}
+
 /* --- WHISPY SIDE BORDERS (Dynamic Positioning) --- */
 .side-border {
     position: absolute; 
     top: 0; 
     bottom: 0;
     width: 2px;
-    z-index: 100; 
+    z-index: 50; /* LOWERED from 100 to stay behind menus */
     pointer-events: none; 
     
-    /* The Magic Gradient: Transparent -> Solid Middle -> Transparent */
     background: linear-gradient(to bottom, 
         transparent 0%, 
         transparent 15%, 
@@ -37,29 +46,21 @@ html {
         transparent 100%
     );
     
-    /* Add a glow */
     box-shadow: 0 0 10px var(--accent-color), 0 0 20px rgba(0, 224, 224, 0.4);
     opacity: 0.6; 
 }
 
-/* Placed exactly halfway between the screen edge and the canvas edge */
+/* FIX: Use 50% (Center) as the anchor, then move out by half the canvas width */
 .side-border.left {
-    left: calc(25% - (var(--canvas-width, 800px) / 4)); 
+    /* 50% of screen - Half of Canvas - Width of Border */
+    left: calc(50% - (var(--canvas-width, 800px) / 2) - 2px);
+    right: auto; /* Clear legacy properties */
 }
 
 .side-border.right {
-    right: calc(25% - (var(--canvas-width, 800px) / 4));
-}
-
-* { box-sizing: border-box; }
-
-body {
-    margin: 0; padding: 0;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    font-family: var(--main-font);
-    height: 100vh;
-    overflow: hidden; /* No scrolling on the body */
+    /* 50% of screen + Half of Canvas */
+    left: calc(50% + (var(--canvas-width, 800px) / 2));
+    right: auto; /* Clear legacy properties */
 }
 
 /* Force inputs and buttons to inherit the cool fonts */
@@ -78,8 +79,9 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 #app-container {
     display: grid;
     grid-template-rows: 50px 1fr 150px; /* Header | Map | Footer */
-    height: 100vh;
-    width: 100vw;
+    height: 100%; /* Changed from 100vh */
+    width: 100%;  /* Changed from 100vw to prevent horizontal overflow */
+    overflow: hidden;
 }
 
 /* --- TOP HUD --- */
@@ -146,18 +148,50 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .icon-btn:hover { background: var(--accent-color); color: #000; }
 
 /* --- SYSTEM MENU --- */
+/* Style the Stats block to obey themes */
+#sys-stats-display {
+    font-size: 13px;
+    /* !important overrides the inline HTML style 'color: #88a' */
+    color: var(--text-color) !important; 
+    margin-bottom: 10px; 
+    padding-bottom: 10px; 
+    /* !important overrides the inline HTML style 'border-bottom: ...' */
+    border-bottom: 1px solid var(--border-color) !important; 
+}
+
+/* Style the Version Info at the bottom */
+#versionInfo {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+    font-size: 10px;
+    text-align: center;
+    /* Use accent color so it pops, or text-color for subtle */
+    color: var(--accent-color); 
+    opacity: 0.8;
+    font-family: var(--title-font);
+}
 #systemMenu {
     position: absolute; top: 50px; right: 0;
     background: var(--panel-bg); border: 1px solid var(--border-color);
     padding: 10px; display: flex; flex-direction: column; gap: 5px;
-    z-index: 100;
+    z-index: 2000; /* BOOSTED from 100 to sit above everything */
     width: 200px;
+    box-shadow: -5px 5px 20px rgba(0,0,0,0.5); /* Add shadow to separate from map */
 }
+
 #systemMenu.hidden { display: none; }
 
 .sys-header {
-    font-size: 12px; color: #FFF; border-bottom: 1px solid #333; 
-    margin-bottom: 5px; padding-bottom: 5px;
+    font-size: 12px; 
+    /* Use variables so it swaps between Light/Dark mode automatically */
+    color: var(--accent-color); 
+    border-bottom: 1px solid var(--border-color); 
+    
+    margin-bottom: 5px; 
+    padding-bottom: 5px;
+    font-weight: bold;
+    letter-spacing: 1px;
 }
 
 .sys-btn { 
@@ -275,7 +309,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     content: " "; display: block; position: absolute;
     top: 0; left: 0; bottom: 0; right: 0;
     /* Opacity reduced to 0.025 (2.5%) for barely-there texture */
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.015) 50%), /* Lowered from 0.025 */
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.015) 50%), 
                 linear-gradient(90deg, rgba(255, 0, 0, 0.01), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.01));
     z-index: 999; background-size: 100% 2px, 3px 100%; pointer-events: none;
 }
@@ -435,20 +469,26 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 .codex-list-item:hover { color: #FFF; background: #222; }
 .codex-list-item.active { color: var(--accent-color); background: #111; border-left: 2px solid var(--accent-color); }
 
-/* --- SCROLLBARS (Retro-Teal) --- */
-::-webkit-scrollbar { width: 8px; } /* Slightly thinner for elegance */
-::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
-::-webkit-scrollbar-thumb { 
-    background: var(--accent-color); 
-    border-radius: 4px;
-    box-shadow: 0 0 5px var(--accent-color); /* Glowing effect */
-}
-::-webkit-scrollbar-thumb:hover { 
-    background: #FFF; 
-    box-shadow: 0 0 10px #FFF;
+/* --- ULTRA-MINIMAL SCROLLBARS (For inner panels only) --- */
+::-webkit-scrollbar { 
+    width: 4px; /* Very thin */
+    height: 4px; /* Thin for horizontal too */
+} 
+
+::-webkit-scrollbar-track { 
+    background: transparent; /* Invisible track */
 }
 
-::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+::-webkit-scrollbar-thumb { 
+    background: rgba(0, 224, 224, 0.2); /* Almost invisible normally */
+    border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover { 
+    background: var(--accent-color); /* Lights up when you grab it */
+    box-shadow: 0 0 5px var(--accent-color);
+}
+
 
 /* --- TRADE MODAL STYLES (Responsive Fix) --- */
 #tradeOverlay, #cargoOverlay {
@@ -1025,7 +1065,8 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
         display: flex;
         flex-direction: column;
         height: 100dvh; 
-        width: 100vw;
+        width: 100%;
+        overflow: hidden;
     }
 
     /* 2. Map Area takes remaining space */
@@ -1572,4 +1613,55 @@ body.light-mode .control-button:hover {
     z-index: 9000;
     opacity: 0;
     transition: opacity 0.1s;
+}
+
+/* --- LIGHT MODE: CODEX FIXES --- */
+/* Fix the dark header bar */
+body.light-mode .codex-header {
+    background: #E0E0E0;      /* Light Grey instead of Dark Teal */
+    color: #111;              /* Dark Text */
+    border-bottom: 1px solid #BBB;
+}
+
+/* Fix the borders between the columns */
+body.light-mode #codexCategories, 
+body.light-mode #codexEntries {
+    border-right-color: #CCC; /* Soft Grey instead of Black */
+}
+
+/* Fix the List Items */
+body.light-mode .codex-list-item {
+    color: #444; /* Dark Grey text */
+}
+
+/* Fix Hover (No more black bar) */
+body.light-mode .codex-list-item:hover {
+    background: #F0F0F0;      /* Very Light Grey */
+    color: var(--accent-color);
+}
+
+/* Active/Selected Item (No more black bar) */
+body.light-mode .codex-list-item.active {
+    background: #E0F7FA;      /* Pale Cyan/Teal Paper */
+    color: #006064;           /* Deep Teal Text */
+    border-left-color: #006064;
+}
+
+/* --- LIGHT MODE: TRADE LIST --- */
+
+body.light-mode .trade-item-row {
+    border-bottom-color: #EEE;
+    color: #333;
+}
+
+/* Hover was invisible (White on White). Now it's Grey. */
+body.light-mode .trade-item-row:hover {
+    background: #F5F5F5; 
+}
+
+/* Selected Item Highlight */
+body.light-mode .trade-item-row.selected {
+    background: #E0F7FA;      /* Pale Cyan */
+    color: #006064;           /* Deep Teal */
+    border-left-color: #006064;
 }
