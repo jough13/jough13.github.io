@@ -501,7 +501,8 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 /* --- TRADE MODAL STYLES (Responsive Fix) --- */
 
-#tradeOverlay, #cargoOverlay, #stationOverlay, #genericModalOverlay, #derelictOverlay {
+#tradeOverlay, #cargoOverlay, #stationOverlay, #genericModalOverlay, #derelictOverlay, #xerxesOverlay {
+
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0, 0, 0, 0.85); 
@@ -2015,4 +2016,20 @@ body.light-mode #derelictLog {
     background: #FFF0F0 !important; /* Very faint red paper */
     color: #550000 !important; /* Dark red text */
     border-top: 1px solid #FFCCCC !important;
+}
+
+/* --- XERXES THEME --- */
+.xerxes-btn {
+    background: #150025;
+    border: 1px solid #551188;
+    color: #DDA0DD; /* Plum */
+}
+.xerxes-btn:hover {
+    background: #2a0045;
+    border-color: #9933FF;
+    color: #FFF;
+    box-shadow: 0 0 10px #9933FF;
+}
+.xerxes-spire-btn {
+    border-left: 3px solid #9933FF;
 }
