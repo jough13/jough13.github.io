@@ -320,6 +320,50 @@
                 </div>
             </div>
 
+            <div id="derelictOverlay" style="display:none;">
+                <div class="trade-window" style="max-width: 800px; border-color: #FF5555;">
+                    <div class="trade-header" style="background: rgba(50, 0, 0, 0.8);">
+                        <span id="derelictNameTitle" style="color: #FF5555;">UNKNOWN WRECKAGE</span>
+                        <button onclick="closeDerelictView()" class="icon-btn">X</button>
+                    </div>
+                    <div id="derelictInfoBar" class="modal-info-bar"></div>
+                    
+                    <div class="station-body">
+                        <div class="station-visual-panel">
+                            <canvas id="derelictCanvas" width="200" height="200"></canvas>
+                            <div id="derelictClassBadge" class="station-badge" style="color:#FF5555; border-color:#552222;">CLASS: UNKNOWN</div>
+                            <p id="derelictDescText" class="station-desc">Sensors detect hull breaches and faint energy signatures.</p>
+                        </div>
+                        
+                        <div class="station-menu-grid">
+                            <button class="station-action-btn" onclick="handleDerelictAction('SCAN')">
+                                <div class="btn-icon">📡</div>
+                                <div class="btn-label">Remote Scan<br><span class="btn-sub">Safe. Gain Data (XP).</span></div>
+                            </button>
+                            
+                            <button class="station-action-btn" onclick="handleDerelictAction('SALVAGE')">
+                                <div class="btn-icon">🏗️</div>
+                                <div class="btn-label">Scrap Salvage<br><span class="btn-sub">Low Risk. Gather raw materials.</span></div>
+                            </button>
+                            
+                            <button class="station-action-btn" style="border-left-color: #FF5555;" onclick="handleDerelictAction('BREACH')">
+                                <div class="btn-icon">💥</div>
+                                <div class="btn-label">Breach Hull<br><span class="btn-sub" style="color:#F88">High Risk. Valuable Cargo.</span></div>
+                            </button>
+                            
+                            <button class="station-action-btn leave-btn" onclick="closeDerelictView()">
+                                <div class="btn-icon">🚀</div>
+                                <div class="btn-label">Leave Area<br><span class="btn-sub">Ignore the wreckage.</span></div>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="derelictLog" style="padding: 10px; background: #000; color: #888; font-family: monospace; font-size: 12px; height: 80px; overflow-y: auto; border-top: 1px solid #333;">
+                        > Link established with derelict vessel...
+                    </div>
+                </div>
+            </div>
+
             <div id="genericModalOverlay" style="display:none;">
                 <div class="trade-window">
                     <div class="trade-header">
