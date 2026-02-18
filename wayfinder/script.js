@@ -921,7 +921,7 @@ function applyPlayerShipStats() {
      document.getElementById('hullVal').textContent = `${Math.floor(playerHull)}`;
 
      // 4. Update HUD Text Stats
-     document.getElementById('creditsStat').textContent = playerCredits;
+     document.getElementById('creditsStat').textContent = formatNumber(playerCredits);
      document.getElementById('cargoStat').textContent = `${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}`;
      
      // 5. Update Header Info
@@ -977,6 +977,11 @@ function updateSideBorderVisibility() {
 
     if (leftBorder) leftBorder.style.display = shouldShow ? 'block' : 'none';
     if (rightBorder) rightBorder.style.display = shouldShow ? 'block' : 'none';
+}
+
+// Helper to format numbers with commas (e.g., 1,000)
+function formatNumber(num) {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 function triggerHaptic(pattern) {
@@ -2013,9 +2018,16 @@ function movePlayer(dx, dy) {
          const location = tileObject;
          bM = `Arrived at ${location.name}.`;
 
+        // 1. Keep the Docking Toast
          if (location.isMajorHub || location.type === OUTPOST_CHAR_VAL) {
              if (typeof soundManager !== 'undefined') soundManager.playUIHover();
-             showToast(`DOCKED: ${location.name.toUpperCase()}<br><span style="font-size:12px; color:#aaa;">Press <strong>E</strong> for Station Services</span>`, "success");
+             showToast(`DOCKED: ${location.name.toUpperCase()}`, "success");
+         }
+
+         // 2. Open the Visual Station View immediately for Hubs
+         if (location.isMajorHub) {
+             openStationView(); // <--- THIS IS THE KEY CHANGE
+             return; // Stop processing other automatic interactions
          }
 
          // ---CUSTOMS SCAN TRIGGER ---
@@ -2065,7 +2077,7 @@ function movePlayer(dx, dy) {
              const hullToRepair = MAX_PLAYER_HULL - playerHull;
              const repairCost = hullToRepair * HULL_REPAIR_COST_PER_POINT;
              availableActions.push({
-                 label: `Repair Hull (${repairCost}c)`,
+                 label: `Repair Hull (${formatNumber(repairCost)}c)`,
                  key: 'r', // 'r' for repair
                  onclick: repairShip
              });
@@ -2103,7 +2115,9 @@ function movePlayer(dx, dy) {
          if (!discoveredLocations.has(location.name)) {
              discoveredLocations.add(location.name);
              playerXP += XP_PER_LOCATION_DISCOVERY;
-             bM += `\n<span style='color:#00FF00;'>Location Discovered: ${location.name}! +${XP_PER_LOCATION_DISCOVERY} XP!</span>`;
+             
+             bM += `\n<span style='color:var(--success);'>Location Discovered: ${location.name}! +${formatNumber(XP_PER_LOCATION_DISCOVERY)} XP!</span>`;
+
              unlockLoreEntry(`LOCATION_${location.name.replace(/\s+/g, '_').toUpperCase()}`);
              checkLevelUp();
          }
@@ -2507,7 +2521,8 @@ function movePlayer(dx, dy) {
          if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
              playerCargo[resourceId] = (playerCargo[resourceId] || 0) + yieldAmount;
              updateCurrentCargoLoad();
-             minedResourcesMessage += ` ${yieldAmount} ${COMMODITIES[resourceId].name}\n`;
+             minedResourcesMessage += ` ${formatNumber(yieldAmount)} Minerals`;
+            toastHTML += `+${formatNumber(yieldAmount)} Minerals<br>`;
              minedSomething = true;
          } else {
              minedResourcesMessage += ` Not enough cargo space for ${COMMODITIES[resourceId].name}.\n`;
@@ -2644,8 +2659,8 @@ function movePlayer(dx, dy) {
          if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
              playerCargo.MINERALS = (playerCargo.MINERALS || 0) + yieldAmount;
              updateCurrentCargoLoad();
-             minedResourcesMessage += ` ${yieldAmount} Minerals`;
-             toastHTML += `+${yieldAmount} Minerals<br>`; // Add to toast
+             minedResourcesMessage += ` ${formatNumber(yieldAmount)} Minerals`;
+             toastHTML += `+${formatNumber(yieldAmount)} Minerals<br>`;
              
              if (richnessMultiplier > 1.2) minedResourcesMessage += " (Rich Vein!)";
              minedResourcesMessage += "\n";
@@ -2922,43 +2937,6 @@ function getTradeQuantityPromptBaseMessage() {
      return promptMsg;
  }
 
- // --- VISUAL TRADING SYSTEM ---
-
-function openTradeModal(mode) {
-    const location = chunkManager.getTile(playerX, playerY);
-
-    if (!location || location.type !== 'location' || !((mode === 'buy' && location.sells?.length) || (mode === 'sell' && location.buys?.length))) {
-        logMessage(`No items to ${mode} here.`);
-        return;
-    }
-
-    currentTradeContext = {
-        locationData: location,
-        mode: mode,
-        items: mode === 'buy' ? location.sells : location.buys,
-        step: 'selectQuantity' 
-    };
-    currentTradeItemIndex = -1;
-    currentTradeQty = 1;
-
-    document.getElementById('tradeOverlay').style.display = 'flex';
-    document.getElementById('tradeTitle').textContent = `${mode.toUpperCase()} AT ${location.name.toUpperCase()}`;
-    
-    renderTradeList();
-    
-    // Reset Details
-    document.getElementById('tradeItemName').textContent = "SELECT ITEM";
-    document.getElementById('tradeItemDesc').textContent = "Select a commodity to view details.";
-    document.getElementById('tradeQtyInput').value = 1;
-    document.getElementById('tradeUnitPrice').textContent = "-";
-    document.getElementById('tradeStock').textContent = "-";
-    document.getElementById('tradeTotalCost').textContent = "0";
-    document.getElementById('tradeConfirmBtn').disabled = true;
-
-    // UPDATE BORDERS
-    updateSideBorderVisibility();
-}
-
 function closeTradeModal() {
     document.getElementById('tradeOverlay').style.display = 'none';
     currentTradeContext = null;
@@ -3092,19 +3070,6 @@ function setTradeMax() {
 
     document.getElementById('tradeQtyInput').value = Math.max(1, max);
     updateTradeTotal();
-}
-
-function executeTrade() {
-    if (currentTradeItemIndex === -1) return;
-    
-    // Reuse your existing logic function!
-    // We just pass the string value of the quantity
-    handleTradeQuantity(currentTradeQty.toString());
-    
-    // Refresh the UI to reflect new stock/credits
-    renderTradeList();
-    selectTradeItem(currentTradeItemIndex);
-    renderUIStats();
 }
 
  function handleTradeSelection(input) {
@@ -3775,39 +3740,86 @@ function handleCombatAction(action) {
 
  // --- Shipyard Functions ---
 
- function displayShipyard() {
-     // Get location data from the chunkManager
-     const location = chunkManager.getTile(playerX, playerY);
+// --- Shipyard Functions (With Comma Support) ---
 
-     if (!location || location.type !== 'location' || !location.isMajorHub) {
-         logMessage("Shipyard services not available here.");
-         return;
-     }
+function displayShipyard() {
+    const location = chunkManager.getTile(playerX, playerY);
+    if (!location.isMajorHub) { logMessage("Shipyard unavailable."); return; }
 
-     currentShipyardContext = {
-         step: 'selectShip',
-         availableShips: []
+    openGenericModal(`${location.name} SHIPYARD`);
+    
+    const listEl = document.getElementById('genericModalList');
+    
+    // Populate List
+    Object.keys(SHIP_CLASSES).forEach(shipId => {
+        if(shipId === playerShip.shipClass) return; // Skip current
+        
+        const ship = SHIP_CLASSES[shipId];
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        // ADDED: formatNumber for the base cost
+        row.innerHTML = `<span>${ship.name}</span> <span>${formatNumber(ship.baseCost)}c</span>`;
+        row.onclick = () => showShipDetails(shipId);
+        listEl.appendChild(row);
+    });
+}
+
+function showShipDetails(shipId) {
+    const ship = SHIP_CLASSES[shipId];
+    const oldShip = SHIP_CLASSES[playerShip.shipClass];
+    const tradeIn = Math.floor(oldShip.baseCost * 0.5);
+    const cost = ship.baseCost - tradeIn;
+    
+    // ADDED: formatNumber for all numeric labels
+    let html = `
+        <h3 style="color:var(--accent-color)">${ship.name}</h3>
+        <p>${ship.description}</p>
+        <div class="trade-math-area">
+            <div class="trade-stat-row"><span>Hull:</span> <span>${formatNumber(ship.baseHull)}</span></div>
+            <div class="trade-stat-row"><span>Cargo:</span> <span>${formatNumber(ship.cargoCapacity)}</span></div>
+            <div class="trade-stat-row"><span>Base Cost:</span> <span>${formatNumber(ship.baseCost)}c</span></div>
+            <div class="trade-stat-row" style="color:#888"><span>Trade-In:</span> <span>-${formatNumber(tradeIn)}c</span></div>
+            <div class="total-cost-display">NET COST: ${formatNumber(cost)}c</div>
+        </div>
+    `;
+    
+    document.getElementById('genericDetailContent').innerHTML = html;
+    
+    const btnHtml = `
+        <button class="action-button" ${playerCredits >= cost ? '' : 'disabled'} 
+            onclick="confirmBuyShip('${shipId}', ${cost})">
+            ${playerCredits >= cost ? 'PURCHASE VESSEL' : 'INSUFFICIENT FUNDS'}
+        </button>
+    `;
+    document.getElementById('genericModalActions').innerHTML = btnHtml;
+}
+
+function confirmBuyShip(shipId, cost) {
+    if(playerCredits < cost) return;
+    
+    playerCredits -= cost;
+    playerShip.shipClass = shipId;
+    
+    // Reset components to defaults
+     playerShip.components = {
+         weapon: "WEAPON_PULSE_LASER_MK1",
+         shield: "SHIELD_BASIC_ARRAY_A",
+         engine: "ENGINE_STD_DRIVE_MK1",
+         scanner: "SCANNER_BASIC_SUITE",
+         utility: "UTIL_NONE"
      };
-     let shipyardMsg = `--- ${location.name} Shipyard ---\n`;
-     shipyardMsg += `Your Credits: ${playerCredits}\n\nAvailable Hulls:\n`;
 
-     let shipIndex = 1;
-     for (const shipId in SHIP_CLASSES) {
-         if (playerShip.shipClass === shipId) continue; // Don't list the player's current ship
-
-         const ship = SHIP_CLASSES[shipId];
-         shipyardMsg += `${shipIndex}. ${ship.name} (${ship.baseCost}c)\n`;
-         shipyardMsg += `   Hull: ${ship.baseHull}, Cargo: ${ship.cargoCapacity} - ${ship.description}\n`;
-         currentShipyardContext.availableShips.push({
-             id: shipId,
-             ...ship
-         });
-         shipIndex++;
-     }
-
-     shipyardMsg += "Enter # to inspect a ship, or (L) to leave.";
-     logMessage(shipyardMsg);
- }
+    applyPlayerShipStats();
+    playerHull = MAX_PLAYER_HULL; //
+    playerShields = MAX_SHIELDS; //
+    playerFuel = MAX_FUEL; //
+    
+    soundManager.playUIClick();
+    showToast("VESSEL PURCHASED", "success");
+    closeGenericModal();
+    renderUIStats();
+    openStationView(); // Refresh station hub
+}
 
  function triggerDamageEffect() {
     // 1. Shake the screen
@@ -3981,30 +3993,90 @@ function repairShip() {
 
  // --- Outfitting Functions ---
 
- function displayOutfittingScreen() {
-     // Get location data from the chunkManager
-     const location = chunkManager.getTile(playerX, playerY);
+ // --- OVERRIDE: OUTFITTING ---
+function displayOutfittingScreen() {
+    openGenericModal("OUTFITTING SERVICES");
+    const listEl = document.getElementById('genericModalList');
+    
+    const slots = ['weapon', 'shield', 'engine', 'scanner', 'utility'];
+    
+    slots.forEach(slot => {
+        const currentId = playerShip.components[slot];
+        const currentName = COMPONENTS_DATABASE[currentId].name;
+        
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        row.style.fontWeight = 'bold';
+        row.innerHTML = `<span style="color:var(--accent-color)">${slot.toUpperCase()} SLOT</span> <span style="font-size:10px">${currentName}</span>`;
+        row.onclick = () => showOutfittingOptions(slot);
+        listEl.appendChild(row);
+    });
+}
 
-     if (!location || location.type !== 'location' || !location.isMajorHub) {
-         logMessage("Outfitting services not available here.");
-         return;
-     }
+function showOutfittingOptions(slot) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    
+    // Use standard border color so it shows in both modes
+    detailEl.innerHTML = `<h4 style="border-bottom:1px solid var(--border-color); padding-bottom:5px;">Available ${slot} Upgrades</h4>`;
+    actionsEl.innerHTML = '';
+    
+    const container = document.createElement('div');
+    container.style.maxHeight = '300px';
+    container.style.overflowY = 'auto';
+    
+    for (const compId in COMPONENTS_DATABASE) {
+        const comp = COMPONENTS_DATABASE[compId];
+        if (comp.slot === slot && playerShip.components[slot] !== compId) {
+            
+            const itemDiv = document.createElement('div');
+            itemDiv.style.padding = '10px';
+            itemDiv.style.borderBottom = '1px solid var(--border-color)';
+            itemDiv.style.cursor = 'pointer';
+            
+            // --- FIX: Use CSS Variables instead of hardcoded #FFF and #FFD700 ---
+            itemDiv.innerHTML = `
+                <div style="display:flex; justify-content:space-between">
+                    <span style="color:var(--item-name-color); font-weight:bold;">${comp.name}</span>
+                    <span style="color:var(--gold-text)">${formatNumber(comp.cost)}c</span>
+                </div>
+                <div style="font-size:11px; color:var(--item-desc-color)">${comp.description}</div>
+            `;
+            
+            itemDiv.onclick = () => {
+                // Update Action Button
+                actionsEl.innerHTML = `
+                    <button class="action-button" ${playerCredits >= comp.cost ? '' : 'disabled'} 
+                        onclick="confirmBuyComponent('${compId}')">
+                        INSTALL ${comp.name.toUpperCase()} (${formatNumber(comp.cost)}c)
+                    </button>
+                `;
+                
+                // Optional: Highlight selected item logic could go here
+            };
+            container.appendChild(itemDiv);
+        }
+    }
+    
+    if(container.children.length === 0) {
+        container.innerHTML = "<p style='color:var(--item-desc-color)'>No upgrades available for this slot.</p>";
+    }
+    
+    detailEl.appendChild(container);
+}
 
-     currentOutfitContext = {
-         step: 'selectSlot'
-     };
-
-     let outfitMsg = "--- Ship Outfitting ---\n";
-     outfitMsg += "Current Loadout:\n";
-     outfitMsg += ` 1. Weapon: ${COMPONENTS_DATABASE[playerShip.components.weapon].name}\n`;
-     outfitMsg += ` 2. Shield: ${COMPONENTS_DATABASE[playerShip.components.shield].name}\n`;
-     outfitMsg += ` 3. Engine: ${COMPONENTS_DATABASE[playerShip.components.engine].name}\n`;
-     outfitMsg += ` 4. Scanner: ${COMPONENTS_DATABASE[playerShip.components.scanner].name}\n\n`;
-     outfitMsg += ` 5. Utility: ${COMPONENTS_DATABASE[playerShip.components.utility].name}\n`;
-     outfitMsg += "Select slot # to upgrade, or (L) to Leave.";
-
-     logMessage(outfitMsg);
- }
+function confirmBuyComponent(compId) {
+    const comp = COMPONENTS_DATABASE[compId];
+    if(playerCredits < comp.cost) return;
+    
+    playerCredits -= comp.cost;
+    playerShip.components[comp.slot] = compId;
+    applyPlayerShipStats();
+    
+    showToast("COMPONENT INSTALLED", "success");
+    displayOutfittingScreen(); // Refresh list
+    renderUIStats();
+}
 
  function displayComponentsForSlot(slotType) {
      currentOutfitContext.step = 'selectComponent';
@@ -4316,65 +4388,80 @@ function toggleCodex(show) {
     return generatedMissions;
 }
 
- function displayMissionBoard() {
-     // Get location data from the chunkManager
-     const location = chunkManager.getTile(playerX, playerY);
+ // --- OVERRIDE: DISPLAY MISSIONS ---
+function displayMissionBoard() {
+    const location = chunkManager.getTile(playerX, playerY);
+    const stationName = location.name;
+    
+    if (!MISSIONS_DATABASE[stationName]) {
+         MISSIONS_DATABASE[stationName] = generateMissionsForStation(stationName);
+    }
+    
+    openGenericModal("MISSION CONTRACTS");
+    
+    const listEl = document.getElementById('genericModalList');
+    const missions = MISSIONS_DATABASE[stationName];
+    
+    missions.forEach((mission, index) => {
+        if(playerCompletedMissions.has(mission.id)) return;
+        
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        // FormatNumber for the mission credits
+        row.innerHTML = `<span>${mission.title}</span> <span style="color:#FFD700">${formatNumber(mission.rewards.credits)}c</span>`;
+        row.onclick = () => showMissionDetails(stationName, index);
+        listEl.appendChild(row);
+    });
+    
+    if(listEl.children.length === 0) {
+        listEl.innerHTML = "<div style='padding:10px'>No contracts available.</div>";
+    }
+}
 
-     if (!location || location.type !== 'location' || !location.isMajorHub) {
-         logMessage("Mission board not accessible here.");
-         return;
-     }
+function showMissionDetails(stationName, index) {
+    const mission = MISSIONS_DATABASE[stationName][index];
+    
+    let html = `
+        <h3 style="color:var(--accent-color)">${mission.title}</h3>
+        <p style="font-size:12px; color:#888">Client: ${mission.giver}</p>
+        <p>${mission.description}</p>
+        <div class="trade-math-area">
+            <div class="trade-stat-row"><span>Credits:</span> <span style="color:#FFD700">${formatNumber(mission.rewards.credits)}</span></div>
+            <div class="trade-stat-row"><span>XP:</span> <span style="color:#00FF00">${formatNumber(mission.rewards.xp)}</span></div>
+        </div>
+    `;
+    
+    document.getElementById('genericDetailContent').innerHTML = html;
+    
+    const isActive = playerActiveMission !== null;
+    const btnHtml = `
+        <button class="action-button" ${isActive ? 'disabled' : ''} 
+            onclick="confirmAcceptMission('${stationName}', ${index})">
+            ${isActive ? 'FINISH CURRENT JOB FIRST' : 'ACCEPT CONTRACT'}
+        </button>
+    `;
+    document.getElementById('genericModalActions').innerHTML = btnHtml;
+}
 
-     const stationName = location.name;
-     let stationMissions = MISSIONS_DATABASE[stationName];
+function confirmAcceptMission(stationName, index) {
+    const mission = MISSIONS_DATABASE[stationName][index];
+    
+    playerActiveMission = JSON.parse(JSON.stringify(mission));
+    playerActiveMission.isComplete = false;
+    playerActiveMission.progress = {};
+    
+    playerActiveMission.objectives.forEach((obj, idx) => {
+         const key = `${obj.type.toLowerCase()}_${idx}`;
+         if (obj.type === "ELIMINATE") playerActiveMission.progress[key] = { current:0, required:obj.count, complete:false };
+         if (obj.type === "DELIVERY") playerActiveMission.progress[key] = { delivered:0, required:obj.count, complete:false, destinationName: obj.destinationName };
+         if (obj.type === "SURVEY") playerActiveMission.progress[key] = { scanned:false, complete:false };
+         if (obj.type === "ACQUIRE") playerActiveMission.progress[key] = { acquired:0, required:obj.count, complete:false };
+    });
 
-     
-
-     if (!stationMissions) {
-         // We'll need to update mission generation later, but this will work for now
-         stationMissions = generateMissionsForStation(stationName);
-         MISSIONS_DATABASE[stationName] = stationMissions;
-     }
-
-     missionsAvailableAtStation = [];
-
-     (stationMissions || []).forEach(mission => {
-         if (!playerCompletedMissions.has(mission.id) && (!playerActiveMission || playerActiveMission.id !== mission.id)) {
-             let meetsPrereqs = true;
-             if (mission.prerequisites) {
-                 if (mission.prerequisites.minLevel && playerLevel < mission.prerequisites.minLevel) {
-                     meetsPrereqs = false;
-                 }
-             }
-             if (meetsPrereqs) {
-                 missionsAvailableAtStation.push(mission);
-             }
-         }
-     });
-
-     let missionMsg = `--- ${stationName} Mission Board ---\n`;
-     if (playerActiveMission) {
-         missionMsg += `Current Active Mission: ${playerActiveMission.title}\n(Complete or abandon current mission to accept a new one.)\n\n`;
-     }
-
-     if (missionsAvailableAtStation.length === 0) {
-         missionMsg += "No new missions currently available.\n";
-     } else {
-         missionMsg += "Available Contracts:\n";
-         missionsAvailableAtStation.forEach((mission, index) => {
-             missionMsg += `${index + 1}. ${mission.title} - Reward: ${mission.rewards.credits}c, ${mission.rewards.xp}XP\n`;
-         });
-     }
-
-     missionMsg += "Enter # to view details, or (L) to leave.";
-
-     currentMissionContext = {
-         step: 'selectMission',
-         availableMissions: missionsAvailableAtStation,
-         stationName: stationName
-     };
-     logMessage(missionMsg);
- }
+    showToast("CONTRACT ACCEPTED", "success");
+    closeGenericModal();
+    renderMissionTracker();
+}
 
  function displayMissionDetails(selectedIndex) {
      if (!currentMissionContext || currentMissionContext.step !== 'selectMission' || !currentMissionContext.availableMissions) {
@@ -4568,10 +4655,9 @@ function toggleCodex(show) {
      return allObjectivesNowComplete;
  }
 
- function grantMissionRewards() {
+function grantMissionRewards() {
      if (!playerActiveMission || !playerActiveMission.isComplete) return;
      
-     // Get location data to determine faction
      const currentLocation = getCombinedLocationData(playerY, playerX);
      
      if (!currentLocation || currentLocation.name !== playerActiveMission.giver) {
@@ -4583,25 +4669,19 @@ function toggleCodex(show) {
      playerCredits += mission.rewards.credits;
      playerXP += mission.rewards.xp;
      
-     // Update Global Notoriety
      updatePlayerNotoriety(mission.rewards.notoriety);
      
-     // --- NEW: Update Faction Standing ---
      let standingMsg = "";
      if (currentLocation.faction) {
-         if (typeof playerFactionStanding[currentLocation.faction] === 'undefined') {
-             playerFactionStanding[currentLocation.faction] = 0;
-         }
-         
-         // Use the mission notoriety as a baseline for Rep gain (min 5)
          const repGain = Math.max(5, Math.abs(mission.rewards.notoriety || 5));
-         playerFactionStanding[currentLocation.faction] += repGain;
+         playerFactionStanding[currentLocation.faction] = (playerFactionStanding[currentLocation.faction] || 0) + repGain;
          standingMsg = `\n  ${currentLocation.faction} Standing: +${repGain}`;
      }
 
      playerCompletedMissions.add(mission.id);
      
-     let rewardMsg = `Mission '${mission.title}' Complete!\nRewards:\n  +${mission.rewards.credits} Credits\n  +${mission.rewards.xp} XP`;
+     // FormatNumber for both credits and XP in the log message
+     let rewardMsg = `Mission '${mission.title}' Complete!\nRewards:\n  +${formatNumber(mission.rewards.credits)} Credits\n  +${formatNumber(mission.rewards.xp)} XP`;
 
      if (mission.rewards.notoriety !== 0) {
          rewardMsg += `\n  Notoriety ${mission.rewards.notoriety > 0 ? '+' : ''}${mission.rewards.notoriety}`;
@@ -4613,9 +4693,9 @@ function toggleCodex(show) {
      logMessage(rewardMsg);
      checkLevelUp();
      handleInteraction();
-     renderMissionTracker(); // Mission tracker updated here
-     renderUIStats(); // Update the menu text
- }
+     renderMissionTracker(); 
+     renderUIStats(); 
+}
 
  function triggerRandomEvent() {
      const events = [{
@@ -4631,7 +4711,7 @@ function toggleCodex(show) {
              effect: () => {
                  const amount = 25 + Math.floor(Math.random() * 75);
                  playerCredits += amount;
-                 logMessage(`<span style="color:#FFD700">Lucky Find:</span> Decrypted ${amount} credits.`);
+                 logMessage(`<span style="color:var(--gold-text)">Lucky Find:</span> Decrypted ${formatNumber(amount)} credits.`);
              }
          },
          {
@@ -5891,3 +5971,413 @@ function hideTitleScreen() {
             });
         }
     });
+
+    // --- NEW VISUAL STATION SYSTEM ---
+
+function drawProceduralStation(canvasId, seed) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    
+    // Clear
+    ctx.clearRect(0, 0, w, h);
+    
+    // Generate Randoms
+    const rng = (s) => {
+        let x = Math.sin(s++) * 10000;
+        return x - Math.floor(x);
+    };
+    
+    let currentSeed = seed;
+    const rand = () => rng(currentSeed++);
+    
+    // Config
+    const coreColor = rand() > 0.5 ? '#88CCFF' : '#AAAAAA';
+    
+    ctx.save();
+    ctx.translate(w/2, h/2);
+    
+    // 1. Draw Solar Panels / Wings
+    const wings = Math.floor(rand() * 4) + 2; // 2 to 5 wings
+    const wingLen = 40 + rand() * 40;
+    
+    ctx.fillStyle = '#224466'; // Solar Blue
+    for(let i=0; i<wings; i++) {
+        ctx.rotate((Math.PI * 2) / wings);
+        ctx.fillRect(20, -10, wingLen, 20);
+        
+        // Panel Detail
+        ctx.fillStyle = '#4488AA';
+        ctx.fillRect(25, -5, wingLen-10, 10);
+        ctx.fillStyle = '#224466';
+    }
+    
+    // 2. Draw Central Module
+    const shapes = ['circle', 'rect', 'diamond'];
+    const shape = shapes[Math.floor(rand() * shapes.length)];
+    
+    ctx.fillStyle = coreColor;
+    
+    if (shape === 'circle') {
+        ctx.beginPath();
+        ctx.arc(0, 0, 30, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    } else if (shape === 'rect') {
+        ctx.fillRect(-25, -40, 50, 80);
+        ctx.strokeRect(-25, -40, 50, 80);
+    } else {
+        ctx.beginPath();
+        ctx.moveTo(0, -40);
+        ctx.lineTo(40, 0);
+        ctx.lineTo(0, 40);
+        ctx.lineTo(-40, 0);
+        ctx.fill();
+        ctx.stroke();
+    }
+    
+    // 3. Draw Lights/Windows
+    ctx.fillStyle = '#FFD700'; // Lights
+    for(let i=0; i<5; i++) {
+        const lx = (rand() * 40) - 20;
+        const ly = (rand() * 40) - 20;
+        ctx.fillRect(lx, ly, 3, 3);
+    }
+    
+    ctx.restore();
+}
+
+function openStationView() {
+    const location = chunkManager.getTile(playerX, playerY);
+    if (!location || !location.isMajorHub) return;
+
+    // 1. Setup UI
+    document.getElementById('stationOverlay').style.display = 'flex';
+    document.getElementById('stationNameTitle').textContent = location.name.toUpperCase();
+    document.getElementById('stationFactionBadge').textContent = location.faction || "INDEPENDENT";
+    document.getElementById('stationDescText').textContent = location.scanFlavor;
+    
+    // 2. Generate Art based on Location Name (so it's consistent)
+    let seed = 0;
+    for(let i=0; i<location.name.length; i++) seed += location.name.charCodeAt(i);
+    drawProceduralStation('stationCanvas', seed);
+    
+    // 3. Update Repair Cost Text
+    const cost = Math.ceil((MAX_PLAYER_HULL - playerHull) * HULL_REPAIR_COST_PER_POINT);
+    document.getElementById('repairCostLabel').textContent = cost > 0 ? `${cost} Credits` : "Hull Integrity 100%";
+    
+    // 4. Borders
+    updateSideBorderVisibility();
+}
+
+function closeStationView() {
+    document.getElementById('stationOverlay').style.display = 'none';
+
+    updateSideBorderVisibility();
+}
+
+// --- GENERIC MODAL HANDLER ---
+
+function openGenericModal(title) {
+    const modal = document.getElementById('genericModalOverlay');
+    document.getElementById('genericModalTitle').textContent = title;
+    document.getElementById('genericModalList').innerHTML = '';
+    document.getElementById('genericDetailContent').innerHTML = '<p style="color:#666">Select an item...</p>';
+    document.getElementById('genericModalActions').innerHTML = '';
+    modal.style.display = 'flex';
+}
+
+function closeGenericModal() {
+    document.getElementById('genericModalOverlay').style.display = 'none';
+    updateSideBorderVisibility();
+}
+
+// --- CANTINA & RUMOR SYSTEM ---
+
+function visitCantina() {
+    openGenericModal("STATION CANTINA");
+
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // 1. Flavor Text
+    const flavors = [
+        "The air is thick with smoke and the hum of a failing ventilation unit.",
+        "A K'tharr mercenary eyes you suspiciously from the corner.",
+        "Techno-jazz blares from speakers that have seen better days.",
+        "The bartender polishes a glass with a rag that looks grease-stained."
+    ];
+    const randomFlavor = flavors[Math.floor(Math.random() * flavors.length)];
+
+    listEl.innerHTML = `
+        <div style="padding:20px; text-align:center;">
+            <div style="font-size:40px; margin-bottom:20px;">🍸</div>
+            <p style="color:#CCC; font-style:italic;">"${randomFlavor}"</p>
+            <hr style="border-color:#333; margin:20px 0;">
+            <p style="font-size:12px; color:#888;">
+                Travelers from across the sector gather here. 
+                It's a good place to rest, or pick up information if you have the credits.
+            </p>
+        </div>
+    `;
+
+    // 2. Menu Options
+    detailEl.innerHTML = `
+        <h3 style="color:var(--accent-color)">Cantina Menu</h3>
+        <div class="trade-item-row" onclick="cantinaAction('DRINK')">
+            <span>Synth-Ale (15c)</span>
+            <span>Restores 10 HP</span>
+        </div>
+        <div class="trade-item-row" onclick="cantinaAction('RUMOR')">
+            <span>Bribe Bartender (50c)</span>
+            <span>Get Market Tip</span>
+        </div>
+        <div class="trade-item-row" onclick="cantinaAction('GAMBLE')">
+            <span>Pazaak Table</span>
+            <span>Wager 100c</span>
+        </div>
+    `;
+
+    actionsEl.innerHTML = ''; // No bottom buttons needed, rows are clickable
+}
+
+function cantinaAction(action) {
+    if (action === 'DRINK') {
+        if (playerCredits < 15) { showToast("Not enough credits!", "error"); return; }
+        if (playerHull >= MAX_PLAYER_HULL) { showToast("Hull integrity already maxed.", "info"); return; }
+        
+        playerCredits -= 15;
+        playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 10);
+        soundManager.playUIHover();
+        showToast("Refreshing! Hull repaired +10.", "success");
+        renderUIStats();
+    }
+    else if (action === 'RUMOR') {
+        if (playerCredits < 50) { showToast("Bartender ignores you. (Need 50c)", "error"); return; }
+        
+        playerCredits -= 50;
+        
+        // Generate a rumor
+        const stations = Object.keys(LOCATIONS_DATA); // Known static stations
+        const targetStation = stations[Math.floor(Math.random() * stations.length)];
+        const targetItem = "MEDICAL_SUPPLIES"; // Simplified for now, or pick random high value
+        
+        // Store the rumor globally
+        activeMarketTrend = {
+            station: targetStation,
+            item: targetItem,
+            expiry: Date.now() + 600000 // 10 minutes
+        };
+        
+        showToast(`RUMOR ACQUIRED: Prices for ${targetItem} are high at ${targetStation}!`, "info");
+        logMessage(`Rumor: High demand for ${targetItem} reported at ${targetStation}.`);
+        renderUIStats();
+        closeGenericModal();
+    }
+    else if (action === 'GAMBLE') {
+        if (playerCredits < 100) { showToast("House limit is 100c.", "error"); return; }
+        
+        playerCredits -= 100;
+        if (Math.random() > 0.55) { // House advantage
+            const win = 200;
+            playerCredits += win;
+            soundManager.playAbilityActivate(); // Win sound
+            showToast(`YOU WON! (+${win}c)`, "success");
+        } else {
+            soundManager.playError();
+            showToast("You lost.", "error");
+        }
+        renderUIStats();
+    }
+}
+
+// --- CONSOLIDATED TRADE SYSTEM (Fixed & Sorted) ---
+
+function openTradeModal(mode) {
+    const location = chunkManager.getTile(playerX, playerY);
+    
+    // 1. Validation: Ensure we are at a station or outpost
+    if (!location || location.type !== 'location') {
+        logMessage("Trading terminal offline.");
+        return;
+    }
+
+    const isBuy = mode === 'buy';
+    
+    // 2. OPEN MODAL FIRST
+    // This ensures DOM elements like 'genericModalList' exist before we try to fill them
+    openGenericModal(isBuy ? "STATION MARKETPLACE" : "CARGO MANIFEST");
+
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    
+    // Clear previous state
+    listEl.innerHTML = '';
+    detailEl.innerHTML = '<p style="color:#666; margin-top:20px; text-align:center;">Select a commodity to view market analytics.</p>';
+    
+    if (isBuy) {
+        // --- BUY MODE ---
+        const items = location.sells || [];
+        if (items.length === 0) {
+            listEl.innerHTML = `<div style="padding:15px; color:#888;">No commodities for sale here.</div>`;
+            return;
+        }
+
+        items.forEach(itemEntry => {
+            renderTradeRow(itemEntry.id, itemEntry.stock, true, location, listEl);
+        });
+    } else {
+        // --- SELL MODE (Sorted: Inventory first, then Station Demands) ---
+        const playerHas = Object.keys(playerCargo).filter(id => playerCargo[id] > 0);
+        const stationBuys = location.buys || [];
+        
+        // A. Items currently in your cargo hold
+        if (playerHas.length > 0) {
+            const header = document.createElement('div');
+            header.className = 'trade-list-header';
+            header.textContent = "YOUR CARGO";
+            listEl.appendChild(header);
+
+            playerHas.forEach(itemId => {
+                const qty = playerCargo[itemId];
+                renderTradeRow(itemId, qty, false, location, listEl);
+            });
+        }
+
+        // B. Items the station wants that you ARE NOT carrying
+        const otherDemands = stationBuys.filter(b => !playerHas.includes(b.id));
+        if (otherDemands.length > 0) {
+            const header = document.createElement('div');
+            header.className = 'trade-list-header';
+            header.style.marginTop = playerHas.length > 0 ? "20px" : "0";
+            header.textContent = "STATION DEMAND";
+            listEl.appendChild(header);
+
+            otherDemands.forEach(demand => {
+                renderTradeRow(demand.id, 0, false, location, listEl);
+            });
+        }
+
+        if (playerHas.length === 0 && otherDemands.length === 0) {
+            listEl.innerHTML = `<div style="padding:15px; color:#888;">Station is not currently buying resources.</div>`;
+        }
+    }
+}
+
+// Helper to render individual rows consistently
+function renderTradeRow(itemId, qty, isBuy, location, container) {
+    const com = COMMODITIES[itemId];
+    const itemEntry = isBuy ? location.sells.find(s => s.id === itemId) : location.buys.find(b => b.id === itemId);
+    
+    // Price calculation logic
+    const priceMod = itemEntry ? itemEntry.priceMod : 0.5; // Low price if station doesn't specifically buy it
+    const finalPrice = calculatePrice(com.basePrice, priceMod, itemId, location.name, isBuy ? 'buy' : 'sell');
+    
+    const row = document.createElement('div');
+    row.className = 'trade-item-row';
+    
+    const label = isBuy ? `Stock: ${qty}` : `Hold: ${qty}`;
+    
+    // FIX: Using CSS Variables instead of Hex Codes for Light Mode support
+    row.innerHTML = `
+        <span style="${com.illegal ? 'color:var(--danger)' : ''}">${com.name}</span> 
+        <span style="color:#888;">${formatNumber(finalPrice)}c | ${label}</span>
+    `;
+    
+    row.onclick = () => showTradeDetails(itemId, finalPrice, qty, isBuy, location);
+    container.appendChild(row);
+}
+
+function showTradeDetails(itemId, price, stock, isBuy, location) {
+    const comm = COMMODITIES[itemId];
+    let marketStatus = "Standard Market Rate";
+    
+    if (isBuy) {
+        if (price < comm.basePrice * 0.8) marketStatus = "<span style='color:var(--success)'>BELOW MARKET VALUE (Cheap!)</span>";
+        else if (price > comm.basePrice * 1.2) marketStatus = "<span style='color:var(--danger)'>INFLATED PRICE (Expensive)</span>";
+    } else {
+        const demand = location.buys.find(b => b.id === itemId);
+        if (demand) marketStatus = "<span style='color:var(--success)'>HIGH DEMAND ITEM</span>";
+        else marketStatus = "<span style='color:#888'>No Local Demand (Dumping)</span>";
+    }
+
+    const html = `
+        <h3 style="color:var(--accent-color)">${comm.name}</h3>
+        <p style="font-size:12px; color:var(--text-color); opacity:0.8;">${comm.description}</p>
+        
+        <div class="trade-math-area">
+            <div class="trade-stat-row"><span>Unit Price:</span> <span>${formatNumber(price)}c</span></div>
+            <div class="trade-stat-row"><span>Available: ${isBuy ? 'Stock' : 'In Hold'}</span> <span>${formatNumber(stock)} units</span></div>
+            <div class="trade-stat-row" style="margin-top:10px; border-top:1px solid #333; padding-top:5px;">
+                <span>Market Status:</span> <span style="font-size:10px">${marketStatus}</span>
+            </div>
+        </div>
+        
+        ${comm.illegal ? '<div style="background:#300; color:var(--danger); padding:5px; margin-top:10px; font-size:10px; text-align:center;">⚠ CONTRABAND: POSSESSION IS ILLEGAL ⚠</div>' : ''}
+    `;
+    
+    document.getElementById('genericDetailContent').innerHTML = html;
+
+    const actionsEl = document.getElementById('genericModalActions');
+    
+    if (isBuy) {
+        const maxAfford = Math.floor(playerCredits / price);
+        const spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+        const canBuy = Math.min(stock, maxAfford, spaceLeft);
+        
+        actionsEl.innerHTML = `
+            <div style="text-align:center; margin-bottom:10px; color:#888;">Space: ${formatNumber(spaceLeft)} | Afford: ${formatNumber(maxAfford)}</div>
+            <button class="action-button" ${canBuy > 0 ? '' : 'disabled'} onclick="executeTrade('${itemId}', ${price}, 1, true)">BUY 1 (${formatNumber(price)}c)</button>
+            <button class="action-button" ${canBuy >= 5 ? '' : 'disabled'} onclick="executeTrade('${itemId}', ${price}, 5, true)">BUY 5 (${formatNumber(price * 5)}c)</button>
+            <button class="action-button" ${canBuy > 0 ? '' : 'disabled'} onclick="executeTrade('${itemId}', ${price}, ${canBuy}, true)">BUY MAX (${formatNumber(canBuy)})</button>
+        `;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button" ${stock > 0 ? '' : 'disabled'} onclick="executeTrade('${itemId}', ${price}, 1, false)">SELL 1 (${formatNumber(price)}c)</button>
+            <button class="action-button" ${stock >= 5 ? '' : 'disabled'} onclick="executeTrade('${itemId}', ${price}, 5, false)">SELL 5 (${formatNumber(price * 5)}c)</button>
+            <button class="action-button" ${stock > 0 ? '' : 'disabled'} onclick="executeTrade('${itemId}', ${price}, ${stock}, false)">SELL ALL (${formatNumber(price * stock)}c)</button>
+        `;
+    }
+}
+
+function executeTrade(itemId, price, qty, isBuy) {
+    if (qty <= 0) return;
+
+    if (isBuy) {
+        playerCredits -= (price * qty);
+        if (!playerCargo[itemId]) playerCargo[itemId] = 0;
+        playerCargo[itemId] += qty;
+        
+        // Decrease station stock (simulation)
+        const location = chunkManager.getTile(playerX, playerY);
+        const item = location.sells.find(i => i.id === itemId);
+        if (item) item.stock -= qty;
+
+        showToast(`BOUGHT ${qty}x ${COMMODITIES[itemId].name} for ${formatNumber(price * qty)}c`, "success");
+    } else {
+        playerCredits += (price * qty);
+        playerCargo[itemId] -= qty;
+        if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
+        
+        showToast(`SOLD ${qty}x ${COMMODITIES[itemId].name} for ${formatNumber(price * qty)}c`, "success");
+    }
+
+    updateCurrentCargoLoad();
+    renderUIStats();
+    
+    // Refresh the modal to show updated inventory/credits
+    openTradeModal(isBuy ? 'buy' : 'sell');
+    
+    // Re-show details for the item just traded
+    const location = chunkManager.getTile(playerX, playerY);
+    const newStock = isBuy 
+        ? (location.sells.find(i => i.id === itemId)?.stock || 0)
+        : (playerCargo[itemId] || 0);
+        
+    showTradeDetails(itemId, price, newStock, isBuy, location);
+}
