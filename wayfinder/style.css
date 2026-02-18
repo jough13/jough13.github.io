@@ -499,7 +499,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     box-shadow: 0 0 5px var(--accent-color);
 }
 
-
 /* --- TRADE MODAL STYLES (Responsive Fix) --- */
 
 #tradeOverlay, #cargoOverlay, #stationOverlay, #genericModalOverlay, #derelictOverlay {
@@ -1992,3 +1991,28 @@ body.light-mode .modal-info-bar {
 .info-credits { color: var(--gold-text); }
 .info-ship { color: #FFF; }
 body.light-mode .info-ship { color: #222; }
+
+/* --- DERELICT MODAL OVERRIDES --- */
+
+/* 1. Fix the "Black Box" log area */
+#derelictLog {
+    /* Use a dark, semi-transparent red/black mix instead of pure black */
+    background: rgba(30, 10, 10, 0.5) !important; 
+    border-top: 1px solid #552222 !important;
+    color: #AAA !important;
+}
+
+/* 2. Fix the "Green/Teal" hover on the Close (X) button */
+/* We target the button specifically inside the derelict header */
+#derelictOverlay .icon-btn:hover {
+    background: #FF5555; /* Bright Red */
+    color: #FFF;
+    border-color: #FF5555;
+}
+
+/* 3. Light Mode Support for the Log */
+body.light-mode #derelictLog {
+    background: #FFF0F0 !important; /* Very faint red paper */
+    color: #550000 !important; /* Dark red text */
+    border-top: 1px solid #FFCCCC !important;
+}
