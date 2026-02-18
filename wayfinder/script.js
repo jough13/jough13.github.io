@@ -232,35 +232,52 @@ function animateParticles() {
                              type: 'wormhole'
                          };
                      } else if (seededRandom(tileSeed + 6) < OUTPOST_SPAWN_CHANCE) {
-                         const outpostSeed = tileSeed + 7;
-                         const outpostName = `Outpost ${String.fromCharCode(65 + Math.floor(seededRandom(outpostSeed) * 26))}-${Math.floor(seededRandom(outpostSeed+1) * 999)}`;
-                         tile = {
-                             char: OUTPOST_CHAR_VAL,
-                             type: 'location',
-                             name: outpostName,
-                             faction: "INDEPENDENT",
-                             isMajorHub: false,
-                             sells: [{
-                                 id: "FUEL_CELLS",
-                                 priceMod: 1.5,
-                                 stock: 20 + Math.floor(seededRandom(outpostSeed + 2) * 30)
-                             }, {
-                                 id: "TECH_PARTS",
-                                 priceMod: 1.3,
-                                 stock: 5 + Math.floor(seededRandom(outpostSeed + 3) * 10)
-                             }],
-                             buys: [{
-                                 id: "MINERALS",
-                                 priceMod: 0.9,
-                                 stock: 30 + Math.floor(seededRandom(outpostSeed + 4) * 50)
-                             }, {
-                                 id: "FOOD_SUPPLIES",
-                                 priceMod: 0.8,
-                                 stock: 20 + Math.floor(seededRandom(outpostSeed + 5) * 40)
-                             }],
-                             scanFlavor: "A small, automated independent outpost. It offers basic supplies at a markup and buys local resources."
-                         };
-                     } else if (seededRandom(tileSeed + 8) < ANOMALY_SPAWN_CHANCE) {
+                        const outpostSeed = tileSeed + 7;
+                        const outpostName = `Outpost ${String.fromCharCode(65 + Math.floor(seededRandom(outpostSeed) * 26))}-${Math.floor(seededRandom(outpostSeed+1) * 999)}`;
+                        
+                        // 1. Create the Map Tile
+                        tile = {
+                            char: OUTPOST_CHAR_VAL,
+                            type: 'location',
+                            name: outpostName,
+                            faction: "INDEPENDENT",
+                            isMajorHub: false,
+                            sells: [{
+                                id: "FUEL_CELLS",
+                                priceMod: 1.5,
+                                stock: 20 + Math.floor(seededRandom(outpostSeed + 2) * 30)
+                            }, {
+                                id: "TECH_PARTS",
+                                priceMod: 1.3,
+                                stock: 5 + Math.floor(seededRandom(outpostSeed + 3) * 10)
+                            }],
+                            buys: [{
+                                id: "MINERALS",
+                                priceMod: 0.9,
+                                stock: 30 + Math.floor(seededRandom(outpostSeed + 4) * 50)
+                            }, {
+                                id: "FOOD_SUPPLIES",
+                                priceMod: 0.8,
+                                stock: 20 + Math.floor(seededRandom(outpostSeed + 5) * 40)
+                            }],
+                            scanFlavor: "A small, automated independent outpost. It offers basic supplies at a markup and buys local resources."
+                        };
+
+                        // 2. Register in Global LOCATIONS_DATA
+                        // This makes the outpost valid for Cantina Rumors and Delivery Missions!
+                        if (typeof LOCATIONS_DATA !== 'undefined' && !LOCATIONS_DATA[outpostName]) {
+                            LOCATIONS_DATA[outpostName] = {
+                                coords: { x: worldX, y: worldY },
+                                type: OUTPOST_CHAR_VAL, // Matches structure in locations.js
+                                isMajorHub: false,
+                                faction: "INDEPENDENT",
+                                sells: tile.sells, // Reference the same trade data
+                                buys: tile.buys,
+                                scanFlavor: tile.scanFlavor
+                            };
+                        }
+
+                    } else if (seededRandom(tileSeed + 8) < ANOMALY_SPAWN_CHANCE) {
                          tile = {
                              char: ANOMALY_CHAR_VAL,
                              type: 'anomaly',
@@ -917,7 +934,9 @@ function applyPlayerShipStats() {
      sectorEl.innerHTML = currentSectorName;
      sectorEl.style.color = threatColor;
      
-     document.getElementById('sectorCoordsStat').textContent = `[${playerX}, ${playerY}]`;
+     // Display Y as inverted so "Up" (Negative array index) looks like Positive movement
+    // We use (-playerY) so moving "North" (decreasing index) shows as increasing number.
+    document.getElementById('sectorCoordsStat').textContent = `[${playerX}, ${-playerY}]`;
 
      // 6. Log Handling
      messageAreaElement.innerHTML = messageLog.join('<br>');
@@ -1610,7 +1629,29 @@ function renderSystemMap() {
                 // Stars: Darker Gold in Light Mode for visibility
                 case STAR_CHAR_VAL: ctx.fillStyle = isLightMode ? '#DDBB00' : '#FFFF99'; break;
                 case PLANET_CHAR_VAL: ctx.fillStyle = '#88CCFF'; break;
-                case STARBASE_CHAR_VAL: ctx.fillStyle = '#FF88FF'; break;
+                case STARBASE_CHAR_VAL: 
+                    ctx.save();
+                    
+                    // --- PULSE ANIMATION MATH ---
+                    // Creates a smooth wave between 0.0 and 1.0 roughly every second
+                    const pulse = (Math.sin(Date.now() / 300) + 1) / 2; 
+                    
+                    // Glow oscillates between 15px and 30px
+                    ctx.shadowBlur = 15 + (pulse * 15); 
+                    ctx.shadowColor = '#00FFFF'; // Cyan Neon
+                    ctx.fillStyle = '#00FFFF';
+                    
+                    // Slightly pulse the size too (optional, looks cool)
+                    const sizeMod = 1.0 + (pulse * 0.1); 
+                    ctx.font = `bold ${TILE_SIZE * 1.3 * sizeMod}px 'Orbitron', monospace`;
+                    
+                    ctx.fillText(
+                        tileChar,
+                        x * TILE_SIZE + TILE_SIZE / 2,
+                        y * TILE_SIZE + TILE_SIZE / 2
+                    );
+                    ctx.restore(); 
+                    break;
                 case OUTPOST_CHAR_VAL: ctx.fillStyle = '#AADD99'; break;
                 case ASTEROID_CHAR_VAL: ctx.fillStyle = '#FFAA66'; break;
                 case NEBULA_CHAR_VAL: ctx.fillStyle = '#DD99FF'; break;
@@ -1694,7 +1735,9 @@ function renderSystemMap() {
     else if (dist > 150) { threat = "MODERATE"; color = "#FFFF00"; } 
     
     sectorNameStatElement.innerHTML = `${currentSectorName} <span style="color:${color}; font-size: 0.8em; margin-left: 8px;">[${threat}]</span>`;
-    sectorCoordsStatElement.textContent = `(${playerX},${playerY})`;
+    // INVERTED Y FOR DISPLAY ONLY
+    sectorCoordsStatElement.textContent = `(${playerX},${-playerY})`;
+
     document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
 
     renderUIStats();
@@ -1934,7 +1977,7 @@ function movePlayer(dx, dy) {
              // --- HAPTIC FEEDBACK: COLLISION ---
              triggerHaptic(200);
 
-             startCombat();
+             startCombat(enemyAtLoc);
              // Remove the map icon since we are now "in" the combat screen
              removeEnemyAt(playerX, playerY);
              return; 
@@ -1969,6 +2012,20 @@ function movePlayer(dx, dy) {
      if (tileObject && tileObject.type === 'location') {
          const location = tileObject;
          bM = `Arrived at ${location.name}.`;
+
+         if (location.isMajorHub || location.type === OUTPOST_CHAR_VAL) {
+             if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+             showToast(`DOCKED: ${location.name.toUpperCase()}<br><span style="font-size:12px; color:#aaa;">Press <strong>E</strong> for Station Services</span>`, "success");
+         }
+
+         // --- DOCKING FEEDBACK ---
+         if (location.isMajorHub) {
+             // Play a sound if available
+             if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+             
+             // Show a prominent notification
+             showToast(`DOCKED: ${location.name.toUpperCase()}<br><span style="font-size:12px">Press 'E' for Station Services</span>`, "success");
+         }
 
          // ---CUSTOMS SCAN TRIGGER ---
          // Only Major Hubs have customs scanners
@@ -2319,7 +2376,9 @@ function movePlayer(dx, dy) {
      }
      
      // 2. Consume Drone
-     playerCargo.MINING_DRONE--;
+     playerCargo.MINING_DRONE = (playerCargo.MINING_DRONE || 0) - 1;
+     // Safety cleanup (optional but good practice)
+     if (playerCargo.MINING_DRONE <= 0) delete playerCargo.MINING_DRONE;
      updateCurrentCargoLoad();
 
      // 3. Calculate Reward
@@ -3431,7 +3490,7 @@ function handleCombatAction(action) {
             soundManager.playLaser();
             let actualDamage = damageDealt;
 
-            // Apply Shield Bonus (if applicable) - FIXED: Prevents NaN if property is undefined
+            // Apply Shield Bonus (if applicable)
             if (currentCombatContext.pirateShields > 0) {
                 actualDamage += (weaponStats.vsShieldBonus || 0);
             }
@@ -3515,7 +3574,7 @@ function handleCombatAction(action) {
         }
 
     } else if (action === 'hail') {
-        // --- NEW: DIPLOMATIC HAIL LOGIC ---
+        // --- DIPLOMATIC HAIL LOGIC ---
         let faction = "PIRATE";
         // We assume the ship ID (e.g. "KTHARR_SCOUT") tells us the faction
         const shipId = currentCombatContext.ship.id || "PIRATE";
@@ -3568,12 +3627,18 @@ function handleCombatAction(action) {
     } else if (action === 'run') {
         playerFuel -= RUN_FUEL_COST;
         playerFuel = parseFloat(playerFuel.toFixed(1));
+        
         if (Math.random() < RUN_ESCAPE_CHANCE) {
             logMessage(`Escaped! Used ${RUN_FUEL_COST} fuel.`);
             updatePlayerNotoriety(-1);
+
+            // FIX: Remove the enemy entity from the map so we don't immediately collide again
+            removeEnemyAt(playerX, playerY);
+
             currentCombatContext = null;
             playerIsChargingAttack = false;
             playerIsEvading = false;
+            
             changeGameState(GAME_STATES.GALACTIC_MAP);
             handleInteraction();
             return;
@@ -3684,14 +3749,14 @@ function handleCombatAction(action) {
                     playerShields = 0;
                     enemyLog += ` Shields down! Hull takes ${spillOver} damage!`;
                     
-                    // --- NEW: Visual Juice ---
+                    // Visual Juice
                     if (typeof triggerDamageEffect === "function") triggerDamageEffect();
                 }
             } else {
                 playerHull -= pD;
                 enemyLog += `Hull takes ${pD} damage!`;
                 
-                // --- NEW: Visual Juice ---
+                // Visual Juice
                 if (typeof triggerDamageEffect === "function") triggerDamageEffect();
             }
         } else {
@@ -4140,111 +4205,129 @@ function toggleCodex(show) {
  }
 
  function generateMissionsForStation(stationName) {
-     const generatedMissions = [];
-     const availableTemplates = MISSION_TEMPLATES.filter(t => playerLevel >= (t.prerequisites.minLevel || 1));
-     const numMissionsToGenerate = 2 + Math.floor(Math.random() * 2);
+    const generatedMissions = [];
+    // Filter templates based on player level
+    const availableTemplates = MISSION_TEMPLATES.filter(t => playerLevel >= (t.prerequisites.minLevel || 1));
+    
+    // Determine how many missions we want to generate (2 to 3)
+    const numMissionsToGenerate = 2 + Math.floor(Math.random() * 2);
 
-     for (let i = 0; i < numMissionsToGenerate && availableTemplates.length > 0; i++) {
+    // FIX: Safety counter to prevent infinite loops if valid missions cannot be generated
+    // (e.g., if selectRandomDestination keeps returning null)
+    let attempts = 0;
+    const MAX_ATTEMPTS = 20;
 
-         try {
-             // Select a weighted random template from the available ones
-             const chosenTemplate = getWeightedRandomOutcome(availableTemplates);
+    while (generatedMissions.length < numMissionsToGenerate && availableTemplates.length > 0 && attempts < MAX_ATTEMPTS) {
+        attempts++;
 
-             // Crucial fix: Make a deep copy of the template to avoid side-effects
-             let newMission = JSON.parse(JSON.stringify(chosenTemplate));
+        try {
+            // Select a weighted random template from the available ones
+            const chosenTemplate = getWeightedRandomOutcome(availableTemplates);
 
-             newMission.id = `${newMission.id_prefix}${i}_${Date.now()}`;
-             newMission.giver = stationName;
+            // Deep copy of the template to avoid side-effects
+            let newMission = JSON.parse(JSON.stringify(chosenTemplate));
 
-             // Get the first objective template and ensure it's a fresh copy
-             const objective = newMission.objective_templates[0];
+            // Generate a unique ID
+            newMission.id = `${newMission.id_prefix}${attempts}_${Date.now()}`;
+            newMission.giver = stationName;
 
-             let success = true;
+            // Get the first objective template
+            const objective = newMission.objective_templates[0];
 
-             // Configure the mission details and build strings from templates
-             switch (newMission.type) {
-                 case "BOUNTY":
-                     const pirateCount = objective.count[0] + Math.floor(Math.random() * (objective.count[1] - objective.count[0] + 1));
-                     objective.count = pirateCount;
-                     newMission.title = newMission.title_template.replace('{sectorName}', currentSectorName);
-                     newMission.description = newMission.description_template
-                         .replace('{sectorName}', currentSectorName)
-                         .replace('{sectorCoords}', `(${currentSectorX},${currentSectorY})`)
-                         .replace('{count}', objective.count);
-                     break;
-                 case "DELIVERY": {
-                     const destination = selectRandomDestination(stationName);
-                     if (!destination) {
-                         success = false;
-                         break;
-                     }
+            let success = true;
 
-                     const deliveryItem = selectRandomCommodity(destination.name);
-                     if (!deliveryItem) {
-                         success = false;
-                         break;
-                     }
+            // Configure the mission details and build strings from templates
+            switch (newMission.type) {
+                case "BOUNTY":
+                    const pirateCount = objective.count[0] + Math.floor(Math.random() * (objective.count[1] - objective.count[0] + 1));
+                    objective.count = pirateCount;
+                    newMission.title = newMission.title_template.replace('{sectorName}', currentSectorName);
+                    newMission.description = newMission.description_template
+                        .replace('{sectorName}', currentSectorName)
+                        .replace('{sectorCoords}', `(${currentSectorX},${-currentSectorY})`)
+                        .replace('{count}', objective.count);
+                    break;
 
-                     const itemCount = objective.count[0] + Math.floor(Math.random() * (objective.count[1] - objective.count[0] + 1));
+                case "DELIVERY": {
+                    const destination = selectRandomDestination(stationName);
+                    // Safety check: ensure a valid destination exists
+                    if (!destination) {
+                        success = false;
+                        break;
+                    }
 
-                     objective.destinationName = destination.name;
-                     objective.destinationSectorKey = destination.key;
-                     objective.itemID = deliveryItem;
-                     objective.count = itemCount;
+                    const deliveryItem = selectRandomCommodity(destination.name);
+                    // Safety check: ensure the destination actually buys something
+                    if (!deliveryItem) {
+                        success = false;
+                        break;
+                    }
 
-                     newMission.title = newMission.title_template.replace('{destinationName}', objective.destinationName);
-                     newMission.description = newMission.description_template
-                         .replace('{destinationName}', objective.destinationName)
-                         .replace('{count}', objective.count)
-                         .replace('{itemName}', COMMODITIES[deliveryItem].name);
-                     break;
-                 }
-                 case "ACQUIRE": {
-                     const acquireItem = selectRandomCommodity(stationName);
-                     if (!acquireItem) {
-                         success = false;
-                         break;
-                     }
+                    const itemCount = objective.count[0] + Math.floor(Math.random() * (objective.count[1] - objective.count[0] + 1));
 
-                     const itemCount = objective.count[0] + Math.floor(Math.random() * (objective.count[1] - objective.count[0] + 1));
+                    objective.destinationName = destination.name;
+                    objective.destinationSectorKey = destination.key;
+                    objective.itemID = deliveryItem;
+                    objective.count = itemCount;
 
-                     objective.itemID = acquireItem;
-                     objective.count = itemCount;
+                    newMission.title = newMission.title_template.replace('{destinationName}', objective.destinationName);
+                    newMission.description = newMission.description_template
+                        .replace('{destinationName}', objective.destinationName)
+                        .replace('{count}', objective.count)
+                        .replace('{itemName}', COMMODITIES[deliveryItem].name);
+                    break;
+                }
 
-                     newMission.title = newMission.title_template.replace('{itemName}', COMMODITIES[acquireItem].name);
-                     newMission.description = newMission.description_template
-                         .replace('{count}', objective.count)
-                         .replace('{itemName}', COMMODITIES[acquireItem].name);
-                     break;
-                 }
-                 case "SURVEY":
-                     objective.targetType = 'anomaly';
-                     objective.subtype = 'unstable warp pocket';
-                     objective.sectorKey = "ANY";
-                     newMission.title = newMission.title_template.replace('{subtype}', objective.subtype);
-                     newMission.description = newMission.description_template.replace('{subtype}', objective.subtype);
-                     break;
-                 default:
-                     success = false;
-             }
+                case "ACQUIRE": {
+                    const acquireItem = selectRandomCommodity(stationName);
+                    // Safety check: ensure the station buys something we can be asked to acquire
+                    if (!acquireItem) {
+                        success = false;
+                        break;
+                    }
 
-             // Set the final objectives on the new mission object
-             newMission.objectives = [objective];
+                    const itemCount = objective.count[0] + Math.floor(Math.random() * (objective.count[1] - objective.count[0] + 1));
 
-             // Randomize rewards and assign them
-             newMission.rewards.credits = newMission.rewards_template.credits[0] + Math.floor(Math.random() * (newMission.rewards_template.credits[1] - newMission.rewards_template.credits[0] + 1));
-             newMission.rewards.xp = newMission.rewards_template.xp[0] + Math.floor(Math.random() * (newMission.rewards_template.xp[1] - newMission.rewards_template.xp[0] + 1));
-             newMission.rewards.notoriety = newMission.rewards_template.notoriety[0] + Math.floor(Math.random() * (newMission.rewards_template.notoriety[1] - newMission.rewards_template.notoriety[0] + 1));
+                    objective.itemID = acquireItem;
+                    objective.count = itemCount;
 
-             if (success) {
-                 generatedMissions.push(newMission);
-             }
-         } catch (error) {
-             console.error("Failed to generate a mission:", error);
-         }
-     }
-     return generatedMissions;
- }
+                    newMission.title = newMission.title_template.replace('{itemName}', COMMODITIES[acquireItem].name);
+                    newMission.description = newMission.description_template
+                        .replace('{count}', objective.count)
+                        .replace('{itemName}', COMMODITIES[acquireItem].name);
+                    break;
+                }
+
+                case "SURVEY":
+                    objective.targetType = 'anomaly';
+                    objective.subtype = 'unstable warp pocket';
+                    objective.sectorKey = "ANY";
+                    newMission.title = newMission.title_template.replace('{subtype}', objective.subtype);
+                    newMission.description = newMission.description_template.replace('{subtype}', objective.subtype);
+                    break;
+
+                default:
+                    success = false;
+            }
+
+            // Set the final objectives on the new mission object
+            newMission.objectives = [objective];
+
+            // Randomize rewards and assign them
+            newMission.rewards.credits = newMission.rewards_template.credits[0] + Math.floor(Math.random() * (newMission.rewards_template.credits[1] - newMission.rewards_template.credits[0] + 1));
+            newMission.rewards.xp = newMission.rewards_template.xp[0] + Math.floor(Math.random() * (newMission.rewards_template.xp[1] - newMission.rewards_template.xp[0] + 1));
+            newMission.rewards.notoriety = newMission.rewards_template.notoriety[0] + Math.floor(Math.random() * (newMission.rewards_template.notoriety[1] - newMission.rewards_template.notoriety[0] + 1));
+
+            // Only push the mission if generation was successful
+            if (success) {
+                generatedMissions.push(newMission);
+            }
+        } catch (error) {
+            console.error("Failed to generate a mission:", error);
+        }
+    }
+    return generatedMissions;
+}
 
  function displayMissionBoard() {
      // Get location data from the chunkManager
@@ -4257,6 +4340,8 @@ function toggleCodex(show) {
 
      const stationName = location.name;
      let stationMissions = MISSIONS_DATABASE[stationName];
+
+     
 
      if (!stationMissions) {
          // We'll need to update mission generation later, but this will work for now
@@ -4835,6 +4920,17 @@ function handleTradeInput(key) {
                      return true;
                  }
                  break; // Not a major hub
+            // NEW: Generic Interact Key
+             case 'e': 
+             case 'enter':
+             case 'space':
+                // Default to opening Trade, or Shipyard if available
+                if (currentLocation.isMajorHub) {
+                    displayMissionBoard(); // Opens Mission Board as the "Lobby"
+                } else {
+                    openTradeModal('buy'); // Outposts just open Trade
+                }
+                return true;
              case 'c':
                  if (playerActiveMission && playerActiveMission.type === "DELIVERY") {
                      handleCompleteDelivery();
