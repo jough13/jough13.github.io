@@ -2192,15 +2192,14 @@ function movePlayer(dx, dy) {
                  unlockLoreEntry("XENO_ANOMALIES");
                  break;
              case DERELICT_CHAR_VAL:
-                 // --- NEW DERELICT INTERACTION ---
-                 bM = "You approach the dark hull of the derelict ship..."; // Base message
-                 if (tileObject.studied) {
-                     bM = "You drift past the salvaged wreck.";
-                 } else {
-                     handleDerelictEncounter(tileObject); // Trigger the encounter!
-                 }
-                 unlockLoreEntry("XENO_DERELICTS"); // Also unlock the codex entry
-                 break;
+                 // 1. Unlock Lore
+                 unlockLoreEntry("XENO_DERELICTS");
+                 
+                 // 2. Open the new Visual Modal
+                 openDerelictView();
+                 
+                 // 3. Return (Stop processing generic text logs)
+                 return;
          }
      }
 
@@ -6450,4 +6449,162 @@ function updateModalInfoBar(elementId) {
             <span class="info-bar-value info-credits">${formatNumber(playerCredits)}c</span>
         </div>
     `;
+}
+
+// --- DERELICT SYSTEM ---
+
+function drawProceduralDerelict(canvasId, seed) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    
+    ctx.clearRect(0, 0, w, h);
+    
+    // RNG Setup
+    const rng = (s) => { let x = Math.sin(s++) * 10000; return x - Math.floor(x); };
+    let currentSeed = seed;
+    const rand = () => rng(currentSeed++);
+
+    ctx.save();
+    ctx.translate(w/2, h/2);
+    
+    // 1. Random Rotation (It's drifting)
+    ctx.rotate(rand() * Math.PI * 2);
+    
+    // 2. Draw Broken Hull Parts
+    const hullColor = '#444455';
+    const accentColor = '#662222'; // Rusty red
+    
+    // Main Body (Broken)
+    ctx.fillStyle = hullColor;
+    ctx.beginPath();
+    ctx.moveTo(-30, -50);
+    ctx.lineTo(30, -50);
+    ctx.lineTo(40, 20); // Jagged break
+    ctx.lineTo(10, 10); // Jagged break
+    ctx.lineTo(-10, 30); // Jagged break
+    ctx.lineTo(-40, 10);
+    ctx.fill();
+    
+    // 3. Debris Field (Particles around it)
+    ctx.fillStyle = '#888';
+    for(let i=0; i<15; i++) {
+        const dx = (rand() * 100) - 50;
+        const dy = (rand() * 100) - 50;
+        const size = rand() * 3;
+        ctx.fillRect(dx, dy, size, size);
+    }
+    
+    // 4. Sparks/Power Leaks (Optional animation could go here, for now static)
+    if (rand() > 0.5) {
+        ctx.fillStyle = '#00FFFF';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#00FFFF';
+        ctx.fillRect(-10, -10, 4, 4); // Surviving power core?
+        ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
+}
+
+function openDerelictView() {
+    const tile = chunkManager.getTile(playerX, playerY);
+    if (!tile) return;
+
+    // Use our helper to show stats bar
+    updateModalInfoBar('derelictInfoBar');
+
+    document.getElementById('derelictOverlay').style.display = 'flex';
+    document.getElementById('derelictNameTitle').textContent = `DERELICT ${tile.name || "UNKNOWN"}`;
+    document.getElementById('derelictLog').innerHTML = "> Sensors locked. Vessel appears to be drifting.<br>";
+    
+    // Generate art based on location
+    const seed = (playerX * 1000) + playerY;
+    drawProceduralDerelict('derelictCanvas', seed);
+}
+
+function closeDerelictView() {
+    document.getElementById('derelictOverlay').style.display = 'none';
+
+    updateSideBorderVisibility();
+}
+
+function logDerelict(msg, type="neutral") {
+    const logEl = document.getElementById('derelictLog');
+    const color = type === 'bad' ? '#FF5555' : (type === 'good' ? '#00FF00' : '#888');
+    logEl.innerHTML += `<span style="color:${color}">> ${msg}</span><br>`;
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function handleDerelictAction(action) {
+    // 1. SCAN: Safe, XP reward
+    if (action === 'SCAN') {
+        const xp = 25;
+        playerXP += xp;
+        logDerelict(`Scan Complete. Structural analysis recorded. +${xp} XP`, 'good');
+        checkLevelUp();
+        // Disable button visually (optional, or just let them spam it for flavor text?)
+        // For game balance, maybe only allow once? We'll leave it open for now.
+    }
+    
+    // 2. SALVAGE: Gather resources, low risk of damage
+    else if (action === 'SALVAGE') {
+        if (Math.random() < 0.7) {
+            // Success
+            const scrap = 2 + Math.floor(Math.random() * 5);
+            if (currentCargoLoad + scrap <= PLAYER_CARGO_CAPACITY) {
+                playerCargo.TECH_PARTS = (playerCargo.TECH_PARTS || 0) + scrap;
+                updateCurrentCargoLoad();
+                logDerelict(`Salvage successful. Recovered ${scrap} Tech Parts.`, 'good');
+                updateModalInfoBar('derelictInfoBar'); // Update cargo display
+            } else {
+                logDerelict("Cargo hold full! Cannot salvage.", 'bad');
+            }
+        } else {
+            // Fail / Accident
+            const dmg = 5;
+            playerHull -= dmg;
+            logDerelict(`Accident! Debris collision. Hull -${dmg}`, 'bad');
+            if (playerHull <= 0) {
+                closeDerelictView();
+                triggerGameOver("Crushed by Derelict Debris");
+            }
+            updateModalInfoBar('derelictInfoBar');
+        }
+    }
+    
+    // 3. BREACH: High Risk, High Reward, Combat Chance
+    else if (action === 'BREACH') {
+        const roll = Math.random();
+        
+        if (roll < 0.4) {
+            // AMBUSH! (40% Chance)
+            closeDerelictView();
+            spawnParticles(playerX, playerY, 'explosion');
+            
+            // Trigger your existing combat system!
+            logMessage("WARNING: Automated defenses activated!");
+            startCombat(); // Uses your existing function
+            
+        } else if (roll < 0.8) {
+            // JACKPOT (40% Chance)
+            const credits = 200 + Math.floor(Math.random() * 500);
+            playerCredits += credits;
+            logDerelict(`Hull breached. Captain's safe located! Found ${credits} credits.`, 'good');
+            updateModalInfoBar('derelictInfoBar');
+        } else {
+            // TRAP (20% Chance)
+            const dmg = 20;
+            playerHull -= dmg;
+            logDerelict(`TRAP TRIGGERED! Explosive decompression. Hull -${dmg}`, 'bad');
+            soundManager.playExplosion();
+            if (playerHull <= 0) {
+                closeDerelictView();
+                triggerGameOver("Killed by Derelict Trap");
+            }
+            updateModalInfoBar('derelictInfoBar');
+        }
+    }
 }
