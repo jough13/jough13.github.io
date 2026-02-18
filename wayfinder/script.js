@@ -1614,8 +1614,6 @@ function renderSystemMap() {
         }
     } else {
         // STANDARD BACKGROUND FILL
-        // Light Mode: Solid Paper White
-        // Dark Mode: Transparent Black (0.4 alpha) to let the CSS background show through
         ctx.fillStyle = isLightMode ? '#FFFFFF' : 'rgba(0, 0, 0, 0.4)';
     }
     ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
@@ -1629,27 +1627,36 @@ function renderSystemMap() {
             const tileData = chunkManager.getTile(worldX, worldY);
             const tileChar = getTileChar(tileData);
 
-            // [Color Logic]
+            // --- XERXES SPECIAL RENDER (NEW) ---
+            if (tileData && tileData.name === "Xerxes") {
+                ctx.save();
+                const pulse = (Math.sin(Date.now() / 500) + 1) / 2; // Slow, deep pulse
+                
+                ctx.shadowBlur = 20 + (pulse * 10);
+                ctx.shadowColor = '#8A2BE2'; // BlueViolet Glow
+                ctx.fillStyle = '#9933FF';   // Bright Purple Core
+                
+                // Draw a larger "Planet" circle
+                ctx.font = `bold ${TILE_SIZE * 1.2}px 'Orbitron', monospace`;
+                ctx.fillText("●", x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
+                
+                ctx.restore();
+                continue; // Skip standard character rendering
+            }
+
+            // [Standard Color Logic]
             switch (tileChar) {
                 // Stars: Darker Gold in Light Mode for visibility
                 case STAR_CHAR_VAL: ctx.fillStyle = isLightMode ? '#DDBB00' : '#FFFF99'; break;
                 case PLANET_CHAR_VAL: ctx.fillStyle = '#88CCFF'; break;
                 case STARBASE_CHAR_VAL: 
                     ctx.save();
-                    
-                    // --- PULSE ANIMATION MATH ---
-                    // Creates a smooth wave between 0.0 and 1.0 roughly every second
                     const pulse = (Math.sin(Date.now() / 300) + 1) / 2; 
-                    
-                    // Glow oscillates between 15px and 30px
                     ctx.shadowBlur = 15 + (pulse * 15); 
-                    ctx.shadowColor = '#00FFFF'; // Cyan Neon
+                    ctx.shadowColor = '#00FFFF'; 
                     ctx.fillStyle = '#00FFFF';
-                    
-                    // Slightly pulse the size too (optional, looks cool)
                     const sizeMod = 1.0 + (pulse * 0.1); 
                     ctx.font = `bold ${TILE_SIZE * 1.3 * sizeMod}px 'Orbitron', monospace`;
-                    
                     ctx.fillText(
                         tileChar,
                         x * TILE_SIZE + TILE_SIZE / 2,
@@ -1673,11 +1680,13 @@ function renderSystemMap() {
             }
 
             // Draw at Screen Coordinate
-            ctx.fillText(
-                tileChar,
-                x * TILE_SIZE + TILE_SIZE / 2,
-                y * TILE_SIZE + TILE_SIZE / 2
-            );
+            if (tileChar !== STARBASE_CHAR_VAL) { // Starbase already drew itself
+                ctx.fillText(
+                    tileChar,
+                    x * TILE_SIZE + TILE_SIZE / 2,
+                    y * TILE_SIZE + TILE_SIZE / 2
+                );
+            }
         }
     }
 
@@ -1689,11 +1698,8 @@ function renderSystemMap() {
     if (sensorPulseActive) {
         ctx.beginPath();
         ctx.arc(playerScreenX, playerScreenY - (TILE_SIZE/4), sensorPulseRadius, 0, 2 * Math.PI);
-        
         const accentColor = getThemeColor('--accent-color', '#00E0E0');
-        
         ctx.strokeStyle = accentColor;
-
         ctx.lineWidth = 2;
         ctx.stroke();
     }
@@ -2011,11 +2017,18 @@ function movePlayer(dx, dy) {
  function handleInteraction() {
      const tileObject = chunkManager.getTile(playerX, playerY);
      const tileChar = getTileChar(tileObject);
-     let bM = ""; // This is our base message for the text log
-     let availableActions = []; // This new array will hold our button actions
+     let bM = ""; 
+     let availableActions = [];
 
      if (tileObject && tileObject.type === 'location') {
          const location = tileObject;
+         
+        // ---Use .includes() to catch "Planet Xerxes" or just "Xerxes" ---
+         if (location.name.includes("Xerxes")) {
+             openXerxesView();
+             return; // Stop standard processing
+         }
+
          bM = `Arrived at ${location.name}.`;
 
         // 1. Keep the Docking Toast
@@ -2026,7 +2039,7 @@ function movePlayer(dx, dy) {
 
          // 2. Open the Visual Station View immediately for Hubs
          if (location.isMajorHub) {
-             openStationView(); // <--- THIS IS THE KEY CHANGE
+             openStationView(); 
              return; // Stop processing other automatic interactions
          }
 
@@ -6231,8 +6244,8 @@ function cantinaAction(action) {
 function openTradeModal(mode) {
     const location = chunkManager.getTile(playerX, playerY);
     
-    // Allow trading at Hubs OR Outposts
-    if (!location.isMajorHub && location.type !== 'H') {
+    // If it's a valid location, we let the code check if it actually has items to sell/buy later.
+    if (!location || location.type !== 'location') {
         logMessage("Trading terminal offline.");
         return;
     }
@@ -6605,6 +6618,182 @@ function handleDerelictAction(action) {
                 triggerGameOver("Killed by Derelict Trap");
             }
             updateModalInfoBar('derelictInfoBar');
+        }
+    }
+}
+
+// --- XERXES ROGUE PLANET LOGIC ---
+
+let xerxesPuzzleSolved = false; // Simple state tracker
+
+function openXerxesView() {
+    updateModalInfoBar('xerxesInfoBar');
+    document.getElementById('xerxesOverlay').style.display = 'flex';
+    
+    // Draw the art
+    drawXerxesArt('xerxesCanvas');
+    
+    // Render the menu
+    renderXerxesMenu();
+}
+
+function closeXerxesView() {
+    document.getElementById('xerxesOverlay').style.display = 'none';
+    updateSideBorderVisibility();
+}
+
+function drawXerxesArt(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width; const h = canvas.height;
+    
+    ctx.fillStyle = '#050010'; // Deep dark void
+    ctx.fillRect(0,0,w,h);
+    
+    // Draw the Planet
+    const cx = w/2, cy = h/2;
+    const grad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 70);
+    grad.addColorStop(0, '#220044');
+    grad.addColorStop(1, '#080010');
+    
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(cx, cy, 60, 0, Math.PI*2); ctx.fill();
+    
+    // Draw the "Spire" lights (City)
+    ctx.fillStyle = '#9933FF';
+    for(let i=0; i<30; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const rad = 20 + Math.random() * 35;
+        const lx = cx + Math.cos(ang)*rad;
+        const ly = cy + Math.sin(ang)*rad;
+        ctx.globalAlpha = Math.random() * 0.8;
+        ctx.fillRect(lx, ly, 2, 2);
+    }
+    ctx.globalAlpha = 1.0;
+    
+    // Atmosphere Ring
+    ctx.strokeStyle = '#551188';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, cy, 65, 0, Math.PI*2); ctx.stroke();
+}
+
+function renderXerxesMenu() {
+    const menu = document.getElementById('xerxesMenu');
+    menu.innerHTML = '';
+    
+    // 1. Standard Options
+    const stdBtns = [
+        { icon: '⛽', label: 'Black Market Fuel', sub: 'Refuel (Premium Price)', action: 'xerxesRefuel' },
+        { icon: '🔧', label: 'Shadow Dock', sub: 'Repair Hull', action: 'xerxesRepair' }
+    ];
+    
+    stdBtns.forEach(b => {
+        menu.innerHTML += `
+            <button class="station-action-btn xerxes-btn" onclick="${b.action}()">
+                <div class="btn-icon">${b.icon}</div>
+                <div class="btn-label">${b.label}<br><span class="btn-sub">${b.sub}</span></div>
+            </button>
+        `;
+    });
+
+    // 2. The Puzzle / Spire Button
+    if (!xerxesPuzzleSolved) {
+        menu.innerHTML += `
+            <button class="station-action-btn xerxes-btn xerxes-spire-btn" onclick="enterTheSpire()">
+                <div class="btn-icon">👁️</div>
+                <div class="btn-label">The Obsidian Spire<br><span class="btn-sub" style="color:#DDA0DD">Gate Sealed. Approach?</span></div>
+            </button>
+        `;
+    } else {
+        // UNLOCKED STATE: Special Shop / Reward
+        menu.innerHTML += `
+            <button class="station-action-btn xerxes-btn xerxes-spire-btn" onclick="openTradeModal('buy')">
+                <div class="btn-icon">💎</div>
+                <div class="btn-label">The Inner Sanctum<br><span class="btn-sub" style="color:#00FF00">Access Granted (Trade)</span></div>
+            </button>
+        `;
+    }
+    
+    // 3. Leave
+    menu.innerHTML += `
+        <button class="station-action-btn xerxes-btn" onclick="closeXerxesView()">
+            <div class="btn-icon">🚀</div>
+            <div class="btn-label">Depart Orbit<br><span class="btn-sub">Return to Deep Space</span></div>
+        </button>
+    `;
+}
+
+function xerxesRefuel() {
+    if(playerCredits < 50) { xerxesLog("Dockmaster: 'Credits first, outlander.'", "bad"); return; }
+    if(playerFuel >= MAX_FUEL) { xerxesLog("Tanks already full.", "neutral"); return; }
+    playerCredits -= 50;
+    playerFuel = MAX_FUEL;
+    soundManager.playUIHover();
+    xerxesLog("Refueled. The fuel smells like sulfur...", "good");
+    updateModalInfoBar('xerxesInfoBar');
+}
+
+function xerxesRepair() {
+    repairShip(); // Reuse standard logic, but it will log to main console behind modal. 
+    // Let's add a local log too:
+    xerxesLog("Hull plates welded. Crude work, but solid.", "good");
+    updateModalInfoBar('xerxesInfoBar');
+}
+
+function xerxesLog(msg, type) {
+    const log = document.getElementById('xerxesLog');
+    const color = type === 'bad' ? '#FF5555' : (type === 'good' ? '#00FF00' : '#DDA0DD');
+    log.innerHTML += `<div style="color:${color}">> ${msg}</div>`;
+    log.scrollTop = log.scrollHeight;
+}
+
+// --- THE PUZZLE LOGIC ---
+function enterTheSpire() {
+    const log = document.getElementById('xerxesLog');
+    log.innerHTML = ""; // Clear log for the event
+    
+    xerxesLog("You stand before the massive Obsidian Gate.", "neutral");
+    xerxesLog("A synthetic voice booms: 'I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. What am I?'", "neutral");
+    
+    // Change Menu to Riddle Options
+    const menu = document.getElementById('xerxesMenu');
+    menu.innerHTML = `
+        <button class="station-action-btn xerxes-btn" onclick="solveSpire(false)">
+            <div class="btn-label">A Dream</div>
+        </button>
+        <button class="station-action-btn xerxes-btn" onclick="solveSpire(true)">
+            <div class="btn-label">A Map</div>
+        </button>
+        <button class="station-action-btn xerxes-btn" onclick="solveSpire(false)">
+            <div class="btn-label">The Void</div>
+        </button>
+        <button class="station-action-btn xerxes-btn" onclick="renderXerxesMenu()">
+            <div class="btn-label">Back away...</div>
+        </button>
+    `;
+}
+
+function solveSpire(isCorrect) {
+    if (isCorrect) {
+        soundManager.playAbilityActivate(); // Success sound
+        xerxesLog("The gate grinds open. Access Granted.", "good");
+        xerxesPuzzleSolved = true;
+        
+        // Give a one-time XP reward
+        playerXP += 200;
+        showToast("PUZZLE SOLVED: +200 XP", "success");
+        checkLevelUp();
+        
+        renderXerxesMenu(); // Redraw menu with the unlocked shop
+    } else {
+        soundManager.playError();
+        xerxesLog("The gate remains shut. Automated turrets track your movement.", "bad");
+        playerHull -= 10; // Penalty!
+        updateModalInfoBar('xerxesInfoBar');
+        if (playerHull <= 0) {
+            closeXerxesView();
+            triggerGameOver("Vaporized by Xerxes Defense Grid");
         }
     }
 }
