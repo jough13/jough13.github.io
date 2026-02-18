@@ -2480,76 +2480,102 @@ function movePlayer(dx, dy) {
      logMessage(scanMessage);
      renderUIStats();
  }
+
  /**
   * Handles the logic for mining mineral resources on a planet's surface.
   */
+
  function minePlanet() {
-     if (currentGameState !== GAME_STATES.PLANET_VIEW) return;
+    // 1. Validation: Ensure we are in the correct view
+    if (currentGameState !== GAME_STATES.PLANET_VIEW) return;
 
-     const planet = currentSystemData.planets[selectedPlanetIndex];
+    // 2. Target the specific planet we are currently landed on
+    const planet = currentSystemData.planets[selectedPlanetIndex];
 
-     if (planet.minedThisVisit) {
+    // 3. Check if already mined
+    if (planet.minedThisVisit) {
         logMessage("Mineral deposits in this landing zone are depleted.");
+        showToast("ZONE DEPLETED", "error");
         return;
     }
 
-     // MODIFIED: Filter for *only* non-biological resources
-     const mineralResources = planet.biome.resources.filter(r => !BIOLOGICAL_RESOURCES.has(r));
+    // 4. Filter for Minerals (Ignore Biology)
+    // We assume BIOLOGICAL_RESOURCES is available globally from your biomes.js
+    const mineralResources = planet.biome.resources.filter(r => !BIOLOGICAL_RESOURCES.has(r));
 
-     if (mineralResources.length === 0) {
-         logMessage("No mineable mineral deposits detected.");
-         return;
-     }
+    if (mineralResources.length === 0) {
+        logMessage("No mineable mineral deposits detected.");
+        return;
+    }
 
-     // Check for cargo space *before* mining (assume a minimum gain)
-     const potentialGain = 5;
-     if (currentCargoLoad + potentialGain > PLAYER_CARGO_CAPACITY) {
-         logMessage("Mining operation failed: Not enough cargo space for even a small haul.");
-         return;
-     }
+    // 5. Check Cargo Space
+    // We check if we have space for at least a small yield
+    const potentialYield = 5;
+    if (currentCargoLoad + potentialYield > PLAYER_CARGO_CAPACITY) {
+        logMessage("Mining operation failed: Not enough cargo space.");
+        showToast("CARGO FULL", "error");
+        return;
+    }
 
-     let minedResourcesMessage = "Planetary mining operation yields:\n";
-     let minedSomething = false;
-     let spaceLeft = true;
+    let minedResourcesMessage = "Mining Report:";
+    let minedSomething = false;
+    let spaceLeft = true;
+    
+    // Initialize the Toast HTML (This was the cause of the crash in the original bug!)
+    let toastHTML = "<span style='font-weight:bold; color:var(--accent-color);'>MINING SUCCESSFUL</span><br>";
 
-     // MODIFIED: Loop over mineralResources
-     mineralResources.forEach(resourceId => {
-         if (!spaceLeft) return; // Stop if we ran out of space
+    // 6. Iterate through resources
+    mineralResources.forEach(resourceId => {
+        if (!spaceLeft) return;
 
-         const yieldAmount = 5 + Math.floor(Math.random() * 11); // 5 to 15 units
+        // Yield calculation: 5 to 15 units
+        const yieldAmount = 5 + Math.floor(Math.random() * 11);
 
-         if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
-             playerCargo[resourceId] = (playerCargo[resourceId] || 0) + yieldAmount;
-             updateCurrentCargoLoad();
-             minedResourcesMessage += ` ${formatNumber(yieldAmount)} Minerals`;
-            toastHTML += `+${formatNumber(yieldAmount)} Minerals<br>`;
-             minedSomething = true;
-         } else {
-             minedResourcesMessage += ` Not enough cargo space for ${COMMODITIES[resourceId].name}.\n`;
-             spaceLeft = false; // Flag to stop mining other resources
-         }
-     });
+        if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
+            playerCargo[resourceId] = (playerCargo[resourceId] || 0) + yieldAmount;
+            updateCurrentCargoLoad();
+            
+            // Log & Toast Updates
+            const resName = COMMODITIES[resourceId].name;
+            minedResourcesMessage += `\n  +${formatNumber(yieldAmount)} ${resName}`;
+            toastHTML += `+${formatNumber(yieldAmount)} ${resName}<br>`;
+            
+            minedSomething = true;
+        } else {
+            minedResourcesMessage += `\n  (Cargo full, could not collect ${COMMODITIES[resourceId].name})`;
+            spaceLeft = false;
+        }
+    });
 
-     if (minedSomething) {
-        soundManager.playMining();
-        triggerHaptic(50);
-         // Make planet mining a bit more rewarding than asteroids
-         const xpGained = XP_PER_MINING_OP * 2;
-         playerXP += xpGained;
-         minedResourcesMessage += `\n+${xpGained} XP.`;
-         advanceGameTime(0.15); // Planet mining takes longer
-         checkLevelUp();
-         planet.minedThisVisit = true;
-     } else if (!spaceLeft) {
-         // This case is already handled by the "Not enough cargo space" message
-     } else {
-         minedResourcesMessage = "Mining yielded nothing of value this attempt.";
-     }
+    if (minedSomething) {
+        // Play Sound & Haptic
+        if (typeof soundManager !== 'undefined') soundManager.playMining();
+        if (typeof triggerHaptic === 'function') triggerHaptic(50);
+        
+        // XP Reward (Double that of asteroids)
+        const xpGain = XP_PER_MINING_OP * 2;
+        playerXP += xpGain;
+        minedResourcesMessage += `\n  +${formatNumber(xpGain)} XP`;
+        
+        logMessage(minedResourcesMessage);
+        showToast(toastHTML, "success");
+        
+        // Mark planet as depleted
+        planet.minedThisVisit = true;
+        
+        // Advance time slightly
+        advanceGameTime(0.15);
+        checkLevelUp();
+    } else {
+        logMessage("Mining operations yielded no usable resources.");
+        showToast("No Yield", "error");
+    }
 
-     logMessage(minedResourcesMessage);
-     // We stay on the planet, so we just re-render the UI stats
-     renderUIStats();
- }
+    // Refresh UI
+    renderUIStats();
+    // We do NOT call handleInteraction() here, because that would print the 
+    // generic "You are on a planet" text over our nice mining report.
+}
 
  function scoopHydrogen() {
      if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
@@ -4759,6 +4785,9 @@ function openCargoModal() {
     
     currentOutfitContext = { step: 'viewingCargo' };
 
+    // Update the Info Bar
+    updateModalInfoBar('cargoInfoBar');
+
     // UPDATE BORDERS
     updateSideBorderVisibility();
 }
@@ -6081,13 +6110,16 @@ function closeStationView() {
 }
 
 // --- GENERIC MODAL HANDLER ---
-
 function openGenericModal(title) {
     const modal = document.getElementById('genericModalOverlay');
     document.getElementById('genericModalTitle').textContent = title;
     document.getElementById('genericModalList').innerHTML = '';
     document.getElementById('genericDetailContent').innerHTML = '<p style="color:#666">Select an item...</p>';
     document.getElementById('genericModalActions').innerHTML = '';
+    
+    // Update the Info Bar
+    updateModalInfoBar('genericInfoBar');
+
     modal.style.display = 'flex';
 }
 
@@ -6197,20 +6229,18 @@ function cantinaAction(action) {
 }
 
 // --- CONSOLIDATED TRADE SYSTEM (Fixed & Sorted) ---
-
 function openTradeModal(mode) {
     const location = chunkManager.getTile(playerX, playerY);
     
-    // 1. Validation: Ensure we are at a station or outpost
-    if (!location || location.type !== 'location') {
+    // Allow trading at Hubs OR Outposts
+    if (!location.isMajorHub && location.type !== 'H') {
         logMessage("Trading terminal offline.");
         return;
     }
 
     const isBuy = mode === 'buy';
     
-    // 2. OPEN MODAL FIRST
-    // This ensures DOM elements like 'genericModalList' exist before we try to fill them
+    // 1. OPEN MODAL FIRST (Ensures DOM elements like listEl exist before we use them)
     openGenericModal(isBuy ? "STATION MARKETPLACE" : "CARGO MANIFEST");
 
     const listEl = document.getElementById('genericModalList');
@@ -6380,4 +6410,44 @@ function executeTrade(itemId, price, qty, isBuy) {
         : (playerCargo[itemId] || 0);
         
     showTradeDetails(itemId, price, newStock, isBuy, location);
+}
+
+// --- MODAL INFO BAR HELPER ---
+function updateModalInfoBar(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    // Get current ship name
+    const shipName = SHIP_CLASSES[playerShip.shipClass].name;
+    
+    // Calculate Reputation Text
+    // Use the global title, or "Unknown" if undefined
+    const rep = playerNotorietyTitle || "Unknown";
+
+    el.innerHTML = `
+        <div class="info-bar-item">
+            <span class="info-bar-value info-ship">${playerName}</span>
+            <span class="info-bar-label">LVL ${playerLevel}</span>
+        </div>
+        
+        <div class="info-bar-item">
+            <span class="info-bar-label">REP:</span>
+            <span class="info-bar-value" style="color:var(--accent-color)">${rep}</span>
+        </div>
+
+        <div class="info-bar-item">
+            <span class="info-bar-label">SHIP:</span>
+            <span class="info-bar-value info-ship">${shipName}</span>
+        </div>
+
+        <div class="info-bar-item">
+            <span class="info-bar-label">CARGO:</span>
+            <span class="info-bar-value">${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}</span>
+        </div>
+
+        <div class="info-bar-item">
+            <span class="info-bar-label">CREDITS:</span>
+            <span class="info-bar-value info-credits">${formatNumber(playerCredits)}c</span>
+        </div>
+    `;
 }
