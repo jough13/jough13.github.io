@@ -199,9 +199,9 @@ function animateParticles() {
                  if (this.staticLocations.has(locationKey)) {
                      const location = this.staticLocations.get(locationKey);
                      chunkData[y][x] = {
-                         char: location.type,
-                         type: 'location',
-                         ...location
+                         ...location,       // 1. Spread location data first (including type: '#')
+                         char: location.type, // 2. Ensure char is set
+                         type: 'location'   // 3. FORCE type to 'location' so interaction works
                      };
                  } else {
                      let tile = EMPTY_SPACE_CHAR_VAL;
@@ -2103,7 +2103,7 @@ function movePlayer(dx, dy) {
              });
          }
 
-         if (location.type === STARBASE_CHAR_VAL || location.type === OUTPOST_CHAR_VAL) {
+         if (tileChar === STARBASE_CHAR_VAL || tileChar === OUTPOST_CHAR_VAL) {
              playerFuel = MAX_FUEL;
              playerShields = MAX_SHIELDS;
              bM += `\nFuel and Shields recharged.`;
@@ -3332,23 +3332,19 @@ function renderLevelUpScreen() {
     const shuffled = availablePerks.sort(() => 0.5 - Math.random());
     const choices = shuffled.slice(0, 3);
     
-    // 2. Render Cards
+    // 2. Render Cards (Using CSS Classes now!)
     choices.forEach(perk => {
         const card = document.createElement('div');
-        card.style.cssText = `
-            width: 200px; padding: 20px; background: #111; border: 1px solid #444;
-            border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: center;
-        `;
+        card.className = 'perk-card'; // <--- The magic class
+        
         card.innerHTML = `
-            <div style="font-size:40px; margin-bottom:10px;">${perk.icon}</div>
-            <h3 style="color:#00E0E0; margin:0 0 10px 0; font-family:'Orbitron'">${perk.name}</h3>
-            <p style="color:#888; font-size:12px; line-height:1.4;">${perk.description}</p>
-            <div style="margin-top:15px; font-size:10px; color:#555; text-transform:uppercase;">${perk.category} Class</div>
+            <div class="perk-icon">${perk.icon}</div>
+            <h3 class="perk-title">${perk.name}</h3>
+            <p class="perk-desc">${perk.description}</p>
+            <div class="perk-category">${perk.category} Class</div>
         `;
         
-        // Hover Effect
-        card.onmouseover = () => { card.style.borderColor = '#FFD700'; card.style.background = '#222'; };
-        card.onmouseout = () => { card.style.borderColor = '#444'; card.style.background = '#111'; };
+        // Remove the inline .onmouseover/.onmouseout overrides so CSS can handle hover states
         
         // Click Logic
         card.onclick = () => selectPerk(perk.id);
@@ -5276,15 +5272,11 @@ function initializeDOMElements() {
     if (!document.getElementById('levelUpOverlay')) {
         const div = document.createElement('div');
         div.id = 'levelUpOverlay';
-        div.style.cssText = `
-            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.95); z-index: 5000;
-            flex-direction: column; align-items: center; justify-content: center;
-        `;
+        // Note: Styles are now handled in style.css!
         div.innerHTML = `
             <div style="text-align:center; margin-bottom:30px;">
-                <h1 style="color:#FFD700; font-family:'Orbitron'; font-size:40px; margin:0;">LEVEL UP!</h1>
-                <p style="color:#FFF; font-family:'Roboto Mono';">Select a specialized upgrade for your captain.</p>
+                <h1 style="color:#FFD700; font-family:'Orbitron', sans-serif; font-size:40px; margin:0; text-shadow: 0 0 10px #FFaa00;">LEVEL UP!</h1>
+                <p style="color:#FFF; font-family:'Roboto Mono', monospace;">Select a specialized upgrade for your captain.</p>
             </div>
             <div id="perkCardsContainer" style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;"></div>
         `;
