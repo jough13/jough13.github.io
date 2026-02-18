@@ -1700,6 +1700,49 @@ function renderSystemMap() {
     renderUIStats();
 }
 
+function processLootTable(tableName) {
+    const table = LOOT_TABLES[tableName];
+    if (!table) return;
+
+    const outcome = getWeightedRandomOutcome(table);
+    logMessage(outcome.text);
+
+    // Handle specific outcome types
+    if (outcome.type === "ITEM") {
+        const qty = outcome.min + Math.floor(Math.random() * (outcome.max - outcome.min + 1));
+        if (currentCargoLoad + qty <= PLAYER_CARGO_CAPACITY) {
+            playerCargo[outcome.id] = (playerCargo[outcome.id] || 0) + qty;
+            updateCurrentCargoLoad();
+            logMessage(`Received: ${qty} x ${COMMODITIES[outcome.id].name}`, true);
+        } else {
+            logMessage("Cargo full! Item discarded.", true);
+        }
+    } 
+    else if (outcome.type === "CREDITS") {
+        const amt = outcome.min + Math.floor(Math.random() * (outcome.max - outcome.min + 1));
+        playerCredits += amt;
+        logMessage(`Credits +${amt}`, true);
+    }
+    else if (outcome.type === "XP") {
+        playerXP += outcome.amount;
+        checkLevelUp();
+    }
+    else if (outcome.type === "HEAL") {
+        playerShields = MAX_SHIELDS;
+        logMessage("Shields restored to 100%.", true);
+    }
+    else if (outcome.type === "TRAP_PLASMA") {
+        playerHull -= outcome.damage;
+        triggerDamageEffect(); // Uses your visual FX!
+        if (playerHull < 1) playerHull = 1;
+    }
+    else if (outcome.type === "TRAP_PIRATE") {
+        startCombat();
+    }
+    
+    renderUIStats();
+}
+
  let currentSectorName = "Sol Sector"; // Changed to let
 
  function updateCurrentCargoLoad() {
@@ -2632,68 +2675,18 @@ function movePlayer(dx, dy) {
   * @param {object} derelictObject - The tile data for the derelict.
   */
 
- function handleDerelictEncounter(derelictObject) {
-     const outcomes = [{
-             weight: 5, // <-- Most common
-             text: "The derelict is picked clean. You find nothing of value.",
-             effect: () => {
-                 /* No effect, just the log message */ }
-         },
-         {
-             weight: 3, // <-- Common
-             text: "You find a hidden cargo bay containing 15 Tech Parts!",
-             effect: () => {
-                 if (currentCargoLoad + 15 <= PLAYER_CARGO_CAPACITY) {
-                     playerCargo.TECH_PARTS = (playerCargo.TECH_PARTS || 0) + 15;
-                     updateCurrentCargoLoad();
-                 } else {
-                     logMessage("Found a cache of Tech Parts but cargo hold is full!");
-                 }
-             }
-         },
-         {
-             weight: 2, // <-- Uncommon
-             text: "The ship's log is intact. You download the data, gaining 30 XP.",
-             effect: () => {
-                 playerXP += 30;
-                 checkLevelUp();
-             }
-         },
-         {
-             weight: 1, // <-- Rare
-             text: "You access the ship's unsecured credit chit. Transferred 750 Credits!",
-             effect: () => {
-                 playerCredits += 750;
-             }
-         },
-         {
-             weight: 1, // <-- Rare
-             text: "You trigger a plasma conduit booby trap! Your ship takes 15 hull damage!",
-             effect: () => {
-                 playerHull -= 15;
-                 logMessage("The trap vented superheated plasma onto your ship!");
-                 if (playerHull < 1) playerHull = 1; // Don't let it kill the player outside combat
-             }
-         },
-         {
-             weight: 1, // <-- Rare
-             text: "It's a trap! As you breach the hull, proximity sensors trigger... Pirates warp in!",
-             effect: () => {
-                 logMessage("The automated distress beacon was a pirate lure!");
-                 startCombat();
-             }
-         }
-     ];
+function handleDerelictEncounter(derelictObject) {
+    logMessage("Boarding derelict vessel...");
+    
+    // Simple logic: Is it a dangerous sector? Use the "Rare/Dangerous" table.
+    // Otherwise use the "Common" table.
+    const dist = Math.sqrt(playerX**2 + playerY**2);
+    const tableToUse = (dist > 500 && Math.random() > 0.5) ? 'DERELICT_RARE' : 'DERELICT_COMMON';
+    
+    processLootTable(tableToUse);
 
-     // Select a weighted random outcome
-     const chosenOutcome = getWeightedRandomOutcome(outcomes);
-
-     // Apply the effect and log the result
-     logMessage(`Salvaging the derelict... ${chosenOutcome.text}`);
-     chosenOutcome.effect();
-
-     updateWorldState(playerX, playerY, { studied: true });
- }
+    updateWorldState(playerX, playerY, { studied: true });
+}
 
  /**
   * Handles the random outcomes of investigating an anomaly using a weighted system.
