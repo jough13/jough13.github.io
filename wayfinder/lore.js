@@ -291,4 +291,36 @@
          unlocked: false
      }
  };
- 
+ // --- XERXES SPIRE PUZZLE DATABASE ---
+const SPIRE_PUZZLES = [
+    {
+        level: 0,
+        title: "THE OUTER GATE",
+        riddle: "I have no weight, yet I can sink a ship. The more of me you have, the less you see. I am the ruler of this sunless world.",
+        answers: ["darkness", "dark", "shadow", "the dark", "void"],
+        rewardXP: 300,
+        rewardCredit: 0,
+        flavorSuccess: "The glyph fades. The heavy obsidian gates grind open, revealing the market within.",
+        unlocksShop: true // Solving Level 0 unlocks the shop
+    },
+    {
+        level: 1,
+        title: "THE DEEP ARCHIVE",
+        riddle: "I build bridges of silver and crowns of gold. I have no hands, yet I shape the world. I am stolen, traded, and hoarded, yet I have no value until I am lost.",
+        answers: ["data", "information", "knowledge", "secrets", "lore"],
+        rewardXP: 500,
+        rewardCredit: 1000, // Cash reward for this layer
+        flavorSuccess: "A data-spike emerges from the wall. You download the cache. The path deeper opens.",
+        unlocksShop: true
+    },
+    {
+        level: 2,
+        title: "THE CORE SANCTUM",
+        riddle: "To the pilot, I am death. To the planet, I am life. I burn without fire, I crush without hands. What am I?",
+        answers: ["gravity", "star", "sun", "black hole"],
+        rewardXP: 1000,
+        rewardCredit: 0,
+        flavorSuccess: "The core chamber hums. You have reached the bottom... for now.",
+        unlocksShop: true
+    }
+];
