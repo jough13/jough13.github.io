@@ -679,7 +679,7 @@ function logMessage(newMessage, isImportant = false) {
     const eY = Math.floor(playerY + Math.sin(angle) * dist);
 
     // 2. Determine Faction & Ship Type
-    const faction = getFactionAtSector(currentSectorX, currentSectorY);
+    const faction = getFactionAt(eX, eY);
     let potentialShips = [];
     let enemyType = 'PIRATE'; // Default display type
     let warningMsg = "";
@@ -951,22 +951,22 @@ function applyPlayerShipStats() {
 
  // --- VISIBILITY MANAGER ---
 function updateSideBorderVisibility() {
-    const leftBorder = document.querySelector('.side-border.left');
-    const rightBorder = document.querySelector('.side-border.right');
-    
-    // Check if any known overlay is currently open
-    const tradeOpen = document.getElementById('tradeOverlay').style.display === 'flex';
-    const cargoOpen = document.getElementById('cargoOverlay').style.display === 'flex';
-    const codexOpen = document.getElementById('codexOverlay').style.display === 'flex';
+    // 1. Find the elements
+    const leftBorder = document.getElementById('leftSideBorder');
+    const rightBorder = document.getElementById('rightSideBorder');
 
-    // Logic: Only show borders if we are in Galactic Map AND no modals are open
-    const isGalacticMap = (currentGameState === GAME_STATES.GALACTIC_MAP);
-    const noModals = !tradeOpen && !cargoOpen && !codexOpen;
-    
-    const shouldShow = isGalacticMap && noModals;
+    // Determine if they should be visible (usually only on the Galactic Map)
+    const isVisible = (currentGameState === GAME_STATES.GALACTIC_MAP);
+    const displayValue = isVisible ? 'block' : 'none';
 
-    if (leftBorder) leftBorder.style.display = shouldShow ? 'block' : 'none';
-    if (rightBorder) rightBorder.style.display = shouldShow ? 'block' : 'none';
+    // 2. Safely update them ONLY if they exist
+    if (leftBorder) {
+        leftBorder.style.display = displayValue;
+    }
+    
+    if (rightBorder) {
+        rightBorder.style.display = displayValue;
+    }
 }
 
 // Helper to format numbers with commas (e.g., 1,000)
@@ -978,39 +978,48 @@ function formatNumber(num) {
  * Centralized logic for item pricing.
  * Ensures Outposts, Stations, and Perks all affect price identically.
  */
-function calculateItemPrice(item, isBuy, location) {
+
+function calculateItemPrice(itemOrId, isBuy, location) {
+    // Flexibility: Accept either the full object or just the ID string
+    const itemId = typeof itemOrId === 'string' ? itemOrId : Object.keys(COMMODITIES).find(key => COMMODITIES[key] === itemOrId);
+    const item = typeof itemOrId === 'string' ? COMMODITIES[itemOrId] : itemOrId;
+
     if (!item) return 0;
 
-    // 1. Start with Base Price
     let price = item.basePrice || 0;
-
-    // 2. Apply Location Multiplier
-    // Outposts (H) are generally more expensive to buy from, cheaper to sell to (bad margins)
     let locMult = 1.0;
-    if (location.type === OUTPOST_CHAR_VAL) {
-        locMult = isBuy ? 1.2 : 0.8; // Buy high, sell low (it's an outpost!)
+
+    // 1. Check for Station-Specific Economy Overrides (e.g. Starbase Alpha)
+    if (location && (location.sells || location.buys)) {
+        const tradeList = isBuy ? location.sells : location.buys;
+        if (tradeList) {
+            const entry = tradeList.find(e => (e.id === itemId) || (e === itemId));
+            if (entry && entry.priceMod) {
+                locMult = entry.priceMod;
+            }
+        }
+    }
+
+    // 2. Fallback to Outpost generic pricing if no specific modifier exists
+    if (locMult === 1.0 && location && location.type === OUTPOST_CHAR_VAL) {
+        locMult = isBuy ? 1.2 : 0.8;
     }
     
-    // 3. Apply Buy vs Sell Logic
-    // Standard game logic: Shops sell at 100%, You sell to them at 50%
+    // 3. Trade Margin (Selling items to stations pays 50% base)
     if (!isBuy) {
         price = price * 0.5;
     }
 
-    // 4. Apply Multiplier
     price = price * locMult;
 
-    // 5. Apply Perks (Silver Tongue)
+    // 4. Apply Perks
     if (typeof playerPerks !== 'undefined' && playerPerks.has('SILVER_TONGUE')) {
         price = isBuy ? (price * 0.9) : (price * 1.1);
     }
 
-    // 6. Rounding & Safety
-    // Ensure you never sell for 0 credits unless the item is worthless
+    // 5. Safety Rounding
     price = Math.floor(price);
-    if (price < 1) price = 1; 
-
-    return price;
+    return Math.max(1, price);
 }
 
 function triggerHaptic(pattern) {
@@ -1438,6 +1447,7 @@ function changeGameState(newState) {
   * Generates a procedural and deterministic name for a sector based on its coordinates.
   * Now includes Faction Territory suffixes.
   */
+
  function generateSectorName(sectorX, sectorY) {
      if (sectorX === 0 && sectorY === 0) {
          return "Sol Sector (Concord HQ)"; 
@@ -1469,10 +1479,10 @@ function changeGameState(newState) {
      let fullName = `${prefix} ${root}`;
 
      // Append Faction Suffix
-     const faction = getFactionAtSector(sectorX, sectorY);
+     const faction = getFactionAt(sectorX * SECTOR_SIZE, sectorY * SECTOR_SIZE);
      if (faction === "KTHARR") fullName += " [Hegemony]";
      else if (faction === "CONCORD") fullName += " [Concord]";
-     else if (faction === "VOID_VULTURES") fullName += " [Lawless]";
+     else if (faction === "ECLIPSE") fullName += " [Cartel]";
 
      return fullName;
  }
@@ -1666,7 +1676,7 @@ function renderSystemMap() {
             const sectorY = Math.floor(worldY / SECTOR_SIZE);
             
             // CALL THE RENAMED FUNCTION
-            const factionKey = getFactionAtSector(sectorX, sectorY); 
+            const factionKey = getFactionAt(worldX, worldY);
             const faction = FACTIONS[factionKey];
             
             if (faction && factionKey !== 'INDEPENDENT') {
@@ -2063,10 +2073,8 @@ function movePlayer(dx, dy) {
  }
 
  function handleInteraction() {
-    // --- FIX: Use Renamed Function & Sector Coordinates ---
-    // We use currentSectorX/Y because the faction map works on the 480x480 sector grid,
-    // not the individual tile grid.
-    const currentFaction = getFactionAtSector(currentSectorX, currentSectorY);
+
+    const currentFaction = getFactionAt(playerX, playerY);
     
     // Check if we just entered a new zone
     const standing = playerFactionStanding[currentFaction] || 0;
@@ -3025,179 +3033,6 @@ function handleDerelictEncounter(derelictObject) {
     }
 }
 
-function getTradeQuantityPromptBaseMessage() {
-     const lD = currentTradeContext.locationData;
-     const itemsList = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys;
-     const itemEntry = itemsList[currentTradeContext.itemIndex];
-     const commodity = COMMODITIES[itemEntry.id];
-     
-     // UPDATED CALL
-     const price = calculatePrice(commodity.basePrice, itemEntry.priceMod, itemEntry.id, lD.name, currentTradeContext.mode);
-
-     let promptMsg = `How many ${commodity.name} to ${currentTradeContext.mode}? (Price: ${price}c)\n`;
-
-     if (currentTradeContext.mode === 'buy') {
-         promptMsg += `Max: ${itemEntry.stock}, Afford: ${Math.floor(playerCredits / price)}, Space: ${PLAYER_CARGO_CAPACITY - currentCargoLoad}\n`;
-     } else {
-         promptMsg += `You have: ${playerCargo[itemEntry.id]||0}, Location demand: ${itemEntry.stock}\n`;
-     }
-     return promptMsg;
- }
-
-function closeTradeModal() {
-    document.getElementById('tradeOverlay').style.display = 'none';
-    currentTradeContext = null;
-    handleInteraction();
-    
-    // UPDATE BORDERS
-    updateSideBorderVisibility();
-}
-
-function renderTradeList() {
-    const listEl = document.getElementById('tradeList');
-    listEl.innerHTML = '';
-
-    currentTradeContext.items.forEach((item, index) => {
-        const com = COMMODITIES[item.id];
-        
-        // UPDATED CALL
-        const price = calculatePrice(com.basePrice, item.priceMod, item.id, currentTradeContext.locationData.name, currentTradeContext.mode);
-        
-        const row = document.createElement('div');
-        row.className = 'trade-item-row';
-        if (index === currentTradeItemIndex) row.classList.add('selected');
-        
-        // Special styling for illegal/trending items
-        let nameStyle = "";
-        if (com.illegal) nameStyle = "color:#FF5555"; // Red for contraband
-        
-        let stockInfo = "";
-        if (currentTradeContext.mode === 'buy') stockInfo = `Stock: ${item.stock}`;
-        else stockInfo = `Have: ${playerCargo[item.id] || 0}`;
-
-        row.innerHTML = `
-            <span style="${nameStyle}">${com.name}</span>
-            <span style="color:#888;">${price}c | ${stockInfo}</span>
-        `;
-        row.onclick = () => selectTradeItem(index);
-        listEl.appendChild(row);
-    });
-}
-
-function selectTradeItem(index) {
-    currentTradeItemIndex = index;
-    if (currentTradeContext) currentTradeContext.itemIndex = index;
-
-    currentTradeQty = 1;
-    renderTradeList(); 
-    
-    if (!currentTradeContext || !currentTradeContext.items[index]) return;
-
-    const itemEntry = currentTradeContext.items[index];
-    const com = COMMODITIES[itemEntry.id];
-    
-    unlockLoreEntry(`COMMODITY_${itemEntry.id}`);
-
-    // Update Detail Text
-    document.getElementById('tradeItemName').textContent = com.name;
-    
-    // Add "ILLEGAL" warning to description if needed
-    let desc = com.description;
-    if (com.illegal) desc = "[CONTRABAND] " + desc;
-    document.getElementById('tradeItemDesc').textContent = desc;
-    
-    document.getElementById('tradeQtyInput').value = 1;
-
-    const confirmBtn = document.getElementById('tradeConfirmBtn');
-    if (confirmBtn) confirmBtn.disabled = false;
-
-    updateTradeTotal();
-}
-
-function updateTradeTotal() {
-    if (currentTradeItemIndex === -1) return;
-
-    const itemEntry = currentTradeContext.items[currentTradeItemIndex];
-    const com = COMMODITIES[itemEntry.id];
-    
-    // UPDATED CALL
-    const price = calculatePrice(com.basePrice, itemEntry.priceMod, itemEntry.id, currentTradeContext.locationData.name, currentTradeContext.mode);
-    
-    let qty = parseInt(document.getElementById('tradeQtyInput').value);
-    if (isNaN(qty) || qty < 1) qty = 1;
-    currentTradeQty = qty;
-
-    document.getElementById('tradeUnitPrice').textContent = `${price}c`;
-    
-    if (currentTradeContext.mode === 'buy') {
-        document.getElementById('tradeStock').textContent = `${itemEntry.stock} (Cap: ${PLAYER_CARGO_CAPACITY - currentCargoLoad})`;
-    } else {
-        document.getElementById('tradeStock').textContent = `${playerCargo[itemEntry.id] || 0} (Demand: ${itemEntry.stock})`;
-    }
-
-    const total = price * qty;
-    const totalEl = document.getElementById('tradeTotalCost');
-    totalEl.textContent = total;
-
-    if (currentTradeContext.mode === 'buy' && total > playerCredits) {
-        totalEl.style.color = '#FF4444';
-        document.getElementById('tradeConfirmBtn').disabled = true;
-    } else {
-        totalEl.style.color = '#00E0E0';
-        document.getElementById('tradeConfirmBtn').disabled = false;
-    }
-}
-
-function adjustTradeQty(delta) {
-    const input = document.getElementById('tradeQtyInput');
-    let val = parseInt(input.value) || 0;
-    val = Math.max(1, val + delta);
-    input.value = val;
-    updateTradeTotal();
-}
-
-function setTradeMax() {
-    if (currentTradeItemIndex === -1) return;
-    const itemEntry = currentTradeContext.items[currentTradeItemIndex];
-    const com = COMMODITIES[itemEntry.id];
-    
-    // UPDATED CALL
-    const price = calculatePrice(com.basePrice, itemEntry.priceMod, itemEntry.id, currentTradeContext.locationData.name, currentTradeContext.mode);
-    
-    let max = 0;
-    
-    if (currentTradeContext.mode === 'buy') {
-        const afford = Math.floor(playerCredits / price);
-        const space = PLAYER_CARGO_CAPACITY - currentCargoLoad;
-        max = Math.min(itemEntry.stock, afford, space);
-    } else {
-        const have = playerCargo[itemEntry.id] || 0;
-        max = Math.min(have, itemEntry.stock); 
-    }
-
-    document.getElementById('tradeQtyInput').value = Math.max(1, max);
-    updateTradeTotal();
-}
-
- function handleTradeSelection(input) {
-     if (!currentTradeContext || currentTradeContext.step !== 'selectItem') return;
-     const lD = currentTradeContext.locationData;
-     const items = currentTradeContext.mode === 'buy' ? lD.sells : lD.buys;
-     const sel = parseInt(input);
-     if (isNaN(sel) || sel < 1 || sel > items.length) {
-         logMessage("Invalid selection. # or 'L'.");;
-         return;
-     }
-     currentTradeContext.itemIndex = sel - 1;
-     currentTradeContext.step = 'selectQuantity';
-
-     let promptMsg = getTradeQuantityPromptBaseMessage();
-     // Updated prompt text:
-     promptMsg += "Enter quantity, or type 'm' for MAX. ('0' to cancel)";
-     currentQuantityInput = "";
-     logMessage(promptMsg);
- }
-
 /**
   * Processes the player's quantity input during a trade transaction.
   * Now includes Toast Notifications and improved validation.
@@ -3353,23 +3188,38 @@ function handleTradeQuantity(inputString) {
   */
 
 function advanceGameTime(timeAmount) {
-     currentGameDate += timeAmount;
+    currentGameDate += timeAmount;
 
-     // Call all "per-tick" updates here
-     regenerateShields(timeAmount);
+    // Existing per-tick updates (like shield regeneration)
+    if (typeof regenerateShields === 'function') {
+        regenerateShields(timeAmount);
+    }
 
-     // --- NEW: K'THARR BIO-REGEN ---
-     // If the player has the bio-nodes, slowly heal Hull
-     const utilId = playerShip.components.utility;
-     if (utilId && COMPONENTS_DATABASE[utilId] && COMPONENTS_DATABASE[utilId].stats.passiveRegen) {
-         if (playerHull < MAX_PLAYER_HULL) {
-             // Regen 1 hull point every 1.0 stardate (approx 100 moves)
-             // Adjusted by timeAmount (usually 0.01 per move)
-             const healAmount = timeAmount * 1.0; 
-             playerHull = Math.min(MAX_PLAYER_HULL, playerHull + healAmount);
-         }
-     }
- }
+    // --- K'THARR BIO-REGEN ---
+    // Safely check if the player has a ship and a utility item equipped
+    if (typeof playerShip !== 'undefined' && playerShip.components && playerShip.components.utility) {
+        
+        const utilId = playerShip.components.utility;
+        
+        // We look up the equipped item in your components database
+        if (typeof COMPONENTS_DATABASE !== 'undefined') {
+            const utilItem = COMPONENTS_DATABASE[utilId];
+
+            // If the item exists and has the passiveRegen flag turned on...
+            if (utilItem && utilItem.stats && utilItem.stats.passiveRegen) {
+                if (playerHull < MAX_PLAYER_HULL) {
+                    
+                    // Heal 2.0 hull points per 1.0 stardate passed. 
+                    // Since moving 1 tile usually takes ~0.01 stardates, this equates 
+                    // to roughly 1 hull point every 50 tiles moved. Slow, but free!
+                    const healAmount = timeAmount * 2.0; 
+                    
+                    playerHull = Math.min(MAX_PLAYER_HULL, playerHull + healAmount);
+                }
+            }
+        }
+    }
+}
 
 function checkLevelUp() {
     // 1. Check Threshold
@@ -3447,40 +3297,33 @@ function selectPerk(perkId) {
  * Determines the faction controlling a specific sector.
  * Uses Sector Coordinates (e.g. 0,0 or -20, 5), NOT World/Tile Coordinates.
  */
-function getFactionAtSector(sectorX, sectorY) {
-    // 1. CONCORD CORE (Hard Lock)
-    // Keep the starter area safe and predictable
-    const dist = Math.sqrt(sectorX*sectorX + sectorY*sectorY);
+
+function getFactionAt(worldX, worldY) {
+    // 1. Scale coordinates for "Macro Geography" (1 unit = 50 tiles)
+    // This allows borders to be smooth and wavy, not blocky squares!
+    const macroX = worldX / 50; 
+    const macroY = worldY / 50;
+
+    const dist = Math.sqrt(macroX*macroX + macroY*macroY);
     
-    // Use the radius from config, or default to 15
+    // 2. Concord Core (15 macro units = 750 tiles safe zone)
     const safeRadius = (typeof FACTIONS !== 'undefined' && FACTIONS.CONCORD) ? FACTIONS.CONCORD.homeRadius : 15;
-    
     if (dist <= safeRadius) return 'CONCORD'; 
 
-    // 2. PSEUDO-NOISE GENERATOR (Bubbly Borders)
-    // We use Math.sin/cos to create a consistent, wavy "noise" value between -1 and 1.
-    const noise = Math.sin(sectorX * 0.12) + Math.cos(sectorY * 0.18); 
-    
-    // 3. APPLY DISTORTION
-    // "15" is the intensity. It can shift a border by up to 15 sectors!
+    // 3. Wavy Borders
+    const noise = Math.sin(macroX * 0.12) + Math.cos(macroY * 0.18); 
     const distortion = noise * 12; 
-    
-    // Calculate "Effective" Position
-    const effectiveX = sectorX + distortion;
+    const effectiveX = macroX + distortion;
 
-    // 4. DETERMINE TERRITORY
-    // West Bubble (Eclipse Cartel)
+    // 4. Territory Check
     if (effectiveX < -22) return 'ECLIPSE';
-    
-    // East Bubble (K'tharr Hegemony)
     if (effectiveX > 22) return 'KTHARR';
     
-    // 5. RARE "ISLANDS" (Deep Space Enclaves)
-    const islandNoise = Math.sin(sectorX * 0.4) * Math.cos(sectorY * 0.4);
-    if (islandNoise > 0.92) return 'ECLIPSE'; // Isolated Smuggler Den
-    if (islandNoise < -0.92) return 'KTHARR'; // Isolated Forward Base
+    // 5. Islands
+    const islandNoise = Math.sin(macroX * 0.4) * Math.cos(macroY * 0.4);
+    if (islandNoise > 0.92) return 'ECLIPSE'; 
+    if (islandNoise < -0.92) return 'KTHARR'; 
 
-    // Default
     return 'INDEPENDENT';
 }
 
@@ -6416,15 +6259,17 @@ function openTradeModal(mode) {
     // 1. OPEN MODAL
     openGenericModal(isBuy ? "STATION MARKETPLACE" : "CARGO MANIFEST");
 
-    // FIX: We need to ensure the modal has the split layout (List on left, Analysis on right)
-    const container = document.getElementById('genericModalContent');
+const container = document.getElementById('genericModalContent');
     container.innerHTML = `
-        <div style="display: flex; gap: 20px; height: 400px;">
-            <div id="genericModalList" style="flex: 1; overflow-y: auto; padding-right: 10px; border-right: 1px solid #333;"></div>
-            <div id="genericDetailContent" style="width: 280px; padding-left: 10px;">
-                <p style="color:#666; margin-top:40px; text-align:center; font-size: 11px; line-height: 1.6;">
-                    Select a commodity from the list to view local market analytics and price trends.
-                </p>
+        <div style="display: flex; gap: 20px; height: 60vh; min-height: 450px;">
+            <div id="genericModalList" style="flex: 1.2; overflow-y: auto; padding-right: 15px; border-right: 1px solid var(--border-color);"></div>
+            <div id="genericDetailContent" style="width: 340px; padding-left: 10px; padding-right: 20px; overflow-y: auto;">
+                <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; height: 100%;">
+                    <div style="font-size: 50px; margin-bottom: 20px; opacity: 0.1;">📊</div>
+                    <p style="color:var(--text-color); text-align:center; font-size: 14px; line-height: 1.6; padding: 0 15px;">
+                        Select a commodity from the list to view local market analytics and price trends.
+                    </p>
+                </div>
             </div>
         </div>
     `;
@@ -6489,84 +6334,87 @@ function openTradeModal(mode) {
 }
 
 // Helper to render individual rows consistently
+
 function renderTradeRow(itemId, qty, isBuy, location, listEl) {
     const item = COMMODITIES[itemId];
     if (!item) return;
 
-    // Faction Check (Keep existing logic)
     let isLocked = false;
     let lockReason = "";
     if (isBuy && item.reqFaction) {
         const currentRep = playerFactionStanding[item.reqFaction] || 0;
         if (currentRep < item.minRep) {
             isLocked = true;
-            lockReason = `Requires ${item.reqFaction} Rep > ${item.minRep}`;
+            lockReason = `Requires ${item.reqFaction} Rep`;
         }
     }
 
     const row = document.createElement('div');
     row.className = 'trade-item-row';
+    row.style.cssText = "padding: 14px 10px; border-bottom: 1px solid var(--border-color); display: flex; gap: 15px;";
     if (isLocked) row.style.opacity = "0.5";
 
     const price = calculateItemPrice(item, isBuy, location);
 
-    // --- ACTION BUTTONS (Updated) ---
     let actionButtonHtml = "";
     if (isLocked) {
-        actionButtonHtml = `<button class="trade-btn locked" disabled>🔒 LOCKED</button>`;
+        actionButtonHtml = `<button class="trade-btn locked" style="width:100%; padding:8px; font-size:13px;" disabled>🔒 LOCKED</button>`;
     } else {
-        const actionLabel = isBuy ? `BUY` : `SELL`;
         const actionClass = isBuy ? 'buy' : 'sell';
         const disabled = (isBuy && playerCredits < price) || (!isBuy && qty <= 0);
         
+        const flexContainer = `<div style="display:flex; flex-wrap:nowrap; gap:6px; justify-content:flex-end; align-items:center;">`;
+        
         if (isBuy) {
-            // BUY: [Buy 1] [Buy 10] [Buy #]
-            actionButtonHtml = `
-                <button class="trade-btn ${actionClass}" ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', true, 1)">
+            actionButtonHtml = flexContainer + `
+                <button class="trade-btn ${actionClass}" ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', true, 1)" style="padding:8px 12px; font-size:13px; cursor:pointer; min-width:60px;">
                     ${formatNumber(price)}c
                 </button>
-                <button class="trade-btn ${actionClass}" style="width:30px; margin-left:2px; font-size:10px;" 
+                <button class="trade-btn ${actionClass}" style="padding:8px; font-weight:bold; font-size:12px; min-width: 40px; cursor:pointer;" 
                     ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', true, 10)" title="Buy 10">
                     +10
                 </button>
-                <button class="trade-btn ${actionClass}" style="width:30px; margin-left:2px; font-size:10px;" 
+                <button class="trade-btn ${actionClass}" style="padding:8px; font-weight:bold; font-size:12px; min-width: 40px; cursor:pointer;" 
                     onclick="executeTrade('${itemId}', true, 'custom')" title="Enter Amount">
                     #
                 </button>
-            `;
+            </div>`;
         } else {
-            // SELL: [Sell 1] [Sell All] [Sell #]
-            actionButtonHtml = `
-                <button class="trade-btn ${actionClass}" ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', false, 1)">
+            actionButtonHtml = flexContainer + `
+                <button class="trade-btn ${actionClass}" ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', false, 1)" style="padding:8px 12px; font-size:13px; cursor:pointer; min-width:60px;">
                     ${formatNumber(price)}c
                 </button>
-                <button class="trade-btn ${actionClass}" style="width:30px; margin-left:2px; font-size:10px;" 
+                <button class="trade-btn ${actionClass}" style="padding:8px; font-weight:bold; font-size:12px; min-width: 40px; cursor:pointer;" 
                     ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', false, 'all')" title="Sell All">
                     ALL
                 </button>
-                <button class="trade-btn ${actionClass}" style="width:30px; margin-left:2px; font-size:10px;" 
+                <button class="trade-btn ${actionClass}" style="padding:8px; font-weight:bold; font-size:12px; min-width: 40px; cursor:pointer;" 
                     ${disabled ? 'disabled' : ''} onclick="executeTrade('${itemId}', false, 'custom')" title="Enter Amount">
                     #
                 </button>
-            `;
+            </div>`;
         }
     }
 
-    // (Keep the HTML structure consistent)
     row.innerHTML = `
-        <div class="trade-item-icon" onclick="displayMarketAnalysis('${itemId}')" style="cursor:pointer;">${item.icon || '📦'}</div>
-        <div class="trade-item-details" onclick="displayMarketAnalysis('${itemId}')" style="cursor:pointer;">
-            <div class="trade-item-name">
+        <div class="trade-item-icon" onclick="displayMarketAnalysis('${itemId}')" style="cursor:pointer; font-size: 32px; padding-top: 2px;">${item.icon || '📦'}</div>
+        
+        <div class="trade-item-details" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+            <div class="trade-item-name" onclick="displayMarketAnalysis('${itemId}')" style="cursor:pointer; font-size: 15px; font-weight: bold; color: var(--item-name-color); letter-spacing: 0.5px;">
                 ${item.name} 
-                ${isLocked ? `<span style="color:#FF5555; font-size:10px;">(${lockReason})</span>` : ''}
+                ${isLocked ? `<span style="color:var(--danger); font-size:11px; margin-left: 6px;">(${lockReason})</span>` : ''}
             </div>
-            <div class="trade-item-sub">
-                ${isBuy ? `In Stock: ${qty}` : `Owned: ${qty}`} | 
-                <span style="color:var(--gold-text)">Base: ${formatNumber(item.basePrice)}c</span>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div class="trade-item-sub" onclick="displayMarketAnalysis('${itemId}')" style="cursor:pointer; font-size: 13px; color: var(--text-color); line-height: 1.4;">
+                    <div>${isBuy ? `In Stock: ${qty}` : `Owned: ${qty}`}</div>
+                    <div style="color:var(--gold-text); font-size: 11px;">Galactic Base: ${formatNumber(item.basePrice)}c</div>
+                </div>
+                
+                <div class="trade-item-actions">
+                    ${actionButtonHtml}
+                </div>
             </div>
-        </div>
-        <div class="trade-item-actions">
-            ${actionButtonHtml}
         </div>
     `;
     
@@ -6575,73 +6423,93 @@ function renderTradeRow(itemId, qty, isBuy, location, listEl) {
 
 // --- MARKET ANALYSIS MODAL ---
 function displayMarketAnalysis(itemId) {
+    window.activeTradeItemId = itemId; // Tell the game to remember we are looking at this
+
     const item = COMMODITIES[itemId];
     const detailEl = document.getElementById('genericDetailContent');
     
-    // If we aren't in a window with a detail pane, stop here to prevent errors
     if (!item || !detailEl) return;
 
-    // --- RETAIN ALL YOUR CALCULATION LOGIC ---
     const location = chunkManager.getTile(playerX, playerY);
-    const localPrice = calculateItemPrice(item, true, location); // Buy price
-    const sellPrice = calculateItemPrice(item, false, location); // Sell price
+    const localPrice = calculateItemPrice(item, true, location); 
+    const sellPrice = calculateItemPrice(item, false, location); 
     
-    // Determine Volatility/Demand text (Flavor)
     let volatility = "STABLE";
-    let volColor = "#00FF00";
+    let volColor = "var(--success)";
     if (item.illegal) { 
         volatility = "HIGH RISK"; 
-        volColor = "#FF4444"; 
+        volColor = "var(--danger)"; 
     } else if (item.basePrice > 200) { 
         volatility = "FLUCTUATING"; 
-        volColor = "#FFAA00"; 
+        volColor = "var(--warning)"; 
     }
 
-    // --- RETAIN ALL YOUR STYLING & FLAVOR ---
-    // We wrapped it in a div with a fade-in animation for better feel
     detailEl.innerHTML = `
-        <div style="animation: fadeIn 0.3s ease-out;">
-            <div style="display:flex; gap:15px; margin-bottom:20px; align-items:center;">
-                <div style="font-size:40px; background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; border:1px solid #444;">
+        <div style="animation: fadeIn 0.3s ease-out; display: flex; flex-direction: column; min-height: 100%;">
+            <div style="display:flex; gap:15px; margin-bottom:25px; align-items:center;">
+                <div style="font-size:45px; background:var(--bg-color); padding:12px; border-radius:10px; border:1px solid var(--border-color);">
                     ${item.icon || '📦'}
                 </div>
                 <div>
-                    <div style="color:#888; font-size:10px; margin-bottom:2px;">COMMODITY CLASS A</div>
-                    <div style="font-size:14px; font-weight:bold; color:#FFF;">${item.name}</div>
-                    <div style="font-size:11px; margin-top:2px;">Volatility: <span style="color:${volColor}">${volatility}</span></div>
+                    <div style="color:var(--accent-color); font-size:11px; margin-bottom:4px; letter-spacing:1px; text-transform:uppercase;">Registered Commodity</div>
+                    <div style="font-size:18px; font-weight:bold; color:var(--item-name-color); letter-spacing:0.5px;">${item.name}</div>
+                    <div style="font-size:13px; margin-top:4px; color:var(--text-color);">Volatility: <span style="color:${volColor}; font-weight:bold;">${volatility}</span></div>
                 </div>
             </div>
 
-            <div style="background:rgba(0,0,0,0.3); padding:12px; border-radius:5px; border:1px solid #333; margin-bottom:15px; font-size:12px;">
-                <h4 style="margin:0 0 10px 0; color:var(--accent-color); font-size:11px; border-bottom:1px solid #444; padding-bottom:5px; letter-spacing:1px;">LOCAL MARKET DATA</h4>
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                    <span style="color:#AAA;">Station Buy:</span>
-                    <span style="color:var(--gold-text)">${localPrice}c</span>
-                </div>
+            <div style="background:var(--bg-color); padding:15px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:25px; font-size:14px;">
+                <h4 style="margin:0 0 12px 0; color:var(--accent-color); font-size:12px; border-bottom:1px solid var(--border-color); padding-bottom:6px; letter-spacing:1px;">LOCAL MARKET DATA</h4>
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span style="color:#AAA;">Station Sell:</span>
-                    <span style="color:var(--gold-text)">${sellPrice}c</span>
+                    <span style="color:var(--text-color);">Station Buy:</span>
+                    <span style="color:var(--gold-text); font-weight:bold;">${localPrice}c</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; border-top:1px solid #222; padding-top:8px; font-size:10px;">
-                    <span style="color:#666;">Standard Base:</span>
-                    <span style="color:#666;">${item.basePrice}c</span>
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                    <span style="color:var(--text-color);">Station Sell:</span>
+                    <span style="color:var(--success); font-weight:bold;">${sellPrice}c</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-top:1px dashed var(--border-color); padding-top:10px; font-size:13px;">
+                    <span style="color:var(--item-desc-color);">Galactic Base:</span>
+                    <span style="color:var(--item-desc-color);">${item.basePrice}c</span>
                 </div>
             </div>
 
-            <div style="margin-bottom:20px;">
-                <h4 style="margin:0 0 5px 0; color:#AAA; font-size:11px; letter-spacing:1px;">DESCRIPTION</h4>
-                <div style="font-size:12px; color:#CCC; line-height:1.5; font-style:italic;">
-                    "${item.description}"
+            <div style="margin-bottom:20px; padding: 0 5px;">
+                <h4 style="margin:0 0 8px 0; color:var(--text-color); font-size:12px; letter-spacing:1px; text-transform:uppercase;">Log Entry</h4>
+                <div style="font-size:14px; color:var(--item-desc-color); line-height:1.6;">
+                    ${item.description}
                 </div>
             </div>
 
             ${item.reqFaction ? `
-                <div style="font-size:11px; color:#FF5555; border:1px solid #552222; background:rgba(50,0,0,0.2); padding:10px; text-align:center;">
-                    ⚠️ RESTRICTED: ${item.reqFaction} Clearances Required
+                <div style="font-size:13px; color:var(--danger); border:1px solid var(--danger); background:transparent; padding:12px; text-align:center; border-radius:4px; font-weight:bold; letter-spacing:0.5px; margin-bottom: 20px;">
+                    ⚠️ RESTRICTED: ${item.reqFaction} Clearance Required
                 </div>
             ` : ''}
+
+            <div style="margin-top: auto; padding-top: 20px; padding-bottom: 10px; border-top: 1px solid var(--border-color); text-align: center;">
+                <button class="trade-btn" style="padding: 10px 20px; font-size: 12px; cursor: pointer; background: transparent; border: 1px solid var(--text-color); color: var(--text-color); letter-spacing: 1px; width: 100%; border-radius: 4px;" onclick="clearMarketAnalysis()">
+                    CLOSE DATA PANEL
+                </button>
+            </div>
         </div>
     `;
+}
+
+// Resets the market analysis panel to its empty state
+function clearMarketAnalysis() {
+    window.activeTradeItemId = null; // Clear the memory
+    
+    const detailEl = document.getElementById('genericDetailContent');
+    if (detailEl) {
+        detailEl.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; height: 100%;">
+                <div style="font-size: 50px; margin-bottom: 20px; opacity: 0.1;">📊</div>
+                <p style="color:var(--text-color); text-align:center; font-size: 14px; line-height: 1.6; padding: 0 15px;">
+                    Select a commodity from the list to view local market analytics and price trends.
+                </p>
+            </div>
+        `;
+    }
 }
 
 function showTradeDetails(itemId, price, stock, isBuy, location) {
@@ -6701,7 +6569,7 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
     const item = COMMODITIES[itemId];
     const price = calculateItemPrice(item, isBuy, location);
 
-    // --- NEW: Custom Quantity Logic ---
+    // --- Custom Quantity Logic ---
     let qtyToTrade = specificQty;
 
     // If the user clicked the "[#]" button, ask them how many
@@ -6791,9 +6659,17 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
     }
 
     // Refresh UI
+    const savedItemId = window.activeTradeItemId; // Capture what we are looking at
+    
     if (isBuy) openTradeModal('buy');
     else openTradeModal('sell');
+    
     renderUIStats();
+
+    // If we were looking at an item, immediately re-open its panel so it doesn't vanish
+    if (savedItemId) {
+        displayMarketAnalysis(savedItemId);
+    }
 }
 
 // --- MODAL INFO BAR HELPER ---
