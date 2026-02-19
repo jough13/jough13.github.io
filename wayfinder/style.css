@@ -2150,3 +2150,28 @@ body.light-mode #spireInput::placeholder {
     color: #CE93D8; /* Light Purple */
     opacity: 1;
 }
+
+/* --- CUSTOM SCROLLBARS --- */
+::-webkit-scrollbar {
+    width: 8px; /* Slightly thinner, more elegant scrollbar */
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-color); 
+    border-left: 1px solid var(--border-color);
+}
+
+::-webkit-scrollbar-thumb {
+    background: #4A4A6A; /* A muted slate-blue, much darker than the neon cyan */
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #6A6A8A; /* Highlights slightly when you hover over it */
+}
+
+/* Firefox compatibility */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #4A4A6A var(--bg-color);
+}
