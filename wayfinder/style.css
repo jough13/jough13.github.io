@@ -192,6 +192,26 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 #systemMenu.hidden { display: none; }
 
+/* --- SYSTEM MAP GRID FIX --- */
+.system-planet-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    align-items: stretch;
+    
+    /* CRITICAL FIX: Constrain width to match the Game Canvas */
+    width: 100%;
+    max-width: var(--canvas-width, 1024px); 
+    
+    /* Center the grid horizontally */
+    margin: 0 auto; 
+    
+    /* Add breathing room so it doesn't touch the exact edge of the borders */
+    padding: 0 10px; 
+    box-sizing: border-box;
+}
+
 .sys-header {
     font-size: 12px; 
     /* Use variables so it swaps between Light/Dark mode automatically */
