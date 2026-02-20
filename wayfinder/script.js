@@ -5702,6 +5702,11 @@ function initializeDOMElements() {
     updatePfp();
 }
 
+function closeTradeModal() {
+    // Just redirect to the generic closer, since Trade now uses the Generic Modal
+    closeGenericModal();
+}
+
 // ==========================================
 // === SAVE SYSTEM & AUTO-LOGIN LOGIC ===
 // ==========================================
