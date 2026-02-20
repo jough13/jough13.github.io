@@ -2195,3 +2195,43 @@ body.light-mode #spireInput::placeholder {
     scrollbar-width: thin;
     scrollbar-color: #4A4A6A var(--bg-color);
 }
+
+/* --- SYSTEM VIEW HEADER --- */
+.system-header-panel {
+    width: 100%;
+    max-width: var(--canvas-width, 1024px); /* Constrain to game width */
+    margin: 0 auto 20px auto; /* Center horizontally */
+    padding: 0 15px; /* Add padding so text doesn't touch the exact edge */
+    box-sizing: border-box;
+    text-align: left;
+    border-bottom: 1px solid #333;
+    padding-bottom: 15px;
+}
+
+.sys-title-large {
+    font-family: var(--title-font);
+    font-size: 28px;
+    color: #FFF;
+    margin: 0;
+    text-shadow: 0 0 10px rgba(0, 224, 224, 0.3);
+}
+
+.sys-meta-row {
+    display: flex;
+    gap: 20px;
+    font-family: var(--main-font);
+    font-size: 12px;
+    color: var(--accent-color);
+    margin-top: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.sys-flavor-text {
+    font-family: var(--main-font);
+    font-size: 13px;
+    color: #888;
+    font-style: italic;
+    margin-top: 10px;
+    max-width: 80%; /* Keep line length readable */
+}
