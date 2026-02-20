@@ -899,7 +899,7 @@ const StandardDecayCalculator = ({
             const labels = [], parentData = [], daughterData = [];
             const steps = 100;
             const plotFactor = getFactor(initialUnit); 
-            const CUTOFF = plotA0_Bq * 1e-10;
+            const CUTOFF = plotA0_Bq * 1e-12;
 
             const tenHalfLives = 15 * T_half_seconds;
             const effectivePlotTime = Math.min(plotTimeAbs, tenHalfLives);
@@ -1366,11 +1366,12 @@ const Badge = ({ label, pass, limit }) => (
 );
 
 const SurfaceContaminationCalculator = ({ 
+    staticEff, setStaticEff, 
+    wipeEff, setWipeEff,
     radionuclides, nuclideSymbol, setNuclideSymbol, 
     staticData, setStaticData, 
     wipeGrossCpm, setWipeGrossCpm, 
     wipeBackgroundCpm, setWipeBackgroundCpm, 
-    instrumentEff, setInstrumentEff, 
     smearEff, setSmearEff, 
     probeArea, setProbeArea, 
     result, setResult, error, setError 
@@ -1415,26 +1416,16 @@ const SurfaceContaminationCalculator = ({
 
             // 1. Parse Inputs
             const sPoints = staticData ? staticData.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number) : [];
-            // Note: Your wrapper uses "wipeGrossCpm" but local vars used "wipeGross". 
-            // I'm using the props passed in directly now.
             
             const wGross = safeParseFloat(wipeGrossCpm);
             const wBkg = safeParseFloat(wipeBackgroundCpm);
-            const wEff = safeParseFloat(instrumentEff);
+            const wEff = safeParseFloat(wipeEff); 
             const wFactor = safeParseFloat(smearEff);
             
-            // Note: For Static, we assume instrumentEff applies to both unless separated? 
-            // Usually Static and Wipe use different efficiencies. 
-            // In the Wrapper, you pass 'sc_instrumentEff' to both 'instrumentEff' prop here?
-            // If so, user changes one, both change. 
-            // Recommendation: Add separate staticEff prop if needed, or share for now.
-            // Assuming 'instrumentEff' is used for Wipes, and we reuse it for Static for simplicity 
-            // unless 'staticEff' prop is added.
-            
-            const sBkg = 50; // Hardcoded default or needs prop? 
-            // The wrapper passes 'sc_wipeBackgroundCpm'. 
-            // It seems we might be missing a dedicated 'staticBkg' prop in the wrapper. 
-            // For now, I will use wipeBackgroundCpm as a fallback for static bkg.
+            const sEff = safeParseFloat(staticEff);
+            // Note: Currently sharing the background input for both static and wipe. 
+            // In the future, you could add a dedicated `staticBackgroundCpm` prop.
+            const sBkg = safeParseFloat(wipeBackgroundCpm); 
             
             const area = safeParseFloat(probeArea);
 
@@ -1443,9 +1434,9 @@ const SurfaceContaminationCalculator = ({
             let totalMaxDPM = null;
 
             // 2. Calculate Removable (Wipe)
-            if (wipeGrossCpm !== '' && wipeBackgroundCpm !== '' && instrumentEff !== '' && smearEff !== '') {
+            if (wipeGrossCpm !== '' && wipeBackgroundCpm !== '' && wipeEff !== '' && smearEff !== '') {
                 if (isNaN(wGross) || isNaN(wBkg) || isNaN(wEff) || isNaN(wFactor)) throw new Error("Wipe inputs must be valid numbers.");
-                if (wEff <= 0) throw new Error("Efficiency must be greater than 0.");
+                if (wEff <= 0) throw new Error("Wipe efficiency must be greater than 0.");
                 if (wFactor <= 0 || wFactor > 1) throw new Error("Smear Factor must be between 0 and 1 (e.g., 0.1).");
 
                 const netWipe = Math.max(0, wGross - wBkg);
@@ -1454,22 +1445,22 @@ const SurfaceContaminationCalculator = ({
             }
 
             // 3. Calculate Total (Static List)
-            if (sPoints.length > 0 && instrumentEff !== '' && probeArea !== '') {
-                // Ensure we don't calculate if the shared inputs are invalid
-                if (isNaN(wEff) || isNaN(area) || isNaN(wBkg)) throw new Error("Static inputs must be valid numbers.");
-                if (wEff <= 0) throw new Error("Efficiency must be greater than 0.");
+            if (sPoints.length > 0 && staticEff !== '' && probeArea !== '') {
+                if (isNaN(sEff) || isNaN(area) || isNaN(sBkg)) throw new Error("Static inputs must be valid numbers.");
+                if (sEff <= 0) throw new Error("Static efficiency must be greater than 0.");
                 if (area <= 0) throw new Error("Probe area must be greater than 0.");
 
-                const sEffDec = wEff / 100; // Reusing instrumentEff for now
+                const sEffDec = sEff / 100; 
                 
                 const dpmValues = sPoints.map(gross => {
-                    const net = Math.max(0, gross - wBkg); // Reusing Bkg
+                    const net = Math.max(0, gross - sBkg); 
                     return (net / sEffDec) * (100 / area);
                 });
 
                 const sum = dpmValues.reduce((a, b) => a + b, 0);
                 totalAvgDPM = sum / dpmValues.length;
-                totalMaxDPM = Math.max(...dpmValues);
+                // FIX APPLIED: Check length to prevent Math.max() returning -Infinity on empty arrays
+                totalMaxDPM = dpmValues.length > 0 ? Math.max(...dpmValues) : 0; 
             }
 
             // 4. Compare Limits
@@ -1504,7 +1495,7 @@ const SurfaceContaminationCalculator = ({
             setError(e.message);
             setResult(null);
         }
-    }, [selectedNuclide, staticData, wipeGrossCpm, wipeBackgroundCpm, instrumentEff, smearEff, probeArea, setResult, setError]);
+    }, [selectedNuclide, staticData, wipeGrossCpm, wipeBackgroundCpm, staticEff, wipeEff, smearEff, probeArea, setResult, setError]);
 
     const handleSaveToHistory = () => {
         if (result && selectedNuclide) {
@@ -1544,6 +1535,11 @@ const SurfaceContaminationCalculator = ({
                     
                     <div className="grid grid-cols-2 gap-3 mt-3">
                         <div>
+                             <label className="text-xs font-bold text-slate-500">Static Eff. (%)</label>
+                             <input type="number" value={staticEff} onChange={e => setStaticEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                             <EfficiencyPresets onSelect={setStaticEff} />
+                        </div>
+                        <div>
                              <label className="text-xs font-bold text-slate-500">Probe Area (cm²)</label>
                              <div className="flex">
                                 <input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full p-2 rounded-l border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
@@ -1571,9 +1567,9 @@ const SurfaceContaminationCalculator = ({
                         </div>
                     </div>
                     <div className="mt-3">
-                        <label className="text-xs font-bold text-slate-500">Efficiency (%)</label>
-                        <input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
-                        <EfficiencyPresets onSelect={setInstrumentEff} />
+                        <label className="text-xs font-bold text-slate-500">Wipe Eff. (%)</label>
+                        <input type="number" value={wipeEff} onChange={e => setWipeEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                        <EfficiencyPresets onSelect={setWipeEff} />
                     </div>
                     <div className="mt-3">
                          <label className="text-xs font-bold text-slate-500">Smear Factor (0-1)</label>
@@ -1619,9 +1615,9 @@ const calculateBetaRange = (energyMeV) => {
     if (!energyMeV || energyMeV <= 0) return 0;
     
     // Result in g/cm² (mass density)
-    // Low Energy (< 0.8 MeV): Exponential curve
-    // High Energy (> 0.8 MeV): Linear approximation (Feather's Rule / K-P)
-    if (energyMeV < 0.8) {
+    // Low Energy (< 2.5 MeV): Exponential curve
+    // High Energy (> 2.5 MeV): Linear approximation (Feather's Rule / K-P)
+    if (energyMeV < 2.5) {
         const exponent = 1.265 - (0.0954 * Math.log(energyMeV));
         return (412 * Math.pow(energyMeV, exponent)) / 1000;
     } else {
@@ -2337,7 +2333,9 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
     const [sc_staticData, setSc_staticData] = React.useState('');
     const [sc_wipeGrossCpm, setSc_wipeGrossCpm] = React.useState('150');
     const [sc_wipeBackgroundCpm, setSc_wipeBackgroundCpm] = React.useState('50');
-    const [sc_instrumentEff, setSc_instrumentEff] = React.useState('25');
+    // Defaulting to 10% for typical pancake GM, 30% for typical scaler/LSC
+    const [sc_staticEff, setSc_staticEff] = React.useState('10'); 
+    const [sc_wipeEff, setSc_wipeEff] = React.useState('30');
     const [sc_smearEff, setSc_smearEff] = React.useState('0.1');
     const [sc_probeArea, setSc_probeArea] = React.useState('15'); 
     const [sc_result, setSc_result] = React.useState(null);
@@ -2457,7 +2455,8 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
                         staticData={sc_staticData} setStaticData={setSc_staticData}
                         wipeGrossCpm={sc_wipeGrossCpm} setWipeGrossCpm={setSc_wipeGrossCpm}
                         wipeBackgroundCpm={sc_wipeBackgroundCpm} setWipeBackgroundCpm={setSc_wipeBackgroundCpm}
-                        instrumentEff={sc_instrumentEff} setInstrumentEff={setSc_instrumentEff}
+                        staticEff={sc_staticEff} setStaticEff={setSc_staticEff}
+                        wipeEff={sc_wipeEff} setWipeEff={setSc_wipeEff}
                         smearEff={sc_smearEff} setSmearEff={setSc_smearEff}
                         probeArea={sc_probeArea} setProbeArea={setSc_probeArea}
                         result={sc_result} setResult={setSc_result}
@@ -3787,7 +3786,7 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
                 {peakIdMode === 'search' ? (
                     <div className="animate-fade-in">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div><label className="block text-sm font-medium">Peak Energy (keV)</label><input type="number" value={searchEnergy} onChange={e => setSearchEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-bold text-lg" autoFocus placeholder="e.g. 662"/></div>
+                            <input type="number" value={searchEnergy} onChange={e => setSearchEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-bold text-lg" placeholder="e.g. 662"/>
                             <div className="grid grid-cols-2 gap-2">
                                 <div><label className="block text-sm font-medium">Min Yield %</label><input type="number" value={minYield} onChange={e => setMinYield(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                                 <div><label className="block text-sm font-medium">Detector</label><select value={resolution} onChange={e => setResolution(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="low">NaI (Low)</option><option value="high">HPGe (High)</option></select></div>
@@ -7682,7 +7681,7 @@ const CompositeActivationCalculator = ({ radionuclides, material, setMaterial, t
                 
                 const component_mass_g = total_mass_g * component.massFraction;
                 const AVOGADRO = 6.02214076e23; const BARN_TO_CM2 = 1e-24;
-                const num_target_atoms = (component_mass_g / targetData.atomicWeight) * AVOGADRO;
+                const num_target_atoms = (component_mass_g / elemental_atomic_weight) * AVOGADRO * (targetData.abundance / 100);
                 const product_half_life_s = parseHalfLifeToSeconds(productData.halfLife);
                 const product_lambda = Math.log(2) / product_half_life_s;
                 const cross_section_cm2 = targetData.thermalCrossSection_barns * BARN_TO_CM2;
