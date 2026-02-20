@@ -1133,14 +1133,15 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
         padding: 5px;
     }
 
-    /* 4. Tame the D-Pad */
+/* 4. Tame the D-Pad */
     #mobileControls {
-        bottom: 10px;
-        left: 10px;
-        right: auto; /* Overrides the old right-side placement */
-        transform: scale(0.8); /* Shrink it down so it fits nicely under the thumb */
+        display: flex !important;
+        bottom: 20px; /* Moved up slightly to avoid bottom bezel */
+        left: 20px;
+        right: auto; 
+        transform: scale(1.0); /* Made slightly larger for thumbs */
         transform-origin: bottom left;
-        opacity: 0.6; /* More transparent so you can see behind it */
+        opacity: 0.8; 
     }
 
     /* 5. Header squish fixes */
