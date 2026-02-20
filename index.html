@@ -1,479 +1,575 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="">
 <head>
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wayfinder: Echoes of the Void</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    
+    <title>Jough Donakowski | Blog</title>
+    <meta name="description" content="The personal blog and project showcase for Jough Donakowski.">
+    <meta property="og:image" content="https://jough13.github.io/assets/banner.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://jough13.github.io/assets/banner.png">    
+    <meta property="og:url" content="https://jough13.github.io/">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50,50 m0,-45 a45,45 0 1,1 0,90 a45,45 0 1,1 0,-90' stroke='%2338bdf8' stroke-width='10' stroke-dasharray='1 7' fill='none' transform='rotate(15 50 50)'><animateTransform attributeName='transform' type='rotate' from='15 50 50' to='375 50 50' dur='10s' repeatCount='indefinite' /></path><circle cx='50' cy='50' r='20' fill='%230ea5e9'/></svg>">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        // On page load or when changing themes, best to add inline in `head` to avoid FOUC
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
     
     <style>
-        /* Force body to be invisible immediately */
+        :root {
+            --font-sans: 'Inter', sans-serif;
+            --bg-light-start: #e0f2fe;
+            --bg-dark-start: #0f172a;
+        }
+        html { scroll-behavior: smooth; }
         body {
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.5s ease-in; /* Smooth fade-in */
-            background-color: #050510; /* Match your dark theme default to prevent white flash */
+            font-family: var(--font-sans);
+            transition: background-color 0.5s ease-in-out, color 0.3s ease-in-out;
+            background-color: var(--bg-light-start);
+        }
+        .dark body { background-color: var(--bg-dark-start); }
+        .main-card, .project-link, .sidebar-card, .social-icon { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .main-card:hover, .sidebar-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
+        .dark .main-card:hover, .dark .sidebar-card:hover { box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .social-icon:hover { transform: scale(1.15); }
+        
+        #interactive-header-canvas {
+            position: fixed; 
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+        main {
+            position: relative; 
+            z-index: 1;
+        }
+      
+        .header-content { position: relative; } 
+        #dust-trigger {
+            cursor: default;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+            text-underline-offset: 4px;
+        }
+        #scrollToTopBtn { transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out; }
+        
+        /* Color-specific hover effects for project links */
+        .project-link.bg-indigo-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25), 0 6px 6px rgba(99, 102, 241, 0.2); }
+        .project-link.bg-rose-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(225, 29, 72, 0.25), 0 6px 6px rgba(225, 29, 72, 0.2); }
+        .project-link.bg-green-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(22, 163, 74, 0.25), 0 6px 6px rgba(22, 163, 74, 0.2); }
+        .project-link.bg-amber-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(217, 119, 6, 0.25), 0 6px 6px rgba(217, 119, 6, 0.2); }
+        .project-link.bg-cyan-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(8, 145, 178, 0.25), 0 6px 6px rgba(8, 145, 178, 0.2); }
+        .project-link.bg-purple-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(147, 51, 234, 0.25), 0 6px 6px rgba(147, 51, 234, 0.2); }
+        .project-link.bg-pink-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(219, 39, 119, 0.25), 0 6px 6px rgba(219, 39, 119, 0.2); }
+        .project-link.bg-sky-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(2, 132, 199, 0.25), 0 6px 6px rgba(2, 132, 199, 0.2); }
+        .project-link.bg-slate-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(71, 85, 105, 0.25), 0 6px 6px rgba(71, 85, 105, 0.2); }
+        .project-link.bg-teal-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(13, 148, 136, 0.25), 0 6px 6px rgba(13, 148, 136, 0.2); }
+        .project-link.bg-orange-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(234, 88, 12, 0.25), 0 6px 6px rgba(234, 88, 12, 0.2); }
+        .project-link.bg-stone-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(87, 83, 78, 0.25), 0 6px 6px rgba(87, 83, 78, 0.2); }
+        .project-link.bg-lime-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(101, 163, 13, 0.25), 0 6px 6px rgba(101, 163, 13, 0.2); }
+        .project-link.bg-emerald-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(5, 150, 105, 0.25), 0 6px 6px rgba(5, 150, 105, 0.2); }
+        .project-link.bg-fuchsia-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(192, 38, 211, 0.25), 0 6px 6px rgba(192, 38, 211, 0.2); }
+        .project-link.bg-blue-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(30, 64, 175, 0.25), 0 6px 6px rgba(30, 64, 175, 0.2); }
+        .project-link.bg-violet-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(124, 58, 237, 0.25), 0 6px 6px rgba(124, 58, 237, 0.2); }
+        .project-link.bg-red-600:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(220, 38, 38, 0.25), 0 6px 6px rgba(220, 38, 38, 0.2); }
+        .project-link.bg-yellow-800:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 10px 20px rgba(146, 64, 14, 0.25), 0 6px 6px rgba(146, 64, 14, 0.2); }
+        .bg-clip-text { -webkit-background-clip: text; }
+
+        @media (max-width: 768px) {
+    #interactive-header-canvas {
+        display: none !important;
+    }
+}
+        @media screen and (max-width: 768px) {
+        /* 1. Kill the Blur: It's the #1 cause of mobile glitches */
+        .backdrop-blur-sm {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            /* Make background solid so it's readable without blur */
+            background-color: rgb(255, 255, 255) !important; 
+        }
+        .dark .backdrop-blur-sm {
+            background-color: rgb(15, 23, 42) !important;
+        }
+
+        /* 2. Kill the Gradient Text: Complex clipping crashes mobile renderers */
+        .bg-clip-text {
+            background: none !important;
+            -webkit-background-clip: border-box !important;
+            background-clip: border-box !important;
+            /* Reset text color to a solid nice blue */
+            color: #0ea5e9 !important; 
+            -webkit-text-fill-color: #0ea5e9 !important;
+        }
+
+        /* 3. Kill the Fade In: Prevents the "flash" of GPU calculation on load */
+        #content-container {
+            opacity: 1 !important;
+            transition: none !important;
         }
         
-        /* Ensure the fade-in class overrides the default */
-        body.loaded {
-            opacity: 1;
-            visibility: visible;
+        /* 4. Ensure Canvas is gone (if you haven't already) */
+        #interactive-header-canvas {
+            display: none !important;
         }
-    </style>
-    <script>
-        window.onerror = function(msg, url, lineNo, columnNo, error) {
-            // Create a terrifyingly visible error box
-            const div = document.createElement('div');
-            div.style.cssText = `
-                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                background: #000; color: #FF0000; z-index: 9999;
-                padding: 40px; font-family: monospace; white-space: pre-wrap;
-                border: 5px solid #FF0000; overflow: auto;
-            `;
-            
-            div.innerHTML = `
-                <h1 style="font-size:40px; margin-bottom:20px;">CRITICAL SYSTEM FAILURE</h1>
-                <h2 style="color:#FFF;">${msg}</h2>
-                <p style="color:#888;">Location: ${url.split('/').pop()}:${lineNo}:${columnNo}</p>
-                <div style="border-top:1px solid #333; margin-top:20px; padding-top:20px; color:#AAA;">
-                    ${error ? error.stack : 'No stack trace available.'}
-                </div>
-                <button onclick="location.reload()" style="margin-top:40px; padding:20px; background:#300; color:#F00; border:1px solid #F00; cursor:pointer;">ATTEMPT SYSTEM REBOOT</button>
-            `;
-            document.body.appendChild(div);
-            return false;
-        };
-    </script>
-</head>
-<body class="crt">
-    <script>
-    // 1. Immediate Theme Check (Run before visual render)
-    (function() {
-        const savedTheme = localStorage.getItem('wayfinderTheme');
-        const systemLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+    }
         
-        let isLight = false;
-        if (savedTheme === 'light') isLight = true;
-        else if (!savedTheme && systemLight) isLight = true;
-
-        // 2. Set the "Curtain" Color on the HTML tag immediately
-        // This ensures the background is already White (or Dark) before the fade-in starts.
-        if (isLight) {
-            document.documentElement.style.backgroundColor = '#FFFFFF';
-        } else {
-            document.documentElement.style.backgroundColor = '#050510';
-        }
-    })();
-</script>
-
-<style>
-    /* Force body to be invisible immediately */
-    body {
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.5s ease-in;
-        /* REMOVED background-color here! We let the script above handle it. */
-    }
-    
-    /* When JS adds this class, the content fades in */
-    body.loaded {
-        opacity: 1;
-        visibility: visible;
-    }
 </style>
-
-    <div id="titleOverlay">
-        <div id="titleContainer">
-            <h1 class="game-title">Wayfinder</h1>
-            <p class="subtitle">Echoes of the Void</p>
-            
-            <div id="systemBoot" style="margin-top:20px; color:var(--accent-color); font-family:var(--main-font); animation: blink 1s infinite;">
-                SYSTEM INITIALIZING...
-            </div>
-            
-            <div id="saveSelectContainer" style="display:none;">
-                <div class="save-list-header">SELECT COMMANDER</div>
-                <div id="saveList" class="save-list">
-                    </div>
-                
-                <div class="title-controls">
-                    <button id="showNewGameBtn" class="title-button small-btn">New Campaign</button>
-                    <label class="checkbox-container">
-                        <input type="checkbox" id="autoLoginCheck">
-                        <span class="checkmark"></span>
-                        Auto-Login
-                    </label>
-                </div>
-            </div>
-
-            <div id="newGameContainer" style="display:none;">
-                <div class="player-customization">
-                    <div class="pfp-selector">
-                        <button id="prevPfpBtn" class="pfp-arrow-btn">&lt;</button>
-                        <img src="assets/pfp_01.png" id="pfpImage" alt="Profile">
-                        <button id="nextPfpBtn" class="pfp-arrow-btn">&gt;</button>
-                    </div>
-                    <input type="text" id="playerNameInput" class="seed-input" placeholder="Captain Name">
-                </div>
-
-                <p class="seed-prompt-text">Enter World Seed (Optional)</p>
-                <input type="text" id="seedInput" class="seed-input" placeholder="Random Seed">
-                
-                <div class="title-buttons">
-                    <button id="startButton" class="title-button">Initialize Systems</button>
-                    <button id="backToSavesBtn" class="title-button small-btn" style="display:none;">Back to Saves</button>
-                </div>
-
-            </div>
-        </div>
-    </div>
-
-    <div id="app-container">
         
-        <header id="top-hud">
-            <div class="hud-group left">
-                <div class="hud-stat">
-                    <span class="label">HULL</span>
-                    <div class="bar-container"><div id="hullBar" class="bar-fill hull"></div></div>
-                    <span id="hullVal" class="value-text">100%</span>
-                </div>
-                <div class="hud-stat">
-                    <span class="label">SHLD</span>
-                    <div class="bar-container"><div id="shieldBar" class="bar-fill shield"></div></div>
-                    <span id="shieldVal" class="value-text">100%</span>
-                </div>
-                <div class="hud-stat">
-                    <span class="label">FUEL</span>
-                    <div class="bar-container"><div id="fuelBar" class="bar-fill fuel"></div></div>
-                    <span id="fuelVal" class="value-text">100%</span>
-                </div>
-            </div>
+    </style>
+</head>
+<body class="text-slate-800 dark:text-slate-300 antialiased">
 
-            <div class="hud-group center">
-                <span id="sectorNameStat" class="sector-title">DEEP SPACE</span>
-                <span id="sectorCoordsStat" class="coords">(0,0)</span>
-            </div>
+    <canvas id="interactive-header-canvas"></canvas>
 
-            <div class="hud-group right">
-                <div class="hud-stat compact">
-                    <span class="label">CR</span>
-                    <span id="creditsStat" class="value-text gold">0</span>
-                </div>
-                <div class="hud-stat compact">
-                    <span class="label">CARGO</span>
-                    <span id="cargoStat" class="value-text">0/0</span>
-                </div>
-                <button id="menuToggle" class="icon-btn">SYS</button>
-            </div>
-        </header>
-
-        <div id="systemMenu" class="hidden">
-            <div class="sys-header">COMMANDER DATA</div>
-            
-            <div id="sys-stats-display">
-                LVL: <span id="menuLevel">1</span> <span style="color:#555">|</span> XP: <span id="menuXP">0</span><br>
-               SHIP: <span id="menuShip">Light Freighter</span><br>
-               REP: <span id="menuRep">Neutral</span>
-            </div>
-
-            <button id="saveButton" class="sys-btn">Manual Save</button>
-            <button id="loadButton" class="sys-btn">Load Manual Save</button>
-            <button id="mainMenuButton" class="sys-btn">Main Menu</button>
-            <button id="themeButton" class="sys-btn">Toggle Theme</button>
-            <button id="soundButton" class="sys-btn">Mute Audio</button>
-            <div id="versionInfo">v0.9.5</div>
-         </div>
-
-        <main id="main-view">
-            <div id="statusOverlay" class="status-overlay"></div>
-
-            <div class="side-border left"></div>
-            <div class="side-border right"></div>
-
-            <canvas id="gameCanvas"></canvas>
-
-            <div id="mobileControls">
-                <div class="dpad-row">
-                    <button id="btnUp" class="dpad-btn">▲</button>
-                </div>
-                <div class="dpad-row">
-                    <button id="btnLeft" class="dpad-btn">◀</button>
-                    <button id="btnWait" class="dpad-btn" style="font-size:10px;">WAIT</button>
-                    <button id="btnRight" class="dpad-btn">▶</button>
-                </div>
-                <div class="dpad-row">
-                    <button id="btnDown" class="dpad-btn">▼</button>
-                </div>
-            </div>
-
-            <div id="gameOverOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(20,0,0,0.9); z-index:4000; align-items:center; justify-content:center;">
-    <div class="confirm-window" style="border-color: var(--danger); box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);">
-        <div class="confirm-header" style="background: var(--danger); color: #000; animation: blink 0.5s infinite;">SIGNAL LOST</div>
-        <div class="confirm-body">
-            <h1 style="color: var(--danger); font-family: var(--title-font); font-size: 32px; margin: 10px 0;">CRITICAL FAILURE</h1>
-            <p id="deathReason" style="font-size: 16px; color: #fff; margin-bottom: 20px;">Cause: Unknown</p>
-            
-            <div class="trade-math-area" style="border-color: #552222;">
-                <div class="trade-stat-row"><span>Final Level:</span> <span id="deathLevel" class="value-text" style="color:#fff"></span></div>
-                <div class="trade-stat-row"><span>Credits Lost:</span> <span id="deathCreditPenalty" class="value-text" style="color:var(--danger)"></span></div>
-            </div>
-
-            <p style="font-size: 12px; color: #888; margin-top: 15px;">Emergency Clone Protocol Available.</p>
-            
-            <div class="confirm-actions" style="flex-direction: column; gap: 10px;">
-                <button id="respawnBtn" class="action-button" onclick="respawnPlayer()">INITIATE CLONE (RESPAWN)</button>
-                <button class="action-button danger-btn" onclick="quitToTitle()">TERMINATE SIGNAL (QUIT)</button>
-            </div>
-        </div>
-    </div>
-</div>
-<div id="genericModalOverlay" style="display:none;">
-        <div class="trade-window" style="height:auto; min-height:300px;">
-            <div class="trade-header">
-                <span id="genericModalTitle">INFORMATION</span>
-                <button onclick="closeGenericModal()" class="icon-btn">X</button>
-            </div>
-            <div id="genericModalContent" class="station-body" style="padding:20px; overflow-y:auto; max-height:60vh;">
-                </div>
-        </div>
-    </div>
-
-            <div id="stationOverlay" style="display:none;">
-                <div class="trade-window" style="max-width: 800px;">
-                    <div class="trade-header">
-                        <span id="stationNameTitle">STATION NAME</span>
-                        <button onclick="closeStationView()" class="icon-btn">X</button>
-                    </div>
-                    <div class="station-body">
-                        <div class="station-visual-panel">
-                            <canvas id="stationCanvas" width="200" height="200"></canvas>
-                            <div id="stationFactionBadge" class="station-badge">FACTION</div>
-                            <p id="stationDescText" class="station-desc">Station description goes here...</p>
-                        </div>
-                        
-                        <div class="station-menu-grid">
-                            <button class="station-action-btn" onclick="openTradeModal('buy')">
-                                <div class="btn-icon">🛒</div>
-                                <div class="btn-label">Marketplace<br><span class="btn-sub">Buy Commodities</span></div>
-                            </button>
-                            <button class="station-action-btn" onclick="openTradeModal('sell')">
-                                <div class="btn-icon">💰</div>
-                                <div class="btn-label">Sell Cargo<br><span class="btn-sub">Offload Goods</span></div>
-                            </button>
-                            <button class="station-action-btn" onclick="displayMissionBoard()">
-                                <div class="btn-icon">📜</div>
-                                <div class="btn-label">Mission Board<br><span class="btn-sub">Contracts & Bounties</span></div>
-                            </button>
-                            <button class="station-action-btn" onclick="displayShipyard()">
-                                <div class="btn-icon">🚀</div>
-                                <div class="btn-label">Shipyard<br><span class="btn-sub">Buy New Hulls</span></div>
-                            </button>
-                            <button class="station-action-btn" onclick="displayOutfittingScreen()">
-                                <div class="btn-icon">⚙️</div>
-                                <div class="btn-label">Outfitting<br><span class="btn-sub">Upgrades & Parts</span></div>
-                            </button>
-                            <button class="station-action-btn" onclick="visitCantina()">
-                                <div class="btn-icon">🍸</div>
-                                <div class="btn-label">Cantina<br><span class="btn-sub">Rumors & Rest (10c)</span></div>
-                            </button>
-                            <button class="station-action-btn repair-btn" onclick="repairShip()">
-                                <div class="btn-icon">🔧</div>
-                                <div class="btn-label">Repair Hull<br><span class="btn-sub" id="repairCostLabel">Check Cost</span></div>
-                            </button>
-                            <button class="station-action-btn leave-btn" onclick="closeStationView()">
-                                <div class="btn-icon">👋</div>
-                                <div class="btn-label">Undock<br><span class="btn-sub">Return to Space</span></div>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="derelictOverlay" style="display:none;">
-                <div class="trade-window" style="max-width: 800px; border-color: #FF5555;">
-                    <div class="trade-header" style="background: rgba(50, 0, 0, 0.8);">
-                        <span id="derelictNameTitle" style="color: #FF5555;">UNKNOWN WRECKAGE</span>
-                        <button onclick="closeDerelictView()" class="icon-btn">X</button>
-                    </div>
-                    <div id="derelictInfoBar" class="modal-info-bar"></div>
+    <main id="content-container" class="relative w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 opacity-0 transition-opacity duration-1000 ease-out">
+        <div class="flex flex-col lg:flex-row lg:space-x-8 space-y-8 lg:space-y-0">
+            <article class="flex-1">
+                
+                <div class="relative bg-white/70 backdrop-blur-sm dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-lg p-8 md:p-12 overflow-hidden main-card">
+                    <button id="theme-toggle" type="button" class="absolute top-6 right-6 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-200 dark:focus:ring-slate-700 rounded-lg text-sm p-2.5 z-10">
+                        <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                        <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                    </button>
+                    <header class="mb-6 header-content">
+                        <h1 class="text-4xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-violet-600 mb-2">
+                            Pardon the <span id="dust-trigger">Dust.</span>
+                        </h1>
+                        <p class="text-lg text-slate-600 dark:text-slate-400">
+                            This little corner of the web is getting a facelift. I'm busy tinkering behind the scenes, but I'll be back with a fresh coat of paint soon.
+                        </p>
+                    </header>
                     
-                    <div class="station-body">
-                        <div class="station-visual-panel">
-                            <canvas id="derelictCanvas" width="200" height="200"></canvas>
-                            <div id="derelictClassBadge" class="station-badge" style="color:#FF5555; border-color:#552222;">CLASS: UNKNOWN</div>
-                            <p id="derelictDescText" class="station-desc">Sensors detect hull breaches and faint energy signatures.</p>
-                        </div>
-                        
-                        <div class="station-menu-grid">
-                            <button class="station-action-btn" onclick="handleDerelictAction('SCAN')">
-                                <div class="btn-icon">📡</div>
-                                <div class="btn-label">Remote Scan<br><span class="btn-sub">Safe. Gain Data (XP).</span></div>
-                            </button>
-                            
-                            <button class="station-action-btn" onclick="handleDerelictAction('SALVAGE')">
-                                <div class="btn-icon">🏗️</div>
-                                <div class="btn-label">Scrap Salvage<br><span class="btn-sub">Low Risk. Gather raw materials.</span></div>
-                            </button>
-                            
-                            <button class="station-action-btn" style="border-left-color: #FF5555;" onclick="handleDerelictAction('BREACH')">
-                                <div class="btn-icon">💥</div>
-                                <div class="btn-label">Breach Hull<br><span class="btn-sub" style="color:#F88">High Risk. Valuable Cargo.</span></div>
-                            </button>
-                            
-                            <button class="station-action-btn leave-btn" onclick="closeDerelictView()">
-                                <div class="btn-icon">🚀</div>
-                                <div class="btn-label">Leave Area<br><span class="btn-sub">Ignore the wreckage.</span></div>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div id="derelictLog" style="padding: 10px; font-family: monospace; font-size: 12px; height: 80px; overflow-y: auto;">
-                        > Link established with derelict vessel...
-                    </div>
-                </div>
-            </div>
-
-            <div id="xerxesOverlay" style="display:none;">
-                <div class="trade-window" style="max-width: 800px; border-color: #9933FF; box-shadow: 0 0 30px rgba(138, 43, 226, 0.3);">
-                    <div class="trade-header" style="background: rgba(30, 0, 60, 0.95); border-bottom: 1px solid #9933FF;">
-                        <span style="color: #DDA0DD; font-weight:900; letter-spacing:3px;">XERXES PRIME</span>
-                        <button onclick="closeXerxesView()" class="icon-btn" style="color:#DDA0DD; border-color:#9933FF;">X</button>
-                    </div>
-                    
-                    <div id="xerxesInfoBar" class="modal-info-bar" style="border-bottom: 1px solid #551188;"></div>
-                    
-                    <div class="station-body" style="background: #050010;">
-                        <div class="station-visual-panel" style="background: #080015; border-right: 1px solid #551188;">
-                            <canvas id="xerxesCanvas" width="200" height="200" style="border-color:#551188; box-shadow: 0 0 20px rgba(138, 43, 226, 0.2);"></canvas>
-                            <div class="station-badge" style="background:#220044; color:#DDA0DD; border-color:#9933FF;">ROGUE WORLD</div>
-                            <p class="station-desc" style="color:#AA88CC; font-style:italic;">
-                                "A sunless world drifting in the void. Ancient geothermal spires pierce the eternal night, lighting a city of thieves and exiles."
-                            </p>
-                        </div>
-                        
-                        <div id="xerxesMenu" class="station-menu-grid">
+                    <div class="mb-8 header-content">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+                                <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
+                                </svg>
                             </div>
-                    </div>
-                    
-                    <div id="xerxesLog" style="padding: 10px; background: rgba(20, 0, 40, 0.6); color: #DDA0DD; font-family: monospace; font-size: 12px; height: 80px; overflow-y: auto; border-top: 1px solid #551188;">
-                        > Atmosphere toxic. Docking clamps engaged at The Spire.
-                    </div>
-                </div>
-            </div>
-
-            <div id="genericModalOverlay" style="display:none;">
-                <div class="trade-window">
-                    <div class="trade-header">
-                        <span id="genericModalTitle">TITLE</span>
-                        <button onclick="closeGenericModal()" class="icon-btn">X</button>
-                    </div>
-                    <div id="genericInfoBar" class="modal-info-bar"></div>
-                    <div class="trade-body">
-                        <div id="genericModalList" class="trade-list-container"></div>
-                        <div id="genericModalDetails" class="trade-panel-right">
-                            <h3 id="genericDetailTitle">SELECT ITEM</h3>
-                            <div id="genericDetailContent"></div>
-                            <div class="trade-btn-group" id="genericModalActions"></div>
+                            <input type="text" id="searchInput" class="block w-full p-4 ps-10 text-sm text-slate-900 border border-slate-300 rounded-lg bg-slate-50 focus:ring-sky-500 focus:border-sky-500 dark:bg-slate-700 dark:border-slate-600 dark:placeholder-slate-400 dark:text-white dark:focus:ring-sky-500 dark:focus:border-sky-500" placeholder="Search posts by title, tag, or content...">
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div id="cargoOverlay" style="display:none;">
-                <div class="trade-window"> 
-                    <div class="trade-header">
-                        <span>CARGO MANIFEST</span>
-                        <button id="closeCargoBtn" class="icon-btn">X</button>
+                    <div class="header-content" id="posts-container">
+                        <p class="text-slate-500">Loading posts...</p>
                     </div>
-                    <div id="cargoInfoBar" class="modal-info-bar"></div>
-                    <div class="trade-body">
-                        <div id="cargoList" class="trade-list-container"></div>
-                        
-                        <div id="cargoDetails" class="trade-panel-right">
-                            <h3 id="cargoItemName">SELECT CARGO</h3>
-                            <p id="cargoItemDesc" style="font-size:12px; color:#888;">Select an item to inspect or jettison.</p>
-                            
-                            <div class="trade-math-area">
-                                <div class="trade-stat-row"><span>Quantity:</span> <span id="cargoItemQty" class="value-text">0</span></div>
-                                <div class="trade-stat-row"><span>Base Value:</span> <span id="cargoItemVal" class="value-text">0c</span></div>
-                            </div>
-
-                            <div style="margin-top:auto">
-                                <p style="color:#FF4444; font-size:11px; margin-bottom:5px;">WARNING: Jettisoned cargo is lost forever.</p>
-                                <button id="jettisonBtn" class="action-button" style="border-color:#FF4444; color:#FF4444;" disabled>JETTISON 1 UNIT</button>
-                            </div>
-                        </div>
-                    </div>
+<footer class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 text-center header-content">
+<p id="article-footer-message" class="text-slate-500">Thanks for stopping by. Pants suck.</p>
+</footer>
                 </div>
-            </div>
+            </article>
 
-            <div id="systemView" class="view-panel"></div>
-            <div id="planetView" class="view-panel"></div>
-            <div id="combatView" class="view-panel"></div>
-            
-            <div id="codexOverlay">
-                <div class="codex-header">
-                    <span>GALACTIC DATABASE</span>
-                    <button id="codexCloseButton">&times;</button>
-                </div>
-                <div id="codexContent">
-                    <div id="codexCategories"></div>
-                    <div id="codexEntries"></div>
-                    <div id="codexEntryText">Select an entry...</div>
-                </div>
-            </div>
-        </main>
+            <aside id="sidebar-container" class="w-full lg:w-80 flex-shrink-0">
+                </aside>
 
-        <footer id="bottom-deck">
-            <div id="messageArea" class="log-panel">System Initialized...</div>
-            <div id="context-panel">
-                <div id="mission-tracker" class="mission-box">
-                    <span class="label">MISSION</span>
-                    <span id="missionText" class="value">No Active Mission</span>
-                </div>
-                <div id="contextual-actions" class="action-row"></div>
-            </div>
-        </footer>
-    </div>
-
-    <div style="display:none;">
-        <span id="levelXpStat"></span><span id="shipClassStat"></span>
-        <span id="notorietyStat"></span><span id="stardateStat"></span>
-        <span id="fuelStat"></span><span id="shieldsStat"></span><span id="hullStat"></span>
-    </div>
-
-    <div id="confirmationOverlay" style="display:none;">
-        <div class="confirm-window">
-            <div class="confirm-header">! COMMAND AUTHORIZATION REQUIRED !</div>
-            <div class="confirm-body">
-                <p id="confirmMessage">Are you sure?</p>
-                <div class="confirm-actions">
-                    <button id="confirmYesBtn" class="action-button danger-btn">CONFIRM DELETION</button>
-                    <button id="confirmNoBtn" class="action-button">CANCEL</button>
-                </div>
-            </div>
         </div>
-    </div>
+    </main>
 
-    <div id="toastContainer"></div>
-
-    <script src="config.js"></script>
-    <script src="items.js"></script>
-    <script src="biomes.js"></script>
-    <script src="ships.js"></script>
-    <script src="locations.js"></script>
-    <script src="rumors.js"></script>
-    <script src="lore.js"></script>
-
-    <script src="perks.js"></script>
-
-    <script src="audio.js"></script>
+    <button id="scrollToTopBtn" aria-label="Scroll to top" class="hidden fixed bottom-8 right-8 bg-sky-500 hover:bg-sky-600 text-white rounded-full p-3 shadow-lg transition-opacity duration-300 z-50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+        </svg>
+    </button>
     
-    <script src="script.js"></script>
+<footer class="text-center p-4 mt-4">
+    <p id="site-footer-content" class="text-sm text-slate-500 dark:text-slate-400">
+        </p>
+</footer>
 
-    <div id="damageFlash" class="damage-flash"></div>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     
+    <script src="shared.js"></script>
+    <script>
+
+ let database; 
+
+function initializeFirebase() {
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWI858qb8vIWN3gRQh7fD2qKhGWG3QQyE",
+      authDomain: "my-blog-counter-b2521.firebaseapp.com",
+      projectId: "my-blog-counter-b2521",
+      storageBucket: "my-blog-counter-b2521.firebasestorage.app",
+      messagingSenderId: "124481622747",
+      appId: "1:124481622747:web:19c183d3bc92b174d472fe",
+      measurementId: "G-K27KZ4BQ80"
+    };
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    database = firebase.database(); // Assign the connection to our global variable
+}
+        
+function initializeAndRunCounter() {
+    const displayElement = document.getElementById('article-footer-message'); 
+    if (!displayElement) return;
+
+    const counterRef = database.ref('pageviews/total');
+
+    counterRef.transaction((currentValue) => {
+        return (currentValue || 0) + 1;
+    }, (error, committed, snapshot) => {
+        if (error) {
+            console.error("Firebase transaction failed:", error);
+            // If it fails, the original text will simply remain.
+        } else if (committed) {
+            const visitorNumber = snapshot.val().toLocaleString('en-US');
+           
+            displayElement.textContent = `Thanks for stopping by. You've been visitor ${visitorNumber}. Pants suck.`; 
+        }
+    });
+}
+        
+        // --- Combined Page and Sidebar Logic ---
+
+        let allPosts = [];
+
+async function loadContent() {
+    try {
+        // Use Promise.all to fetch posts and sidebar HTML concurrently
+        const [postsResponse, sidebarResponse] = await Promise.all([
+            fetch('posts.json'),
+            fetch('right-sidebar.html')
+        ]);
+
+        if (!postsResponse.ok) throw new Error(`HTTP error! status: ${postsResponse.status}`);
+        if (!sidebarResponse.ok) throw new Error(`HTTP error! status: ${sidebarResponse.status}`);
+
+        allPosts = await postsResponse.json();
+        const sidebarHtml = await sidebarResponse.text();
+
+        // Step 1: Inject the sidebar HTML into the placeholder
+        const sidebarContainer = document.getElementById('sidebar-container');
+        if (sidebarContainer) {
+            sidebarContainer.innerHTML = sidebarHtml;
+            // Step 2: NOW that the sidebar is loaded, generate the tag cloud
+            generateTagCloud(); 
+        } else {
+            console.error('Sidebar container not found!');
+            return; // Stop if the container isn't there
+        }
+
+        // Step 3: Finally, render the main posts
+        renderPosts(allPosts);
+
+    } catch (error) {
+        document.getElementById('posts-container').innerHTML = '<p>Sorry, an error occurred while loading content.</p>';
+        console.error('Error loading content:', error);
+    }
+}
+        
+function renderPosts(posts) {
+    const container = document.getElementById('posts-container');
+    if (!container) return;
+
+    if (posts.length === 0) {
+        container.innerHTML = `<p class="text-slate-500">No posts found.</p>`;
+    } else {
+        container.innerHTML = posts.map((post, index) => {
+            // --- START: Create a Firebase-safe ID ---
+            // Replace all periods in the filename with underscores
+            const sanitizedPostId = post.file.replace(/\./g, '_');
+            // --- END: Create a Firebase-safe ID ---
+
+            const isLastPost = index === posts.length - 1;
+            const articleClasses = `prose prose-lg dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-4 ${isLastPost ? '' : 'mb-12 pb-8 border-b border-slate-200 dark:border-slate-700'}`;
+            const postDate = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+            const tagsHtml = post.tags.map(t =>
+                `<a href="/tag.html?tag=${encodeURIComponent(t)}" class="bg-sky-100 text-sky-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-full dark:bg-sky-900 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-800 no-underline transition-colors">${t}</a>`
+            ).join(' ');
+
+            return `
+            <article class="${articleClasses}">
+                <h2 class="mb-2"><a href="/post.html?p=${post.file}" class="no-underline hover:text-sky-500"><strong>${post.title}</strong></a></h2>
+                <p class="text-base text-slate-500 dark:text-slate-400 mt-0">${postDate}</p>
+                <p>${post.summary}</p>
+                
+                <div class="not-prose flex items-center gap-4 mt-4">
+<button data-post-id="${sanitizedPostId}" class="like-button bg-sky-500 text-white font-semibold py-1 px-2 rounded-md text-sm hover:bg-sky-600 transition-colors">
+    👍 Like
+</button>
+                    <span id="like-count-${sanitizedPostId}" class="font-semibold text-slate-600 dark:text-slate-400">0</span>
+                </div>
+
+                <div class="not-prose flex flex-wrap gap-2 mt-4">
+                    ${tagsHtml}
+                </div>
+            </article>
+            `;
+        }).join('');
+    }
+
+    setupLikeButtons();
+}
+        
+        function generateTagCloud() {
+            const tagCloud = document.getElementById('tag-cloud');
+            if (!tagCloud) {
+                console.warn('Tag cloud element not found. Was the sidebar loaded correctly?');
+                return;
+            }
+            const allTags = allPosts.flatMap(post => post.tags);
+            const uniqueTags = [...new Set(allTags)];
+
+            if (uniqueTags.length === 0) {
+                tagCloud.innerHTML = '<p class="text-xs text-slate-500">No tags yet.</p>';
+            } else {
+                tagCloud.innerHTML = uniqueTags.sort().map(tag => `
+                    <a href="tag.html?tag=${encodeURIComponent(tag)}" class="bg-slate-200 text-slate-700 text-sm font-semibold px-3 py-1 rounded-full hover:bg-sky-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-sky-800 transition-colors no-underline">
+                        #${tag}
+                    </a>
+                `).join('');
+            }
+        }
+
+        function setupSearch() {
+            const searchInput = document.getElementById('searchInput');
+            if(!searchInput) return;
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const filteredPosts = allPosts.filter(post => {
+                    if (!post.title || !post.summary || !post.tags) return false;
+                    const titleMatch = post.title.toLowerCase().includes(searchTerm);
+                    const summaryMatch = post.summary.toLowerCase().includes(searchTerm);
+                    const tagsMatch = post.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+                    return titleMatch || summaryMatch || tagsMatch;
+                });
+                renderPosts(filteredPosts);
+            });
+        }
+            
+function initPage() {
+    initializeFirebase();
+    setupInteractiveHeader();
+    loadContent(); 
+    setupSearch();
+    initializeAndRunCounter();
+}
+
+        const interactiveHeader = { canvas: null, ctx: null, resize: () => {} };
+
+        function setupInteractiveHeader() {
+    interactiveHeader.canvas = document.getElementById('interactive-header-canvas');
+    if (!interactiveHeader.canvas) return;
+
+    interactiveHeader.ctx = interactiveHeader.canvas.getContext('2d');
+    let particles = [];
+    const mouse = { x: undefined, y: undefined };
+    let isEffectActive = false;
+    let effectTimeout;
+    const dustTrigger = document.getElementById('dust-trigger');
+
+    interactiveHeader.resize = () => {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = { width: window.innerWidth, height: window.innerHeight };
+        
+        interactiveHeader.canvas.width = rect.width * dpr;
+        interactiveHeader.canvas.height = rect.height * dpr;
+        
+        // Normalize coordinate system to use css pixels.
+        interactiveHeader.ctx.scale(dpr, dpr);
+    };
+
+    window.addEventListener('resize', interactiveHeader.resize);
+
+    document.addEventListener('mousemove', (event) => {
+        if (isEffectActive) {
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+        }
+    });
+
+    document.addEventListener('mouseleave', () => {
+        mouse.x = undefined;
+        mouse.y = undefined;
+    });
+
+    if (dustTrigger) {
+        dustTrigger.addEventListener('mouseover', () => {
+            isEffectActive = true;
+            clearTimeout(effectTimeout);
+            effectTimeout = setTimeout(() => {
+                isEffectActive = false;
+            }, 5000);
+        });
+    }
+
+    class Particle {
+        constructor() {
+            this.x = mouse.x;
+            this.y = mouse.y;
+            this.speedX = Math.random() * 0.5 - 0.25;
+            this.speedY = Math.random() * 0.5 - 0.25;
+            this.initialLife = this.life = Math.random() * 30 + 30;
+            this.radius = Math.random() * 1.5 + 0.5;
+            this.color = document.documentElement.classList.contains('dark') 
+                ? 'rgba(107, 224, 255, 1)' 
+                : 'rgba(0, 149, 255, 1)';
+        }
+
+        update() {
+            this.life--;
+            this.x += this.speedX;
+            this.y += this.speedY;
+        }
+
+        draw() {
+            const opacity = Math.max(0, this.life / this.initialLife);
+            const ctx = interactiveHeader.ctx;
+            
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = this.color.replace(', 1)', `, ${opacity})`);
+            
+            ctx.fillStyle = this.color.replace(', 1)', `, ${opacity})`);
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    function animate() {
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (prefersReducedMotion) {
+            interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
+            return; 
+        }
+
+        // --- THE FIX IS HERE ---
+        // 1. Save the current context state (with the dpr scale)
+        interactiveHeader.ctx.save();
+        // 2. Reset the transform to identity (1:1 pixel mapping)
+        interactiveHeader.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        // 3. Clear the full physical canvas safely
+        interactiveHeader.ctx.clearRect(0, 0, interactiveHeader.canvas.width, interactiveHeader.canvas.height);
+        // 4. Restore the context to the previous state (with dpr scale) for drawing
+        interactiveHeader.ctx.restore();
+        // -----------------------
+
+        if (isEffectActive && mouse.x !== undefined) {
+             for (let i = 0; i < 3; i++) {
+                particles.push(new Particle());
+            }
+        }
+        
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.update();
+            p.draw();
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+        
+        requestAnimationFrame(animate);
+    }
+
+    interactiveHeader.resize();
+    animate();
+}
+
+function setupLikeButtons() {
+    // Helper function to get liked posts from localStorage
+    function getLikedPosts() {
+        const liked = localStorage.getItem('likedPosts');
+        return liked ? JSON.parse(liked) : [];
+    }
+
+    // Helper function to save liked posts to localStorage
+    function saveLikedPosts(likedPosts) {
+        localStorage.setItem('likedPosts', JSON.stringify(likedPosts));
+    }
+
+    const likeButtons = document.querySelectorAll('.like-button');
+    let likedPosts = getLikedPosts();
+
+    likeButtons.forEach(button => {
+        const postId = button.dataset.postId;
+        const likeCountElement = document.getElementById(`like-count-${postId}`);
+        if (!likeCountElement) return;
+
+        const likesRef = database.ref(`likes/${postId}`);
+
+        // 1. Set the initial state of the button on page load
+        if (likedPosts.includes(postId)) {
+            button.textContent = 'Unlike';
+            button.classList.replace('bg-sky-500', 'bg-slate-500');
+            button.classList.replace('hover:bg-sky-600', 'hover:bg-slate-600');
+        }
+
+        // 2. Fetch and display the current like count from Firebase
+        likesRef.get().then((snapshot) => {
+            if (snapshot.exists()) {
+                likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+            } else {
+                likeCountElement.textContent = '0';
+            }
+        });
+
+        // 3. Listen for clicks to either like or unlike
+        button.addEventListener('click', () => {
+            likedPosts = getLikedPosts(); // Get the latest list in case it changed
+            const isLiked = likedPosts.includes(postId);
+            const increment = isLiked ? -1 : 1; // If liked, subtract 1. If not, add 1.
+
+            // Run the transaction to increment or decrement
+            likesRef.transaction((currentLikes) => {
+                return (currentLikes || 0) + increment;
+            }, (error, committed, snapshot) => {
+                if (!error && committed) {
+                    // Update the number on the page
+                    likeCountElement.textContent = snapshot.val().toLocaleString('en-US');
+
+                    // Update localStorage and button appearance
+                    if (isLiked) {
+                        // It was liked, now it's unliked
+                        const updatedLikedPosts = likedPosts.filter(id => id !== postId);
+                        saveLikedPosts(updatedLikedPosts);
+                        button.textContent = '👍 Like';
+                        button.classList.replace('bg-slate-500', 'bg-sky-500');
+                        button.classList.replace('hover:bg-slate-600', 'hover:bg-sky-600');
+                    } else {
+                        // It was not liked, now it is
+                        likedPosts.push(postId);
+                        saveLikedPosts(likedPosts);
+                        button.textContent = 'Unlike';
+                        button.classList.replace('bg-sky-500', 'bg-slate-500');
+                        button.classList.replace('hover:bg-sky-600', 'hover:bg-slate-600');
+                    }
+                }
+            });
+        });
+    });
+}
+        
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+
 </body>
 </html>
