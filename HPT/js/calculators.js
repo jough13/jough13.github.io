@@ -7681,7 +7681,7 @@ const CompositeActivationCalculator = ({ radionuclides, material, setMaterial, t
                 
                 const component_mass_g = total_mass_g * component.massFraction;
                 const AVOGADRO = 6.02214076e23; const BARN_TO_CM2 = 1e-24;
-                const num_target_atoms = (component_mass_g / elemental_atomic_weight) * AVOGADRO * (targetData.abundance / 100);
+                const num_target_atoms = (component_mass_g / targetData.atomicWeight) * AVOGADRO * (targetData.abundance / 100);
                 const product_half_life_s = parseHalfLifeToSeconds(productData.halfLife);
                 const product_lambda = Math.log(2) / product_half_life_s;
                 const cross_section_cm2 = targetData.thermalCrossSection_barns * BARN_TO_CM2;
