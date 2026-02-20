@@ -5584,29 +5584,37 @@ function initializeDOMElements() {
         });
     }
 
-    // --- Mobile D-Pad Listeners ---
+    // --- Mobile D-Pad Listeners (Safe Version) ---
     const btnUp = document.getElementById('btnUp');
     const btnDown = document.getElementById('btnDown');
     const btnLeft = document.getElementById('btnLeft');
     const btnRight = document.getElementById('btnRight');
 
     if (btnUp) {
+        // Shared flag to prevent double-firing (Touch + Click)
+        let lastTouchTime = 0;
+
         const bindMove = (btn, key) => {
-            // Handle Touch (Primary for Mobile)
+            // 1. Handle Touch (Instant response)
             btn.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // Prevents mouse emulation & scrolling
+                e.preventDefault(); // Stop zooming/scrolling
+                lastTouchTime = Date.now(); // Record time
+                
                 if (currentGameState === GAME_STATES.GALACTIC_MAP) {
                     handleGalacticMapInput(key);
-                    triggerHaptic(10); // Tiny vibration feedback
+                    if (typeof triggerHaptic === 'function') triggerHaptic(10);
                 }
-            }, { passive: false }); // Required for preventDefault to work
+            }, { passive: false });
 
-            // Handle Click (Fallback for testing mobile view on Desktop)
+            // 2. Handle Mouse Click (Desktop/Fallback)
             btn.addEventListener('click', (e) => {
-                // Only fire if not triggered by touch (some browsers fire both)
-                if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return;
-                
-                if (currentGameState === GAME_STATES.GALACTIC_MAP) handleGalacticMapInput(key);
+                // If a touch event happened less than 500ms ago, ignore this click
+                // (This prevents the "Ghost Click" that happens after a tap)
+                if (Date.now() - lastTouchTime < 500) return;
+
+                if (currentGameState === GAME_STATES.GALACTIC_MAP) {
+                    handleGalacticMapInput(key);
+                }
             });
         };
 
