@@ -949,3 +949,59 @@ const SHIELDING_MATERIALS = {
       density: 2.35
    } // Weighted average of common elements
 };
+
+// 10 CFR 30.71 Schedule B - Exempt Quantities (in microcuries)
+const NRC_EXEMPT_QUANTITIES = {
+    'Sb-122': 100, 'Sb-124': 10, 'Sb-125': 10, 'As-73': 100, 'As-74': 10, 'As-76': 10, 
+    'As-77': 100, 'Ba-131': 10, 'Ba-133': 10, 'Ba-140': 10, 'Bi-210': 1, 'Br-82': 10, 
+    'Cd-109': 10, 'Cd-115m': 10, 'Cd-115': 100, 'Ca-45': 10, 'Ca-47': 10, 'C-14': 100, 
+    'Ce-141': 100, 'Ce-143': 100, 'Ce-144': 1, 'Cs-129': 100, 'Cs-131': 1000, 'Cs-134m': 100, 
+    'Cs-134': 1, 'Cs-135': 10, 'Cs-136': 10, 'Cs-137': 10, 'Cl-36': 10, 'Cl-38': 10, 
+    'Cr-51': 1000, 'Co-57': 100, 'Co-58m': 10, 'Co-58': 10, 'Co-60': 1, 'Cu-64': 100, 
+    'Dy-165': 10, 'Dy-166': 100, 'Er-169': 100, 'Er-171': 100, 'Eu-152m': 100, 'Eu-152': 1, 
+    'Eu-154': 1, 'Eu-155': 10, 'F-18': 1000, 'Gd-153': 10, 'Gd-159': 100, 'Ga-67': 100, 
+    'Ga-72': 10, 'Ge-68': 10, 'Ge-71': 100, 'Au-195': 10, 'Au-198': 100, 'Au-199': 100, 
+    'Hf-181': 10, 'Ho-166': 100, 'H-3': 1000, 'In-111': 100, 'In-113m': 100, 'In-114m': 10, 
+    'In-115m': 100, 'In-115': 10, 'I-123': 100, 'I-125': 1, 'I-126': 1, 'I-129': 0.1, 
+    'I-131': 1, 'I-132': 10, 'I-133': 1, 'I-134': 10, 'I-135': 10, 'Ir-192': 10, 'Ir-194': 100, 
+    'Fe-52': 10, 'Fe-55': 100, 'Fe-59': 10, 'Kr-85': 100, 'Kr-87': 10, 'La-140': 10, 
+    'Lu-177': 100, 'Mn-52': 10, 'Mn-54': 10, 'Mn-56': 10, 'Hg-197m': 100, 'Hg-197': 100, 
+    'Hg-203': 10, 'Mo-99': 100, 'Nd-147': 100, 'Nd-149': 100, 'Ni-59': 100, 'Ni-63': 10, 
+    'Ni-65': 100, 'Nb-93m': 10, 'Nb-95': 10, 'Nb-97': 10, 'Os-185': 10, 'Os-191m': 100, 
+    'Os-191': 100, 'Os-193': 100, 'Pd-103': 100, 'Pd-109': 100, 'P-32': 10, 'Pt-191': 100, 
+    'Pt-193m': 100, 'Pt-193': 100, 'Pt-197m': 100, 'Pt-197': 100, 'Po-210': 0.1, 'K-42': 10, 
+    'K-43': 10, 'Pr-142': 100, 'Pr-143': 100, 'Pm-147': 10, 'Pm-149': 10, 'Re-186': 100, 
+    'Re-188': 100, 'Rh-103m': 100, 'Rh-105': 100, 'Rb-81': 10, 'Rb-86': 10, 'Rb-87': 10, 
+    'Ru-97': 100, 'Ru-103': 10, 'Ru-105': 10, 'Ru-106': 1, 'Sm-151': 10, 'Sm-153': 100, 
+    'Sc-46': 10, 'Sc-47': 100, 'Sc-48': 10, 'Se-75': 10, 'Si-31': 100, 'Ag-105': 10, 
+    'Ag-110m': 1, 'Ag-111': 100, 'Na-22': 10, 'Na-24': 10, 'Sr-85': 10, 'Sr-89': 1, 
+    'Sr-90': 0.1, 'Sr-91': 10, 'Sr-92': 10, 'S-35': 100, 'Ta-182': 10, 'Tc-96': 10, 
+    'Tc-97m': 100, 'Tc-97': 100, 'Tc-99m': 100, 'Tc-99': 10, 'Te-125m': 10, 'Te-127m': 10, 
+    'Te-127': 100, 'Te-129m': 10, 'Te-129': 100, 'Te-131m': 10, 'Te-132': 10, 'Tb-160': 10, 
+    'Tl-200': 100, 'Tl-201': 100, 'Tl-202': 100, 'Tl-204': 10, 'Tm-170': 10, 'Tm-171': 10, 
+    'Sn-113': 10, 'Sn-125': 10, 'W-181': 10, 'W-185': 10, 'W-187': 100, 'V-48': 10, 
+    'Xe-131m': 1000, 'Xe-133': 100, 'Xe-135': 100, 'Yb-175': 100, 'Y-87': 10, 'Y-88': 10, 
+    'Y-90': 10, 'Y-91': 10, 'Y-92': 100, 'Y-93': 100, 'Zn-65': 10, 'Zn-69m': 100, 
+    'Zn-69': 1000, 'Zr-93': 10, 'Zr-95': 10, 'Zr-97': 10
+};
+
+/**
+ * @description Retrieves the exempt quantity for a given nuclide, applying fallback rules if unlisted.
+ * @param {object} nuclide - The full nuclide object from the database.
+ * @returns {number|string} The exempt quantity in microcuries (µCi) or 'None' if unlisted alpha.
+ */
+
+const getNrcExemptQuantity = (nuclide) => {
+    if (!nuclide) return null;
+    
+    // 1. Check explicit table
+    if (NRC_EXEMPT_QUANTITIES[nuclide.symbol]) {
+        return NRC_EXEMPT_QUANTITIES[nuclide.symbol];
+    }
+    
+    // 2. Apply Catch-all rules from the bottom of 30.71 Sch B
+    const isAlpha = nuclide.emissionType && nuclide.emissionType.some(e => e.toLowerCase().includes('alpha'));
+    
+    // 0.1 µCi for unknown Beta/Gamma emitters. Unlisted alpha byproduct material does not get a blanket exemption.
+    return isAlpha ? 'None' : 0.1; 
+};
