@@ -1,7 +1,3 @@
- //==============================================================================
-            // --- REACT COMPONENTS & ICONS
-            //==============================================================================
-            
             /**
              * A simple SVG icon component.
              * @param {{path: string, className?: string}} props - Component props.
@@ -15,10 +11,6 @@
                     <path d={path} />
                 </svg>
             );
-            
-            //==============================================================================
-            // --- REUSABLE UI COMPONENTS
-            //==============================================================================
             
             /**
              * @description Displays a compact summary of a nuclide's key properties within a calculator.
@@ -756,314 +748,331 @@
             };
 
             /**
-            * @description Displays information about a single radionuclide.
-            */
+ * @description Displays information about a single radionuclide.
+ */
 
-            const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator, onAddToCompare, showBackButton, onBackClick }) => {
-            
-            // Get the global settings context
-            const { settings } = React.useContext(SettingsContext);
-            
-            const getSourceLink = (sourceKey) => {
-            const source = sources[sourceKey];
-            return source ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline" title={source.name}>[{Object.keys(sources).indexOf(sourceKey) + 1}]</a> : '';
-            };
-            
-            // UPDATED: This component is now aware of the unit system
-            const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol, conversionType }) => {
-            let displayValue = value;
-            let displayUnit = unit;
-            
-            if (conversionType && !isNaN(safeParseFloat(value))) {
+const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick, onDecaySeriesClick, displayHalfLifeUnit, favorites, toggleFavorite, onSendToCalculator, onAddToCompare, showBackButton, onBackClick }) => {
+
+    // Get the global settings context
+    const { settings } = React.useContext(SettingsContext);
+
+    const getSourceLink = (sourceKey) => {
+        const source = sources[sourceKey];
+        return source ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline" title={source.name}>[{Object.keys(sources).indexOf(sourceKey) + 1}]</a> : '';
+    };
+
+    // UPDATED: This component is now aware of the unit system
+    const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol, conversionType }) => {
+        let displayValue = value;
+        let displayUnit = unit;
+
+        if (conversionType && !isNaN(safeParseFloat(value))) {
             const formatted = formatWithUnitSystem(safeParseFloat(value), conversionType, settings);
             displayValue = formatted.value;
             displayUnit = formatted.unit;
-            } else if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
+        } else if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
             displayValue = 'N/A';
-            }
-            
-            const shouldAppendUnit = displayUnit && typeof displayValue === 'string' && displayValue !== 'N/A' && displayValue.toLowerCase() !== 'none' && !displayValue.toLowerCase().includes(displayUnit.toLowerCase());
-            
-            return (
+        }
+
+        const shouldAppendUnit = displayUnit && typeof displayValue === 'string' && displayValue !== 'N/A' && displayValue.toLowerCase() !== 'none' && !displayValue.toLowerCase().includes(displayUnit.toLowerCase());
+
+        return (
             <div className="flex items-start py-2">
-              {iconPath && <Icon path={iconPath} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />}
-              {iconSymbol && <span className="text-2xl font-serif text-sky-500 mr-3 -mt-1 w-5 text-center">{iconSymbol}</span>}
-              {!iconPath && !iconSymbol && <div className="w-5 mr-3 flex-shrink-0"></div>}
-              <div>
-                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
-                  <p className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center flex-wrap">
-                      {displayValue}
-                      {shouldAppendUnit ? <span className="ml-1">{displayUnit}</span> : <span className="ml-1">{displayUnit && React.isValidElement(displayValue) === false ? displayUnit.replace(value, '') : displayUnit}</span>}
-                      {sourceKey && <sup className="ml-1"> {getSourceLink(sourceKey)}</sup>}
-                  </p>
-              </div>
+                {iconPath && <Icon path={iconPath} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />}
+                {iconSymbol && <span className="text-2xl font-serif text-sky-500 mr-3 -mt-1 w-5 text-center">{iconSymbol}</span>}
+                {!iconPath && !iconSymbol && <div className="w-5 mr-3 flex-shrink-0"></div>}
+                <div>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
+                    <p className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center flex-wrap">
+                        {displayValue}
+                        {shouldAppendUnit ? <span className="ml-1">{displayUnit}</span> : <span className="ml-1">{displayUnit && React.isValidElement(displayValue) === false ? displayUnit.replace(value, '') : displayUnit}</span>}
+                        {sourceKey && <sup className="ml-1"> {getSourceLink(sourceKey)}</sup>}
+                    </p>
+                </div>
             </div>
-            );
-            };
-            
-            // Helper to ensure safe emission type display
-            const getEmissionTypes = () => {
-            if (Array.isArray(nuclide.emissionType)) return nuclide.emissionType;
-            if (typeof nuclide.emissionType === 'string') return [nuclide.emissionType];
-            return [];
-            };
-            
-            if (isCompact) {
-            const styles = CATEGORY_STYLES[nuclide.category] || CATEGORY_STYLES['default'];
-            const hlSeconds = parseHalfLifeToSeconds(nuclide.halfLife);
-            const hlCategory = getHalfLifeCategory(hlSeconds);
-            // Ensure best unit is used if not provided
-            const hlUnit = displayHalfLifeUnit || getBestHalfLifeUnit(hlSeconds);
-            
-            return (
+        );
+    };
+
+    // Helper to ensure safe emission type display
+    const getEmissionTypes = () => {
+        if (Array.isArray(nuclide.emissionType)) return nuclide.emissionType;
+        if (typeof nuclide.emissionType === 'string') return [nuclide.emissionType];
+        return [];
+    };
+
+    if (isCompact) {
+        const styles = CATEGORY_STYLES[nuclide.category] || CATEGORY_STYLES['default'];
+        const hlSeconds = parseHalfLifeToSeconds(nuclide.halfLife);
+        const hlCategory = getHalfLifeCategory(hlSeconds);
+        // Ensure best unit is used if not provided
+        const hlUnit = displayHalfLifeUnit || getBestHalfLifeUnit(hlSeconds);
+
+        return (
             <div
-              onClick={() => onNuclideClick(nuclide)}
-              className={`flex flex-col justify-between p-4 h-full bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200 border-l-4 ${styles.border} ${styles.hoverBg}`}
+                onClick={() => onNuclideClick(nuclide)}
+                className={`flex flex-col justify-between p-4 h-full bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg hover:ring-2 hover:ring-sky-500 cursor-pointer transition-all duration-200 border-l-4 ${styles.border} ${styles.hoverBg}`}
             >
-              <div>
-                  <div className="flex justify-between items-start">
-                      <h3 className="font-bold text-lg text-slate-800 dark:text-white">{nuclide.name} <span className="text-slate-500 font-normal">({nuclide.symbol})</span></h3>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span>
-                  </div>
-                  <div className="flex items-baseline text-sm mt-2"><Icon path={ICONS.hourglass} className="w-4 h-4 text-slate-400 mr-2"/><span className="font-medium text-slate-600 dark:text-slate-300">{formatHalfLife(nuclide.halfLife, hlUnit)}</span></div>
-                  <div className="flex items-baseline text-sm mt-1"><Icon path={ICONS.radioactive} className="w-4 h-4 text-slate-400 mr-2"/><span className="text-slate-500 dark:text-slate-400">{getEmissionTypes().slice(0, 2).join(', ')}</span></div>
-            
-                  {nuclide.gammaConstant && (
-                      <div className="flex items-baseline text-sm mt-1">
-                          <span className="w-4 mr-2 text-center text-slate-400 font-serif">Γ</span>
-                          <span className="font-mono text-slate-600 dark:text-slate-300">
-                              {safeParseFloat(nuclide.gammaConstant).toFixed(2)}
-                          </span>
-                      </div>
-                  )}
-              </div>
-              <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-400 mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
-                  <span>{nuclide.category} - {nuclide.commonality}</span>
-              </div>
+                <div>
+                    <div className="flex justify-between items-start">
+                        <h3 className="font-bold text-lg text-slate-800 dark:text-white">{nuclide.name} <span className="text-slate-500 font-normal">({nuclide.symbol})</span></h3>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span>
+                    </div>
+                    <div className="flex items-baseline text-sm mt-2"><Icon path={ICONS.hourglass} className="w-4 h-4 text-slate-400 mr-2" /><span className="font-medium text-slate-600 dark:text-slate-300">{formatHalfLife(nuclide.halfLife, hlUnit)}</span></div>
+                    <div className="flex items-baseline text-sm mt-1"><Icon path={ICONS.radioactive} className="w-4 h-4 text-slate-400 mr-2" /><span className="text-slate-500 dark:text-slate-400">{getEmissionTypes().slice(0, 2).join(', ')}</span></div>
+
+                    {nuclide.gammaConstant && (
+                        <div className="flex items-baseline text-sm mt-1">
+                            <span className="w-4 mr-2 text-center text-slate-400 font-serif">Γ</span>
+                            <span className="font-mono text-slate-600 dark:text-slate-300">
+                                {safeParseFloat(nuclide.gammaConstant).toFixed(2)}
+                            </span>
+                        </div>
+                    )}
+                </div>
+                <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-400 mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <span>{nuclide.category} - {nuclide.commonality}</span>
+                </div>
             </div>
-            );
-            }
-            
-            const isFavorite = favorites?.includes(nuclide.symbol);
-            const hlSeconds = parseHalfLifeToSeconds(nuclide.halfLife);
-            const hlCategory = getHalfLifeCategory(hlSeconds);
-            const hlUnit = displayHalfLifeUnit || getBestHalfLifeUnit(hlSeconds);
-            
-            return (
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
+        );
+    }
+
+    const isFavorite = favorites?.includes(nuclide.symbol);
+    const hlSeconds = parseHalfLifeToSeconds(nuclide.halfLife);
+    const hlCategory = getHalfLifeCategory(hlSeconds);
+    const hlUnit = displayHalfLifeUnit || getBestHalfLifeUnit(hlSeconds);
+    
+    // Fetch the exempt quantity using our helper
+    const exemptQty = typeof getNrcExemptQuantity === 'function' ? getNrcExemptQuantity(nuclide) : null;
+
+    return (
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 animate-fade-in">
             <div className="flex justify-between items-start">
-              <div className="flex items-center gap-2">
-                  <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
-                      <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
-                          {nuclide.name}
-                      </a> ({nuclide.symbol})
-                  </h2>
-                  {nuclide.commonalityReason ? (
-                      <Tooltip text={nuclide.commonalityReason} widthClass="w-72">
-                          <span className="flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap cursor-help">
-                              {nuclide.category} - {nuclide.commonality}
-                              <Icon path={ICONS.help} className="w-4 h-4 opacity-75" />
-                          </span>
-                      </Tooltip>
-                  ) : (
-                      <span className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap">
-                          {nuclide.category} - {nuclide.commonality}
-                      </span>
-                  )}
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                  {toggleFavorite && (
-                      <button onClick={() => toggleFavorite(nuclide.symbol)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-yellow-400 hover:text-yellow-500' : 'text-slate-300 dark:text-slate-600 hover:text-yellow-400'}`} title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}>
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                      </button>
-                  )}
-              </div>
+                <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">
+                        <a href={`https://en.wikipedia.org/wiki/${nuclide.name.replace(/ /g, '_')}`} target="_blank" rel="noopener noreferrer" className="hover:text-sky-500 hover:underline transition-colors">
+                            {nuclide.name}
+                        </a> ({nuclide.symbol})
+                    </h2>
+                    {nuclide.commonalityReason ? (
+                        <Tooltip text={nuclide.commonalityReason} widthClass="w-72">
+                            <span className="flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap cursor-help">
+                                {nuclide.category} - {nuclide.commonality}
+                                <Icon path={ICONS.help} className="w-4 h-4 opacity-75" />
+                            </span>
+                        </Tooltip>
+                    ) : (
+                        <span className="text-sm font-medium text-sky-600 dark:text-sky-400 bg-sky-100 dark:bg-sky-900/50 px-3 py-1 rounded-full whitespace-nowrap">
+                            {nuclide.category} - {nuclide.commonality}
+                        </span>
+                    )}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                    {toggleFavorite && (
+                        <button onClick={() => toggleFavorite(nuclide.symbol)} className={`p-2 rounded-full transition-colors ${isFavorite ? 'text-yellow-400 hover:text-yellow-500' : 'text-slate-300 dark:text-slate-600 hover:text-yellow-400'}`} title={isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+                        </button>
+                    )}
+                </div>
             </div>
-            
+
             <div className="mt-4 grid md:grid-cols-2 lg:grid-cols-3 gap-x-6">
-              <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                  <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Decay Properties</h3>
-                  <DataPoint
-                      label="Half-life"
-                      value={<>{formatHalfLife(nuclide.halfLife, hlUnit)} <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span></>}
-                      sourceKey={nuclide.sourceRef?.halfLife}
-                      iconPath={ICONS.hourglass}
-                  />
-                  <DataPoint label="Decay Constant (λ)" value={standardizeScientificDisplay(nuclide.decayConstant)} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" />
-              </div>
-              <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                  <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Physical Properties</h3>
-                  <DataPoint label="Specific Activity" value={parseSpecificActivity(nuclide.specificActivity)} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} conversionType="activity" />
-            {nuclide.specificActivity && (
-            <div className="flex items-start py-2">
-            <div className="w-5 mr-3 flex-shrink-0"></div> {/* Spacer for alignment */}
-            <div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Mass Equivalence</p>
-            <p className="text-base font-semibold text-slate-800 dark:text-slate-100">
-            {(() => {
-            const sa = parseSpecificActivity(nuclide.specificActivity); // Bq/g
-            if (!sa) return 'N/A';
-            
-            // Calculate grams per Curie (g/Ci)
-            // 1 Ci = 3.7e10 Bq
-            // g/Ci = 3.7e10 / SA(Bq/g)
-            const gPerCi = 3.7e10 / sa;
-            
-            if (gPerCi < 1e-6) return `${(gPerCi * 1e9).toPrecision(3)} ng/Ci`;
-            if (gPerCi < 1e-3) return `${(gPerCi * 1e6).toPrecision(3)} µg/Ci`;
-            if (gPerCi < 1) return `${(gPerCi * 1000).toPrecision(3)} mg/Ci`;
-            return `${gPerCi.toPrecision(3)} g/Ci`;
-            })()}
-            </p>
+                <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                    <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Decay Properties</h3>
+                    <DataPoint
+                        label="Half-life"
+                        value={<>{formatHalfLife(nuclide.halfLife, hlUnit)} <span className={`ml-2 text-xs font-bold px-2 py-0.5 rounded-full ${hlCategory.color} bg-opacity-10`}>{hlCategory.label}</span></>}
+                        sourceKey={nuclide.sourceRef?.halfLife}
+                        iconPath={ICONS.hourglass}
+                    />
+                    <DataPoint label="Decay Constant (λ)" value={standardizeScientificDisplay(nuclide.decayConstant)} sourceKey={nuclide.sourceRef?.decayConstant} iconSymbol="λ" />
+                </div>
+                <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                    <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Physical Properties</h3>
+                    <DataPoint label="Specific Activity" value={parseSpecificActivity(nuclide.specificActivity)} sourceKey={nuclide.sourceRef?.specificActivity} iconPath={ICONS.activity} conversionType="activity" />
+                    {nuclide.specificActivity && (
+                        <div className="flex items-start py-2">
+                            <div className="w-5 mr-3 flex-shrink-0"></div> {/* Spacer for alignment */}
+                            <div>
+                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Mass Equivalence</p>
+                                <p className="text-base font-semibold text-slate-800 dark:text-slate-100">
+                                    {(() => {
+                                        const sa = parseSpecificActivity(nuclide.specificActivity); // Bq/g
+                                        if (!sa) return 'N/A';
+
+                                        // Calculate grams per Curie (g/Ci)
+                                        // 1 Ci = 3.7e10 Bq
+                                        // g/Ci = 3.7e10 / SA(Bq/g)
+                                        const gPerCi = 3.7e10 / sa;
+
+                                        if (gPerCi < 1e-6) return `${(gPerCi * 1e9).toPrecision(3)} ng/Ci`;
+                                        if (gPerCi < 1e-3) return `${(gPerCi * 1e6).toPrecision(3)} µg/Ci`;
+                                        if (gPerCi < 1) return `${(gPerCi * 1000).toPrecision(3)} mg/Ci`;
+                                        return `${gPerCi.toPrecision(3)} g/Ci`;
+                                    })()}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                    <DataPoint label="Emission Type(s)" value={getEmissionTypes().join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} />
+                    {nuclide.gammaConstant && (
+                        <DataPoint label="Gamma Constant" value={safeParseFloat(nuclide.gammaConstant)} sourceKey={nuclide.sourceRef?.gammaConstant} conversionType="gammaConstant" />
+                    )}
+                </div>
+                <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                    <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Genealogy</h3>
+                    <DataPoint label="Parent" value={<ClickableNuclide text={nuclide.parent} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />} sourceKey={nuclide.sourceRef?.parent} />
+                    <DataPoint label="Daughter" value={<ClickableNuclide text={nuclide.daughter} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />} sourceKey={nuclide.sourceRef?.daughter} />
+                </div>
+                {(nuclide.shipping || nuclide.dValue || exemptQty) && (
+                    <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                        <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Regulatory & Transportation</h3>
+                        
+                        {exemptQty && (
+                            <DataPoint 
+                                label={
+                                    <Tooltip text="10 CFR 30.71 Schedule B Exemption" widthClass="w-56">
+                                        <span className="cursor-help border-b border-dotted border-slate-400 hover:border-sky-500 transition-colors">Exempt Quantity</span>
+                                    </Tooltip>
+                                } 
+                                value={exemptQty} 
+                                unit={exemptQty === 'None' ? '' : 'µCi'} 
+                                iconSymbol="§" 
+                            />
+                        )}
+
+                        {nuclide.shipping && <DataPoint label="A₁ Limit" value={`${nuclide.shipping.A1 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />}
+                        {nuclide.shipping && <DataPoint label="A₂ Limit" value={`${nuclide.shipping.A2 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />}
+
+                        {nuclide.dValue && (
+                            <DataPoint
+                                label={
+                                    <Tooltip text="Dangerous Quantity threshold (IAEA RS-G-1.9). Category 1/2 sources are >1000x and >10x D-Value respectively." widthClass="w-64">
+                                        <span className="cursor-help border-b border-dotted border-slate-400 hover:border-sky-500 transition-colors">D-Value</span>
+                                    </Tooltip>
+                                }
+                                value={`${nuclide.dValue}`}
+                                unit="TBq"
+                                iconPath={ICONS.transport}
+                            />
+                        )}
+                    </div>
+                )}
             </div>
-            </div>
-            )}
-                  <DataPoint label="Emission Type(s)" value={getEmissionTypes().join(', ')} sourceKey={nuclide.sourceRef?.emissionType} iconPath={ICONS.radioactive} />
-                  {nuclide.gammaConstant && (
-                      <DataPoint label="Gamma Constant" value={safeParseFloat(nuclide.gammaConstant)} sourceKey={nuclide.sourceRef?.gammaConstant} conversionType="gammaConstant" />
-                  )}
-              </div>
-              <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                  <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Genealogy</h3>
-                  <DataPoint label="Parent" value={<ClickableNuclide text={nuclide.parent} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />} sourceKey={nuclide.sourceRef?.parent} />
-                  <DataPoint label="Daughter" value={<ClickableNuclide text={nuclide.daughter} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />} sourceKey={nuclide.sourceRef?.daughter} />
-              </div>
-              {(nuclide.shipping || nuclide.dValue) && (
-                  <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                      <h3 className="text-sm font-bold uppercase text-slate-400 dark:text-slate-500 tracking-wider pb-1">Transportation & Security</h3>
-                      {nuclide.shipping && <DataPoint label="A₁ Limit" value={`${nuclide.shipping.A1 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />}
-                      {nuclide.shipping && <DataPoint label="A₂ Limit" value={`${nuclide.shipping.A2 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />}
-            
-                      {nuclide.dValue && (
-                          <DataPoint
-                              label={
-                                  <Tooltip text="Dangerous Quantity threshold (IAEA RS-G-1.9). Category 1/2 sources are >1000x and >10x D-Value respectively." widthClass="w-64">
-                                      <span className="cursor-help border-b border-dotted border-slate-400 hover:border-sky-500 transition-colors">D-Value</span>
-                                  </Tooltip>
-                              }
-                              value={`${nuclide.dValue}`}
-                              unit="TBq"
-                              iconPath={ICONS.transport}
-                          />
-                      )}
-                  </div>
-              )}
-            </div>
-            
+
             {nuclide.dosimetry && (
-              <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-                  <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">Internal Dosimetry <sup className="ml-1">{getSourceLink('10CFR20')}</sup></h3>
-                  <div className="grid md:grid-cols-2 gap-x-6">
-                      <div className="flex items-start py-2">
-                           <Icon path={ICONS.internalDose} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />
-                          <div>
-                              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Annual Limit on Intake (ALI)</p>
-                              <ul className="text-base font-semibold text-slate-800 dark:text-slate-100 list-disc list-inside mt-1 space-y-1">
-                                  {Object.entries(nuclide.dosimetry.ALI || {}).map(([key, value]) => {
-                                      const formatted = formatWithUnitSystem(value, 'ali', settings);
-                                      const keyDisplay = key.replace('inhalation_', 'Inh. ').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                      return <li key={key}>{`${keyDisplay}: ${formatted.value} ${formatted.unit}`}</li>;
-                                  })}
-                              </ul>
-                          </div>
-                      </div>
-                      <div className="flex items-start py-2">
-                          <div className="w-5 mr-3 flex-shrink-0"></div>
-                          <div>
-                               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Derived Air Concentration (DAC)</p>
-                               <ul className="text-base font-semibold text-slate-800 dark:text-slate-100 list-disc list-inside mt-1 space-y-1">
-                                  {Object.entries(nuclide.dosimetry.DAC || {}).map(([key, value]) => {
-                                      const formatted = formatWithUnitSystem(value, 'dac', settings);
-                                      const keyDisplay = key.replace('inhalation_', 'Inh. ').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                      return <li key={key}>{`${keyDisplay}: ${formatted.value} ${formatted.unit}`}</li>;
-                                  })}
-                              </ul>
-                          </div>
-                      </div>
-                  </div>
-              </div>
+                <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                    <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-2">Internal Dosimetry <sup className="ml-1">{getSourceLink('10CFR20')}</sup></h3>
+                    <div className="grid md:grid-cols-2 gap-x-6">
+                        <div className="flex items-start py-2">
+                            <Icon path={ICONS.internalDose} className="w-5 h-5 text-sky-500 mr-3 flex-shrink-0 mt-1" />
+                            <div>
+                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Annual Limit on Intake (ALI)</p>
+                                <ul className="text-base font-semibold text-slate-800 dark:text-slate-100 list-disc list-inside mt-1 space-y-1">
+                                    {Object.entries(nuclide.dosimetry.ALI || {}).map(([key, value]) => {
+                                        const formatted = formatWithUnitSystem(value, 'ali', settings);
+                                        const keyDisplay = key.replace('inhalation_', 'Inh. ').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                        return <li key={key}>{`${keyDisplay}: ${formatted.value} ${formatted.unit}`}</li>;
+                                    })}
+                                </ul>
+                            </div>
+                        </div>
+                        <div className="flex items-start py-2">
+                            <div className="w-5 mr-3 flex-shrink-0"></div>
+                            <div>
+                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Derived Air Concentration (DAC)</p>
+                                <ul className="text-base font-semibold text-slate-800 dark:text-slate-100 list-disc list-inside mt-1 space-y-1">
+                                    {Object.entries(nuclide.dosimetry.DAC || {}).map(([key, value]) => {
+                                        const formatted = formatWithUnitSystem(value, 'dac', settings);
+                                        const keyDisplay = key.replace('inhalation_', 'Inh. ').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                        return <li key={key}>{`${keyDisplay}: ${formatted.value} ${formatted.unit}`}</li>;
+                                    })}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
-            
+
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Principal Emissions</h3>
-              <div className="space-y-4">
-                  <div>
-                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400">From Parent ({nuclide.symbol})</p>
-                      <div className="grid md:grid-cols-3 gap-4 mt-1">
-                         <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ') || 'None'} iconSymbol="α"/>
-                         <DataPoint label="Beta" value={`${(nuclide.emissionEnergies?.beta || []).join(', ') || 'None'}${nuclide.avgBetaEnergy ? ` | ${nuclide.avgBetaEnergy} (avg)` : ''}`} iconSymbol="β"/>
-                         <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ') || 'None'} iconSymbol="γ"/>
-                      </div>
-                  </div>
-                  {nuclide.daughterEmissions && (
-                       <div className="animate-fade-in">
-                          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                              From Daughter (<ClickableNuclide text={nuclide.daughterEmissions.from} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />)
-                          </p>
-                          <div className="grid md:grid-cols-3 gap-4 mt-1">
-                              <DataPoint label="Alpha" value={(nuclide.daughterEmissions.alpha || []).join(', ') || 'None'} iconSymbol="α"/>
-                              <DataPoint label="Beta" value={(nuclide.daughterEmissions.beta || []).join(', ') || 'None'} iconSymbol="β"/>
-                              <DataPoint label="Gamma" value={(nuclide.daughterEmissions.gamma || []).join(', ') || 'None'} iconSymbol="γ"/>
-                          </div>
-                      </div>
-                  )}
-              </div>
+                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Principal Emissions</h3>
+                <div className="space-y-4">
+                    <div>
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">From Parent ({nuclide.symbol})</p>
+                        <div className="grid md:grid-cols-3 gap-4 mt-1">
+                            <DataPoint label="Alpha" value={(nuclide.emissionEnergies?.alpha || []).join(', ') || 'None'} iconSymbol="α" />
+                            <DataPoint label="Beta" value={`${(nuclide.emissionEnergies?.beta || []).join(', ') || 'None'}${nuclide.avgBetaEnergy ? ` | ${nuclide.avgBetaEnergy} (avg)` : ''}`} iconSymbol="β" />
+                            <DataPoint label="Gamma" value={(nuclide.emissionEnergies?.gamma || []).join(', ') || 'None'} iconSymbol="γ" />
+                        </div>
+                    </div>
+                    {nuclide.daughterEmissions && (
+                        <div className="animate-fade-in">
+                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                From Daughter (<ClickableNuclide text={nuclide.daughterEmissions.from} radionuclides={radionuclides} onNuclideClick={onNuclideClick} />)
+                            </p>
+                            <div className="grid md:grid-cols-3 gap-4 mt-1">
+                                <DataPoint label="Alpha" value={(nuclide.daughterEmissions.alpha || []).join(', ') || 'None'} iconSymbol="α" />
+                                <DataPoint label="Beta" value={(nuclide.daughterEmissions.beta || []).join(', ') || 'None'} iconSymbol="β" />
+                                <DataPoint label="Gamma" value={(nuclide.daughterEmissions.gamma || []).join(', ') || 'None'} iconSymbol="γ" />
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
-            
+
             {/* UPDATED: Quick Actions (Visual Hierarchy) */}
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
-              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Calculators & Tools</h3>
-            
-              {/* 1. Calculator Buttons */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                  <Tooltip text="Calculate radioactive decay" widthClass="w-auto">
-                      <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="px-3 py-2 text-sm bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
-                          <Icon path={ICONS.calculator} className="w-4 h-4" /> Decay Calc
-                      </button>
-                  </Tooltip>
-                  {nuclide.gammaConstant && (
-                      <Tooltip text="Calculate dose rate at distance" widthClass="w-auto">
-                           <button onClick={() => onSendToCalculator('doseRate', nuclide.symbol)} className="px-3 py-2 text-sm bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
-                              <Icon path={ICONS.doseRate} className="w-4 h-4" /> Dose Rate
-                          </button>
-                      </Tooltip>
-                  )}
-                  {nuclide.gammaConstant && (
-                      <Tooltip text="Calculate shielding requirements" widthClass="w-auto">
-                           <button onClick={() => onSendToCalculator('shielding', nuclide.symbol)} className="px-3 py-2 text-sm bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
-                              <Icon path={ICONS.shield} className="w-4 h-4" /> Shielding
-                          </button>
-                      </Tooltip>
-                  )}
-                  {nuclide.shipping && (
-                      <Tooltip text="Calculate shipping labels" widthClass="w-auto">
-                           <button onClick={() => onSendToCalculator('transportation', nuclide.symbol)} className="px-3 py-2 text-sm bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
-                              <Icon path={ICONS.transport} className="w-4 h-4" /> Shipping
-                          </button>
-                      </Tooltip>
-                  )}
-              </div>
-            
-              {/* 2. Navigation Buttons */}
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  {showBackButton && (
-                      <button onClick={onBackClick} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                          <Icon path={ICONS.database} className="w-4 h-4" /> Back to List
-                      </button>
-                  )}
-                  <button onClick={() => onAddToCompare(nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                      <Icon path={ICONS.compare} className="w-4 h-4" /> Compare
-                  </button>
-                  {nuclide.decaySeriesId && (
-                      <button onClick={() => onDecaySeriesClick(nuclide.decaySeriesId)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                          <Icon path={ICONS.atom} className="w-4 h-4" /> Decay Chain
-                      </button>
-                  )}
-              </div>
+                <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Calculators & Tools</h3>
+
+                {/* 1. Calculator Buttons */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                    <Tooltip text="Calculate radioactive decay" widthClass="w-auto">
+                        <button onClick={() => onSendToCalculator('calculator', nuclide.symbol)} className="px-3 py-2 text-sm bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                            <Icon path={ICONS.calculator} className="w-4 h-4" /> Decay Calc
+                        </button>
+                    </Tooltip>
+                    {nuclide.gammaConstant && (
+                        <Tooltip text="Calculate dose rate at distance" widthClass="w-auto">
+                            <button onClick={() => onSendToCalculator('doseRate', nuclide.symbol)} className="px-3 py-2 text-sm bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                <Icon path={ICONS.doseRate} className="w-4 h-4" /> Dose Rate
+                            </button>
+                        </Tooltip>
+                    )}
+                    {nuclide.gammaConstant && (
+                        <Tooltip text="Calculate shielding requirements" widthClass="w-auto">
+                            <button onClick={() => onSendToCalculator('shielding', nuclide.symbol)} className="px-3 py-2 text-sm bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                <Icon path={ICONS.shield} className="w-4 h-4" /> Shielding
+                            </button>
+                        </Tooltip>
+                    )}
+                    {nuclide.shipping && (
+                        <Tooltip text="Calculate shipping labels" widthClass="w-auto">
+                            <button onClick={() => onSendToCalculator('transportation', nuclide.symbol)} className="px-3 py-2 text-sm bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 rounded-md hover:bg-sky-100 dark:hover:bg-sky-800 transition flex items-center gap-2">
+                                <Icon path={ICONS.transport} className="w-4 h-4" /> Shipping
+                            </button>
+                        </Tooltip>
+                    )}
+                </div>
+
+                {/* 2. Navigation Buttons */}
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    {showBackButton && (
+                        <button onClick={onBackClick} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                            <Icon path={ICONS.database} className="w-4 h-4" /> Back to List
+                        </button>
+                    )}
+                    <button onClick={() => onAddToCompare(nuclide.symbol)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                        <Icon path={ICONS.compare} className="w-4 h-4" /> Compare
+                    </button>
+                    {nuclide.decaySeriesId && (
+                        <button onClick={() => onDecaySeriesClick(nuclide.decaySeriesId)} className="px-3 py-2 text-sm bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600 transition flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                            <Icon path={ICONS.atom} className="w-4 h-4" /> Decay Chain
+                        </button>
+                    )}
+                </div>
             </div>
-            </div>
-            );
-            };
+        </div>
+    );
+};
 
             /**
             * @description A searchable dropdown component for selecting items from a large list.
@@ -1376,173 +1385,144 @@
             };
 
             /**
- * @description A flexible line chart for radioactive decay. 
- * Supports both legacy props (parentData/daughterData) and pre-formatted 'datasets' arrays.
- */
-
-const DecayChart = ({ chartData, useLogScale, theme }) => {
-    const chartRef = React.useRef(null);
-    const chartInstance = React.useRef(null);
-
-    React.useEffect(() => {
-        if (chartInstance.current) {
-            chartInstance.current.destroy();
-        }
-
-        if (chartRef.current && chartData) {
-            const isDarkMode = theme === 'dark';
-            const textColor = isDarkMode ? '#94a3b8' : '#475569';
-            const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
-            const legendColor = isDarkMode ? '#cbd5e1' : '#334155';
-
-            const ctx = chartRef.current.getContext('2d');
-
-            // --- 1. DETERMINE DATASETS (Flexible Logic) ---
-            let finalDatasets = [];
-
-            if (chartData.datasets) {
-                // CASE A: Component passed a full datasets array (e.g., DecayToLimitCalculator)
-                finalDatasets = chartData.datasets;
-            } else {
-                // CASE B: Component passed legacy fields (e.g., Standard Decay Calculator)
-                finalDatasets = [
-                    {
-                        label: chartData.parentName || 'Parent',
-                        data: chartData.parentData || [],
-                        borderColor: '#0284c7', // Sky-600
-                        backgroundColor: 'rgba(2, 132, 199, 0.1)',
-                        fill: true,
-                        tension: 0,
-                        pointRadius: 0,
-                        pointHoverRadius: 6
-                    }
-                ];
-                // Add daughter if it exists
-                if (chartData.daughterData) {
-                    finalDatasets.push({
-                        label: chartData.daughterName || 'Daughter',
-                        data: chartData.daughterData,
-                        borderColor: '#e11d48', // Rose-600
-                        backgroundColor: 'rgba(225, 29, 72, 0.1)',
-                        fill: true,
-                        tension: 0,
-                        pointRadius: 0,
-                        pointHoverRadius: 6
-                    });
+            * @description A React component that renders a line chart for simple decay (Parent/Daughter) using Chart.js.
+            */
+            const DecayChart = ({ chartData, useLogScale, theme }) => {
+             const chartRef = React.useRef(null);
+             const chartInstance = React.useRef(null);
+            
+             React.useEffect(() => {
+                 if (chartInstance.current) {
+                     chartInstance.current.destroy();
+                 }
+            
+                 if (chartRef.current && chartData) {
+                     const isDarkMode = theme === 'dark';
+                     const textColor = isDarkMode ? '#94a3b8' : '#475569';
+                     const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+                     const legendColor = isDarkMode ? '#cbd5e1' : '#334155';
+            
+                     const ctx = chartRef.current.getContext('2d');
+            
+                     // LOG SCALE SAFETY LOGIC ---
+                     let safeMin = undefined;
+                     if (useLogScale) {
+                         // Combine parent and daughter data to find the range
+                         const allValues = [...chartData.parentData];
+                         if (chartData.daughterData) {
+                             allValues.push(...chartData.daughterData);
+                         }
+                         
+                         const maxVal = Math.max(...allValues);
+                         
+                         if (maxVal > 0) {
+                             // Set floor to 5 orders of magnitude below peak
+                             safeMin = maxVal * 1e-5;
+                         } else {
+                             safeMin = 1e-5;
+                         }
+                     }
+            
+                     chartInstance.current = new Chart(ctx, {
+                         type: 'line',
+                         data: {
+                             labels: chartData.labels,
+                             datasets: [
+                                 {
+                                     label: chartData.parentName,
+                                     data: chartData.parentData,
+                                     borderColor: '#0284c7', // Sky-600
+                                     backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                                     fill: true,
+                                     tension: 0, // Straight lines for log scale accuracy
+                                     pointRadius: 0,
+                                     pointHoverRadius: 6
+                                 },
+                                 ...(chartData.daughterData ? [{
+                                     label: chartData.daughterName,
+                                     data: chartData.daughterData,
+                                     borderColor: '#e11d48', // Rose-600
+                                     backgroundColor: 'rgba(225, 29, 72, 0.1)',
+                                     fill: true,
+                                     tension: 0,
+                                     pointRadius: 0,
+                                     pointHoverRadius: 6
+                                 }] : [])
+                             ]
+                         },
+                         options: {
+                             responsive: true,
+                             maintainAspectRatio: false,
+                             interaction: { mode: 'index', intersect: false },
+                             scales: {
+                                 x: {
+                                     title: { display: true, text: `Time (${chartData.timeUnit})`, color: textColor },
+                                     ticks: { color: textColor },
+                                     grid: { color: gridColor }
+                                 },
+                                 y: {
+                                     type: useLogScale ? 'logarithmic' : 'linear',
+                                     title: { display: true, text: 'Activity', color: textColor, padding: { bottom: 10 }  },
+                                     min: safeMin,
+                                     beginAtZero: !useLogScale,
+                                     ticks: { 
+                                         color: textColor,
+                                         callback: function(value) {
+                                              if (value !== 0 && (Math.abs(value) < 1e-3 || Math.abs(value) >= 1e4)) {
+                                                  return value.toExponential(1);
+                                              }
+                                              return value.toLocaleString();
+                                         }
+                                     },
+                                     grid: { color: gridColor }
+                                 }
+                             },
+                             plugins: {
+                                 legend: { labels: { color: legendColor } }
+                             }
+                         }
+                     });
+                 }
+            
+                 return () => {
+                     if (chartInstance.current) {
+                         chartInstance.current.destroy();
+                     }
+                 };
+             }, [chartData, useLogScale, theme]);
+            
+             const handleExport = () => {
+                if (chartInstance.current) {
+                    const canvas = chartInstance.current.canvas;
+                    // Save original background, force white for the export
+                    const originalBg = canvas.style.backgroundColor;
+                    canvas.style.backgroundColor = '#ffffff'; 
+                    
+                    const link = document.createElement('a');
+                    link.href = chartInstance.current.toBase64Image();
+                    const filename = `Decay_${chartData.parentName || 'Chart'}.png`;
+                    link.download = filename;
+                    link.click();
+                    
+                    // Restore original background
+                    canvas.style.backgroundColor = originalBg;
                 }
-            }
-
-            // --- 2. CALCULATE SCALE MINIMUMS ---
-            let safeMin = undefined;
-            if (useLogScale) {
-                // Flatten all data to find the absolute max to scale the graph nicely
-                const allValues = finalDatasets.flatMap(d => d.data);
-                const maxVal = Math.max(...allValues);
-                
-                if (maxVal > 0) {
-                    safeMin = maxVal * 1e-5; // Show 5 orders of magnitude
-                } else {
-                    safeMin = 1e-5;
-                }
-            }
-
-            // --- 3. DETERMINE LABELS ---
-            // Allow Y-Axis label to be customized, default to "Activity"
-            const yAxisTitle = chartData.yAxisLabel || 'Activity';
-
-            chartInstance.current = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: chartData.labels,
-                    datasets: finalDatasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    scales: {
-                        x: {
-                            title: { display: true, text: `Time (${chartData.timeUnit || 'units'})`, color: textColor },
-                            ticks: { color: textColor, maxRotation: 0, autoSkip: true, autoSkipPadding: 20 },
-                            grid: { color: gridColor }
-                        },
-                        y: {
-                            type: useLogScale ? 'logarithmic' : 'linear',
-                            title: { display: true, text: yAxisTitle, color: textColor, padding: { bottom: 10 } },
-                            min: safeMin,
-                            beginAtZero: !useLogScale,
-                            ticks: { 
-                                color: textColor,
-                                callback: function(value) {
-                                     // Scientific notation for very large/small numbers
-                                     if (value !== 0 && (Math.abs(value) < 1e-3 || Math.abs(value) >= 1e4)) {
-                                         return value.toExponential(1);
-                                     }
-                                     return value.toLocaleString();
-                                }
-                            },
-                            grid: { color: gridColor }
-                        }
-                    },
-                    plugins: {
-                        legend: { labels: { color: legendColor } },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed.y !== null) {
-                                        // Match the axis formatting
-                                        if (context.parsed.y !== 0 && (Math.abs(context.parsed.y) < 1e-3 || Math.abs(context.parsed.y) >= 1e4)) {
-                                            label += context.parsed.y.toExponential(2);
-                                        } else {
-                                            label += context.parsed.y.toLocaleString();
-                                        }
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        return () => {
-            if (chartInstance.current) {
-                chartInstance.current.destroy();
-            }
-        };
-    }, [chartData, useLogScale, theme]);
-
-    const handleExport = () => {
-        if (chartInstance.current) {
-            const link = document.createElement('a');
-            link.href = chartInstance.current.toBase64Image();
-            // Try to name the file intelligently based on the data
-            const name = chartData.parentName || (chartData.datasets && chartData.datasets[0].label) || 'Chart';
-            const filename = `Decay_${name.replace(/[^a-z0-9]/gi, '_')}.png`;
-            link.download = filename;
-            link.click();
-        }
-    };
-
-    return (
-        <div className="mt-4">
-            <div className="h-64 w-full">
-                <canvas ref={chartRef}></canvas>
-            </div>
-            <div className="text-center mt-3">
-                <button
-                    onClick={handleExport}
-                    className="flex items-center justify-center gap-2 mx-auto px-4 py-2 text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors"
-                >
-                    <Icon path={ICONS.download} className="w-3 h-3" />
-                    Save Chart Image
-                </button>
-            </div>
-        </div>
-    );
-};
+                };
+            
+             return (
+                 <div className="mt-4">
+                     <div className="h-64 w-full">
+                         <canvas ref={chartRef}></canvas>
+                     </div>
+                     <div className="text-center mt-3">
+                         <button
+                             onClick={handleExport}
+                             className="flex items-center justify-center gap-2 mx-auto px-4 py-2 text-xs font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors"
+                         >
+                             <Icon path={ICONS.download} className="w-3 h-3" />
+                             Save Chart Image
+                         </button>
+                     </div>
+                 </div>
+             );
+            };
