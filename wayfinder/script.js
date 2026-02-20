@@ -1537,52 +1537,87 @@ const SECTOR_NAME_PARTS = {
 }
 
 function renderSystemMap() {
-     const systemView = document.getElementById('systemView');
-     if (!currentSystemData) return;
+    const systemView = document.getElementById('systemView');
+    if (!currentSystemData) return;
 
-     let html = `<h2>${currentSystemData.name}</h2>`;
-     html += `<p style="color:#888; margin-bottom:20px;">System Coordinates: [${currentSystemData.x}, ${currentSystemData.y}]</p>`;
-     
-     // The Planet Grid
-     html += '<div class="system-planet-grid">';
+    // --- 1. GENERATE FLAVOR DATA ---
+    // Create a deterministic seed from coordinates for consistent flavor text
+    const flavorSeed = Math.abs((currentSystemData.x * 73856093) ^ (currentSystemData.y * 19349663));
+    
+    const starTypes = [
+        "G2V Yellow Dwarf (Stable)", "M-Type Red Dwarf (Volatile)", 
+        "K-Type Orange Star", "F-Type White Star", 
+        "Binary Star System", "Neutron Star Remnant", "Protostar Nebula"
+    ];
+    const starType = starTypes[flavorSeed % starTypes.length];
 
-     currentSystemData.planets.forEach((planet, index) => {
-         const borderStyle = (index === selectedPlanetIndex) ? '2px solid #00E0E0' : '1px solid #303060';
-         const bgStyle = (index === selectedPlanetIndex) ? 'rgba(0, 224, 224, 0.1)' : 'rgba(0,0,0,0.5)';
-         
-         const landButtonHTML = planet.biome.landable ?
-             `<button class="action-button" style="margin-top: 10px;" onclick="landOnPlanet(${index})">LAND</button>` :
-             `<button class="action-button" disabled style="margin-top: 10px; border-color:#444; color:#666;">UNINHABITABLE</button>`;
+    const descriptions = [
+        "Sensors indicate optimal orbital trajectories. No immediate hazards detected.",
+        "System is rich in heavy metals. Asteroid density is higher than average.",
+        "Stellar radiation levels are fluctuating. Caution advised during EVA.",
+        "A quiet system on the fringes of the sector. Long-range comms are static-heavy.",
+        "Traces of ancient ion trails detected. This system was once a trade lane.",
+        "Gravitational anomalies detected near the outer planets."
+    ];
+    const flavorText = descriptions[flavorSeed % descriptions.length];
 
-         html += `
-            <div onclick="selectPlanet(${index})" ondblclick="examinePlanet(${index})" 
-                 style="border: ${borderStyle}; background: ${bgStyle}; padding: 15px; border-radius: 8px; text-align: center; flex: 1; min-width: 140px; max-width: 220px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s;">
-                
-                <div>
-                    <div style="font-size: 14px; font-weight:bold; color: #8888AA; margin-bottom: 8px;">PLANET ${index + 1}</div>
-                    <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-icon-img">
-                    <div style="font-weight: bold; color: #00E0E0; margin-top: 5px;">${planet.biome.name}</div>
-                </div>
-                ${landButtonHTML}
+    // --- 2. BUILD HTML ---
+    // We use the new .system-header-panel class to constrain width
+    let html = `
+        <div class="system-header-panel">
+            <h1 class="sys-title-large">${currentSystemData.name}</h1>
+            <div class="sys-meta-row">
+                <span>Class: ${starType}</span>
+                <span>//</span>
+                <span>Bodies: ${currentSystemData.planets.length}</span>
+                <span>//</span>
+                <span>Dominion: ${getFactionAt(currentSystemData.x * SECTOR_SIZE, currentSystemData.y * SECTOR_SIZE)}</span>
             </div>
-        `;
-     });
-     html += '</div>';
-
-     // --- Navigation Footer ---
-     html += `
-        <div style="margin-top: 40px; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto;">
-             <div style="text-align:center; margin-bottom:10px; font-size:12px; color:#666;">(Double-Click a planet to Scan)</div>
-             
-             <button class="action-button full-width-btn" onclick="leaveSystem()">
-                &lt;&lt; ENGAGE HYPERDRIVE (LEAVE SYSTEM)
-            </button>
+            <div class="sys-flavor-text">"${flavorText}"</div>
         </div>
-     `;
+    `;
+    
+    // --- 3. THE PLANET GRID ---
+    // (This uses the class we added in the previous step)
+    html += '<div class="system-planet-grid">';
 
-     systemView.innerHTML = html;
-     renderUIStats();
- }
+    currentSystemData.planets.forEach((planet, index) => {
+        const borderStyle = (index === selectedPlanetIndex) ? '2px solid #00E0E0' : '1px solid #303060';
+        const bgStyle = (index === selectedPlanetIndex) ? 'rgba(0, 224, 224, 0.1)' : 'rgba(0,0,0,0.5)';
+        
+        const landButtonHTML = planet.biome.landable ?
+            `<button class="action-button" style="margin-top: 10px;" onclick="landOnPlanet(${index})">LAND</button>` :
+            `<button class="action-button" disabled style="margin-top: 10px; border-color:#444; color:#666;">UNINHABITABLE</button>`;
+
+        html += `
+           <div onclick="selectPlanet(${index})" ondblclick="examinePlanet(${index})" 
+                style="border: ${borderStyle}; background: ${bgStyle}; padding: 15px; border-radius: 8px; text-align: center; flex: 1; min-width: 140px; max-width: 220px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s;">
+               
+               <div>
+                   <div style="font-size: 14px; font-weight:bold; color: #8888AA; margin-bottom: 8px;">PLANET ${index + 1}</div>
+                   <img src="${planet.biome.image}" alt="${planet.biome.name}" class="planet-icon-img">
+                   <div style="font-weight: bold; color: #00E0E0; margin-top: 5px;">${planet.biome.name}</div>
+               </div>
+               ${landButtonHTML}
+           </div>
+       `;
+    });
+    html += '</div>';
+
+    // --- 4. NAVIGATION FOOTER ---
+    html += `
+       <div style="margin-top: 40px; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto;">
+            <div style="text-align:center; margin-bottom:10px; font-size:12px; color:#666;">(Double-Click a planet to Scan)</div>
+            
+            <button class="action-button full-width-btn" onclick="leaveSystem()">
+               &lt;&lt; ENGAGE HYPERDRIVE (LEAVE SYSTEM)
+           </button>
+       </div>
+    `;
+
+    systemView.innerHTML = html;
+    renderUIStats();
+}
 
  function render() {
      // 1. CRITICAL SAFETY CHECK
@@ -5404,8 +5439,9 @@ function setupCanvas() {
 
         if (isMobile) {
             // Mobile stays locked to a portrait-friendly view
-            VIEWPORT_WIDTH_TILES = 13; 
-            VIEWPORT_HEIGHT_TILES = 17;
+            // Reduced width to 11 to fit standard phones (11 * 32px = 352px)
+            VIEWPORT_WIDTH_TILES = 11; 
+            VIEWPORT_HEIGHT_TILES = 15;
         } else {
             // --- DYNAMIC DESKTOP VIEWPORT ---
             // Calculate how many tiles can fit in the available screen space.
@@ -5556,11 +5592,20 @@ function initializeDOMElements() {
 
     if (btnUp) {
         const bindMove = (btn, key) => {
+            // Handle Touch (Primary for Mobile)
             btn.addEventListener('touchstart', (e) => {
-                e.preventDefault(); 
-                if (currentGameState === GAME_STATES.GALACTIC_MAP) handleGalacticMapInput(key);
-            });
+                e.preventDefault(); // Prevents mouse emulation & scrolling
+                if (currentGameState === GAME_STATES.GALACTIC_MAP) {
+                    handleGalacticMapInput(key);
+                    triggerHaptic(10); // Tiny vibration feedback
+                }
+            }, { passive: false }); // Required for preventDefault to work
+
+            // Handle Click (Fallback for testing mobile view on Desktop)
             btn.addEventListener('click', (e) => {
+                // Only fire if not triggered by touch (some browsers fire both)
+                if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return;
+                
                 if (currentGameState === GAME_STATES.GALACTIC_MAP) handleGalacticMapInput(key);
             });
         };
