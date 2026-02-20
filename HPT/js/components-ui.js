@@ -1,3 +1,7 @@
+ //==============================================================================
+            // --- REACT COMPONENTS & ICONS
+            //==============================================================================
+            
             /**
              * A simple SVG icon component.
              * @param {{path: string, className?: string}} props - Component props.
@@ -11,6 +15,10 @@
                     <path d={path} />
                 </svg>
             );
+            
+            //==============================================================================
+            // --- REUSABLE UI COMPONENTS
+            //==============================================================================
             
             /**
              * @description Displays a compact summary of a nuclide's key properties within a calculator.
@@ -747,7 +755,7 @@
              );
             };
 
-            /**
+/**
  * @description Displays information about a single radionuclide.
  */
 
@@ -756,22 +764,42 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
     // Get the global settings context
     const { settings } = React.useContext(SettingsContext);
 
+    // --- HELPER: Safely add thousands separators to numbers ---
+    const formatWithCommas = (val) => {
+        if (typeof val === 'number') {
+            return val.toLocaleString('en-US', { maximumFractionDigits: 10 });
+        }
+        if (typeof val === 'string' && !isNaN(val) && val.trim() !== '') {
+            // Ignore scientific/exponent notations
+            if (val.includes('e') || val.includes('E') || val.includes('x') || val.includes('^')) return val;
+            
+            // Format numeric strings
+            const parts = val.split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            return parts.join('.');
+        }
+        return val;
+    };
+
     const getSourceLink = (sourceKey) => {
         const source = sources[sourceKey];
         return source ? <a href={source.url} target="_blank" rel="noopener noreferrer" className="text-sky-500 hover:underline" title={source.name}>[{Object.keys(sources).indexOf(sourceKey) + 1}]</a> : '';
     };
 
-    // UPDATED: This component is now aware of the unit system
+    // UPDATED: This component is now aware of the unit system and comma formatting
     const DataPoint = ({ label, value, unit, sourceKey, iconPath, iconSymbol, conversionType }) => {
         let displayValue = value;
         let displayUnit = unit;
 
         if (conversionType && !isNaN(safeParseFloat(value))) {
             const formatted = formatWithUnitSystem(safeParseFloat(value), conversionType, settings);
-            displayValue = formatted.value;
+            displayValue = formatWithCommas(formatted.value);
             displayUnit = formatted.unit;
         } else if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
             displayValue = 'N/A';
+        } else {
+            // Apply commas if it happens to be a plain number or numeric string
+            displayValue = formatWithCommas(value);
         }
 
         const shouldAppendUnit = displayUnit && typeof displayValue === 'string' && displayValue !== 'N/A' && displayValue.toLowerCase() !== 'none' && !displayValue.toLowerCase().includes(displayUnit.toLowerCase());
@@ -900,14 +928,12 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                                         if (!sa) return 'N/A';
 
                                         // Calculate grams per Curie (g/Ci)
-                                        // 1 Ci = 3.7e10 Bq
-                                        // g/Ci = 3.7e10 / SA(Bq/g)
                                         const gPerCi = 3.7e10 / sa;
 
                                         if (gPerCi < 1e-6) return `${(gPerCi * 1e9).toPrecision(3)} ng/Ci`;
                                         if (gPerCi < 1e-3) return `${(gPerCi * 1e6).toPrecision(3)} µg/Ci`;
                                         if (gPerCi < 1) return `${(gPerCi * 1000).toPrecision(3)} mg/Ci`;
-                                        return `${gPerCi.toPrecision(3)} g/Ci`;
+                                        return `${formatWithCommas(gPerCi.toPrecision(3))} g/Ci`;
                                     })()}
                                 </p>
                             </div>
@@ -940,8 +966,8 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                             />
                         )}
 
-                        {nuclide.shipping && <DataPoint label="A₁ Limit" value={`${nuclide.shipping.A1 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />}
-                        {nuclide.shipping && <DataPoint label="A₂ Limit" value={`${nuclide.shipping.A2 || 'N/A'}`} unit="TBq" iconPath={ICONS.transport} />}
+                        {nuclide.shipping && <DataPoint label="A₁ Limit" value={nuclide.shipping.A1} unit="TBq" iconPath={ICONS.transport} />}
+                        {nuclide.shipping && <DataPoint label="A₂ Limit" value={nuclide.shipping.A2} unit="TBq" iconPath={ICONS.transport} />}
 
                         {nuclide.dValue && (
                             <DataPoint
@@ -950,7 +976,7 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                                         <span className="cursor-help border-b border-dotted border-slate-400 hover:border-sky-500 transition-colors">D-Value</span>
                                     </Tooltip>
                                 }
-                                value={`${nuclide.dValue}`}
+                                value={nuclide.dValue}
                                 unit="TBq"
                                 iconPath={ICONS.transport}
                             />
@@ -971,7 +997,7 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                                     {Object.entries(nuclide.dosimetry.ALI || {}).map(([key, value]) => {
                                         const formatted = formatWithUnitSystem(value, 'ali', settings);
                                         const keyDisplay = key.replace('inhalation_', 'Inh. ').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                        return <li key={key}>{`${keyDisplay}: ${formatted.value} ${formatted.unit}`}</li>;
+                                        return <li key={key}>{`${keyDisplay}: ${formatWithCommas(formatted.value)} ${formatted.unit}`}</li>;
                                     })}
                                 </ul>
                             </div>
@@ -984,7 +1010,7 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                                     {Object.entries(nuclide.dosimetry.DAC || {}).map(([key, value]) => {
                                         const formatted = formatWithUnitSystem(value, 'dac', settings);
                                         const keyDisplay = key.replace('inhalation_', 'Inh. ').replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                        return <li key={key}>{`${keyDisplay}: ${formatted.value} ${formatted.unit}`}</li>;
+                                        return <li key={key}>{`${keyDisplay}: ${formatWithCommas(formatted.value)} ${formatted.unit}`}</li>;
                                     })}
                                 </ul>
                             </div>
@@ -1019,7 +1045,7 @@ const NuclideCard = ({ nuclide, radionuclides, isCompact = false, onNuclideClick
                 </div>
             </div>
 
-            {/* UPDATED: Quick Actions (Visual Hierarchy) */}
+            {/* Quick Actions (Visual Hierarchy) */}
             <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                 <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-3">Calculators & Tools</h3>
 
