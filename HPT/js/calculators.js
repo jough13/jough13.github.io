@@ -1412,8 +1412,7 @@ const SurfaceContaminationCalculator = ({
     React.useEffect(() => {
         try {
             setError('');
-            if (!selectedNuclide) { setResult(null); return; }
-
+            
             // 1. Parse Inputs
             const sPoints = staticData ? staticData.split(/[\s,;\n]+/).filter(d => d.trim() !== '' && !isNaN(d)).map(Number) : [];
             
@@ -1423,9 +1422,7 @@ const SurfaceContaminationCalculator = ({
             const wFactor = safeParseFloat(smearEff);
             
             const sEff = safeParseFloat(staticEff);
-            // Note: Currently sharing the background input for both static and wipe. 
-            // In the future, you could add a dedicated `staticBackgroundCpm` prop.
-            const sBkg = safeParseFloat(wipeBackgroundCpm); 
+            const sBkg = safeParseFloat(wipeBackgroundCpm); // Currently sharing background 
             
             const area = safeParseFloat(probeArea);
 
@@ -1459,33 +1456,38 @@ const SurfaceContaminationCalculator = ({
 
                 const sum = dpmValues.reduce((a, b) => a + b, 0);
                 totalAvgDPM = sum / dpmValues.length;
-                // FIX APPLIED: Check length to prevent Math.max() returning -Infinity on empty arrays
                 totalMaxDPM = dpmValues.length > 0 ? Math.max(...dpmValues) : 0; 
             }
 
-            // 4. Compare Limits
+            // 4. Compare Limits (Only if nuclide selected)
             if (removableDPM !== null || totalAvgDPM !== null) {
-                const rg = REG_GUIDE_1_86_LIMITS?.[selectedNuclide.regGuideCategory] || { removable: 0, total: 0 };
-                const ansi = ANSI_13_12_LIMITS?.[selectedNuclide.ansiCategory] || { removable: 0, total: 0 };
+                let rg = null;
+                let ansi = null;
+
+                if (selectedNuclide) {
+                    rg = REG_GUIDE_1_86_LIMITS?.[selectedNuclide.regGuideCategory] || { removable: 0, total: 0 };
+                    ansi = ANSI_13_12_LIMITS?.[selectedNuclide.ansiCategory] || { removable: 0, total: 0 };
+                }
 
                 setResult({
                     removable: removableDPM,
                     total_avg: totalAvgDPM,
                     total_max: totalMaxDPM,
                     count: sPoints.length,
-                    rg: {
+                    nuclideName: selectedNuclide ? selectedNuclide.name : 'Generic Survey',
+                    rg: rg ? {
                         removable_pass: removableDPM === null || removableDPM <= rg.removable,
                         total_pass: totalAvgDPM === null || totalAvgDPM <= rg.total,
                         max_pass: totalMaxDPM === null || totalMaxDPM <= (rg.total * 3),
                         removable_limit: rg.removable,
                         total_limit: rg.total
-                    },
-                    ansi: {
+                    } : null,
+                    ansi: ansi ? {
                         removable_pass: removableDPM === null || removableDPM <= ansi.removable,
                         total_pass: totalAvgDPM === null || totalAvgDPM <= ansi.total,
                         removable_limit: ansi.removable,
                         total_limit: ansi.total
-                    }
+                    } : null
                 });
             } else {
                 setResult(null);
@@ -1498,12 +1500,12 @@ const SurfaceContaminationCalculator = ({
     }, [selectedNuclide, staticData, wipeGrossCpm, wipeBackgroundCpm, staticEff, wipeEff, smearEff, probeArea, setResult, setError]);
 
     const handleSaveToHistory = () => {
-        if (result && selectedNuclide) {
+        if (result) {
             addHistory({
                 id: Date.now(),
                 type: 'Surface Survey',
                 icon: ICONS.warning,
-                inputs: `${selectedNuclide.symbol}`,
+                inputs: selectedNuclide ? `${selectedNuclide.symbol}` : 'Generic',
                 result: `Wipe: ${result.removable?.toFixed(0) || '-'}, Static Avg: ${result.total_avg?.toFixed(0) || '-'}`,
                 view: VIEWS.OPERATIONAL_HP
             });
@@ -1514,14 +1516,17 @@ const SurfaceContaminationCalculator = ({
     return (
         <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
              <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-                <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Contaminant of Concern</label>
+                <label className="block text-xs uppercase font-bold text-slate-500 mb-2">Limit Comparison (Optional)</label>
                 {selectedNuclide ? (
                     <div className="flex justify-between items-center bg-sky-50 dark:bg-sky-900/30 p-3 rounded-lg border border-sky-100 dark:border-sky-800">
-                        <span className="font-bold text-sky-800 dark:text-sky-200">{selectedNuclide.name}</span>
-                        <button onClick={() => setNuclideSymbol('')} className="text-xs text-slate-500 hover:text-red-500">Change</button>
+                        <span className="font-bold text-sky-800 dark:text-sky-200">Comparing against limits for: {selectedNuclide.name}</span>
+                        <button onClick={() => setNuclideSymbol('')} className="text-xs px-2 py-1 bg-white dark:bg-slate-700 rounded text-slate-500 hover:text-red-500 shadow-sm transition">Clear</button>
                     </div>
                 ) : (
-                    <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select Nuclide..." />
+                    <div className="space-y-2">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Select a nuclide to evaluate survey results against Regulatory Guide 1.86.</p>
+                        <SearchableSelect options={surveyNuclides} onSelect={setNuclideSymbol} placeholder="Select Nuclide..." />
+                    </div>
                 )}
             </div>
 
@@ -1582,25 +1587,25 @@ const SurfaceContaminationCalculator = ({
 
             {result && (
                 <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border-2 border-slate-200 dark:border-slate-600 overflow-hidden animate-slide-up">
-                    <div className="p-3 bg-slate-100 dark:bg-slate-900 flex justify-between items-center">
-                         <span className="font-bold text-sm uppercase text-slate-500">Results (dpm/100cm²)</span>
+                    <div className="p-3 bg-slate-100 dark:bg-slate-900 flex justify-between items-center border-b border-slate-200 dark:border-slate-700">
+                         <span className="font-bold text-sm uppercase text-slate-500">Results: {result.nuclideName} (dpm/100cm²)</span>
                          <button onClick={handleSaveToHistory} className="text-slate-400 hover:text-sky-500 transition-colors"><Icon path={ICONS.notepad} className="w-5 h-5" /></button>
                     </div>
                     <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700">
+                        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700 flex flex-col justify-center">
                              <p className="text-xs font-bold text-slate-400 uppercase">Static Average</p>
                              <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.total_avg !== null ? result.total_avg.toFixed(0) : '-'}</p>
-                             {result.total_avg !== null && <Badge label="Reg Guide" pass={result.rg.total_pass} limit={result.rg.total_limit} />}
+                             {result.total_avg !== null && result.rg && <Badge label="Reg Guide" pass={result.rg.total_pass} limit={result.rg.total_limit} />}
                         </div>
-                        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700">
+                        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700 flex flex-col justify-center">
                              <p className="text-xs font-bold text-slate-400 uppercase">Static Max</p>
                              <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.total_max !== null ? result.total_max.toFixed(0) : '-'}</p>
-                             {result.total_max !== null && <Badge label="Reg Guide (3x)" pass={result.rg.max_pass} limit={result.rg.total_limit * 3} />}
+                             {result.total_max !== null && result.rg && <Badge label="Reg Guide (3x)" pass={result.rg.max_pass} limit={result.rg.total_limit * 3} />}
                         </div>
-                        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700">
+                        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded border border-slate-100 dark:border-slate-700 flex flex-col justify-center">
                              <p className="text-xs font-bold text-slate-400 uppercase">Removable</p>
                              <p className="text-2xl font-black text-slate-800 dark:text-white my-1">{result.removable !== null ? result.removable.toFixed(0) : '-'}</p>
-                             {result.removable !== null && <Badge label="Reg Guide" pass={result.rg.removable_pass} limit={result.rg.removable_limit} />}
+                             {result.removable !== null && result.rg && <Badge label="Reg Guide" pass={result.rg.removable_pass} limit={result.rg.removable_limit} />}
                         </div>
                     </div>
                 </div>
