@@ -6,6 +6,8 @@ function removeEnemyAt(x, y) {
     activeEnemies = activeEnemies.filter(e => e.x !== x || e.y !== y);
 }
 
+let visitedSectors;
+
 // A sector resets after this much "time" has passed since you last touched it.
 // 50.0 stardate units is roughly 5000 moves or several jumps.
 const RESOURCE_RESPAWN_TIME = 50.0;
@@ -1247,10 +1249,17 @@ function changeGameState(newState) {
          const planetSeed = systemSeed + i * 101; // Unique seed for each planet
          const biomeKey = biomeKeys[Math.floor(seededRandom(planetSeed) * biomeKeys.length)];
 
-         planets.push({
-             name: `Planet ${i + 1}`, // We can make procedural names later
+        // --- PERSISTENCE CHECK ---
+         const sysKey = `${starX},${starY}_p${i}`;
+         const savedState = worldStateDeltas[sysKey] || {};
+
+            planets.push({
+             name: `Planet ${i + 1}`, 
              biome: PLANET_BIOMES[biomeKey],
-             id: `${systemKey}-${i}`
+             id: `${systemKey}-${i}`,
+             // Apply saved flags
+             minedThisVisit: savedState.mined || false,
+             scannedThisVisit: savedState.scanned || false
          });
      }
 
@@ -1535,7 +1544,7 @@ function renderSystemMap() {
      html += `<p style="color:#888; margin-bottom:20px;">System Coordinates: [${currentSystemData.x}, ${currentSystemData.y}]</p>`;
      
      // The Planet Grid
-     html += '<div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; align-items: stretch;">';
+     html += '<div class="system-planet-grid">';
 
      currentSystemData.planets.forEach((planet, index) => {
          const borderStyle = (index === selectedPlanetIndex) ? '2px solid #00E0E0' : '1px solid #303060';
@@ -2082,9 +2091,9 @@ function movePlayer(dx, dy) {
     // Hostile Territory Warning
     // (Note: We added a check to ensure we aren't already in combat to prevent spam)
     if (standing < -20 && Math.random() < 0.05 && !currentCombatContext) { 
-        let shipKey = "INTERCEPTOR"; 
+        let shipKey = "STRIKER"; 
         
-        if (currentFaction === 'ECLIPSE') shipKey = "INTERCEPTOR"; 
+        if (currentFaction === 'ECLIPSE') shipKey = "STRIKER"; 
         if (currentFaction === 'KTHARR') shipKey = "KTHARR_SCOUT";
         if (currentFaction === 'CONCORD') shipKey = "CONCORD_PATROL";
         
@@ -2559,7 +2568,12 @@ function movePlayer(dx, dy) {
          scanMessage += `\n+${xpGained} XP.`;
          advanceGameTime(0.10); // Scanning takes a bit of time
          checkLevelUp();
+        
          planet.scannedThisVisit = true;
+        
+        const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
+        if (!worldStateDeltas[sysKey]) worldStateDeltas[sysKey] = {};
+        worldStateDeltas[sysKey].scanned = true;
      } else if (!spaceLeft) {
          // Already logged "no cargo space"
      } else {
@@ -2649,8 +2663,16 @@ function movePlayer(dx, dy) {
         logMessage(minedResourcesMessage);
         showToast(toastHTML, "success");
         
-        // Mark planet as depleted
+         // 1. Update local object so UI updates instantly
         planet.minedThisVisit = true;
+
+        // 2. Save to World State Deltas so it persists across saves
+        // We create a unique key: "SystemX,SystemY_PlanetIndex"
+        const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
+        
+        // We reuse the global worldStateDeltas object
+        if (!worldStateDeltas[sysKey]) worldStateDeltas[sysKey] = {};
+        worldStateDeltas[sysKey].mined = true;
         
         // Advance time slightly
         advanceGameTime(0.15);
@@ -2682,7 +2704,7 @@ function movePlayer(dx, dy) {
 
      if (playerFuel >= MAX_FUEL) {
          logMessage("Fuel tanks full!");
-         showToast("TANKS FULL", "info"); // Feedback for full tanks
+         showToast("TANKS FULL", "info");
          return;
      }
 
@@ -2713,17 +2735,19 @@ function movePlayer(dx, dy) {
      }
 
      const originalFuel = playerFuel;
-     playerFuel = Math.min(MAX_FUEL, playerFuel + fuelGained);
-     playerFuel = parseFloat(playerFuel.toFixed(1));
+     
+     // Add fuel, then multiply by 10, round, and divide by 10 to keep 1 decimal place clean.
+     let newFuel = playerFuel + fuelGained;
+     newFuel = Math.min(MAX_FUEL, newFuel);
+     playerFuel = Math.round(newFuel * 10) / 10; 
+
      const actualGained = playerFuel - originalFuel;
 
-     if (actualGained > 0) {
+     // Use a small epsilon for float comparison just in case, though the rounding above solves 99%
+     if (actualGained > 0.01) {
          advanceGameTime(timePassed);
          logMessage(`${logMsg}\nGained ${actualGained.toFixed(1)} fuel.\nFuel: ${playerFuel.toFixed(1)}/${MAX_FUEL.toFixed(1)}`);
-         
-         // FIRE THE TOAST!
          showToast(`FUEL SCOOPED<br>+${actualGained.toFixed(1)} Units`, "success");
-         
      } else {
          logMessage("Scooping yielded no fuel. Tanks are full.");
      }
@@ -3291,6 +3315,7 @@ function selectPerk(perkId) {
     changeGameState(GAME_STATES.GALACTIC_MAP);
     renderUIStats();
     saveGame(); // Auto-save on level up
+    checkLevelUp();
 }
 
 /**
@@ -3457,6 +3482,7 @@ function generateEnemyIntent() {
 }
 
 function handleVictory() {
+    // 1. Calculate Base Rewards based on difficulty scaling
     const mult = currentCombatContext.difficultyMultiplier || 1.0;
     const baseCredits = 100 + Math.floor(Math.random() * 200);
     const baseXP = 50 + Math.floor(Math.random() * 50);
@@ -3464,28 +3490,34 @@ function handleVictory() {
     const credits = Math.floor(baseCredits * mult);
     const xp = Math.floor(baseXP * mult);
 
+    // 2. Apply Rewards & Notoriety
     playerCredits += credits;
     playerXP += xp;
     updatePlayerNotoriety(5);
 
-    // FX
+    // 3. Trigger Visual & Audio FX
     spawnParticles(playerX, playerY, 'explosion');
     soundManager.playExplosion();
     setTimeout(() => spawnParticles(playerX, playerY, 'gain'), 400);
 
+    // 4. Build the Combat Log Message
     let msg = `Victory! Enemy destroyed.\nSalvaged: ${credits}c\nExperience: +${xp}`;
-    
-    // --- NEW: LOOT DROP CHANCE ---
+
+    // --- 5. LOOT DROP CHANCE ---
     if (Math.random() < 0.4) {
         // 40% chance for cargo loot
         const lootTable = [
-            {id: 'TECH_PARTS', qty: [2, 5]},
-            {id: 'FUEL_CELLS', qty: [3, 8]},
-            {id: 'RARE_METALS', qty: [1, 2]}
+            { id: 'TECH_PARTS', qty: [2, 5] },
+            { id: 'FUEL_CELLS', qty: [3, 8] },
+            { id: 'RARE_METALS', qty: [1, 2] }
         ];
-        const loot = lootTable[Math.floor(Math.random() * lootTable.length)];
-        const qty = loot.qty[0] + Math.floor(Math.random() * (loot.qty[1] - loot.qty[0]));
         
+        // Pick a random item from the table
+        const loot = lootTable[Math.floor(Math.random() * lootTable.length)];
+        
+        // Calculate quantity based on the [min, max] range
+        const qty = loot.qty[0] + Math.floor(Math.random() * (loot.qty[1] - loot.qty[0] + 1));
+
         if (currentCargoLoad + qty <= PLAYER_CARGO_CAPACITY) {
             playerCargo[loot.id] = (playerCargo[loot.id] || 0) + qty;
             updateCurrentCargoLoad();
@@ -3495,12 +3527,36 @@ function handleVictory() {
         }
     }
 
+    // --- 6. CRITICAL FIX: BOUNTY MISSION TRACKING ---
+    if (playerActiveMission && playerActiveMission.type === "BOUNTY" && !playerActiveMission.isComplete) {
+        // Look up the specific progress tracker for this objective (eliminate_0)
+        const progress = playerActiveMission.progress.eliminate_0;
+
+        if (progress && !progress.complete) {
+            progress.current++;
+            msg += `\n<span style='color:var(--success); font-weight:bold;'>Bounty Progress: ${progress.current}/${progress.required}</span>`;
+
+            // Check if this kill finished the contract
+            if (progress.current >= progress.required) {
+                progress.complete = true;
+                checkMissionObjectiveCompletion(); // This handles the "Return to station" logic
+            }
+
+            // Refresh the HUD Mission Tracker box immediately
+            renderMissionTracker();
+        }
+    }
+
+    // 7. Finalize and Clean Up
     logMessage(msg);
     showToast("TARGET DESTROYED", "success");
     checkLevelUp();
-    
+
+    // 8. Exit Combat State
     currentCombatContext = null;
     changeGameState(GAME_STATES.GALACTIC_MAP);
+
+    // 9. Trigger standard tile interaction (e.g. entering the empty space)
     handleInteraction();
 }
 
@@ -3512,9 +3568,29 @@ function handleCombatAction(action) {
     // Default: Enemy gets to act unless Stunned or Dead
     let enemyCanAct = true; 
 
-    // --- 1. PLAYER TURN ---
+// --- 1. PLAYER TURN ---
     if (action === 'fight') {
-        const weaponStats = COMPONENTS_DATABASE[playerShip.components.weapon].stats;
+        const weaponId = playerShip.components.weapon;
+        const weaponStats = COMPONENTS_DATABASE[weaponId].stats;
+        
+        // --- AMMO CHECK ---
+        if (weaponStats.maxAmmo) {
+            // Ensure ammo entry exists
+            if (playerShip.ammo[weaponId] === undefined) {
+                playerShip.ammo[weaponId] = weaponStats.maxAmmo;
+            }
+
+            if (playerShip.ammo[weaponId] <= 0) {
+                logMessage("⚠️ WEAPON ERROR: AMMUNITION DEPLETED!", "color:#FF5555");
+                soundManager.playError();
+                return; // Stop the attack
+            }
+            
+            // Deduct Ammo
+            playerShip.ammo[weaponId]--;
+            combatLog += `[Ammo: ${playerShip.ammo[weaponId]}/${weaponStats.maxAmmo}] `;
+        }
+
         let damageDealt = weaponStats.damage;
 
         // Perk: Weapon Overclock
@@ -3768,7 +3844,9 @@ function handleCombatAction(action) {
 
     // --- 5. PREPARE NEXT TURN (Generate NEW Intent) ---
     // This is crucial for the UI to update the "Enemy Intent" bar for the NEXT turn
-    generateEnemyIntent(); 
+    generateEnemyIntent();
+
+    playerAbilityCooldown = Math.max(0, playerAbilityCooldown - 1);
 
     // Re-render UI
     render();
@@ -3965,6 +4043,19 @@ function repairShip() {
      logMessage(`Ship hull repaired for ${totalCost} credits.`);
      showToast(`HULL REPAIRED<br>-${totalCost} Credits`, "success");
 
+ // --- REARM WEAPONS ---
+     const weaponId = playerShip.components.weapon;
+     const weapon = COMPONENTS_DATABASE[weaponId];
+     
+     if (weapon.stats.maxAmmo) {
+         playerShip.ammo[weaponId] = weapon.stats.maxAmmo;
+         logMessage("Ordnance magazines reloaded.");
+         // If hull was already full, we should still show a toast for ammo
+         if (playerHull >= MAX_PLAYER_HULL) {
+             showToast("WEAPONS RELOADED", "success");
+         }
+     }
+
      handleInteraction();
      renderUIStats();
  }
@@ -4106,15 +4197,44 @@ function showOutfittingOptions(slot) {
 }
 
 function confirmBuyComponent(compId) {
-    const comp = COMPONENTS_DATABASE[compId];
-    if(playerCredits < comp.cost) return;
+    const newComp = COMPONENTS_DATABASE[compId];
     
-    playerCredits -= comp.cost;
-    playerShip.components[comp.slot] = compId;
+    // 1. Calculate Trade-In Value
+    const currentCompId = playerShip.components[newComp.slot];
+    const currentComp = COMPONENTS_DATABASE[currentCompId];
+    
+    // Default trade-in is 50% of the old item's cost
+    // If the slot was empty (UTIL_NONE), cost is 0, so trade-in is 0
+    const tradeInValue = currentComp ? Math.floor(currentComp.cost * 0.5) : 0;
+    
+    // 2. Calculate Net Cost
+    const netCost = newComp.cost - tradeInValue;
+
+    // 3. Check Affordability
+    if(playerCredits < netCost) {
+        showToast(`Insufficient Funds! Net cost: ${formatNumber(netCost)}c`, "error");
+        return;
+    }
+    
+    // 4. Execute Transaction
+    playerCredits -= netCost;
+    playerShip.components[newComp.slot] = compId;
+    
+    // Initialize ammo if this is a weapon with ammo
+    if (newComp.stats.maxAmmo) {
+        playerShip.ammo[compId] = newComp.stats.maxAmmo;
+    }
+
     applyPlayerShipStats();
     
-    showToast("COMPONENT INSTALLED", "success");
-    displayOutfittingScreen(); // Refresh list
+    // 5. Feedback
+    let msg = `Installed ${newComp.name}.`;
+    if (tradeInValue > 0) {
+        msg += `<br><span style="font-size:11px; color:#888;">(Traded in ${currentComp.name} for ${formatNumber(tradeInValue)}c)</span>`;
+    }
+    
+    showToast(msg, "success");
+    displayOutfittingScreen(); // Refresh list to show new ownership
     renderUIStats();
 }
 
@@ -5187,6 +5307,16 @@ let lastInputTime = 0;
 const INPUT_DELAY = 120; // 120ms cooldown between moves (Adjust this to change "weight")
 
 document.addEventListener('keydown', function(event) {
+        // --- 0. BLOCK INPUT IF TYPING ---
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        // Allow strictly necessary keys (Enter to submit, Escape to blur)
+        if (event.key === 'Enter' || event.key === 'Escape') {
+            // Let these pass through to specific handlers if needed, 
+            // or just let default behavior happen.
+        } else {
+            return; // Stop game from processing WASD/UI keys while typing
+        }
+    }
      const key = event.key.toLowerCase();
 
      // 1. TIMING CHECK (The Smoother)
@@ -6252,6 +6382,28 @@ function openTradeModal(mode) {
     if (!location || location.type !== 'location') {
         logMessage("Trading terminal offline.");
         return;
+    }
+
+        // --- ECONOMY RESTOCK LOGIC ---
+    // Every time we open the menu, add a small amount of stock to simulate other traders
+    if (location.sells) {
+        location.sells.forEach(item => {
+            // Cap stock at 100 (or whatever limit you prefer)
+            if (item.stock < 100) {
+                // Add 1-3 units randomly
+                item.stock += Math.floor(Math.random() * 3) + 1;
+            }
+        });
+    }
+    // Slowly recover demand (buys)
+    if (location.buys) {
+        location.buys.forEach(item => {
+            // If stock is high (they bought a lot from player), slowly reduce it
+            // (Simulating the station using the resources)
+            if (item.stock > 0) {
+                item.stock = Math.max(0, item.stock - (Math.floor(Math.random() * 2) + 1));
+            }
+        });
     }
 
     const isBuy = mode === 'buy';
