@@ -168,6 +168,39 @@ const SignTest_Calculator = ({ dcgl, setDcgl, dataInput, setDataInput, alpha, se
     );
 };
 
+// --- HELPER: Exact WRS Critical Value Calculator (MARSSIM Table I.4 Equivalent) ---
+const getExactWRSCriticalValue = (n_su, m_ref, alpha) => {
+    // n_su = survey unit size, m_ref = reference area size
+    const maxRankSum = (m_ref * (m_ref + 1)) / 2 + m_ref * n_su;
+    const minRankSum = (m_ref * (m_ref + 1)) / 2;
+    const totalRanks = n_su + m_ref;
+    
+    // DP table: dp[number_of_items_selected][current_sum]
+    let dp = Array(m_ref + 1).fill(0).map(() => Array(maxRankSum + 1).fill(0));
+    dp[0][0] = 1; // 1 way to get a sum of 0 with 0 items
+    
+    // Populate the exact distribution of the rank sums
+    for (let k = 1; k <= totalRanks; k++) {
+        for (let j = m_ref; j >= 1; j--) {
+            for (let u = maxRankSum; u >= k; u--) {
+                dp[j][u] += dp[j - 1][u - k];
+            }
+        }
+    }
+    
+    const totalCombinations = dp[m_ref].reduce((a, b) => a + b, 0); 
+    let cumulative = 0;
+    
+    // Find the critical value C where P(W >= C) <= alpha
+    for (let c = maxRankSum; c >= minRankSum; c--) {
+        cumulative += dp[m_ref][c];
+        if (cumulative / totalCombinations > alpha) {
+            return c + 1; 
+        }
+    }
+    return minRankSum; 
+};
+
 // 2. WRS CALCULATOR
 const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, surveyData, setSurveyData, alpha, setAlpha, result, setResult, error, setError }) => {
     const { addHistory } = useCalculationHistory();
@@ -217,15 +250,27 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
         
         const W_rs = combined.filter(d => d.group === 'ref').reduce((sum, d) => sum + d.rank, 0);
         const n = refData.length; const m = suData.length; const N = n + m;
-        const mean_W = (n * (N + 1)) / 2; 
         
-        // Variance with tie correction
-        const tieGroups = {};
-        combined.forEach(item => { tieGroups[item.value] = (tieGroups[item.value] || 0) + 1; });
-        const tieCorrection = Object.values(tieGroups).filter(t => t > 1).reduce((sum, t) => sum + (Math.pow(t, 3) - t), 0);
-        const variance_W = ((n * m * (N + 1)) / 12) - ((n * m * tieCorrection) / (12 * N * (N - 1)));
+        let C_w, note;
+
+        // MARSSIM Rule: Use exact critical values for small sample sizes (<= 20)
+        if (n <= 20 && m <= 20) {
+            // Note: Helper expects (Survey Unit Size, Reference Area Size)
+            C_w = getExactWRSCriticalValue(m, n, safeParseFloat(alpha));
+            note = `Used exact WRS distribution for small samples (Ref=${n}, SU=${m}).`;
+        } else {
+            const mean_W = (n * (N + 1)) / 2; 
+            
+            // Variance with tie correction
+            const tieGroups = {};
+            combined.forEach(item => { tieGroups[item.value] = (tieGroups[item.value] || 0) + 1; });
+            const tieCorrection = Object.values(tieGroups).filter(t => t > 1).reduce((sum, t) => sum + (Math.pow(t, 3) - t), 0);
+            const variance_W = ((n * m * (N + 1)) / 12) - ((n * m * tieCorrection) / (12 * N * (N - 1)));
+            
+            C_w = Math.round(mean_W + (zScores[alpha] * Math.sqrt(variance_W)) + 0.5); 
+            note = `Used Large Sample Approximation (Normal) for N=${N}.`;
+        }
         
-        const C_w = Math.round(mean_W + (zScores[alpha] * Math.sqrt(variance_W)) + 0.5); 
         const wrsTestPassed = W_rs >= C_w;
         
         const refStats = getStats(refData);
@@ -238,7 +283,7 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
         setResult({
             conclusion: wrsTestPassed ? 'PASS' : 'FAIL',
             reason: wrsTestPassed ? `Rank Sum (${W_rs}) ≥ Critical Value (${C_w}).` : `Rank Sum (${W_rs}) < Critical Value (${C_w}).`,
-            n, m, W_rs, C_w, rankedData: combined, hotCount: hotMeasurements.length, refStats, suStats, warning: warningMsg
+            n, m, W_rs, C_w, note, rankedData: combined, hotCount: hotMeasurements.length, refStats, suStats, warning: warningMsg
         });
     };
     
@@ -298,6 +343,7 @@ const WRS_Calculator = ({ dcgl, setDcgl, referenceData, setReferenceData, survey
                         <p>Rank Sum: <span className="font-bold">{result.W_rs}</span></p><p>Critical: <span className="font-bold">{result.C_w}</span></p>
                         <p>Hot Spots ({'>'}Max Ref): <span className="font-bold">{result.hotCount}</span></p>
                     </div>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 opacity-80">{result.note}</p>
                 </div>
             )}
         </div>
