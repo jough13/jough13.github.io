@@ -9,14 +9,12 @@
     
     <style>
         /* Force body to be invisible immediately */
-/* DELETE or COMMENT OUT these lines temporarily */
-/* 
-body {
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.5s ease-in;
-} 
-*/
+        body {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease-in; /* Smooth fade-in */
+            background-color: #050510; /* Match your dark theme default to prevent white flash */
+        }
         
         /* Ensure the fade-in class overrides the default */
         body.loaded {
@@ -25,9 +23,33 @@ body {
         }
     </style>
     <script>
-        window.onerror = function(msg, url, lineNo, columnNo, error) {
-            // Create a terrifyingly visible error box
+        // --- FLIGHT RECORDER v3.0 (Ultimate Developer QoL) ---
+        const consoleHistory = [];
+        const MAX_LOGS = 15;
+
+        // Hijack standard console methods
+        ['log', 'warn', 'error'].forEach(method => {
+            const original = console[method];
+            console[method] = function(...args) {
+                const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+                consoleHistory.push({ type: method, msg: msg });
+                if (consoleHistory.length > MAX_LOGS) consoleHistory.shift();
+                original.apply(console, args);
+                
+                // If a direct console.error is called, trigger the screen!
+                if (method === 'error') {
+                    const stack = new Error().stack || "No stack trace";
+                    showCriticalErrorScreen("CONSOLE.ERROR TRIGGERED", msg, "Invoked via console", stack);
+                }
+            };
+        });
+
+        // The master function to build and display the red screen
+        function showCriticalErrorScreen(errorType, exactMessage, location, stack) {
+            if (document.getElementById('criticalSystemFailureScreen')) return;
+
             const div = document.createElement('div');
+            div.id = 'criticalSystemFailureScreen';
             div.style.cssText = `
                 position: fixed; top: 0; left: 0; right: 0; bottom: 0;
                 background: #000; color: #FF0000; z-index: 9999;
@@ -35,21 +57,96 @@ body {
                 border: 5px solid #FF0000; overflow: auto;
             `;
             
+            const logsHtml = consoleHistory.map(log => {
+                let color = '#888';
+                if (log.type === 'warn') color = '#FFAA00';
+                if (log.type === 'error') color = '#FF5555';
+                return `<div style="color:${color}; margin-bottom:4px;">[${log.type.toUpperCase()}] ${log.msg}</div>`;
+            }).join('');
+
             div.innerHTML = `
-                <h1 style="font-size:40px; margin-bottom:20px;">CRITICAL SYSTEM FAILURE</h1>
-                <h2 style="color:#FFF;">${msg}</h2>
-                <p style="color:#888;">Location: ${url.split('/').pop()}:${lineNo}:${columnNo}</p>
-                <div style="border-top:1px solid #333; margin-top:20px; padding-top:20px; color:#AAA;">
-                    ${error ? error.stack : 'No stack trace available.'}
+                <h1 style="font-size:40px; margin-bottom:20px; animation: blink 1s infinite;">CRITICAL SYSTEM FAILURE</h1>
+                
+                <div style="background: rgba(255, 0, 0, 0.1); border: 1px solid #F00; padding: 20px; margin-bottom: 20px;">
+                    <h2 style="color:#FFF; margin: 0 0 10px 0; font-size: 24px;">[${errorType}]</h2>
+                    <h3 style="color:#FF5555; margin: 0 0 15px 0; font-size: 18px;">${exactMessage}</h3>
+                    <div style="background: #200; padding: 10px; border-left: 4px solid #F00;">
+                        <span style="color:#FFAA00; font-weight: bold;">LOCATION:</span> 
+                        <span style="color:#FFF; font-size: 16px;">${location}</span>
+                    </div>
                 </div>
-                <button onclick="location.reload()" style="margin-top:40px; padding:20px; background:#300; color:#F00; border:1px solid #F00; cursor:pointer;">ATTEMPT SYSTEM REBOOT</button>
+                
+                <div style="border-top:1px solid #333; margin-top:20px; padding-top:20px; color:#AAA;">
+                    <strong style="color: #FFF;">RAW STACK TRACE:</strong><br>
+                    <div style="background:#111; padding:15px; margin-top:10px; border:1px solid #333; font-size:14px; line-height: 1.4;">
+                        ${stack ? stack : 'No stack trace available.'}
+                    </div>
+                </div>
+
+                <div style="border-top:1px solid #333; margin-top:20px; padding-top:20px;">
+                    <strong style="color: #FFF;">RECENT CONSOLE TELEMETRY:</strong><br>
+                    <div style="background:#111; padding:15px; margin-top:10px; border:1px solid #333; font-size:12px; line-height: 1.4;">
+                        ${logsHtml || '<span style="color:#555">No recent console activity.</span>'}
+                    </div>
+                </div>
+
+                <button onclick="location.reload()" style="margin-top:40px; padding:20px; background:#300; color:#F00; border:1px solid #F00; cursor:pointer; font-weight:bold; width: 100%; font-size: 18px;">ATTEMPT SYSTEM REBOOT</button>
             `;
+            
+            document.body.style.opacity = '1';
+            document.body.style.visibility = 'visible';
             document.body.appendChild(div);
-            return false;
+        }
+
+        // --- THE CATCHERS ---
+
+        // 1. Standard Runtime and Syntax Errors
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            const fileName = url ? url.split('/').pop() : 'Unknown File';
+            const loc = `${fileName} — Line: ${lineNo}, Column: ${columnNo}`;
+            
+            // Extract the exact error type and message if available
+            const errorType = error && error.name ? error.name : (msg.includes("SyntaxError") ? "SyntaxError" : "Runtime Error");
+            const exactMessage = error && error.message ? error.message : msg;
+            
+            const stackTrace = (error && error.stack) ? error.stack : `Parse/Syntax Error Data:\n${msg}\n\n(Check near ${loc} for missing brackets '}', stray commas, or unclosed strings!)`;
+
+            showCriticalErrorScreen(errorType, exactMessage, loc, stackTrace);
+            return false; 
         };
+
+        // 2. Unhandled Promises (Async/Fetch errors)
+        window.addEventListener('unhandledrejection', function(event) {
+            const errorType = "Unhandled Promise Rejection";
+            const exactMessage = event.reason instanceof Error ? event.reason.message : String(event.reason);
+            const stackTrace = event.reason instanceof Error ? event.reason.stack : "No stack trace for this rejection.";
+            
+            showCriticalErrorScreen(errorType, exactMessage, "Async Operation", stackTrace);
+        });
+
+        // 3. Resource Loading Errors (Images, Audio, Scripts)
+        window.addEventListener('error', function(event) {
+            // Filter out script runtime errors (already handled by window.onerror)
+            if (event.target && (event.target.tagName === 'IMG' || event.target.tagName === 'SCRIPT' || event.target.tagName === 'AUDIO' || event.target.tagName === 'LINK')) {
+                const resourceType = event.target.tagName;
+                const resourceUrl = event.target.src || event.target.href;
+                const fileName = resourceUrl ? resourceUrl.split('/').pop() : 'Unknown';
+                
+                showCriticalErrorScreen(
+                    `Resource Load Failure (<${resourceType.toLowerCase()}>)`, 
+                    `Failed to load file: ${fileName}`, 
+                    `Attempted URL: ${resourceUrl}`, 
+                    `The browser could not fetch this resource. Check if the file exists in your directory and if the spelling matches exactly (including capitalization).`
+                );
+            }
+        }, true); // 'true' enables the capture phase, which is required for loading errors!
     </script>
 </head>
 <body class="crt">
+
+    <div id="leftSideBorder" class="side-border left"></div>
+    <div id="rightSideBorder" class="side-border right"></div>
+    
     <script>
     // 1. Immediate Theme Check (Run before visual render)
     (function() {
@@ -72,12 +169,13 @@ body {
 
 <style>
     /* Force body to be invisible immediately */
-    body {
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.5s ease-in;
-        /* REMOVED background-color here! We let the script above handle it. */
-    }
+/* 
+body {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease-in;
+} 
+*/
     
     /* When JS adds this class, the content fades in */
     body.loaded {
@@ -241,45 +339,6 @@ body {
                 </div>
         </div>
     </div>
-
-            <div id="tradeOverlay" style="display:none;">
-                <div class="trade-window">
-                    <div class="trade-header">
-                        <span id="tradeTitle">COMMODITY EXCHANGE</span>
-                        <button id="closeTradeBtn" class="icon-btn">X</button>
-                    </div>
-                    <div id="tradeInfoBar" class="modal-info-bar"></div>
-                    <div class="trade-body">
-                        <div id="tradeList" class="trade-list-container"></div>
-                        <div id="tradeDetails" class="trade-panel-right">
-                            <h3 id="tradeItemName">SELECT ITEM</h3>
-                            <p id="tradeItemDesc" style="font-size:12px; color:#888;">Select a commodity to view details.</p>
-                            <div class="trade-math-area">
-                                <div class="trade-stat-row"><span>Unit Price:</span> <span id="tradeUnitPrice" class="value-text">0c</span></div>
-                                <div class="trade-stat-row"><span>Stock/Cargo:</span> <span id="tradeStock" class="value-text">0</span></div>
-                            </div>
-                            <div class="qty-control-row">
-                                <button class="qty-btn" onclick="adjustTradeQty(-10)" style="font-size:10px;">-10</button>
-                                
-                                <button class="qty-btn" onclick="adjustTradeQty(-1)">-</button>
-                                
-                                <input type="number" id="tradeQtyInput" value="1" min="1" oninput="updateTradeTotal()">
-                                
-                                <button class="qty-btn" onclick="adjustTradeQty(1)">+</button>
-                                
-                                <button class="qty-btn" onclick="adjustTradeQty(10)" style="font-size:10px;">+10</button>
-                                
-                                <button class="qty-btn max-btn" onclick="setTradeMax()">MAX</button>
-                            </div>
-                            <div class="total-cost-display">TOTAL: <span id="tradeTotalCost">0</span>c</div>
-                            <div class="trade-btn-group">
-                                <button id="tradeConfirmBtn" class="action-button" onclick="executeTrade()" disabled>CONFIRM</button>
-                                <button class="action-button" onclick="closeTradeModal()" style="border-color:#555; color:#888;">CANCEL / LEAVE</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <div id="stationOverlay" style="display:none;">
                 <div class="trade-window" style="max-width: 800px;">
