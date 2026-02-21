@@ -143,6 +143,13 @@ function animateParticles() {
 
      initializeStaticLocations() {
          this.staticLocations.clear();
+         
+         // Safety Check: Ensure LOCATIONS_DATA exists before looping
+         if (typeof LOCATIONS_DATA === 'undefined') {
+             console.warn("locations.js failed to load or is missing.");
+             return; 
+         }
+
          for (const name in LOCATIONS_DATA) {
              const location = LOCATIONS_DATA[name];
              const key = `${location.coords.x},${location.coords.y}`;
@@ -1866,14 +1873,18 @@ function processLootTable(tableName) {
     // Handle specific outcome types
     if (outcome.type === "ITEM") {
         const qty = outcome.min + Math.floor(Math.random() * (outcome.max - outcome.min + 1));
-        if (currentCargoLoad + qty <= PLAYER_CARGO_CAPACITY) {
-            playerCargo[outcome.id] = (playerCargo[outcome.id] || 0) + qty;
+        const spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+        const actualQty = Math.min(qty, spaceLeft);
+
+        if (actualQty > 0) {
+            playerCargo[outcome.id] = (playerCargo[outcome.id] || 0) + actualQty;
             updateCurrentCargoLoad();
-            logMessage(`Received: ${qty} x ${COMMODITIES[outcome.id].name}`, true);
+            logMessage(`Received: ${actualQty} x ${COMMODITIES[outcome.id].name}`, true);
+            if (actualQty < qty) logMessage("Cargo full! Left remainder behind.", true);
         } else {
             logMessage("Cargo full! Item discarded.", true);
         }
-    } 
+    }
     else if (outcome.type === "CREDITS") {
         const amt = outcome.min + Math.floor(Math.random() * (outcome.max - outcome.min + 1));
         playerCredits += amt;
@@ -2581,11 +2592,19 @@ function movePlayer(dx, dy) {
          if (!spaceLeft) return;
          const yieldAmount = 1 + Math.floor(Math.random() * 5); // 1-5 units (bio scans are more precise)
 
-         if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
-             playerCargo[resourceId] = (playerCargo[resourceId] || 0) + yieldAmount;
+         const availableSpace = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+         const actualYield = Math.min(yieldAmount, availableSpace);
+
+         if (actualYield > 0) {
+             playerCargo[resourceId] = (playerCargo[resourceId] || 0) + actualYield;
              updateCurrentCargoLoad();
-             scanMessage += ` ${yieldAmount} ${COMMODITIES[resourceId].name}\n`;
+             scanMessage += ` ${actualYield} ${COMMODITIES[resourceId].name}\n`;
              foundSomething = true;
+             
+             if (actualYield < yieldAmount) {
+                 scanMessage += ` (Hold full, remainder left behind)\n`;
+                 spaceLeft = false; 
+             }
          } else {
              scanMessage += ` Not enough cargo space for ${COMMODITIES[resourceId].name}.\n`;
              spaceLeft = false;
@@ -2669,16 +2688,23 @@ function movePlayer(dx, dy) {
         // Yield calculation: 5 to 15 units
         const yieldAmount = 5 + Math.floor(Math.random() * 11);
 
-        if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
-            playerCargo[resourceId] = (playerCargo[resourceId] || 0) + yieldAmount;
+        const availableSpace = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+        const actualYield = Math.min(yieldAmount, availableSpace);
+
+        if (actualYield > 0) {
+            playerCargo[resourceId] = (playerCargo[resourceId] || 0) + actualYield;
             updateCurrentCargoLoad();
             
             // Log & Toast Updates
             const resName = COMMODITIES[resourceId].name;
-            minedResourcesMessage += `\n  +${formatNumber(yieldAmount)} ${resName}`;
-            toastHTML += `+${formatNumber(yieldAmount)} ${resName}<br>`;
+            minedResourcesMessage += `\n  +${formatNumber(actualYield)} ${resName}`;
+            toastHTML += `+${formatNumber(actualYield)} ${resName}<br>`;
             
             minedSomething = true;
+            if (actualYield < yieldAmount) {
+                 minedResourcesMessage += ` (Hold full)`;
+                 spaceLeft = false; // Stop further loop iterations
+            }
         } else {
             minedResourcesMessage += `\n  (Cargo full, could not collect ${COMMODITIES[resourceId].name})`;
             spaceLeft = false;
@@ -2759,7 +2785,7 @@ function movePlayer(dx, dy) {
          fuelGained += Math.floor(Math.random() * SCOOP_RANDOM_BONUS);
          fuelGained = Math.max(1, fuelGained);
 
-         updateWorldState(playerX, playerY, { scoopedThisVisit: true });
+         updateWorldState(playerX, playerY, { scoopedThisVisit: true, lastInteraction: currentGameDate });
          logMsg = "Scooped hydrogen from the star's corona.";
 
      } else if (tileType === 'nebula') {
@@ -2830,13 +2856,17 @@ function movePlayer(dx, dy) {
         }
 
      if (yieldAmount > 0) {
-         if (currentCargoLoad + yieldAmount <= PLAYER_CARGO_CAPACITY) {
-             playerCargo.MINERALS = (playerCargo.MINERALS || 0) + yieldAmount;
+         const spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+         const actualYield = Math.min(yieldAmount, spaceLeft);
+
+         if (actualYield > 0) {
+             playerCargo.MINERALS = (playerCargo.MINERALS || 0) + actualYield;
              updateCurrentCargoLoad();
-             minedResourcesMessage += ` ${formatNumber(yieldAmount)} Minerals`;
-             toastHTML += `+${formatNumber(yieldAmount)} Minerals<br>`;
+             minedResourcesMessage += ` ${formatNumber(actualYield)} Minerals`;
+             toastHTML += `+${formatNumber(actualYield)} Minerals<br>`;
              
              if (richnessMultiplier > 1.2) minedResourcesMessage += " (Rich Vein!)";
+             if (actualYield < yieldAmount) minedResourcesMessage += " (Hold full, left remainder)";
              minedResourcesMessage += "\n";
              minedSomething = true;
          } else {
@@ -2853,14 +2883,17 @@ function movePlayer(dx, dy) {
      if (Math.random() < (baseRareChance + bonusFromDensity + deepSpaceBonus)) {
          const rareYield = 1 + Math.floor(Math.random() * 2);
 
-         if (currentCargoLoad + rareYield <= PLAYER_CARGO_CAPACITY) {
+         const rareSpaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+         const actualRareYield = Math.min(rareYield, rareSpaceLeft);
+
+         if (actualRareYield > 0) {
              const resourceId = (Math.random() < 0.7) ? "RARE_METALS" : "PLATINUM_ORE";
-             playerCargo[resourceId] = (playerCargo[resourceId] || 0) + rareYield;
+             playerCargo[resourceId] = (playerCargo[resourceId] || 0) + actualRareYield;
              updateCurrentCargoLoad();
              
              const rareName = COMMODITIES[resourceId].name;
-             minedResourcesMessage += `<span style='color:#FFFF99;'>+ ${rareYield} ${rareName}!</span>\n`;
-             toastHTML += `<span style="color:#FFFF00">+${rareYield} ${rareName}</span><br>`; // Add to toast
+             minedResourcesMessage += `<span style='color:#FFFF99;'>+ ${actualRareYield} ${rareName}!</span>\n`;
+             toastHTML += `<span style="color:#FFFF00">+${actualRareYield} ${rareName}</span><br>`; 
              
              playerXP += XP_BONUS_RARE_MINERAL;
              gainedRareXP = true;
@@ -2891,7 +2924,7 @@ function movePlayer(dx, dy) {
      }
 
      advanceGameTime(0.1);
-     updateWorldState(playerX, playerY, { minedThisVisit: true });
+     updateWorldState(playerX, playerY, { minedThisVisit: true, lastInteraction: currentGameDate });
      logMessage(minedResourcesMessage);
  }
 
@@ -3297,11 +3330,10 @@ function checkLevelUp() {
     soundManager.playTone(600, 'sine', 0.1); 
     setTimeout(() => soundManager.playTone(800, 'sine', 0.2), 100);
     
-    changeGameState('level_up'); // We use string literal if you haven't updated const yet
+    changeGameState(GAME_STATES.LEVEL_UP); 
     renderLevelUpScreen();
     
     return true;
-}
 
 function renderLevelUpScreen() {
     const overlay = document.getElementById('levelUpOverlay');
@@ -3914,10 +3946,24 @@ function displayShipyard() {
 function showShipDetails(shipId) {
     const ship = SHIP_CLASSES[shipId];
     const oldShip = SHIP_CLASSES[playerShip.shipClass];
-    const tradeIn = Math.floor(oldShip.baseCost * 0.5);
+    
+    // 1. Calculate Ship Hull Trade-in
+    let baseTradeIn = Math.floor(oldShip.baseCost * 0.5);
+    
+    // 2. Calculate Components Trade-in
+    let componentsRefund = 0;
+    for (const slot in playerShip.components) {
+        const compId = playerShip.components[slot];
+        const compData = COMPONENTS_DATABASE[compId];
+        if (compData && compData.cost > 0) {
+            componentsRefund += Math.floor(compData.cost * 0.5);
+        }
+    }
+    
+    const tradeIn = baseTradeIn + componentsRefund;
     const cost = ship.baseCost - tradeIn;
     
-    // ADDED: formatNumber for all numeric labels
+    // Added formatNumber for all numeric labels
     let html = `
         <h3 style="color:var(--accent-color)">${ship.name}</h3>
         <p>${ship.description}</p>
@@ -3932,21 +3978,42 @@ function showShipDetails(shipId) {
     
     document.getElementById('genericDetailContent').innerHTML = html;
     
+    // --- Check if cargo fits in the new ship ---
+    const cargoTooLarge = currentCargoLoad > ship.cargoCapacity;
+    let btnLabel = 'PURCHASE VESSEL';
+    let isDisabled = '';
+
+    if (playerCredits < cost) {
+        btnLabel = 'INSUFFICIENT FUNDS';
+        isDisabled = 'disabled';
+    } else if (cargoTooLarge) {
+        btnLabel = 'CARGO EXCEEDS NEW HOLD';
+        isDisabled = 'disabled';
+    }
+
     const btnHtml = `
-        <button class="action-button" ${playerCredits >= cost ? '' : 'disabled'} 
-            onclick="confirmBuyShip('${shipId}', ${cost})">
-            ${playerCredits >= cost ? 'PURCHASE VESSEL' : 'INSUFFICIENT FUNDS'}
+        <button class="action-button" ${isDisabled} 
+            onclick="confirmBuyShip('${shipId}', ${cost}, ${componentsRefund})">
+            ${btnLabel}
         </button>
     `;
     document.getElementById('genericModalActions').innerHTML = btnHtml;
 }
 
-function confirmBuyShip(shipId, cost) {
+function confirmBuyShip(shipId, cost, componentsRefund = 0) {
     if(playerCredits < cost) return;
     
+    // Safety block: prevent exploit
+    const newShip = SHIP_CLASSES[shipId];
+    if (currentCargoLoad > newShip.cargoCapacity) {
+        if (typeof showToast === 'function') showToast("CARGO EXCEEDS NEW SHIP CAPACITY", "error");
+        logMessage("Purchase failed: Cargo exceeds new ship capacity.");
+        return;
+    }
+
     playerCredits -= cost;
     playerShip.shipClass = shipId;
-    
+
     // Reset components to defaults
      playerShip.components = {
          weapon: "WEAPON_PULSE_LASER_MK1",
@@ -3956,16 +4023,37 @@ function confirmBuyShip(shipId, cost) {
          utility: "UTIL_NONE"
      };
 
+    // --- Initialize Ammo for the default weapon (if applicable) ---
+    const defaultWeapon = COMPONENTS_DATABASE[playerShip.components.weapon];
+    if (defaultWeapon && defaultWeapon.stats.maxAmmo) {
+        playerShip.ammo[playerShip.components.weapon] = defaultWeapon.stats.maxAmmo;
+    }
+
     applyPlayerShipStats();
-    playerHull = MAX_PLAYER_HULL; //
-    playerShields = MAX_SHIELDS; //
-    playerFuel = MAX_FUEL; //
+
+    playerHull = MAX_PLAYER_HULL; 
+    playerShields = MAX_SHIELDS; 
+    playerFuel = MAX_FUEL; 
+
+    // Text Log Message
+    let successMsg = `Transaction complete! Welcome to your new ${newShip.name}!`;
+    if (componentsRefund > 0) {
+        successMsg += `\n(Includes ${componentsRefund}c refund for old components)`;
+    }
+    logMessage(successMsg);
+
+    // Handle UI & Context Cleanup
+    if (typeof soundManager !== 'undefined') soundManager.playUIClick();
+    if (typeof showToast === 'function') showToast("VESSEL PURCHASED", "success");
     
-    soundManager.playUIClick();
-    showToast("VESSEL PURCHASED", "success");
-    closeGenericModal();
+    if (document.getElementById('genericModalOverlay').style.display === 'flex') {
+        closeGenericModal();
+        openStationView(); // Refresh station hub if visual modal was used
+    }
+
+    currentShipyardContext = null;
+    handleInteraction(); // Refresh text view
     renderUIStats();
-    openStationView(); // Refresh station hub
 }
 
  function triggerDamageEffect() {
@@ -3983,14 +4071,26 @@ function confirmBuyShip(shipId, cost) {
     }
 }
 
- function displayShipPurchaseConfirmation(shipId) {
+function displayShipPurchaseConfirmation(shipId) {
      const ship = SHIP_CLASSES[shipId];
      const oldShip = SHIP_CLASSES[playerShip.shipClass];
-     const tradeInValue = Math.floor(oldShip.baseCost * 0.5); // Trade-in is 50% of old ship's base cost
+     
+     let tradeInValue = Math.floor(oldShip.baseCost * 0.5); 
+     let componentsRefund = 0;
+     for (const slot in playerShip.components) {
+         const compId = playerShip.components[slot];
+         const compData = COMPONENTS_DATABASE[compId];
+         if (compData && compData.cost > 0) {
+             componentsRefund += Math.floor(compData.cost * 0.5);
+         }
+     }
+     tradeInValue += componentsRefund;
      const finalCost = ship.baseCost - tradeInValue;
 
      currentShipyardContext.step = 'confirmPurchase';
      currentShipyardContext.selectedShipId = shipId;
+     currentShipyardContext.finalCost = finalCost;
+     currentShipyardContext.componentsRefund = componentsRefund;
 
      let confirmMsg = `--- Purchase Confirmation ---\n\n`;
      confirmMsg += `Ship: ${ship.name}\n`;
@@ -4001,6 +4101,10 @@ function confirmBuyShip(shipId, cost) {
 
      if (playerCredits < finalCost) {
          confirmMsg += `<span style='color:#FF5555;'>You cannot afford this ship.</span>\n`;
+     } else if (currentCargoLoad > ship.cargoCapacity) {
+         confirmMsg += `<span style='color:#FF5555;'>Your current cargo (${currentCargoLoad} units) exceeds this ship's capacity (${ship.cargoCapacity} units). Sell excess goods first.</span>\n`;
+         // Change step so 'Y' won't accidentally trigger the buy
+         currentShipyardContext.step = 'viewOnlyDetails'; 
      } else {
          confirmMsg += `Purchase this ship? Your current ship and all components will be traded in. (Y/N)`;
      }
@@ -4044,7 +4148,12 @@ function visitCantina() {
         showToast("TRADE INTEL ACQUIRED", "success");
     } else {
         // Standard Flavor Text
-        const randomRumor = RUMORS[Math.floor(Math.random() * RUMORS.length)];
+        // Safety Check: Fallback if RUMORS is missing
+        const rumorList = (typeof RUMORS !== 'undefined' && RUMORS.length > 0) 
+            ? RUMORS 
+            : ["The bartender cleans a glass and ignores you."];
+            
+        const randomRumor = rumorList[Math.floor(Math.random() * rumorList.length)];
         logMessage(`<span class="cantina-header">Cantina Visit (-${cost}c)</span>`);
         logMessage(`<span class="rumor-text">"${randomRumor}"</span>`);
     }
@@ -4095,65 +4204,9 @@ function repairShip() {
      renderUIStats();
  }
 
- function buyShip() {
-     if (!currentShipyardContext || currentShipyardContext.step !== 'confirmPurchase') return;
-
-     const shipId = currentShipyardContext.selectedShipId;
-     const ship = SHIP_CLASSES[shipId];
-     const oldShip = SHIP_CLASSES[playerShip.shipClass];
-
-     // 1. Calculate Ship Hull Trade-in
-     let tradeInValue = Math.floor(oldShip.baseCost * 0.5);
-
-     // 2. Calculate Components Trade-in (NEW)
-     // We refund 50% of the value of all installed components
-     let componentsRefund = 0;
-     for (const slot in playerShip.components) {
-         const compId = playerShip.components[slot];
-         const compData = COMPONENTS_DATABASE[compId];
-         if (compData && compData.cost > 0) {
-             componentsRefund += Math.floor(compData.cost * 0.5);
-         }
-     }
-     tradeInValue += componentsRefund;
-
-     const finalCost = ship.baseCost - tradeInValue;
-
-     if (playerCredits < finalCost) {
-         logMessage(`Purchase failed: Insufficient credits. (Need ${finalCost}c)`);
-         displayShipyard();
-         return;
-     }
-
-     playerCredits -= finalCost;
-     playerShip.shipClass = shipId;
-
-     // Reset components to defaults
-     playerShip.components = {
-         weapon: "WEAPON_PULSE_LASER_MK1",
-         shield: "SHIELD_BASIC_ARRAY_A",
-         engine: "ENGINE_STD_DRIVE_MK1",
-         scanner: "SCANNER_BASIC_SUITE"
-     };
-
-     applyPlayerShipStats();
-     playerHull = MAX_PLAYER_HULL;
-     playerShields = MAX_SHIELDS;
-     playerFuel = MAX_FUEL;
-
-     let successMsg = `Transaction complete! Welcome to your new ${ship.name}!`;
-     if (componentsRefund > 0) {
-         successMsg += `\n(Includes ${componentsRefund}c refund for old components)`;
-     }
-
-     logMessage(successMsg);
-     currentShipyardContext = null;
-     handleInteraction();
- }
 
  // --- Outfitting Functions ---
 
- // --- OVERRIDE: OUTFITTING ---
 function displayOutfittingScreen() {
     openGenericModal("OUTFITTING SERVICES");
     const listEl = document.getElementById('genericModalList');
@@ -4318,7 +4371,14 @@ function confirmBuyComponent(compId) {
      const oldComponent = COMPONENTS_DATABASE[playerShip.components[component.slot]];
      playerCredits -= component.cost;
      playerShip.components[component.slot] = selectedComponentId;
+
+     // --- Initialize Ammo for the new weapon ---
+     if (component.stats && component.stats.maxAmmo) {
+         playerShip.ammo[selectedComponentId] = component.stats.maxAmmo;
+     }
+
      applyPlayerShipStats();
+
      unlockLoreEntry(component.loreKey);
      logMessage(`Installed ${component.name}. Old ${oldComponent.name} unequipped.\nCredits: ${playerCredits}`);
      currentOutfitContext = null;
@@ -5116,9 +5176,9 @@ function handleTradeInput(key) {
              currentShipyardContext = null;
              handleInteraction();
          }
-     } else if (currentShipyardContext.step === 'confirmPurchase') {
+        } else if (currentShipyardContext.step === 'confirmPurchase') {
          if (key === 'y') {
-             buyShip();
+             confirmBuyShip(currentShipyardContext.selectedShipId, currentShipyardContext.finalCost, currentShipyardContext.componentsRefund);
          } else if (key === 'n' || key === 'l') {
              displayShipyard();
          }
