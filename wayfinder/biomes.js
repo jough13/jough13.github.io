@@ -1,4 +1,5 @@
 const PLANET_BIOMES = {
+    
      BARREN_ROCK: {
          name: "Barren Rock",
          landable: true,
@@ -36,7 +37,7 @@ const PLANET_BIOMES = {
      },
      OCEANIC: {
         name: "Ocean World",
-        landable: true,
+        landable: false,
         description: "A planet covered entirely in deep, turbulent water.",
         resources: ['FOOD_SUPPLIES', 'GENETIC_SAMPLES', 'HYDROGEN_3'],
         image: 'assets/ocean_world.png'
@@ -54,5 +55,18 @@ const PLANET_BIOMES = {
          description: "A swirling mass of hydrogen and helium.",
          resources: ['HYDROGEN_3'],
          image: 'assets/gas_giant.png'
+     },IRRADIATED: {
+         name: "Irradiated Wasteland",
+         landable: true,
+         description: "A dangerously radioactive rock. Surface gamma spectrometry readings are off the charts, indicating high concentrations of unstable Uranium isotopes.",
+         resources: ['RARE_METALS', 'VOID_CRYSTALS'],
+         image: 'assets/wasteland.png' // Still need an image!
+     },
+     MACHINE_WORLD: {
+         name: "Machine World",
+         landable: true,
+         description: "A planet entirely encased in metallic structures, humming data-conduits, and sprawling orbital rings. No biological life detected, but automated factories still churn out goods.",
+         resources: ['TECH_PARTS', 'CYBERNETIC_IMPLANTS'],
+         image: 'assets/machine_world.png' // Still need an image!
      }
  };
