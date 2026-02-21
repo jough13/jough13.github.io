@@ -3311,7 +3311,7 @@ function advanceGameTime(timeAmount) {
             }
         }
     }
-}
+// commented out to create false error to test }
 
 function checkLevelUp() {
     // 1. Check Threshold
@@ -3334,6 +3334,7 @@ function checkLevelUp() {
     renderLevelUpScreen();
     
     return true;
+}
 
 function renderLevelUpScreen() {
     const overlay = document.getElementById('levelUpOverlay');
