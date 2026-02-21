@@ -1,4 +1,3 @@
-
  // --- Lore Database ---
  const LORE_DATABASE = {
     // --- SHIP ENTRIES ---
@@ -322,5 +321,15 @@ const SPIRE_PUZZLES = [
         rewardCredit: 0,
         flavorSuccess: "The core chamber hums. You have reached the bottom... for now.",
         unlocksShop: true
+    },
+    {
+        level: 3,
+        title: "THE APEX NODE",
+        riddle: "I speak without a mouth and hear without ears. I have no physical form, but I come alive within the void's transmission arrays. What am I?",
+        answers: ["echo", "an echo", "echoes"],
+        rewardXP: 1000,
+        rewardCredit: 2500,
+        flavorSuccess: "The final obsidian seal disengages with a heavy thud. The ancient terminal hums to life, bathed in a soft violet light, awaiting your command.",
+        unlocksShop: true
     }
-];
+]
