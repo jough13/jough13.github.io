@@ -22,12 +22,12 @@
             visibility: visible;
         }
     </style>
-    <script>
-        // --- FLIGHT RECORDER v3.0 (Ultimate Developer QoL) ---
+<script>
+        // --- FLIGHT RECORDER v4.0 (The Diagnostician) ---
         const consoleHistory = [];
         const MAX_LOGS = 15;
 
-        // Hijack standard console methods
+        // 1. Hijack standard console methods
         ['log', 'warn', 'error'].forEach(method => {
             const original = console[method];
             console[method] = function(...args) {
@@ -36,7 +36,6 @@
                 if (consoleHistory.length > MAX_LOGS) consoleHistory.shift();
                 original.apply(console, args);
                 
-                // If a direct console.error is called, trigger the screen!
                 if (method === 'error') {
                     const stack = new Error().stack || "No stack trace";
                     showCriticalErrorScreen("CONSOLE.ERROR TRIGGERED", msg, "Invoked via console", stack);
@@ -44,8 +43,8 @@
             };
         });
 
-        // The master function to build and display the red screen
-        function showCriticalErrorScreen(errorType, exactMessage, location, stack) {
+        // 2. The Master Render Function
+        function showCriticalErrorScreen(errorType, exactMessage, location, stack, diagnosticHTML = "") {
             if (document.getElementById('criticalSystemFailureScreen')) return;
 
             const div = document.createElement('div');
@@ -74,7 +73,7 @@
                         <span style="color:#FFAA00; font-weight: bold;">LOCATION:</span> 
                         <span style="color:#FFF; font-size: 16px;">${location}</span>
                     </div>
-                </div>
+                    ${diagnosticHTML} </div>
                 
                 <div style="border-top:1px solid #333; margin-top:20px; padding-top:20px; color:#AAA;">
                     <strong style="color: #FFF;">RAW STACK TRACE:</strong><br>
@@ -98,35 +97,51 @@
             document.body.appendChild(div);
         }
 
-        // --- THE CATCHERS ---
-
-        // 1. Standard Runtime and Syntax Errors
+        // 3. The Catchers
         window.onerror = function(msg, url, lineNo, columnNo, error) {
             const fileName = url ? url.split('/').pop() : 'Unknown File';
             const loc = `${fileName} — Line: ${lineNo}, Column: ${columnNo}`;
             
-            // Extract the exact error type and message if available
             const errorType = error && error.name ? error.name : (msg.includes("SyntaxError") ? "SyntaxError" : "Runtime Error");
             const exactMessage = error && error.message ? error.message : msg;
-            
-            const stackTrace = (error && error.stack) ? error.stack : `Parse/Syntax Error Data:\n${msg}\n\n(Check near ${loc} for missing brackets '}', stray commas, or unclosed strings!)`;
+            const stackTrace = (error && error.stack) ? error.stack : `Parse/Syntax Error Data:\n${msg}`;
 
-            showCriticalErrorScreen(errorType, exactMessage, loc, stackTrace);
+            // --- THE AUTO-DIAGNOSTIC LOGIC ---
+            let diagnosticHTML = "";
+            if (exactMessage.includes("Cannot read properties of undefined") || exactMessage.includes("Cannot read properties of null")) {
+                
+                // Extract the specific property they tried to read (e.g., 'style', 'length')
+                const match = exactMessage.match(/reading '(.+?)'/);
+                const prop = match ? match[1] : 'something';
+                const isNull = exactMessage.includes("null");
+                const state = isNull ? "NULL" : "UNDEFINED";
+                
+                diagnosticHTML = `
+                <div style="background: rgba(255, 165, 0, 0.1); border: 1px solid #FFAA00; padding: 15px; margin-top: 15px; font-family: sans-serif;">
+                    <strong style="color: #FFAA00; font-size: 16px;">💡 AUTO-DIAGNOSTIC: The "Ghost Object" Error</strong><br>
+                    <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
+                        The code is trying to access <code>.${prop}</code> on an object, but that object is currently <strong>${state}</strong> (it does not exist yet).<br><br>
+                        <strong>Common Culprits:</strong><br>
+                        • <strong>DOM Typo:</strong> Did you misspell an ID or Class name in your HTML or JS? (Returns null/empty list)<br>
+                        • <strong>Execution Order:</strong> Are you trying to modify <code>.${prop}</code> before the HTML element has actually been rendered on the screen?<br>
+                        • <strong>Array Out of Bounds:</strong> Are you using an index like <code>[0]</code> on an array or NodeList that is currently empty?<br>
+                        • <strong>Database Typo:</strong> Did you try to look up a ship or item ID that doesn't exist in your <code>const</code> databases?<br><br>
+                        <strong style="color:#FFF;">Traceability Step:</strong> Go to <strong>${fileName}</strong> at <strong>Line ${lineNo}</strong>. Right before that line, type <code>console.log("Checking object:", the_object_variable_name)</code> to see what is failing to load!
+                    </p>
+                </div>`;
+            }
+
+            showCriticalErrorScreen(errorType, exactMessage, loc, stackTrace, diagnosticHTML);
             return false; 
         };
 
-        // 2. Unhandled Promises (Async/Fetch errors)
         window.addEventListener('unhandledrejection', function(event) {
-            const errorType = "Unhandled Promise Rejection";
             const exactMessage = event.reason instanceof Error ? event.reason.message : String(event.reason);
             const stackTrace = event.reason instanceof Error ? event.reason.stack : "No stack trace for this rejection.";
-            
-            showCriticalErrorScreen(errorType, exactMessage, "Async Operation", stackTrace);
+            showCriticalErrorScreen("Unhandled Promise Rejection", exactMessage, "Async Operation", stackTrace);
         });
 
-        // 3. Resource Loading Errors (Images, Audio, Scripts)
         window.addEventListener('error', function(event) {
-            // Filter out script runtime errors (already handled by window.onerror)
             if (event.target && (event.target.tagName === 'IMG' || event.target.tagName === 'SCRIPT' || event.target.tagName === 'AUDIO' || event.target.tagName === 'LINK')) {
                 const resourceType = event.target.tagName;
                 const resourceUrl = event.target.src || event.target.href;
@@ -136,10 +151,10 @@
                     `Resource Load Failure (<${resourceType.toLowerCase()}>)`, 
                     `Failed to load file: ${fileName}`, 
                     `Attempted URL: ${resourceUrl}`, 
-                    `The browser could not fetch this resource. Check if the file exists in your directory and if the spelling matches exactly (including capitalization).`
+                    `The browser could not fetch this resource. Check if the file exists and if the spelling matches exactly.`
                 );
             }
-        }, true); // 'true' enables the capture phase, which is required for loading errors!
+        }, true);
     </script>
 </head>
 <body class="crt">
