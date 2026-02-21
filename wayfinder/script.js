@@ -3311,7 +3311,7 @@ function advanceGameTime(timeAmount) {
             }
         }
     }
-// commented out to create false error to test }
+}
 
 function checkLevelUp() {
     // 1. Check Threshold
@@ -5073,6 +5073,99 @@ function selectCargoItem(index, key) {
     const jetBtn = document.getElementById('jettisonBtn');
     jetBtn.disabled = false;
     jetBtn.onclick = () => jettisonItem(key);
+
+    // --- SPECIAL ITEM ACTIONS ---
+    const decryptBtn = document.getElementById('decryptBtn');
+    if (decryptBtn) {
+        if (key === 'ENCRYPTED_ENGRAM') {
+            decryptBtn.style.display = 'block';
+            
+            // Smart Button Logic!
+            if (playerPerks.has('CYBER_SLICER')) {
+                decryptBtn.innerText = "DECRYPT (Perk: Cyber Slicer)";
+                decryptBtn.disabled = false;
+                decryptBtn.onclick = () => processDecryption('perk');
+            } else if (playerCargo['PRECURSOR_CIPHER'] && playerCargo['PRECURSOR_CIPHER'] > 0) {
+                decryptBtn.innerText = "DECRYPT (Consumes 1 Cipher)";
+                decryptBtn.disabled = false;
+                decryptBtn.onclick = () => processDecryption('cipher');
+            } else {
+                decryptBtn.innerText = "LOCKED (Requires Cipher)";
+                decryptBtn.disabled = true;
+            }
+        } else {
+            decryptBtn.style.display = 'none';
+        }
+    }
+}
+
+function visitCryptarch() {
+    if (!playerCargo['ENCRYPTED_ENGRAM'] || playerCargo['ENCRYPTED_ENGRAM'] <= 0) {
+        logMessage("The Cryptarch sneers. 'Come back when you have an Engram worth my time.'");
+        if (typeof soundManager !== 'undefined') soundManager.playError();
+        return;
+    }
+    
+    // Send it to the master function with the 'credits' flag
+    processDecryption('credits');
+}
+
+function processDecryption(method) {
+    // 1. Handle the specific cost of the method used
+    if (method === 'cipher') {
+        playerCargo['PRECURSOR_CIPHER'] -= 1;
+        if (playerCargo['PRECURSOR_CIPHER'] <= 0) delete playerCargo['PRECURSOR_CIPHER'];
+        logMessage("Cipher consumed. Initiating decryption...");
+    } else if (method === 'credits') {
+        if (playerCredits < 250) {
+            showToast("INSUFFICIENT FUNDS (250c Required)", "error");
+            return;
+        }
+        playerCredits -= 250;
+        logMessage("You pay the 250c fee. The Cryptarch begins working...");
+    } else if (method === 'perk') {
+        logMessage("Cyber Slicer perk active. Bypassing encryption...");
+    }
+
+    // 2. Consume the Engram
+    playerCargo['ENCRYPTED_ENGRAM'] -= 1;
+    if (playerCargo['ENCRYPTED_ENGRAM'] <= 0) delete playerCargo['ENCRYPTED_ENGRAM'];
+    
+    // Update inventory weight and top HUD
+    updateCurrentCargoLoad(); 
+    if (typeof renderUIStats === 'function') renderUIStats();
+
+    // 3. The Reward Pool
+    const decryptionRewards = [
+        { xp: 150, text: "FRAGMENT RECOVERED: 'The ruler of the sunless world is the DARKNESS.'" },
+        { xp: 150, text: "FRAGMENT RECOVERED: 'Bridges of silver, crowns of gold... it speaks of DATA.'" },
+        { xp: 300, text: "NAV-DATA EXTRACTED: 'Sector [39, 17] - High probability of Precursor artifacts detected.'" },
+        { xp: 200, text: "LORE CACHE: 'The Silencer Echoes are not weapons. They are quarantine beacons.' [CLASSIFIED]" },
+        { xp: 500, text: "JACKPOT: Uncorrupted Precursor architectural schematics recovered." }
+    ];
+
+    const reward = decryptionRewards[Math.floor(Math.random() * decryptionRewards.length)];
+    
+    // 4. Apply Rewards
+    playerXP += reward.xp;
+    logMessage(`<span style="color:#DDA0DD">> DECRYPTION SUCCESS: ${reward.text}</span>`);
+    showToast(`ENGRAM DECRYPTED: +${reward.xp} XP`, "success");
+    
+    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+    checkLevelUp(); 
+    
+    // 5. Cleanup the UI if the player is currently in the Cargo Menu
+    if (document.getElementById('cargoOverlay').style.display !== 'none') {
+        if (typeof renderCargoList === 'function') renderCargoList();
+        
+        if (playerCargo['ENCRYPTED_ENGRAM']) {
+            // If they have more engrams, refresh the button state
+            showCargoDetails('ENCRYPTED_ENGRAM'); 
+        } else {
+            // Otherwise, hide the button
+            document.getElementById('decryptBtn').style.display = 'none';
+        }
+    }
 }
 
 function jettisonItem(key) {
@@ -5423,6 +5516,28 @@ document.addEventListener('keydown', function(event) {
      if (isMovementKey && (now - lastInputTime < INPUT_DELAY)) {
          return; // Ignore input if too fast
      }
+
+     // --- DEV CHEATS ---
+    if (key === '$') {
+        playerCredits += 50000;
+        playerHull = MAX_PLAYER_HULL;
+        logMessage("<span style='color:#00FF00'>DEV OVERRIDE: Funds injected, Hull stabilized.</span>");
+        if (typeof renderUIStats === 'function') renderUIStats();
+        if (typeof soundManager !== 'undefined') soundManager.playUIClick();
+        return;
+    }
+
+    // --- TACTICAL WAIT ---
+    if (key === ' ' || key === 'w') {
+        advanceGameTime(1.0); // Pushes the stardate forward
+        
+        // If you have a passive shield regen function, call it here!
+        // if (playerShields < MAX_SHIELDS) playerShields = Math.min(MAX_SHIELDS, playerShields + 5);
+        
+        logMessage("Systems cycling. You hold position and wait.");
+        if (typeof renderUIStats === 'function') renderUIStats();
+        return;
+    }
 
      if (currentGameState === GAME_STATES.TITLE_SCREEN) return;
 
