@@ -61,5 +61,12 @@ const PERKS_DATABASE = {
         description: "Mining/Scooping rarely consumes a turn (time passes slower).",
         icon: "📡",
         category: "Science"
-    }
+    },
+    CYBER_SLICER: {
+        id: "CYBER_SLICER",
+        name: "Cyber Slicer",
+        description: "Instantly decrypt Encrypted Engrams in the field without needing a Cipher.",
+        icon: "💻",
+        category: "Exploration"
+    },
 };
