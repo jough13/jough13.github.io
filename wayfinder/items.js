@@ -68,6 +68,24 @@ const LOOT_TABLES = {
          basePrice: 15,
          description: "A spectrum of sustenance: from bland but life-sustaining nutrient paste (affectionately known as 'Grey Goo') to surprisingly palatable hydroponic greens and recycled protein. Fresh, soil-grown food is a luxury reserved for core worlds or well-funded stations; most spacers subsist on these processed rations, dreaming of real fruit or a synth-steak that doesn't taste of despair."
      },
+     FROTHY_MOON_ALE: {
+         name: "Frothy Moon Ale",
+         basePrice: 45,
+         description: "A rich, dark ale brewed on a distant outpost. A favorite among deep-space astronomers; it's best enjoyed on a quiet observation deck.",
+         unlocked: true
+     },
+     PRECURSOR_CIPHER: {
+         name: "Precursor Cipher",
+         basePrice: 150,
+         description: "A single-use quantum decryption key. Crucial for cracking Encrypted Engrams in the field without needing to pay a Cryptarch.",
+         unlocked: true
+     },
+     ENCRYPTED_ENGRAM: {
+         name: "Encrypted Engram",
+         basePrice: 550,
+         description: "A mysterious, polyhedral data-matrix glowing with a faint purple light. Station cryptarchs and black-market brokers alike pay handsomely to decrypt the golden-age tech hidden inside.",
+         unlocked: true
+     },
      TECH_PARTS: {
          name: "Tech Parts",
          basePrice: 50,
