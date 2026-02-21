@@ -440,6 +440,10 @@ body {
                                 <div class="btn-icon">🍸</div>
                                 <div class="btn-label">Cantina<br><span class="btn-sub">Rumors & Rest (10c)</span></div>
                             </button>
+                            <button class="station-action-btn" onclick="visitCryptarch()">
+                                <div class="btn-icon">👁️</div>
+                                <div class="btn-label">Cryptarch<br><span class="btn-sub">Decrypt Engrams (250c)</span></div>
+                            </button>
                             <button class="station-action-btn repair-btn" onclick="repairShip()">
                                 <div class="btn-icon">🔧</div>
                                 <div class="btn-label">Repair Hull<br><span class="btn-sub" id="repairCostLabel">Check Cost</span></div>
@@ -565,6 +569,10 @@ body {
                             <div style="margin-top:auto">
                                 <p style="color:#FF4444; font-size:11px; margin-bottom:5px;">WARNING: Jettisoned cargo is lost forever.</p>
                                 <button id="jettisonBtn" class="action-button" style="border-color:#FF4444; color:#FF4444;" disabled>JETTISON 1 UNIT</button>
+                                
+                                <button id="decryptBtn" class="action-button" style="border-color:#9933FF; color:#DDA0DD; display:none; margin-top:10px; box-shadow: 0 0 10px rgba(153, 51, 255, 0.3);">
+                                    DECRYPT ENGRAM
+                                </button>
                             </div>
                         </div>
                     </div>
