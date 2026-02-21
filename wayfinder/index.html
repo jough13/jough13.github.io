@@ -108,9 +108,9 @@
 
             // --- THE AUTO-DIAGNOSTIC LOGIC ---
             let diagnosticHTML = "";
+            
+            // 1. The "Ghost Object" (Undefined/Null Properties)
             if (exactMessage.includes("Cannot read properties of undefined") || exactMessage.includes("Cannot read properties of null")) {
-                
-                // Extract the specific property they tried to read (e.g., 'style', 'length')
                 const match = exactMessage.match(/reading '(.+?)'/);
                 const prop = match ? match[1] : 'something';
                 const isNull = exactMessage.includes("null");
@@ -122,11 +122,58 @@
                     <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
                         The code is trying to access <code>.${prop}</code> on an object, but that object is currently <strong>${state}</strong> (it does not exist yet).<br><br>
                         <strong>Common Culprits:</strong><br>
-                        • <strong>DOM Typo:</strong> Did you misspell an ID or Class name in your HTML or JS? (Returns null/empty list)<br>
-                        • <strong>Execution Order:</strong> Are you trying to modify <code>.${prop}</code> before the HTML element has actually been rendered on the screen?<br>
-                        • <strong>Array Out of Bounds:</strong> Are you using an index like <code>[0]</code> on an array or NodeList that is currently empty?<br>
+                        • <strong>DOM Typo:</strong> Did you misspell an ID or Class name in your HTML or JS?<br>
+                        • <strong>Execution Order:</strong> Are you trying to modify <code>.${prop}</code> before the HTML element has actually been rendered?<br>
                         • <strong>Database Typo:</strong> Did you try to look up a ship or item ID that doesn't exist in your <code>const</code> databases?<br><br>
                         <strong style="color:#FFF;">Traceability Step:</strong> Go to <strong>${fileName}</strong> at <strong>Line ${lineNo}</strong>. Right before that line, type <code>console.log("Checking object:", the_object_variable_name)</code> to see what is failing to load!
+                    </p>
+                </div>`;
+            }
+            // 2. The "Missing Identity" (ReferenceError)
+            else if (errorType === "ReferenceError" && exactMessage.includes("is not defined")) {
+                const match = exactMessage.match(/(.+?) is not defined/);
+                const varName = match ? match[1] : 'A variable';
+                
+                diagnosticHTML = `
+                <div style="background: rgba(0, 150, 255, 0.1); border: 1px solid #0096FF; padding: 15px; margin-top: 15px; font-family: sans-serif;">
+                    <strong style="color: #0096FF; font-size: 16px;">🔍 AUTO-DIAGNOSTIC: The "Missing Identity" Error (ReferenceError)</strong><br>
+                    <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
+                        The code is trying to use <code>${varName}</code>, but the browser has no idea what that is!<br><br>
+                        <strong>Common Culprits:</strong><br>
+                        • <strong>Typo:</strong> Did you misspell the variable or function name? (Remember, JavaScript is case-sensitive!)<br>
+                        • <strong>Scope:</strong> Is the variable defined inside a different function, making it invisible here?<br>
+                        • <strong>Missing Script:</strong> Are you trying to use data from <code>items.js</code> or <code>ships.js</code> before those files have finished loading?<br>
+                        • <strong>Forgot to Declare:</strong> Did you forget to put <code>let</code> or <code>const</code> before it when you created it?
+                    </p>
+                </div>`;
+            }
+            // 3. The "Imposter Function" (TypeError)
+            else if (errorType === "TypeError" && exactMessage.includes("is not a function")) {
+                const match = exactMessage.match(/(.+?) is not a function/);
+                const funcName = match ? match[1] : 'Something';
+                
+                diagnosticHTML = `
+                <div style="background: rgba(255, 50, 255, 0.1); border: 1px solid #FF32FF; padding: 15px; margin-top: 15px; font-family: sans-serif;">
+                    <strong style="color: #FF32FF; font-size: 16px;">⚙️ AUTO-DIAGNOSTIC: The "Imposter Function" Error (TypeError)</strong><br>
+                    <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
+                        You are trying to call <code>${funcName}()</code>, but whatever <code>${funcName}</code> is, it's NOT a function.<br><br>
+                        <strong>Common Culprits:</strong><br>
+                        • <strong>Overwritten Variable:</strong> Did you accidentally name a string or a number the same thing as a function?<br>
+                        • <strong>Wrong Object:</strong> Are you calling a method on an array that only exists on strings? (e.g., trying to use <code>.toUpperCase()</code> on an array).<br>
+                        • <strong>Missing Method:</strong> If it's a built-in method, double-check the spelling.
+                    </p>
+                </div>`;
+            }
+            // 4. The "Infinite Loop" (RangeError)
+            else if (errorType === "RangeError" && exactMessage.includes("Maximum call stack size exceeded")) {
+                diagnosticHTML = `
+                <div style="background: rgba(255, 0, 0, 0.2); border: 1px solid #FF0000; padding: 15px; margin-top: 15px; font-family: sans-serif;">
+                    <strong style="color: #FF0000; font-size: 16px;">🌀 AUTO-DIAGNOSTIC: The "Infinite Loop" Error (RangeError)</strong><br>
+                    <p style="color: #DDD; font-size: 14px; line-height: 1.5; margin-bottom: 0;">
+                        Your code got trapped in an endless loop of calling functions until the browser ran out of memory to keep track of it all.<br><br>
+                        <strong>Common Culprits:</strong><br>
+                        • <strong>Accidental Recursion:</strong> Did Function A call Function B, which then called Function A again, forever?<br>
+                        • <strong>Missing Exit Condition:</strong> If you are using a recursive function on purpose, double-check your <code>if</code> statement that is supposed to stop it.
                     </p>
                 </div>`;
             }
