@@ -78,6 +78,13 @@ class SoundManager {
 
     playUIHover() { this.playTone(800, 'sine', 0.05, 0.1); }
     playUIClick() { this.playTone(1200, 'sine', 0.1, 0.2, 600); }
+
+    playGain() {
+        // A bright, quick double-chime
+        this.playTone(1000, 'sine', 0.1, 0.2);
+        setTimeout(() => this.playTone(1500, 'sine', 0.2, 0.2), 100);
+    }
+    
     playError() { this.playTone(150, 'sawtooth', 0.3, 0.3, 100); }
     
     playLaser() { 
