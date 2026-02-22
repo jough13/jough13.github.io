@@ -8,6 +8,33 @@ function removeEnemyAt(x, y) {
 
 let visitedSectors;
 
+// --- NPC CREW SYSTEM GLOBALS ---
+let playerCrew = []; 
+const MAX_CREW = 3;
+
+// The unique sidekicks available in the galaxy
+const CREW_DATABASE = {
+    "JAX_VANE": { id: "JAX_VANE", name: "Jax Vane", role: "Gunner", cost: 1500, icon: "🎯", desc: "Ex-pirate with a steady hand. Adds +15% to all ship weapon damage.", perk: "COMBAT_DAMAGE" },
+    "ELARA_VOSS": { id: "ELARA_VOSS", name: "Elara Voss", role: "Smuggler", cost: 2000, icon: "🪙", desc: "Smooth talker with underworld ties. Negotiates 10% better prices at all markets.", perk: "TRADE_BONUS" },
+    "KORG_MAH": { id: "KORG_MAH", name: "Korg'Mah", role: "Mechanic", cost: 1800, icon: "🔧", desc: "A rugged K'tharr engineer. Passively repairs hull damage while you travel.", perk: "PASSIVE_REPAIR" },
+    "T3_SPARK": { id: "T3_SPARK", name: "T3-Spark", role: "Science Bot", cost: 2500, icon: "🤖", desc: "Advanced automated logic core. Increases fuel scooping yields by 20%.", perk: "SCOOP_BONUS" }
+};
+
+// --- COMPONENT SYNERGY GLOBALS ---
+let activeSynergy = null;
+
+const SYNERGIES_DATABASE = {
+    "CONCORD": { id: "CONCORD", name: "Concord Authority", req: 3, desc: "+20 Max Shields", effect: () => { MAX_SHIELDS += 20; } },
+    "KTHARR": { id: "KTHARR", name: "K'tharr Blood-Iron", req: 3, desc: "+5 Weapon Damage", effect: () => { PLAYER_ATTACK_DAMAGE += 5; } },
+    "ECLIPSE": { id: "ECLIPSE", name: "Eclipse Shadow", req: 3, desc: "+15% Evasion", effect: () => { /* Passive combat hook */ } },
+    "FRONTIER": { id: "FRONTIER", name: "Scrapper's Luck", req: 3, desc: "+50 Max Fuel", effect: () => { MAX_FUEL += 50; } }
+};
+
+// Helper function to easily check if we have a specific crew member perk active
+function hasCrewPerk(perkName) {
+    return playerCrew.some(c => c.perk === perkName);
+}
+
 // A sector resets after this much "time" has passed since you last touched it.
 // 50.0 stardate units is roughly 5000 moves or several jumps.
 const RESOURCE_RESPAWN_TIME = 50.0;
@@ -687,45 +714,26 @@ function logMessage(newMessage, isImportant = false) {
     const eX = Math.floor(playerX + Math.cos(angle) * dist);
     const eY = Math.floor(playerY + Math.sin(angle) * dist);
 
-    // 2. Determine Faction & Ship Type
     const faction = getFactionAt(eX, eY);
     let potentialShips = [];
     let enemyType = 'PIRATE'; // Default display type
     let warningMsg = "";
 
     // -- FACTION LOGIC --
-    if (faction === "KTHARR") {
-        // K'tharr are territorial. Only attack if standing is Hostile (< -20)
-        if (playerFactionStanding["KTHARR"] < -20) { 
-            enemyType = "KTHARR_PATROL";
-            // Filter PIRATE_SHIP_CLASSES for keys starting with KTHARR
-            potentialShips = Object.keys(PIRATE_SHIP_CLASSES).filter(k => k.startsWith('KTHARR'));
-            warningMsg = "ALERT: K'tharr Hegemony Patrol intercepting! (Hostile Standing)";
-        } else {
-            // If neutral or friendly, they ignore you.
-            logMessage(`<span style='color:#FFFF00'>Sensors: K'tharr patrol detects you but holds fire. (Standing: ${playerFactionStanding["KTHARR"]})</span>`);
-            return; 
-        }
-    } else if (faction === "CONCORD") {
-        // Concord only attacks if you are a criminal (Standing < -50)
-        if (playerFactionStanding["CONCORD"] < -50) {
-            enemyType = "CONCORD_SECURITY";
-            potentialShips = Object.keys(PIRATE_SHIP_CLASSES).filter(k => k.startsWith('CONCORD'));
-            warningMsg = "ALERT: Concord Security attempting arrest!";
-        } else {
-             // Concord ignores law-abiding citizens
-             return;
-        }
+    if (faction === "KTHARR" && playerFactionStanding["KTHARR"] < -20) {
+        enemyType = "KTHARR_PATROL";
+        potentialShips = Object.keys(PIRATE_SHIP_CLASSES).filter(k => k.startsWith('KTHARR'));
+        warningMsg = "ALERT: K'tharr Hegemony Patrol intercepting! (Hostile Standing)";
+    } else if (faction === "CONCORD" && playerFactionStanding["CONCORD"] < -50) {
+        enemyType = "CONCORD_SECURITY";
+        potentialShips = Object.keys(PIRATE_SHIP_CLASSES).filter(k => k.startsWith('CONCORD'));
+        warningMsg = "ALERT: Concord Security attempting arrest!";
     }
 
     // -- FALLBACK / PIRATE LOGIC --
-    // If no specific faction spawned (or you are friendly with them), spawn a standard Pirate
-    // This runs if faction was VOID_VULTURES, INDEPENDENT, or if the code above didn't trigger
+    // If no specific faction spawned (or you are friendly with them), spawn a standard Pirate!
     if (potentialShips.length === 0) {
-        // If we fell through to here, it means we are in Pirate space, Independent space,
-        // or we just want a random pirate encounter.
         enemyType = "PIRATE";
-        // Filter for standard pirates (RAIDER, STRIKER, BRUISER)
         potentialShips = ["RAIDER", "STRIKER", "BRUISER"];
         warningMsg = "WARNING: Pirate vessel detected on sensors!";
     }
@@ -738,7 +746,7 @@ function logMessage(newMessage, isImportant = false) {
         y: eY,
         id: Date.now(),
         type: enemyType,
-        shipClassKey: shipKey // <--- New property to tell Combat what to spawn
+        shipClassKey: shipKey 
     });
     
     logMessage(`<span style='color:#FF5555'>${warningMsg}</span>`);
@@ -879,6 +887,28 @@ function applyPlayerShipStats() {
      MAX_SHIELDS = shield.stats.maxShields;
      MAX_FUEL = engine.stats.maxFuel;
 
+    // --- 4. NEW: APPLY SYNERGIES (SET BONUSES) ---
+     activeSynergy = null;
+     const mfgCounts = {};
+     const slots = ['weapon', 'shield', 'engine', 'scanner', 'utility'];
+     
+     slots.forEach(slot => {
+         const comp = COMPONENTS_DATABASE[playerShip.components[slot]];
+         // Count how many pieces of gear share a manufacturer
+         if (comp && comp.manufacturer) {
+             mfgCounts[comp.manufacturer] = (mfgCounts[comp.manufacturer] || 0) + 1;
+         }
+     });
+
+     for (const mfg in mfgCounts) {
+         // If you have 3 or more of the same brand, activate the synergy!
+         if (mfgCounts[mfg] >= 3 && SYNERGIES_DATABASE[mfg]) {
+             activeSynergy = SYNERGIES_DATABASE[mfg];
+             activeSynergy.effect(); // Apply the raw stat boosts
+             break; // Only 1 synergy max can be active (since there are only 5 slots)
+         }
+     }
+
      if (playerHull > MAX_PLAYER_HULL) playerHull = MAX_PLAYER_HULL;
      if (playerShields > MAX_SHIELDS) playerShields = MAX_SHIELDS;
      if (playerFuel > MAX_FUEL) playerFuel = MAX_FUEL;
@@ -893,9 +923,15 @@ function applyPlayerShipStats() {
     // 0. Update the System Menu Stats
     document.getElementById('menuLevel').textContent = playerLevel;
     document.getElementById('menuXP').textContent = Math.floor(playerXP) + " / " + xpToNextLevel;
-    document.getElementById('menuShip').textContent = SHIP_CLASSES[playerShip.shipClass].name;
     
-    // --- NEW: Display Faction Standing ---
+    // --- SYNERGY UI DISPLAY ---
+    let shipText = SHIP_CLASSES[playerShip.shipClass].name;
+    if (activeSynergy) {
+        shipText += `<br><span style="color:var(--gold-text); font-size:10px; letter-spacing:1px;">★ SET: ${activeSynergy.name.toUpperCase()} ★</span>`;
+    }
+    document.getElementById('menuShip').innerHTML = shipText;
+    
+    // --- Display Faction Standing ---
     const concordRep = playerFactionStanding["CONCORD"] || 0;
     const ktharrRep = playerFactionStanding["KTHARR"] || 0;
     const standingText = `Concord: ${concordRep} | K'tharr: ${ktharrRep}`;
@@ -923,19 +959,36 @@ function applyPlayerShipStats() {
      document.getElementById('creditsStat').textContent = formatNumber(playerCredits);
      document.getElementById('cargoStat').textContent = `${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}`;
      
-     // 5. Update Header Info
+    // 5. Update Header Info (DYNAMIC FACTION & THREAT)
+     const exactFaction = getFactionAt(playerX, playerY);
+     let factionName = "Independent";
+     
+     // --- FIX: Check Theme for Independent Text Color ---
+     const isLightMode = document.body.classList.contains('light-mode');
+     let fColor = isLightMode ? "#888899" : "#FFFFFF"; // Slate gray in Light Mode
+     
+     if (exactFaction === "KTHARR") { factionName = "Hegemony"; fColor = "#00FF44"; }
+     else if (exactFaction === "CONCORD") { factionName = "Concord"; fColor = "#00AAFF"; }
+     else if (exactFaction === "ECLIPSE") { factionName = "Cartel"; fColor = "#FF4444"; }
+
      const dist = Math.sqrt((playerX * playerX) + (playerY * playerY));
-     let threatColor = "#00E0E0"; // Safe Cyan
-     if (dist > 800) threatColor = "#FF4444"; 
-     else if (dist > 400) threatColor = "#FFAA00";
+     let threat = "SAFE";
+     let threatColor = "#00FF00"; 
+     
+     // --- FIX: EXPANDED UNIVERSE ZONES ---
+     if (dist > 2000) { threat = "DEADLY"; threatColor = "#FF0000"; } 
+     else if (dist > 1200) { threat = "HIGH"; threatColor = "#FF5555"; } 
+     else if (dist > 600) { threat = "MODERATE"; threatColor = "#FFFF00"; } 
+     // dist <= 600 is SAFE (Covers Concord 0-400 and a nice 200-tile cushion of Independent space)
 
      const sectorEl = document.getElementById('sectorNameStat');
-     sectorEl.innerHTML = currentSectorName;
-     sectorEl.style.color = threatColor;
      
-     // Display Y as inverted so "Up" (Negative array index) looks like Positive movement
-    // We use (-playerY) so moving "North" (decreasing index) shows as increasing number.
-    document.getElementById('sectorCoordsStat').textContent = `[${playerX}, ${-playerY}]`;
+     // Combines Base Name + Exact Tile Faction + Threat Level perfectly
+     sectorEl.innerHTML = `${currentSectorName} <span style="color:${fColor}; opacity:0.9;">[${factionName}]</span> <span style="color:${threatColor}; font-size: 0.8em; margin-left: 8px;">[${threat}]</span>`;
+     sectorEl.style.color = "#00E0E0"; 
+     
+     // Display Y as inverted so "Up" looks like Positive movement
+     document.getElementById('sectorCoordsStat').textContent = `[${playerX}, ${-playerY}]`;
 
      // 6. Log Handling
      messageAreaElement.innerHTML = messageLog.join('<br>');
@@ -1021,8 +1074,8 @@ function calculateItemPrice(itemOrId, isBuy, location) {
 
     price = price * locMult;
 
-    // 4. Apply Perks
-    if (typeof playerPerks !== 'undefined' && playerPerks.has('SILVER_TONGUE')) {
+// 4. Apply Perks & Crew Bonuses
+    if ((typeof playerPerks !== 'undefined' && playerPerks.has('SILVER_TONGUE')) || hasCrewPerk('TRADE_BONUS')) {
         price = isBuy ? (price * 0.9) : (price * 1.1);
     }
 
@@ -1142,11 +1195,15 @@ function changeGameState(newState) {
      playerNotorietyTitle = currentTitle;
  }
 
- function unlockLoreEntry(entryKey) {
+function unlockLoreEntry(entryKey, silent = false) {
      if (LORE_DATABASE[entryKey] && !discoveredLoreEntries.has(entryKey)) {
          discoveredLoreEntries.add(entryKey);
          LORE_DATABASE[entryKey].unlocked = true;
-         logMessage(`<span style='color:#A2D2FF;'>Codex Updated: ${LORE_DATABASE[entryKey].title}</span>`, true);
+         
+         // Only print to the log if we aren't using the silent override
+         if (!silent) {
+            logMessage(`<span style='color:#A2D2FF;'>Codex Updated: ${LORE_DATABASE[entryKey].title}</span>`, true);
+         }
      }
  }
 
@@ -1158,80 +1215,123 @@ function changeGameState(newState) {
  let selectedPlanetIndex = -1;
 
  function renderCombatView() {
-     if (!currentCombatContext) return;
+    if (!currentCombatContext) return;
 
-     const combatView = document.getElementById('combatView');
-     const weapon = COMPONENTS_DATABASE[playerShip.components.weapon];
-     const shipClass = SHIP_CLASSES[playerShip.shipClass];
-     const ability = shipClass.ability;
-     
-     // Ability State
-     const abilityReady = playerAbilityCooldown <= 0;
-     const abilityStyle = abilityReady ? "border-color:#FFD700; color:#FFD700;" : "opacity:0.5;";
+    const combatView = document.getElementById('combatView');
+    const weapon = COMPONENTS_DATABASE[playerShip.components.weapon];
+    const shipClass = SHIP_CLASSES[playerShip.shipClass];
+    const ability = shipClass.ability;
+    
+    // --- THEME CHECK ---
+    const isLightMode = document.body.classList.contains('light-mode');
+    
+    // Ability State
+    const abilityReady = playerAbilityCooldown <= 0;
+    const readyColor = isLightMode ? '#CC8800' : '#FFD700'; 
+    const abilityStyle = abilityReady 
+       ? `border-color: ${readyColor}; color: ${readyColor}; font-weight: bold; background: rgba(255, 200, 0, 0.1); box-shadow: 0 0 10px rgba(255, 200, 0, 0.2);` 
+       : `opacity: 0.5; border-color: var(--border-color); color: var(--text-color);`;
 
-     // Enemy Intent Data
-     const intent = currentCombatContext.nextMove || { icon: '?', label: 'Unknown' };
-     
-     // --- NEW: TACTICAL HEADER ---
-     // Shows what the enemy is doing next!
-     let tacticalDisplay = `
-        <div style="background:rgba(50,0,0,0.5); border:1px solid #FF5555; padding:10px; margin-bottom:15px; text-align:center; color:#FFAAAA; font-family:var(--main-font); font-size:12px;">
-            <div style="font-size:10px; color:#FF5555; letter-spacing:2px; margin-bottom:5px;">ENEMY INTENT</div>
-            <span style="font-size:20px;">${intent.icon}</span> 
-            <span style="font-weight:bold; color:#FFF;">${intent.label.toUpperCase()}</span>
-        </div>
-     `;
+    // Enemy Intent Data
+    const intent = currentCombatContext.nextMove || { icon: '?', label: 'Unknown' };
+    const intentBg = isLightMode ? 'rgba(255, 0, 0, 0.05)' : 'rgba(50, 0, 0, 0.4)';
+    
+    const playerShieldPercent = Math.max(0, (playerShields / MAX_SHIELDS) * 100);
+    const playerHullPercent = Math.max(0, (playerHull / MAX_PLAYER_HULL) * 100);
+    const pirateShieldPercent = Math.max(0, (currentCombatContext.pirateShields / currentCombatContext.pirateMaxShields) * 100);
+    const pirateHullPercent = Math.max(0, (currentCombatContext.pirateHull / currentCombatContext.pirateMaxHull) * 100);
 
-     const playerShieldPercent = (playerShields / MAX_SHIELDS) * 100;
-     const playerHullPercent = (playerHull / MAX_PLAYER_HULL) * 100;
-     const pirateShieldPercent = (currentCombatContext.pirateShields / currentCombatContext.pirateMaxShields) * 100;
-     const pirateHullPercent = (currentCombatContext.pirateHull / currentCombatContext.pirateMaxHull) * 100;
-
-     let html = `
-        <div class="combat-header">! HOSTILE ENGAGEMENT !</div>
+    // --- BUILD HTML WITH STRICT COLUMN WRAPPER ---
+    let html = `
+    <div style="width: 100%; display: flex; flex-direction: column; gap: 20px; padding: 10px 20px; box-sizing: border-box;">
         
-        ${tacticalDisplay}
+        <div style="text-align: center;">
+            <h2 style="margin: 0; color: var(--danger); animation: blink 1s infinite; font-size: 28px; font-family: var(--title-font); letter-spacing: 3px;">! HOSTILE ENGAGEMENT !</h2>
+        </div>
+        
+        <div style="display: flex; justify-content: center; align-items: stretch; gap: 20px; flex-wrap: wrap;">
+            
+            <div style="flex: 1; min-width: 220px; max-width: 300px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; text-align: center; display: flex; flex-direction: column; align-items: center;">
+                
+                <div style="width: 120px; height: 120px; background: rgba(0, 224, 224, 0.05); border: 1px dashed var(--accent-color); border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 40px; opacity: 0.6; filter: hue-rotate(180deg);">🚀</span>
+                </div>
 
-        <div class="combatants-wrapper">
-            <div class="combatant-panel">
-                <h3><img src="${playerPfp}" alt="Player" class="combatant-icon">${playerName}</h3>
-                <div class="ship-class-label">${shipClass.name}</div>
-                <div class="stat-bar-label"><span>Shields</span><span>${Math.floor(playerShields)}</span></div>
-                <div class="stat-bar"><div class="stat-bar-fill shield-bar-fill" style="width: ${playerShieldPercent}%;"></div></div>
-                <div class="stat-bar-label"><span>Hull</span><span>${Math.floor(playerHull)}</span></div>
-                <div class="stat-bar"><div class="stat-bar-fill hull-bar-fill" style="width: ${playerHullPercent}%;"></div></div>
-            </div>
-
-            <div class="combatant-panel">
-                <h3><img src="assets/pirate.png" alt="Enemy" class="combatant-icon">Hostile</h3>
-                <div class="ship-class-label">${currentCombatContext.ship.name}</div>
+                <h3 style="margin: 0 0 5px 0; color: var(--item-name-color); font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <img src="${playerPfp}" alt="Player" style="width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--accent-color);">
+                    ${playerName}
+                </h3>
+                <div style="font-size: 11px; color: var(--item-desc-color); margin-bottom: 15px; text-transform: uppercase;">${shipClass.name}</div>
                 
-                <div class="stat-bar-label"><span>Shields</span><span>${Math.floor(currentCombatContext.pirateShields)}</span></div>
-                <div class="stat-bar"><div class="stat-bar-fill shield-bar-fill" style="width: ${pirateShieldPercent}%;"></div></div>
-                
-                <div class="stat-bar-label"><span>Hull</span><span>${Math.floor(currentCombatContext.pirateHull)}</span></div>
-                <div class="stat-bar"><div class="stat-bar-fill pirate-hull-bar-fill" style="width: ${pirateHullPercent}%;"></div></div>
-                
-                <div style="display:flex; gap:5px; justify-content:center; margin-top:10px; opacity:0.7;">
-                    <div title="Engines" style="width:10px; height:10px; background:#00E0E0; border-radius:50%;"></div>
-                    <div title="Weapons" style="width:10px; height:10px; background:#FF5555; border-radius:50%;"></div>
-                    <div title="Sensors" style="width:10px; height:10px; background:#FFFF00; border-radius:50%;"></div>
+                <div style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; color: var(--text-color);"><span>Shields</span><span>${Math.floor(playerShields)}</span></div>
+                    <div style="height: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); margin-bottom: 10px; border-radius: 3px; overflow: hidden;">
+                        <div style="height: 100%; background: #00E0E0; width: ${playerShieldPercent}%; transition: width 0.3s;"></div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; color: var(--text-color);"><span>Hull</span><span>${Math.floor(playerHull)}</span></div>
+                    <div style="height: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 3px; overflow: hidden;">
+                        <div style="height: 100%; background: #FF5555; width: ${playerHullPercent}%; transition: width 0.3s;"></div>
+                    </div>
                 </div>
             </div>
+
+            <div style="width: 150px; background: ${intentBg}; border: 1px solid var(--danger); border-radius: 8px; padding: 15px; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(255,0,0,0.1);">
+                <div style="font-size: 11px; color: var(--danger); letter-spacing: 2px; margin-bottom: 15px; font-weight: bold; font-family: var(--title-font);">ENEMY INTENT</div>
+                <div style="font-size: 36px; margin-bottom: 15px;">${intent.icon}</div>
+                <div style="font-weight: bold; color: var(--text-color); font-size: 14px; letter-spacing: 1px;">${intent.label.toUpperCase()}</div>
+            </div>
+
+            <div style="flex: 1; min-width: 220px; max-width: 300px; background: var(--bg-color); border: 1px solid var(--danger); border-radius: 8px; padding: 15px; text-align: center; display: flex; flex-direction: column; align-items: center; box-shadow: inset 0 0 10px rgba(255,0,0,0.1);">
+                
+                <div style="width: 120px; height: 120px; background: rgba(255, 0, 0, 0.05); border: 1px dashed var(--danger); border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
+                    <span style="font-size: 40px; opacity: 0.6;">🛸</span>
+                </div>
+
+                <h3 style="margin: 0 0 5px 0; color: var(--danger); font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <img src="assets/pirate.png" alt="Enemy" style="width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--danger); filter: grayscale(100%) sepia(100%) hue-rotate(300deg) saturate(300%);">
+                    HOSTILE TARGET
+                </h3>
+                <div style="font-size: 11px; color: var(--danger); opacity: 0.8; margin-bottom: 15px; text-transform: uppercase;">${currentCombatContext.ship.name}</div>
+                
+                <div style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; color: var(--text-color);"><span>Shields</span><span>${Math.floor(currentCombatContext.pirateShields)}</span></div>
+                    <div style="height: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); margin-bottom: 10px; border-radius: 3px; overflow: hidden;">
+                        <div style="height: 100%; background: #00E0E0; width: ${pirateShieldPercent}%; transition: width 0.3s;"></div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; color: var(--text-color);"><span>Hull</span><span>${Math.floor(currentCombatContext.pirateHull)}</span></div>
+                    <div style="height: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 3px; overflow: hidden;">
+                        <div style="height: 100%; background: #FFAA00; width: ${pirateHullPercent}%; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
-        <div class="combat-actions">
-            <button class="combat-action-btn" onclick="handleCombatAction('fight')">Attack (${weapon.name})</button>
-            <button class="combat-action-btn" style="${abilityStyle}" onclick="handleCombatAction('ability')" ${!abilityReady ? 'disabled' : ''}>★ ${ability.name}</button>
-            <button class="combat-action-btn" onclick="handleCombatAction('charge')">Charge Weapon</button>
-            <button class="combat-action-btn" onclick="handleCombatAction('evade')">Evade (${EVASION_FUEL_COST} Fuel)</button>
-            <button class="combat-action-btn" onclick="handleCombatAction('run')">Run (${RUN_FUEL_COST} Fuel)</button>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; max-width: 800px; margin: 0 auto; width: 100%;">
+            <button class="action-button" onclick="handleCombatAction('fight')" style="padding: 16px; border-color: var(--danger); color: var(--danger); font-weight: bold;">
+                FIRE (${weapon.name})
+            </button>
+            <button class="action-button" onclick="handleCombatAction('charge')" style="padding: 16px; color: var(--item-name-color);">
+                CHARGE WEAPON
+            </button>
+            <button class="action-button" style="grid-column: 1 / -1; padding: 18px; font-size: 16px; letter-spacing: 2px; ${abilityStyle}" onclick="handleCombatAction('ability')" ${!abilityReady ? 'disabled' : ''}>
+                ★ ${ability.name.toUpperCase()} ★
+            </button>
+            <button class="action-button" onclick="handleCombatAction('evade')" style="padding: 14px; border-color: var(--accent-color); color: var(--accent-color);">
+                EVADE (${EVASION_FUEL_COST} Fuel)
+            </button>
+            <button class="action-button" onclick="handleCombatAction('run')" style="padding: 14px; border-color: #888; color: #888;">
+                ESCAPE (${RUN_FUEL_COST} Fuel)
+            </button>
         </div>
+    </div>
     `;
 
-     combatView.innerHTML = html;
-     renderUIStats();
- }
+    combatView.innerHTML = html;
+    renderUIStats();
+}
 
  /**
   * Procedurally generates a unique and persistent star system based on its coordinates.
@@ -1296,6 +1396,8 @@ function changeGameState(newState) {
     setRandomPlayerPortrait();
 
     playerPerks = new Set();
+
+    playerCrew = [];
     
     // Clear Caches
     systemCache = {}; 
@@ -1382,17 +1484,17 @@ function changeGameState(newState) {
     visitedSectors.add("0,0");
     currentGameDate = 2458.0;
 
-    // 4. Unlock Default Lore
-    unlockLoreEntry("FACTION_CONCORD");
-    unlockLoreEntry("XENO_PRECURSORS");
-    unlockLoreEntry("MYSTERY_WAYFINDER_QUEST");
-    unlockLoreEntry("REGION_SOL_SECTOR");
+    // 4. Unlock Default Lore (Silently)
+    unlockLoreEntry("FACTION_CONCORD", true);
+    unlockLoreEntry("XENO_PRECURSORS", true);
+    unlockLoreEntry("MYSTERY_WAYFINDER_QUEST", true);
+    unlockLoreEntry("REGION_SOL_SECTOR", true);
 
     Object.keys(COMPONENTS_DATABASE).forEach(key => {
-        if (COMPONENTS_DATABASE[key].loreKey) unlockLoreEntry(COMPONENTS_DATABASE[key].loreKey);
+        if (COMPONENTS_DATABASE[key].loreKey) unlockLoreEntry(COMPONENTS_DATABASE[key].loreKey, true);
     });
     Object.keys(SHIP_CLASSES).forEach(key => {
-        if (SHIP_CLASSES[key].loreKey) unlockLoreEntry(SHIP_CLASSES[key].loreKey);
+        if (SHIP_CLASSES[key].loreKey) unlockLoreEntry(SHIP_CLASSES[key].loreKey, true);
     });
 
     // 5. Reset Mystery / Quest State
@@ -1466,43 +1568,31 @@ function changeGameState(newState) {
 
  function generateSectorName(sectorX, sectorY) {
      if (sectorX === 0 && sectorY === 0) {
-         return "Sol Sector (Concord HQ)"; 
+         return "Sol Sector"; // Cleaned up so it doesn't double-print Concord
      }
 
      // Create a unique seed for this specific sector coordinate pair.
      const seed = WORLD_SEED + (sectorX * 10000) + sectorY;
-
-     // Calculate the distance from the origin (0,0) to determine name "tier".
      const distance = Math.sqrt(sectorX * sectorX + sectorY * sectorY);
 
      let prefixPool, rootPool;
 
-     if (distance < 10) { // Tier 1: Core Worlds
+     if (distance < 10) { 
          prefixPool = SECTOR_NAME_PARTS.TIER1_PREFIX;
          rootPool = SECTOR_NAME_PARTS.TIER1_ROOT;
-     } else if (distance < 30) { // Tier 2: The Frontier
+     } else if (distance < 30) { 
          prefixPool = SECTOR_NAME_PARTS.TIER2_PREFIX;
          rootPool = SECTOR_NAME_PARTS.TIER2_ROOT;
-     } else { // Tier 3: Deep Space
+     } else { 
          prefixPool = SECTOR_NAME_PARTS.TIER3_PREFIX;
          rootPool = SECTOR_NAME_PARTS.TIER3_ROOT;
      }
 
-     // Pick name parts
      const prefix = prefixPool[Math.floor(seededRandom(seed) * prefixPool.length)];
      const root = rootPool[Math.floor(seededRandom(seed + 1) * rootPool.length)];
      
-     let fullName = `${prefix} ${root}`;
-
-     // Append Faction Suffix
-     const faction = getFactionAt(sectorX * SECTOR_SIZE, sectorY * SECTOR_SIZE);
-     if (faction === "KTHARR") fullName += " [Hegemony]";
-     else if (faction === "CONCORD") fullName += " [Concord]";
-     else if (faction === "ECLIPSE") fullName += " [Cartel]";
-
-     return fullName;
+     return `${prefix} ${root}`;
  }
-
 
 const SECTOR_NAME_PARTS = {
      // TIER 1: Core Worlds (0-10 distance) - Orderly, Mythological, Scientific
@@ -1568,11 +1658,16 @@ function renderSystemMap() {
     ];
     const flavorText = descriptions[flavorSeed % descriptions.length];
 
+    // --- THEME CHECK FOR READABILITY ---
+    const isLightMode = document.body.classList.contains('light-mode');
+    const titleColor = isLightMode ? '#111122' : '#E0FFFF'; 
+    const titleShadow = isLightMode ? 'none' : '0 0 15px rgba(0, 224, 224, 0.5)';
+
     // --- 2. BUILD HTML ---
     // We use the new .system-header-panel class to constrain width
     let html = `
         <div class="system-header-panel">
-            <h1 class="sys-title-large">${currentSystemData.name}</h1>
+            <h1 class="sys-title-large" style="color: ${titleColor}; text-shadow: ${titleShadow};">${currentSystemData.name}</h1>
             <div class="sys-meta-row">
                 <span>Class: ${starType}</span>
                 <span>//</span>
@@ -1698,9 +1793,10 @@ function renderSystemMap() {
     // --- 3. Clear Canvas ---
     ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
     
-    // --- 4A. DRAW FACTION BACKGROUNDS (LAYER 0) ---
+// --- 4A. DRAW FACTION BACKGROUNDS (LAYER 0) ---
     // We draw this FIRST so it appears behind the stars.
     
+    // Pulse Effect Background Overlay
     // Pulse Effect Background Overlay
     if (sensorPulseActive) {
         const pulseIntensity = (1 - (sensorPulseRadius / MAX_PULSE_RADIUS)) * 0.2;
@@ -1709,8 +1805,8 @@ function renderSystemMap() {
             : `rgba(0, 40, 40, ${0.4 + pulseIntensity})`;
         ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
     } else {
-        // Base Background
-        ctx.fillStyle = isLightMode ? '#FFFFFF' : 'rgba(0, 0, 0, 0.4)';
+        // Base Background (Pure White / Black)
+        ctx.fillStyle = isLightMode ? '#FFFFFF' : '#000000';
         ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
     }
 
@@ -1754,11 +1850,6 @@ function renderSystemMap() {
                     ctx.fillStyle = isLightMode ? '#FF3300' : '#FFAA00';
                     ctx.fillRect((x * tileSize) + Math.random()*tileSize, (y * tileSize) + Math.random()*tileSize, 2, 2);
                 }
-            }
-            
-            if (faction && factionKey !== 'INDEPENDENT') {
-                ctx.fillStyle = faction.bg;
-                ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
             }
         }
     }
@@ -1874,16 +1965,6 @@ function renderSystemMap() {
     }
 
     // --- 6. Update UI Stats ---
-    const dist = Math.sqrt((playerX * playerX) + (playerY * playerY));
-    let threat = "SAFE";
-    let color = "#00FF00"; 
-    if (dist > 800) { threat = "DEADLY"; color = "#FF0000"; } 
-    else if (dist > 400) { threat = "HIGH"; color = "#FF5555"; } 
-    else if (dist > 150) { threat = "MODERATE"; color = "#FFFF00"; } 
-    
-    sectorNameStatElement.innerHTML = `${currentSectorName} <span style="color:${color}; font-size: 0.8em; margin-left: 8px;">[${threat}]</span>`;
-    sectorCoordsStatElement.textContent = `(${playerX},${-playerY})`;
-
     document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
 
     renderUIStats();
@@ -2221,17 +2302,19 @@ function movePlayer(dx, dy) {
              showToast(`DOCKED: ${location.name.toUpperCase()}`, "success");
          }
 
-         // 2. Open the Visual Station View immediately for Hubs
-         if (location.isMajorHub) {
+         // 2. Open Visual Station View for Hubs AND Outposts
+         // (Xerxes is already caught and returned above)
+         if (location.isMajorHub || location.char === OUTPOST_CHAR_VAL || location.type === 'location') {
              openStationView(); 
              return; 
          }
 
-         // ---CUSTOMS SCAN TRIGGER ---
          if (location.isMajorHub) {
              const cleared = performCustomsScan();
              if (!cleared) return; 
          }
+
+        // ---CUSTOMS SCAN TRIGGER ---
 
          if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) {
                 availableActions.push({
@@ -2831,6 +2914,9 @@ function movePlayer(dx, dy) {
          const richness = (typeof cT.richness === 'number') ? cT.richness : 0.3;
          fuelGained = MIN_SCOOP_YIELD + Math.floor(richness * MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER);
          fuelGained += Math.floor(Math.random() * SCOOP_RANDOM_BONUS);
+         if (hasCrewPerk('SCOOP_BONUS')) {
+             fuelGained = Math.floor(fuelGained * 1.20); 
+         }
          fuelGained = Math.max(1, fuelGained);
 
          updateWorldState(playerX, playerY, { scoopedThisVisit: true, lastInteraction: currentGameDate });
@@ -2838,6 +2924,9 @@ function movePlayer(dx, dy) {
 
      } else if (tileType === 'nebula') {
          fuelGained = Math.floor(MIN_SCOOP_YIELD / 2) + Math.floor(Math.random() * SCOOP_RANDOM_BONUS);
+         if (hasCrewPerk('SCOOP_BONUS')) {
+             fuelGained = Math.floor(fuelGained * 1.20); 
+         }
          fuelGained = Math.max(1, fuelGained);
          logMsg = "Siphoned trace hydrogen from the gas cloud.";
          timePassed = 0.02;
@@ -3013,76 +3102,216 @@ function handleDerelictEncounter(derelictObject) {
   * This function depends on the 'getWeightedRandomOutcome' helper function.
   * @param {object} anomalyObject - The tile data for the anomaly.
   */
- function handleAnomalyEncounter(anomalyObject) {
-     const outcomes = [{
-             weight: 4, // Common
-             text: "Your sensors record a massive amount of data before the anomaly dissipates. You gain 50 XP for the discovery!",
-             effect: () => {
-                 playerXP += 50;
-                 checkLevelUp();
-             }
-         },
-         {
-             weight: 4, // Common
-             text: "A psionic echo from the anomaly reverberates through your mind, revealing a forgotten piece of lore.",
-             effect: () => {
-                 unlockLoreEntry("XENO_ANOMALIES");
-             }
-         },
-         {
-             weight: 2, // Uncommon
-             text: "A burst of exotic particles revitalizes your ship! Shields fully restored!",
-             effect: () => {
-                 playerShields = MAX_SHIELDS;
-             }
-         },
-         {
-             weight: 2, // Uncommon
-             text: "The anomaly contains a pocket of stabilized exotic matter. You carefully collect 2 units of Void Crystals!",
-             effect: () => {
-                 if (currentCargoLoad + 2 <= PLAYER_CARGO_CAPACITY) {
-                     playerCargo.VOID_CRYSTALS = (playerCargo.VOID_CRYSTALS || 0) + 2;
-                     updateCurrentCargoLoad();
-                 } else {
-                     logMessage("You found Void Crystals but had no cargo space to collect them!", true);
-                 }
-             }
-         },
-         {
-             weight: 2, // Uncommon
-             text: "The anomaly collapses violently! Your ship is battered by gravimetric shear. Hull takes 20 damage!",
-             effect: () => {
-                 playerHull -= 20;
-                 if (playerHull < 1) playerHull = 1;
-             }
-         },
-         {
-             weight: 2, // Uncommon
-             text: "A strange energy feedback loop drains your fuel reserves! You lose 50 fuel.",
-             effect: () => {
-                 playerFuel -= 50;
-                 if (playerFuel < 0) playerFuel = 0;
-             }
-         },
-         {
-             weight: 1, // Rare
-             text: "You discover a small, stable wormhole within the anomaly containing a drifting cargo pod. You salvage 1000 Credits!",
-             effect: () => {
-                 playerCredits += 1000;
-             }
-         }
-     ];
 
-     // Select a weighted random outcome
-     const chosenOutcome = getWeightedRandomOutcome(outcomes);
+ // --- ANOMALY SCANNING MINIGAME ---
+let anomalyContext = null;
 
-     // Apply the effect and update the message
-     chosenOutcome.effect();
-     logMessage(`Investigating the ${anomalyObject.subtype || 'anomaly'}...\n${chosenOutcome.text}`);
+function handleAnomalyEncounter(anomalyObject) {
+    // 1. Initialize persistent puzzle data on the tile if it's new
+    if (!anomalyObject.anomalyTargets) {
+        anomalyObject.anomalyTargets = [
+            Math.floor(Math.random() * 100),
+            Math.floor(Math.random() * 100),
+            Math.floor(Math.random() * 100)
+        ];
+        anomalyObject.stability = 4; // You get 4 test attempts before it explodes!
+    }
 
-     // Mark the anomaly as studied so it can't be used again
-     updateWorldState(playerX, playerY, { studied: true });
- }
+    // 2. Set up the local session context
+    anomalyContext = {
+        tile: anomalyObject,
+        currentVals: [50, 50, 50], // Sliders start at 50
+        lastResonance: 0
+    };
+
+    openGenericModal("ANOMALY CONTAINMENT FIELD");
+    renderAnomalyUI();
+}
+
+function renderAnomalyUI() {
+    if (!anomalyContext) return;
+    
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    const tile = anomalyContext.tile;
+
+    // 1. Render Instructions & Stability Bar
+    listEl.innerHTML = `
+        <div style="padding:15px;">
+            <h3 style="color:var(--danger); animation: blink 2s infinite; letter-spacing: 1px;">! UNSTABLE FIELD !</h3>
+            <p style="font-size:13px; color:#aaa; line-height: 1.5;">Align the containment frequencies to match the anomaly's signature before the field collapses.</p>
+            
+            <div style="margin-top:25px;">
+                <div style="color:var(--item-name-color); margin-bottom:8px; font-size:12px; font-weight:bold; letter-spacing:1px;">FIELD STABILITY</div>
+                <div style="display:flex; gap:5px;">
+                    ${Array(4).fill(0).map((_,i) => `<div style="height:12px; flex:1; border-radius:2px; background:${i < tile.stability ? 'var(--accent-color)' : '#333'}; box-shadow:${i < tile.stability ? '0 0 8px rgba(0,224,224,0.4)' : 'none'};"></div>`).join('')}
+                </div>
+            </div>
+            
+            <div style="margin-top:30px; color:#888; font-size:12px; line-height: 1.6; background: rgba(0,0,0,0.2); padding: 10px; border-left: 2px solid var(--border-color);">
+                > Adjust the tuning sliders.<br>
+                > Click 'TEST ALIGNMENT' to check resonance.<br>
+                > Reach <span style="color:var(--success)">>85% Resonance</span> to safely extract.<br>
+                > If stability hits zero, the anomaly detonates.
+            </div>
+        </div>
+    `;
+
+    // 2. Render Tuning Sliders & Resonance Bar
+    detailEl.innerHTML = `
+        <div style="padding: 15px;">
+            <div style="text-align:center; font-size:40px; margin-bottom:15px; animation: spin 10s linear infinite; display: inline-block; width: 100%;">🌀</div>
+            
+            <div style="margin-bottom: 30px; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px; font-weight:bold;">
+                    <span style="color:var(--text-color)">Current Resonance:</span>
+                    <span style="color:${anomalyContext.lastResonance >= 85 ? 'var(--success)' : 'var(--warning)'}">${anomalyContext.lastResonance.toFixed(1)}%</span>
+                </div>
+                <div style="width:100%; height:18px; background:#111; border:1px solid #444; border-radius:4px; position:relative; overflow:hidden;">
+                    <div style="height:100%; width:${anomalyContext.lastResonance}%; background:${anomalyContext.lastResonance >= 85 ? 'var(--success)' : 'var(--warning)'}; transition: width 0.4s ease-out;"></div>
+                    <div style="position:absolute; top:0; left:85%; width:2px; height:100%; background:var(--danger); box-shadow: 0 0 5px red;"></div>
+                </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:20px;">
+                ${['PHASE VARIANCE', 'AMPLITUDE MODULATION', 'HARMONIC FREQUENCY'].map((label, i) => `
+                    <div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
+                            <label style="font-size:11px; color:var(--accent-color); font-weight:bold; letter-spacing:1px;">${label}</label>
+                            <span id="anomVal${i}" style="font-size:11px; color:var(--text-color);">${anomalyContext.currentVals[i]}</span>
+                        </div>
+                        <input type="range" id="anomSlider${i}" min="0" max="100" value="${anomalyContext.currentVals[i]}" 
+                            style="width:100%; accent-color: var(--accent-color); cursor: pointer;"
+                            oninput="document.getElementById('anomVal${i}').textContent = this.value; anomalyContext.currentVals[${i}] = this.value;">
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    const canExtract = anomalyContext.lastResonance >= 85;
+
+    // 3. Render Actions
+    actionsEl.innerHTML = `
+        <button class="action-button" onclick="testAnomalyAlignment()" style="border-color:var(--warning); color:var(--warning);" ${tile.stability <= 0 ? 'disabled' : ''}>TEST ALIGNMENT</button>
+        <button class="action-button" onclick="extractAnomalyData()" style="border-color:var(--success); color:var(--success); box-shadow: ${canExtract ? '0 0 15px rgba(0,255,0,0.2)' : 'none'};" ${!canExtract ? 'disabled' : ''}>EXTRACT DATA</button>
+        <button class="action-button danger-btn" onclick="abortAnomaly()">ABORT</button>
+    `;
+}
+
+function testAnomalyAlignment() {
+    if (!anomalyContext || anomalyContext.tile.stability <= 0) return;
+
+    const tile = anomalyContext.tile;
+    const v0 = parseInt(anomalyContext.currentVals[0]);
+    const v1 = parseInt(anomalyContext.currentVals[1]);
+    const v2 = parseInt(anomalyContext.currentVals[2]);
+
+    // Calculate distance from the hidden targets
+    const diff0 = Math.abs(tile.anomalyTargets[0] - v0);
+    const diff1 = Math.abs(tile.anomalyTargets[1] - v1);
+    const diff2 = Math.abs(tile.anomalyTargets[2] - v2);
+    
+    const totalDiff = diff0 + diff1 + diff2;
+    
+    // Convert difference to a percentage (Max realistic diff is ~150)
+    let resonance = 100 - (totalDiff / 1.5);
+    if (resonance < 0) resonance = 0;
+
+    anomalyContext.lastResonance = resonance;
+    tile.stability--;
+    
+    // Save state persistently so they can't exploit by closing and reopening!
+    updateWorldState(playerX, playerY, { 
+        anomalyTargets: tile.anomalyTargets, 
+        stability: tile.stability 
+    });
+
+    if (typeof soundManager !== 'undefined') soundManager.playUIHover(); 
+
+    // Did they run out of time while still failing?
+    if (tile.stability <= 0 && resonance < 85) {
+        anomalyDetonates();
+    } else {
+        renderAnomalyUI(); // Re-render to show updated meter and drained stability bar
+    }
+}
+
+function extractAnomalyData() {
+    if (!anomalyContext || anomalyContext.lastResonance < 85) return;
+    
+    const resonance = anomalyContext.lastResonance;
+    closeGenericModal();
+    
+    // Base rewards
+    let xp = 75;
+    let items = [];
+    let logMsg = `<span style="color:var(--success)">Anomaly Containment Successful! (${resonance.toFixed(1)}% Resonance)</span>`;
+    
+    // Higher resonance = exponentially better rewards
+    if (resonance >= 98) {
+        xp += 150;
+        items.push({id: 'VOID_CRYSTALS', qty: 3});
+        items.push({id: 'PRECURSOR_CIPHER', qty: 1}); // Rare drop!
+        logMsg += `<br><span style="color:var(--gold-text)">PERFECT ALIGNMENT: Precursor artifacts extracted!</span>`;
+    } else if (resonance >= 90) {
+        xp += 50;
+        items.push({id: 'VOID_CRYSTALS', qty: 1});
+    }
+    
+    playerXP += xp;
+    logMsg += `<br>Gained ${xp} XP.`;
+    
+    // Award items
+    items.forEach(item => {
+        if (currentCargoLoad + item.qty <= PLAYER_CARGO_CAPACITY) {
+            playerCargo[item.id] = (playerCargo[item.id] || 0) + item.qty;
+            logMsg += `<br>Extracted: ${item.qty}x ${COMMODITIES[item.id].name}`;
+        } else {
+            logMsg += `<br>Extracted ${COMMODITIES[item.id].name}, but cargo hold is full!`;
+        }
+    });
+    
+    updateCurrentCargoLoad();
+    updateWorldState(playerX, playerY, { studied: true }); // Mark as completed
+    
+    logMessage(logMsg);
+    if (typeof showToast === 'function') showToast("ANOMALY HARVESTED", "success");
+    if (typeof soundManager !== 'undefined') soundManager.playGain();
+    
+    checkLevelUp();
+    renderUIStats();
+    anomalyContext = null;
+}
+
+function anomalyDetonates() {
+    closeGenericModal();
+    
+    const dmg = 25 + Math.floor(Math.random() * 25);
+    playerHull -= dmg;
+    
+    updateWorldState(playerX, playerY, { studied: true }); // It blew up, so it's gone
+    
+    logMessage(`<span style="color:var(--danger)">CONTAINMENT FAILURE! Anomaly collapses violently!</span><br>Hull takes ${dmg} damage!`);
+    if (typeof showToast === 'function') showToast("ANOMALY DETONATION", "error");
+    
+    if (typeof soundManager !== 'undefined') soundManager.playExplosion();
+    if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+    
+    if (playerHull <= 0) {
+        triggerGameOver("Vaporized by Anomaly Collapse");
+    }
+    
+    renderUIStats();
+    anomalyContext = null;
+}
+
+function abortAnomaly() {
+    closeGenericModal();
+    logMessage("Anomaly scan aborted. The field remains unstable.");
+    anomalyContext = null;
+}
 
  function calculatePrice(basePrice, priceMod, itemID, locationName, mode) {
      // 1. Base Calculation
@@ -3359,6 +3588,12 @@ function advanceGameTime(timeAmount) {
             }
         }
     }
+    // --- CREW BIO-REGEN ---
+    if (hasCrewPerk('PASSIVE_REPAIR') && playerHull < MAX_PLAYER_HULL) {
+        // Heals roughly 1 hull per 10 tiles moved (fast enough to be useful, not overpowered)
+        const healAmount = timeAmount * 10.0; 
+        playerHull = Math.min(MAX_PLAYER_HULL, playerHull + healAmount);
+    }
 }
 
 function checkLevelUp() {
@@ -3470,14 +3705,13 @@ function getHazardType(worldX, worldY) {
 
 function getFactionAt(worldX, worldY) {
     // 1. Scale coordinates for "Macro Geography" (1 unit = 50 tiles)
-    // This allows borders to be smooth and wavy, not blocky squares!
     const macroX = worldX / 50; 
     const macroY = worldY / 50;
 
     const dist = Math.sqrt(macroX*macroX + macroY*macroY);
     
-    // 2. Concord Core (15 macro units = 750 tiles safe zone)
-    const safeRadius = (typeof FACTIONS !== 'undefined' && FACTIONS.CONCORD) ? FACTIONS.CONCORD.homeRadius : 15;
+    // 2. Concord Core (8 macro units = 400 tiles safe zone)
+    const safeRadius = (typeof FACTIONS !== 'undefined' && FACTIONS.CONCORD && FACTIONS.CONCORD.homeRadius) ? FACTIONS.CONCORD.homeRadius : 8;
     if (dist <= safeRadius) return 'CONCORD'; 
 
     // 3. Wavy Borders
@@ -3549,7 +3783,7 @@ function startCombat(specificEnemyEntity = null) {
 
      // 2. Scaling Logic
      const distanceFromCenter = Math.sqrt((playerX * playerX) + (playerY * playerY));
-     const difficultyMultiplier = 1 + (distanceFromCenter / 200);
+     const difficultyMultiplier = 1 + (distanceFromCenter / 400);
 
      const baseHull = pirateShip.baseHull + Math.floor(Math.random() * 10) - 5;
      const baseShields = pirateShip.baseShields + Math.floor(Math.random() * 10) - 5;
@@ -3738,8 +3972,8 @@ function handleCombatAction(action) {
 
         let damageDealt = weaponStats.damage;
 
-        // Perk: Weapon Overclock
-        if (playerPerks.has('WEAPON_OVERCLOCK')) {
+        // Perk: Weapon Overclock OR Crew Bonus
+        if (playerPerks.has('WEAPON_OVERCLOCK') || hasCrewPerk('COMBAT_DAMAGE')) {
             damageDealt = Math.floor(damageDealt * 1.15); 
         }
 
@@ -3948,6 +4182,9 @@ function handleCombatAction(action) {
             // Player Evasion Calculation
             let hitChance = PIRATE_HIT_CHANCE;
             if (playerIsEvading) hitChance -= EVASION_DODGE_BONUS;
+
+            // --- ECLIPSE SYNERGY HOOK ---
+            if (activeSynergy && activeSynergy.id === 'ECLIPSE') hitChance -= 0.15;
 
             if (Math.random() < hitChance) {
                 soundManager.playExplosion();
@@ -4331,13 +4568,14 @@ function showOutfittingOptions(slot) {
             itemDiv.style.borderBottom = '1px solid var(--border-color)';
             itemDiv.style.cursor = 'pointer';
             
-            // --- FIX: Use CSS Variables instead of hardcoded #FFF and #FFD700 ---
+            const mfgBadge = comp.manufacturer ? `<span style="background:rgba(255,255,255,0.1); color:#CCC; padding:2px 4px; border-radius:2px; font-size:9px; margin-left:6px; vertical-align:middle;">${comp.manufacturer}</span>` : '';
+
             itemDiv.innerHTML = `
-                <div style="display:flex; justify-content:space-between">
-                    <span style="color:var(--item-name-color); font-weight:bold;">${comp.name}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div><span style="color:var(--item-name-color); font-weight:bold;">${comp.name}</span> ${mfgBadge}</div>
                     <span style="color:var(--gold-text)">${formatNumber(comp.cost)}c</span>
                 </div>
-                <div style="font-size:11px; color:var(--item-desc-color)">${comp.description}</div>
+                <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">${comp.description}</div>
             `;
             
             itemDiv.onclick = () => {
@@ -6024,7 +6262,8 @@ function performSave(storageKey) {
         
         // Stats
         playerX, playerY, playerFuel, playerCredits, playerShields, playerHull,
-        playerNotoriety, playerLevel, playerXP, playerName, playerPfp,
+        playerNotoriety, playerLevel, playerXP, playerName, playerPfp, playerCrew,
+
 
         playerPerks: Array.from(playerPerks), // Convert Set to Array
         
@@ -6155,6 +6394,7 @@ function loadGameData(jsonString) {
         playerNotoriety = savedState.playerNotoriety;
         playerLevel = savedState.playerLevel;
         playerXP = savedState.playerXP;
+        playerCrew = savedState.playerCrew || [];
 
         playerPerks = new Set(savedState.playerPerks || []); // Convert Array back to Set
         
@@ -6459,111 +6699,223 @@ function hideTitleScreen() {
         }
     });
 
-    // --- NEW VISUAL STATION SYSTEM ---
-
-function drawProceduralStation(canvasId, seed) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
-    
-    // Clear
-    ctx.clearRect(0, 0, w, h);
-    
-    // Generate Randoms
-    const rng = (s) => {
-        let x = Math.sin(s++) * 10000;
-        return x - Math.floor(x);
-    };
-    
-    let currentSeed = seed;
-    const rand = () => rng(currentSeed++);
-    
-    // Config
-    const coreColor = rand() > 0.5 ? '#88CCFF' : '#AAAAAA';
-    
-    ctx.save();
-    ctx.translate(w/2, h/2);
-    
-    // 1. Draw Solar Panels / Wings
-    const wings = Math.floor(rand() * 4) + 2; // 2 to 5 wings
-    const wingLen = 40 + rand() * 40;
-    
-    ctx.fillStyle = '#224466'; // Solar Blue
-    for(let i=0; i<wings; i++) {
-        ctx.rotate((Math.PI * 2) / wings);
-        ctx.fillRect(20, -10, wingLen, 20);
-        
-        // Panel Detail
-        ctx.fillStyle = '#4488AA';
-        ctx.fillRect(25, -5, wingLen-10, 10);
-        ctx.fillStyle = '#224466';
-    }
-    
-    // 2. Draw Central Module
-    const shapes = ['circle', 'rect', 'diamond'];
-    const shape = shapes[Math.floor(rand() * shapes.length)];
-    
-    ctx.fillStyle = coreColor;
-    
-    if (shape === 'circle') {
-        ctx.beginPath();
-        ctx.arc(0, 0, 30, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-    } else if (shape === 'rect') {
-        ctx.fillRect(-25, -40, 50, 80);
-        ctx.strokeRect(-25, -40, 50, 80);
-    } else {
-        ctx.beginPath();
-        ctx.moveTo(0, -40);
-        ctx.lineTo(40, 0);
-        ctx.lineTo(0, 40);
-        ctx.lineTo(-40, 0);
-        ctx.fill();
-        ctx.stroke();
-    }
-    
-    // 3. Draw Lights/Windows
-    ctx.fillStyle = '#FFD700'; // Lights
-    for(let i=0; i<5; i++) {
-        const lx = (rand() * 40) - 20;
-        const ly = (rand() * 40) - 20;
-        ctx.fillRect(lx, ly, 3, 3);
-    }
-    
-    ctx.restore();
-}
-
 function openStationView() {
     const location = chunkManager.getTile(playerX, playerY);
-    if (!location || !location.isMajorHub) return;
+    if (!location) return;
 
-    // 1. Setup UI
+    // 1. Setup UI Text
     document.getElementById('stationOverlay').style.display = 'flex';
     document.getElementById('stationNameTitle').textContent = location.name.toUpperCase();
-    document.getElementById('stationFactionBadge').textContent = location.faction || "INDEPENDENT";
-    document.getElementById('stationDescText').textContent = location.scanFlavor;
     
-    // 2. Generate Art based on Location Name (so it's consistent)
-    let seed = 0;
-    for(let i=0; i<location.name.length; i++) seed += location.name.charCodeAt(i);
-    drawProceduralStation('stationCanvas', seed);
+    // Determine Faction dynamically if not explicitly set on the location object
+    const faction = location.faction || getFactionAt(playerX, playerY);
+    document.getElementById('stationFactionBadge').textContent = faction;
     
-    // 3. Update Repair Cost Text
-    const cost = Math.ceil((MAX_PLAYER_HULL - playerHull) * HULL_REPAIR_COST_PER_POINT);
-    document.getElementById('repairCostLabel').textContent = cost > 0 ? `${cost} Credits` : "Hull Integrity 100%";
+    document.getElementById('stationDescText').textContent = location.scanFlavor || "A frontier outpost on the edge of civilized space.";
+    
+    // 2. Setup Station Image (Replaces Procedural Canvas)
+    const canvas = document.getElementById('stationCanvas');
+    if (canvas) {
+        // Find or create the static image element
+        let img = document.getElementById('stationStaticImg');
+        if (!img) {
+            img = document.createElement('img');
+            img.id = 'stationStaticImg';
+            // Apply consistent framing styles
+            img.style.width = '100%';
+            img.style.maxWidth = '240px';
+            img.style.height = 'auto';
+            img.style.border = '1px solid var(--border-color)';
+            img.style.borderRadius = '8px';
+            img.style.display = 'block';
+            img.style.margin = '0 auto 15px auto';
+            img.style.boxShadow = '0 0 20px rgba(0,224,224,0.2)';
+            img.style.background = 'rgba(0,0,0,0.3)';
+            // Insert it right before the canvas
+            canvas.parentNode.insertBefore(img, canvas);
+        }
+        
+        // Determine which image asset to load based on location type
+        if (location.isMajorHub) {
+            img.src = 'assets/starbase_alpha.png'; 
+            img.alt = 'Major Starbase';
+        } else {
+            // Default for outposts ('H') or generic locations
+            img.src = 'assets/outpost.png'; 
+            img.alt = 'Frontier Outpost';
+        }
+        
+        // Ensure canvas is hidden and image is shown
+        canvas.style.display = 'none'; 
+        img.style.display = 'block';
+    }
+    
+    // 3. Render Dynamic Menu
+    renderStationMenu(location, faction);
     
     // 4. Borders
     updateSideBorderVisibility();
 }
 
+// --- STATION MAINTENANCE ACTIONS ---
+function refuelShip() {
+    const missingFuel = Math.floor(MAX_FUEL - playerFuel);
+    
+    if (missingFuel <= 0) {
+        showToast("Fuel tanks are already at maximum capacity.", "info");
+        return;
+    }
+
+    const cost = missingFuel; // 1 credit per unit of fuel
+
+    if (playerCredits >= cost) {
+        // Full Refuel
+        playerCredits -= cost;
+        playerFuel = MAX_FUEL;
+        logMessage(`Ship refueled to maximum capacity for ${cost}c.`);
+        if (typeof showToast === 'function') showToast(`REFUELED: Paid ${cost}c`, "success");
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+    } else if (playerCredits > 0) {
+        // Partial Refuel (If the player is poor!)
+        const affordableFuel = playerCredits;
+        playerCredits -= affordableFuel;
+        playerFuel += affordableFuel;
+        logMessage(`Partially refueled ${affordableFuel} units for ${affordableFuel}c.`);
+        if (typeof showToast === 'function') showToast(`PARTIAL REFUEL: Paid ${affordableFuel}c`, "success");
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+    } else {
+        // Broke
+        if (typeof showToast === 'function') showToast("INSUFFICIENT FUNDS", "error");
+        if (typeof soundManager !== 'undefined') soundManager.playError();
+        return;
+    }
+
+    renderUIStats();
+    
+    // Refresh the visual menu so the button instantly changes to "Tanks Full"
+    const location = chunkManager.getTile(playerX, playerY);
+    const faction = location.faction || getFactionAt(playerX, playerY);
+    renderStationMenu(location, faction);
+}
+
+function renderStationMenu(location, faction) {
+    const menuGrid = document.getElementById('dynamicStationMenu');
+    let html = '';
+
+    // Helper for generating buttons
+    const createBtn = (icon, title, sub, action, extraStyle="") => `
+        <button class="station-action-btn" style="${extraStyle}" onclick="${action}">
+            <div class="btn-icon">${icon}</div>
+            <div class="btn-label">${title}<br><span class="btn-sub">${sub}</span></div>
+        </button>
+    `;
+
+    // --- STANDARD SERVICES (Available everywhere) ---
+    html += createBtn('🛒', 'Marketplace', 'Buy Commodities', "openTradeModal('buy')");
+    html += createBtn('💰', 'Sell Cargo', 'Offload Goods', "openTradeModal('sell')");
+    html += createBtn('📜', 'Mission Board', 'Contracts & Bounties', "displayMissionBoard()");
+    html += createBtn('⚙️', 'Outfitting', 'Upgrades & Parts', "displayOutfittingScreen()");
+    html += createBtn('🍸', 'Cantina', 'Rumors & Rest (10c)', "visitCantina()");
+
+    // --- MAJOR HUB ONLY SERVICES ---
+    if (location.isMajorHub) {
+        html += createBtn('🚀', 'Shipyard', 'Buy New Hulls', "displayShipyard()");
+        html += createBtn('👁️', 'Cryptarch', 'Decrypt Engrams', "visitCryptarch()");
+    }
+
+    // --- FACTION SPECIFIC SERVICES ---
+    if (faction === 'CONCORD') {
+        html += createBtn('⚖️', 'Security Office', 'Clear Bounties', "factionAction('CONCORD')", "border-left: 3px solid #00E0E0;");
+    } else if (faction === 'KTHARR') {
+        html += createBtn('⚔️', 'Proving Grounds', 'Arena Betting', "factionAction('KTHARR')", "border-left: 3px solid #FF5555;");
+    } else if (faction === 'ECLIPSE') {
+        html += createBtn('🎲', 'Shadow Broker', 'Fence Contraband', "factionAction('ECLIPSE')", "border-left: 3px solid #9933FF;");
+    }
+
+    // --- MAINTENANCE & LEAVE ---
+    // Fuel Calculation (1 Credit per Fuel Unit)
+    const missingFuel = Math.floor(MAX_FUEL - playerFuel);
+    const refuelLabel = missingFuel > 0 ? `${missingFuel}c` : "Tanks Full";
+    html += createBtn('⛽', 'Refuel', refuelLabel, "refuelShip()", "background: rgba(0, 224, 224, 0.05);");
+
+    // Repair Calculation
+    const repairCost = Math.ceil((MAX_PLAYER_HULL - playerHull) * HULL_REPAIR_COST_PER_POINT);
+    const repairLabel = repairCost > 0 ? `${repairCost}c` : "Hull 100%";
+    html += createBtn('🔧', 'Repair Hull', repairLabel, "repairShip()", "background: rgba(255, 170, 0, 0.05);");
+    
+    html += createBtn('👋', 'Undock', 'Return to Space', "closeStationView()", "background: rgba(255, 85, 85, 0.05);");
+
+    menuGrid.innerHTML = html;
+}
+
+// --- FACTION MECHANICS IMPLEMENTATION ---
+function factionAction(faction) {
+    if (faction === 'CONCORD') {
+        // Clear Notoriety
+        if (playerNotoriety <= 0) {
+            showToast("Record Clean. Have a safe flight.", "info");
+            return;
+        }
+        const fine = playerNotoriety * 500;
+        if (playerCredits >= fine) {
+            playerCredits -= fine;
+            playerNotoriety = 0;
+            updateNotorietyTitle();
+            soundManager.playUIHover();
+            showToast(`CLEARED: Paid ${fine}c fine.`, "success");
+            renderUIStats();
+        } else {
+            showToast(`INSUFFICIENT FUNDS (${fine}c required)`, "error");
+        }
+    } 
+    else if (faction === 'KTHARR') {
+        // Arena Betting
+        const bet = 200;
+        if (playerCredits < bet) {
+            showToast("Not enough credits to wager.", "error");
+            return;
+        }
+        playerCredits -= bet;
+        if (Math.random() > 0.5) {
+            playerCredits += (bet * 2);
+            soundManager.playAbilityActivate();
+            showToast("VICTORY! Your gladiator won (+400c)", "success");
+        } else {
+            soundManager.playError();
+            showToast("DEFEAT. Your gladiator was crushed.", "error");
+        }
+        renderUIStats();
+    }
+    else if (faction === 'ECLIPSE') {
+        // Shadow Broker - Instantly sells all illegal goods for 3x value
+        let soldSomething = false;
+        let totalProfit = 0;
+        
+        for (const itemID in playerCargo) {
+            if (playerCargo[itemID] > 0 && COMMODITIES[itemID].illegal) {
+                const qty = playerCargo[itemID];
+                const value = (COMMODITIES[itemID].basePrice * 3) * qty; // 3x Premium
+                
+                playerCredits += value;
+                totalProfit += value;
+                playerCargo[itemID] = 0;
+                soldSomething = true;
+            }
+        }
+        
+        if (soldSomething) {
+            updateCurrentCargoLoad();
+            soundManager.playGain();
+            showToast(`CONTRABAND FENCED (+${totalProfit}c)`, "success");
+            renderUIStats();
+        } else {
+            showToast("No contraband in cargo hold.", "info");
+        }
+    }
+}
+
 function closeStationView() {
     document.getElementById('stationOverlay').style.display = 'none';
-
     updateSideBorderVisibility();
 }
 
@@ -6571,9 +6923,17 @@ function closeStationView() {
 function openGenericModal(title) {
     const modal = document.getElementById('genericModalOverlay');
     document.getElementById('genericModalTitle').textContent = title;
-    document.getElementById('genericModalList').innerHTML = '';
-    document.getElementById('genericDetailContent').innerHTML = '<p style="color:#666">Select an item...</p>';
-    document.getElementById('genericModalActions').innerHTML = '';
+    
+    // --- SELF-REPAIRING LAYOUT ---
+    // We reconstruct the base layout every time so it never crashes, 
+    // even if the Trade system previously overwrote it!
+    document.getElementById('genericModalContent').innerHTML = `
+        <div id="genericModalList" class="trade-list-container"></div>
+        <div id="genericModalDetails" class="trade-panel-right">
+            <div id="genericDetailContent"><p style="color:#666; padding:10px;">Establishing connection...</p></div>
+            <div class="trade-btn-group" id="genericModalActions"></div>
+        </div>
+    `;
     
     // Update the Info Bar
     updateModalInfoBar('genericInfoBar');
@@ -6627,6 +6987,10 @@ function visitCantina() {
             <span>Bribe Bartender (50c)</span>
             <span>Get Market Tip</span>
         </div>
+        <div class="trade-item-row" onclick="cantinaAction('RECRUIT')">
+            <span style="color:#00E0E0">Recruit Crew</span>
+            <span>Hire Mercenaries</span>
+        </div>
         <div class="trade-item-row" onclick="cantinaAction('GAMBLE')">
             <span>Pazaak Table</span>
             <span>Wager 100c</span>
@@ -6668,6 +7032,9 @@ function cantinaAction(action) {
         logMessage(`Rumor: High demand for ${targetItem} reported at ${targetStation}.`);
         renderUIStats();
         closeGenericModal();
+    }
+    else if (action === 'RECRUIT') {
+        openRecruitmentBoard();
     }
     else if (action === 'GAMBLE') {
         if (playerCredits < 100) { showToast("House limit is 100c.", "error"); return; }
@@ -7177,81 +7544,46 @@ function updateModalInfoBar(elementId) {
 
 // --- DERELICT SYSTEM ---
 
-function drawProceduralDerelict(canvasId, seed) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
-    
-    ctx.clearRect(0, 0, w, h);
-    
-    // RNG Setup
-    const rng = (s) => { let x = Math.sin(s++) * 10000; return x - Math.floor(x); };
-    let currentSeed = seed;
-    const rand = () => rng(currentSeed++);
-
-    ctx.save();
-    ctx.translate(w/2, h/2);
-    
-    // 1. Random Rotation (It's drifting)
-    ctx.rotate(rand() * Math.PI * 2);
-    
-    // 2. Draw Broken Hull Parts
-    const hullColor = '#444455';
-    const accentColor = '#662222'; // Rusty red
-    
-    // Main Body (Broken)
-    ctx.fillStyle = hullColor;
-    ctx.beginPath();
-    ctx.moveTo(-30, -50);
-    ctx.lineTo(30, -50);
-    ctx.lineTo(40, 20); // Jagged break
-    ctx.lineTo(10, 10); // Jagged break
-    ctx.lineTo(-10, 30); // Jagged break
-    ctx.lineTo(-40, 10);
-    ctx.fill();
-    
-    // 3. Debris Field (Particles around it)
-    ctx.fillStyle = '#888';
-    for(let i=0; i<15; i++) {
-        const dx = (rand() * 100) - 50;
-        const dy = (rand() * 100) - 50;
-        const size = rand() * 3;
-        ctx.fillRect(dx, dy, size, size);
-    }
-    
-    // 4. Sparks/Power Leaks (Optional animation could go here, for now static)
-    if (rand() > 0.5) {
-        ctx.fillStyle = '#00FFFF';
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#00FFFF';
-        ctx.fillRect(-10, -10, 4, 4); // Surviving power core?
-        ctx.shadowBlur = 0;
-    }
-
-    ctx.restore();
-}
-
 function openDerelictView() {
     const tile = chunkManager.getTile(playerX, playerY);
     if (!tile) return;
 
-    // Use our helper to show stats bar
     updateModalInfoBar('derelictInfoBar');
-
     document.getElementById('derelictOverlay').style.display = 'flex';
-    document.getElementById('derelictNameTitle').textContent = `DERELICT ${tile.name || "UNKNOWN"}`;
-    document.getElementById('derelictLog').innerHTML = "> Sensors locked. Vessel appears to be drifting.<br>";
     
-    // Generate art based on location
-    const seed = (playerX * 1000) + playerY;
-    drawProceduralDerelict('derelictCanvas', seed);
+    // --- NEW: Check if already looted (Using persistent flags) ---
+    if (tile.looted || tile.studied) {
+        document.getElementById('derelictNameTitle').textContent = `DERELICT ${tile.name || "UNKNOWN"} [STRIPPED]`;
+        document.getElementById('derelictLog').innerHTML = "> Sensors locked. Life support offline. Wreckage has been picked clean.<br>";
+    } else {
+        document.getElementById('derelictNameTitle').textContent = `DERELICT ${tile.name || "UNKNOWN"}`;
+        document.getElementById('derelictLog').innerHTML = "> Sensors locked. Vessel appears to be drifting.<br>";
+    }
+    
+    // Replace the canvas with the static PNG
+    const canvas = document.getElementById('derelictCanvas');
+    if (canvas) {
+        let img = document.getElementById('derelictStaticImg');
+        if (!img) {
+            img = document.createElement('img');
+            img.id = 'derelictStaticImg';
+            img.src = 'assets/derelict.png'; 
+            img.style.width = '100%';
+            img.style.maxWidth = '200px';
+            img.style.height = 'auto';
+            img.style.border = '1px solid var(--border-color)';
+            img.style.borderRadius = '8px';
+            img.style.display = 'block';
+            img.style.margin = '0 auto 15px auto';
+            img.style.boxShadow = '0 0 15px rgba(0,0,0,0.5)';
+            canvas.parentNode.insertBefore(img, canvas);
+            canvas.style.display = 'none'; 
+        }
+    }
 }
 
 function closeDerelictView() {
     document.getElementById('derelictOverlay').style.display = 'none';
-
     updateSideBorderVisibility();
 }
 
@@ -7263,34 +7595,40 @@ function logDerelict(msg, type="neutral") {
 }
 
 function handleDerelictAction(action) {
-    // 1. SCAN: Safe, XP reward
+    const tile = chunkManager.getTile(playerX, playerY);
+    if (!tile) return;
+
+    // 1. Stop the exploit instantly
+    if (tile.looted || tile.studied) {
+        logDerelict("Further attempts yield no new results. The wreck is tapped out.", "neutral");
+        return; 
+    }
+
+    // 2. THE FIX: Permanently save the looted state to the world data!
+    updateWorldState(playerX, playerY, { looted: true, studied: true });
+
     if (action === 'SCAN') {
         const xp = 25;
         playerXP += xp;
         logDerelict(`Scan Complete. Structural analysis recorded. +${xp} XP`, 'good');
         checkLevelUp();
-        // Disable button visually (optional, or just let them spam it for flavor text?)
-        // For game balance, maybe only allow once? We'll leave it open for now.
     }
-    
-    // 2. SALVAGE: Gather resources, low risk of damage
     else if (action === 'SALVAGE') {
         if (Math.random() < 0.7) {
-            // Success
             const scrap = 2 + Math.floor(Math.random() * 5);
             if (currentCargoLoad + scrap <= PLAYER_CARGO_CAPACITY) {
                 playerCargo.TECH_PARTS = (playerCargo.TECH_PARTS || 0) + scrap;
                 updateCurrentCargoLoad();
                 logDerelict(`Salvage successful. Recovered ${scrap} Tech Parts.`, 'good');
-                updateModalInfoBar('derelictInfoBar'); // Update cargo display
+                updateModalInfoBar('derelictInfoBar');
             } else {
-                logDerelict("Cargo hold full! Cannot salvage.", 'bad');
+                logDerelict("Cargo hold full! Cannot salvage. Wreck destabilized.", 'bad');
             }
         } else {
-            // Fail / Accident
             const dmg = 5;
             playerHull -= dmg;
             logDerelict(`Accident! Debris collision. Hull -${dmg}`, 'bad');
+            if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
             if (playerHull <= 0) {
                 closeDerelictView();
                 triggerGameOver("Crushed by Derelict Debris");
@@ -7298,32 +7636,31 @@ function handleDerelictAction(action) {
             updateModalInfoBar('derelictInfoBar');
         }
     }
-    
-    // 3. BREACH: High Risk, High Reward, Combat Chance
     else if (action === 'BREACH') {
         const roll = Math.random();
         
         if (roll < 0.4) {
-            // AMBUSH! (40% Chance)
-            closeDerelictView();
-            spawnParticles(playerX, playerY, 'explosion');
+            logDerelict("WARNING: Lifeforms detected in the airlock!", "bad");
             
-            // Trigger your existing combat system!
-            logMessage("WARNING: Automated defenses activated!");
-            startCombat(); // Uses your existing function
-            
+            // Triggers the new boarding minigame if it exists, otherwise falls back to ship combat
+            if (typeof startBoardingCombat === 'function') {
+                setTimeout(startBoardingCombat, 1000); 
+            } else {
+                closeDerelictView();
+                startCombat();
+            }
         } else if (roll < 0.8) {
-            // JACKPOT (40% Chance)
             const credits = 200 + Math.floor(Math.random() * 500);
             playerCredits += credits;
             logDerelict(`Hull breached. Captain's safe located! Found ${credits} credits.`, 'good');
             updateModalInfoBar('derelictInfoBar');
         } else {
-            // TRAP (20% Chance)
             const dmg = 20;
             playerHull -= dmg;
             logDerelict(`TRAP TRIGGERED! Explosive decompression. Hull -${dmg}`, 'bad');
-            soundManager.playExplosion();
+            if (typeof soundManager !== 'undefined') soundManager.playExplosion();
+            if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+            
             if (playerHull <= 0) {
                 closeDerelictView();
                 triggerGameOver("Killed by Derelict Trap");
@@ -7331,6 +7668,138 @@ function handleDerelictAction(action) {
             updateModalInfoBar('derelictInfoBar');
         }
     }
+}
+
+// --- BOARDING COMBAT MINIGAME ---
+let boardingContext = null;
+
+function startBoardingCombat() {
+    closeDerelictView(); // Close the derelict menu
+    
+    // Set up the firefight stats
+    boardingContext = {
+        playerHp: 50,
+        playerMaxHp: 50,
+        enemyHp: 40,
+        enemyMaxHp: 40,
+        enemyName: "Scavenger Thugs",
+        log: ["BLASTER FIRE ERUPTS! You are ambushed in the airlock!"]
+    };
+    
+    openGenericModal("SHIPBOARD FIREFIGHT");
+    renderBoardingUI();
+}
+
+function renderBoardingUI() {
+    if (!boardingContext) return;
+
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // 1. Render Combat Log
+    listEl.innerHTML = `<div style="padding: 10px; font-family: var(--main-font); font-size: 13px; display: flex; flex-direction: column; gap: 8px;">
+        ${boardingContext.log.map(msg => `<div>> ${msg}</div>`).join('')}
+    </div>`;
+    listEl.scrollTop = listEl.scrollHeight;
+
+    // 2. Render Health Bars
+    const playerPct = Math.max(0, (boardingContext.playerHp / boardingContext.playerMaxHp) * 100);
+    const enemyPct = Math.max(0, (boardingContext.enemyHp / boardingContext.enemyMaxHp) * 100);
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px 10px;">
+            <div style="font-size: 40px; margin-bottom: 20px;">🔫</div>
+            
+            <h4 style="color:var(--accent-color); margin-bottom: 5px;">CAPTAIN ${playerName.toUpperCase()}</h4>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;"><span>Health</span><span>${boardingContext.playerHp}</span></div>
+            <div style="width:100%; height:12px; background:rgba(0,0,0,0.5); border:1px solid var(--border-color); border-radius:4px; margin-bottom:20px;">
+                <div style="width:${playerPct}%; height:100%; background:var(--success); transition:width 0.3s;"></div>
+            </div>
+
+            <h4 style="color:var(--danger); margin-bottom: 5px;">${boardingContext.enemyName.toUpperCase()}</h4>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;"><span>Health</span><span>${boardingContext.enemyHp}</span></div>
+            <div style="width:100%; height:12px; background:rgba(0,0,0,0.5); border:1px solid var(--danger); border-radius:4px;">
+                <div style="width:${enemyPct}%; height:100%; background:var(--danger); transition:width 0.3s;"></div>
+            </div>
+        </div>
+    `;
+
+    // 3. Render Action Buttons
+    actionsEl.innerHTML = `
+        <button class="action-button" style="border-color:var(--danger); color:var(--danger);" onclick="executeBoardingAction('shoot')">FIRE BLASTER</button>
+        <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="executeBoardingAction('cover')">TAKE COVER</button>
+        <button class="action-button" style="border-color:#888; color:#888;" onclick="executeBoardingAction('flee')">RETREAT TO SHIP</button>
+    `;
+}
+
+function executeBoardingAction(action) {
+    if (!boardingContext) return;
+    const ctx = boardingContext;
+
+    let playerDmg = 0;
+    let enemyDmg = Math.floor(Math.random() * 8) + 4; // Enemy hits for 4-11
+    let actionLog = "";
+
+    if (action === 'shoot') {
+        playerDmg = Math.floor(Math.random() * 12) + 8; // Player hits for 8-19
+        actionLog = `<span style="color:var(--gold-text)">You fire your blaster!</span> Hits for ${playerDmg} damage.`;
+    } else if (action === 'cover') {
+        enemyDmg = Math.floor(enemyDmg * 0.3); // Reduce incoming damage by 70%
+        actionLog = `<span style="color:var(--accent-color)">You duck behind a bulkhead!</span> Enemy fire is heavily suppressed.`;
+    } else if (action === 'flee') {
+        // Run away, taking a parting shot to your actual ship hull
+        playerHull -= 10;
+        closeGenericModal();
+        boardingContext = null;
+        logMessage("You fled the derelict under heavy fire. Ship hull took 10 damage!");
+        if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+        renderUIStats();
+        return;
+    }
+
+    // Apply Damage
+    ctx.enemyHp -= playerDmg;
+    if (ctx.enemyHp < 0) ctx.enemyHp = 0;
+
+    // Enemy Turn
+    if (ctx.enemyHp > 0) {
+        actionLog += ` Enemy returns fire for <span style="color:var(--danger)">${enemyDmg} damage!</span>`;
+        ctx.playerHp -= enemyDmg;
+    } else {
+        actionLog += ` <span style="color:var(--success); font-weight:bold;">Enemy neutralized!</span>`;
+    }
+
+    ctx.log.push(actionLog);
+
+    // Keep log scrolling cleanly
+    if (ctx.log.length > 7) ctx.log.shift();
+
+    // Check Win/Loss conditions
+    if (ctx.playerHp <= 0) {
+        closeGenericModal();
+        triggerGameOver("Killed in a close-quarters firefight");
+        return;
+    } else if (ctx.enemyHp <= 0) {
+        // VICTORY!
+        const credits = 300 + Math.floor(Math.random() * 500);
+        const xp = 75;
+        playerCredits += credits;
+        playerXP += xp;
+        
+        closeGenericModal();
+        boardingContext = null;
+        
+        logMessage(`<span style="color:var(--success)">Boarding successful!</span> Enemies defeated.<br>Looted ${credits} credits and gained +${xp} XP.`);
+        showToast("FIREFIGHT WON", "success");
+        checkLevelUp();
+        renderUIStats();
+        return;
+    }
+
+    // If still fighting, re-render the UI with new HP and logs
+    if (typeof soundManager !== 'undefined') soundManager.playLaser();
+    renderBoardingUI();
 }
 
 // --- XERXES ROGUE PLANET LOGIC ---
@@ -7578,13 +8047,20 @@ function playIntroVideo() {
         return;
     }
 
+    // --- NEW: THEME-MATCHING LOGIC ---
+    const isLightMode = document.body.classList.contains('light-mode');
+    
+    // Swap the video source based on the theme
+    video.src = isLightMode ? 'assets/intro_white.mp4' : 'assets/intro_black.mp4';
+    
+    // Match the container's background color to the fade color 
+    // so the edges of the video blend seamlessly into the screen!
+    videoCont.style.backgroundColor = isLightMode ? '#FFFFFF' : '#050510';
+
     videoCont.style.display = 'flex';
 
     // Attempt to play the video
     video.play().catch(error => {
-        // BROWSER AUTOPLAY POLICY CATCHER:
-        // Browsers block video with sound if the user hasn't clicked anything yet.
-        // If it gets blocked, we log a warning and just skip to the creation screen.
         console.warn("Autoplay prevented by browser. Skipping intro.", error);
         skipIntroVideo();
     });
@@ -7615,4 +8091,110 @@ function skipIntroVideo() {
         newGameCont.style.display = 'block';
         setTimeout(() => newGameCont.style.opacity = '1', 50);
     }
+}
+// --- CREW RECRUITMENT & MANAGEMENT UI ---
+function openRecruitmentBoard() {
+    openGenericModal("MERCENARY CONTRACTS");
+    const listEl = document.getElementById('genericModalList');
+    listEl.innerHTML = '';
+    document.getElementById('genericDetailContent').innerHTML = '<div style="padding:20px; text-align:center; color:#888; margin-top:20px;">Select a candidate to view their dossier.</div>';
+    document.getElementById('genericModalActions').innerHTML = '';
+
+    Object.values(CREW_DATABASE).forEach(crew => {
+        // Hide them if they are already on our ship!
+        if (playerCrew.find(c => c.id === crew.id)) return; 
+
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        row.innerHTML = `<span>${crew.icon} ${crew.name}</span> <span style="color:var(--gold-text)">${formatNumber(crew.cost)}c</span>`;
+        row.onclick = () => showCrewDetails(crew);
+        listEl.appendChild(row);
+    });
+
+    if (listEl.children.length === 0) {
+        listEl.innerHTML = '<div style="padding:15px; color:#666;">No viable candidates currently looking for work here.</div>';
+    }
+}
+
+function showCrewDetails(crew) {
+    document.getElementById('genericDetailContent').innerHTML = `
+        <div style="text-align:center; padding: 15px;">
+            <div style="font-size:50px; margin-bottom:10px;">${crew.icon}</div>
+            <h3 style="color:var(--accent-color); margin:0;">${crew.name.toUpperCase()}</h3>
+            <div style="color:var(--item-desc-color); font-size:12px; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">${crew.role.toUpperCase()}</div>
+            <p style="font-size:13px; color:var(--text-color); line-height: 1.5;">${crew.desc}</p>
+            <div style="margin-top:20px; font-weight:bold; color:var(--gold-text); background:rgba(255,215,0,0.1); padding:10px; border-radius:4px; border:1px solid #886600;">SIGNING BONUS: ${formatNumber(crew.cost)}c</div>
+        </div>
+    `;
+
+    const canAfford = playerCredits >= crew.cost;
+    const hasSpace = playerCrew.length < MAX_CREW;
+    
+    let btnText = `HIRE ${crew.name.toUpperCase()}`;
+    if (!canAfford) btnText = "INSUFFICIENT FUNDS";
+    if (!hasSpace) btnText = "CREW QUARTERS FULL";
+
+    document.getElementById('genericModalActions').innerHTML = `
+        <button class="action-button" ${(!canAfford || !hasSpace) ? 'disabled' : ''} onclick="hireCrew('${crew.id}')">${btnText}</button>
+    `;
+}
+
+function hireCrew(crewId) {
+    const crew = CREW_DATABASE[crewId];
+    if (playerCredits >= crew.cost && playerCrew.length < MAX_CREW) {
+        playerCredits -= crew.cost;
+        playerCrew.push(crew);
+        logMessage(`<span style="color:var(--success)">Recruited ${crew.name} to the crew!</span>`);
+        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+        showToast(`${crew.name} HIRED`, "success");
+        renderUIStats();
+        openRecruitmentBoard(); // Refresh list to remove them
+    }
+}
+
+function displayCrewRoster() {
+    // Hide the system menu so it doesn't overlap the new window
+    document.getElementById('systemMenu').classList.add('hidden');
+    openGenericModal("CREW MANIFEST");
+
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    
+    detailEl.innerHTML = `<div style="padding:20px; text-align:center; color:#888; margin-top:20px;">Select a crew member to review their assignment or dismiss them.</div>`;
+    document.getElementById('genericModalActions').innerHTML = '';
+    
+    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">ASSIGNED CREW (${playerCrew.length}/${MAX_CREW})</div>`;
+
+    if (playerCrew.length === 0) {
+        listEl.innerHTML += `<div style="padding:10px; color:#666;">No crew assigned. Solo flight operation.</div>`;
+        return;
+    }
+
+    playerCrew.forEach(crew => {
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        row.innerHTML = `<span>${crew.icon} ${crew.name}</span> <span style="font-size:10px; color:#888;">${crew.role}</span>`;
+        row.onclick = () => {
+            detailEl.innerHTML = `
+                <div style="text-align:center; padding: 15px;">
+                    <div style="font-size:50px; margin-bottom:10px;">${crew.icon}</div>
+                    <h3 style="color:var(--accent-color); margin:0;">${crew.name.toUpperCase()}</h3>
+                    <div style="color:var(--item-desc-color); font-size:12px; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">${crew.role.toUpperCase()}</div>
+                    <p style="font-size:13px; color:var(--text-color); line-height:1.5;">${crew.desc}</p>
+                </div>
+            `;
+            document.getElementById('genericModalActions').innerHTML = `
+                <button class="action-button danger-btn" onclick="fireCrew('${crew.id}')">DISMISS FROM SERVICE</button>
+            `;
+        };
+        listEl.appendChild(row);
+    });
+}
+
+function fireCrew(crewId) {
+    const crew = playerCrew.find(c => c.id === crewId);
+    playerCrew = playerCrew.filter(c => c.id !== crewId);
+    logMessage(`You dismissed ${crew.name} at the nearest port.`);
+    showToast("CREW MEMBER DISMISSED", "info");
+    displayCrewRoster(); // Refresh screen
 }
