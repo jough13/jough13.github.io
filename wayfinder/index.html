@@ -252,7 +252,7 @@ body {
             <p class="subtitle">Echoes of the Void</p>
             
             <div id="systemBoot" style="margin-top:20px; color:var(--accent-color); font-family:var(--main-font); animation: blink 1s infinite;">
-                SYSTEM INITIALIZING...
+                SYSTEM INITIALIZING...<span style="color:var(--text-color); font-weight: bold;">|</span>
             </div>
             
             <div id="saveSelectContainer" style="display:none;">
@@ -269,6 +269,18 @@ body {
                     </label>
                 </div>
             </div>
+
+            <div id="introVideoContainer" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:#050510; z-index: 50; flex-direction:column; justify-content:center; align-items:center;">
+            
+            <video id="introVideo" style="max-width:100%; max-height:100%; box-shadow: 0 0 30px rgba(0,224,224,0.2);">
+                <source src="assets/intro.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+
+            <button onclick="skipIntroVideo()" style="position:absolute; bottom:30px; right:30px; background:rgba(0,0,0,0.7); border:1px solid var(--accent-color); color:var(--accent-color); padding:10px 20px; font-family:var(--title-font); cursor:pointer; font-weight:bold; letter-spacing: 2px;">
+                SKIP TRANSMISSION >>
+            </button>
+        </div>
 
             <div id="newGameContainer" style="display:none;">
                 <div class="player-customization">
