@@ -168,6 +168,7 @@
         name: "Empty Slot",
         type: "utility",
         slot: "utility",
+        manufacturer: "FRONTIER",
         description: "No utility module installed.",
         cost: 0,
         stats: {}
@@ -176,6 +177,7 @@
         name: "Reinforced Plating",
         type: "utility",
         slot: "utility",
+        manufacturer: "CONCORD",
         description: "Adds thick ablative armor plates. (+40 Max Hull)",
         cost: 1500,
         stats: { hullBonus: 40 },
@@ -185,6 +187,7 @@
         name: "Ext. Cargo Pod",
         type: "utility",
         slot: "utility",
+        manufacturer: "FRONTIER",
         description: "Bolted-on storage racks. (+20 Cargo Capacity)",
         cost: 2000,
         stats: { cargoBonus: 20 },
@@ -194,6 +197,7 @@
          name: "Pulse Laser Mk1",
          type: "weapon",
          slot: "weapon",
+         manufacturer: "FRONTIER",
          description: "Standard issue civilian pulse laser. Reliable but low power.",
          cost: 0,
          stats: {
@@ -206,6 +210,7 @@
          name: "Pulse Laser Mk2",
          type: "weapon",
          slot: "weapon",
+         manufacturer: "FRONTIER",
          description: "Upgraded pulse laser with improved focusing coils for higher damage.",
          cost: 2000,
          stats: {
@@ -218,6 +223,7 @@
          name: "Pulse Laser Mk3",
          type: "weapon",
          slot: "weapon",
+         manufacturer: "CONCORD",
          description: "Military-grade pulse laser. Significant damage output and better targeting.",
          cost: 5500,
          stats: {
@@ -230,6 +236,7 @@
          name: "Kinetic Impulsor Mk1",
          type: "weapon",
          slot: "weapon",
+         manufacturer: "KTHARR",
          description: "Fires solid slugs. Decent against unshielded hulls.",
          cost: 1800,
          stats: {
@@ -242,6 +249,7 @@
          name: "Ion Cannon Mk1",
          type: "weapon",
          slot: "weapon",
+         manufacturer: "ECLIPSE",
          description: "Disrupts shields effectively, less hull damage.",
          cost: 2200,
          stats: {
@@ -255,6 +263,7 @@
          name: "Beam Laser Mk1",
          type: "weapon",
          slot: "weapon",
+         manufacturer: "CONCORD",
          description: "Sustained energy beam. High accuracy, consistent damage over time.",
          cost: 2800,
          stats: {
@@ -267,6 +276,7 @@
          name: "Mass Driver Mk1",
          type: "weapon",
          slot: "weapon",
+         manufacturer: "KTHARR",
          description: "Accelerates a dense projectile to devastating speeds. High hull damage, slow fire rate.",
          cost: 3800,
          stats: {
@@ -279,6 +289,7 @@
          name: "Missile Launcher Mk1",
          type: "weapon",
          slot: "weapon",
+         manufacturer: "CONCORD",
          description: "Fires self-propelled explosive ordnance. High damage, limited ammo.",
          cost: 4500,
          stats: {
@@ -292,6 +303,7 @@
          name: "Basic Deflector Array A",
          type: "shield",
          slot: "shield",
+         manufacturer: "FRONTIER",
          description: "Entry-level shield generator. Offers minimal protection.",
          cost: 0,
          stats: {
@@ -304,6 +316,7 @@
          name: "Guardian Shield Emitter B",
          type: "shield",
          slot: "shield",
+         manufacturer: "FRONTIER",
          description: "Military surplus shield, offering better resilience and faster recharge.",
          cost: 2500,
          stats: {
@@ -316,6 +329,7 @@
          name: "Aegis Shield Projector C",
          type: "shield",
          slot: "shield",
+         manufacturer: "CONCORD",
          description: "Top-tier Concord shield tech. Excellent protection and robust recharge.",
          cost: 5000,
          stats: {
@@ -328,6 +342,7 @@
          name: "Rapid-Cycle Unit A",
          type: "shield",
          slot: "shield",
+         manufacturer: "ECLIPSE",
          description: "Lower capacity, but regenerates very quickly. Favored by agile fighters.",
          cost: 3000,
          stats: {
@@ -340,6 +355,7 @@
          name: "Fortress Grid A",
          type: "shield",
          slot: "shield",
+         manufacturer: "KTHARR",
          description: "Extremely high capacity, but slow to regenerate. For ships that can take a beating.",
          cost: 4500,
          stats: {
@@ -352,6 +368,7 @@
          name: "Standard Drive Mk1",
          type: "engine",
          slot: "engine",
+         manufacturer: "FRONTIER",
          description: "Common civilian stardrive. Gets you there, eventually.",
          cost: 0,
          stats: {
@@ -364,6 +381,7 @@
          name: "RangePlus Drive Mk1",
          type: "engine",
          slot: "engine",
+         manufacturer: "FRONTIER",
          description: "Larger fuel tank for extended travel, slightly improved efficiency.",
          cost: 3000,
          stats: {
@@ -376,6 +394,7 @@
          name: "IonFlow Drive Mk2",
          type: "engine",
          slot: "engine",
+         manufacturer: "CONCORD",
          description: "Advanced ion engine, significantly better fuel efficiency.",
          cost: 4000,
          stats: {
@@ -388,6 +407,7 @@
          name: "High-Thrust Drive Mk1",
          type: "engine",
          slot: "engine",
+         manufacturer: "ECLIPSE",
          description: "Powerful engine, standard fuel tank but hints at faster sublight travel (future).",
          cost: 3500,
          stats: {
@@ -400,6 +420,7 @@
          name: "Standard Sensor Suite",
          type: "scanner",
          slot: "scanner",
+         manufacturer: "FRONTIER",
          description: "Basic sensor package. Provides essential data.",
          cost: 0,
          stats: {
@@ -411,6 +432,7 @@
          name: "Deep-Range Array A",
          type: "scanner",
          slot: "scanner",
+         manufacturer: "CONCORD",
          description: "Improved sensor resolution. May reveal more details or rarer finds.",
          cost: 1500,
          stats: {
@@ -423,6 +445,7 @@
         name: "Eclipse Cargo Bay",
         type: "utility",
         slot: "utility",
+        manufacturer: "ECLIPSE",
         description: "Shielded cargo bays. +10 Cargo. Immune to standard scans.",
         cost: 4000,
         stats: {
@@ -439,6 +462,7 @@
         name: "Concord Shield Mod",
         type: "utility",       // REQUIRED
         slot: "utility",       // REQUIRED
+        manufacturer: "CONCORD",
         description: "Military-grade capacitors. Increases Max Shields by 30.",
         cost: 5000,            // Changed basePrice -> cost
         stats: {
@@ -454,6 +478,7 @@
         name: "Living Hull Tissue",
         type: "utility",       // REQUIRED
         slot: "utility",       // REQUIRED
+        manufacturer: "KTHARR",
         description: "K'tharr biotech that reinforces hull structure (+40 Hull).",
         cost: 8000,            // Changed basePrice -> cost
         stats: {
