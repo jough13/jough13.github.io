@@ -335,37 +335,44 @@ body {
             </div>
 
             <div class="hud-group right">
-                <div class="hud-stat compact">
-                    <span class="label">CR</span>
-                    <span id="creditsStat" class="value-text gold">0</span>
-                </div>
-                <div class="hud-stat compact">
-                    <span class="label">CARGO</span>
-                    <span id="cargoStat" class="value-text">0/0</span>
-                </div>
-                <button id="menuToggle" class="icon-btn">SYS</button>
-            </div>
-        </header>
-
-        <div class="hud-group right">
+                
                 <div class="hud-stat compact">
                     <span class="label">LVL <span id="hudLevelStat">1</span></span>
-                    <span id="hudXpStat" class="value-text" style="color:var(--success, #00FF00)">0 / 0</span>
+                    <span id="hudXpStat" class="value-text" style="color:#00FF00">0 / 0</span>
                 </div>
 
                 <div class="hud-stat compact">
                     <span class="label">CR</span>
                     <span id="creditsStat" class="value-text gold">0</span>
                 </div>
+                
                 <div class="hud-stat compact">
                     <span class="label">CARGO</span>
-                    <span id="cargoStat" class="value-text">0/0</span>
+                    <span id="cargoStat" class="value-text">0/50</span>
                 </div>
+                
                 <button id="menuToggle" class="icon-btn">SYS</button>
             </div>
 
-        <main id="main-view">
-            <div id="statusOverlay" class="status-overlay"></div>
+            <div id="systemMenu" class="hidden">
+                <div class="sys-header">COMMANDER DATA</div>
+                
+                <div id="sys-stats-display">
+                    LVL: <span id="menuLevel">1</span> <span style="color:#555">|</span> XP: <span id="menuXP">0</span><br>
+                   SHIP: <span id="menuShip">Light Freighter</span><br>
+                   REP: <span id="menuRep">Neutral</span>
+                </div>
+
+                <button id="profileButton" class="sys-btn" onclick="displayCommanderProfile()">Commander Profile</button>
+                <button id="crewButton" class="sys-btn" onclick="displayCrewRoster()">Crew Roster</button>
+                <button id="saveButton" class="sys-btn">Manual Save</button>
+                <button id="loadButton" class="sys-btn">Load Manual Save</button>
+                <button id="mainMenuButton" class="sys-btn">Main Menu</button>
+                <button id="themeButton" class="sys-btn">Toggle Theme</button>
+            <button id="soundButton" class="sys-btn">Mute Audio</button>
+            <div id="versionInfo">v0.9.6 (Crew Update)</div>
+         </div> </header> <main id="main-view">
+        <div id="statusOverlay" class="status-overlay"></div>
 
             <div class="side-border left"></div>
             <div class="side-border right"></div>
