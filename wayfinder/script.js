@@ -958,6 +958,11 @@ function applyPlayerShipStats() {
      // 4. Update HUD Text Stats
      document.getElementById('creditsStat').textContent = formatNumber(playerCredits);
      document.getElementById('cargoStat').textContent = `${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}`;
+
+     const hudLevelEl = document.getElementById('hudLevelStat');
+     const hudXpEl = document.getElementById('hudXpStat');
+     if (hudLevelEl) hudLevelEl.textContent = playerLevel;
+     if (hudXpEl) hudXpEl.textContent = `${formatNumber(Math.floor(playerXP))} / ${formatNumber(xpToNextLevel)}`;
      
     // 5. Update Header Info (DYNAMIC FACTION & THREAT)
      const exactFaction = getFactionAt(playerX, playerY);
@@ -2263,234 +2268,160 @@ function movePlayer(dx, dy) {
  }
 
  function handleInteraction() {
-
     const currentFaction = getFactionAt(playerX, playerY);
-    
-    // Check if we just entered a new zone
     const standing = playerFactionStanding[currentFaction] || 0;
     
     // Hostile Territory Warning
-    // (Note: We added a check to ensure we aren't already in combat to prevent spam)
     if (standing < -20 && Math.random() < 0.05 && !currentCombatContext) { 
         let shipKey = "STRIKER"; 
-        
         if (currentFaction === 'ECLIPSE') shipKey = "STRIKER"; 
         if (currentFaction === 'KTHARR') shipKey = "KTHARR_SCOUT";
         if (currentFaction === 'CONCORD') shipKey = "CONCORD_PATROL";
         
-        // Safety check: ensure faction exists in config before accessing name
         const factionName = FACTIONS[currentFaction] ? FACTIONS[currentFaction].name : currentFaction;
-        
         logMessage(`WARNING: Entered hostile ${factionName} space! Interceptors launching!`, "color:#FF5555");
         startCombat({ shipClassKey: shipKey }); 
         return;
     }
 
-     const tileObject = chunkManager.getTile(playerX, playerY);
-     const tileChar = getTileChar(tileObject);
-     let bM = ""; 
-     let availableActions = [];
+    const tileObject = chunkManager.getTile(playerX, playerY);
+    const tileChar = getTileChar(tileObject);
+    let bM = ""; 
+    let availableActions = [];
 
-     if (tileObject && tileObject.type === 'location') {
-         const location = tileObject;
+    if (tileObject && tileObject.type === 'location') {
+        const location = tileObject;
          
-        // --- XERXES INTERCEPT ---
-         if (location.name.includes("Xerxes")) {
-             openXerxesView();
-             return; 
-         }
-
-         bM = `Arrived at ${location.name}.`;
-
-        // 1. Keep the Docking Toast
-         if (location.isMajorHub || location.type === OUTPOST_CHAR_VAL) {
-             if (typeof soundManager !== 'undefined') soundManager.playUIHover();
-             showToast(`DOCKED: ${location.name.toUpperCase()}`, "success");
-         }
-
-         // 2. Open Visual Station View for Hubs AND Outposts
-         // (Xerxes is already caught and returned above)
-         if (location.isMajorHub || location.char === OUTPOST_CHAR_VAL || location.type === 'location') {
-             openStationView(); 
-             return; 
-         }
-
-         if (location.isMajorHub) {
-             const cleared = performCustomsScan();
-             if (!cleared) return; 
-         }
-
-        // ---CUSTOMS SCAN TRIGGER ---
-
-         if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) {
-                availableActions.push({
-                    label: 'Buy',
-                    key: 'b',
-                    onclick: () => openTradeModal('buy') 
-                });
-                availableActions.push({
-                    label: 'Sell',
-                    key: 's',
-                    onclick: () => openTradeModal('sell')
-                });
-            }
-         if (location.isMajorHub) {
-             availableActions.push({
-                 label: 'Outfit',
-                 key: 'o',
-                 onclick: displayOutfittingScreen
-             });
-             availableActions.push({
-                 label: 'Missions',
-                 key: 'k',
-                 onclick: displayMissionBoard
-             });
-             availableActions.push({
-                 label: 'Shipyard',
-                 key: 'y',
-                 onclick: displayShipyard
-             });
-            availableActions.push({ 
-                label: 'Cantina (10c)', 
-                key: 'v', 
-                onclick: visitCantina 
-            });
+        // --- 1. XERXES INTERCEPT ---
+        if (location.name.includes("Xerxes")) {
+            openXerxesView();
+            return; 
         }
 
-         if (playerHull < MAX_PLAYER_HULL) {
-             const hullToRepair = MAX_PLAYER_HULL - playerHull;
-             const repairCost = hullToRepair * HULL_REPAIR_COST_PER_POINT;
-             availableActions.push({
-                 label: `Repair Hull (${formatNumber(repairCost)}c)`,
-                 key: 'r', 
-                 onclick: repairShip
-             });
-         }
+        // --- 2. PLANETARY LANDING INTERCEPT ---
+        // Catches planets and opens the new Endgame UI
+        if (location.char === 'O' || (location.name && location.name.toLowerCase().includes("planet")) || location.biome) {
+            openPlanetView(location);
+            return;
+        }
 
-         if (playerActiveMission && playerActiveMission.type === "DELIVERY" && !playerActiveMission.isComplete && location.name === playerActiveMission.objectives[0].destinationName) {
-             availableActions.push({
-                 label: 'Complete Delivery',
-                 key: 'c',
-                 onclick: handleCompleteDelivery
-             });
-         }
-         if (playerActiveMission && playerActiveMission.isComplete && location.name === playerActiveMission.giver) {
-             availableActions.push({
-                 label: 'Get Reward',
-                 key: 'g',
-                 onclick: grantMissionRewards
-             });
-         }
+        // --- 3. STATION & OUTPOST INTERCEPT ---
+        if (location.isMajorHub || location.char === OUTPOST_CHAR_VAL) {
+            
+            // Customs scan for major hubs (Must pass to dock!)
+            if (location.isMajorHub) {
+                const cleared = performCustomsScan();
+                if (!cleared) return; 
+            }
 
-         if (playerActiveMission && playerActiveMission.type === "ACQUIRE" && !playerActiveMission.isComplete && location.name === playerActiveMission.giver) {
-             availableActions.push({
-                 label: 'Turn in Resources',
-                 key: 'g',
-                 onclick: handleTurnInAcquire
-             });
-         }
+            if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+            showToast(`DOCKED: ${location.name.toUpperCase()}`, "success");
 
-         if (tileChar === STARBASE_CHAR_VAL || tileChar === OUTPOST_CHAR_VAL) {
-             playerFuel = MAX_FUEL;
-             playerShields = MAX_SHIELDS;
-             bM += `\nFuel and Shields recharged.`;
-             applyPlayerShipStats();
-         }
-         if (!discoveredLocations.has(location.name)) {
-             discoveredLocations.add(location.name);
-             playerXP += XP_PER_LOCATION_DISCOVERY;
-             
-             bM += `\n<span style='color:var(--success);'>Location Discovered: ${location.name}! +${formatNumber(XP_PER_LOCATION_DISCOVERY)} XP!</span>`;
+            // Recharge vitals
+            playerFuel = MAX_FUEL;
+            playerShields = MAX_SHIELDS;
+            applyPlayerShipStats();
 
-             unlockLoreEntry(`LOCATION_${location.name.replace(/\s+/g, '_').toUpperCase()}`);
-             checkLevelUp();
-         }
+            // Handle Discovery XP
+            if (!discoveredLocations.has(location.name)) {
+                discoveredLocations.add(location.name);
+                playerXP += XP_PER_LOCATION_DISCOVERY;
+                showToast(`Discovered: ${location.name}! +${XP_PER_LOCATION_DISCOVERY} XP`, "success");
+                unlockLoreEntry(`LOCATION_${location.name.replace(/\s+/g, '_').toUpperCase()}`);
+                checkLevelUp();
+            }
 
-     } else {
-         switch (tileChar) {
-             case STAR_CHAR_VAL:
-                 bM = `Near star.`;
-                 availableActions.push({
-                     label: 'Enter System',
-                     key: 'e',
-                     onclick: () => {
-                         currentSystemData = generateStarSystem(playerX, playerY);
-                         changeGameState(GAME_STATES.SYSTEM_MAP);
-                     }
-                 });
-                 availableActions.push({
-                     label: 'Scoop Fuel',
-                     key: 'h',
-                     onclick: scoopHydrogen
-                 });
-                 unlockLoreEntry("PHENOMENON_STAR");
-                 break;
+            // Open the visual modal and stop processing generic text logs
+            openStationView();
+            autoSaveGame();
+            return; 
+        }
+
+        // --- 4. GENERIC LOCATION FALLBACK ---
+        // Anything that isn't a planet or station drops down here to use your classic menus
+        bM = `Arrived at ${location.name}.`;
+
+        if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) {
+            availableActions.push({ label: 'Buy', key: 'b', onclick: () => openTradeModal('buy') });
+            availableActions.push({ label: 'Sell', key: 's', onclick: () => openTradeModal('sell') });
+        }
+
+        if (playerHull < MAX_PLAYER_HULL) {
+            const hullToRepair = MAX_PLAYER_HULL - playerHull;
+            const repairCost = hullToRepair * HULL_REPAIR_COST_PER_POINT;
+            availableActions.push({ label: `Repair Hull (${formatNumber(repairCost)}c)`, key: 'r', onclick: repairShip });
+        }
+
+        // Mission turn-ins
+        if (playerActiveMission && playerActiveMission.type === "DELIVERY" && !playerActiveMission.isComplete && location.name === playerActiveMission.objectives[0].destinationName) {
+            availableActions.push({ label: 'Complete Delivery', key: 'c', onclick: handleCompleteDelivery });
+        }
+        if (playerActiveMission && playerActiveMission.isComplete && location.name === playerActiveMission.giver) {
+            availableActions.push({ label: 'Get Reward', key: 'g', onclick: grantMissionRewards });
+        }
+        if (playerActiveMission && playerActiveMission.type === "ACQUIRE" && !playerActiveMission.isComplete && location.name === playerActiveMission.giver) {
+            availableActions.push({ label: 'Turn in Resources', key: 'g', onclick: handleTurnInAcquire });
+        }
+
+        if (!discoveredLocations.has(location.name)) {
+            discoveredLocations.add(location.name);
+            playerXP += XP_PER_LOCATION_DISCOVERY;
+            bM += `\n<span style='color:var(--success);'>Location Discovered: ${location.name}! +${formatNumber(XP_PER_LOCATION_DISCOVERY)} XP!</span>`;
+            unlockLoreEntry(`LOCATION_${location.name.replace(/\s+/g, '_').toUpperCase()}`);
+            checkLevelUp();
+        }
+
+    } else {
+        // --- 5. DEEP SPACE PHENOMENA ---
+        switch (tileChar) {
+            case STAR_CHAR_VAL:
+                bM = `Near star.`;
+                availableActions.push({ label: 'Enter System', key: 'e', onclick: () => { currentSystemData = generateStarSystem(playerX, playerY); changeGameState(GAME_STATES.SYSTEM_MAP); } });
+                availableActions.push({ label: 'Scoop Fuel', key: 'h', onclick: scoopHydrogen });
+                unlockLoreEntry("PHENOMENON_STAR");
+                break;
             case NEXUS_CHAR_VAL:
-                 bM = "You are hovering before a colossus of shifting geometry. The First Nexus.";
-                 if (mystery_nexus_activated) {
-                     bM += "\nIt pulses with a silent, rhythmic light. It knows you are here.";
-                 } else {
-                     bM += "\nIt is dormant, but the Wayfinder Core in your hold is vibrating in unison.";
-                 }
-                 availableActions.push({
-                     label: 'Commune',
-                     key: 'x', 
-                     onclick: handleNexusEncounter
-                 });
-                 unlockLoreEntry("MYSTERY_FIRST_NEXUS");
-                 break;
-             case ASTEROID_CHAR_VAL:
-                 bM = `Asteroid field.`;
-                 availableActions.push({
-                     label: 'Mine',
-                     key: 'm',
-                     onclick: mineAsteroid
-                 });
-                 unlockLoreEntry("PHENOMENON_ASTEROID");
-                 break;
-             case NEBULA_CHAR_VAL:
-                 bM = `Inside a dense gas cloud. Sensors are intermittent.`;
-                 availableActions.push({
-                     label: 'Scoop Fuel',
-                     key: 'h',
-                     onclick: scoopHydrogen
-                 });
-                 unlockLoreEntry("PHENOMENON_NEBULA");
-                 break;
-             case WORMHOLE_CHAR_VAL:
-                 bM = `Near a swirling vortex in spacetime.`;
-                 availableActions.push({
-                     label: 'Traverse',
-                     key: 't',
-                     onclick: traverseWormhole
-                 });
-                 unlockLoreEntry("PHENOMENON_WORMHOLE");
-                 break;
-             case ANOMALY_CHAR_VAL:
-                 bM = `You've entered the unstable anomaly!`;
-                 if (tileObject.studied) {
-                     bM = "This anomaly has dissipated.";
-                 } else {
-                     handleAnomalyEncounter(tileObject); 
-                 }
-                 unlockLoreEntry("XENO_ANOMALIES");
-                 break;
-             case DERELICT_CHAR_VAL:
-                 // 1. Unlock Lore
-                 unlockLoreEntry("XENO_DERELICTS");
-                 // 2. Open the new Visual Modal
-                 openDerelictView();
-                 // 3. Return (Stop processing generic text logs)
-                 return;
-         }
-     }
+                bM = "You are hovering before a colossus of shifting geometry. The First Nexus.";
+                if (mystery_nexus_activated) bM += "\nIt pulses with a silent, rhythmic light. It knows you are here.";
+                else bM += "\nIt is dormant, but the Wayfinder Core in your hold is vibrating in unison.";
+                availableActions.push({ label: 'Commune', key: 'x', onclick: handleNexusEncounter });
+                unlockLoreEntry("MYSTERY_FIRST_NEXUS");
+                break;
+            case ASTEROID_CHAR_VAL:
+                bM = `Asteroid field.`;
+                availableActions.push({ label: 'Mine', key: 'm', onclick: mineAsteroid });
+                unlockLoreEntry("PHENOMENON_ASTEROID");
+                break;
+            case NEBULA_CHAR_VAL:
+                bM = `Inside a dense gas cloud. Sensors are intermittent.`;
+                availableActions.push({ label: 'Scoop Fuel', key: 'h', onclick: scoopHydrogen });
+                unlockLoreEntry("PHENOMENON_NEBULA");
+                break;
+            case WORMHOLE_CHAR_VAL:
+                bM = `Near a swirling vortex in spacetime.`;
+                availableActions.push({ label: 'Traverse', key: 't', onclick: traverseWormhole });
+                unlockLoreEntry("PHENOMENON_WORMHOLE");
+                break;
+            case ANOMALY_CHAR_VAL:
+                bM = `You've entered the unstable anomaly!`;
+                if (tileObject.studied) bM = "This anomaly has dissipated.";
+                else handleAnomalyEncounter(tileObject); 
+                unlockLoreEntry("XENO_ANOMALIES");
+                break;
+            case DERELICT_CHAR_VAL:
+                unlockLoreEntry("XENO_DERELICTS");
+                openDerelictView();
+                return; // Stop processing generic text logs
+        }
+    }
 
-     logMessage(bM);
-     renderContextualActions(availableActions);
-     if (tileObject && tileObject.type === 'location') {
+    if (bM) logMessage(bM);
+    if (availableActions.length > 0) renderContextualActions(availableActions);
+    
+    if (tileObject && tileObject.type === 'location') {
         autoSaveGame();
-     }
- }
+    }
+}
 
  function handleNexusEncounter() {
      // Check if we have the key
@@ -4248,7 +4179,7 @@ function displayShipyard() {
     
     // 1. Default Landing Screen
     detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px;">
+        <div style="text-align:center; padding: 20px;">displayCrewRoster()
             <div style="font-size:60px; text-align:center; margin-bottom:15px; opacity:0.5;">🛠️</div>
             <h3 style="color:var(--accent-color); margin-bottom:10px;">WELCOME TO THE SHIPYARD</h3>
             <p style="color:var(--item-desc-color); font-size:12px;">Select a hull from the manifest on the left to view its specifications and place an order.</p>
@@ -4546,9 +4477,7 @@ function repairShip() {
      renderUIStats();
  }
 
-
  // --- Outfitting Functions ---
-
 function displayOutfittingScreen() {
     openGenericModal("OUTFITTING SERVICES");
     const listEl = document.getElementById('genericModalList');
@@ -4801,6 +4730,158 @@ function toggleCodex(show) {
          }
      });
  }
+
+ // --- PLANETARY INTERACTION UI ---
+function openPlanetView(location) {
+    openGenericModal(`ORBITING: ${location.name.toUpperCase()}`);
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // 1. Render Planet Vitals
+    detailEl.innerHTML = `
+        <div style="text-align:center; font-size: 60px; margin-bottom:15px; filter: drop-shadow(0 0 15px ${location.color || '#00E0E0'});">🪐</div>
+        <h3 style="color:var(--accent-color); text-align:center; margin-top:0;">${location.name}</h3>
+        <p style="text-align:center; color:var(--item-desc-color); font-size: 14px;">Classification: ${location.biome || 'Unknown'}</p>
+        
+        <div style="border: 1px dashed #333; background: rgba(0,0,0,0.3); padding: 15px; margin-top: 15px; border-radius: 4px;">
+            <div style="color:#888; font-size:12px; margin-bottom: 5px;">PLANETARY STATUS:</div>
+            <div style="color:var(--danger); font-weight:bold; letter-spacing: 1px;">UNCLAIMED WILDERNESS</div>
+            <div style="color:#666; font-size: 11px; margin-top: 5px;">No civilized structures detected. High concentration of raw materials present in the crust.</div>
+        </div>
+    `;
+
+    // 2. Evaluate Mid-Game Restrictions
+    const ship = SHIP_CLASSES[playerShip.shipClass];
+    const hasMiningLaser = COMPONENTS_DATABASE[playerShip.components.utility]?.stats?.unlocksMining;
+    
+    // Check for the Prefab Core (Assuming you store cargo in a playerCargo object/array)
+    // NOTE: Adjust 'playerCargo' below to match whatever variable tracks your current inventory!
+    const hasColonyCore = typeof playerCargo !== 'undefined' && playerCargo['PREFAB_COLONY_CORE'] > 0; 
+    const hasCargoCapacity = ship.cargoCapacity >= 100;
+
+    // 3. Setup Mining Button Logic
+    let mineBtnText = "INITIATE ORBITAL MINING";
+    let mineDisabled = "";
+    if (!hasMiningLaser) {
+        mineBtnText = "REQUIRES ORBITAL EXTRACTOR";
+        mineDisabled = "disabled";
+    }
+
+    // 4. Setup Colony Button Logic
+    let colonyBtnText = "ESTABLISH COLONY";
+    let colonyDisabled = "";
+    if (!hasCargoCapacity) {
+        colonyBtnText = "SHIP TOO SMALL (100+ CARGO REQ)";
+        colonyDisabled = "disabled";
+    } else if (!hasColonyCore) {
+        colonyBtnText = "REQUIRES PREFAB COLONY CORE (25,000c)";
+        colonyDisabled = "disabled";
+    }
+
+    // 5. Render Action Buttons
+    actionsEl.innerHTML = `
+        <button class="action-button" onclick="conductSurfaceScan()">CONDUCT SURFACE SCAN</button>
+        <button class="action-button" ${mineDisabled} onclick="startOrbitalMining()">${mineBtnText}</button>
+        <button class="action-button" ${colonyDisabled} style="${colonyDisabled ? '' : 'border-color: var(--success); color: var(--success);'}" onclick="foundColony()">${colonyBtnText}</button>
+    `;
+}
+
+// --- PLANETARY MECHANICS ---
+
+function conductSurfaceScan() {
+    const location = chunkManager.getTile(playerX, playerY);
+    if (!location) return;
+    
+    // Play a nice radar ping if sound is enabled
+    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate(); 
+    
+    let scanText = "Surface consists of barren rock and trace atmosphere. ";
+    
+    // Add some flavor text based on the planet's generated name
+    if (location.name.includes("Prime") || location.name.includes("Alpha")) scanText = "Highly dense core detected. Magnetic fields are erratic. ";
+    if (location.name.includes("Tartarus") || location.name.includes("Volcan")) scanText = "Extreme geothermal activity. High probability of rare metals. ";
+    
+    // Check our new depletion flag
+    if (location.miningDepleted) {
+        scanText += "<br><span style='color:var(--danger); font-weight:bold;'>Geological survey: Depleted.</span>";
+    } else {
+        scanText += "<br><span style='color:var(--success); font-weight:bold;'>Geological survey: Viable ore veins detected.</span>";
+    }
+
+    // Inject the scan results directly into the UI panel
+    const detailEl = document.getElementById('genericDetailContent');
+    detailEl.innerHTML += `
+        <div style="margin-top: 15px; padding: 10px; border-left: 3px solid #00E0E0; background: rgba(0, 224, 224, 0.1); font-size: 12px; color: var(--text-color); animation: fadeIn 0.5s;">
+            <div style="color: #00E0E0; font-weight: bold; margin-bottom: 5px;">SCAN RESULTS:</div>
+            ${scanText}
+        </div>
+    `;
+}
+
+function startOrbitalMining() {
+    const location = chunkManager.getTile(playerX, playerY);
+    if (!location || location.miningDepleted) return;
+
+    // 1. Calculate the player's true max cargo (Ship Base + Utility Mods)
+    let maxCargo = SHIP_CLASSES[playerShip.shipClass].cargoCapacity;
+    if (playerShip.components.utility) {
+        const util = COMPONENTS_DATABASE[playerShip.components.utility];
+        if (util && util.stats && util.stats.cargoBonus) maxCargo += util.stats.cargoBonus;
+    }
+
+    // Prevent mining if the hold is completely full
+    if (typeof currentCargoLoad === 'undefined') window.currentCargoLoad = 0; 
+    if (currentCargoLoad >= maxCargo) {
+        showToast("Cargo hold is full! Cannot extract ore.", "error");
+        if (typeof soundManager !== 'undefined') soundManager.playError();
+        return;
+    }
+
+    // 2. Play Audio FX (Laser firing, then metallic mining sound)
+    if (typeof soundManager !== 'undefined') {
+        soundManager.playLaser(); 
+        setTimeout(() => soundManager.playMining(), 400); 
+    }
+
+    // 3. Calculate Loot Table (RNG dictates rarity)
+    const roll = Math.random();
+    let itemId = "MINERALS"; // Default fallback
+    let amount = Math.floor(Math.random() * 5) + 5; // Yields 5 to 9 units
+
+    // Pull from your actual items.js database!
+    if (roll > 0.95) { itemId = "VOID_CRYSTALS"; amount = 1; }
+    else if (roll > 0.75) { itemId = "RARE_METALS"; amount = Math.floor(Math.random() * 3) + 2; }
+    else if (roll > 0.50) { itemId = "PLATINUM_ORE"; amount = Math.floor(Math.random() * 4) + 1; }
+
+    // Cap the extracted amount so we don't accidentally overfill the cargo hold
+    if (currentCargoLoad + amount > maxCargo) {
+        amount = maxCargo - currentCargoLoad;
+    }
+
+    // 4. Add items to Inventory
+    if (!window.playerCargo) window.playerCargo = {};
+    playerCargo[itemId] = (playerCargo[itemId] || 0) + amount;
+    currentCargoLoad += amount;
+
+    // 5. Deplete the planet & grant XP
+    location.miningDepleted = true;
+    playerXP += 35;
+    checkLevelUp();
+
+    // 6. Update all UI elements
+    logMessage(`Deployed Orbital Extractor. <span style="color:var(--gold-text)">+${amount} ${COMMODITIES[itemId].name}</span> secured.`, true);
+    showToast(`Mined ${amount} ${COMMODITIES[itemId].name}`, "success");
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+    
+    // Refresh the planet view so the button instantly turns gray
+    openPlanetView(location);
+    saveGame(); // Lock in the loot!
+}
+
+// Placeholder Hooks for the buttons
+
+function foundColony() { logMessage("<span style='color:var(--success)'>COLONY ESTABLISHED. Welcome to the frontier.</span>", true); }
 
 /**
   * Selects a random, valid mission destination from the LOCATIONS_DATA.
@@ -8192,6 +8273,126 @@ function hireCrew(crewId) {
         renderUIStats();
         openRecruitmentBoard(); // Refresh list to remove them
     }
+}
+
+// --- COMMANDER PROFILE UI ---
+function displayCommanderProfile(tab = 'OVERVIEW') {
+    // Hide the SYS menu so it doesn't overlap
+    document.getElementById('systemMenu').classList.add('hidden');
+    
+    openGenericModal("COMMANDER DATAPAD");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    document.getElementById('genericModalActions').innerHTML = ''; // Clear bottom buttons
+
+    // 1. Build the Left-Side Navigation Tabs
+    listEl.innerHTML = '';
+    const tabs = [
+        { id: 'OVERVIEW', name: 'Personal Log', icon: '👤' },
+        { id: 'SHIP', name: 'Vessel Manifest', icon: '🚀' },
+        { id: 'LOADOUT', name: 'Equipped Gear', icon: '⚙️' },
+        { id: 'FACTIONS', name: 'Reputation', icon: '📜' }
+    ];
+
+    tabs.forEach(t => {
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        row.style.cursor = 'pointer';
+        // Highlight the currently active tab
+        if (tab === t.id) row.style.background = 'rgba(0, 224, 224, 0.1)';
+        
+        row.innerHTML = `<span style="color:var(--text-color); font-weight:bold;">${t.icon} ${t.name}</span>`;
+        row.onclick = () => displayCommanderProfile(t.id);
+        listEl.appendChild(row);
+    });
+
+    // 2. Build the Right-Side Content based on the selected tab
+    let html = `<div style="padding: 15px;">`;
+    
+    if (tab === 'OVERVIEW') {
+        // Calculate Notoriety Title
+        let notTitle = "Unknown";
+        for (let i = NOTORIETY_TITLES.length - 1; i >= 0; i--) {
+            if (playerNotoriety >= NOTORIETY_TITLES[i].score) {
+                notTitle = NOTORIETY_TITLES[i].title; break;
+            }
+        }
+        const xpReq = Math.floor(BASE_XP_TO_LEVEL * Math.pow(playerLevel, XP_LEVEL_EXPONENT));
+
+        html += `
+            <h3 style="color:var(--accent-color); border-bottom:1px solid #333; padding-bottom:10px; margin-top:0;">OVERVIEW</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; font-size:13px; line-height:1.5;">
+                <div style="color:#888;">Clearance Level:</div> <div style="color:var(--text-color); text-align:right; font-weight:bold;">${playerLevel}</div>
+                <div style="color:#888;">Experience:</div> <div style="color:var(--text-color); text-align:right;">${Math.floor(playerXP)} / ${xpReq}</div>
+                <div style="color:#888;">Credits:</div> <div style="color:var(--gold-text); text-align:right; font-weight:bold;">${formatNumber(playerCredits)}c</div>
+                <div style="color:#888;">Notoriety:</div> <div style="color:var(--text-color); text-align:right;">${notTitle} (${playerNotoriety})</div>
+                <div style="color:#888;">Active Contract:</div> <div style="color:var(--text-color); text-align:right;">${typeof activeMission !== 'undefined' && activeMission ? 'In Progress' : 'None'}</div>
+                <div style="color:#888;">Crew Roster:</div> <div style="color:var(--text-color); text-align:right;">${playerCrew.length} / ${MAX_CREW}</div>
+            </div>
+        `;
+    } 
+    else if (tab === 'SHIP') {
+        const ship = SHIP_CLASSES[playerShip.shipClass];
+        html += `
+            <div style="text-align:center;">
+                ${ship.image ? `<img src="${ship.image}" style="width:100%; max-width:180px; margin-bottom:15px; filter: drop-shadow(0 0 10px rgba(0,224,224,0.2));">` : '<div style="font-size:50px; opacity:0.5; margin-bottom:15px;">🚀</div>'}
+            </div>
+            <h3 style="color:var(--accent-color); border-bottom:1px solid #333; padding-bottom:10px; margin-top:0; text-align:center;">${ship.name.toUpperCase()}</h3>
+            
+            ${activeSynergy ? `<div style="text-align:center; color:var(--gold-text); font-size:12px; margin-bottom:15px; padding:5px; background:rgba(255,215,0,0.1); border:1px solid #886600; border-radius:4px; font-weight:bold; letter-spacing:1px;">★ SET BONUS: ${activeSynergy.name.toUpperCase()} ★<br><span style="color:#CCC; font-size:10px; font-weight:normal;">${activeSynergy.desc}</span></div>` : ''}
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; font-size:13px;">
+                <div style="color:#888;">Max Hull:</div> <div style="color:var(--success); text-align:right; font-weight:bold;">${MAX_PLAYER_HULL}</div>
+                <div style="color:#888;">Max Shields:</div> <div style="color:#00E0E0; text-align:right; font-weight:bold;">${MAX_SHIELDS}</div>
+                <div style="color:#888;">Fuel Capacity:</div> <div style="color:var(--warning); text-align:right; font-weight:bold;">${MAX_FUEL}</div>
+                <div style="color:#888;">Cargo Space:</div> <div style="color:var(--text-color); text-align:right; font-weight:bold;">${currentCargoLoad} / ${PLAYER_CARGO_CAPACITY}</div>
+                <div style="color:#888; grid-column: span 2; margin-top: 5px; border-top: 1px dashed #333; padding-top: 10px;">Combat Protocol: <span style="color:var(--danger); float:right;">${ship.ability.name}</span></div>
+            </div>
+        `;
+    } 
+    else if (tab === 'LOADOUT') {
+        html += `<h3 style="color:var(--accent-color); border-bottom:1px solid #333; padding-bottom:10px; margin-top:0;">SYSTEM DIAGNOSTICS</h3>`;
+        const slots = ['weapon', 'shield', 'engine', 'scanner', 'utility'];
+        
+        slots.forEach(slot => {
+            const compId = playerShip.components[slot];
+            const comp = COMPONENTS_DATABASE[compId];
+            const mfgBadge = (comp && comp.manufacturer) ? `<span style="background:rgba(255,255,255,0.1); color:#CCC; padding:2px 4px; border-radius:2px; font-size:9px; margin-left:6px; vertical-align:middle;">${comp.manufacturer}</span>` : '';
+            
+            html += `
+                <div style="margin-bottom:12px; background:rgba(0,0,0,0.2); padding:10px; border-left:3px solid var(--accent-color); border-radius: 0 4px 4px 0;">
+                    <div style="font-size:10px; color:#888; text-transform:uppercase; letter-spacing:1px;">${slot}</div>
+                    <div style="color:var(--item-name-color); font-weight:bold; margin-top:4px;">${comp ? comp.name : 'Empty'} ${mfgBadge}</div>
+                </div>
+            `;
+        });
+    } 
+    else if (tab === 'FACTIONS') {
+        html += `<h3 style="color:var(--accent-color); border-bottom:1px solid #333; padding-bottom:10px; margin-top:0;">DIPLOMATIC STANDINGS</h3>`;
+        html += `<div style="display:flex; flex-direction:column; gap:10px; font-size:13px;">`;
+        
+        for (const [facKey, facData] of Object.entries(FACTIONS)) {
+            if (facKey === 'INDEPENDENT') continue; // Skip lawless space
+            
+            const rep = playerFactionStanding[facKey] || 0;
+            let repColor = rep > 20 ? 'var(--success)' : rep < -20 ? 'var(--danger)' : 'var(--text-color)';
+            let repTitle = rep > 50 ? 'Allied' : rep > 20 ? 'Friendly' : rep < -50 ? 'Hostile' : rep < -20 ? 'Unfriendly' : 'Neutral';
+            
+            html += `
+                <div style="background:rgba(0,0,0,0.3); padding:12px; border-radius:4px; border-left:4px solid ${facData.color};">
+                    <div style="color:${facData.color}; font-weight:bold; font-size:14px; margin-bottom:6px; letter-spacing: 1px;">${facData.name.toUpperCase()}</div>
+                    <div style="display:flex; justify-content:space-between; align-items: center;">
+                        <span style="color:#888;">Standing:</span> 
+                        <span style="color:${repColor}; font-weight:bold;">${repTitle} (${rep})</span>
+                    </div>
+                </div>
+            `;
+        }
+        html += `</div>`;
+    }
+    
+    html += `</div>`;
+    detailEl.innerHTML = html;
 }
 
 function displayCrewRoster() {
