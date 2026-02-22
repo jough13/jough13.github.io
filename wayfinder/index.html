@@ -252,7 +252,7 @@ body {
             <p class="subtitle">Echoes of the Void</p>
             
             <div id="systemBoot" style="margin-top:20px; color:var(--accent-color); font-family:var(--main-font); animation: blink 1s infinite;">
-                SYSTEM INITIALIZING...<span style="color:var(--text-color); font-weight: bold;">|</span>
+                SYSTEM INITIALIZING...
             </div>
             
             <div id="saveSelectContainer" style="display:none;">
@@ -273,7 +273,6 @@ body {
             <div id="introVideoContainer" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:#050510; z-index: 50; flex-direction:column; justify-content:center; align-items:center;">
             
             <video id="introVideo" autoplay muted playsinline style="max-width:100%; max-height:100%; box-shadow: 0 0 30px rgba(0,224,224,0.2);">
-                <source src="assets/intro.mp4" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
 
@@ -357,12 +356,13 @@ body {
                REP: <span id="menuRep">Neutral</span>
             </div>
 
+            <button id="crewButton" class="sys-btn" onclick="displayCrewRoster()">Crew Roster</button>
             <button id="saveButton" class="sys-btn">Manual Save</button>
             <button id="loadButton" class="sys-btn">Load Manual Save</button>
             <button id="mainMenuButton" class="sys-btn">Main Menu</button>
             <button id="themeButton" class="sys-btn">Toggle Theme</button>
             <button id="soundButton" class="sys-btn">Mute Audio</button>
-            <div id="versionInfo">v0.9.5</div>
+            <div id="versionInfo">v0.9.6 (Crew Update)</div>
          </div>
 
         <main id="main-view">
@@ -408,16 +408,6 @@ body {
         </div>
     </div>
 </div>
-<div id="genericModalOverlay" style="display:none;">
-        <div class="trade-window" style="height:auto; min-height:300px;">
-            <div class="trade-header">
-                <span id="genericModalTitle">INFORMATION</span>
-                <button onclick="closeGenericModal()" class="icon-btn">X</button>
-            </div>
-            <div id="genericModalContent" class="station-body" style="padding:20px; overflow-y:auto; max-height:60vh;">
-                </div>
-        </div>
-    </div>
 
             <div id="stationOverlay" style="display:none;">
                 <div class="trade-window" style="max-width: 800px;">
@@ -432,44 +422,8 @@ body {
                             <p id="stationDescText" class="station-desc">Station description goes here...</p>
                         </div>
                         
-                        <div class="station-menu-grid">
-                            <button class="station-action-btn" onclick="openTradeModal('buy')">
-                                <div class="btn-icon">🛒</div>
-                                <div class="btn-label">Marketplace<br><span class="btn-sub">Buy Commodities</span></div>
-                            </button>
-                            <button class="station-action-btn" onclick="openTradeModal('sell')">
-                                <div class="btn-icon">💰</div>
-                                <div class="btn-label">Sell Cargo<br><span class="btn-sub">Offload Goods</span></div>
-                            </button>
-                            <button class="station-action-btn" onclick="displayMissionBoard()">
-                                <div class="btn-icon">📜</div>
-                                <div class="btn-label">Mission Board<br><span class="btn-sub">Contracts & Bounties</span></div>
-                            </button>
-                            <button class="station-action-btn" onclick="displayShipyard()">
-                                <div class="btn-icon">🚀</div>
-                                <div class="btn-label">Shipyard<br><span class="btn-sub">Buy New Hulls</span></div>
-                            </button>
-                            <button class="station-action-btn" onclick="displayOutfittingScreen()">
-                                <div class="btn-icon">⚙️</div>
-                                <div class="btn-label">Outfitting<br><span class="btn-sub">Upgrades & Parts</span></div>
-                            </button>
-                            <button class="station-action-btn" onclick="visitCantina()">
-                                <div class="btn-icon">🍸</div>
-                                <div class="btn-label">Cantina<br><span class="btn-sub">Rumors & Rest (10c)</span></div>
-                            </button>
-                            <button class="station-action-btn" onclick="visitCryptarch()">
-                                <div class="btn-icon">👁️</div>
-                                <div class="btn-label">Cryptarch<br><span class="btn-sub">Decrypt Engrams (250c)</span></div>
-                            </button>
-                            <button class="station-action-btn repair-btn" onclick="repairShip()">
-                                <div class="btn-icon">🔧</div>
-                                <div class="btn-label">Repair Hull<br><span class="btn-sub" id="repairCostLabel">Check Cost</span></div>
-                            </button>
-                            <button class="station-action-btn leave-btn" onclick="closeStationView()">
-                                <div class="btn-icon">👋</div>
-                                <div class="btn-label">Undock<br><span class="btn-sub">Return to Space</span></div>
-                            </button>
-                        </div>
+                       <div id="dynamicStationMenu" class="station-menu-grid">
+                            </div>
                     </div>
                 </div>
             </div>
@@ -547,22 +501,17 @@ body {
             </div>
 
             <div id="genericModalOverlay" style="display:none;">
-                <div class="trade-window">
-                    <div class="trade-header">
-                        <span id="genericModalTitle">TITLE</span>
-                        <button onclick="closeGenericModal()" class="icon-btn">X</button>
-                    </div>
-                    <div id="genericInfoBar" class="modal-info-bar"></div>
-                    <div class="trade-body">
-                        <div id="genericModalList" class="trade-list-container"></div>
-                        <div id="genericModalDetails" class="trade-panel-right">
-                            <h3 id="genericDetailTitle">SELECT ITEM</h3>
-                            <div id="genericDetailContent"></div>
-                            <div class="trade-btn-group" id="genericModalActions"></div>
-                        </div>
-                    </div>
-                </div>
+        <div class="trade-window">
+            <div class="trade-header">
+                <span id="genericModalTitle">TITLE</span>
+                <button onclick="closeGenericModal()" class="icon-btn">X</button>
             </div>
+            <div id="genericInfoBar" class="modal-info-bar"></div>
+            
+            <div id="genericModalContent" class="trade-body">
+            </div>
+        </div>
+    </div>
 
             <div id="cargoOverlay" style="display:none;">
                 <div class="trade-window"> 
