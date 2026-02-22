@@ -176,6 +176,16 @@
         cost: 0,
         stats: {}
     },
+    UTIL_ORBITAL_EXTRACTOR: {
+        name: "Orbital Extractor",
+        type: "utility",
+        slot: "utility",
+        manufacturer: "FRONTIER",
+        description: "Fires localized tectonic charges to strip-mine planetary surfaces from orbit. Unlocks planetary mining.",
+        cost: 8500,
+        stats: { unlocksMining: true },
+        loreKey: "LORE_COMP_SCANNER"
+    },
     UTIL_REINFORCED_PLATING: {
         name: "Reinforced Plating",
         type: "utility",
