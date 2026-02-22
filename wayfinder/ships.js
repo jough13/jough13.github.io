@@ -15,6 +15,20 @@
              cooldown: 6
          }
      },
+     COURIER: {
+        name: "Courier",
+        baseHull: 115,
+        cargoCapacity: 65,
+        baseCost: 6500,
+        description: "A professional vessel balancing speed and durability.",
+        loreKey: "LORE_SHIP_COURIER",
+        ability: {
+            name: "Precision Burn",
+            desc: "Increases evasion and guarantees the next hit.",
+            id: "ACCURACY_BOOST",
+            cooldown: 5
+        }
+    },
      INTERCEPTOR: {
          name: "Interceptor",
          image: "assets/interceptor.png",
@@ -104,7 +118,6 @@
  };
 
    // --- Enemy Ship Classes Database ---
-   // Now includes Faction Specific Ships
  const PIRATE_SHIP_CLASSES = {
      // --- STANDARD PIRATES ---
      RAIDER: {
