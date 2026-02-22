@@ -1254,7 +1254,10 @@ function unlockLoreEntry(entryKey, silent = false) {
             <div style="flex: 1; min-width: 220px; max-width: 300px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; text-align: center; display: flex; flex-direction: column; align-items: center;">
                 
                 <div style="width: 120px; height: 120px; background: rgba(0, 224, 224, 0.05); border: 1px dashed var(--accent-color); border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
-                    <span style="font-size: 40px; opacity: 0.6; filter: hue-rotate(180deg);">🚀</span>
+                    ${shipClass.image 
+                        ? `<img src="${shipClass.image}" style="max-width: 90%; max-height: 90%; object-fit: contain; drop-shadow: 0 0 10px rgba(0,224,224,0.3);">` 
+                        : `<span style="font-size: 40px; opacity: 0.6; filter: hue-rotate(180deg);">🚀</span>`
+                    }
                 </div>
 
                 <h3 style="margin: 0 0 5px 0; color: var(--item-name-color); font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
@@ -1279,13 +1282,16 @@ function unlockLoreEntry(entryKey, silent = false) {
             <div style="width: 150px; background: ${intentBg}; border: 1px solid var(--danger); border-radius: 8px; padding: 15px; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(255,0,0,0.1);">
                 <div style="font-size: 11px; color: var(--danger); letter-spacing: 2px; margin-bottom: 15px; font-weight: bold; font-family: var(--title-font);">ENEMY INTENT</div>
                 <div style="font-size: 36px; margin-bottom: 15px;">${intent.icon}</div>
-                <div style="font-weight: bold; color: var(--text-color); font-size: 14px; letter-spacing: 1px;">${intent.label.toUpperCase()}</div>
+                <div style="font-weight: bold; color: var(--text-color); fontdisplayOutfittingScreen()-size: 14px; letter-spacing: 1px;">${intent.label.toUpperCase()}</div>
             </div>
 
             <div style="flex: 1; min-width: 220px; max-width: 300px; background: var(--bg-color); border: 1px solid var(--danger); border-radius: 8px; padding: 15px; text-align: center; display: flex; flex-direction: column; align-items: center; box-shadow: inset 0 0 10px rgba(255,0,0,0.1);">
                 
                 <div style="width: 120px; height: 120px; background: rgba(255, 0, 0, 0.05); border: 1px dashed var(--danger); border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
-                    <span style="font-size: 40px; opacity: 0.6;">🛸</span>
+                    ${currentCombatContext.ship.image 
+                        ? `<img src="${currentCombatContext.ship.image}" style="max-width: 90%; max-height: 90%; object-fit: contain; transform: scaleX(-1); drop-shadow: 0 0 10px rgba(255,0,0,0.3);">` 
+                        : `<span style="font-size: 40px; opacity: 0.6;">🛸</span>`
+                    }
                 </div>
 
                 <h3 style="margin: 0 0 5px 0; color: var(--danger); font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
@@ -4234,26 +4240,37 @@ function handleCombatAction(action) {
     render();
 }
 
-// --- Shipyard Functions (With Comma Support) ---
-
+// --- SHIPYARD UI ---
 function displayShipyard() {
-    const location = chunkManager.getTile(playerX, playerY);
-    if (!location.isMajorHub) { logMessage("Shipyard unavailable."); return; }
-
-    openGenericModal(`${location.name} SHIPYARD`);
-    
+    openGenericModal("STARBASE SHIPYARD");
     const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
     
-    // Populate List
+    // 1. Default Landing Screen
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; text-align:center; margin-bottom:15px; opacity:0.5;">🛠️</div>
+            <h3 style="color:var(--accent-color); margin-bottom:10px;">WELCOME TO THE SHIPYARD</h3>
+            <p style="color:var(--item-desc-color); font-size:12px;">Select a hull from the manifest on the left to view its specifications and place an order.</p>
+        </div>
+    `;
+
+    // 2. Populate the Manifest
+    listEl.innerHTML = '';
     Object.keys(SHIP_CLASSES).forEach(shipId => {
-        if(shipId === playerShip.shipClass) return; // Skip current
-        
         const ship = SHIP_CLASSES[shipId];
         const row = document.createElement('div');
         row.className = 'trade-item-row';
-        // ADDED: formatNumber for the base cost
-        row.innerHTML = `<span>${ship.name}</span> <span>${formatNumber(ship.baseCost)}c</span>`;
-        row.onclick = () => showShipDetails(shipId);
+        
+        // Highlight the currently equipped ship
+        const isCurrent = playerShip.shipClass === shipId;
+        const nameColor = isCurrent ? "var(--success)" : "var(--text-color)";
+        const costLabel = isCurrent ? "OWNED" : `${formatNumber(ship.baseCost)}c`;
+        
+        row.innerHTML = `<span style="color:${nameColor}">${isCurrent ? '▶ ' : ''}${ship.name}</span> <span style="color:var(--gold-text)">${costLabel}</span>`;
+        
+        row.onclick = () => showShipDetails(shipId); 
+        
         listEl.appendChild(row);
     });
 }
@@ -4278,10 +4295,17 @@ function showShipDetails(shipId) {
     const tradeIn = baseTradeIn + componentsRefund;
     const cost = ship.baseCost - tradeIn;
     
-    // Added formatNumber for all numeric labels
+    // 3. Render HTML (Now with Ship Art injection!)
     let html = `
-        <h3 style="color:var(--accent-color)">${ship.name}</h3>
-        <p>${ship.description}</p>
+        <div style="text-align:center; padding-top: 10px;">
+            ${ship.image 
+                ? `<img src="${ship.image}" style="width:100%; max-width:200px; height:auto; margin: 0 auto 15px; display:block; filter: drop-shadow(0 0 10px rgba(0,224,224,0.2));">` 
+                : `<div style="font-size:60px; text-align:center; margin-bottom:15px; opacity:0.5; filter: hue-rotate(180deg);">🚀</div>`
+            }
+            <h3 style="color:var(--accent-color); margin-top:0;">${ship.name.toUpperCase()}</h3>
+        </div>
+        <p style="text-align:center; font-size:13px; color:var(--item-desc-color); margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #333;">${ship.description}</p>
+        
         <div class="trade-math-area">
             <div class="trade-stat-row"><span>Hull:</span> <span>${formatNumber(ship.baseHull)}</span></div>
             <div class="trade-stat-row"><span>Cargo:</span> <span>${formatNumber(ship.cargoCapacity)}</span></div>
@@ -4298,7 +4322,10 @@ function showShipDetails(shipId) {
     let btnLabel = 'PURCHASE VESSEL';
     let isDisabled = '';
 
-    if (playerCredits < cost) {
+    if (playerShip.shipClass === shipId) {
+        btnLabel = 'CURRENTLY EQUIPPED';
+        isDisabled = 'disabled';
+    } else if (playerCredits < cost) {
         btnLabel = 'INSUFFICIENT FUNDS';
         isDisabled = 'disabled';
     } else if (cargoTooLarge) {
@@ -4525,12 +4552,26 @@ function repairShip() {
 function displayOutfittingScreen() {
     openGenericModal("OUTFITTING SERVICES");
     const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent'); // Grab the right-side panel
     
+    // --- Default Ship Display ---
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            ${SHIP_CLASSES[playerShip.shipClass].image 
+                ? `<img src="${SHIP_CLASSES[playerShip.shipClass].image}" style="width:100%; max-width:200px; height:auto; margin: 0 auto 15px; display:block; filter: drop-shadow(0 0 10px rgba(0,224,224,0.2));">` 
+                : `<div style="font-size:60px; text-align:center; margin-bottom:15px; opacity:0.5; filter: hue-rotate(180deg);">🚀</div>`
+            }
+            <h3 style="color:var(--accent-color); margin-bottom:10px;">${SHIP_CLASSES[playerShip.shipClass].name.toUpperCase()}</h3>
+            <p style="color:var(--item-desc-color); font-size:12px;">Select a system slot on the left to view available upgrades and modifications.</p>
+        </div>
+    `;
+
     const slots = ['weapon', 'shield', 'engine', 'scanner', 'utility'];
     
     slots.forEach(slot => {
         const currentId = playerShip.components[slot];
-        const currentName = COMPONENTS_DATABASE[currentId].name;
+        // Added a quick safety fallback just in case a slot is completely empty
+        const currentName = COMPONENTS_DATABASE[currentId] ? COMPONENTS_DATABASE[currentId].name : "Empty";
         
         const row = document.createElement('div');
         row.className = 'trade-item-row';
@@ -6337,8 +6378,9 @@ function respawnPlayer() {
     currentSectorY = Math.floor(playerY / SECTOR_SIZE);
     currentSectorName = generateSectorName(currentSectorX, currentSectorY);
 
-    // 4. Clear Enemies near spawn
-    removeEnemyAt(playerX, playerY);
+    // 4. THE FIX: Clear Enemies & Combat State 
+    activeEnemies = []; // Wipe the galaxy map clean of old pursuers
+    currentCombatContext = null; // Tell the game the fight is over!
 
     // 5. Reset UI and State
     document.getElementById('gameOverOverlay').style.display = 'none';
