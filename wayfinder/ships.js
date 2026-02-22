@@ -17,6 +17,7 @@
      },
      COURIER: {
         name: "Courier",
+        image: "assets/courier.png",
         baseHull: 115,
         cargoCapacity: 65,
         baseCost: 6500,
@@ -61,6 +62,7 @@
      },
      VOID_SKIFF: {
         name: "Void-Skiff",
+        image: "assets/void_skiff.png",
         baseHull: 50,
         cargoCapacity: 15,
         baseCost: 2500,
@@ -75,6 +77,7 @@
     },
     ROCK_HOPPER: {
         name: "Rock-Hopper",
+        image: "assets/rock_hopper.png",
         baseHull: 180,
         cargoCapacity: 150,
         baseCost: 22000,
@@ -89,6 +92,7 @@
     },
     STAR_GALLEON: {
         name: "Star-Galleon",
+        image: "assets/star_galleon.png",
         baseHull: 200,
         cargoCapacity: 80,
         baseCost: 50000,
@@ -103,6 +107,7 @@
     },
      HEAVY_HAULER: {
          name: "Heavy Hauler",
+         image: "assets/heavy_hauler.png",
          baseHull: 150,
          cargoCapacity: 120,
          baseCost: 15000,
