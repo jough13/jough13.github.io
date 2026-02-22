@@ -27,6 +27,12 @@ const LOOT_TABLES = {
         illegal: true, // <--- New Flag
         unlocked: true
     },
+    PREFAB_COLONY_CORE: {
+        name: "Prefab Colony Core",
+        basePrice: 25000,
+        description: "A massive, self-unpacking habitation citadel. Contains a fusion reactor, atmo-scrubbers, and housing for 500 colonists. Requires immense cargo space to transport.",
+        unlocked: true
+    },
     ANCIENT_RELICS: {
         name: "Xeno-Relics",
         basePrice: 1200,
