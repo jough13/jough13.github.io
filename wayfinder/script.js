@@ -1726,9 +1726,35 @@ function renderSystemMap() {
             const sectorX = Math.floor(worldX / SECTOR_SIZE);
             const sectorY = Math.floor(worldY / SECTOR_SIZE);
             
-            // CALL THE RENAMED FUNCTION
+            // CALL THE FUNCTION
+            // --- FACTION LAYER ---
             const factionKey = getFactionAt(worldX, worldY);
             const faction = FACTIONS[factionKey];
+            
+            if (faction && factionKey !== 'INDEPENDENT') {
+                // Dynamically boost faction visibility in Dark Mode so it actually shows up
+                let factionBg = faction.bg;
+                if (!isLightMode) {
+                    factionBg = factionBg.replace('0.08', '0.15'); 
+                }
+                
+                ctx.fillStyle = factionBg;
+                ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+            }
+
+            // --- HAZARD LAYER ---
+            const hazard = getHazardType(worldX, worldY);
+            if (hazard === 'RADIATION_BELT') {
+                // Adjust hazard colors to contrast properly against both themes and faction backgrounds
+                ctx.fillStyle = isLightMode ? 'rgba(255, 80, 0, 0.15)' : 'rgba(255, 165, 0, 0.25)';
+                ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                
+                // Increase the density of the sparkles slightly since the zones are much smaller now
+                if (Math.random() < 0.06) {
+                    ctx.fillStyle = isLightMode ? '#FF3300' : '#FFAA00';
+                    ctx.fillRect((x * tileSize) + Math.random()*tileSize, (y * tileSize) + Math.random()*tileSize, 2, 2);
+                }
+            }
             
             if (faction && factionKey !== 'INDEPENDENT') {
                 ctx.fillStyle = faction.bg;
@@ -2076,6 +2102,28 @@ function movePlayer(dx, dy) {
         // --- Thruster Particles ---
         // Spawn particles behind the ship (opposite to dx, dy)
         spawnParticles(playerX - dx, playerY - dy, 'thruster', { x: dx, y: dy });
+
+        // --- HAZARD EFFECTS ---
+        const hazard = getHazardType(playerX, playerY);
+        if (hazard === 'RADIATION_BELT') {
+            if (playerShields > 0) {
+                playerShields = Math.max(0, playerShields - 1.5); // Minor shield drain
+                // 15% chance to log so it doesn't spam the feed every step
+                if (Math.random() < 0.15) {
+                    logMessage("<span style='color:#FFAA00'>Dosimeters detect Ionized Radiation Belt. Shields degrading.</span>");
+                }
+            } else {
+                 playerFuel = Math.max(0, playerFuel - 0.5); // Nuisance fuel drain if shields are down
+                 if (Math.random() < 0.15) {
+                     logMessage("<span style='color:#FF5555'>Radiation interfering with plasma injectors. Excess fuel consumed.</span>");
+                 }
+            }
+            
+            // Random chance to trigger the UI screen shake/red flash effect
+            if (Math.random() < 0.1 && typeof triggerDamageEffect === 'function') {
+                triggerDamageEffect();
+            }
+        }
      }
 
      // 7. Update Sector Information
@@ -3384,6 +3432,35 @@ function selectPerk(perkId) {
     renderUIStats();
     saveGame(); // Auto-save on level up
     checkLevelUp();
+}
+
+/**
+ * Procedurally generates environmental hazards using continuous wave noise.
+ */
+
+function getHazardType(worldX, worldY) {
+    // --- SPAWN PROTECTION ---
+    // Ensure the immediate starting area is always free of hazards
+    const spawnX = Math.floor(MAP_WIDTH / 2);
+    const spawnY = Math.floor(MAP_HEIGHT / 2);
+    const distFromSpawn = Math.sqrt(Math.pow(worldX - spawnX, 2) + Math.pow(worldY - spawnY, 2));
+    
+    // Guarantees a completely clear 25-tile radius around the starting point
+    if (distFromSpawn < 25) {
+        return null; 
+    }
+
+    const scale = 0.08; 
+    
+    // Combine sine and cosine waves to create organic, blob-like structures
+    const noise = Math.sin(worldX * scale) + Math.cos(worldY * scale) + Math.sin((worldX + worldY) * scale * 0.5);
+    
+    // Threshold: 2.4 makes these zones very rare and scattered
+    if (noise > 2.4) {
+        return 'RADIATION_BELT';
+    }
+    
+    return null; // Safe space
 }
 
 /**
@@ -6221,9 +6298,9 @@ function checkSaveStateAndRenderTitle(forceMenu = false) {
                 renderSaveSlots(manualSave, autoSave);
             }
         } else {
-            // No Saves -> Show New Game
-            if (newGameCont) newGameCont.style.display = 'block';
+            // No Saves -> Play the Intro Video instead of jumping straight to creation!
             if (saveSelectCont) saveSelectCont.style.display = 'none';
+            playIntroVideo(); 
         }
     }, loadingDelay);
 }
@@ -7487,5 +7564,55 @@ function checkSpireAnswer() {
             closeXerxesView();
             triggerGameOver(`Vaporized by ${puzzle.title} Protocols`);
         }
+    }
+}
+
+// --- INTRO VIDEO LOGIC ---
+function playIntroVideo() {
+    const videoCont = document.getElementById('introVideoContainer');
+    const video = document.getElementById('introVideo');
+    
+    // Fallback if the HTML isn't set up
+    if (!videoCont || !video) {
+        skipIntroVideo();
+        return;
+    }
+
+    videoCont.style.display = 'flex';
+
+    // Attempt to play the video
+    video.play().catch(error => {
+        // BROWSER AUTOPLAY POLICY CATCHER:
+        // Browsers block video with sound if the user hasn't clicked anything yet.
+        // If it gets blocked, we log a warning and just skip to the creation screen.
+        console.warn("Autoplay prevented by browser. Skipping intro.", error);
+        skipIntroVideo();
+    });
+
+    // When the video finishes naturally, move to character creation
+    video.onended = () => {
+        skipIntroVideo();
+    };
+}
+
+function skipIntroVideo() {
+    const videoCont = document.getElementById('introVideoContainer');
+    const video = document.getElementById('introVideo');
+    const newGameCont = document.getElementById('newGameContainer');
+
+    // Stop the video and rewind it
+    if (video) {
+        video.pause();
+        video.currentTime = 0;
+    }
+
+    // Hide the video container and show the Character Creation screen
+    if (videoCont) videoCont.style.display = 'none';
+    
+    // Add a slight fade-in effect to the new game container for polish
+    if (newGameCont) {
+        newGameCont.style.opacity = '0';
+        newGameCont.style.display = 'block';
+        setTimeout(() => newGameCont.style.opacity = '1', 50);
     }
 }
