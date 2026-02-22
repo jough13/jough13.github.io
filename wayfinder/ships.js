@@ -2,6 +2,7 @@
  const SHIP_CLASSES = {
      LIGHT_FREIGHTER: {
          name: "Light Freighter",
+         image: "assets/light_freighter.png",
          baseHull: 100,
          cargoCapacity: 50,
          baseCost: 0, 
@@ -16,6 +17,7 @@
      },
      INTERCEPTOR: {
          name: "Interceptor",
+         image: "assets/interceptor.png",
          baseHull: 75,
          cargoCapacity: 20,
          baseCost: 8000,
@@ -30,6 +32,7 @@
      },
      EXPLORER: {
          name: "Explorer",
+         image: "assets/explorer.png",
          baseHull: 120,
          cargoCapacity: 40,
          baseCost: 10000,
