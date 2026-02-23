@@ -100,9 +100,10 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
+    position: relative;
     align-items: center;
     padding: 0 15px;
-    z-index: 10;
+    z-index: 150;
 }
 
 .hud-group { display: flex; align-items: center; gap: 15px; }
@@ -185,7 +186,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     position: absolute; top: 50px; right: 0;
     background: var(--panel-bg); border: 1px solid var(--border-color);
     padding: 10px; display: flex; flex-direction: column; gap: 5px;
-    z-index: 2000; /* BOOSTED from 100 to sit above everything */
+    z-index: 9999;
     width: 200px;
     box-shadow: -5px 5px 20px rgba(0,0,0,0.5); /* Add shadow to separate from map */
 }
@@ -2203,6 +2204,7 @@ body.light-mode #spireInput::placeholder {
     max-width: var(--canvas-width, 1024px); /* Constrain to game width */
     margin: 0 auto 20px auto; /* Center horizontally */
     padding: 0 15px; /* Add padding so text doesn't touch the exact edge */
+    z-index: 9999;
     box-sizing: border-box;
     text-align: left;
     border-bottom: 1px solid #333;
