@@ -1874,7 +1874,7 @@ function renderSystemMap() {
             const tileData = chunkManager.getTile(worldX, worldY);
             const tileChar = getTileChar(tileData);
 
-            // --- XERXES SPECIAL RENDER ---
+            // --- XERXES SPECIAL RENDER (Existing) ---
             if (tileData && tileData.name && tileData.name.includes("Xerxes")) {
                 ctx.save();
                 const pulse = (Math.sin(Date.now() / 500) + 1) / 2;
@@ -1889,7 +1889,34 @@ function renderSystemMap() {
                 continue; 
             }
 
-            // Standard Tile Colors
+            // --- NEW: AEGIS DYSON SPHERE RENDER ---
+            if (tileData && tileData.name === "Aegis Dyson Sphere") {
+                ctx.save();
+                
+                // A slow, heavy pulse to represent immense power
+                const pulse = (Math.sin(Date.now() / 800) + 1) / 2;
+                
+                // Golden/Solar Glow
+                ctx.shadowBlur = 25 + (pulse * 15);
+                ctx.shadowColor = '#FFD700'; // Gold Shadow
+                
+                // Color: Bright Amber/Gold
+                ctx.fillStyle = '#FFAA00'; 
+
+                // Slightly larger than a normal tile
+                const sizeMod = 1.1 + (pulse * 0.1);
+                
+                // Use the standard font but scaled up
+                ctx.font = `bold ${TILE_SIZE * sizeMod}px 'Orbitron', monospace`;
+                
+                // Draw the 'O' (or whatever char is set in config)
+                ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
+                
+                ctx.restore();
+                continue; // Skip standard render
+            }
+
+            // Standard Tile Colors (The rest of your existing switch statement...)
             switch (tileChar) {
                 case STAR_CHAR_VAL: ctx.fillStyle = isLightMode ? '#DDBB00' : '#FFFF99'; break;
                 case PLANET_CHAR_VAL: ctx.fillStyle = '#88CCFF'; break;
@@ -2267,7 +2294,7 @@ function movePlayer(dx, dy) {
      }
  }
 
- function handleInteraction() {
+function handleInteraction() {
     const currentFaction = getFactionAt(playerX, playerY);
     const standing = playerFactionStanding[currentFaction] || 0;
     
@@ -2298,14 +2325,9 @@ function movePlayer(dx, dy) {
             return; 
         }
 
-        // --- 2. PLANETARY LANDING INTERCEPT ---
-        // Catches planets and opens the new Endgame UI
-        if (location.char === 'O' || (location.name && location.name.toLowerCase().includes("planet")) || location.biome) {
-            openPlanetView(location);
-            return;
-        }
-
-        // --- 3. STATION & OUTPOST INTERCEPT ---
+        // --- 2. STATION & OUTPOST INTERCEPT (MOVED UP - PRIORITY FIX) ---
+        // We check this BEFORE planets. The Dyson Sphere is a Major Hub, but has an 'O' char.
+        // Moving this up ensures openStationView() fires, which contains the image logic.
         if (location.isMajorHub || location.char === OUTPOST_CHAR_VAL) {
             
             // Customs scan for major hubs (Must pass to dock!)
@@ -2335,6 +2357,13 @@ function movePlayer(dx, dy) {
             openStationView();
             autoSaveGame();
             return; 
+        }
+
+        // --- 3. PLANETARY LANDING INTERCEPT ---
+        // Catches generic planets and opens the mining/scan UI
+        if (location.char === 'O' || (location.name && location.name.toLowerCase().includes("planet")) || location.biome) {
+            openPlanetView(location);
+            return;
         }
 
         // --- 4. GENERIC LOCATION FALLBACK ---
@@ -4386,54 +4415,6 @@ function displayShipPurchaseConfirmation(shipId) {
      logMessage(confirmMsg);;
  }
 
-function visitCantina() {
-    const cost = 10;
-    if (playerCredits < cost) {
-        logMessage("Bartender: \"No credits, no service.\"");
-        return;
-    }
-    playerCredits -= cost;
-
-    // Small Heal/Refuel
-    if (playerHull < MAX_PLAYER_HULL) playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 5);
-    if (playerFuel < MAX_FUEL) playerFuel = Math.min(MAX_FUEL, playerFuel + 10);
-
-    // --- NEW: GENERATE MARKET RUMOR ---
-    // 50% chance to get a valuable trade tip
-    if (Math.random() < 0.5) {
-        // Find a random location that isn't here
-        const locationKeys = Object.keys(LOCATIONS_DATA).filter(k => k !== chunkManager.getTile(playerX, playerY).name);
-        const targetStation = locationKeys[Math.floor(Math.random() * locationKeys.length)];
-        
-        // Pick a random legal commodity
-        const commodityKeys = Object.keys(COMMODITIES).filter(k => !COMMODITIES[k].illegal);
-        const targetItem = commodityKeys[Math.floor(Math.random() * commodityKeys.length)];
-        
-        // Set the Global Trend
-        activeMarketTrend = {
-            station: targetStation,
-            item: targetItem,
-            expiry: currentGameDate + 50 // Valid for 50 ticks
-        };
-
-        logMessage(`<span class="cantina-header">Cantina Visit (-${cost}c)</span>`);
-        logMessage(`Bartender whispers: "Big demand at <strong>${targetStation}</strong>. They're paying double for <strong>${COMMODITIES[targetItem].name}</strong> right now."`);
-        showToast("TRADE INTEL ACQUIRED", "success");
-    } else {
-        // Standard Flavor Text
-        // Safety Check: Fallback if RUMORS is missing
-        const rumorList = (typeof RUMORS !== 'undefined' && RUMORS.length > 0) 
-            ? RUMORS 
-            : ["The bartender cleans a glass and ignores you."];
-            
-        const randomRumor = rumorList[Math.floor(Math.random() * rumorList.length)];
-        logMessage(`<span class="cantina-header">Cantina Visit (-${cost}c)</span>`);
-        logMessage(`<span class="rumor-text">"${randomRumor}"</span>`);
-    }
-
-    renderUIStats();
-}
-
  /**
   * Handles the logic for repairing the player's ship hull at a station.
   */
@@ -4477,11 +4458,11 @@ function repairShip() {
      renderUIStats();
  }
 
- // --- Outfitting Functions ---
+// --- Outfitting Functions ---
 function displayOutfittingScreen() {
     openGenericModal("OUTFITTING SERVICES");
     const listEl = document.getElementById('genericModalList');
-    const detailEl = document.getElementById('genericDetailContent'); // Grab the right-side panel
+    const detailEl = document.getElementById('genericDetailContent'); 
     
     // --- Default Ship Display ---
     detailEl.innerHTML = `
@@ -4499,13 +4480,13 @@ function displayOutfittingScreen() {
     
     slots.forEach(slot => {
         const currentId = playerShip.components[slot];
-        // Added a quick safety fallback just in case a slot is completely empty
         const currentName = COMPONENTS_DATABASE[currentId] ? COMPONENTS_DATABASE[currentId].name : "Empty";
         
         const row = document.createElement('div');
         row.className = 'trade-item-row';
         row.style.fontWeight = 'bold';
-        row.innerHTML = `<span style="color:var(--accent-color)">${slot.toUpperCase()} SLOT</span> <span style="font-size:10px">${currentName}</span>`;
+        // Added var(--text-color) to the currently equipped item name so it doesn't vanish in dark mode
+        row.innerHTML = `<span style="color:var(--accent-color)">${slot.toUpperCase()} SLOT</span> <span style="color:var(--text-color); font-size:10px">${currentName}</span>`;
         row.onclick = () => showOutfittingOptions(slot);
         listEl.appendChild(row);
     });
@@ -4515,8 +4496,8 @@ function showOutfittingOptions(slot) {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
     
-    // Use standard border color so it shows in both modes
-    detailEl.innerHTML = `<h4 style="border-bottom:1px solid var(--border-color); padding-bottom:5px;">Available ${slot} Upgrades</h4>`;
+    // Added var(--text-color) to the header
+    detailEl.innerHTML = `<h4 style="color:var(--text-color); border-bottom:1px solid var(--border-color); padding-bottom:5px;">Available ${slot} Upgrades</h4>`;
     actionsEl.innerHTML = '';
     
     const container = document.createElement('div');
@@ -4528,7 +4509,7 @@ function showOutfittingOptions(slot) {
         if (comp.reqFaction) {
              const standing = playerFactionStanding[comp.reqFaction] || 0;
              if (standing < comp.minRep) {
-                 continue; // Skip this item if rep is too low
+                 continue; 
              }
         }
         if (comp.slot === slot && playerShip.components[slot] !== compId) {
@@ -4538,7 +4519,8 @@ function showOutfittingOptions(slot) {
             itemDiv.style.borderBottom = '1px solid var(--border-color)';
             itemDiv.style.cursor = 'pointer';
             
-            const mfgBadge = comp.manufacturer ? `<span style="background:rgba(255,255,255,0.1); color:#CCC; padding:2px 4px; border-radius:2px; font-size:9px; margin-left:6px; vertical-align:middle;">${comp.manufacturer}</span>` : '';
+            // Swapped hardcoded #CCC for var(--item-desc-color)
+            const mfgBadge = comp.manufacturer ? `<span style="background:rgba(255,255,255,0.1); color:var(--item-desc-color); padding:2px 4px; border-radius:2px; font-size:9px; margin-left:6px; vertical-align:middle;">${comp.manufacturer}</span>` : '';
 
             itemDiv.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -4549,15 +4531,12 @@ function showOutfittingOptions(slot) {
             `;
             
             itemDiv.onclick = () => {
-                // Update Action Button
                 actionsEl.innerHTML = `
                     <button class="action-button" ${playerCredits >= comp.cost ? '' : 'disabled'} 
                         onclick="confirmBuyComponent('${compId}')">
                         INSTALL ${comp.name.toUpperCase()} (${formatNumber(comp.cost)}c)
                     </button>
                 `;
-                
-                // Optional: Highlight selected item logic could go here
             };
             container.appendChild(itemDiv);
         }
@@ -4573,42 +4552,34 @@ function showOutfittingOptions(slot) {
 function confirmBuyComponent(compId) {
     const newComp = COMPONENTS_DATABASE[compId];
     
-    // 1. Calculate Trade-In Value
     const currentCompId = playerShip.components[newComp.slot];
     const currentComp = COMPONENTS_DATABASE[currentCompId];
     
-    // Default trade-in is 50% of the old item's cost
-    // If the slot was empty (UTIL_NONE), cost is 0, so trade-in is 0
     const tradeInValue = currentComp ? Math.floor(currentComp.cost * 0.5) : 0;
-    
-    // 2. Calculate Net Cost
     const netCost = newComp.cost - tradeInValue;
 
-    // 3. Check Affordability
     if(playerCredits < netCost) {
         showToast(`Insufficient Funds! Net cost: ${formatNumber(netCost)}c`, "error");
         return;
     }
     
-    // 4. Execute Transaction
     playerCredits -= netCost;
     playerShip.components[newComp.slot] = compId;
     
-    // Initialize ammo if this is a weapon with ammo
     if (newComp.stats.maxAmmo) {
         playerShip.ammo[compId] = newComp.stats.maxAmmo;
     }
 
     applyPlayerShipStats();
     
-    // 5. Feedback
     let msg = `Installed ${newComp.name}.`;
     if (tradeInValue > 0) {
-        msg += `<br><span style="font-size:11px; color:#888;">(Traded in ${currentComp.name} for ${formatNumber(tradeInValue)}c)</span>`;
+        // Swapped hardcoded #888 for var(--item-desc-color)
+        msg += `<br><span style="font-size:11px; color:var(--item-desc-color);">(Traded in ${currentComp.name} for ${formatNumber(tradeInValue)}c)</span>`;
     }
     
     showToast(msg, "success");
-    displayOutfittingScreen(); // Refresh list to show new ownership
+    displayOutfittingScreen(); 
     renderUIStats();
 }
 
@@ -4671,65 +4642,94 @@ function confirmBuyComponent(compId) {
      handleInteraction();;
  }
 
- // --- Codex Functions ---
+ // --- LORE PROGRESSION SYSTEM ---
 
- let currentCodexCategory = null;
+function unlockLore(loreId) {
+    // 1. Check if the lore exists in the database
+    if (!LORE_DATABASE[loreId]) {
+        console.warn(`Attempted to unlock missing lore ID: ${loreId}`);
+        return;
+    }
+
+    // 2. Check if the player already has it
+    if (discoveredLoreEntries.has(loreId)) {
+        return; // Already unlocked, do nothing silently
+    }
+
+    // 3. Unlock it!
+    discoveredLoreEntries.add(loreId);
+    
+    // 4. Notify the player
+    showToast(`CODEX UPDATED: ${LORE_DATABASE[loreId].title}`, "info");
+    logMessage(`<span style="color:var(--accent-color)">> NEW ARCHIVE ENTRY UNLOCKED: ${LORE_DATABASE[loreId].title}</span>`);
+    
+    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+}
+
+// --- Codex Functions ---
+
+let currentCodexCategory = null;
 
 function toggleCodex(show) {
-     if (show) {
-         codexOverlayElement.style.display = 'flex';
-         renderCodexCategories();
-         renderCodexEntries(null);
-         codexEntryTextElement.innerHTML = "Select a category, then an entry.";
-     } else {
-         codexOverlayElement.style.display = 'none';
-         currentCodexCategory = null;
-     }
-     
-     // UPDATE BORDERS
-     updateSideBorderVisibility();
- }
+    if (show) {
+        codexOverlayElement.style.display = 'flex';
+        renderCodexCategories();
+        renderCodexEntries(null);
+        codexEntryTextElement.innerHTML = "Select a category, then an entry.";
+    } else {
+        codexOverlayElement.style.display = 'none';
+        currentCodexCategory = null;
+    }
+    
+    // UPDATE BORDERS
+    updateSideBorderVisibility();
+}
 
- function renderCodexCategories() {
-     /* Same as v0.6.11 */
-     codexCategoriesElement.innerHTML = '';
-     const cats = new Set();
-     Object.values(LORE_DATABASE).forEach(e => {
-         if (discoveredLoreEntries.has(Object.keys(LORE_DATABASE).find(k => LORE_DATABASE[k] === e))) cats.add(e.category);
-     });
-     Array.from(cats).sort().forEach(cat => {
-         const cD = document.createElement('div');
-         cD.textContent = cat;
-         cD.className = 'codex-list-item';
-         if (cat === currentCodexCategory) cD.classList.add('active');
-         cD.onclick = () => {
-             currentCodexCategory = cat;
-             renderCodexCategories();
-             renderCodexEntries(cat);
-             codexEntryTextElement.innerHTML = "Select an entry.";
-         };
-         codexCategoriesElement.appendChild(cD);
-     });
- }
+function renderCodexCategories() {
+    codexCategoriesElement.innerHTML = '';
+    const cats = new Set();
+    
+    // OPTIMIZED: Grabbing the key and the entry together!
+    Object.entries(LORE_DATABASE).forEach(([key, entry]) => {
+        if (discoveredLoreEntries.has(key)) {
+            cats.add(entry.category);
+        }
+    });
+    
+    Array.from(cats).sort().forEach(cat => {
+        const cD = document.createElement('div');
+        cD.textContent = cat;
+        cD.className = 'codex-list-item';
+        if (cat === currentCodexCategory) cD.classList.add('active');
+        cD.onclick = () => {
+            currentCodexCategory = cat;
+            renderCodexCategories(); // Refreshes to move the 'active' class highlighting
+            renderCodexEntries(cat);
+            codexEntryTextElement.innerHTML = "Select an entry.";
+        };
+        codexCategoriesElement.appendChild(cD);
+    });
+}
 
- function renderCodexEntries(category) {
-     /* Same as v0.6.11 */
-     codexEntriesElement.innerHTML = '';
-     if (!category) return;
-     Object.entries(LORE_DATABASE).forEach(([k, e]) => {
-         if (e.category === category && discoveredLoreEntries.has(k)) {
-             const eD = document.createElement('div');
-             eD.textContent = e.title;
-             eD.className = 'codex-list-item';
-             eD.onclick = () => {
-                 codexEntryTextElement.innerHTML = `<strong>${e.title}</strong><hr style="margin:5px 0;border-color:#4a4a6a;"><p>${e.text.replace(/\n/g,'<br>')}</p>`;
-                 document.querySelectorAll('#codexEntries .codex-list-item').forEach(el => el.classList.remove('active'));
-                 eD.classList.add('active');
-             };
-             codexEntriesElement.appendChild(eD);
-         }
-     });
- }
+function renderCodexEntries(category) {
+    codexEntriesElement.innerHTML = '';
+    if (!category) return;
+    
+    Object.entries(LORE_DATABASE).forEach(([k, e]) => {
+        if (e.category === category && discoveredLoreEntries.has(k)) {
+            const eD = document.createElement('div');
+            eD.textContent = e.title;
+            eD.className = 'codex-list-item';
+            eD.onclick = () => {
+                // Excellent touch replacing \n with <br> for proper formatting!
+                codexEntryTextElement.innerHTML = `<strong>${e.title}</strong><hr style="margin:5px 0;border-color:#4a4a6a;"><p>${e.text.replace(/\n/g,'<br>')}</p>`;
+                document.querySelectorAll('#codexEntries .codex-list-item').forEach(el => el.classList.remove('active'));
+                eD.classList.add('active');
+            };
+            codexEntriesElement.appendChild(eD);
+        }
+    });
+}
 
  // --- PLANETARY INTERACTION UI ---
 function openPlanetView(location) {
@@ -4956,7 +4956,7 @@ function foundColony() { logMessage("<span style='color:var(--success)'>COLONY E
      }, 1500); // Small delay for dramatic effect
  }
 
- function generateMissionsForStation(stationName) {
+function generateMissionsForStation(stationName) {
     const generatedMissions = [];
     // Filter templates based on player level
     const availableTemplates = MISSION_TEMPLATES.filter(t => playerLevel >= (t.prerequisites.minLevel || 1));
@@ -5065,6 +5065,11 @@ function foundColony() { logMessage("<span style='color:var(--success)'>COLONY E
             // Set the final objectives on the new mission object
             newMission.objectives = [objective];
 
+            // THE FIX: Create the rewards object if it doesn't exist yet!
+            if (!newMission.rewards) {
+                newMission.rewards = {};
+            }
+
             // Randomize rewards and assign them
             newMission.rewards.credits = newMission.rewards_template.credits[0] + Math.floor(Math.random() * (newMission.rewards_template.credits[1] - newMission.rewards_template.credits[0] + 1));
             newMission.rewards.xp = newMission.rewards_template.xp[0] + Math.floor(Math.random() * (newMission.rewards_template.xp[1] - newMission.rewards_template.xp[0] + 1));
@@ -5081,7 +5086,7 @@ function foundColony() { logMessage("<span style='color:var(--success)'>COLONY E
     return generatedMissions;
 }
 
- // --- OVERRIDE: DISPLAY MISSIONS ---
+// --- OVERRIDE: DISPLAY MISSIONS ---
 function displayMissionBoard() {
     const location = chunkManager.getTile(playerX, playerY);
     const stationName = location.name;
@@ -5100,27 +5105,29 @@ function displayMissionBoard() {
         
         const row = document.createElement('div');
         row.className = 'trade-item-row';
-        // FormatNumber for the mission credits
-        row.innerHTML = `<span>${mission.title}</span> <span style="color:#FFD700">${formatNumber(mission.rewards.credits)}c</span>`;
+        // FIXED: Added var(--text-color) for the title and var(--gold-text) for credits
+        row.innerHTML = `<span style="color:var(--text-color); font-weight:bold;">${mission.title}</span> <span style="color:var(--gold-text, #FFD700)">${formatNumber(mission.rewards.credits)}c</span>`;
         row.onclick = () => showMissionDetails(stationName, index);
         listEl.appendChild(row);
     });
     
     if(listEl.children.length === 0) {
-        listEl.innerHTML = "<div style='padding:10px'>No contracts available.</div>";
+        listEl.innerHTML = "<div style='padding:10px; color:var(--text-color);'>No contracts available.</div>";
     }
 }
 
 function showMissionDetails(stationName, index) {
     const mission = MISSIONS_DATABASE[stationName][index];
     
+    // FIXED: Swapped hardcoded #888 for var(--item-desc-color) and added var(--text-color)
     let html = `
-        <h3 style="color:var(--accent-color)">${mission.title}</h3>
-        <p style="font-size:12px; color:#888">Client: ${mission.giver}</p>
-        <p>${mission.description}</p>
-        <div class="trade-math-area">
-            <div class="trade-stat-row"><span>Credits:</span> <span style="color:#FFD700">${formatNumber(mission.rewards.credits)}</span></div>
-            <div class="trade-stat-row"><span>XP:</span> <span style="color:#00FF00">${formatNumber(mission.rewards.xp)}</span></div>
+        <h3 style="color:var(--accent-color); margin-bottom: 5px;">${mission.title}</h3>
+        <p style="font-size:12px; color:var(--item-desc-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Client: ${mission.giver}</p>
+        <p style="color:var(--text-color); line-height: 1.4;">${mission.description}</p>
+        
+        <div class="trade-math-area" style="margin-top: 15px;">
+            <div class="trade-stat-row"><span style="color:var(--item-desc-color);">Credits:</span> <span style="color:var(--gold-text, #FFD700); font-weight:bold;">${formatNumber(mission.rewards.credits)}</span></div>
+            <div class="trade-stat-row"><span style="color:var(--item-desc-color);">XP:</span> <span style="color:var(--success, #00FF00); font-weight:bold;">${formatNumber(mission.rewards.xp)}</span></div>
         </div>
     `;
     
@@ -5514,18 +5521,19 @@ function selectCargoItem(index, key) {
     // --- SPECIAL ITEM ACTIONS ---
     const decryptBtn = document.getElementById('decryptBtn');
     if (decryptBtn) {
-        if (key === 'ENCRYPTED_ENGRAM') {
+        // Support all decryptable items!
+        if (key === 'ENCRYPTED_ENGRAM' || key === 'ENCRYPTED_DATA' || key === 'ANCIENT_ARCHIVE') {
             decryptBtn.style.display = 'block';
             
-            // Smart Button Logic!
+            // Smart Button Logic
             if (playerPerks.has('CYBER_SLICER')) {
                 decryptBtn.innerText = "DECRYPT (Perk: Cyber Slicer)";
                 decryptBtn.disabled = false;
-                decryptBtn.onclick = () => processDecryption('perk');
+                decryptBtn.onclick = () => processDecryption('perk', key);
             } else if (playerCargo['PRECURSOR_CIPHER'] && playerCargo['PRECURSOR_CIPHER'] > 0) {
                 decryptBtn.innerText = "DECRYPT (Consumes 1 Cipher)";
                 decryptBtn.disabled = false;
-                decryptBtn.onclick = () => processDecryption('cipher');
+                decryptBtn.onclick = () => processDecryption('cipher', key);
             } else {
                 decryptBtn.innerText = "LOCKED (Requires Cipher)";
                 decryptBtn.disabled = true;
@@ -5536,73 +5544,198 @@ function selectCargoItem(index, key) {
     }
 }
 
+// --- CRYPTARCH MODAL SYSTEM ---
+
 function visitCryptarch() {
-    if (!playerCargo['ENCRYPTED_ENGRAM'] || playerCargo['ENCRYPTED_ENGRAM'] <= 0) {
-        logMessage("The Cryptarch sneers. 'Come back when you have an Engram worth my time.'");
-        if (typeof soundManager !== 'undefined') soundManager.playError();
-        return;
-    }
+    openGenericModal("CRYPTARCH SANCTUM");
     
-    // Send it to the master function with the 'credits' flag
-    processDecryption('credits');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Initial landing view
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; opacity:0.8; filter: hue-rotate(280deg);">👁️</div>
+            <h3 style="color:var(--accent-color); margin-bottom:10px;">THE CRYPTARCH</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">"Secrets of the void, locked away in crystalline matrices. Bring me your engrams and data caches, and I will reveal their truths... for a price."</p>
+        </div>
+    `;
+    actionsEl.innerHTML = '';
+
+    renderCryptarchList();
 }
 
-function processDecryption(method) {
+function renderCryptarchList() {
+    const listEl = document.getElementById('genericModalList');
+    listEl.innerHTML = '';
+
+    // Define which items can be decrypted
+    const encryptedItems = ['ENCRYPTED_ENGRAM', 'ENCRYPTED_DATA', 'ANCIENT_ARCHIVE'];
+    let foundAny = false;
+
+    encryptedItems.forEach(itemId => {
+        if (playerCargo[itemId] && playerCargo[itemId] > 0) {
+            foundAny = true;
+            const item = COMMODITIES[itemId];
+            const qty = playerCargo[itemId];
+            
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            row.innerHTML = `<span style="color:var(--accent-color); font-weight:bold;">${item.name}</span> <span style="color:var(--text-color);">x${qty}</span>`;
+            row.onclick = () => showCryptarchItemDetails(itemId);
+            listEl.appendChild(row);
+        }
+    });
+
+    if (!foundAny) {
+        listEl.innerHTML = `<div style="padding:15px; color:var(--item-desc-color); text-align:center; line-height:1.5;">No encrypted goods detected in your cargo hold. Come back when you find something interesting.</div>`;
+    }
+}
+
+function showCryptarchItemDetails(itemId) {
+    const item = COMMODITIES[itemId];
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    const hasCipher = (playerCargo['PRECURSOR_CIPHER'] || 0) > 0;
+    const hasPerk = playerPerks.has('CYBER_SLICER');
+    
+    // Dynamic cost scaling based on item rarity
+    let decryptCost = 250;
+    if (itemId === 'ENCRYPTED_DATA') decryptCost = 500;
+    if (itemId === 'ANCIENT_ARCHIVE') decryptCost = 1000;
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 15px;">
+            <div style="font-size:50px; margin-bottom:10px; animation: pulse-cyan 2s infinite;">💠</div>
+            <h3 style="color:var(--accent-color); margin:0;">${item.name.toUpperCase()}</h3>
+            <p style="font-size:12px; color:var(--item-desc-color); margin:15px 0;">${item.description}</p>
+            
+            <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border-color); padding:10px; border-radius:4px; text-align:left;">
+                <div style="color:var(--text-color); font-size:11px; margin-bottom:8px; font-weight:bold; letter-spacing:1px; border-bottom:1px solid #333; padding-bottom:5px;">DECRYPTION METHODS:</div>
+                <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between;">
+                    <span style="color:var(--item-desc-color)">Standard Fee:</span> 
+                    <span style="color:var(--gold-text); font-weight:bold;">${decryptCost}c</span>
+                </div>
+                <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between;">
+                    <span style="color:var(--item-desc-color)">Precursor Cipher:</span> 
+                    <span style="color:${hasCipher ? 'var(--success)' : 'var(--danger)'}">${hasCipher ? 'Available (' + playerCargo['PRECURSOR_CIPHER'] + ')' : 'None'}</span>
+                </div>
+                <div style="font-size:13px; display:flex; justify-content:space-between;">
+                    <span style="color:var(--item-desc-color)">Cyber Slicer Perk:</span> 
+                    <span style="color:${hasPerk ? 'var(--accent-color)' : 'var(--danger)'}">${hasPerk ? 'Active' : 'Not Installed'}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    let btnHtml = '';
+    
+    // Priority 1: Free Perk
+    if (hasPerk) {
+        btnHtml += `<button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 10px rgba(0,224,224,0.2);" onclick="processDecryption('perk', '${itemId}')">USE CYBER SLICER (FREE)</button>`;
+    }
+    
+    // Priority 2: Consumable Item
+    if (hasCipher) {
+        btnHtml += `<button class="action-button" style="border-color:var(--success); color:var(--success);" onclick="processDecryption('cipher', '${itemId}')">USE CIPHER (CONSUMES 1)</button>`;
+    }
+    
+    // Priority 3: Pay Credits
+    const canAfford = playerCredits >= decryptCost;
+    btnHtml += `<button class="action-button" ${canAfford ? '' : 'disabled'} style="border-color:var(--gold-text); color:var(--gold-text);" onclick="processDecryption('credits', '${itemId}')">PAY CRYPTARCH (${decryptCost}c)</button>`;
+
+    actionsEl.innerHTML = btnHtml;
+}
+
+// --- MASTER DECRYPTION FUNCTION ---
+function processDecryption(method, itemId = 'ENCRYPTED_ENGRAM') {
+    let cost = 250;
+    if (itemId === 'ENCRYPTED_DATA') cost = 500;
+    if (itemId === 'ANCIENT_ARCHIVE') cost = 1000;
+    
+    // Check if we are at Xerxes for the "Spire Boost"
+    const isAtXerxes = document.getElementById('xerxesOverlay').style.display === 'flex';
+    const xpMultiplier = isAtXerxes ? 2 : 1;
+
     // 1. Handle the specific cost of the method used
     if (method === 'cipher') {
         playerCargo['PRECURSOR_CIPHER'] -= 1;
         if (playerCargo['PRECURSOR_CIPHER'] <= 0) delete playerCargo['PRECURSOR_CIPHER'];
-        logMessage("Cipher consumed. Initiating decryption...");
+        logMessage(`Cipher consumed. Initiating decryption...`);
     } else if (method === 'credits') {
-        if (playerCredits < 250) {
-            showToast("INSUFFICIENT FUNDS (250c Required)", "error");
+        if (playerCredits < cost) {
+            showToast(`INSUFFICIENT FUNDS (${cost}c Required)`, "error");
             return;
         }
-        playerCredits -= 250;
-        logMessage("You pay the 250c fee. The Cryptarch begins working...");
+        playerCredits -= cost;
+        logMessage(`You pay the ${cost}c fee. The Cryptarch begins working...`);
     } else if (method === 'perk') {
         logMessage("Cyber Slicer perk active. Bypassing encryption...");
     }
 
-    // 2. Consume the Engram
-    playerCargo['ENCRYPTED_ENGRAM'] -= 1;
-    if (playerCargo['ENCRYPTED_ENGRAM'] <= 0) delete playerCargo['ENCRYPTED_ENGRAM'];
+    // 2. Consume the Target Item
+    playerCargo[itemId] -= 1;
+    if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
     
-    // Update inventory weight and top HUD
     updateCurrentCargoLoad(); 
-    if (typeof renderUIStats === 'function') renderUIStats();
 
-    // 3. The Reward Pool
-    const decryptionRewards = [
-        { xp: 150, text: "FRAGMENT RECOVERED: 'The ruler of the sunless world is the DARKNESS.'" },
-        { xp: 150, text: "FRAGMENT RECOVERED: 'Bridges of silver, crowns of gold... it speaks of DATA.'" },
-        { xp: 300, text: "NAV-DATA EXTRACTED: 'Sector [39, 17] - High probability of Precursor artifacts detected.'" },
-        { xp: 200, text: "LORE CACHE: 'The Silencer Echoes are not weapons. They are quarantine beacons.' [CLASSIFIED]" },
-        { xp: 500, text: "JACKPOT: Uncorrupted Precursor architectural schematics recovered." }
-    ];
+    // 3. Reward Pool Generation
+    let xpReward = 150;
+    let textReward = "Data recovered.";
 
-    const reward = decryptionRewards[Math.floor(Math.random() * decryptionRewards.length)];
+    if (itemId === 'ENCRYPTED_ENGRAM') {
+        const rewards = [
+            { xp: 150, text: "FRAGMENT RECOVERED: 'The ruler of the sunless world is the DARKNESS.'" },
+            { xp: 300, text: "NAV-DATA: 'Sector [39, 17] - Precursor activity detected.'" },
+            { xp: 500, text: "JACKPOT: Precursor architectural schematics recovered." }
+        ];
+        const r = rewards[Math.floor(Math.random() * rewards.length)];
+        xpReward = r.xp;
+        textReward = r.text;
+    } else if (itemId === 'ENCRYPTED_DATA') {
+        xpReward = 250;
+        playerCredits += (500 + Math.floor(Math.random() * 500));
+        textReward = `Data core sold to brokers.`;
+    } else if (itemId === 'ANCIENT_ARCHIVE') {
+        xpReward = 500;
+        playerCredits += (1000 + Math.floor(Math.random() * 1000));
+        textReward = `Holographic array unlocked! Forbidden history recovered.`;
+        if (typeof unlockLore === 'function') unlockLore('PRECURSOR_ORIGINS');
+    }
     
-    // 4. Apply Rewards
-    playerXP += reward.xp;
-    logMessage(`<span style="color:#DDA0DD">> DECRYPTION SUCCESS: ${reward.text}</span>`);
-    showToast(`ENGRAM DECRYPTED: +${reward.xp} XP`, "success");
+    // --- APPLY THE XERXES MULTIPLIER ---
+    const finalXP = xpReward * xpMultiplier;
+    playerXP += finalXP;
+
+    // 4. Feedback
+    if (isAtXerxes) {
+        logMessage(`<span style="color:#00E0E0">> SPIRE RESONANCE: Decryption output doubled! (+${finalXP} XP)</span>`);
+        if (typeof xerxesLog === 'function') xerxesLog("Spire energy channeled into decryption. Output maximized.", "good");
+    }
+
+    logMessage(`<span style="color:#DDA0DD">> SUCCESS: ${textReward}</span>`);
+    showToast(`DECRYPTED: +${finalXP} XP`, "success");
     
     if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
     checkLevelUp(); 
     
-    // 5. Cleanup the UI if the player is currently in the Cargo Menu
+    // 5. Cleanup / Refresh UI
     if (document.getElementById('cargoOverlay').style.display !== 'none') {
-        if (typeof renderCargoList === 'function') renderCargoList();
-        
-        if (playerCargo['ENCRYPTED_ENGRAM']) {
-            // If they have more engrams, refresh the button state
-            showCargoDetails('ENCRYPTED_ENGRAM'); 
-        } else {
-            // Otherwise, hide the button
-            document.getElementById('decryptBtn').style.display = 'none';
-        }
+        renderCargoList();
+    } else if (document.getElementById('genericModalOverlay').style.display !== 'none') {
+        renderCryptarchList();
+        document.getElementById('genericDetailContent').innerHTML = `
+            <div style="text-align:center; padding: 20px;">
+                <div style="font-size:50px; margin-bottom:10px; color:var(--success);">✅</div>
+                <h3 style="color:var(--success);">DECRYPTION SUCCESSFUL</h3>
+                <p style="color:var(--text-color); font-size:13px;">${textReward}</p>
+                <p style="color:var(--accent-color); font-weight:bold; margin-top:10px;">+${finalXP} XP ${isAtXerxes ? '(XERXES BOOST)' : ''}</p>
+            </div>
+        `;
+        document.getElementById('genericModalActions').innerHTML = '';
     }
+    renderUIStats();
 }
 
 function jettisonItem(key) {
@@ -6826,57 +6959,70 @@ function openStationView() {
     const location = chunkManager.getTile(playerX, playerY);
     if (!location) return;
 
-    // 1. Setup UI Text
+    // --- 1. XERXES REDIRECT ---
+    if (location.name === 'Planet Xerxes') {
+        openXerxesView();
+        return;
+    }
+
+    // --- 2. SETUP UI TEXT ---
     document.getElementById('stationOverlay').style.display = 'flex';
     document.getElementById('stationNameTitle').textContent = location.name.toUpperCase();
     
-    // Determine Faction dynamically if not explicitly set on the location object
     const faction = location.faction || getFactionAt(playerX, playerY);
     document.getElementById('stationFactionBadge').textContent = faction;
-    
     document.getElementById('stationDescText').textContent = location.scanFlavor || "A frontier outpost on the edge of civilized space.";
     
-    // 2. Setup Station Image (Replaces Procedural Canvas)
+    // --- 3. SETUP STATION IMAGE ---
     const canvas = document.getElementById('stationCanvas');
+    let img = document.getElementById('stationStaticImg');
+
     if (canvas) {
-        // Find or create the static image element
-        let img = document.getElementById('stationStaticImg');
         if (!img) {
             img = document.createElement('img');
             img.id = 'stationStaticImg';
-            // Apply consistent framing styles
-            img.style.width = '100%';
-            img.style.maxWidth = '240px';
-            img.style.height = 'auto';
-            img.style.border = '1px solid var(--border-color)';
-            img.style.borderRadius = '8px';
-            img.style.display = 'block';
-            img.style.margin = '0 auto 15px auto';
-            img.style.boxShadow = '0 0 20px rgba(0,224,224,0.2)';
-            img.style.background = 'rgba(0,0,0,0.3)';
-            // Insert it right before the canvas
+            // Apply your styling
+            Object.assign(img.style, {
+                width: '100%',
+                maxWidth: '240px',
+                height: 'auto',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                display: 'none', // Keep hidden until loaded
+                margin: '0 auto 15px auto',
+                boxShadow: '0 0 20px rgba(0,224,224,0.2)',
+                background: 'rgba(0,0,0,0.3)'
+            });
             canvas.parentNode.insertBefore(img, canvas);
         }
         
-        // Determine which image asset to load based on location type
-        if (location.isMajorHub) {
-            img.src = 'assets/starbase_alpha.png'; 
-            img.alt = 'Major Starbase';
-        } else {
-            // Default for outposts ('H') or generic locations
-            img.src = 'assets/outpost.png'; 
-            img.alt = 'Frontier Outpost';
+        // --- ASSET RESOLUTION ---
+        let targetSrc = 'assets/outpost.png';
+        if (location.name === 'Aegis Dyson Sphere') {
+            targetSrc = 'assets/dyson_sphere.png';
+        } else if (location.isMajorHub) {
+            targetSrc = 'assets/starbase_alpha.png';
         }
-        
-        // Ensure canvas is hidden and image is shown
-        canvas.style.display = 'none'; 
-        img.style.display = 'block';
+
+        // Logic to ensure the image actually shows up
+        img.onload = () => {
+            canvas.style.display = 'none';
+            img.style.display = 'block';
+        };
+
+        img.onerror = () => {
+            console.warn(`Failed to load ${targetSrc}, falling back to starbase_alpha.`);
+            img.src = 'assets/starbase_alpha.png';
+        };
+
+        // Adding a timestamp ?t= avoids cache issues if you're iterating on the art
+        img.src = targetSrc + "?t=" + new Date().getTime(); 
     }
     
-    // 3. Render Dynamic Menu
+    // 4. Render Dynamic Menu
     renderStationMenu(location, faction);
     
-    // 4. Borders
+    // 5. Borders
     updateSideBorderVisibility();
 }
 
@@ -6941,18 +7087,26 @@ function renderStationMenu(location, faction) {
     html += createBtn('🍸', 'Cantina', 'Rumors & Rest (10c)', "visitCantina()");
 
     // --- MAJOR HUB ONLY SERVICES ---
+    let cryptarchRendered = false; // Flag to prevent rendering the button twice
+
     if (location.isMajorHub) {
         html += createBtn('🚀', 'Shipyard', 'Buy New Hulls', "displayShipyard()");
         html += createBtn('👁️', 'Cryptarch', 'Decrypt Engrams', "visitCryptarch()");
+        cryptarchRendered = true;
+    }
+
+    // --- LOCATION SPECIFIC SERVICES ---
+    if (!cryptarchRendered && (location.name === 'Planet Xerxes' || location.name === 'Xerxes Prime')) { 
+        html += createBtn('👁️', 'The Cryptarch', 'Decrypt Data', "visitCryptarch()", "border-left: 3px solid #00E0E0;");
     }
 
     // --- FACTION SPECIFIC SERVICES ---
     if (faction === 'CONCORD') {
-        html += createBtn('⚖️', 'Security Office', 'Clear Bounties', "factionAction('CONCORD')", "border-left: 3px solid #00E0E0;");
+        html += createBtn('⚖️', 'Security Office', 'Clear Bounties', "openSecurityOffice()", "border-left: 3px solid #00E0E0;");
     } else if (faction === 'KTHARR') {
         html += createBtn('⚔️', 'Proving Grounds', 'Arena Betting', "factionAction('KTHARR')", "border-left: 3px solid #FF5555;");
     } else if (faction === 'ECLIPSE') {
-        html += createBtn('🎲', 'Shadow Broker', 'Fence Contraband', "factionAction('ECLIPSE')", "border-left: 3px solid #9933FF;");
+        html += createBtn('🎲', 'Shadow Broker', 'Fence Contraband', "openShadowBroker()", "border-left: 3px solid #9933FF;");
     }
 
     // --- MAINTENANCE & LEAVE ---
@@ -7036,6 +7190,284 @@ function factionAction(faction) {
         }
     }
 }
+// --- ECLIPSE SHADOW BROKER ---
+
+function openShadowBroker() {
+    openGenericModal("SHADOW BROKER NETWORK");
+    
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Initial landing view
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; opacity:0.8;">🎲</div>
+            <h3 style="color:#9933FF; margin-bottom:10px;">THE SHADOW BROKER</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">"Concord patrols breathing down your neck? I can make your problems disappear... for a cut. I pay top credit for goods that don't officially exist."</p>
+        </div>
+    `;
+    actionsEl.innerHTML = '';
+
+    renderShadowBrokerList();
+}
+
+function renderShadowBrokerList() {
+    const listEl = document.getElementById('genericModalList');
+    listEl.innerHTML = '';
+
+    let foundAny = false;
+    let totalBlackMarketValue = 0;
+
+    // Search player cargo for illegal goods
+    for (const itemId in playerCargo) {
+        if (playerCargo[itemId] > 0 && COMMODITIES[itemId] && COMMODITIES[itemId].illegal) {
+            foundAny = true;
+            const item = COMMODITIES[itemId];
+            const qty = playerCargo[itemId];
+            const value = (item.basePrice * 3) * qty; // 3x Premium Multiplier
+            totalBlackMarketValue += value;
+            
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            row.innerHTML = `<span style="color:#FF5555; font-weight:bold;">${item.name}</span> <span style="color:var(--text-color);">x${qty}</span>`;
+            row.onclick = () => showShadowBrokerItemDetails(itemId);
+            listEl.appendChild(row);
+        }
+    }
+
+    if (!foundAny) {
+        // Player is clean
+        listEl.innerHTML = `<div style="padding:15px; color:var(--item-desc-color); text-align:center; line-height:1.5;">Your hold is clean. The Broker has no interest in legal commodities.</div>`;
+        document.getElementById('genericDetailContent').innerHTML = `
+            <div style="text-align:center; padding: 20px;">
+                <div style="font-size:60px; margin-bottom:15px; opacity:0.5;">🧼</div>
+                <h3 style="color:var(--accent-color); margin-bottom:10px;">CLEAN RECORD</h3>
+                <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">No contraband found.</p>
+            </div>
+        `;
+        document.getElementById('genericModalActions').innerHTML = '';
+    } else {
+        // Add a "Fence All" button at the very top of the list for convenience
+        const fenceAllRow = document.createElement('div');
+        fenceAllRow.className = 'trade-item-row';
+        fenceAllRow.style.background = 'rgba(153, 51, 255, 0.1)';
+        fenceAllRow.style.borderBottom = '2px solid #9933FF';
+        fenceAllRow.innerHTML = `<span style="color:#DDA0DD; font-weight:bold;">FENCE ALL CONTRABAND</span> <span style="color:var(--gold-text);">${formatNumber(totalBlackMarketValue)}c</span>`;
+        fenceAllRow.onclick = () => showFenceAllDetails(totalBlackMarketValue);
+        listEl.prepend(fenceAllRow);
+    }
+}
+
+function showShadowBrokerItemDetails(itemId) {
+    const item = COMMODITIES[itemId];
+    const qty = playerCargo[itemId];
+    const unitPrice = item.basePrice * 3;
+    const totalValue = unitPrice * qty;
+    
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 15px;">
+            <div style="font-size:50px; margin-bottom:10px;">${item.icon || '📦'}</div>
+            <h3 style="color:#FF5555; margin:0;">${item.name.toUpperCase()}</h3>
+            <p style="font-size:12px; color:var(--item-desc-color); margin:15px 0;">${item.description}</p>
+            
+            <div style="background:rgba(0,0,0,0.3); border:1px solid #FF5555; padding:10px; border-radius:4px; text-align:left;">
+                <div style="color:#FF5555; font-size:11px; margin-bottom:8px; font-weight:bold; letter-spacing:1px; border-bottom:1px solid #333; padding-bottom:5px;">BLACK MARKET VALUATION:</div>
+                <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between;">
+                    <span style="color:var(--item-desc-color)">Quantity:</span> 
+                    <span style="color:var(--text-color); font-weight:bold;">${qty}</span>
+                </div>
+                <div style="font-size:13px; margin-bottom:4px; display:flex; justify-content:space-between;">
+                    <span style="color:var(--item-desc-color)">Street Value (Per Unit):</span> 
+                    <span style="color:var(--gold-text);">${formatNumber(unitPrice)}c</span>
+                </div>
+                <div style="font-size:14px; margin-top:10px; display:flex; justify-content:space-between; border-top: 1px dashed #555; padding-top: 10px;">
+                    <span style="color:#DDA0DD; font-weight:bold;">TOTAL PAYOUT:</span> 
+                    <span style="color:var(--success); font-weight:bold;">${formatNumber(totalValue)}c</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `
+        <button class="action-button" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 10px rgba(153,51,255,0.2);" onclick="processShadowBrokerTrade('${itemId}')">FENCE GOODS (${formatNumber(totalValue)}c)</button>
+    `;
+}
+
+function showFenceAllDetails(totalValue) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 15px;">
+            <div style="font-size:50px; margin-bottom:10px; filter: hue-rotate(240deg);">💼</div>
+            <h3 style="color:#9933FF; margin:0;">BULK FENCE</h3>
+            <p style="font-size:12px; color:var(--item-desc-color); margin:15px 0;">"I'll take the whole lot off your hands. No questions asked, no logs kept. Concord will never know you had it."</p>
+            
+            <div style="background:rgba(0,0,0,0.3); border:1px solid #9933FF; padding:10px; border-radius:4px; text-align:center;">
+                <div style="color:#DDA0DD; font-size:11px; margin-bottom:8px; font-weight:bold; letter-spacing:1px; border-bottom:1px solid #333; padding-bottom:5px;">TOTAL BLACK MARKET VALUATION</div>
+                <div style="font-size:24px; color:var(--success); font-weight:bold; margin-top:10px;">
+                    ${formatNumber(totalValue)}c
+                </div>
+            </div>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `
+        <button class="action-button" style="border-color:var(--success); color:var(--success); box-shadow: 0 0 15px rgba(0,255,0,0.2);" onclick="processShadowBrokerTrade('ALL')">FENCE ALL CONTRABAND</button>
+    `;
+}
+
+function processShadowBrokerTrade(itemId) {
+    let totalProfit = 0;
+    let soldItemsText = [];
+
+    if (itemId === 'ALL') {
+        // Sell everything illegal
+        for (const id in playerCargo) {
+            if (playerCargo[id] > 0 && COMMODITIES[id] && COMMODITIES[id].illegal) {
+                const qty = playerCargo[id];
+                const value = (COMMODITIES[id].basePrice * 3) * qty;
+                totalProfit += value;
+                soldItemsText.push(`${qty}x ${COMMODITIES[id].name}`);
+                playerCargo[id] = 0;
+            }
+        }
+    } else {
+        // Sell single item type
+        const qty = playerCargo[itemId];
+        const value = (COMMODITIES[itemId].basePrice * 3) * qty;
+        totalProfit += value;
+        soldItemsText.push(`${qty}x ${COMMODITIES[itemId].name}`);
+        playerCargo[itemId] = 0;
+    }
+
+    if (totalProfit > 0) {
+        playerCredits += totalProfit;
+        updateCurrentCargoLoad();
+        
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+        
+        logMessage(`<span style="color:#DDA0DD">[ FENCED ] Sold ${soldItemsText.join(', ')} for ${formatNumber(totalProfit)}c.</span>`);
+        showToast(`CONTRABAND FENCED (+${formatNumber(totalProfit)}c)`, "success");
+        
+        renderUIStats();
+        
+        // Refresh the list view
+        renderShadowBrokerList();
+        
+        // Update the right pane to show a success receipt
+        document.getElementById('genericDetailContent').innerHTML = `
+            <div style="text-align:center; padding: 20px;">
+                <div style="font-size:50px; margin-bottom:10px; color:var(--success);">🤝</div>
+                <h3 style="color:var(--success);">TRANSACTION COMPLETE</h3>
+                <p style="color:var(--text-color); font-size:13px; line-height:1.5;">"A pleasure doing business. Stay off the Concord's radar."</p>
+                <p style="color:var(--gold-text); font-weight:bold; margin-top:10px;">+${formatNumber(totalProfit)}c</p>
+            </div>
+        `;
+        document.getElementById('genericModalActions').innerHTML = '';
+    }
+}
+
+// --- CONCORD SECURITY OFFICE ---
+
+function openSecurityOffice() {
+    if (playerNotoriety <= 0) {
+        showToast("Record Clean. Have a safe flight.", "info");
+        if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+        return;
+    }
+
+    openGenericModal("CONCORD SECURITY OFFICE");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // 1. Calculate Costs & Bribe Eligibility
+    const standardFine = playerNotoriety * 500;
+    const bribeAmount = Math.floor(standardFine * 0.5); // 50% discount
+    const canBribe = playerPerks.has('SILVER_TONGUE') || hasCrewPerk('TRADE_BONUS');
+
+    // 2. Render the Wanted Poster (Left Pane)
+    listEl.innerHTML = `
+        <div style="padding: 20px; text-align: center;">
+            <div style="font-size: 60px; margin-bottom: 15px; animation: pulse-warning 2s infinite;">🚔</div>
+            <h3 style="color:var(--danger); margin-bottom:5px; letter-spacing: 2px;">ACTIVE WARRANT</h3>
+            <p style="color:var(--text-color); font-weight:bold; margin-bottom:15px;">Target: Captain ${playerName}</p>
+            <div style="background:rgba(255,0,0,0.1); border:1px solid var(--danger); padding:10px; border-radius:4px;">
+                <p style="color:var(--warning); margin:0; font-size:12px; text-transform:uppercase;">Threat Level: ${playerNotorietyTitle}</p>
+                <p style="color:var(--danger); margin:5px 0 0 0; font-size:16px; font-weight:bold;">${playerNotoriety} Infractions</p>
+            </div>
+        </div>
+    `;
+
+    // 3. Render the Dialogue & Math Area (Right Pane)
+    detailEl.innerHTML = `
+        <div style="padding: 15px;">
+            <h3 style="color:var(--accent-color); margin-top:0;">OUTSTANDING FINES</h3>
+            <p style="font-size: 13px; color:var(--item-desc-color); line-height: 1.5;">"You've got a lot of red on your ledger, Commander. You can pay the official fine to clear your record, or... maybe we can come to an understanding."</p>
+            
+            <div class="trade-math-area" style="margin-top: 20px;">
+                <div class="trade-stat-row">
+                    <span>Official Fine:</span> 
+                    <span style="color:var(--danger); font-weight:bold;">${formatNumber(standardFine)}c</span>
+                </div>
+                <div class="trade-stat-row" style="margin-top: 10px; border-top: 1px solid #333; padding-top: 10px;">
+                    <span>Under-the-Table Bribe:</span> 
+                    <span style="color:${canBribe ? 'var(--gold-text)' : '#555'}; font-weight:bold;">${formatNumber(bribeAmount)}c</span>
+                </div>
+                <div style="font-size:10px; color:#888; text-align:right; margin-top:5px; font-style:italic;">
+                    ${canBribe ? 'Smuggler Crew / Silver Tongue Perk Active' : 'Requires Smuggler Crew or Silver Tongue Perk'}
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 4. Render Action Buttons
+    let btnHtml = '';
+    
+    // Official Pay Button
+    if (playerCredits >= standardFine) {
+        btnHtml += `<button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="processBountyPayment(false, ${standardFine})">PAY OFFICIAL FINE (${formatNumber(standardFine)}c)</button>`;
+    } else {
+        btnHtml += `<button class="action-button" disabled>INSUFFICIENT FUNDS (${formatNumber(standardFine)}c)</button>`;
+    }
+
+    // Bribe Button
+    if (canBribe) {
+        if (playerCredits >= bribeAmount) {
+            btnHtml += `<button class="action-button" style="border-color:var(--gold-text); color:var(--gold-text); box-shadow: 0 0 10px rgba(255,215,0,0.2);" onclick="processBountyPayment(true, ${bribeAmount})">BRIBE OFFICIAL (${formatNumber(bribeAmount)}c)</button>`;
+        } else {
+            btnHtml += `<button class="action-button" disabled style="border-color:#555; color:#555;">CANNOT AFFORD BRIBE (${formatNumber(bribeAmount)}c)</button>`;
+        }
+    }
+
+    actionsEl.innerHTML = btnHtml;
+}
+
+function processBountyPayment(isBribe, amount) {
+    if (playerCredits < amount) return;
+    
+    // Deduct credits and clear record
+    playerCredits -= amount;
+    playerNotoriety = 0;
+    updateNotorietyTitle();
+    
+    if (isBribe) {
+        logMessage(`<span style="color:var(--gold-text)">[ BRIBE ACCEPTED ] Security logs corrupted. Warrants deleted for ${formatNumber(amount)}c.</span>`);
+        showToast("BOUNTY CLEARED (BRIBED)", "success");
+    } else {
+        logMessage(`<span style="color:var(--success)">[ FINE PAID ] All outstanding warrants cleared for ${formatNumber(amount)}c.</span>`);
+        showToast("BOUNTY CLEARED", "success");
+    }
+
+    if (typeof soundManager !== 'undefined') soundManager.playGain();
+    
+    renderUIStats();
+    closeGenericModal();
+}
 
 function closeStationView() {
     document.getElementById('stationOverlay').style.display = 'none';
@@ -7090,9 +7522,9 @@ function visitCantina() {
     listEl.innerHTML = `
         <div style="padding:20px; text-align:center;">
             <div style="font-size:40px; margin-bottom:20px;">🍸</div>
-            <p style="color:#CCC; font-style:italic;">"${randomFlavor}"</p>
-            <hr style="border-color:#333; margin:20px 0;">
-            <p style="font-size:12px; color:#888;">
+            <p style="color:var(--text-color); font-style:italic;">"${randomFlavor}"</p>
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin:20px 0;">
+            <p style="font-size:12px; color:var(--item-desc-color);">
                 Travelers from across the sector gather here. 
                 It's a good place to rest, or pick up information if you have the credits.
             </p>
@@ -7101,22 +7533,22 @@ function visitCantina() {
 
     // 2. Menu Options
     detailEl.innerHTML = `
-        <h3 style="color:var(--accent-color)">Cantina Menu</h3>
+        <h3 style="color:var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">Cantina Menu</h3>
         <div class="trade-item-row" onclick="cantinaAction('DRINK')">
-            <span>Synth-Ale (15c)</span>
-            <span>Restores 10 HP</span>
+            <span style="color:var(--text-color)">Synth-Ale (15c)</span>
+            <span style="color:var(--success)">Restores 10 HP</span>
         </div>
         <div class="trade-item-row" onclick="cantinaAction('RUMOR')">
-            <span>Bribe Bartender (50c)</span>
-            <span>Get Market Tip</span>
+            <span style="color:var(--text-color)">Bribe Bartender (50c)</span>
+            <span style="color:var(--gold-text)">Get Market Tip</span>
         </div>
         <div class="trade-item-row" onclick="cantinaAction('RECRUIT')">
-            <span style="color:#00E0E0">Recruit Crew</span>
-            <span>Hire Mercenaries</span>
+            <span style="color:var(--accent-color)">Recruit Crew</span>
+            <span style="color:var(--text-color)">Hire Mercenaries</span>
         </div>
         <div class="trade-item-row" onclick="cantinaAction('GAMBLE')">
-            <span>Pazaak Table</span>
-            <span>Wager 100c</span>
+            <span style="color:var(--text-color)">Pazaak Table</span>
+            <span style="color:var(--warning)">Wager 100c</span>
         </div>
     `;
 
@@ -7130,7 +7562,11 @@ function cantinaAction(action) {
         
         playerCredits -= 15;
         playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 10);
-        soundManager.playUIHover();
+        
+        if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+        
+        // Styled log for the drink
+        logMessage(`<span style="color:var(--success);">[ REFRESHED ] You down the Synth-Ale. +10 Hull restored.</span>`);
         showToast("Refreshing! Hull repaired +10.", "success");
         renderUIStats();
     }
@@ -7139,20 +7575,24 @@ function cantinaAction(action) {
         
         playerCredits -= 50;
         
-        // Generate a rumor
-        const stations = Object.keys(LOCATIONS_DATA); // Known static stations
-        const targetStation = stations[Math.floor(Math.random() * stations.length)];
-        const targetItem = "MEDICAL_SUPPLIES"; // Simplified for now, or pick random high value
+        // FIX: Pick a random commodity instead of hardcoded Medical Supplies
+        const commodityKeys = Object.keys(COMMODITIES).filter(k => !COMMODITIES[k].illegal);
+        const targetItem = commodityKeys[Math.floor(Math.random() * commodityKeys.length)];
         
-        // Store the rumor globally
+        const stations = Object.keys(LOCATIONS_DATA); 
+        const targetStation = stations[Math.floor(Math.random() * stations.length)];
+        
         activeMarketTrend = {
             station: targetStation,
             item: targetItem,
-            expiry: Date.now() + 600000 // 10 minutes
+            expiry: currentGameDate + 50 // Better to use game ticks than real-world time
         };
         
-        showToast(`RUMOR ACQUIRED: Prices for ${targetItem} are high at ${targetStation}!`, "info");
-        logMessage(`Rumor: High demand for ${targetItem} reported at ${targetStation}.`);
+        // Using theme-aware colors for the log so it doesn't wash out
+        logMessage(`<span style="color:var(--accent-color); font-weight:bold;">[ INTEL ACQUIRED ]</span>`);
+        logMessage(`<span style="color:var(--text-color);">"Heard a rumor... folks at <span style="color:var(--accent-color);">${targetStation}</span> are desperate for <span style="color:var(--gold-text);">${COMMODITIES[targetItem].name}</span>. Paying a premium."</span>`);
+        
+        showToast("TRADE INTEL ACQUIRED", "success");
         renderUIStats();
         closeGenericModal();
     }
@@ -7163,13 +7603,19 @@ function cantinaAction(action) {
         if (playerCredits < 100) { showToast("House limit is 100c.", "error"); return; }
         
         playerCredits -= 100;
-        if (Math.random() > 0.55) { // House advantage
+        
+        // 45% Win Chance (House Edge)
+        if (Math.random() > 0.55) { 
             const win = 200;
             playerCredits += win;
-            soundManager.playAbilityActivate(); // Win sound
+            if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate(); 
+            
+            logMessage(`<span style="color:var(--gold-text); font-weight:bold;">[ PAZAAK WIN ] You cleared the table! +${win}c</span>`);
             showToast(`YOU WON! (+${win}c)`, "success");
         } else {
-            soundManager.playError();
+            if (typeof soundManager !== 'undefined') soundManager.playError();
+            
+            logMessage(`<span style="color:var(--danger);">[ PAZAAK LOSS ] The dealer takes your credits with a smirk.</span>`);
             showToast("You lost.", "error");
         }
         renderUIStats();
@@ -8000,6 +8446,14 @@ function renderXerxesMenu() {
         `;
     });
 
+    // --- THE CRYPTARCH (Always available at the Spire) ---
+    menu.innerHTML += `
+        <button class="station-action-btn xerxes-btn" style="border-left: 3px solid #00E0E0;" onclick="visitCryptarch()">
+            <div class="btn-icon">👁️</div>
+            <div class="btn-label">The Cryptarch<br><span class="btn-sub" style="color:var(--accent-color)">Decrypt Ancient Engrams</span></div>
+        </button>
+    `;
+
     // 2. The Shop (Unlocked if Level >= 1)
     if (xerxesPuzzleLevel >= 1) {
         menu.innerHTML += `
@@ -8012,16 +8466,14 @@ function renderXerxesMenu() {
 
     // 3. The Puzzle / Progression Button
     if (xerxesPuzzleLevel < SPIRE_PUZZLES.length) {
-        // We have a puzzle available for this level
         const pz = SPIRE_PUZZLES[xerxesPuzzleLevel];
         menu.innerHTML += `
             <button class="station-action-btn xerxes-btn xerxes-spire-btn" onclick="enterTheSpire()">
-                <div class="btn-icon">👁️</div>
+                <div class="btn-icon">🏯</div>
                 <div class="btn-label">${pz.title}<br><span class="btn-sub" style="color:#DDA0DD">Decrypt Layer ${xerxesPuzzleLevel + 1}</span></div>
             </button>
         `;
     } else {
-        // All puzzles solved (Future Proofing)
         menu.innerHTML += `
             <button class="station-action-btn xerxes-btn" disabled style="opacity:0.5; border-color:#555;">
                 <div class="btn-icon">🔒</div>
