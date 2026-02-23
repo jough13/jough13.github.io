@@ -141,12 +141,12 @@
          text: LOCATIONS_DATA["Starbase Alpha"].scanFlavor,
          unlocked: false
      },
-     LOCATION_PLANET_OMEGA: {
-         title: "Planet Omega",
-         category: "Locations",
-         text: LOCATIONS_DATA["Planet Omega"].scanFlavor,
-         unlocked: false
-     },
+     LOCATION_AEGIS_DYSON_SPHERE: {
+        title: "Aegis Dyson Sphere",
+        category: "Locations",
+        text: LOCATIONS_DATA["Aegis Dyson Sphere"].scanFlavor,
+        unlocked: false
+    },
      LOCATION_PLANET_XERXES: {
          title: "Planet Xerxes",
          category: "Locations",
