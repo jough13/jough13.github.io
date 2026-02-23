@@ -92,6 +92,18 @@ const LOOT_TABLES = {
          description: "A mysterious, polyhedral data-matrix glowing with a faint purple light. Station cryptarchs and black-market brokers alike pay handsomely to decrypt the golden-age tech hidden inside.",
          unlocked: true
      },
+     ENCRYPTED_DATA: {
+        name: "Encrypted Data Cache",
+        basePrice: 500,
+        description: "A locked memory core from the Old Empire. Requires a Cryptarch to decipher.",
+        unlocked: true
+    },
+    ANCIENT_ARCHIVE: {
+        name: "Ancient Archive",
+        basePrice: 2000,
+        description: "A high-density holographic array. Contains forbidden history or advanced schematics.",
+        unlocked: true
+    },
      TECH_PARTS: {
          name: "Tech Parts",
          basePrice: 50,
