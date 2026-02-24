@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NESHAP Bounding Calculator</title>
+    <style>
+        /* Base Styles & Typography */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        .container {
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #003366;
+            border-bottom: 2px solid #003366;
+            padding-bottom: 0.5rem;
+            font-size: 1.5rem;
+        }
+        h3 { 
+            color: #003366; 
+            margin-top: 1.5rem; 
+            border-bottom: 1px solid #ddd; 
+            padding-bottom: 0.3rem;
+            font-size: 1.2rem;
+        }
+        
+        /* Form Layout */
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            align-items: flex-end;
+        }
+        .form-group {
+            flex: 1;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        .ref-link {
+            font-weight: normal;
+            font-size: 0.75rem;
+            color: #0066cc;
+            text-decoration: none;
+            margin-left: 0.3rem;
+            white-space: nowrap;
+        }
+        .ref-link:hover { text-decoration: underline; }
+        
+        /* Inputs & Touch Targets (Optimized for Mobile) */
+        input, select {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: inherit;
+            font-size: 1rem;
+            min-height: 44px;
+        }
+        
+        /* Buttons */
+        button {
+            min-height: 44px;
+            font-family: inherit;
+        }
+        .btn-primary {
+            background-color: #003366;
+            color: #fff;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1.1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1rem;
+            font-weight: bold;
+        }
+        .btn-primary:hover { background-color: #002244; }
+        .btn-secondary {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1rem;
+            display: none;
+        }
+        .btn-secondary:hover { background-color: #45a049; }
+        .btn-add {
+            background-color: #e0e0e0;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+            width: 100%;
+        }
+        .btn-add:hover { background-color: #d0d0d0; }
+        .btn-remove {
+            background-color: #c62828;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        .btn-remove:hover { background-color: #b71c1c; }
+        .btn-remove:disabled { background-color: #ccc; cursor: not-allowed; }
+        
+        /* Results & Gauge */
+        .results {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background-color: #eef2f5;
+            border-left: 4px solid #003366;
+            border-radius: 4px;
+            display: none;
+        }
+        .pass { color: #2e7d32; font-weight: bold; }
+        .fail { color: #c62828; font-weight: bold; }
+        #isotopeList { margin-bottom: 1rem; }
+        
+        /* Subtle Margin of Safety Gauge */
+        .gauge-container {
+            width: 100%;
+            height: 6px;
+            background-color: #e0e0e0;
+            border-radius: 3px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+            display: none;
+        }
+        .gauge-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #2e7d32;
+            transition: width 0.4s ease, background-color 0.4s ease;
+        }
+        .gauge-text {
+            font-size: 0.8rem;
+            color: #666;
+            text-align: right;
+            margin-top: 0.2rem;
+            display: none;
+        }
+        
+        /* Disclaimer Notice */
+        .local-disclaimer {
+            font-size: 0.85rem;
+            color: #555;
+            font-style: italic;
+            margin-top: 1rem;
+            border-top: 1px dashed #ccc;
+            padding-top: 0.75rem;
+        }
+
+        /* --- MOBILE OPTIMIZATION --- */
+        @media (max-width: 768px) {
+            body { padding: 0.5rem; }
+            .container { padding: 1rem; }
+            .form-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.5rem;
+                margin-bottom: 1.5rem;
+            }
+            .isotope-row {
+                background-color: #f9f9f9;
+                padding: 1rem;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+            }
+            .btn-remove {
+                margin-top: 0.5rem;
+                width: 100%;
+            }
+            label { margin-top: 0.5rem; }
+        }
+
+        /* --- PRINT VISUAL OPTIMIZATION --- */
+        @media print {
+            body { background-color: #fff; padding: 0; margin: 0; color: #000; }
+            .container { box-shadow: none; padding: 0; border: none; }
+            button, .btn-add, .btn-remove, .btn-primary, .btn-secondary, .ref-link { display: none !important; }
+            input, select { 
+                border: none; 
+                border-bottom: 1px solid #000; 
+                border-radius: 0; 
+                padding: 0.2rem 0; 
+                min-height: auto; 
+                appearance: none; 
+                -webkit-appearance: none; 
+                background: transparent;
+                color: #000;
+            }
+            .results { 
+                border: 1px solid #000; 
+                background-color: #fff; 
+                page-break-inside: avoid; 
+            }
+            .gauge-container, .gauge-text { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="appContainer">
+    <h1>NESHAP Bounding Dose Calculator</h1>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label>Project Name:</label>
+            <input type="text" id="projectName" value="Building Remediation Project">
+        </div>
+        <div class="form-group">
+            <label>Preparer Name:</label>
+            <input type="text" id="preparerName" value="Health Physics Office">
+        </div>
+    </div>
+
+    <h3>Source Term (Inventory)</h3>
+    <div id="isotopeList">
+        <div class="form-row isotope-row">
+            <div class="form-group" style="flex: 1.5;">
+                <label>Target Isotope:</label>
+                <select class="iso-select" onchange="handleIsotopeChange(this)">
+                    <option value="H-3">Tritium (H-3)</option>
+                    <option value="C-14">Carbon-14 (C-14)</option>
+                    <option value="Co-60">Cobalt-60 (Co-60)</option>
+                    <option value="Zn-65">Zinc-65 (Zn-65)</option>
+                    <option value="Kr-85">Krypton-85 (Kr-85)</option>
+                    <option value="Sr-90">Strontium-90 (Sr-90)</option>
+                    <option value="I-131">Iodine-131 (I-131)</option>
+                    <option value="Cs-137">Cesium-137 (Cs-137)</option>
+                    <option value="Ra-226" selected>Radium-226 (Ra-226)</option>
+                    <option value="Th-232">Thorium-232 (Th-232)</option>
+                    <option value="U-238">Uranium-238 (U-238)</option>
+                    <option value="Pu-239">Plutonium-239 (Pu-239)</option>
+                    <option value="Am-241">Americium-241 (Am-241)</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1.5;">
+                <label>
+                    Physical State: 
+                    <a href="https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-61/appendix-Appendix%20D%20to%20Part%2061" target="_blank" class="ref-link" title="Open EPA 40 CFR 61 Appendix D">(Ref: 40 CFR 61 App D)</a>
+                </label>
+                <select class="iso-state">
+                    <option value="1">Gas / Volatile (1.0)</option>
+                    <option value="0.001" selected>Particulate Solid / Liquid (1E-3)</option>
+                    <option value="0.000001">Solid Metal (1E-6)</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Inventory (Ci):</label>
+                <input type="number" class="iso-inv" value="0.00021" step="0.00001">
+            </div>
+            <button class="btn-remove" onclick="removeRow(this)" disabled>Remove Row</button>
+        </div>
+    </div>
+    
+    <button class="btn-add" onclick="addIsotopeRow()">+ Add Another Isotope</button>
+
+    <h3>Site & Dispersion Parameters</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Distance to Receptor (m):</label>
+            <input type="number" id="distance" value="200" step="1">
+        </div>
+        <div class="form-group">
+            <label>Building Width (m):</label>
+            <input type="number" id="bldgWidth" value="20.7" step="0.1">
+        </div>
+    </div>
+    
+    <div class="form-row">
+        <div class="form-group">
+            <label>Building Height (m):</label>
+            <input type="number" id="bldgHeight" value="9.8" step="0.1">
+        </div>
+        <div class="form-group">
+            <label>Wind Speed (m/s) [Worst-case = 1]:</label>
+            <input type="number" id="windSpeed" value="1" step="0.1">
+        </div>
+    </div>
+
+    <button class="btn-primary" onclick="runEvaluation()">Calculate NESHAP Exemption</button>
+
+    <div id="resultBox" class="results">
+        <h3>Evaluation Results</h3>
+        <p><strong>Chi/Q (Dispersion Factor):</strong> <span id="outChiQ"></span> sec/m^3</p>
+        <div id="isotopeBreakdown" style="margin-bottom: 1rem; font-size: 0.95rem;"></div>
+        <hr>
+        <p style="margin-bottom: 0;"><strong>Total Effective Dose Equivalent:</strong> <span id="outDose" style="font-size: 1.2rem;"></span> mrem/yr</p>
+        
+        <div class="gauge-container" id="gaugeContainer">
+            <div class="gauge-bar" id="gaugeBar"></div>
+        </div>
+        <div class="gauge-text" id="gaugeText"></div>
+
+        <p id="exemptionStatus" style="font-size: 1.1rem; margin-top: 1rem;"></p>
+        
+        <div class="local-disclaimer">
+            <strong>Note:</strong> Please check with your local state air quality board or regulatory agency. State-specific administrative and permitting requirements may still apply even if federal EPA exemption criteria are met.
+        </div>
+    </div>
+
+    <button id="exportBtn" class="btn-secondary" onclick="exportReport()">Download Bounding Estimate Report (.txt)</button>
+</div>
+
+<script>
+    let latestReportData = {};
+
+    const EPA_TABLE_2_LIMITS = {
+        "H-3": 1.5e-9, "C-14": 1.0e-11, "Co-60": 1.7e-14, "Zn-65": 9.1e-14,
+        "Kr-85": 1.0e-6, "Sr-90": 1.9e-14, "I-131": 2.1e-13, "Cs-137": 1.9e-14,
+        "Ra-226": 3.3e-15, "Th-232": 6.5e-16, "U-238": 8.3e-15, "Pu-239": 2.0e-15, "Am-241": 1.9e-15
+    };
+
+    const DEFAULT_RELEASE_FRACTIONS = { "H-3": "1", "Kr-85": "1", "I-131": "1", "C-14": "1" };
+
+    // --- Auto-Save Logic ---
+    function saveState() {
+        const state = {
+            project: document.getElementById('projectName').value,
+            preparer: document.getElementById('preparerName').value,
+            distance: document.getElementById('distance').value,
+            width: document.getElementById('bldgWidth').value,
+            height: document.getElementById('bldgHeight').value,
+            wind: document.getElementById('windSpeed').value,
+            isotopes: []
+        };
+        
+        document.querySelectorAll('.isotope-row').forEach(row => {
+            state.isotopes.push({
+                iso: row.querySelector('.iso-select').value,
+                state: row.querySelector('.iso-state').value,
+                inv: row.querySelector('.iso-inv').value
+            });
+        });
+        
+        localStorage.setItem('neshapCalcState', JSON.stringify(state));
+    }
+
+    function loadState() {
+        const saved = localStorage.getItem('neshapCalcState');
+        if (saved) {
+            const state = JSON.parse(saved);
+            document.getElementById('projectName').value = state.project || 'Building Remediation Project';
+            document.getElementById('preparerName').value = state.preparer || 'Health Physics Office';
+            document.getElementById('distance').value = state.distance || '200';
+            document.getElementById('bldgWidth').value = state.width || '20.7';
+            document.getElementById('bldgHeight').value = state.height || '9.8';
+            document.getElementById('windSpeed').value = state.wind || '1';
+
+            if (state.isotopes && state.isotopes.length > 0) {
+                const list = document.getElementById('isotopeList');
+                const firstRow = list.querySelector('.isotope-row');
+                
+                // Set first row
+                firstRow.querySelector('.iso-select').value = state.isotopes[0].iso;
+                firstRow.querySelector('.iso-state').value = state.isotopes[0].state;
+                firstRow.querySelector('.iso-inv').value = state.isotopes[0].inv;
+                
+                // Add and set subsequent rows
+                for (let i = 1; i < state.isotopes.length; i++) {
+                    addIsotopeRow(state.isotopes[i]);
+                }
+            }
+        }
+    }
+
+    document.getElementById('appContainer').addEventListener('input', saveState);
+    document.getElementById('appContainer').addEventListener('change', saveState);
+
+    // --- UI Functions ---
+    function handleIsotopeChange(selectElement) {
+        const row = selectElement.closest('.isotope-row');
+        const stateDropdown = row.querySelector('.iso-state');
+        const selectedIsotope = selectElement.value;
+        stateDropdown.value = DEFAULT_RELEASE_FRACTIONS[selectedIsotope] || "0.001";
+        saveState();
+    }
+
+    function addIsotopeRow(loadData = null) {
+        const list = document.getElementById('isotopeList');
+        const firstRow = list.querySelector('.isotope-row');
+        const newRow = firstRow.cloneNode(true);
+        
+        if (loadData && loadData.iso) {
+            newRow.querySelector('.iso-select').value = loadData.iso;
+            newRow.querySelector('.iso-state').value = loadData.state;
+            newRow.querySelector('.iso-inv').value = loadData.inv;
+        } else {
+            newRow.querySelector('.iso-select').value = "Ra-226";
+            newRow.querySelector('.iso-state').value = "0.001";
+            newRow.querySelector('.iso-inv').value = "0.00001";
+        }
+        
+        newRow.querySelector('.btn-remove').disabled = false;
+        list.appendChild(newRow);
+        
+        if (list.children.length > 1) {
+            firstRow.querySelector('.btn-remove').disabled = false;
+        }
+        saveState();
+    }
+
+    function removeRow(button) {
+        const list = document.getElementById('isotopeList');
+        if (list.children.length > 1) {
+            button.closest('.isotope-row').remove();
+        }
+        if (list.children.length === 1) {
+            list.querySelector('.btn-remove').disabled = true;
+        }
+        saveState();
+    }
+
+    // --- Math & Evaluation ---
+    function calculateChiOverQ(distanceMeters, windSpeed, bldgWidth, bldgHeight) {
+        const distanceKm = distanceMeters / 1000;
+        const sigmaY = 34 * Math.pow(distanceKm, 0.894);
+        const sigmaZ = 14 * Math.pow(distanceKm, 0.74);
+        const adjustedDispersionArea = (sigmaY * sigmaZ) + ((bldgWidth * bldgHeight) / Math.PI);
+        return 1 / (Math.PI * adjustedDispersionArea * windSpeed);
+    }
+
+    function runEvaluation() {
+        const inputs = {
+            project: document.getElementById('projectName').value,
+            preparer: document.getElementById('preparerName').value,
+            distance: parseFloat(document.getElementById('distance').value),
+            width: parseFloat(document.getElementById('bldgWidth').value),
+            height: parseFloat(document.getElementById('bldgHeight').value),
+            wind: parseFloat(document.getElementById('windSpeed').value)
+        };
+
+        const chiQ = calculateChiOverQ(inputs.distance, inputs.wind, inputs.width, inputs.height);
+        
+        let totalDose = 0;
+        let isotopeResults = [];
+        let breakdownHTML = "<strong>Dose Breakdown:</strong><ul style='margin-top:0.5rem; padding-left:1.5rem;'>";
+
+        document.querySelectorAll('.isotope-row').forEach(row => {
+            const selectEl = row.querySelector('.iso-select');
+            const isoKey = selectEl.value;
+            const isoName = selectEl.options[selectEl.selectedIndex].text;
+            
+            const stateEl = row.querySelector('.iso-state');
+            const releaseFraction = parseFloat(stateEl.value);
+            const stateName = stateEl.options[stateEl.selectedIndex].text;
+
+            const invCi = parseFloat(row.querySelector('.iso-inv').value);
+            
+            const limitCiM3 = EPA_TABLE_2_LIMITS[isoKey];
+            const annualReleaseCi = invCi * releaseFraction; 
+            const qSec = annualReleaseCi / 31536000;
+            const conc = qSec * chiQ;
+            const dose = (conc / limitCiM3) * 10;
+
+            totalDose += dose;
+            
+            isotopeResults.push({
+                name: isoName, key: isoKey, state: stateName, fraction: releaseFraction,
+                inventory: invCi, qSec: qSec, conc: conc, limit: limitCiM3, dose: dose
+            });
+
+            breakdownHTML += `<li>${isoKey} (${stateName}): ${dose.toExponential(3)} mrem/yr</li>`;
+        });
+
+        breakdownHTML += "</ul>";
+
+        // UI Updates
+        document.getElementById('resultBox').style.display = 'block';
+        document.getElementById('outChiQ').innerText = chiQ.toExponential(4);
+        document.getElementById('isotopeBreakdown').innerHTML = breakdownHTML;
+        document.getElementById('outDose').innerText = totalDose.toFixed(4);
+
+        // Gauge Logic
+        const gaugeContainer = document.getElementById('gaugeContainer');
+        const gaugeBar = document.getElementById('gaugeBar');
+        const gaugeText = document.getElementById('gaugeText');
+        
+        gaugeContainer.style.display = 'block';
+        gaugeText.style.display = 'block';
+        
+        let percent = (totalDose / 0.1) * 100;
+        let displayPercent = Math.min(percent, 100);
+        gaugeBar.style.width = displayPercent + '%';
+
+        if (percent >= 100) {
+            gaugeBar.style.backgroundColor = '#c62828'; // Red
+            gaugeText.innerText = percent.toFixed(1) + '% (Exceeds Limit)';
+        } else if (percent > 75) {
+            gaugeBar.style.backgroundColor = '#f57c00'; // Orange
+            gaugeText.innerText = percent.toFixed(1) + '% of Exemption Limit';
+        } else {
+            gaugeBar.style.backgroundColor = '#2e7d32'; // Green
+            gaugeText.innerText = percent.toFixed(1) + '% of Exemption Limit';
+        }
+
+        const statusEl = document.getElementById('exemptionStatus');
+        const isExempt = totalDose < 0.1;
+        statusEl.innerText = isExempt ? "PASS: Sum of fractions is exempt from formal EPA approval requirements." : "FAIL: Exceeds 0.1 mrem/yr threshold.";
+        statusEl.className = isExempt ? "pass" : "fail";
+
+        document.getElementById('exportBtn').style.display = 'block';
+        
+        latestReportData = { ...inputs, chiQ, totalDose, isotopeResults, isExempt };
+    }
+
+    // --- Export ---
+    function exportReport() {
+        const dateStr = new Date().toLocaleDateString();
+        const isExempt = latestReportData.isExempt;
+        const exemptionText = isExempt ?
+            "CONCLUSION: The calculated combined dose is BELOW the 0.1 mrem/yr threshold.\nProject qualifies for exemption from formal EPA Application for Approval of Construction under 40 CFR 61 Subpart I." :
+            "CONCLUSION: The calculated combined dose EXCEEDS the 0.1 mrem/yr threshold.\nAdvanced modeling (e.g., CAP88-PC) or formal EPA Approval of Construction is required.";
+
+        let isoTextBlocks = "";
+        latestReportData.isotopeResults.forEach(iso => {
+            isoTextBlocks += `
+Target Isotope:              ${iso.name}
+Physical State:              ${iso.state}
+Applied Release Fraction:    ${iso.fraction.toExponential(1)} (40 CFR 61 App D)
+Bounding Inventory:          ${iso.inventory.toExponential(3)} Curies
+Continuous Release Rate (Q): ${iso.qSec.toExponential(3)} Curies/second
+Calculated Concentration:    ${iso.conc.toExponential(3)} Ci/m^3
+EPA Table 2 Limit:           ${iso.limit.toExponential(2)} Ci/m^3
+Fractional Dose:             ${iso.dose.toFixed(6)} mrem/yr
+----------------------------------------------------------------------`;
+        });
+
+        const reportContent = `
+======================================================================
+          NESHAP BOUNDING DOSE ESTIMATE (UNABATED PTE)
+                GAUSSIAN WAKE-ADJUSTED MODEL
+======================================================================
+Date Generated: ${dateStr}
+Project Name:   ${latestReportData.project}
+Prepared By:    ${latestReportData.preparer}
+
+----------------------------------------------------------------------
+METEOROLOGICAL & SITE DISPERSION PARAMETERS:
+----------------------------------------------------------------------
+Distance to MEI Receptor:    ${latestReportData.distance} meters
+Building Width:              ${latestReportData.width} meters
+Building Height:             ${latestReportData.height} meters
+Release Elevation:           Ground-Level (0 to 1.5m, Fugitive Emission)
+Meteorological Condition:    Pasquill-Gifford Class F (Stable/Stagnant)
+Assumed Wind Speed:          ${latestReportData.wind} m/sec
+
+Calculated Atmospheric Dispersion Factor (Chi/Q): ${latestReportData.chiQ.toExponential(3)} sec/m^3
+*(Includes standard Building Wake Cavity Adjustment)*
+
+----------------------------------------------------------------------
+SOURCE TERM & DOSE EVALUATION (Sum of Fractions):
+----------------------------------------------------------------------${isoTextBlocks}
+
+TOTAL EFFECTIVE DOSE EQUIVALENT (TEDE):   ${latestReportData.totalDose.toFixed(4)} mrem/yr
+
+----------------------------------------------------------------------
+${exemptionText}
+======================================================================
+Disclaimer: This calculator provides a bounding manual estimate for project scoping 
+and exemption validation based on NCRP and EPA dispersion methodologies. It does not 
+act as a substitute for official EPA compliance software where strictly required. 
+Please check with your local state air quality board or environmental regulatory 
+agency to determine if additional regional administrative requirements apply.
+        `.trim();
+
+        const blob = new Blob([reportContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${latestReportData.project.replace(/\s+/g, '_')}_PTE_Estimate.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // Initialize state on load
+    window.onload = loadState;
+</script>
+
+</body>
+</html>
