@@ -535,8 +535,8 @@
         const dateStr = new Date().toLocaleDateString();
         const isExempt = latestReportData.isExempt;
         const exemptionText = isExempt ?
-            "CONCLUSION: The calculated combined dose is BELOW the 0.1 mrem/yr threshold.\nProject qualifies for exemption from formal EPA Application for Approval of Construction under 40 CFR 61 Subpart I." :
-            "CONCLUSION: The calculated combined dose EXCEEDS the 0.1 mrem/yr threshold.\nAdvanced modeling (e.g., CAP88-PC) or formal EPA Approval of Construction is required.";
+            "CONCLUSION: The calculated combined dose is BELOW the 0.1 mrem/yr threshold.\nProject qualifies for exemption from the requirement to file an Application for \nApproval to Construct or Modify under 40 CFR 61 Subpart H." :
+            "CONCLUSION: The calculated combined dose EXCEEDS the 0.1 mrem/yr threshold.\nAn Application for Approval to Construct or Modify (per 40 CFR 61.07) is required.";
 
         let isoTextBlocks = "";
         latestReportData.isotopeResults.forEach(iso => {
