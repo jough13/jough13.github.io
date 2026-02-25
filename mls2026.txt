@@ -1,0 +1,510 @@
+2026-02-21 | St. Louis City vs Charlotte
+2026-02-21 | FC Cincinnati vs Atlanta Utd
+2026-02-21 | Vancouver W'caps vs Real Salt Lake
+2026-02-21 | LAFC vs Inter Miami
+2026-02-21 | D.C. United vs Philadelphia Union
+2026-02-21 | Portland Timbers vs Columbus Crew
+2026-02-21 | Houston Dynamo vs Chicago Fire
+2026-02-21 | FC Dallas vs Toronto FC
+2026-02-21 | Nashville SC vs NE Revolution
+2026-02-21 | Austin FC vs Minnesota Utd
+2026-02-21 | SJ Earthquakes vs SPORTING KC
+2026-02-21 | Orlando City vs NY Red Bulls
+2026-02-21 | San Diego FC vs CF Montréal
+2026-02-22 | LA Galaxy vs NYCFC
+2026-02-22 | Seattle Sounders vs Colorado Rapids
+2026-02-28 | Chicago Fire vs CF Montréal
+2026-02-28 | Colorado Rapids vs Portland Timbers
+2026-02-28 | NY Red Bulls vs NE Revolution
+2026-02-28 | Minnesota Utd vs FC Cincinnati
+2026-03-01 | Austin FC vs D.C. United
+2026-02-28 | SJ Earthquakes vs Atlanta Utd
+2026-03-01 | Philadelphia Union vs NYCFC
+2026-02-28 | Real Salt Lake vs Seattle Sounders
+2026-02-28 | Vancouver W'caps vs Toronto FC
+2026-02-28 | FC Dallas vs Nashville SC
+2026-02-28 | SPORTING KC vs Columbus Crew
+2026-02-28 | Houston Dynamo vs LAFC
+2026-02-28 | LA Galaxy vs Charlotte
+2026-03-01 | San Diego FC vs St. Louis City
+2026-03-01 | Orlando City vs Inter Miami
+2026-03-07 | NE Revolution vs Houston Dynamo
+2026-03-07 | NYCFC vs Orlando City
+2026-03-07 | D.C. United vs Inter Miami
+2026-03-08 | NY Red Bulls vs CF Montréal
+2026-03-08 | FC Cincinnati vs Toronto FC
+2026-03-07 | SPORTING KC vs San Diego FC
+2026-03-07 | Columbus Crew vs Chicago Fire
+2026-03-07 | Colorado Rapids vs LA Galaxy
+2026-03-07 | St. Louis City vs Seattle Sounders
+2026-03-07 | Philadelphia Union vs SJ Earthquakes
+2026-03-07 | LAFC vs FC Dallas
+2026-03-07 | Charlotte vs Austin FC
+2026-03-07 | Atlanta Utd vs Real Salt Lake
+2026-03-07 | Nashville SC vs Minnesota Utd
+2026-03-07 | Portland Timbers vs Vancouver W'caps
+2026-03-14 | Toronto FC vs NY Red Bulls
+2026-03-14 | Atlanta Utd vs Philadelphia Union
+2026-03-14 | Columbus Crew vs Nashville SC
+2026-03-14 | NYCFC vs Colorado Rapids
+2026-03-14 | Orlando City vs CF Montréal
+2026-03-14 | Charlotte vs Inter Miami
+2026-03-15 | NE Revolution vs FC Cincinnati
+2026-03-15 | SJ Earthquakes vs Seattle Sounders
+2026-03-14 | LA Galaxy vs SPORTING KC
+2026-03-14 | FC Dallas vs San Diego FC
+2026-03-14 | Chicago Fire vs D.C. United
+2026-03-14 | LAFC vs St. Louis City
+2026-03-14 | Houston Dynamo vs Portland Timbers
+2026-03-14 | Vancouver W'caps vs Minnesota Utd
+2026-03-14 | Real Salt Lake vs Austin FC
+2026-03-21 | Toronto FC vs Columbus Crew
+2026-03-21 | Philadelphia Union vs Chicago Fire
+2026-03-21 | Nashville SC vs Orlando City
+2026-03-21 | Atlanta Utd vs D.C. United
+2026-03-21 | Charlotte vs NY Red Bulls
+2026-03-22 | NYCFC vs Inter Miami
+2026-03-22 | FC Cincinnati vs CF Montréal
+2026-03-22 | Minnesota Utd vs Seattle Sounders
+2026-03-22 | Portland Timbers vs LA Galaxy
+2026-03-22 | San Diego FC vs Real Salt Lake
+2026-03-21 | St. Louis City vs NE Revolution
+2026-03-21 | Vancouver W'caps vs SJ Earthquakes
+2026-03-21 | FC Dallas vs Houston Dynamo
+2026-03-21 | Austin FC vs LAFC
+2026-03-21 | SPORTING KC vs Colorado Rapids
+2026-04-04 | Toronto FC vs Colorado Rapids
+2026-04-04 | Real Salt Lake vs SPORTING KC
+2026-04-04 | NE Revolution vs CF Montréal
+2026-04-04 | Atlanta Utd vs Columbus Crew
+2026-04-04 | D.C. United vs FC Dallas
+2026-04-04 | NYCFC vs St. Louis City
+2026-04-04 | NY Red Bulls vs FC Cincinnati
+2026-04-04 | Charlotte vs Philadelphia Union
+2026-04-04 | Inter Miami vs Austin FC
+2026-04-04 | LAFC vs Orlando City
+2026-04-04 | LA Galaxy vs Minnesota Utd
+2026-04-04 | Chicago Fire vs Nashville SC
+2026-04-04 | Vancouver W'caps vs Portland Timbers
+2026-04-04 | SJ Earthquakes vs San Diego FC
+2026-04-04 | Houston Dynamo vs Seattle Sounders
+2026-04-11 | Toronto FC vs FC Cincinnati
+2026-04-11 | Austin FC vs LA Galaxy
+2026-04-11 | Portland Timbers vs LAFC
+2026-04-11 | CF Montréal vs Philadelphia Union
+2026-04-11 | Vancouver W'caps vs NYCFC
+2026-04-11 | Charlotte vs Nashville SC
+2026-04-11 | Inter Miami vs NY Red Bulls
+2026-04-11 | NE Revolution vs D.C. United
+2026-04-12 | Columbus Crew vs Orlando City
+2026-04-11 | San Diego FC vs Minnesota Utd
+2026-04-11 | FC Dallas vs St. Louis City
+2026-04-11 | SPORTING KC vs SJ Earthquakes
+2026-04-11 | Colorado Rapids vs Houston Dynamo
+2026-04-11 | Chicago Fire vs Atlanta Utd
+2026-04-12 | Seattle Sounders vs Real Salt Lake
+2026-04-18 | Toronto FC vs Austin FC
+2026-04-18 | Colorado Rapids vs Inter Miami
+2026-04-18 | CF Montréal vs NY Red Bulls
+2026-04-17 | Vancouver W'caps vs SPORTING KC
+2026-04-18 | Philadelphia Union vs D.C. United
+2026-04-18 | FC Cincinnati vs Chicago Fire
+2026-04-18 | NYCFC vs Charlotte
+2026-04-18 | NE Revolution vs Columbus Crew
+2026-04-18 | Orlando City vs Houston Dynamo
+2026-04-18 | Atlanta Utd vs Nashville SC
+2026-04-19 | LAFC vs SJ Earthquakes
+2026-04-18 | Seattle Sounders vs St. Louis City
+2026-04-18 | Real Salt Lake vs San Diego FC
+2026-04-18 | FC Dallas vs LA Galaxy
+2026-04-18 | Minnesota Utd vs Portland Timbers
+2026-04-22 | Columbus Crew vs LA Galaxy
+2026-04-22 | Toronto FC vs Philadelphia Union
+2026-04-22 | Orlando City vs Charlotte
+2026-04-22 | NY Red Bulls vs D.C. United
+2026-04-22 | NYCFC vs FC Cincinnati
+2026-04-22 | Atlanta Utd vs NE Revolution
+2026-04-22 | SJ Earthquakes vs Austin FC
+2026-04-22 | Real Salt Lake vs Inter Miami
+2026-04-22 | Houston Dynamo vs San Diego FC
+2026-04-22 | FC Dallas vs Minnesota Utd
+2026-04-22 | LAFC vs Colorado Rapids
+2026-04-25 | Minnesota Utd vs LAFC
+2026-04-25 | Toronto FC vs Atlanta Utd
+2026-04-25 | CF Montréal vs NYCFC
+2026-04-25 | D.C. United vs Orlando City
+2026-04-25 | FC Cincinnati vs NY Red Bulls
+2026-04-25 | Columbus Crew vs Philadelphia Union
+2026-04-25 | Inter Miami vs NE Revolution
+2026-04-26 | LA Galaxy vs Real Salt Lake
+2026-04-25 | San Diego FC vs Portland Timbers
+2026-04-25 | Nashville SC vs Charlotte
+2026-04-25 | Seattle Sounders vs FC Dallas
+2026-04-25 | Austin FC vs Houston Dynamo
+2026-04-25 | Chicago Fire vs SPORTING KC
+2026-04-25 | Vancouver W'caps vs Colorado Rapids
+2026-04-25 | St. Louis City vs SJ Earthquakes
+2026-05-02 | Toronto FC vs SJ Earthquakes
+2026-05-02 | SPORTING KC vs Seattle Sounders
+2026-05-02 | Real Salt Lake vs Portland Timbers
+2026-05-02 | Inter Miami vs Orlando City
+2026-05-02 | Atlanta Utd vs CF Montréal
+2026-05-02 | Columbus Crew vs Minnesota Utd
+2026-05-02 | NY Red Bulls vs FC Dallas
+2026-05-02 | Philadelphia Union vs Nashville SC
+2026-05-02 | NE Revolution vs Charlotte
+2026-05-03 | NYCFC vs D.C. United
+2026-05-03 | Austin FC vs St. Louis City
+2026-05-02 | San Diego FC vs LAFC
+2026-05-02 | Chicago Fire vs FC Cincinnati
+2026-05-02 | LA Galaxy vs Vancouver W'caps
+2026-05-02 | Houston Dynamo vs Colorado Rapids
+2026-05-06 | NYCFC vs LAFC
+2026-05-09 | Toronto FC vs Inter Miami
+2026-05-09 | Chicago Fire vs NY Red Bulls
+2026-05-09 | CF Montréal vs Orlando City
+2026-05-09 | Charlotte vs FC Cincinnati
+2026-05-09 | Atlanta Utd vs LA Galaxy
+2026-05-09 | NE Revolution vs Philadelphia Union
+2026-05-10 | NYCFC vs Columbus Crew
+2026-05-10 | Minnesota Utd vs Austin FC
+2026-05-09 | Colorado Rapids vs St. Louis City
+2026-05-09 | Seattle Sounders vs San Diego FC
+2026-05-09 | SJ Earthquakes vs Vancouver W'caps
+2026-05-09 | FC Dallas vs Real Salt Lake
+2026-05-09 | Portland Timbers vs SPORTING KC
+2026-05-09 | Nashville SC vs D.C. United
+2026-05-10 | LAFC vs Houston Dynamo
+2026-05-13 | Charlotte vs NYCFC
+2026-05-13 | NY Red Bulls vs Columbus Crew
+2026-05-13 | Orlando City vs Philadelphia Union
+2026-05-13 | FC Cincinnati vs Inter Miami
+2026-05-13 | CF Montréal vs Portland Timbers
+2026-05-13 | NE Revolution vs Nashville SC
+2026-05-13 | D.C. United vs Chicago Fire
+2026-05-13 | San Diego FC vs Austin FC
+2026-05-13 | Seattle Sounders vs SJ Earthquakes
+2026-05-13 | St. Louis City vs LAFC
+2026-05-13 | Real Salt Lake vs Houston Dynamo
+2026-05-13 | Minnesota Utd vs Colorado Rapids
+2026-05-13 | FC Dallas vs Vancouver W'caps
+2026-05-13 | SPORTING KC vs LA Galaxy
+2026-05-16 | CF Montréal vs Chicago Fire
+2026-05-16 | NE Revolution vs Minnesota Utd
+2026-05-16 | NY Red Bulls vs NYCFC
+2026-05-16 | Philadelphia Union vs Columbus Crew
+2026-05-16 | Charlotte vs Toronto FC
+2026-05-16 | D.C. United vs St. Louis City
+2026-05-16 | Orlando City vs Atlanta Utd
+2026-05-17 | Inter Miami vs Portland Timbers
+2026-05-16 | Seattle Sounders vs LA Galaxy
+2026-05-16 | Austin FC vs SPORTING KC
+2026-05-16 | San Diego FC vs FC Cincinnati
+2026-05-16 | Real Salt Lake vs Colorado Rapids
+2026-05-16 | Houston Dynamo vs Vancouver W'caps
+2026-05-16 | SJ Earthquakes vs FC Dallas
+2026-05-17 | Nashville SC vs LAFC
+2026-05-23 | St. Louis City vs Austin FC
+2026-05-23 | FC Cincinnati vs Orlando City
+2026-05-23 | D.C. United vs CF Montréal
+2026-05-23 | Charlotte vs NE Revolution
+2026-05-24 | Columbus Crew vs Atlanta Utd
+2026-05-23 | Portland Timbers vs SJ Earthquakes
+2026-05-23 | San Diego FC vs Vancouver W'caps
+2026-05-24 | Inter Miami vs Philadelphia Union
+2026-05-23 | Minnesota Utd vs Real Salt Lake
+2026-05-23 | Colorado Rapids vs FC Dallas
+2026-05-23 | LA Galaxy vs Houston Dynamo
+2026-05-23 | Nashville SC vs NYCFC
+2026-05-23 | SPORTING KC vs NY Red Bulls
+2026-05-23 | Chicago Fire vs Toronto FC
+2026-05-24 | LAFC vs Seattle Sounders
+2026-07-16 | CF Montréal vs Toronto FC
+2026-07-16 | Chicago Fire vs Vancouver W'caps
+2026-07-16 | St. Louis City vs SPORTING KC
+2026-07-16 | Seattle Sounders vs Portland Timbers
+2026-07-17 | Nashville SC vs Atlanta Utd
+2026-07-17 | LA Galaxy vs LAFC
+2026-07-22 | Inter Miami vs Chicago Fire
+2026-07-22 | NE Revolution vs Toronto FC
+2026-07-22 | FC Cincinnati vs Vancouver W'caps
+2026-07-22 | Columbus Crew vs NYCFC
+2026-07-22 | Philadelphia Union vs NY Red Bulls
+2026-07-22 | SPORTING KC vs Minnesota Utd
+2026-07-22 | Austin FC vs Seattle Sounders
+2026-07-22 | Nashville SC vs CF Montréal
+2026-07-22 | Houston Dynamo vs D.C. United
+2026-07-22 | Colorado Rapids vs San Diego FC
+2026-07-22 | LAFC vs Real Salt Lake
+2026-07-22 | Portland Timbers vs FC Dallas
+2026-07-22 | LA Galaxy vs St. Louis City
+2026-07-22 | SJ Earthquakes vs Orlando City
+2026-07-22 | Charlotte vs Atlanta Utd
+2026-07-25 | Columbus Crew vs FC Cincinnati
+2026-07-25 | NY Red Bulls vs Charlotte
+2026-07-25 | CF Montréal vs Inter Miami
+2026-07-25 | D.C. United vs Toronto FC
+2026-07-25 | NE Revolution vs Atlanta Utd
+2026-07-25 | NYCFC vs Chicago Fire
+2026-07-25 | Philadelphia Union vs Seattle Sounders
+2026-07-25 | Orlando City vs Nashville SC
+2026-07-25 | San Diego FC vs FC Dallas
+2026-07-25 | St. Louis City vs Colorado Rapids
+2026-07-25 | Portland Timbers vs Real Salt Lake
+2026-07-25 | SJ Earthquakes vs LA Galaxy
+2026-07-25 | Houston Dynamo vs Austin FC
+2026-07-25 | LAFC vs SPORTING KC
+2026-07-25 | Minnesota Utd vs Vancouver W'caps
+2026-07-31 | NYCFC vs Toronto FC
+2026-08-01 | Vancouver W'caps vs LAFC
+2026-08-01 | Inter Miami vs Columbus Crew
+2026-08-01 | Philadelphia Union vs Atlanta Utd
+2026-08-01 | D.C. United vs Nashville SC
+2026-08-01 | FC Cincinnati vs SJ Earthquakes
+2026-08-01 | NY Red Bulls vs Orlando City
+2026-08-01 | CF Montréal vs NE Revolution
+2026-08-01 | Portland Timbers vs Seattle Sounders
+2026-08-01 | Colorado Rapids vs Austin FC
+2026-08-01 | SPORTING KC vs Houston Dynamo
+2026-08-01 | Minnesota Utd vs San Diego FC
+2026-08-01 | LA Galaxy vs FC Dallas
+2026-08-01 | Chicago Fire vs Charlotte
+2026-08-01 | St. Louis City vs Real Salt Lake
+2026-08-15 | Orlando City vs FC Cincinnati
+2026-08-15 | Toronto FC vs NE Revolution
+2026-08-15 | CF Montréal vs D.C. United
+2026-08-15 | Charlotte vs Columbus Crew
+2026-08-15 | Atlanta Utd vs NY Red Bulls
+2026-08-16 | Chicago Fire vs Portland Timbers
+2026-08-16 | NYCFC vs Philadelphia Union
+2026-08-15 | LAFC vs San Diego FC
+2026-08-15 | SJ Earthquakes vs St. Louis City
+2026-08-15 | Houston Dynamo vs LA Galaxy
+2026-08-15 | Colorado Rapids vs SPORTING KC
+2026-08-15 | Real Salt Lake vs Minnesota Utd
+2026-08-15 | Nashville SC vs Inter Miami
+2026-08-15 | Austin FC vs FC Dallas
+2026-08-16 | Seattle Sounders vs Vancouver W'caps
+2026-08-19 | Philadelphia Union vs Inter Miami
+2026-08-19 | Toronto FC vs Charlotte
+2026-08-19 | NY Red Bulls vs Nashville SC
+2026-08-19 | Orlando City vs Chicago Fire
+2026-08-19 | D.C. United vs NE Revolution
+2026-08-19 | FC Cincinnati vs NYCFC
+2026-08-19 | Columbus Crew vs CF Montréal
+2026-08-19 | Seattle Sounders vs Austin FC
+2026-08-19 | SPORTING KC vs St. Louis City
+2026-08-19 | LA Galaxy vs SJ Earthquakes
+2026-08-19 | Real Salt Lake vs FC Dallas
+2026-08-19 | Minnesota Utd vs Atlanta Utd
+2026-08-19 | Vancouver W'caps vs Houston Dynamo
+2026-08-19 | Colorado Rapids vs LAFC
+2026-08-19 | Portland Timbers vs San Diego FC
+2026-08-22 | CF Montréal vs LA Galaxy
+2026-08-22 | NY Red Bulls vs Chicago Fire
+2026-08-22 | Charlotte vs D.C. United
+2026-08-22 | FC Cincinnati vs Seattle Sounders
+2026-08-22 | Orlando City vs Real Salt Lake
+2026-08-22 | Inter Miami vs Toronto FC
+2026-08-23 | NE Revolution vs NYCFC
+2026-08-22 | Vancouver W'caps vs FC Dallas
+2026-08-23 | Atlanta Utd vs SPORTING KC
+2026-08-22 | St. Louis City vs Houston Dynamo
+2026-08-22 | Austin FC vs Philadelphia Union
+2026-08-22 | San Diego FC vs Colorado Rapids
+2026-08-22 | Nashville SC vs Columbus Crew
+2026-08-22 | LAFC vs Portland Timbers
+2026-08-22 | SJ Earthquakes vs Minnesota Utd
+2026-08-29 | Seattle Sounders vs Chicago Fire
+2026-08-29 | Toronto FC vs NYCFC
+2026-08-29 | D.C. United vs LAFC
+2026-08-29 | NY Red Bulls vs Philadelphia Union
+2026-08-29 | Atlanta Utd vs Charlotte
+2026-08-29 | Inter Miami vs CF Montréal
+2026-08-29 | Columbus Crew vs NE Revolution
+2026-08-30 | St. Louis City vs FC Dallas
+2026-08-29 | Nashville SC vs FC Cincinnati
+2026-08-29 | SPORTING KC vs Vancouver W'caps
+2026-08-29 | Portland Timbers vs Austin FC
+2026-08-29 | Houston Dynamo vs SJ Earthquakes
+2026-08-29 | Minnesota Utd vs Orlando City
+2026-08-29 | San Diego FC vs LA Galaxy
+2026-08-29 | Colorado Rapids vs Real Salt Lake
+2026-09-04 | NYCFC vs Nashville SC
+2026-09-05 | FC Cincinnati vs D.C. United
+2026-09-05 | Philadelphia Union vs CF Montréal
+2026-09-05 | Columbus Crew vs Colorado Rapids
+2026-09-05 | Inter Miami vs Atlanta Utd
+2026-09-05 | Orlando City vs San Diego FC
+2026-09-05 | Toronto FC vs Chicago Fire
+2026-09-05 | Charlotte vs Houston Dynamo
+2026-09-05 | Seattle Sounders vs NY Red Bulls
+2026-09-05 | LA Galaxy vs NE Revolution
+2026-09-05 | Austin FC vs SJ Earthquakes
+2026-09-05 | Vancouver W'caps vs St. Louis City
+2026-09-05 | Real Salt Lake vs LAFC
+2026-09-05 | Portland Timbers vs Minnesota Utd
+2026-09-05 | FC Dallas vs SPORTING KC
+2026-09-09 | Toronto FC vs Nashville SC
+2026-09-09 | Philadelphia Union vs FC Cincinnati
+2026-09-09 | Atlanta Utd vs Orlando City
+2026-09-09 | CF Montréal vs Charlotte
+2026-09-09 | NYCFC vs NE Revolution
+2026-09-09 | D.C. United vs Columbus Crew
+2026-09-09 | San Diego FC vs SJ Earthquakes
+2026-09-09 | Austin FC vs Colorado Rapids
+2026-09-09 | Portland Timbers vs St. Louis City
+2026-09-09 | Vancouver W'caps vs LA Galaxy
+2026-09-09 | Houston Dynamo vs Real Salt Lake
+2026-09-09 | Minnesota Utd vs FC Dallas
+2026-09-09 | Seattle Sounders vs SPORTING KC
+2026-09-09 | Chicago Fire vs Inter Miami
+2026-09-09 | LAFC vs NY Red Bulls
+2026-09-12 | Orlando City vs Toronto FC
+2026-09-12 | D.C. United vs Atlanta Utd
+2026-09-12 | FC Cincinnati vs Charlotte
+2026-09-12 | Columbus Crew vs NY Red Bulls
+2026-09-12 | Inter Miami vs Nashville SC
+2026-09-13 | Vancouver W'caps vs Austin FC
+2026-09-13 | Chicago Fire vs NE Revolution
+2026-09-12 | FC Dallas vs Portland Timbers
+2026-09-12 | SPORTING KC vs LAFC
+2026-09-12 | SJ Earthquakes vs Houston Dynamo
+2026-09-12 | Colorado Rapids vs CF Montréal
+2026-09-12 | St. Louis City vs Minnesota Utd
+2026-09-12 | LA Galaxy vs Seattle Sounders
+2026-09-12 | Real Salt Lake vs NYCFC
+2026-09-13 | San Diego FC vs Philadelphia Union
+2026-09-18 | NYCFC vs NY Red Bulls
+2026-09-19 | SJ Earthquakes vs LAFC
+2026-09-19 | CF Montréal vs Columbus Crew
+2026-09-19 | D.C. United vs Charlotte
+2026-09-19 | NE Revolution vs Orlando City
+2026-09-20 | Inter Miami vs San Diego FC
+2026-09-19 | Minnesota Utd vs LA Galaxy
+2026-09-19 | Real Salt Lake vs Vancouver W'caps
+2026-09-19 | FC Dallas vs Austin FC
+2026-09-19 | Houston Dynamo vs FC Cincinnati
+2026-09-19 | Colorado Rapids vs Seattle Sounders
+2026-09-19 | St. Louis City vs Toronto FC
+2026-09-19 | Portland Timbers vs Atlanta Utd
+2026-09-19 | SPORTING KC vs Philadelphia Union
+2026-09-19 | Nashville SC vs Chicago Fire
+2026-09-26 | Atlanta Utd vs NYCFC
+2026-09-26 | Charlotte vs Chicago Fire
+2026-09-26 | Philadelphia Union vs Orlando City
+2026-09-26 | NY Red Bulls vs St. Louis City
+2026-09-26 | CF Montréal vs FC Cincinnati
+2026-09-26 | Seattle Sounders vs Minnesota Utd
+2026-09-27 | Columbus Crew vs Inter Miami
+2026-09-26 | Real Salt Lake vs NE Revolution
+2026-09-26 | Nashville SC vs Toronto FC
+2026-09-26 | Austin FC vs San Diego FC
+2026-09-26 | FC Dallas vs LAFC
+2026-09-26 | SJ Earthquakes vs Portland Timbers
+2026-09-26 | Houston Dynamo vs SPORTING KC
+2026-09-26 | LA Galaxy vs Colorado Rapids
+2026-09-26 | Vancouver W'caps vs D.C. United
+2026-10-10 | Toronto FC vs CF Montréal
+2026-10-10 | Chicago Fire vs NYCFC
+2026-10-10 | NE Revolution vs Seattle Sounders
+2026-10-10 | Charlotte vs FC Dallas
+2026-10-10 | NY Red Bulls vs San Diego FC
+2026-10-10 | Inter Miami vs D.C. United
+2026-10-10 | Atlanta Utd vs FC Cincinnati
+2026-10-10 | Orlando City vs Columbus Crew
+2026-10-10 | Philadelphia Union vs Real Salt Lake
+2026-10-11 | St. Louis City vs LA Galaxy
+2026-10-10 | SPORTING KC vs Portland Timbers
+2026-10-10 | Colorado Rapids vs SJ Earthquakes
+2026-10-10 | Minnesota Utd vs Houston Dynamo
+2026-10-10 | LAFC vs Vancouver W'caps
+2026-10-10 | Austin FC vs Nashville SC
+2026-10-14 | CF Montréal vs Atlanta Utd
+2026-10-14 | FC Cincinnati vs NE Revolution
+2026-10-14 | Columbus Crew vs Charlotte
+2026-10-14 | Inter Miami vs NYCFC
+2026-10-14 | D.C. United vs NY Red Bulls
+2026-10-14 | Toronto FC vs Orlando City
+2026-10-14 | LAFC vs Austin FC
+2026-10-14 | FC Dallas vs Seattle Sounders
+2026-10-14 | Nashville SC vs SPORTING KC
+2026-10-14 | St. Louis City vs Vancouver W'caps
+2026-10-14 | Real Salt Lake vs SJ Earthquakes
+2026-10-14 | San Diego FC vs Houston Dynamo
+2026-10-14 | LA Galaxy vs Portland Timbers
+2026-10-14 | Colorado Rapids vs Minnesota Utd
+2026-10-14 | Chicago Fire vs Philadelphia Union
+2026-10-17 | Philadelphia Union vs Charlotte
+2026-10-17 | Minnesota Utd vs St. Louis City
+2026-10-17 | Orlando City vs D.C. United
+2026-10-17 | Atlanta Utd vs Inter Miami
+2026-10-17 | NY Red Bulls vs Toronto FC
+2026-10-17 | NE Revolution vs Chicago Fire
+2026-10-18 | FC Cincinnati vs Columbus Crew
+2026-10-17 | LA Galaxy vs San Diego FC
+2026-10-17 | Houston Dynamo vs FC Dallas
+2026-10-17 | Austin FC vs Vancouver W'caps
+2026-10-17 | SPORTING KC vs Real Salt Lake
+2026-10-17 | Seattle Sounders vs CF Montréal
+2026-10-17 | Portland Timbers vs Colorado Rapids
+2026-10-17 | SJ Earthquakes vs Nashville SC
+2026-10-24 | CF Montréal vs Nashville SC
+2026-10-24 | Columbus Crew vs Toronto FC
+2026-10-24 | NY Red Bulls vs Inter Miami
+2026-10-24 | Atlanta Utd vs Chicago Fire
+2026-10-24 | D.C. United vs FC Cincinnati
+2026-10-24 | Orlando City vs NYCFC
+2026-10-24 | Philadelphia Union vs NE Revolution
+2026-10-24 | Colorado Rapids vs Vancouver W'caps
+2026-10-24 | San Diego FC vs Seattle Sounders
+2026-10-24 | Portland Timbers vs Charlotte
+2026-10-24 | Real Salt Lake vs St. Louis City
+2026-10-24 | Houston Dynamo vs Minnesota Utd
+2026-10-24 | SPORTING KC vs Austin FC
+2026-10-24 | FC Dallas vs SJ Earthquakes
+2026-10-25 | LAFC vs LA Galaxy
+2026-10-28 | NYCFC vs Atlanta Utd
+2026-10-28 | NE Revolution vs NY Red Bulls
+2026-10-28 | Charlotte vs CF Montréal
+2026-10-28 | Toronto FC vs D.C. United
+2026-10-28 | Inter Miami vs FC Cincinnati
+2026-10-28 | Vancouver W'caps vs San Diego FC
+2026-10-28 | Nashville SC vs Philadelphia Union
+2026-10-28 | FC Dallas vs Columbus Crew
+2026-10-28 | Minnesota Utd vs SPORTING KC
+2026-10-28 | Chicago Fire vs Orlando City
+2026-10-28 | SJ Earthquakes vs Colorado Rapids
+2026-10-28 | St. Louis City vs Portland Timbers
+2026-10-28 | Seattle Sounders vs Houston Dynamo
+2026-10-28 | Austin FC vs Real Salt Lake
+2026-10-31 | FC Cincinnati vs Philadelphia Union
+2026-10-31 | Charlotte vs Orlando City
+2026-10-31 | SPORTING KC vs FC Dallas
+2026-10-31 | LA Galaxy vs Austin FC
+2026-10-31 | Columbus Crew vs D.C. United
+2026-11-01 | NYCFC vs CF Montréal
+2026-11-01 | SJ Earthquakes vs Real Salt Lake
+2026-11-01 | St. Louis City vs San Diego FC
+2026-11-01 | LAFC vs Minnesota Utd
+2026-11-01 | Vancouver W'caps vs Seattle Sounders
+2026-11-01 | Nashville SC vs NY Red Bulls
+2026-11-01 | Atlanta Utd vs Toronto FC
+2026-11-01 | NE Revolution vs Inter Miami
+2026-10-31 | Colorado Rapids vs Chicago Fire
+2026-11-01 | Portland Timbers vs Houston Dynamo
+2026-11-07 | Chicago Fire vs Columbus Crew
+2026-11-07 | Inter Miami vs Charlotte
+2026-11-07 | NY Red Bulls vs Atlanta Utd
+2026-11-07 | CF Montréal vs Vancouver W'caps
+2026-11-07 | D.C. United vs NYCFC
+2026-11-07 | Orlando City vs NE Revolution
+2026-11-07 | FC Cincinnati vs Nashville SC
+2026-11-07 | Philadelphia Union vs Toronto FC
+2026-11-07 | San Diego FC vs SPORTING KC
+2026-11-07 | Seattle Sounders vs LAFC
+2026-11-07 | Real Salt Lake vs LA Galaxy
+2026-11-07 | FC Dallas vs Colorado Rapids
+2026-11-07 | Austin FC vs Portland Timbers
+2026-11-07 | Houston Dynamo vs St. Louis City
+2026-11-07 | Minnesota Utd vs SJ Earthquakes
