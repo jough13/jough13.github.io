@@ -224,6 +224,16 @@
         stats: { cargoBonus: 20 },
         loreKey: "LORE_SHIP_LIGHT_FREIGHTER" // Reusing a generic key for now
     },
+    UTIL_DOSIMETRY_ARRAY: {
+        name: "Radiological Dosimeter",
+        type: "utility",
+        slot: "utility",
+        manufacturer: "CONCORD",
+        description: "A professional-grade health physics suite. Completely shields the vessel and crew from environmental radiation hazards.",
+        cost: 3500,
+        stats: { radImmunity: true },
+        loreKey: "LORE_COMP_SCANNER" // Adjust lore key as needed
+        },
      WEAPON_PULSE_LASER_MK1: {
          name: "Pulse Laser Mk1",
          type: "weapon",
@@ -471,6 +481,16 @@
          },
          loreKey: "LORE_COMP_SCANNER"
      },
+     SCANNER_NEXSTAR_4SE: {
+    name: "NexStar-4 Optical Array",
+    type: "scanner",
+    slot: "scanner",
+    manufacturer: "INDEPENDENT",
+    description: "An antique but meticulously maintained optical tracking array. Exceptional for deep-space stargazing and early planetary surveys.",
+    cost: 1200,
+    stats: { scanBonus: 0.15 },
+    loreKey: "LORE_COMP_SCANNER"
+},
 // --- ECLIPSE CARTEL EXCLUSIVES ---
     SMUGGLERS_HOLD: {
         name: "Eclipse Cargo Bay",
