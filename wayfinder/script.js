@@ -1,3 +1,5 @@
+let cachedAccentColor = '#00E0E0';
+
 // --- ACTIVE ENEMIES ---
 let activeEnemies = []; 
 
@@ -311,6 +313,7 @@ function animateParticles() {
                                 buys: tile.buys,
                                 scanFlavor: tile.scanFlavor
                             };
+                        this.staticLocations.set(locationKey, tile);
                         }
 
                     } else if (seededRandom(tileSeed + 8) < ANOMALY_SPAWN_CHANCE) {
@@ -474,7 +477,7 @@ function updateWorldState(x, y, changes) {
  let playerXP;
  let xpToNextLevel;
 
- let currentShipyardContext = null; // Add this with your other global state variables
+ let currentShipyardContext = null;
 
  const SECTOR_SIZE = 480; // Let's say a sector is a 160x160 tile area.
  let currentSectorX, currentSectorY;
@@ -652,6 +655,11 @@ function updateWorldState(x, y, changes) {
 
  function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
+
+    // Drop the oldest toast if there are already 3 on screen
+    if (container.children.length >= 3) {
+        container.removeChild(container.firstChild);
+    }
     
     // Create Element
     const toast = document.createElement('div');
@@ -757,6 +765,19 @@ function updateEnemies() {
     for (let i = activeEnemies.length - 1; i >= 0; i--) {
         const enemy = activeEnemies[i];
 
+        const dx = playerX - enemy.x;
+        const dy = playerY - enemy.y;
+
+        // --- BUG FIX #2: DESPAWN DISTANT ENEMIES (MEMORY LEAK FIX) ---
+        // Calculate the absolute distance between the player and the enemy
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 100) { 
+            // If the pirate is more than 100 tiles away, they've lost our trail.
+            activeEnemies.splice(i, 1); // Delete from memory
+            continue; // Skip to the next enemy in the loop
+        }
+        // -------------------------------------------------------------
+
         // 0. RANDOM "HESITATION" MECHANIC (Allows Outrunning)
         // 30% chance the pirate's engines stall or they stop to scan, 
         // effectively making them slower than the player (0.7 speed vs 1.0 speed).
@@ -764,9 +785,6 @@ function updateEnemies() {
         if (Math.random() < 0.30) {
             continue; // Skip this enemy's turn
         }
-
-        const dx = playerX - enemy.x;
-        const dy = playerY - enemy.y;
 
         // 1. Determine Move Preference (Try the longer distance first)
         const moves = [];
@@ -795,7 +813,10 @@ function updateEnemies() {
             
             // Is it a valid space to fly through?
             // (Enemies can fly through Empty Space or Nebulas)
-            const isNavigable = (tileChar === EMPTY_SPACE_CHAR_VAL || tileChar === NEBULA_CHAR_VAL);
+
+            const isNavigable = (tileChar !== PLANET_CHAR_VAL && 
+                     tileChar !== STARBASE_CHAR_VAL && 
+                     tileChar !== OUTPOST_CHAR_VAL);
 
             // 3. EXECUTE MOVE
             if (isPlayer || isNavigable) {
@@ -1237,6 +1258,9 @@ function unlockLoreEntry(entryKey, silent = false) {
        ? `border-color: ${readyColor}; color: ${readyColor}; font-weight: bold; background: rgba(255, 200, 0, 0.1); box-shadow: 0 0 10px rgba(255, 200, 0, 0.2);` 
        : `opacity: 0.5; border-color: var(--border-color); color: var(--text-color);`;
 
+    const canEvade = playerFuel >= EVASION_FUEL_COST;
+    const canEscape = playerFuel >= RUN_FUEL_COST;
+       
     // Enemy Intent Data
     const intent = currentCombatContext.nextMove || { icon: '?', label: 'Unknown' };
     const intentBg = isLightMode ? 'rgba(255, 0, 0, 0.05)' : 'rgba(50, 0, 0, 0.4)';
@@ -1287,7 +1311,7 @@ function unlockLoreEntry(entryKey, silent = false) {
             <div style="width: 150px; background: ${intentBg}; border: 1px solid var(--danger); border-radius: 8px; padding: 15px; text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 0 0 15px rgba(255,0,0,0.1);">
                 <div style="font-size: 11px; color: var(--danger); letter-spacing: 2px; margin-bottom: 15px; font-weight: bold; font-family: var(--title-font);">ENEMY INTENT</div>
                 <div style="font-size: 36px; margin-bottom: 15px;">${intent.icon}</div>
-                <div style="font-weight: bold; color: var(--text-color); fontdisplayOutfittingScreen()-size: 14px; letter-spacing: 1px;">${intent.label.toUpperCase()}</div>
+                <div style="font-weight: bold; color: var(--text-color); font-size: 14px; letter-spacing: 1px;">${intent.label.toUpperCase()}</div>
             </div>
 
             <div style="flex: 1; min-width: 220px; max-width: 300px; background: var(--bg-color); border: 1px solid var(--danger); border-radius: 8px; padding: 15px; text-align: center; display: flex; flex-direction: column; align-items: center; box-shadow: inset 0 0 10px rgba(255,0,0,0.1);">
@@ -1327,14 +1351,20 @@ function unlockLoreEntry(entryKey, silent = false) {
             <button class="action-button" onclick="handleCombatAction('charge')" style="padding: 16px; color: var(--item-name-color);">
                 CHARGE WEAPON
             </button>
+            
             <button class="action-button" style="grid-column: 1 / -1; padding: 18px; font-size: 16px; letter-spacing: 2px; ${abilityStyle}" onclick="handleCombatAction('ability')" ${!abilityReady ? 'disabled' : ''}>
                 ★ ${ability.name.toUpperCase()} ★
             </button>
-            <button class="action-button" onclick="handleCombatAction('evade')" style="padding: 14px; border-color: var(--accent-color); color: var(--accent-color);">
+            
+            <button class="action-button" onclick="handleCombatAction('evade')" ${!canEvade ? 'disabled' : ''}>
                 EVADE (${EVASION_FUEL_COST} Fuel)
             </button>
-            <button class="action-button" onclick="handleCombatAction('run')" style="padding: 14px; border-color: #888; color: #888;">
+            <button class="action-button" onclick="handleCombatAction('run')" ${!canEscape ? 'disabled' : ''}>
                 ESCAPE (${RUN_FUEL_COST} Fuel)
+            </button>
+            
+            <button class="action-button" style="grid-column: 1 / -1; padding: 14px; border-color: #AADD99; color: #AADD99;" onclick="handleCombatAction('hail')">
+                OPEN COMMS (HAIL)
             </button>
         </div>
     </div>
@@ -1964,8 +1994,9 @@ function renderSystemMap() {
     if (sensorPulseActive) {
         ctx.beginPath();
         ctx.arc(playerScreenX, playerScreenY - (TILE_SIZE/4), sensorPulseRadius, 0, 2 * Math.PI);
-        const accentColor = getThemeColor('--accent-color', '#00E0E0');
-        ctx.strokeStyle = accentColor;
+        // --- USE CACHED COLOR INSTEAD OF GETTING COMPUTED STYLE ---
+        ctx.strokeStyle = cachedAccentColor;
+        
         ctx.lineWidth = 2;
         ctx.stroke();
     }
@@ -2153,6 +2184,10 @@ function processLootTable(tableName) {
      // This ensures the UI immediately reflects the new sector name and coordinates
      updateSectorState();
 
+     const pCX = Math.floor(playerX / chunkManager.CHUNK_SIZE);
+     const pCY = Math.floor(playerY / chunkManager.CHUNK_SIZE);
+     chunkManager.pruneChunks(pCX, pCY);
+
      // 6. Grant XP and Unlock Lore
      playerXP += XP_WORMHOLE_TRAVERSE;
      unlockLoreEntry("PHENOMENON_WORMHOLE");
@@ -2224,11 +2259,13 @@ function movePlayer(dx, dy) {
 
         // --- HAZARD EFFECTS ---
         const hazard = getHazardType(playerX, playerY);
-        if (hazard === 'RADIATION_BELT') {
+        const hasRadShield = playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY';
+
+        if (hazard === 'RADIATION_BELT' && !hasRadShield) {
             if (playerShields > 0) {
                 playerShields = Math.max(0, playerShields - 1.5); // Minor shield drain
-                // 15% chance to log so it doesn't spam the feed every step
-                if (Math.random() < 0.15) {
+                // 10% chance to log so it doesn't spam the feed every step
+                if (Math.random() < 0.10) {
                     logMessage("<span style='color:#FFAA00'>Dosimeters detect Ionized Radiation Belt. Shields degrading.</span>");
                 }
             } else {
@@ -2831,6 +2868,7 @@ function handleInteraction() {
         // We reuse the global worldStateDeltas object
         if (!worldStateDeltas[sysKey]) worldStateDeltas[sysKey] = {};
         worldStateDeltas[sysKey].mined = true;
+        worldStateDeltas[sysKey].lastInteraction = currentGameDate;
         
         // Advance time slightly
         advanceGameTime(0.15);
@@ -3038,7 +3076,7 @@ function handleInteraction() {
              break;
              // You could add a case for 'derelict' here in the future
          default:
-             logMessage("Your sensors can't get a clear reading.");;
+             logMessage("Your sensors can't get a clear reading.");
              break;
      }
 
@@ -3574,10 +3612,15 @@ function checkLevelUp() {
     // 3. Heal Player (Standard Reward)
     playerShields = MAX_SHIELDS;
     playerFuel = MAX_FUEL;
+    playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 25);
     
     // 4. Trigger Perk Selection UI
     soundManager.playTone(600, 'sine', 0.1); 
     setTimeout(() => soundManager.playTone(800, 'sine', 0.2), 100);
+
+    if (typeof closeGenericModal === 'function') closeGenericModal();
+    // Manually hide the trade overlay specifically:
+    document.getElementById('tradeOverlay').style.display = 'none';
     
     changeGameState(GAME_STATES.LEVEL_UP); 
     renderLevelUpScreen();
@@ -3593,14 +3636,33 @@ function renderLevelUpScreen() {
     // 1. Get 3 Random Perks (that we don't already have)
     const availablePerks = Object.values(PERKS_DATABASE).filter(p => !playerPerks.has(p.id));
     
+    // If the player has acquired every single perk in the game, 
+    // grant them a generic "Veteran" bonus to prevent a menu soft-lock.
+    if (availablePerks.length === 0) {
+        playerCredits += 5000;
+        playerHull = MAX_PLAYER_HULL;
+        
+        logMessage("<span style='color:#FFD700'>VETERAN RANK ACHIEVED: Granted 5,000c and full hull repair!</span>");
+        if (typeof showToast === 'function') showToast("MAXIMUM LEVEL REACHED", "success");
+        
+        // Resume Game Without Menu
+        changeGameState(GAME_STATES.GALACTIC_MAP);
+        renderUIStats();
+        saveGame();
+        
+        // Check in case they had enough banked XP for multiple level ups at once
+        checkLevelUp(); 
+        return;
+    }
+
     // Shuffle
     const shuffled = availablePerks.sort(() => 0.5 - Math.random());
     const choices = shuffled.slice(0, 3);
     
-    // 2. Render Cards (Using CSS Classes now!)
+    // 2. Render Cards (Using CSS Classes)
     choices.forEach(perk => {
         const card = document.createElement('div');
-        card.className = 'perk-card'; // <--- The magic class
+        card.className = 'perk-card'; 
         
         card.innerHTML = `
             <div class="perk-icon">${perk.icon}</div>
@@ -3608,8 +3670,6 @@ function renderLevelUpScreen() {
             <p class="perk-desc">${perk.description}</p>
             <div class="perk-category">${perk.category} Class</div>
         `;
-        
-        // Remove the inline .onmouseover/.onmouseout overrides so CSS can handle hover states
         
         // Click Logic
         card.onclick = () => selectPerk(perk.id);
@@ -3746,6 +3806,8 @@ function startCombat(specificEnemyEntity = null) {
      }
 
      playerAbilityCooldown = 0;
+     playerIsChargingAttack = false;
+     playerIsEvading = false;
 
      // 2. Scaling Logic
      const distanceFromCenter = Math.sqrt((playerX * playerX) + (playerY * playerY));
@@ -3863,12 +3925,15 @@ function handleVictory() {
         // Calculate quantity based on the [min, max] range
         const qty = loot.qty[0] + Math.floor(Math.random() * (loot.qty[1] - loot.qty[0] + 1));
 
-        if (currentCargoLoad + qty <= PLAYER_CARGO_CAPACITY) {
-            playerCargo[loot.id] = (playerCargo[loot.id] || 0) + qty;
+        const spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+        if (spaceLeft > 0) {
+            const actualQty = Math.min(qty, spaceLeft);
+            playerCargo[loot.id] = (playerCargo[loot.id] || 0) + actualQty;
             updateCurrentCargoLoad();
-            msg += `\nLooted: ${qty}x ${COMMODITIES[loot.id].name}`;
+            msg += `\nLooted: ${actualQty}x ${COMMODITIES[loot.id].name}`;
+            if (actualQty < qty) msg += " (Hold full, left remainder)";
         } else {
-            msg += `\nLoot found (${COMMODITIES[loot.id].name}) but cargo full!`;
+            msg += `\nLoot found (${COMMODITIES[loot.id].name}) but cargo is full!`;
         }
     }
 
@@ -4208,7 +4273,7 @@ function displayShipyard() {
     
     // 1. Default Landing Screen
     detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px;">displayCrewRoster()
+        <div style="text-align:center; padding: 20px;">
             <div style="font-size:60px; text-align:center; margin-bottom:15px; opacity:0.5;">🛠️</div>
             <h3 style="color:var(--accent-color); margin-bottom:10px;">WELCOME TO THE SHIPYARD</h3>
             <p style="color:var(--item-desc-color); font-size:12px;">Select a hull from the manifest on the left to view its specifications and place an order.</p>
@@ -6160,9 +6225,10 @@ function toggleTheme() {
      // Save preference
      localStorage.setItem('wayfinderTheme', isLight ? 'light' : 'dark');
 
+     // --- UPDATE CACHED COLOR ---
+     cachedAccentColor = getThemeColor('--accent-color', '#00E0E0');
+
      // --- FORCE RENDER IMMEDIATELY ---
-     // This ensures the canvas redraws with the new colors right now,
-     // without waiting for the player to move.
      if (typeof render === 'function') {
          render();
      }
@@ -6727,6 +6793,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.add('light-mode');
         document.getElementById('themeButton').textContent = "Dark Mode";
     }
+
+    cachedAccentColor = getThemeColor('--accent-color', '#00E0E0');
 
     // 5. Setup Auto-Login
     setupAutoLoginUI();
@@ -7968,82 +8036,107 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
     const item = COMMODITIES[itemId];
     const price = calculateItemPrice(item, isBuy, location);
 
+    // --- FETCH ITEM ENTRY FOR STOCK/DEMAND LIMITS ---
+    const tradeList = isBuy ? location.sells : location.buys;
+    // Find the specific item data for this station
+    const itemEntry = tradeList ? tradeList.find(e => e.id === itemId || e === itemId) : null;
+    const availableStock = itemEntry ? itemEntry.stock : 999; // Fallback if infinite/undefined
+
     // --- Custom Quantity Logic ---
     let qtyToTrade = specificQty;
 
     // If the user clicked the "[#]" button, ask them how many
     if (specificQty === 'custom') {
         const promptMsg = isBuy 
-            ? `Buy how many ${item.name}? (Max affordable: ${Math.floor(playerCredits/price)})`
-            : `Sell how many ${item.name}? (Owned: ${playerCargo[itemId] || 0})`;
+            ? `Buy how many ${item.name}? (Stock: ${availableStock}, Max affordable: ${Math.floor(playerCredits/price)})`
+            : `Sell how many ${item.name}? (Demand: ${availableStock}, Owned: ${playerCargo[itemId] || 0})`;
             
         let input = prompt(promptMsg, "1");
         if (input === null) return; // Cancelled
         qtyToTrade = parseInt(input);
         
         if (isNaN(qtyToTrade) || qtyToTrade <= 0) {
-            showToast("Invalid Amount", "error");
+            if (typeof showToast === 'function') showToast("Invalid Amount", "error");
             return;
         }
     }
 
     // --- BUY LOGIC ---
     if (isBuy) {
+        const affordable = Math.floor(playerCredits / price);
+        const space = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+
+        // Cap all buy options by the station's actual stock!
         if (qtyToTrade === 'max') {
-            const affordable = Math.floor(playerCredits / price);
-            const space = PLAYER_CARGO_CAPACITY - currentCargoLoad;
-            qtyToTrade = Math.min(affordable, space);
+            qtyToTrade = Math.min(affordable, space, availableStock);
         } else if (qtyToTrade === 10) {
-            const affordable = Math.floor(playerCredits / price);
-            const space = PLAYER_CARGO_CAPACITY - currentCargoLoad;
-            qtyToTrade = Math.min(10, affordable, space);
+            qtyToTrade = Math.min(10, affordable, space, availableStock);
+        } else {
+            // Cap custom input
+            qtyToTrade = Math.min(qtyToTrade, availableStock);
         }
 
         if (qtyToTrade <= 0) {
-            if (playerCredits < price) showToast("Insufficient Credits!", "error");
-            else showToast("Cargo Hold Full!", "warning");
+            if (availableStock <= 0) {
+                if (typeof showToast === 'function') showToast("Out of Stock!", "error");
+            } else if (playerCredits < price) {
+                if (typeof showToast === 'function') showToast("Insufficient Credits!", "error");
+            } else {
+                if (typeof showToast === 'function') showToast("Cargo Hold Full!", "warning");
+            }
             if (typeof soundManager !== 'undefined') soundManager.playError();
             return;
         }
         
         // Final Affordability Check for Custom Amounts
         if (playerCredits < price * qtyToTrade) {
-             showToast("Insufficient Credits!", "error");
+             if (typeof showToast === 'function') showToast("Insufficient Credits!", "error");
              return;
         }
         // Final Space Check for Custom Amounts
         if (currentCargoLoad + qtyToTrade > PLAYER_CARGO_CAPACITY) {
-            showToast("Not enough Cargo Space!", "error");
+            if (typeof showToast === 'function') showToast("Not enough Cargo Space!", "error");
             return;
         }
 
         const totalCost = price * qtyToTrade;
         playerCredits -= totalCost;
         playerCargo[itemId] = (playerCargo[itemId] || 0) + qtyToTrade;
+        
+        // --- DECREMENT THE STOCK ---
+        if (itemEntry) itemEntry.stock -= qtyToTrade;
+        
         updateCurrentCargoLoad();
         
         if (typeof soundManager !== 'undefined') soundManager.playUIClick();
-        showToast(`Bought ${qtyToTrade}x ${item.name}`, "success");
+        if (typeof showToast === 'function') showToast(`Bought ${qtyToTrade}x ${item.name}`, "success");
 
     } 
     // --- SELL LOGIC ---
     else {
         const owned = playerCargo[itemId] || 0;
         
+        // Cap all sell options by what the station actually wants (demand/stock)
         if (qtyToTrade === 'all') {
-            qtyToTrade = owned;
-        }
-        
-        // Safety Check
-        if (qtyToTrade > owned) {
-            qtyToTrade = owned; // Sell what we have
+            qtyToTrade = Math.min(owned, availableStock);
+        } else {
+            qtyToTrade = Math.min(qtyToTrade, owned, availableStock);
         }
 
-        if (qtyToTrade <= 0) return;
+        if (qtyToTrade <= 0) {
+            if (availableStock <= 0) {
+                if (typeof showToast === 'function') showToast("Station demand met!", "warning");
+                if (typeof soundManager !== 'undefined') soundManager.playError();
+            }
+            return;
+        }
 
         const totalEarned = price * qtyToTrade;
         playerCargo[itemId] -= qtyToTrade;
         if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
+        
+        // --- DECREMENT STATION DEMAND ---
+        if (itemEntry) itemEntry.stock -= qtyToTrade;
         
         playerCredits += totalEarned;
         updateCurrentCargoLoad();
@@ -8054,7 +8147,7 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
         checkLevelUp();
 
         if (typeof soundManager !== 'undefined') soundManager.playUIClick();
-        showToast(`Sold ${qtyToTrade}x ${item.name}`, "success");
+        if (typeof showToast === 'function') showToast(`Sold ${qtyToTrade}x ${item.name}`, "success");
     }
 
     // Refresh UI
@@ -8778,11 +8871,12 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
                 <div style="color:#888;">Experience:</div> <div style="color:var(--text-color); text-align:right;">${Math.floor(playerXP)} / ${xpReq}</div>
                 <div style="color:#888;">Credits:</div> <div style="color:var(--gold-text); text-align:right; font-weight:bold;">${formatNumber(playerCredits)}c</div>
                 <div style="color:#888;">Notoriety:</div> <div style="color:var(--text-color); text-align:right;">${notTitle} (${playerNotoriety})</div>
-                <div style="color:#888;">Active Contract:</div> <div style="color:var(--text-color); text-align:right;">${typeof activeMission !== 'undefined' && activeMission ? 'In Progress' : 'None'}</div>
+                <div style="color:#888;">Active Contract:</div> <div style="color:var(--text-color); text-align:right;">${playerActiveMission ? 'In Progress' : 'None'}</div>
                 <div style="color:#888;">Crew Roster:</div> <div style="color:var(--text-color); text-align:right;">${playerCrew.length} / ${MAX_CREW}</div>
             </div>
         `;
-    } 
+    }
+
     else if (tab === 'SHIP') {
         const ship = SHIP_CLASSES[playerShip.shipClass];
         html += `
