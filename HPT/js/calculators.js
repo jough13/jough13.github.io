@@ -3170,7 +3170,7 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
             // B = Transmission Factor required
             const B = P / K_unshielded;
             
-            // SAFETY FIX: Clarity on "No Shielding"
+            // Clarity on "No Shielding"
             if (B >= 1) { 
                 setResult({ thickness: 0, tvls: 0, transmission: 'No Shielding Required', msg: 'Unshielded dose < Limit' }); 
                 return; 
@@ -3224,7 +3224,7 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
                     )}
                     <p className="text-sm text-slate-500 uppercase font-bold">Required Shielding</p>
                     
-                    {/* FIX: Explicitly check for the 'msg' flag instead of relying on thickness > 0 */}
+                    {/* Explicitly check for the 'msg' flag instead of relying on thickness > 0 */}
                     {!result.msg ? (
                         <>
                             <p className="text-4xl font-extrabold text-sky-600 dark:text-sky-400 my-2">{result.thickness} <span className="text-xl text-slate-500">{shieldMaterial === 'Lead' ? 'mm' : 'cm'}</span></p>
@@ -3246,7 +3246,17 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
     const TEDE_LIMIT_MREM = 500;
     const I131_ACTIVITY_LIMIT_MCI = 33;
     const I131_RATE_LIMIT_MREM_HR = 7.0; 
-    const actToMci = { 'µCi': 1e-3, 'mCi': 1, 'Ci': 1000, 'MBq': 1/37, 'GBq': 1000/37, 'TBq': 1e6/37 };
+    
+    // Use exact conversions instead of the 1/37 approximation
+    const BQ_TO_MCI = 1 / 3.7e7;
+    const actToMci = { 
+        'µCi': 1e-3, 
+        'mCi': 1, 
+        'Ci': 1000, 
+        'MBq': BQ_TO_MCI * 1e6, 
+        'GBq': BQ_TO_MCI * 1e9, 
+        'TBq': BQ_TO_MCI * 1e12 
+    };
     
     const therapyNuclides = React.useMemo(() => radionuclides.filter(n => therapyList.includes(n.symbol) && n.gammaConstant).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides, therapyList]);
     const selectedNuclide = React.useMemo(() => therapyNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, therapyNuclides]);
@@ -3325,7 +3335,7 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
                 rawDose: dose_mrem
             });
         } catch (e) { setResult(null); setError(e.message); }
-    }, [selectedNuclide, activity, activityUnit, measuredRate, occupancyFactor, distance, attenuation, effectiveHalfLife, effectiveHalfLifeUnit, settings.unitSystem]);
+    }, [selectedNuclide, activity, activityUnit, measuredRate, occupancyFactor, distance, attenuation, effectiveHalfLife, effectiveHalfLifeUnit, settings.unitSystem, actToMci]);
     
     const handleSave = () => {
         if (result && selectedNuclide) {
@@ -3336,15 +3346,38 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
     
     return (
         <div className="space-y-4">
+            <ContextualNote type="info">Calculates Total Effective Dose Equivalent (TEDE) to a member of the public in accordance with NUREG-1556 Vol. 9.</ContextualNote>
+            
             <div><label className="text-xs font-bold mb-1 block">Isotope</label>{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={therapyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide..." />}</div>
+            
             <div className="grid grid-cols-2 gap-4">
                 <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                 <div><label className="text-xs font-bold mb-1 block">Meas. Rate @ 1m (mrem/h)</label><input type="number" value={measuredRate} onChange={e => setMeasuredRate(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="Optional" /></div>
             </div>
+            
             <div className="grid grid-cols-2 gap-4">
                 <div><label className="text-xs font-bold mb-1 block">Occupancy (E)</label><input type="number" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} step="0.05" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
                 <div><label className="text-xs font-bold mb-1 block">Distance (m)</label><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
             </div>
+
+            {/* Added missing UI fields for Attenuation and Effective Half-Life */}
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-200 dark:border-slate-700">
+                <div>
+                    <label className="text-xs font-bold mb-1 block">Tissue Atten. Factor</label>
+                    <input type="number" value={attenuation} onChange={e => setAttenuation(e.target.value)} step="0.1" max="1" min="0" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/>
+                </div>
+                <div>
+                    <label className="text-xs font-bold mb-1 block">Eff. Half-Life (Optional)</label>
+                    <div className="flex">
+                        <input type="number" value={effectiveHalfLife} onChange={e => setEffectiveHalfLife(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="Phys T½"/>
+                        <select value={effectiveHalfLifeUnit} onChange={e => setEffectiveHalfLifeUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
+                            <option value="hours">hrs</option>
+                            <option value="days">days</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             {result && (
                 <div className={`p-4 rounded-lg text-center mt-4 relative ${result.pass ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
