@@ -705,11 +705,7 @@ const StandardDecayCalculator = ({
                 setSelectedPathIndex(0);
                 
                 if (calculationMode === MODE_DAUGHTER) {
-                    if (selectedNuclide.symbol === 'Mo-99' && !selectedNuclide.branchingFraction) {
-                        setBranchingFraction('0.875');
-                    } else {
-                        setBranchingFraction(rawFraction.toString());
-                    }
+                    setBranchingFraction(rawFraction.toString());
                 }
             }
         } else {
@@ -1230,16 +1226,28 @@ const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, re
             const initialConc_uCi_mL = act_uCi / vol_mL;
             
             // 3. Calculate Time to 1 DAC
-            // Formula: t = (-1/lambda) * ln(Target / Initial)
-            // lambda = ventilation rate (ACH)
             let time_to_1_dac_hr = 0;
-            
+
             if (initialConc_uCi_mL > bestDAC) {
-                 if (vent > 0) {
-                     time_to_1_dac_hr = (-1 / vent) * Math.log(bestDAC / initialConc_uCi_mL);
-                 } else {
-                     time_to_1_dac_hr = Infinity; // No ventilation = stays forever
-                 }
+                // Calculate radiological decay constant in hr⁻¹
+                let lambda_rad = 0;
+                if (selectedNuclide.halfLife && selectedNuclide.halfLife !== 'Stable') {
+                    // Utilizing the existing parseHalfLifeToSeconds utility
+                    const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
+                    if (T_half_seconds && T_half_seconds !== Infinity) {
+                        const T_half_hours = T_half_seconds / 3600;
+                        lambda_rad = Math.log(2) / T_half_hours;
+                    }
+                }
+                
+                // Effective removal rate (ACH + Radiological decay)
+                const lambda_eff = vent + lambda_rad;
+
+                if (lambda_eff > 0) {
+                    time_to_1_dac_hr = (-1 / lambda_eff) * Math.log(bestDAC / initialConc_uCi_mL);
+                } else {
+                    time_to_1_dac_hr = Infinity; // No ventilation and stable isotope
+                }
             }
 
             setResult({
@@ -1738,7 +1746,7 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                 }
             }
 
-            // 2. Beta/Alpha Geometry (Solid Angle)
+           // 2. Beta/Alpha Geometry (Solid Angle)
             if (detInfo.type === 'mix' || detInfo.type === 'alpha_only') {
                 const r_det = detInfo.radius_cm;
                 const d_cm = d_m * 100;
@@ -1753,17 +1761,25 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     // Katz-Penfold Range Calculation
                     const range_g_cm2 = calculateBetaRange(eMax);
 
-                    // A. Check Shield Penetration
-                    const range_shield_cm = shieldDensity > 0 ? range_g_cm2 / shieldDensity : Infinity;
+                    // A. Calculate Shield Mass-Density Thickness (g/cm²)
+                    const shield_g_cm2 = shieldMaterial !== 'None' ? t_cm * shieldDensity : 0;
 
-                    // B. Check Air Penetration (Density ~0.0012 g/cm³)
+                    // B. Calculate Air Mass-Density Thickness (g/cm³)
                     const densityAir = 0.0012; 
-                    const range_air_cm = range_g_cm2 / densityAir;
+                    const air_g_cm2 = d_cm * densityAir;
                     
-                    if (shieldMaterial !== 'None' && t_cm > range_shield_cm) {
-                        attenuationMsg.push("Betas blocked by shield.");
-                    } else if (d_cm > range_air_cm) { 
-                        attenuationMsg.push("Betas ranged out in air.");
+                    // C. Combine mass-thicknesses
+                    const total_g_cm2 = shield_g_cm2 + air_g_cm2;
+                    
+                    if (total_g_cm2 > range_g_cm2) {
+                        // Determine the primary cause of attenuation for the UI message
+                        if (shieldMaterial !== 'None' && shield_g_cm2 > range_g_cm2) {
+                            attenuationMsg.push("Betas blocked by shield.");
+                        } else if (air_g_cm2 > range_g_cm2) {
+                            attenuationMsg.push("Betas ranged out in air.");
+                        } else {
+                            attenuationMsg.push("Betas ranged out in combined shield and air.");
+                        }
                     } else {
                         // If it reaches, apply efficiency
                         cpmBeta = A_dpm * geoEff * (detInfo.refBetaEff || 0.2) * eff_surf;
@@ -4873,12 +4889,7 @@ const EquilibriumCalculator = ({ radionuclides, theme }) => {
                 setDecayPaths(newPaths);
                 setSelectedPathIndex(0);
                 
-                // Legacy overrides
-                if (parentNuclide.symbol === 'Mo-99' && !parentNuclide.branchingFraction) {
-                    setBranchingFraction('0.875');
-                } else {
-                    setBranchingFraction(rawFraction.toString());
-                }
+                setBranchingFraction(rawFraction.toString());
             }
         } else {
             setDecayPaths([]);
@@ -5896,14 +5907,48 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
         if (!selectedNuclide || !selectedNuclide.dosimetry) return [];
         const sourceObject = doseMethod === METHOD_FGR11 ? selectedNuclide.dosimetry.DCF : selectedNuclide.dosimetry.ALI;
         if (!sourceObject) return [];
-        return Object.keys(sourceObject).filter(k => k.startsWith('inhalation_')).map(k => k.split('_')[1]);
+        // Safely strip the prefix rather than splitting to handle "inhalation_Vapor" etc.
+        return Object.keys(sourceObject)
+            .filter(k => k.startsWith('inhalation_'))
+            .map(k => k.replace('inhalation_', ''));
     }, [selectedNuclide, doseMethod]);
+
+    // Dynamically determine the most conservative solubility class
+    const defaultSolubility = React.useMemo(() => {
+        if (!selectedNuclide || !selectedNuclide.dosimetry || availableClasses.length === 0) return '';
+        
+        let bestClass = availableClasses[0];
+        
+        if (doseMethod === METHOD_10CFR20 && selectedNuclide.dosimetry.ALI) {
+            let minALI = Infinity;
+            availableClasses.forEach(c => {
+                const val = selectedNuclide.dosimetry.ALI[`inhalation_${c}`];
+                if (typeof val === 'number' && val < minALI) {
+                    minALI = val;
+                    bestClass = c;
+                }
+            });
+        } else if (doseMethod === METHOD_FGR11 && selectedNuclide.dosimetry.DCF) {
+            let maxDCF = -1;
+            availableClasses.forEach(c => {
+                const val = selectedNuclide.dosimetry.DCF[`inhalation_${c}`];
+                if (typeof val === 'number' && val > maxDCF) {
+                    maxDCF = val;
+                    bestClass = c;
+                }
+            });
+        }
+        return bestClass;
+    }, [selectedNuclide, availableClasses, doseMethod]);
 
     React.useEffect(() => {
         if (calcMode === CALC_MODE_INTERNAL && intakeRoute === 'inhalation' && availableClasses.length > 0) {
-            if (!solubility || !availableClasses.includes(solubility)) setSolubility(availableClasses[0]);
+            // FIX: Ensure it defaults to the most conservative class if left blank
+            if (!solubility || !availableClasses.includes(solubility)) {
+                setSolubility(defaultSolubility);
+            }
         }
-    }, [calcMode, intakeRoute, availableClasses, solubility]);
+    }, [calcMode, intakeRoute, availableClasses, solubility, defaultSolubility]);
 
     // --- HELPER: Geometry Visualizer ---
     const GeometryVisualizer = ({ mode }) => {
@@ -8033,7 +8078,7 @@ const NeutronCalculator = ({radionuclides}) => {
 
 /**
  * @description A unified calculator for determining detection limits for both
- * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc.
+ * MARSSIM-compliant static counts and scanning surveys. Now includes "Time to Target" reverse calc and Emission Yield.
  */
 
 const MDACalculator = ({ onNavClick, onDeepLink }) => {
@@ -8054,6 +8099,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
     const [instrumentEff, setInstrumentEff] = React.useState(() => localStorage.getItem('mda_instrumentEff') || '20');
     const [surfaceEff, setSurfaceEff] = React.useState(() => localStorage.getItem('mda_surfaceEff') || '50');
     const [probeArea, setProbeArea] = React.useState(() => localStorage.getItem('mda_probeArea') || '15');
+    const [emissionYield, setEmissionYield] = React.useState(() => localStorage.getItem('mda_emissionYield') || '100');
     
     // Static State
     const [grossTime, setGrossTime] = React.useState(() => localStorage.getItem('mda_grossTime') || '1');
@@ -8091,6 +8137,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         localStorage.setItem('mda_instrumentEff', instrumentEff);
         localStorage.setItem('mda_surfaceEff', surfaceEff);
         localStorage.setItem('mda_probeArea', probeArea);
+        localStorage.setItem('mda_emissionYield', emissionYield);
         localStorage.setItem('mda_grossTime', grossTime);
         localStorage.setItem('mda_outputUnit', outputUnit);
         localStorage.setItem('mda_sampleVolume', sampleVolume);
@@ -8100,7 +8147,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         localStorage.setItem('mda_dprime', dprime);
         localStorage.setItem('mda_surveyorEff', surveyorEff);
         localStorage.setItem('mda_targetLimit', targetLimit);
-    }, [mdaMode, backgroundCpm, instrumentEff, surfaceEff, probeArea, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, probeDimension, dprime, surveyorEff, targetLimit]);
+    }, [mdaMode, backgroundCpm, instrumentEff, surfaceEff, probeArea, emissionYield, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, probeDimension, dprime, surveyorEff, targetLimit]);
     
     React.useEffect(() => { setResult(null); setError(''); }, [mdaMode]);
     
@@ -8148,8 +8195,12 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         const A = safeParseFloat(probeArea);
         const V = safeParseFloat(sampleVolume);
         const M = safeParseFloat(sampleMass);
+        const yield_pct = safeParseFloat(emissionYield);
         
         if (isNaN(bkgRate) || isNaN(Ts) || Ts <= 0) throw new Error('Please enter valid, positive numbers for background and time.');
+        if (isNaN(yield_pct) || yield_pct <= 0) throw new Error('Emission Yield must be greater than 0%.');
+        
+        const Y = yield_pct / 100.0;
         
         // Currie Equation
         let Ld_counts;
@@ -8162,8 +8213,11 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         }
         
         if (isNaN(ei) || isNaN(es) || ei <= 0 || es <= 0) throw new Error('Valid efficiencies are required.');
+        
         const E_total = getTotalEfficiency(ei, es);
-        const mda_dpm = (Ld_counts / Ts) / E_total;
+        
+        // Apply Yield (Y) to the DPM conversion
+        const mda_dpm = (Ld_counts / Ts) / (E_total * Y);
         
         let finalMDA;
         if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
@@ -8199,7 +8253,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             timeToTarget: timeToTarget ? timeToTarget.toFixed(1) : null
         });
         
-    }, [backgroundMode, bkgCounts, bkgTime, backgroundCpm, grossTime, instrumentEff, surfaceEff, outputUnit, probeArea, sampleVolume, sampleMass, targetLimit]);
+    }, [backgroundMode, bkgCounts, bkgTime, backgroundCpm, grossTime, instrumentEff, surfaceEff, outputUnit, probeArea, sampleVolume, sampleMass, emissionYield, targetLimit]);
     
     const handleScanCalculate = React.useCallback(() => {
         const bkgRate = safeParseFloat(backgroundCpm);
@@ -8210,11 +8264,15 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         const dp = safeParseFloat(dprime);
         const p = safeParseFloat(surveyorEff); // Surveyor Efficiency
         const total_area_cm2 = safeParseFloat(probeArea);
+        const yield_pct = safeParseFloat(emissionYield);
         
         if (isNaN(bkgRate) || isNaN(eff_i) || isNaN(eff_s) || isNaN(speed_cms) || isNaN(dimension_cm) || bkgRate < 0 || eff_i <= 0 || eff_s <= 0 || speed_cms <= 0 || dimension_cm <= 0) {
             throw new Error('Please enter valid, positive numbers.');
         }
         if (isNaN(total_area_cm2) || total_area_cm2 <= 0) throw new Error("Probe Area required.");
+        if (isNaN(yield_pct) || yield_pct <= 0) throw new Error('Emission Yield must be greater than 0%.');
+        
+        const Y = yield_pct / 100.0;
         
         // MARSSIM / NUREG-1507 Scan MDC Logic
         const residence_time_s = dimension_cm / speed_cms;
@@ -8230,8 +8288,8 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         // MDCR (Surveyor) = MDCR_i / sqrt(p)
         const mdcr_surveyor_cpm = mdcr_instrument_cpm / Math.sqrt(p);
         
-        // Scan MDC = MDCR_surv / (E_tot * Area_factor)
-        const scan_mda = mdcr_surveyor_cpm / (E_total * (total_area_cm2 / 100.0));
+        // Scan MDC = MDCR_surv / (E_tot * Yield * Area_factor)
+        const scan_mda = mdcr_surveyor_cpm / (E_total * Y * (total_area_cm2 / 100.0));
         
         setResult({
             type: 'scan',
@@ -8240,7 +8298,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             scan_mdcr: mdcr_surveyor_cpm.toFixed(0),
             isAlphaWarn: bkgRate < 5
         });
-    }, [backgroundCpm, probeDimension, instrumentEff, surfaceEff, scanSpeed, dprime, surveyorEff, probeArea]);
+    }, [backgroundCpm, probeDimension, instrumentEff, surfaceEff, scanSpeed, dprime, surveyorEff, probeArea, emissionYield]);
     
     const handleSaveToHistory = () => {
         if (!result) return;
@@ -8256,16 +8314,16 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             if (mdaMode === MDA_MODE_STATIC) handleStaticCalculate();
             else handleScanCalculate();
         } catch (e) { setError(e.message); setResult(null); }
-    }, [mdaMode, backgroundMode, backgroundCpm, bkgCounts, bkgTime, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, dprime, surveyorEff, probeArea, instrumentEff, surfaceEff, probeDimension, targetLimit, handleStaticCalculate, handleScanCalculate]);
+    }, [mdaMode, backgroundMode, backgroundCpm, bkgCounts, bkgTime, grossTime, outputUnit, sampleVolume, sampleMass, scanSpeed, dprime, surveyorEff, probeArea, instrumentEff, surfaceEff, probeDimension, targetLimit, emissionYield, handleStaticCalculate, handleScanCalculate]);
     
     const handleClearInputs = () => {
         setMdaMode(MDA_MODE_STATIC);
         setBackgroundCpm('50'); setBkgCounts('50'); setBkgTime('1');
-        setInstrumentEff('20'); setSurfaceEff('50'); setProbeArea('15');
+        setInstrumentEff('20'); setSurfaceEff('50'); setProbeArea('15'); setEmissionYield('100');
         setGrossTime('1'); setOutputUnit('dpm/100cm²'); setTargetLimit('');
         setScanSpeed('5'); setProbeDimension('4.4');
         setResult(null); setError('');
-        const keys = ['mda_mdaMode', 'mda_backgroundCpm', 'mda_instrumentEff', 'mda_surfaceEff', 'mda_probeArea', 'mda_grossTime', 'mda_outputUnit', 'mda_targetLimit', 'mda_scanSpeed'];
+        const keys = ['mda_mdaMode', 'mda_backgroundCpm', 'mda_instrumentEff', 'mda_surfaceEff', 'mda_probeArea', 'mda_emissionYield', 'mda_grossTime', 'mda_outputUnit', 'mda_targetLimit', 'mda_scanSpeed'];
         keys.forEach(k => localStorage.removeItem(k));
     };
     
@@ -8313,6 +8371,7 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                         <div><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                         <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                         <div><label className="block text-sm font-medium">Source Eff. (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        <div><label className="block text-sm font-medium">Emission Yield (%)</label><input type="number" value={emissionYield} onChange={e => setEmissionYield(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                     </div>
                 </div>
             
