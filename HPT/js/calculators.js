@@ -1186,10 +1186,13 @@ const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, re
             setError('');
             const act = safeParseFloat(releaseActivity); 
             const vol = safeParseFloat(roomVolume); 
-            const vent = safeParseFloat(ventilationRate);
             
-            if ([act, vol, vent].some(isNaN) || act < 0 || vol <= 0 || vent < 0) {
-                 // Don't throw error immediately on empty inputs, just wait
+            // FIX: Gracefully default empty ventilation to 0 ACH
+            const rawVent = safeParseFloat(ventilationRate);
+            const vent = isNaN(rawVent) ? 0 : rawVent;
+            
+            // FIX: Removed vent from the strict isNaN requirement
+            if ([act, vol].some(isNaN) || act < 0 || vol <= 0 || vent < 0) {
                  if (releaseActivity && roomVolume) throw new Error("Inputs must be valid numbers.");
                  setResult(null);
                  return;
@@ -1224,7 +1227,6 @@ const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, re
                 // Calculate radiological decay constant in hr⁻¹
                 let lambda_rad = 0;
                 if (selectedNuclide.halfLife && selectedNuclide.halfLife !== 'Stable') {
-                    // Utilizing the existing parseHalfLifeToSeconds utility
                     const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
                     if (T_half_seconds && T_half_seconds !== Infinity) {
                         const T_half_hours = T_half_seconds / 3600;
@@ -1245,7 +1247,7 @@ const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, re
             setResult({
                 initialConc: initialConc_uCi_mL.toExponential(3),
                 dacValue: bestDAC.toExponential(2),
-                dacType: bestType, // New field for safety awareness
+                dacType: bestType, 
                 dacMultiple: (initialConc_uCi_mL / bestDAC).toPrecision(3),
                 time_to_1_dac_hr: time_to_1_dac_hr === Infinity ? '∞' : time_to_1_dac_hr.toPrecision(3)
             });
@@ -1261,7 +1263,7 @@ const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, re
             addHistory({
                 id: Date.now(),
                 type: 'Airborne Release',
-                icon: ICONS.radon || ICONS.activity, // Fallback if radon icon missing
+                icon: ICONS.radon || ICONS.activity, 
                 inputs: `${releaseActivity} ${activityUnit} in ${roomVolume} ${volumeUnit}`,
                 result: `${result.dacMultiple}x DAC (${result.dacType})`,
                 view: VIEWS.OPERATIONAL_HP
@@ -1304,7 +1306,7 @@ const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, re
                     </div>
                 </div>
                 <div className="md:col-span-2">
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Ventilation Rate (ACH)</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Ventilation Rate (ACH) - Optional</label>
                     <input type="number" value={ventilationRate} onChange={e => setVentilationRate(e.target.value)} placeholder="Air Changes per Hour (e.g. 6)" className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
                 </div>
             </div>
@@ -1356,7 +1358,6 @@ const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, re
         </div>
     );
 };
-
 // --- Internal Helper: Result Badge ---
 const Badge = ({ label, pass, limit }) => (
     <div className={`flex justify-between items-center px-2 py-1 rounded text-[10px] font-bold ${pass ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'} mt-1`}>
@@ -1370,6 +1371,7 @@ const SurfaceContaminationCalculator = ({
     wipeEff, setWipeEff,
     radionuclides, nuclideSymbol, setNuclideSymbol, 
     staticData, setStaticData, 
+    staticBackgroundCpm, setStaticBackgroundCpm, // NEW: Decoupled Static Background
     wipeGrossCpm, setWipeGrossCpm, 
     wipeBackgroundCpm, setWipeBackgroundCpm, 
     smearEff, setSmearEff, 
@@ -1422,7 +1424,7 @@ const SurfaceContaminationCalculator = ({
             const wFactor = safeParseFloat(smearEff);
             
             const sEff = safeParseFloat(staticEff);
-            const sBkg = safeParseFloat(wipeBackgroundCpm); // Currently sharing background 
+            const sBkg = safeParseFloat(staticBackgroundCpm); // FIX: Using independent static background
             
             const area = safeParseFloat(probeArea);
 
@@ -1442,7 +1444,7 @@ const SurfaceContaminationCalculator = ({
             }
 
             // 3. Calculate Total (Static List)
-            if (sPoints.length > 0 && staticEff !== '' && probeArea !== '') {
+            if (sPoints.length > 0 && staticEff !== '' && probeArea !== '' && staticBackgroundCpm !== '') {
                 if (isNaN(sEff) || isNaN(area) || isNaN(sBkg)) throw new Error("Static inputs must be valid numbers.");
                 if (sEff <= 0) throw new Error("Static efficiency must be greater than 0.");
                 if (area <= 0) throw new Error("Probe area must be greater than 0.");
@@ -1450,7 +1452,8 @@ const SurfaceContaminationCalculator = ({
                 const sEffDec = sEff / 100; 
                 
                 const dpmValues = sPoints.map(gross => {
-                    const net = Math.max(0, gross - sBkg); 
+                    // FIX: Preserve negative values during array math to prevent upward statistical bias
+                    const net = gross - sBkg; 
                     return (net / sEffDec) * (100 / area);
                 });
 
@@ -1475,14 +1478,14 @@ const SurfaceContaminationCalculator = ({
                     total_max: totalMaxDPM,
                     count: sPoints.length,
                     nuclideName: selectedNuclide ? selectedNuclide.name : 'Generic Survey',
-                    rg: rg ? {
+                    rg: rg && rg.removable > 0 ? {
                         removable_pass: removableDPM === null || removableDPM <= rg.removable,
                         total_pass: totalAvgDPM === null || totalAvgDPM <= rg.total,
                         max_pass: totalMaxDPM === null || totalMaxDPM <= (rg.total * 3),
                         removable_limit: rg.removable,
                         total_limit: rg.total
                     } : null,
-                    ansi: ansi ? {
+                    ansi: ansi && ansi.removable > 0 ? {
                         removable_pass: removableDPM === null || removableDPM <= ansi.removable,
                         total_pass: totalAvgDPM === null || totalAvgDPM <= ansi.total,
                         removable_limit: ansi.removable,
@@ -1497,7 +1500,7 @@ const SurfaceContaminationCalculator = ({
             setError(e.message);
             setResult(null);
         }
-    }, [selectedNuclide, staticData, wipeGrossCpm, wipeBackgroundCpm, staticEff, wipeEff, smearEff, probeArea, setResult, setError]);
+    }, [selectedNuclide, staticData, wipeGrossCpm, wipeBackgroundCpm, staticBackgroundCpm, staticEff, wipeEff, smearEff, probeArea, setResult, setError]);
 
     const handleSaveToHistory = () => {
         if (result) {
@@ -1539,10 +1542,10 @@ const SurfaceContaminationCalculator = ({
                     <textarea value={staticData} onChange={e => setStaticData(e.target.value)} rows="3" className="w-full mt-1 p-2 rounded-md bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-mono text-xs shadow-inner" placeholder="Paste list: 100, 120, 95..."></textarea>
                     
                     <div className="grid grid-cols-2 gap-3 mt-3">
+                        {/* NEW: Decoupled Static Background Input */}
                         <div>
-                             <label className="text-xs font-bold text-slate-500">Static Eff. (%)</label>
-                             <input type="number" value={staticEff} onChange={e => setStaticEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
-                             <EfficiencyPresets onSelect={setStaticEff} />
+                             <label className="text-xs font-bold text-slate-500">Bkg (cpm)</label>
+                             <input type="number" value={staticBackgroundCpm} onChange={e => setStaticBackgroundCpm(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
                         </div>
                         <div>
                              <label className="text-xs font-bold text-slate-500">Probe Area (cm²)</label>
@@ -1554,6 +1557,11 @@ const SurfaceContaminationCalculator = ({
                                 </select>
                              </div>
                         </div>
+                    </div>
+                    <div className="mt-3">
+                         <label className="text-xs font-bold text-slate-500">Static Eff. (%)</label>
+                         <input type="number" value={staticEff} onChange={e => setStaticEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                         <EfficiencyPresets onSelect={setStaticEff} />
                     </div>
                 </div>
 
@@ -1654,7 +1662,8 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
     // Conversion Factors
     const BQ_TO_CI = 1 / 3.7e10; 
     const activityFactorsCi = React.useMemo(() => ({
-        'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'uCi': 1e-6, // Added 'uCi' fallback
+        'Ci': 1, 'mCi': 1e-3, 'µCi': 1e-6, 'uCi': 1e-6, 
+        'nCi': 1e-9, 'pCi': 1e-12, // FIX: Added missing environmental units
         'TBq': BQ_TO_CI * 1e12, 'GBq': BQ_TO_CI * 1e9, 'MBq': BQ_TO_CI * 1e6, 'kBq': BQ_TO_CI * 1e3, 'Bq': BQ_TO_CI
     }), [BQ_TO_CI]);
 
@@ -1688,7 +1697,10 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             const A_val = safeParseFloat(activity);
             const d_val = safeParseFloat(distance);
             const t_val = shieldMaterial === 'None' ? 0 : safeParseFloat(shieldThickness);
-            const eff_surf_pct = safeParseFloat(surfaceEff);
+            
+            // FIX: Safely parse surface efficiency and default to 100% if missing to prevent NaN math
+            const rawSurf = safeParseFloat(surfaceEff);
+            const eff_surf_pct = isNaN(rawSurf) ? 100 : rawSurf;
 
             if (isNaN(A_val) || isNaN(d_val) || A_val <= 0 || d_val <= 0) {
                 if (activity && distance) setError("Inputs must be positive.");
@@ -1703,8 +1715,6 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             const d_m = d_val * distanceFactorsM[distanceUnit];
             const t_cm = t_val * thicknessFactorsCm[shieldThicknessUnit];
             
-            // Ensure SHIELD_PROPS is available in scope (from constants.js or passed prop)
-            // If undefined, fallback to safe defaults to prevent crash
             const shieldProp = (typeof SHIELD_PROPS !== 'undefined' ? SHIELD_PROPS[shieldMaterial] : null) || { density: 0, mapTo: 'None' };
             const shieldDensity = shieldProp.density;
             
@@ -1719,16 +1729,14 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                 
                 if (gamma > 0) {
                     // Dose Rate in uR/hr = (Gamma * A) / d^2
-                    // Note: Gamma Constant is usually R-m^2/hr-Ci
                     const doseRate_uR_hr = ((gamma * A_Ci) / Math.pow(d_m, 2)) * 1e6;
                     
                     let transmission = 1;
                     if (shieldMaterial !== 'None' && t_cm > 0) {
                         const mapTo = shieldProp.mapTo;
-                        // Use DB value if exists, otherwise Conservative Fallback
                         const hvl = (typeof HVL_DATA !== 'undefined' && HVL_DATA[selectedNuclide.symbol]?.[mapTo]) 
                                     || FALLBACK_HVL[mapTo] 
-                                    || 1.2; // Default to 1.2 (Lead Co-60 approx) if all else fails
+                                    || 1.2; 
                         
                         transmission = Math.pow(0.5, t_cm / hvl);
                     }
@@ -1764,7 +1772,6 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     const total_g_cm2 = shield_g_cm2 + air_g_cm2;
                     
                     if (total_g_cm2 > range_g_cm2) {
-                        // Determine the primary cause of attenuation for the UI message
                         if (shieldMaterial !== 'None' && shield_g_cm2 > range_g_cm2) {
                             attenuationMsg.push("Betas blocked by shield.");
                         } else if (air_g_cm2 > range_g_cm2) {
@@ -1791,7 +1798,6 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             const totalCpm = cpmGamma + cpmBeta + cpmAlpha;
 
             setResult({
-                // Smart formatting: Show decimals for low counts, integers for high
                 displayValue: totalCpm < 10 ? totalCpm.toFixed(2) : Math.round(totalCpm).toLocaleString(),
                 rawCpm: totalCpm,
                 detLabel: detInfo.label,
@@ -1839,7 +1845,8 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     }
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                {/* FIX: Expanded Grid to 3 Columns to fit Emission Yield/Surface Efficiency */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label className="block text-sm font-medium">Activity</label>
                         <div className="flex">
@@ -1858,6 +1865,15 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                             </select>
                         </div>
                     </div>
+                    {/* NEW UI ELEMENT */}
+                    <div>
+                        <Tooltip text="Percentage of particles emitted toward the detector (Yield / Surface factor). Defaults to 100%.">
+                            <label className="block text-sm font-medium cursor-help underline decoration-dotted">Emission Yield (%)</label>
+                        </Tooltip>
+                        <div className="flex mt-1">
+                            <input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} placeholder="100" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                        </div>
+                    </div>
                 </div>
                 
                 {/* Shielding Inputs */}
@@ -1865,7 +1881,6 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     <div>
                         <label className="block text-sm font-medium">Shielding</label>
                         <select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">
-                            {/* Assumes SHIELD_PROPS is available in scope or imported */}
                             {typeof SHIELD_PROPS !== 'undefined' && Object.keys(SHIELD_PROPS).map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                     </div>
