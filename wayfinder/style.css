@@ -19,6 +19,12 @@ html {
     /* --- FONTS --- */
     --main-font: 'Roboto Mono', monospace;  /* Data, Logs, Body */
     --title-font: 'Orbitron', sans-serif;   /* Headers, Titles, HUD labels */
+
+    --z-base: 1;
+    --z-ui: 10;
+    --z-overlay: 100;
+    --z-modal: 500;
+    --z-header: 1000;
 }
 
 /* --- GLOBAL LAYOUT FIXES (No Scrollbars) --- */
@@ -2201,10 +2207,11 @@ body.light-mode #spireInput::placeholder {
 /* --- SYSTEM VIEW HEADER --- */
 .system-header-panel {
     width: 100%;
-    max-width: var(--canvas-width, 1024px); /* Constrain to game width */
-    margin: 0 auto 20px auto; /* Center horizontally */
+    max-width: clamp(320px, 100vw, 1024px); 
+    
+    margin: 0 auto 20px auto;
     padding: 0 15px; /* Add padding so text doesn't touch the exact edge */
-    z-index: 9999;
+    z-index: var(--z-header);
     box-sizing: border-box;
     text-align: left;
     border-bottom: 1px solid #333;
