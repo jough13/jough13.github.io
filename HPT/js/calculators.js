@@ -1920,10 +1920,17 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
     
-    // Standard Regulatory Limit for Sealed Sources (0.005 µCi)
+    // NEW: Access global settings to check for SI vs Conventional unit preference
+    const { settings } = React.useContext(SettingsContext);
+    const isSI = settings?.unitSystem === 'si';
+    
+    // Standard Regulatory Limits for Sealed Sources
     const LIMIT_UCI = 0.005;
+    const LIMIT_BQ = 185;
+    const limitValue = isSI ? LIMIT_BQ : LIMIT_UCI;
+    const limitUnit = isSI ? 'Bq' : 'µCi';
 
-    // Auto-calculate Action Level (The Net CPM that equals 0.005 uCi)
+    // Auto-calculate Action Level (The Net CPM that equals the limit)
     // Helps user know "What number am I looking for on the meter?"
     const actionLevelNetCpm = React.useMemo(() => {
         const eff = safeParseFloat(instrumentEff);
@@ -1931,8 +1938,9 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
         const efficiencyDecimal = eff / 100; 
         
         if (efficiencyDecimal > 0) {
-            // Formula: Limit (µCi) * 2.22e6 (dpm/µCi) * Eff = CPM
-            return Math.ceil(LIMIT_UCI * 2.22e6 * efficiencyDecimal);
+            // Both 0.005 µCi and 185 Bq equal exactly 11,100 dpm.
+            // Formula: 11,100 dpm * Eff = CPM
+            return Math.ceil(11100 * efficiencyDecimal);
         }
         return 0;
     }, [instrumentEff]);
@@ -1968,24 +1976,28 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
             // 5. Calculate DPM
             const dpm = netCpm / efficiency;
 
-            // 6. Calculate uCi
+            // 6. Calculate Activity in both units
             const act_uCi = dpm / 2.22e6;
+            const act_Bq = dpm / 60;
             
-            // 7. Pass/Fail Check
-            const pass = act_uCi < LIMIT_UCI;
+            const displayActivity = isSI ? act_Bq : act_uCi;
+            
+            // 7. Pass/Fail Check (10 CFR 35.3067 states "presence of 185 Bq (0.005 µCi) or more" is a failure)
+            const pass = isSI ? (act_Bq < LIMIT_BQ) : (act_uCi < LIMIT_UCI);
 
             setResult({ 
-                activity: act_uCi.toExponential(2), 
+                activity: displayActivity < 0.01 ? displayActivity.toExponential(2) : displayActivity.toPrecision(3), 
                 dpm: dpm.toFixed(0),
                 pass, 
-                netCpm: netCpm.toFixed(0) 
+                netCpm: netCpm.toFixed(0),
+                unit: limitUnit
             });
 
         } catch (e) { 
             setError(e.message); 
             setResult(null); 
         }
-    }, [grossCpm, backgroundCpm, instrumentEff, setResult, setError]);
+    }, [grossCpm, backgroundCpm, instrumentEff, isSI, limitUnit, setResult, setError]);
 
     const handleSaveToHistory = () => {
         if (result) {
@@ -1994,7 +2006,7 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
                 type: 'Leak Test', 
                 icon: ICONS.check, 
                 inputs: `Gross: ${grossCpm}, Bkg: ${backgroundCpm}, Eff: ${instrumentEff}%`, 
-                result: `${result.activity} µCi (${result.pass ? 'PASS' : 'FAIL'})`, 
+                result: `${result.activity} ${result.unit} (${result.pass ? 'PASS' : 'FAIL'})`, 
                 view: VIEWS.OPERATIONAL_HP 
             });
             addToast("Saved to history!");
@@ -2003,7 +2015,7 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
 
     return (
         <div className="space-y-4 max-w-2xl mx-auto animate-fade-in">
-            <ContextualNote type="info">Checks if a sealed source is leaking by comparing removable contamination against the standard limit of <strong>0.005 µCi</strong>.</ContextualNote>
+            <ContextualNote type="info">Checks if a sealed source is leaking by comparing removable contamination against the standard limit of <strong>{limitValue} {limitUnit}</strong>.</ContextualNote>
             
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 bg-white dark:bg-slate-800 shadow-sm">
                 
@@ -2045,7 +2057,7 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
                 {actionLevelNetCpm > 0 && (
                     <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-center">
                         <p className="text-xs text-blue-800 dark:text-blue-300">
-                            To exceed 0.005 µCi, you need <strong>&gt; {actionLevelNetCpm} Net CPM</strong>
+                            To exceed {limitValue} {limitUnit}, you need <strong>&gt; {actionLevelNetCpm} Net CPM</strong>
                         </p>
                     </div>
                 )}
@@ -2069,13 +2081,13 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
                         {result.pass ? 'PASS' : 'FAIL'}
                     </h3>
                     <p className="text-sm font-medium opacity-80 mb-4">
-                        Limit: {LIMIT_UCI} µCi
+                        Limit: {limitValue} {limitUnit}
                     </p>
                     
                     <div className="grid grid-cols-2 gap-2 text-sm bg-white/50 dark:bg-black/20 p-3 rounded-lg">
                         <div className="flex flex-col">
                             <span className="text-xs opacity-60">Activity</span>
-                            <span className="font-mono font-bold">{result.activity} µCi</span>
+                            <span className="font-mono font-bold">{result.activity} {result.unit}</span>
                         </div>
                         <div className="flex flex-col border-l border-current/10">
                             <span className="text-xs opacity-60">Net Counts</span>
@@ -2098,6 +2110,10 @@ const SimpleEfficiencyCalculator = ({
     result, setResult,
     error, setError
 }) => {
+
+    // Access global settings for SI/Conventional units
+    const { settings } = React.useContext(SettingsContext);
+    const isSI = settings?.unitSystem === 'si';
 
     // Auto-Calculate Effect
     React.useEffect(() => {
@@ -2153,14 +2169,18 @@ const SimpleEfficiencyCalculator = ({
             // DPM = CPM / Efficiency(decimal)
             const activity = c / (e / 100);
 
+            // FIX: Respect global unit settings for subtext display
+            const subActivity = isSI ? (activity / 60) : (activity / 2.22e6);
+            const subUnit = isSI ? 'Bq' : 'µCi';
+
             setResult({ 
                 label: 'Activity', 
                 value: Math.round(activity).toLocaleString() + ' dpm',
-                subtext: `${(activity / 2.22e6).toExponential(3)} µCi`
+                subtext: `${subActivity.toExponential(3)} ${subUnit}`
             });
         }
     // Removed setCpm/setEfficiency from dependencies to prevent loops
-    }, [mode, counts, time, cpm, dpm, efficiency, setResult, setError]); 
+    }, [mode, counts, time, cpm, dpm, efficiency, isSI, setResult, setError]); 
 
     return (
         <div className="space-y-4 animate-fade-in">
@@ -2267,7 +2287,7 @@ const InverseSquareCalculator = ({
 
             setResult({ 
                 label: 'Projected Rate (I₂)', 
-                value: rate2.toPrecision(3),
+                value: rate2 < 0.01 ? rate2.toExponential(2) : rate2.toPrecision(3), // Standardized formatting
                 subtext: `at ${dist2} distance units`
             });
         }
@@ -2286,7 +2306,7 @@ const InverseSquareCalculator = ({
 
             setResult({ 
                 label: 'Distance (d₂)', 
-                value: dist2.toFixed(2),
+                value: dist2 < 0.01 ? dist2.toExponential(2) : dist2.toPrecision(3), // Standardized formatting
                 subtext: `Distance where rate is ${rate2}`
             });
         }
@@ -2296,7 +2316,13 @@ const InverseSquareCalculator = ({
     return (
         <div className="space-y-4 animate-fade-in">
             <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg text-sm text-slate-600 dark:text-slate-400">
-                <p>Calculate distance boundaries or projected dose rates using actual field measurements.</p></div>
+                <p>Calculate distance boundaries or projected dose rates using actual field measurements.</p>
+            </div>
+            
+            {/* Warning added to remind users of point-source limitations */}
+            <ContextualNote type="warning">
+                <strong>Assumption:</strong> The source must act as a <strong>Point Source</strong>. The Inverse Square Law will not yield accurate results for line sources (e.g., pipes) or plane sources (e.g., floors).
+            </ContextualNote>
 
             {/* Mode Toggle */}
             <div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg">
@@ -2361,6 +2387,9 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
     const [sc_staticData, setSc_staticData] = React.useState('');
     const [sc_wipeGrossCpm, setSc_wipeGrossCpm] = React.useState('150');
     const [sc_wipeBackgroundCpm, setSc_wipeBackgroundCpm] = React.useState('50');
+    // FIX: Added the decoupled static background state to match the child component updates
+    const [sc_staticBackgroundCpm, setSc_staticBackgroundCpm] = React.useState('50'); 
+    
     // Defaulting to 10% for typical pancake GM, 30% for typical scaler/LSC
     const [sc_staticEff, setSc_staticEff] = React.useState('10'); 
     const [sc_wipeEff, setSc_wipeEff] = React.useState('30');
@@ -2438,8 +2467,18 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
     // Full Clear Handler
     const handleClear = () => {
         if(activeCalculator === 'surfaceContam') {
-            setSc_nuclideSymbol(''); setSc_staticData(''); setSc_wipeGrossCpm('150'); setSc_wipeBackgroundCpm('50');
-            setSc_instrumentEff('25'); setSc_smearEff('0.1'); setSc_probeArea('15'); setSc_result(null); setSc_error('');
+            setSc_nuclideSymbol(''); 
+            setSc_staticData(''); 
+            setSc_wipeGrossCpm('150'); 
+            setSc_wipeBackgroundCpm('50');
+            // FIX: Replaced invalid setSc_instrumentEff with actual state setters
+            setSc_staticBackgroundCpm('50');
+            setSc_staticEff('10'); 
+            setSc_wipeEff('30');
+            setSc_smearEff('0.1'); 
+            setSc_probeArea('15'); 
+            setSc_result(null); 
+            setSc_error('');
         }
         if(activeCalculator === 'leakTest') {
             setLt_grossCpm('150'); setLt_backgroundCpm('50'); setLt_instrumentEff('25'); setLt_result(null); setLt_error('');
@@ -2481,6 +2520,7 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
                         radionuclides={radionuclides}
                         nuclideSymbol={sc_nuclideSymbol} setNuclideSymbol={setSc_nuclideSymbol}
                         staticData={sc_staticData} setStaticData={setSc_staticData}
+                        staticBackgroundCpm={sc_staticBackgroundCpm} setStaticBackgroundCpm={setSc_staticBackgroundCpm} // FIX: Passed new state
                         wipeGrossCpm={sc_wipeGrossCpm} setWipeGrossCpm={setSc_wipeGrossCpm}
                         wipeBackgroundCpm={sc_wipeBackgroundCpm} setWipeBackgroundCpm={setSc_wipeBackgroundCpm}
                         staticEff={sc_staticEff} setStaticEff={setSc_staticEff}
@@ -2566,9 +2606,10 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
 
+    // FIX 1: Updated to current 49 CFR 173.443 limits (4 Bq/cm2 and 0.4 Bq/cm2)
     const CONTAM_LIMITS = {
-        beta_gamma: { removable: 22000, label: 'Beta/Gamma/Low-Tox Alpha' },
-        alpha: { removable: 2200, label: 'Other Alpha' }
+        beta_gamma: { removable: 24000, label: 'Beta/Gamma/Low-Tox Alpha' },
+        alpha: { removable: 2400, label: 'Other Alpha' }
     };
 
     // --- 2. STATE ---
@@ -2590,7 +2631,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
     const [checkContam, setCheckContam] = React.useState(false);
     const [contamNuclideType, setContamNuclideType] = React.useState('beta_gamma');
     const [removableContam, setRemovableContam] = React.useState('');
-    const [fixedContam, setFixedContam] = React.useState('');
 
     const [result, setResult] = React.useState(null);
     const [labelResult, setLabelResult] = React.useState(null);
@@ -2685,21 +2725,27 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let totalTBq = 0;
         let sumFracTypeA = 0;
         let sumFracExcMat = 0;
+        let sumFracExcInst = 0;
         let sumFracHRCQ = 0;
 
         packageItems.forEach(item => {
             totalTBq += item.actTBq;
             sumFracTypeA += item.fracTypeA;
             sumFracExcMat += item.fracExcMat;
+            sumFracExcInst += item.fracExcInst; // Track Instrument fraction
             sumFracHRCQ += (item.actTBq / (3000 * item.typeALimit)); 
         });
 
         let classification = '';
         let methodology = '';
 
+        // FIX 2: Evaluate both Material and Instrument Excepted logic
         if (sumFracExcMat <= 1.0) {
             classification = 'EXCEPTED';
             methodology = 'Sum of Fractions ≤ 1.0 (Excepted Material Limits)';
+        } else if (sumFracExcInst <= 1.0) {
+            classification = 'EXCEPTED';
+            methodology = 'Sum of Fractions ≤ 1.0 (Only valid if packaging as an Instrument/Article. Otherwise, TYPE A)';
         } else if (sumFracTypeA <= 1.0) {
             classification = 'TYPE_A';
             methodology = 'Sum of Fractions ≤ 1.0 (A1/A2 Limits)';
@@ -2768,7 +2814,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 });
             }
         }
-    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType]);
+    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType]); // Removed CONTAM_LIMITS dependency since it's constant
 
     const handleClear = () => {
         setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1');
@@ -2806,7 +2852,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                     <ClearButton onClick={handleClear} />
                 </div>
 
-                <ContextualNote type="info">Determines package classification (Excepted, Type A, Type B) based on A1/A2 fractions. Also estimates label requirements.</ContextualNote>
+                <ContextualNote type="info">Determines package classification (Excepted, Type A, Type B) based on A1/A2 fractions. Note: This module does not evaluate LSA or SCO limits.</ContextualNote>
 
                 {/* --- 1. PACKAGE CONTENTS BUILDER --- */}
                 <div className="space-y-4 mb-6 border-b border-slate-200 dark:border-slate-700 pb-6">
@@ -2959,7 +3005,6 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         </div>
     );
 };
-
 /**
  * @description React component acting as a container for various medical physics tools.
  */
@@ -3004,9 +3049,12 @@ const MedicalCalculator = ({ radionuclides }) => {
     // Dynamic Units
     const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
     
+    // FIX 2: Updated dependency array to include all referenced variables
     React.useEffect(() => {
-        if (!activityUnits.includes(pr_activityUnit)) setPr_activityUnit(activityUnits[1]);
-    }, [settings.unitSystem]);
+        if (!activityUnits.includes(pr_activityUnit)) {
+            setPr_activityUnit(activityUnits[1]);
+        }
+    }, [activityUnits, pr_activityUnit]);
     
     // Auto-set Attenuation for I-131
     React.useEffect(() => {
@@ -3023,8 +3071,10 @@ const MedicalCalculator = ({ radionuclides }) => {
             setPr_nuclideSymbol(''); setPr_activity('30'); setPr_measuredRate('');
             setPr_occupancyFactor('0.25'); setPr_distance('1'); setPr_attenuation('0.8');
             setPr_effectiveHalfLife(''); setPr_result(null); setPr_error('');
+            setPr_activityUnit(activityUnits[1]); // Reset unit to standard default
         } else if (activeTab === 'decayStorage') {
-            setDis_nuclideSymbol(''); setDis_currentRate('5.0'); setDis_result(null);
+            // FIX 1: Added setDis_limit('0.02') to fully clear the tab
+            setDis_nuclideSymbol(''); setDis_currentRate('5.0'); setDis_limit('0.02'); setDis_result(null);
         }
     };
     
@@ -3063,7 +3113,7 @@ const MedicalCalculator = ({ radionuclides }) => {
                     nuclideSymbol={pr_nuclideSymbol} setNuclideSymbol={setPr_nuclideSymbol}
                     activity={pr_activity} setActivity={setPr_activity}
                     activityUnit={pr_activityUnit} setActivityUnit={setPr_activityUnit}
-                    measuredRate={pr_measuredRate} setMeasuredRate={setPr_measuredRate} // NEW PROP
+                    measuredRate={pr_measuredRate} setMeasuredRate={setPr_measuredRate} 
                     activityUnits={activityUnits}
                     occupancyFactor={pr_occupancyFactor} setOccupancyFactor={setPr_occupancyFactor}
                     distance={pr_distance} setDistance={setPr_distance}
@@ -3144,7 +3194,7 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
     }, [kvp, workload, useFactor, occupancyFactor, distance, doseLimit, shieldMaterial, setResult, setError]);
     
     const handleSaveToHistory = () => {
-        if (result) {
+        if (result && !result.msg) {
             addHistory({ id: Date.now(), type: 'X-Ray Shielding', icon: ICONS.medical, inputs: `${workload} mA-min/wk @ ${kvp} kVp`, result: `${result.thickness} ${shieldMaterial === 'Lead' ? 'mm' : 'cm'}`, view: VIEWS.MEDICAL });
             addToast("Saved!");
         }
@@ -3169,9 +3219,13 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
             {result && (
                 <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in relative">
-                    <div className="absolute top-2 right-2"><button onClick={handleSaveToHistory}><Icon path={ICONS.notepad} className="w-5 h-5 text-slate-400 hover:text-sky-500"/></button></div>
+                    {!result.msg && (
+                        <div className="absolute top-2 right-2"><button onClick={handleSaveToHistory}><Icon path={ICONS.notepad} className="w-5 h-5 text-slate-400 hover:text-sky-500"/></button></div>
+                    )}
                     <p className="text-sm text-slate-500 uppercase font-bold">Required Shielding</p>
-                    {result.thickness > 0 ? (
+                    
+                    {/* FIX: Explicitly check for the 'msg' flag instead of relying on thickness > 0 */}
+                    {!result.msg ? (
                         <>
                             <p className="text-4xl font-extrabold text-sky-600 dark:text-sky-400 my-2">{result.thickness} <span className="text-xl text-slate-500">{shieldMaterial === 'Lead' ? 'mm' : 'cm'}</span></p>
                             <p className="text-xs text-slate-400">TVLs needed: {result.tvls}</p>
