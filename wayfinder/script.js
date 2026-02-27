@@ -422,27 +422,43 @@ function animateParticles() {
  function performGarbageCollection() {
     const keys = Object.keys(worldStateDeltas);
     let cleanedCount = 0;
+    
+    // --- NEW: Thresholds for Memory Management ---
+    const MAX_DELTAS = 1000;
+    const isBloated = keys.length > MAX_DELTAS;
 
     keys.forEach(key => {
         const delta = worldStateDeltas[key];
 
         // SAFETY CHECK: Never delete critical story/lore flags
-        // If the tile is the Nexus (activated) or a unique anomaly (studied), keep it forever.
         if (delta.activated || delta.studied || delta.isUnique) {
             return; 
         }
 
-        // TIME CHECK: If enough time has passed...
-        if (delta.lastInteraction && (currentGameDate - delta.lastInteraction > RESOURCE_RESPAWN_TIME)) {
-            
-            // Delete the delta. 
-            // The next time chunkManager generates this tile, it will use the seed 
-            // (which means the asteroid/star comes back full).
+        // 1. Standard Time Check
+        const isOld = delta.lastInteraction && (currentGameDate - delta.lastInteraction > RESOURCE_RESPAWN_TIME);
+
+        // 2. Distance Check (Only run if memory is getting bloated)
+        let isDistant = false;
+        if (isBloated) {
+            // Keys are formatted as "X,Y" or "X,Y_p1" (for planets). Split by '_' then ','
+            const coords = key.split('_')[0].split(',');
+            if (coords.length === 2) {
+                const dX = parseInt(coords[0], 10);
+                const dY = parseInt(coords[1], 10);
+                
+                if (!isNaN(dX) && !isNaN(dY)) {
+                    // Calculate distance. If it's > 300 tiles away, we can safely forget it.
+                    const dist = Math.sqrt(Math.pow(playerX - dX, 2) + Math.pow(playerY - dY, 2));
+                    if (dist > 300) isDistant = true;
+                }
+            }
+        }
+
+        // 3. Execute Cleanup
+        if (isOld || isDistant) {
             delete worldStateDeltas[key];
             cleanedCount++;
-            
-            // OPTIONAL: If we really wanted to, we could force the chunk to reload here,
-            // but since this happens for "old" tiles, they are likely off-screen anyway.
         }
     });
 
@@ -620,6 +636,23 @@ function updateWorldState(x, y, changes) {
  ];
 
  // --- DOM Elements ---
+
+ let menuLevelElement;
+let menuXPElement;
+let menuShipElement;
+let menuRepElement;
+
+let fuelBarElement;
+let shieldBarElement;
+let hullBarElement;
+
+let fuelValElement;
+let shieldValElement;
+let hullValElement;
+
+let hudLevelStatElement;
+let hudXpStatElement;
+let statusOverlayElement;
 
  let gameMapElement;
  let messageAreaElement;
@@ -830,14 +863,10 @@ function updateEnemies() {
         // 4. CHECK COMBAT TRIGGER
         // If the enemy successfully moved onto the player's tile, trigger combat!
         if (enemy.x === playerX && enemy.y === playerY) {
-            // Log a warning for flavor
             logMessage(`<span style='color:#FF5555'>ALERT: Pirate vessel engaging!</span>`);
-            
-            // Remove the enemy active map instance
             activeEnemies.splice(i, 1);
-            
-            // Switch to Combat View
             startCombat();
+            break; // Prevent overlapping encounters on the same tick
         }
     }
 }
@@ -940,99 +969,91 @@ function applyPlayerShipStats() {
   */
 
  function renderUIStats() {
-
     // 0. Update the System Menu Stats
-    document.getElementById('menuLevel').textContent = playerLevel;
-    document.getElementById('menuXP').textContent = Math.floor(playerXP) + " / " + xpToNextLevel;
+    if (menuLevelElement) menuLevelElement.textContent = playerLevel;
+    if (menuXPElement) menuXPElement.textContent = Math.floor(playerXP) + " / " + xpToNextLevel;
     
     // --- SYNERGY UI DISPLAY ---
     let shipText = SHIP_CLASSES[playerShip.shipClass].name;
     if (activeSynergy) {
         shipText += `<br><span style="color:var(--gold-text); font-size:10px; letter-spacing:1px;">★ SET: ${activeSynergy.name.toUpperCase()} ★</span>`;
     }
-    document.getElementById('menuShip').innerHTML = shipText;
+    if (menuShipElement) menuShipElement.innerHTML = shipText;
     
     // --- Display Faction Standing ---
     const concordRep = playerFactionStanding["CONCORD"] || 0;
     const ktharrRep = playerFactionStanding["KTHARR"] || 0;
-    const standingText = `Concord: ${concordRep} | K'tharr: ${ktharrRep}`;
     
-    const repEl = document.getElementById('menuRep');
-    repEl.textContent = standingText;
-    repEl.style.fontSize = "10px"; // Slightly smaller to fit two names
+    if (menuRepElement) {
+        menuRepElement.textContent = `Concord: ${concordRep} | K'tharr: ${ktharrRep}`;
+        menuRepElement.style.fontSize = "10px";
+    }
 
-     // 1. Calculate Percentages for Bars
-     const fuelPct = Math.max(0, (playerFuel / MAX_FUEL) * 100);
-     const shieldPct = Math.max(0, (playerShields / MAX_SHIELDS) * 100);
-     const hullPct = Math.max(0, (playerHull / MAX_PLAYER_HULL) * 100);
+    // 1. Calculate Percentages for Bars
+    const fuelPct = Math.max(0, (playerFuel / MAX_FUEL) * 100);
+    const shieldPct = Math.max(0, (playerShields / MAX_SHIELDS) * 100);
+    const hullPct = Math.max(0, (playerHull / MAX_PLAYER_HULL) * 100);
 
-     // 2. Update Bar Widths
-     document.getElementById('fuelBar').style.width = `${fuelPct}%`;
-     document.getElementById('shieldBar').style.width = `${shieldPct}%`;
-     document.getElementById('hullBar').style.width = `${hullPct}%`;
+    // 2. Update Bar Widths
+    if (fuelBarElement) fuelBarElement.style.width = `${fuelPct}%`;
+    if (shieldBarElement) shieldBarElement.style.width = `${shieldPct}%`;
+    if (hullBarElement) hullBarElement.style.width = `${hullPct}%`;
 
-     // 3. Update Text Values (Overlaying the bars)
-     document.getElementById('fuelVal').textContent = Math.floor(playerFuel);
-     document.getElementById('shieldVal').textContent = `${Math.floor(playerShields)}`;
-     document.getElementById('hullVal').textContent = `${Math.floor(playerHull)}`;
+    // 3. Update Text Values
+    if (fuelValElement) fuelValElement.textContent = Math.floor(playerFuel);
+    if (shieldValElement) shieldValElement.textContent = `${Math.floor(playerShields)}`;
+    if (hullValElement) hullValElement.textContent = `${Math.floor(playerHull)}`;
 
-     // 4. Update HUD Text Stats
-     document.getElementById('creditsStat').textContent = formatNumber(playerCredits);
-     document.getElementById('cargoStat').textContent = `${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}`;
+    // 4. Update HUD Text Stats
+    if (creditsStatElement) creditsStatElement.textContent = formatNumber(playerCredits);
+    if (cargoStatElement) cargoStatElement.textContent = `${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}`;
 
-     const hudLevelEl = document.getElementById('hudLevelStat');
-     const hudXpEl = document.getElementById('hudXpStat');
-     if (hudLevelEl) hudLevelEl.textContent = playerLevel;
-     if (hudXpEl) hudXpEl.textContent = `${formatNumber(Math.floor(playerXP))} / ${formatNumber(xpToNextLevel)}`;
+    if (hudLevelStatElement) hudLevelStatElement.textContent = playerLevel;
+    if (hudXpStatElement) hudXpStatElement.textContent = `${formatNumber(Math.floor(playerXP))} / ${formatNumber(xpToNextLevel)}`;
      
     // 5. Update Header Info (DYNAMIC FACTION & THREAT)
-     const exactFaction = getFactionAt(playerX, playerY);
-     let factionName = "Independent";
+    const exactFaction = getFactionAt(playerX, playerY);
+    let factionName = "Independent";
+    const isLightMode = document.body.classList.contains('light-mode');
+    let fColor = isLightMode ? "#888899" : "#FFFFFF"; 
      
-     // --- FIX: Check Theme for Independent Text Color ---
-     const isLightMode = document.body.classList.contains('light-mode');
-     let fColor = isLightMode ? "#888899" : "#FFFFFF"; // Slate gray in Light Mode
-     
-     if (exactFaction === "KTHARR") { factionName = "Hegemony"; fColor = "#00FF44"; }
-     else if (exactFaction === "CONCORD") { factionName = "Concord"; fColor = "#00AAFF"; }
-     else if (exactFaction === "ECLIPSE") { factionName = "Cartel"; fColor = "#FF4444"; }
+    if (exactFaction === "KTHARR") { factionName = "Hegemony"; fColor = "#00FF44"; }
+    else if (exactFaction === "CONCORD") { factionName = "Concord"; fColor = "#00AAFF"; }
+    else if (exactFaction === "ECLIPSE") { factionName = "Cartel"; fColor = "#FF4444"; }
 
-     const dist = Math.sqrt((playerX * playerX) + (playerY * playerY));
-     let threat = "SAFE";
-     let threatColor = "#00FF00"; 
+    const dist = Math.sqrt((playerX * playerX) + (playerY * playerY));
+    let threat = "SAFE";
+    let threatColor = "#00FF00"; 
      
-     // --- FIX: EXPANDED UNIVERSE ZONES ---
-     if (dist > 2000) { threat = "DEADLY"; threatColor = "#FF0000"; } 
-     else if (dist > 1200) { threat = "HIGH"; threatColor = "#FF5555"; } 
-     else if (dist > 600) { threat = "MODERATE"; threatColor = "#FFFF00"; } 
-     // dist <= 600 is SAFE (Covers Concord 0-400 and a nice 200-tile cushion of Independent space)
+    if (dist > 2000) { threat = "DEADLY"; threatColor = "#FF0000"; } 
+    else if (dist > 1200) { threat = "HIGH"; threatColor = "#FF5555"; } 
+    else if (dist > 600) { threat = "MODERATE"; threatColor = "#FFFF00"; } 
 
-     const sectorEl = document.getElementById('sectorNameStat');
+    if (sectorNameStatElement) {
+        sectorNameStatElement.innerHTML = `${currentSectorName} <span style="color:${fColor}; opacity:0.9;">[${factionName}]</span> <span style="color:${threatColor}; font-size: 0.8em; margin-left: 8px;">[${threat}]</span>`;
+        sectorNameStatElement.style.color = "#00E0E0"; 
+    }
      
-     // Combines Base Name + Exact Tile Faction + Threat Level perfectly
-     sectorEl.innerHTML = `${currentSectorName} <span style="color:${fColor}; opacity:0.9;">[${factionName}]</span> <span style="color:${threatColor}; font-size: 0.8em; margin-left: 8px;">[${threat}]</span>`;
-     sectorEl.style.color = "#00E0E0"; 
-     
-     // Display Y as inverted so "Up" looks like Positive movement
-     document.getElementById('sectorCoordsStat').textContent = `[${playerX}, ${-playerY}]`;
+    if (sectorCoordsStatElement) sectorCoordsStatElement.textContent = `[${playerX}, ${-playerY}]`;
 
-     // 6. Log Handling
-     messageAreaElement.innerHTML = messageLog.join('<br>');
-     messageAreaElement.scrollTop = 0;
+    // 6. Log Handling
+    if (messageAreaElement) {
+        messageAreaElement.innerHTML = messageLog.join('<br>');
+        messageAreaElement.scrollTop = 0;
+    }
 
-     // --- 7. Visual Warning System ---
-    const overlay = document.getElementById('statusOverlay');
-    if (overlay) {
-        overlay.className = 'status-overlay'; // Reset class
+    // --- 7. Visual Warning System ---
+    if (statusOverlayElement) {
+        statusOverlayElement.className = 'status-overlay'; 
         
         if (playerHull < (MAX_PLAYER_HULL * 0.25)) {
-            overlay.classList.add('critical-hull');
-            overlay.style.opacity = '1';
+            statusOverlayElement.classList.add('critical-hull');
+            statusOverlayElement.style.opacity = '1';
         } else if (playerFuel < (MAX_FUEL * 0.20)) {
-            overlay.classList.add('critical-fuel');
-            overlay.style.opacity = '1';
+            statusOverlayElement.classList.add('critical-fuel');
+            statusOverlayElement.style.opacity = '1';
         } else {
-            overlay.style.opacity = '0';
+            statusOverlayElement.style.opacity = '0';
         }
     }
 }
@@ -1423,6 +1444,23 @@ function unlockLoreEntry(entryKey, silent = false) {
  }
 
  function initializeGame() {
+    menuLevelElement = document.getElementById('menuLevel');
+    menuXPElement = document.getElementById('menuXP');
+    menuShipElement = document.getElementById('menuShip');
+    menuRepElement = document.getElementById('menuRep');
+
+    fuelBarElement = document.getElementById('fuelBar');
+    shieldBarElement = document.getElementById('shieldBar');
+    hullBarElement = document.getElementById('hullBar');
+
+    fuelValElement = document.getElementById('fuelVal');
+    shieldValElement = document.getElementById('shieldVal');
+    hullValElement = document.getElementById('hullVal');
+
+    hudLevelStatElement = document.getElementById('hudLevelStat');
+    hudXpStatElement = document.getElementById('hudXpStat');
+    statusOverlayElement = document.getElementById('statusOverlay');
+
     // 1. Reset Game Logic Systems & Collections
     chunkManager.initializeStaticLocations();
     
@@ -1558,16 +1596,15 @@ function unlockLoreEntry(entryKey, silent = false) {
     currentGameState = GAME_STATES.TITLE_SCREEN;
 }
 
- /**
+/**
   * A simple seeded random number generator.
   * Ensures that the same input 'seed' always produces the same output number.
   * @param {number} seed - The seed for the generator.
   * @returns {number} A pseudo-random number between 0 and 1.
   */
-
  function seededRandom(seed) {
      // A simple algorithm to create a predictable pseudo-random number.
-     let x = Math.sin(seed++) * 10000;
+     let x = Math.sin(seed) * 10000;
      return x - Math.floor(x);
  }
 
@@ -3411,9 +3448,14 @@ function abortAnomaly() {
   * Now includes Toast Notifications and improved validation.
   * @param {string} inputString - The numerical string entered by the player.
   */
-
 function handleTradeQuantity(inputString) {
      if (!currentTradeContext || currentTradeContext.step !== 'selectQuantity') return;
+
+     // --- Prevent crash if the player cancels the prompt (returns null) ---
+     if (!inputString) {
+         logMessage("Transaction canceled.");
+         return;
+     }
 
      const locationData = currentTradeContext.locationData;
      const tradeMode = currentTradeContext.mode;
@@ -3427,6 +3469,7 @@ function handleTradeQuantity(inputString) {
 
      let qty = 0;
 
+     // Now safe to use .toLowerCase()
      if (inputString.toLowerCase() === 'm' || inputString.toLowerCase() === 'max') {
          if (tradeMode === 'buy') {
              const affordMax = Math.floor(playerCredits / price);
@@ -6314,6 +6357,23 @@ function setRandomPlayerPortrait() {
 }
 
 function initializeDOMElements() {
+
+    menuLevelElement = document.getElementById('menuLevel');
+    menuXPElement = document.getElementById('menuXP');
+    menuShipElement = document.getElementById('menuShip');
+    menuRepElement = document.getElementById('menuRep');
+
+    fuelBarElement = document.getElementById('fuelBar');
+    shieldBarElement = document.getElementById('shieldBar');
+    hullBarElement = document.getElementById('hullBar');
+
+    fuelValElement = document.getElementById('fuelVal');
+    shieldValElement = document.getElementById('shieldVal');
+    hullValElement = document.getElementById('hullVal');
+
+    hudLevelStatElement = document.getElementById('hudLevelStat');
+    hudXpStatElement = document.getElementById('hudXpStat');
+    statusOverlayElement = document.getElementById('statusOverlay');
 
     // Global Click Listener for UI Sounds
     document.addEventListener('click', (e) => {
