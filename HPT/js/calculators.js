@@ -27,11 +27,12 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
         radionuclides.filter(r => r.halfLife !== 'Stable').sort((a,b) => a.name.localeCompare(b.name)), 
     [radionuclides]);
 
-    // Expanded factors to handle 'uCi' vs 'µCi' ambiguity and other variants
+    // Expanded factors to handle 'uCi' vs 'µCi' ambiguity, plus environmental units
     const activityFactorsBq = React.useMemo(() => ({ 
         'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 
-        'µCi': 3.7e4, 'uCi': 3.7e4, // Handle both micro symbol and 'u'
-        'mCi': 3.7e7, 'Ci': 3.7e10, 
+        'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4, 'uCi': 3.7e4, 
+        'nCi': 37,        // Added for typical survey data
+        'pCi': 0.037,     // Added for environmental limits
         'dps': 1, 'dpm': 1/60 
     }), []);
 
@@ -57,7 +58,8 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
             const factorF = activityFactorsBq[finalUnit];
 
             if (!factor0 || !factorF) {
-                // This prevents the "undefined" result if units aren't recognized
+                // FIX: Explicitly catch and report unmapped units
+                setError("Unsupported unit selected. Calculation aborted.");
                 setResult(null);
                 return; 
             }
@@ -129,10 +131,17 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
                 const currentAct_UserUnit = currentAct_Bq / factor0;
                 const targetLimit_UserUnit = Af_Bq / factor0;
 
-                // Dynamic X-Axis Labels
-                let label = t_plot.toFixed(2);
-                if (totalTimePlot < 0.1) label = t_plot.toExponential(2);
-                else if (totalTimePlot > 100) label = t_plot.toFixed(0);
+                // FIX: Dynamic X-Axis Labels adjusted for smoother mid-range ticks
+                let label;
+                if (totalTimePlot < 0.1) {
+                    label = t_plot.toExponential(2);
+                } else if (totalTimePlot > 1000) {
+                    label = t_plot.toFixed(0);
+                } else if (totalTimePlot > 100) {
+                    label = t_plot.toFixed(1); 
+                } else {
+                    label = t_plot.toFixed(2);
+                }
 
                 labels.push(label);
                 parentData.push(currentAct_UserUnit);
@@ -436,13 +445,6 @@ const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
     const { addHistory } = useCalculationHistory();
     const { addToast } = useToast();
 
-    // MEMOIZED: Prevent recreating this object on every render
-    const activityFactorsBq = React.useMemo(() => ({ 
-        'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12, 
-        'µCi': 3.7e4, 'uCi': 3.7e4, 'mCi': 3.7e7, 'Ci': 3.7e10,
-        'dps': 1, 'dpm': 1/60 
-    }), []);
-
     const nuclidesWithHalfLife = React.useMemo(() => 
         radionuclides.filter(r => r.halfLife !== 'Stable').sort((a,b) => a.name.localeCompare(b.name)), 
     [radionuclides]);
@@ -481,13 +483,8 @@ const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             const T_half_s = parseHalfLifeToSeconds(selectedNuclide.halfLife);
             if (!T_half_s || T_half_s === Infinity) throw new Error("Cannot calculate decay for a stable nuclide.");
 
-            const activity_Bq_0 = A0 * activityFactorsBq[originalActivityUnit];
-            
-            // Formula: A = A0 * (0.5)^(t / T_half)
-            // Works for both positive t (decay) and negative t (growth/back-calc)
-            const activity_Bq_t = activity_Bq_0 * Math.pow(0.5, timeElapsed_s / T_half_s);
-            
-            const finalActivity = activity_Bq_t / activityFactorsBq[originalActivityUnit];
+            // Removed redundant Bq conversion. Decay ratio applies to any unit uniformly.
+            const finalActivity = A0 * Math.pow(0.5, timeElapsed_s / T_half_s);
 
             // 5. Smart Labeling
             const absSeconds = Math.abs(timeElapsed_s);
@@ -515,7 +512,7 @@ const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
             setError(e.message);
             setResult(null);
         }
-    }, [selectedNuclide, originalActivity, originalActivityUnit, originalDate, targetDate, activityFactorsBq]);
+    }, [selectedNuclide, originalActivity, originalActivityUnit, originalDate, targetDate]);
 
     const handleSaveToHistory = () => {
         if (result && selectedNuclide) {
@@ -620,10 +617,8 @@ const StandardDecayCalculator = ({
     const { addToast } = useToast();
 
     // --- Decoupled Daughter Unit State ---
-    // Initializes intelligently based on the active unit system (e.g., mCi or MBq)
     const [daughterUnit, setDaughterUnit] = React.useState(activityUnits[1]);
 
-    // Catch global unit system swaps (SI vs Conventional) and reset safely
     React.useEffect(() => {
         if (!activityUnits.includes(daughterUnit)) {
             setDaughterUnit(activityUnits[1]);
@@ -638,7 +633,7 @@ const StandardDecayCalculator = ({
     const [timeMode, setTimeMode] = React.useState('duration');
     const [useUTC, setUseUTC] = React.useState(false);
 
-    // Default Dates (Initialized to current time)
+    // Default Dates
     const [referenceDate, setReferenceDate] = React.useState(() => {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -661,10 +656,12 @@ const StandardDecayCalculator = ({
         'kiloyears': 31557600 * 1e3, 'megayears': 31557600 * 1e6, 'gigayears': 31557600 * 1e9 
     };
     
-    // Memoize factors to prevent re-calc
+    // FIX 1: Memoize factors with missing environmental units added
     const activityFactors = React.useMemo(() => ({
         'Bq': 1, 'kBq': 1e3, 'MBq': 1e6, 'GBq': 1e9, 'TBq': 1e12,
-        'µCi': 3.7e4, 'uCi': 3.7e4, 'mCi': 3.7e7, 'Ci': 3.7e10, 'dps': 1, 'dpm': 1 / 60
+        'Ci': 3.7e10, 'mCi': 3.7e7, 'µCi': 3.7e4, 'uCi': 3.7e4,
+        'nCi': 37, 'pCi': 0.037, // Environmental Units Added
+        'dps': 1, 'dpm': 1 / 60
     }), []);
 
     const sortedRadionuclides = React.useMemo(() => {
@@ -753,7 +750,6 @@ const StandardDecayCalculator = ({
             const T_half_seconds = parseHalfLifeToSeconds(selectedNuclide.halfLife);
             const lambda = Math.log(2) / T_half_seconds;
 
-            // Safe Factor Lookup (Default to 1 if unit is somehow invalid to prevent NaN)
             const getFactor = (u) => activityFactors[u] || 1;
 
             const A0_Bq = safeParseFloat(initialActivity) * getFactor(initialUnit);
@@ -771,8 +767,6 @@ const StandardDecayCalculator = ({
                 const end = new Date(endStr);
 
                 if (isNaN(start.getTime()) || isNaN(end.getTime())) { setError("Please enter valid dates."); setResult(null); return; }
-                
-                // Negative time (Reverse Decay) is scientifically valid.
                 t_seconds = (end - start) / 1000;
             } else {
                 const t_input = safeParseFloat(timeElapsed);
@@ -794,6 +788,12 @@ const StandardDecayCalculator = ({
             if (calculationMode === MODE_REMAINING) {
                 if (isNaN(A0_Bq)) throw new Error('Initial activity must be a valid number.');
                 const finalActivity_Bq = A0_Bq * Math.exp(-lambda * t_seconds);
+                
+                // FIX 2: If calculating reverse-time, set the chart to start at the higher past value
+                if (t_seconds < 0) {
+                    plotA0_Bq = finalActivity_Bq;
+                }
+
                 setResult({
                     label: 'Remaining Activity',
                     value: (finalActivity_Bq / getFactor(remainingUnit)).toPrecision(4),
@@ -803,14 +803,10 @@ const StandardDecayCalculator = ({
                 });
             } else if (calculationMode === MODE_TIME) {
                 if (isNaN(A0_Bq) || isNaN(At_Bq) || A0_Bq <= 0 || At_Bq < 0) throw new Error('Activities must be valid numbers.');
-                
-                // Only throw "Remaining < Initial" error if we assume standard forward decay.
-                // But for time elapsed, we generally assume A_t < A_0.
                 if (At_Bq > A0_Bq) throw new Error('Remaining activity must be less than Initial for standard decay time.');
 
                 const timeInSeconds = (-1 / lambda) * Math.log(At_Bq / A0_Bq);
                 
-                // Handle Infinite Time (decay to 0)
                 if (!isFinite(timeInSeconds)) {
                      setResult({
                         label: 'Time Elapsed',
@@ -819,7 +815,7 @@ const StandardDecayCalculator = ({
                         lambdaVal: displayLambda.toPrecision(4),
                         lambdaUnit: lambdaUnit
                     });
-                    timeForChart_seconds = 10 * T_half_seconds; // Just show a long plot
+                    timeForChart_seconds = 10 * T_half_seconds;
                 } else {
                     const bestUnit = getBestHalfLifeUnit(timeInSeconds);
                     setResult({
@@ -834,7 +830,6 @@ const StandardDecayCalculator = ({
                 
             } else if (calculationMode === MODE_INITIAL) {
                 if (isNaN(At_Bq)) throw new Error('Remaining activity must be a valid number.');
-                // A0 = At / e^(-lambda*t)
                 const initial_Bq = At_Bq / Math.exp(-lambda * t_seconds);
                 plotA0_Bq = initial_Bq;
                 setResult({
@@ -855,8 +850,6 @@ const StandardDecayCalculator = ({
                 const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife);
                 const lambda2 = T_half_daughter_seconds === Infinity ? 0 : Math.log(2) / T_half_daughter_seconds;
                 
-                // Use daughterUnit factor
-                // Force 0 if input is invalid/empty
                 const rawDaughterInput = safeParseFloat(initialDaughterActivity);
                 const A0_daughter_Bq = (isNaN(rawDaughterInput) ? 0 : rawDaughterInput) * getFactor(daughterUnit);
 
@@ -865,18 +858,15 @@ const StandardDecayCalculator = ({
                 const finalParentActivity_Bq = A0_Bq * Math.exp(-lambda * t_seconds);
                 let finalDaughterActivity_Bq;
 
-                // Bateman for 2 nuclides (Standard vs Special Case)
                 if (Math.abs(lambda - lambda2) < 1e-12 * lambda) {
                     finalDaughterActivity_Bq = (A0_daughter_Bq * Math.exp(-lambda2 * t_seconds)) + (br * A0_Bq * lambda2 * t_seconds * Math.exp(-lambda2 * t_seconds));
                 } else {
                     finalDaughterActivity_Bq = (A0_daughter_Bq * Math.exp(-lambda2 * t_seconds)) + (br * (lambda2 / (lambda2 - lambda)) * A0_Bq * (Math.exp(-lambda * t_seconds) - Math.exp(-lambda2 * t_seconds)));
                 }
 
-                 // SAFETY CHECK: If result is NaN or Infinity (e.g. Reverse Decay back to pre-existence), force to 0.
-                if (!isFinite(finalDaughterActivity_Bq)) {
+                 if (!isFinite(finalDaughterActivity_Bq)) {
                     finalDaughterActivity_Bq = 0;
                 }
-                // Physically impossible to have negative activity (math artifact in reverse decay)
                 finalDaughterActivity_Bq = Math.max(0, finalDaughterActivity_Bq);
 
                 setResult({
@@ -884,11 +874,11 @@ const StandardDecayCalculator = ({
                     daughter: { name: daughter.name, value: (finalDaughterActivity_Bq / getFactor(daughterUnit)).toPrecision(4), isStable: T_half_daughter_seconds === Infinity },
                     lambdaVal: displayLambda.toPrecision(4),
                     lambdaUnit: lambdaUnit,
-                    unit: initialUnit // Only used for parent label
+                    unit: initialUnit
                 });
             }
 
-            // --- CHART LOGIC (Safe & Complete) ---
+            // --- CHART LOGIC ---
             const plotTimeAbs = Math.abs(timeForChart_seconds);
             const bestChartUnit = getBestHalfLifeUnit(plotTimeAbs);
             const plotTimeConverted = plotTimeAbs / unitConversions[bestChartUnit];
@@ -906,11 +896,16 @@ const StandardDecayCalculator = ({
 
                 const timePoint_display = timePoint_seconds / unitConversions[bestChartUnit];
         
-                let label = timePoint_display.toFixed(2);
+                // FIX 3: Apply the 4-tier smoothing logic for X-Axis labels
+                let label;
                 if (plotTimeConverted < 0.1) {
                     label = timePoint_display.toExponential(2);
-                } else if (plotTimeConverted >= 100) {
+                } else if (plotTimeConverted > 1000) {
                     label = timePoint_display.toFixed(0);
+                } else if (plotTimeConverted > 100) {
+                    label = timePoint_display.toFixed(1); 
+                } else {
+                    label = timePoint_display.toFixed(2);
                 }
                 
                 labels.push(label);
@@ -929,7 +924,6 @@ const StandardDecayCalculator = ({
                         const T_half_daughter_seconds = parseHalfLifeToSeconds(daughter.halfLife);
                         const lambda2 = T_half_daughter_seconds === Infinity ? 0 : Math.log(2) / T_half_daughter_seconds;
                         
-                        // Use daughterUnit factor for chart start point too
                         const rawDaughterInput = safeParseFloat(initialDaughterActivity);
                         const A0_daughter_Bq_Chart = (isNaN(rawDaughterInput) ? 0 : rawDaughterInput) * getFactor(daughterUnit);
                         let d_val_bq;
@@ -940,13 +934,11 @@ const StandardDecayCalculator = ({
                             d_val_bq = (A0_daughter_Bq_Chart * Math.exp(-lambda2 * timePoint_seconds)) + (br * (lambda2 / (lambda2 - lambda)) * plotA0_Bq * (Math.exp(-lambda * timePoint_seconds) - Math.exp(-lambda2 * timePoint_seconds)));
                         }
                         
-                        // Safety Checks for Chart Data
                         if (!isFinite(d_val_bq)) d_val_bq = 0;
                         d_val_bq = Math.max(0, d_val_bq);
 
                         if (useLogScale && d_val_bq < CUTOFF) d_val_bq = CUTOFF;
                         
-                        // Normalize chart to Parent's unit for consistency in visualization
                         daughterData.push(d_val_bq / plotFactor);
                      }
                 }
