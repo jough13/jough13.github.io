@@ -40,6 +40,33 @@ const LOCATIONS_DATA = {
         ],
         scanFlavor: "Starbase Alpha: Major Concord trade hub. Bustling with merchant traffic and heavily patrolled by Concord security drones." 
     },
+    "The Rusty Anchor": {
+        name: "The Rusty Anchor",
+        coords: {
+            y: MAP_HEIGHT - 3,
+            x: MAP_WIDTH - 15
+        },
+        type: STARBASE_CHAR_VAL,
+        isMajorHub: false,
+        faction: "INDEPENDENT",
+        scanFlavor: "A dubious cantina built into a hollowed-out asteroid. Scanners show high concentrations of illegal substances.",
+        
+        // Because we defined this here, the engine will run it automatically when you step on this tile!
+        onInteract: function(tile) {
+            // Trigger your custom logic, UI, or events directly from the data file
+            logMessage(`<span style='color:var(--warning)'>You approach ${tile.name}...</span>`);
+            logMessage("A garbled transmission comes through: 'We don't take kindly to Concord lapdogs here.'");
+            
+            // You can even trigger UI modals, Event Bus calls, or combat directly!
+            if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+            
+            // Render some contextual buttons just for this spot
+            renderContextualActions([
+                { label: 'Visit Black Market', key: 'b', onclick: () => openShadowBroker() },
+                { label: 'Leave', key: 'l', onclick: () => logMessage("You wisely back away.") }
+            ]);
+        }
+    },
     "Aegis Dyson Sphere": {
         name: "Aegis Dyson Sphere",
         coords: {
