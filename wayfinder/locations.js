@@ -96,8 +96,17 @@ const LOCATIONS_DATA = {
         },
         type: PLANET_CHAR_VAL,
         faction: "INDEPENDENT",
-        sells: [],
-        buys: [],
-        scanFlavor: "Planet Xerxes: Extreme environment, corrosive atmosphere, and crushing gravity. High Xenon Gas and heavy metal concentrations make it valuable, but deadly. Rumored pirate haven and site of ancient K'tharr battles; some say the 'bad spirits' here are echoes of failed K'tharr rituals or a malfunctioning Precursor 'guardian' system that affects psionic minds, causing vivid hallucinations of metallic spiders."
-    }
+        // --- BLACK MARKET INVENTORY ---
+        sells: [
+            { id: "DISCOUNT_CYBERSERVOS", priceMod: 0.8, stock: 15 }, // Cheap here!
+            { id: "OBSIDIAN_TEAR_PLATING", priceMod: 1.1, stock: 5 },
+            { id: "LIVING_HULL_TISSUE", priceMod: 0.9, stock: 3 }
+        ],
+        buys: [
+            { id: "PRECURSOR_NAV_CORE", priceMod: 2.5, stock: 0 }, // Will pay a fortune for these!
+            { id: "SENTIENT_MYCELIUM", priceMod: 1.8, stock: 10 }  // High demand for illicit stims
+        ],
+
+        scanFlavor: "Planet Xerxes: Extreme environment, corrosive atmosphere, and crushing gravity. High Xenon Gas and heavy metal concentrations make it valuable, but deadly. Rumored pirate haven and site of ancient K'tharr ruins."
+    },
 };
