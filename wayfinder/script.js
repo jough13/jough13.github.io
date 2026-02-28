@@ -10,6 +10,41 @@ function removeEnemyAt(x, y) {
 
 let visitedSectors;
 
+// ==========================================
+// --- EVENT BUS SYSTEM (Decoupling) ---
+// ==========================================
+
+const GameBus = {
+    events: {},
+    on(event, listener) {
+        if (!this.events[event]) this.events[event] = [];
+        this.events[event].push(listener);
+    },
+    emit(event, data) {
+        if (this.events[event]) this.events[event].forEach(l => l(data));
+    }
+};
+
+// Universal Helper Function to fetch any piece of data safely
+function getDef(category, id) {
+    if (!GameRegistry[category]) return null;
+    return GameRegistry[category][id] || null;
+}
+
+
+// --- CORE SYSTEM LISTENERS ---
+// Whenever cargo changes, automatically recalculate the load and update the UI
+GameBus.on('CARGO_MODIFIED', () => {
+    currentCargoLoad = 0;
+    for (const cID in playerCargo) currentCargoLoad += playerCargo[cID];
+    GameBus.emit('UI_REFRESH_REQUESTED');
+});
+
+// Whenever vitals, credits, or stats change, refresh the UI
+GameBus.on('UI_REFRESH_REQUESTED', () => {
+    if (typeof renderUIStats === 'function') renderUIStats();
+});
+
 // --- NPC CREW SYSTEM GLOBALS ---
 let playerCrew = []; 
 const MAX_CREW = 3;
@@ -20,6 +55,25 @@ const CREW_DATABASE = {
     "ELARA_VOSS": { id: "ELARA_VOSS", name: "Elara Voss", role: "Smuggler", cost: 2000, icon: "🪙", desc: "Smooth talker with underworld ties. Negotiates 10% better prices at all markets.", perk: "TRADE_BONUS" },
     "KORG_MAH": { id: "KORG_MAH", name: "Korg'Mah", role: "Mechanic", cost: 1800, icon: "🔧", desc: "A rugged K'tharr engineer. Passively repairs hull damage while you travel.", perk: "PASSIVE_REPAIR" },
     "T3_SPARK": { id: "T3_SPARK", name: "T3-Spark", role: "Science Bot", cost: 2500, icon: "🤖", desc: "Advanced automated logic core. Increases fuel scooping yields by 20%.", perk: "SCOOP_BONUS" }
+};
+
+
+// ==========================================
+// --- CENTRALIZED GAME REGISTRY ---
+// ==========================================
+
+// Bundles all hardcoded data files into a single accessible engine object.
+// This allows for easy modding, expansions, and data lookups.
+
+const GameRegistry = {
+    ships: typeof SHIP_CLASSES !== 'undefined' ? SHIP_CLASSES : {},
+    items: typeof COMMODITIES !== 'undefined' ? COMMODITIES : {}, // Note: Check if your items.js uses COMMODITIES or LOOT_TABLES
+    lore: typeof LORE_DATABASE !== 'undefined' ? LORE_DATABASE : {},
+    perks: typeof PERKS_DATABASE !== 'undefined' ? PERKS_DATABASE : {},
+    biomes: typeof PLANET_BIOMES !== 'undefined' ? PLANET_BIOMES : {},
+    locations: typeof LOCATIONS_DATA !== 'undefined' ? LOCATIONS_DATA : {},
+    rumors: typeof RUMORS !== 'undefined' ? RUMORS : [],
+    crew: typeof CREW_DATABASE !== 'undefined' ? CREW_DATABASE : {}
 };
 
 // --- COMPONENT SYNERGY GLOBALS ---
@@ -962,6 +1016,9 @@ function applyPlayerShipStats() {
      if (playerHull > MAX_PLAYER_HULL) playerHull = MAX_PLAYER_HULL;
      if (playerShields > MAX_SHIELDS) playerShields = MAX_SHIELDS;
      if (playerFuel > MAX_FUEL) playerFuel = MAX_FUEL;
+
+     // --- TELL THE BUS WE CHANGED MAX STATS ---
+     GameBus.emit('UI_REFRESH_REQUESTED');
  }
 
  /**
@@ -1078,8 +1135,11 @@ function updateSideBorderVisibility() {
     }
 }
 
-// Helper to format numbers with commas (e.g., 1,000)
 function formatNumber(num) {
+    // Defensive check: If the engine passes undefined during startup, default to "0"
+    if (num === undefined || num === null || isNaN(num)) return "0";
+    
+    // Proceed with the standard comma formatting
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
@@ -1098,7 +1158,7 @@ function calculateItemPrice(itemOrId, isBuy, location) {
     let price = item.basePrice || 0;
     let locMult = 1.0;
 
-    // 1. Check for Station-Specific Economy Overrides (e.g. Starbase Alpha)
+    // 1. Check for Station-Specific Economy Overrides
     if (location && (location.sells || location.buys)) {
         const tradeList = isBuy ? location.sells : location.buys;
         if (tradeList) {
@@ -1109,7 +1169,7 @@ function calculateItemPrice(itemOrId, isBuy, location) {
         }
     }
 
-    // 2. Fallback to Outpost generic pricing if no specific modifier exists
+    // 2. Fallback to Outpost generic pricing
     if (locMult === 1.0 && location && location.type === OUTPOST_CHAR_VAL) {
         locMult = isBuy ? 1.2 : 0.8;
     }
@@ -1121,12 +1181,34 @@ function calculateItemPrice(itemOrId, isBuy, location) {
 
     price = price * locMult;
 
-// 4. Apply Perks & Crew Bonuses
+    // 4. Illegal Goods Markup (Risk Premium)
+    // If selling illegal goods, they are worth 2.5x more on the black market
+    if (item.illegal && !isBuy) {
+        price *= 2.5; 
+    }
+
+    // 5. Dynamic Market Trends (Hot Commodities)
+    const locationName = location ? location.name : "";
+    if (activeMarketTrend && 
+        activeMarketTrend.station === locationName && 
+        activeMarketTrend.item === itemId && 
+        currentGameDate < activeMarketTrend.expiry) {
+        
+        price *= 2.0; // Hot tip multiplier
+    } else {
+        // Standard Fluctuation (Sine Wave)
+        const uniqueOffset = item.basePrice || 0;
+        const fluctuation = Math.sin((currentGameDate + uniqueOffset) / 5);
+        const marketFactor = 1 + (fluctuation * 0.15);
+        price *= marketFactor;
+    }
+
+    // 6. Apply Perks & Crew Bonuses
     if ((typeof playerPerks !== 'undefined' && playerPerks.has('SILVER_TONGUE')) || hasCrewPerk('TRADE_BONUS')) {
         price = isBuy ? (price * 0.9) : (price * 1.1);
     }
 
-    // 5. Safety Rounding
+    // 7. Safety Rounding
     price = Math.floor(price);
     return Math.max(1, price);
 }
@@ -1226,6 +1308,8 @@ function changeGameState(newState) {
  function updatePlayerNotoriety(amount) {
      playerNotoriety += amount;
      updateNotorietyTitle();
+
+     GameBus.emit('UI_REFRESH_REQUESTED');
  }
 
  function updateNotorietyTitle() {
@@ -1609,35 +1693,36 @@ function unlockLoreEntry(entryKey, silent = false) {
  }
 
  function renderMissionTracker() {
-     const textEl = document.getElementById('missionText');
-     
-     if (!playerActiveMission) {
-         textEl.textContent = "No Active Contract";
-         textEl.style.color = "#555";
-         return;
-     }
+    const textEl = document.getElementById('missionText');
+    
+    if (!playerActiveMission) {
+        textEl.textContent = "No Active Contract";
+        textEl.style.color = "#555";
+        return;
+    }
 
-     let objectiveText = "Objective Unknown";
-     const objective = playerActiveMission.objectives[0];
-     const progress = playerActiveMission.progress[`${objective.type.toLowerCase()}_0`];
+    let objectiveText = "Objective Unknown";
+    const objective = playerActiveMission.objectives[0];
+    const progress = playerActiveMission.progress[`${objective.type.toLowerCase()}_0`];
 
-     if (playerActiveMission.isComplete) {
-         objectiveText = `Return to ${playerActiveMission.giver}`;
-     } else if (objective.type === 'BOUNTY') {
-         objectiveText = `Hunt Pirates (${progress.current}/${progress.required})`;
-     } else if (objective.type === 'DELIVERY') {
-         objectiveText = `Deliver to ${objective.destinationName}`;
-     } else if (objective.type === 'SURVEY') {
-         objectiveText = `Survey Anomaly`;
-     } else if (objective.type === 'ACQUIRE') {
-         // Fix for acquire missions display
-         const currentAmt = playerCargo[objective.itemID] || 0;
-         objectiveText = `Acquire ${COMMODITIES[objective.itemID].name} (${currentAmt}/${objective.count})`;
-     }
+    if (playerActiveMission.isComplete) {
+        objectiveText = `Return to ${playerActiveMission.giver}`;
+    } else if (objective.type === 'BOUNTY') {
+        objectiveText = `Hunt Pirates (${progress.current}/${progress.required})`;
+    } else if (objective.type === 'DELIVERY') {
+        objectiveText = `Deliver to ${objective.destinationName}`;
+    } else if (objective.type === 'SURVEY') {
+        objectiveText = `Survey Anomaly`;
+    } else if (objective.type === 'ACQUIRE') {
+        const currentAmt = playerCargo[objective.itemID] || 0;
+        // SAFE LOOKUP: Fallback to "Unknown Item" if the ID is corrupted
+        const itemName = COMMODITIES[objective.itemID] ? COMMODITIES[objective.itemID].name : "Unknown Item";
+        objectiveText = `Acquire ${itemName} (${currentAmt}/${objective.count})`;
+    }
 
-     textEl.textContent = `${playerActiveMission.title}: ${objectiveText}`;
-     textEl.style.color = "#FFD700";
- }
+    textEl.textContent = `${playerActiveMission.title}: ${objectiveText}`;
+    textEl.style.color = "#FFD700";
+}
 
  /**
   * Generates a procedural and deterministic name for a sector based on its coordinates.
@@ -1868,13 +1953,16 @@ function renderSystemMap() {
     let camX = playerX - halfViewW;
     let camY = playerY - halfViewH;
 
-    // --- 3. Clear Canvas ---
+    // --- 3. Clear Canvas & Reset Alignment ---
     ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
     
-// --- 4A. DRAW FACTION BACKGROUNDS (LAYER 0) ---
+    // Enforce center alignment every frame so symbols stay locked to their grid cells
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // --- 4A. DRAW FACTION BACKGROUNDS (LAYER 0) ---
     // We draw this FIRST so it appears behind the stars.
     
-    // Pulse Effect Background Overlay
     // Pulse Effect Background Overlay
     if (sensorPulseActive) {
         const pulseIntensity = (1 - (sensorPulseRadius / MAX_PULSE_RADIUS)) * 0.2;
@@ -1985,7 +2073,13 @@ function renderSystemMap() {
 
             // Standard Tile Colors (The rest of your existing switch statement...)
             switch (tileChar) {
-                case STAR_CHAR_VAL: ctx.fillStyle = isLightMode ? '#DDBB00' : '#FFFF99'; break;
+                case STAR_CHAR_VAL: 
+                    // --- SUBTLE AMBIENT TWINKLE ---
+                    // Slow sine wave (Date.now() / 2000) with a very small alpha shift (0.85 to 1.0)
+                    const phase = worldX + (worldY * 3); // Staggers the stars so they don't blink in unison
+                    ctx.globalAlpha = 0.85 + (Math.sin((Date.now() / 2000) + phase) * 0.15);
+                    ctx.fillStyle = isLightMode ? '#DDBB00' : '#FFFF99'; 
+                    break;
                 case PLANET_CHAR_VAL: ctx.fillStyle = '#88CCFF'; break;
                 case STARBASE_CHAR_VAL: 
                     ctx.save();
@@ -2020,6 +2114,7 @@ function renderSystemMap() {
                     y * TILE_SIZE + TILE_SIZE / 2
                 );
             }
+            ctx.globalAlpha = 1.0;
         }
     }
 
@@ -2125,10 +2220,13 @@ function processLootTable(tableName) {
 
  let currentSectorName = "Sol Sector"; // Changed to let
 
- function updateCurrentCargoLoad() {
+function updateCurrentCargoLoad() {
 
-     currentCargoLoad = 0;
-     for (const cID in playerCargo) currentCargoLoad += playerCargo[cID];
+     // Instead of doing the math here, we just tell the engine it changed!
+     // Any future expansion (like a UI popup, a sound effect, or an achievement tracker)
+     // can just listen for this exact event without you rewriting this function.
+
+     GameBus.emit('CARGO_MODIFIED');
  }
 
  function triggerSensorPulse() {
@@ -2387,6 +2485,18 @@ function handleInteraction() {
 
     const tileObject = chunkManager.getTile(playerX, playerY);
     const tileChar = getTileChar(tileObject);
+
+    // ==========================================
+    // --- UNIVERSAL ON-INTERACT HOOK ---
+    // ==========================================
+    // If the data file defines a custom interaction for this specific tile,
+    // run it immediately and skip the rest of the hardcoded engine logic!
+    if (tileObject && typeof tileObject.onInteract === 'function') {
+        tileObject.onInteract(tileObject);
+        return; 
+    }
+    // ==========================================
+
     let bM = ""; 
     let availableActions = [];
 
@@ -2399,9 +2509,7 @@ function handleInteraction() {
             return; 
         }
 
-        // --- 2. STATION & OUTPOST INTERCEPT (MOVED UP - PRIORITY FIX) ---
-        // We check this BEFORE planets. The Dyson Sphere is a Major Hub, but has an 'O' char.
-        // Moving this up ensures openStationView() fires, which contains the image logic.
+        // --- 2. STATION & OUTPOST INTERCEPT ---
         if (location.isMajorHub || location.char === OUTPOST_CHAR_VAL) {
             
             // Customs scan for major hubs (Must pass to dock!)
@@ -3027,6 +3135,12 @@ function handleInteraction() {
      
      let yieldAmount = Math.floor(baseYield * richnessMultiplier);
 
+     if (Math.random() < 0.10) {
+            yieldAmount *= 2;
+            toastHTML += `<span style="color:var(--accent-color); font-weight:900;">CRITICAL VEIN STRUCK!</span><br>`;
+            if (typeof soundManager !== 'undefined') setTimeout(() => soundManager.playGain(), 200);
+        }
+
         // --- PERK HOOK ---
         if (playerPerks.has('DEEP_CORE_MINING')) {
             yieldAmount += 3;
@@ -3308,13 +3422,16 @@ function extractAnomalyData() {
     items.forEach(item => {
         if (currentCargoLoad + item.qty <= PLAYER_CARGO_CAPACITY) {
             playerCargo[item.id] = (playerCargo[item.id] || 0) + item.qty;
+            
+            // FIX: Update the load immediately so the next item in the loop sees the new capacity!
+            updateCurrentCargoLoad(); 
+            
             logMsg += `<br>Extracted: ${item.qty}x ${COMMODITIES[item.id].name}`;
         } else {
             logMsg += `<br>Extracted ${COMMODITIES[item.id].name}, but cargo hold is full!`;
         }
     });
     
-    updateCurrentCargoLoad();
     updateWorldState(playerX, playerY, { studied: true }); // Mark as completed
     
     logMessage(logMsg);
@@ -3353,43 +3470,6 @@ function abortAnomaly() {
     logMessage("Anomaly scan aborted. The field remains unstable.");
     anomalyContext = null;
 }
-
- function calculatePrice(basePrice, priceMod, itemID, locationName, mode) {
-     // 1. Base Calculation
-     let price = basePrice * priceMod;
-
-     // 2. Illegal Goods Markup (Risk Premium)
-     // If selling illegal goods, they are worth 2.5x more on the black market
-     const itemData = COMMODITIES[itemID];
-     if (itemData && itemData.illegal && mode === 'sell') {
-         price *= 2.5; 
-     }
-
-     // --- PERK HOOK ---
-    if (playerPerks.has('SILVER_TONGUE')) {
-        if (mode === 'buy') price *= 0.9; // 10% cheaper
-        if (mode === 'sell') price *= 1.1; // 10% more profit
-    }
-
-     // 3. Dynamic Market Trends (Hot Commodities)
-     // If this station is the target of a rumor, double the price!
-     if (activeMarketTrend && 
-         activeMarketTrend.station === locationName && 
-         activeMarketTrend.item === itemID && 
-         currentGameDate < activeMarketTrend.expiry) {
-         
-         price *= 2.0;
-         // Visual flare in the UI would go here (e.g., gold text)
-     } else {
-         // Standard Fluctuation (Sine Wave)
-         const uniqueOffset = basePrice;
-         const fluctuation = Math.sin((currentGameDate + uniqueOffset) / 5);
-         const marketFactor = 1 + (fluctuation * 0.15);
-         price *= marketFactor;
-     }
-
-     return Math.max(1, Math.round(price));
- }
 
  function performCustomsScan() {
     // 1. Check for Contraband
@@ -3443,138 +3523,12 @@ function abortAnomaly() {
     }
 }
 
-/**
-  * Processes the player's quantity input during a trade transaction.
-  * Now includes Toast Notifications and improved validation.
-  * @param {string} inputString - The numerical string entered by the player.
-  */
-function handleTradeQuantity(inputString) {
-     if (!currentTradeContext || currentTradeContext.step !== 'selectQuantity') return;
-
-     // --- Prevent crash if the player cancels the prompt (returns null) ---
-     if (!inputString) {
-         logMessage("Transaction canceled.");
-         return;
-     }
-
-     const locationData = currentTradeContext.locationData;
-     const tradeMode = currentTradeContext.mode;
-     const itemsList = tradeMode === 'buy' ? locationData.sells : locationData.buys;
-     const itemEntry = itemsList[currentTradeContext.itemIndex];
-     const commodityID = itemEntry.id;
-     const commodity = COMMODITIES[commodityID];
-
-     // UPDATED CALL
-     const price = calculatePrice(commodity.basePrice, itemEntry.priceMod, commodityID, locationData.name, tradeMode);
-
-     let qty = 0;
-
-     // Now safe to use .toLowerCase()
-     if (inputString.toLowerCase() === 'm' || inputString.toLowerCase() === 'max') {
-         if (tradeMode === 'buy') {
-             const affordMax = Math.floor(playerCredits / price);
-             const spaceMax = PLAYER_CARGO_CAPACITY - currentCargoLoad;
-             qty = Math.min(itemEntry.stock, affordMax, spaceMax);
-         } else {
-             const playerHas = playerCargo[commodityID] || 0;
-             qty = Math.min(playerHas, itemEntry.stock);
-         }
-     } else {
-         qty = parseInt(inputString);
-     }
-
-     currentQuantityInput = ""; 
-
-     if (isNaN(qty) || qty <= 0) {
-         logMessage("Transaction canceled.");
-         return;
-     }
-
-     let finalMessage = "";
-
-     if (tradeMode === 'buy') {
-         const totalCost = price * qty;
-
-         if (qty > itemEntry.stock) {
-             finalMessage = "Purchase failed: Not enough stock.";
-             if (typeof showToast === "function") showToast("STOCK ERROR: Insufficient Supply", "error");
-         } else if (totalCost > playerCredits) {
-             finalMessage = "Purchase failed: Insufficient credits.";
-             if (typeof showToast === "function") showToast("CREDIT ERROR: Insufficient Funds", "error");
-         } else if (currentCargoLoad + qty > PLAYER_CARGO_CAPACITY) {
-             finalMessage = "Purchase failed: Cargo hold full.";
-             if (typeof showToast === "function") showToast("CARGO ERROR: Hold Capacity Exceeded", "error");
-         } else {
-             // --- BUY SUCCESS ---
-             playerCredits -= totalCost;
-             playerCargo[commodityID] = (playerCargo[commodityID] || 0) + qty;
-             itemEntry.stock -= qty;
-             updateCurrentCargoLoad();
-             
-             finalMessage = `Purchased ${qty} ${commodity.name} for ${totalCost}c.`;
-             
-             if (typeof showToast === "function") {
-                 showToast(`ACQUIRED: ${qty}x ${commodity.name}<br><span style='font-size:12px'>-${totalCost} Credits</span>`, "success");
-             }
-
-             if (commodityID === 'WAYFINDER_CORE' && !mystery_first_nexus_location) {
-                 const dist = 500 + Math.floor(seededRandom(WORLD_SEED) * 500);
-                 const angle = seededRandom(WORLD_SEED + 1) * Math.PI * 2;
-                 const nexusX = Math.floor(Math.cos(angle) * dist);
-                 const nexusY = Math.floor(Math.sin(angle) * dist);
-                 mystery_first_nexus_location = { x: nexusX, y: nexusY };
-                 unlockLoreEntry("MYSTERY_WAYFINDER_QUEST_COMPLETED");
-                 finalMessage += "\n\n<span style='color:#40E0D0; font-weight:bold;'>! ARTIFACT ACTIVATED !</span>\nThe Wayfinder Core hums violently! Coordinates projected into navigation computer.";
-                 logMessage(finalMessage); 
-                 return; 
-             }
-         }
-
-     } else {
-         // --- SELL LOGIC ---
-         const playerHas = playerCargo[commodityID] || 0;
-
-         if (qty > playerHas) {
-             finalMessage = `Sale failed: You only have ${playerHas}.`;
-             if (typeof showToast === "function") showToast("INVENTORY ERROR: Item Not Found", "error");
-         } else if (qty > itemEntry.stock) {
-             finalMessage = `Sale failed: Station only wants ${itemEntry.stock}.`;
-             if (typeof showToast === "function") showToast("DEMAND ERROR: Station Limit Reached", "error");
-         } else {
-             // --- SELL SUCCESS ---
-             const totalGain = price * qty;
-             playerCredits += totalGain;
-             playerCargo[commodityID] -= qty;
-             itemEntry.stock -= qty;
-             updateCurrentCargoLoad();
-             
-             finalMessage = `Sold ${qty} ${commodity.name} for ${totalGain}c.`;
-             
-             if (typeof showToast === "function") {
-                 showToast(`SOLD: ${qty}x ${commodity.name}<br><span style='font-size:12px'>+${totalGain} Credits</span>`, "success");
-             }
-
-             const profitPerUnit = price - commodity.basePrice;
-             if (profitPerUnit > 0) {
-                 const xpGained = Math.floor(profitPerUnit * qty * XP_PER_PROFIT_UNIT);
-                 if (xpGained > 0) {
-                     playerXP += xpGained;
-                     updatePlayerNotoriety(Math.floor(totalGain / 500));
-                     finalMessage += `\n<span style='color:#00FF00;'>+${xpGained} XP (Profitable)!</span>`;
-                 }
-             }
-         }
-     }
-
-     logMessage(finalMessage);
-     checkLevelUp();
- }
-
  /**
   * Regenerates the player's shields based on time passed and equipped shield.
   * Does not run in combat or when shields are full.
   * @param {number} timePassed - The amount of stardate that has passed.
   */
+
  function regenerateShields(timePassed) {
      // No regen in combat or when already full
      if (currentGameState === GAME_STATES.COMBAT || playerShields >= MAX_SHIELDS) {
@@ -5272,50 +5226,53 @@ function confirmAcceptMission(stationName, index) {
 }
 
  function displayMissionDetails(selectedIndex) {
-     if (!currentMissionContext || currentMissionContext.step !== 'selectMission' || !currentMissionContext.availableMissions) {
+    if (!currentMissionContext || currentMissionContext.step !== 'selectMission' || !currentMissionContext.availableMissions) {
+        displayMissionBoard();
+        return;
+    }
 
-         displayMissionBoard();
-         return;
-     }
+    const mission = currentMissionContext.availableMissions[selectedIndex];
+    if (!mission) {
+        logMessage("Invalid mission selection.");
+        displayMissionBoard();
+        return;
+    }
 
-     const mission = currentMissionContext.availableMissions[selectedIndex];
-     if (!mission) {
-         logMessage("Invalid mission selection.");
-         displayMissionBoard();
-         return;
-     }
+    let detailMsg = `--- Mission Briefing: ${mission.title} ---\n`;
+    detailMsg += `From: ${mission.giver}\n\n`;
+    detailMsg += `Description:\n${mission.description}\n\n`;
+    detailMsg += `Objectives:\n`;
 
-     let detailMsg = `--- Mission Briefing: ${mission.title} ---\n`;
-     detailMsg += `From: ${mission.giver}\n\n`;
-     detailMsg += `Description:\n${mission.description}\n\n`;
-     detailMsg += `Objectives:\n`;
+    mission.objectives.forEach(obj => {
+        if (obj.type === "ELIMINATE") {
+            let locationText = (obj.targetSectorKey === "CURRENT") ? "in this system" : "in any system";
+            detailMsg += ` - Eliminate ${obj.count} ${obj.targetName}(s) ${locationText}.\n`;
+        } else if (obj.type === "DELIVERY") {
+            const itemName = COMMODITIES[obj.itemID] ? COMMODITIES[obj.itemID].name : "Goods";
+            detailMsg += ` - Deliver ${obj.count} ${itemName} to ${obj.destinationName}.\n`;
+        } else if (obj.type === "SCAN_OBJECT") {
+            detailMsg += ` - Scan a ${obj.subtype} ${obj.targetType} in any system.\n`;
+        } else if (obj.type === "ACQUIRE") {
+            // THE FIX: Added missing Acquire text generation
+            const itemName = COMMODITIES[obj.itemID] ? COMMODITIES[obj.itemID].name : "Resources";
+            detailMsg += ` - Acquire ${obj.count} units of ${itemName} and return to ${mission.giver}.\n`;
+        }
+    });
 
-     mission.objectives.forEach(obj => {
-         // NEW: Improved, more generic text
-         if (obj.type === "ELIMINATE") {
-             let locationText = (obj.targetSectorKey === "CURRENT") ? "in this system" : "in any system";
-             detailMsg += ` - Eliminate ${obj.count} ${obj.targetName}(s) ${locationText}.\n`;
-         } else if (obj.type === "DELIVERY") {
-             detailMsg += ` - Deliver ${obj.count} ${COMMODITIES[obj.itemID].name} to ${obj.destinationName}.\n`;
-         } else if (obj.type === "SCAN_OBJECT") {
-             detailMsg += ` - Scan a ${obj.subtype} ${obj.targetType} in any system.\n`;
-         }
-     });
+    detailMsg += `\nRewards: ${mission.rewards.credits} Credits, ${mission.rewards.xp} XP, ${mission.rewards.notoriety} Notoriety.\n\n`;
 
-     detailMsg += `\nRewards: ${mission.rewards.credits} Credits, ${mission.rewards.xp} XP, ${mission.rewards.notoriety} Notoriety.\n\n`;
+    if (playerActiveMission) {
+        detailMsg += "\n<span style='color:yellow;'>Note: You must complete or abandon your current mission before accepting this one.</span>\n";
+        detailMsg += "\n(L) to go back to mission board.";
+        currentMissionContext.step = 'viewOnlyDetails';
+    } else {
+        detailMsg += "Accept this mission? (Y/N) or (L) to go back.";
+        currentMissionContext.step = 'confirmMission';
+    }
 
-     if (playerActiveMission) {
-         detailMsg += "\n<span style='color:yellow;'>Note: You must complete or abandon your current mission before accepting this one.</span>\n";
-         detailMsg += "\n(L) to go back to mission board.";
-         currentMissionContext.step = 'viewOnlyDetails';
-     } else {
-         detailMsg += "Accept this mission? (Y/N) or (L) to go back.";
-         currentMissionContext.step = 'confirmMission';
-     }
-
-     currentMissionContext.selectedMission = mission;
-     logMessage(detailMsg);
- }
+    currentMissionContext.selectedMission = mission;
+    logMessage(detailMsg);
+}
 
  function acceptMission() {
      if (!currentMissionContext || currentMissionContext.step !== 'confirmMission' || !currentMissionContext.selectedMission) {
@@ -6099,6 +6056,9 @@ function handleTradeInput(key) {
                  changeGameState(GAME_STATES.SYSTEM_MAP);
 
                  logMessage(`Entering ${currentSystemData.name}...`);
+
+                 if (typeof showToast === 'function') showToast(`SYSTEM ORBIT:<br>${currentSystemData.name.toUpperCase()}`, "info");
+
              } else {
                  setTimeout(() => {
                      scanLocation();
@@ -8167,6 +8127,17 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
         if (itemEntry) itemEntry.stock -= qtyToTrade;
         
         updateCurrentCargoLoad();
+
+        if (itemId === 'WAYFINDER_CORE' && typeof mystery_first_nexus_location !== 'undefined' && !mystery_first_nexus_location) {
+            const dist = 500 + Math.floor(seededRandom(WORLD_SEED) * 500);
+            const angle = seededRandom(WORLD_SEED + 1) * Math.PI * 2;
+            mystery_first_nexus_location = { 
+                x: Math.floor(Math.cos(angle) * dist), 
+                y: Math.floor(Math.sin(angle) * dist) 
+            };
+            if (typeof unlockLoreEntry === 'function') unlockLoreEntry("MYSTERY_WAYFINDER_QUEST_COMPLETED");
+            logMessage("\n<span style='color:#40E0D0; font-weight:bold;'>! ARTIFACT ACTIVATED !</span>\nThe Wayfinder Core hums violently! Coordinates projected into navigation computer.");
+        }
         
         if (typeof soundManager !== 'undefined') soundManager.playUIClick();
         if (typeof showToast === 'function') showToast(`Bought ${qtyToTrade}x ${item.name}`, "success");
@@ -8208,6 +8179,16 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
 
         if (typeof soundManager !== 'undefined') soundManager.playUIClick();
         if (typeof showToast === 'function') showToast(`Sold ${qtyToTrade}x ${item.name}`, "success");
+    }
+
+    // Save the station's modified inventory to the persistent world state.
+    // The Garbage Collector will naturally "restock" this station after 50 stardates!
+    if (location && (location.sells || location.buys)) {
+        updateWorldState(playerX, playerY, {
+            sells: location.sells,
+            buys: location.buys,
+            lastInteraction: currentGameDate
+        });
     }
 
     // Refresh UI
@@ -9047,3 +9028,16 @@ function fireCrew(crewId) {
     showToast("CREW MEMBER DISMISSED", "info");
     displayCrewRoster(); // Refresh screen
 }
+
+// --- AMBIENT MAP ANIMATION ---
+// Gives the galactic map a heartbeat so stars twinkle naturally without player movement
+setInterval(() => {
+    // Only run if we are looking at the map, and no fast-animations (particles/pulse) are already rendering it
+    if (typeof currentGameState !== 'undefined' && 
+        currentGameState === 'galactic_map' && 
+        !particleAnimationId && 
+        typeof sensorPulseActive !== 'undefined' && !sensorPulseActive) {
+        
+        render();
+    }
+}, 200); // 5 FPS is perfectly smooth for a slow twinkle, while keeping browser CPU usage extremely low.
