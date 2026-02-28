@@ -5,11 +5,14 @@ html {
 
 :root {
     --bg-color: #050510;
-    --panel-bg: #0b0b18;
+    --panel-bg: #070714; /* Slightly deeper navy-blue tint */
     --border-color: #2a2a45;
-    --accent-color: #00E0E0;
+    --accent-color: #00E0E0; /* Your existing bright cyan */
     --text-color: #a0a0c0;
-    --success: #4CAF50;
+    
+    /* CHANGED: Replaced standard green with a deep Sci-Fi Teal/Aqua */
+    --success: #00AAAA; 
+    
     --danger: #FF4444;
     --warning: #FFAA00;
     --item-name-color: #FFFFFF;
@@ -25,6 +28,33 @@ html {
     --z-overlay: 100;
     --z-modal: 500;
     --z-header: 1000;
+}
+
+/* ==========================================
+   --- HARDCODED COLOR OVERRIDES (Aqua Theme) ---
+   ========================================== */
+
+/* Intercepts inline neon-green text from JS and forces it to Aqua */
+
+span[style*="#00FF00"], 
+span[style*="#00DD00"],
+div[style*="color:#00FF00"],
+div[style*="color: #00FF00"] {
+    color: var(--accent-color) !important;
+}
+
+/* Intercepts inline green backgrounds (like the XP or Cargo bar) */
+div[style*="background-color:#00FF00"],
+div[style*="background:#00FF00"],
+div[style*="background-color: #00FF00"] {
+    background-color: var(--accent-color) !important;
+    box-shadow: 0 0 5px rgba(0, 224, 224, 0.4) !important;
+}
+
+/* Explicitly catch the XP and Cargo bars if they use standard classes */
+.bar-fill.xp, 
+.bar-fill.cargo { 
+    background: var(--accent-color) !important; 
 }
 
 /* --- GLOBAL LAYOUT FIXES (No Scrollbars) --- */
@@ -139,7 +169,11 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     width: 100%;
     margin-top: 2px;
 }
-.bar-fill { height: 100%; transition: width 0.3s; }
+.bar-fill { 
+    height: 100%; 
+    /* Cubic Bezier for satisfying, weighty bar movement */
+    transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1); 
+}
 .bar-fill.hull { background: var(--danger); }
 .bar-fill.shield { background: var(--accent-color); }
 .bar-fill.fuel { background: var(--warning); }
@@ -281,7 +315,11 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     font-size: 15px;
     line-height: 1.6;
     font-family: var(--main-font);
-    color: #00FF00;
+    
+    /* CHANGED: Replaced #00FF00 green with your Aqua accent color */
+    color: var(--accent-color); 
+    text-shadow: 0 0 2px rgba(0, 224, 224, 0.4); /* Subtle terminal screen glow */
+    
     overflow-y: auto;
     height: 100%;
     opacity: 0.95;
@@ -1163,6 +1201,42 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     .trade-window, .confirm-window { width: 95%; max-height: 90dvh; }
     .combatants-wrapper { gap: 5px; }
     .combatant-icon { width: 60px; height: 60px; }
+
+    /* 7. Trade & Inventory Windows (Fix the 50/50 Squish) */
+    .trade-body {
+        flex-direction: column; /* Stack the list on top of the details */
+    }
+    .trade-list-container {
+        width: 100%;
+        height: 50%; /* Top half is the scrolling list */
+        border-right: none;
+        border-bottom: 2px solid var(--border-color);
+    }
+    .trade-panel-right {
+        width: 100%;
+        height: 50%; /* Bottom half is the buy/sell controls */
+        overflow-y: auto;
+    }
+
+    /* 8. Planet Action Grid Stack */
+    .planet-actions-grid {
+        grid-template-columns: 1fr; /* Stack buttons full-width on phones */
+    }
+    .full-width-btn {
+        grid-column: span 1; /* Reset span so it doesn't break the 1-column grid */
+    }
+
+    /* 9. Fat-Finger Touch Target Fixes */
+    .trade-item-row, .codex-list-item {
+        padding: 16px 12px; /* Boosted vertical padding for easier screen-tapping */
+        font-size: 14px; 
+    }
+
+    /* 10. System Header Text Wrap */
+    .sys-meta-row {
+        flex-wrap: wrap; /* Prevents coordinates/stats from running off the right edge */
+        gap: 10px;
+    }
 }
 
 /* --- CRITICAL STATUS OVERLAYS --- */
