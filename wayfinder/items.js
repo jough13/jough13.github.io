@@ -8,6 +8,10 @@ const LOOT_TABLES = {
     DERELICT_RARE: [
         { weight: 3, type: "ITEM", id: "ANCIENT_RELICS", min: 1, max: 1, text: "In the captain's safe... a Precursor relic!" },
         { weight: 2, type: "ITEM", id: "PROHIBITED_STIMS", min: 2, max: 5, text: "Smuggler's stash located." },
+
+        { weight: 2, type: "ITEM", id: "PRECURSOR_NAV_CORE", min: 1, max: 1, text: "You extract a humming Precursor Nav-Core from the ship's computer!" },
+        { weight: 2, type: "ITEM", id: "OBSIDIAN_TEAR_PLATING", min: 1, max: 3, text: "You salvage some ultra-dense Obsidian Tear Plating from the hull!" },
+        
         { weight: 1, type: "TRAP_PLASMA", damage: 15, text: "Booby trap! Plasma vent rupture." },
         { weight: 1, type: "TRAP_PIRATE", text: "Distress beacon was a lure! Ambush!" }
     ],
