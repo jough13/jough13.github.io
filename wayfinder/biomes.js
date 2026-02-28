@@ -28,7 +28,7 @@ const PLANET_BIOMES = {
          resources: ['FOOD_SUPPLIES', 'GENETIC_SAMPLES'],
          image: 'assets/terran_world.png'
      },
-     TOXIC: {
+    TOXIC: {
          name: "Toxic Jungle",
          landable: true,
          description: "A world teeming with aggressive, alien flora.",
