@@ -19,6 +19,42 @@ const LOOT_TABLES = {
 };
 
  const COMMODITIES = {
+    // --- NEW LORE-ACCURATE COMMODITIES ---
+    LIVING_HULL_TISSUE: {
+        name: "Living Hull Tissue",
+        basePrice: 650,
+        illegal: true,
+        description: "Pulsating, genetically engineered bio-matter favored by K'tharr warlords. It smells of ozone and copper. Highly illegal in Concord space due to the risk of it taking root in standard ship vents.",
+        unlocked: false
+    },
+    PRECURSOR_NAV_CORE: {
+        name: "Precursor Nav-Core",
+        basePrice: 2500,
+        illegal: false,
+        description: "A flawless, humming geometric artifact. It doesn't compute coordinates; it 'sings' paths through the void. The Concord heavily restricts these, but independent researchers will pay a fortune for even a cracked one.",
+        unlocked: false
+    },
+    DISCOUNT_CYBERSERVOS: {
+        name: "Discount Cyberservos",
+        basePrice: 45,
+        illegal: false,
+        description: "Cheap, unlicensed robotic joints. They whine loudly when actuated and occasionally develop a terrifying degree of independent thought. Favored by desperate mechanics.",
+        unlocked: false
+    },
+    SENTIENT_MYCELIUM: {
+        name: "Sentient Mycelium",
+        basePrice: 420,
+        illegal: true,
+        description: "A glowing blue fungus harvested from toxic jungle worlds. It responds to telepathic stimuli and is processed into powerful, highly addictive illicit stims on the black market.",
+        unlocked: false
+    },
+    OBSIDIAN_TEAR_PLATING: {
+        name: "Obsidian Tear Plating",
+        basePrice: 850,
+        illegal: true,
+        description: "Scrap armor ripped from destroyed Eclipse Cartel dreadnoughts. It absorbs sensor pings almost perfectly. Smugglers covet it, and Concord patrols will shoot anyone carrying it on sight.",
+        unlocked: false
+    },
     // --- CONTRABAND ITEMS ---
     BLACK_MARKET_CHIPS: {
         name: "Unshackled AI Chips",
