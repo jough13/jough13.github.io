@@ -2319,3 +2319,24 @@ body.light-mode #spireInput::placeholder {
     margin-top: 10px;
     max-width: 80%; /* Keep line length readable */
 }
+
+/* ==========================================
+   --- SPECIAL LOCATION VIEWS ---
+   ========================================== */
+
+/* Loads the black market imageas a unique modal header */
+
+.black-market-header {
+    width: 100%;
+    height: 250px; /* Adjust height as needed */
+    background-image: url('assets/black_market.png');
+    background-size: cover;
+    background-position: center bottom; /* Shows the busy trading counter */
+    
+    /* Applies the new Navy/Aqua sci-fi theme borders */
+    border-bottom: 2px solid var(--accent-color); 
+    box-shadow: inset 0 -15px 30px rgba(0, 224, 224, 0.2);
+    
+    margin-bottom: 15px;
+    border-radius: 4px 4px 0 0; /* Match modal corners */
+}
