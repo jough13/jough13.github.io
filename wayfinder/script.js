@@ -8,6 +8,279 @@ function removeEnemyAt(x, y) {
     activeEnemies = activeEnemies.filter(e => e.x !== x || e.y !== y);
 }
 
+// ==========================================
+// --- ASTROPHYSICS: SPECTRAL CLASSES ---
+// ==========================================
+
+const SPECTRAL_CLASSES = [
+    { class: "O", color: "#99BBFF", name: "Blue Supergiant", temp: "≥ 30,000K", hazard: "SEVERE RADIATION", rarity: 0.02, scoopYield: 150, desc: "A short-lived, fiercely hot colossus emitting massive amounts of ionizing ultraviolet radiation." },
+    { class: "B", color: "#BBCCFF", name: "Blue-White Giant", temp: "10,000K - 30,000K", hazard: "HIGH RADIATION", rarity: 0.06, scoopYield: 100, desc: "A highly luminous star with intense stellar winds and dangerous radiation output." },
+    { class: "A", color: "#FFFFFF", name: "White Star", temp: "7,500K - 10,000K", hazard: "MODERATE GLARE", rarity: 0.12, scoopYield: 75, desc: "A rapidly rotating, incredibly bright star with strong hydrogen absorption lines." },
+    { class: "F", color: "#FFFFDD", name: "Yellow-White Dwarf", temp: "6,000K - 7,500K", hazard: "NONE", rarity: 0.15, scoopYield: 60, desc: "A stable, massive main-sequence star often surrounded by rich planetary systems." },
+    { class: "G", color: "#FFDD00", name: "Yellow Dwarf", temp: "5,200K - 6,000K", hazard: "NONE", rarity: 0.20, scoopYield: 50, desc: "A stable, mid-sized star. Conditions in its habitable zone are ideal for terrestrial life." },
+    { class: "K", color: "#FFAA00", name: "Orange Dwarf", temp: "3,700K - 5,200K", hazard: "NONE", rarity: 0.20, scoopYield: 40, desc: "A cool, long-lived star. Safe to approach, but stellar winds are sluggish." },
+    { class: "M", color: "#FF5555", name: "Red Dwarf", temp: "≤ 3,700K", hazard: "SOLAR FLARES", rarity: 0.25, scoopYield: 25, desc: "The most common star type in the galaxy. Cool, dim, and prone to violent magnetic flares." }
+];
+
+function generateStarData(x, y) {
+    // 1. Create a pseudo-random seed based strictly on the specific star's coordinates
+    const seed = Math.abs(Math.sin(x * 12.9898 + y * 78.233) * 43758.5453);
+    const rand = seed - Math.floor(seed); 
+
+    // 2. Roll against our rarity tables to pick the spectral class
+    let cumulative = 0;
+    let selectedClass = SPECTRAL_CLASSES[SPECTRAL_CLASSES.length - 1]; // Default to M-Class
+
+    for (let i = 0; i < SPECTRAL_CLASSES.length; i++) {
+        cumulative += SPECTRAL_CLASSES[i].rarity;
+        if (rand <= cumulative) {
+            selectedClass = SPECTRAL_CLASSES[i];
+            break;
+        }
+    }
+
+    // ==========================================
+    // --- NATIVE SECTOR-BASED NAMING (FIXED) ---
+    // ==========================================
+    let actualSectorPrefix = "Uncharted";
+    let fullSectorName = "Deep Space";
+
+    if (typeof SECTOR_SIZE !== 'undefined' && typeof generateSectorName === 'function') {
+        // Calculate which macro-sector this star belongs to
+        const sectorX = Math.floor(x / SECTOR_SIZE);
+        const sectorY = Math.floor(y / SECTOR_SIZE);
+        
+        // Generate the exact same name the Top HUD uses!
+        fullSectorName = generateSectorName(sectorX, sectorY);
+        
+        // Extract just the first word for the prefix (e.g. "Delta Ridge" becomes "Delta")
+        actualSectorPrefix = fullSectorName.split(' ')[0];
+    }
+    // ==========================================
+
+    // Assign a Greek letter for flavor based on the star's unique seed
+    const greekLetters = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Theta", "Sigma", "Omega", "Prime"];
+    const greekModifier = greekLetters[Math.floor((seed * 100) % greekLetters.length)];
+    
+    // Generate the final designation
+    const number = Math.floor(rand * 9000) + 1000;
+
+    return {
+        // e.g., "DELTA-SIGMA 4192"
+        designation: `${actualSectorPrefix.toUpperCase()}-${greekModifier.toUpperCase()} ${number}`,
+        sectorName: fullSectorName,
+        ...selectedClass
+    };
+}
+
+function generateStellarReport(starData, starId) {
+    // 1. Extract coordinates and peek at the system's actual generated planets
+    const [x, y] = starId.split('_').map(Number);
+    const system = generateStarSystem(x, y); // Safe to call, it caches the result!
+    const planets = system.planets;
+    
+    // 2. Analyze the system composition
+    let hasHabitable = false;
+    let hasGasGiant = false;
+    let hasCrystals = false;
+    
+    planets.forEach(p => {
+        if (['TERRAN', 'OCEANIC', 'TOXIC'].includes(p.biome.name.toUpperCase().replace(' WORLD', '').replace(' JUNGLE', ''))) hasHabitable = true;
+        if (['GAS GIANT', 'ICE GIANT'].includes(p.biome.name.toUpperCase())) hasGasGiant = true;
+        if (p.biome.name.toUpperCase().includes('CRYSTAL')) hasCrystals = true;
+    });
+
+    // 3. Generate Astrochemistry (Based on Star Class)
+    let chemistry = "";
+    if (["O", "B"].includes(starData.class)) {
+        chemistry = "Heavy ultraviolet output. High metallicity in the corona indicates recent local supernova activity. Trace amounts of exotic heavy elements detected in the stellar wind.";
+    } else if (["A", "F", "G"].includes(starData.class)) {
+        chemistry = "Stable fusion cycle. Spectral absorption lines show distinct traces of carbon, silicates, and water vapor in the inner system. Optimal conditions for complex molecular synthesis.";
+    } else { // K, M
+        chemistry = "Deep convective zones churning. High probability of sudden magnetic reconnection events (flares). The local heliosphere is dense with ionized iron and sluggish plasma.";
+    }
+
+    // 4. Generate Astrobiology/System (Based on Planets)
+    let biology = "";
+    if (hasHabitable) {
+        biology = "<span style='color:var(--success)'>Positive Biosignatures.</span> Atmospheric spectroscopy of local planetary bodies reveals non-equilibrium oxygen/methane mixtures, strongly indicating active metabolic processes.";
+    } else if (hasCrystals) {
+        biology = "<span style='color:#FF33FF'>Exotic Lithosphere Detected.</span> Sensors are picking up crystalline resonance patterns. Standard biological models do not apply; potential silicon-based matrices present.";
+    } else if (planets.length > 0) {
+        if (hasGasGiant) {
+            biology = "Massive gravimetric shadows detected (Gas/Ice Giants). The planetary bodies fall outside the habitable Goldilocks zone. Lithospheric analysis shows predominantly sterile, inorganic crusts.";
+        } else {
+            biology = "Planetary bodies detected, but environmental conditions are harsh. No complex organic compounds or viable biospheres registered on deep-range scans.";
+        }
+    } else {
+        biology = "No distinct planetary accretion detected. The local space is likely swept clean by intense stellar winds or ancient gravitational perturbations.";
+    }
+
+    // 5. Construct the UI HTML
+    return `
+        <h4 style="color:var(--text-color); margin: 0 0 10px 0; font-size: 12px; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">ASTROCHEMISTRY</h4>
+        <p style="font-size: 11px; color: var(--item-desc-color); line-height: 1.6; margin-bottom: 15px;">${chemistry}</p>
+        
+        <h4 style="color:var(--text-color); margin: 0 0 10px 0; font-size: 12px; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">SYSTEM & ASTROBIOLOGY</h4>
+        <p style="font-size: 11px; color: var(--item-desc-color); line-height: 1.6; margin-bottom: 15px;">
+            <span style="color:#888;">Orbital Bodies: ${planets.length}</span><br>
+            ${biology}
+        </p>
+    `;
+}
+
+// --- AMBIENT TRAFFIC SYSTEM ---
+let activeNPCs = [];
+
+const NPC_SHIP_TYPES = [
+    { 
+        id: "CIVILIAN_HAULER", 
+        name: "Civilian Hauler", 
+        char: "⛟", 
+        color: "#AAAAAA", 
+        desc: "A sluggish, heavily laden cargo vessel.",
+        hails: [
+            "Just keeping my head down and my engines hot.",
+            "If you're looking for work, Starbase Alpha is hiring.",
+            "Subspace chatter says the Kepler Nebula is acting up again."
+        ],
+        // If attacked, what enemy profile do they use?
+        combatProfile: "BRUISER" 
+    },
+    { 
+        id: "INDEPENDENT_MINER", 
+        name: "Independent Miner", 
+        char: "⯎", 
+        color: "#FFD700", 
+        desc: "A rugged rock-hopper covered in plasma burns.",
+        hails: [
+            "Good hunting out there, spacer.",
+            "These asteroids are stripped bare. Moving to the next sector.",
+            "My sensors are picking up weird echoes today..."
+        ],
+        combatProfile: "RAIDER" 
+    },
+    { 
+        id: "CONCORD_PATROL", 
+        name: "Concord Patrol", 
+        char: "V", 
+        color: "#00E0E0", 
+        desc: "A heavily armed peacekeeper. Don't cause trouble.",
+        hails: [
+            "Concord Security. Maintain your current vector and stay out of trouble.",
+            "We are tracking known pirate activity in this sector. Be advised.",
+            "Scan complete. Your registry is clean. Move along."
+        ],
+        combatProfile: "CONCORD_PATROL" 
+    }
+];
+
+// Spawns 1-3 neutral ships dynamically around the player's viewport
+function spawnAmbientNPCs() {
+    activeNPCs = []; 
+    const numNPCs = Math.floor(Math.random() * 3) + 1; 
+
+    for (let i = 0; i < numNPCs; i++) {
+        const type = NPC_SHIP_TYPES[Math.floor(Math.random() * NPC_SHIP_TYPES.length)];
+        activeNPCs.push({
+            // Spawn them near the player!
+            x: playerX + (Math.floor(Math.random() * VIEWPORT_WIDTH_TILES) - Math.floor(VIEWPORT_WIDTH_TILES / 2)),
+            y: playerY + (Math.floor(Math.random() * VIEWPORT_HEIGHT_TILES) - Math.floor(VIEWPORT_HEIGHT_TILES / 2)),
+            ...type
+        });
+    }
+}
+
+// Call this function at the very end of your moveShip(dx, dy) function!
+function updateAmbientNPCs() {
+    for (let i = activeNPCs.length - 1; i >= 0; i--) {
+        const npc = activeNPCs[i];
+        
+        // 1. Random Wandering
+        if (Math.random() > 0.4) {
+            npc.x += (Math.random() > 0.5 ? 1 : -1);
+            npc.y += (Math.random() > 0.5 ? 1 : -1);
+        }
+
+        const dist = Math.abs(npc.x - playerX) + Math.abs(npc.y - playerY);
+        
+        // 2. Despawn if they drift too far off-screen (Keeps memory clean!)
+        if (dist > VIEWPORT_WIDTH_TILES) {
+            activeNPCs.splice(i, 1);
+            continue;
+        }
+
+        // 3. Proximity Hailing
+        if (dist > 0 && dist <= 3 && Math.random() < 0.15) {
+            const randomHail = npc.hails[Math.floor(Math.random() * npc.hails.length)];
+            logMessage(`<span style="color:${npc.color}">[COMMS] ${npc.name}: "${randomHail}"</span>`);
+        }
+        
+        // 4. Collision Check (Did you ram them?)
+        if (npc.x === playerX && npc.y === playerY) {
+            if (typeof interactWithNPC === 'function') interactWithNPC(npc, i);
+        }
+    }
+}
+
+function interactWithNPC(npc, index) {
+    openGenericModal("PROXIMITY ALERT");
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; color:${npc.color};">${npc.char}</div>
+            <h3 style="color:${npc.color}; margin-bottom:10px;">${npc.name.toUpperCase()}</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height: 1.5;">${npc.desc}</p>
+            <div style="margin-top:20px; padding:15px; background:rgba(0,0,0,0.5); border:1px dashed ${npc.color}; border-radius:4px; font-style:italic;">
+                "We are transmitting our transponder codes. Please maintain safe distance."
+            </div>
+        </div>
+    `;
+
+    document.getElementById('genericModalList').innerHTML = ''; // Hide the left list
+    
+    actionsEl.innerHTML = `
+        <button class="action-button" onclick="closeGenericModal()">
+            MAINTAIN COURSE (IGNORE)
+        </button>
+        <button class="action-button danger-btn" onclick="commitPiracy(${index})">
+            POWER WEAPONS (ATTACK!)
+        </button>
+    `;
+}
+
+function commitPiracy(npcIndex) {
+    const targetNPC = activeNPCs[npcIndex];
+    
+    // Remove them from the peaceful traffic array
+    activeNPCs.splice(npcIndex, 1);
+    
+    // Convert them into a hostile enemy using their specific combat profile!
+    const enemyProfile = PIRATE_SHIP_CLASSES[targetNPC.combatProfile];
+    
+    // Add them directly to your combat engine
+    activeEnemies.push({
+        x: playerX,
+        y: playerY,
+        id: enemyProfile.id,
+        name: targetNPC.name, // Keep their original name so you know who you attacked
+        hull: enemyProfile.baseHull,
+        shields: enemyProfile.baseShields
+    });
+
+    closeGenericModal();
+    logMessage(`<span style="color:var(--danger)">WARNING: You have initiated hostilities against a ${targetNPC.name}!</span>`);
+    
+    // Penalize Concord Rep for Piracy!
+    playerFactionStanding["CONCORD"] = (playerFactionStanding["CONCORD"] || 0) - 5;
+    if (typeof showToast === 'function') showToast("CONCORD REP -5", "error");
+
+    // Start your combat loop!
+    if (typeof initiateCombat === 'function') initiateCombat(playerX, playerY);
+}
+
 let visitedSectors;
 
 // ==========================================
@@ -56,6 +329,417 @@ const CREW_DATABASE = {
     "KORG_MAH": { id: "KORG_MAH", name: "Korg'Mah", role: "Mechanic", cost: 1800, icon: "🔧", desc: "A rugged K'tharr engineer. Passively repairs hull damage while you travel.", perk: "PASSIVE_REPAIR" },
     "T3_SPARK": { id: "T3_SPARK", name: "T3-Spark", role: "Science Bot", cost: 2500, icon: "🤖", desc: "Advanced automated logic core. Increases fuel scooping yields by 20%.", perk: "SCOOP_BONUS" }
 };
+
+const ECLIPSE_MERCENARIES = [
+    { 
+        id: "MERC_VOIDFANG", name: "Kaelen 'Voidfang'", role: "Enforcer", cost: 4500, 
+        desc: "Brutal, highly illegal combat augmentations. Will shoot first and ask questions never.", 
+        stats: { damageBonus: 12 }, 
+        drawback: { type: "STEAL_CREDITS", chance: 0.1, amount: 250 } 
+    },
+    { 
+        id: "MERC_GHOST", name: "The Ghost", role: "Evasion Pilot", cost: 6000, 
+        desc: "Can outfly a Concord tracking missile. Known to occasionally 'misplace' cargo.", 
+        stats: { evasionBonus: 0.25 }, 
+        drawback: { type: "STEAL_CARGO", chance: 0.05, amount: 2 } 
+    }
+];
+
+// ==========================================
+// --- ASTROPHYSICS: DYNAMIC H-R DIAGRAM ---
+// ==========================================
+function generateHRDiagram(starClass, starColor) {
+    // Map spectral classes to approximate X (Temperature) and Y (Luminosity) percentages
+    const classCoords = {
+        'O': { x: 15, y: 15 }, // Blue Supergiant (Hot, Bright)
+        'B': { x: 30, y: 30 }, // Blue-White Giant
+        'A': { x: 45, y: 50 }, // White Star
+        'F': { x: 60, y: 65 }, // Yellow-White Dwarf
+        'G': { x: 70, y: 75 }, // Yellow Dwarf
+        'K': { x: 85, y: 85 }, // Orange Dwarf
+        'M': { x: 95, y: 92 }  // Red Dwarf (Cool, Dim)
+    };
+    
+    const pos = classCoords[starClass] || { x: 50, y: 50 };
+    
+    return `
+        <div style="position: relative; width: 100%; height: 140px; background: #050505; border: 1px solid #333; overflow: hidden; font-family: 'Roboto Mono', monospace; border-radius: 4px;">
+            <div style="position: absolute; bottom: 4px; right: 8px; font-size: 9px; color: #555; letter-spacing: 1px;">TEMP (K) →</div>
+            <div style="position: absolute; top: 8px; left: 8px; font-size: 9px; color: #555; transform: rotate(-90deg); transform-origin: 0 0; letter-spacing: 1px;">LUMINOSITY</div>
+            
+            <div style="position: absolute; top: 25%; left: 0; right: 0; border-top: 1px dashed #1a1a1a;"></div>
+            <div style="position: absolute; top: 50%; left: 0; right: 0; border-top: 1px dashed #1a1a1a;"></div>
+            <div style="position: absolute; top: 75%; left: 0; right: 0; border-top: 1px dashed #1a1a1a;"></div>
+            <div style="position: absolute; left: 33%; top: 0; bottom: 0; border-left: 1px dashed #1a1a1a;"></div>
+            <div style="position: absolute; left: 66%; top: 0; bottom: 0; border-left: 1px dashed #1a1a1a;"></div>
+
+            <svg width="100%" height="100%" style="position: absolute; top: 0; left: 0;">
+                <path d="M 10 10 Q 150 100 300 130" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="30" stroke-linecap="round"/>
+                <path d="M 10 10 Q 150 100 300 130" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="10" stroke-linecap="round"/>
+            </svg>
+            
+            <div style="position: absolute; left: ${pos.x}%; top: ${pos.y}%; transform: translate(-50%, -50%); z-index: 10;">
+                <div style="position: absolute; top: -15px; left: -15px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid ${starColor}; animation: starPulse 2s infinite;"></div>
+                <div style="position: absolute; top: -4px; left: -4px; width: 8px; height: 8px; border-radius: 50%; background: ${starColor}; box-shadow: 0 0 10px ${starColor};"></div>
+                <div style="position: absolute; top: -20px; left: 0; width: 1px; height: 40px; background: rgba(255,255,255,0.3);"></div>
+                <div style="position: absolute; top: 0; left: -20px; width: 40px; height: 1px; background: rgba(255,255,255,0.3);"></div>
+            </div>
+            
+            <div style="position: absolute; top: 8px; right: 8px; font-size: 10px; color: ${starColor}; text-align: right; text-shadow: 0 0 5px rgba(0,0,0,0.8);">
+                TARGET LOCKED<br>
+                <span style="color:#FFF;">CLASS-${starClass}</span>
+            </div>
+        </div>
+        
+        <style>
+            @keyframes starPulse {
+                0% { transform: scale(0.3); opacity: 1; }
+                100% { transform: scale(1.5); opacity: 0; }
+            }
+        </style>
+    `;
+}
+
+// ==========================================
+// --- ASTROPHYSICS: DEEP SCAN UI ---
+// ==========================================
+
+function evaluateStar(starData, starId) {
+    // Open your standard UI modal
+    openGenericModal("STELLAR CARTOGRAPHY");
+
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    const listEl = document.getElementById('genericModalList');
+    
+    // --- POPULATE THE LEFT PANEL WITH LORE & TELEMETRY ---
+    if (listEl) {
+        listEl.innerHTML = `
+            <div style="padding: 15px; border-bottom: 1px dashed var(--accent-color); background: rgba(0,0,0,0.3);">
+                <h4 style="color:var(--accent-color); margin: 0 0 10px 0; letter-spacing: 1px;">[ SENSOR TELEMETRY ]</h4>
+                <div style="font-size: 11px; color: var(--success); font-family: 'Roboto Mono', monospace; line-height: 1.6;">
+                    > INITIATING SPECTROSCOPY... <span style="float:right;">[OK]</span><br>
+                    > ANALYZING PHOTOSPHERE... <span style="float:right;">[OK]</span><br>
+                    > CALCULATING STELLAR MASS... <span style="float:right;">[OK]</span><br>
+                    > MEASURING LUMINOSITY... <span style="float:right;">[OK]</span><br>
+                    > SCANNING FOR EXOPLANETS... <span style="float:right;">[PENDING]</span>
+                </div>
+            </div>
+            <div style="padding: 15px;">
+                
+                <!-- PROCEDURAL ASTROBIOLOGY REPORT INJECTED HERE -->
+                ${generateStellarReport(starData, starId)}
+                
+                <div style="text-align: center; margin-top: 15px;">
+                    ${generateHRDiagram(starData.class, starData.color)}
+                    <div style="font-size: 9px; margin-top: 8px; color: #888; letter-spacing: 1px;">FIG 1: H-R LUMINOSITY & TEMPERATURE DIAGRAM</div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Handle Exploration XP (Only grant it once per star!)
+    let xpMessage = "";
+    const scanKey = `STAR_SCAN_${starId}`;
+    
+    // Using a safe check to ensure discoveredLocations is initialized
+    if (typeof discoveredLocations !== 'undefined' && !discoveredLocations.has(scanKey)) {
+        discoveredLocations.add(scanKey);
+        const xpGain = 25; // A nice little bump for exploring
+        playerXP += xpGain;
+        
+        xpMessage = `<div style="color:var(--success); font-weight:bold; margin-bottom:15px; letter-spacing: 1px;">+${xpGain} XP (STELLAR DATA RECORDED)</div>`;
+        
+        if (typeof checkLevelUp === 'function') checkLevelUp();
+        if (typeof showToast === 'function') showToast("STELLAR DATA RECORDED", "success");
+        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+    } else {
+        xpMessage = `<div style="color:var(--item-desc-color); font-size: 10px; margin-bottom:15px; letter-spacing: 1px;">DATA PREVIOUSLY RECORDED</div>`;
+    }
+
+    // Build the visual read-out for the right panel
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:80px; text-shadow: 0 0 40px ${starData.color}; color:${starData.color}; margin-bottom:10px; line-height: 1;">☀</div>
+            <h3 style="color:${starData.color}; margin-bottom:0px; font-size: 24px; text-transform: uppercase;">${starData.designation}</h3>
+            
+            <div style="color:var(--accent-color); font-size: 11px; letter-spacing: 2px; margin-top: 5px; margin-bottom: 5px;">
+                REGION: ${starData.sectorName}
+            </div>
+            
+            <div style="color:#888; letter-spacing: 2px; margin-bottom: 20px;">CLASS ${starData.class} ${starData.name.toUpperCase()}</div>
+            
+            ${xpMessage}
+            
+            <div style="text-align:left; background: rgba(0,0,0,0.6); border: 1px solid ${starData.color}; padding: 20px; border-radius: 4px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <div>
+                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:2px;">CORE TEMPERATURE</span>
+                        <div style="font-size:14px; font-weight:bold; color:var(--text-color);">${starData.temp}</div>
+                    </div>
+                    <div>
+                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:2px;">RADIATION PROFILE</span>
+                        <div style="font-size:14px; font-weight:bold;">
+                            ${starData.hazard === "NONE" ? '<span style="color:var(--success)">STABLE</span>' : `<span style="color:var(--danger)">${starData.hazard}</span>`}
+                        </div>
+                    </div>
+                    <div>
+                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:2px;">CORONAL DENSITY</span>
+                        <div style="font-size:14px; font-weight:bold; color:var(--text-color);">${starData.scoopYield} Units / Cycle</div>
+                    </div>
+                    <div>
+                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:2px;">SPECTRAL RARITY</span>
+                        <div style="font-size:14px; font-weight:bold; color:var(--text-color);">${(starData.rarity * 100).toFixed(0)}% Incidence</div>
+                    </div>
+                </div>
+                
+                <hr style="border-color: #333; margin: 15px 0;">
+                <p style="color:var(--item-desc-color); font-style:italic; margin:0; line-height:1.6; font-size: 13px;">"${starData.desc}"</p>
+            </div>
+        </div>
+    `;
+
+    // Exit button
+    actionsEl.innerHTML = `
+        <button class="action-button" onclick="closeGenericModal()" style="border-color: ${starData.color}; color: ${starData.color};">
+            CLOSE SENSORS
+        </button>
+    `;
+}
+
+// ==========================================
+// --- ECLIPSE MERCENARY DEN ---
+// ==========================================
+
+function openMercenaryDen() {
+    openGenericModal("THE SHADOW NETWORK");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // 1. Default Landing Screen
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; color:#9933FF; filter: drop-shadow(0 0 10px rgba(153, 51, 255, 0.4));">💀</div>
+            <h3 style="color:#DDA0DD; margin-bottom:10px;">MERCENARY CONTRACTS</h3>
+            <p style="color:var(--item-desc-color); font-size:12px; line-height: 1.5;">These freelancers operate far outside Concord law. They bring unparalleled expertise to your vessel, but their loyalty only goes as far as their next payout. Watch your back... and your cargo bay.</p>
+        </div>
+    `;
+    listEl.innerHTML = '';
+    actionsEl.innerHTML = '';
+
+    // 2. Populate the Roster
+    ECLIPSE_MERCENARIES.forEach(merc => {
+        // Check if player already hired them
+        const isHired = playerCrew.some(c => c.id === merc.id);
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        
+        if (isHired) {
+            row.style.opacity = '0.4';
+            row.innerHTML = `<span style="color:var(--success); font-weight:bold;">${merc.name}</span> <span style="color:var(--item-desc-color); font-size:10px;">ON PAYROLL</span>`;
+            row.onclick = () => {
+                detailEl.innerHTML = `<div style="text-align:center; padding:30px;"><div style="font-size:50px; margin-bottom:15px;">✅</div><h3 style="color:var(--success);">ALREADY CONTRACTED</h3></div>`;
+                actionsEl.innerHTML = '';
+            };
+        } else {
+            row.innerHTML = `<span style="color:#DDA0DD; font-weight:bold;">${merc.name}</span> <span style="color:var(--gold-text)">${formatNumber(merc.cost)}c</span>`;
+            row.onclick = () => showMercenaryDetails(merc);
+        }
+        listEl.appendChild(row);
+    });
+}
+
+function showMercenaryDetails(merc) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Format the stat bonuses nicely
+    let statText = "";
+    if (merc.stats.damageBonus) statText += `<span style="color:var(--danger)">+${merc.stats.damageBonus} Weapon Damage</span><br>`;
+    if (merc.stats.evasionBonus) statText += `<span style="color:var(--warning)">+${merc.stats.evasionBonus * 100}% Base Evasion</span><br>`;
+    if (merc.stats.hullBonus) statText += `<span style="color:var(--success)">+${merc.stats.hullBonus} Max Hull</span><br>`;
+
+    // Format the nasty drawbacks
+    let drawbackText = "";
+    if (merc.drawback.type === "STEAL_CARGO") drawbackText = `High risk of missing cargo (${merc.drawback.chance * 100}% chance per jump).`;
+    if (merc.drawback.type === "STEAL_CREDITS") drawbackText = `High risk of credit skimming (${merc.drawback.chance * 100}% chance per jump).`;
+    if (merc.drawback.type === "STEAL_FUEL") drawbackText = `High risk of fuel venting (${merc.drawback.chance * 100}% chance per jump).`;
+
+    detailEl.innerHTML = `
+        <div style="padding: 15px; text-align: center; border: 1px solid #9933FF; background: #020005; border-radius: 4px; box-shadow: inset 0 0 20px rgba(153, 51, 255, 0.1);">
+            <h3 style="color:#DDA0DD; margin-top:0; margin-bottom: 5px; text-transform:uppercase;">${merc.name}</h3>
+            <div style="color:#888; font-size:11px; margin-bottom:15px; letter-spacing:1px;">ROLE: ${merc.role.toUpperCase()}</div>
+            
+            <p style="font-size:13px; color:var(--text-color); margin-bottom: 20px; line-height: 1.5; text-align:left;">${merc.desc}</p>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px; text-align:left; background:rgba(0,0,0,0.5); padding:10px; border-radius:4px; border:1px solid #333;">
+                <div>
+                    <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:5px;">COMBAT BONUS</span>
+                    <div style="font-size:12px; font-weight:bold;">${statText}</div>
+                </div>
+                <div>
+                    <span style="font-size:10px; color:#FF5555; display:block; margin-bottom:5px;">KNOWN RISK</span>
+                    <div style="font-size:12px; color:#FF5555; font-style:italic;">${drawbackText}</div>
+                </div>
+            </div>
+            
+            <div style="text-align:left; border-top:1px dashed #9933FF; padding-top:10px; font-weight:bold;">
+                <span style="color:#DDA0DD;">UPFRONT FEE:</span> <span style="color:var(--gold-text); float:right;">${formatNumber(merc.cost)}c</span>
+            </div>
+        </div>
+    `;
+
+    if (playerCredits < merc.cost) {
+        actionsEl.innerHTML = `<button class="action-button" disabled>INSUFFICIENT FUNDS</button>`;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 15px rgba(153, 51, 255, 0.3);" onclick="hireMercenary('${merc.id}')">
+                AUTHORIZE CONTRACT
+            </button>
+        `;
+    }
+}
+
+function hireMercenary(mercId) {
+    const merc = ECLIPSE_MERCENARIES.find(m => m.id === mercId);
+    if (playerCredits < merc.cost) return;
+    
+    playerCredits -= merc.cost;
+    
+    // Add them to your existing crew structure flawlessly
+    playerCrew.push({
+        id: merc.id,
+        name: merc.name,
+        role: merc.role,
+        desc: merc.desc,
+        isMercenary: true,
+        stats: merc.stats,
+        drawback: merc.drawback
+    });
+    
+    applyPlayerShipStats(); 
+    
+    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    if (typeof showToast === 'function') showToast("CONTRACT SIGNED", "success");
+    
+    logMessage(`<span style="color:#DDA0DD">Contract established. ${merc.name} has joined your crew. Keep an eye on your valuables.</span>`);
+    
+    openMercenaryDen(); // Refresh the screen
+    renderUIStats();
+}
+
+// Call this function every time the player moves to a new sector/tile!
+function processMercenaryDrawbacks() {
+    if (!playerCrew || playerCrew.length === 0) return;
+    
+    playerCrew.forEach(crewMember => {
+        // Only trigger if they are a Merc and the random roll hits
+        if (crewMember.isMercenary && crewMember.drawback && Math.random() < crewMember.drawback.chance) {
+            
+            if (crewMember.drawback.type === "STEAL_CARGO") {
+                // Find a random cargo item the player currently owns
+                const cargoIds = Object.keys(playerCargo).filter(id => playerCargo[id] > 0);
+                if (cargoIds.length > 0) {
+                    const stolenId = cargoIds[Math.floor(Math.random() * cargoIds.length)];
+                    playerCargo[stolenId] -= crewMember.drawback.amount;
+                    if (playerCargo[stolenId] <= 0) delete playerCargo[stolenId];
+                    
+                    const itemName = COMMODITIES[stolenId] ? COMMODITIES[stolenId].name : "Cargo";
+                    
+                    if (typeof showToast === 'function') showToast(`CARGO MISSING: ${itemName}`, "warning");
+                    logMessage(`<span style="color:#FF5555">Inventory discrepancy detected. ${crewMember.drawback.amount}x ${itemName} is missing from the hold. ${crewMember.name} looks suspiciously innocent.</span>`);
+                    
+                    // Trigger your existing Event Bus
+                    if (typeof GameBus !== 'undefined') GameBus.emit('CARGO_MODIFIED');
+                }
+            } 
+            
+            else if (crewMember.drawback.type === "STEAL_CREDITS") {
+                if (playerCredits >= crewMember.drawback.amount) {
+                    playerCredits -= crewMember.drawback.amount;
+                    if (typeof showToast === 'function') showToast(`CREDITS SKIMMED: -${crewMember.drawback.amount}c`, "warning");
+                    logMessage(`<span style="color:#FF5555">Unauthorized ledger transfer detected. ${crewMember.drawback.amount}c has been siphoned from your account. ${crewMember.name} claims it was a 'routine maintenance fee'.</span>`);
+                    
+                    if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+                }
+            }
+
+            else if (crewMember.drawback.type === "STEAL_FUEL") {
+                if (playerFuel > crewMember.drawback.amount) {
+                    playerFuel -= crewMember.drawback.amount;
+                    if (typeof showToast === 'function') showToast(`FUEL VENTED: -${crewMember.drawback.amount}`, "warning");
+                    logMessage(`<span style="color:#FF5555">Warning: Unscheduled fuel venting detected. ${crewMember.name} says it was necessary to 'prevent a cascade failure.' Sure.</span>`);
+                    
+                    if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+                }
+            }
+        }
+    });
+}
+
+function showStandardCrewDetails(crew) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    detailEl.innerHTML = `
+        <div style="padding: 15px; text-align: center; border: 1px solid var(--accent-color); background: rgba(0,224,224,0.05); border-radius: 4px;">
+            <div style="font-size:40px; margin-bottom:10px;">${crew.icon}</div>
+            <h3 style="color:var(--accent-color); margin-top:0; margin-bottom: 5px; text-transform:uppercase;">${crew.name}</h3>
+            <div style="color:#888; font-size:11px; margin-bottom:15px; letter-spacing:1px;">ROLE: ${crew.role.toUpperCase()}</div>
+            
+            <p style="font-size:13px; color:var(--text-color); margin-bottom: 20px; line-height: 1.5; text-align:left;">${crew.desc}</p>
+            
+            <div style="background:rgba(0,0,0,0.5); padding:10px; border-radius:4px; border:1px solid #333; text-align:left;">
+                <span style="font-size:10px; color:var(--success); display:block; margin-bottom:5px;">GUARANTEED PERK</span>
+                <div style="font-size:12px; font-weight:bold; color:var(--text-color);">${crew.perk.replace('_', ' ')}</div>
+            </div>
+            
+            <div style="text-align:left; border-top:1px dashed var(--accent-color); padding-top:10px; margin-top:15px; font-weight:bold;">
+                <span style="color:var(--text-color);">HIRING BONUS:</span> <span style="color:var(--gold-text); float:right;">${formatNumber(crew.cost)}c</span>
+            </div>
+        </div>
+    `;
+
+    if (playerCrew.length >= MAX_CREW) {
+        actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>CREW QUARTERS FULL</button>`;
+    } else if (playerCredits < merc.cost) {
+        actionsEl.innerHTML = `<button class="action-button" disabled>INSUFFICIENT FUNDS</button>`;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 15px rgba(153, 51, 255, 0.3);" onclick="hireMercenary('${merc.id}')">
+                AUTHORIZE CONTRACT
+            </button>
+        `;
+    }
+}
+
+function hireStandardCrew(crewId) {
+    const crew = CREW_DATABASE[crewId];
+    if (playerCredits < crew.cost || playerCrew.length >= MAX_CREW) return;
+    
+    playerCredits -= crew.cost;
+    
+    // Add them to the universal roster!
+    playerCrew.push({
+        id: crew.id,
+        name: crew.name,
+        role: crew.role,
+        desc: crew.desc,
+        icon: crew.icon,
+        isMercenary: false, // Flag them as SAFE
+        perk: crew.perk
+    });
+    
+    applyPlayerShipStats(); 
+    
+    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    if (typeof showToast === 'function') showToast("CREW HIRED", "success");
+    logMessage(`<span style="color:var(--success)">${crew.name} has joined your crew!</span>`);
+    
+    openRecruitmentBoard(); 
+    renderUIStats();
+}
 
 
 // ==========================================
@@ -847,6 +1531,8 @@ function logMessage(newMessage, isImportant = false) {
     logMessage(`<span style='color:#FF5555'>${warningMsg}</span>`);
 }
 
+
+
 function updateEnemies() {
     // Loop backwards so we can remove enemies safely if combat starts
     for (let i = activeEnemies.length - 1; i >= 0; i--) {
@@ -966,60 +1652,82 @@ function applyPlayerShipStats() {
     const shipClassData = SHIP_CLASSES[playerShip.shipClass];
     
     // 1. Get Base Stats
-    let calculatedMaxHull = shipClassData.baseHull;
-    let calculatedMaxCargo = shipClassData.cargoCapacity;
+    let calculatedMaxHull = shipClassData.baseHull || 100;
+    let calculatedMaxCargo = shipClassData.cargoCapacity || 50;
+    let calculatedEvasion = shipClassData.baseEvasion || 0; 
 
-    // 2. Check Utility Slot
+    // 2. Apply Base Component Stats First
+    const weapon = COMPONENTS_DATABASE[playerShip.components.weapon];
+    const shield = COMPONENTS_DATABASE[playerShip.components.shield];
+    const engine = COMPONENTS_DATABASE[playerShip.components.engine];
+
+    PLAYER_ATTACK_DAMAGE = weapon.stats.damage || 0;
+    PLAYER_HIT_CHANCE = weapon.stats.hitChance || 0;
+    MAX_SHIELDS = shield.stats.maxShields || 0;
+    MAX_FUEL = engine.stats.maxFuel || 0;
+
+    // 3. Check Utility Slot (FIXED: Now includes shieldBonus!)
     const utilityId = playerShip.components.utility || "UTIL_NONE";
     const utility = COMPONENTS_DATABASE[utilityId];
 
     if (utility && utility.stats) {
         if (utility.stats.hullBonus) calculatedMaxHull += utility.stats.hullBonus;
         if (utility.stats.cargoBonus) calculatedMaxCargo += utility.stats.cargoBonus;
+        if (utility.stats.shieldBonus) MAX_SHIELDS += utility.stats.shieldBonus; // <-- THE MISSING LINK!
     }
 
-    // 3. Apply to Globals
+    // --- 4. APPLY CREW & MERCENARY BONUSES ---
+    if (typeof playerCrew !== 'undefined' && playerCrew.length > 0) {
+        playerCrew.forEach(crew => {
+            // Apply Eclipse Mercenary raw stats
+            if (crew.stats) {
+                if (crew.stats.hullBonus) calculatedMaxHull += crew.stats.hullBonus;
+                if (crew.stats.damageBonus) PLAYER_ATTACK_DAMAGE += crew.stats.damageBonus;
+                if (crew.stats.evasionBonus) calculatedEvasion += crew.stats.evasionBonus;
+            }
+            
+            // Apply Standard Crew COMBAT perk
+            if (crew.perk === "COMBAT_DAMAGE") {
+                PLAYER_ATTACK_DAMAGE = Math.floor(PLAYER_ATTACK_DAMAGE * 1.15);
+            }
+        });
+    }
+
+    // 5. Apply Final Calculations to Globals
     MAX_PLAYER_HULL = calculatedMaxHull;
     PLAYER_CARGO_CAPACITY = calculatedMaxCargo;
+    PLAYER_EVASION = calculatedEvasion; 
 
-     const weapon = COMPONENTS_DATABASE[playerShip.components.weapon];
-     const shield = COMPONENTS_DATABASE[playerShip.components.shield];
-     const engine = COMPONENTS_DATABASE[playerShip.components.engine];
+    // --- 6. APPLY SYNERGIES (SET BONUSES) ---
+    if (typeof SYNERGIES_DATABASE !== 'undefined') {
+        activeSynergy = null;
+        const mfgCounts = {};
+        const slots = ['weapon', 'shield', 'engine', 'scanner', 'utility'];
+        
+        slots.forEach(slot => {
+            const comp = COMPONENTS_DATABASE[playerShip.components[slot]];
+            if (comp && comp.manufacturer) {
+                mfgCounts[comp.manufacturer] = (mfgCounts[comp.manufacturer] || 0) + 1;
+            }
+        });
 
-     PLAYER_ATTACK_DAMAGE = weapon.stats.damage;
-     PLAYER_HIT_CHANCE = weapon.stats.hitChance;
-     MAX_SHIELDS = shield.stats.maxShields;
-     MAX_FUEL = engine.stats.maxFuel;
+        for (const mfg in mfgCounts) {
+            if (mfgCounts[mfg] >= 3 && SYNERGIES_DATABASE[mfg]) {
+                activeSynergy = SYNERGIES_DATABASE[mfg];
+                activeSynergy.effect(); // Apply the raw stat boosts
+                break; 
+            }
+        }
+    }
 
-    // --- 4. NEW: APPLY SYNERGIES (SET BONUSES) ---
-     activeSynergy = null;
-     const mfgCounts = {};
-     const slots = ['weapon', 'shield', 'engine', 'scanner', 'utility'];
-     
-     slots.forEach(slot => {
-         const comp = COMPONENTS_DATABASE[playerShip.components[slot]];
-         // Count how many pieces of gear share a manufacturer
-         if (comp && comp.manufacturer) {
-             mfgCounts[comp.manufacturer] = (mfgCounts[comp.manufacturer] || 0) + 1;
-         }
-     });
+    // 7. Cap Vitals
+    if (playerHull > MAX_PLAYER_HULL) playerHull = MAX_PLAYER_HULL;
+    if (playerShields > MAX_SHIELDS) playerShields = MAX_SHIELDS;
+    if (playerFuel > MAX_FUEL) playerFuel = MAX_FUEL;
 
-     for (const mfg in mfgCounts) {
-         // If you have 3 or more of the same brand, activate the synergy!
-         if (mfgCounts[mfg] >= 3 && SYNERGIES_DATABASE[mfg]) {
-             activeSynergy = SYNERGIES_DATABASE[mfg];
-             activeSynergy.effect(); // Apply the raw stat boosts
-             break; // Only 1 synergy max can be active (since there are only 5 slots)
-         }
-     }
-
-     if (playerHull > MAX_PLAYER_HULL) playerHull = MAX_PLAYER_HULL;
-     if (playerShields > MAX_SHIELDS) playerShields = MAX_SHIELDS;
-     if (playerFuel > MAX_FUEL) playerFuel = MAX_FUEL;
-
-     // --- TELL THE BUS WE CHANGED MAX STATS ---
-     GameBus.emit('UI_REFRESH_REQUESTED');
- }
+    // --- TELL THE BUS WE CHANGED MAX STATS ---
+    if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+}
 
  /**
   * A helper function to render just the shared UI stats.
@@ -2071,14 +2779,51 @@ function renderSystemMap() {
                 continue; // Skip standard render
             }
 
-            // Standard Tile Colors (The rest of your existing switch statement...)
+            if (tileData && tileData.customColor) {
+                ctx.save();
+                
+                // Illicit glowing pulse effect
+                const pulse = (Math.sin(Date.now() / 600) + 1) / 2;
+                ctx.shadowBlur = 12 + (pulse * 8);
+                ctx.shadowColor = tileData.customColor;
+                
+                ctx.fillStyle = tileData.customColor;
+                
+                // Make it stand out slightly from standard map markers
+                ctx.font = `bold ${TILE_SIZE * 1.2}px 'Orbitron', monospace`;
+                
+                // Check if it has a custom char defined, otherwise use the default
+                const charToDraw = tileData.displayChar || tileChar;
+                
+                ctx.fillText(charToDraw, x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
+                
+                ctx.restore();
+                continue; // Skip the standard switch statement below!
+            }
+
+            // Standard Tile Colors 
             switch (tileChar) {
                 case STAR_CHAR_VAL: 
                     // --- SUBTLE AMBIENT TWINKLE ---
-                    // Slow sine wave (Date.now() / 2000) with a very small alpha shift (0.85 to 1.0)
-                    const phase = worldX + (worldY * 3); // Staggers the stars so they don't blink in unison
+                    const phase = worldX + (worldY * 3); 
                     ctx.globalAlpha = 0.85 + (Math.sin((Date.now() / 2000) + phase) * 0.15);
-                    ctx.fillStyle = isLightMode ? '#DDBB00' : '#FFFF99'; 
+                    
+                    // Generate the star data using world coordinates to grab its true spectral color!
+                    // (We use worldX and worldY so the star's color doesn't change when you move)
+                    const visualStarData = generateStarData(worldX, worldY);
+                    
+                    // Apply the actual astrophysical color
+                    ctx.fillStyle = visualStarData.color; 
+                    
+                    // Give massive, hot stars a dangerous, heavy glow
+                    if (visualStarData.class === "O" || visualStarData.class === "B") {
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = visualStarData.color;
+                    } else {
+                        // Standard ambient glow for normal stars
+                        ctx.shadowBlur = isLightMode ? 0 : 5; 
+                        ctx.shadowColor = visualStarData.color;
+                    }
                     break;
                 case PLANET_CHAR_VAL: ctx.fillStyle = '#88CCFF'; break;
                 case STARBASE_CHAR_VAL: 
@@ -2114,9 +2859,13 @@ function renderSystemMap() {
                     y * TILE_SIZE + TILE_SIZE / 2
                 );
             }
+            
+            // --- THE FIX: RESET CANVAS STATE SO THE NEON GLOW DOESN'T BLEED ---
             ctx.globalAlpha = 1.0;
-        }
-    }
+            ctx.shadowBlur = 0; 
+            
+        } // End of X loop
+    } // End of Y loop
 
     // --- 5. Draw Dynamic Entities (LAYER 2) ---
     const playerScreenX = (playerX - camX) * TILE_SIZE + TILE_SIZE / 2;
@@ -2156,10 +2905,33 @@ function renderSystemMap() {
         }
     });
 
+    // ==========================================
+    // --- NEW: DRAW AMBIENT TRAFFIC (NPCs) ---
+    // ==========================================
+    if (typeof activeNPCs !== 'undefined') {
+        activeNPCs.forEach(npc => {
+            // Apply camera offsets just like enemies and particles
+            const screenX = (npc.x - camX) * TILE_SIZE + TILE_SIZE / 2;
+            const screenY = (npc.y - camY) * TILE_SIZE + TILE_SIZE / 2;
+
+            // Only draw them if they are actually visible on the screen
+            if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width && screenY >= -TILE_SIZE && screenY <= gameCanvas.height) {
+                ctx.save();
+                ctx.fillStyle = npc.color; 
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = npc.color;
+                ctx.font = `bold ${TILE_SIZE * 0.9}px 'Orbitron', monospace`;
+                
+                ctx.fillText(npc.char, screenX, screenY);
+                ctx.restore();
+            }
+        });
+    }
+
     // Draw Player
     if (currentCombatContext) {
         ctx.fillStyle = '#FF5555';
-        ctx.fillText(PIRATE_CHAR_VAL, playerScreenX, playerScreenY);
+        ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
     } else {
         ctx.fillStyle = isLightMode ? '#000000' : '#FFFFFF'; 
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
@@ -2169,6 +2941,42 @@ function renderSystemMap() {
     document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
 
     renderUIStats();
+}
+
+// ==========================================
+// --- QoL: RE-ENTER / DOCK AT CURRENT TILE ---
+// ==========================================
+function reEnterCurrentTile() {
+    // 1. Only allow this if we are actively flying on the map
+    if (typeof currentGameState !== 'undefined' && currentGameState !== 'galactic_map') {
+        return; 
+    }
+
+    // THE FIX: Fetch the tile first, then pass it to the global helper function
+    const tileData = chunkManager.getTile(playerX, playerY);
+    const tileChar = getTileChar(tileData);
+
+    // 2. Check if there is actually something interactable here
+    if (tileChar === '#' || tileChar === 'O' || tileChar === OUTPOST_CHAR_VAL || (tileData && tileData.name)) {
+        
+        if (typeof soundManager !== 'undefined') soundManager.playUIClick();
+        if (typeof showToast === 'function') showToast("DOCKING SEQUENCE INITIATED", "info");
+        
+        // 3. Re-trigger your main interaction loop
+        if (typeof handleInteraction === 'function') {
+            handleInteraction(); 
+        }
+
+        // 4. Force the visual station view to open if it's a major hub
+        if (tileChar === '#' && typeof openStationView === 'function') {
+            openStationView();
+        }
+
+    } else {
+        // Player pushed the button in empty space
+        if (typeof showToast === 'function') showToast("NO DOCKING TARGET DETECTED", "warning");
+        logMessage("Sensors detect only empty space here. Nothing to interact with.");
+    }
 }
 
 function processLootTable(tableName) {
@@ -2218,7 +3026,7 @@ function processLootTable(tableName) {
     renderUIStats();
 }
 
- let currentSectorName = "Sol Sector"; // Changed to let
+let currentSectorName = "Sol Sector"; // Changed to let
 
 function updateCurrentCargoLoad() {
 
@@ -2489,13 +3297,13 @@ function handleInteraction() {
     // ==========================================
     // --- UNIVERSAL ON-INTERACT HOOK ---
     // ==========================================
+
     // If the data file defines a custom interaction for this specific tile,
     // run it immediately and skip the rest of the hardcoded engine logic!
     if (tileObject && typeof tileObject.onInteract === 'function') {
         tileObject.onInteract(tileObject);
         return; 
     }
-    // ==========================================
 
     let bM = ""; 
     let availableActions = [];
@@ -2505,6 +3313,10 @@ function handleInteraction() {
          
         // --- 1. XERXES INTERCEPT ---
         if (location.name.includes("Xerxes")) {
+            // NATIVE FIX: Render the button before opening the view!
+            availableActions.push({ label: 'Access Shadow Network', key: 'e', onclick: openXerxesView });
+            if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
+            
             openXerxesView();
             return; 
         }
@@ -2519,21 +3331,33 @@ function handleInteraction() {
             }
 
             if (typeof soundManager !== 'undefined') soundManager.playUIHover();
-            showToast(`DOCKED: ${location.name.toUpperCase()}`, "success");
+            if (typeof showToast === 'function') showToast(`DOCKED: ${location.name.toUpperCase()}`, "success");
 
-            // Recharge vitals
-            playerFuel = MAX_FUEL;
             playerShields = MAX_SHIELDS;
+            
+            // EMERGENCY COURTESY FUEL (Anti-Softlock)
+            // 40 fuel is statistically enough to reach the nearest star to scoop, 
+            // but forces the player to actually buy fuel if they want a full tank for long trips.
+            const EMERGENCY_FUEL = 40; 
+            if (playerFuel < EMERGENCY_FUEL) {
+                playerFuel = EMERGENCY_FUEL;
+                logMessage("<span style='color:var(--warning)'>Station port authority provided a courtesy emergency fuel reserve.</span>");
+            }
+            
             applyPlayerShipStats();
 
             // Handle Discovery XP
             if (!discoveredLocations.has(location.name)) {
                 discoveredLocations.add(location.name);
                 playerXP += XP_PER_LOCATION_DISCOVERY;
-                showToast(`Discovered: ${location.name}! +${XP_PER_LOCATION_DISCOVERY} XP`, "success");
+                if (typeof showToast === 'function') showToast(`Discovered: ${location.name}! +${XP_PER_LOCATION_DISCOVERY} XP`, "success");
                 unlockLoreEntry(`LOCATION_${location.name.replace(/\s+/g, '_').toUpperCase()}`);
                 checkLevelUp();
             }
+
+            // NATIVE FIX: Render the button before opening the view!
+            availableActions.push({ label: `Dock (${location.name})`, key: 'e', onclick: openStationView });
+            if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
 
             // Open the visual modal and stop processing generic text logs
             openStationView();
@@ -2544,6 +3368,10 @@ function handleInteraction() {
         // --- 3. PLANETARY LANDING INTERCEPT ---
         // Catches generic planets and opens the mining/scan UI
         if (location.char === 'O' || (location.name && location.name.toLowerCase().includes("planet")) || location.biome) {
+            // NATIVE FIX: Render the button before opening the view!
+            availableActions.push({ label: `Land (${location.name || 'Planet'})`, key: 'e', onclick: () => openPlanetView(location) });
+            if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
+
             openPlanetView(location);
             return;
         }
@@ -2586,14 +3414,67 @@ function handleInteraction() {
         // --- 5. DEEP SPACE PHENOMENA ---
         switch (tileChar) {
             case STAR_CHAR_VAL:
-                bM = `Near star.`;
-                availableActions.push({ label: 'Enter System', key: 'e', onclick: () => { currentSystemData = generateStarSystem(playerX, playerY); changeGameState(GAME_STATES.SYSTEM_MAP); } });
-                availableActions.push({ label: 'Scoop Fuel', key: 'h', onclick: scoopHydrogen });
+                const starData = generateStarData(playerX, playerY);
+                // Create a unique ID for this star based on its coordinates
+                const starId = `${playerX}_${playerY}`; 
+                
+                bM = `<span style="color:${starData.color}; font-size:16px; font-weight:bold;">SYSTEM: ${starData.designation.toUpperCase()}</span>\n`;
+                
+                // Hazard Warning
+                if (starData.hazard !== "NONE") {
+                    bM += `<span style="color:var(--danger); font-weight:bold;">WARNING: ${starData.hazard} DETECTED.</span>`;
+                }
+
+                // 1. Evaluate / Scan Star (NEW!)
+                // If they haven't scanned it, prompt a deep scan. If they have, let them review the data.
+                const hasScanned = discoveredLocations.has(`STAR_SCAN_${starId}`);
+                availableActions.push({ 
+                    label: hasScanned ? 'Review Scan Data' : 'Run Deep Scan', 
+                    key: 'v', 
+                    onclick: () => evaluateStar(starData, starId) 
+                });
+
+                // 2. Enter System
+                availableActions.push({ 
+                    label: 'Enter System', 
+                    key: 'e', 
+                    onclick: () => { 
+                        currentSystemData = generateStarSystem(playerX, playerY); 
+                        changeGameState(GAME_STATES.SYSTEM_MAP); 
+                    } 
+                });
+                
+                // 3. Deep Scoop
+                availableActions.push({ 
+                    label: `Deep Scoop (${starData.scoopYield} Fuel)`, 
+                    key: 'h', 
+                    onclick: () => {
+                        if (starData.class === "O" || starData.class === "B") {
+                            const util = COMPONENTS_DATABASE[playerShip.components.utility || "UTIL_NONE"];
+                            if (!util || !util.radImmunity) {
+                                playerHull -= 20;
+                                if (typeof triggerHaptic === 'function') triggerHaptic(200);
+                                logMessage("<span style='color:#FF5555'>Radiation shielding breached! Hull integrity compromised while scooping.</span>");
+                            }
+                        }
+                        if (playerFuel < MAX_FUEL) {
+                            playerFuel = Math.min(MAX_FUEL, playerFuel + starData.scoopYield);
+                            if (typeof showToast === 'function') showToast(`SCOOPED +${starData.scoopYield} HYDROGEN`, "info");
+                            logMessage(`Successfully harvested ${starData.scoopYield} units of coronal plasma.`);
+                            if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+                            if (typeof advanceGameTime === 'function') advanceGameTime(1.0);
+                        } else {
+                            if (typeof showToast === 'function') showToast("TANKS FULL", "warning");
+                        }
+                    } 
+                });
+                
                 unlockLoreEntry("PHENOMENON_STAR");
                 break;
+
             case NEXUS_CHAR_VAL:
                 bM = "You are hovering before a colossus of shifting geometry. The First Nexus.";
-                if (mystery_nexus_activated) bM += "\nIt pulses with a silent, rhythmic light. It knows you are here.";
+                if (typeof mystery_nexus_activated !== 'undefined' && mystery_nexus_activated) bM += "\nIt pulses with a silent, rhythmic light. It knows you are here.";
                 else bM += "\nIt is dormant, but the Wayfinder Core in your hold is vibrating in unison.";
                 availableActions.push({ label: 'Commune', key: 'x', onclick: handleNexusEncounter });
                 unlockLoreEntry("MYSTERY_FIRST_NEXUS");
@@ -2621,13 +3502,22 @@ function handleInteraction() {
                 break;
             case DERELICT_CHAR_VAL:
                 unlockLoreEntry("XENO_DERELICTS");
+                
+                // NATIVE FIX: Render the button before opening the view!
+                availableActions.push({ label: 'Board Derelict', key: 'e', onclick: openDerelictView });
+                if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
+
                 openDerelictView();
                 return; // Stop processing generic text logs
         }
     }
 
     if (bM) logMessage(bM);
-    if (availableActions.length > 0) renderContextualActions(availableActions);
+    
+    // ALWAYS run this, even if empty, so it clears the old buttons out!
+    if (typeof renderContextualActions === 'function') {
+        renderContextualActions(availableActions);
+    }
     
     if (tileObject && tileObject.type === 'location') {
         autoSaveGame();
@@ -3475,7 +4365,9 @@ function abortAnomaly() {
     // 1. Check for Contraband
     let contrabandFound = [];
     for (const itemID in playerCargo) {
-        if (playerCargo[itemID] > 0 && COMMODITIES[itemID].illegal) {
+        // SAFETY CHECK: Ensure the item actually exists in the database before checking if it is illegal!
+        const itemDef = COMMODITIES[itemID];
+        if (playerCargo[itemID] > 0 && itemDef && itemDef.illegal) {
             contrabandFound.push(itemID);
         }
     }
@@ -3489,13 +4381,13 @@ function abortAnomaly() {
 
     if (Math.random() < catchChance) {
         // --- CAUGHT! ---
-        soundManager.playError();
-        triggerHaptic([200, 100, 200]);
+        if (typeof soundManager !== 'undefined') soundManager.playError();
+        if (typeof triggerHaptic === 'function') triggerHaptic([200, 100, 200]);
         
         let fine = 0;
         contrabandFound.forEach(id => {
             const qty = playerCargo[id];
-            const val = COMMODITIES[id].basePrice;
+            const val = COMMODITIES[id].basePrice || 0;
             fine += (qty * val * 0.5); // Fine is 50% of base value
             playerCargo[id] = 0; // Confiscated!
         });
@@ -3508,10 +4400,12 @@ function abortAnomaly() {
         updatePlayerNotoriety(5); 
 
         // Alert Modal
-        showConfirmationModal(
-            `CUSTOMS ALERT: Contraband detected! Cargo confiscated. Fined ${fine} credits.`,
-            () => { /* Just close */ }
-        );
+        if (typeof showConfirmationModal === 'function') {
+            showConfirmationModal(
+                `CUSTOMS ALERT: Contraband detected! Cargo confiscated. Fined ${fine} credits.`,
+                () => { /* Just close */ }
+            );
+        }
         
         logMessage(`<span style="color:#FF4444">CUSTOMS VIOLATION:</span> ${fine}c fine assessed. Contraband seized.`);
         renderUIStats();
@@ -3612,15 +4506,28 @@ function checkLevelUp() {
     playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 25);
     
     // 4. Trigger Perk Selection UI
-    soundManager.playTone(600, 'sine', 0.1); 
-    setTimeout(() => soundManager.playTone(800, 'sine', 0.2), 100);
+    if (typeof soundManager !== 'undefined') {
+        soundManager.playTone(600, 'sine', 0.1); 
+        setTimeout(() => soundManager.playTone(800, 'sine', 0.2), 100);
+    }
 
+    // --- Safe Modal Hiding ---
     if (typeof closeGenericModal === 'function') closeGenericModal();
-    // Manually hide the trade overlay specifically:
-    document.getElementById('tradeOverlay').style.display = 'none';
     
-    changeGameState(GAME_STATES.LEVEL_UP); 
-    renderLevelUpScreen();
+    // Safely hide old trade modals if they exist
+    const oldTradeModal = document.getElementById('tradeOverlay');
+    if (oldTradeModal) oldTradeModal.style.display = 'none';
+    
+    // Safely hide the Xerxes menu so the level up screen isn't blocked
+    const xerxesModal = document.getElementById('xerxesOverlay');
+    if (xerxesModal) xerxesModal.style.display = 'none';
+
+    // Safely hide standard station menus
+    const stationModal = document.getElementById('stationOverlay');
+    if (stationModal) stationModal.style.display = 'none';
+    
+    if (typeof changeGameState === 'function') changeGameState(GAME_STATES.LEVEL_UP); 
+    if (typeof renderLevelUpScreen === 'function') renderLevelUpScreen();
     
     return true;
 }
@@ -4262,7 +5169,10 @@ function handleCombatAction(action) {
     render();
 }
 
-// --- SHIPYARD UI ---
+// ==========================================
+// --- SHIPYARD UI & PURCHASING LOGIC ---
+// ==========================================
+
 function displayShipyard() {
     openGenericModal("STARBASE SHIPYARD");
     const listEl = document.getElementById('genericModalList');
@@ -4276,25 +5186,44 @@ function displayShipyard() {
             <p style="color:var(--item-desc-color); font-size:12px;">Select a hull from the manifest on the left to view its specifications and place an order.</p>
         </div>
     `;
+    document.getElementById('genericModalActions').innerHTML = '';
 
     // 2. Populate the Manifest
     listEl.innerHTML = '';
-    Object.keys(SHIP_CLASSES).forEach(shipId => {
+    
+    for (const shipId in SHIP_CLASSES) {
         const ship = SHIP_CLASSES[shipId];
         const row = document.createElement('div');
         row.className = 'trade-item-row';
         
-        // Highlight the currently equipped ship
+        // --- FACTION LOCK LOGIC ---
+        let isLocked = false;
+        if (ship.reqFaction) {
+            const standing = playerFactionStanding[ship.reqFaction] || 0;
+            if (standing < ship.minRep) {
+                isLocked = true;
+            }
+        }
+
         const isCurrent = playerShip.shipClass === shipId;
-        const nameColor = isCurrent ? "var(--success)" : "var(--text-color)";
-        const costLabel = isCurrent ? "OWNED" : `${formatNumber(ship.baseCost)}c`;
         
-        row.innerHTML = `<span style="color:${nameColor}">${isCurrent ? '▶ ' : ''}${ship.name}</span> <span style="color:var(--gold-text)">${costLabel}</span>`;
-        
-        row.onclick = () => showShipDetails(shipId); 
+        if (isLocked) {
+            row.style.opacity = '0.4';
+            row.innerHTML = `<span style="color:var(--danger); font-weight:bold;">🔒 RESTRICTED CHASSIS</span> <span style="color:var(--text-color); font-size:10px;">${ship.reqFaction} MILITARY</span>`;
+            row.onclick = () => {
+                detailEl.innerHTML = `<div style="text-align:center; padding:30px;"><div style="font-size:50px; margin-bottom:15px;">🛑</div><h3 style="color:var(--danger);">ACCESS DENIED</h3><p style="color:#888;">Clearance Level Too Low. Requires ${ship.minRep} ${ship.reqFaction} Reputation.</p></div>`;
+                document.getElementById('genericModalActions').innerHTML = `<button class="action-button danger-btn" disabled>RESTRICTED</button>`;
+                if (typeof soundManager !== 'undefined') soundManager.playError();
+            };
+        } else {
+            const nameColor = isCurrent ? "var(--success)" : "var(--text-color)";
+            const costLabel = isCurrent ? "OWNED" : `${formatNumber(ship.baseCost)}c`;
+            row.innerHTML = `<span style="color:${nameColor}">${isCurrent ? '▶ ' : ''}${ship.name}</span> <span style="color:var(--gold-text)">${costLabel}</span>`;
+            row.onclick = () => showShipDetails(shipId); 
+        }
         
         listEl.appendChild(row);
-    });
+    }
 }
 
 function showShipDetails(shipId) {
@@ -4315,13 +5244,13 @@ function showShipDetails(shipId) {
     }
     
     const tradeIn = baseTradeIn + componentsRefund;
-    const cost = ship.baseCost - tradeIn;
+    const netCost = ship.baseCost - tradeIn;
     
-    // 3. Render HTML (Now with Ship Art injection!)
+    // 3. Render HTML
     let html = `
         <div style="text-align:center; padding-top: 10px;">
             ${ship.image 
-                ? `<img src="${ship.image}" style="width:100%; max-width:200px; height:auto; margin: 0 auto 15px; display:block; filter: drop-shadow(0 0 10px rgba(0,224,224,0.2));">` 
+                ? `<img src="${ship.image}" style="width:100%; max-width:200px; height:auto; margin: 0 auto 15px; display:block; border:1px solid var(--accent-color); border-radius:4px; box-shadow: 0 0 15px rgba(0,224,224,0.2);" onerror="this.src='assets/outpost.png'">` 
                 : `<div style="font-size:60px; text-align:center; margin-bottom:15px; opacity:0.5; filter: hue-rotate(180deg);">🚀</div>`
             }
             <h3 style="color:var(--accent-color); margin-top:0;">${ship.name.toUpperCase()}</h3>
@@ -4329,25 +5258,35 @@ function showShipDetails(shipId) {
         <p style="text-align:center; font-size:13px; color:var(--item-desc-color); margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #333;">${ship.description}</p>
         
         <div class="trade-math-area">
-            <div class="trade-stat-row"><span>Hull:</span> <span>${formatNumber(ship.baseHull)}</span></div>
-            <div class="trade-stat-row"><span>Cargo:</span> <span>${formatNumber(ship.cargoCapacity)}</span></div>
-            <div class="trade-stat-row"><span>Base Cost:</span> <span>${formatNumber(ship.baseCost)}c</span></div>
-            <div class="trade-stat-row" style="color:#888"><span>Trade-In:</span> <span>-${formatNumber(tradeIn)}c</span></div>
-            <div class="total-cost-display">NET COST: ${formatNumber(cost)}c</div>
+            <div class="trade-stat-row"><span>Max Hull:</span> <span style="color:var(--success)">${formatNumber(ship.baseHull)}</span></div>
+            <div class="trade-stat-row"><span>Cargo Bay:</span> <span style="color:var(--accent-color)">${formatNumber(ship.cargoCapacity)} units</span></div>
+            <div class="trade-stat-row" style="margin-top:10px; border-top:1px dashed #444; padding-top:10px;">
+                <span>Chassis Base Cost:</span> <span>${formatNumber(ship.baseCost)}c</span>
+            </div>
+            <div class="trade-stat-row" style="color:#888">
+                <span>Trade-In Value:</span> <span>-${formatNumber(tradeIn)}c</span>
+            </div>
+            <div class="total-cost-display" style="margin-top:10px;">NET COST: ${formatNumber(netCost)}c</div>
+        </div>
+        
+        <div style="margin-top: 15px; padding: 10px; border: 1px solid var(--border-color); background: rgba(0,224,224,0.05); text-align:left;">
+            <span style="font-size:10px; color:var(--accent-color); letter-spacing:1px; display:block; margin-bottom:5px;">COMBAT PROTOCOL</span>
+            <span style="font-weight:bold; color:var(--text-color); font-size:12px;">${ship.ability.name}:</span>
+            <span style="font-size:12px; color:var(--item-desc-color);">${ship.ability.desc}</span>
         </div>
     `;
     
     document.getElementById('genericDetailContent').innerHTML = html;
     
-    // --- Check if cargo fits in the new ship ---
+    // --- Purchase Logic ---
     const cargoTooLarge = currentCargoLoad > ship.cargoCapacity;
-    let btnLabel = 'PURCHASE VESSEL';
+    let btnLabel = `COMMISSION VESSEL (${formatNumber(netCost)}c)`;
     let isDisabled = '';
 
     if (playerShip.shipClass === shipId) {
         btnLabel = 'CURRENTLY EQUIPPED';
         isDisabled = 'disabled';
-    } else if (playerCredits < cost) {
+    } else if (playerCredits < netCost) {
         btnLabel = 'INSUFFICIENT FUNDS';
         isDisabled = 'disabled';
     } else if (cargoTooLarge) {
@@ -4355,39 +5294,41 @@ function showShipDetails(shipId) {
         isDisabled = 'disabled';
     }
 
-    const btnHtml = `
-        <button class="action-button" ${isDisabled} 
-            onclick="confirmBuyShip('${shipId}', ${cost}, ${componentsRefund})">
+    document.getElementById('genericModalActions').innerHTML = `
+        <button class="action-button" ${isDisabled} style="${isDisabled ? '' : 'border-color:var(--success); color:var(--success); box-shadow: 0 0 15px rgba(0,255,0,0.2);'}" 
+            onclick="confirmBuyShip('${shipId}', ${netCost}, ${componentsRefund})">
             ${btnLabel}
         </button>
     `;
-    document.getElementById('genericModalActions').innerHTML = btnHtml;
 }
 
-function confirmBuyShip(shipId, cost, componentsRefund = 0) {
-    if(playerCredits < cost) return;
-    
-    // Safety block: prevent exploit
+function confirmBuyShip(shipId, netCost, componentsRefund = 0) {
     const newShip = SHIP_CLASSES[shipId];
+    
+    // Safety blocks
+    if (playerCredits < netCost) {
+        if (typeof showToast === 'function') showToast("INSUFFICIENT FUNDS", "error");
+        return;
+    }
     if (currentCargoLoad > newShip.cargoCapacity) {
         if (typeof showToast === 'function') showToast("CARGO EXCEEDS NEW SHIP CAPACITY", "error");
-        logMessage("Purchase failed: Cargo exceeds new ship capacity.");
         return;
     }
 
-    playerCredits -= cost;
+    // Execute Transaction
+    playerCredits -= netCost;
     playerShip.shipClass = shipId;
 
-    // Reset components to defaults
-     playerShip.components = {
-         weapon: "WEAPON_PULSE_LASER_MK1",
-         shield: "SHIELD_BASIC_ARRAY_A",
-         engine: "ENGINE_STD_DRIVE_MK1",
-         scanner: "SCANNER_BASIC_SUITE",
-         utility: "UTIL_NONE"
-     };
+    // Reset components to defaults (Stripped Chassis)
+    playerShip.components = {
+        weapon: "WEAPON_PULSE_LASER_MK1",
+        shield: "SHIELD_BASIC_ARRAY_A",
+        engine: "ENGINE_STD_DRIVE_MK1",
+        scanner: "SCANNER_BASIC_SUITE",
+        utility: "UTIL_NONE"
+    };
 
-    // --- Initialize Ammo for the default weapon (if applicable) ---
+    // Initialize Ammo
     const defaultWeapon = COMPONENTS_DATABASE[playerShip.components.weapon];
     if (defaultWeapon && defaultWeapon.stats.maxAmmo) {
         playerShip.ammo[playerShip.components.weapon] = defaultWeapon.stats.maxAmmo;
@@ -4399,83 +5340,16 @@ function confirmBuyShip(shipId, cost, componentsRefund = 0) {
     playerShields = MAX_SHIELDS; 
     playerFuel = MAX_FUEL; 
 
-    // Text Log Message
-    let successMsg = `Transaction complete! Welcome to your new ${newShip.name}!`;
-    if (componentsRefund > 0) {
-        successMsg += `\n(Includes ${componentsRefund}c refund for old components)`;
-    }
-    logMessage(successMsg);
-
-    // Handle UI & Context Cleanup
-    if (typeof soundManager !== 'undefined') soundManager.playUIClick();
-    if (typeof showToast === 'function') showToast("VESSEL PURCHASED", "success");
+    // Log & UI Updates
+    logMessage(`Transaction complete! Welcome to your new ${newShip.name}!`);
     
-    if (document.getElementById('genericModalOverlay').style.display === 'flex') {
-        closeGenericModal();
-        openStationView(); // Refresh station hub if visual modal was used
-    }
-
-    currentShipyardContext = null;
-    handleInteraction(); // Refresh text view
+    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    if (typeof showToast === 'function') showToast("VESSEL COMMISSIONED", "success");
+    
+    closeGenericModal();
+    openStationView(); // Refresh station hub
     renderUIStats();
 }
-
- function triggerDamageEffect() {
-    // 1. Shake the screen
-    const app = document.getElementById('app-container');
-    app.classList.remove('shake-effect'); // Reset
-    void app.offsetWidth; // Force reflow (magic trick to restart animation)
-    app.classList.add('shake-effect');
-
-    // 2. Red Flash
-    const flash = document.getElementById('damageFlash');
-    if(flash) {
-        flash.style.opacity = '1';
-        setTimeout(() => { flash.style.opacity = '0'; }, 100);
-    }
-}
-
-function displayShipPurchaseConfirmation(shipId) {
-     const ship = SHIP_CLASSES[shipId];
-     const oldShip = SHIP_CLASSES[playerShip.shipClass];
-     
-     let tradeInValue = Math.floor(oldShip.baseCost * 0.5); 
-     let componentsRefund = 0;
-     for (const slot in playerShip.components) {
-         const compId = playerShip.components[slot];
-         const compData = COMPONENTS_DATABASE[compId];
-         if (compData && compData.cost > 0) {
-             componentsRefund += Math.floor(compData.cost * 0.5);
-         }
-     }
-     tradeInValue += componentsRefund;
-     const finalCost = ship.baseCost - tradeInValue;
-
-     currentShipyardContext.step = 'confirmPurchase';
-     currentShipyardContext.selectedShipId = shipId;
-     currentShipyardContext.finalCost = finalCost;
-     currentShipyardContext.componentsRefund = componentsRefund;
-
-     let confirmMsg = `--- Purchase Confirmation ---\n\n`;
-     confirmMsg += `Ship: ${ship.name}\n`;
-     confirmMsg += `Cost: ${ship.baseCost}c\n`;
-     confirmMsg += `Trade-in (${oldShip.name}): -${tradeInValue}c\n`;
-     confirmMsg += `---------------------------\n`;
-     confirmMsg += `Final Cost: ${finalCost}c\n\n`;
-
-     if (playerCredits < finalCost) {
-         confirmMsg += `<span style='color:#FF5555;'>You cannot afford this ship.</span>\n`;
-     } else if (currentCargoLoad > ship.cargoCapacity) {
-         confirmMsg += `<span style='color:#FF5555;'>Your current cargo (${currentCargoLoad} units) exceeds this ship's capacity (${ship.cargoCapacity} units). Sell excess goods first.</span>\n`;
-         // Change step so 'Y' won't accidentally trigger the buy
-         currentShipyardContext.step = 'viewOnlyDetails'; 
-     } else {
-         confirmMsg += `Purchase this ship? Your current ship and all components will be traded in. (Y/N)`;
-     }
-
-     confirmMsg += "\n\n(L) to return to the shipyard list.";
-     logMessage(confirmMsg);;
- }
 
  /**
   * Handles the logic for repairing the player's ship hull at a station.
@@ -4503,11 +5377,12 @@ function repairShip() {
      logMessage(`Ship hull repaired for ${totalCost} credits.`);
      showToast(`HULL REPAIRED<br>-${totalCost} Credits`, "success");
 
- // --- REARM WEAPONS ---
+// --- REARM WEAPONS ---
      const weaponId = playerShip.components.weapon;
      const weapon = COMPONENTS_DATABASE[weaponId];
      
-     if (weapon.stats.maxAmmo) {
+     // Added safe checks so it doesn't crash if stats are missing!
+     if (weapon && weapon.stats && weapon.stats.maxAmmo) {
          playerShip.ammo[weaponId] = weapon.stats.maxAmmo;
          logMessage("Ordnance magazines reloaded.");
          // If hull was already full, we should still show a toast for ammo
@@ -4672,7 +5547,7 @@ function confirmBuyComponent(compId) {
          componentMsg += "No other upgrades currently available for this slot.\n";
      }
      componentMsg += "Enter # to purchase, or 'L' to go back.";
-     logMessage(componentMsg);;
+     logMessage(componentMsg);
  }
 
  function buyComponent(selectedComponentId) {
@@ -4701,7 +5576,7 @@ function confirmBuyComponent(compId) {
      unlockLoreEntry(component.loreKey);
      logMessage(`Installed ${component.name}. Old ${oldComponent.name} unequipped.\nCredits: ${playerCredits}`);
      currentOutfitContext = null;
-     handleInteraction();;
+     handleInteraction();
  }
 
  // --- LORE PROGRESSION SYSTEM ---
@@ -4988,6 +5863,21 @@ function foundColony() { logMessage("<span style='color:var(--success)'>COLONY E
      const commodity = location.buys[Math.floor(Math.random() * location.buys.length)];
      return commodity.id;
  }
+
+function triggerDamageEffect() {
+    // 1. Shake the screen
+    const app = document.getElementById('app-container');
+    app.classList.remove('shake-effect'); // Reset
+    void app.offsetWidth; // Force reflow (magic trick to restart animation)
+    app.classList.add('shake-effect');
+
+    // 2. Red Flash
+    const flash = document.getElementById('damageFlash');
+    if(flash) {
+        flash.style.opacity = '1';
+        setTimeout(() => { flash.style.opacity = '0'; }, 100);
+    }
+}
 
  function activateDistressBeacon() {
      if (playerFuel > 0) {
@@ -5556,6 +6446,9 @@ function renderCargoList() {
         const item = COMMODITIES[key];
         const qty = playerCargo[key];
         
+        // SAFETY CHECK: If the item doesn't exist in the database, skip rendering it!
+        if (!item) return; 
+        
         const row = document.createElement('div');
         row.className = 'trade-item-row';
         if (index === selectedCargoIndex) row.classList.add('selected');
@@ -5617,12 +6510,17 @@ function visitCryptarch() {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    // Initial landing view
+    // Initial landing view with the new custom image!
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 20px;">
-            <div style="font-size:60px; margin-bottom:15px; opacity:0.8; filter: hue-rotate(280deg);">👁️</div>
+            <img src="assets/cryptarch.png" alt="The Cryptarch" 
+                 style="width: 128px; height: 128px; object-fit: cover; image-rendering: pixelated; 
+                        border: 2px solid var(--accent-color); border-radius: 8px; margin-bottom: 15px; 
+                        box-shadow: 0 0 20px rgba(0, 224, 224, 0.2); background: #000;">
             <h3 style="color:var(--accent-color); margin-bottom:10px;">THE CRYPTARCH</h3>
-            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">"Secrets of the void, locked away in crystalline matrices. Bring me your engrams and data caches, and I will reveal their truths... for a price."</p>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                "Secrets of the void, locked away in crystalline matrices. Bring me your engrams and data caches, and I will reveal their truths... for a price."
+            </p>
         </div>
     `;
     actionsEl.innerHTML = '';
@@ -5896,27 +6794,7 @@ function handleTradeInput(key) {
     return true;
 }
 
- function handleShipyardInput(key) {
-     if (currentShipyardContext.step === 'selectShip') {
-         const selection = parseInt(key);
-         if (!isNaN(selection) && selection > 0 && selection <= currentShipyardContext.availableShips.length) {
-             displayShipPurchaseConfirmation(currentShipyardContext.availableShips[selection - 1].id);
-         } else if (key === 'l' || key === 'escape') {
-             currentShipyardContext = null;
-             handleInteraction();
-         }
-        } else if (currentShipyardContext.step === 'confirmPurchase') {
-         if (key === 'y') {
-             confirmBuyShip(currentShipyardContext.selectedShipId, currentShipyardContext.finalCost, currentShipyardContext.componentsRefund);
-         } else if (key === 'n' || key === 'l') {
-             displayShipyard();
-         }
-     }
-     // We always "handle" input when the shipyard is open
-     return true;
- }
-
- function handleCombatInput(key) {
+function handleCombatInput(key) {
      if (!currentCombatContext) return false;
 
      // Map keys to actions
@@ -5946,163 +6824,184 @@ function handleTradeInput(key) {
  }
 
  function handleGalacticMapInput(key) {
-     // --- 1. DOCKED ACTIONS ---
-     const currentLocation = getCombinedLocationData(playerY, playerX);
-     if (currentLocation) {
-         switch (key) {
-             case 'b':
-                openTradeModal('buy'); // Changed from displayTradeScreen
+    // --- 1. DOCKED ACTIONS ---
+    const currentLocation = getCombinedLocationData(playerY, playerX);
+    if (currentLocation) {
+        switch (key) {
+            case 'b':
+                openTradeModal('buy'); 
                 return true;
             case 's':
-                openTradeModal('sell'); // Changed from displayTradeScreen
+                openTradeModal('sell'); 
                 return true;
-             case 'o':
-                 if (currentLocation.isMajorHub) {
-                     displayOutfittingScreen();
-                     return true;
-                 }
-                 break; // Not a major hub, might be a movement key
-             case 'k':
-                 if (currentLocation.isMajorHub) {
-                     displayMissionBoard();
-                     return true;
-                 }
-                 break; // Not a major hub
-             case 'y':
-                 if (currentLocation.isMajorHub) {
-                     displayShipyard();
-                     return true;
-                 }
-                 break; // Not a major hub
-            // NEW: Generic Interact Key
-             case 'e': 
-             case 'enter':
-             case 'space':
-                // Default to opening Trade, or Shipyard if available
+            case 'o':
                 if (currentLocation.isMajorHub) {
-                    displayMissionBoard(); // Opens Mission Board as the "Lobby"
+                    displayOutfittingScreen();
+                    return true;
+                }
+                break; 
+            case 'k':
+                if (currentLocation.isMajorHub) {
+                    displayMissionBoard();
+                    return true;
+                }
+                break; 
+            case 'y':
+                if (currentLocation.isMajorHub) {
+                    displayShipyard();
+                    return true;
+                }
+                break; 
+            // Generic Interact Key
+            case 'e': 
+            case 'enter':
+            case 'space':
+                if (currentLocation.isMajorHub) {
+                    displayMissionBoard(); 
                 } else {
-                    openTradeModal('buy'); // Outposts just open Trade
+                    openTradeModal('buy'); 
                 }
                 return true;
-             case 'c':
-                 if (playerActiveMission && playerActiveMission.type === "DELIVERY") {
-                     handleCompleteDelivery();
-                     return true;
-                 }
-                 break; // No delivery
-             case 'g':
-                 if (playerActiveMission && playerActiveMission.isComplete && currentLocation.name === playerActiveMission.giver) {
-                     grantMissionRewards();
-                     return true;
-                 }
-
-                 if (playerActiveMission && playerActiveMission.type === "ACQUIRE" && !playerActiveMission.isComplete && currentLocation.name === playerActiveMission.giver) {
-                     handleTurnInAcquire();
-                     return true;
-                 }
-                 break; // No reward or turn-in
-
-             case 'r':
-                 if (playerHull < MAX_PLAYER_HULL) {
-                     repairShip();
-                     return true;
-                 }
-                 break; // Not damaged, or 'r' might be used for something else in space
-
+            case 'c':
+                if (playerActiveMission && playerActiveMission.type === "DELIVERY") {
+                    handleCompleteDelivery();
+                    return true;
+                }
+                break; 
+            case 'g':
+                if (playerActiveMission && playerActiveMission.isComplete && currentLocation.name === playerActiveMission.giver) {
+                    grantMissionRewards();
+                    return true;
+                }
+                if (playerActiveMission && playerActiveMission.type === "ACQUIRE" && !playerActiveMission.isComplete && currentLocation.name === playerActiveMission.giver) {
+                    handleTurnInAcquire();
+                    return true;
+                }
+                break; 
+            case 'r':
+                if (playerHull < MAX_PLAYER_HULL) {
+                    repairShip();
+                    return true;
+                }
+                break; 
             case 'v':
-                 visitCantina();
-                 return true;
+                // If docked, V goes to the Cantina
+                visitCantina();
+                return true;
+            case 'l':
+                handleInteraction();
+                return true;
+        }
+    }
 
-             case 'l':
-                 handleInteraction();
-                 return true;
-         }
-         // If we are here, we are docked but didn't press a valid docked key.
-         // We still check for movement/global keys below.
-     }
+    // --- 2. IN-SPACE & GLOBAL ACTIONS ---
+    let dx = 0, dy = 0;
+    switch (key) {
+        case 'w':
+        case 'arrowup':
+            dy = -1;
+            break;
+        case 's':
+        case 'arrowdown':
+            dy = 1;
+            break;
+        case 'a':
+        case 'arrowleft':
+            dx = -1;
+            break;
+        case 'd':
+        case 'arrowright':
+            dx = 1;
+            break;
+            
+        case 'e': { // <-- Added block scope { } to protect local variables!
+            const currentTile = chunkManager.getTile(playerX, playerY);
+            // Safely get the character
+            let tileChar = '.';
+            if (typeof getTileChar === 'function') tileChar = getTileChar(currentTile);
+            else if (currentTile && currentTile.char) tileChar = currentTile.char;
 
-     // --- 2. IN-SPACE & GLOBAL ACTIONS ---
-     let dx = 0,
-         dy = 0;
-     switch (key) {
-         case 'w':
-         case 'arrowup':
-             dy = -1;
-             break;
-         case 's':
-         case 'arrowdown':
-             dy = 1;
-             break;
-         case 'a':
-         case 'arrowleft':
-             dx = -1;
-             break;
-         case 'd':
-         case 'arrowright':
-             dx = 1;
-             break;
-         case 'e':
-             const currentTile = chunkManager.getTile(playerX, playerY);
-             const tileChar = getTileChar(currentTile);
+            triggerSensorPulse();
 
-             triggerSensorPulse();
+            if (tileChar === STAR_CHAR_VAL) {
+                currentSystemData = generateStarSystem(playerX, playerY);
+                if (typeof selectedPlanetIndex !== 'undefined') selectedPlanetIndex = -1;
 
-             if (tileChar === STAR_CHAR_VAL) {
-                 currentSystemData = generateStarSystem(playerX, playerY);
-                 selectedPlanetIndex = -1;
+                changeGameState(GAME_STATES.SYSTEM_MAP);
+                logMessage(`Entering ${currentSystemData.name}...`);
+                if (typeof showToast === 'function') showToast(`SYSTEM ORBIT:<br>${currentSystemData.name.toUpperCase()}`, "info");
 
-                 // Use the centralized function to ensure scrollbars update
-                 changeGameState(GAME_STATES.SYSTEM_MAP);
+            } else {
+                setTimeout(() => {
+                    if (typeof scanLocation === 'function') scanLocation();
+                }, 300);
+            }
+            return true;
+        }
+        
+        // --- HOTKEY: DEEP SCAN (V) ---
+        case 'v': { // <-- Added block scope { } here too!
+            const currentTile = chunkManager.getTile(playerX, playerY);
+            let tileChar = '.';
+            if (typeof getTileChar === 'function') tileChar = getTileChar(currentTile);
+            else if (currentTile && currentTile.char) tileChar = currentTile.char;
+            
+            if (tileChar === STAR_CHAR_VAL) {
+                const starData = generateStarData(playerX, playerY);
+                const starId = `${playerX}_${playerY}`;
+                
+                if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+                evaluateStar(starData, starId);
+            } else {
+                logMessage("Deep scanners read nothing but the void.");
+            }
+            return true;
+        }
+        
+        case 'h':
+            if (typeof scoopHydrogen === 'function') scoopHydrogen();
+            return true;
+        case 'm':
+            if (typeof mineAsteroid === 'function') mineAsteroid();
+            return true;
+        case 'j':
+            if (typeof toggleCodex === 'function') toggleCodex(true);
+            return true;
+        case 'i':
+            if (typeof openCargoModal === 'function') openCargoModal();
+            return true;
+            
+        case 't': { // <-- And here!
+            const tileForWormhole = chunkManager.getTile(playerX, playerY);
+            let whType = '';
+            if (typeof getTileType === 'function') whType = getTileType(tileForWormhole);
+            
+            if (whType === 'wormhole' && typeof traverseWormhole === 'function') traverseWormhole();
+            else logMessage("No wormhole here.");
+            return true;
+        }
+        
+        case '.': 
+            logMessage("Holding position. Systems recharging...");
+            if (typeof advanceGameTime === 'function') advanceGameTime(0.15); 
+            if (typeof render === 'function') render(); 
+            return true;
+        case 'f6':
+            if (typeof saveGame === 'function') saveGame();
+            return true;
+        case 'f7':
+            if (typeof loadGame === 'function') loadGame();
+            return true;
+        default:
+            // Not a recognized global key
+            if (dx === 0 && dy === 0) return false; 
+    }
 
-                 logMessage(`Entering ${currentSystemData.name}...`);
-
-                 if (typeof showToast === 'function') showToast(`SYSTEM ORBIT:<br>${currentSystemData.name.toUpperCase()}`, "info");
-
-             } else {
-                 setTimeout(() => {
-                     scanLocation();
-                 }, 300);
-             }
-             return true;
-         case 'h':
-             scoopHydrogen();
-             return true;
-         case 'm':
-             mineAsteroid();
-             return true;
-         case 'j':
-             toggleCodex(true);
-             return true;
-         case 'i':
-             openCargoModal();
-             return true;
-         case 't':
-             const tileForWormhole = chunkManager.getTile(playerX, playerY);
-             if (getTileType(tileForWormhole) === 'wormhole') traverseWormhole();
-             else logMessage("No wormhole here.");
-             return true;
-         case '.': // The Period key
-             logMessage("Holding position. Systems recharging...");
-             advanceGameTime(0.15); // Pass time to allow shield regen
-             render(); // Update the screen
-             return true;
-         case 'f6':
-             saveGame();
-             return true;
-         case 'f7':
-             loadGame();
-             return true;
-         default:
-             // Not a recognized global key
-             if (dx === 0 && dy === 0) return false; // Not handled
-     }
-
-     if (dx !== 0 || dy !== 0) {
-         movePlayer(dx, dy);
-     }
-     return true; // Handled movement
- }
+    if (dx !== 0 || dy !== 0) {
+        if (typeof movePlayer === 'function') movePlayer(dx, dy);
+    }
+    return true; 
+}
 
  function handleSystemMapInput(key) {
      if (key === 'e') {
@@ -6134,28 +7033,27 @@ let lastInputTime = 0;
 const INPUT_DELAY = 120; // 120ms cooldown between moves (Adjust this to change "weight")
 
 document.addEventListener('keydown', function(event) {
-        // --- 0. BLOCK INPUT IF TYPING ---
+    // --- 0. BLOCK INPUT IF TYPING ---
     if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-        // Allow strictly necessary keys (Enter to submit, Escape to blur)
+        // Allow Enter and Escape to pass through for specific UI handlers (like the Spire hack!)
         if (event.key === 'Enter' || event.key === 'Escape') {
-            // Let these pass through to specific handlers if needed, 
-            // or just let default behavior happen.
+            // Let it pass through
         } else {
-            return; // Stop game from processing WASD/UI keys while typing
+            return; // Stop game from processing movement/UI keys while typing
         }
     }
-     const key = event.key.toLowerCase();
+    
+    const key = event.key.toLowerCase();
 
-     // 1. TIMING CHECK (The Smoother)
-     // We only throttle movement keys. Menu keys (Escape, I, etc.) should be instant.
-     const isMovementKey = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key);
-     const now = Date.now();
+    // 1. TIMING CHECK (The Smoother)
+    const isMovementKey = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key);
+    const now = Date.now();
 
-     if (isMovementKey && (now - lastInputTime < INPUT_DELAY)) {
-         return; // Ignore input if too fast
-     }
+    if (isMovementKey && (now - lastInputTime < INPUT_DELAY)) {
+        return; // Ignore input if too fast
+    }
 
-     // --- DEV CHEATS ---
+    // --- DEV CHEATS ---
     if (key === '$') {
         playerCredits += 50000;
         playerHull = MAX_PLAYER_HULL;
@@ -6166,55 +7064,61 @@ document.addEventListener('keydown', function(event) {
     }
 
     // --- TACTICAL WAIT ---
-    if (key === ' ' || key === 'w') {
-        advanceGameTime(1.0); // Pushes the stardate forward
-        
-        // If you have a passive shield regen function, call it here!
-        // if (playerShields < MAX_SHIELDS) playerShields = Math.min(MAX_SHIELDS, playerShields + 5);
-        
+    // (Fixed: Removed 'w' so WASD 'Up' movement works again!)
+    if (key === ' ') {
+        if (typeof advanceGameTime === 'function') advanceGameTime(1.0); 
         logMessage("Systems cycling. You hold position and wait.");
         if (typeof renderUIStats === 'function') renderUIStats();
         return;
     }
 
-     if (currentGameState === GAME_STATES.TITLE_SCREEN) return;
+    // --- QoL: DOCK / INTERACT HOTKEY ---
+    // We removed 'e' from here so it can pass through to your native contextual menus!
+    // 'Enter' remains as a global backup.
+    if (key === 'enter' && currentGameState === GAME_STATES.GALACTIC_MAP && event.target.tagName !== 'INPUT') {
+        if (typeof reEnterCurrentTile === 'function') {
+            reEnterCurrentTile();
+        }
+        return;
+    }
 
-     let inputHandled = false;
+    if (currentGameState === GAME_STATES.TITLE_SCREEN) return;
 
-     // --- 2. Top-level "Blocking" Contexts (Menus, Overlays, etc.) ---
-     if (codexOverlayElement.style.display === 'flex') {
-         inputHandled = handleCodexInput(key);
-     } else if (currentOutfitContext && currentOutfitContext.step === 'viewingCargo') {
-         if (key === 'escape' || key === 'i') closeCargoModal();
-         inputHandled = true;
-     } else if (currentMissionContext) {
-         inputHandled = handleMissionInput(key);
-     } else if (currentOutfitContext) {
-         inputHandled = handleOutfitInput(key);
-     } else if (currentTradeContext) {
-         inputHandled = handleTradeInput(key);
-     } else if (currentShipyardContext) {
-         inputHandled = handleShipyardInput(key);
-     }
+    let inputHandled = false;
 
-     // --- 3. Game State Contexts ---
-     else if (currentGameState === GAME_STATES.COMBAT) {
-         inputHandled = handleCombatInput(key);
-     } else if (currentGameState === GAME_STATES.GALACTIC_MAP) {
-         inputHandled = handleGalacticMapInput(key);
-     } else if (currentGameState === GAME_STATES.SYSTEM_MAP) {
-         inputHandled = handleSystemMapInput(key);
-     } else if (currentGameState === GAME_STATES.PLANET_VIEW) {
-         inputHandled = handlePlanetViewInput(key);
-     }
+    // --- 2. Top-level "Blocking" Contexts (Menus, Overlays, etc.) ---
+    if (typeof codexOverlayElement !== 'undefined' && codexOverlayElement.style.display === 'flex') {
+        inputHandled = handleCodexInput(key);
+    } else if (typeof currentOutfitContext !== 'undefined' && currentOutfitContext && currentOutfitContext.step === 'viewingCargo') {
+        if (key === 'escape' || key === 'i') closeCargoModal();
+        inputHandled = true;
+    } else if (typeof currentMissionContext !== 'undefined' && currentMissionContext) {
+        inputHandled = handleMissionInput(key);
+    } else if (typeof currentOutfitContext !== 'undefined' && currentOutfitContext) {
+        inputHandled = handleOutfitInput(key);
+    } else if (typeof currentTradeContext !== 'undefined' && currentTradeContext) {
+        inputHandled = handleTradeInput(key);
+    } 
+    // (Fixed: Deleted the ghost Shipyard context check that was causing errors!)
 
-     // --- 4. Finalize ---
-     if (inputHandled) {
-         event.preventDefault();
-         // Only update the timer if we actually moved
-         if (isMovementKey) lastInputTime = now;
-     }
- });
+    // --- 3. Game State Contexts ---
+    else if (currentGameState === GAME_STATES.COMBAT) {
+        inputHandled = handleCombatInput(key);
+    } else if (currentGameState === GAME_STATES.GALACTIC_MAP) {
+        inputHandled = handleGalacticMapInput(key);
+    } else if (currentGameState === GAME_STATES.SYSTEM_MAP) {
+        inputHandled = handleSystemMapInput(key);
+    } else if (currentGameState === GAME_STATES.PLANET_VIEW) {
+        inputHandled = handlePlanetViewInput(key);
+    }
+
+    // --- 4. Finalize ---
+    if (inputHandled) {
+        event.preventDefault();
+        // Only update the timer if we actually moved
+        if (isMovementKey) lastInputTime = now;
+    }
+});
 
  // --- Theme Toggle Function ---
 function toggleTheme() {
@@ -6738,6 +7642,8 @@ function loadGameData(jsonString) {
         playerXP = savedState.playerXP;
         playerCrew = savedState.playerCrew || [];
 
+        xerxesPuzzleLevel = savedState.xerxesPuzzleLevel || 0;
+
         playerPerks = new Set(savedState.playerPerks || []); // Convert Array back to Set
         
         WORLD_SEED = savedState.WORLD_SEED;
@@ -7047,10 +7953,14 @@ function openStationView() {
     const location = chunkManager.getTile(playerX, playerY);
     if (!location) return;
 
-    // --- 1. XERXES REDIRECT ---
-    if (location.name === 'Planet Xerxes') {
-        openXerxesView();
-        return;
+    // --- 1. XERXES REDIRECT (UPDATED) ---
+    // If Xerxes is a Black Market, we bypass the old custom view 
+    // and let this updated station view handle it beautifully!
+    if (location.name === 'Planet Xerxes' && !location.isBlackMarket) {
+        if (typeof openXerxesView === 'function') {
+            openXerxesView();
+            return;
+        }
     }
 
     // --- 2. SETUP UI TEXT ---
@@ -7058,8 +7968,21 @@ function openStationView() {
     document.getElementById('stationNameTitle').textContent = location.name.toUpperCase();
     
     const faction = location.faction || getFactionAt(playerX, playerY);
-    document.getElementById('stationFactionBadge').textContent = faction;
-    document.getElementById('stationDescText').textContent = location.scanFlavor || "A frontier outpost on the edge of civilized space.";
+    const badgeEl = document.getElementById('stationFactionBadge');
+    badgeEl.textContent = faction;
+    
+    // Inject Black Market flavor text
+    let descText = location.scanFlavor || "A frontier outpost on the edge of civilized space.";
+    if (location.isBlackMarket) {
+        descText = "⚠️ SHADOW NETWORK SECURE NODE. ALL TRANSACTIONS ENCRYPTED.\n\n" + descText;
+        badgeEl.style.color = '#9C27B0'; // Give the badge a cool purple/illicit color
+        badgeEl.style.borderColor = '#9C27B0';
+    } else {
+        badgeEl.style.color = ''; // Reset to default
+        badgeEl.style.borderColor = '';
+    }
+    
+    document.getElementById('stationDescText').textContent = descText;
     
     // --- 3. SETUP STATION IMAGE ---
     const canvas = document.getElementById('stationCanvas');
@@ -7069,14 +7992,12 @@ function openStationView() {
         if (!img) {
             img = document.createElement('img');
             img.id = 'stationStaticImg';
-            // Apply your styling
             Object.assign(img.style, {
                 width: '100%',
-                maxWidth: '240px',
                 height: 'auto',
                 border: '1px solid var(--border-color)',
                 borderRadius: '8px',
-                display: 'none', // Keep hidden until loaded
+                display: 'none', 
                 margin: '0 auto 15px auto',
                 boxShadow: '0 0 20px rgba(0,224,224,0.2)',
                 background: 'rgba(0,0,0,0.3)'
@@ -7085,125 +8006,195 @@ function openStationView() {
         }
         
         // --- ASSET RESOLUTION ---
-        let targetSrc = 'assets/outpost.png';
-        if (location.name === 'Aegis Dyson Sphere') {
-            targetSrc = 'assets/dyson_sphere.png';
+        let targetSrc = 'assets/outpost.png'; 
+        
+        // Reset styles before applying
+        img.style.maxWidth = '240px'; 
+        img.style.borderColor = 'var(--border-color)'; 
+        img.style.boxShadow = '0 0 20px rgba(0,224,224,0.2)';
+
+        // 1. Specific Unique Locations
+        if (location.name === 'The Rusty Anchor') {
+            targetSrc = 'assets/rusty_anchor.png'; 
+            img.style.maxWidth = '240px'; 
+            img.style.borderColor = '#9C27B0'; 
+            img.style.boxShadow = '0 0 30px rgba(156, 39, 176, 0.4)';
+        } else if (location.name === 'Aegis Dyson Sphere') {
+            targetSrc = 'assets/dyson_sphere.png'; 
+        } 
+        
+        // 2. Generic Category Fallbacks 
+        else if (location.isBlackMarket) {
+            targetSrc = 'assets/black_market.png'; 
+            img.style.maxWidth = '100%'; 
+            img.style.borderColor = '#9C27B0'; 
+            img.style.boxShadow = '0 0 30px rgba(156, 39, 176, 0.4)';
         } else if (location.isMajorHub) {
-            targetSrc = 'assets/starbase_alpha.png';
+            targetSrc = 'assets/starbase_alpha.png'; 
         }
 
         // Logic to ensure the image actually shows up
         img.onload = () => {
             canvas.style.display = 'none';
             img.style.display = 'block';
+            if (typeof soundManager !== 'undefined' && typeof soundManager.playUIRefresh === 'function') {
+                soundManager.playUIRefresh();
+            }
         };
 
+        // Bulletproof Fallback
         img.onerror = () => {
-            console.warn(`Failed to load ${targetSrc}, falling back to starbase_alpha.`);
-            img.src = 'assets/starbase_alpha.png';
+            console.warn(`Failed to load ${targetSrc}, falling back to default outpost.`);
+            img.onerror = null; // Prevent infinite loops
+            img.src = 'assets/outpost.png'; 
         };
 
-        // Adding a timestamp ?t= avoids cache issues if you're iterating on the art
-        img.src = targetSrc + "?t=" + new Date().getTime(); 
+        // Load the image WITHOUT the ?t= parameter so local files work!
+        img.src = targetSrc;
     }
     
     // 4. Render Dynamic Menu
-    renderStationMenu(location, faction);
+    if (typeof renderStationMenu === 'function') renderStationMenu(location, faction);
     
     // 5. Borders
-    updateSideBorderVisibility();
+    if (typeof updateSideBorderVisibility === 'function') updateSideBorderVisibility();
 }
 
 // --- STATION MAINTENANCE ACTIONS ---
+
+// ==========================================
+// --- SMART REFUELING LOGIC ---
+// ==========================================
 function refuelShip() {
-    const missingFuel = Math.floor(MAX_FUEL - playerFuel);
-    
-    if (missingFuel <= 0) {
-        showToast("Fuel tanks are already at maximum capacity.", "info");
+    if (playerFuel >= MAX_FUEL) {
+        if (typeof showToast === 'function') showToast("TANK ALREADY FULL", "info");
+        logMessage("Fuel tanks are already at maximum capacity.");
         return;
     }
 
-    const cost = missingFuel; // 1 credit per unit of fuel
+    const fuelNeeded = MAX_FUEL - playerFuel;
+    
+    // NOTE: Set this to match whatever your actual fuel price is in your economy!
+    const FUEL_PRICE_PER_UNIT = 1; 
+    const totalCost = fuelNeeded * FUEL_PRICE_PER_UNIT;
 
-    if (playerCredits >= cost) {
-        // Full Refuel
-        playerCredits -= cost;
+    // 1. SUCCESS: Player can afford the full tank
+    if (playerCredits >= totalCost) {
+        playerCredits -= totalCost;
         playerFuel = MAX_FUEL;
-        logMessage(`Ship refueled to maximum capacity for ${cost}c.`);
-        if (typeof showToast === 'function') showToast(`REFUELED: Paid ${cost}c`, "success");
-        if (typeof soundManager !== 'undefined') soundManager.playGain();
-    } else if (playerCredits > 0) {
-        // Partial Refuel (If the player is poor!)
-        const affordableFuel = playerCredits;
-        playerCredits -= affordableFuel;
-        playerFuel += affordableFuel;
-        logMessage(`Partially refueled ${affordableFuel} units for ${affordableFuel}c.`);
-        if (typeof showToast === 'function') showToast(`PARTIAL REFUEL: Paid ${affordableFuel}c`, "success");
-        if (typeof soundManager !== 'undefined') soundManager.playGain();
-    } else {
-        // Broke
-        if (typeof showToast === 'function') showToast("INSUFFICIENT FUNDS", "error");
-        if (typeof soundManager !== 'undefined') soundManager.playError();
-        return;
+        
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+        if (typeof showToast === 'function') showToast(`REFUELED: -${totalCost}c`, "success");
+        logMessage(`Ship refueled to maximum capacity for ${totalCost} credits.`);
+    } 
+    // 2. PARTIAL FILL: Player can't afford a full tank, give them what they can afford
+    else {
+        const affordableFuel = Math.floor(playerCredits / FUEL_PRICE_PER_UNIT);
+        
+        if (affordableFuel > 0) {
+            const cost = affordableFuel * FUEL_PRICE_PER_UNIT;
+            playerCredits -= cost; // Drain their remaining credits
+            playerFuel += affordableFuel; // Give them the fuel
+            
+            if (typeof soundManager !== 'undefined') soundManager.playBuy();
+            if (typeof showToast === 'function') showToast(`PARTIAL REFUEL: -${cost}c`, "warning");
+            logMessage(`<span style='color:var(--warning)'>Insufficient funds for a full tank. The dockworker filled ${affordableFuel} units for ${cost} credits.</span>`);
+        } 
+        // 3. COMPLETELY BROKE: Can't even afford 1 unit of fuel
+        else {
+            if (typeof soundManager !== 'undefined') soundManager.playError();
+            if (typeof showToast === 'function') showToast("INSUFFICIENT FUNDS", "error");
+            logMessage("<span style='color:var(--danger)'>You don't have enough credits to buy even a single drop of fuel.</span>");
+        }
     }
 
-    renderUIStats();
-    
-    // Refresh the visual menu so the button instantly changes to "Tanks Full"
-    const location = chunkManager.getTile(playerX, playerY);
-    const faction = location.faction || getFactionAt(playerX, playerY);
-    renderStationMenu(location, faction);
+    // Refresh the UI to show the new fuel level and credit balance
+    if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
 }
 
 function renderStationMenu(location, faction) {
     const menuGrid = document.getElementById('dynamicStationMenu');
     let html = '';
 
+    // --- SAVE FILE COMPATIBILITY PATCH ---
+    // Forces the game to recognize Xerxes as a Black Market even on old save files!
+    const isBlackMarketNode = location.isBlackMarket || location.name === 'Planet Xerxes' || location.name === 'Xerxes Prime';
+
+    // If it's an old save file and the inventory is empty, retroactively inject the new items!
+    if (isBlackMarketNode && (!location.sells || location.sells.length === 0)) {
+        if (typeof LOCATIONS_DATA !== 'undefined' && LOCATIONS_DATA['Planet Xerxes']) {
+            location.sells = JSON.parse(JSON.stringify(LOCATIONS_DATA['Planet Xerxes'].sells));
+            location.buys = JSON.parse(JSON.stringify(LOCATIONS_DATA['Planet Xerxes'].buys));
+            location.isBlackMarket = true;
+        }
+    }
+    // --------------------------------------
+
     // Helper for generating buttons
-    const createBtn = (icon, title, sub, action, extraStyle="") => `
-        <button class="station-action-btn" style="${extraStyle}" onclick="${action}">
+    const createBtn = (icon, title, sub, action, extraStyle="", extraClass="") => `
+        <button class="station-action-btn ${extraClass}" style="${extraStyle}" onclick="${action}">
             <div class="btn-icon">${icon}</div>
-            <div class="btn-label">${title}<br><span class="btn-sub">${sub}</span></div>
+            <div>
+                <div class="btn-label">${title}</div>
+                <span class="btn-sub">${sub}</span>
+            </div>
         </button>
     `;
 
-    // --- STANDARD SERVICES (Available everywhere) ---
-    html += createBtn('🛒', 'Marketplace', 'Buy Commodities', "openTradeModal('buy')");
-    html += createBtn('💰', 'Sell Cargo', 'Offload Goods', "openTradeModal('sell')");
+    // --- 1. TRADE & COMMERCE (Black Market Integration) ---
+    if (isBlackMarketNode) {
+        html += createBtn('💀', 'Shadow Network: Buy', 'Acquire illicit goods', "openTradeModal('buy')", "", "xerxes-btn xerxes-spire-btn");
+        html += createBtn('💰', 'Shadow Network: Sell', 'Fence contraband', "openTradeModal('sell')", "", "xerxes-btn xerxes-spire-btn");
+    } else {
+        if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) {
+            html += createBtn('🛒', 'Marketplace', 'Buy Commodities', "openTradeModal('buy')");
+            html += createBtn('💰', 'Sell Cargo', 'Offload Goods', "openTradeModal('sell')");
+        }
+    }
+
+    // --- 2. STANDARD SERVICES ---
     html += createBtn('📜', 'Mission Board', 'Contracts & Bounties', "displayMissionBoard()");
     html += createBtn('⚙️', 'Outfitting', 'Upgrades & Parts', "displayOutfittingScreen()");
     html += createBtn('🍸', 'Cantina', 'Rumors & Rest (10c)', "visitCantina()");
 
-    // --- MAJOR HUB ONLY SERVICES ---
-    let cryptarchRendered = false; // Flag to prevent rendering the button twice
-
+    // --- 3. MAJOR HUB ONLY SERVICES ---
+    let cryptarchRendered = false; 
     if (location.isMajorHub) {
         html += createBtn('🚀', 'Shipyard', 'Buy New Hulls', "displayShipyard()");
-        html += createBtn('👁️', 'Cryptarch', 'Decrypt Engrams', "visitCryptarch()");
-        cryptarchRendered = true;
+        
+        // Explicitly ban the Cryptarch from The Rusty Anchor
+        if (location.name !== 'The Rusty Anchor') {
+            html += createBtn('👁️', 'Cryptarch', 'Decrypt Engrams', "visitCryptarch()");
+            cryptarchRendered = true;
+        }
     }
 
-    // --- LOCATION SPECIFIC SERVICES ---
-    if (!cryptarchRendered && (location.name === 'Planet Xerxes' || location.name === 'Xerxes Prime')) { 
-        html += createBtn('👁️', 'The Cryptarch', 'Decrypt Data', "visitCryptarch()", "border-left: 3px solid #00E0E0;");
+    // --- 4. LOCATION SPECIFIC SERVICES ---
+    // Prevent the Black Market fallback from giving it to the Anchor either
+    if (!cryptarchRendered && isBlackMarketNode && location.name !== 'The Rusty Anchor') { 
+        html += createBtn('👁️', 'The Cryptarch', 'Decrypt Data', "visitCryptarch()", "border-left: 3px solid #9C27B0;");
     }
 
     // --- FACTION SPECIFIC SERVICES ---
     if (faction === 'CONCORD') {
-        html += createBtn('⚖️', 'Security Office', 'Clear Bounties', "openSecurityOffice()", "border-left: 3px solid #00E0E0;");
+        html += createBtn('⚖️', 'Security Office', 'Clear Bounties', "clearConcordBounty()", "border-left: 3px solid var(--accent-color);");
+        html += createBtn('🛡️', 'Aegis Armory', 'Concord Gear', "openConcordArmory()", "border-left: 3px solid var(--accent-color);");
+        html += createBtn('📡', 'Naval Command', 'Hire Escort', "requestConcordEscort()", "border-left: 3px solid var(--accent-color);");
     } else if (faction === 'KTHARR') {
-        html += createBtn('⚔️', 'Proving Grounds', 'Arena Betting', "factionAction('KTHARR')", "border-left: 3px solid #FF5555;");
+        html += createBtn('⚔️', 'Proving Grounds', 'Arena Betting', "openKtharrProvingGrounds()", "border-left: 3px solid var(--danger);");
+        html += createBtn('🍖', 'The Blood Pits', 'Bio-Trade', "openBloodPitsTrade()", "border-left: 3px solid var(--danger);");
+        html += createBtn('💀', 'Rite of Combat', 'Challenge Warlord', "challengeKtharrWarlord()", "border-left: 3px solid var(--danger);");
     } else if (faction === 'ECLIPSE') {
-        html += createBtn('🎲', 'Shadow Broker', 'Fence Contraband', "openShadowBroker()", "border-left: 3px solid #9933FF;");
+        html += createBtn('🎲', 'Shadow Broker', 'Fence Contraband', "fenceEclipseContraband()", "border-left: 3px solid #9933FF;");
+        html += createBtn('🪪', 'The Forger', 'Buy Fake ID', "buyFakeID()", "border-left: 3px solid #9933FF;");
+        html += createBtn('🗡️', 'Mercenary Den', 'Hire Shady Crew', "hireEclipseMercenary()", "border-left: 3px solid #9933FF;");
     }
 
-    // --- MAINTENANCE & LEAVE ---
-    // Fuel Calculation (1 Credit per Fuel Unit)
+    // --- 6. MAINTENANCE & LEAVE ---
     const missingFuel = Math.floor(MAX_FUEL - playerFuel);
     const refuelLabel = missingFuel > 0 ? `${missingFuel}c` : "Tanks Full";
     html += createBtn('⛽', 'Refuel', refuelLabel, "refuelShip()", "background: rgba(0, 224, 224, 0.05);");
 
-    // Repair Calculation
     const repairCost = Math.ceil((MAX_PLAYER_HULL - playerHull) * HULL_REPAIR_COST_PER_POINT);
     const repairLabel = repairCost > 0 ? `${repairCost}c` : "Hull 100%";
     html += createBtn('🔧', 'Repair Hull', repairLabel, "repairShip()", "background: rgba(255, 170, 0, 0.05);");
@@ -7213,71 +8204,263 @@ function renderStationMenu(location, faction) {
     menuGrid.innerHTML = html;
 }
 
-// --- FACTION MECHANICS IMPLEMENTATION ---
+// --- LEGACY WRAPPER (Prevents crashes from old code or events) ---
 function factionAction(faction) {
+    console.warn(`factionAction('${faction}') is deprecated. Routing to new modular system...`);
+    
     if (faction === 'CONCORD') {
-        // Clear Notoriety
-        if (playerNotoriety <= 0) {
-            showToast("Record Clean. Have a safe flight.", "info");
-            return;
-        }
-        const fine = playerNotoriety * 500;
-        if (playerCredits >= fine) {
-            playerCredits -= fine;
-            playerNotoriety = 0;
-            updateNotorietyTitle();
-            soundManager.playUIHover();
-            showToast(`CLEARED: Paid ${fine}c fine.`, "success");
-            renderUIStats();
-        } else {
-            showToast(`INSUFFICIENT FUNDS (${fine}c required)`, "error");
-        }
-    } 
-    else if (faction === 'KTHARR') {
-        // Arena Betting
-        const bet = 200;
-        if (playerCredits < bet) {
-            showToast("Not enough credits to wager.", "error");
-            return;
-        }
-        playerCredits -= bet;
-        if (Math.random() > 0.5) {
-            playerCredits += (bet * 2);
-            soundManager.playAbilityActivate();
-            showToast("VICTORY! Your gladiator won (+400c)", "success");
-        } else {
-            soundManager.playError();
-            showToast("DEFEAT. Your gladiator was crushed.", "error");
-        }
-        renderUIStats();
-    }
-    else if (faction === 'ECLIPSE') {
-        // Shadow Broker - Instantly sells all illegal goods for 3x value
-        let soldSomething = false;
-        let totalProfit = 0;
-        
-        for (const itemID in playerCargo) {
-            if (playerCargo[itemID] > 0 && COMMODITIES[itemID].illegal) {
-                const qty = playerCargo[itemID];
-                const value = (COMMODITIES[itemID].basePrice * 3) * qty; // 3x Premium
-                
-                playerCredits += value;
-                totalProfit += value;
-                playerCargo[itemID] = 0;
-                soldSomething = true;
-            }
-        }
-        
-        if (soldSomething) {
-            updateCurrentCargoLoad();
-            soundManager.playGain();
-            showToast(`CONTRABAND FENCED (+${totalProfit}c)`, "success");
-            renderUIStats();
-        } else {
-            showToast("No contraband in cargo hold.", "info");
-        }
+        clearConcordBounty();
+    } else if (faction === 'KTHARR') {
+        openKtharrProvingGrounds();
+    } else if (faction === 'ECLIPSE') {
+        fenceEclipseContraband();
+    } else {
+        logMessage("Faction terminal offline.");
     }
 }
+
+// ==========================================
+// --- CONCORD FACTION SERVICES ---
+// ==========================================
+
+function clearConcordBounty() {
+    if (playerNotoriety <= 0) {
+        showToast("Record Clean. Have a safe flight.", "info");
+        return;
+    }
+    const fine = playerNotoriety * 500;
+    if (playerCredits >= fine) {
+        playerCredits -= fine;
+        playerNotoriety = 0;
+        
+        if (typeof updateNotorietyTitle === 'function') updateNotorietyTitle();
+        if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+        showToast(`CLEARED: Paid ${fine}c fine.`, "success");
+        if (typeof renderUIStats === 'function') renderUIStats();
+        
+        // Refresh the station menu so the button updates
+        const location = chunkManager.getTile(playerX, playerY);
+        if (location && typeof renderStationMenu === 'function') {
+            renderStationMenu(location, 'CONCORD');
+        }
+    } else {
+        showToast(`INSUFFICIENT FUNDS (${fine}c required)`, "error");
+    }
+}
+
+// ==========================================
+// --- CONCORD ARMORY (Military Surplus) ---
+// ==========================================
+
+function openConcordArmory() {
+    openGenericModal("AEGIS ARMORY");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // How much reputation is required to shop here?
+    const reqRep = 20; 
+    const concordRep = playerFactionStanding["CONCORD"] || 0;
+    const hasClearance = concordRep >= reqRep;
+
+    // 1. Render the Quartermaster Intro
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: hue-rotate(180deg);">🛡️</div>
+            <h3 style="color:var(--accent-color); margin-bottom:10px;">CONCORD MUNITIONS</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5; font-style:italic;">"Authorized personnel only. All equipment is strictly regulated under Concord Martial Law Section 4."</p>
+            
+            <div style="margin-top: 20px; padding: 15px; background: rgba(0,224,224,0.05); border: 1px solid var(--accent-color); border-radius: 4px;">
+                <div style="font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Security Clearance</div>
+                <div style="font-size: 18px; font-weight: bold; font-family: var(--title-font); letter-spacing: 2px; color: ${hasClearance ? 'var(--success)' : 'var(--danger)'};">
+                    ${hasClearance ? 'AUTHORIZED' : 'DENIED'}
+                </div>
+                <div style="font-size: 12px; color: var(--text-color); margin-top: 5px;">
+                    Reputation: ${concordRep} / ${reqRep}
+                </div>
+            </div>
+        </div>
+    `;
+    actionsEl.innerHTML = '';
+    listEl.innerHTML = '';
+
+    // 2. Fetch Concord Gear from your database
+    let concordItems = [];
+    for (const compId in COMPONENTS_DATABASE) {
+        const comp = COMPONENTS_DATABASE[compId];
+        // We look for items specifically branded as Concord
+        if (comp.manufacturer === 'CONCORD' || comp.reqFaction === 'CONCORD') {
+            concordItems.push({ id: compId, ...comp });
+        }
+    }
+
+    if (concordItems.length === 0) {
+         listEl.innerHTML = `<div style="padding:15px; color:var(--item-desc-color); text-align:center; line-height:1.5;">Shipment delayed. The Armory is currently awaiting new stock.</div>`;
+         return;
+    }
+
+    // 3. Render the Gear List
+    concordItems.forEach(comp => {
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        
+        // If they don't have the rep, make the list look locked and ominous
+        if (!hasClearance) {
+            row.style.opacity = '0.4';
+            row.innerHTML = `<span style="color:var(--danger); font-weight:bold;">🔒 RESTRICTED ITEM</span> <span style="color:var(--text-color); font-size:10px;">${comp.slot.toUpperCase()}</span>`;
+            row.onclick = () => {
+                actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>CLEARANCE LEVEL TOO LOW</button>`;
+                if (typeof soundManager !== 'undefined') soundManager.playError();
+            };
+        } else {
+            // Authorized view
+            row.innerHTML = `<span style="color:var(--accent-color); font-weight:bold;">${comp.name}</span> <span style="color:var(--gold-text)">${formatNumber(comp.cost)}c</span>`;
+            row.onclick = () => showConcordArmoryDetails(comp.id);
+        }
+        listEl.appendChild(row);
+    });
+}
+
+function showConcordArmoryDetails(compId) {
+    const comp = COMPONENTS_DATABASE[compId];
+    
+    // We calculate trade-in value just like standard outfitting
+    const currentCompId = playerShip.components[comp.slot];
+    const currentComp = COMPONENTS_DATABASE[currentCompId];
+    
+    const tradeInValue = currentComp ? Math.floor(currentComp.cost * 0.5) : 0;
+    const netCost = comp.cost - tradeInValue;
+
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    detailEl.innerHTML = `
+        <div style="padding: 15px; text-align: center;">
+            <div style="font-size: 40px; margin-bottom: 10px;">📦</div>
+            <h3 style="color:var(--accent-color); margin-top:0; margin-bottom: 5px;">${comp.name.toUpperCase()}</h3>
+            
+            <div style="background: rgba(0,224,224,0.1); border: 1px solid var(--accent-color); display: inline-block; padding: 4px 8px; border-radius: 2px; font-size: 10px; color: var(--accent-color); margin-bottom: 15px; letter-spacing: 1px;">
+                MIL-SPEC ${comp.slot.toUpperCase()}
+            </div>
+            
+            <p style="font-size:13px; color:var(--item-desc-color); margin-bottom: 20px; line-height: 1.5;">${comp.description}</p>
+            
+            <div class="trade-math-area">
+                <div class="trade-stat-row"><span>Requisition Fee:</span> <span>${formatNumber(comp.cost)}c</span></div>
+                <div class="trade-stat-row" style="color:#888"><span>Trade-In (${currentComp ? currentComp.name : 'None'}):</span> <span>-${formatNumber(tradeInValue)}c</span></div>
+                <div class="trade-stat-row" style="margin-top:10px; border-top:1px dashed var(--border-color); padding-top:10px; font-weight:bold;">
+                    <span style="color:var(--text-color);">NET COST:</span> <span style="color:var(--gold-text)">${formatNumber(netCost)}c</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Re-use your perfectly working Outfitting logic for the actual purchase!
+    if (playerShip.components[comp.slot] === compId) {
+        actionsEl.innerHTML = `<button class="action-button" disabled>ALREADY EQUIPPED</button>`;
+    } else if (playerCredits < netCost) {
+        actionsEl.innerHTML = `<button class="action-button" disabled>INSUFFICIENT FUNDS (${formatNumber(netCost)}c)</button>`;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 15px rgba(0,224,224,0.2);" onclick="confirmBuyComponent('${compId}')">
+                AUTHORIZE REQUISITION
+            </button>
+        `;
+    }
+}
+
+function requestConcordEscort() {
+    // PLACEHOLDER: Pay a premium fee to have a Concord patrol ship follow you for 5 jumps, helping in combat.
+    showToast("Escort Services offline.", "info");
+    logMessage("All patrol wings are currently deployed. Try again later.");
+}
+
+
+// ==========================================
+// --- K'THARR FACTION SERVICES ---
+// ==========================================
+
+function openKtharrProvingGrounds() {
+    // Checks if we have the new visual minigame installed, otherwise falls back to basic RNG!
+    if (typeof openProvingGrounds === 'function') {
+        openProvingGrounds();
+        return;
+    }
+    
+    // Legacy RNG Betting
+    const bet = 200;
+    if (playerCredits < bet) {
+        showToast("Not enough credits to wager.", "error");
+        return;
+    }
+    playerCredits -= bet;
+    if (Math.random() > 0.5) {
+        playerCredits += (bet * 2);
+        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+        showToast("VICTORY! Your gladiator won (+400c)", "success");
+    } else {
+        if (typeof soundManager !== 'undefined') soundManager.playError();
+        showToast("DEFEAT. Your gladiator was crushed.", "error");
+    }
+    if (typeof renderUIStats === 'function') renderUIStats();
+}
+
+function openBloodPitsTrade() {
+    // PLACEHOLDER: A unique trading screen where you can only buy/sell organic goods (Genetic Samples, Living Hull Tissue).
+    showToast("The Blood Pits are sealed.", "error");
+    logMessage("You hear terrifying roars from deep within the station.");
+}
+
+function challengeKtharrWarlord() {
+    // PLACEHOLDER: Instantly triggers a deadly boss fight right outside the station for unique loot.
+    showToast("You are not worthy of the Rite of Combat.", "error");
+    logMessage("The Warlord laughs at your flimsy hull. Come back when you are stronger.");
+}
+
+
+// ==========================================
+// --- ECLIPSE CARTEL SERVICES ---
+// ==========================================
+
+function fenceEclipseContraband() {
+    // Instantly sells all illegal goods for 3x value
+    let soldSomething = false;
+    let totalProfit = 0;
+    
+    for (const itemID in playerCargo) {
+        if (playerCargo[itemID] > 0 && typeof COMMODITIES !== 'undefined' && COMMODITIES[itemID] && COMMODITIES[itemID].illegal) {
+            const qty = playerCargo[itemID];
+            const value = (COMMODITIES[itemID].basePrice * 3) * qty; 
+            
+            playerCredits += value;
+            totalProfit += value;
+            playerCargo[itemID] = 0;
+            soldSomething = true;
+        }
+    }
+    
+    if (soldSomething) {
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+        showToast(`CONTRABAND FENCED (+${totalProfit}c)`, "success");
+        if (typeof renderUIStats === 'function') renderUIStats();
+    } else {
+        showToast("No contraband in cargo hold.", "info");
+    }
+}
+
+function buyFakeID() {
+    // PLACEHOLDER: Pay a massive flat fee (e.g., 5000c) to instantly wipe your Notoriety without dealing with Concord.
+    showToast("The Forger is currently laying low.", "info");
+    logMessage("A hooded figure whispers: 'Got too much heat right now. Come back next cycle.'");
+}
+
+function hireEclipseMercenary() {
+    // PLACEHOLDER: Allows you to hire shady, high-stat crew members who increase your combat damage but randomly steal cargo!
+    showToast("No mercenaries available for hire.", "info");
+    logMessage("The local bar is empty. Looks like they all took a job out in the Perseus Arm.");
+}
+
 // --- ECLIPSE SHADOW BROKER ---
 
 function openShadowBroker() {
@@ -7598,18 +8781,30 @@ function visitCantina() {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    // 1. Flavor Text
-    const flavors = [
+    // 1. Get current location to check if we are at the Rusty Anchor
+    const location = chunkManager.getTile(playerX, playerY);
+
+    // 2. Default Flavor & Art
+    let randomFlavor = [
         "The air is thick with smoke and the hum of a failing ventilation unit.",
         "A K'tharr mercenary eyes you suspiciously from the corner.",
         "Techno-jazz blares from speakers that have seen better days.",
         "The bartender polishes a glass with a rag that looks grease-stained."
-    ];
-    const randomFlavor = flavors[Math.floor(Math.random() * flavors.length)];
+    ][Math.floor(Math.random() * 4)];
 
+    let headerArt = `<div style="font-size:40px; margin-bottom:20px;">🍸</div>`;
+
+    // 3. Rusty Anchor Override
+    if (location && location.name === 'The Rusty Anchor') {
+        // We apply the purple Eclipse/Shadow Network styling to the image frame
+        headerArt = `<img src="assets/rusty_cantina.png" style="width:100%; border-radius:6px; border:1px solid #9C27B0; box-shadow: 0 0 15px rgba(156, 39, 176, 0.3); margin-bottom: 15px;">`;
+        randomFlavor = "The air is thick with the smell of ozone, illegal stims, and danger.";
+    }
+
+    // 4. Render Left Pane
     listEl.innerHTML = `
         <div style="padding:20px; text-align:center;">
-            <div style="font-size:40px; margin-bottom:20px;">🍸</div>
+            ${headerArt}
             <p style="color:var(--text-color); font-style:italic;">"${randomFlavor}"</p>
             <hr style="border: 0; border-top: 1px solid var(--border-color); margin:20px 0;">
             <p style="font-size:12px; color:var(--item-desc-color);">
@@ -7619,7 +8814,7 @@ function visitCantina() {
         </div>
     `;
 
-    // 2. Menu Options
+    // 5. Render Right Pane (Menu Options)
     detailEl.innerHTML = `
         <h3 style="color:var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">Cantina Menu</h3>
         <div class="trade-item-row" onclick="cantinaAction('DRINK')">
@@ -7630,9 +8825,9 @@ function visitCantina() {
             <span style="color:var(--text-color)">Bribe Bartender (50c)</span>
             <span style="color:var(--gold-text)">Get Market Tip</span>
         </div>
-        <div class="trade-item-row" onclick="cantinaAction('RECRUIT')">
+        <div class="trade-item-row" onclick="openRecruitmentBoard()">
             <span style="color:var(--accent-color)">Recruit Crew</span>
-            <span style="color:var(--text-color)">Hire Mercenaries</span>
+            <span style="color:var(--text-color)">View Job Board</span>
         </div>
         <div class="trade-item-row" onclick="cantinaAction('GAMBLE')">
             <span style="color:var(--text-color)">Pazaak Table</span>
@@ -7719,7 +8914,7 @@ function openTradeModal(mode) {
         return;
     }
 
-        // --- ECONOMY RESTOCK LOGIC ---
+    // --- ECONOMY RESTOCK LOGIC ---
     // Every time we open the menu, add a small amount of stock to simulate other traders
     if (location.sells) {
         location.sells.forEach(item => {
@@ -7730,11 +8925,11 @@ function openTradeModal(mode) {
             }
         });
     }
+    
     // Slowly recover demand (buys)
     if (location.buys) {
         location.buys.forEach(item => {
             // If stock is high (they bought a lot from player), slowly reduce it
-            // (Simulating the station using the resources)
             if (item.stock > 0) {
                 item.stock = Math.max(0, item.stock - (Math.floor(Math.random() * 2) + 1));
             }
@@ -7743,12 +8938,69 @@ function openTradeModal(mode) {
 
     const isBuy = mode === 'buy';
     
-    // 1. OPEN MODAL
-    openGenericModal(isBuy ? "STATION MARKETPLACE" : "CARGO MANIFEST");
+    // --- 1. OPEN MODAL & DYNAMIC TITLE ---
+    // Update the title to match the specialized faction marketplaces
+    let modalTitle = isBuy ? "STATION MARKETPLACE" : "CARGO MANIFEST";
+    const faction = location.faction; // Standardizing to location.faction
 
-const container = document.getElementById('genericModalContent');
+    // If it's a specialty market (like Xerxes, which uses its own Spire menu context), we update the title
+    if (location.isBlackMarket) {
+        modalTitle = isBuy ? "SHADOW NETWORK : BUY" : "SHADOW NETWORK : SELL";
+    } else if (faction === 'KTHARR') {
+        modalTitle = isBuy ? "PROVING GROUNDS : BETTING DECK" : "PROVING GROUNDS : FENCE COMMODITIES";
+    }
+    
+    openGenericModal(modalTitle);
+
+    // --- 2. DYNAMIC FACTION BANNER RESOLUTION ---
+    let headerImageHTML = "";
+    
+    // Default asset (Independent/Aegis Standard)
+    let bannerSrc = 'assets/concord_market.png';
+    // Match the standard accent glow color to the faction aesthetic
+    let borderColor = 'var(--accent-color)';
+    let glowColor = 'rgba(0, 224, 224, 0.15)'; // Cyan standard
+    
+    // Black Market Override
+    if (location.isBlackMarket) {
+        bannerSrc = 'assets/black_market.png';
+        borderColor = '#9C27B0'; // Purple illicit glow
+        glowColor = 'rgba(156, 39, 176, 0.2)';
+    } else {
+        // Resolve standard faction-specific banners
+        if (faction === 'CONCORD') {
+            bannerSrc = 'assets/concord_market.png';
+            borderColor = 'var(--accent-color)';
+            glowColor = 'rgba(0, 224, 224, 0.15)'; 
+        } else if (faction === 'KTHARR') {
+            bannerSrc = 'assets/ktharr_market.png';
+            borderColor = 'var(--danger)';
+            glowColor = 'rgba(255, 85, 85, 0.2)'; 
+        } else if (faction === 'ECLIPSE') {
+            bannerSrc = 'assets/eclipse_market.png';
+            borderColor = '#9933FF'; // Purple illegal
+            glowColor = 'rgba(153, 51, 255, 0.2)'; 
+        } else if (faction === 'INDEPENDENT') {
+            bannerSrc = 'assets/organic_market.png'; // specialty independent
+            borderColor = 'var(--success)';
+            glowColor = 'rgba(0, 255, 0, 0.15)'; // Sickly green
+        }
+    }
+
+    // Create the beautiful framed viewport banner using the determined asset
+    headerImageHTML = `
+        <div style="width: 100%; height: 140px; background-image: url('${bannerSrc}'); background-size: cover; background-position: center 25%; border: 1px solid ${borderColor}; border-radius: 6px; margin-bottom: 20px; box-shadow: 0 5px 20px ${glowColor}; flex-shrink: 0;"></div>
+    `;
+
+    const container = document.getElementById('genericModalContent');
+    
+    // Force the container to stack items cleanly
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    
     container.innerHTML = `
-        <div style="display: flex; gap: 20px; height: 60vh; min-height: 450px;">
+        ${headerImageHTML}
+        <div style="display: flex; gap: 20px; flex: 1; min-height: 350px; overflow: hidden;">
             <div id="genericModalList" style="flex: 1.2; overflow-y: auto; padding-right: 15px; border-right: 1px solid var(--border-color);"></div>
             <div id="genericDetailContent" style="width: 340px; padding-left: 10px; padding-right: 20px; overflow-y: auto;">
                 <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; height: 100%;">
@@ -7764,6 +9016,7 @@ const container = document.getElementById('genericModalContent');
     const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
     
+    // --- 3. POPULATE THE LISTS ---
     if (isBuy) {
         // --- BUY MODE ---
         const items = location.sells || [];
@@ -7773,11 +9026,12 @@ const container = document.getElementById('genericModalContent');
         }
 
         items.forEach(itemEntry => {
-            // FIX: Handle both object {id, stock} and simple string ID
+            // Handle both object {id, stock} and simple string ID
             const itemId = itemEntry.id || itemEntry;
             const stock = itemEntry.stock || 99; // Default to 99 if not specified
             renderTradeRow(itemId, stock, true, location, listEl);
         });
+        
     } else {
         // --- SELL MODE ---
         const playerHas = Object.keys(playerCargo).filter(id => playerCargo[id] > 0);
@@ -8575,52 +9829,93 @@ function renderXerxesMenu() {
         menu.innerHTML += `
             <button class="station-action-btn xerxes-btn" onclick="${b.action}()">
                 <div class="btn-icon">${b.icon}</div>
-                <div class="btn-label">${b.label}<br><span class="btn-sub">${b.sub}</span></div>
+                <div>
+                    <div class="btn-label">${b.label}</div>
+                    <span class="btn-sub">${b.sub}</span>
+                </div>
             </button>
         `;
     });
 
     // --- THE CRYPTARCH (Always available at the Spire) ---
     menu.innerHTML += `
-        <button class="station-action-btn xerxes-btn" style="border-left: 3px solid #00E0E0;" onclick="visitCryptarch()">
+        <button class="station-action-btn xerxes-btn" style="border-left: 3px solid var(--accent-color);" onclick="visitCryptarch()">
             <div class="btn-icon">👁️</div>
-            <div class="btn-label">The Cryptarch<br><span class="btn-sub" style="color:var(--accent-color)">Decrypt Ancient Engrams</span></div>
+            <div>
+                <div class="btn-label">The Cryptarch</div>
+                <span class="btn-sub" style="color:var(--accent-color)">Decrypt Ancient Engrams</span>
+            </div>
         </button>
     `;
 
-    // 2. The Shop (Unlocked if Level >= 1)
-    if (xerxesPuzzleLevel >= 1) {
+    // --- 2. THE BLACK MARKET (Shadow Network) ---
+    // Tied into your puzzle progression!
+    if (typeof xerxesPuzzleLevel !== 'undefined' && xerxesPuzzleLevel >= 1) {
+        // BUY BUTTON
         menu.innerHTML += `
-            <button class="station-action-btn xerxes-btn" style="border-left: 3px solid #00FF00;" onclick="openTradeModal('buy')">
-                <div class="btn-icon">💎</div>
-                <div class="btn-label">The Inner Sanctum<br><span class="btn-sub" style="color:var(--success)">Market Access Granted</span></div>
+            <button class="station-action-btn xerxes-btn xerxes-spire-btn" onclick="openTradeModal('buy')">
+                <div class="btn-icon">💀</div>
+                <div>
+                    <div class="btn-label">Shadow Network : Buy</div>
+                    <span class="btn-sub" style="color:var(--success)">Acquire Contraband</span>
+                </div>
+            </button>
+        `;
+        // SELL BUTTON
+        menu.innerHTML += `
+            <button class="station-action-btn xerxes-btn xerxes-spire-btn" onclick="openTradeModal('sell')">
+                <div class="btn-icon">💰</div>
+                <div>
+                    <div class="btn-label">Shadow Network : Sell</div>
+                    <span class="btn-sub" style="color:var(--success)">Fence Goods & Cargo</span>
+                </div>
+            </button>
+        `;
+    } else {
+        // Teaser button so the player knows what they are working towards!
+        menu.innerHTML += `
+            <button class="station-action-btn xerxes-btn" disabled style="opacity:0.5; border-color:#555;">
+                <div class="btn-icon">🔒</div>
+                <div>
+                    <div class="btn-label">Shadow Network</div>
+                    <span class="btn-sub" style="color:#888;">Complete Spire Layer 1 to Unlock</span>
+                </div>
             </button>
         `;
     }
 
-    // 3. The Puzzle / Progression Button
-    if (xerxesPuzzleLevel < SPIRE_PUZZLES.length) {
+    // --- 3. THE SPIRE PUZZLE ---
+    if (typeof xerxesPuzzleLevel !== 'undefined' && typeof SPIRE_PUZZLES !== 'undefined' && xerxesPuzzleLevel < SPIRE_PUZZLES.length) {
         const pz = SPIRE_PUZZLES[xerxesPuzzleLevel];
         menu.innerHTML += `
             <button class="station-action-btn xerxes-btn xerxes-spire-btn" onclick="enterTheSpire()">
                 <div class="btn-icon">🏯</div>
-                <div class="btn-label">${pz.title}<br><span class="btn-sub" style="color:#DDA0DD">Decrypt Layer ${xerxesPuzzleLevel + 1}</span></div>
+                <div>
+                    <div class="btn-label">${pz.title}</div>
+                    <span class="btn-sub" style="color:#DDA0DD">Decrypt Layer ${xerxesPuzzleLevel + 1}</span>
+                </div>
             </button>
         `;
     } else {
         menu.innerHTML += `
             <button class="station-action-btn xerxes-btn" disabled style="opacity:0.5; border-color:#555;">
                 <div class="btn-icon">🔒</div>
-                <div class="btn-label">Spire Core Sealed<br><span class="btn-sub">Awaiting Future Update</span></div>
+                <div>
+                    <div class="btn-label">Spire Core Sealed</div>
+                    <span class="btn-sub">Awaiting Future Update</span>
+                </div>
             </button>
         `;
     }
     
-    // 4. Leave
+    // --- 4. LEAVE ---
     menu.innerHTML += `
         <button class="station-action-btn xerxes-btn" onclick="closeXerxesView()">
             <div class="btn-icon">🚀</div>
-            <div class="btn-label">Depart Orbit<br><span class="btn-sub">Return to Deep Space</span></div>
+            <div>
+                <div class="btn-label">Depart Orbit</div>
+                <span class="btn-sub">Return to Deep Space</span>
+            </div>
         </button>
     `;
 }
@@ -8649,44 +9944,73 @@ function xerxesLog(msg, type) {
     log.scrollTop = log.scrollHeight;
 }
 
-// --- THE PUZZLE LOGIC ---
 // --- DYNAMIC PUZZLE LOGIC ---
 
 function enterTheSpire() {
     // Safety check: Are we out of puzzles?
     if (xerxesPuzzleLevel >= SPIRE_PUZZLES.length) return;
 
-    // Load data for the CURRENT level
     const puzzle = SPIRE_PUZZLES[xerxesPuzzleLevel];
 
+    // Hide the standard log to make room for the terminal
     const log = document.getElementById('xerxesLog');
-    log.innerHTML = ""; // Clear log
+    if (log) log.style.display = "none"; 
     
-    xerxesLog(`Approaching ${puzzle.title}...`, "neutral");
-    xerxesLog(`Encryption Layer ${xerxesPuzzleLevel + 1} Active.`, "neutral");
-    
-    // Display the specific riddle for this level
-    xerxesLog(`"${puzzle.riddle}"`, "neutral");
-    
-    // Render Input Field
+    // Build the Terminal UI (Now in Shadow Network Purple!)
     const menu = document.getElementById('xerxesMenu');
     menu.innerHTML = `
-        <div style="grid-column: span 2; padding: 10px;">
-            <p style="text-align:center; color:#AA88CC; font-size:12px; margin-bottom:5px;">AWAITING PASSPHRASE</p>
-            <input type="text" id="spireInput" placeholder="TYPE ANSWER..." autocomplete="off" 
-                   style="width: 100%; padding: 15px; background: #000; border: 1px solid #9933FF; color: #DDA0DD; font-family: var(--title-font); font-size: 16px; text-align: center; margin-bottom: 10px;">
+        <div id="spireTerminal" style="grid-column: span 2; background: #020005; border: 2px solid #9933FF; box-shadow: inset 0 0 30px rgba(153, 51, 255, 0.2), 0 0 15px rgba(153, 51, 255, 0.4); padding: 20px; font-family: 'Roboto Mono', monospace; color: #DDA0DD; height: 340px; display: flex; flex-direction: column; position: relative; border-radius: 4px; transition: all 0.3s;">
             
-            <button class="station-action-btn xerxes-btn" onclick="checkSpireAnswer()">
-                <div class="btn-label" style="width:100%; text-align:center;">TRANSMIT</div>
-            </button>
+            <div style="font-size: 10px; letter-spacing: 2px; border-bottom: 1px solid #9933FF; margin-bottom: 10px; padding-bottom: 5px; opacity: 0.8;">
+                SHADOW NETWORK // OVERRIDE TERMINAL
+            </div>
+
+            <div id="terminalOutput" style="flex: 1; overflow-y: auto; font-size: 13px; line-height: 1.6; text-shadow: 0 0 5px rgba(221, 160, 221, 0.5); white-space: pre-wrap; padding-right: 5px;"></div>
             
-            <button class="station-action-btn xerxes-btn" onclick="renderXerxesMenu()" style="margin-top:10px;">
-                <div class="btn-label" style="width:100%; text-align:center;">ABORT</div>
-            </button>
+            <div style="display: flex; align-items: center; margin-top: 10px; border-top: 1px dashed #9933FF; padding-top: 15px;">
+                <span style="margin-right: 10px; font-weight: bold; font-size: 16px; color: #9933FF;">>_</span>
+                <input type="text" id="spireInput" autocomplete="off" spellcheck="false"
+                    style="flex: 1; background: transparent; border: none; color: #DDA0DD; font-family: 'Roboto Mono', monospace; font-size: 16px; outline: none; text-shadow: 0 0 5px rgba(221, 160, 221, 0.8); text-transform: uppercase;" 
+                    onkeydown="if(event.key === 'Enter') checkSpireAnswer()">
+            </div>
+
+            <button onclick="abortSpireHack()" style="position: absolute; top: 15px; right: 15px; background: transparent; color: #DDA0DD; border: 1px solid #9933FF; cursor: pointer; padding: 4px 10px; font-family: 'Roboto Mono', monospace; font-size: 10px; transition: 0.2s;">ABORT OVERRIDE</button>
         </div>
     `;
     
-    setTimeout(() => document.getElementById('spireInput').focus(), 100);
+    const output = document.getElementById('terminalOutput');
+    const input = document.getElementById('spireInput');
+    input.disabled = true; // Lock input during boot sequence
+
+    // --- Simulated Boot Sequence Animation ---
+    const bootLines = [
+        `ESTABLISHING SECURE HANDSHAKE... [OK]`,
+        `BYPASSING OUTER FIREWALL... [OK]`,
+        `ACCESSING LAYER ${xerxesPuzzleLevel + 1} MAINFRAME...`,
+        `<span style="color:#FF5555">WARNING: LETHAL COUNTERMEASURES DETECTED.</span>`,
+        `\nENCRYPTION CIPHER ACTIVE:\n"<span style="color:#FFF;">${puzzle.riddle}</span>"\n`,
+        `AWAITING DECRYPTION KEY...`
+    ];
+
+    let delay = 0;
+    bootLines.forEach((line, index) => {
+        setTimeout(() => {
+            output.innerHTML += line + "<br>";
+            output.scrollTop = output.scrollHeight;
+            
+            // Beep sound for every line of code loaded
+            if (typeof soundManager !== 'undefined') soundManager.playUIHover(); 
+            
+            // Once the boot sequence finishes, unlock the input
+            if (index === bootLines.length - 1) {
+                input.disabled = false;
+                input.focus();
+            }
+        }, delay);
+        
+        // Add a dramatic pause right before the riddle displays
+        delay += (index === bootLines.length - 2) ? 1200 : 400; 
+    });
 }
 
 function checkSpireAnswer() {
@@ -8694,14 +10018,36 @@ function checkSpireAnswer() {
 
     const puzzle = SPIRE_PUZZLES[xerxesPuzzleLevel];
     const inputEl = document.getElementById('spireInput');
-    const answer = inputEl.value.trim().toLowerCase();
+    const output = document.getElementById('terminalOutput');
+    const terminal = document.getElementById('spireTerminal');
     
-    // Check against the array of valid answers for THIS level
-    if (puzzle.answers.includes(answer)) {
-        // --- SUCCESS ---
-        soundManager.playAbilityActivate();
+    const answer = inputEl.value.trim().toLowerCase();
+    if (answer === "") return;
+
+    // Echo the user's input to the terminal screen
+    inputEl.value = "";
+    output.innerHTML += `<br><span style="color:#9933FF">>_</span> ${answer.toUpperCase()}<br>`;
+    output.scrollTop = output.scrollHeight;
+
+    // Strict Evaluation Logic
+    let isCorrect = false;
+    if (Array.isArray(puzzle.answers)) {
+        isCorrect = puzzle.answers.some(ans => ans.toLowerCase() === answer);
+    } else if (typeof puzzle.answers === 'string') {
+        isCorrect = puzzle.answers.toLowerCase() === answer;
+    }
+    
+    if (isCorrect) {
+        // --- SUCCESS SEQUENCE ---
+        inputEl.disabled = true;
+        terminal.style.borderColor = "#DDA0DD";
+        terminal.style.boxShadow = "inset 0 0 50px rgba(153, 51, 255, 0.4)";
         
-        // 1. Give Rewards
+        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+        
+        xerxesPuzzleLevel++;
+        
+        // Give Rewards
         if (puzzle.rewardXP > 0) {
             playerXP += puzzle.rewardXP;
             showToast(`DECRYPTED: +${puzzle.rewardXP} XP`, "success");
@@ -8711,38 +10057,59 @@ function checkSpireAnswer() {
             showToast(`DATA CACHE: +${puzzle.rewardCredit}c`, "success");
         }
 
-        // 2. Advance Level
-        xerxesPuzzleLevel++;
+        if (xerxesPuzzleLevel === 1) {
+            showToast("Layer Decrypted. Shadow Network Unlocked.", "success");
+        }
+
         updateModalInfoBar('xerxesInfoBar');
         checkLevelUp();
+        if (typeof autoSaveGame === 'function') autoSaveGame(); 
 
-        // 3. Feedback
-        xerxesLog(puzzle.flavorSuccess, "good");
-        
-        // 4. Return to Menu (which will now update to show the NEXT level or Shop)
-        setTimeout(renderXerxesMenu, 1500); 
+        output.innerHTML += `<span style="color:#DDA0DD; font-weight:bold; font-size:16px;">[ ACCESS GRANTED ]</span><br>${puzzle.flavorSuccess}<br><br>Rebooting station interfaces...`;
+        output.scrollTop = output.scrollHeight;
+
+        // Auto-close terminal and return to menu after 3 seconds
+        setTimeout(abortSpireHack, 3000); 
         
     } else {
-        // --- FAILURE ---
-        soundManager.playError();
-        xerxesLog(`'${inputEl.value}' rejected. Security countermeasures active.`, "bad");
-        
-        if (typeof triggerHaptic === "function") triggerHaptic(200);
+        // --- FAILURE SEQUENCE ---
+        if (typeof soundManager !== 'undefined') soundManager.playError();
+        if (typeof triggerHaptic === "function") triggerHaptic(300);
         
         playerHull -= 15;
         updateModalInfoBar('xerxesInfoBar');
         
-        // Flash Error
-        inputEl.value = "";
-        inputEl.placeholder = "INVALID...";
-        inputEl.style.borderColor = "#FF5555"; 
-        setTimeout(() => inputEl.style.borderColor = "#9933FF", 500);
+        // Visual Red Flash on the Terminal (Keep the red for danger!)
+        terminal.style.backgroundColor = "#220000";
+        terminal.style.borderColor = "#FF0000";
+        terminal.style.boxShadow = "inset 0 0 40px rgba(255, 0, 0, 0.6)";
+        inputEl.style.color = "#FF0000";
+        
+        output.innerHTML += `<span style="color:#FF5555; font-weight:bold;">[ ACCESS DENIED ]<br>LETHAL COUNTERMEASURE DEPLOYED! Hull Integrity -15.</span><br>`;
+        output.scrollTop = output.scrollHeight;
+
+        // Reset colors back to purple after the flash
+        setTimeout(() => {
+            terminal.style.backgroundColor = "#020005";
+            terminal.style.borderColor = "#9933FF";
+            terminal.style.boxShadow = "inset 0 0 30px rgba(153, 51, 255, 0.2)";
+            inputEl.style.color = "#DDA0DD";
+        }, 400);
 
         if (playerHull <= 0) {
-            closeXerxesView();
+            if (typeof closeXerxesView === 'function') closeXerxesView();
             triggerGameOver(`Vaporized by ${puzzle.title} Protocols`);
         }
     }
+}
+
+// Helper to safely exit the hacking minigame
+function abortSpireHack() {
+    // Restore the standard layout
+    const log = document.getElementById('xerxesLog');
+    if (log) log.style.display = "block"; 
+    
+    renderXerxesMenu();
 }
 
 // --- INTRO VIDEO LOGIC ---
@@ -8803,7 +10170,8 @@ function skipIntroVideo() {
 }
 // --- CREW RECRUITMENT & MANAGEMENT UI ---
 function openRecruitmentBoard() {
-    openGenericModal("MERCENARY CONTRACTS");
+        openGenericModal("CANTINA RECRUITMENT"); 
+
     const listEl = document.getElementById('genericModalList');
     listEl.innerHTML = '';
     document.getElementById('genericDetailContent').innerHTML = '<div style="padding:20px; text-align:center; color:#888; margin-top:20px;">Select a candidate to view their dossier.</div>';
