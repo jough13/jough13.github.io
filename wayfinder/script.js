@@ -9,6 +9,39 @@ function removeEnemyAt(x, y) {
 }
 
 // ==========================================
+// --- BOUNTY COMBAT RESOLUTION ---
+// ==========================================
+
+function processBountyVictory(defeatedEnemy) {
+    // Check if we actually have an active bounty AND if the ship we just blew up matches the ID
+    if (playerActiveBounty && defeatedEnemy.isBountyTarget && defeatedEnemy.id === playerActiveBounty.id) {
+        
+        // 1. Pay the player!
+        if (typeof playerCredits !== 'undefined') {
+            playerCredits += playerActiveBounty.reward;
+        }
+        
+        // 2. Grant some bonus Combat XP based on the target's difficulty
+        const xpGain = defeatedEnemy.level * 25;
+        if (typeof playerXP !== 'undefined') {
+            playerXP += xpGain;
+            if (typeof checkLevelUp === 'function') checkLevelUp();
+        }
+        
+        // 3. UI and Audio Notifications
+        logMessage(`<span style="color:var(--success); font-weight:bold;">BOUNTY COMPLETE:</span> Target [${playerActiveBounty.targetName}] eliminated. Transferred ${formatNumber(playerActiveBounty.reward)}c to your account.`);
+        if (typeof showToast === 'function') showToast(`BOUNTY COMPLETE: +${formatNumber(playerActiveBounty.reward)}c`, "success");
+        if (typeof soundManager !== 'undefined' && typeof soundManager.playBuy === 'function') soundManager.playBuy(); 
+        
+        // 4. Remove the bounty from the station board so it doesn't show up again
+        currentStationBounties = currentStationBounties.filter(b => b.id !== playerActiveBounty.id);
+        
+        // 5. Clear the active contract so the player can take another one!
+        playerActiveBounty = null;
+    }
+}
+
+// ==========================================
 // --- BOUNTY BOARD DATA ---
 // ==========================================
 
@@ -143,23 +176,24 @@ const NPC_SHIP_TYPES = [
     { 
         id: "CIVILIAN_HAULER", 
         name: "Civilian Hauler", 
-        char: "⛟", 
+        char: "=",
         color: "#AAAAAA", 
         desc: "A sluggish, heavily laden cargo vessel.",
+        image: "assets/civ_hauler.png",
         hails: [
             "Just keeping my head down and my engines hot.",
             "If you're looking for work, Starbase Alpha is hiring.",
             "Subspace chatter says the Kepler Nebula is acting up again."
         ],
-        // If attacked, what enemy profile do they use?
         combatProfile: "BRUISER" 
     },
     { 
         id: "INDEPENDENT_MINER", 
         name: "Independent Miner", 
-        char: "⯎", 
-        color: "#FFD700", 
+        char: "m",
+        color: "#C27E0E", 
         desc: "A rugged rock-hopper covered in plasma burns.",
+        image: "assets/independent_miner.png",
         hails: [
             "Good hunting out there, spacer.",
             "These asteroids are stripped bare. Moving to the next sector.",
@@ -170,9 +204,10 @@ const NPC_SHIP_TYPES = [
     { 
         id: "CONCORD_PATROL", 
         name: "Concord Patrol", 
-        char: "V", 
+        char: "V",
         color: "#00E0E0", 
         desc: "A heavily armed peacekeeper. Don't cause trouble.",
+        image: "assets/concord_patrol.png",
         hails: [
             "Concord Security. Maintain your current vector and stay out of trouble.",
             "We are tracking known pirate activity in this sector. Be advised.",
@@ -182,17 +217,26 @@ const NPC_SHIP_TYPES = [
     }
 ];
 
-// Spawns 1-3 neutral ships dynamically around the player's viewport
+// Spawns 1-2 neutral ships dynamically just outside the player's viewport
 function spawnAmbientNPCs() {
-    activeNPCs = []; 
-    const numNPCs = Math.floor(Math.random() * 3) + 1; 
+    // Cap the traffic so the galaxy doesn't get cluttered
+    if (activeNPCs.length >= 4) return; 
+
+    const numNPCs = Math.floor(Math.random() * 2) + 1; 
 
     for (let i = 0; i < numNPCs; i++) {
+        // Fallback in case NPC_SHIP_TYPES isn't defined yet
+        if (typeof NPC_SHIP_TYPES === 'undefined') return;
+        
         const type = NPC_SHIP_TYPES[Math.floor(Math.random() * NPC_SHIP_TYPES.length)];
+        
+        // Spawn them slightly off-screen (Radius based on viewport)
+        const spawnDist = Math.floor(VIEWPORT_WIDTH_TILES / 2) + 2;
+        const angle = Math.random() * Math.PI * 2;
+        
         activeNPCs.push({
-            // Spawn them near the player!
-            x: playerX + (Math.floor(Math.random() * VIEWPORT_WIDTH_TILES) - Math.floor(VIEWPORT_WIDTH_TILES / 2)),
-            y: playerY + (Math.floor(Math.random() * VIEWPORT_HEIGHT_TILES) - Math.floor(VIEWPORT_HEIGHT_TILES / 2)),
+            x: Math.floor(playerX + Math.cos(angle) * spawnDist),
+            y: Math.floor(playerY + Math.sin(angle) * spawnDist),
             ...type
         });
     }
@@ -200,61 +244,245 @@ function spawnAmbientNPCs() {
 
 // Call this function at the very end of your moveShip(dx, dy) function!
 function updateAmbientNPCs() {
+    if (typeof activeNPCs === 'undefined') return;
+
+    // Loop backward because we might splice (despawn) elements!
     for (let i = activeNPCs.length - 1; i >= 0; i--) {
         const npc = activeNPCs[i];
         
-        // 1. Random Wandering
-        if (Math.random() > 0.4) {
-            npc.x += (Math.random() > 0.5 ? 1 : -1);
-            npc.y += (Math.random() > 0.5 ? 1 : -1);
+        // ==========================================
+        // --- 1. NEW FLIGHT STATE MACHINE ---
+        // ==========================================
+        
+        // Initialize State Machine if they don't have one
+        if (!npc.state) {
+            npc.state = 'CRUISING';
+            npc.vx = 0; 
+            npc.vy = 0;
+            npc.stepsRemaining = 0;
         }
+
+        // A. DOCKED STATE: Wait at the station
+        if (npc.state === 'DOCKED') {
+            npc.dockTimer--;
+            if (npc.dockTimer <= 0) {
+                // Time to leave! Pick a random trajectory away from the station.
+                npc.state = 'CRUISING';
+                npc.stepsRemaining = Math.floor(Math.random() * 15) + 10;
+                do {
+                    npc.vx = Math.floor(Math.random() * 3) - 1;
+                    npc.vy = Math.floor(Math.random() * 3) - 1;
+                } while (npc.vx === 0 && npc.vy === 0);
+            }
+        }
+        
+        // B. DOCKING STATE: Intercepting a Station
+        else if (npc.state === 'DOCKING') {
+            // Move strictly toward the target coordinates
+            if (npc.x < npc.targetX) npc.x++;
+            else if (npc.x > npc.targetX) npc.x--;
+            
+            if (npc.y < npc.targetY) npc.y++;
+            else if (npc.y > npc.targetY) npc.y--;
+
+            // Have we arrived?
+            if (npc.x === npc.targetX && npc.y === npc.targetY) {
+                npc.state = 'DOCKED';
+                npc.dockTimer = 20; // Wait 20 turns before undocking
+            }
+        }
+        
+        // C. CRUISING STATE: Standard Spaceflight
+        else if (npc.state === 'CRUISING') {
+            
+            // --- THE FIX: NPC HESITATION ---
+            // 30% chance for the NPC to pause this turn (scanning, adjusting nav, etc.)
+            // This makes them effectively move at 0.7x speed, allowing the player to catch them!
+            if (Math.random() < 0.30) {
+                // We still do collision/hailing checks below, we just skip the movement logic for this turn.
+            } else {
+                // Sensory Sweep: Look for nearby stations (10% chance per step)
+                if (Math.random() < 0.10) {
+                    let foundStation = false;
+                    // Scan a 7x7 grid around the NPC
+                    for (let dy = -3; dy <= 3; dy++) {
+                        for (let dx = -3; dx <= 3; dx++) {
+                            const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(npc.x + dx, npc.y + dy) : null;
+                            const char = typeof getTileChar === 'function' ? getTileChar(tile) : '.';
+                            
+                            // If we see a station, lock on and begin approach!
+                            if (char === STARBASE_CHAR_VAL || char === OUTPOST_CHAR_VAL) {
+                                npc.state = 'DOCKING';
+                                npc.targetX = npc.x + dx;
+                                npc.targetY = npc.y + dy;
+                                foundStation = true;
+                                break;
+                            }
+                        }
+                        if (foundStation) break;
+                    }
+                    // If they just locked on, wait until next turn to start moving towards it
+                    if (foundStation) {
+                        // We skip normal movement, but continue to collision checks below
+                    } else {
+                         // Maintain Vector: Travel in a straight line
+                        if (npc.stepsRemaining <= 0) {
+                            // Pick a new vector and hold it for 5 to 20 turns
+                            npc.stepsRemaining = Math.floor(Math.random() * 15) + 5; 
+                            do {
+                                npc.vx = Math.floor(Math.random() * 3) - 1;
+                                npc.vy = Math.floor(Math.random() * 3) - 1;
+                            } while (npc.vx === 0 && npc.vy === 0); // Don't stand still
+                        }
+
+                        // Apply momentum
+                        npc.x += npc.vx;
+                        npc.y += npc.vy;
+                        npc.stepsRemaining--;
+                    }
+                } else {
+                     // Maintain Vector: Travel in a straight line
+                    if (npc.stepsRemaining <= 0) {
+                        // Pick a new vector and hold it for 5 to 20 turns
+                        npc.stepsRemaining = Math.floor(Math.random() * 15) + 5; 
+                        do {
+                            npc.vx = Math.floor(Math.random() * 3) - 1;
+                            npc.vy = Math.floor(Math.random() * 3) - 1;
+                        } while (npc.vx === 0 && npc.vy === 0); // Don't stand still
+                    }
+
+                    // Apply momentum
+                    npc.x += npc.vx;
+                    npc.y += npc.vy;
+                    npc.stepsRemaining--;
+                }
+            }
+        }
+
+        // ==========================================
+        // --- 2. DESPAWN, HAILING, & COLLISIONS ---
+        // ==========================================
 
         const dist = Math.abs(npc.x - playerX) + Math.abs(npc.y - playerY);
         
-        // 2. Despawn if they drift too far off-screen (Keeps memory clean!)
+        // Despawn if they drift too far off-screen (Keeps memory clean!)
         if (dist > VIEWPORT_WIDTH_TILES) {
             activeNPCs.splice(i, 1);
             continue;
         }
 
-        // 3. Proximity Hailing
+        // Proximity Hailing
         if (dist > 0 && dist <= 3 && Math.random() < 0.15) {
-            const randomHail = npc.hails[Math.floor(Math.random() * npc.hails.length)];
-            logMessage(`<span style="color:${npc.color}">[COMMS] ${npc.name}: "${randomHail}"</span>`);
+            if (npc.hails && npc.hails.length > 0) {
+                const randomHail = npc.hails[Math.floor(Math.random() * npc.hails.length)];
+                logMessage(`<span style="color:${npc.color || '#fff'}">[COMMS] ${npc.name}: "${randomHail}"</span>`);
+            }
         }
         
-        // 4. Collision Check (Did you ram them?)
+        // Collision Check (Did you ram them?)
         if (npc.x === playerX && npc.y === playerY) {
             if (typeof interactWithNPC === 'function') interactWithNPC(npc, i);
         }
     }
 }
 
+// ==========================================
+// --- NPC INTERACTION & COMMS ---
+// ==========================================
+
 function interactWithNPC(npc, index) {
     openGenericModal("PROXIMITY ALERT");
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
+    const modalContent = document.getElementById('genericModalContent');
 
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px;">
-            <div style="font-size:60px; margin-bottom:15px; color:${npc.color};">${npc.char}</div>
-            <h3 style="color:${npc.color}; margin-bottom:10px;">${npc.name.toUpperCase()}</h3>
-            <p style="color:var(--item-desc-color); font-size:13px; line-height: 1.5;">${npc.desc}</p>
-            <div style="margin-top:20px; padding:15px; background:rgba(0,0,0,0.5); border:1px dashed ${npc.color}; border-radius:4px; font-style:italic;">
-                "We are transmitting our transponder codes. Please maintain safe distance."
+    // --- THE FIX ---
+    // Override the default two-column flex layout and enable scrolling.
+    modalContent.style.cssText = "display: block; overflow-y: auto;";
+
+    // Dynamically choose between the image portrait or the ASCII character
+    let imageHtml = '';
+    if (npc.image) {
+        // Use the image portrait
+        imageHtml = `
+            <img src="${npc.image}" alt="${npc.name}" 
+                 style="width: 120px; height: 120px; border-radius: 50%; border: 2px solid ${npc.color}; 
+                        object-fit: cover; object-position: top; margin-bottom: 15px; background: #000; 
+                        box-shadow: 0 0 15px ${npc.color};">
+        `;
+    } else {
+        // Fallback to the ship character
+        imageHtml = `
+            <div style="font-size:60px; margin-bottom:15px; color:${npc.color}; text-shadow: 0 0 15px ${npc.color};">${npc.char}</div>
+        `;
+    }
+
+    // Procedural telemetry data (this part remains the same)
+    const transponderId = `${npc.name.substring(0,3).toUpperCase()}-${Math.floor(Math.random()*9000)+1000}`;
+    const shipClass = npc.shipClass || (npc.faction === 'CONCORD' ? 'Patrol Cruiser' : npc.faction === 'KTHARR' ? 'War Barge' : 'Modified Freighter');
+    const threatLvl = npc.level || Math.floor(Math.random() * 5) + 1;
+    
+    let statusText = "ON PATROL";
+    let statusColor = "var(--success)";
+    if (npc.state === 'DOCKED') {
+        statusText = "DOCKED (ENGINES COLD)";
+        statusColor = "var(--item-desc-color)";
+    } else if (npc.state === 'DOCKING') {
+        statusText = "APPROACHING STATION";
+        statusColor = "var(--accent-color)";
+    } else if (npc.vx !== 0 || npc.vy !== 0) {
+        statusText = "IN TRANSIT";
+    }
+
+    const commsText = (npc.dialogue && npc.dialogue.length > 0) 
+        ? npc.dialogue[0] 
+        : "We are transmitting our transponder codes. Please maintain safe distance.";
+
+    // Render the modal (this part remains the same)
+    modalContent.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 10px 20px;">
+            
+            ${imageHtml}
+            
+            <h3 style="color:${npc.color}; margin: 0 0 5px 0; font-size: 22px; text-transform: uppercase; letter-spacing: 1px;">${npc.name}</h3>
+            <div style="color:var(--item-desc-color); font-size:11px; margin-bottom:15px; letter-spacing: 2px;">
+                FACTION ALLIANCE: ${npc.faction || 'INDEPENDENT'}
+            </div>
+
+            <div style="width: 100%; text-align:left; background: var(--bg-color); border: 1px solid var(--border-color); padding: 12px; border-radius: 4px; margin-bottom: 15px; box-sizing: border-box;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div>
+                        <span style="font-size:9px; color:var(--accent-color); display:block; margin-bottom:1px;">TRANSPONDER ID</span>
+                        <div style="font-size:12px; font-weight:bold; color:var(--text-color);">${transponderId}</div>
+                    </div>
+                    <div>
+                        <span style="font-size:9px; color:var(--accent-color); display:block; margin-bottom:1px;">VESSEL CLASS</span>
+                        <div style="font-size:12px; font-weight:bold; color:var(--text-color);">${shipClass}</div>
+                    </div>
+                    <div>
+                        <span style="font-size:9px; color:var(--accent-color); display:block; margin-bottom:1px;">THREAT ASSESSMENT</span>
+                        <div style="font-size:12px; font-weight:bold; color:${threatLvl > 3 ? 'var(--danger)' : 'var(--warning)'};">LEVEL ${threatLvl}</div>
+                    </div>
+                    <div>
+                        <span style="font-size:9px; color:var(--accent-color); display:block; margin-bottom:1px;">CURRENT VECTOR</span>
+                        <div style="font-size:12px; font-weight:bold; color:${statusColor};">${statusText}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <p style="color:var(--item-desc-color); font-size:12px; line-height: 1.5; margin: 0 0 15px 0;">${npc.desc || "A standard vessel making its way through the sector."}</p>
+            
+            <div style="width: 100%; padding:15px; background:rgba(0,0,0,0.5); border:1px dashed ${npc.color}; border-radius:4px; font-style:italic; box-sizing: border-box;">
+                "${commsText}"
+            </div>
+
+            <div class="trade-btn-group" style="margin-top: 20px; width: 100%; display: flex; gap: 10px;">
+                <button class="action-button" onclick="closeGenericModal()" style="flex: 1;">
+                    MAINTAIN COURSE
+                </button>
+                <button class="action-button danger-btn" onclick="commitPiracy(${index})" style="flex: 1;">
+                    POWER WEAPONS
+                </button>
             </div>
         </div>
-    `;
-
-    document.getElementById('genericModalList').innerHTML = ''; // Hide the left list
-    
-    actionsEl.innerHTML = `
-        <button class="action-button" onclick="closeGenericModal()">
-            MAINTAIN COURSE (IGNORE)
-        </button>
-        <button class="action-button danger-btn" onclick="commitPiracy(${index})">
-            POWER WEAPONS (ATTACK!)
-        </button>
     `;
 }
 
@@ -267,15 +495,18 @@ function commitPiracy(npcIndex) {
     // Convert them into a hostile enemy using their specific combat profile!
     const enemyProfile = PIRATE_SHIP_CLASSES[targetNPC.combatProfile];
     
-    // Add them directly to your combat engine
-    activeEnemies.push({
+    const hostileEntity = {
         x: playerX,
         y: playerY,
-        id: enemyProfile.id,
-        name: targetNPC.name, // Keep their original name so you know who you attacked
+        id: Date.now(),
+        name: targetNPC.name, 
+        shipClassKey: targetNPC.combatProfile, // <--- CRITICAL FIX: Tells the combat engine what ship they have
         hull: enemyProfile.baseHull,
         shields: enemyProfile.baseShields
-    });
+    };
+    
+    // Add them directly to your combat engine
+    activeEnemies.push(hostileEntity);
 
     closeGenericModal();
     logMessage(`<span style="color:var(--danger)">WARNING: You have initiated hostilities against a ${targetNPC.name}!</span>`);
@@ -284,8 +515,8 @@ function commitPiracy(npcIndex) {
     playerFactionStanding["CONCORD"] = (playerFactionStanding["CONCORD"] || 0) - 5;
     if (typeof showToast === 'function') showToast("CONCORD REP -5", "error");
 
-    // Start your combat loop!
-    if (typeof initiateCombat === 'function') initiateCombat(playerX, playerY);
+    // Start your combat loop properly!
+    startCombat(hostileEntity); 
 }
 
 let visitedSectors;
@@ -1890,8 +2121,12 @@ function formatNumber(num) {
     // Defensive check: If the engine passes undefined during startup, default to "0"
     if (num === undefined || num === null || isNaN(num)) return "0";
     
+    // Force the number to an integer before applying the regex
+    // This strips off any decimal tails (like .4000001) so commas don't get injected into them!
+    const safeNum = Math.floor(Number(num));
+    
     // Proceed with the standard comma formatting
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return safeNum.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 /**
@@ -2140,7 +2375,8 @@ function unlockLoreEntry(entryKey, silent = false) {
                 
                 <div style="width: 120px; height: 120px; background: rgba(0, 224, 224, 0.05); border: 1px dashed var(--accent-color); border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
                     ${shipClass.image 
-                        ? `<img src="${shipClass.image}" style="max-width: 90%; max-height: 90%; object-fit: contain; drop-shadow: 0 0 10px rgba(0,224,224,0.3);">` 
+                        // FIX: Added scaleX(-1) to mirror the player ship, and fixed the drop-shadow CSS!
+                        ? `<img src="${shipClass.image}" style="max-width: 90%; max-height: 90%; object-fit: contain; transform: scaleX(-1); filter: drop-shadow(0 0 10px rgba(0,224,224,0.3));">` 
                         : `<span style="font-size: 40px; opacity: 0.6; filter: hue-rotate(180deg);">🚀</span>`
                     }
                 </div>
@@ -2174,8 +2410,9 @@ function unlockLoreEntry(entryKey, silent = false) {
                 
                 <div style="width: 120px; height: 120px; background: rgba(255, 0, 0, 0.05); border: 1px dashed var(--danger); border-radius: 8px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center;">
                     ${currentCombatContext.ship.image 
-                        ? `<img src="${currentCombatContext.ship.image}" style="max-width: 90%; max-height: 90%; object-fit: contain; transform: scaleX(-1); drop-shadow: 0 0 10px rgba(255,0,0,0.3);">` 
-                        : `<span style="font-size: 40px; opacity: 0.6;">🛸</span>`
+                        // FIX: Removed scaleX so the enemy faces left naturally. Added the pirate_ship.png fallback!
+                        ? `<img src="${currentCombatContext.ship.image}" style="max-width: 90%; max-height: 90%; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,0,0,0.3));">` 
+                        : `<img src="assets/pirate_ship.png" style="max-width: 90%; max-height: 90%; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,0,0,0.3));">`
                     }
                 </div>
 
@@ -3223,6 +3460,9 @@ function movePlayer(dx, dy) {
 
      // 6. Deduct Fuel and Advance Time
      if (dx !== 0 || dy !== 0) {
+
+        currentStationRecruits = []; 
+
         playerFuel -= actualFuelPerMove;
         playerFuel = parseFloat(playerFuel.toFixed(1)); 
         if (playerFuel < 0) playerFuel = 0;
@@ -3271,6 +3511,17 @@ function movePlayer(dx, dy) {
      // This makes every pirate on the map take a step towards you
      if (typeof updateEnemies === "function") {
          updateEnemies();
+     }
+
+     // --- UPDATE & MOVE AMBIENT TRAFFIC ---
+     if (typeof updateAmbientNPCs === "function") {
+         updateAmbientNPCs();
+     }
+
+     // --- SPAWN AMBIENT TRAFFIC ---
+     // 5% chance per tile moved to spawn a new neutral ship nearby
+     if (Math.random() < 0.05 && typeof spawnAmbientNPCs === "function") {
+         spawnAmbientNPCs();
      }
 
      // 9. Check for Collision (Did you run into them, or did they catch you?)
@@ -3530,7 +3781,24 @@ function handleInteraction() {
                 break;
             case ASTEROID_CHAR_VAL:
                 bM = `Asteroid field.`;
-                availableActions.push({ label: 'Mine', key: 'm', onclick: mineAsteroid });
+                const tile = chunkManager.getTile(playerX, playerY);
+                
+                // Check if the asteroid was already blown open by the mini-game!
+                if (tile && tile.mined) {
+                    bM += ` Scanners show this rock is completely depleted.`;
+                    availableActions.push({ 
+                        label: 'Depleted', 
+                        key: 'm', 
+                        onclick: () => {
+                            logMessage("Scanners show this asteroid has already been stripped bare.", "color:var(--item-desc-color)");
+                            if (typeof showToast === 'function') showToast("ASTEROID DEPLETED", "info");
+                        } 
+                    });
+                } else {
+                    // Hook up our brand new mini-game!
+                    availableActions.push({ label: 'Mine Asteroid', key: 'm', onclick: startMiningMiniGame });
+                }
+                
                 unlockLoreEntry("PHENOMENON_ASTEROID");
                 break;
             case NEBULA_CHAR_VAL:
@@ -5038,46 +5306,53 @@ function handleCombatAction(action) {
         soundManager.playAbilityActivate();
         combatLog += `<span style='color:#FFD700'>ABILITY: ${ability.name}!</span> `;
         
-        // --- Ability Effects ---
-        if (ability.id === 'REPAIR') {
-            const heal = 25;
-            playerHull = Math.min(MAX_PLAYER_HULL, playerHull + heal);
-            combatLog += `Hull Repaired +${heal}. `;
-        } 
-        else if (ability.id === 'DODGE') {
-            playerIsEvading = true; 
-            combatLog += `Evasion protocols maximized. `;
-        } 
-        else if (ability.id === 'STUN') {
-            // TACTICAL OVERRIDE: Change enemy intent to Stunned
-            currentCombatContext.nextMove = { type: 'STUNNED', label: 'Systems Offline', icon: '💤' };
-            combatLog += `Target sensors blinded! Intent disrupted. `;
-        } 
-        else if (ability.id === 'CRIT') {
-            const dmg = 40; 
-            currentCombatContext.pirateHull -= dmg;
-            combatLog += `Systems overloaded! Dealt ${dmg} damage! `;
-        } 
-        else if (ability.id === 'SHIELD_BOOST') {
-            playerShields = MAX_SHIELDS;
-            combatLog += `Shields restored to 100%. `;
-        } 
-        else if (ability.id === 'ESCAPE') {
-            logMessage("Emergency Jump Initiated.");
-            currentCombatContext = null;
-            changeGameState(GAME_STATES.GALACTIC_MAP);
-            handleInteraction();
-            return; 
-        } 
-        else if (ability.id === 'DEFENSE_UP') {
-            playerShields = Math.min(MAX_SHIELDS, playerShields + 20);
-            playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 20);
-            combatLog += `Integrity reinforced (+20). `;
+        // --- DATA-DRIVEN EXECUTION ---
+        if (typeof ability.execute === 'function') {
+            
+            // 1. Package the current state to send to the data file
+            const playerStats = { 
+                hull: playerHull, 
+                maxHull: MAX_PLAYER_HULL, 
+                shields: playerShields, 
+                maxShields: MAX_SHIELDS,
+                isEvading: playerIsEvading,
+                guaranteedHit: false, // Default off
+                triggerEscape: false  // Default off
+            };
+            
+            // 2. Execute the unique logic defined in ships.js
+            const resultLog = ability.execute(currentCombatContext, playerStats);
+            
+            // 3. Retrieve the modified state and apply it globally
+            playerHull = playerStats.hull;
+            playerShields = playerStats.shields;
+            playerIsEvading = playerStats.isEvading;
+            
+            // --- Special Case: Escape Ability (Star Galleon) ---
+            if (playerStats.triggerEscape) {
+                logMessage(combatLog + resultLog);
+                currentCombatContext = null;
+                changeGameState(GAME_STATES.GALACTIC_MAP);
+                handleInteraction();
+                return; // Stop processing the turn immediately!
+            }
+
+            // --- Special Case: Precision Burn (Courier) ---
+            if (playerStats.guaranteedHit) {
+                // Temporarily boost hit chance for the next 'fight' command.
+                // It resets automatically when applyPlayerShipStats runs later.
+                COMPONENTS_DATABASE[playerShip.components.weapon].stats.hitChance = 2.0; 
+                setTimeout(() => { applyPlayerShipStats(); }, 500); 
+            }
+            
+            // Append the custom flavor text returned by the ability
+            if (resultLog) combatLog += resultLog + " ";
+        } else {
+            combatLog += "[Legacy Ability Error: Missing Execute Function] ";
         }
 
     } else if (action === 'hail') {
         // --- DIPLOMACY LOGIC ---
-        // (Kept from your snippet)
         let faction = "PIRATE";
         const shipId = currentCombatContext.ship.id || "PIRATE";
         if (shipId.includes("KTHARR")) faction = "KTHARR";
@@ -5134,7 +5409,15 @@ function handleCombatAction(action) {
 
     // --- 2. VICTORY CHECK ---
     if (currentCombatContext.pirateHull <= 0) {
-        handleVictory(); // Use the helper function we defined earlier
+        
+        // --- BOUNTY RESOLUTION ---
+        // Grab the enemy's data and check if they have a bounty on their head
+        const defeatedShip = currentCombatContext.ship || currentCombatContext;
+        if (typeof processBountyVictory === 'function') {
+            processBountyVictory(defeatedShip);
+        }
+        
+        handleVictory(); 
         return;
     }
 
@@ -5209,7 +5492,7 @@ function handleCombatAction(action) {
         if (enemyLog) logMessage(enemyLog);
     }
 
-    // Reset Player Evasion
+    // Reset Player Evasion (unless an ability specifically stated otherwise)
     playerIsEvading = false;
 
     // --- 4. DEFEAT CHECK ---
@@ -6525,48 +6808,70 @@ function grantMissionRewards() {
      renderUIStats(); 
 }
 
- function triggerRandomEvent() {
-     const events = [{
-             text: "You spot a drifting fuel canister.",
-             effect: () => {
-                 const amount = 10 + Math.floor(Math.random() * 20);
-                 playerFuel = Math.min(MAX_FUEL, playerFuel + amount);
-                 logMessage(`<span style="color:#00E0E0">Lucky Find:</span> Refueled ${amount} units from salvage.`);
-             }
-         },
-         {
-             text: "You intercept a fragmented credit transfer.",
-             effect: () => {
-                 const amount = 25 + Math.floor(Math.random() * 75);
-                 playerCredits += amount;
-                 logMessage(`<span style="color:var(--gold-text)">Lucky Find:</span> Decrypted ${formatNumber(amount)} credits.`);
-             }
-         },
-         {
-             text: "You scan an ancient navigation buoy.",
-             effect: () => {
-                 const amount = 15;
-                 playerXP += amount;
-                 logMessage(`<span style="color:#00FF00">Lucky Find:</span> Downloaded nav data. +${amount} XP.`);
-                 checkLevelUp();
-             }
-         }
-     ];
+ // ==========================================
+// --- RANDOM SPACE EVENTS (LUCKY FINDS) ---
+// ==========================================
+function triggerRandomEvent() {
+    // We add a global multiplier so we can scale this with ship upgrades later!
+    // Right now, it defaults to a factor of 0.1 (10%). 
+    // Later, an upgrade could set this to 1.0, 5.0, etc.
+    let salvageMultiplier = 0.1; 
+    
+    // Example hook for future upgrades: 
+    // if (playerPerks.has('DEEP_SPACE_SCAVENGER')) salvageMultiplier = 1.0;
 
-     const event = events[Math.floor(Math.random() * events.length)];
-     event.effect();
+    const events = [
+        {
+            text: "You spot a drifting fuel canister.",
+            effect: () => {
+                // Base was 10-30. Now it's 1-3.
+                const baseAmount = 10 + Math.floor(Math.random() * 20);
+                const amount = Math.max(1, Math.floor(baseAmount * salvageMultiplier));
+                
+                playerFuel = Math.min(MAX_FUEL, playerFuel + amount);
+                logMessage(`<span style="color:#00E0E0">Lucky Find:</span> Refueled ${amount} units from salvage.`);
+            }
+        },
+        {
+            text: "You intercept a fragmented credit transfer.",
+            effect: () => {
+                // Base was 25-100. Now it's 2-10.
+                const baseAmount = 25 + Math.floor(Math.random() * 75);
+                const amount = Math.max(2, Math.floor(baseAmount * salvageMultiplier));
+                
+                if (typeof playerCredits !== 'undefined') playerCredits += amount;
+                logMessage(`<span style="color:var(--gold-text)">Lucky Find:</span> Decrypted ${formatNumber(amount)} credits.`);
+            }
+        },
+        {
+            text: "You scan an ancient navigation buoy.",
+            effect: () => {
+                // Base was 15. Now it's 1-2.
+                const baseAmount = 15;
+                const amount = Math.max(1, Math.floor(baseAmount * salvageMultiplier));
+                
+                if (typeof playerXP !== 'undefined') playerXP += amount;
+                logMessage(`<span style="color:#00FF00">Lucky Find:</span> Downloaded nav data. +${amount} XP.`);
+                if (typeof checkLevelUp === 'function') checkLevelUp();
+            }
+        }
+    ];
 
-     // We still call handleInteraction so you see where you are (e.g. "Empty Space")
-     handleInteraction();
- }
+    const event = events[Math.floor(Math.random() * events.length)];
+    logMessage(event.text);
+    event.effect();
+    
+    // Optional: Render UI stats to show the trickle immediately
+    if (typeof renderUIStats === 'function') renderUIStats();
+}
 
- function handleCodexInput(key) {
-     if (key === 'escape' || key === 'j') {
-         toggleCodex(false);
-     }
-     // We always "handle" input when the codex is open
-     return true;
- }
+function handleCodexInput(key) {
+    if (key === 'escape' || key === 'j') {
+        toggleCodex(false);
+    }
+    // We always "handle" input when the codex is open
+    return true;
+}
 
 // --- VISUAL CARGO SYSTEM ---
 
@@ -7138,7 +7443,15 @@ function handleCombatInput(key) {
             if (typeof scoopHydrogen === 'function') scoopHydrogen();
             return true;
         case 'm':
-            if (typeof mineAsteroid === 'function') mineAsteroid();
+            const tile = chunkManager.getTile(playerX, playerY);
+            if (getTileChar(tile) === ASTEROID_CHAR_VAL) {
+                if (tile && tile.mined) {
+                    if (typeof showToast === 'function') showToast("ASTEROID DEPLETED", "info");
+                    logMessage("Scanners show this asteroid has already been stripped bare.", "color:var(--item-desc-color)");
+                } else {
+                    if (typeof startMiningMiniGame === 'function') startMiningMiniGame();
+                }
+            }
             return true;
         case 'j':
             if (typeof toggleCodex === 'function') toggleCodex(true);
@@ -7263,6 +7576,13 @@ document.addEventListener('keydown', function(event) {
     let inputHandled = false;
 
     // --- 2. Top-level "Blocking" Contexts (Menus, Overlays, etc.) ---
+    const genericModal = document.getElementById('genericModalOverlay');
+
+    if (genericModal && genericModal.style.display === 'flex') {
+        if (key === 'escape') closeGenericModal();
+        event.preventDefault(); // Stop standard browser behaviors
+        return; // Halt all game input!
+    }
     if (typeof codexOverlayElement !== 'undefined' && codexOverlayElement.style.display === 'flex') {
         inputHandled = handleCodexInput(key);
     } else if (typeof currentOutfitContext !== 'undefined' && currentOutfitContext && currentOutfitContext.step === 'viewingCargo') {
@@ -7690,7 +8010,7 @@ function performSave(storageKey) {
         
         // Inventory & World
         playerShip, playerCargo,
-        WORLD_SEED, currentGameDate, playerActiveMission,
+        WORLD_SEED, currentGameDate, playerActiveMission, playerActiveBounty, currentStationBounties, activeMarketTrend, 
         
         // Mystery & Deltas
         mystery_wayfinder_progress, mystery_wayfinder_finalLocation,
@@ -7826,6 +8146,11 @@ function loadGameData(jsonString) {
         
         WORLD_SEED = savedState.WORLD_SEED;
         playerActiveMission = savedState.playerActiveMission;
+
+        playerActiveBounty = savedState.playerActiveBounty || null;
+        currentStationBounties = savedState.currentStationBounties || [];
+        activeMarketTrend = savedState.activeMarketTrend || null;
+
         currentGameDate = savedState.currentGameDate;
         
         mystery_wayfinder_progress = savedState.mystery_wayfinder_progress;
@@ -8243,6 +8568,7 @@ function openStationView() {
 // ==========================================
 // --- SMART REFUELING LOGIC ---
 // ==========================================
+
 function refuelShip() {
     if (playerFuel >= MAX_FUEL) {
         if (typeof showToast === 'function') showToast("TANK ALREADY FULL", "info");
@@ -8251,14 +8577,18 @@ function refuelShip() {
     }
 
     const fuelNeeded = MAX_FUEL - playerFuel;
-    
-    // NOTE: Set this to match whatever your actual fuel price is in your economy!
     const FUEL_PRICE_PER_UNIT = 1; 
-    const totalCost = fuelNeeded * FUEL_PRICE_PER_UNIT;
+    
+    // Round the cost up to the nearest whole credit!
+    const totalCost = Math.ceil(fuelNeeded * FUEL_PRICE_PER_UNIT);
 
     // 1. SUCCESS: Player can afford the full tank
     if (playerCredits >= totalCost) {
         playerCredits -= totalCost;
+        
+        // Safety net: Force credits to remain an integer
+        playerCredits = Math.floor(playerCredits); 
+        
         playerFuel = MAX_FUEL;
         
         if (typeof soundManager !== 'undefined') soundManager.playBuy();
@@ -8271,8 +8601,9 @@ function refuelShip() {
         
         if (affordableFuel > 0) {
             const cost = affordableFuel * FUEL_PRICE_PER_UNIT;
-            playerCredits -= cost; // Drain their remaining credits
-            playerFuel += affordableFuel; // Give them the fuel
+            playerCredits -= cost; 
+            playerCredits = Math.floor(playerCredits); // Safety net
+            playerFuel += affordableFuel; 
             
             if (typeof soundManager !== 'undefined') soundManager.playBuy();
             if (typeof showToast === 'function') showToast(`PARTIAL REFUEL: -${cost}c`, "warning");
@@ -8597,6 +8928,233 @@ function challengeKtharrWarlord() {
     // PLACEHOLDER: Instantly triggers a deadly boss fight right outside the station for unique loot.
     showToast("You are not worthy of the Rite of Combat.", "error");
     logMessage("The Warlord laughs at your flimsy hull. Come back when you are stronger.");
+}
+
+// ==========================================
+// --- ASTEROID MINING MINI-GAME ---
+// ==========================================
+
+let miningInterval = null;
+let miningPos = 0;
+let miningDir = 1;
+let miningSweetSpot = { start: 40, end: 60 }; 
+
+function startMiningMiniGame() {
+    openGenericModal("ASTEROID MINING");
+    
+    // Randomize the sweet spot size and location based on player perks (if any)
+    let baseWidth = 15;
+    if (hasCrewPerk('ASTROMETRICS')) baseWidth += 10; // Scientists make mining easier!
+    
+    const spotWidth = Math.floor(Math.random() * 10) + baseWidth; // 15% to 25% width
+    const spotStart = Math.floor(Math.random() * (100 - spotWidth));
+    miningSweetSpot = { start: spotStart, end: spotStart + spotWidth };
+
+    miningPos = 0;
+    miningDir = 1;
+
+    renderMiningUI();
+
+    clearInterval(miningInterval);
+    // The cursor moves back and forth. Faster = harder!
+    miningInterval = setInterval(() => {
+        miningPos += miningDir * 4; 
+        if (miningPos >= 100) { miningPos = 100; miningDir = -1; }
+        if (miningPos <= 0) { miningPos = 0; miningDir = 1; }
+        
+        const cursor = document.getElementById('miningCursor');
+        if (cursor) cursor.style.left = `${miningPos}%`;
+    }, 40);
+}
+
+function renderMiningUI() {
+    const detailEl = document.getElementById('genericDetailContent');
+    const listEl = document.getElementById('genericModalList');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    listEl.innerHTML = `
+        <div style="padding: 20px; text-align:center;">
+            <div style="font-size: 60px; margin-bottom: 10px; color: #FFAA66;">🌑</div>
+            <h3 style="color:var(--warning); margin-bottom: 5px;">DENSE ASTEROID</h3>
+            <p style="color:var(--item-desc-color); font-size:12px;">High-yield minerals detected. Align the mining laser phase to extract without overloading the rock's structural integrity.</p>
+        </div>
+    `;
+
+    detailEl.innerHTML = `
+        <div style="padding: 40px 20px; text-align:center;">
+            <h4 style="color:var(--text-color); margin-bottom: 30px; letter-spacing: 2px;">LASER PHASE ALIGNMENT</h4>
+            
+            <div style="width: 100%; height: 40px; background: #111; border: 2px solid var(--border-color); position: relative; border-radius: 4px; overflow: hidden; box-shadow: inset 0 0 10px #000;">
+                
+                <div style="position: absolute; left: ${miningSweetSpot.start}%; width: ${miningSweetSpot.end - miningSweetSpot.start}%; height: 100%; background: rgba(0, 255, 0, 0.2); border-left: 2px solid var(--success); border-right: 2px solid var(--success);"></div>
+                
+                <div id="miningCursor" style="position: absolute; left: 0%; top: -5px; width: 6px; height: 50px; background: var(--danger); box-shadow: 0 0 15px var(--danger); border-radius: 3px; z-index: 10;"></div>
+            </div>
+            
+            <p style="color:var(--item-desc-color); font-size:11px; margin-top:20px; font-style:italic;">Hit [EXTRACT] when the laser aligns with the green structural fault line.</p>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `
+        <button class="action-button danger-btn" onclick="attemptExtraction()" style="font-weight:bold; font-size: 16px;">🔥 FIRE LASER (EXTRACT) 🔥</button>
+        <button class="action-button" onclick="cancelMining()">ABORT</button>
+    `;
+}
+
+function attemptExtraction() {
+    clearInterval(miningInterval); // Stop the cursor!
+    
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Did they hit the sweet spot?
+    if (miningPos >= miningSweetSpot.start && miningPos <= miningSweetSpot.end) {
+        // ==========================================
+        // --- SUCCESS: ADVANCED LOOT SIMULATION ---
+        // ==========================================
+        
+        // 1. Calculate Distance & Scaling
+        const distanceFromCenter = Math.sqrt((playerX * playerX) + (playerY * playerY));
+        const richnessMultiplier = 1 + (distanceFromCenter / 1000);
+        const tile = chunkManager.getTile(playerX, playerY);
+        const density = tile && tile.density ? tile.density : 0.5;
+
+        // 2. Base Yield & Perks
+        let baseYield = 5 + Math.floor(Math.random() * 15 * density);
+        let yieldAmount = Math.floor(baseYield * richnessMultiplier);
+
+        let isCritical = false;
+        if (Math.random() < 0.10) {
+            yieldAmount *= 2;
+            isCritical = true;
+        }
+
+        // --- PERK HOOK ---
+        if (typeof playerPerks !== 'undefined' && playerPerks.has('DEEP_CORE_MINING')) {
+            yieldAmount += 3;
+        }
+
+        // 3. Cargo Check (Standard Minerals)
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        let spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+        let actualYield = Math.min(yieldAmount, spaceLeft);
+        
+        let lootMessage = "";
+        let toastHTML = "<strong>MINING OPERATIONS</strong><br>";
+        
+        if (actualYield > 0) {
+            playerCargo.MINERALS = (playerCargo.MINERALS || 0) + actualYield;
+            lootMessage += `Extracted ${formatNumber(actualYield)} Minerals.<br>`;
+            toastHTML += `+${formatNumber(actualYield)} Minerals<br>`;
+            if (isCritical) toastHTML += `<span style="color:var(--accent-color); font-weight:900;">CRITICAL VEIN STRUCK!</span><br>`;
+            
+            // Increment local tracker so rare drops know how much space is left
+            currentCargoLoad += actualYield; 
+        } else {
+            lootMessage += `<span style="color:var(--danger)">Cargo full. Minerals discarded.</span><br>`;
+        }
+
+        // 4. Rare Drops (Rare Metals / Platinum)
+        const baseRareChance = 0.05;
+        const bonusFromDensity = density * 0.1;
+        const deepSpaceBonus = Math.min(0.2, distanceFromCenter / 5000);
+        
+        let rareLootHtml = "";
+        let rareXP = 0;
+
+        if (Math.random() < (baseRareChance + bonusFromDensity + deepSpaceBonus)) {
+            const rareYield = 1 + Math.floor(Math.random() * 2);
+            spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+            const actualRareYield = Math.min(rareYield, spaceLeft);
+
+            if (actualRareYield > 0) {
+                const resourceId = (Math.random() < 0.7) ? "RARE_METALS" : "PLATINUM_ORE";
+                playerCargo[resourceId] = (playerCargo[resourceId] || 0) + actualRareYield;
+                
+                const rareName = (typeof COMMODITIES !== 'undefined' && COMMODITIES[resourceId]) ? COMMODITIES[resourceId].name : resourceId.replace('_', ' ');
+                
+                rareLootHtml = `<div style="color:var(--gold-text); font-weight:bold; margin-top:10px; text-shadow: 0 0 10px rgba(255,215,0,0.5);">+${actualRareYield} ${rareName} (RARE)</div>`;
+                toastHTML += `<span style="color:#FFFF00">+${actualRareYield} ${rareName}</span><br>`; 
+                
+                rareXP = typeof XP_BONUS_RARE_MINERAL !== 'undefined' ? XP_BONUS_RARE_MINERAL : 25;
+            }
+        }
+
+        // 5. XP & State Updates
+        const baseXP = typeof XP_PER_MINING_OP !== 'undefined' ? XP_PER_MINING_OP : 15;
+        const totalXP = baseXP + rareXP;
+        if (typeof playerXP !== 'undefined') playerXP += totalXP;
+        
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+        // 6. Game Engine Juice (Sound, Haptics, Particles, Toasts)
+        if (typeof soundManager !== 'undefined') {
+            if (isCritical) setTimeout(() => soundManager.playGain(), 200);
+            else soundManager.playBuy();
+        }
+        if (typeof triggerHaptic === 'function') triggerHaptic(50);
+        if (typeof spawnParticles === 'function') spawnParticles(playerX, playerY, 'mining'); 
+        if (typeof showToast === 'function') showToast(toastHTML, "success");
+        
+        // 7. Time & World State
+        if (typeof advanceGameTime === 'function') advanceGameTime(0.1);
+        if (typeof updateWorldState === 'function') {
+            updateWorldState(playerX, playerY, { minedThisVisit: true, lastInteraction: typeof currentGameDate !== 'undefined' ? currentGameDate : 0 });
+        } else if (tile) {
+            tile.mined = true; // Fallback
+            tile.minedThisVisit = true;
+        }
+
+        // 8. Render the Victory UI
+        detailEl.innerHTML = `
+            <div style="padding: 40px 20px; text-align:center;">
+                <div style="font-size: 50px; margin-bottom: 10px;">💎</div>
+                <h3 style="color:var(--success); margin-bottom: 10px;">EXTRACTION SUCCESSFUL</h3>
+                <p style="color:var(--item-desc-color); font-size: 13px;">${lootMessage}</p>
+                ${rareLootHtml}
+                <div style="color:var(--accent-color); font-weight:bold; font-size:16px; margin-top:15px;">+${totalXP} XP</div>
+            </div>
+        `;
+        
+    } else {
+        // ==========================================
+        // --- FAILURE: LASER OVERLOAD ---
+        // ==========================================
+        const damage = Math.floor(Math.random() * 20) + 10;
+        playerHull -= damage;
+        
+        if (typeof soundManager !== 'undefined' && soundManager.playExplosion) soundManager.playExplosion();
+        if (typeof triggerHaptic === 'function') triggerHaptic([100, 50, 100]); // Heavier failure haptic
+
+        detailEl.innerHTML = `
+            <div style="padding: 40px 20px; text-align:center;">
+                <div style="font-size: 50px; margin-bottom: 10px;">💥</div>
+                <h3 style="color:var(--danger); margin-bottom: 10px;">LASER OVERLOAD</h3>
+                <p style="color:var(--item-desc-color);">The phase misalignment caused a localized thermal explosion. Shrapnel struck your hull!</p>
+                <div style="color:var(--danger); font-weight:bold; font-size:20px; margin-top:15px; text-shadow: 0 0 10px rgba(255,85,85,0.5);">-${damage} HULL DAMAGE</div>
+            </div>
+        `;
+        
+        if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+        if (typeof advanceGameTime === 'function') advanceGameTime(0.1); // Time passes even if you fail!
+        
+        // Check if the explosion killed them
+        if (playerHull <= 0) {
+            setTimeout(() => { if (typeof triggerGameOver === 'function') triggerGameOver("Destroyed by a mining accident"); }, 1500);
+        }
+    }
+
+    actionsEl.innerHTML = `
+        <button class="action-button" onclick="cancelMining()">CLOSE</button>
+    `;
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+    if (typeof checkLevelUp === 'function') checkLevelUp();
+}
+
+function cancelMining() {
+    clearInterval(miningInterval);
+    closeGenericModal();
 }
 
 
@@ -8951,6 +9509,9 @@ function openGenericModal(title) {
 
 function closeGenericModal() {
     document.getElementById('genericModalOverlay').style.display = 'none';
+
+    if (typeof miningInterval !== 'undefined') clearInterval(miningInterval);
+
     updateSideBorderVisibility();
 }
 
@@ -8963,10 +9524,8 @@ function visitCantina() {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    // 1. Get current location to check if we are at the Rusty Anchor
     const location = chunkManager.getTile(playerX, playerY);
 
-    // 2. Default Flavor & Art
     let randomFlavor = [
         "The air is thick with smoke and the hum of a failing ventilation unit.",
         "A K'tharr mercenary eyes you suspiciously from the corner.",
@@ -8974,50 +9533,359 @@ function visitCantina() {
         "The bartender polishes a glass with a rag that looks grease-stained."
     ][Math.floor(Math.random() * 4)];
 
-    let headerArt = `<div style="font-size:40px; margin-bottom:20px;">🍸</div>`;
+    // Reduced height to 130px to prevent the bottom from getting cut off!
+    let headerArt = `<img src="assets/outpost_cantina.png" style="width:100%; height: 130px; object-fit: cover; object-position: center; border-radius:6px; border:1px solid var(--border-color); box-shadow: 0 0 15px rgba(0, 224, 224, 0.1); margin-bottom: 15px;">`;
 
-    // 3. Rusty Anchor Override
     if (location && location.name === 'The Rusty Anchor') {
-        // We apply the purple Eclipse/Shadow Network styling to the image frame
-        headerArt = `<img src="assets/rusty_cantina.png" style="width:100%; border-radius:6px; border:1px solid #9C27B0; box-shadow: 0 0 15px rgba(156, 39, 176, 0.3); margin-bottom: 15px;">`;
+        headerArt = `<img src="assets/rusty_cantina.png" style="width:100%; height: 130px; object-fit: cover; object-position: center; border-radius:6px; border:1px solid #9C27B0; box-shadow: 0 0 15px rgba(156, 39, 176, 0.3); margin-bottom: 15px;">`;
         randomFlavor = "The air is thick with the smell of ozone, illegal stims, and danger.";
     }
 
-    // 4. Render Left Pane
+    // Added style="cursor: pointer;" to every button to fix the UX!
     listEl.innerHTML = `
-        <div style="padding:20px; text-align:center;">
+        <div style="padding:15px; text-align:center;">
             ${headerArt}
-            <p style="color:var(--text-color); font-style:italic;">"${randomFlavor}"</p>
-            <hr style="border: 0; border-top: 1px solid var(--border-color); margin:20px 0;">
-            <p style="font-size:12px; color:var(--item-desc-color);">
-                Travelers from across the sector gather here. 
-                It's a good place to rest, or pick up information if you have the credits.
-            </p>
+            <p style="color:var(--text-color); font-style:italic; font-size: 13px; margin: 0;">"${randomFlavor}"</p>
+        </div>
+        <div class="generic-list-item" onclick="buyDrink()" style="cursor: pointer;">
+            <strong style="color:var(--accent-color);">Buy a Drink (10c)</strong>
+            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Restores 15 Hull.</div>
+        </div>
+        <div class="generic-list-item" onclick="listenToRumors()" style="cursor: pointer;">
+            <strong style="color:var(--accent-color);">Eavesdrop on Rumors</strong>
+            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Listen to local chatter for clues.</div>
+        </div>
+        <div class="generic-list-item" onclick="openJobBoard()" style="cursor: pointer;">
+            <strong style="color:var(--accent-color);">Check Job Board</strong>
+            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Look for crewmen seeking employment.</div>
         </div>
     `;
 
-    // 5. Render Right Pane (Menu Options)
     detailEl.innerHTML = `
-        <h3 style="color:var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">Cantina Menu</h3>
-        <div class="trade-item-row" onclick="cantinaAction('DRINK')">
-            <span style="color:var(--text-color)">Synth-Ale (15c)</span>
-            <span style="color:var(--success)">Restores 10 HP</span>
-        </div>
-        <div class="trade-item-row" onclick="cantinaAction('RUMOR')">
-            <span style="color:var(--text-color)">Bribe Bartender (50c)</span>
-            <span style="color:var(--gold-text)">Get Market Tip</span>
-        </div>
-        <div class="trade-item-row" onclick="openRecruitmentBoard()">
-            <span style="color:var(--accent-color)">Recruit Crew</span>
-            <span style="color:var(--text-color)">View Job Board</span>
-        </div>
-        <div class="trade-item-row" onclick="cantinaAction('GAMBLE')">
-            <span style="color:var(--text-color)">Pazaak Table</span>
-            <span style="color:var(--warning)">Wager 100c</span>
+        <div style="padding:40px 20px; text-align:center; color:var(--item-desc-color);">
+            Select an option from the menu.
         </div>
     `;
 
-    actionsEl.innerHTML = ''; // No bottom buttons needed, rows are clickable
+    actionsEl.innerHTML = `
+        <button class="action-button" onclick="closeGenericModal()">LEAVE CANTINA</button>
+    `;
+}
+
+// ==========================================
+// --- CANTINA ACTIONS ---
+// ==========================================
+
+// ==========================================
+// --- CANTINA ACTIONS ---
+// ==========================================
+
+function buyDrink() {
+    const detailEl = document.getElementById('genericDetailContent');
+    
+    if (playerCredits >= 10) {
+        playerCredits -= 10;
+        
+        const healAmount = 15;
+        const previousHull = playerHull;
+        playerHull = Math.min(MAX_PLAYER_HULL, playerHull + healAmount);
+        const actualHeal = playerHull - previousHull;
+        
+        if (typeof soundManager !== 'undefined' && soundManager.playBuy) soundManager.playBuy();
+        if (typeof renderUIStats === 'function') renderUIStats();
+        
+        if (detailEl) {
+            detailEl.innerHTML = `
+                <div style="text-align:center; padding: 20px;">
+                    <div style="font-size:48px; margin-bottom:10px;">🍺</div>
+                    <h3 style="color:var(--success); margin: 0 0 5px 0; font-size:22px;">REFRESHED</h3>
+                    <div style="color:var(--text-color); font-weight:bold; margin-bottom:20px;">
+                        -10c | +${actualHeal} Hull Restored
+                    </div>
+                    <p style="font-size:13px; color:var(--item-desc-color); font-style:italic;">
+                        The synth-ale burns going down, but you feel ready to face the void again.
+                    </p>
+                </div>
+            `;
+        }
+    } else {
+        if (typeof showToast === 'function') showToast("INSUFFICIENT FUNDS", "error");
+        if (detailEl) {
+            detailEl.innerHTML = `
+                <div style="text-align:center; padding: 40px 20px;">
+                    <div style="font-size:40px; margin-bottom:10px;">🚫</div>
+                    <h3 style="color:var(--danger); margin-bottom:10px;">BAR TAB DECLINED</h3>
+                    <p style="color:var(--item-desc-color);">You need at least 10 credits to buy a drink here, space cowboy.</p>
+                </div>
+            `;
+        }
+    }
+}
+
+function listenToRumors() {
+    const detailEl = document.getElementById('genericDetailContent');
+    if (typeof soundManager !== 'undefined' && soundManager.playUIHover) soundManager.playUIHover();
+
+    // You can expand this array later to hint at actual in-game locations!
+    const rumors = [
+        "I heard the K'tharr are massing ships near the border...",
+        "Don't trust the Cryptarchs on Xerxes. They skim off the top.",
+        "Some say there's a Dyson Sphere hidden in the deep sectors...",
+        "Cartel activity is way up. Keep your shields double-charged.",
+        "Precursor artifacts have been flooding the Black Market lately.",
+        "If you find a pristine Nav-Core, don't sell it cheap. The Concord pays top credit.",
+        "Watch out for O-Class stars. The glare is blinding but the plasma is rich."
+    ];
+    
+    const randomRumor = rumors[Math.floor(Math.random() * rumors.length)];
+
+    if (detailEl) {
+        detailEl.innerHTML = `
+            <div style="text-align:center; padding: 20px;">
+                <div style="font-size:48px; margin-bottom:10px;">🗣️</div>
+                <h3 style="color:var(--accent-color); margin: 0 0 15px 0; font-size:22px;">LOCAL CHATTER</h3>
+                
+                <div style="text-align:left; background: var(--bg-color); border: 1px dashed var(--border-color); padding: 20px; border-radius: 4px;">
+                    <p style="font-size:14px; color:var(--text-color); font-style:italic; margin:0; line-height:1.6;">
+                        You sit quietly in a dark corner booths and tune your cybernetics to filter out the baseline noise.
+                        <br><br>
+                        <span style="color:var(--warning);">"...${randomRumor}"</span>
+                    </p>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function openJobBoard() {
+    // Generate fresh recruits if the board is empty
+    if (currentStationRecruits.length === 0) {
+        generateRecruits();
+    }
+    
+    openGenericModal("LOCAL JOB BOARD");
+    
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    
+    // --- 1. BRIDGE TO YOUR EXISTING MISSION SYSTEM ---
+    listEl.innerHTML = `
+        <div style="padding: 15px; border-bottom: 2px solid var(--accent-color); background: rgba(0, 224, 224, 0.05);">
+            <button class="action-button" onclick="displayMissionBoard()" style="width: 100%; border-color: var(--accent-color); color: var(--accent-color);">
+                📜 VIEW LOCAL CONTRACTS
+            </button>
+            <div style="font-size:10px; color:var(--item-desc-color); text-align:center; margin-top:5px;">
+                Find cargo runs, courier jobs, and station deliveries.
+            </div>
+        </div>
+        <div style="padding: 10px 15px; font-size: 11px; color: var(--item-desc-color); letter-spacing: 2px; text-align: center; background: var(--panel-bg);">
+            --- FREELANCERS FOR HIRE ---
+        </div>
+    `;
+
+    // --- 2. RENDER PROCEDURAL CREW ---
+    currentStationRecruits.forEach(recruit => {
+        const row = document.createElement('div');
+        row.className = 'generic-list-item';
+        row.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong style="color:var(--text-color);">${recruit.name}</strong>
+                <span style="color:var(--success); font-size:12px;">${formatNumber(recruit.cost)}c</span>
+            </div>
+            <div style="color:var(--item-desc-color); font-size:11px; margin-top:4px;">${recruit.role}</div>
+        `;
+        
+        row.onclick = () => {
+            document.querySelectorAll('.generic-list-item').forEach(el => el.classList.remove('active'));
+            row.classList.add('active');
+            
+            if (typeof soundManager !== 'undefined' && soundManager.playUIHover) soundManager.playUIHover();
+            
+            detailEl.innerHTML = `
+                <div style="text-align:center; padding: 20px;">
+                    <img src="${recruit.image}" alt="${recruit.role}" style="width:100px; height:100px; object-fit: cover; object-position: top; border-radius:50%; margin-bottom:15px; border: 2px solid var(--accent-color);">
+                    
+                    <h3 style="color:var(--text-color); margin:0 0 5px 0; font-size:24px; text-transform:uppercase;">${recruit.name}</h3>
+                    <div style="color:var(--item-desc-color); letter-spacing: 2px; margin-bottom: 20px;">SPECIALTY: ${recruit.role.toUpperCase()}</div>
+                    
+                    <div style="text-align:left; background: var(--bg-color); border: 1px solid var(--border-color); padding: 15px; border-radius: 4px;">
+                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:5px;">SIGNING BONUS (COST)</span>
+                        <div style="font-size:18px; font-weight:bold; color:var(--success); margin-bottom:15px;">${formatNumber(recruit.cost)}c</div>
+                        
+                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:5px;">SERVICE PERK</span>
+                        <p style="font-size:13px; color:var(--text-color); line-height:1.4; margin:0;">
+                            <strong>[${recruit.perk}]</strong><br>
+                            ${recruit.desc}
+                        </p>
+                    </div>
+                </div>
+            `;
+            
+            // Render Hire Button
+            actionsEl.innerHTML = `
+                <button class="action-button" onclick="hireCrewMember('${recruit.id}')" style="border-color:var(--success); color:var(--success);">
+                    SIGN CONTRACT (${formatNumber(recruit.cost)}c)
+                </button>
+            `;
+        };
+        listEl.appendChild(row);
+    });
+    
+    // Auto-click the first recruit if available
+    if (currentStationRecruits.length > 0) {
+        listEl.children[2].click(); // Skip the contract bridge header
+    } else {
+        detailEl.innerHTML = `<div style="padding:40px 20px; text-align:center; color:var(--item-desc-color);">No freelancers currently seeking a ship.</div>`;
+    }
+}
+
+function hireCrewMember(recruitId) {
+    const maxCrewSize = 4; // You can tie this to ship stats later!
+    
+    if (playerCrew.length >= maxCrewSize) {
+        if (typeof showToast === 'function') showToast("CREW QUARTERS FULL", "error");
+        return;
+    }
+
+    const recruitIndex = currentStationRecruits.findIndex(r => r.id === recruitId);
+    if (recruitIndex > -1) {
+        const recruit = currentStationRecruits[recruitIndex];
+        
+        if (playerCredits >= recruit.cost) {
+            playerCredits -= recruit.cost;
+            playerCrew.push(recruit);
+            
+            // Remove them from the job board
+            currentStationRecruits.splice(recruitIndex, 1);
+            
+            if (typeof showToast === 'function') showToast(`${recruit.name.toUpperCase()} HIRED`, "success");
+            logMessage(`<span style="color:var(--success);">Welcome aboard.</span> ${recruit.name} (${recruit.role}) joined your crew.`);
+            if (typeof soundManager !== 'undefined' && soundManager.playBuy) soundManager.playBuy();
+            if (typeof renderUIStats === 'function') renderUIStats();
+            
+            // Refresh the board
+            openJobBoard(); 
+        } else {
+            if (typeof showToast === 'function') showToast("INSUFFICIENT FUNDS", "error");
+        }
+    }
+}
+
+// ==========================================
+// --- CREW ROSTER & RECRUITMENT ---
+// ==========================================
+
+// Ensure the player has a crew array
+if (typeof playerCrew === 'undefined') {
+    window.playerCrew = [];
+}
+let currentStationRecruits = [];
+
+// Helper function for your combat and exploration engines to check for buffs!
+function hasCrewPerk(perkName) {
+    if (!playerCrew) return false;
+    return playerCrew.some(crew => crew.perk === perkName);
+}
+
+function generateRecruits() {
+    currentStationRecruits = [];
+    const numRecruits = Math.floor(Math.random() * 3) + 1; // 1 to 3 recruits per station
+    
+    // --- TIER 1: STANDARD PROCEDURAL CREW ---
+    const firstNames = ["Jax", "Elara", "Odin", "Nyx", "Garrus", "Sasha", "Vane", "Silas", "Kira", "Rook"];
+    const lastNames = ["Vance", "Karn", "Trex", "Valerius", "Thorne", "Graves", "Black", "Kryik"];
+    
+    const standardRoles = [
+        { 
+            role: "Gunner", perk: "COMBAT_DAMAGE", 
+            desc: "Increases ship weapon damage by 15%.", 
+            baseCost: 300, image: "assets/gunner.png" 
+        },
+        { 
+            role: "Engineer", perk: "REPAIR_EFFICIENCY", 
+            desc: "Reduces hull repair costs by 20%.", 
+            baseCost: 400, image: "assets/engineer.png" // --- UPDATED ASSET ---
+        },
+        { 
+            role: "Navigator", perk: "FUEL_EFFICIENCY", 
+            desc: "Reduces fuel consumption during hyper-jumps.", 
+            baseCost: 350, image: "assets/default_npc.png" 
+        },
+        { 
+            role: "Hazard Specialist", perk: "RAD_SHIELDING", 
+            desc: "Expert in ionizing radiation. Prevents hull damage when scooping O & B class stars.", 
+            baseCost: 600, image: "assets/default_npc.png" 
+        },
+        // --- NEW: SCIENTIST ---
+        { 
+            role: "Scientist", perk: "ASTROMETRICS", 
+            desc: "Improves deep space scanning. Grants bonus XP when discovering new phenomena.", 
+            baseCost: 450, image: "assets/scientist.png" 
+        },
+        // --- NEW: ECLIPSE SMUGGLER ---
+        { 
+            role: "Eclipse Smuggler", perk: "SHADOW_NETWORK", 
+            desc: "A connected operative. Increases payouts for illegal cargo delivery by 20%.", 
+            baseCost: 700, image: "assets/eclipse_smuggler.png" 
+        }
+    ];
+
+    // --- TIER 2: LEGENDARY SPECIALISTS ---
+    // These are unique heroes. If you want a custom portrait, name it after them in your assets folder!
+    const legendaryRecruits = [
+        { 
+            id: "LEGEND_ELARA", name: "Elara 'Ghost' Vance", role: "Master Infiltrator", 
+            perk: "STEALTH_DRIVE", desc: "Reduces pirate ambush chance by 90%.", 
+            baseCost: 5000, image: "assets/legend_elara.png", isLegendary: true 
+        },
+        { 
+            id: "LEGEND_KAELEN", name: "Kaelen the Butcher", role: "K'tharr Warlord", 
+            perk: "PIRATE_TERROR", desc: "Increases combat damage by a massive 35%.", 
+            baseCost: 7500, image: "assets/legend_kaelen.png", isLegendary: true 
+        },
+        { 
+            id: "LEGEND_CORTEX", name: "Unit-04 'Cortex'", role: "AI Navigator", 
+            perk: "QUANTUM_PATHING", desc: "Reveals the entire sector map upon entering a new system.", 
+            baseCost: 10000, image: "assets/legend_cortex.png", isLegendary: true 
+        }
+    ];
+
+    for (let i = 0; i < numRecruits; i++) {
+        // 15% chance to spawn a Legendary recruit
+        if (Math.random() < 0.15) {
+            const legend = legendaryRecruits[Math.floor(Math.random() * legendaryRecruits.length)];
+            
+            // Check if we already hired them, or if they are already on the board this roll!
+            const alreadyHired = playerCrew.some(c => c.id === legend.id);
+            const alreadyOnBoard = currentStationRecruits.some(c => c.id === legend.id);
+            
+            if (!alreadyHired && !alreadyOnBoard) {
+                currentStationRecruits.push({
+                    ...legend, 
+                    cost: legend.baseCost // Static cost for legendaries
+                });
+                continue; // Skip the standard generation for this slot
+            }
+        }
+
+        // Fallback to Tier 1 Standard Recruit
+        // Fallback to Tier 1 Standard Recruit
+        const roleData = standardRoles[Math.floor(Math.random() * standardRoles.length)];
+        currentStationRecruits.push({
+            id: `CREW_${Date.now()}_${i}`,
+            name: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
+            role: roleData.role,
+            perk: roleData.perk,
+            desc: roleData.desc,
+            cost: roleData.baseCost + Math.floor(Math.random() * 200),
+            
+            // --- UPDATED: PULL THE SPECIFIC IMAGE ---
+            image: roleData.image, 
+            
+            isLegendary: false
+        });
+    }
 }
 
 function cantinaAction(action) {
@@ -10555,10 +11423,14 @@ function displayCrewRoster() {
         row.className = 'trade-item-row';
         row.innerHTML = `<span>${crew.icon} ${crew.name}</span> <span style="font-size:10px; color:#888;">${crew.role}</span>`;
         row.onclick = () => {
+            document.querySelectorAll('.generic-list-item').forEach(el => el.classList.remove('active'));
+            row.classList.add('active');
+            
             detailEl.innerHTML = `
-                <div style="text-align:center; padding: 15px;">
-                    <div style="font-size:50px; margin-bottom:10px;">${crew.icon}</div>
-                    <h3 style="color:var(--accent-color); margin:0;">${crew.name.toUpperCase()}</h3>
+                <div style="text-align:center; padding: 20px;">
+                    <img src="${crew.image}" alt="${crew.name}" style="width:80px; height:80px; object-fit: cover; object-position: top; border-radius:50%; margin-bottom:10px; border: 2px solid var(--accent-color);">
+                    
+                    <h3 style="color:var(--text-color); margin:0 0 5px 0; font-size:20px;">${crew.name.toUpperCase()}</h3>
                     <div style="color:var(--item-desc-color); font-size:12px; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">${crew.role.toUpperCase()}</div>
                     <p style="font-size:13px; color:var(--text-color); line-height:1.5;">${crew.desc}</p>
                 </div>
