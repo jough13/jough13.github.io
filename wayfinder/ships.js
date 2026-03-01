@@ -1,4 +1,6 @@
-// --- Ship Classes Database ---
+// ==========================================
+// --- SHIP CLASSES DATABASE (Shipyard) ---
+// ==========================================
  const SHIP_CLASSES = {
      LIGHT_FREIGHTER: {
          name: "Light Freighter",
@@ -119,10 +121,71 @@
              id: "DEFENSE_UP",
              cooldown: 6
          }
-     }
+     },
+
+     // ==========================================
+     // --- FACTION EXCLUSIVE SHIPS ---
+     // ==========================================
+
+     AEGIS_GUNSHIP: {
+        name: "Aegis Gunship",
+        image: "assets/ship_aegis.png", 
+        baseHull: 250,
+        cargoCapacity: 40,
+        baseCost: 65000,
+        description: "A Concord military patrol vessel. Heavily armored and built for pure combat superiority.",
+        loreKey: "LORE_SHIP_AEGIS",
+        manufacturer: "CONCORD",
+        reqFaction: "CONCORD",
+        minRep: 30,
+        ability: {
+            name: "Phalanx Array",
+            desc: "Instantly restores shields and increases evasion.",
+            id: "SHIELD_BOOST",
+            cooldown: 6
+        }
+    },
+    ECLIPSE_NIGHTRUNNER: {
+        name: "Eclipse Night-Runner",
+        image: "assets/ship_nightrunner.png", 
+        baseHull: 90,
+        cargoCapacity: 80,
+        baseCost: 55000,
+        description: "A stealth smuggling vessel. Sensor-absorbent plating makes it a ghost on Concord radars.",
+        loreKey: "LORE_SHIP_NIGHTRUNNER",
+        manufacturer: "ECLIPSE",
+        reqFaction: "ECLIPSE",
+        minRep: 30,
+        ability: {
+            name: "Sensor Ghost",
+            desc: "Guarantees evasion for the next 2 turns.",
+            id: "DODGE",
+            cooldown: 8
+        }
+    },
+    KTHARR_BLOODBARGE: {
+        name: "K'tharr Blood-Barge",
+        image: "assets/ship_bloodbarge.png", 
+        baseHull: 350,
+        cargoCapacity: 60,
+        baseCost: 50000,
+        description: "A brutal, heavily armored war-hulk. Lacks finesse, but hits like a localized asteroid strike.",
+        loreKey: "LORE_SHIP_BLOODBARGE",
+        manufacturer: "KTHARR",
+        reqFaction: "KTHARR",
+        minRep: 30,
+        ability: {
+            name: "Ramming Speed",
+            desc: "Next attack deals double damage, but hurts your own hull.",
+            id: "CRIT",
+            cooldown: 5
+        }
+    }
  };
 
-   // --- Enemy Ship Classes Database ---
+// ==========================================
+// --- ENEMY SHIP CLASSES DATABASE ---
+// ==========================================
  const PIRATE_SHIP_CLASSES = {
      // --- STANDARD PIRATES ---
      RAIDER: {
@@ -148,7 +211,6 @@
      },
 
      // --- K'THARR HEGEMONY ---
-     // High Hull (Armor), Low Shields, High Damage
      KTHARR_SCOUT: {
          id: "KTHARR_SCOUT",
          name: "K'tharr Vanguard",
@@ -165,7 +227,6 @@
      },
 
      // --- CONCORD SECURITY ---
-     // High Shields, Average Hull, Balanced
      CONCORD_PATROL: {
          id: "CONCORD_PATROL",
          name: "Concord Patrol",
@@ -182,9 +243,73 @@
      }
  };
 
-  // --- Ship Components Database ---
+// ==========================================
+// --- COMPONENTS DATABASE ---
+// ==========================================
  const COMPONENTS_DATABASE = {
-    // --- UTILITY MODULES (New Slot) ---
+    // --- CONCORD MILITARY GEAR (AEGIS ARMORY) ---
+    "WEAPON_CONCORD_PLASMA": {
+        name: "Aegis Plasma Cannon",
+        slot: "weapon",
+        cost: 8500,
+        manufacturer: "CONCORD",
+        reqFaction: "CONCORD",
+        minRep: 20,
+        description: "Military-grade plasma projector. Melts pirate armor into slag.",
+        stats: { damage: 45, hitChance: 0.90 }
+    },
+    "WEAPON_CONCORD_RAILGUN": {
+        name: "Concord 'Punisher' Railgun",
+        slot: "weapon",
+        cost: 15000,
+        manufacturer: "CONCORD",
+        reqFaction: "CONCORD",
+        minRep: 40,
+        description: "Accelerates tungsten slugs to a fraction of lightspeed. Requires specialized ammo clips.",
+        stats: { damage: 85, hitChance: 0.75, maxAmmo: 10 }
+    },
+    "SHIELD_CONCORD_BULWARK": {
+        name: "Aegis Bulwark Array",
+        slot: "shield",
+        cost: 12000,
+        manufacturer: "CONCORD",
+        reqFaction: "CONCORD",
+        minRep: 20,
+        description: "Heavy military deflectors. Creates an almost impenetrable kinetic barrier.",
+        stats: { maxShields: 150, rechargeRate: 2.5 }
+    },
+    "ENGINE_CONCORD_CRUISER": {
+        name: "Concord Patrol Drive",
+        slot: "engine",
+        cost: 9500,
+        manufacturer: "CONCORD",
+        reqFaction: "CONCORD",
+        minRep: 20,
+        description: "Incredibly efficient micro-fusion drive used by long-range security patrols.",
+        stats: { maxFuel: 300, fuelEfficiency: 0.5 } 
+    },
+    "SCANNER_CONCORD_MILITARY": {
+        name: "Deep-Space Tactical Sensors",
+        slot: "scanner",
+        cost: 6000,
+        manufacturer: "CONCORD",
+        reqFaction: "CONCORD",
+        minRep: 30,
+        description: "Pierces through nebulas and stealth fields with ease. Highly classified tech.",
+        stats: { scanBonus: 0.8 }
+    },
+    "UTIL_CONCORD_REACTIVE": {
+        name: "Aegis Reactive Plating",
+        slot: "utility",
+        cost: 11000,
+        manufacturer: "CONCORD",
+        reqFaction: "CONCORD",
+        minRep: 50,
+        description: "Smart-armor that actively pushes back against kinetic impacts.",
+        stats: { hullBonus: 100 }
+    },
+
+    // --- STANDARD GEAR ---
     UTIL_NONE: {
         name: "Empty Slot",
         type: "utility",
@@ -212,7 +337,7 @@
         description: "Adds thick ablative armor plates. (+40 Max Hull)",
         cost: 1500,
         stats: { hullBonus: 40 },
-        loreKey: "LORE_COMP_SHIELD_GENERATOR" // Reusing a generic key for now
+        loreKey: "LORE_COMP_SHIELD_GENERATOR" 
     },
     UTIL_CARGO_POD: {
         name: "Ext. Cargo Pod",
@@ -222,7 +347,7 @@
         description: "Bolted-on storage racks. (+20 Cargo Capacity)",
         cost: 2000,
         stats: { cargoBonus: 20 },
-        loreKey: "LORE_SHIP_LIGHT_FREIGHTER" // Reusing a generic key for now
+        loreKey: "LORE_SHIP_LIGHT_FREIGHTER" 
     },
     UTIL_DOSIMETRY_ARRAY: {
         name: "Radiological Dosimeter",
@@ -232,8 +357,8 @@
         description: "A professional-grade health physics suite. Completely shields the vessel and crew from environmental radiation hazards.",
         cost: 3500,
         stats: { radImmunity: true },
-        loreKey: "LORE_COMP_SCANNER" // Adjust lore key as needed
-        },
+        loreKey: "LORE_COMP_SCANNER" 
+    },
      WEAPON_PULSE_LASER_MK1: {
          name: "Pulse Laser Mk1",
          type: "weapon",
@@ -241,10 +366,7 @@
          manufacturer: "FRONTIER",
          description: "Standard issue civilian pulse laser. Reliable but low power.",
          cost: 0,
-         stats: {
-             damage: 8,
-             hitChance: 0.70
-         },
+         stats: { damage: 8, hitChance: 0.70 },
          loreKey: "LORE_COMP_PULSE_LASER"
      },
      WEAPON_PULSE_LASER_MK2: {
@@ -254,10 +376,7 @@
          manufacturer: "FRONTIER",
          description: "Upgraded pulse laser with improved focusing coils for higher damage.",
          cost: 2000,
-         stats: {
-             damage: 12,
-             hitChance: 0.75
-         },
+         stats: { damage: 12, hitChance: 0.75 },
          loreKey: "LORE_COMP_PULSE_LASER"
      },
      WEAPON_PULSE_LASER_MK3: {
@@ -267,10 +386,7 @@
          manufacturer: "CONCORD",
          description: "Military-grade pulse laser. Significant damage output and better targeting.",
          cost: 5500,
-         stats: {
-             damage: 18,
-             hitChance: 0.78
-         },
+         stats: { damage: 18, hitChance: 0.78 },
          loreKey: "LORE_COMP_PULSE_LASER"
      },
      WEAPON_KINETIC_IMPULSOR_MK1: {
@@ -280,10 +396,7 @@
          manufacturer: "KTHARR",
          description: "Fires solid slugs. Decent against unshielded hulls.",
          cost: 1800,
-         stats: {
-             damage: 15,
-             hitChance: 0.65
-         },
+         stats: { damage: 15, hitChance: 0.65 },
          loreKey: "LORE_COMP_KINETIC_WEAPON"
      },
      WEAPON_ION_CANNON_MK1: {
@@ -293,11 +406,7 @@
          manufacturer: "ECLIPSE",
          description: "Disrupts shields effectively, less hull damage.",
          cost: 2200,
-         stats: {
-             damage: 6,
-             hitChance: 0.80,
-             vsShieldBonus: 10
-         },
+         stats: { damage: 6, hitChance: 0.80, vsShieldBonus: 10 },
          loreKey: "LORE_COMP_ION_WEAPON"
      },
      WEAPON_BEAM_LASER_MK1: {
@@ -307,10 +416,7 @@
          manufacturer: "CONCORD",
          description: "Sustained energy beam. High accuracy, consistent damage over time.",
          cost: 2800,
-         stats: {
-             damage: 10,
-             hitChance: 0.85
-         },
+         stats: { damage: 10, hitChance: 0.85 },
          loreKey: "LORE_COMP_BEAM_LASER"
      },
      WEAPON_MASS_DRIVER_MK1: {
@@ -320,10 +426,7 @@
          manufacturer: "KTHARR",
          description: "Accelerates a dense projectile to devastating speeds. High hull damage, slow fire rate.",
          cost: 3800,
-         stats: {
-             damage: 25,
-             hitChance: 0.60
-         },
+         stats: { damage: 25, hitChance: 0.60 },
          loreKey: "LORE_COMP_MASS_DRIVER"
      },
      WEAPON_MISSILE_LAUNCHER_MK1: {
@@ -333,11 +436,7 @@
          manufacturer: "CONCORD",
          description: "Fires self-propelled explosive ordnance. High damage, limited ammo.",
          cost: 4500,
-         stats: {
-             damage: 30,
-             hitChance: 0.60,
-             maxAmmo: 5
-         },
+         stats: { damage: 30, hitChance: 0.60, maxAmmo: 5 },
          loreKey: "LORE_COMP_MISSILE_LAUNCHER"
      },
      SHIELD_BASIC_ARRAY_A: {
@@ -347,10 +446,7 @@
          manufacturer: "FRONTIER",
          description: "Entry-level shield generator. Offers minimal protection.",
          cost: 0,
-         stats: {
-             maxShields: 50,
-             rechargeRate: 1
-         },
+         stats: { maxShields: 50, rechargeRate: 1 },
          loreKey: "LORE_COMP_SHIELD_GENERATOR"
      },
      SHIELD_GUARDIAN_B: {
@@ -360,10 +456,7 @@
          manufacturer: "FRONTIER",
          description: "Military surplus shield, offering better resilience and faster recharge.",
          cost: 2500,
-         stats: {
-             maxShields: 80,
-             rechargeRate: 2
-         },
+         stats: { maxShields: 80, rechargeRate: 2 },
          loreKey: "LORE_COMP_SHIELD_GENERATOR"
      },
      SHIELD_AEGIS_C: {
@@ -373,10 +466,7 @@
          manufacturer: "CONCORD",
          description: "Top-tier Concord shield tech. Excellent protection and robust recharge.",
          cost: 5000,
-         stats: {
-             maxShields: 120,
-             rechargeRate: 3
-         },
+         stats: { maxShields: 120, rechargeRate: 3 },
          loreKey: "LORE_COMP_SHIELD_GENERATOR"
      },
      SHIELD_RAPID_CYCLE_A: {
@@ -386,10 +476,7 @@
          manufacturer: "ECLIPSE",
          description: "Lower capacity, but regenerates very quickly. Favored by agile fighters.",
          cost: 3000,
-         stats: {
-             maxShields: 65,
-             rechargeRate: 4
-         },
+         stats: { maxShields: 65, rechargeRate: 4 },
          loreKey: "LORE_COMP_SHIELD_GENERATOR"
      },
      SHIELD_FORTRESS_GRID_A: {
@@ -399,10 +486,7 @@
          manufacturer: "KTHARR",
          description: "Extremely high capacity, but slow to regenerate. For ships that can take a beating.",
          cost: 4500,
-         stats: {
-             maxShields: 150,
-             rechargeRate: 1
-         },
+         stats: { maxShields: 150, rechargeRate: 1 },
          loreKey: "LORE_COMP_SHIELD_GENERATOR"
      },
      ENGINE_STD_DRIVE_MK1: {
@@ -412,10 +496,7 @@
          manufacturer: "FRONTIER",
          description: "Common civilian stardrive. Gets you there, eventually.",
          cost: 0,
-         stats: {
-             maxFuel: 220,
-             fuelEfficiency: 1.0
-         },
+         stats: { maxFuel: 220, fuelEfficiency: 1.0 },
          loreKey: "LORE_COMP_ENGINE"
      },
      ENGINE_RANGEPLUS_MK1: {
@@ -425,10 +506,7 @@
          manufacturer: "FRONTIER",
          description: "Larger fuel tank for extended travel, slightly improved efficiency.",
          cost: 3000,
-         stats: {
-             maxFuel: 350,
-             fuelEfficiency: 0.95
-         },
+         stats: { maxFuel: 350, fuelEfficiency: 0.95 },
          loreKey: "LORE_COMP_ENGINE"
      },
      ENGINE_IONFLOW_MK2: {
@@ -438,10 +516,7 @@
          manufacturer: "CONCORD",
          description: "Advanced ion engine, significantly better fuel efficiency.",
          cost: 4000,
-         stats: {
-             maxFuel: 275,
-             fuelEfficiency: 0.75
-         },
+         stats: { maxFuel: 275, fuelEfficiency: 0.75 },
          loreKey: "LORE_COMP_ENGINE"
      },
      ENGINE_HIGH_THRUST_MK1: {
@@ -449,12 +524,9 @@
          type: "engine",
          slot: "engine",
          manufacturer: "ECLIPSE",
-         description: "Powerful engine, standard fuel tank but hints at faster sublight travel (future).",
+         description: "Powerful engine, standard fuel tank but hints at faster sublight travel.",
          cost: 3500,
-         stats: {
-             maxFuel: 210,
-             fuelEfficiency: 1.15
-         },
+         stats: { maxFuel: 210, fuelEfficiency: 1.15 },
          loreKey: "LORE_COMP_ENGINE"
      },
      SCANNER_BASIC_SUITE: {
@@ -464,9 +536,7 @@
          manufacturer: "FRONTIER",
          description: "Basic sensor package. Provides essential data.",
          cost: 0,
-         stats: {
-             scanBonus: 0
-         },
+         stats: { scanBonus: 0 },
          loreKey: "LORE_COMP_SCANNER"
      },
      SCANNER_DEEP_RANGE_A: {
@@ -476,22 +546,20 @@
          manufacturer: "CONCORD",
          description: "Improved sensor resolution. May reveal more details or rarer finds.",
          cost: 1500,
-         stats: {
-             scanBonus: 0.05
-         },
+         stats: { scanBonus: 0.05 },
          loreKey: "LORE_COMP_SCANNER"
      },
      SCANNER_NEXSTAR_4SE: {
-    name: "NexStar-4 Optical Array",
-    type: "scanner",
-    slot: "scanner",
-    manufacturer: "INDEPENDENT",
-    description: "An antique but meticulously maintained optical tracking array. Exceptional for deep-space stargazing and early planetary surveys.",
-    cost: 1200,
-    stats: { scanBonus: 0.15 },
-    loreKey: "LORE_COMP_SCANNER"
-},
-// --- ECLIPSE CARTEL EXCLUSIVES ---
+        name: "NexStar-4 Optical Array",
+        type: "scanner",
+        slot: "scanner",
+        manufacturer: "INDEPENDENT",
+        description: "An antique but meticulously maintained optical tracking array. Exceptional for deep-space stargazing and early planetary surveys.",
+        cost: 1200,
+        stats: { scanBonus: 0.15 },
+        loreKey: "LORE_COMP_SCANNER"
+    },
+    // --- ECLIPSE CARTEL EXCLUSIVES ---
     SMUGGLERS_HOLD: {
         name: "Eclipse Cargo Bay",
         type: "utility",
@@ -499,43 +567,33 @@
         manufacturer: "ECLIPSE",
         description: "Shielded cargo bays. +10 Cargo. Immune to standard scans.",
         cost: 4000,
-        stats: {
-            cargoBonus: 10,
-            isSmuggler: true
-        },
+        stats: { cargoBonus: 10, isSmuggler: true },
         reqFaction: "ECLIPSE",
         minRep: 20,
-        loreKey: "LORE_COMP_SCANNER" // Placeholder lore
+        loreKey: "LORE_COMP_SCANNER" 
     },
-
     // --- CONCORD EXCLUSIVES ---
     MILITARY_SHIELD_MOD: {
         name: "Concord Shield Mod",
-        type: "utility",       // REQUIRED
-        slot: "utility",       // REQUIRED
+        type: "utility",       
+        slot: "utility",       
         manufacturer: "CONCORD",
         description: "Military-grade capacitors. Increases Max Shields by 30.",
-        cost: 5000,            // Changed basePrice -> cost
-        stats: {
-            shieldBonus: 30    // Functional Stat
-        },
+        cost: 5000,            
+        stats: { shieldBonus: 30 },
         reqFaction: "CONCORD",
         minRep: 30,
         loreKey: "LORE_COMP_SHIELD_GENERATOR"
     },
-
     // --- K'THARR EXCLUSIVES ---
     BIO_REPAIR_NODES: {
         name: "Living Hull Tissue",
-        type: "utility",       // REQUIRED
-        slot: "utility",       // REQUIRED
+        type: "utility",       
+        slot: "utility",       
         manufacturer: "KTHARR",
         description: "K'tharr biotech that reinforces hull structure (+40 Hull).",
-        cost: 8000,            // Changed basePrice -> cost
-        stats: {
-            hullBonus: 40,     // Functional Stat
-            passiveRegen: true // Flag for future logic (we can add a tick later)
-        },
+        cost: 8000,            
+        stats: { hullBonus: 40, passiveRegen: true },
         reqFaction: "KTHARR",
         minRep: 50,
         loreKey: "LORE_COMP_ENGINE"
