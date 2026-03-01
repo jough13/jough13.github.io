@@ -9,6 +9,13 @@ function removeEnemyAt(x, y) {
 }
 
 // ==========================================
+// --- BOUNTY BOARD DATA ---
+// ==========================================
+
+let playerActiveBounty = null;
+let currentStationBounties = []; // Temporarily holds the bounties available at the current station
+
+// ==========================================
 // --- ASTROPHYSICS: SPECTRAL CLASSES ---
 // ==========================================
 
@@ -42,6 +49,7 @@ function generateStarData(x, y) {
     // ==========================================
     // --- NATIVE SECTOR-BASED NAMING (FIXED) ---
     // ==========================================
+
     let actualSectorPrefix = "Uncharted";
     let fullSectorName = "Deep Space";
 
@@ -56,7 +64,6 @@ function generateStarData(x, y) {
         // Extract just the first word for the prefix (e.g. "Delta Ridge" becomes "Delta")
         actualSectorPrefix = fullSectorName.split(' ')[0];
     }
-    // ==========================================
 
     // Assign a Greek letter for flavor based on the star's unique seed
     const greekLetters = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Theta", "Sigma", "Omega", "Prime"];
@@ -348,74 +355,102 @@ const ECLIPSE_MERCENARIES = [
 // ==========================================
 // --- ASTROPHYSICS: DYNAMIC H-R DIAGRAM ---
 // ==========================================
-function generateHRDiagram(starClass, starColor) {
-    // Map spectral classes to approximate X (Temperature) and Y (Luminosity) percentages
+
+function generateHRDiagram(starClass, displayColor, isLight) {
+    // We use your native CSS variables so the box perfectly matches your current theme!
+    const bg = "var(--bg-color)";
+    const gridColor = "var(--border-color)";
+    const textColor = "var(--item-desc-color)";
+    
+    // SVG curves still need a little hardcoded transparency to look good
+    const curve1 = isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.03)";
+    const curve2 = isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.08)";
+    const crosshair = isLight ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.3)";
+
     const classCoords = {
-        'O': { x: 15, y: 15 }, // Blue Supergiant (Hot, Bright)
-        'B': { x: 30, y: 30 }, // Blue-White Giant
-        'A': { x: 45, y: 50 }, // White Star
-        'F': { x: 60, y: 65 }, // Yellow-White Dwarf
-        'G': { x: 70, y: 75 }, // Yellow Dwarf
-        'K': { x: 85, y: 85 }, // Orange Dwarf
-        'M': { x: 95, y: 92 }  // Red Dwarf (Cool, Dim)
+        'O': { x: 15, y: 15 }, 
+        'B': { x: 30, y: 30 }, 
+        'A': { x: 45, y: 50 }, 
+        'F': { x: 60, y: 65 }, 
+        'G': { x: 70, y: 75 }, 
+        'K': { x: 85, y: 85 }, 
+        'M': { x: 95, y: 92 }  
     };
     
     const pos = classCoords[starClass] || { x: 50, y: 50 };
     
     return `
-        <div style="position: relative; width: 100%; height: 140px; background: #050505; border: 1px solid #333; overflow: hidden; font-family: 'Roboto Mono', monospace; border-radius: 4px;">
-            <div style="position: absolute; bottom: 4px; right: 8px; font-size: 9px; color: #555; letter-spacing: 1px;">TEMP (K) →</div>
-            <div style="position: absolute; top: 8px; left: 8px; font-size: 9px; color: #555; transform: rotate(-90deg); transform-origin: 0 0; letter-spacing: 1px;">LUMINOSITY</div>
+        <div style="position: relative; width: 100%; height: 140px; background: ${bg}; border: 1px solid var(--border-color); overflow: hidden; font-family: 'Roboto Mono', monospace; border-radius: 4px;">
+            <div style="position: absolute; bottom: 4px; right: 8px; font-size: 9px; color: ${textColor}; letter-spacing: 1px;">TEMP (K) →</div>
+            <div style="position: absolute; top: 8px; left: 8px; font-size: 9px; color: ${textColor}; transform: rotate(-90deg); transform-origin: 0 0; letter-spacing: 1px;">LUMINOSITY</div>
             
-            <div style="position: absolute; top: 25%; left: 0; right: 0; border-top: 1px dashed #1a1a1a;"></div>
-            <div style="position: absolute; top: 50%; left: 0; right: 0; border-top: 1px dashed #1a1a1a;"></div>
-            <div style="position: absolute; top: 75%; left: 0; right: 0; border-top: 1px dashed #1a1a1a;"></div>
-            <div style="position: absolute; left: 33%; top: 0; bottom: 0; border-left: 1px dashed #1a1a1a;"></div>
-            <div style="position: absolute; left: 66%; top: 0; bottom: 0; border-left: 1px dashed #1a1a1a;"></div>
+            <div style="position: absolute; top: 25%; left: 0; right: 0; border-top: 1px dashed ${gridColor};"></div>
+            <div style="position: absolute; top: 50%; left: 0; right: 0; border-top: 1px dashed ${gridColor};"></div>
+            <div style="position: absolute; top: 75%; left: 0; right: 0; border-top: 1px dashed ${gridColor};"></div>
+            <div style="position: absolute; left: 33%; top: 0; bottom: 0; border-left: 1px dashed ${gridColor};"></div>
+            <div style="position: absolute; left: 66%; top: 0; bottom: 0; border-left: 1px dashed ${gridColor};"></div>
 
             <svg width="100%" height="100%" style="position: absolute; top: 0; left: 0;">
-                <path d="M 10 10 Q 150 100 300 130" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="30" stroke-linecap="round"/>
-                <path d="M 10 10 Q 150 100 300 130" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="10" stroke-linecap="round"/>
+                <path d="M 10 10 Q 150 100 300 130" fill="none" stroke="${curve1}" stroke-width="30" stroke-linecap="round"/>
+                <path d="M 10 10 Q 150 100 300 130" fill="none" stroke="${curve2}" stroke-width="10" stroke-linecap="round"/>
             </svg>
             
             <div style="position: absolute; left: ${pos.x}%; top: ${pos.y}%; transform: translate(-50%, -50%); z-index: 10;">
-                <div style="position: absolute; top: -15px; left: -15px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid ${starColor}; animation: starPulse 2s infinite;"></div>
-                <div style="position: absolute; top: -4px; left: -4px; width: 8px; height: 8px; border-radius: 50%; background: ${starColor}; box-shadow: 0 0 10px ${starColor};"></div>
-                <div style="position: absolute; top: -20px; left: 0; width: 1px; height: 40px; background: rgba(255,255,255,0.3);"></div>
-                <div style="position: absolute; top: 0; left: -20px; width: 40px; height: 1px; background: rgba(255,255,255,0.3);"></div>
+                <div style="position: absolute; top: -15px; left: -15px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid ${displayColor}; animation: starPulse 2s infinite;"></div>
+                <div style="position: absolute; top: -4px; left: -4px; width: 8px; height: 8px; border-radius: 50%; background: ${displayColor}; box-shadow: 0 0 10px ${displayColor};"></div>
+                <div style="position: absolute; top: -20px; left: 0; width: 1px; height: 40px; background: ${crosshair};"></div>
+                <div style="position: absolute; top: 0; left: -20px; width: 40px; height: 1px; background: ${crosshair};"></div>
             </div>
             
-            <div style="position: absolute; top: 8px; right: 8px; font-size: 10px; color: ${starColor}; text-align: right; text-shadow: 0 0 5px rgba(0,0,0,0.8);">
+            <div style="position: absolute; top: 8px; right: 8px; font-size: 10px; color: ${displayColor}; text-align: right; text-shadow: 0 0 5px ${isLight ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)'}; font-weight: bold;">
                 TARGET LOCKED<br>
-                <span style="color:#FFF;">CLASS-${starClass}</span>
+                <span style="color:var(--text-color);">CLASS-${starClass}</span>
             </div>
         </div>
-        
-        <style>
-            @keyframes starPulse {
-                0% { transform: scale(0.3); opacity: 1; }
-                100% { transform: scale(1.5); opacity: 0; }
-            }
-        </style>
     `;
 }
 
 // ==========================================
 // --- ASTROPHYSICS: DEEP SCAN UI ---
 // ==========================================
-
 function evaluateStar(starData, starId) {
-    // Open your standard UI modal
     openGenericModal("STELLAR CARTOGRAPHY");
 
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
     const listEl = document.getElementById('genericModalList');
     
-    // --- POPULATE THE LEFT PANEL WITH LORE & TELEMETRY ---
+    // --- BULLETPROOF LIGHT MODE DETECTION ---
+    let isLight = false;
+    if (typeof isLightMode !== 'undefined' && isLightMode === true) {
+        isLight = true;
+    } else if (document.body.classList.contains('light-mode') || document.body.classList.contains('light-theme')) {
+        isLight = true;
+    } else {
+        const bg = window.getComputedStyle(document.body).backgroundColor;
+        if (bg && bg.match(/\d+/g)) {
+            const rgb = bg.match(/\d+/g).map(Number);
+            const brightness = (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
+            if (brightness > 128) isLight = true; 
+        }
+    }
+
+    // Apply contrast to the UI icon and text if we are in light mode
+    let displayColor = starData.color;
+    if (isLight) {
+        if (starData.class === "A") displayColor = "#444444";
+        else if (starData.class === "F") displayColor = "#999900";
+        else if (starData.class === "B") displayColor = "#3355BB";
+        else if (starData.class === "O") displayColor = "#0033AA";
+    }
+
+    // Construct the image filename dynamically
+    const assetPath = `assets/${starData.class.toLowerCase()}_class.png`;
+
+    // --- LEFT PANEL: LORE & H-R DIAGRAM ---
     if (listEl) {
         listEl.innerHTML = `
-            <div style="padding: 15px; border-bottom: 1px dashed var(--accent-color); background: rgba(0,0,0,0.3);">
+            <div style="padding: 15px; border-bottom: 1px dashed var(--accent-color); background: var(--panel-bg);">
                 <h4 style="color:var(--accent-color); margin: 0 0 10px 0; letter-spacing: 1px;">[ SENSOR TELEMETRY ]</h4>
                 <div style="font-size: 11px; color: var(--success); font-family: 'Roboto Mono', monospace; line-height: 1.6;">
                     > INITIATING SPECTROSCOPY... <span style="float:right;">[OK]</span><br>
@@ -426,82 +461,90 @@ function evaluateStar(starData, starId) {
                 </div>
             </div>
             <div style="padding: 15px;">
-                
-                <!-- PROCEDURAL ASTROBIOLOGY REPORT INJECTED HERE -->
-                ${generateStellarReport(starData, starId)}
+                <h4 style="color:var(--text-color); margin: 0 0 10px 0; font-size: 12px; letter-spacing: 1px;">ARCHIVE: MORGAN-KEENAN SYSTEM</h4>
+                <p style="font-size: 11px; color: var(--item-desc-color); line-height: 1.6; margin-bottom: 15px;">
+                    The MK classification system categorizes stellar bodies by their surface temperature and optical spectrum.
+                    <br><br>
+                    <strong style="color:${isLight ? '#0033AA' : '#99BBFF'}">O & B Class:</strong> Massive, fiercely hot giants. They yield incredible fuel volume but emit hull-damaging ionizing radiation.<br><br>
+                    <strong style="color:${isLight ? '#999900' : '#FFFFDD'}">A, F, G Class:</strong> Stable main-sequence stars. The safest zones for prolonged refueling and planetary habitation.<br><br>
+                    <strong style="color:#FF5555">K & M Class:</strong> Cooler dwarf stars. Extremely common, but their sluggish stellar winds yield significantly less usable plasma.
+                </p>
                 
                 <div style="text-align: center; margin-top: 15px;">
-                    ${generateHRDiagram(starData.class, starData.color)}
-                    <div style="font-size: 9px; margin-top: 8px; color: #888; letter-spacing: 1px;">FIG 1: H-R LUMINOSITY & TEMPERATURE DIAGRAM</div>
+                    ${generateHRDiagram(starData.class, displayColor, isLight)}
+                    <div style="font-size: 9px; margin-top: 8px; color: var(--item-desc-color); letter-spacing: 1px;">FIG 1: H-R LUMINOSITY & TEMPERATURE DIAGRAM</div>
                 </div>
             </div>
         `;
     }
 
-    // Handle Exploration XP (Only grant it once per star!)
+    // Handle Exploration XP 
     let xpMessage = "";
     const scanKey = `STAR_SCAN_${starId}`;
     
-    // Using a safe check to ensure discoveredLocations is initialized
     if (typeof discoveredLocations !== 'undefined' && !discoveredLocations.has(scanKey)) {
         discoveredLocations.add(scanKey);
-        const xpGain = 25; // A nice little bump for exploring
+        const xpGain = 25; 
         playerXP += xpGain;
         
-        xpMessage = `<div style="color:var(--success); font-weight:bold; margin-bottom:15px; letter-spacing: 1px;">+${xpGain} XP (STELLAR DATA RECORDED)</div>`;
+        xpMessage = `<div style="color:var(--success); font-weight:bold; margin: 0; letter-spacing: 1px; font-size: 11px;">+${xpGain} XP (STELLAR DATA RECORDED)</div>`;
         
         if (typeof checkLevelUp === 'function') checkLevelUp();
         if (typeof showToast === 'function') showToast("STELLAR DATA RECORDED", "success");
         if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
     } else {
-        xpMessage = `<div style="color:var(--item-desc-color); font-size: 10px; margin-bottom:15px; letter-spacing: 1px;">DATA PREVIOUSLY RECORDED</div>`;
+        xpMessage = `<div style="color:var(--item-desc-color); font-size: 10px; margin: 0; letter-spacing: 1px;">DATA PREVIOUSLY RECORDED</div>`;
     }
 
-    // Build the visual read-out for the right panel
+    // --- RIGHT PANEL: FLEXBOX COLUMN FIX ---
+    // Flexbox perfectly stacks items without overlapping!
     detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px;">
-            <div style="font-size:80px; text-shadow: 0 0 40px ${starData.color}; color:${starData.color}; margin-bottom:10px; line-height: 1;">☀</div>
-            <h3 style="color:${starData.color}; margin-bottom:0px; font-size: 24px; text-transform: uppercase;">${starData.designation}</h3>
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px; padding: 10px 20px;">
             
-            <div style="color:var(--accent-color); font-size: 11px; letter-spacing: 2px; margin-top: 5px; margin-bottom: 5px;">
-                REGION: ${starData.sectorName}
+            <div style="text-align: center; display: flex; flex-direction: column; gap: 2px;">
+                <h3 style="color:${displayColor}; margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;">${starData.designation}</h3>
+                <div style="color:var(--accent-color); font-size: 10px; letter-spacing: 2px;">
+                    REGION: ${starData.sectorName}
+                </div>
+                <div style="color:var(--item-desc-color); font-size: 10px; letter-spacing: 2px;">
+                    CLASS ${starData.class} ${starData.name.toUpperCase()}
+                </div>
             </div>
             
-            <div style="color:#888; letter-spacing: 2px; margin-bottom: 20px;">CLASS ${starData.class} ${starData.name.toUpperCase()}</div>
+            <img src="${assetPath}" alt="${starData.class}-Class Star" style="width: 220px; height: 220px; object-fit: contain; flex-shrink: 0; margin-top: -10px; margin-bottom: -15px; filter: drop-shadow(0 0 30px ${isLight ? 'transparent' : displayColor});">
             
             ${xpMessage}
             
-            <div style="text-align:left; background: rgba(0,0,0,0.6); border: 1px solid ${starData.color}; padding: 20px; border-radius: 4px; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+            <div style="width: 100%; text-align:left; background: var(--bg-color); border: 1px solid var(--border-color); padding: 12px 15px; border-radius: 4px; box-sizing: border-box;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
                     <div>
-                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:2px;">CORE TEMPERATURE</span>
+                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:1px;">CORE TEMPERATURE</span>
                         <div style="font-size:14px; font-weight:bold; color:var(--text-color);">${starData.temp}</div>
                     </div>
                     <div>
-                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:2px;">RADIATION PROFILE</span>
+                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:1px;">RADIATION PROFILE</span>
                         <div style="font-size:14px; font-weight:bold;">
                             ${starData.hazard === "NONE" ? '<span style="color:var(--success)">STABLE</span>' : `<span style="color:var(--danger)">${starData.hazard}</span>`}
                         </div>
                     </div>
                     <div>
-                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:2px;">CORONAL DENSITY</span>
+                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:1px;">CORONAL DENSITY</span>
                         <div style="font-size:14px; font-weight:bold; color:var(--text-color);">${starData.scoopYield} Units / Cycle</div>
                     </div>
                     <div>
-                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:2px;">SPECTRAL RARITY</span>
+                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:1px;">SPECTRAL RARITY</span>
                         <div style="font-size:14px; font-weight:bold; color:var(--text-color);">${(starData.rarity * 100).toFixed(0)}% Incidence</div>
                     </div>
                 </div>
                 
-                <hr style="border-color: #333; margin: 15px 0;">
-                <p style="color:var(--item-desc-color); font-style:italic; margin:0; line-height:1.6; font-size: 13px;">"${starData.desc}"</p>
+                <hr style="border-color: var(--border-color); margin: 8px 0;">
+                <p style="color:var(--item-desc-color); font-style:italic; margin:0; line-height:1.3; font-size: 12px;">"${starData.desc}"</p>
             </div>
         </div>
     `;
 
-    // Exit button
     actionsEl.innerHTML = `
-        <button class="action-button" onclick="closeGenericModal()" style="border-color: ${starData.color}; color: ${starData.color};">
+        <button class="action-button" onclick="closeGenericModal()" style="border-color: ${displayColor}; color: ${displayColor};">
             CLOSE SENSORS
         </button>
     `;
@@ -2669,9 +2712,6 @@ function renderSystemMap() {
     ctx.textBaseline = 'middle';
     
     // --- 4A. DRAW FACTION BACKGROUNDS (LAYER 0) ---
-    // We draw this FIRST so it appears behind the stars.
-    
-    // Pulse Effect Background Overlay
     if (sensorPulseActive) {
         const pulseIntensity = (1 - (sensorPulseRadius / MAX_PULSE_RADIUS)) * 0.2;
         ctx.fillStyle = isLightMode 
@@ -2679,12 +2719,10 @@ function renderSystemMap() {
             : `rgba(0, 40, 40, ${0.4 + pulseIntensity})`;
         ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
     } else {
-        // Base Background (Pure White / Black)
         ctx.fillStyle = isLightMode ? '#FFFFFF' : '#000000';
         ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
     }
 
-    // Faction Territory Tinting
     const tileSize = TILE_SIZE;
     
     for (let y = 0; y < VIEWPORT_HEIGHT_TILES; y++) {
@@ -2692,17 +2730,11 @@ function renderSystemMap() {
             const worldX = Math.floor(camX + x);
             const worldY = Math.floor(camY + y);
             
-            // CONVERT TO SECTOR COORDINATES
-            const sectorX = Math.floor(worldX / SECTOR_SIZE);
-            const sectorY = Math.floor(worldY / SECTOR_SIZE);
-            
-            // CALL THE FUNCTION
             // --- FACTION LAYER ---
             const factionKey = getFactionAt(worldX, worldY);
             const faction = FACTIONS[factionKey];
             
             if (faction && factionKey !== 'INDEPENDENT') {
-                // Dynamically boost faction visibility in Dark Mode so it actually shows up
                 let factionBg = faction.bg;
                 if (!isLightMode) {
                     factionBg = factionBg.replace('0.08', '0.15'); 
@@ -2715,11 +2747,9 @@ function renderSystemMap() {
             // --- HAZARD LAYER ---
             const hazard = getHazardType(worldX, worldY);
             if (hazard === 'RADIATION_BELT') {
-                // Adjust hazard colors to contrast properly against both themes and faction backgrounds
                 ctx.fillStyle = isLightMode ? 'rgba(255, 80, 0, 0.15)' : 'rgba(255, 165, 0, 0.25)';
                 ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
                 
-                // Increase the density of the sparkles slightly since the zones are much smaller now
                 if (Math.random() < 0.06) {
                     ctx.fillStyle = isLightMode ? '#FF3300' : '#FFAA00';
                     ctx.fillRect((x * tileSize) + Math.random()*tileSize, (y * tileSize) + Math.random()*tileSize, 2, 2);
@@ -2737,7 +2767,7 @@ function renderSystemMap() {
             const tileData = chunkManager.getTile(worldX, worldY);
             const tileChar = getTileChar(tileData);
 
-            // --- XERXES SPECIAL RENDER (Existing) ---
+            // --- XERXES SPECIAL RENDER ---
             if (tileData && tileData.name && tileData.name.includes("Xerxes")) {
                 ctx.save();
                 const pulse = (Math.sin(Date.now() / 500) + 1) / 2;
@@ -2752,77 +2782,56 @@ function renderSystemMap() {
                 continue; 
             }
 
-            // --- NEW: AEGIS DYSON SPHERE RENDER ---
+            // --- AEGIS DYSON SPHERE RENDER ---
             if (tileData && tileData.name === "Aegis Dyson Sphere") {
                 ctx.save();
-                
-                // A slow, heavy pulse to represent immense power
                 const pulse = (Math.sin(Date.now() / 800) + 1) / 2;
-                
-                // Golden/Solar Glow
                 ctx.shadowBlur = 25 + (pulse * 15);
-                ctx.shadowColor = '#FFD700'; // Gold Shadow
-                
-                // Color: Bright Amber/Gold
+                ctx.shadowColor = '#FFD700';
                 ctx.fillStyle = '#FFAA00'; 
-
-                // Slightly larger than a normal tile
                 const sizeMod = 1.1 + (pulse * 0.1);
-                
-                // Use the standard font but scaled up
                 ctx.font = `bold ${TILE_SIZE * sizeMod}px 'Orbitron', monospace`;
-                
-                // Draw the 'O' (or whatever char is set in config)
                 ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
-                
                 ctx.restore();
-                continue; // Skip standard render
+                continue; 
             }
 
+            // Custom colored tiles
             if (tileData && tileData.customColor) {
                 ctx.save();
-                
-                // Illicit glowing pulse effect
                 const pulse = (Math.sin(Date.now() / 600) + 1) / 2;
                 ctx.shadowBlur = 12 + (pulse * 8);
                 ctx.shadowColor = tileData.customColor;
-                
                 ctx.fillStyle = tileData.customColor;
-                
-                // Make it stand out slightly from standard map markers
                 ctx.font = `bold ${TILE_SIZE * 1.2}px 'Orbitron', monospace`;
-                
-                // Check if it has a custom char defined, otherwise use the default
                 const charToDraw = tileData.displayChar || tileChar;
-                
                 ctx.fillText(charToDraw, x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
-                
                 ctx.restore();
-                continue; // Skip the standard switch statement below!
+                continue; 
             }
 
             // Standard Tile Colors 
             switch (tileChar) {
                 case STAR_CHAR_VAL: 
-                    // --- SUBTLE AMBIENT TWINKLE ---
                     const phase = worldX + (worldY * 3); 
                     ctx.globalAlpha = 0.85 + (Math.sin((Date.now() / 2000) + phase) * 0.15);
-                    
-                    // Generate the star data using world coordinates to grab its true spectral color!
-                    // (We use worldX and worldY so the star's color doesn't change when you move)
                     const visualStarData = generateStarData(worldX, worldY);
                     
-                    // Apply the actual astrophysical color
-                    ctx.fillStyle = visualStarData.color; 
+                    let starColor = visualStarData.color;
+                    if (typeof isLightMode !== 'undefined' && isLightMode) {
+                        if (visualStarData.class === "A") starColor = "#444444";       
+                        else if (visualStarData.class === "F") starColor = "#999900";  
+                        else if (visualStarData.class === "B") starColor = "#3355BB";  
+                        else if (visualStarData.class === "O") starColor = "#0033AA";  
+                    }
                     
-                    // Give massive, hot stars a dangerous, heavy glow
+                    ctx.fillStyle = starColor; 
                     if (visualStarData.class === "O" || visualStarData.class === "B") {
-                        ctx.shadowBlur = 15;
-                        ctx.shadowColor = visualStarData.color;
+                        ctx.shadowBlur = (typeof isLightMode !== 'undefined' && isLightMode) ? 5 : 15;
+                        ctx.shadowColor = starColor;
                     } else {
-                        // Standard ambient glow for normal stars
-                        ctx.shadowBlur = isLightMode ? 0 : 5; 
-                        ctx.shadowColor = visualStarData.color;
+                        ctx.shadowBlur = (typeof isLightMode !== 'undefined' && isLightMode) ? 0 : 5; 
+                        ctx.shadowColor = starColor;
                     }
                     break;
                 case PLANET_CHAR_VAL: ctx.fillStyle = '#88CCFF'; break;
@@ -2851,21 +2860,15 @@ function renderSystemMap() {
                     break;
             }
 
-            // Draw the Character (if it wasn't the starbase we already drew)
             if (tileChar !== STARBASE_CHAR_VAL) {
-                ctx.fillText(
-                    tileChar,
-                    x * TILE_SIZE + TILE_SIZE / 2,
-                    y * TILE_SIZE + TILE_SIZE / 2
-                );
+                ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
             }
             
-            // --- THE FIX: RESET CANVAS STATE SO THE NEON GLOW DOESN'T BLEED ---
             ctx.globalAlpha = 1.0;
             ctx.shadowBlur = 0; 
             
-        } // End of X loop
-    } // End of Y loop
+        } 
+    } 
 
     // --- 5. Draw Dynamic Entities (LAYER 2) ---
     const playerScreenX = (playerX - camX) * TILE_SIZE + TILE_SIZE / 2;
@@ -2875,11 +2878,52 @@ function renderSystemMap() {
     if (sensorPulseActive) {
         ctx.beginPath();
         ctx.arc(playerScreenX, playerScreenY - (TILE_SIZE/4), sensorPulseRadius, 0, 2 * Math.PI);
-        // --- USE CACHED COLOR INSTEAD OF GETTING COMPUTED STYLE ---
         ctx.strokeStyle = cachedAccentColor;
-        
         ctx.lineWidth = 2;
         ctx.stroke();
+    }
+
+    // --- NEW: BOUNTY TRACKING RETICLE ---
+    if (typeof playerActiveBounty !== 'undefined' && playerActiveBounty !== null) {
+        const screenX = playerActiveBounty.x - camX;
+        const screenY = playerActiveBounty.y - camY;
+
+        // Draw only if it is currently inside the camera's view
+        if (screenX >= 0 && screenX < VIEWPORT_WIDTH_TILES && screenY >= 0 && screenY < VIEWPORT_HEIGHT_TILES) {
+            const pixelX = screenX * TILE_SIZE;
+            const pixelY = screenY * TILE_SIZE;
+            
+            ctx.save();
+            const pulse = Math.abs(Math.sin(Date.now() / 300));
+            // Ensure brackets draw relative to the top-left of the tile
+            ctx.strokeStyle = `rgba(255, 50, 50, ${0.4 + (pulse * 0.6)})`;
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'var(--danger)';
+            
+            const m = 4; // Margin outside the tile
+            const s = TILE_SIZE;
+            ctx.beginPath();
+            // Top Left
+            ctx.moveTo(pixelX - m + 8, pixelY - m);
+            ctx.lineTo(pixelX - m, pixelY - m);
+            ctx.lineTo(pixelX - m, pixelY - m + 8);
+            // Bottom Left
+            ctx.moveTo(pixelX - m, pixelY + s + m - 8);
+            ctx.lineTo(pixelX - m, pixelY + s + m);
+            ctx.lineTo(pixelX - m + 8, pixelY + s + m);
+            // Top Right
+            ctx.moveTo(pixelX + s + m - 8, pixelY - m);
+            ctx.lineTo(pixelX + s + m, pixelY - m);
+            ctx.lineTo(pixelX + s + m, pixelY - m + 8);
+            // Bottom Right
+            ctx.moveTo(pixelX + s + m, pixelY + s + m - 8);
+            ctx.lineTo(pixelX + s + m, pixelY + s + m);
+            ctx.lineTo(pixelX + s + m - 8, pixelY + s + m);
+            
+            ctx.stroke();
+            ctx.restore();
+        }
     }
 
     // Draw Particles
@@ -2894,34 +2938,29 @@ function renderSystemMap() {
         }
     });
 
-    // Draw Enemies
+    // Draw Enemies (Updated for Bounty Support)
     activeEnemies.forEach(enemy => {
         const screenX = (enemy.x - camX) * TILE_SIZE + TILE_SIZE / 2;
         const screenY = (enemy.y - camY) * TILE_SIZE + TILE_SIZE / 2;
-        if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width) {
-            ctx.fillStyle = '#FF5555'; 
+        if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width && screenY >= -TILE_SIZE && screenY <= gameCanvas.height) {
+            ctx.fillStyle = enemy.color || '#FF5555'; 
             ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`; 
-            ctx.fillText(PIRATE_CHAR_VAL, screenX, screenY);
+            const charToDraw = enemy.char || PIRATE_CHAR_VAL;
+            ctx.fillText(charToDraw, screenX, screenY);
         }
     });
 
-    // ==========================================
-    // --- NEW: DRAW AMBIENT TRAFFIC (NPCs) ---
-    // ==========================================
+    // Draw Ambient Traffic (NPCs)
     if (typeof activeNPCs !== 'undefined') {
         activeNPCs.forEach(npc => {
-            // Apply camera offsets just like enemies and particles
             const screenX = (npc.x - camX) * TILE_SIZE + TILE_SIZE / 2;
             const screenY = (npc.y - camY) * TILE_SIZE + TILE_SIZE / 2;
-
-            // Only draw them if they are actually visible on the screen
             if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width && screenY >= -TILE_SIZE && screenY <= gameCanvas.height) {
                 ctx.save();
                 ctx.fillStyle = npc.color; 
                 ctx.shadowBlur = 10;
                 ctx.shadowColor = npc.color;
                 ctx.font = `bold ${TILE_SIZE * 0.9}px 'Orbitron', monospace`;
-                
                 ctx.fillText(npc.char, screenX, screenY);
                 ctx.restore();
             }
@@ -2939,8 +2978,7 @@ function renderSystemMap() {
 
     // --- 6. Update UI Stats ---
     document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
-
-    renderUIStats();
+    if (typeof renderUIStats === 'function') renderUIStats();
 }
 
 // ==========================================
@@ -3170,17 +3208,12 @@ function movePlayer(dx, dy) {
             actualFuelPerMove *= 0.8; // 20% reduction
         }
 
-     // 4. Check Fuel Availability (THE FIX)
-     // If you don't have enough fuel to make the jump:
+    // 4. Check Fuel Availability
      if (playerFuel < actualFuelPerMove && (dx !== 0 || dy !== 0)) {
-         // --- HAPTIC FEEDBACK: OUT OF FUEL ---
          triggerHaptic(200);
-
-         logMessage("<span style='color:red'>CRITICAL: OUT OF FUEL!</span>");
-         logMessage("Main engines offline. Life support failing...");
-         
-         // Trigger the Game Over screen immediately
-         triggerGameOver("Stranded: Fuel Depleted");
+         logMessage("<span style='color:red'>CRITICAL: OUT OF FUEL! Engines offline.</span>");
+         logMessage("<span style='color:var(--warning)'>Press 'Z' to activate Distress Beacon for a tow.</span>");
+         // REMOVE the triggerGameOver() line from here!
          return;
      }
 
@@ -3415,19 +3448,35 @@ function handleInteraction() {
         switch (tileChar) {
             case STAR_CHAR_VAL:
                 const starData = generateStarData(playerX, playerY);
-                // Create a unique ID for this star based on its coordinates
                 const starId = `${playerX}_${playerY}`; 
                 
-                bM = `<span style="color:${starData.color}; font-size:16px; font-weight:bold;">SYSTEM: ${starData.designation.toUpperCase()}</span>\n`;
+                // --- LIGHT MODE CONTRAST FIX FOR GAME LOG ---
+                let logColor = starData.color;
+                let isLight = false;
+                if (typeof isLightMode !== 'undefined' && isLightMode === true) {
+                    isLight = true;
+                } else if (document.body.classList.contains('light-mode') || document.body.classList.contains('light-theme')) {
+                    isLight = true;
+                }
+                
+                // Darken the bright stars for the text log
+                if (isLight) {
+                    if (starData.class === "A") logColor = "#444444";
+                    else if (starData.class === "F") logColor = "#999900";
+                    else if (starData.class === "B") logColor = "#3355BB";
+                    else if (starData.class === "O") logColor = "#0033AA";
+                }
+                
+                // Build the log message using the contrast-safe logColor!
+                bM = `<span style="color:${logColor}; font-size:16px; font-weight:bold;">SYSTEM: ${starData.designation.toUpperCase()}</span>\n`;
                 
                 // Hazard Warning
                 if (starData.hazard !== "NONE") {
                     bM += `<span style="color:var(--danger); font-weight:bold;">WARNING: ${starData.hazard} DETECTED.</span>`;
                 }
 
-                // 1. Evaluate / Scan Star (NEW!)
-                // If they haven't scanned it, prompt a deep scan. If they have, let them review the data.
-                const hasScanned = discoveredLocations.has(`STAR_SCAN_${starId}`);
+                // 1. Evaluate / Scan Star 
+                const hasScanned = typeof discoveredLocations !== 'undefined' && discoveredLocations.has(`STAR_SCAN_${starId}`);
                 availableActions.push({ 
                     label: hasScanned ? 'Review Scan Data' : 'Run Deep Scan', 
                     key: 'v', 
@@ -3454,7 +3503,7 @@ function handleInteraction() {
                             if (!util || !util.radImmunity) {
                                 playerHull -= 20;
                                 if (typeof triggerHaptic === 'function') triggerHaptic(200);
-                                logMessage("<span style='color:#FF5555'>Radiation shielding breached! Hull integrity compromised while scooping.</span>");
+                                logMessage("<span style='color:var(--danger);'>Radiation shielding breached! Hull integrity compromised while scooping.</span>");
                             }
                         }
                         if (playerFuel < MAX_FUEL) {
@@ -4160,6 +4209,10 @@ function handleAnomalyEncounter(anomalyObject) {
             Math.floor(Math.random() * 100)
         ];
         anomalyObject.stability = 4; // You get 4 test attempts before it explodes!
+        
+        // Push the brand new puzzle to the world memory immediately
+        updateWorldState(playerX, playerY, { anomalyTargets: anomalyObject.anomalyTargets, stability: 4 });
+        autoSaveGame(); // Force a hard save so they can't reroll the puzzle!
     }
 
     // 2. Set up the local session context
@@ -4275,6 +4328,8 @@ function testAnomalyAlignment() {
 
     if (typeof soundManager !== 'undefined') soundManager.playUIHover(); 
 
+    autoSaveGame(); // Lock in the drained stability immediately!
+
     // Did they run out of time while still failing?
     if (tile.stability <= 0 && resonance < 85) {
         anomalyDetonates();
@@ -4331,6 +4386,8 @@ function extractAnomalyData() {
     checkLevelUp();
     renderUIStats();
     anomalyContext = null;
+
+    autoSaveGame(); // Save immediately so they can't duplicate the rewards
 }
 
 function anomalyDetonates() {
@@ -4353,6 +4410,8 @@ function anomalyDetonates() {
     
     renderUIStats();
     anomalyContext = null;
+
+    autoSaveGame(); // Lock in the damage!
 }
 
 function abortAnomaly() {
@@ -4841,7 +4900,7 @@ function handleVictory() {
         }
     }
 
-    // --- 6. CRITICAL FIX: BOUNTY MISSION TRACKING ---
+    // --- 6. BOUNTY MISSION TRACKING ---
     if (playerActiveMission && playerActiveMission.type === "BOUNTY" && !playerActiveMission.isComplete) {
         // Look up the specific progress tracker for this objective (eliminate_0)
         const progress = playerActiveMission.progress.eliminate_0;
@@ -6164,6 +6223,120 @@ function confirmAcceptMission(stationName, index) {
     logMessage(detailMsg);
 }
 
+function openBountyBoard() {
+    openGenericModal("CONCORD BOUNTY BOARD");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Ensure targets exist for this station
+    if (!currentStationBounties || currentStationBounties.length === 0) {
+        generateBountyTargets();
+    }
+
+    listEl.innerHTML = '';
+
+    // If player has an active bounty, show ONLY that
+    if (playerActiveBounty) {
+        listEl.innerHTML = `<div style="padding:15px; color:var(--warning);">Active Contract: ${playerActiveBounty.targetName}</div>`;
+        showBountyDetails(playerActiveBounty, true);
+        return;
+    }
+
+    // Otherwise, list available bounties
+    currentStationBounties.forEach(bounty => {
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        row.innerHTML = `<span style="color:var(--danger); font-weight:bold;">${bounty.targetName}</span> <span style="color:var(--gold-text)">${formatNumber(bounty.reward)}c</span>`;
+        row.onclick = () => showBountyDetails(bounty, false);
+        listEl.appendChild(row);
+    });
+}
+
+function showBountyDetails(bounty, isActive) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 15px;">
+            <div style="font-size:50px; margin-bottom:10px;">🎯</div>
+            <h3 style="color:var(--danger); margin:0;">${bounty.targetName.toUpperCase()}</h3>
+            <div style="color:var(--item-desc-color); font-size:12px; margin-bottom:15px;">WANTED FOR: ${bounty.crime.toUpperCase()}</div>
+            
+            <div style="background:rgba(0,0,0,0.3); border:1px solid #333; padding:10px; border-radius:4px; text-align:left;">
+                <div style="margin-bottom:5px;"><span style="color:#888;">Threat Level:</span> <span style="color:var(--warning);">Class ${bounty.difficulty}</span></div>
+                <div style="margin-bottom:5px;"><span style="color:#888;">Vessel:</span> <span style="color:var(--text-color);">${bounty.shipClass}</span></div>
+                <div style="margin-bottom:5px;"><span style="color:#888;">Last Seen:</span> <span style="color:var(--accent-color);">Sector [${bounty.x}, ${bounty.y}]</span></div>
+                <div style="margin-top:10px; border-top:1px dashed #444; padding-top:10px;"><span style="color:#888;">Bounty Payout:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(bounty.reward)}c</span></div>
+            </div>
+        </div>
+    `;
+
+    if (isActive) {
+        actionsEl.innerHTML = `<button class="action-button danger-btn" onclick="abandonBounty()">ABANDON CONTRACT</button>`;
+    } else {
+        actionsEl.innerHTML = `<button class="action-button" style="border-color:var(--danger); color:var(--danger);" onclick="acceptBounty('${bounty.id}')">ACCEPT CONTRACT</button>`;
+    }
+}
+
+// ==========================================
+// --- BOUNTY BOARD HELPER FUNCTIONS ---
+// ==========================================
+
+function acceptBounty(bountyId) {
+    const selected = currentStationBounties.find(b => b.id === bountyId);
+    if (selected) {
+        playerActiveBounty = selected;
+        
+        // --- 1. SPAWN THE SHIP ON THE MAP ---
+        // We create a custom enemy object scaled to the bounty's difficulty
+        const bountyShip = {
+            id: selected.id,
+            x: selected.x,
+            y: selected.y,
+            name: selected.targetName,
+            shipClass: selected.shipClass,
+            faction: selected.faction,
+            isBountyTarget: true, // Special flag for the combat engine
+            level: selected.difficulty,
+            hp: selected.difficulty * 50,
+            maxHp: selected.difficulty * 50,
+            shields: selected.difficulty * 25,
+            maxShields: selected.difficulty * 25,
+            char: 'V', // The standard enemy vessel icon
+            color: 'var(--danger)' // Bright red
+        };
+        
+        // Inject them into the engine's active memory
+        if (typeof activeEnemies !== 'undefined') {
+            activeEnemies.push(bountyShip);
+        }
+        
+        if (typeof showToast === 'function') showToast("BOUNTY ACCEPTED", "warning");
+        logMessage(`Tracking target: ${selected.targetName}. Sensors indicate they are hiding at Sector [${selected.x}, ${selected.y}].`);
+        
+        openBountyBoard(); // Refresh UI to show the "Active" screen
+        if (typeof render === 'function') render(); // Force map to update
+    }
+}
+
+function abandonBounty() {
+    if (playerActiveBounty) {
+        // --- 2. CLEAN UP THE GHOST SHIP ---
+        // If the player bails on the contract, we have to erase the ship from the map
+        if (typeof activeEnemies !== 'undefined') {
+            activeEnemies = activeEnemies.filter(e => e.id !== playerActiveBounty.id);
+        }
+        
+        if (typeof showToast === 'function') showToast("BOUNTY ABANDONED", "info");
+        logMessage(`You dropped the contract on ${playerActiveBounty.targetName}. Local security has been notified.`);
+        
+        playerActiveBounty = null;
+        openBountyBoard(); // Refresh UI back to the list
+        if (typeof render === 'function') render(); // Force map to update
+    }
+}
+
  function acceptMission() {
      if (!currentMissionContext || currentMissionContext.step !== 'confirmMission' || !currentMissionContext.selectedMission) {
          displayMissionBoard();
@@ -6704,6 +6877,9 @@ function processDecryption(method, itemId = 'ENCRYPTED_ENGRAM') {
 function jettisonItem(key) {
     if (playerCargo[key] > 0) {
         playerCargo[key]--;
+        
+        if (playerCargo[key] <= 0) delete playerCargo[key];
+        
         updateCurrentCargoLoad();
         
         // Visual updates
@@ -7567,6 +7743,8 @@ function respawnPlayer() {
     playerShields = MAX_SHIELDS;
     playerFuel = MAX_FUEL;
 
+    playerAbilityCooldown = 0;
+
     // 3. Move to Starbase Alpha (Safe Zone)
     // We use the coordinates defined in your locations.js
     playerX = MAP_WIDTH - 7;
@@ -7582,7 +7760,7 @@ function respawnPlayer() {
     currentSectorY = Math.floor(playerY / SECTOR_SIZE);
     currentSectorName = generateSectorName(currentSectorX, currentSectorY);
 
-    // 4. THE FIX: Clear Enemies & Combat State 
+    // 4. Clear Enemies & Combat State 
     activeEnemies = []; // Wipe the galaxy map clean of old pursuers
     currentCombatContext = null; // Tell the game the fight is over!
 
@@ -8153,7 +8331,11 @@ function renderStationMenu(location, faction) {
     }
 
     // --- 2. STANDARD SERVICES ---
-    html += createBtn('📜', 'Mission Board', 'Contracts & Bounties', "displayMissionBoard()");
+    html += createBtn('📜', 'Mission Board', 'Contracts & Deliveries', "displayMissionBoard()");
+    
+    // NEW: THE BOUNTY BOARD BUTTON
+    html += createBtn('🎯', 'Bounty Board', 'Hunt Cartel Targets', "openBountyBoard()", "border-left: 3px solid var(--danger);");
+    
     html += createBtn('⚙️', 'Outfitting', 'Upgrades & Parts', "displayOutfittingScreen()");
     html += createBtn('🍸', 'Cantina', 'Rumors & Rest (10c)', "visitCantina()");
 
@@ -10395,6 +10577,42 @@ function fireCrew(crewId) {
     logMessage(`You dismissed ${crew.name} at the nearest port.`);
     showToast("CREW MEMBER DISMISSED", "info");
     displayCrewRoster(); // Refresh screen
+}
+
+function generateBountyTargets() {
+    currentStationBounties = [];
+    const numBounties = Math.floor(Math.random() * 3) + 2; // 2 to 4 bounties per station
+    
+    const firstNames = ["'Mad Dog'", "Viper", "'Iron'", "Jax", "Silas", "Kaelen", "'Ghost'", "Rook", "Vane", "Kira"];
+    const lastNames = ["Vance", "Karn", "Trex", "the Butcher", "Valerius", "Thorne", "Graves", "Black", "Kryik"];
+    const crimeList = ["Smuggling", "Piracy", "Assassination", "Data Theft", "Illegal Cybernetics", "Shipjacking"];
+    
+    for (let i = 0; i < numBounties; i++) {
+        // Pick a random direction and distance to spawn the target
+        const angle = Math.random() * Math.PI * 2;
+        const distance = Math.floor(Math.random() * 15) + 5; // 5 to 20 tiles away
+        
+        const targetX = Math.floor(playerX + Math.cos(angle) * distance);
+        const targetY = Math.floor(playerY + Math.sin(angle) * distance);
+        
+        // Scale difficulty with player level, with a chance for a "Hard" bounty
+        let difficultyLevel = playerLevel;
+        if (Math.random() > 0.7) difficultyLevel += 2; 
+        
+        const reward = (difficultyLevel * 1500) + Math.floor(Math.random() * 500);
+        
+        currentStationBounties.push({
+            id: `BOUNTY_${Date.now()}_${i}`,
+            targetName: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
+            crime: crimeList[Math.floor(Math.random() * crimeList.length)],
+            x: targetX,
+            y: targetY,
+            difficulty: difficultyLevel,
+            reward: reward,
+            faction: "ECLIPSE", // Defaulting to Cartel/Pirates
+            shipClass: difficultyLevel > 5 ? "STRIKER" : "SCOUT" // Can expand this later!
+        });
+    }
 }
 
 // --- AMBIENT MAP ANIMATION ---
