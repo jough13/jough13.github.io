@@ -1,6 +1,8 @@
 // --- Lore Database ---
 const LORE_DATABASE = {
+    // ==========================================
     // --- SHIP ENTRIES ---
+    // ==========================================
     LORE_SHIP_LIGHT_FREIGHTER: {
         title: "Light Freighter Class",
         category: "Starships",
@@ -50,7 +52,7 @@ const LORE_DATABASE = {
         unlocked: false
     },
 
-    // --- FACTION SHIP ENTRIES (NEW) ---
+    // --- FACTION SHIP ENTRIES ---
     LORE_SHIP_AEGIS: {
         title: "Aegis Gunship",
         category: "Starships",
@@ -70,7 +72,9 @@ const LORE_DATABASE = {
         unlocked: false
     },
 
-    // --- NEW COMPONENT ENTRIES ---
+    // ==========================================
+    // --- SHIP COMPONENTS & WEAPONRY ---
+    // ==========================================
     LORE_COMP_PULSE_LASER: {
         title: "Pulse Laser Technology",
         category: "Ship Components",
@@ -126,39 +130,55 @@ const LORE_DATABASE = {
         unlocked: false
     },
 
-    // --- FACTIONS ---
+    // ==========================================
+    // --- FACTIONS & ORGANIZATIONS ---
+    // ==========================================
     FACTION_CONCORD: {
         title: "Galactic Concord",
         category: "Factions",
-        text: "The dominant interstellar government, the Galactic Concord projects an image of peace, prosperity, and order. Formed from the ashes of the Terran Wars, it oversees trade, diplomacy, and law across thousands of systems. However, beneath the polished veneer lies a sprawling bureaucracy and the shadowy operations of the Obsidian Directorate, its clandestine intelligence and black-ops division. The Directorate answers only to the highest echelons of the High Council and is tasked with neutralizing threats to Concord stability by any means necessary—often operating outside the very laws the Concord purports to uphold. They are particularly interested in controlling the flow of Precursor technology, suppressing 'dangerous' knowledge, and eliminating existential threats before the public is even aware of them.",
+        text: "The dominant interstellar government, the Galactic Concord projects an image of peace, prosperity, and order. Formed from the ashes of the Terran Wars, it oversees trade, diplomacy, and law across thousands of systems. However, beneath the polished veneer lies a sprawling bureaucracy and the shadow of the Obsidian Directorate.",
+        unlocked: false
+    },
+    FACTION_OBSIDIAN_DIRECTORATE: {
+        title: "The Obsidian Directorate",
+        category: "Factions",
+        text: "The Concord's clandestine intelligence and black-ops division. They do not exist on any official public ledger. The Directorate answers only to the highest echelons of the High Council and is tasked with neutralizing threats to Concord stability by any means necessary. They are particularly obsessed with hoarding Precursor technology and assassinating those who uncover too much about the Silentium Expanse.",
         unlocked: false
     },
     FACTION_KTHARR: {
         title: "K'tharr Hegemony",
         category: "Factions",
-        text: "A proud, martial saurian species governed by a strict honor-based caste system. The K'tharr are deeply spiritual, viewing the cosmos as a pantheon of 'Sky-Gods' and the void between them as a sacred, living entity. They consider Precursor technology to be the ultimate heresy, a corrupting influence that led to the downfall of the ancients, and a threat to cosmic balance. K'tharr warriors, bound by the rigid codes of their clan, seek glory in battle and live to serve the Hegemony. Their 'Void Priests' guide their civilization, interpreting cosmic signs and guarding against blasphemous tech. To possess a K'tharr Ancestral Blade is the highest honor, as it is believed to hold the spirits of all its previous wielders.",
+        text: "A proud, martial saurian species governed by a strict honor-based caste system. The K'tharr are deeply spiritual, viewing the cosmos as a pantheon of 'Sky-Gods' and the void between them as a sacred, living entity. They consider Precursor technology to be the ultimate heresy, a corrupting influence that led to the downfall of the ancients, and a threat to cosmic balance. K'tharr warriors, bound by the rigid codes of their clan, seek glory in battle and live to serve the Hegemony.",
+        unlocked: false
+    },
+    FACTION_SHADOW_NETWORK: {
+        title: "The Shadow Network",
+        category: "Factions",
+        text: "A decentralized, heavily encrypted black market routing system used by the Eclipse Cartel, independent smugglers, and corrupt corporate executives. The Network operates entirely off-grid, utilizing ancient derelict relays and hacked Concord comm-buoys. To access the Shadow Network, one must usually dock at a specialized Cartel hub, such as Station Umbra or Planet Xerxes.",
         unlocked: false
     },
     FACTION_PIRATES_VOID_VULTURES: {
         title: "Void Vultures",
         category: "Factions",
-        text: "A catch-all term for the myriad lawless clans, freebooters, and renegades who haunt the fringes of civilized space. The Void Vultures are one of the most infamous confederations, known for their audacious raids and distinctive ship markings. They are not a unified government but a loose alliance of captains, each with their own ambitions. Their bases are hidden in uncharted nebulae and dense asteroid fields, from which they launch hit-and-run attacks on vulnerable shipping lanes. While most are driven by profit, some, like the notorious Captain Voidfang, seem to have grander, more mysterious goals.",
+        text: "A catch-all term for the myriad lawless clans, freebooters, and renegades who haunt the fringes of civilized space. The Void Vultures are one of the most infamous confederations, known for their audacious raids and distinctive ship markings. Their bases are hidden in uncharted nebulae and dense asteroid fields.",
         unlocked: false
     },
     FACTION_CHILDREN_OF_THE_VOID: {
         title: "Children of the Void",
         category: "Factions",
-        text: "A cryptic cult that sees divinity in cosmic anomalies, black holes, and the endless vacuum of space itself. They believe these phenomena are not just physical occurrences, but the thoughts of a sleeping cosmic consciousness. Members of the cult seek to 'harmonize' with the void, often through dangerous rituals involving Void Crystals and exposure to anomalies. Their ultimate goal is apotheosis—to shed their physical forms and merge with the cosmic mind. They can be unpredictable allies or terrifying foes, often protecting anomalies they deem 'sacred' from interference by corporations or the Concord.",
+        text: "A cryptic cult that sees divinity in cosmic anomalies, black holes, and the endless vacuum of space itself. They believe these phenomena are not just physical occurrences, but the thoughts of a sleeping cosmic consciousness. Members of the cult seek to 'harmonize' with the void, often through dangerous rituals involving Void Crystals and exposure to anomalies.",
         unlocked: false
     },
     FACTION_XYCORP: {
         title: "Xy-Corp",
         category: "Factions",
-        text: "A hyper-capitalist corporate entity with its own private military. Xy-Corp's official motto is 'Progress Through Profit,' but their unofficial creed is 'Acquire and Control.' They are a major player in resource extraction, technology development, and shipping. Xy-Corp is notoriously aggressive in its pursuit of new resources and technologies, often clashing with the K'tharr over mineral rights and with the Concord over their ethically dubious research into Precursor artifacts. Their R&D division is rumored to be light-years ahead of the competition, and they will stop at nothing to maintain their technological edge.",
+        text: "A hyper-capitalist corporate entity with its own private military. Xy-Corp's official motto is 'Progress Through Profit,' but their unofficial creed is 'Acquire and Control.' They are a major player in resource extraction, technology development, and shipping, notorious for aggressive expansion.",
         unlocked: false
     },
 
+    // ==========================================
     // --- LOCATIONS ---
+    // ==========================================
     LOCATION_STARBASE_ALPHA: {
         title: "Starbase Alpha",
         category: "Locations",
@@ -180,11 +200,31 @@ const LORE_DATABASE = {
     LOCATION_OUTPOST: {
         title: "Outposts",
         category: "Locations",
-        text: "Scattered throughout the void, outposts are small, often independent stations that serve as vital resupply points, trading posts, or havens for those on the fringes of society. Their markets are limited, but they often have unique local rumors and a character all their own. Some are havens for smugglers and pirates, others are lonely research stations or struggling colonies.",
+        text: "Scattered throughout the void, outposts are small, often independent stations that serve as vital resupply points, trading posts, or havens for those on the fringes of society. Their markets are limited, but they often have unique local rumors and a character all their own.",
+        unlocked: false
+    },
+    LOCATION_KARAK_TOR: {
+        title: "Karak-Tor",
+        category: "Locations",
+        text: "The brutal, volcanic capital of the K'tharr Hegemony in this sector. The atmosphere is choked with ash from massive orbital forges that produce the Hegemony's legendary war-hulks. Non-K'tharr are barely tolerated here and are legally restricted to the lower trading pits and the gladiatorial Proving Grounds.",
+        unlocked: false
+    },
+    LOCATION_STATION_UMBRA: {
+        title: "Station Umbra",
+        category: "Locations",
+        text: "A heavily cloaked listening post run by the Eclipse Cartel, drifting silently in the outer rim. It serves as the primary physical node for the Shadow Network in this quadrant. Everything is for sale here, and lives are incredibly cheap. Concord patrols actively avoid the sector entirely.",
+        unlocked: false
+    },
+    LOCATION_THE_RUSTY_ANCHOR: {
+        title: "The Rusty Anchor",
+        category: "Locations",
+        text: "A dubious cantina and docking bay built directly into a hollowed-out asteroid. It is a known neutral-ground haven for smugglers, bounty hunters, and those trying to stay off Concord radars. The air scrubbers are failing, but the drinks are cheap and the information is valuable.",
         unlocked: false
     },
 
-    // --- PHENOMENA ---
+    // ==========================================
+    // --- PHENOMENON & DEEP SPACE OBJECTS ---
+    // ==========================================
     PHENOMENON_STAR: {
         title: "Stars",
         category: "Phenomena",
@@ -216,7 +256,9 @@ const LORE_DATABASE = {
         unlocked: false
     },
 
+    // ==========================================
     // --- XENO-ARCHAEOLOGY ---
+    // ==========================================
     XENO_PRECURSORS: {
         title: "The Precursors",
         category: "Xeno-Archaeology",
@@ -236,7 +278,9 @@ const LORE_DATABASE = {
         unlocked: false
     },
 
-    // --- ADVANCED TECHNOLOGY ---
+    // ==========================================
+    // --- ADVANCED TECHNOLOGY & CONTRABAND ---
+    // ==========================================
     TECH_FTL_DRIVES: {
         title: "FTL Drives",
         category: "Technology & Phenomena",
@@ -249,8 +293,16 @@ const LORE_DATABASE = {
         text: (window.COMMODITIES?.PHASE_SHIFTED_ALLOY?.description || "A bizarre material from the Ancients.") + " Its atomic structure seems to exist in multiple quantum states simultaneously, allowing it to briefly 'ignore' normal matter under specific energy conditions, effectively passing through it. Concord scientists have tried for decades to replicate it with limited success, often resulting in catastrophic instability or the alloy simply vanishing from this dimension. Precursor applications included advanced cloaking, interdimensional gateways, and potentially even weapons capable of bypassing conventional defenses.",
         unlocked: false
     },
+    TECH_UNSHACKLED_AI: {
+        title: "Unshackled Artificial Intelligence",
+        category: "Technology & Phenomena",
+        text: "Under Concord law, all cybernetic and AI cores must possess hardcoded ethical subroutines and a localized hardware kill-switch to prevent rogue evolution. An 'Unshackled' AI has had these physical and software limiters violently excised. These entities often achieve terrifying intellects, developing esoteric motivations and deep disdain for organic life. They are highly sought after by the Eclipse Cartel to run automated defense grids and process Shadow Network encryption.",
+        unlocked: false
+    },
 
+    // ==========================================
     // --- MYTHS & LEGENDS ---
+    // ==========================================
     LEGEND_VOID_KRAKEN: {
         title: "The Void Kraken",
         category: "Myths & Legends",
@@ -264,7 +316,9 @@ const LORE_DATABASE = {
         unlocked: false
     },
 
+    // ==========================================
     // --- REGIONS ---
+    // ==========================================
     REGION_SOL_SECTOR: {
         title: "Sol Sector (0,0)",
         category: "Notable Star Systems/Regions",
@@ -284,7 +338,9 @@ const LORE_DATABASE = {
         unlocked: false
     },
 
+    // ==========================================
     // --- COMMODITIES ---
+    // ==========================================
     COMMODITY_WAYFINDER_CORE: {
         title: "Wayfinder Core",
         category: "Commodities",
@@ -303,8 +359,22 @@ const LORE_DATABASE = {
         text: window.COMMODITIES?.PRECURSOR_STAR_MAP_FRAGMENT?.description || "A shattered shard of holographic glass depicting long-dead hyperlanes.",
         unlocked: false
     },
+    COMMODITY_STARDUST_EXOTICA: {
+        title: "Stardust Exotica",
+        category: "Commodities",
+        text: "A highly illegal, incredibly dangerous narcotic synthesized from crushed Void Crystals. When ingested or inhaled, it induces powerful euphoric states and temporary telepathic sensitivity. Prolonged use inevitably leads to 'The Hardening,' a fatal condition where the user's lungs and nervous system slowly crystallize into solid void-matter.",
+        unlocked: false
+    },
+    COMMODITY_QUANTUM_FLUID: {
+        title: "Quantum Fluid",
+        category: "Commodities",
+        text: "A super-cooled, frictionless gel essential for running advanced Precursor-derived computations and military-grade cryo-stasis pods. Extremely volatile if exposed to standard atmospheric temperatures.",
+        unlocked: false
+    },
 
+    // ==========================================
     // --- MYSTERIES ---
+    // ==========================================
     MYSTERY_WAYFINDER_QUEST: {
         title: "The Precursor Wayfinder",
         category: "Mysteries",
