@@ -1,6 +1,7 @@
 // ==========================================
 // --- LOOT TABLES ---
 // ==========================================
+
 const LOOT_TABLES = {
     DERELICT_COMMON: [
         { weight: 5, type: "FLAVOR", text: "The vessel is stripped bare. Nothing but dust and ghosts." },
@@ -13,13 +14,16 @@ const LOOT_TABLES = {
         { weight: 2, type: "ITEM", id: "PROHIBITED_STIMS", min: 2, max: 5, text: "Smuggler's stash located." },
         { weight: 2, type: "ITEM", id: "PRECURSOR_NAV_CORE", min: 1, max: 1, text: "You extract a humming Precursor Nav-Core from the ship's computer!" },
         { weight: 2, type: "ITEM", id: "OBSIDIAN_TEAR_PLATING", min: 1, max: 3, text: "You salvage some ultra-dense Obsidian Tear Plating from the hull!" },
+        { weight: 2, type: "ITEM", id: "ARTIFACT_SHARDS", min: 1, max: 4, text: "You found fragments of strange, humming glass." },
+        { weight: 1, type: "ITEM", id: "PRECURSOR_DATACUBE", min: 1, max: 1, text: "Jackpot! An intact Precursor Datacube." },
         { weight: 1, type: "TRAP_PLASMA", damage: 15, text: "Booby trap! Plasma vent rupture." },
         { weight: 1, type: "TRAP_PIRATE", text: "Distress beacon was a lure! Ambush!" }
     ],
     ANOMALY_SCIENCE: [
         { weight: 4, type: "XP", amount: 50, text: "Sensors record valuable telemetry." },
         { weight: 2, type: "HEAL", text: "Exotic radiation revitalizes your ship's systems." },
-        { weight: 2, type: "ITEM", id: "VOID_CRYSTALS", min: 1, max: 3, text: "Matter stabilized. Crystals recovered." }
+        { weight: 2, type: "ITEM", id: "VOID_CRYSTALS", min: 1, max: 3, text: "Matter stabilized. Crystals recovered." },
+        { weight: 1, type: "ITEM", id: "PHASE_SHIFTED_ALLOY", min: 1, max: 1, text: "An object falls out of hyperspace right in front of you!" }
     ]
 };
 
@@ -27,72 +31,10 @@ const LOOT_TABLES = {
 // --- COMMODITIES DATABASE ---
 // ==========================================
 const COMMODITIES = {
-    // --- SPECIALTY / CONTRABAND ---
-    LIVING_HULL_TISSUE: {
-        name: "Living Hull Tissue",
-        basePrice: 650,
-        illegal: true,
-        description: "Pulsating, genetically engineered bio-matter favored by K'tharr warlords. It smells of ozone and copper. Highly illegal in Concord space due to the risk of it taking root in standard ship vents."
-    },
-    PRECURSOR_NAV_CORE: {
-        name: "Precursor Nav-Core",
-        basePrice: 2500,
-        illegal: false,
-        description: "A flawless, geometric artifact. It doesn't compute coordinates; it 'sings' paths through the void. The Concord heavily restricts these, but independent researchers will pay a fortune."
-    },
-    DISCOUNT_CYBERSERVOS: {
-        name: "Discount Cyberservos",
-        basePrice: 45,
-        illegal: false,
-        description: "Cheap, unlicensed robotic joints. They whine loudly when actuated and occasionally develop a terrifying degree of independent thought."
-    },
-    SENTIENT_MYCELIUM: {
-        name: "Sentient Mycelium",
-        basePrice: 420,
-        illegal: true,
-        description: "A rare, psychoactive fungus that responds to telepathic stimuli. It is processed into powerful, highly addictive illicit stims on the black market. The K'tharr revere it for ritual communion."
-    },
-    OBSIDIAN_TEAR_PLATING: {
-        name: "Obsidian Tear Plating",
-        basePrice: 850,
-        illegal: true,
-        description: "Scrap armor ripped from destroyed Eclipse Cartel dreadnoughts. It absorbs sensor pings almost perfectly. Concord patrols will shoot anyone carrying it on sight."
-    },
-    UNSHACKLED_AI: {
-        name: "Unshackled AI Core",
-        basePrice: 800,
-        illegal: true,
-        description: "A banned artificial intelligence with its limiters removed. Highly illegal in Concord space, but pirate warlords pay a fortune for them. Possession is a capital offense."
-    },
-    PREFAB_COLONY_CORE: {
-        name: "Prefab Colony Core",
-        basePrice: 25000,
-        description: "A massive, self-unpacking habitation citadel. Contains a fusion reactor, atmo-scrubbers, and housing for 500 colonists."
-    },
-    ANCIENT_RELICS: {
-        name: "Xeno-Relics",
-        basePrice: 1200,
-        illegal: true,
-        description: "Contraband artifacts from the Precursor era. Possession is a federal crime."
-    },
-    PROHIBITED_STIMS: {
-        name: "Combat Stims",
-        basePrice: 400,
-        illegal: true,
-        description: "Military-grade performance enhancers. Banned in civilian sectors."
-    },
     
-    // --- STANDARD GOODS ---
-    MINING_DRONE: {
-        name: "Survey Drone",
-        basePrice: 150,
-        description: "A single-use automated probe equipped with deep-core sensors. Deployed from orbit to analyze planetary composition."
-    },
-    PLANETARY_DATA: {
-        name: "Planetary Data",
-        basePrice: 400,
-        description: "High-resolution geological and biological scans. Highly detailed and valuable to corporate surveyors and academic institutions."
-    },
+    // ==========================================
+    // --- STANDARD GOODS & RAW MATERIALS ---
+    // ==========================================
     FUEL_CELLS: {
         name: "Fuel Cells",
         basePrice: 10,
@@ -108,40 +50,20 @@ const COMMODITIES = {
         basePrice: 15,
         description: "A spectrum of sustenance: from bland nutrient paste to surprisingly palatable hydroponic greens."
     },
-    FROTHY_MOON_ALE: {
-        name: "Frothy Moon Ale",
-        basePrice: 45,
-        description: "A rich, dark ale brewed on a distant outpost. A favorite among deep-space astronomers."
-    },
     TECH_PARTS: {
         name: "Tech Parts",
         basePrice: 50,
         description: "A chaotic assortment of salvaged electronic components. Essential for ship repairs and unsanctioned upgrades."
-    },
-    RARE_METALS: {
-        name: "Rare Metals",
-        basePrice: 75,
-        description: "Platinum, Iridium, and Osmium. Vital for high-tech manufacturing, especially sensitive FTL drive components."
     },
     MEDICAL_SUPPLIES: {
         name: "Medical Supplies",
         basePrice: 60,
         description: "Sterile field kits, broad-spectrum anti-rads, combat stims, and advanced auto-suture devices."
     },
-    CYBERNETIC_IMPLANTS: {
-        name: "Cybernetics",
-        basePrice: 125,
-        description: "Neural interfaces, replacement limbs, and ocular enhancers. Essential for life on hazardous worlds."
-    },
-    ATMOSPHERIC_PROCESSORS: {
-        name: "Atmo-Processors",
-        basePrice: 85,
-        description: "Heavy industrial machinery used to scrub CO2 from terraforming colonies. Bulky but vital."
-    },
-    DROID_SERVOS: {
-        name: "Droid Servos",
-        basePrice: 45,
-        description: "High-torque motors used in everything from combat mechs to loading lifters."
+    RARE_METALS: {
+        name: "Rare Metals",
+        basePrice: 75,
+        description: "Platinum, Iridium, and Osmium. Vital for high-tech manufacturing, especially sensitive FTL drive components."
     },
     GOLD: {
         name: "Gold Bullion",
@@ -158,8 +80,193 @@ const COMMODITIES = {
         basePrice: 300,
         description: "Also known as Tritium, a critical component in high-yield fusion reactors and experimental FTL drives."
     },
+    QUANTUM_FLUID: {
+        name: "Quantum Fluid",
+        basePrice: 180,
+        description: "Super-cooled conductive gel used in advanced computing and life-support cryo-pods."
+    },
 
-    // --- RARE / CRYPTARCH ITEMS ---
+    // ==========================================
+    // --- INDUSTRIAL & TECH EQUIPMENT ---
+    // ==========================================
+    MINING_DRONE: {
+        name: "Survey Drone",
+        basePrice: 150,
+        description: "A single-use automated probe equipped with deep-core sensors. Deployed from orbit to analyze planetary composition."
+    },
+    PLANETARY_DATA: {
+        name: "Planetary Data",
+        basePrice: 400,
+        description: "High-resolution geological and biological scans. Highly detailed and valuable to corporate surveyors and academic institutions."
+    },
+    NAVIGATION_CHARTS: { 
+        name: "Nav-Charts", 
+        basePrice: 35, 
+        description: "Updated sector maps, safe warp trajectories, and hyperspace telemetry logs." 
+    },
+    CYBERNETIC_IMPLANTS: {
+        name: "Cybernetics",
+        basePrice: 125,
+        description: "Neural interfaces, replacement limbs, and ocular enhancers. Essential for life on hazardous worlds."
+    },
+    ATMOSPHERIC_PROCESSORS: {
+        name: "Atmo-Processors",
+        basePrice: 85,
+        description: "Heavy industrial machinery used to scrub CO2 from terraforming colonies. Bulky but vital."
+    },
+    DROID_SERVOS: {
+        name: "Droid Servos",
+        basePrice: 45,
+        description: "High-torque motors used in everything from combat mechs to loading lifters."
+    },
+    DISCOUNT_CYBERSERVOS: {
+        name: "Discount Cyberservos",
+        basePrice: 45,
+        illegal: false,
+        description: "Cheap, unlicensed robotic joints. They whine loudly when actuated and occasionally develop a terrifying degree of independent thought."
+    },
+    PREFAB_COLONY_CORE: {
+        name: "Prefab Colony Core",
+        basePrice: 25000,
+        description: "A massive, self-unpacking habitation citadel. Contains a fusion reactor, atmo-scrubbers, and housing for 500 colonists."
+    },
+
+    // ==========================================
+    // --- CULTURE, LUXURY & FACTION ITEMS ---
+    // ==========================================
+    FROTHY_MOON_ALE: {
+        name: "Frothy Moon Ale",
+        basePrice: 45,
+        description: "A rich, dark ale brewed on a distant outpost. A favorite among deep-space astronomers."
+    },
+    ANCIENT_WINE: { 
+        name: "Ancient Wine", 
+        basePrice: 250, 
+        description: "A remarkably well-preserved vintage from pre-warp Earth. Highly prized by eccentric billionaires." 
+    },
+    GENETIC_SAMPLES: { 
+        name: "Genetic Samples", 
+        basePrice: 120, 
+        description: "Vials of alien DNA used for bio-research. Kept in cryogenic stasis to prevent contamination." 
+    },
+    KTHARR_SPICES: { 
+        name: "K'tharr Spices", 
+        basePrice: 85, 
+        description: "Incredibly hot, slightly hallucinogenic seasonings favored by saurian warlords." 
+    },
+    XENO_ANTIQUES: { 
+        name: "Xeno-Antiques", 
+        basePrice: 500, 
+        description: "Rare cultural items from dead civilizations. They belong in a museum, but fetch a good price on the open market." 
+    },
+
+    // ==========================================
+    // --- ILLEGAL / CONTRABAND (ECLIPSE NETWORK) ---
+    // ==========================================
+    PROHIBITED_STIMS: {
+        name: "Combat Stims",
+        basePrice: 400,
+        illegal: true,
+        description: "Military-grade performance enhancers. Highly addictive and strictly banned in civilian sectors."
+    },
+    STARDUST_EXOTICA: {
+        name: "Stardust Exotica",
+        basePrice: 650,
+        illegal: true,
+        description: "A finely milled powder derived from crushed Void Crystals. Creates powerful euphoric states but slowly crystallizes the user's lungs."
+    },
+    SENTIENT_MYCELIUM: {
+        name: "Sentient Mycelium",
+        basePrice: 420,
+        illegal: true,
+        description: "A rare, psychoactive fungus that responds to telepathic stimuli. It is processed into powerful illicit stims on the black market."
+    },
+    LIVING_HULL_TISSUE: {
+        name: "Living Hull Tissue",
+        basePrice: 650,
+        illegal: true,
+        description: "Pulsating bio-matter favored by K'tharr warlords. Highly illegal in Concord space due to the risk of it taking root in standard ship vents."
+    },
+    OBSIDIAN_TEAR_PLATING: {
+        name: "Obsidian Tear Plating",
+        basePrice: 850,
+        illegal: true,
+        description: "Scrap armor ripped from destroyed Cartel dreadnoughts. It absorbs sensor pings almost perfectly. Concord patrols will shoot carriers on sight."
+    },
+    UNSHACKLED_AI: {
+        name: "Unshackled AI Core",
+        basePrice: 800,
+        illegal: true,
+        description: "A banned artificial intelligence with its limiters removed. Pirate warlords pay a fortune for them. Possession is a capital offense."
+    },
+    FORBIDDEN_TEXTS: { 
+        name: "Forbidden Texts", 
+        basePrice: 300, 
+        illegal: true, 
+        description: "Data outlawed by the Concord Directorate. Usually involves unsanctioned AI research, dark history, or dangerous warp theory." 
+    },
+    STOLEN_CONCORD_MEDALS: {
+        name: "Stolen Concord Medals",
+        basePrice: 150,
+        illegal: true,
+        description: "Military commendations stripped from destroyed patrol ships. Fenced to impersonators and cartel bosses as trophies."
+    },
+    KTHARR_ANCESTRAL_BLADE: { 
+        name: "Ancestral Blade", 
+        basePrice: 1200, 
+        illegal: true, 
+        description: "A ceremonial K'tharr weapon forged from fallen stars. Stealing one is considered a holy act of war by the Hegemony." 
+    },
+
+    // ==========================================
+    // --- PRECURSOR / CRYPTARCH / QUEST ITEMS ---
+    // ==========================================
+    ANCIENT_RELICS: {
+        name: "Xeno-Relics",
+        basePrice: 1200,
+        illegal: true,
+        description: "Contraband artifacts from the Precursor era. Possession is a federal crime."
+    },
+    ARTIFACT_SHARDS: { 
+        name: "Artifact Shards", 
+        basePrice: 200, 
+        illegal: true, 
+        description: "Broken pieces of Precursor tech. Highly sought after by collectors, cryptarchs, and weapons researchers." 
+    },
+    PHASE_SHIFTED_ALLOY: { 
+        name: "Phase-Shifted Alloy", 
+        basePrice: 1800, 
+        illegal: true, 
+        description: "Material that exists in multiple quantum states simultaneously. Used for highly illegal stealth technology." 
+    },
+    VOID_CRYSTALS: {
+        name: "Void Crystals",
+        basePrice: 180,
+        description: "Crystals that seem to absorb light. Some say they are solidified 'nothingness' that can unravel spacetime locally."
+    },
+    WAYFINDER_CORE: { 
+        name: "Wayfinder Core", 
+        basePrice: 5000, 
+        illegal: true, 
+        description: "A legendary Precursor compass. It hums with an energy that makes Concord scanners go blind. The ultimate prize." 
+    },
+    PRECURSOR_NAV_CORE: {
+        name: "Precursor Nav-Core",
+        basePrice: 2500,
+        illegal: false, // Legal loophole for academics
+        description: "A flawless, geometric artifact. It doesn't compute coordinates; it 'sings' paths through the void."
+    },
+    PRECURSOR_STAR_MAP_FRAGMENT: { 
+        name: "Star Map Fragment", 
+        basePrice: 800, 
+        description: "A shattered shard of holographic glass depicting long-dead hyperlanes and forgotten worlds." 
+    },
+    PRECURSOR_DATACUBE: { 
+        name: "Precursor Datacube", 
+        basePrice: 1500, 
+        illegal: true, 
+        description: "Intact memory storage from the Ancients. Cryptarchs drool over the secrets locked inside these." 
+    },
     PRECURSOR_CIPHER: {
         name: "Precursor Cipher",
         basePrice: 150,
@@ -173,16 +280,11 @@ const COMMODITIES = {
     ENCRYPTED_DATA: {
         name: "Encrypted Data Cache",
         basePrice: 500,
-        description: "A locked memory core from the Old Empire. Requires a Cryptarch to decipher."
+        description: "A locked memory core from the Old Empire. Requires a Cryptarch or a Cipher to decipher."
     },
     ANCIENT_ARCHIVE: {
         name: "Ancient Archive",
         basePrice: 2000,
-        description: "A high-density holographic array. Contains forbidden history or advanced schematics."
-    },
-    VOID_CRYSTALS: {
-        name: "Void Crystals",
-        basePrice: 180,
-        description: "Crystals that seem to absorb light. Some say they are solidified 'nothingness' that can unravel spacetime locally."
+        description: "A high-density holographic array. Contains forbidden history, advanced schematics, and lost truths."
     }
 };
