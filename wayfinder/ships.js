@@ -1,6 +1,7 @@
 // ==========================================
 // --- SHIP CLASSES DATABASE (Shipyard) ---
 // ==========================================
+
 const SHIP_CLASSES = {
     LIGHT_FREIGHTER: {
         name: "Light Freighter",
@@ -256,6 +257,7 @@ const PIRATE_SHIP_CLASSES = {
 // ==========================================
 // --- COMPONENTS DATABASE ---
 // ==========================================
+
 const COMPONENTS_DATABASE = {
    // --- CONCORD MILITARY GEAR (AEGIS ARMORY) ---
    "WEAPON_CONCORD_PLASMA": {
