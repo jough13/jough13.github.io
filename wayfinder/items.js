@@ -131,9 +131,41 @@ const COMMODITIES = {
         description: "A massive, self-unpacking habitation citadel. Contains a fusion reactor, atmo-scrubbers, and housing for 500 colonists."
     },
 
+    // --- COLONY BUILDER ITEMS ---
+    
+    COLONY_CHARTER: {
+        name: "Official Settlement Charter",
+        basePrice: 25000, 
+        illegal: false,
+        weight: 0, // Key Item - Doesn't take up cargo space!
+        description: "A legally binding Concord document granting the bearer the right to claim and govern a single unpopulated celestial body."
+    },
+    HAB_MODULE: {
+        name: "Prefabricated Hab-Module",
+        basePrice: 5000,
+        illegal: false,
+        weight: 20, // Very heavy! Requires a good cargo hold.
+        description: "A massive, folded structural unit that deploys into a fully shielded living quarters for 50 colonists."
+    },
+    ATMOS_PROCESSOR: {
+        name: "Atmospheric Processor",
+        basePrice: 12000,
+        illegal: false,
+        weight: 15,
+        description: "Heavy terraforming equipment. Necessary for establishing colonies on toxic, irradiated, or barren worlds."
+    },
+    SETTLER_MANIFEST: {
+        name: "Cryo-Sleeping Settlers",
+        basePrice: 1000,
+        illegal: false,
+        weight: 5, // 1 unit = a pod of colonists
+        description: "Brave (or desperate) souls in stasis, waiting to be awakened on a new frontier."
+    },
+
     // ==========================================
     // --- CULTURE, LUXURY & FACTION ITEMS ---
     // ==========================================
+
     FROTHY_MOON_ALE: {
         name: "Frothy Moon Ale",
         basePrice: 45,
@@ -163,6 +195,7 @@ const COMMODITIES = {
     // ==========================================
     // --- ILLEGAL / CONTRABAND (ECLIPSE NETWORK) ---
     // ==========================================
+
     PROHIBITED_STIMS: {
         name: "Combat Stims",
         basePrice: 400,
@@ -221,6 +254,7 @@ const COMMODITIES = {
     // ==========================================
     // --- PRECURSOR / CRYPTARCH / QUEST ITEMS ---
     // ==========================================
+
     ANCIENT_RELICS: {
         name: "Xeno-Relics",
         basePrice: 1200,
