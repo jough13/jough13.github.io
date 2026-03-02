@@ -19,7 +19,13 @@ const LOCATIONS_DATA = {
             { id: "MEDICAL_SUPPLIES", priceMod: 1.0, stock: 25 }, 
             { id: "NAVIGATION_CHARTS", priceMod: 1.0, stock: 50 },
             { id: "CYBERNETIC_IMPLANTS", priceMod: 1.2, stock: 15 }, 
-            { id: "DROID_SERVOS", priceMod: 1.0, stock: 40 }
+            { id: "DROID_SERVOS", priceMod: 1.0, stock: 40 },
+            
+            // --- COLONY BUILDER SUPPLIES ---
+            { id: "COLONY_CHARTER", priceMod: 1.0, stock: 1 }, 
+            { id: "HAB_MODULE", priceMod: 1.0, stock: 5 },
+            { id: "ATMOS_PROCESSOR", priceMod: 1.0, stock: 2 },
+            { id: "SETTLER_MANIFEST", priceMod: 1.0, stock: 10 }
         ],
         buys: [
             { id: "PLANETARY_DATA", priceMod: 1.2, stock: 5 },
@@ -52,7 +58,7 @@ const LOCATIONS_DATA = {
             x: MAP_WIDTH - 15
         },
         type: STARBASE_CHAR_VAL,
-        displayChar: "§", // --- Unique map symbol ---
+        displayChar: "§",
         customColor: "#9C27B0", // --- Shadow Network purple ---
         isMajorHub: true, // --- Flips the switch to force the main UI modal! ---
         faction: "INDEPENDENT",
