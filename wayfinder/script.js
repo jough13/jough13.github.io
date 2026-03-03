@@ -3,6 +3,12 @@ let cachedAccentColor = '#00E0E0';
 // --- ACTIVE ENEMIES ---
 let activeEnemies = []; 
 
+// --- RESCUE TRACKING ---
+let isAwaitingRescue = false;
+let rescueTargetStation = null;
+let rescueFeePaid = 0;
+let freebieUsed = false;
+
 // Simple helper to remove an enemy after combat
 function removeEnemyAt(x, y) {
     activeEnemies = activeEnemies.filter(e => e.x !== x || e.y !== y);
@@ -291,6 +297,20 @@ function updateAmbientNPCs() {
                 npc.dockTimer = 20; // Wait 20 turns before undocking
             }
         }
+
+        // B.5 RESCUE STATE: Fuel Rat intercepting player
+        else if (npc.state === 'RESCUE') {
+            // Fuel Rats move fast (2 tiles per turn) to reduce boring waiting
+            for (let step = 0; step < 2; step++) {
+                if (npc.x < playerX) npc.x++;
+                else if (npc.x > playerX) npc.x--;
+                
+                if (npc.y < playerY) npc.y++;
+                else if (npc.y > playerY) npc.y--;
+                
+                if (npc.x === playerX && npc.y === playerY) break;
+            }
+        }
         
         // C. CRUISING STATE: Standard Spaceflight
         else if (npc.state === 'CRUISING') {
@@ -379,9 +399,15 @@ function updateAmbientNPCs() {
             }
         }
         
-        // Collision Check (Did you ram them?)
+        // Collision Check (Did you ram them, or did they catch you?)
         if (npc.x === playerX && npc.y === playerY) {
-            if (typeof interactWithNPC === 'function') interactWithNPC(npc, i);
+            if (npc.isFuelRat) {
+                activeNPCs.splice(i, 1); // Delete the rat
+                executeRescueSequence(); // Trigger the tow!
+                continue; // Skip the rest of the loop
+            } else {
+                if (typeof interactWithNPC === 'function') interactWithNPC(npc, i);
+            }
         }
     }
 }
@@ -542,12 +568,62 @@ function getDef(category, id) {
     return GameRegistry[category][id] || null;
 }
 
+// ==========================================
+// --- COLONY BUILDER STATE ---
+// ==========================================
+
+// Tracks if the player has legally purchased the right to settle
+let playerHasColonyCharter = false; 
+
+// The main object tracking the player's settlement
+let playerColony = {
+    established: false,
+    name: "Unclaimed Settlement",
+    x: null,
+    y: null,
+    planetName: null,
+    biome: null,
+    
+    // PROGRESSION PHASES: "SURVEYED" -> "OUTPOST" -> "POPULATED" -> "OPERATIONAL"
+    phase: "NONE", 
+    
+    population: 0,
+    morale: 100,
+    
+    // Track what supplies have been delivered to construct the base
+    suppliesDelivered: {
+        habModules: 0,
+        atmosProcessors: 0
+    }
+};
+
 
 // --- CORE SYSTEM LISTENERS ---
 // Whenever cargo changes, automatically recalculate the load and update the UI
 GameBus.on('CARGO_MODIFIED', () => {
+    // 1. Calculate actual cargo weight using the database values
     currentCargoLoad = 0;
-    for (const cID in playerCargo) currentCargoLoad += playerCargo[cID];
+    for (const cID in playerCargo) {
+        if (playerCargo[cID] > 0) {
+            const itemData = typeof COMMODITIES !== 'undefined' ? COMMODITIES[cID] : null;
+            const weightPerUnit = itemData && itemData.weight !== undefined ? itemData.weight : 1;
+            
+            currentCargoLoad += (playerCargo[cID] * weightPerUnit);
+        }
+    }
+    
+    // 2. The Invisible Quest Hook
+    // If they have the charter in their hold, but haven't formally started the quest:
+    if (playerCargo["COLONY_CHARTER"] > 0 && !playerHasColonyCharter) {
+        playerHasColonyCharter = true;
+        
+        // Fire off the ceremonial Pioneer notifications!
+        if (typeof showToast === 'function') showToast("CONCORD PIONEER STATUS GRANTED", "success");
+        logMessage("<span style='color:var(--gold-text); font-weight:bold;'>QUEST UPDATE:</span> You are now a legally recognized Pioneer of the Concord Dominion. Find a habitable world to establish your settlement.");
+        if (typeof soundManager !== 'undefined' && soundManager.playBuy) soundManager.playBuy();
+    }
+
+    // 3. Update the UI
     GameBus.emit('UI_REFRESH_REQUESTED');
 });
 
@@ -644,29 +720,52 @@ function generateHRDiagram(starClass, displayColor, isLight) {
 // ==========================================
 // --- ASTROPHYSICS: DEEP SCAN UI ---
 // ==========================================
+
 function evaluateStar(starData, starId) {
+    // 1. Initialize the modal with your standard header
     openGenericModal("STELLAR CARTOGRAPHY");
 
+    // 2. Target the core modal elements
+    const container = document.getElementById('genericModalContent');
+    const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
-    const listEl = document.getElementById('genericModalList');
-    
-    // --- BULLETPROOF LIGHT MODE DETECTION ---
-    let isLight = false;
-    if (typeof isLightMode !== 'undefined' && isLightMode === true) {
-        isLight = true;
-    } else if (document.body.classList.contains('light-mode') || document.body.classList.contains('light-theme')) {
-        isLight = true;
-    } else {
-        const bg = window.getComputedStyle(document.body).backgroundColor;
-        if (bg && bg.match(/\d+/g)) {
-            const rgb = bg.match(/\d+/g).map(Number);
-            const brightness = (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
-            if (brightness > 128) isLight = true; 
-        }
-    }
 
-    // Apply contrast to the UI icon and text if we are in light mode
+    // --- LAYOUT ENGINE RESET ---
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.height = '75vh'; 
+    container.style.maxHeight = '650px'; // Increased height for more content
+    container.style.overflow = 'hidden';
+
+    const panelWrapper = document.createElement('div');
+    panelWrapper.style.display = 'flex';
+    panelWrapper.style.flexDirection = 'row';
+    panelWrapper.style.flex = '1';
+    panelWrapper.style.overflow = 'hidden';
+    panelWrapper.style.minHeight = '0'; // THE CRITICAL FIX
+
+    container.innerHTML = '';
+    container.appendChild(panelWrapper);
+    panelWrapper.appendChild(listEl);
+    panelWrapper.appendChild(detailEl);
+    container.appendChild(actionsEl);
+
+    // Style the panels
+    listEl.style.flex = '0 0 40%';
+    listEl.style.minHeight = '0'; // Allows Flexbox to trigger scrollbars
+    listEl.style.overflowY = 'auto';
+    listEl.style.borderRight = '1px solid var(--border-color)';
+    listEl.style.padding = '0';
+
+    detailEl.style.flex = '1';
+    detailEl.style.minHeight = '0'; // Allows Flexbox to trigger scrollbars
+    detailEl.style.overflowY = 'auto';
+    detailEl.style.padding = '0 15px';
+    detailEl.style.boxSizing = 'border-box';
+
+    // --- LIGHT MODE / CONTRAST DETECTION ---
+    let isLight = document.body.classList.contains('light-mode');
     let displayColor = starData.color;
     if (isLight) {
         if (starData.class === "A") displayColor = "#444444";
@@ -675,107 +774,91 @@ function evaluateStar(starData, starId) {
         else if (starData.class === "O") displayColor = "#0033AA";
     }
 
-    // Construct the image filename dynamically
     const assetPath = `assets/${starData.class.toLowerCase()}_class.png`;
 
-    // --- LEFT PANEL: LORE & H-R DIAGRAM ---
-    if (listEl) {
-        listEl.innerHTML = `
-            <div style="padding: 15px; border-bottom: 1px dashed var(--accent-color); background: var(--panel-bg);">
-                <h4 style="color:var(--accent-color); margin: 0 0 10px 0; letter-spacing: 1px;">[ SENSOR TELEMETRY ]</h4>
-                <div style="font-size: 11px; color: var(--success); font-family: 'Roboto Mono', monospace; line-height: 1.6;">
-                    > INITIATING SPECTROSCOPY... <span style="float:right;">[OK]</span><br>
-                    > ANALYZING PHOTOSPHERE... <span style="float:right;">[OK]</span><br>
-                    > CALCULATING STELLAR MASS... <span style="float:right;">[OK]</span><br>
-                    > MEASURING LUMINOSITY... <span style="float:right;">[OK]</span><br>
-                    > SCANNING FOR EXOPLANETS... <span style="float:right;">[PENDING]</span>
-                </div>
+    // --- LEFT PANEL: SENSOR DATA & H-R DIAGRAM ---
+    listEl.innerHTML = `
+        <div style="padding: 15px; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.1);">
+            <h4 style="color:var(--accent-color); margin: 0 0 10px 0; letter-spacing: 1px;">[ SENSOR TELEMETRY ]</h4>
+            <div style="font-size: 11px; color: var(--success); font-family: 'Roboto Mono', monospace; line-height: 1.6;">
+                > SPECTROSCOPY... <span style="float:right;">[OK]</span><br>
+                > PHOTOSPHERE... <span style="float:right;">[OK]</span><br>
+                > STELLAR MASS... <span style="float:right;">[OK]</span><br>
+                > LUMINOSITY... <span style="float:right;">[OK]</span>
             </div>
-            <div style="padding: 15px;">
-                <h4 style="color:var(--text-color); margin: 0 0 10px 0; font-size: 12px; letter-spacing: 1px;">ARCHIVE: MORGAN-KEENAN SYSTEM</h4>
-                <p style="font-size: 11px; color: var(--item-desc-color); line-height: 1.6; margin-bottom: 15px;">
-                    The MK classification system categorizes stellar bodies by their surface temperature and optical spectrum.
-                    <br><br>
-                    <strong style="color:${isLight ? '#0033AA' : '#99BBFF'}">O & B Class:</strong> Massive, fiercely hot giants. They yield incredible fuel volume but emit hull-damaging ionizing radiation.<br><br>
-                    <strong style="color:${isLight ? '#999900' : '#FFFFDD'}">A, F, G Class:</strong> Stable main-sequence stars. The safest zones for prolonged refueling and planetary habitation.<br><br>
-                    <strong style="color:#FF5555">K & M Class:</strong> Cooler dwarf stars. Extremely common, but their sluggish stellar winds yield significantly less usable plasma.
-                </p>
-                
-                <div style="text-align: center; margin-top: 15px;">
-                    ${generateHRDiagram(starData.class, displayColor, isLight)}
-                    <div style="font-size: 9px; margin-top: 8px; color: var(--item-desc-color); letter-spacing: 1px;">FIG 1: H-R LUMINOSITY & TEMPERATURE DIAGRAM</div>
-                </div>
-            </div>
-        `;
-    }
-
-    // Handle Exploration XP 
-    let xpMessage = "";
-    const scanKey = `STAR_SCAN_${starId}`;
-    
-    if (typeof discoveredLocations !== 'undefined' && !discoveredLocations.has(scanKey)) {
-        discoveredLocations.add(scanKey);
-        const xpGain = 25; 
-        playerXP += xpGain;
-        
-        xpMessage = `<div style="color:var(--success); font-weight:bold; margin: 0; letter-spacing: 1px; font-size: 11px;">+${xpGain} XP (STELLAR DATA RECORDED)</div>`;
-        
-        if (typeof checkLevelUp === 'function') checkLevelUp();
-        if (typeof showToast === 'function') showToast("STELLAR DATA RECORDED", "success");
-        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
-    } else {
-        xpMessage = `<div style="color:var(--item-desc-color); font-size: 10px; margin: 0; letter-spacing: 1px;">DATA PREVIOUSLY RECORDED</div>`;
-    }
-
-    // --- RIGHT PANEL: FLEXBOX COLUMN FIX ---
-    // Flexbox perfectly stacks items without overlapping!
-    detailEl.innerHTML = `
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px; padding: 10px 20px;">
-            
-            <div style="text-align: center; display: flex; flex-direction: column; gap: 2px;">
-                <h3 style="color:${displayColor}; margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;">${starData.designation}</h3>
-                <div style="color:var(--accent-color); font-size: 10px; letter-spacing: 2px;">
-                    REGION: ${starData.sectorName}
-                </div>
-                <div style="color:var(--item-desc-color); font-size: 10px; letter-spacing: 2px;">
-                    CLASS ${starData.class} ${starData.name.toUpperCase()}
-                </div>
-            </div>
-            
-            <img src="${assetPath}" alt="${starData.class}-Class Star" style="width: 220px; height: 220px; object-fit: contain; flex-shrink: 0; margin-top: -10px; margin-bottom: -15px; filter: drop-shadow(0 0 30px ${isLight ? 'transparent' : displayColor});">
-            
-            ${xpMessage}
-            
-            <div style="width: 100%; text-align:left; background: var(--bg-color); border: 1px solid var(--border-color); padding: 12px 15px; border-radius: 4px; box-sizing: border-box;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                    <div>
-                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:1px;">CORE TEMPERATURE</span>
-                        <div style="font-size:14px; font-weight:bold; color:var(--text-color);">${starData.temp}</div>
-                    </div>
-                    <div>
-                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:1px;">RADIATION PROFILE</span>
-                        <div style="font-size:14px; font-weight:bold;">
-                            ${starData.hazard === "NONE" ? '<span style="color:var(--success)">STABLE</span>' : `<span style="color:var(--danger)">${starData.hazard}</span>`}
-                        </div>
-                    </div>
-                    <div>
-                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:1px;">CORONAL DENSITY</span>
-                        <div style="font-size:14px; font-weight:bold; color:var(--text-color);">${starData.scoopYield} Units / Cycle</div>
-                    </div>
-                    <div>
-                        <span style="font-size:10px; color:var(--accent-color); display:block; margin-bottom:1px;">SPECTRAL RARITY</span>
-                        <div style="font-size:14px; font-weight:bold; color:var(--text-color);">${(starData.rarity * 100).toFixed(0)}% Incidence</div>
-                    </div>
-                </div>
-                
-                <hr style="border-color: var(--border-color); margin: 8px 0;">
-                <p style="color:var(--item-desc-color); font-style:italic; margin:0; line-height:1.3; font-size: 12px;">"${starData.desc}"</p>
+        </div>
+        <div style="padding: 15px;">
+            <h4 style="color:var(--text-color); margin: 0 0 10px 0; font-size: 12px; letter-spacing: 1px;">ARCHIVE: MORGAN-KEENAN SYSTEM</h4>
+            <p style="font-size: 11px; color: var(--item-desc-color); line-height: 1.6; margin-bottom: 15px;">
+                The MK system categorizes stars by temperature and spectrum.
+            </p>
+            <div style="text-align: center; margin-top: 15px;">
+                ${typeof generateHRDiagram === 'function' ? generateHRDiagram(starData.class, displayColor, isLight) : '[DIAGRAM ERROR]'}
+                <div style="font-size: 9px; margin-top: 8px; color: var(--item-desc-color); letter-spacing: 1px;">FIG 1: H-R DIAGRAM</div>
             </div>
         </div>
     `;
 
+    // --- XP & DISCOVERY LOGIC ---
+    let xpMessage = "";
+    const scanKey = `STAR_SCAN_${starId}`;
+    if (typeof discoveredLocations !== 'undefined' && !discoveredLocations.has(scanKey)) {
+        discoveredLocations.add(scanKey);
+        playerXP += 25;
+        xpMessage = `<div style="color:var(--success); font-weight:bold; margin: 10px 0; font-size: 11px;">+25 XP (FIRST-SCAN BONUS)</div>`;
+        if (typeof checkLevelUp === 'function') checkLevelUp();
+        if (typeof showToast === 'function') showToast("STELLAR DATA RECORDED", "success");
+        if (typeof soundManager !== 'undefined') soundManager.playScan();
+    } else {
+        xpMessage = `<div style="color:var(--item-desc-color); font-size: 10px; margin: 10px 0;">DATA PREVIOUSLY RECORDED</div>`;
+    }
+    
+    // --- Generate the new detailed report ---
+    const stellarReportHTML = typeof generateStellarReport === 'function' ? generateStellarReport(starData, starId) : "";
+
+    // --- RIGHT PANEL: VISUALS & STATS ---
+    detailEl.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px 0;">
+            <div style="text-align: center;">
+                <h3 style="color:${displayColor}; margin: 0; font-size: 20px; text-transform: uppercase;">${starData.designation}</h3>
+                <div style="color:var(--accent-color); font-size: 10px; letter-spacing: 2px;">REGION: ${starData.sectorName}</div>
+            </div>
+            
+            <img src="${assetPath}" alt="Star" style="width: 200px; height: 200px; object-fit: contain; filter: drop-shadow(0 0 30px ${displayColor}); animation: starPulse 4s infinite ease-in-out;">
+            
+            ${xpMessage}
+            
+            <div style="width: 100%; background: var(--panel-bg); border: 1px solid var(--border-color); padding: 15px; border-radius: 4px; box-sizing: border-box;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <span style="font-size:9px; color:var(--accent-color); display:block;">TEMPERATURE</span>
+                        <div style="font-size:13px; font-weight:bold;">${starData.temp}</div>
+                    </div>
+                    <div>
+                        <span style="font-size:9px; color:var(--accent-color); display:block;">RADIATION</span>
+                        <div style="font-size:13px; font-weight:bold; color:${starData.hazard === 'NONE' ? 'var(--success)' : 'var(--danger)'}">${starData.hazard}</div>
+                    </div>
+                    <div>
+                        <span style="font-size:9px; color:var(--accent-color); display:block;">SCOOP YIELD</span>
+                        <div style="font-size:13px; font-weight:bold;">${starData.scoopYield} Units</div>
+                    </div>
+                    <div>
+                        <span style="font-size:9px; color:var(--accent-color); display:block;">INCIDENCE</span>
+                        <div style="font-size:13px; font-weight:bold;">${(starData.rarity * 100).toFixed(1)}%</div>
+                    </div>
+                </div>
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 12px 0;">
+                <p style="color:var(--item-desc-color); font-style:italic; margin:0; line-height:1.4; font-size: 12px;">"${starData.desc}"</p>
+            </div>
+
+            <!-- NEW: Inject the detailed report -->
+            ${stellarReportHTML}
+        </div>
+    `;
+
+    // --- BUTTONS ---
     actionsEl.innerHTML = `
-        <button class="action-button" onclick="closeGenericModal()" style="border-color: ${displayColor}; color: ${displayColor};">
+        <button class="action-button" onclick="closeGenericModal()" style="border-color: ${displayColor}; color: ${displayColor}; width: 200px; margin: 10px auto;">
             CLOSE SENSORS
         </button>
     `;
@@ -3420,6 +3503,9 @@ function updateCurrentCargoLoad() {
      // 8. Handle Post-Jump State
      checkLevelUp(); // Check if the XP gain caused a level up
      handleInteraction(); // Describe what is at the new location immediately
+
+     // Stumble Protection: Prevent accidental movement for 500ms after transition
+    lastInputTime = Date.now() + 500;
  }
 
 function movePlayer(dx, dy) {
@@ -3446,13 +3532,20 @@ function movePlayer(dx, dy) {
         }
 
     // 4. Check Fuel Availability
-     if (playerFuel < actualFuelPerMove && (dx !== 0 || dy !== 0)) {
-         triggerHaptic(200);
-         logMessage("<span style='color:red'>CRITICAL: OUT OF FUEL! Engines offline.</span>");
-         logMessage("<span style='color:var(--warning)'>Press 'Z' to activate Distress Beacon for a tow.</span>");
-         // REMOVE the triggerGameOver() line from here!
-         return;
-     }
+    if (playerFuel < actualFuelPerMove && (dx !== 0 || dy !== 0)) {
+        triggerHaptic(200);
+        logMessage("<span style='color:red'>CRITICAL: OUT OF FUEL! Engines offline.</span>");
+        
+        // Spawn the interactive buttons on the bottom right!
+        const strandedActions = [
+            { label: 'Distress Beacon', key: 'z', onclick: activateDistressBeacon },
+            { label: 'Drift & Wait', key: '.', onclick: playerWaitTurn },
+            { label: 'Self Destruct', key: 'x', onclick: confirmSelfDestruct }
+        ];
+        renderContextualActions(strandedActions);
+        
+        return;
+    }
 
      // 5. Update Player Coordinates
      playerX += dx;
@@ -3876,131 +3969,141 @@ function handleInteraction() {
  }
 
  function scanLocation() {
-     if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
-         logMessage("Cannot scan now.");
-         return;
-     }
+    // 1. Prevent scanning if another menu or combat is active
+    if (currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext) {
+        logMessage("Cannot scan now.");
+        return;
+    }
+    
+    advanceGameTime(0.05); 
+    const scanner = COMPONENTS_DATABASE[playerShip.components.scanner];
+    const scanBonus = scanner.stats.scanBonus || 0;
+    const tileObject = chunkManager.getTile(playerX, playerY);
+    
+    // Play sensor sweep sound
+    if (typeof soundManager !== 'undefined' && soundManager.playScan) {
+        soundManager.playScan();
+    }
 
-     advanceGameTime(0.05); // Use new time function
-
-     const scanner = COMPONENTS_DATABASE[playerShip.components.scanner];
-     const scanBonus = scanner.stats.scanBonus || 0;
-
-     const tileObject = chunkManager.getTile(playerX, playerY);
-     let scanMessage = `Scan Report:\nPlayer Shields: ${Math.floor(playerShields)}/${MAX_SHIELDS}. Hull: ${Math.floor(playerHull)}/${MAX_PLAYER_HULL}.\n`;
-     let objectTypeForXP = getTileType(tileObject) || getTileChar(tileObject);
-     let actionsAvailable = "";
-
-     if (tileObject && tileObject.type === 'location') {
-         scanMessage += `\n<span style='color:#FF88FF;'>Location: ${tileObject.name} (${tileObject.faction})</span>\n`;
-         scanMessage += `Description: ${tileObject.scanFlavor || 'No detailed scan data available.'}`;
-         if ((tileObject.sells && tileObject.sells.length > 0) || (tileObject.buys && tileObject.buys.length > 0)) {
-             actionsAvailable += "Trade (B/S). ";
-         }
-         if (tileObject.isMajorHub) {
-             actionsAvailable += "Outfit (O). Missions (K). Shipyard (Y). ";
-         }
-         if (playerHull < MAX_PLAYER_HULL) {
-             actionsAvailable += "Repair (R). ";
-         }
-         actionsAvailable += "Leave (L)."
-         objectTypeForXP = tileObject.name;
-
-     } else {
-         const tileChar = getTileChar(tileObject);
-         switch (tileChar) {
-             case EMPTY_SPACE_CHAR_VAL:
-                const voidFlavor = [
-                    "Vast emptiness. Faint cosmic background radiation.",
-                    "Sensors detect nothing but distant starlight and dust.",
-                    "The void is silent here. A little too silent.",
-                    "Stellar density is low. Navigation is clear.",
-                    "Long-range scanners show no immediate signatures.",
-                    "Drifting through the quiet dark between stars.",
-                    "Hull structural integrity holding. The silence is heavy.",
-                    "No local gravity wells detected. Smooth sailing."
-                ];
-                scanMessage += voidFlavor[Math.floor(Math.random() * voidFlavor.length)];
-                
-                if (scanBonus > 0 && Math.random() < (scanBonus * 2)) {
-                    scanMessage += "\n<span style='color:#FFFF99;'>Detailed Scan: Trace energy echo... probably just solar wind.</span>";
-                }
-                objectTypeForXP = 'empty_space';
+    // 2. Setup default fallback data (for empty space)
+    let targetName = "DEEP SPACE";
+    let targetImage = "assets/planet_placeholder.png"; // Ensure you have a generic image or it will use the fallback
+    let threatLevel = "LOW";
+    let flavorText = "Sensors detect nothing but the cosmic background radiation.";
+    let faction = getFactionAt(playerX, playerY);
+    
+    // 3. Determine what we are scanning and pull its specific data
+    if (tileObject && tileObject.type === 'location') {
+        targetName = tileObject.name;
+        
+        // This handles both simple strings AND the detailed object approach we discussed
+        if (typeof tileObject.scanFlavor === 'object') {
+            flavorText = `
+                <strong>Atmosphere:</strong> ${tileObject.scanFlavor.atmosphere || 'Unknown'}<br>
+                <strong>Anomalies:</strong> ${tileObject.scanFlavor.notableAnomalies || 'None Detected'}
+            `;
+            threatLevel = tileObject.scanFlavor.threatLevel || "UNKNOWN";
+        } else {
+            flavorText = tileObject.scanFlavor || "A stationary structure in deep space. No further data.";
+        }
+        
+        faction = tileObject.faction || faction;
+        
+        // Assign dynamic images based on the location type
+        targetImage = tileObject.isBlackMarket ? "assets/black_market.png" : "assets/concord_market.png";
+        if (tileObject.char === OUTPOST_CHAR_VAL) targetImage = "assets/outpost.png";
+        
+    } else {
+        const tileChar = getTileChar(tileObject);
+        switch (tileChar) {
+            case STAR_CHAR_VAL:
+                targetName = "STELLAR BODY";
+                flavorText = `Brilliant star. ${tileObject.richness > 0.75 ? "High hydrogen concentrations detected!" : ""}`;
+                targetImage = "assets/o_class.png"; // Fallback star image
+                threatLevel = "EXTREME (HEAT/RADIATION)";
                 break;
-             case STAR_CHAR_VAL:
-                 scanMessage += `Brilliant star.`;
-                 if (scanBonus > 0) {
-                     scanMessage += `\n<span style='color:#FFFF99;'>Detailed Scan: Corona richness at ${(tileObject.richness * 100).toFixed(0)}%.</span>`;
-                 } else if (tileObject.richness > 0.75) {
-                     scanMessage += "\n<span style='color:#FFFF99;'>High hydrogen concentrations detected!</span>";
-                 }
-                 if (tileObject.scoopedThisVisit) scanMessage += "\n<span style='color:#999999;'>Corona appears depleted.</span>";
-                 actionsAvailable += "Scoop Fuel (H). Enter System (E).";
-                 break;
-             case ASTEROID_CHAR_VAL:
-                 scanMessage += `Asteroid field.`;
-                 if (scanBonus > 0) {
-                     let densityDesc = (tileObject.density > 0.6) ? "High" : (tileObject.density > 0.3) ? "Moderate" : "Low";
-                     scanMessage += `\n<span style='color:#FFFF99;'>Detailed Scan: Field density is ${densityDesc}.</span>`;
-                 }
-                 if (tileObject.minedThisVisit) scanMessage += "\n<span style='color:#999999;'>This field appears recently mined.</span>";
-                 actionsAvailable += "Mine Asteroid (M).";
-                 break;
-             case NEBULA_CHAR_VAL:
-                 scanMessage += `Inside a dense gas cloud. Sensors are intermittent.`;
-                 if (scanBonus > 0) {
-                     scanMessage += `\n<span style='color:#FFFF99;'>Detailed Scan: Cloud composition is 98% hydrogen. Suitable for siphoning.</span>`;
-                 }
-                 actionsAvailable += "Scoop Fuel (H).";
-                 break;
-             case ANOMALY_CHAR_VAL:
-                 scanMessage += `Unstable energy readings.`;
-                 if (tileObject.studied) {
-                     scanMessage += "\n<span style='color:#999999;'>The anomaly appears to have dissipated.</span>";
-                 } else if (scanBonus > 0) {
-                     scanMessage += `\n<span style='color:#FF33FF;'>Detailed Scan: ${tileObject.subtype}. Highly volatile. Interaction is possible but dangerous.</span>`;
-                 }
-                 break;
-             case DERELICT_CHAR_VAL:
-                 // --- NEW DERELICT SCAN ---
-                 scanMessage += `A silent, drifting ship hulk. It appears powerless.`;
-                 if (tileObject.studied) {
-                     scanMessage += "\n<span style='color:#999999;'>You've already salvaged this wreck.</span>";
-                 } else if (scanBonus > 0) {
-                     scanMessage += `\n<span style='color:#FFFF99;'>Detailed Scan: Hull breaches detected. Life signs... negative. Potential salvage.</span>`;
-                 }
-                 break;
-             default:
-                 scanMessage += "Unknown object detected. Sensor readings inconclusive.";
-                 break;
-         }
-     }
+            case ASTEROID_CHAR_VAL:
+                targetName = "ASTEROID FIELD";
+                let densityDesc = (tileObject.density > 0.6) ? "High" : (tileObject.density > 0.3) ? "Moderate" : "Low";
+                flavorText = `Asteroid field. Field density is ${densityDesc}. Local nav hazards present.`;
+                targetImage = "assets/asteroid.png"; 
+                threatLevel = "MODERATE (COLLISION)";
+                break;
+            case NEBULA_CHAR_VAL:
+                targetName = "GAS NEBULA";
+                flavorText = "Inside a dense gas cloud. Sensors are intermittent. High concentration of scoopable isotopes.";
+                targetImage = "assets/nebula.png";
+                threatLevel = "LOW (STATIC)";
+                break;
+            case ANOMALY_CHAR_VAL:
+                targetName = "UNKNOWN ANOMALY";
+                flavorText = "Unstable energy readings. Reality seems to warp around this point. Proceed with extreme caution.";
+                targetImage = "assets/anomaly.png";
+                threatLevel = "UNKNOWN";
+                break;
+            case DERELICT_CHAR_VAL:
+                targetName = "DERELICT VESSEL";
+                flavorText = "A ruined ship drifts aimlessly. Life support is offline. Potential salvage opportunity detected.";
+                targetImage = "assets/derelict.png";
+                threatLevel = "LOW";
+                break;
+        }
+    }
 
-     if (actionsAvailable) {
-         scanMessage += "\n\nAvailable Actions: " + actionsAvailable;
-     }
+    // 4. Open the UI Modal
+    openGenericModal("SENSOR SWEEP RESULTS");
+    
+    const container = document.getElementById('genericModalContent');
+    const actionsEl = document.getElementById('genericModalActions');
 
-     if (playerActiveMission && playerActiveMission.type === "SURVEY" && !playerActiveMission.isComplete) {
-         playerActiveMission.objectives.forEach((obj, index) => {
-             const progressKey = `survey_${index}`;
-             const objectiveProgress = playerActiveMission.progress[progressKey];
-             if (objectiveProgress && !objectiveProgress.complete && tileObject.type === obj.targetType && (obj.subtype === "ANY_ANOMALY" || tileObject.subtype === obj.subtype)) {
-                 objectiveProgress.complete = true;
-                 scanMessage += `\n<span style='color:#00FF00;'>Mission Update: ${obj.subtype} surveyed!</span>`;
-             }
-         });
-         checkMissionObjectiveCompletion();
-     }
+    // Wipe any previous modal layouts (like the two-column lists)
+    document.getElementById('genericModalList').innerHTML = '';
+    document.getElementById('genericDetailContent').innerHTML = '';
 
-     if (objectTypeForXP && !scannedObjectTypes.has(objectTypeForXP)) {
-         scannedObjectTypes.add(objectTypeForXP);
-         playerXP += XP_PER_FIRST_SCAN_TYPE;
-         scanMessage += `\n<span style='color:#00FF00;'>New Discovery Type Scanned! +${XP_PER_FIRST_SCAN_TYPE} XP!</span>`;
-         checkLevelUp();
-     }
+    // Reset container styling to allow our Flexbox classes to take over
+    container.style.display = 'block';
+    container.style.padding = '0';
+    
+    // 5. Inject the Side-by-Side Flex Layout HTML
+    container.innerHTML = `
+        <div class="modal-split-layout" style="padding: 20px;">
+            
+            <div class="modal-left-pane">
+                <img src="${targetImage}" alt="Scan Image" onerror="this.src='assets/outpost.png'" style="width: 100%; max-width: 150px; height: auto; aspect-ratio: 1; object-fit: cover; background: rgba(0,0,0,0.5); padding: 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                <div class="sys-meta-row" style="margin-top: 15px; justify-content: center; width: 100%;">
+                    <span style="color: ${threatLevel.includes('HIGH') || threatLevel.includes('EXTREME') ? 'var(--danger)' : 'var(--warning)'}; font-weight: bold; text-align: center;">
+                        THREAT LEVEL:<br>${threatLevel}
+                    </span>
+                </div>
+            </div>
 
-     logMessage(scanMessage);
- }
+            <div class="modal-right-pane">
+                <h2 class="sys-title-large" style="color: var(--accent-color); margin-bottom: 5px;">${targetName.toUpperCase()}</h2>
+                <div style="font-size: 10px; color: #888; letter-spacing: 2px; margin-bottom: 15px; text-transform: uppercase;">
+                    FACTION ZONE: ${faction}
+                </div>
+                
+                <div class="scan-data-box" style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); padding: 15px; border-radius: 4px;">
+                <h4 style="margin: 0 0 10px 0; color: var(--text-color); font-size: 12px; border-bottom: 1px solid #333; padding-bottom: 5px;">TACTICAL ASSESSMENT</h4>
+                    <p class="sys-flavor-text" style="margin: 0; line-height: 1.6; color: var(--item-desc-color);">${flavorText}</p>
+                    
+                    ${scanBonus > 0 ? `
+                        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed var(--accent-color);">
+                            <span style="color: var(--success); font-size: 11px; font-weight: bold;">[+] ENHANCED SENSOR DATA:</span>
+                            <p style="font-size: 12px; color: #aaa; margin-top: 5px;">Advanced telemetry processing complete. Sub-surface structural integrity mapped.</p>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+
+        </div>
+    `;
+
+    // 6. Provide the exit button
+    actionsEl.innerHTML = `
+        <button class="action-button full-width-btn" style="max-width: 300px; margin: 0 auto;" onclick="closeGenericModal()">CLOSE SENSORS</button>
+    `;
+}
 
  function performGeoSurvey() {
      // 1. Validation
@@ -5199,6 +5302,9 @@ function handleVictory() {
 
     // 9. Trigger standard tile interaction (e.g. entering the empty space)
     handleInteraction();
+
+    // Stumble Protection: Prevent accidental movement for 500ms after transition
+    lastInputTime = Date.now() + 500;
 }
 
 function handleCombatAction(action) {
@@ -5330,6 +5436,7 @@ function handleCombatAction(action) {
             
             // --- Special Case: Escape Ability (Star Galleon) ---
             if (playerStats.triggerEscape) {
+                if(typeof removeEnemyAt === 'function') removeEnemyAt(playerX, playerY);
                 logMessage(combatLog + resultLog);
                 currentCombatContext = null;
                 changeGameState(GAME_STATES.GALACTIC_MAP);
@@ -5670,6 +5777,10 @@ function confirmBuyShip(shipId, netCost, componentsRefund = 0) {
         utility: "UTIL_NONE"
     };
 
+    // This ensures no "ghost" ammo counters from previous weapons bloat the save file
+    playerShip.ammo = {};
+
+
     // Initialize Ammo
     const defaultWeapon = COMPONENTS_DATABASE[playerShip.components.weapon];
     if (defaultWeapon && defaultWeapon.stats.maxAmmo) {
@@ -5698,44 +5809,50 @@ function confirmBuyShip(shipId, netCost, componentsRefund = 0) {
   */
 
 function repairShip() {
-     if (playerHull >= MAX_PLAYER_HULL) {
-         logMessage("Hull is already at maximum integrity.");
-         showToast("SYSTEMS NOMINAL", "info");
-         return;
-     }
+    let repaired = false;
+    let rearmed = false;
 
-     const hullToRepair = MAX_PLAYER_HULL - playerHull;
-     const totalCost = Math.ceil(hullToRepair * HULL_REPAIR_COST_PER_POINT);
+    // 1. REARM WEAPONS FIRST
+    const weaponId = playerShip.components.weapon;
+    const weapon = COMPONENTS_DATABASE[weaponId];
+    
+    if (weapon && weapon.stats && weapon.stats.maxAmmo) {
+        const currentAmmo = playerShip.ammo[weaponId] || 0;
+        if (currentAmmo < weapon.stats.maxAmmo) {
+            playerShip.ammo[weaponId] = weapon.stats.maxAmmo;
+            logMessage("Ordnance magazines reloaded.");
+            rearmed = true;
+        }
+    }
 
-     if (playerCredits < totalCost) {
-         logMessage(`Cannot afford full repairs. Cost: ${totalCost}c, You have: ${playerCredits}c.`);
-         showToast("INSUFFICIENT FUNDS", "error");
-         return;
-     }
+    // 2. REPAIR HULL
+    if (playerHull < MAX_PLAYER_HULL) {
+        const hullToRepair = MAX_PLAYER_HULL - playerHull;
+        const totalCost = Math.ceil(hullToRepair * HULL_REPAIR_COST_PER_POINT);
 
-     playerCredits -= totalCost;
-     playerHull = MAX_PLAYER_HULL;
+        if (playerCredits < totalCost) {
+            logMessage(`Cannot afford full repairs. Cost: ${totalCost}c.`);
+            showToast("INSUFFICIENT FUNDS", "error");
+            return;
+        }
 
-     logMessage(`Ship hull repaired for ${totalCost} credits.`);
-     showToast(`HULL REPAIRED<br>-${totalCost} Credits`, "success");
+        playerCredits -= totalCost;
+        playerHull = MAX_PLAYER_HULL;
+        logMessage(`Ship hull repaired for ${totalCost} credits.`);
+        repaired = true;
+    }
 
-// --- REARM WEAPONS ---
-     const weaponId = playerShip.components.weapon;
-     const weapon = COMPONENTS_DATABASE[weaponId];
-     
-     // Added safe checks so it doesn't crash if stats are missing!
-     if (weapon && weapon.stats && weapon.stats.maxAmmo) {
-         playerShip.ammo[weaponId] = weapon.stats.maxAmmo;
-         logMessage("Ordnance magazines reloaded.");
-         // If hull was already full, we should still show a toast for ammo
-         if (playerHull >= MAX_PLAYER_HULL) {
-             showToast("WEAPONS RELOADED", "success");
-         }
-     }
-
-     handleInteraction();
-     renderUIStats();
- }
+    // 3. FINAL OUTPUT
+    if (repaired || rearmed) {
+        showToast(repaired ? "HULL REPAIRED & REARMED" : "WEAPONS RELOADED", "success");
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+        handleInteraction();
+        renderUIStats();
+    } else {
+        logMessage("Hull is at maximum integrity and weapons are fully loaded.");
+        showToast("SYSTEMS NOMINAL", "info");
+    }
+}
 
 // --- Outfitting Functions ---
 function displayOutfittingScreen() {
@@ -5848,12 +5965,20 @@ function confirmBuyComponent(compId) {
     if (newComp.stats.maxAmmo) {
         playerShip.ammo[compId] = newComp.stats.maxAmmo;
     }
+    
+    // --- DELETE OLD AMMO DATA ---
+    if (currentCompId !== compId) {
+        delete playerShip.ammo[currentCompId]; 
+    }
 
     applyPlayerShipStats();
     
+    // --- CLARIFY REFUNDS FOR DOWNGRADING ---
     let msg = `Installed ${newComp.name}.`;
-    if (tradeInValue > 0) {
-        // Swapped hardcoded #888 for var(--item-desc-color)
+    if (netCost < 0) {
+        const refund = Math.abs(netCost);
+        msg += `<br><span style="font-size:11px; color:var(--success);">(Salvage Refund: +${formatNumber(refund)}c)</span>`;
+    } else if (tradeInValue > 0) {
         msg += `<br><span style="font-size:11px; color:var(--item-desc-color);">(Traded in ${currentComp.name} for ${formatNumber(tradeInValue)}c)</span>`;
     }
     
@@ -6016,53 +6141,78 @@ function openPlanetView(location) {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
+    // Parse the biome data cleanly
+    const biomeId = location.biome || 'BARREN_ROCK';
+    const biomeData = PLANET_BIOMES && PLANET_BIOMES[biomeId] ? PLANET_BIOMES[biomeId] : { name: biomeId, description: "Unknown planet type.", landable: true, image: "" };
+
+    // Check if the player has established their colony right here!
+    const isColonyHere = (typeof playerColony !== 'undefined' && playerColony.established && playerColony.x === location.x && playerColony.y === location.y);
+    
+    const planetStatus = isColonyHere ? 
+        `<div style="color:var(--success); font-weight:bold; letter-spacing: 1px;">SETTLED: ${playerColony.name.toUpperCase()}</div>
+         <div style="color:#666; font-size: 11px; margin-top: 5px;">Concord Recognized Pioneer Settlement</div>` :
+        `<div style="color:var(--danger); font-weight:bold; letter-spacing: 1px;">UNCLAIMED WILDERNESS</div>
+         <div style="color:#666; font-size: 11px; margin-top: 5px;">No civilized structures detected. High concentration of raw materials present in the crust.</div>`;
+
+    // Dynamic Image Loading
+    let imageHtml = biomeData.image ? `<img src="${biomeData.image}" style="width:100px; height:100px; margin-bottom:15px; border-radius:50%; object-fit:cover; border: 2px solid var(--border-color); box-shadow: 0 0 20px rgba(0, 224, 224, 0.2);">` : `<div style="text-align:center; font-size: 60px; margin-bottom:15px; filter: drop-shadow(0 0 15px ${location.color || '#00E0E0'});">🪐</div>`;
+
     // 1. Render Planet Vitals
     detailEl.innerHTML = `
-        <div style="text-align:center; font-size: 60px; margin-bottom:15px; filter: drop-shadow(0 0 15px ${location.color || '#00E0E0'});">🪐</div>
-        <h3 style="color:var(--accent-color); text-align:center; margin-top:0;">${location.name}</h3>
-        <p style="text-align:center; color:var(--item-desc-color); font-size: 14px;">Classification: ${location.biome || 'Unknown'}</p>
-        
-        <div style="border: 1px dashed #333; background: rgba(0,0,0,0.3); padding: 15px; margin-top: 15px; border-radius: 4px;">
-            <div style="color:#888; font-size:12px; margin-bottom: 5px;">PLANETARY STATUS:</div>
-            <div style="color:var(--danger); font-weight:bold; letter-spacing: 1px;">UNCLAIMED WILDERNESS</div>
-            <div style="color:#666; font-size: 11px; margin-top: 5px;">No civilized structures detected. High concentration of raw materials present in the crust.</div>
+        <div style="text-align:center; padding-top: 20px;">
+            ${imageHtml}
+            <h3 style="color:var(--accent-color); margin-top:0; margin-bottom: 5px; font-size: 24px;">${location.name}</h3>
+            <p style="color:var(--item-desc-color); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 0;">Class: ${biomeData.name}</p>
         </div>
+        
+        <div style="border: 1px dashed var(--border-color); background: var(--bg-color); padding: 15px; margin-top: 20px; border-radius: 4px;">
+            <div style="color:var(--item-desc-color); font-size:10px; margin-bottom: 5px; letter-spacing: 1px;">PLANETARY STATUS:</div>
+            ${planetStatus}
+        </div>
+        
+        <!-- The designated container for our scan results -->
+        <div id="surfaceScanResultBox"></div>
+        
+        <p style="color:var(--text-color); font-size: 13px; line-height: 1.5; margin-top: 20px; font-style: italic;">
+            "${biomeData.description}"
+        </p>
     `;
 
-    // 2. Evaluate Mid-Game Restrictions
-    const ship = SHIP_CLASSES[playerShip.shipClass];
-    const hasMiningLaser = COMPONENTS_DATABASE[playerShip.components.utility]?.stats?.unlocksMining;
+    // 2. Build the Actions Menu
+    let btnHtml = ``;
+
+    // Universal Action: Scan
+    btnHtml += `<button class="action-button" onclick="if(typeof conductSurfaceScan === 'function') conductSurfaceScan()">CONDUCT SURFACE SCAN</button>`;
     
-    // Check for the Prefab Core (Assuming you store cargo in a playerCargo object/array)
-    // NOTE: Adjust 'playerCargo' below to match whatever variable tracks your current inventory!
-    const hasColonyCore = typeof playerCargo !== 'undefined' && playerCargo['PREFAB_COLONY_CORE'] > 0; 
-    const hasCargoCapacity = ship.cargoCapacity >= 100;
+    // Universal Action: Mine/Explore
+    btnHtml += `<button class="action-button" onclick="if(typeof startOrbitalMining === 'function') { startOrbitalMining(); } else { closeGenericModal(); logMessage('Descended to surface...', 'color:var(--accent-color)');}">DESCEND TO SURFACE</button>`;
 
-    // 3. Setup Mining Button Logic
-    let mineBtnText = "INITIATE ORBITAL MINING";
-    let mineDisabled = "";
-    if (!hasMiningLaser) {
-        mineBtnText = "REQUIRES ORBITAL EXTRACTOR";
-        mineDisabled = "disabled";
+    // --- COLONY BUILDER: THE PIONEER HOOK ---
+    if (typeof playerHasColonyCharter !== 'undefined' && playerHasColonyCharter && (!playerColony || !playerColony.established)) {
+        if (biomeData && biomeData.landable) {
+            btnHtml += `
+                <button class="action-button" onclick="surveyForColony('${location.name}', '${biomeId}', ${location.x}, ${location.y})" style="border-color: var(--gold-text); color: var(--gold-text); margin-top: 15px;">
+                    🚩 SURVEY FOR SETTLEMENT
+                </button>
+            `;
+        }
+    } else if (isColonyHere) {
+        // If the colony IS built, and they are standing on it!
+        btnHtml += `
+            <button class="action-button" onclick="if(typeof openColonyManagement === 'function') openColonyManagement()" style="border-color: var(--success); color: var(--success); margin-top: 15px; box-shadow: 0 0 10px rgba(0, 170, 170, 0.4);">
+                🏢 MANAGE COLONY
+            </button>
+        `;
     }
 
-    // 4. Setup Colony Button Logic
-    let colonyBtnText = "ESTABLISH COLONY";
-    let colonyDisabled = "";
-    if (!hasCargoCapacity) {
-        colonyBtnText = "SHIP TOO SMALL (100+ CARGO REQ)";
-        colonyDisabled = "disabled";
-    } else if (!hasColonyCore) {
-        colonyBtnText = "REQUIRES PREFAB COLONY CORE (25,000c)";
-        colonyDisabled = "disabled";
-    }
-
-    // 5. Render Action Buttons
-    actionsEl.innerHTML = `
-        <button class="action-button" onclick="conductSurfaceScan()">CONDUCT SURFACE SCAN</button>
-        <button class="action-button" ${mineDisabled} onclick="startOrbitalMining()">${mineBtnText}</button>
-        <button class="action-button" ${colonyDisabled} style="${colonyDisabled ? '' : 'border-color: var(--success); color: var(--success);'}" onclick="foundColony()">${colonyBtnText}</button>
+    // Add Universal Leave Button
+    btnHtml += `
+        <button class="action-button" onclick="closeGenericModal()" style="margin-top: 10px;">
+            LEAVE ORBIT
+        </button>
     `;
+
+    actionsEl.innerHTML = btnHtml;
 }
 
 // --- PLANETARY MECHANICS ---
@@ -6087,14 +6237,16 @@ function conductSurfaceScan() {
         scanText += "<br><span style='color:var(--success); font-weight:bold;'>Geological survey: Viable ore veins detected.</span>";
     }
 
-    // Inject the scan results directly into the UI panel
-    const detailEl = document.getElementById('genericDetailContent');
-    detailEl.innerHTML += `
-        <div style="margin-top: 15px; padding: 10px; border-left: 3px solid #00E0E0; background: rgba(0, 224, 224, 0.1); font-size: 12px; color: var(--text-color); animation: fadeIn 0.5s;">
-            <div style="color: #00E0E0; font-weight: bold; margin-bottom: 5px;">SCAN RESULTS:</div>
-            ${scanText}
-        </div>
-    `;
+    // Inject the scan results directly into the designated container
+    const scanBox = document.getElementById('surfaceScanResultBox');
+    if (scanBox) {
+        scanBox.innerHTML = `
+            <div style="margin-top: 15px; padding: 10px; border-left: 3px solid #00E0E0; background: rgba(0, 224, 224, 0.1); font-size: 12px; color: var(--text-color); animation: fadeIn 0.5s;">
+                <div style="color: #00E0E0; font-weight: bold; margin-bottom: 5px;">SCAN RESULTS:</div>
+                ${scanText}
+            </div>
+        `;
+    }
 }
 
 function startOrbitalMining() {
@@ -6221,34 +6373,171 @@ function triggerDamageEffect() {
     }
 }
 
- function activateDistressBeacon() {
-     if (playerFuel > 0) {
-         logMessage("Fuel systems operational. Distress beacon disabled.");
-         return;
-     }
+ function findNearestStation(px, py) {
+    let nearest = null;
+    let minDist = Infinity;
 
-     if (currentCombatContext) {
-         logMessage("Cannot activate beacon during combat!");
-         return;
-     }
+    if (typeof LOCATIONS_DATA !== 'undefined') {
+        for (const key in LOCATIONS_DATA) {
+            const loc = LOCATIONS_DATA[key];
+            // Look for Hubs, Outposts, or Black Markets
+            if (loc.type === '#' || loc.type === 'O' || loc.type === OUTPOST_CHAR_VAL) {
+                const dist = Math.sqrt(Math.pow(px - loc.coords.x, 2) + Math.pow(py - loc.coords.y, 2));
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = { name: key, x: loc.coords.x, y: loc.coords.y };
+                }
+            }
+        }
+    }
+    // Fallback to the tutorial start area if the universe is somehow empty
+    return nearest || { name: "Starbase Alpha", x: MAP_WIDTH - 7, y: MAP_HEIGHT - 5 };
+}
 
-     // The Penalty: 20% of Credits (min 100) and some XP
-     const creditPenalty = Math.max(100, Math.floor(playerCredits * 0.20));
+function findNearestStation(px, py) {
+    let nearest = null;
+    let minDist = Infinity;
 
-     logMessage("Distress Signal broadcasting...");
+    if (typeof LOCATIONS_DATA !== 'undefined') {
+        for (const key in LOCATIONS_DATA) {
+            const loc = LOCATIONS_DATA[key];
+            if (loc.type === '#' || loc.type === 'O' || loc.type === OUTPOST_CHAR_VAL) {
+                const dist = Math.sqrt(Math.pow(px - loc.coords.x, 2) + Math.pow(py - loc.coords.y, 2));
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = { name: key, x: loc.coords.x, y: loc.coords.y };
+                }
+            }
+        }
+    }
+    return nearest || { name: "Starbase Alpha", x: MAP_WIDTH - 7, y: MAP_HEIGHT - 5 };
+}
 
-     setTimeout(() => {
-         playerCredits = Math.max(0, playerCredits - creditPenalty);
-         playerFuel = Math.floor(MAX_FUEL * 0.5); // Refuel to 50%
-         playerXP = Math.max(0, playerXP - 50); // XP Penalty
+function activateDistressBeacon() {
+    if (playerFuel > BASE_FUEL_PER_MOVE * 3) {
+        logMessage("Fuel systems operational. Save the beacon for an actual emergency.");
+        return;
+    }
+    if (currentCombatContext) {
+        logMessage("Cannot broadcast distress signal during combat! Signal jammed.");
+        return;
+    }
+    if (isAwaitingRescue) {
+        logMessage("<span style='color:var(--warning)'>Rescue is already en route! Hold your position and wait (.).</span>");
+        return;
+    }
 
-         logMessage(`<span style="color:#00E0E0">Towing Vessel Arrived.</span>`);
-         logMessage(`You were towed to a safe distance and refueled.`);
-         logMessage(`Payment deducted: ${creditPenalty} credits.`);
+    // 1. Calculate Cost
+    const standardFee = Math.max(100, Math.floor(playerCredits * 0.25));
+    rescueFeePaid = standardFee;
+    freebieUsed = false;
 
-         renderUIStats();
-     }, 1500); // Small delay for dramatic effect
- }
+    if (playerCredits < standardFee) {
+        rescueFeePaid = playerCredits;
+        freebieUsed = true;
+    }
+    playerCredits -= rescueFeePaid;
+
+    // 2. Find Destination & Dispatch Rat
+    rescueTargetStation = findNearestStation(playerX, playerY);
+    isAwaitingRescue = true;
+
+    // Spawn the physical Fuel Rat at the station's coordinates
+    if (typeof activeNPCs !== 'undefined') {
+        activeNPCs.push({
+            x: rescueTargetStation.x,
+            y: rescueTargetStation.y,
+            name: "Fuel Rats Rescue Tug",
+            char: "R",
+            color: "#FFAA00",
+            state: "RESCUE",
+            isFuelRat: true,
+            desc: "A highly modified, extremely fast salvage tug. They have fuel, you don't."
+        });
+    }
+
+    // 3. Calculate ETA for narrative
+    const dist = Math.max(1, Math.abs(playerX - rescueTargetStation.x) + Math.abs(playerY - rescueTargetStation.y));
+    const eta = Math.ceil(dist / 2); // Rats move 2 tiles per turn
+
+    logMessage(`<span style='color:var(--warning)'>Distress Signal acknowledged!</span>`);
+    logMessage(`"Fuel Rats" tug dispatched from ${rescueTargetStation.name}.`);
+    logMessage(`ETA: ~${eta} system cycles. Hold position and wait (.).`);
+    
+    renderUIStats();
+    render();
+}
+
+function executeRescueSequence() {
+    isAwaitingRescue = false;
+    
+    // 1. Move Player to the Station
+    playerX = rescueTargetStation.x;
+    playerY = rescueTargetStation.y;
+    
+    // Give 15% fuel (enough to dock/fly around, but forces them to buy more)
+    playerFuel = Math.max(playerFuel, Math.floor(MAX_FUEL * 0.15)); 
+
+    // Clear the map cache so the new sector renders instantly
+    chunkManager.loadedChunks = {}; 
+    chunkManager.lastChunkKey = null;
+    chunkManager.lastChunkRef = null;
+    updateSectorState();
+
+    // 2. Narrative Messaging
+    logMessage(`<span style="color:var(--success)">"Fuel Rats" Salvage Tug Arrived!</span>`);
+    logMessage(`Tractor beam locked. You've been towed to ${rescueTargetStation.name}.`);
+    
+    if (freebieUsed && rescueFeePaid === 0) {
+        logMessage(`The crew called you a charity case and dropped you off for free.`);
+    } else if (freebieUsed) {
+        logMessage(`They took your last ${rescueFeePaid} credits and laughed as they undocked.`);
+    } else {
+        logMessage(`Tow and emergency fuel fee: -${rescueFeePaid} credits.`);
+    }
+
+    // 3. Force Station Interaction UI
+    changeGameState(GAME_STATES.GALACTIC_MAP);
+    handleInteraction();
+    renderUIStats();
+    render();
+}
+
+function confirmSelfDestruct() {
+    if (currentCombatContext) {
+        logMessage("You're already dying! Just let them shoot you.");
+        return;
+    }
+    showConfirmationModal(
+        "WARNING: Initiating core overload will destroy your vessel and instantly terminate your current clone. PROCEED WITH SELF-DESTRUCT?",
+        () => {
+            playerHull = 0;
+            if (typeof soundManager !== 'undefined') soundManager.playExplosion();
+            triggerDamageEffect();
+            // Wait half a second for the explosion effect before showing Game Over
+            setTimeout(() => triggerGameOver("Intentional Core Overload (Self-Destruct)"), 500);
+        }
+    );
+}
+
+function playerWaitTurn() {
+    logMessage("Systems cycling. You drift silently in the void...");
+    
+    // Advance Time
+    advanceGameTime(0.15); 
+    
+    // The World Keeps Moving!
+    if (typeof updateEnemies === "function") updateEnemies();
+    if (typeof updateAmbientNPCs === "function") updateAmbientNPCs();
+    
+    // Risk of Ambush while waiting (especially bad if stranded!)
+    if (Math.random() < PIRATE_ENCOUNTER_CHANCE) {
+        if (typeof spawnPirateNearPlayer === "function") spawnPirateNearPlayer();
+    }
+
+    renderUIStats();
+    render();
+}
 
 function generateMissionsForStation(stationName) {
     const generatedMissions = [];
@@ -6392,6 +6681,9 @@ function displayMissionBoard() {
     openGenericModal("MISSION CONTRACTS");
     
     const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    
     const missions = MISSIONS_DATABASE[stationName];
     
     missions.forEach((mission, index) => {
@@ -6399,7 +6691,7 @@ function displayMissionBoard() {
         
         const row = document.createElement('div');
         row.className = 'trade-item-row';
-        // FIXED: Added var(--text-color) for the title and var(--gold-text) for credits
+        // Added var(--text-color) for the title and var(--gold-text) for credits
         row.innerHTML = `<span style="color:var(--text-color); font-weight:bold;">${mission.title}</span> <span style="color:var(--gold-text, #FFD700)">${formatNumber(mission.rewards.credits)}c</span>`;
         row.onclick = () => showMissionDetails(stationName, index);
         listEl.appendChild(row);
@@ -6408,12 +6700,24 @@ function displayMissionBoard() {
     if(listEl.children.length === 0) {
         listEl.innerHTML = "<div style='padding:10px; color:var(--text-color);'>No contracts available.</div>";
     }
+
+    // --- Render Default Detail View ---
+    detailEl.innerHTML = `
+        <div style="padding: 40px 20px; text-align:center; color:var(--item-desc-color);">
+            Select a contract from the board to view mission parameters.
+        </div>
+    `;
+
+    // --- Route the exit button back to the station ---
+    actionsEl.innerHTML = `
+        <button class="action-button" onclick="openStationView()">BACK TO CONCOURSE</button>
+    `;
 }
 
 function showMissionDetails(stationName, index) {
     const mission = MISSIONS_DATABASE[stationName][index];
     
-    // FIXED: Swapped hardcoded #888 for var(--item-desc-color) and added var(--text-color)
+    // Swapped hardcoded #888 for var(--item-desc-color) and added var(--text-color)
     let html = `
         <h3 style="color:var(--accent-color); margin-bottom: 5px;">${mission.title}</h3>
         <p style="font-size:12px; color:var(--item-desc-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Client: ${mission.giver}</p>
@@ -6428,12 +6732,18 @@ function showMissionDetails(stationName, index) {
     document.getElementById('genericDetailContent').innerHTML = html;
     
     const isActive = playerActiveMission !== null;
+    
+    // --- Added the Back to Concourse escape hatch right below the accept button! ---
     const btnHtml = `
         <button class="action-button" ${isActive ? 'disabled' : ''} 
             onclick="confirmAcceptMission('${stationName}', ${index})">
             ${isActive ? 'FINISH CURRENT JOB FIRST' : 'ACCEPT CONTRACT'}
         </button>
+        <button class="action-button" onclick="openStationView()" style="margin-top: 10px;">
+            BACK TO CONCOURSE
+        </button>
     `;
+    
     document.getElementById('genericModalActions').innerHTML = btnHtml;
 }
 
@@ -6728,6 +7038,7 @@ function abandonBounty() {
 
                  if (playerCargo[obj.itemID] >= obj.count) {
                      playerCargo[obj.itemID] -= obj.count;
+                     if (playerCargo[obj.itemID] <= 0) delete playerCargo[obj.itemID]; 
                      updateCurrentCargoLoad();
                      objectiveProgress.delivered = obj.count; // Mark this objective's delivery as done
                      objectiveProgress.complete = true;
@@ -7337,10 +7648,23 @@ function handleCombatInput(key) {
             case 'e': 
             case 'enter':
             case 'space':
-                if (currentLocation.isMajorHub) {
-                    displayMissionBoard(); 
-                } else {
-                    openTradeModal('buy'); 
+                const currentTileForE = chunkManager.getTile(playerX, playerY);
+                if (!currentTileForE) return true;
+                
+                // 1. Station & Hub Routing
+                if (currentTileForE.isMajorHub || currentTileForE.char === OUTPOST_CHAR_VAL) {
+                    if (typeof performCustomsScan === 'function' && currentTileForE.isMajorHub) {
+                        if (!performCustomsScan()) return true; // Stop if they fail customs!
+                    }
+                    openStationView();
+                } 
+                // 2. Planetary Routing
+                else if (currentTileForE.char === 'O' || (currentTileForE.name && currentTileForE.name.toLowerCase().includes("planet")) || currentTileForE.biome) {
+                    openPlanetView(currentTileForE);
+                } 
+                // 3. Xerxes/Black Market Routing
+                else if (currentTileForE.name && currentTileForE.name.includes("Xerxes")) {
+                    if (typeof openXerxesView === 'function') openXerxesView();
                 }
                 return true;
             case 'c':
@@ -7394,8 +7718,12 @@ function handleCombatInput(key) {
         case 'arrowright':
             dx = 1;
             break;
+
+        case '`':
+            openDevMenu();
+            return true;
             
-        case 'e': { // <-- Added block scope { } to protect local variables!
+        case 'e': {
             const currentTile = chunkManager.getTile(playerX, playerY);
             // Safely get the character
             let tileChar = '.';
@@ -7421,7 +7749,7 @@ function handleCombatInput(key) {
         }
         
         // --- HOTKEY: DEEP SCAN (V) ---
-        case 'v': { // <-- Added block scope { } here too!
+        case 'v': { 
             const currentTile = chunkManager.getTile(playerX, playerY);
             let tileChar = '.';
             if (typeof getTileChar === 'function') tileChar = getTileChar(currentTile);
@@ -7460,7 +7788,7 @@ function handleCombatInput(key) {
             if (typeof openCargoModal === 'function') openCargoModal();
             return true;
             
-        case 't': { // <-- And here!
+        case 't': { 
             const tileForWormhole = chunkManager.getTile(playerX, playerY);
             let whType = '';
             if (typeof getTileType === 'function') whType = getTileType(tileForWormhole);
@@ -7470,11 +7798,17 @@ function handleCombatInput(key) {
             return true;
         }
         
-        case '.': 
-            logMessage("Holding position. Systems recharging...");
-            if (typeof advanceGameTime === 'function') advanceGameTime(0.15); 
-            if (typeof render === 'function') render(); 
+        // --- NEW STRANDED / WAIT CONTROLS ---
+        case 'z': 
+            activateDistressBeacon();
             return true;
+        case 'x':
+            confirmSelfDestruct();
+            return true;
+        case '.': 
+            if (typeof playerWaitTurn === 'function') playerWaitTurn();
+            return true;
+            
         case 'f6':
             if (typeof saveGame === 'function') saveGame();
             return true;
@@ -7996,7 +8330,7 @@ function autoSaveGame() {
 
 // 3. Shared Save Logic
 function performSave(storageKey) {
-    performGarbageCollection();
+    if (typeof performGarbageCollection === 'function') performGarbageCollection();
     const gameState = {
         version: GAME_VERSION,
         realTimestamp: Date.now(), // Store real time for the UI
@@ -8005,8 +8339,12 @@ function performSave(storageKey) {
         playerX, playerY, playerFuel, playerCredits, playerShields, playerHull,
         playerNotoriety, playerLevel, playerXP, playerName, playerPfp, playerCrew,
 
-
-        playerPerks: Array.from(playerPerks), // Convert Set to Array
+        playerPerks: Array.from(playerPerks), 
+        
+        // --- COLONY BUILDER STATE ---
+        playerHasColonyCharter: typeof playerHasColonyCharter !== 'undefined' ? playerHasColonyCharter : false,
+        playerColony: typeof playerColony !== 'undefined' ? playerColony : null,
+        // ----------------------------
         
         // Inventory & World
         playerShip, playerCargo,
@@ -8017,7 +8355,7 @@ function performSave(storageKey) {
         mystery_first_nexus_location, mystery_nexus_activated,
         xerxesPuzzleLevel,
         worldStateDeltas: worldStateDeltas || {},
-        currentSectorName, // Save sector name for the UI card
+        currentSectorName, 
 
         // Data Structures
         visitedSectors: Array.from(visitedSectors),
@@ -8097,6 +8435,9 @@ function respawnPlayer() {
     render();
     
     saveGame(); // Auto-save on respawn
+
+    // Stumble Protection: Prevent accidental movement for 500ms after transition
+    lastInputTime = Date.now() + 500;
 }
 
 function quitToTitle() {
@@ -8128,6 +8469,11 @@ function loadGameData(jsonString) {
 
         // Restore Variables
         playerName = savedState.playerName || "Captain";
+
+        isAwaitingRescue = savedState.isAwaitingRescue || false; 
+        rescueTargetStation = savedState.rescueTargetStation || null; // NEW
+        rescueFeePaid = savedState.rescueFeePaid || 0; // NEW
+        freebieUsed = savedState.freebieUsed || false; // NEW
         playerPfp = savedState.playerPfp || "assets/pfp_01.png";
         playerX = savedState.playerX;
         playerY = savedState.playerY;
@@ -8150,6 +8496,21 @@ function loadGameData(jsonString) {
         playerActiveBounty = savedState.playerActiveBounty || null;
         currentStationBounties = savedState.currentStationBounties || [];
         activeMarketTrend = savedState.activeMarketTrend || null;
+
+        // --- RESTORE COLONY BUILDER STATE ---
+        playerHasColonyCharter = savedState.playerHasColonyCharter || false;
+        playerColony = savedState.playerColony || {
+            established: false,
+            name: "Unclaimed Settlement",
+            x: null,
+            y: null,
+            planetName: null,
+            biome: null,
+            phase: "NONE", 
+            population: 0,
+            morale: 100,
+            suppliesDelivered: { habModules: 0, atmosProcessors: 0 }
+        };
 
         currentGameDate = savedState.currentGameDate;
         
@@ -8184,6 +8545,48 @@ function loadGameData(jsonString) {
         updateNotorietyTitle();
         updateCurrentCargoLoad();
         xpToNextLevel = calculateXpToNextLevel(playerLevel);
+
+        // --- RE-INJECT ACTIVE BOUNTY SHIP ---
+        // If the player had an active contract, we must respawn the ship on the map!
+        if (playerActiveBounty) {
+            if (typeof activeEnemies !== 'undefined') {
+                // Ensure we don't duplicate it if the array persisted somehow
+                activeEnemies = activeEnemies.filter(e => e.id !== playerActiveBounty.id);
+                
+                activeEnemies.push({
+                    id: playerActiveBounty.id,
+                    x: playerActiveBounty.x,
+                    y: playerActiveBounty.y,
+                    name: playerActiveBounty.targetName,
+                    shipClass: playerActiveBounty.shipClass,
+                    faction: playerActiveBounty.faction,
+                    isBountyTarget: true,
+                    level: playerActiveBounty.difficulty,
+                    hp: playerActiveBounty.difficulty * 50,
+                    maxHp: playerActiveBounty.difficulty * 50,
+                    shields: playerActiveBounty.difficulty * 25,
+                    maxShields: playerActiveBounty.difficulty * 25,
+                    char: 'V', 
+                    color: 'var(--danger)' 
+                });
+            }
+        }
+
+        // --- FUEL RAT RELOAD PROTECTION ---
+        if (isAwaitingRescue && rescueTargetStation) {
+            if (typeof activeNPCs !== 'undefined') {
+                activeNPCs.push({
+                    x: playerX + 10, // Spawn them close by so they arrive soon!
+                    y: playerY + 10,
+                    name: "Fuel Rats Rescue Tug",
+                    char: "R",
+                    color: "#FFAA00",
+                    state: "RESCUE",
+                    isFuelRat: true
+                });
+            }
+            logMessage("<span style='color:var(--warning)'>Sensors picking up the Fuel Rat tug. They are almost here.</span>");
+        }
 
         // Resume Game
         logMessage("Game Loaded Successfully.");
@@ -8437,20 +8840,22 @@ function hideTitleScreen() {
     }, 500);
 }
 
-['tradeOverlay', 'cargoOverlay', 'codexOverlay', 'levelUpOverlay'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('click', (e) => {
-                // Only close if clicking the dark overlay itself, not the window inside it
-                if (e.target === el) {
-                    if (id === 'tradeOverlay') closeTradeModal();
-                    else if (id === 'cargoOverlay') closeCargoModal();
-                    else if (id === 'codexOverlay') toggleCodex(false);
-                    // levelUpOverlay cannot be dismissed, you must pick a perk!
-                }
-            });
-        }
-    });
+// --- UNIVERSAL OVERLAY CLOSER ---
+['tradeOverlay', 'cargoOverlay', 'codexOverlay', 'levelUpOverlay', 'genericModalOverlay', 'stationOverlay'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('click', (e) => {
+            // Only close if clicking the dark background itself
+            if (e.target === el) {
+                if (id === 'tradeOverlay' || id === 'genericModalOverlay') closeGenericModal();
+                else if (id === 'cargoOverlay') closeCargoModal();
+                else if (id === 'codexOverlay') toggleCodex(false);
+                else if (id === 'stationOverlay') closeStationView();
+                // levelUpOverlay intentionally excluded; player MUST pick a perk!
+            }
+        });
+    }
+});
 
 function openStationView() {
     const location = chunkManager.getTile(playerX, playerY);
@@ -8465,6 +8870,10 @@ function openStationView() {
             return;
         }
     }
+
+    // If we are returning to the concourse from a sub-menu (Missions, Cantina, Job Board),
+    // we must close the Generic Modal so it doesn't trap us!
+    if (typeof closeGenericModal === 'function') closeGenericModal();
 
     // --- 2. SETUP UI TEXT ---
     document.getElementById('stationOverlay').style.display = 'flex';
@@ -8625,19 +9034,23 @@ function renderStationMenu(location, faction) {
     const menuGrid = document.getElementById('dynamicStationMenu');
     let html = '';
 
-    // --- SAVE FILE COMPATIBILITY PATCH ---
-    // Forces the game to recognize Xerxes as a Black Market even on old save files!
-    const isBlackMarketNode = location.isBlackMarket || location.name === 'Planet Xerxes' || location.name === 'Xerxes Prime';
-
-    // If it's an old save file and the inventory is empty, retroactively inject the new items!
-    if (isBlackMarketNode && (!location.sells || location.sells.length === 0)) {
-        if (typeof LOCATIONS_DATA !== 'undefined' && LOCATIONS_DATA['Planet Xerxes']) {
-            location.sells = JSON.parse(JSON.stringify(LOCATIONS_DATA['Planet Xerxes'].sells));
-            location.buys = JSON.parse(JSON.stringify(LOCATIONS_DATA['Planet Xerxes'].buys));
-            location.isBlackMarket = true;
+    // --- SAVE FILE COMPATIBILITY PATCH (UNIVERSAL) ---
+    // If the location's trade arrays were stripped during a save/load cycle to save space,
+    // we safely restore them from the master LOCATIONS_DATA database right here!
+    if (typeof LOCATIONS_DATA !== 'undefined' && LOCATIONS_DATA[location.name]) {
+        const baseData = LOCATIONS_DATA[location.name];
+        if (!location.sells || location.sells.length === 0) {
+            location.sells = JSON.parse(JSON.stringify(baseData.sells || []));
+        }
+        if (!location.buys || location.buys.length === 0) {
+            location.buys = JSON.parse(JSON.stringify(baseData.buys || []));
+        }
+        if (location.isBlackMarket === undefined) {
+            location.isBlackMarket = baseData.isBlackMarket || false;
         }
     }
-    // --------------------------------------
+
+    const isBlackMarketNode = location.isBlackMarket || location.name === 'Planet Xerxes' || location.name === 'Xerxes Prime';
 
     // Helper for generating buttons
     const createBtn = (icon, title, sub, action, extraStyle="", extraClass="") => `
@@ -8650,11 +9063,12 @@ function renderStationMenu(location, faction) {
         </button>
     `;
 
-    // --- 1. TRADE & COMMERCE (Black Market Integration) ---
+    // --- 1. TRADE & COMMERCE ---
     if (isBlackMarketNode) {
         html += createBtn('💀', 'Shadow Network: Buy', 'Acquire illicit goods', "openTradeModal('buy')", "", "xerxes-btn xerxes-spire-btn");
         html += createBtn('💰', 'Shadow Network: Sell', 'Fence contraband', "openTradeModal('sell')", "", "xerxes-btn xerxes-spire-btn");
     } else {
+        // Now this will correctly fire because the arrays are guaranteed to be restored!
         if ((location.sells && location.sells.length > 0) || (location.buys && location.buys.length > 0)) {
             html += createBtn('🛒', 'Marketplace', 'Buy Commodities', "openTradeModal('buy')");
             html += createBtn('💰', 'Sell Cargo', 'Offload Goods', "openTradeModal('sell')");
@@ -8663,10 +9077,7 @@ function renderStationMenu(location, faction) {
 
     // --- 2. STANDARD SERVICES ---
     html += createBtn('📜', 'Mission Board', 'Contracts & Deliveries', "displayMissionBoard()");
-    
-    // NEW: THE BOUNTY BOARD BUTTON
     html += createBtn('🎯', 'Bounty Board', 'Hunt Cartel Targets', "openBountyBoard()", "border-left: 3px solid var(--danger);");
-    
     html += createBtn('⚙️', 'Outfitting', 'Upgrades & Parts', "displayOutfittingScreen()");
     html += createBtn('🍸', 'Cantina', 'Rumors & Rest (10c)', "visitCantina()");
 
@@ -8675,7 +9086,6 @@ function renderStationMenu(location, faction) {
     if (location.isMajorHub) {
         html += createBtn('🚀', 'Shipyard', 'Buy New Hulls', "displayShipyard()");
         
-        // Explicitly ban the Cryptarch from The Rusty Anchor
         if (location.name !== 'The Rusty Anchor') {
             html += createBtn('👁️', 'Cryptarch', 'Decrypt Engrams', "visitCryptarch()");
             cryptarchRendered = true;
@@ -8683,12 +9093,11 @@ function renderStationMenu(location, faction) {
     }
 
     // --- 4. LOCATION SPECIFIC SERVICES ---
-    // Prevent the Black Market fallback from giving it to the Anchor either
     if (!cryptarchRendered && isBlackMarketNode && location.name !== 'The Rusty Anchor') { 
         html += createBtn('👁️', 'The Cryptarch', 'Decrypt Data', "visitCryptarch()", "border-left: 3px solid #9C27B0;");
     }
 
-    // --- FACTION SPECIFIC SERVICES ---
+    // --- 5. FACTION SPECIFIC SERVICES ---
     if (faction === 'CONCORD') {
         html += createBtn('⚖️', 'Security Office', 'Clear Bounties', "clearConcordBounty()", "border-left: 3px solid var(--accent-color);");
         html += createBtn('🛡️', 'Aegis Armory', 'Concord Gear', "openConcordArmory()", "border-left: 3px solid var(--accent-color);");
@@ -9490,10 +9899,16 @@ function openGenericModal(title) {
     const modal = document.getElementById('genericModalOverlay');
     document.getElementById('genericModalTitle').textContent = title;
     
+    const container = document.getElementById('genericModalContent');
+
+    // --- CRITICAL FIX: SCRUB LINGERING INLINE STYLES ---
+    // Wipes out flex-direction: column or specific heights left behind by other menus
+    container.style.cssText = ''; 
+    
     // --- SELF-REPAIRING LAYOUT ---
     // We reconstruct the base layout every time so it never crashes, 
     // even if the Trade system previously overwrote it!
-    document.getElementById('genericModalContent').innerHTML = `
+    container.innerHTML = `
         <div id="genericModalList" class="trade-list-container"></div>
         <div id="genericModalDetails" class="trade-panel-right">
             <div id="genericDetailContent"><p style="color:#666; padding:10px;">Establishing connection...</p></div>
@@ -9510,7 +9925,18 @@ function openGenericModal(title) {
 function closeGenericModal() {
     document.getElementById('genericModalOverlay').style.display = 'none';
 
+    // Clear any running visual intervals
     if (typeof miningInterval !== 'undefined') clearInterval(miningInterval);
+
+    // --- WIPE ALL MODAL CONTEXTS ---
+    // Prevents the keyboard from getting "stuck" thinking a menu is still open!
+    anomalyContext = null;
+    boardingContext = null;
+    currentTradeContext = null;
+    currentOutfitContext = null;
+    currentMissionContext = null;
+    currentShipyardContext = null;
+    window.activeTradeItemId = null; // Clears market analysis
 
     updateSideBorderVisibility();
 }
@@ -9567,14 +9993,11 @@ function visitCantina() {
         </div>
     `;
 
+    // --- Route the exit button back to the station ---
     actionsEl.innerHTML = `
-        <button class="action-button" onclick="closeGenericModal()">LEAVE CANTINA</button>
+        <button class="action-button" onclick="openStationView()">BACK TO CONCOURSE</button>
     `;
 }
-
-// ==========================================
-// --- CANTINA ACTIONS ---
-// ==========================================
 
 // ==========================================
 // --- CANTINA ACTIONS ---
@@ -9660,7 +10083,7 @@ function listenToRumors() {
 function openJobBoard() {
     // Generate fresh recruits if the board is empty
     if (currentStationRecruits.length === 0) {
-        generateRecruits();
+        if (typeof generateRecruits === 'function') generateRecruits();
     }
     
     openGenericModal("LOCAL JOB BOARD");
@@ -9722,10 +10145,13 @@ function openJobBoard() {
                 </div>
             `;
             
-            // Render Hire Button
+            // --- THE FIX: Render Hire Button AND Escape Hatch ---
             actionsEl.innerHTML = `
                 <button class="action-button" onclick="hireCrewMember('${recruit.id}')" style="border-color:var(--success); color:var(--success);">
                     SIGN CONTRACT (${formatNumber(recruit.cost)}c)
+                </button>
+                <button class="action-button" onclick="openStationView()" style="margin-top: 10px;">
+                    BACK TO CONCOURSE
                 </button>
             `;
         };
@@ -9737,6 +10163,13 @@ function openJobBoard() {
         listEl.children[2].click(); // Skip the contract bridge header
     } else {
         detailEl.innerHTML = `<div style="padding:40px 20px; text-align:center; color:var(--item-desc-color);">No freelancers currently seeking a ship.</div>`;
+    }
+
+    // --- Default exit button in case no recruits are selected ---
+    if (currentStationRecruits.length === 0) {
+        actionsEl.innerHTML = `
+            <button class="action-button" onclick="openStationView()">BACK TO CONCOURSE</button>
+        `;
     }
 }
 
@@ -9964,16 +10397,23 @@ function openTradeModal(mode) {
         return;
     }
 
-    // --- ECONOMY RESTOCK LOGIC ---
-    // Every time we open the menu, add a small amount of stock to simulate other traders
-    if (location.sells) {
-        location.sells.forEach(item => {
-            // Cap stock at 100 (or whatever limit you prefer)
-            if (item.stock < 100) {
-                // Add 1-3 units randomly
-                item.stock += Math.floor(Math.random() * 3) + 1;
-            }
-        });
+    // --- ECONOMY RESTOCK LOGIC (Time-Gated Fix) ---
+    // Only restock if 1.0 stardate (~100 moves) has passed since the last time they looked at this market
+    if (!location.lastRestockTime || (currentGameDate - location.lastRestockTime) > 1.0) {
+        
+        if (location.sells) {
+            location.sells.forEach(item => {
+                if (item.stock < 100) item.stock += Math.floor(Math.random() * 3) + 1;
+            });
+        }
+        if (location.buys) {
+            location.buys.forEach(item => {
+                if (item.stock > 0) item.stock = Math.max(0, item.stock - (Math.floor(Math.random() * 2) + 1));
+            });
+        }
+        
+        // Record the time of this restock
+        location.lastRestockTime = currentGameDate;
     }
     
     // Slowly recover demand (buys)
@@ -11499,3 +11939,87 @@ setInterval(() => {
         render();
     }
 }, 200); // 5 FPS is perfectly smooth for a slow twinkle, while keeping browser CPU usage extremely low.
+
+// ==========================================
+// --- DEVELOPER DEBUG CONSOLE ---
+// ==========================================
+
+function openDevMenu() {
+    openGenericModal("🛠️ DEVELOPER CONSOLE 🛠️");
+    
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Add pointer cursors so they act like real buttons
+    listEl.innerHTML = `
+        <div class="generic-list-item" onclick="devGiveCredits()" style="cursor: pointer; border-left: 3px solid var(--gold-text);">
+            <strong style="color:var(--gold-text);">💰 Inject 100,000 Credits</strong>
+            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Instantly fund your galactic empire.</div>
+        </div>
+        <div class="generic-list-item" onclick="devGiveColonyItems()" style="cursor: pointer; border-left: 3px solid var(--accent-color);">
+            <strong style="color:var(--accent-color);">📦 Spawn Colony Supplies</strong>
+            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Adds 1 Charter, 5 Habs, 2 Atmos, 10 Settlers.</div>
+        </div>
+        <div class="generic-list-item" onclick="devMaxStats()" style="cursor: pointer; border-left: 3px solid var(--success);">
+            <strong style="color:var(--success);">🛠️ Restore Ship Vitals</strong>
+            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Max Hull, Max Shields, Max Fuel.</div>
+        </div>
+        <div class="generic-list-item" onclick="devLevelUp()" style="cursor: pointer; border-left: 3px solid #FF55FF;">
+            <strong style="color:#FF55FF;">⭐ Power Level (+5)</strong>
+            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Grants 5,000 XP and forces a level up.</div>
+        </div>
+    `;
+
+    detailEl.innerHTML = `
+        <div style="padding: 40px 20px; text-align: center;">
+            <div style="font-size: 50px; margin-bottom: 10px;">⚠️</div>
+            <h3 style="color:var(--danger); margin-bottom: 10px;">DEBUG MODE ACTIVE</h3>
+            <p style="color:var(--item-desc-color);">Use these tools to bypass the game economy and test new features. Use with caution, as excessive item spawning may exceed your cargo limits.</p>
+        </div>
+    `;
+
+    // A clean exit
+    actionsEl.innerHTML = `
+        <button class="action-button danger-btn" onclick="closeGenericModal()">CLOSE DEV MENU</button>
+    `;
+}
+
+// --- CHEAT FUNCTIONS ---
+
+function devGiveCredits() {
+    playerCredits += 100000;
+    if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+    if (typeof soundManager !== 'undefined' && soundManager.playBuy) soundManager.playBuy();
+    if (typeof showToast === 'function') showToast("DEV: +100,000 Credits", "success");
+}
+
+function devGiveColonyItems() {
+    // Add items directly to cargo
+    playerCargo["COLONY_CHARTER"] = (playerCargo["COLONY_CHARTER"] || 0) + 1;
+    playerCargo["HAB_MODULE"] = (playerCargo["HAB_MODULE"] || 0) + 5;
+    playerCargo["ATMOS_PROCESSOR"] = (playerCargo["ATMOS_PROCESSOR"] || 0) + 2;
+    playerCargo["SETTLER_MANIFEST"] = (playerCargo["SETTLER_MANIFEST"] || 0) + 10;
+    
+    // Force a cargo recalculation so the event bus fires the quest hook!
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+    
+    if (typeof soundManager !== 'undefined' && soundManager.playBuy) soundManager.playBuy();
+    if (typeof showToast === 'function') showToast("DEV: Colony Gear Spawns", "success");
+}
+
+function devMaxStats() {
+    playerHull = typeof MAX_PLAYER_HULL !== 'undefined' ? MAX_PLAYER_HULL : 100;
+    playerShields = typeof MAX_SHIELDS !== 'undefined' ? MAX_SHIELDS : 50;
+    playerFuel = typeof MAX_FUEL !== 'undefined' ? MAX_FUEL : 220;
+    if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+    if (typeof showToast === 'function') showToast("DEV: Vitals Restored", "success");
+}
+
+function devLevelUp() {
+    playerLevel += 5;
+    playerXP += 5000;
+    if (typeof checkLevelUp === 'function') checkLevelUp();
+    if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+    if (typeof showToast === 'function') showToast("DEV: Leveled Up", "success");
+}
