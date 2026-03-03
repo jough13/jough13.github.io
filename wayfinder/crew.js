@@ -477,7 +477,6 @@ function hireCrewMember(recruitId) {
 if (typeof playerCrew === 'undefined') {
     window.playerCrew = [];
 }
-let currentStationRecruits = [];
 
 // Helper function for your combat and exploration engines to check for buffs!
 function hasCrewPerk(perkName) {
