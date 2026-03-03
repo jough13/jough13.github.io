@@ -651,14 +651,9 @@ function renderPlanetView() {
      renderPlanetView(); // Re-render to update drone count button
  }
 
- // ==========================================
+// ==========================================
 // --- ASTEROID MINING MINI-GAME ---
 // ==========================================
-
-let miningInterval = null;
-let miningPos = 0;
-let miningDir = 1;
-let miningSweetSpot = { start: 40, end: 60 }; 
 
 function startMiningMiniGame() {
     openGenericModal("ASTEROID MINING");
@@ -1344,7 +1339,6 @@ function generateHRDiagram(starClass, displayColor, isLight) {
 }
 
  // --- ANOMALY SCANNING MINIGAME ---
-let anomalyContext = null;
 
 function handleAnomalyEncounter(anomalyObject) {
     // 1. Initialize persistent puzzle data on the tile if it's new
