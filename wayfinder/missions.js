@@ -2,9 +2,6 @@
 // --- BOUNTY BOARD DATA ---
 // ==========================================
 
-let playerActiveBounty = null;
-let currentStationBounties = []; // Temporarily holds the bounties available at the current station
-
 function generateMissionsForStation(stationName) {
     const generatedMissions = [];
     // Filter templates based on player level
