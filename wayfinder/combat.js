@@ -790,7 +790,6 @@ function commitPiracy(npcIndex) {
 }
 
 // --- BOARDING COMBAT MINIGAME ---
-let boardingContext = null;
 
 function startBoardingCombat() {
     closeDerelictView(); // Close the derelict menu
