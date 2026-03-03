@@ -386,8 +386,6 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
 
 // --- VISUAL CARGO SYSTEM ---
 
-let selectedCargoIndex = -1;
-
 function openCargoModal() {
     if (currentTradeContext || currentCombatContext || currentMissionContext) return;
 
