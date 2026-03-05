@@ -2,6 +2,7 @@
 // --- BOUNTY BOARD DATA ---
 // ==========================================
 
+
 function generateMissionsForStation(stationName) {
     const generatedMissions = [];
     // Filter templates based on player level
@@ -10,7 +11,7 @@ function generateMissionsForStation(stationName) {
     // Determine how many missions we want to generate (2 to 3)
     const numMissionsToGenerate = 2 + Math.floor(Math.random() * 2);
 
-    // Safety counter to prevent infinite loops if valid missions cannot be generated
+    // FIX: Safety counter to prevent infinite loops if valid missions cannot be generated
     // (e.g., if selectRandomDestination keeps returning null)
     let attempts = 0;
     const MAX_ATTEMPTS = 20;
@@ -372,7 +373,7 @@ function acceptMission() {
          logMessage("No active delivery to complete here.");
          return;
      }
-     const currentLocation = getCombinedLocationData(playerY, playerX);
+     const currentLocation = getCombinedLocationData(playerX, playerY);
      if (!currentLocation) {
          logMessage("Error: Not currently at a recognized location.");
          return;
@@ -429,7 +430,7 @@ function acceptMission() {
 function grantMissionRewards() {
      if (!playerActiveMission || !playerActiveMission.isComplete) return;
      
-     const currentLocation = getCombinedLocationData(playerY, playerX);
+     const currentLocation = getCombinedLocationData(playerX, playerY);
      
      if (!currentLocation || currentLocation.name !== playerActiveMission.giver) {
          logMessage("You must be at " + playerActiveMission.giver + " to claim this reward.");
