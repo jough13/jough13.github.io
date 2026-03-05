@@ -353,10 +353,11 @@ function handleCombatAction(action) {
             combatLog += "\"Only credits talk here!\" (Diplomacy Failed)";
         } else if (standing > 20) {
             combatLog += "\"Visual ID confirmed. Apologies, Commander.\" <span style='color:#00FF00'>Hostiles disengaging.</span>";
+            logMessage(combatLog);
             currentCombatContext = null;
             changeGameState(GAME_STATES.GALACTIC_MAP);
             handleInteraction();
-            return; 
+            return;
         } else {
             combatLog += "\"You have no authority here.\" ";
             // Enrage mechanic
@@ -377,10 +378,11 @@ function handleCombatAction(action) {
         } else {
             combatLog += `Not enough fuel to evade!`;
         }
-    } else if (action === 'run') {
+} else if (action === 'run') {
         playerFuel -= RUN_FUEL_COST;
         if (Math.random() < RUN_ESCAPE_CHANCE) {
-            logMessage(`Escaped! Used ${RUN_FUEL_COST} fuel.`);
+            combatLog += `Escaped! Used ${RUN_FUEL_COST} fuel.`;
+            logMessage(combatLog);
             updatePlayerNotoriety(-1);
             if(typeof removeEnemyAt === 'function') removeEnemyAt(playerX, playerY); // Clean up map
             
@@ -393,12 +395,11 @@ function handleCombatAction(action) {
         }
     }
 
-    logMessage(combatLog);
-
     // --- 2. VICTORY CHECK ---
     if (currentCombatContext.pirateHull <= 0) {
+
+        logMessage(combatLog); 
         
-        // --- BOUNTY RESOLUTION ---
         // Grab the enemy's data and check if they have a bounty on their head
         const defeatedShip = currentCombatContext.ship || currentCombatContext;
         if (typeof processBountyVictory === 'function') {
@@ -477,7 +478,18 @@ function handleCombatAction(action) {
                 enemyLog += "Enemy fire missed!";
             }
         }
-        if (enemyLog) logMessage(enemyLog);
+    }
+
+    // Instead of two massive strings, we combine them into one clean, color-coded block
+    if (enemyCanAct && typeof enemyLog !== 'undefined' && enemyLog !== "") {
+        let combinedLog = `<div style="margin-bottom: 5px; border-left: 2px solid #444; padding-left: 8px;">`;
+        combinedLog += `<div style="color:var(--accent-color);">> ${combatLog}</div>`;
+        combinedLog += `<div style="color:var(--danger);">> ${enemyLog}</div>`;
+        combinedLog += `</div>`;
+        logMessage(combinedLog);
+    } else {
+        // If the enemy was stunned or couldn't act, just print the player's turn
+        logMessage(`<div style="color:var(--accent-color);">> ${combatLog}</div>`);
     }
 
     // Reset Player Evasion (unless an ability specifically stated otherwise)
