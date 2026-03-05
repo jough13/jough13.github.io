@@ -1708,9 +1708,12 @@ function traverseWormhole() {
      if (Math.random() < 0.5) jumpX *= -1;
      if (Math.random() < 0.5) jumpY *= -1;
 
-     // 4. Update Player Coordinates
+    // 4. Update Player Coordinates
      playerX += Math.floor(jumpX);
      playerY += Math.floor(jumpY);
+
+     // Wipe ambient traffic so the old sector's ships don't linger in memory
+     if (typeof activeNPCs !== 'undefined') activeNPCs = [];
 
      // 5. Update Sector State (Critical Fix for Desync)
      // This ensures the UI immediately reflects the new sector name and coordinates
