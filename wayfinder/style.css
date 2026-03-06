@@ -30,27 +30,6 @@ html {
     --z-header: 1000;
 }
 
-/* ==========================================
-   --- HARDCODED COLOR OVERRIDES (Aqua Theme) ---
-   ========================================== */
-
-/* Intercepts inline neon-green text from JS and forces it to Aqua */
-
-span[style*="#00FF00"], 
-span[style*="#00DD00"],
-div[style*="color:#00FF00"],
-div[style*="color: #00FF00"] {
-    color: var(--accent-color) !important;
-}
-
-/* Intercepts inline green backgrounds (like the XP or Cargo bar) */
-div[style*="background-color:#00FF00"],
-div[style*="background:#00FF00"],
-div[style*="background-color: #00FF00"] {
-    background-color: var(--accent-color) !important;
-    box-shadow: 0 0 5px rgba(0, 224, 224, 0.4) !important;
-}
-
 /* Explicitly catch the XP and Cargo bars if they use standard classes */
 .bar-fill.xp, 
 .bar-fill.cargo { 
@@ -567,7 +546,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 /* --- TRADE MODAL STYLES (Responsive Fix) --- */
 
 #tradeOverlay, #cargoOverlay, #stationOverlay, #genericModalOverlay, #derelictOverlay, #xerxesOverlay {
-
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0, 0, 0, 0.85); 
@@ -711,15 +689,18 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 .save-slot-card {
+    /* Update existing .save-slot-card to this: */
     background: #111;
     border: 1px solid #333;
-    padding: 15px;
+    padding: 10px; /* Slightly less padding to fit image */
     margin-bottom: 10px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
+    align-items: center; /* Vertically center everything */
+    gap: 15px; /* Space between Image, Text, and Arrow */
+    cursor: default; /* Ensure the card doesn't accidentally trigger load when clicking delete */
     transition: all 0.2s;
+    position: relative;
+    justify-content: space-between;
 }
 
 .save-slot-card:hover {
@@ -729,6 +710,7 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 .save-info {
     text-align: left;
+    flex-grow: 1; /* This pushes the arrow to the far right */
 }
 
 .save-name {
@@ -832,19 +814,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 
 /* --- SAVE GAME PFP UPDATES --- */
 
-.save-slot-card {
-    /* Update existing .save-slot-card to this: */
-    background: #111;
-    border: 1px solid #333;
-    padding: 10px; /* Slightly less padding to fit image */
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center; /* Vertically center everything */
-    gap: 15px; /* Space between Image, Text, and Arrow */
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
 .save-pfp-icon {
     width: 50px;
     height: 50px;
@@ -854,11 +823,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
     object-fit: cover;
     image-rendering: pixelated;
     flex-shrink: 0; /* Don't shrink if text is long */
-}
-
-.save-info {
-    text-align: left;
-    flex-grow: 1; /* This pushes the arrow to the far right */
 }
 
 .save-arrow {
@@ -937,17 +901,6 @@ h1, h2, h3, .game-title, .sector-title, .sys-header, .planet-title, .label {
 }
 
 /* --- DELETE SAVE BUTTON STYLES --- */
-
-/* Update the card layout to handle the new button */
-.save-slot-card {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    /* Ensure the card doesn't accidentally trigger load when clicking delete */
-    cursor: default; 
-}
 
 /* The clickable area for loading the game */
 .save-card-content {
@@ -1333,30 +1286,6 @@ body.light-mode .log-panel {
     box-shadow: none; /* Flatten the look */
 }
 
-/* --- TEXT READABILITY FIXES (The "Blue Text" Fix) --- */
-/* This forces any Light Blue or Cyan text in the logs to match the Dark Teal scrollbar */
-body.light-mode .log-panel span[style*="#A2D2FF"],
-body.light-mode .log-panel span[style*="#a2d2ff"], 
-body.light-mode .log-panel span[style*="#00E0E0"],
-body.light-mode .log-panel span[style*="#00e0e0"],
-body.light-mode .log-panel span[style*="#88CCFF"],
-body.light-mode .log-panel span[style*="#40E0D0"] {
-    color: var(--accent-color) !important; 
-    font-weight: 800; /* Extra bold for readability */
-}
-
-/* Fix "Yellow/Gold" text to be readable Orange/Brown */
-body.light-mode .log-panel span[style*="#FFFF00"],
-body.light-mode .log-panel span[style*="#FFD700"] {
-    color: #B35900 !important;
-}
-
-/* Fix "Bright Green" text to be Forest Green */
-body.light-mode .log-panel span[style*="#00FF00"],
-body.light-mode .log-panel span[style*="#00DD00"] {
-    color: #007700 !important;
-}
-
 /* 3. Buttons */
 body.light-mode .action-button, 
 body.light-mode .sys-btn, 
@@ -1582,26 +1511,6 @@ body.light-mode .toast.error {
     border-left-color: var(--danger);  /* Uses the Dark Red variable */
     color: var(--danger);
     background: #FFF4F4;               /* Very faint red tint */
-}
-
-/* --- TOAST INTERIOR TEXT FIXES --- */
-/* These rules target the specific <span> styles you use in JS (like Gold for credits)
-   and forces them to be readable on the white background. */
-
-/* Fix "Gold/Yellow" text (Credits) to be Dark Orange/Brown */
-body.light-mode .toast span[style*="#FFD700"], 
-body.light-mode .toast span[style*="#FFFF00"] {
-    color: #B35900 !important; 
-}
-
-/* Fix "Bright Green" text (XP) to be Forest Green */
-body.light-mode .toast span[style*="#00FF00"] {
-    color: #007700 !important;
-}
-
-/* Fix "Cyan/Blue" text (Items) to be Dark Teal */
-body.light-mode .toast span[style*="#00E0E0"] {
-    color: #007777 !important;
 }
 
 /* --- LIGHT MODE: PLANET VIEW OVERRIDES --- */
@@ -2231,30 +2140,6 @@ body.light-mode #xerxesLog {
     background: #F3E5F5 !important; /* Light Lavender Paper */
     color: #4A148C !important;      /* Deep Purple Ink */
     border-top: 1px solid #CE93D8 !important;
-}
-
-/* Fix specific colored text inside the log to be readable */
-body.light-mode #xerxesLog div[style*="color:#DDA0DD"] { 
-    color: #6A1B9A !important; /* Convert light plum to deep purple */ 
-}
-
-/* --- XERXES LOG TEXT FIXES (Light Mode) --- */
-
-/* Turn #00FF00 (Neon Green) into Dark Forest Green */
-body.light-mode #xerxesLog div[style*="color:#00FF00"] { 
-    color: #006400 !important; 
-}
-
-/* Turn #FF5555 (Bright Red) into Dark Crimson */
-body.light-mode #xerxesLog div[style*="color:#FF5555"] { 
-    color: #8B0000 !important; 
-}
-
-/* Ensure the input field we are about to add looks good on white */
-body.light-mode #spireInput {
-    background: #FFFFFF;
-    color: #000;
-    border-color: #9C27B0;
 }
 
 /* --- XERXES INPUT BOX IN LIGHT MODE --- */
