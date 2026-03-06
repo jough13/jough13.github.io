@@ -449,6 +449,8 @@ function handleCombatAction(action) {
             let hitChance = PIRATE_HIT_CHANCE;
             if (playerIsEvading) hitChance -= EVASION_DODGE_BONUS;
 
+            hitChance -= (typeof PLAYER_EVASION !== 'undefined' ? PLAYER_EVASION : 0);
+
             // --- ECLIPSE SYNERGY HOOK ---
             if (activeSynergy && activeSynergy.id === 'ECLIPSE') hitChance -= 0.15;
 
