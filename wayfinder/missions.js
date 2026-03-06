@@ -2,7 +2,6 @@
 // --- BOUNTY BOARD DATA ---
 // ==========================================
 
-
 function generateMissionsForStation(stationName) {
     const generatedMissions = [];
     // Filter templates based on player level
@@ -408,24 +407,31 @@ function acceptMission() {
  }
 
  function checkMissionObjectiveCompletion() {
-     if (!playerActiveMission || playerActiveMission.isComplete) return false;
-     let allObjectivesNowComplete = true;
-     for (let i = 0; i < playerActiveMission.objectives.length; i++) {
-         const objective = playerActiveMission.objectives[i];
-         const progressKey = `${objective.type.toLowerCase()}_${i}`;
-         const objectiveProgress = playerActiveMission.progress[progressKey];
-         if (!objectiveProgress || !objectiveProgress.complete) {
-             allObjectivesNowComplete = false;
-             break;
-         }
-     }
-     if (allObjectivesNowComplete && !playerActiveMission.isComplete) {
-         playerActiveMission.isComplete = true;
-         logMessage(`All objectives for '${playerActiveMission.title}' complete!\nReturn to ${playerActiveMission.giver} to claim your reward.`, true);
-         // No need to call  here, updateMessage will trigger it via handleInteraction or next player input
-     }
-     return allObjectivesNowComplete;
- }
+    if (!playerActiveMission || playerActiveMission.isComplete) return false;
+    
+    let allObjectivesNowComplete = true;
+    
+    for (let i = 0; i < playerActiveMission.objectives.length; i++) {
+        const objective = playerActiveMission.objectives[i];
+        const progressKey = `${objective.type.toLowerCase()}_${i}`;
+        const objectiveProgress = playerActiveMission.progress[progressKey];
+        
+        if (!objectiveProgress || !objectiveProgress.complete) {
+            allObjectivesNowComplete = false;
+            break;
+        }
+    }
+    
+    if (allObjectivesNowComplete && !playerActiveMission.isComplete) {
+        playerActiveMission.isComplete = true;
+        logMessage(`All objectives for '${playerActiveMission.title}' complete!\nReturn to ${playerActiveMission.giver} to claim your reward.`, true);
+        
+        // Play a nice sound so the player knows they finished the job!
+        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+    }
+    
+    return allObjectivesNowComplete;
+}
 
 function grantMissionRewards() {
      if (!playerActiveMission || !playerActiveMission.isComplete) return;
