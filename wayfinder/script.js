@@ -2,6 +2,8 @@
 // --- SHARED MODULE UI & GAME STATES ---
 // ==========================================
 
+let currentSectorName = "Sol Sector";
+
 let playerActiveBounty = null;
 let currentStationBounties = []; // Temporarily holds the bounties available at the current station
 
@@ -2167,9 +2169,6 @@ function processLootTable(tableName) {
     renderUIStats();
 }
 
-let currentSectorName = "Sol Sector"; // Changed to let
-
-
  function triggerSensorPulse() {
      if (sensorPulseActive) return; // Prevent spamming
      sensorPulseActive = true;
@@ -2219,8 +2218,7 @@ let currentSectorName = "Sol Sector"; // Changed to let
      return outcomes[outcomes.length - 1];
  }
 
- function getCombinedLocationData(y, x) {
-     // Get the tile data from the chunk manager at the player's coordinates
+function getCombinedLocationData(x, y) {
      const tileObject = chunkManager.getTile(x, y);
 
      // Check if the tile is a location type (starbase, planet, etc.)
@@ -2844,9 +2842,10 @@ function renderLevelUpScreen() {
     const container = document.getElementById('perkCardsContainer');
     container.innerHTML = '';
     
-    // 1. Get 3 Random Perks (that we don't already have)
+    // 1. Get Random Perks (that we don't already have)
     const availablePerks = Object.values(PERKS_DATABASE).filter(p => !playerPerks.has(p.id));
     
+    // --- VETERAN REWARD ANTI-LOOP ---
     // If the player has acquired every single perk in the game, 
     // grant them a generic "Veteran" bonus to prevent a menu soft-lock.
     if (availablePerks.length === 0) {
@@ -2861,8 +2860,11 @@ function renderLevelUpScreen() {
         renderUIStats();
         saveGame();
         
-        // Check in case they had enough banked XP for multiple level ups at once
-        checkLevelUp(); 
+        // Break the synchronous stack to prevent infinite recursion crashes!
+        setTimeout(() => {
+            if (typeof checkLevelUp === 'function') checkLevelUp();
+        }, 250); 
+        
         return;
     }
 
@@ -2903,7 +2905,12 @@ function selectPerk(perkId) {
     changeGameState(GAME_STATES.GALACTIC_MAP);
     renderUIStats();
     saveGame(); // Auto-save on level up
-    checkLevelUp();
+    
+    // --- UI BREATHING ROOM ---
+    // Give the modal time to fade away before checking if we need to pop it up again
+    setTimeout(() => {
+        if (typeof checkLevelUp === 'function') checkLevelUp();
+    }, 250);
 }
 
 /**
@@ -3406,7 +3413,7 @@ function handleCombatInput(key) {
 
  function handleGalacticMapInput(key) {
     // --- 1. DOCKED ACTIONS ---
-    const currentLocation = getCombinedLocationData(playerY, playerX);
+    const currentLocation = getCombinedLocationData(playerX, playerY);
     if (currentLocation) {
         switch (key) {
             case 'b':
@@ -3915,7 +3922,11 @@ function initializeDOMElements() {
             </div>
             <div id="perkCardsContainer" style="display:flex; gap:20px; flex-wrap:wrap; justify-content:center;"></div>
         `;
-        document.body.appendChild(div);
+        if (document.body) {
+            document.body.appendChild(div);
+        } else {
+            window.addEventListener('DOMContentLoaded', () => document.body.appendChild(div));
+        }
     }
 }
     
@@ -4209,6 +4220,7 @@ function respawnPlayer() {
 
     // 4. Clear Enemies & Combat State 
     activeEnemies = []; // Wipe the galaxy map clean of old pursuers
+    activeNPCs = [];    // Wipe neutral traffic from the death site
     currentCombatContext = null; // Tell the game the fight is over!
 
     // 5. Reset UI and State
