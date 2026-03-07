@@ -384,7 +384,6 @@ function handleCombatAction(action) {
             combatLog += `Escaped! Used ${RUN_FUEL_COST} fuel.`;
             logMessage(combatLog);
             updatePlayerNotoriety(-1);
-            if(typeof removeEnemyAt === 'function') removeEnemyAt(playerX, playerY); // Clean up map
             
             currentCombatContext = null;
             changeGameState(GAME_STATES.GALACTIC_MAP);
