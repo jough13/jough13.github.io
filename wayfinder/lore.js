@@ -1,8 +1,10 @@
 // --- Lore Database ---
 const LORE_DATABASE = {
+
     // ==========================================
     // --- SHIP ENTRIES ---
     // ==========================================
+
     LORE_SHIP_LIGHT_FREIGHTER: {
         title: "Light Freighter Class",
         category: "Starships",
@@ -75,6 +77,7 @@ const LORE_DATABASE = {
     // ==========================================
     // --- SHIP COMPONENTS & WEAPONRY ---
     // ==========================================
+
     LORE_COMP_PULSE_LASER: {
         title: "Pulse Laser Technology",
         category: "Ship Components",
@@ -303,6 +306,7 @@ const LORE_DATABASE = {
     // ==========================================
     // --- MYTHS & LEGENDS ---
     // ==========================================
+
     LEGEND_VOID_KRAKEN: {
         title: "The Void Kraken",
         category: "Myths & Legends",
@@ -319,6 +323,7 @@ const LORE_DATABASE = {
     // ==========================================
     // --- REGIONS ---
     // ==========================================
+
     REGION_SOL_SECTOR: {
         title: "Sol Sector (0,0)",
         category: "Notable Star Systems/Regions",
@@ -375,6 +380,7 @@ const LORE_DATABASE = {
     // ==========================================
     // --- MYSTERIES ---
     // ==========================================
+
     MYSTERY_WAYFINDER_QUEST: {
         title: "The Precursor Wayfinder",
         category: "Mysteries",
@@ -391,6 +397,45 @@ const LORE_DATABASE = {
         title: "The First Nexus",
         category: "Mysteries",
         text: "The location revealed by the Wayfinder Core. A place of immense Precursor power and significance. Its purpose is unknown, but it radiates an energy unlike anything known to modern science. It is likely to be of extreme interest to all major factions.",
+        unlocked: false
+    },
+
+    // ==========================================
+    // --- LORE EXPANSION PACK 1 ---
+    // ==========================================
+    
+    FACTION_FUEL_RATS: {
+        title: "The Fuel Rats",
+        category: "Factions",
+        text: "An independent, galaxy-wide collective of rescue pilots. They operate outside of Concord jurisdiction and cartels alike, bound by a single, unbreakable oath: 'We have fuel. You don't. Any questions?' They refuse payment for standard rescues, surviving entirely on 'tips' and the universal respect of every faction. Even the Eclipse Cartel has standing orders not to fire on a Fuel Rat tug, as everyone eventually runs out of hydrogen in the deep black.",
+        unlocked: false
+    },
+    
+    TECH_COLONY_CHARTER: {
+        title: "Concord Pioneer Charters",
+        category: "Technology & Phenomena",
+        text: "The legal framework and terraforming blueprints required to establish a recognized settlement on an unclaimed world. A Charter includes the schematics for Hab Modules, Atmospheric Processors, and automated tax-routing algorithms. While independent outposts exist, a Concord-stamped Charter ensures the colony is protected by basic Concord naval treaties (and subjected to their exorbitant taxation).",
+        unlocked: false
+    },
+    
+    XENO_MACHINE_WORLD: {
+        title: "Machine Worlds",
+        category: "Xeno-Archaeology",
+        text: "Planets entirely encased in metallic structures, humming data-conduits, and sprawling orbital rings. No biological life has ever been detected on a true Machine World. Some scholars believe them to be the final evolutionary step of an organic species that entirely digitized their consciousness. Others fear they are the dormant factories of the 'Silencers', waiting for a signal to resume churning out automated war fleets.",
+        unlocked: false
+    },
+    
+    PHENOMENON_IRRADIATED: {
+        title: "Irradiated Wastelands",
+        category: "Phenomena",
+        text: "Planets whose crusts have been violently blasted by gamma radiation or unstable nuclear isotopes. While some are the result of natural cosmic events (like nearby supernovas), many bear the unmistakable scars of orbital bombardment. They are incredibly hostile to biological life, but brave scavengers often descend into the rad-storms to mine Rare Metals and Void Crystals that form under the extreme environmental stress.",
+        unlocked: false
+    },
+    
+    COMMODITY_ENCRYPTED_ENGRAM: {
+        title: "Encrypted Engrams",
+        category: "Commodities",
+        text: "Mysterious, polyhedral data-matrices glowing with a faint inner light. These solid-state memory cores belong to civilizations that predate the Concord. Their encryption algorithms are so complex that standard ship computers would take millennia to crack them. They are highly sought after by Cryptarchs, who use single-use quantum 'Ciphers' to collapse the engram's security state and extract the ancient technology blueprints hidden inside.",
         unlocked: false
     }
 };
