@@ -1834,3 +1834,188 @@ function triggerRandomEvent() {
     // Optional: Render UI stats to show the trickle immediately
     if (typeof renderUIStats === 'function') renderUIStats();
 }
+
+// ==========================================
+// --- PIONEER COLONY SYSTEM ---
+// ==========================================
+
+function surveyForColony(planetName, biomeId, x, y) {
+    // 1. Consume the Official Charter
+    if (playerCargo["COLONY_CHARTER"] > 0) {
+        playerCargo["COLONY_CHARTER"]--;
+        if (playerCargo["COLONY_CHARTER"] <= 0) delete playerCargo["COLONY_CHARTER"];
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+    } else {
+        showToast("Charter Required!", "error");
+        return;
+    }
+
+    // 2. Setup Colony Data
+    let customName = prompt("Enter a name for your new settlement:", "New Earth");
+    if (!customName) customName = "Pioneer Outpost";
+
+    playerColony.established = true;
+    playerColony.name = customName;
+    playerColony.x = x;
+    playerColony.y = y;
+    playerColony.planetName = planetName;
+    playerColony.biome = biomeId;
+    playerColony.phase = "OUTPOST";
+    playerColony.population = 0;
+    playerColony.morale = 100;
+    playerColony.suppliesDelivered = { habModules: 0, atmosProcessors: 0 };
+
+    // 3. Update the World Map!
+    // This permanently changes the tile on the galactic map to your colony
+    updateWorldState(x, y, {
+        name: customName,
+        type: 'location',
+        isColony: true, // Special flag for our engine
+        char: 'C', 
+        customColor: 'var(--success)', // Bright green so it stands out
+        scanFlavor: "A burgeoning pioneer settlement founded by Captain " + playerName + "."
+    });
+
+    logMessage(`<span style="color:var(--success); font-weight:bold;">COLONY ESTABLISHED: ${customName}</span>`);
+    showToast("SETTLEMENT FOUNDED", "success");
+    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+
+    // 4. Transition UI
+    closeGenericModal();
+    openColonyManagement();
+    autoSaveGame();
+}
+
+function openColonyManagement() {
+    openGenericModal(`COLONY: ${playerColony.name.toUpperCase()}`);
+    
+    const detailEl = document.getElementById('genericDetailContent');
+    const listEl = document.getElementById('genericModalList');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // 1. Render Infrastructure Goals (Left Pane)
+    listEl.innerHTML = `
+        <div style="padding:15px;">
+            <h4 style="color:var(--accent-color); margin-top:0; letter-spacing:1px;">DEVELOPMENT GOALS</h4>
+            <p style="font-size:12px; color:var(--item-desc-color); line-height: 1.5;">Deliver infrastructure and personnel to advance your settlement's phase.</p>
+            
+            <div style="margin-top:15px; background:rgba(0,0,0,0.3); padding:15px; border:1px solid #333; border-radius: 4px;">
+                <div style="color:var(--success); font-size:10px; font-weight:bold; letter-spacing:1px; margin-bottom:10px;">INFRASTRUCTURE GRID</div>
+                
+                <div style="font-size:13px; display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="color:#888;">Hab Modules:</span> 
+                    <span style="color:var(--text-color); font-weight:bold;">${playerColony.suppliesDelivered.habModules}</span>
+                </div>
+                <div style="font-size:13px; display:flex; justify-content:space-between;">
+                    <span style="color:#888;">Atmos Processors:</span> 
+                    <span style="color:var(--text-color); font-weight:bold;">${playerColony.suppliesDelivered.atmosProcessors}</span>
+                </div>
+                
+                <div style="margin-top:15px; border-top:1px dashed #444; padding-top:10px; font-size:11px; color:#666;">
+                    * Each Hab Module supports 50 Colonists.
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 2. Render Colony Vitals (Right Pane)
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:10px; color:var(--success); filter: drop-shadow(0 0 15px rgba(0,255,0,0.3));">🏙️</div>
+            <h3 style="color:var(--success); margin:0 0 5px 0;">${playerColony.name.toUpperCase()}</h3>
+            
+            <div style="display:inline-block; border:1px solid var(--success); padding:4px 8px; border-radius:2px; font-size:10px; color:var(--success); letter-spacing:2px; margin-bottom: 20px;">
+                PHASE: ${playerColony.phase}
+            </div>
+            
+            <div class="trade-math-area">
+                <div class="trade-stat-row">
+                    <span>Population:</span> 
+                    <span style="color:var(--text-color); font-weight:bold; font-size:16px;">${formatNumber(playerColony.population)}</span>
+                </div>
+                <div class="trade-stat-row">
+                    <span>Morale:</span> 
+                    <span style="color:${playerColony.morale >= 50 ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${playerColony.morale}%</span>
+                </div>
+                <div class="trade-stat-row" style="margin-top:5px; border-top:1px solid #333; padding-top:5px;">
+                    <span>Biome Base:</span> 
+                    <span style="color:var(--item-desc-color);">${PLANET_BIOMES[playerColony.biome]?.name || 'Unknown'}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // 3. Setup Delivery Buttons
+    let btnHtml = ``;
+
+    const habs = playerCargo["HAB_MODULE"] || 0;
+    const atmos = playerCargo["ATMOS_PROCESSOR"] || 0;
+    const settlers = playerCargo["SETTLER_MANIFEST"] || 0;
+
+    btnHtml += `<button class="action-button" ${habs > 0 ? '' : 'disabled'} onclick="deliverColonySupply('HAB_MODULE')" style="border-color:var(--accent-color); color:var(--accent-color);">DEPLOY HAB MODULE (${habs})</button>`;
+    btnHtml += `<button class="action-button" ${atmos > 0 ? '' : 'disabled'} onclick="deliverColonySupply('ATMOS_PROCESSOR')" style="border-color:var(--warning); color:var(--warning);">INSTALL ATMOS PROCESSOR (${atmos})</button>`;
+    btnHtml += `<button class="action-button" ${settlers > 0 ? '' : 'disabled'} onclick="deliverColonySupply('SETTLER_MANIFEST')" style="border-color:var(--success); color:var(--success);">AWAKEN SETTLERS (${settlers})</button>`;
+    
+    // Check if they are inside a system or deep space to route the exit properly
+    const isSystemMap = document.getElementById('systemView').style.display === 'block';
+    
+    btnHtml += `
+        <button class="action-button leave-btn" onclick="closeGenericModal()" style="margin-top: 15px;">
+            ${isSystemMap ? 'RETURN TO ORBIT' : 'RETURN TO DEEP SPACE'}
+        </button>
+    `;
+
+    actionsEl.innerHTML = btnHtml;
+}
+
+function deliverColonySupply(itemId) {
+    if (!playerCargo[itemId] || playerCargo[itemId] <= 0) return;
+
+    // 1. HARD CAP LOGIC (Can't drop colonists without housing!)
+    if (itemId === 'SETTLER_MANIFEST') {
+        const maxPop = playerColony.suppliesDelivered.habModules * 50;
+        if (playerColony.population + 50 > maxPop) {
+            logMessage(`<span style="color:var(--danger)">Cannot awaken settlers. Insufficient Hab Modules for housing!</span>`);
+            showToast("HOUSING FULL", "error");
+            
+            // Penalize morale for attempting to overcrowd
+            playerColony.morale = Math.max(0, playerColony.morale - 5); 
+            openColonyManagement();
+            if (typeof soundManager !== 'undefined') soundManager.playError();
+            return; // Stop here, item is NOT consumed
+        }
+    }
+
+    // 2. Consume from cargo safely
+    playerCargo[itemId]--;
+    if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+    // 3. Apply to colony
+    if (itemId === 'HAB_MODULE') {
+        playerColony.suppliesDelivered.habModules++;
+        logMessage(`Delivered 1 Hab Module. Housing capacity increased.`);
+    } else if (itemId === 'ATMOS_PROCESSOR') {
+        playerColony.suppliesDelivered.atmosProcessors++;
+        logMessage(`Delivered 1 Atmos Processor. Air quality improving.`);
+    } else if (itemId === 'SETTLER_MANIFEST') {
+        playerColony.population += 50;
+        logMessage(`<span style="color:var(--success)">50 Settlers awakened from cryo-sleep!</span>`);
+        GameBus.emit('XP_GAINED', 100); // 100 XP reward for advancing humanity
+    }
+
+    // 4. Progression / Level Up Logic
+    if (playerColony.phase === "OUTPOST" && playerColony.suppliesDelivered.habModules >= 2 && playerColony.suppliesDelivered.atmosProcessors >= 1) {
+        playerColony.phase = "POPULATED";
+        logMessage(`<span style="color:var(--accent-color); font-weight:bold;">Colony phase upgraded to: POPULATED</span>`);
+        GameBus.emit('XP_GAINED', 500); // Big reward!
+    } else if (playerColony.phase === "POPULATED" && playerColony.population >= 200 && playerColony.suppliesDelivered.atmosProcessors >= 3) {
+        playerColony.phase = "OPERATIONAL";
+        logMessage(`<span style="color:var(--gold-text); font-weight:bold;">Colony phase upgraded to: OPERATIONAL. Settlement is now a self-sustaining hub!</span>`);
+        GameBus.emit('XP_GAINED', 1500); // Massive reward!
+    }
+
+    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    openColonyManagement(); // Refresh UI instantly
+    autoSaveGame();
+}
