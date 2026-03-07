@@ -5,7 +5,7 @@ function openGenericModal(title) {
     
     const container = document.getElementById('genericModalContent');
 
-    // --- CRITICAL FIX: SCRUB LINGERING INLINE STYLES ---
+    // --- SCRUB LINGERING INLINE STYLES ---
     // Wipes out flex-direction: column or specific heights left behind by other menus
     container.style.cssText = ''; 
     
@@ -201,67 +201,137 @@ function triggerDamageEffect() {
     }
 }
 
+// ==========================================
+// --- GALACTIC CODEX (LORE VIEWER V2) ---
+// ==========================================
+
 function toggleCodex(show) {
+    const overlay = document.getElementById('codexOverlay');
+    if (!overlay) return;
+
     if (show) {
-        codexOverlayElement.style.display = 'flex';
+        overlay.style.display = 'flex';
+        if (typeof updateModalInfoBar === 'function') updateModalInfoBar('codexInfoBar');
+        if (typeof soundManager !== 'undefined') soundManager.playUIHover();
         renderCodexCategories();
-        renderCodexEntries(null);
-        codexEntryTextElement.innerHTML = "Select a category, then an entry.";
     } else {
-        codexOverlayElement.style.display = 'none';
-        currentCodexCategory = null;
+        overlay.style.display = 'none';
+        if (typeof updateSideBorderVisibility === 'function') updateSideBorderVisibility();
     }
-    
-    // UPDATE BORDERS
-    updateSideBorderVisibility();
 }
 
 function renderCodexCategories() {
-    codexCategoriesElement.innerHTML = '';
-    const cats = new Set();
+    const catList = document.getElementById('codexCategories');
+    const entriesList = document.getElementById('codexEntries');
+    const textContent = document.getElementById('codexEntryText');
     
-    // OPTIMIZED: Grabbing the key and the entry together!
-    Object.entries(LORE_DATABASE).forEach(([key, entry]) => {
-        if (discoveredLoreEntries.has(key)) {
-            cats.add(entry.category);
+    if (!catList || !entriesList || !textContent) return;
+
+    catList.innerHTML = '';
+    entriesList.innerHTML = '';
+    textContent.innerHTML = `
+        <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; opacity: 0.3;">
+            <div style="font-size: 60px; margin-bottom: 20px;">📖</div>
+            <div style="font-family: var(--title-font); letter-spacing: 2px;">SELECT AN ARCHIVE</div>
+        </div>
+    `;
+
+    // 1. Group unlocked lore by category
+    const categories = {};
+    discoveredLoreEntries.forEach(id => {
+        const lore = LORE_DATABASE[id];
+        if (lore) {
+            if (!categories[lore.category]) categories[lore.category] = [];
+            categories[lore.category].push({ id, ...lore });
         }
     });
-    
-    Array.from(cats).sort().forEach(cat => {
-        const cD = document.createElement('div');
-        cD.textContent = cat;
-        cD.className = 'codex-list-item';
-        if (cat === currentCodexCategory) cD.classList.add('active');
-        cD.onclick = () => {
-            currentCodexCategory = cat;
-            renderCodexCategories(); // Refreshes to move the 'active' class highlighting
-            renderCodexEntries(cat);
-            codexEntryTextElement.innerHTML = "Select an entry.";
+
+    // 2. Count total entries in game to show a completion percentage
+    let totalUnlocked = discoveredLoreEntries.size;
+    let totalAvailable = Object.keys(LORE_DATABASE).filter(k => !k.startsWith('SPIRE')).length; 
+    let pct = Math.floor((totalUnlocked / totalAvailable) * 100) || 0;
+
+    const progressHTML = `
+        <div style="padding: 20px 15px; border-bottom: 1px solid var(--border-color); text-align:center; background: rgba(0,0,0,0.3);">
+            <div style="font-size:10px; color:var(--accent-color); letter-spacing:2px; margin-bottom:8px;">ARCHIVE RECOVERY</div>
+            <div style="font-size:24px; font-weight:bold; color:var(--text-color); font-family: var(--title-font);">${pct}%</div>
+            <div style="font-size:11px; color:var(--item-desc-color); margin-top:5px;">${totalUnlocked} of ${totalAvailable} Entries Decrypted</div>
+        </div>
+    `;
+    catList.innerHTML += progressHTML;
+
+    // 3. Build Category Buttons
+    Object.keys(categories).sort().forEach(cat => {
+        const btn = document.createElement('div');
+        btn.className = 'generic-list-item codex-cat-btn';
+        btn.innerHTML = `
+            <div style="font-weight:bold; color:var(--text-color); font-size: 14px;">${cat}</div>
+            <div style="font-size:10px; color:var(--item-desc-color); margin-top: 4px;">${categories[cat].length} Entries</div>
+        `;
+        
+        btn.onclick = () => {
+            Array.from(catList.children).forEach(c => c.classList.remove('active-cat'));
+            btn.classList.add('active-cat');
+            if (typeof soundManager !== 'undefined') soundManager.playUIClick();
+            renderCodexEntries(categories[cat]);
         };
-        codexCategoriesElement.appendChild(cD);
+        catList.appendChild(btn);
     });
 }
 
-function renderCodexEntries(category) {
-    codexEntriesElement.innerHTML = '';
-    if (!category) return;
+function renderCodexEntries(entries) {
+    const entriesList = document.getElementById('codexEntries');
+    entriesList.innerHTML = `
+        <div style="padding: 15px; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.2);">
+            <div style="font-size:10px; color:var(--accent-color); letter-spacing:2px;">DECRYPTED FILES</div>
+        </div>
+    `;
+
+    // Sort alphabetically by title
+    entries.sort((a, b) => a.title.localeCompare(b.title)).forEach(entry => {
+        const btn = document.createElement('div');
+        btn.className = 'generic-list-item codex-entry-btn';
+        btn.innerHTML = `<div style="font-weight:bold; color:var(--item-name-color); font-size: 13px;">${entry.title}</div>`;
+        
+        btn.onclick = () => {
+            Array.from(entriesList.children).forEach(c => c.classList.remove('active-entry'));
+            btn.classList.add('active-entry');
+            if (typeof soundManager !== 'undefined') soundManager.playUIClick();
+            renderCodexText(entry);
+        };
+        entriesList.appendChild(btn);
+    });
+}
+
+function renderCodexText(entry) {
+    const textContent = document.getElementById('codexEntryText');
     
-    Object.entries(LORE_DATABASE).forEach(([k, e]) => {
-        if (e.category === category && discoveredLoreEntries.has(k)) {
-            const eD = document.createElement('div');
-            eD.textContent = e.title;
-            eD.className = 'codex-list-item';
-            eD.onclick = () => {
-                // Excellent touch replacing \n with <br> for proper formatting!
-                codexEntryTextElement.innerHTML = `<strong>${e.title}</strong><hr style="margin:5px 0;border-color:#4a4a6a;"><p>${e.text.replace(/\n/g,'<br>')}</p>`;
-                document.querySelectorAll('#codexEntries .codex-list-item').forEach(el => el.classList.remove('active'));
-                eD.classList.add('active');
-            };
-            codexEntriesElement.appendChild(eD);
-        }
-    });
-}
+    // Smooth fade-in animation
+    textContent.style.animation = 'none';
+    textContent.offsetHeight; /* trigger reflow */
+    textContent.style.animation = 'fadeIn 0.3s ease-out';
 
+    // Using semantic classes instead of inline colors!
+    textContent.innerHTML = `
+        <div class="codex-reading-pane">
+            <div class="codex-classification">
+                ARCHIVE ENTRY // CLASS: <span>${entry.category}</span>
+            </div>
+            
+            <h1 class="codex-title">
+                ${entry.title.toUpperCase()}
+            </h1>
+            
+            <div class="codex-body-text">
+                ${entry.text}
+            </div>
+            
+            <div class="codex-footer">
+                END OF TRANSMISSION // CONCORD DATA SYSTEMS
+            </div>
+        </div>
+    `;
+}
 
 // --- COMMANDER PROFILE UI ---
 function displayCommanderProfile(tab = 'OVERVIEW') {
