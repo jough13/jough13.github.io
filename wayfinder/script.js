@@ -449,6 +449,46 @@ GameBus.on('CARGO_MODIFIED', () => {
     GameBus.emit('UI_REFRESH_REQUESTED');
 });
 
+// --- NEW GAMEBUS LISTENERS ---
+
+// 1. Centralized XP Handler
+GameBus.on('XP_GAINED', (amount) => {
+    if (amount <= 0) return;
+    
+    playerXP += amount;
+    
+    // Automatically check for level up
+    if (typeof checkLevelUp === 'function') checkLevelUp();
+    
+    // Auto-refresh the UI
+    GameBus.emit('UI_REFRESH_REQUESTED');
+});
+
+// 2. Centralized Damage Handler
+GameBus.on('HULL_DAMAGED', (data) => {
+    // data = { amount: 15, reason: "Asteroid Collision" }
+    playerHull -= data.amount;
+    
+    // Trigger all the universal juice (screen shake, sounds, red flash)
+    if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+    if (typeof triggerHaptic === 'function') triggerHaptic([100, 50, 100]);
+    
+    // Death Check
+    if (playerHull <= 0) {
+        if (typeof triggerGameOver === 'function') {
+            triggerGameOver(data.reason || "Catastrophic Hull Breach");
+        }
+    } else {
+        GameBus.emit('UI_REFRESH_REQUESTED');
+    }
+});
+
+// 3. Centralized Healing Handler
+GameBus.on('HULL_REPAIRED', (amount) => {
+    playerHull = Math.min(MAX_PLAYER_HULL, playerHull + amount);
+    GameBus.emit('UI_REFRESH_REQUESTED');
+});
+
 // Whenever vitals, credits, or stats change, refresh the UI
 GameBus.on('UI_REFRESH_REQUESTED', () => {
     if (typeof renderUIStats === 'function') renderUIStats();
@@ -2230,150 +2270,128 @@ function getCombinedLocationData(x, y) {
      return null;
  }
 
- function movePlayer(dx, dy) {
-     // 1. Check for blocking UI states
-     if (currentTradeContext || currentOutfitContext || currentMissionContext || currentEncounterContext || currentShipyardContext) {
-         logMessage("Complete current action first.");
-         return;
-     }
+ // ==========================================
+// --- MASTER GAME TICK ENGINE ---
+// ==========================================
+function processGameTick(timeAmount, isMovement = false) {
+    // 1. Advance the universal clock (Shields, K'tharr regen, etc.)
+    if (typeof advanceGameTime === 'function') advanceGameTime(timeAmount);
 
-     // 2. Check for Combat
-     if (currentCombatContext) {
-         logMessage("In combat! (F)ight or (R)un.");
-         return;
-     }
+    // 2. Resolve Environment & Hazards
+    const hazard = getHazardType(playerX, playerY);
+    const hasRadShield = playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY';
 
-     // 3. Calculate Fuel Cost
-     // We define this early so we can check if you can afford the move
-     const currentEngine = COMPONENTS_DATABASE[playerShip.components.engine];
-     let actualFuelPerMove = BASE_FUEL_PER_MOVE * (currentEngine.stats.fuelEfficiency || 1.0);
-
-     // --- PERK HOOK ---
-        if (playerPerks.has('EFFICIENT_THRUSTERS')) {
-            actualFuelPerMove *= 0.8; // 20% reduction
+    if (hazard === 'RADIATION_BELT' && !hasRadShield) {
+        if (playerShields > 0) {
+            playerShields = Math.max(0, playerShields - 1.5);
+            if (isMovement && Math.random() < 0.10) {
+                logMessage("<span style='color:#FFAA00'>Dosimeters detect Ionized Radiation Belt. Shields degrading.</span>");
+            }
+        } else {
+            playerFuel = Math.max(0, playerFuel - 0.5); 
+            if (isMovement && Math.random() < 0.15) {
+                logMessage("<span style='color:#FF5555'>Radiation interfering with plasma injectors. Excess fuel consumed.</span>");
+            }
         }
+        if (Math.random() < 0.1 && typeof triggerDamageEffect === 'function') triggerDamageEffect();
+    }
 
-    // 4. Check Fuel Availability
+    // 3. Mercenary / Crew Passive Checks
+    if (isMovement && typeof processMercenaryDrawbacks === 'function') {
+        processMercenaryDrawbacks();
+    }
+
+    // 4. Update Memory & Sectors
+    updateSectorState();
+    const pCX = Math.floor(playerX / chunkManager.CHUNK_SIZE);
+    const pCY = Math.floor(playerY / chunkManager.CHUNK_SIZE);
+    chunkManager.pruneChunks(pCX, pCY);
+
+    // 5. Move AI Entities
+    if (typeof updateEnemies === "function") updateEnemies();
+    if (typeof updateAmbientNPCs === "function") updateAmbientNPCs();
+
+    // 6. Spawn New Traffic (5% chance per tick)
+    if (Math.random() < 0.05 && typeof spawnAmbientNPCs === "function") {
+        spawnAmbientNPCs();
+    }
+
+    // 7. Check for Immediate Combat Collisions
+    if (typeof activeEnemies !== 'undefined') {
+        const enemyAtLoc = activeEnemies.find(e => e.x === playerX && e.y === playerY);
+        if (enemyAtLoc) {
+            triggerHaptic(200);
+            startCombat(enemyAtLoc);
+            removeEnemyAt(playerX, playerY);
+            return true; // Return true to indicate the tick ended in combat!
+        }
+    }
+
+    return false; // Tick finished peacefully
+}
+
+ function movePlayer(dx, dy) {
+    // 1. UI & State Blocks
+    if (currentTradeContext || currentOutfitContext || currentMissionContext || currentEncounterContext || currentShipyardContext) {
+        logMessage("Complete current action first.");
+        return;
+    }
+    if (currentCombatContext) {
+        logMessage("In combat! (F)ight or (R)un.");
+        return;
+    }
+
+    // 2. Fuel Math
+    const currentEngine = COMPONENTS_DATABASE[playerShip.components.engine];
+    let actualFuelPerMove = BASE_FUEL_PER_MOVE * (currentEngine.stats.fuelEfficiency || 1.0);
+    if (playerPerks.has('EFFICIENT_THRUSTERS')) actualFuelPerMove *= 0.8; 
+
+    // 3. Fuel Check (Stranded)
     if (playerFuel < actualFuelPerMove && (dx !== 0 || dy !== 0)) {
         triggerHaptic(200);
         logMessage("<span style='color:red'>CRITICAL: OUT OF FUEL! Engines offline.</span>");
         
-        // Spawn the interactive buttons on the bottom right!
         const strandedActions = [
             { label: 'Distress Beacon', key: 'z', onclick: activateDistressBeacon },
             { label: 'Drift & Wait', key: '.', onclick: playerWaitTurn },
             { label: 'Self Destruct', key: 'x', onclick: confirmSelfDestruct }
         ];
         renderContextualActions(strandedActions);
-        
         return;
     }
 
-     // 5. Update Player Coordinates
-     playerX += dx;
-     playerY += dy;
+    // 4. Update Coordinates
+    playerX += dx;
+    playerY += dy;
 
-     // 6. Deduct Fuel and Advance Time
-     if (dx !== 0 || dy !== 0) {
-
+    // 5. Execute Movement Logic
+    if (dx !== 0 || dy !== 0) {
         currentStationRecruits = []; 
-
-        playerFuel -= actualFuelPerMove;
-        playerFuel = parseFloat(playerFuel.toFixed(1)); 
-        if (playerFuel < 0) playerFuel = 0;
+        currentStationBounties = []; // Wipe old bounties
         
-        advanceGameTime(0.01); // Time passes when you move
-
-        if (typeof processMercenaryDrawbacks === 'function') processMercenaryDrawbacks();
-
-        // --- Thruster Particles ---
-        // Spawn particles behind the ship (opposite to dx, dy)
+        playerFuel = Math.max(0, playerFuel - actualFuelPerMove);
+        
         spawnParticles(playerX - dx, playerY - dy, 'thruster', { x: dx, y: dy });
 
-        // --- HAZARD EFFECTS ---
-        const hazard = getHazardType(playerX, playerY);
-        const hasRadShield = playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY';
+        // --- THE MAGIC HANDOFF ---
+        // Let the Tick Engine handle the rest!
+        const combatStarted = processGameTick(0.01, true);
+        
+        // If the tick resulted in combat, stop processing interaction!
+        if (combatStarted) return; 
+    }
 
-        if (hazard === 'RADIATION_BELT' && !hasRadShield) {
-            if (playerShields > 0) {
-                playerShields = Math.max(0, playerShields - 1.5); // Minor shield drain
-                // 10% chance to log so it doesn't spam the feed every step
-                if (Math.random() < 0.10) {
-                    logMessage("<span style='color:#FFAA00'>Dosimeters detect Ionized Radiation Belt. Shields degrading.</span>");
-                }
-            } else {
-                 playerFuel = Math.max(0, playerFuel - 0.5); // Nuisance fuel drain if shields are down
-                 if (Math.random() < 0.15) {
-                     logMessage("<span style='color:#FF5555'>Radiation interfering with plasma injectors. Excess fuel consumed.</span>");
-                 }
-            }
-            
-            // Random chance to trigger the UI screen shake/red flash effect
-            if (Math.random() < 0.1 && typeof triggerDamageEffect === 'function') {
-                triggerDamageEffect();
-            }
-        }
-     }
-
-     // 7. Update Sector Information
-     updateSectorState();
-
-     // Only run this occasionally to save CPU (e.g., every time we cross a chunk boundary)
-    // or just run it every move (it's fast enough for simple 2D arrays).
-    const pCX = Math.floor(playerX / chunkManager.CHUNK_SIZE);
-    const pCY = Math.floor(playerY / chunkManager.CHUNK_SIZE);
-    chunkManager.pruneChunks(pCX, pCY);
-     
-     // 8. Move Enemies
-     // This makes every pirate on the map take a step towards you
-     if (typeof updateEnemies === "function") {
-         updateEnemies();
-     }
-
-     // --- UPDATE & MOVE AMBIENT TRAFFIC ---
-     if (typeof updateAmbientNPCs === "function") {
-         updateAmbientNPCs();
-     }
-
-     // --- SPAWN AMBIENT TRAFFIC ---
-     // 5% chance per tile moved to spawn a new neutral ship nearby
-     if (Math.random() < 0.05 && typeof spawnAmbientNPCs === "function") {
-         spawnAmbientNPCs();
-     }
-
-     // 9. Check for Collision (Did you run into them, or did they catch you?)
-     // We filter to see if any enemy is NOW at your location
-     if (typeof activeEnemies !== 'undefined') {
-         const enemyAtLoc = activeEnemies.find(e => e.x === playerX && e.y === playerY);
-         if (enemyAtLoc) {
-             // --- HAPTIC FEEDBACK: COLLISION ---
-             triggerHaptic(200);
-
-             startCombat(enemyAtLoc);
-             // Remove the map icon since we are now "in" the combat screen
-             removeEnemyAt(playerX, playerY);
-             return; 
-         }
-     }
-
-     // 10. Handle Random Events (Spawn Pirate OR Goodies OR Normal)
-     const encounterRoll = Math.random();
-
-     if (encounterRoll < PIRATE_ENCOUNTER_CHANCE) {
-         // Spawn a pirate nearby to chase the player
-         if (typeof spawnPirateNearPlayer === "function") {
-             spawnPirateNearPlayer();
-         } else {
-             startCombat(); // Fallback to instant combat if function missing
-         }
-     } else if (encounterRoll < PIRATE_ENCOUNTER_CHANCE + 0.015) {
-         // Good Luck: 1.5% Chance for Space Debris
-         triggerRandomEvent();
-     } else {
-         // Normal: Just look at the tile (Planet? Star? Empty?)
-         handleInteraction();
-     }
- }
+    // 6. Handle Random Events / Tile Interaction
+    const encounterRoll = Math.random();
+    if (encounterRoll < PIRATE_ENCOUNTER_CHANCE) {
+        if (typeof spawnPirateNearPlayer === "function") spawnPirateNearPlayer();
+        else startCombat(); 
+    } else if (encounterRoll < PIRATE_ENCOUNTER_CHANCE + 0.015) {
+        triggerRandomEvent(); // 1.5% chance for salvage
+    } else {
+        handleInteraction(); // Normal tile interaction
+    }
+}
 
 function handleInteraction() {
     const currentFaction = getFactionAt(playerX, playerY);
@@ -3291,12 +3309,12 @@ function confirmSelfDestruct() {
 function playerWaitTurn() {
     logMessage("Systems cycling. You drift silently in the void...");
     
-    // Advance Time
-    advanceGameTime(0.15); 
-    
-    // The World Keeps Moving!
-    if (typeof updateEnemies === "function") updateEnemies();
-    if (typeof updateAmbientNPCs === "function") updateAmbientNPCs();
+    // --- THE MAGIC HANDOFF ---
+    // Pass 0.15 time (15x longer than a normal move), and flag isMovement as FALSE
+    const combatStarted = processGameTick(0.15, false);
+
+    // If waiting caused an enemy to catch us, stop!
+    if (combatStarted) return; 
     
     // Risk of Ambush while waiting (especially bad if stranded!)
     if (Math.random() < PIRATE_ENCOUNTER_CHANCE) {
