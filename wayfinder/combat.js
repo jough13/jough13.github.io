@@ -879,13 +879,13 @@ function executeBoardingAction(action) {
         enemyDmg = Math.floor(enemyDmg * 0.3); // Reduce incoming damage by 70%
         actionLog = `<span style="color:var(--accent-color)">You duck behind a bulkhead!</span> Enemy fire is heavily suppressed.`;
     } else if (action === 'flee') {
-        // Run away, taking a parting shot to your actual ship hull
-        playerHull -= 10;
+        // Run away, taking a parting shot
         closeGenericModal();
         boardingContext = null;
         logMessage("You fled the derelict under heavy fire. Ship hull took 10 damage!");
-        if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
-        renderUIStats();
+        
+        // THE MAGIC HANDOFF
+        GameBus.emit('HULL_DAMAGED', { amount: 10, reason: "Shot while fleeing an airlock" });
         return;
     }
 
