@@ -8,7 +8,7 @@ function openPlanetView(location) {
     const biomeId = location.biome || 'BARREN_ROCK';
     const biomeData = PLANET_BIOMES && PLANET_BIOMES[biomeId] ? PLANET_BIOMES[biomeId] : { name: biomeId, description: "Unknown planet type.", landable: true, image: "" };
 
-    // THE FIX: Use playerX and playerY directly so procedural deep-space planets don't fail this check!
+    // Use playerX and playerY directly so procedural deep-space planets don't fail this check!
     const isColonyHere = (typeof playerColony !== 'undefined' && playerColony.established && playerColony.x === playerX && playerColony.y === playerY);
     
     const planetStatus = isColonyHere ? 
@@ -208,16 +208,10 @@ function renderPlanetView() {
     const location = chunkManager.getTile(playerX, playerY);
     if (!location || location.miningDepleted) return;
 
-    // 1. Calculate the player's true max cargo (Ship Base + Utility Mods)
-    let maxCargo = SHIP_CLASSES[playerShip.shipClass].cargoCapacity;
-    if (playerShip.components.utility) {
-        const util = COMPONENTS_DATABASE[playerShip.components.utility];
-        if (util && util.stats && util.stats.cargoBonus) maxCargo += util.stats.cargoBonus;
-    }
-
+    // --- THE FIX: Use the engine's master global capacity ---
     // Prevent mining if the hold is completely full
     if (typeof currentCargoLoad === 'undefined') window.currentCargoLoad = 0; 
-    if (currentCargoLoad >= maxCargo) {
+    if (currentCargoLoad >= PLAYER_CARGO_CAPACITY) {
         showToast("Cargo hold is full! Cannot extract ore.", "error");
         if (typeof soundManager !== 'undefined') soundManager.playError();
         return;
@@ -239,20 +233,26 @@ function renderPlanetView() {
     else if (roll > 0.75) { itemId = "RARE_METALS"; amount = Math.floor(Math.random() * 3) + 2; }
     else if (roll > 0.50) { itemId = "PLATINUM_ORE"; amount = Math.floor(Math.random() * 4) + 1; }
 
-    // Cap the extracted amount so we don't accidentally overfill the cargo hold
-    if (currentCargoLoad + amount > maxCargo) {
-        amount = maxCargo - currentCargoLoad;
+    // --- Cap the extracted amount against the global capacity ---
+    if (currentCargoLoad + amount > PLAYER_CARGO_CAPACITY) {
+        amount = PLAYER_CARGO_CAPACITY - currentCargoLoad;
     }
 
     // 4. Add items to Inventory
     if (!window.playerCargo) window.playerCargo = {};
     playerCargo[itemId] = (playerCargo[itemId] || 0) + amount;
-    currentCargoLoad += amount;
+    
+    // --- THE FIX: Trigger the Event Bus so the UI updates flawlessly ---
+    if (typeof updateCurrentCargoLoad === 'function') {
+        updateCurrentCargoLoad();
+    } else {
+        currentCargoLoad += amount; // Safety fallback
+    }
 
     // 5. Deplete the planet & grant XP
     location.miningDepleted = true;
     playerXP += 35;
-    checkLevelUp();
+    if (typeof checkLevelUp === 'function') checkLevelUp();
 
     // 6. Update all UI elements
     logMessage(`Deployed Orbital Extractor. <span style="color:var(--gold-text)">+${amount} ${COMMODITIES[itemId].name}</span> secured.`, true);
@@ -261,8 +261,8 @@ function renderPlanetView() {
     if (typeof renderUIStats === 'function') renderUIStats();
     
     // Refresh the planet view so the button instantly turns gray
-    openPlanetView(location);
-    saveGame(); // Lock in the loot!
+    if (typeof openPlanetView === 'function') openPlanetView(location);
+    if (typeof saveGame === 'function') saveGame(); // Lock in the loot!
 }
 
  /**
