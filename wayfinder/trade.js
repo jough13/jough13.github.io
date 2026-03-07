@@ -1,4 +1,4 @@
-// --- CONSOLIDATED TRADE SYSTEM (Fixed & Sorted) ---
+// --- CONSOLIDATED TRADE SYSTEM ---
 function openTradeModal(mode) {
     const location = chunkManager.getTile(playerX, playerY);
     
@@ -7,7 +7,7 @@ function openTradeModal(mode) {
         return;
     }
 
-    // --- ECONOMY RESTOCK LOGIC (Time-Gated Fix) ---
+    // --- ECONOMY RESTOCK LOGIC (Time-Gated) ---
     // Only restock if 1.0 stardate (~100 moves) has passed since the last time they looked at this market
     if (!location.lastRestockTime || (currentGameDate - location.lastRestockTime) > 1.0) {
         
@@ -1039,6 +1039,9 @@ function fenceEclipseContraband() {
         if (typeof soundManager !== 'undefined') soundManager.playGain();
         showToast(`CONTRABAND FENCED (+${totalProfit}c)`, "success");
         if (typeof renderUIStats === 'function') renderUIStats();
+
+        unlockLoreEntry("FACTION_ECLIPSE_SMUGGLING");
+        
     } else {
         showToast("No contraband in cargo hold.", "info");
     }
