@@ -2488,3 +2488,245 @@ body.light-mode .generic-list-item.active {
     background: #CC0000;
     color: #FFFFFF;
 }
+
+/* ==========================================
+   --- GALACTIC CODEX UI V2 ---
+   ========================================== */
+#codexOverlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: none; /* Flex when active */
+    justify-content: center;
+    align-items: center;
+    z-index: var(--z-modal);
+    backdrop-filter: blur(5px);
+}
+
+.codex-window {
+    width: 90vw;
+    max-width: 1100px;
+    height: 80vh;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 0 30px rgba(0, 224, 224, 0.1);
+    display: flex;
+    flex-direction: column;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.codex-header {
+    background: #0a0a1a;
+    border-bottom: 1px solid var(--border-color);
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.codex-header h2 {
+    margin: 0;
+    color: var(--accent-color);
+    font-family: var(--title-font);
+    font-size: 18px;
+    letter-spacing: 2px;
+}
+
+.codex-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* --- THE 3 PANES --- */
+#codexCategories {
+    flex: 0 0 220px;
+    background: rgba(0, 0, 0, 0.2);
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto;
+}
+
+#codexEntries {
+    flex: 0 0 260px;
+    background: rgba(0, 0, 0, 0.4);
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto;
+}
+
+#codexEntryText {
+    flex: 1;
+    background: var(--bg-color);
+    overflow-y: auto;
+}
+
+/* --- INTERACTIVE BUTTONS --- */
+.codex-cat-btn, .codex-entry-btn {
+    cursor: pointer;
+    border-left: 3px solid transparent;
+}
+
+.codex-cat-btn:hover, .codex-entry-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.active-cat {
+    border-left: 3px solid var(--accent-color);
+    background: rgba(0, 224, 224, 0.05);
+}
+
+.active-entry {
+    border-left: 3px solid var(--gold-text);
+    background: rgba(255, 215, 0, 0.05);
+}
+
+/* Custom Scrollbar for the Codex to look high-tech */
+.codex-body::-webkit-scrollbar,
+#codexCategories::-webkit-scrollbar,
+#codexEntries::-webkit-scrollbar,
+#codexEntryText::-webkit-scrollbar {
+    width: 6px;
+}
+
+.codex-body::-webkit-scrollbar-track,
+#codexCategories::-webkit-scrollbar-track,
+#codexEntries::-webkit-scrollbar-track,
+#codexEntryText::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.3);
+}
+
+.codex-body::-webkit-scrollbar-thumb,
+#codexCategories::-webkit-scrollbar-thumb,
+#codexEntries::-webkit-scrollbar-thumb,
+#codexEntryText::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+.codex-body::-webkit-scrollbar-thumb:hover,
+#codexCategories::-webkit-scrollbar-thumb:hover,
+#codexEntries::-webkit-scrollbar-thumb:hover,
+#codexEntryText::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-color);
+}
+
+/* ==========================================
+   --- GALACTIC CODEX READING PANE ---
+   ========================================== */
+.codex-reading-pane {
+    padding: 30px; 
+    font-family: var(--main-font);
+}
+
+.codex-classification {
+    font-size: 11px; 
+    color: var(--item-desc-color); 
+    letter-spacing: 2px; 
+    margin-bottom: 12px; 
+    font-weight: bold;
+}
+
+.codex-classification span {
+    color: var(--accent-color); 
+    text-transform: uppercase;
+}
+
+.codex-title {
+    color: var(--item-name-color); 
+    font-family: var(--title-font); 
+    font-size: 32px; 
+    margin-top: 0; 
+    margin-bottom: 25px; 
+    border-bottom: 2px solid var(--border-color); 
+    padding-bottom: 15px; 
+    letter-spacing: 1px;
+}
+
+.codex-body-text {
+    color: var(--text-color); 
+    font-size: 15px; 
+    line-height: 1.9; 
+    text-align: left; 
+    max-width: 700px; 
+    margin: 0 auto;
+}
+
+.codex-footer {
+    margin-top: 50px; 
+    border-top: 1px dashed var(--border-color); 
+    padding-top: 20px; 
+    font-size: 11px; 
+    color: var(--item-desc-color); 
+    text-align: center; 
+    letter-spacing: 3px;
+}
+
+/* Ensure the left/middle panes use the right text colors */
+.codex-cat-btn div, 
+.codex-entry-btn div {
+    color: var(--text-color);
+}
+
+.codex-cat-btn div:last-child {
+    color: var(--item-desc-color);
+}
+
+.active-cat div { color: var(--accent-color); }
+.active-entry div { color: var(--gold-text); }
+
+/* Ensure the text pane background is separated slightly from the lists */
+#codexEntryText {
+    background: var(--panel-bg);
+}
+
+/* ==========================================
+   --- GLOBAL LIGHT MODE COLOR SWAP ---
+   ========================================== */
+
+body.light-mode, .light-mode {
+    /* Backgrounds: Shift to clean whites and light greys */
+    --bg-color: #f4f4f9;
+    --panel-bg: #ffffff;
+    --border-color: #cccccc;
+    
+    /* Text: Shift to deep, inky blacks and dark greys */
+    --text-color: #222233;       /* Was light purple/grey -> Now dark slate */
+    --item-name-color: #000000;  /* Was pure white -> Now pure black */
+    --item-desc-color: #555566;  /* Was light grey -> Now medium-dark grey */
+    
+    /* Accents: Darken the bright neon colors so they read clearly on white */
+    --accent-color: #007777;     /* Was bright cyan -> Now deep teal */
+    --gold-text: #aa7700;        /* Was bright yellow -> Now dark goldenrod */
+    --success: #007700;          /* Was bright green -> Now forest green */
+    --warning: #cc7700;          /* Was bright orange -> Now burnt orange */
+    --danger: #cc0000;           /* Was bright red -> Now crimson */
+}
+
+/* ==========================================
+   --- LIGHT MODE: CODEX CONTRAST FIX ---
+   ========================================== */
+
+/* 1. Strip away the muddy inline grey backgrounds from the top banners */
+.light-mode #codexCategories > div:first-child,
+.light-mode #codexEntries > div:first-child {
+    background: rgba(0, 0, 0, 0.04) !important; /* A very faint, clean highlight instead */
+}
+
+/* 2. Force the 'DECRYPTED FILES' and 'ARCHIVE RECOVERY' labels to be dark teal */
+.light-mode #codexCategories > div:first-child > div:first-child,
+.light-mode #codexEntries > div:first-child > div:first-child {
+    color: #006666 !important; /* Deep, bold teal */
+    font-weight: bold !important;
+}
+
+/* 3. Ensure the big completion percentage stays pure black */
+.light-mode #codexCategories > div:first-child > div:nth-child(2) {
+    color: #000000 !important;
+    font-weight: 900 !important;
+}
+
+/* 4. Keep the 'X of Y Entries' subtext dark grey so it reads clearly */
+.light-mode #codexCategories > div:first-child > div:last-child {
+    color: #333344 !important; 
+    font-weight: bold !important;
+}
