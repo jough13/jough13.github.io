@@ -556,14 +556,16 @@ body {
             <div id="combatView" class="view-panel"></div>
             
             <div id="codexOverlay">
-                <div class="codex-header">
-                    <span>GALACTIC DATABASE</span>
-                    <button id="codexCloseButton">&times;</button>
-                </div>
-                <div id="codexContent">
-                    <div id="codexCategories"></div>
-                    <div id="codexEntries"></div>
-                    <div id="codexEntryText">Select an entry...</div>
+                <div class="codex-window">
+                    <div class="codex-header">
+                        <h2>GALACTIC ARCHIVES</h2>
+                        <button id="codexCloseButton" class="action-button danger-btn" style="padding: 5px 15px;">CLOSE</button>
+                    </div>
+                    <div class="codex-body">
+                        <div id="codexCategories"></div>
+                        <div id="codexEntries"></div>
+                        <div id="codexEntryText"></div>
+                    </div>
                 </div>
             </div>
         </main>
