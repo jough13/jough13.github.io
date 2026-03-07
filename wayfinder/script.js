@@ -2284,6 +2284,8 @@ function getCombinedLocationData(x, y) {
         
         advanceGameTime(0.01); // Time passes when you move
 
+        if (typeof processMercenaryDrawbacks === 'function') processMercenaryDrawbacks();
+
         // --- Thruster Particles ---
         // Spawn particles behind the ship (opposite to dx, dy)
         spawnParticles(playerX - dx, playerY - dy, 'thruster', { x: dx, y: dy });
