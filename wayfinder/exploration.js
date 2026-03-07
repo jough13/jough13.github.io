@@ -1,6 +1,6 @@
  // --- PLANETARY INTERACTION UI ---
 function openPlanetView(location) {
-    openGenericModal(`ORBITING: ${location.name.toUpperCase()}`);
+    openGenericModal(`ORBITING: ${(location.name || 'Planet').toUpperCase()}`);
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
@@ -8,8 +8,8 @@ function openPlanetView(location) {
     const biomeId = location.biome || 'BARREN_ROCK';
     const biomeData = PLANET_BIOMES && PLANET_BIOMES[biomeId] ? PLANET_BIOMES[biomeId] : { name: biomeId, description: "Unknown planet type.", landable: true, image: "" };
 
-    // Check if the player has established their colony right here!
-    const isColonyHere = (typeof playerColony !== 'undefined' && playerColony.established && playerColony.x === location.x && playerColony.y === location.y);
+    // THE FIX: Use playerX and playerY directly so procedural deep-space planets don't fail this check!
+    const isColonyHere = (typeof playerColony !== 'undefined' && playerColony.established && playerColony.x === playerX && playerColony.y === playerY);
     
     const planetStatus = isColonyHere ? 
         `<div style="color:var(--success); font-weight:bold; letter-spacing: 1px;">SETTLED: ${playerColony.name.toUpperCase()}</div>
@@ -24,7 +24,7 @@ function openPlanetView(location) {
     detailEl.innerHTML = `
         <div style="text-align:center; padding-top: 20px;">
             ${imageHtml}
-            <h3 style="color:var(--accent-color); margin-top:0; margin-bottom: 5px; font-size: 24px;">${location.name}</h3>
+            <h3 style="color:var(--accent-color); margin-top:0; margin-bottom: 5px; font-size: 24px;">${location.name || 'Uncharted Planet'}</h3>
             <p style="color:var(--item-desc-color); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 0;">Class: ${biomeData.name}</p>
         </div>
         
@@ -33,7 +33,6 @@ function openPlanetView(location) {
             ${planetStatus}
         </div>
         
-        <!-- The designated container for our scan results -->
         <div id="surfaceScanResultBox"></div>
         
         <p style="color:var(--text-color); font-size: 13px; line-height: 1.5; margin-top: 20px; font-style: italic;">
@@ -44,23 +43,29 @@ function openPlanetView(location) {
     // 2. Build the Actions Menu
     let btnHtml = ``;
 
-    // Universal Action: Scan
+    // Quick Action: Surface Scan
     btnHtml += `<button class="action-button" onclick="if(typeof conductSurfaceScan === 'function') conductSurfaceScan()">CONDUCT SURFACE SCAN</button>`;
     
-    // Universal Action: Mine/Explore
-    btnHtml += `<button class="action-button" onclick="if(typeof startOrbitalMining === 'function') { startOrbitalMining(); } else { closeGenericModal(); logMessage('Descended to surface...', 'color:var(--accent-color)');}">DESCEND TO SURFACE</button>`;
+    // Quick Action: Orbital Drill
+    btnHtml += `<button class="action-button" onclick="if(typeof startOrbitalMining === 'function') startOrbitalMining()">ORBITAL EXTRACTION</button>`;
 
-    // --- COLONY BUILDER: THE PIONEER HOOK ---
+    // --- THE FIX: Routing to the proper Planet View ---
+    if (biomeData && biomeData.landable) {
+        btnHtml += `<button class="action-button" onclick="landOnStandalonePlanet()" style="border-color: var(--success); color: var(--success); margin-top: 10px;">DESCEND TO SURFACE</button>`;
+    } else {
+        btnHtml += `<button class="action-button" disabled style="margin-top: 10px; border-color:#444; color:#666;">UNINHABITABLE (CANNOT LAND)</button>`;
+    }
+
+    // --- COLONY BUILDER HOOK ---
     if (typeof playerHasColonyCharter !== 'undefined' && playerHasColonyCharter && (!playerColony || !playerColony.established)) {
         if (biomeData && biomeData.landable) {
             btnHtml += `
-                <button class="action-button" onclick="surveyForColony('${location.name}', '${biomeId}', ${location.x}, ${location.y})" style="border-color: var(--gold-text); color: var(--gold-text); margin-top: 15px;">
+                <button class="action-button" onclick="surveyForColony('${location.name}', '${biomeId}', ${playerX}, ${playerY})" style="border-color: var(--gold-text); color: var(--gold-text); margin-top: 15px;">
                     🚩 SURVEY FOR SETTLEMENT
                 </button>
             `;
         }
     } else if (isColonyHere) {
-        // If the colony IS built, and they are standing on it!
         btnHtml += `
             <button class="action-button" onclick="if(typeof openColonyManagement === 'function') openColonyManagement()" style="border-color: var(--success); color: var(--success); margin-top: 15px; box-shadow: 0 0 10px rgba(0, 170, 170, 0.4);">
                 🏢 MANAGE COLONY
@@ -68,7 +73,6 @@ function openPlanetView(location) {
         `;
     }
 
-    // Add Universal Leave Button
     btnHtml += `
         <button class="action-button" onclick="closeGenericModal()" style="margin-top: 10px;">
             LEAVE ORBIT
@@ -76,6 +80,42 @@ function openPlanetView(location) {
     `;
 
     actionsEl.innerHTML = btnHtml;
+}
+
+// --- STANDALONE PLANET ROUTING ---
+function landOnStandalonePlanet() {
+    closeGenericModal();
+    
+    const location = chunkManager.getTile(playerX, playerY);
+    if (!location) return;
+
+    const biomeId = location.biome || 'BARREN_ROCK';
+    
+    // Fetch any saved data so rocks don't infinitely respawn if you leave and come back
+    const sysKey = `${playerX},${playerY}_p0`;
+    const savedState = worldStateDeltas[sysKey] || {};
+
+    // Generate a temporary 1-planet system in memory
+    currentSystemData = {
+        name: location.name || "Deep Space Rogue Planet",
+        x: playerX,
+        y: playerY,
+        planets: [{
+            name: "Surface",
+            biome: PLANET_BIOMES[biomeId] || PLANET_BIOMES['BARREN_ROCK'],
+            id: `${playerX},${playerY}-0`,
+            minedThisVisit: savedState.mined || false,
+            scannedThisVisit: savedState.scanned || false
+        }]
+    };
+
+    // Lock onto the only planet in the array
+    selectedPlanetIndex = 0;
+    
+    logMessage(`Initiating landing sequence for ${location.name || 'the planet'}...`);
+    
+    // Push the UI into the planetary exploration screen!
+    changeGameState(GAME_STATES.PLANET_VIEW);
 }
 
 // --- PLANETARY MECHANICS ---
