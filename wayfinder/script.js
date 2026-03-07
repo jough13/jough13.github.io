@@ -915,6 +915,9 @@ function animateParticles() {
  let playerShip;
  let playerNotoriety;
  let playerNotorietyTitle;
+
+let lastNotorietyDecayTime = 0;
+
  let playerIsChargingAttack;
  let playerIsEvading;
 
@@ -1351,8 +1354,9 @@ function changeGameState(newState) {
      render();
  }
  
- function updatePlayerNotoriety(amount) {
-     playerNotoriety += amount;
+function updatePlayerNotoriety(amount) {
+     // Safe math: Never let Notoriety drop below zero
+     playerNotoriety = Math.max(0, playerNotoriety + amount);
      updateNotorietyTitle();
 
      GameBus.emit('UI_REFRESH_REQUESTED');
@@ -2297,6 +2301,25 @@ function processGameTick(timeAmount, isMovement = false) {
     // 3. Mercenary / Crew Passive Checks
     if (isMovement && typeof processMercenaryDrawbacks === 'function') {
         processMercenaryDrawbacks();
+    }
+
+    // --- 3.5 NOTORIETY DECAY (Laying Low) ---
+    if (playerNotoriety > 0) {
+        // Initialize the tracker if it doesn't exist
+        if (!lastNotorietyDecayTime) lastNotorietyDecayTime = currentGameDate;
+        
+        // Every 15 stardates, your heat drops by 1
+        if (currentGameDate - lastNotorietyDecayTime >= 15.0) {
+            updatePlayerNotoriety(-1); 
+            lastNotorietyDecayTime = currentGameDate;
+            
+            if (playerNotoriety === 0) {
+                logMessage("<span style='color:var(--success)'>Concord warrants have expired. Your record is clean.</span>");
+                if (typeof showToast === 'function') showToast("WARRANTS EXPIRED", "success");
+            } else {
+                logMessage("<span style='color:var(--item-desc-color)'>Heat fading. Concord patrols are scaling back their search.</span>");
+            }
+        }
     }
 
     // 4. Update Memory & Sectors
