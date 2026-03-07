@@ -76,10 +76,7 @@ const LOCATIONS_DATA = {
 
     "Aegis Dyson Sphere": {
         name: "Aegis Dyson Sphere",
-        coords: {
-            y: 7,
-            x: 7
-        },
+        coords: { y: 7, x: 7 },
         type: PLANET_CHAR_VAL, 
         faction: "CONCORD",
         isMajorHub: true,
@@ -93,7 +90,41 @@ const LOCATIONS_DATA = {
             { id: "VOID_CRYSTALS", priceMod: 1.5, stock: 15 },
             { id: "HYDROGEN_3", priceMod: 1.2, stock: 30 }
         ],
-        scanFlavor: "Aegis Dyson Sphere: The glittering crown jewel of the Concord. A breathtaking megastructure encasing a captured G-type star. Billions of citizens live across its interior habitation rings. Security is absolute, and its monumental energy output powers the entire Concord fleet. Approach with proper clearance."
+        scanFlavor: "Aegis Dyson Sphere: The glittering crown jewel of the Concord.",
+        
+        // --- DATA-DRIVEN INTERACTION ---
+        onInteract: function() {
+            // Because it's a Major Hub, we just tell it to do the standard hub things!
+            if (typeof performCustomsScan === 'function') {
+                if (!performCustomsScan()) return; // Stop if they fail customs!
+            }
+            
+            logMessage("<span style='color:var(--accent-color)'>Approaching the massive entry gates of the Dyson Sphere...</span>");
+            
+            const availableActions = [
+                { label: `Dock (Aegis Sphere)`, key: 'e', onclick: openStationView }
+            ];
+            
+            if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
+            openStationView();
+        }
+    },
+
+    "Alien Obelisk": {
+        name: "Obsidian Obelisk",
+        coords: { x: -20, y: 35 },
+        type: 'location',
+        char: 'I',
+        onInteract: function() {
+             logMessage("The obelisk hums. You feel strange...");
+             GameBus.emit('HULL_REPAIRED', 50); // It heals you!
+             GameBus.emit('XP_GAINED', 100);    // It makes you smarter!
+             
+             // Build custom buttons just for this object
+             renderContextualActions([
+                 { label: 'Touch it', key: 'e', onclick: () => triggerGameOver("Your mind was absorbed into the stone.") }
+             ]);
+        }
     },
 
     "Planet Xerxes": {
