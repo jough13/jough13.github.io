@@ -1972,7 +1972,7 @@ function finalizeColonyCreation(planetName, biomeId, x, y) {
     // 4. Update the World Map!
     updateWorldState(x, y, {
         hasColony: true, 
-        customColor: 'var(--success)'
+        customColor: '#00AAAA'
     });
 
     logMessage(`<span style="color:var(--success); font-weight:bold;">COLONY ESTABLISHED: ${customName}</span>`);
