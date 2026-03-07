@@ -437,7 +437,39 @@ const LORE_DATABASE = {
         category: "Commodities",
         text: "Mysterious, polyhedral data-matrices glowing with a faint inner light. These solid-state memory cores belong to civilizations that predate the Concord. Their encryption algorithms are so complex that standard ship computers would take millennia to crack them. They are highly sought after by Cryptarchs, who use single-use quantum 'Ciphers' to collapse the engram's security state and extract the ancient technology blueprints hidden inside.",
         unlocked: false
-    }
+    },
+
+    // ==========================================
+    // --- LORE EXPANSION PACK 2 (Action Hooks) ---
+    // ==========================================
+    
+    FACTION_ECLIPSE_SMUGGLING: {
+        title: "The Shadow Network",
+        category: "Factions",
+        text: "The Eclipse Cartel doesn't just pirate ships; they run a highly sophisticated, decentralized black market known as the Shadow Network. Bypassing Concord customs via quantum-encrypted routing, they fence everything from stolen Precursor tech to illegal cybernetics. To access the network, one must prove they are willing to operate completely outside the law.",
+        unlocked: false
+    },
+    
+    TECH_CYBER_AUGMENTATION: {
+        title: "Cybernetic Augmentation",
+        category: "Technology & Phenomena",
+        text: "The process of permanently bonding machinery to a biological pilot. While basic cybernetics are common for medical purposes, 'combat-grade' neural laces and reflex-boosters are strictly regulated by the Concord. Pilots who heavily augment themselves often exhibit erratic behavior, but the immense boost to their piloting and tactical skills makes it a tempting risk.",
+        unlocked: false
+    },
+    
+    XENO_THE_SPIRE: {
+        title: "Xerxes & The Spire",
+        category: "Xeno-Archaeology",
+        text: "Xerxes is a rogue planet devoid of a host star, floating in the deep black. Its surface is dominated by 'The Spire'—a colossal, subterranean labyrinth of Precursor design. The Eclipse Cartel built their Black Market into the upper crust of this structure, but the deeper layers are locked behind lethal encryption puzzles. Many Cryptarchs have died trying to crack the Spire's lower vaults.",
+        unlocked: false
+    },
+    
+    TACTIC_BOARDING: {
+        title: "Close-Quarters Boarding",
+        category: "Factions", // Fits well as a cultural tactic
+        text: "While ship-to-ship combat relies on shields and plasma batteries, true pirates and scavengers prefer to dock and breach. Boarding actions are brutal, chaotic firefights in zero gravity. The Concord frowns upon the practice due to the high mortality rate, but for the Eclipse Cartel and independent scavengers, taking a ship intact is worth the risk of a plasma burn.",
+        unlocked: false
+    },
 };
 
 // --- XERXES SPIRE PUZZLE DATABASE ---
