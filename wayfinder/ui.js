@@ -5,7 +5,7 @@ function openGenericModal(title) {
     
     const container = document.getElementById('genericModalContent');
 
-    // --- SCRUB LINGERING INLINE STYLES ---
+    // --- CRITICAL FIX: SCRUB LINGERING INLINE STYLES ---
     // Wipes out flex-direction: column or specific heights left behind by other menus
     container.style.cssText = ''; 
     
@@ -247,8 +247,12 @@ function renderCodexCategories() {
     });
 
     // 2. Count total entries in game to show a completion percentage
-    let totalUnlocked = discoveredLoreEntries.size;
-    let totalAvailable = Object.keys(LORE_DATABASE).filter(k => !k.startsWith('SPIRE')).length; 
+    // OPTIMIZATION: Only calculate this once and cache it on the window object
+    if (!window.cachedTotalLore) {
+        window.cachedTotalLore = Object.keys(LORE_DATABASE).filter(k => !k.startsWith('SPIRE')).length; 
+    }
+    let totalAvailable = window.cachedTotalLore;
+    
     let pct = Math.floor((totalUnlocked / totalAvailable) * 100) || 0;
 
     const progressHTML = `
