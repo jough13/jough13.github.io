@@ -681,3 +681,138 @@ function hireEclipseMercenary() {
     showToast("No mercenaries available for hire.", "info");
     logMessage("The local bar is empty. Looks like they all took a job out in the Perseus Arm.");
 }
+
+// ==========================================
+// --- K'THARR PROVING GROUNDS UI ---
+// ==========================================
+
+function openProvingGrounds() {
+    openGenericModal("THE BLOOD PITS : ARENA BETTING");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // 1. Setup the Gladiators
+    const gladiators = [
+        { name: "Kaelen's Wrath", species: "K'tharr Warlord", odds: 1.5, winChance: 0.65, icon: "🪓", color: "var(--danger)" },
+        { name: "Unit-77", species: "Hacked Loader Mech", odds: 3.0, winChance: 0.35, icon: "🤖", color: "var(--warning)" },
+        { name: "The Void-Stalker", species: "Captured Xenomorph", odds: 5.0, winChance: 0.15, icon: "🕷️", color: "#9933FF" }
+    ];
+
+    listEl.innerHTML = `<div style="padding:15px; color:var(--danger); font-family:var(--title-font); border-bottom:2px solid var(--danger); text-align:center; letter-spacing:2px;">TODAY'S MATCHES</div>`;
+    
+    gladiators.forEach((glad, index) => {
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        row.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:24px;">${glad.icon}</span>
+                <div>
+                    <div style="color:${glad.color}; font-weight:bold; font-size:14px;">${glad.name.toUpperCase()}</div>
+                    <div style="color:var(--item-desc-color); font-size:10px;">${glad.species}</div>
+                </div>
+            </div>
+            <div style="color:var(--gold-text); font-weight:bold; font-size:14px;">${glad.odds}x Payout</div>
+        `;
+        row.onclick = () => showGladiatorDetails(glad);
+        listEl.appendChild(row);
+    });
+
+    // 2. Default Welcome Screen
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 30px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 10px rgba(255,0,0,0.5));">⚔️</div>
+            <h3 style="color:var(--danger); margin-bottom:10px;">THE RITE OF COMBAT</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                "Place your credits, outlander. Blood waters the sands of Karak-Tor, and fortune favors the bold."
+            </p>
+        </div>
+    `;
+    actionsEl.innerHTML = `<button class="action-button" onclick="openStationView()">LEAVE ARENA</button>`;
+}
+
+function showGladiatorDetails(glad) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:50px; margin-bottom:10px;">${glad.icon}</div>
+            <h3 style="color:${glad.color}; margin:0 0 5px 0;">${glad.name.toUpperCase()}</h3>
+            
+            <div class="trade-math-area" style="border-color:var(--danger); background:rgba(50,0,0,0.2);">
+                <div class="trade-stat-row"><span>Current Odds:</span> <span style="color:var(--gold-text); font-weight:bold;">${glad.odds}x Payout</span></div>
+                <div class="trade-stat-row"><span>House Take:</span> <span style="color:#888;">10%</span></div>
+            </div>
+            
+            <p style="font-size:12px; color:var(--text-color); margin-top:20px;">Select your wager amount below. All bets are final once the gates open.</p>
+        </div>
+    `;
+
+    const canBet100 = playerCredits >= 100;
+    const canBet500 = playerCredits >= 500;
+
+    actionsEl.innerHTML = `
+        <div style="display:flex; gap:10px; width:100%;">
+            <button class="action-button" style="flex:1; border-color:var(--danger); color:var(--danger);" ${!canBet100 ? 'disabled' : ''} onclick="processArenaBet(${glad.winChance}, ${glad.odds}, 100)">WAGER 100c</button>
+            <button class="action-button" style="flex:1; border-color:var(--danger); color:var(--danger);" ${!canBet500 ? 'disabled' : ''} onclick="processArenaBet(${glad.winChance}, ${glad.odds}, 500)">WAGER 500c</button>
+        </div>
+        <button class="action-button" style="margin-top:10px;" onclick="openStationView()">CANCEL</button>
+    `;
+}
+
+function processArenaBet(winChance, odds, betAmount) {
+    playerCredits -= betAmount;
+    
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    
+    // Animate the fight
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 40px;">
+            <div style="font-size:50px; animation: shake-effect 0.5s infinite;">💥</div>
+            <h3 style="color:var(--warning); margin-top:20px;">COMBAT IN PROGRESS...</h3>
+        </div>
+    `;
+    actionsEl.innerHTML = '';
+    if (typeof soundManager !== 'undefined') soundManager.playLaser();
+
+    setTimeout(() => {
+        const won = Math.random() < winChance;
+        
+        if (won) {
+            const payout = Math.floor(betAmount * odds);
+            playerCredits += payout;
+            
+            if (typeof soundManager !== 'undefined') soundManager.playGain();
+            
+            detailEl.innerHTML = `
+                <div style="text-align:center; padding: 30px;">
+                    <div style="font-size:60px; margin-bottom:15px; color:var(--success);">🏆</div>
+                    <h3 style="color:var(--success); margin:0 0 10px 0;">VICTORY!</h3>
+                    <p style="color:var(--text-color);">Your champion stands over their defeated foe.</p>
+                    <div style="color:var(--gold-text); font-size:24px; font-weight:bold; margin-top:20px;">+${formatNumber(payout)}c</div>
+                </div>
+            `;
+            logMessage(`<span style="color:var(--success)">[ ARENA ] Won wager! Paid out ${formatNumber(payout)} credits.</span>`);
+        } else {
+            if (typeof soundManager !== 'undefined') soundManager.playError();
+            if (typeof triggerHaptic === 'function') triggerHaptic(150);
+            
+            detailEl.innerHTML = `
+                <div style="text-align:center; padding: 30px;">
+                    <div style="font-size:60px; margin-bottom:15px; color:var(--danger);">💀</div>
+                    <h3 style="color:var(--danger); margin:0 0 10px 0;">DEFEAT.</h3>
+                    <p style="color:var(--text-color);">Your champion was brutally executed. The house takes your wager.</p>
+                    <div style="color:var(--danger); font-size:20px; font-weight:bold; margin-top:20px;">-${betAmount}c</div>
+                </div>
+            `;
+            logMessage(`<span style="color:var(--danger)">[ ARENA ] Champion defeated. Lost ${betAmount} credits.</span>`);
+        }
+        
+        renderUIStats();
+        autoSaveGame();
+        
+        actionsEl.innerHTML = `<button class="action-button" onclick="openProvingGrounds()">PLACE ANOTHER WAGER</button>`;
+    }, 1500);
+}
