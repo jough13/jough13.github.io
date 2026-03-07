@@ -408,16 +408,25 @@ function renderPlanetView() {
              return;
          }
 
-         const richness = (typeof cT.richness === 'number') ? cT.richness : 0.3;
-         fuelGained = MIN_SCOOP_YIELD + Math.floor(richness * MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER);
-         fuelGained += Math.floor(Math.random() * SCOOP_RANDOM_BONUS);
-         if (hasCrewPerk('SCOOP_BONUS')) {
+         // Pull the exact yield from the Star Class data!
+         const starData = generateStarData(playerX, playerY);
+         fuelGained = starData.scoopYield;
+         
+         if (typeof hasCrewPerk === 'function' && hasCrewPerk('SCOOP_BONUS')) {
              fuelGained = Math.floor(fuelGained * 1.20); 
          }
-         fuelGained = Math.max(1, fuelGained);
 
          updateWorldState(playerX, playerY, { scoopedThisVisit: true, lastInteraction: currentGameDate });
-         logMsg = "Scooped hydrogen from the star's corona.";
+         logMsg = `Initiated Deep Scoop on ${starData.class}-Class Star.`;
+
+         // Radiation check for hot stars!
+         if (starData.class === "O" || starData.class === "B") {
+            const util = COMPONENTS_DATABASE[playerShip.components.utility || "UTIL_NONE"];
+            if (!util || !util.radImmunity) {
+                GameBus.emit('HULL_DAMAGED', { amount: 20, reason: "Melted in stellar corona" });
+                logMessage("<span style='color:var(--danger);'>Radiation shielding breached! Hull integrity compromised while scooping.</span>");
+            }
+         }
 
      } else if (tileType === 'nebula') {
          fuelGained = Math.floor(MIN_SCOOP_YIELD / 2) + Math.floor(Math.random() * SCOOP_RANDOM_BONUS);
