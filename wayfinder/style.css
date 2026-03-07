@@ -2313,3 +2313,158 @@ body.light-mode .generic-list-item.active {
     background: #E0F7FA;
     border-left-color: #006064;
 }
+
+/* ==========================================
+   --- SAVE SLOT CARDS & TITLE MENU ---
+   ========================================== */
+.save-slot-card {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    transition: border-color 0.2s, background 0.2s;
+    cursor: pointer;
+}
+
+.save-slot-card:hover {
+    border-color: var(--accent-color);
+    background: rgba(0, 224, 224, 0.05);
+}
+
+.save-card-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+.save-pfp-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px solid #555;
+    object-fit: cover;
+}
+
+.save-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+
+.save-name {
+    font-family: var(--title-font);
+    font-size: 16px;
+    color: var(--text-color);
+    font-weight: bold;
+}
+
+.save-type-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    background: #333;
+    color: #aaa;
+    vertical-align: middle;
+}
+
+.save-type-badge.auto-badge {
+    background: rgba(0, 170, 170, 0.2);
+    color: var(--success);
+    border: 1px solid var(--success);
+}
+
+.save-meta {
+    font-size: 12px;
+    color: var(--item-desc-color);
+    font-family: var(--main-font);
+}
+
+.save-delete-btn {
+    background: transparent;
+    color: var(--item-desc-color);
+    border: 1px solid transparent;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 5px 15px;
+    border-radius: 4px;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.save-delete-btn:hover {
+    color: var(--danger);
+    background: rgba(255, 0, 0, 0.1);
+    border-color: var(--danger);
+}
+
+/* ==========================================
+   --- CONFIRMATION MODAL (DELETE SAVE) ---
+   ========================================== */
+#confirmationOverlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: none; /* Flex when active */
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; /* Stays above everything */
+    backdrop-filter: blur(4px);
+}
+
+.confirm-window {
+    background: #0a0000;
+    border: 2px solid var(--danger);
+    box-shadow: 0 0 30px rgba(255, 0, 0, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.2);
+    border-radius: 4px;
+    width: 90%;
+    max-width: 450px;
+    text-align: center;
+    font-family: var(--main-font);
+    animation: pulse-danger-subtle 2s infinite;
+}
+
+.confirm-header {
+    background: var(--danger);
+    color: #fff;
+    font-family: var(--title-font);
+    font-weight: 900;
+    letter-spacing: 2px;
+    padding: 10px;
+    font-size: 16px;
+}
+
+.confirm-body {
+    padding: 25px;
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+#confirmMessage {
+    margin-bottom: 25px;
+    font-size: 14px;
+    color: #ffaaaa;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.confirm-actions .action-button {
+    flex: 1;
+    padding: 12px;
+    font-size: 14px;
+}
+
+@keyframes pulse-danger-subtle {
+    0% { box-shadow: 0 0 30px rgba(255, 0, 0, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.2); }
+    50% { box-shadow: 0 0 50px rgba(255, 0, 0, 0.5), inset 0 0 25px rgba(255, 0, 0, 0.4); }
+    100% { box-shadow: 0 0 30px rgba(255, 0, 0, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.2); }
+}
