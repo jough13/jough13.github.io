@@ -920,6 +920,8 @@ function executeBoardingAction(action) {
         
         closeGenericModal();
         boardingContext = null;
+
+        unlockLoreEntry("TACTIC_BOARDING");
         
         logMessage(`<span style="color:var(--success)">Boarding successful!</span> Enemies defeated.<br>Looted ${credits} credits and gained +${xp} XP.`);
         showToast("FIREFIGHT WON", "success");
