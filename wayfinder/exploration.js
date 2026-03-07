@@ -8,7 +8,7 @@ function openPlanetView(location) {
     const biomeId = location.biome || 'BARREN_ROCK';
     const biomeData = PLANET_BIOMES && PLANET_BIOMES[biomeId] ? PLANET_BIOMES[biomeId] : { name: biomeId, description: "Unknown planet type.", landable: true, image: "" };
 
-    // Use playerX and playerY directly so procedural deep-space planets don't fail this check!
+    // THE FIX: Use playerX and playerY directly so procedural deep-space planets don't fail this check!
     const isColonyHere = (typeof playerColony !== 'undefined' && playerColony.established && playerColony.x === playerX && playerColony.y === playerY);
     
     const planetStatus = isColonyHere ? 
@@ -1574,24 +1574,18 @@ function anomalyDetonates() {
     closeGenericModal();
     
     const dmg = 25 + Math.floor(Math.random() * 25);
-    playerHull -= dmg;
     
     updateWorldState(playerX, playerY, { studied: true }); // It blew up, so it's gone
     
     logMessage(`<span style="color:var(--danger)">CONTAINMENT FAILURE! Anomaly collapses violently!</span><br>Hull takes ${dmg} damage!`);
     if (typeof showToast === 'function') showToast("ANOMALY DETONATION", "error");
     
-    if (typeof soundManager !== 'undefined') soundManager.playExplosion();
-    if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+    // --- THE MAGIC HANDOFF ---
+    // The GameBus now handles the math, the screen shake, the haptics, AND the game-over check!
+    GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Vaporized by Anomaly Collapse" });
     
-    if (playerHull <= 0) {
-        triggerGameOver("Vaporized by Anomaly Collapse");
-    }
-    
-    renderUIStats();
     anomalyContext = null;
-
-    autoSaveGame(); // Lock in the damage!
+    autoSaveGame(); 
 }
 
 function abortAnomaly() {
