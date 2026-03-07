@@ -1,4 +1,6 @@
- // --- PLANETARY INTERACTION UI ---
+let activeColonyId = null;
+
+// --- PLANETARY INTERACTION UI ---
 function openPlanetView(location) {
     openGenericModal(`ORBITING: ${(location.name || 'Planet').toUpperCase()}`);
     const detailEl = document.getElementById('genericDetailContent');
@@ -8,11 +10,16 @@ function openPlanetView(location) {
     const biomeId = location.biome || 'BARREN_ROCK';
     const biomeData = PLANET_BIOMES && PLANET_BIOMES[biomeId] ? PLANET_BIOMES[biomeId] : { name: biomeId, description: "Unknown planet type.", landable: true, image: "" };
 
-    // THE FIX: Use playerX and playerY directly so procedural deep-space planets don't fail this check!
-    const isColonyHere = (typeof playerColony !== 'undefined' && playerColony.established && playerColony.x === playerX && playerColony.y === playerY);
+    if (biomeId === 'MACHINE_WORLD') unlockLoreEntry("XENO_MACHINE_WORLD");
+    if (biomeId === 'IRRADIATED') unlockLoreEntry("PHENOMENON_IRRADIATED");
+
+    // --- Generate unique ID and check dictionary ---
+    const colId = `${playerX}_${playerY}_${(location.name || 'Planet').replace(/\s+/g, '')}`;
+    const colonyHere = playerColonies[colId];
+    const isColonyHere = colonyHere && colonyHere.established;
     
     const planetStatus = isColonyHere ? 
-        `<div style="color:var(--success); font-weight:bold; letter-spacing: 1px;">SETTLED: ${playerColony.name.toUpperCase()}</div>
+        `<div style="color:var(--success); font-weight:bold; letter-spacing: 1px;">SETTLED: ${colonyHere.name.toUpperCase()}</div>
          <div style="color:#666; font-size: 11px; margin-top: 5px;">Concord Recognized Pioneer Settlement</div>` :
         `<div style="color:var(--danger); font-weight:bold; letter-spacing: 1px;">UNCLAIMED WILDERNESS</div>
          <div style="color:#666; font-size: 11px; margin-top: 5px;">No civilized structures detected. High concentration of raw materials present in the crust.</div>`;
@@ -49,7 +56,7 @@ function openPlanetView(location) {
     // Quick Action: Orbital Drill
     btnHtml += `<button class="action-button" onclick="if(typeof startOrbitalMining === 'function') startOrbitalMining()">ORBITAL EXTRACTION</button>`;
 
-    // --- THE FIX: Routing to the proper Planet View ---
+    // --- Routing to the proper Planet View ---
     if (biomeData && biomeData.landable) {
         btnHtml += `<button class="action-button" onclick="landOnStandalonePlanet()" style="border-color: var(--success); color: var(--success); margin-top: 10px;">DESCEND TO SURFACE</button>`;
     } else {
@@ -57,7 +64,7 @@ function openPlanetView(location) {
     }
 
     // --- COLONY BUILDER HOOK ---
-    if (typeof playerHasColonyCharter !== 'undefined' && playerHasColonyCharter && (!playerColony || !playerColony.established)) {
+    if (typeof playerHasColonyCharter !== 'undefined' && playerHasColonyCharter && !isColonyHere) {
         if (biomeData && biomeData.landable) {
             btnHtml += `
                 <button class="action-button" onclick="surveyForColony('${location.name}', '${biomeId}', ${playerX}, ${playerY})" style="border-color: var(--gold-text); color: var(--gold-text); margin-top: 15px;">
@@ -67,7 +74,7 @@ function openPlanetView(location) {
         }
     } else if (isColonyHere) {
         btnHtml += `
-            <button class="action-button" onclick="if(typeof openColonyManagement === 'function') openColonyManagement()" style="border-color: var(--success); color: var(--success); margin-top: 15px; box-shadow: 0 0 10px rgba(0, 170, 170, 0.4);">
+            <button class="action-button" onclick="if(typeof openColonyManagement === 'function') openColonyManagement('${colId}')" style="border-color: var(--success); color: var(--success); margin-top: 15px; box-shadow: 0 0 10px rgba(0, 170, 170, 0.4);">
                 🏢 MANAGE COLONY
             </button>
         `;
@@ -153,62 +160,83 @@ function conductSurfaceScan() {
 }
 
 function renderPlanetView() {
-     const planetView = document.getElementById('planetView');
-     const planet = currentSystemData.planets[selectedPlanetIndex];
+    const planetView = document.getElementById('planetView');
+    const planet = currentSystemData.planets[selectedPlanetIndex];
 
-     // Logic checks for buttons
-     const bioResources = planet.biome.resources.filter(r => BIOLOGICAL_RESOURCES.has(r));
-     const mineralResources = planet.biome.resources.filter(r => !BIOLOGICAL_RESOURCES.has(r));
+    // Logic checks for standard buttons
+    const bioResources = planet.biome.resources.filter(r => BIOLOGICAL_RESOURCES.has(r));
+    const mineralResources = planet.biome.resources.filter(r => !BIOLOGICAL_RESOURCES.has(r));
 
-     const canMine = planet.biome.landable && mineralResources.length > 0;
-     const mineButtonState = canMine ? '' : 'disabled';
-     const mineLabel = canMine ? 'Mine Minerals' : 'No Minerals Detected';
+    const canMine = planet.biome.landable && mineralResources.length > 0;
+    const mineButtonState = canMine ? '' : 'disabled';
+    const mineLabel = canMine ? 'Mine Minerals' : 'No Minerals Detected';
 
-     const canScan = planet.biome.landable && bioResources.length > 0;
-     const scanButtonState = canScan ? '' : 'disabled';
-     const scanLabel = canScan ? 'Scan Lifeforms' : 'No Bio-Signs';
+    const canScan = planet.biome.landable && bioResources.length > 0;
+    const scanButtonState = canScan ? '' : 'disabled';
+    const scanLabel = canScan ? 'Scan Lifeforms' : 'No Bio-Signs';
 
-     // Check if player has at least 1 drone
-     const hasDrone = (playerCargo.MINING_DRONE || 0) > 0;
-     const surveyButtonState = hasDrone ? '' : 'disabled';
-     const surveyLabel = hasDrone ? 'Launch Geo-Survey' : 'Geo-Survey <br><span style="font-size:10px; opacity:0.7">(Requires Drone)</span>';
+    const hasDrone = (playerCargo.MINING_DRONE || 0) > 0;
+    const surveyButtonState = hasDrone ? '' : 'disabled';
+    const surveyLabel = hasDrone ? 'Launch Geo-Survey' : 'Geo-Survey <br><span style="font-size:10px; opacity:0.7">(Requires Drone)</span>';
      
-     // Clean HTML Structure
-     let html = `
+    // --- DYNAMIC COLONY BUTTON LOGIC ---
+    let colonyButtonHtml = '';
+    
+    // Create the unique ID to check if a colony exists right here
+    const colId = `${currentSystemData.x}_${currentSystemData.y}_${planet.name.replace(/\s+/g, '')}`;
+    const colonyHere = playerColonies[colId];
+    const isColonyHere = colonyHere && colonyHere.established;
+
+    if (isColonyHere) {
+        colonyButtonHtml = `
+            <button class="action-button" onclick="openColonyManagement('${colId}')" style="border-color: var(--success); color: var(--success); box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);">
+                🏢 MANAGE COLONY
+            </button>`;
+    } else if (typeof playerHasColonyCharter !== 'undefined' && playerHasColonyCharter && !isColonyHere) {
+        if (planet.biome.landable) {
+            // Find the correct biome ID string to pass to the generator
+            const biomeKey = Object.keys(PLANET_BIOMES).find(key => PLANET_BIOMES[key].name === planet.biome.name) || 'BARREN_ROCK';
+            colonyButtonHtml = `
+                <button class="action-button" onclick="surveyForColony('${planet.name}', '${biomeKey}', ${currentSystemData.x}, ${currentSystemData.y})" style="border-color: var(--gold-text); color: var(--gold-text);">
+                    🚩 ESTABLISH COLONY
+                </button>`;
+        } else {
+             colonyButtonHtml = `
+                <button class="action-button" disabled>
+                    Hostile Environment<br><span style="font-size:10px; opacity:0.7">Cannot Settle Here</span>
+                </button>`;
+        }
+    } else {
+        colonyButtonHtml = `
+            <button class="action-button" disabled>
+                Establish Colony<br><span style="font-size:10px; opacity:0.7">Requires Pioneer Charter</span>
+            </button>`;
+    }
+
+    // Clean HTML Structure
+    let html = `
         <div class="planet-view-content">
             <div class="planet-actions-grid">
-                <button class="action-button" onclick="minePlanet()" ${mineButtonState}>
-                    ${mineLabel}
-                </button>
+                <button class="action-button" onclick="minePlanet()" ${mineButtonState}>${mineLabel}</button>
+                <button class="action-button" onclick="scanPlanetForLife()" ${scanButtonState}>${scanLabel}</button>
                 
-                <button class="action-button" onclick="scanPlanetForLife()" ${scanButtonState}>
-                    ${scanLabel}
-                </button>
+                ${colonyButtonHtml}
                 
-                <button class="action-button" disabled>
-                    Establish Colony <br><span style="font-size:10px; opacity:0.7">(Coming Soon)</span>
-                </button>
-                
-                <button class="action-button" onclick="performGeoSurvey()" ${surveyButtonState}>
-                    ${surveyLabel}
-                </button>
-
-                <button class="action-button full-width-btn" onclick="returnToOrbit()">
-                    &lt;&lt; Return to Orbit
-                </button>
+                <button class="action-button" onclick="performGeoSurvey()" ${surveyButtonState}>${surveyLabel}</button>
+                <button class="action-button full-width-btn" onclick="returnToOrbit()">&lt;&lt; Return to Orbit</button>
             </div>
         </div>
     `;
 
-     planetView.innerHTML = html;
-     renderUIStats();
- }
+    planetView.innerHTML = html;
+    renderUIStats();
+}
 
  function startOrbitalMining() {
     const location = chunkManager.getTile(playerX, playerY);
     if (!location || location.miningDepleted) return;
 
-    // --- THE FIX: Use the engine's master global capacity ---
+    // --- Use the engine's master global capacity ---
     // Prevent mining if the hold is completely full
     if (typeof currentCargoLoad === 'undefined') window.currentCargoLoad = 0; 
     if (currentCargoLoad >= PLAYER_CARGO_CAPACITY) {
@@ -1849,60 +1877,125 @@ function triggerRandomEvent() {
 // ==========================================
 
 function surveyForColony(planetName, biomeId, x, y) {
-    // 1. Consume the Official Charter
-    if (playerCargo["COLONY_CHARTER"] > 0) {
-        playerCargo["COLONY_CHARTER"]--;
-        if (playerCargo["COLONY_CHARTER"] <= 0) delete playerCargo["COLONY_CHARTER"];
-        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-    } else {
+    // 1. Verify the player has the charter BEFORE opening the UI
+    if ((playerCargo["COLONY_CHARTER"] || 0) <= 0) {
         showToast("Charter Required!", "error");
         return;
     }
 
-    // 2. Setup Colony Data
-    let customName = prompt("Enter a name for your new settlement:", "New Earth");
-    if (!customName) customName = "Pioneer Outpost";
+    // 2. Open the custom Naming Modal
+    openGenericModal("OFFICIAL COLONY CHARTER");
+    
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
 
-    playerColony.established = true;
-    playerColony.name = customName;
-    playerColony.x = x;
-    playerColony.y = y;
-    playerColony.planetName = planetName;
-    playerColony.biome = biomeId;
-    playerColony.phase = "OUTPOST";
-    playerColony.population = 0;
-    playerColony.morale = 100;
-    playerColony.suppliesDelivered = { habModules: 0, atmosProcessors: 0 };
+    // Left Pane: Flavor text and icon
+    listEl.innerHTML = `
+        <div style="padding: 20px; text-align: center;">
+            <div style="font-size: 60px; margin-bottom: 15px; filter: drop-shadow(0 0 10px var(--gold-text));">📜</div>
+            <h3 style="color:var(--gold-text); margin-bottom: 10px;">PIONEER CHARTER</h3>
+            <p style="color:var(--item-desc-color); font-size: 13px; line-height: 1.5;">
+                By authority of the Galactic Concord, you are hereby authorized to establish a permanent settlement and governing body on this celestial sphere.
+            </p>
+        </div>
+    `;
 
-    // 3. Update the World Map!
-    // This permanently changes the tile on the galactic map to your colony
-    updateWorldState(x, y, {
+    // Right Pane: The Input Field
+    detailEl.innerHTML = `
+        <div style="padding: 40px 20px; text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+            <h4 style="color:var(--accent-color); margin-bottom: 20px; letter-spacing: 2px;">DESIGNATE SETTLEMENT NAME</h4>
+            
+            <input type="text" id="colonyNameInput" class="seed-input" value="New Earth" placeholder="Enter colony name..." 
+                style="width: 100%; max-width: 300px; font-size: 18px; padding: 15px; border-color: var(--gold-text); color: #FFF; text-align: center; background: #000; outline: none; box-shadow: inset 0 0 10px rgba(255,215,0,0.1);"
+                onkeydown="if(event.key === 'Enter') finalizeColonyCreation('${planetName}', '${biomeId}', ${x}, ${y})">
+                
+            <p style="font-size: 11px; color: var(--item-desc-color); margin-top: 20px; font-style: italic;">
+                This designation will be permanently registered in the Galactic Database.
+            </p>
+        </div>
+    `;
+
+    // Actions Pane
+    actionsEl.innerHTML = `
+        <button class="action-button" style="border-color: var(--gold-text); color: var(--gold-text); box-shadow: 0 0 15px rgba(255,215,0,0.2);" 
+            onclick="finalizeColonyCreation('${planetName}', '${biomeId}', ${x}, ${y})">
+            AUTHORIZE CHARTER
+        </button>
+        <button class="action-button" onclick="closeGenericModal()">CANCEL</button>
+    `;
+    
+    // Quality of Life: Auto-focus the input box and highlight the text so they can just type immediately
+    setTimeout(() => {
+        const input = document.getElementById('colonyNameInput');
+        if (input) {
+            input.focus();
+            input.select(); 
+        }
+    }, 50);
+}
+
+function finalizeColonyCreation(planetName, biomeId, x, y) {
+    // 1. Grab the typed name
+    const inputEl = document.getElementById('colonyNameInput');
+    let customName = inputEl ? inputEl.value.trim() : "";
+    if (!customName) customName = "Pioneer Outpost"; // Fallback if they leave it blank
+
+    // Double-check they still have the item (anti-cheat)
+    if ((playerCargo["COLONY_CHARTER"] || 0) <= 0) return;
+
+    // 2. Consume the Official Charter
+    playerCargo["COLONY_CHARTER"]--;
+    if (playerCargo["COLONY_CHARTER"] <= 0) delete playerCargo["COLONY_CHARTER"];
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+    // 3. Setup Colony Data
+    const colId = `${x}_${y}_${planetName.replace(/\s+/g, '')}`;
+    
+    playerColonies[colId] = {
+        id: colId,
+        established: true,
         name: customName,
-        type: 'location',
-        isColony: true, // Special flag for our engine
-        char: 'C', 
-        customColor: 'var(--success)', // Bright green so it stands out
-        scanFlavor: "A burgeoning pioneer settlement founded by Captain " + playerName + "."
+        x: x,
+        y: y,
+        planetName: planetName,
+        biome: biomeId,
+        phase: "OUTPOST",
+        population: 0,
+        morale: 100,
+        suppliesDelivered: { habModules: 0, atmosProcessors: 0 },
+        treasury: 0,
+        storage: {},
+        lastTick: currentGameDate
+    };
+
+    // 4. Update the World Map!
+    updateWorldState(x, y, {
+        hasColony: true, 
+        customColor: 'var(--success)'
     });
 
     logMessage(`<span style="color:var(--success); font-weight:bold;">COLONY ESTABLISHED: ${customName}</span>`);
     showToast("SETTLEMENT FOUNDED", "success");
     if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
 
-    // 4. Transition UI
-    closeGenericModal();
-    openColonyManagement();
+    // 5. Transition UI straight into the new Management Screen
+    openColonyManagement(colId);
     autoSaveGame();
 }
 
-function openColonyManagement() {
-    openGenericModal(`COLONY: ${playerColony.name.toUpperCase()}`);
+function openColonyManagement(colId) {
+    if (colId) activeColonyId = colId; // Update global context if passed
+    const colony = playerColonies[activeColonyId];
+    if (!colony) return;
+
+    openGenericModal(`COLONY: ${colony.name.toUpperCase()}`);
     
     const detailEl = document.getElementById('genericDetailContent');
     const listEl = document.getElementById('genericModalList');
     const actionsEl = document.getElementById('genericModalActions');
 
-    // 1. Render Infrastructure Goals (Left Pane)
+    // --- 1. LEFT PANE: Infrastructure Goals ---
     listEl.innerHTML = `
         <div style="padding:15px;">
             <h4 style="color:var(--accent-color); margin-top:0; letter-spacing:1px;">DEVELOPMENT GOALS</h4>
@@ -1913,11 +2006,11 @@ function openColonyManagement() {
                 
                 <div style="font-size:13px; display:flex; justify-content:space-between; margin-bottom:8px;">
                     <span style="color:#888;">Hab Modules:</span> 
-                    <span style="color:var(--text-color); font-weight:bold;">${playerColony.suppliesDelivered.habModules}</span>
+                    <span style="color:var(--text-color); font-weight:bold;">${colony.suppliesDelivered.habModules}</span>
                 </div>
                 <div style="font-size:13px; display:flex; justify-content:space-between;">
                     <span style="color:#888;">Atmos Processors:</span> 
-                    <span style="color:var(--text-color); font-weight:bold;">${playerColony.suppliesDelivered.atmosProcessors}</span>
+                    <span style="color:var(--text-color); font-weight:bold;">${colony.suppliesDelivered.atmosProcessors}</span>
                 </div>
                 
                 <div style="margin-top:15px; border-top:1px dashed #444; padding-top:10px; font-size:11px; color:#666;">
@@ -1927,34 +2020,63 @@ function openColonyManagement() {
         </div>
     `;
 
-    // 2. Render Colony Vitals (Right Pane)
+    // --- 2. PREPARE THE VAULT STORAGE HTML ---
+    let storageHtml = "";
+    if (colony.storage && Object.keys(colony.storage).length > 0) {
+        for (const item in colony.storage) {
+            const qty = colony.storage[item];
+            if (qty > 0) {
+                const itemName = typeof COMMODITIES !== 'undefined' && COMMODITIES[item] ? COMMODITIES[item].name : item;
+                storageHtml += `<div style="display:flex; justify-content:space-between; color:var(--text-color); font-size:12px; margin-bottom:4px;"><span>${itemName}:</span> <span>${qty}</span></div>`;
+            }
+        }
+    } else {
+        storageHtml = `<div style="color:#666; font-size:11px; font-style:italic;">No resources generated yet. Requires OPERATIONAL phase.</div>`;
+    }
+
+    // --- 3. RIGHT PANE: Colony Vitals & Vault ---
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 20px;">
             <div style="font-size:60px; margin-bottom:10px; color:var(--success); filter: drop-shadow(0 0 15px rgba(0,255,0,0.3));">🏙️</div>
-            <h3 style="color:var(--success); margin:0 0 5px 0;">${playerColony.name.toUpperCase()}</h3>
+            <h3 style="color:var(--success); margin:0 0 5px 0;">${colony.name.toUpperCase()}</h3>
             
             <div style="display:inline-block; border:1px solid var(--success); padding:4px 8px; border-radius:2px; font-size:10px; color:var(--success); letter-spacing:2px; margin-bottom: 20px;">
-                PHASE: ${playerColony.phase}
+                PHASE: ${colony.phase}
             </div>
             
             <div class="trade-math-area">
                 <div class="trade-stat-row">
                     <span>Population:</span> 
-                    <span style="color:var(--text-color); font-weight:bold; font-size:16px;">${formatNumber(playerColony.population)}</span>
+                    <span style="color:var(--text-color); font-weight:bold; font-size:16px;">${typeof formatNumber === 'function' ? formatNumber(colony.population) : colony.population}</span>
                 </div>
                 <div class="trade-stat-row">
                     <span>Morale:</span> 
-                    <span style="color:${playerColony.morale >= 50 ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${playerColony.morale}%</span>
+                    <span style="color:${colony.morale >= 50 ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${colony.morale}%</span>
                 </div>
                 <div class="trade-stat-row" style="margin-top:5px; border-top:1px solid #333; padding-top:5px;">
                     <span>Biome Base:</span> 
-                    <span style="color:var(--item-desc-color);">${PLANET_BIOMES[playerColony.biome]?.name || 'Unknown'}</span>
+                    <span style="color:var(--item-desc-color);">${typeof PLANET_BIOMES !== 'undefined' && PLANET_BIOMES[colony.biome] ? PLANET_BIOMES[colony.biome].name : 'Unknown'}</span>
                 </div>
+            </div>
+
+            <div style="margin-top: 15px; border: 1px solid var(--border-color); border-radius: 4px; background: rgba(0,0,0,0.4); padding: 15px; text-align: left;">
+                <div style="color:var(--gold-text); font-size:10px; font-weight:bold; letter-spacing:1px; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px;">COLONY VAULT</div>
+                
+                <div style="display:flex; justify-content:space-between; color:var(--text-color); font-size:13px; margin-bottom:10px;">
+                    <span>Tax Revenue:</span> <span style="color:var(--gold-text); font-weight:bold;">${typeof formatNumber === 'function' ? formatNumber(colony.treasury || 0) : (colony.treasury || 0)}c</span>
+                </div>
+                
+                <div style="font-size:10px; color:var(--accent-color); margin-bottom:5px;">RESOURCE STOCKPILE:</div>
+                ${storageHtml}
+
+                <button class="action-button" onclick="withdrawColonyVault()" style="width: 100%; margin-top: 15px; padding: 10px; font-size: 12px; border-color: var(--gold-text); color: var(--gold-text);" ${(colony.treasury > 0 || (colony.storage && Object.keys(colony.storage).length > 0)) ? '' : 'disabled'}>
+                    WITHDRAW TO SHIP
+                </button>
             </div>
         </div>
     `;
 
-    // 3. Setup Delivery Buttons
+    // --- 4. ACTIONS PANE: Delivery Buttons ---
     let btnHtml = ``;
 
     const habs = playerCargo["HAB_MODULE"] || 0;
@@ -1966,7 +2088,8 @@ function openColonyManagement() {
     btnHtml += `<button class="action-button" ${settlers > 0 ? '' : 'disabled'} onclick="deliverColonySupply('SETTLER_MANIFEST')" style="border-color:var(--success); color:var(--success);">AWAKEN SETTLERS (${settlers})</button>`;
     
     // Check if they are inside a system or deep space to route the exit properly
-    const isSystemMap = document.getElementById('systemView').style.display === 'block';
+    const systemView = document.getElementById('systemView');
+    const isSystemMap = systemView && systemView.style.display === 'block';
     
     btnHtml += `
         <button class="action-button leave-btn" onclick="closeGenericModal()" style="margin-top: 15px;">
@@ -1977,20 +2100,75 @@ function openColonyManagement() {
     actionsEl.innerHTML = btnHtml;
 }
 
+function withdrawColonyVault() {
+    const colony = playerColonies[activeColonyId];
+    if (!colony || !colony.established) return;
+    
+    let withdrawnCredits = 0;
+    let withdrawnItems = [];
+
+    // 1. Take Credits
+    if (colony.treasury > 0) {
+        withdrawnCredits = colony.treasury;
+        playerCredits += colony.treasury;
+        colony.treasury = 0;
+    }
+
+    // 2. Take Items (if Cargo space permits)
+    if (colony.storage) {
+        for (const item in colony.storage) {
+            const qty = colony.storage[item];
+            if (qty > 0) {
+                const spaceLeft = typeof PLAYER_CARGO_CAPACITY !== 'undefined' ? PLAYER_CARGO_CAPACITY - currentCargoLoad : 999;
+                const actualTake = Math.min(qty, spaceLeft);
+                
+                if (actualTake > 0) {
+                    playerCargo[item] = (playerCargo[item] || 0) + actualTake;
+                    colony.storage[item] -= actualTake;
+                    if (colony.storage[item] <= 0) delete colony.storage[item];
+                    
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    const itemName = typeof COMMODITIES !== 'undefined' && COMMODITIES[item] ? COMMODITIES[item].name : item;
+                    withdrawnItems.push(`${actualTake}x ${itemName}`);
+                }
+            }
+        }
+    }
+
+    // 3. Feedback
+    let logMsg = `<span style="color:var(--success)">Vault Accessed:</span> `;
+    if (withdrawnCredits > 0) logMsg += `Collected ${typeof formatNumber === 'function' ? formatNumber(withdrawnCredits) : withdrawnCredits}c in local taxes. `;
+    if (withdrawnItems.length > 0) logMsg += `Loaded ${withdrawnItems.join(', ')} into cargo hold.`;
+    
+    if (withdrawnCredits > 0 || withdrawnItems.length > 0) {
+        logMessage(logMsg);
+        if (typeof showToast === 'function') showToast("VAULT EMPTIED", "success");
+        if (typeof soundManager !== 'undefined' && typeof soundManager.playBuy === 'function') soundManager.playBuy();
+        
+        // Refresh UI instantly
+        if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+        openColonyManagement(); 
+        if (typeof autoSaveGame === 'function') autoSaveGame();
+    } else {
+        if (typeof showToast === 'function') showToast("NO YIELD / CARGO FULL", "error");
+    }
+}
+
 function deliverColonySupply(itemId) {
-    if (!playerCargo[itemId] || playerCargo[itemId] <= 0) return;
+    const colony = playerColonies[activeColonyId];
+    if (!colony || !playerCargo[itemId] || playerCargo[itemId] <= 0) return;
 
     // 1. HARD CAP LOGIC (Can't drop colonists without housing!)
     if (itemId === 'SETTLER_MANIFEST') {
-        const maxPop = playerColony.suppliesDelivered.habModules * 50;
-        if (playerColony.population + 50 > maxPop) {
+        const maxPop = colony.suppliesDelivered.habModules * 50;
+        if (colony.population + 50 > maxPop) {
             logMessage(`<span style="color:var(--danger)">Cannot awaken settlers. Insufficient Hab Modules for housing!</span>`);
-            showToast("HOUSING FULL", "error");
+            if (typeof showToast === 'function') showToast("HOUSING FULL", "error");
             
             // Penalize morale for attempting to overcrowd
-            playerColony.morale = Math.max(0, playerColony.morale - 5); 
+            colony.morale = Math.max(0, colony.morale - 5); 
             openColonyManagement();
-            if (typeof soundManager !== 'undefined') soundManager.playError();
+            if (typeof soundManager !== 'undefined' && typeof soundManager.playError === 'function') soundManager.playError();
             return; // Stop here, item is NOT consumed
         }
     }
@@ -2002,29 +2180,131 @@ function deliverColonySupply(itemId) {
 
     // 3. Apply to colony
     if (itemId === 'HAB_MODULE') {
-        playerColony.suppliesDelivered.habModules++;
+        colony.suppliesDelivered.habModules++;
         logMessage(`Delivered 1 Hab Module. Housing capacity increased.`);
     } else if (itemId === 'ATMOS_PROCESSOR') {
-        playerColony.suppliesDelivered.atmosProcessors++;
+        colony.suppliesDelivered.atmosProcessors++;
         logMessage(`Delivered 1 Atmos Processor. Air quality improving.`);
     } else if (itemId === 'SETTLER_MANIFEST') {
-        playerColony.population += 50;
+        colony.population += 50;
         logMessage(`<span style="color:var(--success)">50 Settlers awakened from cryo-sleep!</span>`);
-        GameBus.emit('XP_GAINED', 100); // 100 XP reward for advancing humanity
+        if (typeof GameBus !== 'undefined') GameBus.emit('XP_GAINED', 100); // 100 XP reward for advancing humanity
     }
 
     // 4. Progression / Level Up Logic
-    if (playerColony.phase === "OUTPOST" && playerColony.suppliesDelivered.habModules >= 2 && playerColony.suppliesDelivered.atmosProcessors >= 1) {
-        playerColony.phase = "POPULATED";
+    if (colony.phase === "OUTPOST" && colony.suppliesDelivered.habModules >= 2 && colony.suppliesDelivered.atmosProcessors >= 1) {
+        colony.phase = "POPULATED";
         logMessage(`<span style="color:var(--accent-color); font-weight:bold;">Colony phase upgraded to: POPULATED</span>`);
-        GameBus.emit('XP_GAINED', 500); // Big reward!
-    } else if (playerColony.phase === "POPULATED" && playerColony.population >= 200 && playerColony.suppliesDelivered.atmosProcessors >= 3) {
-        playerColony.phase = "OPERATIONAL";
+        if (typeof GameBus !== 'undefined') GameBus.emit('XP_GAINED', 500); // Big reward!
+    } else if (colony.phase === "POPULATED" && colony.population >= 200 && colony.suppliesDelivered.atmosProcessors >= 3) {
+        colony.phase = "OPERATIONAL";
         logMessage(`<span style="color:var(--gold-text); font-weight:bold;">Colony phase upgraded to: OPERATIONAL. Settlement is now a self-sustaining hub!</span>`);
-        GameBus.emit('XP_GAINED', 1500); // Massive reward!
+        if (typeof GameBus !== 'undefined') GameBus.emit('XP_GAINED', 1500); // Massive reward!
     }
 
-    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    if (typeof soundManager !== 'undefined' && typeof soundManager.playBuy === 'function') soundManager.playBuy();
     openColonyManagement(); // Refresh UI instantly
-    autoSaveGame();
+    if (typeof autoSaveGame === 'function') autoSaveGame();
+}
+
+// ==========================================
+// --- COLONY EVENTS & EMERGENCIES ---
+// ==========================================
+
+function triggerColonyEvent(colId) {
+    const colony = playerColonies[colId];
+    if (!colony) return;
+
+    // The Penalty Math (Low but non-zero consequence)
+    const stolenCredits = Math.floor((colony.treasury || 0) * 0.15); // 15% of local vault
+    const moraleHit = 5;
+
+    // Is the player busy? (Combat, Trading, or another menu)
+    const isBusy = currentTradeContext || currentCombatContext || currentOutfitContext || currentMissionContext || currentEncounterContext || (document.getElementById('genericModalOverlay') && document.getElementById('genericModalOverlay').style.display === 'flex');
+
+    // If they are busy, we don't interrupt them with a popup. It auto-resolves as ignored.
+    if (isBusy) {
+        colony.treasury -= stolenCredits;
+        colony.morale = Math.max(0, colony.morale - moraleHit);
+        logMessage(`<span style="color:var(--warning)">[DISTRESS]</span> ${colony.name} [${colony.x}, ${-colony.y}] was raided by pirates! Lost ${stolenCredits}c from the local vault.`);
+        if (typeof showToast === 'function') showToast("COLONY RAIDED", "warning");
+        return;
+    }
+
+    // --- OPEN TRANSMISSION UI ---
+    openGenericModal("EMERGENCY TRANSMISSION");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Cost to hire mercenaries scales slightly with population
+    const mercCost = Math.max(250, Math.floor(colony.population * 1.5));
+
+    listEl.innerHTML = `
+        <div style="padding: 20px; text-align: center;">
+            <div style="font-size: 60px; margin-bottom: 15px; animation: pulse-warning 1s infinite;">📡</div>
+            <h3 style="color:var(--danger); margin-bottom: 5px;">DISTRESS SIGNAL</h3>
+            <div style="color:var(--item-desc-color); font-size:11px; letter-spacing:1px; margin-bottom: 10px;">ORIGIN: ${colony.name.toUpperCase()}</div>
+            <div style="color:var(--accent-color); font-size:14px; font-weight:bold; letter-spacing:2px; padding: 5px; border: 1px dashed var(--accent-color);">COORDS: [${colony.x}, ${-colony.y}]</div>
+        </div>
+    `;
+
+    detailEl.innerHTML = `
+        <div style="padding: 15px;">
+            <h3 style="color:var(--text-color); margin-top:0;">PIRATE RAID DETECTED</h3>
+            <p style="font-size: 13px; color:var(--item-desc-color); line-height: 1.5;">
+                "Commander! A cartel raiding party just dropped out of warp near the settlement. They are demanding tribute from the colony vault. Local militias are holding them off, but they won't last long without support!"
+            </p>
+            
+            <div style="margin-top: 20px; background: rgba(0,0,0,0.3); border-left: 3px solid var(--danger); padding: 15px;">
+                <div style="font-size:10px; color:var(--danger); font-weight:bold; letter-spacing:1px; margin-bottom:8px;">THREAT PROJECTION</div>
+                <div style="font-size:12px; color:#aaa;">If ignored, pirates will breach the vault:</div>
+                <div style="color:var(--text-color); font-size:13px; margin-top:5px;">
+                    • Loot <span style="color:var(--danger); font-weight:bold;">${stolenCredits}c</span> from local taxes<br>
+                    • Colony Morale decreases by <span style="color:var(--danger); font-weight:bold;">${moraleHit}%</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Build Actions
+    let btnHtml = ``;
+
+    // Option 1: Pay Mercs
+    if (playerCredits >= mercCost) {
+        btnHtml += `<button class="action-button" onclick="resolveColonyEvent('${colId}', 'MERCENARIES', ${mercCost})" style="border-color:var(--gold-text); color:var(--gold-text); box-shadow: 0 0 10px rgba(255,215,0,0.2);">WIRE CONCORD MERCS (${mercCost}c)</button>`;
+    } else {
+        btnHtml += `<button class="action-button" disabled style="border-color:#555; color:#555;">WIRE CONCORD MERCS (${mercCost}c) - INSUFFICIENT FUNDS</button>`;
+    }
+
+    // Option 2: Ignore
+    btnHtml += `<button class="action-button danger-btn" onclick="resolveColonyEvent('${colId}', 'IGNORE', 0)">IGNORE SIGNAL (Let them loot)</button>`;
+
+    actionsEl.innerHTML = btnHtml;
+}
+
+function resolveColonyEvent(colId, action, cost) {
+    const colony = playerColonies[colId];
+    if (!colony) { closeGenericModal(); return; }
+
+    if (action === 'MERCENARIES') {
+        playerCredits -= cost;
+        logMessage(`<span style="color:var(--success)">[SECURE]</span> Mercenaries contracted. The pirate raid at ${colony.name} [${colony.x}, ${-colony.y}] was repelled!`);
+        if (typeof showToast === 'function') showToast("RAID REPELLED", "success");
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    } else if (action === 'IGNORE') {
+        const stolenCredits = Math.floor((colony.treasury || 0) * 0.15);
+        const moraleHit = 5;
+        
+        colony.treasury -= stolenCredits;
+        colony.morale = Math.max(0, colony.morale - moraleHit);
+        
+        logMessage(`<span style="color:var(--danger)">[BREACH]</span> ${colony.name} [${colony.x}, ${-colony.y}] was looted! Lost ${stolenCredits}c and morale dropped.`);
+        if (typeof showToast === 'function') showToast("COLONY RAIDED", "error");
+        if (typeof triggerHaptic === 'function') triggerHaptic([50, 100, 50]);
+    }
+
+    if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+    if (typeof autoSaveGame === 'function') autoSaveGame();
+    closeGenericModal();
 }
