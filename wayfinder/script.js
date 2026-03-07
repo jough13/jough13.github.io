@@ -390,35 +390,11 @@ function getDef(category, id) {
     return GameRegistry[category][id] || null;
 }
 
-// ==========================================
 // --- COLONY BUILDER STATE ---
-// ==========================================
-
-// Tracks if the player has legally purchased the right to settle
 let playerHasColonyCharter = false; 
 
-// The main object tracking the player's settlement
-let playerColony = {
-    established: false,
-    name: "Unclaimed Settlement",
-    x: null,
-    y: null,
-    planetName: null,
-    biome: null,
-    
-    // PROGRESSION PHASES: "SURVEYED" -> "OUTPOST" -> "POPULATED" -> "OPERATIONAL"
-    phase: "NONE", 
-    
-    population: 0,
-    morale: 100,
-    
-    // Track what supplies have been delivered to construct the base
-    suppliesDelivered: {
-        habModules: 0,
-        atmosProcessors: 0
-    }
-};
-
+// Dictionary to store multiple colonies
+let playerColonies = {};
 
 // --- CORE SYSTEM LISTENERS ---
 // Whenever cargo changes, automatically recalculate the load and update the UI
@@ -434,7 +410,7 @@ GameBus.on('CARGO_MODIFIED', () => {
         }
     }
     
-    // 2. The Invisible Quest Hook
+    // 2. The Invisible Quest Hooks & Lore Unlocks
     // If they have the charter in their hold, but haven't formally started the quest:
     if (playerCargo["COLONY_CHARTER"] > 0 && !playerHasColonyCharter) {
         playerHasColonyCharter = true;
@@ -443,6 +419,14 @@ GameBus.on('CARGO_MODIFIED', () => {
         if (typeof showToast === 'function') showToast("CONCORD PIONEER STATUS GRANTED", "success");
         logMessage("<span style='color:var(--gold-text); font-weight:bold;'>QUEST UPDATE:</span> You are now a legally recognized Pioneer of the Concord Dominion. Find a habitable world to establish your settlement.");
         if (typeof soundManager !== 'undefined' && soundManager.playBuy) soundManager.playBuy();
+        
+        // Unlock the lore!
+        unlockLoreEntry("TECH_COLONY_CHARTER");
+    }
+
+    // Check for Encrypted Engrams
+    if (playerCargo["ENCRYPTED_ENGRAM"] > 0 && typeof discoveredLoreEntries !== 'undefined' && !discoveredLoreEntries.has("COMMODITY_ENCRYPTED_ENGRAM")) {
+        unlockLoreEntry("COMMODITY_ENCRYPTED_ENGRAM");
     }
 
     // 3. Update the UI
@@ -1875,6 +1859,15 @@ function renderSystemMap() {
             const worldX = Math.floor(camX + x);
             const worldY = Math.floor(camY + y);
             
+            const tileData = chunkManager.getTile(worldX, worldY);
+
+            // --- OPTIMIZATION: LAZY CACHING ---
+            // Calculate the heavy Sine/Cosine math ONCE and save it to the tile in memory!
+            if (typeof tileData.factionCache === 'undefined') {
+                tileData.factionCache = getFactionAt(worldX, worldY);
+                tileData.hazardCache = getHazardType(worldX, worldY);
+            }
+            
             // --- FACTION LAYER ---
             const factionKey = getFactionAt(worldX, worldY);
             const faction = FACTIONS[factionKey];
@@ -1955,7 +1948,7 @@ function renderSystemMap() {
                 continue; 
             }
 
-            // Standard Tile Colors 
+            // Standard Tile Colors (With Light Mode Contrast Adjustments)
             switch (tileChar) {
                 case STAR_CHAR_VAL: 
                     const phase = worldX + (worldY * 3); 
@@ -1979,26 +1972,26 @@ function renderSystemMap() {
                         ctx.shadowColor = starColor;
                     }
                     break;
-                case PLANET_CHAR_VAL: ctx.fillStyle = '#88CCFF'; break;
+                case PLANET_CHAR_VAL: ctx.fillStyle = isLightMode ? '#0066CC' : '#88CCFF'; break;
                 case STARBASE_CHAR_VAL: 
                     ctx.save();
                     const pulse = (Math.sin(Date.now() / 300) + 1) / 2; 
                     ctx.shadowBlur = 15 + (pulse * 15); 
-                    ctx.shadowColor = '#00FFFF'; 
-                    ctx.fillStyle = '#00FFFF';
+                    ctx.shadowColor = isLightMode ? '#008888' : '#00FFFF'; 
+                    ctx.fillStyle = isLightMode ? '#008888' : '#00FFFF';
                     const sizeMod = 1.0 + (pulse * 0.1); 
                     ctx.font = `bold ${TILE_SIZE * 1.3 * sizeMod}px 'Orbitron', monospace`;
                     ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
                     ctx.restore(); 
                     break;
-                case OUTPOST_CHAR_VAL: ctx.fillStyle = '#AADD99'; break;
-                case ASTEROID_CHAR_VAL: ctx.fillStyle = '#FFAA66'; break;
-                case NEBULA_CHAR_VAL: ctx.fillStyle = '#DD99FF'; break;
-                case DERELICT_CHAR_VAL: ctx.fillStyle = '#88AACC'; break;
-                case ANOMALY_CHAR_VAL: ctx.fillStyle = '#FF33FF'; break;
-                case WORMHOLE_CHAR_VAL: ctx.fillStyle = '#FFB800'; break;
-                case NEXUS_CHAR_VAL: ctx.fillStyle = '#40E0D0'; break;
-                case PIRATE_CHAR_VAL: ctx.fillStyle = '#FF5555'; break;
+                case OUTPOST_CHAR_VAL: ctx.fillStyle = isLightMode ? '#228822' : '#AADD99'; break;
+                case ASTEROID_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC6600' : '#FFAA66'; break;
+                case NEBULA_CHAR_VAL: ctx.fillStyle = isLightMode ? '#8822BB' : '#DD99FF'; break;
+                case DERELICT_CHAR_VAL: ctx.fillStyle = isLightMode ? '#336699' : '#88AACC'; break;
+                case ANOMALY_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC00CC' : '#FF33FF'; break;
+                case WORMHOLE_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC8800' : '#FFB800'; break;
+                case NEXUS_CHAR_VAL: ctx.fillStyle = isLightMode ? '#008888' : '#40E0D0'; break;
+                case PIRATE_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC0000' : '#FF5555'; break;
                 case EMPTY_SPACE_CHAR_VAL:
                 default:
                     ctx.fillStyle = isLightMode ? '#444455' : '#909090';
@@ -2122,13 +2115,17 @@ function renderSystemMap() {
     }
 
     // --- 6. Update UI Stats ---
-    document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
-    if (typeof renderUIStats === 'function') renderUIStats();
+    // OPTIMIZATION: Only update DOM text if we aren't currently blasting the canvas with 60fps animations
+    if (!particleAnimationId) {
+        document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
+        if (typeof renderUIStats === 'function') renderUIStats();
+    }
 }
 
 // ==========================================
 // --- QoL: RE-ENTER / DOCK AT CURRENT TILE ---
 // ==========================================
+
 function reEnterCurrentTile() {
     // 1. Only allow this if we are actively flying on the map
     if (typeof currentGameState !== 'undefined' && currentGameState !== 'galactic_map') {
@@ -2273,6 +2270,7 @@ function getCombinedLocationData(x, y) {
  // ==========================================
 // --- MASTER GAME TICK ENGINE ---
 // ==========================================
+
 function processGameTick(timeAmount, isMovement = false) {
     // 1. Advance the universal clock (Shields, K'tharr regen, etc.)
     if (typeof advanceGameTime === 'function') advanceGameTime(timeAmount);
@@ -2325,6 +2323,48 @@ function processGameTick(timeAmount, isMovement = false) {
             removeEnemyAt(playerX, playerY);
             return true; // Return true to indicate the tick ended in combat!
         }
+    }
+
+    // --- 8. COLONY PRODUCTION ENGINE (The Tycoon Update) ---
+    if (typeof playerColonies !== 'undefined') {
+        Object.values(playerColonies).forEach(colony => {
+            if (colony.established) {
+                // Initialize storage arrays if they don't exist yet
+                if (typeof colony.treasury === 'undefined') colony.treasury = 0;
+                if (typeof colony.storage === 'undefined') colony.storage = {};
+                if (typeof colony.lastTick === 'undefined') colony.lastTick = currentGameDate;
+
+                // Produce passive income every 1.0 Stardates
+                if (currentGameDate - colony.lastTick >= 1.0) {
+                    colony.lastTick = currentGameDate;
+
+                    // Phase 2: Populated -> Generates Taxes
+                    if (colony.phase === 'POPULATED' || colony.phase === 'OPERATIONAL') {
+                        const taxRate = 0.5; // Credits per citizen
+                        const moraleMult = colony.morale / 100;
+                        const taxes = Math.floor(colony.population * taxRate * moraleMult);
+                        colony.treasury += taxes;
+                    }
+
+                    // Phase 3: Operational -> Generates Biome Resources
+                    if (colony.phase === 'OPERATIONAL') {
+                        const biomeDef = typeof PLANET_BIOMES !== 'undefined' ? PLANET_BIOMES[colony.biome] : null;
+                        if (biomeDef && biomeDef.resources.length > 0) {
+                            // Pick a random resource native to the biome
+                            const res = biomeDef.resources[Math.floor(Math.random() * biomeDef.resources.length)];
+                            const amount = Math.floor(Math.random() * 3) + 1 + Math.floor(colony.population / 100);
+                            colony.storage[res] = (colony.storage[res] || 0) + amount;
+                        }
+                    }
+
+                    // --- RARE COLONY EVENTS ---
+                    // 0.2% chance per 1.0 stardate to trigger an event if they have population
+                    if ((colony.phase === 'POPULATED' || colony.phase === 'OPERATIONAL') && Math.random() < 0.002) {
+                        if (typeof triggerColonyEvent === 'function') triggerColonyEvent(colony.id);
+                    }
+                }
+            }
+        });
     }
 
     return false; // Tick finished peacefully
@@ -2437,6 +2477,18 @@ function handleInteraction() {
             if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
             
             openXerxesView();
+            return; 
+        }
+
+        // --- COLONY INTERCEPT ---
+        if (location.isColony) {
+            if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+            if (typeof showToast === 'function') showToast(`WELCOME TO ${location.name.toUpperCase()}`, "success");
+
+            availableActions.push({ label: `Manage Colony`, key: 'e', onclick: openColonyManagement });
+            if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
+
+            openColonyManagement();
             return; 
         }
 
@@ -2561,6 +2613,21 @@ function handleInteraction() {
                     bM += `<span style="color:var(--danger); font-weight:bold;">WARNING: ${starData.hazard} DETECTED.</span>`;
                 }
 
+                // --- MULTI-COLONY BIFURCATION ---
+                const localColonies = Object.values(playerColonies).filter(c => c.x === playerX && c.y === playerY);
+
+                if (localColonies.length > 0) {
+                    bM += `\n<span style="color:var(--success); font-weight:bold;">[!] SETTLEMENTS DETECTED: ${localColonies.length}</span>`;
+                    localColonies.forEach((col, idx) => {
+                        availableActions.push({ 
+                            label: `Manage: ${col.name}`, 
+                            // Bind the first colony to '1', the second to '2', etc.
+                            key: (idx + 1).toString(), 
+                            onclick: () => openColonyManagement(col.id) 
+                        });
+                    });
+                }
+
                 // 1. Evaluate / Scan Star 
                 const hasScanned = typeof discoveredLocations !== 'undefined' && discoveredLocations.has(`STAR_SCAN_${starId}`);
                 availableActions.push({ 
@@ -2579,9 +2646,9 @@ function handleInteraction() {
                     } 
                 });
                 
-                // 3. Deep Scoop
+                // 3. Fuel Scoop
                 availableActions.push({ 
-                    label: `Deep Scoop (${starData.scoopYield} Fuel)`, 
+                    label: `Fuel Scoop (${starData.scoopYield} Fuel)`, 
                     key: 'h', 
                     onclick: () => {
                         if (starData.class === "O" || starData.class === "B") {
@@ -2915,6 +2982,8 @@ function renderLevelUpScreen() {
 
 function selectPerk(perkId) {
     playerPerks.add(perkId);
+
+    unlockLoreEntry("TECH_CYBER_AUGMENTATION");
     
     logMessage(`<span style="color:#FFD700">UPGRADE INSTALLED: ${PERKS_DATABASE[perkId].name}</span>`);
     showToast(`${PERKS_DATABASE[perkId].name} Acquired!`, 'success');
@@ -3074,25 +3143,6 @@ function foundColony() { logMessage("<span style='color:var(--success)'>COLONY E
     return nearest || { name: "Starbase Alpha", x: MAP_WIDTH - 7, y: MAP_HEIGHT - 5 };
 }
 
-function findNearestStation(px, py) {
-    let nearest = null;
-    let minDist = Infinity;
-
-    if (typeof LOCATIONS_DATA !== 'undefined') {
-        for (const key in LOCATIONS_DATA) {
-            const loc = LOCATIONS_DATA[key];
-            if (loc.type === '#' || loc.type === 'O' || loc.type === OUTPOST_CHAR_VAL) {
-                const dist = Math.sqrt(Math.pow(px - loc.coords.x, 2) + Math.pow(py - loc.coords.y, 2));
-                if (dist < minDist) {
-                    minDist = dist;
-                    nearest = { name: key, x: loc.coords.x, y: loc.coords.y };
-                }
-            }
-        }
-    }
-    return nearest || { name: "Starbase Alpha", x: MAP_WIDTH - 7, y: MAP_HEIGHT - 5 };
-}
-
 function activateDistressBeacon() {
     if (playerFuel > BASE_FUEL_PER_MOVE * 3) {
         logMessage("Fuel systems operational. Save the beacon for an actual emergency.");
@@ -3173,6 +3223,7 @@ function executeRescueSequence() {
 }
 
 function showFuelRatRescueModal() {
+    unlockLoreEntry("FACTION_FUEL_RATS");
     openGenericModal("INCOMING TRANSMISSION");
     
     const listEl = document.getElementById('genericModalList');
@@ -3484,11 +3535,12 @@ function handleCombatInput(key) {
                 }
                 return true;
             case 'c':
+                // Fallback to Delivery Missions
                 if (playerActiveMission && playerActiveMission.type === "DELIVERY") {
-                    handleCompleteDelivery();
+                    if (typeof handleCompleteDelivery === 'function') handleCompleteDelivery();
                     return true;
                 }
-                break; 
+                break;
             case 'g':
                 if (playerActiveMission && playerActiveMission.isComplete && currentLocation.name === playerActiveMission.giver) {
                     grantMissionRewards();
@@ -4052,7 +4104,7 @@ function initializeDOMElements() {
         if (typeof currentGameState !== 'undefined' && 
             currentGameState !== 'title_screen' && 
             currentGameState !== 'GAME_OVER') { 
-            performSave('wayfinderAutoSave');
+            performSave('AUTO'); // Safely pass the correct string
         }
     });
 
@@ -4097,9 +4149,14 @@ function closeTradeModal() {
 // === SAVE SYSTEM & AUTO-LOGIN LOGIC ===
 // ==========================================
 
+let currentCampaignId = null;
+
 // --- START GAME (Starts Autosave Timer) ---
 function startGame(seedString) {
      playerName = document.getElementById('playerNameInput').value || "Captain";
+
+     // Generate a unique ID for this specific character/playthrough
+     currentCampaignId = "cmp_" + Date.now();
 
      if (seedString && !isNaN(parseInt(seedString))) {
          WORLD_SEED = parseInt(seedString);
@@ -4132,39 +4189,44 @@ function startGame(seedString) {
 
 // --- SAVE FUNCTIONS ---
 
-// 1. Manual Save (Attached to Button)
+// 1. Manual Save
 function saveGame() {
-    performSave('wayfinderSaveData');
+    performSave('MANUAL');
     logMessage("Game Saved Manually.");
     showToast("GAME PROGRESS SAVED", "success");
 }
 
-// 2. Auto Save (Internal)
+// 2. Auto Save
 function autoSaveGame() {
-    // Only autosave if we are actually playing (not dead, not in title)
     if (currentGameState === GAME_STATES.TITLE_SCREEN || playerHull <= 0) return;
-    
-    performSave('wayfinderAutoSave');
+    performSave('AUTO');
     console.log("Autosave complete.");
 }
 
-// 3. Shared Save Logic
-function performSave(storageKey) {
+// 3. Shared Save Logic (Multi-Profile Support)
+function performSave(saveType) {
     if (typeof performGarbageCollection === 'function') performGarbageCollection();
+    
+    // Fallback just in case an old save didn't have an ID
+    if (!currentCampaignId) currentCampaignId = "cmp_" + Date.now();
+
+    // Force cleanup of the type to prevent glitchy badges
+    const safeSaveType = (saveType === 'MANUAL') ? 'MANUAL' : 'AUTO';
+
     const gameState = {
         version: GAME_VERSION,
-        realTimestamp: Date.now(), // Store real time for the UI
+        realTimestamp: Date.now(),
+        campaignId: currentCampaignId, 
+        saveType: safeSaveType,        // Safely tracked
         
         // Stats
         playerX, playerY, playerFuel, playerCredits, playerShields, playerHull,
         playerNotoriety, playerLevel, playerXP, playerName, playerPfp, playerCrew,
-
         playerPerks: Array.from(playerPerks), 
         
-        // --- COLONY BUILDER STATE ---
+        // Colony Builder State
         playerHasColonyCharter: typeof playerHasColonyCharter !== 'undefined' ? playerHasColonyCharter : false,
-        playerColony: typeof playerColony !== 'undefined' ? playerColony : null,
-        // ----------------------------
+        playerColonies: typeof playerColonies !== 'undefined' ? playerColonies : {},
         
         // Inventory & World
         playerShip, playerCargo,
@@ -4186,7 +4248,9 @@ function performSave(storageKey) {
     };
 
     try {
-        localStorage.setItem(storageKey, JSON.stringify(gameState));
+        // Save to distinct slots so autosaves don't overwrite manual saves!
+        const slotPrefix = safeSaveType === 'MANUAL' ? 'wayfinder_manual_' : 'wayfinder_auto_';
+        localStorage.setItem(slotPrefix + currentCampaignId, JSON.stringify(gameState));
     } catch (error) {
         console.error("Save failed:", error);
         logMessage("<span style='color:red'>Save Failed: Storage Full!</span>");
@@ -4268,12 +4332,16 @@ function quitToTitle() {
 // --- LOAD LOGIC ---
 
 function loadGame() {
-    // This button is now "Load Manual Save" inside the game menu
-    const savedString = localStorage.getItem('wayfinderSaveData');
+    // Look for the current campaign's specific manual save first
+    let savedString = localStorage.getItem('wayfinder_manual_' + currentCampaignId);
+
+    // Legacy fallback just in case
+    if (!savedString) savedString = localStorage.getItem('wayfinderSaveData');
+
     if (savedString) {
         loadGameData(savedString);
     } else {
-        logMessage("No manual save found.");
+        logMessage("No manual save found for this campaign.");
     }
 }
 
@@ -4283,6 +4351,8 @@ function loadGameData(jsonString) {
 
     try {
         const savedState = JSON.parse(jsonString);
+
+        currentCampaignId = savedState.campaignId || ("cmp_" + Date.now()); 
         
         if (savedState.version !== GAME_VERSION) {
             console.warn(`Version mismatch: ${savedState.version} vs ${GAME_VERSION}`);
@@ -4318,20 +4388,18 @@ function loadGameData(jsonString) {
         currentStationBounties = savedState.currentStationBounties || [];
         activeMarketTrend = savedState.activeMarketTrend || null;
 
-        // --- RESTORE COLONY BUILDER STATE ---
+        // --- RESTORE COLONY BUILDER STATE (Tycoon Update) ---
         playerHasColonyCharter = savedState.playerHasColonyCharter || false;
-        playerColony = savedState.playerColony || {
-            established: false,
-            name: "Unclaimed Settlement",
-            x: null,
-            y: null,
-            planetName: null,
-            biome: null,
-            phase: "NONE", 
-            population: 0,
-            morale: 100,
-            suppliesDelivered: { habModules: 0, atmosProcessors: 0 }
-        };
+        playerColonies = savedState.playerColonies || {};
+
+        // MIGRATION: Convert old single-colony saves to the new dictionary format
+        if (savedState.playerColony && savedState.playerColony.established && Object.keys(playerColonies).length === 0) {
+            const oldCol = savedState.playerColony;
+            const safeName = oldCol.planetName ? oldCol.planetName.replace(/\s+/g, '') : 'Unknown';
+            const oldId = `${oldCol.x}_${oldCol.y}_${safeName}`;
+            oldCol.id = oldId;
+            playerColonies[oldId] = oldCol;
+        }
 
         currentGameDate = savedState.currentGameDate;
         
@@ -4467,8 +4535,22 @@ document.addEventListener('DOMContentLoaded', () => {
 // Updated function accepts 'forceMenu' to prevent auto-login after deleting a save
 function checkSaveStateAndRenderTitle(forceMenu = false) {
     const autoLoginEnabled = localStorage.getItem('wayfinderAutoLogin') === 'true';
-    const manualSave = localStorage.getItem('wayfinderSaveData');
-    const autoSave = localStorage.getItem('wayfinderAutoSave');
+
+    // 1. Gather ALL saves from the browser
+    let allSaves = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        // Includes legacy keys to seamlessly migrate your current game!
+        if (key.startsWith('wayfinder_manual_') || key.startsWith('wayfinder_auto_') || key.startsWith('wayfinder_save_') || key === 'wayfinderSaveData' || key === 'wayfinderAutoSave') {
+            try {
+                const parsed = JSON.parse(localStorage.getItem(key));
+                allSaves.push({ key: key, raw: localStorage.getItem(key), data: parsed });
+            } catch(e) {}
+        }
+    }
+
+    // 2. Sort by most recently played
+    allSaves.sort((a, b) => (b.data.realTimestamp || 0) - (a.data.realTimestamp || 0));
 
     // Get Elements
     const titleOverlay = document.getElementById('titleOverlay');
@@ -4476,15 +4558,12 @@ function checkSaveStateAndRenderTitle(forceMenu = false) {
     const saveSelectCont = document.getElementById('saveSelectContainer');
     const bootEl = document.getElementById('systemBoot');
 
-    // 1. AUTO-LOGIN (Fast Track)
-    // If auto-login is on, we skip the delay so you get into the game fast.
-    if (!forceMenu && autoLoginEnabled && (autoSave || manualSave)) {
-        console.log("Auto-login enabled. Loading...");
+    // 3. AUTO-LOGIN (Loads the most recently played character)
+    if (!forceMenu && autoLoginEnabled && allSaves.length > 0) {
+        console.log("Auto-login enabled. Loading most recent commander...");
         try {
-            const targetSave = autoSave || manualSave; 
             initializeGame();
-            loadGameData(targetSave);
-            
+            loadGameData(allSaves[0].raw); // Load the newest one
             if (titleOverlay) {
                 titleOverlay.style.display = 'none';
                 titleOverlay.style.opacity = '0';
@@ -4496,28 +4575,20 @@ function checkSaveStateAndRenderTitle(forceMenu = false) {
         }
     }
 
-    // 2. CALCULATE DELAY
-    // If booting up (forceMenu is false), wait 3 seconds for effect.
-    // If just refreshing after a delete (forceMenu is true), wait 2 seconds.
     const loadingDelay = forceMenu ? 2000 : 3000;
 
-    // 3. START THE TIMER
     setTimeout(() => {
-        // Hide the "Initializing..." text
         if (bootEl) bootEl.style.display = 'none';
 
-        // Show the correct menu
-        if (manualSave || autoSave) {
-            // Has Saves -> Show Save Select
+        if (allSaves.length > 0) {
             if (newGameCont) newGameCont.style.display = 'none';
             if (saveSelectCont) {
                 saveSelectCont.style.display = 'block';
-                renderSaveSlots(manualSave, autoSave);
+                renderSaveSlots(allSaves);
             }
         } else {
-            // No Saves -> Play the Intro Video instead of jumping straight to creation!
             if (saveSelectCont) saveSelectCont.style.display = 'none';
-            playIntroVideo(); 
+            if (typeof playIntroVideo === 'function') playIntroVideo(); 
         }
     }, loadingDelay);
 }
@@ -4534,68 +4605,53 @@ function deleteSave(key) {
     );
 }
 
-function renderSaveSlots(manualJson, autoJson) {
+function renderSaveSlots(savesArray) {
     const list = document.getElementById('saveList');
     list.innerHTML = '';
 
-    const createCard = (json, type) => {
-        try {
-            const data = JSON.parse(json);
-            
-            // 1. Create the Main Card Container
-            const card = document.createElement('div');
-            card.className = 'save-slot-card';
-            
-            // 2. Create the "Clickable" Content Area (Load Game)
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'save-card-content';
-            
-            const typeLabel = type === 'AUTO' ? '<span class="save-type-badge auto-badge">AUTOSAVE</span>' : '<span class="save-type-badge">MANUAL</span>';
-            const dateStr = new Date(data.realTimestamp || Date.now()).toLocaleDateString() + " " + new Date(data.realTimestamp || Date.now()).toLocaleTimeString();
-            const pfpSrc = data.playerPfp || 'assets/pfp_01.png';
+    savesArray.forEach(saveObj => {
+        const data = saveObj.data;
+        const type = data.saveType || 'AUTO';
+        
+        const card = document.createElement('div');
+        card.className = 'save-slot-card';
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'save-card-content';
+        
+        const typeLabel = type === 'AUTO' ? '<span class="save-type-badge auto-badge">AUTOSAVE</span>' : '<span class="save-type-badge">MANUAL</span>';
+        const dateStr = new Date(data.realTimestamp || Date.now()).toLocaleDateString() + " " + new Date(data.realTimestamp || Date.now()).toLocaleTimeString();
+        const pfpSrc = data.playerPfp || 'assets/pfp_01.png';
 
-            contentDiv.innerHTML = `
-                <img src="${pfpSrc}" class="save-pfp-icon" alt="Cmdr">
-                <div class="save-info">
-                    <div class="save-name">${data.playerName} ${typeLabel}</div>
-                    <div class="save-meta">Lvl ${data.playerLevel} | ${data.currentSectorName || 'Deep Space'}</div>
-                    <div class="save-meta">${dateStr}</div>
-                </div>
-            `;
-            
-            // Load Game on clicking the content
-            contentDiv.onclick = () => {
-                initializeGame();
-                loadGameData(json);
-                hideTitleScreen();
-            };
+        contentDiv.innerHTML = `
+            <img src="${pfpSrc}" class="save-pfp-icon" alt="Cmdr">
+            <div class="save-info">
+                <div class="save-name">${data.playerName} ${typeLabel}</div>
+                <div class="save-meta">Lvl ${data.playerLevel} | ${data.currentSectorName || 'Deep Space'}</div>
+                <div class="save-meta">${dateStr}</div>
+            </div>
+        `;
+        
+        contentDiv.onclick = () => {
+            initializeGame();
+            loadGameData(saveObj.raw);
+            if (typeof hideTitleScreen === 'function') hideTitleScreen();
+        };
 
-            // 3. Create the Delete Button
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'save-delete-btn';
-            deleteBtn.innerHTML = '&times;'; // The 'X' symbol
-            deleteBtn.title = "Delete Save";
-            
-            // Delete Logic
-            deleteBtn.onclick = (e) => {
-                e.stopPropagation(); // Stop click from triggering the load
-                const key = type === 'AUTO' ? 'wayfinderAutoSave' : 'wayfinderSaveData';
-                deleteSave(key);
-            };
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'save-delete-btn';
+        deleteBtn.innerHTML = '&times;'; 
+        deleteBtn.title = "Delete Save";
+        
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation(); 
+            if (typeof deleteSave === 'function') deleteSave(saveObj.key);
+        };
 
-            // 4. Assemble
-            card.appendChild(contentDiv);
-            card.appendChild(deleteBtn);
-            list.appendChild(card);
-
-        } catch (e) {
-            console.error("Corrupt save found", e);
-        }
-    };
-
-    // Render Auto Save first (usually most recent)
-    if (autoJson) createCard(autoJson, 'AUTO');
-    if (manualJson) createCard(manualJson, 'MANUAL');
+        card.appendChild(contentDiv);
+        card.appendChild(deleteBtn);
+        list.appendChild(card);
+    });
 }
 
 function setupAutoLoginUI() {
@@ -5078,6 +5134,8 @@ function checkSpireAnswer() {
         if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
         
         xerxesPuzzleLevel++;
+
+        unlockLoreEntry("XENO_THE_SPIRE");
         
         // Give Rewards
         if (puzzle.rewardXP > 0) {
@@ -5261,6 +5319,10 @@ function openDevMenu() {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
+    // Dynamically adjust the pink text so it doesn't vanish on white backgrounds
+    const isLight = document.body.classList.contains('light-mode');
+    const pinkHex = isLight ? '#CC00CC' : '#FF55FF';
+
     // Add pointer cursors so they act like real buttons
     listEl.innerHTML = `
         <div class="generic-list-item" onclick="devGiveCredits()" style="cursor: pointer; border-left: 3px solid var(--gold-text);">
@@ -5275,8 +5337,8 @@ function openDevMenu() {
             <strong style="color:var(--success);">🛠️ Restore Ship Vitals</strong>
             <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Max Hull, Max Shields, Max Fuel.</div>
         </div>
-        <div class="generic-list-item" onclick="devLevelUp()" style="cursor: pointer; border-left: 3px solid #FF55FF;">
-            <strong style="color:#FF55FF;">⭐ Power Level (+5)</strong>
+        <div class="generic-list-item" onclick="devLevelUp()" style="cursor: pointer; border-left: 3px solid ${pinkHex};">
+            <strong style="color:${pinkHex};">⭐ Power Level (+5)</strong>
             <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Grants 5,000 XP and forces a level up.</div>
         </div>
     `;
@@ -5289,7 +5351,6 @@ function openDevMenu() {
         </div>
     `;
 
-    // A clean exit
     actionsEl.innerHTML = `
         <button class="action-button danger-btn" onclick="closeGenericModal()">CLOSE DEV MENU</button>
     `;
