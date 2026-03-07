@@ -619,8 +619,12 @@ function calculateItemPrice(itemOrId, isBuy, location) {
         price *= marketFactor;
     }
 
-    // 6. Apply Perks & Crew Bonuses
-    if ((typeof playerPerks !== 'undefined' && playerPerks.has('SILVER_TONGUE')) || hasCrewPerk('TRADE_BONUS')) {
+    // 6. Apply Perks & Crew Bonuses (Separated so they stack!)
+    if (typeof playerPerks !== 'undefined' && playerPerks.has('SILVER_TONGUE')) {
+        price = isBuy ? (price * 0.9) : (price * 1.1);
+    }
+    
+    if (typeof hasCrewPerk === 'function' && hasCrewPerk('TRADE_BONUS')) {
         price = isBuy ? (price * 0.9) : (price * 1.1);
     }
 
