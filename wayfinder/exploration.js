@@ -1540,7 +1540,6 @@ function extractAnomalyData() {
         items.push({id: 'VOID_CRYSTALS', qty: 1});
     }
     
-    playerXP += xp;
     logMsg += `<br>Gained ${xp} XP.`;
     
     // Award items
@@ -1548,8 +1547,8 @@ function extractAnomalyData() {
         if (currentCargoLoad + item.qty <= PLAYER_CARGO_CAPACITY) {
             playerCargo[item.id] = (playerCargo[item.id] || 0) + item.qty;
             
-            // FIX: Update the load immediately so the next item in the loop sees the new capacity!
-            updateCurrentCargoLoad(); 
+            // This safely triggers the GameBus CARGO_MODIFIED event!
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad(); 
             
             logMsg += `<br>Extracted: ${item.qty}x ${COMMODITIES[item.id].name}`;
         } else {
@@ -1563,8 +1562,10 @@ function extractAnomalyData() {
     if (typeof showToast === 'function') showToast("ANOMALY HARVESTED", "success");
     if (typeof soundManager !== 'undefined') soundManager.playGain();
     
-    checkLevelUp();
-    renderUIStats();
+    // --- THE MAGIC HANDOFF ---
+    // The GameBus automatically adds the XP, checks for level-ups, and refreshes the UI!
+    GameBus.emit('XP_GAINED', xp);
+    
     anomalyContext = null;
 
     autoSaveGame(); // Save immediately so they can't duplicate the rewards
