@@ -2468,3 +2468,23 @@ body.light-mode .generic-list-item.active {
     50% { box-shadow: 0 0 50px rgba(255, 0, 0, 0.5), inset 0 0 25px rgba(255, 0, 0, 0.4); }
     100% { box-shadow: 0 0 30px rgba(255, 0, 0, 0.3), inset 0 0 15px rgba(255, 0, 0, 0.2); }
 }
+
+/* ==========================================
+   --- LIGHT MODE: CONFIRMATION MODAL ---
+   ========================================== */
+   
+.light-mode .confirm-window {
+    background: #fffafa; /* Slight red tint on white for danger */
+    border-color: #CC0000;
+    box-shadow: 0 0 30px rgba(200, 0, 0, 0.2), inset 0 0 15px rgba(200, 0, 0, 0.1);
+}
+
+.light-mode #confirmMessage {
+    color: #CC0000; /* Deep, bold crimson so it pops on the white background */
+    font-weight: bold;
+}
+
+.light-mode .confirm-header {
+    background: #CC0000;
+    color: #FFFFFF;
+}
