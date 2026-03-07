@@ -247,6 +247,9 @@ function renderCodexCategories() {
     });
 
     // 2. Count total entries in game to show a completion percentage
+    // (This is the line that went missing!)
+    let totalUnlocked = discoveredLoreEntries.size; 
+    
     // OPTIMIZATION: Only calculate this once and cache it on the window object
     if (!window.cachedTotalLore) {
         window.cachedTotalLore = Object.keys(LORE_DATABASE).filter(k => !k.startsWith('SPIRE')).length; 
