@@ -3704,6 +3704,12 @@ function handleCombatInput(key) {
         case 'P':
             if (typeof deployProbe === 'function') deployProbe();
             return true;
+
+        // --- HOTKEY: SHIPBOARD SYNTHESIS (U) ---
+        case 'u':
+        case 'U':
+            if (typeof openCraftingMenu === 'function') openCraftingMenu();
+            return true;
             
         case 't': { 
             const tileForWormhole = chunkManager.getTile(playerX, playerY);
@@ -5437,6 +5443,10 @@ function openDevMenu() {
             <strong style="color:${pinkHex};">⭐ Power Level (+5)</strong>
             <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Grants 5,000 XP and forces a level up.</div>
         </div>
+        <div class="generic-list-item" onclick="enterPrecursorVault()" style="cursor: pointer; border-left: 3px solid #9933FF;">
+            <strong style="color:#9933FF;">🏛️ Spawn Precursor Vault</strong>
+            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Instantly trigger the Vault mini-game.</div>
+        </div>
     `;
 
     detailEl.innerHTML = `
@@ -6148,4 +6158,343 @@ if (typeof window.startCombat === 'function' && !window._originalStartCombatForP
         // Otherwise, run normal combat!
         window._originalStartCombatForProbes(specificEnemyEntity);
     };
+}
+
+// ==========================================
+// --- SHIPBOARD SYNTHESIS (CRAFTING) ---
+// ==========================================
+
+// 1. Safely store bonuses in a variable we KNOW gets saved to localStorage!
+function getCraftingBonuses() {
+    if (!worldStateDeltas['CRAFTING_BONUSES']) {
+        worldStateDeltas['CRAFTING_BONUSES'] = { hull: 0, shields: 0, fuel: 0, damage: 0 };
+    }
+    return worldStateDeltas['CRAFTING_BONUSES'];
+}
+
+// 2. Intercept applyPlayerShipStats to apply our permanent bonuses automatically
+if (typeof window.applyPlayerShipStats === 'function' && !window._craftingApplyStatsHook) {
+    window._craftingApplyStatsHook = window.applyPlayerShipStats;
+    
+    window.applyPlayerShipStats = function() {
+        // Run the original stat calculations (and previous Crew hooks)
+        window._craftingApplyStatsHook();
+        
+        // Apply permanent crafted bonuses!
+        const bonuses = getCraftingBonuses();
+        if (typeof MAX_PLAYER_HULL !== 'undefined') MAX_PLAYER_HULL += bonuses.hull;
+        if (typeof MAX_SHIELDS !== 'undefined') MAX_SHIELDS += bonuses.shields;
+        if (typeof MAX_FUEL !== 'undefined') MAX_FUEL += bonuses.fuel;
+        if (typeof PLAYER_ATTACK_DAMAGE !== 'undefined') PLAYER_ATTACK_DAMAGE += bonuses.damage;
+    };
+}
+
+function openCraftingMenu() {
+    openGenericModal("ENGINEERING WORKBENCH");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    const recipes = [
+        { id: 'HEAL', name: "Field Repairs", desc: "Instantly patches 25 Hull integrity using raw minerals.", cost: { MINERALS: 10 }, effect: "Restore 25 Hull" },
+        { id: 'MAX_HULL', name: "Reinforced Plating", desc: "Weld extra armor to the chassis.", cost: { MINERALS: 15, RARE_METALS: 2 }, effect: "+5 Max Hull (Permanent)" },
+        { id: 'MAX_SHIELD', name: "Capacitor Overclock", desc: "Rewire the power grid for stronger baseline shields.", cost: { TECH_PARTS: 5, RARE_METALS: 1 }, effect: "+5 Max Shields (Permanent)" },
+        { id: 'MAX_FUEL', name: "Fuel Compression", desc: "Enhance containment fields to hold more plasma.", cost: { TECH_PARTS: 5, VOID_CRYSTALS: 2 }, effect: "+10 Max Fuel (Permanent)" },
+        { id: 'DAMAGE', name: "Weapon Calibration", desc: "Use alien telemetry to permanently tune weapon convergence.", cost: { ALIEN_SPECIMEN: 2, VOID_CRYSTALS: 5 }, effect: "+2 Base Damage (Permanent)" }
+    ];
+
+    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">AVAILABLE SCHEMATICS</div>`;
+
+    recipes.forEach((rec, idx) => {
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        row.style.cursor = 'pointer';
+        row.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap: 4px;">
+                <span style="color:var(--text-color); font-weight:bold; font-size:12px;">${rec.name}</span>
+                <span style="color:var(--success); font-size:10px;">${rec.effect}</span>
+            </div>
+        `;
+        row.onclick = () => showCraftingDetails(recipes, idx);
+        listEl.appendChild(row);
+    });
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 40px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.7;">🛠️</div>
+            <h3 style="color:var(--accent-color); margin-bottom:10px;">SHIPBOARD SYNTHESIS</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                Utilize the raw materials in your cargo hold to fabricate emergency supplies or permanently reinforce your vessel's subsystems.
+            </p>
+        </div>
+    `;
+    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal()">CLOSE WORKBENCH</button>`;
+}
+
+function showCraftingDetails(recipes, idx) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    const rec = recipes[idx];
+
+    let reqHtml = '';
+    let canAfford = true;
+
+    for (const [itemId, qty] of Object.entries(rec.cost)) {
+        const itemName = typeof COMMODITIES !== 'undefined' && COMMODITIES[itemId] ? COMMODITIES[itemId].name : itemId;
+        const have = playerCargo[itemId] || 0;
+        const color = have >= qty ? 'var(--success)' : 'var(--danger)';
+        if (have < qty) canAfford = false;
+
+        reqHtml += `<div class="trade-stat-row">
+            <span>${itemName}:</span> 
+            <span style="color:${color}; font-weight:bold;">${have} / ${qty}</span>
+        </div>`;
+    }
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:10px; color:var(--accent-color); letter-spacing:2px; margin-bottom:5px;">SYNTHESIS SCHEMATIC</div>
+            <h3 style="color:var(--item-name-color); margin:0 0 15px 0; letter-spacing: 1px;">${rec.name.toUpperCase()}</h3>
+            
+            <p style="color:var(--text-color); font-size:12px; line-height:1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid var(--accent-color); margin-bottom:20px; text-align:left;">
+                "${rec.desc}"
+            </p>
+
+            <div class="trade-math-area" style="text-align:left;">
+                <div style="font-size:10px; color:var(--accent-color); letter-spacing:1px; margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:4px;">REQUIRED MATERIALS</div>
+                ${reqHtml}
+            </div>
+        </div>
+    `;
+
+    if (canAfford) {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:var(--success); color:var(--success); box-shadow: 0 0 10px rgba(0,255,0,0.2);" onclick="executeCrafting('${rec.id}', ${idx})">
+                INITIATE SYNTHESIS
+            </button>
+            <button class="action-button" onclick="openCraftingMenu()">CANCEL</button>
+        `;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button" disabled>INSUFFICIENT MATERIALS</button>
+            <button class="action-button" onclick="openCraftingMenu()">BACK</button>
+        `;
+    }
+}
+
+function executeCrafting(recipeId, idx) {
+    // Quick rebuild of the recipe list to grab costs
+    const recipes = [
+        { id: 'HEAL', cost: { MINERALS: 10 } },
+        { id: 'MAX_HULL', cost: { MINERALS: 15, RARE_METALS: 2 } },
+        { id: 'MAX_SHIELD', cost: { TECH_PARTS: 5, RARE_METALS: 1 } },
+        { id: 'MAX_FUEL', cost: { TECH_PARTS: 5, VOID_CRYSTALS: 2 } },
+        { id: 'DAMAGE', cost: { ALIEN_SPECIMEN: 2, VOID_CRYSTALS: 5 } }
+    ];
+    
+    const rec = recipes[idx];
+    if (!rec || rec.id !== recipeId) return;
+
+    // 1. Deduct Materials
+    for (const [itemId, qty] of Object.entries(rec.cost)) {
+        playerCargo[itemId] -= qty;
+        if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
+    }
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+    // 2. Apply Effect
+    const bonuses = getCraftingBonuses();
+
+    if (recipeId === 'HEAL') {
+        playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 25);
+        logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Field repairs complete. Hull integrity restored (+25).</span>");
+    } else if (recipeId === 'MAX_HULL') {
+        bonuses.hull += 5;
+        playerHull += 5;
+        logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Plating welded. Max Hull permanently increased!</span>");
+    } else if (recipeId === 'MAX_SHIELD') {
+        bonuses.shields += 5;
+        playerShields += 5;
+        logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Capacitors upgraded. Max Shields permanently increased!</span>");
+    } else if (recipeId === 'MAX_FUEL') {
+        bonuses.fuel += 10;
+        playerFuel += 10;
+        logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Containment expanded. Max Fuel permanently increased!</span>");
+    } else if (recipeId === 'DAMAGE') {
+        bonuses.damage += 2;
+        logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Calibration successful. Base Weapon Damage permanently increased!</span>");
+    }
+
+    // Force engine to recalculate stats!
+    if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
+
+    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+    if (typeof showToast === 'function') showToast("SYNTHESIS COMPLETE", "success");
+    if (typeof renderUIStats === 'function') renderUIStats();
+    
+    openCraftingMenu(); // Refresh UI
+}
+
+// ==========================================
+// --- PRECURSOR PUZZLE VAULTS ---
+// ==========================================
+
+// 1. High-Tier Vault Loot
+if (typeof COMMODITIES !== 'undefined') {
+    COMMODITIES['PRECURSOR_ARTIFACT'] = { name: "Precursor Artifact", basePrice: 15000, illegal: false, description: "A humming, geometric shape defying local physics." };
+    COMMODITIES['VOID_ENGINE_CORE'] = { name: "Void Engine Core", basePrice: 25000, illegal: true, description: "A functioning zero-point energy source." };
+}
+
+// 2. The Vault Database (You can add as many of these as you want!)
+const VAULT_PUZZLES = [
+    {
+        room: "THE VESTIBULE",
+        text: "A massive door sealed by a light-matrix. An ancient inscription translates to: 'I speak without a mouth and hear without ears. I have no body, but I come alive with wind.'",
+        answer: ["echo", "an echo"],
+        penalty: 15,
+        successText: "The light-matrix shifts from hostile red to a welcoming cyan. The heavy stone grinds open."
+    },
+    {
+        room: "THE INNER SANCTUM",
+        text: "The walls are lined with stasis pods containing terrifying, multi-limbed horrors. The console asks for the prime directive of the Architects: 'It dictates all, yet has no voice. It consumes all, yet never eats. It ends all, yet has no intent.'",
+        answer: ["time", "entropy", "death"],
+        penalty: 25,
+        successText: "The stasis pods power down safely. A bridge of hard-light extends across the chasm."
+    },
+    {
+        room: "THE APEX CORE",
+        text: "The central vault. The final cipher shifts constantly on a floating monolith: 'The more you take, the more you leave behind.'",
+        answer: ["footsteps", "footprints", "steps", "space"],
+        penalty: 40,
+        successText: "The ultimate mechanism unlocks, revealing the shimmering artifacts within."
+    }
+];
+
+let currentVaultRoom = 0;
+
+// 3. Vault UI Engine
+function enterPrecursorVault() {
+    currentVaultRoom = 0;
+    renderVaultRoom();
+}
+
+function renderVaultRoom() {
+    // Check for Victory!
+    if (currentVaultRoom >= VAULT_PUZZLES.length) {
+        openGenericModal("VAULT SECURED");
+        document.getElementById('genericModalList').innerHTML = '';
+        document.getElementById('genericDetailContent').innerHTML = `
+            <div style="text-align:center; padding:40px 20px;">
+                <div style="font-size:60px; filter: drop-shadow(0 0 20px var(--success)); margin-bottom: 20px;">💠</div>
+                <h3 style="color:var(--success);">SYSTEMS OVERRIDDEN</h3>
+                <p style="color:var(--text-color); font-size:14px; line-height:1.6;">You have bypassed all security measures. The ancient technology is yours.</p>
+            </div>
+        `;
+        
+        // Grant Massive Rewards
+        playerCargo['PRECURSOR_ARTIFACT'] = (playerCargo['PRECURSOR_ARTIFACT'] || 0) + 1;
+        if (Math.random() > 0.4) playerCargo['VOID_ENGINE_CORE'] = (playerCargo['VOID_ENGINE_CORE'] || 0) + 1;
+        playerXP += 1500;
+        
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        if (typeof checkLevelUp === 'function') checkLevelUp();
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+
+        document.getElementById('genericModalActions').innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal(); if(typeof renderUIStats === 'function') renderUIStats();">EXTRACT LOOT & DEPART</button>`;
+        return;
+    }
+
+    const room = VAULT_PUZZLES[currentVaultRoom];
+    openGenericModal(`PRECURSOR VAULT: ${room.room}`);
+    
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    listEl.innerHTML = ''; // Hide left pane for immersive full-screen reading
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:50px; margin-bottom:15px; opacity:0.8; filter: drop-shadow(0 0 15px #9933FF);">🏛️</div>
+            <h3 style="color:#9933FF; margin-bottom:15px; letter-spacing: 2px;">${room.room}</h3>
+            
+            <div style="background:rgba(0,0,0,0.5); border:1px solid #9933FF; padding:20px; border-radius:4px; text-align:left;">
+                <p style="color:var(--text-color); font-size:14px; line-height:1.6; font-style:italic;">
+                    "${room.text}"
+                </p>
+            </div>
+
+            <div style="margin-top: 20px; text-align:left;">
+                <span style="color:var(--danger); font-size:10px; letter-spacing:1px; display:block; margin-bottom:5px;">SECURITY OVERRIDE TERMINAL</span>
+                <input type="text" id="vaultInput" autocomplete="off" placeholder="ENTER CIPHER..."
+                    style="width:100%; background: #000; border: 1px solid #9933FF; color: #DDA0DD; padding: 10px; font-family: 'Roboto Mono', monospace; font-size: 14px; outline: none; text-transform: uppercase;" 
+                    onkeydown="if(event.key === 'Enter') submitVaultCipher()">
+            </div>
+            <div id="vaultFeedback" style="margin-top: 15px; font-weight:bold; font-size:12px; min-height:20px;"></div>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `
+        <button class="action-button" style="border-color:#9933FF; color:#9933FF; box-shadow: 0 0 10px rgba(153,51,255,0.2);" onclick="submitVaultCipher()">SUBMIT CIPHER</button>
+        <button class="action-button danger-btn" onclick="abortVault()">EVACUATE VAULT</button>
+    `;
+
+    // Focus input automatically
+    setTimeout(() => {
+        const input = document.getElementById('vaultInput');
+        if (input) input.focus();
+    }, 100);
+}
+
+function submitVaultCipher() {
+    const inputEl = document.getElementById('vaultInput');
+    const feedbackEl = document.getElementById('vaultFeedback');
+    if (!inputEl || !feedbackEl) return;
+
+    const guess = inputEl.value.trim().toLowerCase();
+    if (guess === "") return;
+
+    const room = VAULT_PUZZLES[currentVaultRoom];
+    
+    let isCorrect = false;
+    if (Array.isArray(room.answer)) {
+        isCorrect = room.answer.includes(guess);
+    } else {
+        isCorrect = (guess === room.answer.toLowerCase());
+    }
+
+    if (isCorrect) {
+        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+        feedbackEl.style.color = "var(--success)";
+        feedbackEl.innerHTML = `[ CIPHER ACCEPTED ]<br><span style="color:var(--text-color); font-weight:normal;">${room.successText}</span>`;
+        inputEl.disabled = true;
+        
+        setTimeout(() => {
+            currentVaultRoom++;
+            renderVaultRoom();
+        }, 3000);
+    } else {
+        if (typeof soundManager !== 'undefined') soundManager.playError();
+        if (typeof triggerHaptic === 'function') triggerHaptic(300);
+        
+        playerHull -= room.penalty;
+        feedbackEl.style.color = "var(--danger)";
+        feedbackEl.innerHTML = `[ INCORRECT ] LETHAL DEFENSES ACTIVATED. HULL INTEGRITY -${room.penalty}`;
+        
+        // Clear the input so they can guess again quickly
+        inputEl.value = "";
+        
+        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 0, reason: "Vault Defenses" });
+        if (typeof renderUIStats === 'function') renderUIStats();
+        
+        if (playerHull <= 0) {
+            closeGenericModal();
+            if (typeof triggerGameOver === 'function') triggerGameOver("Disintegrated by Precursor Defenses");
+        }
+    }
+}
+
+function abortVault() {
+    logMessage("<span style='color:var(--warning)'>You retreat to your ship, leaving the vault's mysteries unsolved.</span>");
+    closeGenericModal();
 }
