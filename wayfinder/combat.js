@@ -20,6 +20,22 @@ function startCombat(specificEnemyEntity = null) {
          pirateShip = getWeightedRandomOutcome(pirateShipOutcomes);
      }
 
+     // --- ECLIPSE CARTEL TRUCE PERK ---
+     // If the player has 50+ Rep with Eclipse, generic pirates won't attack!
+     if (typeof playerFactionStanding !== 'undefined' && (playerFactionStanding['ECLIPSE'] || 0) >= 50) {
+         // Check if it's a generic pirate (not Concord, not K'tharr)
+         if (!pirateShip.id.includes('KTHARR') && !pirateShip.id.includes('CONCORD')) {
+             logMessage("<span style='color:#9933FF; font-weight:bold;'>[ CARTEL TRUCE ]</span> The raiders scan your transponder and disengage. <span style='color:var(--text-color)'>'Fly safe, boss.'</span>");
+             if (typeof showToast === 'function') showToast("CARTEL TRUCE: COMBAT BYPASSED", "success");
+             
+             // Abort combat instantly
+             currentCombatContext = null;
+             if (typeof removeEnemyAt === 'function') removeEnemyAt(playerX, playerY);
+             changeGameState(GAME_STATES.GALACTIC_MAP);
+             return; 
+         }
+     }
+
      playerAbilityCooldown = 0;
      playerIsChargingAttack = false;
      playerIsEvading = false;
@@ -48,14 +64,14 @@ function startCombat(specificEnemyEntity = null) {
          aiProfile: aiType,
          turnCount: 0,
          
-         // NEW: Subsystem Foundation (Future-proofing)
+         // Subsystem Foundation (Future-proofing)
          subsystems: {
              engines: { name: "Ion Drives", hp: 30, status: 'ONLINE' },
              weapons: { name: "Beam Emitters", hp: 30, status: 'ONLINE' },
              sensors: { name: "Targeting Array", hp: 20, status: 'ONLINE' }
          },
          
-         // NEW: The "Intent" System (Telegraphing moves)
+         // The "Intent" System (Telegraphing moves)
          nextMove: null 
      };
 
@@ -73,7 +89,7 @@ function startCombat(specificEnemyEntity = null) {
      logMessage(encounterMsg);
  }
 
- // --- NEW AI LOGIC ---
+ // --- AI LOGIC ---
 function generateEnemyIntent() {
     const ctx = currentCombatContext;
     const roll = Math.random();
