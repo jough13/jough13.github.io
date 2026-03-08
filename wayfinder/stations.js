@@ -370,27 +370,26 @@ function cantinaAction(action) {
         showToast("Refreshing! Hull repaired +10.", "success");
         renderUIStats();
     }
-    else if (action === 'RUMOR') {
+else if (action === 'RUMOR') {
         if (playerCredits < 50) { showToast("Bartender ignores you. (Need 50c)", "error"); return; }
         
         playerCredits -= 50;
         
-        // FIX: Pick a random commodity instead of hardcoded Medical Supplies
-        const commodityKeys = Object.keys(COMMODITIES).filter(k => !COMMODITIES[k].illegal);
-        const targetItem = commodityKeys[Math.floor(Math.random() * commodityKeys.length)];
+        // Safety: Generate a trend right now if one doesn't exist yet
+        if (!activeMarketTrend || currentGameDate > activeMarketTrend.expiry) {
+            if (typeof generateMarketTrend === 'function') generateMarketTrend();
+        }
         
-        const stations = Object.keys(LOCATIONS_DATA); 
-        const targetStation = stations[Math.floor(Math.random() * stations.length)];
+        const trend = activeMarketTrend;
+        const itemName = COMMODITIES[trend.item].name;
         
-        activeMarketTrend = {
-            station: targetStation,
-            item: targetItem,
-            expiry: currentGameDate + 50 // Better to use game ticks than real-world time
-        };
-        
-        // Using theme-aware colors for the log so it doesn't wash out
         logMessage(`<span style="color:var(--accent-color); font-weight:bold;">[ INTEL ACQUIRED ]</span>`);
-        logMessage(`<span style="color:var(--text-color);">"Heard a rumor... folks at <span style="color:var(--accent-color);">${targetStation}</span> are desperate for <span style="color:var(--gold-text);">${COMMODITIES[targetItem].name}</span>. Paying a premium."</span>`);
+        
+        if (trend.isBoom) {
+            logMessage(`<span style="color:var(--text-color);">"Heard folks at <span style="color:var(--accent-color);">${trend.station}</span> are desperate for <span style="color:var(--warning);">${itemName}</span>. Paying top credit right now."</span>`);
+        } else {
+            logMessage(`<span style="color:var(--text-color);">"A massive freighter just dumped <span style="color:var(--success);">${itemName}</span> at <span style="color:var(--accent-color);">${trend.station}</span>. Prices have completely crashed if you're looking to buy."</span>`);
+        }
         
         showToast("TRADE INTEL ACQUIRED", "success");
         renderUIStats();
