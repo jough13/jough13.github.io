@@ -6,63 +6,83 @@ function displayShipyard() {
     openGenericModal("STARBASE SHIPYARD");
     const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
-    
-    // 1. Default Landing Screen
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px;">
-            <div style="font-size:60px; text-align:center; margin-bottom:15px; opacity:0.5;">🛠️</div>
-            <h3 style="color:var(--accent-color); margin-bottom:10px;">WELCOME TO THE SHIPYARD</h3>
-            <p style="color:var(--item-desc-color); font-size:12px;">Select a hull from the manifest on the left to view its specifications and place an order.</p>
-        </div>
-    `;
-    document.getElementById('genericModalActions').innerHTML = '';
+    const actionsEl = document.getElementById('genericModalActions');
 
-    // 2. Populate the Manifest
-    listEl.innerHTML = '';
+    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">CHASSIS MANIFEST</div>`;
     
+    // 1. Build the Left Pane (The Manifest)
     for (const shipId in SHIP_CLASSES) {
         const ship = SHIP_CLASSES[shipId];
         const row = document.createElement('div');
         row.className = 'trade-item-row';
+        row.style.cursor = 'pointer';
         
         // --- FACTION LOCK LOGIC ---
         let isLocked = false;
         if (ship.reqFaction) {
-            const standing = playerFactionStanding[ship.reqFaction] || 0;
-            if (standing < ship.minRep) {
-                isLocked = true;
-            }
+            const standing = typeof playerFactionStanding !== 'undefined' ? (playerFactionStanding[ship.reqFaction] || 0) : 0;
+            if (standing < ship.minRep) isLocked = true;
         }
 
         const isCurrent = playerShip.shipClass === shipId;
         
         if (isLocked) {
             row.style.opacity = '0.4';
-            row.innerHTML = `<span style="color:var(--danger); font-weight:bold;">🔒 RESTRICTED CHASSIS</span> <span style="color:var(--text-color); font-size:10px;">${ship.reqFaction} MILITARY</span>`;
+            row.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap: 4px;">
+                    <span style="color:var(--danger); font-weight:bold; font-size:12px;">🔒 RESTRICTED</span> 
+                    <span style="color:var(--text-color); font-size:10px;">Requires ${ship.reqFaction} Clearance</span>
+                </div>
+            `;
             row.onclick = () => {
-                detailEl.innerHTML = `<div style="text-align:center; padding:30px;"><div style="font-size:50px; margin-bottom:15px;">🛑</div><h3 style="color:var(--danger);">ACCESS DENIED</h3><p style="color:#888;">Clearance Level Too Low. Requires ${ship.minRep} ${ship.reqFaction} Reputation.</p></div>`;
-                document.getElementById('genericModalActions').innerHTML = `<button class="action-button danger-btn" disabled>RESTRICTED</button>`;
+                detailEl.innerHTML = `
+                    <div style="text-align:center; padding: 40px 20px;">
+                        <div style="font-size:60px; margin-bottom:15px; color:var(--danger); filter: drop-shadow(0 0 15px rgba(255,0,0,0.4));">🛑</div>
+                        <h3 style="color:var(--danger); margin-bottom:10px;">ACCESS DENIED</h3>
+                        <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">This chassis is restricted to highly trusted allies of the ${ship.reqFaction}. Your current clearance level is insufficient to view its schematics.</p>
+                    </div>
+                `;
+                actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>RESTRICTED CHASSIS</button>`;
                 if (typeof soundManager !== 'undefined') soundManager.playError();
             };
         } else {
             const nameColor = isCurrent ? "var(--success)" : "var(--text-color)";
             const costLabel = isCurrent ? "OWNED" : `${formatNumber(ship.baseCost)}c`;
-            row.innerHTML = `<span style="color:${nameColor}">${isCurrent ? '▶ ' : ''}${ship.name}</span> <span style="color:var(--gold-text)">${costLabel}</span>`;
+            row.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:${nameColor}; font-weight:bold; font-size:12px;">${isCurrent ? '▶ ' : ''}${ship.name}</span>
+                    <span style="color:var(--gold-text); font-size:10px;">${costLabel}</span>
+                </div>
+            `;
             row.onclick = () => showShipDetails(shipId); 
         }
-        
         listEl.appendChild(row);
     }
+
+    // 2. Default Landing Screen (Right Pane)
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 40px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.6;">🏭</div>
+            <h3 style="color:var(--accent-color); margin-bottom:10px;">AUTHORIZED DEALERSHIP</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                Select a hull from the manifest on the left to view its specifications and place an order. 
+                Your current vessel and installed components will be automatically appraised for trade-in value.
+            </p>
+        </div>
+    `;
+    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="openStationView()">RETURN TO CONCOURSE</button>`;
 }
 
 function showShipDetails(shipId) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    
     const ship = SHIP_CLASSES[shipId];
     const oldShip = SHIP_CLASSES[playerShip.shipClass];
+    const isCurrent = playerShip.shipClass === shipId;
     
-    // 1. Calculate Ship Hull Trade-in
+    // 1. Calculate Trade-in Values
     let baseTradeIn = Math.floor(oldShip.baseCost * 0.5);
-    
-    // 2. Calculate Components Trade-in
     let componentsRefund = 0;
     for (const slot in playerShip.components) {
         const compId = playerShip.components[slot];
@@ -73,62 +93,96 @@ function showShipDetails(shipId) {
     }
     
     const tradeIn = baseTradeIn + componentsRefund;
-    const netCost = ship.baseCost - tradeIn;
-    
-    // 3. Render HTML
-    let html = `
-        <div style="text-align:center; padding-top: 10px;">
-            ${ship.image 
-                ? `<img src="${ship.image}" style="width:100%; max-width:200px; height:auto; margin: 0 auto 15px; display:block; border:1px solid var(--accent-color); border-radius:4px; box-shadow: 0 0 15px rgba(0,224,224,0.2);" onerror="this.src='assets/outpost.png'">` 
-                : `<div style="font-size:60px; text-align:center; margin-bottom:15px; opacity:0.5; filter: hue-rotate(180deg);">🚀</div>`
-            }
-            <h3 style="color:var(--accent-color); margin-top:0;">${ship.name.toUpperCase()}</h3>
-        </div>
-        <p style="text-align:center; font-size:13px; color:var(--item-desc-color); margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #333;">${ship.description}</p>
-        
-        <div class="trade-math-area">
-            <div class="trade-stat-row"><span>Max Hull:</span> <span style="color:var(--success)">${formatNumber(ship.baseHull)}</span></div>
-            <div class="trade-stat-row"><span>Cargo Bay:</span> <span style="color:var(--accent-color)">${formatNumber(ship.cargoCapacity)} units</span></div>
-            <div class="trade-stat-row" style="margin-top:10px; border-top:1px dashed #444; padding-top:10px;">
-                <span>Chassis Base Cost:</span> <span>${formatNumber(ship.baseCost)}c</span>
+    const netCost = isCurrent ? 0 : ship.baseCost - tradeIn;
+
+    // 2. The Hologram Effect!
+    const hologramHtml = ship.image 
+        ? `<img src="${ship.image}" style="width:100%; max-width:220px; filter: sepia(1) hue-rotate(140deg) saturate(3) opacity(0.7) drop-shadow(0 0 15px var(--accent-color)); border-bottom: 2px solid rgba(0,224,224,0.3); padding-bottom: 10px;" onerror="this.src='assets/outpost.png'">` 
+        : `<div style="font-size:80px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.6; filter: hue-rotate(180deg);">🚀</div>`;
+
+    // 3. Stat Deltas (Green Arrows for upgrades, Red for downgrades)
+    const formatDelta = (newVal, oldVal) => {
+        if (isCurrent || newVal === oldVal) return `<span style="color:var(--text-color); font-weight:bold;">${newVal}</span>`;
+        if (newVal > oldVal) return `<span style="color:var(--success); font-weight:bold;">${newVal} ▲</span>`;
+        if (newVal < oldVal) return `<span style="color:var(--danger); font-weight:bold;">${newVal} ▼</span>`;
+        return `<span style="color:var(--text-color); font-weight:bold;">${newVal}</span>`;
+    };
+
+    const oldHull = oldShip.baseHull || 100;
+    const newHull = ship.baseHull || 100;
+    const oldCargo = oldShip.cargoCapacity || 50;
+    const newCargo = ship.cargoCapacity || 50;
+    const oldEvasion = oldShip.baseEvasion || 0;
+    const newEvasion = ship.baseEvasion || 0;
+
+    // 4. Render Right Pane
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:10px; color:var(--accent-color); letter-spacing:2px; margin-bottom:5px;">
+                ${isCurrent ? 'CURRENTLY EQUIPPED' : 'CHASSIS SELECTED'}
             </div>
-            <div class="trade-stat-row" style="color:#888">
-                <span>Trade-In Value:</span> <span>-${formatNumber(tradeIn)}c</span>
+            <h3 style="color:var(--item-name-color); margin:0 0 15px 0; letter-spacing: 1px;">${ship.name.toUpperCase()}</h3>
+            
+            <div style="position:relative; display:inline-block; margin-bottom: 20px;">
+                ${hologramHtml}
             </div>
-            <div class="total-cost-display" style="margin-top:10px;">NET COST: ${formatNumber(netCost)}c</div>
-        </div>
-        
-        <div style="margin-top: 15px; padding: 10px; border: 1px solid var(--border-color); background: rgba(0,224,224,0.05); text-align:left;">
-            <span style="font-size:10px; color:var(--accent-color); letter-spacing:1px; display:block; margin-bottom:5px;">COMBAT PROTOCOL</span>
-            <span style="font-weight:bold; color:var(--text-color); font-size:12px;">${ship.ability.name}:</span>
-            <span style="font-size:12px; color:var(--item-desc-color);">${ship.ability.desc}</span>
+
+            <p style="color:var(--text-color); font-size:12px; line-height:1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid ${isCurrent ? '#666' : 'var(--accent-color)'}; margin-bottom:20px; text-align:left;">
+                "${ship.description}"
+            </p>
+
+            <div class="trade-math-area" style="text-align:left;">
+                <div style="font-size:10px; color:var(--accent-color); letter-spacing:1px; margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:4px;">CHASSIS TELEMETRY</div>
+                <div class="trade-stat-row"><span>Base Max Hull:</span> ${formatDelta(newHull, oldHull)}</div>
+                <div class="trade-stat-row"><span>Cargo Bay Limit:</span> ${formatDelta(newCargo, oldCargo)} Units</div>
+                <div class="trade-stat-row"><span>Base Evasion:</span> ${formatDelta((newEvasion * 100).toFixed(0) + '%', (oldEvasion * 100).toFixed(0) + '%')}</div>
+            </div>
+            
+            <div style="margin-top: 15px; padding: 10px; border: 1px solid var(--border-color); background: rgba(0,224,224,0.05); text-align:left;">
+                <span style="font-size:10px; color:var(--accent-color); letter-spacing:1px; display:block; margin-bottom:5px;">COMBAT PROTOCOL</span>
+                <span style="font-weight:bold; color:var(--text-color); font-size:12px;">${ship.ability.name}:</span>
+                <span style="font-size:12px; color:var(--item-desc-color);">${ship.ability.desc}</span>
+            </div>
+
+            ${!isCurrent ? `
+                <div class="trade-math-area" style="margin-top:15px; text-align:left; background:rgba(0,0,0,0.5);">
+                    <div class="trade-stat-row"><span>Sticker Price:</span> <span>${formatNumber(ship.baseCost)}c</span></div>
+                    <div class="trade-stat-row" style="color:#888;"><span>Hull Trade-in:</span> <span>-${formatNumber(baseTradeIn)}c</span></div>
+                    <div class="trade-stat-row" style="color:#888;"><span>Parts Trade-in:</span> <span>-${formatNumber(componentsRefund)}c</span></div>
+                    <div class="trade-stat-row" style="margin-top:5px; border-top:1px dashed #444; padding-top:5px;">
+                        <span>Net Cost:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(netCost)}c</span>
+                    </div>
+                </div>
+            ` : ''}
         </div>
     `;
-    
-    document.getElementById('genericDetailContent').innerHTML = html;
-    
-    // --- Purchase Logic ---
-    const cargoTooLarge = currentCargoLoad > ship.cargoCapacity;
-    let btnLabel = `COMMISSION VESSEL (${formatNumber(netCost)}c)`;
-    let isDisabled = '';
 
-    if (playerShip.shipClass === shipId) {
-        btnLabel = 'CURRENTLY EQUIPPED';
-        isDisabled = 'disabled';
-    } else if (playerCredits < netCost) {
-        btnLabel = 'INSUFFICIENT FUNDS';
-        isDisabled = 'disabled';
-    } else if (cargoTooLarge) {
-        btnLabel = 'CARGO EXCEEDS NEW HOLD';
-        isDisabled = 'disabled';
+    // 5. Actions Pane
+    if (isCurrent) {
+        actionsEl.innerHTML = `<button class="action-button" onclick="displayShipyard()">BACK TO MANIFEST</button>`;
+    } else {
+        const cargoTooLarge = typeof currentCargoLoad !== 'undefined' && currentCargoLoad > ship.cargoCapacity;
+        const canAfford = playerCredits >= netCost;
+        
+        let btnLabel = `AUTHORIZE TRANSFER (${formatNumber(netCost)}c)`;
+        let isDisabled = false;
+
+        if (!canAfford) {
+            btnLabel = 'INSUFFICIENT FUNDS';
+            isDisabled = true;
+        } else if (cargoTooLarge) {
+            btnLabel = 'CARGO EXCEEDS NEW HOLD';
+            isDisabled = true;
+        }
+
+        actionsEl.innerHTML = `
+            <button class="action-button" style="${isDisabled ? '' : 'border-color:var(--success); color:var(--success); box-shadow: 0 0 10px rgba(0,255,0,0.2);'}" 
+                ${isDisabled ? 'disabled' : ''} onclick="confirmBuyShip('${shipId}', ${netCost}, ${componentsRefund})">
+                ${btnLabel}
+            </button>
+            <button class="action-button" onclick="displayShipyard()">CANCEL</button>
+        `;
     }
-
-    document.getElementById('genericModalActions').innerHTML = `
-        <button class="action-button" ${isDisabled} style="${isDisabled ? '' : 'border-color:var(--success); color:var(--success); box-shadow: 0 0 15px rgba(0,255,0,0.2);'}" 
-            onclick="confirmBuyShip('${shipId}', ${netCost}, ${componentsRefund})">
-            ${btnLabel}
-        </button>
-    `;
 }
 
 function confirmBuyShip(shipId, netCost, componentsRefund = 0) {
@@ -139,7 +193,7 @@ function confirmBuyShip(shipId, netCost, componentsRefund = 0) {
         if (typeof showToast === 'function') showToast("INSUFFICIENT FUNDS", "error");
         return;
     }
-    if (currentCargoLoad > newShip.cargoCapacity) {
+    if (typeof currentCargoLoad !== 'undefined' && currentCargoLoad > newShip.cargoCapacity) {
         if (typeof showToast === 'function') showToast("CARGO EXCEEDS NEW SHIP CAPACITY", "error");
         return;
     }
@@ -160,7 +214,6 @@ function confirmBuyShip(shipId, netCost, componentsRefund = 0) {
     // This ensures no "ghost" ammo counters from previous weapons bloat the save file
     playerShip.ammo = {};
 
-
     // Initialize Ammo
     const defaultWeapon = COMPONENTS_DATABASE[playerShip.components.weapon];
     if (defaultWeapon && defaultWeapon.stats.maxAmmo) {
@@ -169,110 +222,259 @@ function confirmBuyShip(shipId, netCost, componentsRefund = 0) {
 
     applyPlayerShipStats();
 
-    playerHull = MAX_PLAYER_HULL; 
-    playerShields = MAX_SHIELDS; 
-    playerFuel = MAX_FUEL; 
+    playerHull = typeof MAX_PLAYER_HULL !== 'undefined' ? MAX_PLAYER_HULL : 100; 
+    playerShields = typeof MAX_SHIELDS !== 'undefined' ? MAX_SHIELDS : 50; 
+    playerFuel = typeof MAX_FUEL !== 'undefined' ? MAX_FUEL : 220; 
 
     // Log & UI Updates
-    logMessage(`Transaction complete! Welcome to your new ${newShip.name}!`);
+    logMessage(`Transaction complete! Welcome to your new <span style="color:var(--accent-color); font-weight:bold;">${newShip.name}</span>!`);
     
     if (typeof soundManager !== 'undefined') soundManager.playBuy();
     if (typeof showToast === 'function') showToast("VESSEL COMMISSIONED", "success");
     
     closeGenericModal();
     openStationView(); // Refresh station hub
-    renderUIStats();
+    if (typeof renderUIStats === 'function') renderUIStats();
 }
 
-// --- Outfitting Functions ---
+// ==========================================
+// --- ENGINEERING BAY (OUTFITTING UI) ---
+// ==========================================
+
 function displayOutfittingScreen() {
-    openGenericModal("OUTFITTING SERVICES");
+    openGenericModal("ENGINEERING BAY");
     const listEl = document.getElementById('genericModalList');
-    const detailEl = document.getElementById('genericDetailContent'); 
-    
-    // --- Default Ship Display ---
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px;">
-            ${SHIP_CLASSES[playerShip.shipClass].image 
-                ? `<img src="${SHIP_CLASSES[playerShip.shipClass].image}" style="width:100%; max-width:200px; height:auto; margin: 0 auto 15px; display:block; filter: drop-shadow(0 0 10px rgba(0,224,224,0.2));">` 
-                : `<div style="font-size:60px; text-align:center; margin-bottom:15px; opacity:0.5; filter: hue-rotate(180deg);">🚀</div>`
-            }
-            <h3 style="color:var(--accent-color); margin-bottom:10px;">${SHIP_CLASSES[playerShip.shipClass].name.toUpperCase()}</h3>
-            <p style="color:var(--item-desc-color); font-size:12px;">Select a system slot on the left to view available upgrades and modifications.</p>
-        </div>
-    `;
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">SYSTEM SLOTS</div>`;
 
     const slots = ['weapon', 'shield', 'engine', 'scanner', 'utility'];
     
+    // 1. Build the Left Pane (The Slots)
     slots.forEach(slot => {
         const currentId = playerShip.components[slot];
-        const currentName = COMPONENTS_DATABASE[currentId] ? COMPONENTS_DATABASE[currentId].name : "Empty";
+        const compData = COMPONENTS_DATABASE[currentId];
+        const currentName = compData ? compData.name : "Empty Slot";
+        const mfg = compData && compData.manufacturer ? compData.manufacturer : "Standard";
         
         const row = document.createElement('div');
         row.className = 'trade-item-row';
-        row.style.fontWeight = 'bold';
-        // Added var(--text-color) to the currently equipped item name so it doesn't vanish in dark mode
-        row.innerHTML = `<span style="color:var(--accent-color)">${slot.toUpperCase()} SLOT</span> <span style="color:var(--text-color); font-size:10px">${currentName}</span>`;
+        row.style.cursor = 'pointer';
+        row.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap: 4px;">
+                <span style="color:var(--accent-color); font-weight:bold; text-transform:uppercase;">${slot}</span> 
+                <span style="color:var(--text-color); font-size:11px;">${currentName} <span style="color:#666; font-size:9px;">[${mfg}]</span></span>
+            </div>
+            <div style="color:var(--item-desc-color); font-size:16px;">▶</div>
+        `;
         row.onclick = () => showOutfittingOptions(slot);
         listEl.appendChild(row);
     });
+
+    // 2. Build the Right Pane (The Holographic Blueprint)
+    const shipImage = SHIP_CLASSES[playerShip.shipClass].image;
+    
+    // We use pure CSS filters here to turn your standard PNG ship image into a glowing cyan hologram!
+    const hologramHtml = shipImage 
+        ? `<img src="${shipImage}" style="width:100%; max-width:220px; filter: sepia(1) hue-rotate(140deg) saturate(3) opacity(0.7) drop-shadow(0 0 15px var(--accent-color)); border-bottom: 2px solid rgba(0,224,224,0.3); padding-bottom: 10px;">` 
+        : `<div style="font-size:80px; filter: drop-shadow(0 0 15px var(--accent-color)); opacity:0.6;">🚀</div>`;
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <h3 style="color:var(--accent-color); margin-bottom:20px; letter-spacing: 2px;">${SHIP_CLASSES[playerShip.shipClass].name.toUpperCase()} CHASSIS</h3>
+            
+            <div style="position:relative; display:inline-block; margin-bottom: 25px;">
+                ${hologramHtml}
+            </div>
+
+            <div class="trade-math-area" style="text-align:left; background: rgba(0,0,0,0.3);">
+                <div style="font-size:10px; color:var(--accent-color); letter-spacing:1px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:4px;">SYSTEM DIAGNOSTICS</div>
+                <div class="trade-stat-row"><span>Hull Integrity:</span> <span style="color:var(--success); font-weight:bold;">${playerHull} / ${MAX_PLAYER_HULL}</span></div>
+                <div class="trade-stat-row"><span>Shield Emitters:</span> <span style="color:var(--accent-color); font-weight:bold;">${MAX_SHIELDS}</span></div>
+                <div class="trade-stat-row"><span>Cargo Capacity:</span> <span style="color:var(--gold-text); font-weight:bold;">${PLAYER_CARGO_CAPACITY} Units</span></div>
+                <div class="trade-stat-row"><span>Evasion Rating:</span> <span style="color:#9933FF; font-weight:bold;">${typeof PLAYER_EVASION !== 'undefined' ? (PLAYER_EVASION * 100).toFixed(0) : 0}%</span></div>
+            </div>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="openStationView()">RETURN TO CONCOURSE</button>`;
 }
 
 function showOutfittingOptions(slot) {
+    const listEl = document.getElementById('genericModalList');
+    
+    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">${slot.toUpperCase()} INVENTORY</div>`;
+    
+    let hasUpgrades = false;
+
+    for (const compId in COMPONENTS_DATABASE) {
+        const comp = COMPONENTS_DATABASE[compId];
+        
+        // Faction Lock Check
+        if (comp.reqFaction) {
+             const standing = playerFactionStanding[comp.reqFaction] || 0;
+             if (standing < comp.minRep) continue; 
+        }
+        
+        // Only show items that fit this slot AND aren't currently equipped
+        if (comp.slot === slot && playerShip.components[slot] !== compId) {
+            hasUpgrades = true;
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            row.style.cursor = 'pointer';
+            row.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:var(--text-color); font-weight:bold; font-size:12px;">${comp.name}</span>
+                    <span style="color:var(--gold-text); font-size:10px;">${formatNumber(comp.cost)}c</span>
+                </div>
+            `;
+            row.onclick = () => renderComponentComparison(compId, slot);
+            listEl.appendChild(row);
+        }
+    }
+    
+    if (!hasUpgrades) {
+        listEl.innerHTML += `<div style="padding:15px; color:#666; font-size:11px; font-style:italic;">No compatible upgrades detected in local station inventory.</div>`;
+    }
+    
+    // Instantly render the currently equipped item in the right pane for reference!
+    renderComponentComparison(playerShip.components[slot], slot, true);
+}
+
+function renderComponentComparison(compId, slot, isEquipped = false) {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
     
-    // Added var(--text-color) to the header
-    detailEl.innerHTML = `<h4 style="color:var(--text-color); border-bottom:1px solid var(--border-color); padding-bottom:5px;">Available ${slot} Upgrades</h4>`;
-    actionsEl.innerHTML = '';
-    
-    const container = document.createElement('div');
-    container.style.maxHeight = '300px';
-    container.style.overflowY = 'auto';
-    
-    for (const compId in COMPONENTS_DATABASE) {
-        const comp = COMPONENTS_DATABASE[compId];
-        if (comp.reqFaction) {
-             const standing = playerFactionStanding[comp.reqFaction] || 0;
-             if (standing < comp.minRep) {
-                 continue; 
-             }
-        }
-        if (comp.slot === slot && playerShip.components[slot] !== compId) {
-            
-            const itemDiv = document.createElement('div');
-            itemDiv.style.padding = '10px';
-            itemDiv.style.borderBottom = '1px solid var(--border-color)';
-            itemDiv.style.cursor = 'pointer';
-            
-            // Swapped hardcoded #CCC for var(--item-desc-color)
-            const mfgBadge = comp.manufacturer ? `<span style="background:rgba(255,255,255,0.1); color:var(--item-desc-color); padding:2px 4px; border-radius:2px; font-size:9px; margin-left:6px; vertical-align:middle;">${comp.manufacturer}</span>` : '';
+    const selectedComp = COMPONENTS_DATABASE[compId] || { name: "Empty", stats: {}, description: "No component installed.", cost: 0 };
+    const currentCompId = playerShip.components[slot];
+    const currentComp = COMPONENTS_DATABASE[currentCompId] || { name: "Empty", stats: {}, cost: 0 };
 
-            itemDiv.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div><span style="color:var(--item-name-color); font-weight:bold;">${comp.name}</span> ${mfgBadge}</div>
-                    <span style="color:var(--gold-text)">${formatNumber(comp.cost)}c</span>
-                </div>
-                <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">${comp.description}</div>
-            `;
-            
-            itemDiv.onclick = () => {
-                actionsEl.innerHTML = `
-                    <button class="action-button" ${playerCredits >= comp.cost ? '' : 'disabled'} 
-                        onclick="confirmBuyComponent('${compId}')">
-                        INSTALL ${comp.name.toUpperCase()} (${formatNumber(comp.cost)}c)
-                    </button>
-                `;
-            };
-            container.appendChild(itemDiv);
+    const mfg = selectedComp.manufacturer || "Standard";
+    
+    // Trade-in Math
+    const tradeInValue = isEquipped ? 0 : Math.floor((currentComp.cost || 0) * 0.5);
+    const netCost = isEquipped ? 0 : (selectedComp.cost || 0) - tradeInValue;
+
+    // --- DYNAMIC STAT COMPARISON BUILDER ---
+    let statsHtml = '';
+    // Collect all unique stat keys from BOTH components so we don't miss any drops
+    const allStats = new Set([...Object.keys(selectedComp.stats), ...Object.keys(currentComp.stats)]);
+    
+    allStats.forEach(statName => {
+        const newVal = selectedComp.stats[statName] || 0;
+        const oldVal = currentComp.stats[statName] || 0;
+        
+        if (newVal === 0 && oldVal === 0) return; // Skip irrelevant stats
+
+        let color = "var(--text-color)";
+        let diffArrow = "";
+        
+        if (!isEquipped) {
+            if (newVal > oldVal) { color = "var(--success)"; diffArrow = "▲"; }
+            else if (newVal < oldVal) { color = "var(--danger)"; diffArrow = "▼"; }
         }
+        
+        // Format the camelCase stat name into Title Case
+        const formattedName = statName.replace(/([A-Z])/g, ' $1').trim();
+        
+        statsHtml += `<div class="trade-stat-row">
+            <span style="text-transform:capitalize;">${formattedName}:</span> 
+            <span style="color:${color}; font-weight:bold;">${newVal} ${diffArrow}</span>
+        </div>`;
+    });
+    
+    if (!statsHtml) statsHtml = `<div style="color:#666; font-size:11px; font-style:italic;">No measurable stat changes.</div>`;
+
+    // --- RENDER THE PANE ---
+    detailEl.innerHTML = `
+        <div style="padding: 20px;">
+            <div style="font-size:10px; color:var(--accent-color); letter-spacing:2px; margin-bottom:5px;">
+                ${isEquipped ? 'CURRENTLY EQUIPPED' : 'UPGRADE SELECTED'}
+            </div>
+            
+            <h3 style="color:var(--item-name-color); margin:0 0 5px 0;">${selectedComp.name.toUpperCase()}</h3>
+            
+            <div style="display:inline-block; background:rgba(255,255,255,0.1); color:var(--item-desc-color); padding:2px 6px; border-radius:2px; font-size:9px; letter-spacing:1px; margin-bottom: 15px;">
+                MFG: ${mfg}
+            </div>
+            
+            <p style="color:var(--text-color); font-size:12px; line-height:1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid ${isEquipped ? '#666' : 'var(--accent-color)'}; margin-bottom:20px;">
+                "${selectedComp.description}"
+            </p>
+
+            <div class="trade-math-area">
+                <div style="font-size:10px; color:var(--accent-color); letter-spacing:1px; margin-bottom:8px; border-bottom:1px solid #333; padding-bottom:4px;">TELEMETRY DELTAS</div>
+                ${statsHtml}
+            </div>
+            
+            ${!isEquipped ? `
+                <div class="trade-math-area" style="margin-top:15px; background:rgba(0,0,0,0.5);">
+                    <div class="trade-stat-row"><span>Base Cost:</span> <span>${formatNumber(selectedComp.cost || 0)}c</span></div>
+                    <div class="trade-stat-row" style="color:#888;"><span>Trade-in (${currentComp.name}):</span> <span>-${formatNumber(tradeInValue)}c</span></div>
+                    <div class="trade-stat-row" style="margin-top:5px; border-top:1px dashed #444; padding-top:5px;">
+                        <span>Net Cost:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(netCost)}c</span>
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+    `;
+
+    // --- RENDER ACTIONS ---
+    if (isEquipped) {
+        actionsEl.innerHTML = `<button class="action-button" onclick="displayOutfittingScreen()">BACK TO SLOTS</button>`;
+    } else {
+        const canAfford = playerCredits >= netCost;
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 10px rgba(0,224,224,0.2);" 
+                ${!canAfford ? 'disabled' : ''} onclick="confirmBuyComponent('${compId}')">
+                ${canAfford ? 'AUTHORIZE INSTALL' : 'INSUFFICIENT FUNDS'}
+            </button>
+            <button class="action-button" onclick="displayOutfittingScreen()">CANCEL</button>
+        `;
+    }
+}
+
+function confirmBuyComponent(compId) {
+    const newComp = COMPONENTS_DATABASE[compId];
+    const currentCompId = playerShip.components[newComp.slot];
+    const currentComp = COMPONENTS_DATABASE[currentCompId];
+    
+    const tradeInValue = currentComp ? Math.floor(currentComp.cost * 0.5) : 0;
+    const netCost = newComp.cost - tradeInValue;
+
+    if(playerCredits < netCost) {
+        if (typeof showToast === 'function') showToast(`Insufficient Funds!`, "error");
+        return;
     }
     
-    if(container.children.length === 0) {
-        container.innerHTML = "<p style='color:var(--item-desc-color)'>No upgrades available for this slot.</p>";
+    playerCredits -= netCost;
+    playerShip.components[newComp.slot] = compId;
+    
+    // Swap ammo tracking safely
+    if (newComp.stats && newComp.stats.maxAmmo) {
+        playerShip.ammo[compId] = newComp.stats.maxAmmo;
+    }
+    if (currentCompId !== compId && playerShip.ammo[currentCompId]) {
+        delete playerShip.ammo[currentCompId]; 
+    }
+
+    applyPlayerShipStats();
+    
+    let msg = `Installed ${newComp.name}.`;
+    if (netCost < 0) {
+        const refund = Math.abs(netCost);
+        msg += `<br><span style="font-size:11px; color:var(--success);">(Salvage Refund: +${formatNumber(refund)}c)</span>`;
+    } else if (tradeInValue > 0) {
+        msg += `<br><span style="font-size:11px; color:var(--item-desc-color);">(Traded in ${currentComp.name} for ${formatNumber(tradeInValue)}c)</span>`;
     }
     
-    detailEl.appendChild(container);
+    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    if (typeof showToast === 'function') showToast(msg, "success");
+    
+    // Return to the main engineering screen so they can pick another slot!
+    displayOutfittingScreen(); 
+    if (typeof renderUIStats === 'function') renderUIStats();
 }
 
 function confirmBuyComponent(compId) {
