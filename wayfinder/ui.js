@@ -421,7 +421,8 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
         { id: 'OVERVIEW', name: 'Personal Log', icon: '👤' },
         { id: 'SHIP', name: 'Vessel Manifest', icon: '🚀' },
         { id: 'LOADOUT', name: 'Equipped Gear', icon: '⚙️' },
-        { id: 'FACTIONS', name: 'Reputation', icon: '📜' }
+        { id: 'FACTIONS', name: 'Reputation', icon: '📜' },
+        { id: 'LOG', name: "Captain's Log", icon: '📝' } // <-- NEW TAB ADDED
     ];
 
     tabs.forEach(t => {
@@ -527,6 +528,31 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
                 </div>
             `;
         }
+        html += `</div>`;
+    }
+    // --- NEW: THE CAPTAIN'S LOG TAB ---
+    else if (tab === 'LOG') {
+        html += `
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:15px; margin-top:0;">
+                <h3 style="color:var(--accent-color); margin:0;">CAPTAIN'S LOG</h3>
+                <span style="font-size:10px; color:var(--item-desc-color); letter-spacing:1px;">LAST 50 ENTRIES</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; max-height: 380px; overflow-y: auto; padding-right: 5px;">
+        `;
+        
+        if (typeof messageLog !== 'undefined' && messageLog.length > 0) {
+            // messageLog already has the newest items at index 0, so we just loop through it!
+            messageLog.forEach(msg => {
+                html += `
+                    <div style="background:rgba(0,0,0,0.3); border-left:2px solid var(--accent-color); padding:10px; border-radius:0 4px 4px 0; font-size:12px; line-height:1.5;">
+                        ${msg}
+                    </div>
+                `;
+            });
+        } else {
+            html += `<div style="text-align:center; padding: 30px; color:#666; font-style:italic;">Log is currently empty.</div>`;
+        }
+        
         html += `</div>`;
     }
     
