@@ -256,9 +256,9 @@ function visitCantina() {
             <strong style="color:var(--accent-color);">Eavesdrop on Rumors</strong>
             <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Listen to local chatter for clues.</div>
         </div>
-        <div class="generic-list-item" onclick="openJobBoard()" style="cursor: pointer;">
-            <strong style="color:var(--accent-color);">Check Job Board</strong>
-            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Look for crewmen seeking employment.</div>
+        <div class="generic-list-item" onclick="openRecruitmentBoard()" style="cursor: pointer;">
+            <strong style="color:var(--accent-color);">Crew Recruitment</strong>
+            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Hire specialized crew members for your ship.</div>
         </div>
     `;
 
@@ -971,4 +971,151 @@ function processArenaBet(winChance, odds, betAmount) {
         
         actionsEl.innerHTML = `<button class="action-button" onclick="openProvingGrounds()">PLACE ANOTHER WAGER</button>`;
     }, 1500);
+}
+
+// ==========================================
+// --- CREW RECRUITMENT SYSTEM ---
+// ==========================================
+
+// Global helper so your Combat and Trade engines can instantly detect your crew's perks!
+window.hasCrewPerk = function(perkId) {
+    if (!window.playerCrew) return false;
+    return window.playerCrew.some(crew => crew.perk === perkId);
+};
+
+function openRecruitmentBoard() {
+    openGenericModal("CREW RECRUITMENT");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Ensure global arrays exist 
+    if (typeof window.playerCrew === 'undefined') window.playerCrew = [];
+    
+    // Generate new recruits if the station pool is empty
+    if (typeof currentStationRecruits === 'undefined' || currentStationRecruits.length === 0) {
+        currentStationRecruits = generateStationRecruits();
+    }
+
+    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">AVAILABLE FREELANCERS</div>`;
+    
+    if (currentStationRecruits.length === 0) {
+        listEl.innerHTML += `<div style="padding:15px; color:#888;">No capable spacers are looking for work here today. Try another station.</div>`;
+    } else {
+        currentStationRecruits.forEach((recruit, index) => {
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            row.style.cursor = 'pointer';
+            row.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap: 4px;">
+                    <span style="color:var(--accent-color); font-weight:bold;">${recruit.name}</span> 
+                    <span style="color:var(--item-desc-color); font-size:10px;">${recruit.role}</span>
+                </div>
+            `;
+            row.onclick = () => showRecruitDetails(index);
+            listEl.appendChild(row);
+        });
+    }
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; opacity:0.5;">👨‍🚀</div>
+            <h3 style="color:var(--accent-color); margin-bottom:10px;">LOCAL FREELANCERS</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                Review the dossiers of spacers looking for a bunk on a decent ship. They charge an upfront signing bonus, but their passive perks are permanent.
+            </p>
+            <div style="margin-top: 20px; font-size: 13px; font-weight: bold; color: var(--gold-text);">
+                Current Crew Size: ${window.playerCrew.length} / 3
+            </div>
+        </div>
+    `;
+    actionsEl.innerHTML = `<button class="action-button" onclick="visitCantina()">BACK TO CANTINA</button>`;
+}
+
+function generateStationRecruits() {
+    const recruits = [];
+    const count = Math.floor(Math.random() * 3) + 1; // 1 to 3 recruits
+
+    const names = ["Jax Vane", "Elara Vance", "Kaelen Tor", "Voss", "Nyx", "Garrick", "Tali Sol", "Soren", "Rya Cort"];
+    const roles = [
+        { role: "Gunnery Chief", perk: "COMBAT_DAMAGE", desc: "Increases all ship weapon damage by 15%.", cost: 1500, icon: "🎯" },
+        { role: "Quartermaster", perk: "TRADE_BONUS", desc: "Negotiates 10% better prices at all stations.", cost: 2000, icon: "⚖️" },
+        { role: "Chief Engineer", perk: "SHIELD_BOOST", desc: "Increases maximum shield capacity by 25%.", cost: 1800, icon: "🔧" },
+        { role: "Astrogator", perk: "FUEL_EFFICIENCY", desc: "Reduces fuel consumption for sector jumps.", cost: 1200, icon: "🗺️" }
+    ];
+
+    // Shuffle names array to ensure we don't get duplicates at the same station
+    names.sort(() => 0.5 - Math.random());
+
+    for (let i = 0; i < count; i++) {
+        const roleData = roles[Math.floor(Math.random() * roles.length)];
+        recruits.push({
+            name: names[i],
+            role: roleData.role,
+            perk: roleData.perk,
+            desc: roleData.desc,
+            cost: roleData.cost,
+            icon: roleData.icon
+        });
+    }
+    return recruits;
+}
+
+function showRecruitDetails(index) {
+    const recruit = currentStationRecruits[index];
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:50px; margin-bottom:10px;">${recruit.icon}</div>
+            <h3 style="color:var(--accent-color); margin:0 0 5px 0;">${recruit.name.toUpperCase()}</h3>
+            
+            <div style="background: rgba(0,224,224,0.1); border: 1px solid var(--accent-color); display: inline-block; padding: 4px 8px; border-radius: 2px; font-size: 10px; color: var(--accent-color); margin-bottom: 15px; letter-spacing: 1px;">
+                ${recruit.role.toUpperCase()}
+            </div>
+            
+            <p style="font-size:13px; color:var(--text-color); margin-bottom: 20px; line-height: 1.5;">"${recruit.desc}"</p>
+            
+            <div class="trade-math-area" style="text-align:left;">
+                <div class="trade-stat-row"><span>Signing Bonus:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(recruit.cost)}c</span></div>
+                <div class="trade-stat-row"><span>Granted Perk:</span> <span style="color:var(--success);">${recruit.perk}</span></div>
+            </div>
+        </div>
+    `;
+
+    const canAfford = playerCredits >= recruit.cost;
+    const hasSpace = window.playerCrew.length < 3; // Hard limit of 3 crew members
+
+    if (!hasSpace) {
+        actionsEl.innerHTML = `<button class="action-button" disabled>CREW QUARTERS FULL</button>`;
+    } else if (!canAfford) {
+        actionsEl.innerHTML = `<button class="action-button" disabled>INSUFFICIENT FUNDS (${formatNumber(recruit.cost)}c)</button>`;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 10px rgba(0,224,224,0.2);" onclick="hireRecruit(${index})">
+                HIRE CREW MEMBER
+            </button>
+        `;
+    }
+    actionsEl.innerHTML += `<button class="action-button" onclick="openRecruitmentBoard()">CANCEL</button>`;
+}
+
+function hireRecruit(index) {
+    const recruit = currentStationRecruits[index];
+    if (playerCredits < recruit.cost || window.playerCrew.length >= 3) return;
+
+    playerCredits -= recruit.cost;
+    window.playerCrew.push(recruit); // Add to your ship
+    
+    // Remove them from the local station pool so you can't hire them twice!
+    currentStationRecruits.splice(index, 1);
+    
+    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    logMessage(`<span style="color:var(--success); font-weight:bold;">[ RECRUITMENT ]</span> ${recruit.name} (${recruit.role}) has joined your crew!`);
+    if (typeof showToast === 'function') showToast("CREW HIRED", "success");
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+    
+    openRecruitmentBoard(); // Refresh the board
 }
