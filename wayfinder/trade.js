@@ -633,6 +633,14 @@ function calculateItemPrice(itemOrId, isBuy, location) {
         price = isBuy ? (price * 0.9) : (price * 1.1);
     }
 
+    // --- FACTION ALLIANCE PERKS ---
+    if (typeof playerFactionStanding !== 'undefined') {
+        // Concord Allied Discount (Rep >= 50)
+        if (isBuy && location && location.faction === 'CONCORD' && (playerFactionStanding['CONCORD'] || 0) >= 50) {
+            price *= 0.8; // Massive 20% off everything at Concord stations!
+        }
+    }
+
     // 7. Safety Rounding
     price = Math.floor(price);
     return Math.max(1, price);
