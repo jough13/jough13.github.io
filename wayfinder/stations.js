@@ -628,57 +628,214 @@ function showConcordArmoryDetails(compId) {
 }
 
 function requestConcordEscort() {
-    // PLACEHOLDER: Pay a premium fee to have a Concord patrol ship follow you for 5 jumps, helping in combat.
-    showToast("Escort Services offline.", "info");
-    logMessage("All patrol wings are currently deployed. Try again later.");
+    openGenericModal("NAVAL COMMAND : ESCORT WING");
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    document.getElementById('genericModalList').innerHTML = ''; // Hide list pane for a focused view
+
+    const cost = 1500;
+    const duration = 10;
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: hue-rotate(180deg);">🛡️</div>
+            <h3 style="color:var(--accent-color); margin-bottom:10px;">AEGIS ESCORT WING</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                "Space is dangerous, Commander. For a fee, we can assign a heavy gunship to shadow your vessel and provide covering fire during combat encounters."
+            </p>
+            <div style="margin-top: 20px; padding: 15px; background: rgba(0, 224, 224, 0.05); border: 1px dashed var(--accent-color); border-radius: 4px;">
+                <div style="color: var(--text-color); font-size: 14px; margin-bottom: 8px;">
+                    <strong>Contract Duration:</strong> ${duration} Sector Jumps
+                </div>
+                <div style="color: var(--text-color); font-size: 14px;">
+                    <strong>Service Fee:</strong> <span style="color:var(--gold-text)">${cost}c</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const canAfford = playerCredits >= cost;
+    const isAlreadyHired = window.concordEscortJumps && window.concordEscortJumps > 0;
+
+    if (isAlreadyHired) {
+        actionsEl.innerHTML = `
+            <button class="action-button" disabled>ESCORT ACTIVE (${window.concordEscortJumps} JUMPS LEFT)</button>
+            <button class="action-button" onclick="openStationView()">RETURN TO CONCOURSE</button>
+        `;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 10px rgba(0,224,224,0.2);" 
+                ${!canAfford ? 'disabled' : ''} onclick="executeConcordEscort(${cost}, ${duration})">
+                AUTHORIZE CONTRACT
+            </button>
+            <button class="action-button" onclick="openStationView()">CANCEL</button>
+        `;
+    }
 }
 
+function executeConcordEscort(cost, duration) {
+    if (playerCredits < cost) return;
+    playerCredits -= cost;
+    window.concordEscortJumps = duration; // Global tracker you can hook into script.js!
+    
+    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    logMessage(`<span style='color:var(--accent-color); font-weight:bold;'>[ AEGIS COMMAND ]</span> Escort wing assigned. They will shadow you for ${duration} jumps.`);
+    if (typeof showToast === 'function') showToast("ESCORT WING HIRED", "success");
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+    openStationView(); // Return to station menu
+}
 
 // ==========================================
 // --- K'THARR FACTION SERVICES ---
 // ==========================================
 
-function openKtharrProvingGrounds() {
-    // Checks if we have the new visual minigame installed, otherwise falls back to basic RNG!
-    if (typeof openProvingGrounds === 'function') {
-        openProvingGrounds();
-        return;
-    }
+function openBloodPitsTrade() {
+    openGenericModal("THE BLOOD PITS : BIOMATERIALS");
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    document.getElementById('genericModalList').innerHTML = '';
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; color:var(--danger); animation: pulse-danger-subtle 3s infinite;">🧬</div>
+            <h3 style="color:var(--danger); margin-bottom:10px;">THE FLESH MARKET</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                "We don't deal in metal and fuel here. We trade in life, bone, and genetic sequences. Are you looking to buy, outlander?"
+            </p>
+            <div style="margin-top: 20px; color: var(--text-color); font-size: 14px;">
+                <strong>Living Hull Tissue:</strong> <span style="color:var(--gold-text)">2,500c</span>
+            </div>
+        </div>
+    `;
+
+    const canAfford = playerCredits >= 2500;
     
-    // Legacy RNG Betting
-    const bet = 200;
-    if (playerCredits < bet) {
-        showToast("Not enough credits to wager.", "error");
-        return;
-    }
-    playerCredits -= bet;
-    if (Math.random() > 0.5) {
-        playerCredits += (bet * 2);
-        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
-        showToast("VICTORY! Your gladiator won (+400c)", "success");
-    } else {
-        if (typeof soundManager !== 'undefined') soundManager.playError();
-        showToast("DEFEAT. Your gladiator was crushed.", "error");
-    }
-    if (typeof renderUIStats === 'function') renderUIStats();
+    actionsEl.innerHTML = `
+        <button class="action-button" style="border-color:var(--danger); color:var(--danger);" 
+            ${!canAfford ? 'disabled' : ''} onclick="executeBloodPitTrade()">
+            PURCHASE LIVING HULL TISSUE
+        </button>
+        <button class="action-button" onclick="openStationView()">LEAVE</button>
+    `;
 }
 
-function openBloodPitsTrade() {
-    // PLACEHOLDER: A unique trading screen where you can only buy/sell organic goods (Genetic Samples, Living Hull Tissue).
-    showToast("The Blood Pits are sealed.", "error");
-    logMessage("You hear terrifying roars from deep within the station.");
+function executeBloodPitTrade() {
+    if (playerCredits < 2500) return;
+    
+    // Check if hold is full
+    if (typeof currentCargoLoad !== 'undefined' && currentCargoLoad >= PLAYER_CARGO_CAPACITY) {
+        if (typeof showToast === 'function') showToast("Cargo Hold Full!", "error");
+        return;
+    }
+
+    playerCredits -= 2500;
+    playerCargo["LIVING_HULL_TISSUE"] = (playerCargo["LIVING_HULL_TISSUE"] || 0) + 1;
+    
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+    if (typeof soundManager !== 'undefined') soundManager.playGain();
+    
+    logMessage("<span style='color:var(--danger)'>[ BLOOD PITS ] You purchased a pulsating mass of Living Hull Tissue.</span>");
+    if (typeof showToast === 'function') showToast("ACQUIRED LIVING TISSUE", "success");
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+    openStationView();
 }
 
 function challengeKtharrWarlord() {
-    // PLACEHOLDER: Instantly triggers a deadly boss fight right outside the station for unique loot.
-    showToast("You are not worthy of the Rite of Combat.", "error");
-    logMessage("The Warlord laughs at your flimsy hull. Come back when you are stronger.");
+    openGenericModal("RITE OF COMBAT");
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    document.getElementById('genericModalList').innerHTML = ''; 
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; color:var(--danger);">💀</div>
+            <h3 style="color:var(--danger); margin-bottom:10px;">WARLORD CHALLENGE</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                "You dare challenge the Warlord of Karak-Tor? If you undock now, it is a fight to the death. There is no retreat. No hailing. Only blood."
+            </p>
+            <div style="margin-top:15px; padding: 10px; background: rgba(255,0,0,0.1); border: 1px solid var(--danger);">
+                <p style="color:var(--warning); font-weight:bold; margin:0;">
+                    WARNING: THIS IS A DEADLY BOSS ENCOUNTER.
+                </p>
+            </div>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `
+        <button class="action-button danger-btn" style="box-shadow: 0 0 15px rgba(255,0,0,0.3);" onclick="executeWarlordChallenge()">ACCEPT THE RITE (UNDOCK)</button>
+        <button class="action-button" onclick="openStationView()">COWER IN FEAR (Cancel)</button>
+    `;
+}
+
+function executeWarlordChallenge() {
+    closeGenericModal();
+    closeStationView();
+    
+    logMessage("<span style='color:var(--danger); font-weight:bold;'>[ RITE OF COMBAT ] The station alarms blare as you undock. The Warlord's Dreadnought drops into real-space right on top of you!</span>");
+    
+    // Create a custom Boss Entity overriding standard generation
+    const warlord = {
+        shipClassKey: "KTHARR_DREADNOUGHT",
+        isBoss: true,
+        name: "Kaelen's Wrath (Warlord)"
+    };
+    
+    if (typeof startCombat === 'function') {
+        setTimeout(() => { startCombat(warlord); }, 1000);
+    }
 }
 
 function hireEclipseMercenary() {
-    // PLACEHOLDER: Allows you to hire shady, high-stat crew members who increase your combat damage but randomly steal cargo!
-    showToast("No mercenaries available for hire.", "info");
-    logMessage("The local bar is empty. Looks like they all took a job out in the Perseus Arm.");
+    openGenericModal("MERCENARY DEN");
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    document.getElementById('genericModalList').innerHTML = '';
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: grayscale(100%);">🗡️</div>
+            <h3 style="color:#9933FF; margin-bottom:10px;">SHADOW OPERATIVES</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                "Need someone who doesn't ask questions? Our operatives increase your ship's combat lethality, but they have... sticky fingers. Expect cargo to go missing occasionally."
+            </p>
+            <div style="margin-top: 20px; color: var(--text-color); font-size: 14px;">
+                <strong>Signing Bonus:</strong> <span style="color:var(--gold-text)">3,000c</span>
+            </div>
+        </div>
+    `;
+    
+    const hasMerc = window.hasEclipseMerc; // Simple global boolean flag
+    const canAfford = playerCredits >= 3000;
+
+    if (hasMerc) {
+        actionsEl.innerHTML = `
+            <button class="action-button" disabled>OPERATIVE ALREADY HIRED</button>
+            <button class="action-button" onclick="openStationView()">RETURN TO CONCOURSE</button>
+        `;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 10px rgba(153, 51, 255, 0.2);" 
+                ${!canAfford ? 'disabled' : ''} onclick="executeEclipseMercenary()">
+                HIRE OPERATIVE
+            </button>
+            <button class="action-button" onclick="openStationView()">LEAVE</button>
+        `;
+    }
+}
+
+function executeEclipseMercenary() {
+    if (playerCredits < 3000) return;
+    playerCredits -= 3000;
+    window.hasEclipseMerc = true; // Global tracker
+    
+    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    logMessage("<span style='color:#9933FF; font-weight:bold;'>[ CARTEL ]</span> A shadow operative has boarded your ship. Combat damage increased, but watch your cargo hold.");
+    if (typeof showToast === 'function') showToast("MERCENARY HIRED", "success");
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+    openStationView();
 }
 
 // ==========================================
