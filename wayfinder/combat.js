@@ -196,7 +196,7 @@ function handleCombatAction(action) {
     // Default: Enemy gets to act unless Stunned or Dead
     let enemyCanAct = true; 
 
-// --- 1. PLAYER TURN ---
+    // --- 1. PLAYER TURN ---
     if (action === 'fight') {
         const weaponId = playerShip.components.weapon;
         const weaponStats = COMPONENTS_DATABASE[weaponId].stats;
@@ -210,7 +210,7 @@ function handleCombatAction(action) {
 
             if (playerShip.ammo[weaponId] <= 0) {
                 logMessage("⚠️ WEAPON ERROR: AMMUNITION DEPLETED!", "color:#FF5555");
-                soundManager.playError();
+                if (typeof soundManager !== 'undefined') soundManager.playError();
                 return; // Stop the attack
             }
             
@@ -222,19 +222,18 @@ function handleCombatAction(action) {
         let damageDealt = weaponStats.damage;
 
         // Perk: Weapon Overclock OR Crew Bonus
-        if (playerPerks.has('WEAPON_OVERCLOCK') || hasCrewPerk('COMBAT_DAMAGE')) {
+        if (playerPerks.has('WEAPON_OVERCLOCK') || (typeof hasCrewPerk === 'function' && hasCrewPerk('COMBAT_DAMAGE'))) {
             damageDealt = Math.floor(damageDealt * 1.15); 
         }
 
-        // Charge Logic
+        // --- DEEP TACTIC: CHARGE LOGIC ---
         if (playerIsChargingAttack) {
-            damageDealt = Math.floor(damageDealt * CHARGE_DAMAGE_MULTIPLIER);
+            damageDealt = Math.floor(damageDealt * 2.5); // Upgraded to massive 2.5x multiplier!
             playerIsChargingAttack = false; 
-            combatLog += "Charged shot unleashed! ";
+            combatLog += "<span style='color:var(--gold-text); font-weight:bold;'>[ CHARGED SHOT ]</span> ";
         }
 
         // TACTICAL CHECK: Adjust based on Enemy Intent
-        // If enemy is blocking/defending, reduce damage
         if (currentCombatContext.nextMove && currentCombatContext.nextMove.type === 'DEFEND') {
             damageDealt = Math.floor(damageDealt * 0.5);
             combatLog += "(Enemy Braced) ";
@@ -243,18 +242,16 @@ function handleCombatAction(action) {
         // Hit Chance Calculation
         let hitChance = weaponStats.hitChance;
         
-        // TACTICAL CHECK: If enemy is evading, harder to hit
         if (currentCombatContext.nextMove && currentCombatContext.nextMove.type === 'EVADE') {
             hitChance -= 0.25;
             combatLog += "(Enemy Evading) ";
         }
 
         if (Math.random() < hitChance) {
-            soundManager.playLaser();
+            if (typeof soundManager !== 'undefined') soundManager.playLaser();
             
             // Shield vs Hull Logic
             if (currentCombatContext.pirateShields > 0) {
-                // Apply optional shield bonus if defined in weapon
                 let shieldDmg = damageDealt + (weaponStats.vsShieldBonus || 0);
                 
                 currentCombatContext.pirateShields -= shieldDmg;
@@ -262,16 +259,14 @@ function handleCombatAction(action) {
 
                 if (currentCombatContext.pirateShields < 0) {
                     const spillover = Math.abs(currentCombatContext.pirateShields);
-                    // Hull takes extra damage from spillover (optional mechanic from your code)
-                    const hullDmg = Math.floor(spillover * HULL_DAMAGE_BONUS_MULTIPLIER);
+                    const hullDmg = Math.floor(spillover * (typeof HULL_DAMAGE_BONUS_MULTIPLIER !== 'undefined' ? HULL_DAMAGE_BONUS_MULTIPLIER : 1.0));
                     
                     currentCombatContext.pirateHull -= hullDmg;
                     currentCombatContext.pirateShields = 0;
                     combatLog += ` Shields down! Hull takes ${hullDmg} damage!`;
                 }
             } else {
-                // Direct Hull Hit
-                let hullDmg = Math.floor(damageDealt * HULL_DAMAGE_BONUS_MULTIPLIER);
+                let hullDmg = Math.floor(damageDealt * (typeof HULL_DAMAGE_BONUS_MULTIPLIER !== 'undefined' ? HULL_DAMAGE_BONUS_MULTIPLIER : 1.0));
                 currentCombatContext.pirateHull -= hullDmg;
                 combatLog += `Direct hull hit for ${hullDmg}!`;
             }
@@ -290,50 +285,41 @@ function handleCombatAction(action) {
         const ability = SHIP_CLASSES[playerShip.shipClass].ability;
         playerAbilityCooldown = ability.cooldown; 
         
-        soundManager.playAbilityActivate();
+        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
         combatLog += `<span style='color:#FFD700'>ABILITY: ${ability.name}!</span> `;
         
         // --- DATA-DRIVEN EXECUTION ---
         if (typeof ability.execute === 'function') {
-            
-            // 1. Package the current state to send to the data file
             const playerStats = { 
                 hull: playerHull, 
-                maxHull: MAX_PLAYER_HULL, 
+                maxHull: (typeof MAX_PLAYER_HULL !== 'undefined' ? MAX_PLAYER_HULL : 100), 
                 shields: playerShields, 
-                maxShields: MAX_SHIELDS,
+                maxShields: (typeof MAX_SHIELDS !== 'undefined' ? MAX_SHIELDS : 50),
                 isEvading: playerIsEvading,
-                guaranteedHit: false, // Default off
-                triggerEscape: false  // Default off
+                guaranteedHit: false, 
+                triggerEscape: false  
             };
             
-            // 2. Execute the unique logic defined in ships.js
             const resultLog = ability.execute(currentCombatContext, playerStats);
             
-            // 3. Retrieve the modified state and apply it globally
             playerHull = playerStats.hull;
             playerShields = playerStats.shields;
             playerIsEvading = playerStats.isEvading;
             
-            // --- Special Case: Escape Ability (Star Galleon) ---
             if (playerStats.triggerEscape) {
                 if(typeof removeEnemyAt === 'function') removeEnemyAt(playerX, playerY);
                 logMessage(combatLog + resultLog);
                 currentCombatContext = null;
                 changeGameState(GAME_STATES.GALACTIC_MAP);
                 handleInteraction();
-                return; // Stop processing the turn immediately!
+                return; 
             }
 
-            // --- Special Case: Precision Burn (Courier) ---
             if (playerStats.guaranteedHit) {
-                // Temporarily boost hit chance for the next 'fight' command.
-                // It resets automatically when applyPlayerShipStats runs later.
                 COMPONENTS_DATABASE[playerShip.components.weapon].stats.hitChance = 2.0; 
-                setTimeout(() => { applyPlayerShipStats(); }, 500); 
+                setTimeout(() => { if(typeof applyPlayerShipStats === 'function') applyPlayerShipStats(); }, 500); 
             }
             
-            // Append the custom flavor text returned by the ability
             if (resultLog) combatLog += resultLog + " ";
         } else {
             combatLog += "[Legacy Ability Error: Missing Execute Function] ";
@@ -342,11 +328,11 @@ function handleCombatAction(action) {
     } else if (action === 'hail') {
         // --- DIPLOMACY LOGIC ---
         let faction = "PIRATE";
-        const shipId = currentCombatContext.ship.id || "PIRATE";
+        const shipId = currentCombatContext.ship && currentCombatContext.ship.id ? currentCombatContext.ship.id : "PIRATE";
         if (shipId.includes("KTHARR")) faction = "KTHARR";
         else if (shipId.includes("CONCORD")) faction = "CONCORD";
         
-        const standing = playerFactionStanding ? (playerFactionStanding[faction] || 0) : 0;
+        const standing = (typeof playerFactionStanding !== 'undefined' && playerFactionStanding) ? (playerFactionStanding[faction] || 0) : 0;
         
         combatLog += "Open channel: ";
         if (faction === "PIRATE") {
@@ -360,59 +346,59 @@ function handleCombatAction(action) {
             return;
         } else {
             combatLog += "\"You have no authority here.\" ";
-            // Enrage mechanic
             currentCombatContext.difficultyMultiplier += 0.2;
             combatLog += "(Enemy Enraged)";
         }
-        // Enemy still attacks after a hail!
         enemyCanAct = true;
 
     } else if (action === 'charge') {
         playerIsChargingAttack = true;
-        combatLog += "Charging weapon systems...";
+        combatLog += "<span style='color:var(--warning)'>[ CHARGING ] Weapons drawing auxiliary power. Next shot will be devastating!</span>";
+        if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+        
     } else if (action === 'evade') {
-        if (playerFuel >= EVASION_FUEL_COST) {
-            playerFuel -= EVASION_FUEL_COST;
+        // --- DEEP TACTIC: EVASION LOGIC ---
+        const cost = typeof EVASION_FUEL_COST !== 'undefined' ? EVASION_FUEL_COST : 15;
+        if (playerFuel >= cost) {
+            playerFuel -= cost;
             playerIsEvading = true;
-            combatLog += `Evasive maneuvers engaged!`;
+            combatLog += `<span style='color:var(--accent-color)'>[ EVASION ] Thrusters burning hard! Evasive maneuvers engaged.</span>`;
+            if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
         } else {
             combatLog += `Not enough fuel to evade!`;
         }
-} else if (action === 'run') {
-        playerFuel -= RUN_FUEL_COST;
-        if (Math.random() < RUN_ESCAPE_CHANCE) {
-            combatLog += `Escaped! Used ${RUN_FUEL_COST} fuel.`;
+        
+    } else if (action === 'run') {
+        const cost = typeof RUN_FUEL_COST !== 'undefined' ? RUN_FUEL_COST : 30;
+        const chance = typeof RUN_ESCAPE_CHANCE !== 'undefined' ? RUN_ESCAPE_CHANCE : 0.5;
+        playerFuel -= cost;
+        if (Math.random() < chance) {
+            combatLog += `Escaped! Used ${cost} fuel.`;
             logMessage(combatLog);
-            updatePlayerNotoriety(-1);
+            if(typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(-1);
             
             currentCombatContext = null;
             changeGameState(GAME_STATES.GALACTIC_MAP);
             handleInteraction();
             return;
         } else {
-            combatLog += `Escape failed!`;
+            combatLog += `<span style='color:var(--danger)'>[ ESCAPE FAILED ] The enemy matched your vector!</span>`;
         }
     }
 
     // --- 2. VICTORY CHECK ---
     if (currentCombatContext.pirateHull <= 0) {
-
         logMessage(combatLog); 
         
-        // Grab the enemy's data and check if they have a bounty on their head
         const defeatedShip = currentCombatContext.ship || currentCombatContext;
-        if (typeof processBountyVictory === 'function') {
-            processBountyVictory(defeatedShip);
-        }
-        
-        handleVictory(); 
+        if (typeof processBountyVictory === 'function') processBountyVictory(defeatedShip);
+        if (typeof handleVictory === 'function') handleVictory(); 
         return;
     }
 
     // --- 3. ENEMY TURN (Tactical Resolution) ---
-    // We resolve the Intent that was set at the END of the LAST turn
+    let enemyLog = "";
     if (enemyCanAct) {
-        let enemyLog = "";
         const intent = currentCombatContext.nextMove || { type: 'ATTACK' };
         const mult = currentCombatContext.difficultyMultiplier || 1.0;
 
@@ -426,17 +412,18 @@ function handleCombatAction(action) {
         }
         else if (intent.type === 'RECHARGE') {
             const heal = Math.floor(10 * mult);
-            currentCombatContext.pirateShields = Math.min(currentCombatContext.pirateMaxShields, currentCombatContext.pirateShields + heal);
+            currentCombatContext.pirateShields = Math.min(currentCombatContext.pirateMaxShields || 50, (currentCombatContext.pirateShields || 0) + heal);
             enemyLog += `Enemy regenerated ${heal} shields.`;
         }
         else {
-            // B. Resolve Attacks (ATTACK, BUFF_DAMAGE, or resolved CHARGE)
-            let baseDmg = PIRATE_ATTACK_DAMAGE_MIN + Math.random() * (PIRATE_ATTACK_DAMAGE_MAX - PIRATE_ATTACK_DAMAGE_MIN);
+            // B. Resolve Attacks
+            const minDmg = typeof PIRATE_ATTACK_DAMAGE_MIN !== 'undefined' ? PIRATE_ATTACK_DAMAGE_MIN : 8;
+            const maxDmg = typeof PIRATE_ATTACK_DAMAGE_MAX !== 'undefined' ? PIRATE_ATTACK_DAMAGE_MAX : 15;
+            let baseDmg = minDmg + Math.random() * (maxDmg - minDmg);
             let pD = Math.floor(baseDmg * mult);
 
-            // Apply Modifiers
             if (currentCombatContext.charged) {
-                pD *= 2.5; // Massive damage
+                pD *= 2.5; 
                 currentCombatContext.charged = false;
                 enemyLog += "⚠️ HEAVY BEAM FIRED! ";
             } else if (intent.type === 'BUFF_DAMAGE') {
@@ -444,21 +431,28 @@ function handleCombatAction(action) {
                 enemyLog += "Overclocked hit! ";
             }
 
-            // Player Evasion Calculation
-            let hitChance = PIRATE_HIT_CHANCE;
-            if (playerIsEvading) hitChance -= EVASION_DODGE_BONUS;
-
+            // --- RESOLVE EVASION ---
+            let hitChance = typeof PIRATE_HIT_CHANCE !== 'undefined' ? PIRATE_HIT_CHANCE : 0.85;
             hitChance -= (typeof PLAYER_EVASION !== 'undefined' ? PLAYER_EVASION : 0);
+            if (typeof activeSynergy !== 'undefined' && activeSynergy && activeSynergy.id === 'ECLIPSE') hitChance -= 0.15;
 
-            // --- ECLIPSE SYNERGY HOOK ---
-            if (activeSynergy && activeSynergy.id === 'ECLIPSE') hitChance -= 0.15;
+            let isHit = Math.random() < hitChance;
 
-            if (Math.random() < hitChance) {
-                soundManager.playExplosion();
+            // NEW 75% Evade Dodge Mechanic
+            if (playerIsEvading) {
+                if (Math.random() < 0.75) {
+                    isHit = false;
+                    enemyLog += "<span style='color:var(--success)'>[ DODGED ] The enemy's targeting sensors lost your signature!</span> ";
+                } else {
+                    enemyLog += "<span style='color:var(--danger)'>[ HIT ] Evasive maneuvers failed.</span> ";
+                }
+            }
+
+            if (isHit) {
+                if (typeof soundManager !== 'undefined') soundManager.playExplosion();
                 if (typeof triggerHaptic === "function") triggerHaptic([100, 50]);
 
-                if (playerIsEvading) enemyLog += "Hit through evasion! ";
-                else enemyLog += "Hit! ";
+                if (!playerIsEvading) enemyLog += "Hit! ";
 
                 if (playerShields > 0) {
                     playerShields -= pD;
@@ -468,48 +462,48 @@ function handleCombatAction(action) {
                         playerHull -= spill;
                         playerShields = 0;
                         enemyLog += ` Breach! Hull took ${Math.floor(spill)}.`;
-                        if (typeof triggerDamageEffect === "function") triggerDamageEffect();
+                        
+                        // GameBus Integration for screen shake/flashes!
+                        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: Math.floor(spill), reason: "Combat Fire" });
+                        else if (typeof triggerDamageEffect === "function") triggerDamageEffect();
                     }
                 } else {
                     playerHull -= pD;
                     enemyLog += `Hull took ${Math.floor(pD)} damage!`;
-                    if (typeof triggerDamageEffect === "function") triggerDamageEffect();
+                    
+                    if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: Math.floor(pD), reason: "Combat Fire" });
+                    else if (typeof triggerDamageEffect === "function") triggerDamageEffect();
                 }
             } else {
-                enemyLog += "Enemy fire missed!";
+                if (!playerIsEvading) enemyLog += "Enemy fire missed!";
             }
         }
     }
 
-    // Instead of two massive strings, we combine them into one clean, color-coded block
-    if (enemyCanAct && typeof enemyLog !== 'undefined' && enemyLog !== "") {
+    // Combine logs into the formatted block
+    if (enemyCanAct && enemyLog !== "") {
         let combinedLog = `<div style="margin-bottom: 5px; border-left: 2px solid #444; padding-left: 8px;">`;
         combinedLog += `<div style="color:var(--accent-color);">> ${combatLog}</div>`;
         combinedLog += `<div style="color:var(--danger);">> ${enemyLog}</div>`;
         combinedLog += `</div>`;
         logMessage(combinedLog);
     } else {
-        // If the enemy was stunned or couldn't act, just print the player's turn
         logMessage(`<div style="color:var(--accent-color);">> ${combatLog}</div>`);
     }
 
-    // Reset Player Evasion (unless an ability specifically stated otherwise)
     playerIsEvading = false;
 
     // --- 4. DEFEAT CHECK ---
     if (playerHull <= 0) {
-        triggerGameOver("Destruction in Combat");
+        if (typeof triggerGameOver === 'function') triggerGameOver("Destruction in Combat");
         return;
     }
 
-    // --- 5. PREPARE NEXT TURN (Generate NEW Intent) ---
-    // This is crucial for the UI to update the "Enemy Intent" bar for the NEXT turn
-    generateEnemyIntent();
-
+    // --- 5. PREPARE NEXT TURN ---
+    if (typeof generateEnemyIntent === 'function') generateEnemyIntent();
     playerAbilityCooldown = Math.max(0, playerAbilityCooldown - 1);
 
-    // Re-render UI
-    render();
+    if (typeof render === 'function') render();
 }
 
 function renderCombatView() {
