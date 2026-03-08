@@ -610,7 +610,12 @@ function calculateItemPrice(itemOrId, isBuy, location) {
         activeMarketTrend.item === itemId && 
         currentGameDate < activeMarketTrend.expiry) {
         
-        price *= 2.0; // Hot tip multiplier
+        if (activeMarketTrend.isBoom) {
+            price *= 2.5; // Massive Shortage: They pay 2.5x standard value!
+        } else {
+            price *= 0.4; // Massive Surplus: They sell it for 60% off!
+        }
+        
     } else {
         // Standard Fluctuation (Sine Wave)
         const uniqueOffset = item.basePrice || 0;
