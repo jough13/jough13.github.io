@@ -2390,6 +2390,12 @@ function processGameTick(timeAmount, isMovement = false) {
         });
     }
 
+    // --- 9. DYNAMIC ECONOMY SHIFTS ---
+    // If there is no active trend, or the current one has expired, generate a new one!
+    if (!activeMarketTrend || currentGameDate > activeMarketTrend.expiry) {
+        if (typeof generateMarketTrend === 'function') generateMarketTrend();
+    }
+
     return false; // Tick finished peacefully
 }
 
@@ -2406,8 +2412,15 @@ function processGameTick(timeAmount, isMovement = false) {
 
     // 2. Fuel Math
     const currentEngine = COMPONENTS_DATABASE[playerShip.components.engine];
-    let actualFuelPerMove = BASE_FUEL_PER_MOVE * (currentEngine.stats.fuelEfficiency || 1.0);
+    let actualFuelPerMove = typeof BASE_FUEL_PER_MOVE !== 'undefined' ? BASE_FUEL_PER_MOVE : 1.0;
+    actualFuelPerMove *= (currentEngine.stats.fuelEfficiency || 1.0);
+    
     if (playerPerks.has('EFFICIENT_THRUSTERS')) actualFuelPerMove *= 0.8; 
+    
+    // --- ASTROGATOR CREW PERK ---
+    if (typeof hasCrewPerk === 'function' && hasCrewPerk('FUEL_EFFICIENCY')) {
+        actualFuelPerMove *= 0.75; // 25% less fuel consumed per jump!
+    }
 
     // 3. Fuel Check (Stranded)
     if (playerFuel < actualFuelPerMove && (dx !== 0 || dy !== 0)) {
@@ -3006,6 +3019,7 @@ function renderLevelUpScreen() {
 function selectPerk(perkId) {
     playerPerks.add(perkId);
 
+    // Lore Unlock Hook
     unlockLoreEntry("TECH_CYBER_AUGMENTATION");
     
     logMessage(`<span style="color:#FFD700">UPGRADE INSTALLED: ${PERKS_DATABASE[perkId].name}</span>`);
@@ -3013,8 +3027,10 @@ function selectPerk(perkId) {
     
     document.getElementById('levelUpOverlay').style.display = 'none';
     
-    // Resume Game
-    changeGameState(GAME_STATES.GALACTIC_MAP);
+    // --- NO MORE FORCED GALACTIC MAP RETURN ---
+    // By removing changeGameState(GAME_STATES.GALACTIC_MAP) here, 
+    // the game seamlessly leaves you in whatever menu you were already looking at!
+    
     renderUIStats();
     saveGame(); // Auto-save on level up
     
@@ -3249,70 +3265,61 @@ function showFuelRatRescueModal() {
     unlockLoreEntry("FACTION_FUEL_RATS");
     openGenericModal("INCOMING TRANSMISSION");
     
-    const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
+    document.getElementById('genericModalList').innerHTML = ''; // Hide the list pane
 
-    // Adjust layout width for a "View Screen" feel
-    listEl.style.flex = "0 0 35%";
-    detailEl.style.flex = "1";
-
-    // --- LEFT PANE: PORTRAIT & DATA ---
-    listEl.innerHTML = `
-        <div style="text-align:center; padding: 20px 10px;">
-            <img src="assets/fuel_rats.png" alt="Fuel Rat Dispatcher" 
-                 onerror="this.src='assets/default_npc.png'"
-                 style="width:120px; height:120px; object-fit:cover; border-radius:50%; border:2px solid var(--warning); box-shadow: 0 0 20px rgba(255,170,0,0.3); background:#000; margin-bottom:15px; image-rendering: pixelated;">
-            
-            <h3 style="color:var(--warning); margin:0 0 5px 0;">DISPATCHER 'ROOK'</h3>
-            <div style="color:var(--item-desc-color); font-size:11px; letter-spacing:2px; margin-bottom: 15px;">THE MISCHIEF</div>
-            
-            <div style="background:rgba(255,170,0,0.1); border:1px solid var(--warning); padding:10px; border-radius:4px; text-align:left; font-size:11px; color:var(--text-color);">
-                <strong style="color:var(--warning)">TUG:</strong> Modified Hauler<br>
-                <strong style="color:var(--warning)">STATUS:</strong> Docked at ${rescueTargetStation.name}<br>
-                <strong style="color:var(--warning)">MOTTO:</strong> "We have fuel. You don't."
-            </div>
-        </div>
-    `;
-
-    // --- RIGHT PANE: DIALOGUE & ADVICE ---
-    let dialogue = "";
-    let receiptHtml = "";
-
-    if (freebieUsed && rescueFeePaid === 0) {
-        dialogue = `"Look at you, floating out there with empty pockets and dead engines. Lucky for you, the Mischief doesn't leave spacers to die. We towed you to <strong>${rescueTargetStation.name}</strong> on the house. Consider it a charity case."`;
-        receiptHtml = `<span style="color:var(--success); font-weight:bold;">TOW & FUEL WAIVED (CHARITY)</span>`;
-    } else if (freebieUsed) {
-        dialogue = `"Scraping the bottom of the barrel, eh? We took the last <strong>${rescueFeePaid}c</strong> you had to your name and dragged you to <strong>${rescueTargetStation.name}</strong>. You're broke, but you're alive."`;
-        receiptHtml = `<span style="color:var(--danger); font-weight:bold;">ALL REMAINING FUNDS SEIZED (-${rescueFeePaid}c)</span>`;
-    } else {
-        dialogue = `"Tractor beam disengaged. We've deposited your hull at <strong>${rescueTargetStation.name}</strong>. Try to keep an eye on your gauges next time, Commander. Space is too big to fly blind."`;
-        receiptHtml = `<span style="color:var(--danger); font-weight:bold;">TOW & FUEL FEE: -${rescueFeePaid}c</span>`;
-    }
+    const isVIP = (playerFactionStanding['FUEL_RATS'] || 0) >= 5;
 
     detailEl.innerHTML = `
-        <div style="padding: 15px;">
-            <h2 style="color:var(--warning); margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">RESCUE COMPLETE</h2>
-            
-            <div style="background: rgba(0,0,0,0.5); border-left: 3px solid var(--warning); padding: 15px; margin-bottom: 20px; font-style: italic; color: #FFF; line-height: 1.6;">
-                ${dialogue}
-            </div>
-
-            <div style="background:var(--bg-color); border:1px dashed var(--border-color); padding: 15px; border-radius: 4px; margin-bottom:20px;">
-                <div style="font-size:10px; color:var(--accent-color); letter-spacing:1px; margin-bottom:8px;">TRANSACTION RECEIPT</div>
-                ${receiptHtml}
-            </div>
-
-            <h4 style="color:var(--accent-color); font-size:12px; margin-bottom:8px; border-bottom: 1px solid #333; padding-bottom:4px;">RAT'S ADVICE: AVOIDING DEAD ENGINES</h4>
-            <ul style="color:var(--item-desc-color); font-size:13px; line-height:1.6; padding-left:20px; margin:0;">
-                <li>Always top off your tanks at the <strong>Refuel</strong> terminal when docked.</li>
-                <li>Install a <strong>Dosimetry Array</strong> utility module to safely scoop fuel from bright O & B class stars without melting your hull.</li>
-                <li>Press <strong>(H)</strong> while parked directly on a Star or Nebula to emergency siphon hydrogen.</li>
-            </ul>
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:60px; margin-bottom:15px; animation: pulse-cyan 2s infinite;">🐀</div>
+            <h3 style="color:var(--warning); margin-bottom:10px;">THE FUEL RATS</h3>
+            <p style="color:var(--text-color); font-size:13px; line-height:1.6;">
+                "We have fuel. You don't. Any questions?"
+                <br><br>
+                A battered tug drops out of subspace next to your stranded vessel. They deploy a refueling umbilicus.
+                ${isVIP ? "<br><br><span style='color:var(--success); font-weight:bold;'>'Hey, I know you! You're good people. We're patching your hull integrity too, on the house.'</span>" : ""}
+            </p>
         </div>
     `;
 
-    renderFuelRatActions();
+    // The tipping buttons!
+    actionsEl.innerHTML = `
+        <button class="action-button" onclick="executeFuelRatRescue(0)">ACCEPT RESCUE (Free)</button>
+        <button class="action-button" style="border-color:var(--gold-text); color:var(--gold-text);" onclick="executeFuelRatRescue(100)">TIP 100c (+1 Rep)</button>
+        <button class="action-button" style="border-color:var(--gold-text); color:var(--gold-text);" onclick="executeFuelRatRescue(500)">TIP 500c (+5 Rep)</button>
+    `;
+}
+
+function executeFuelRatRescue(tipAmount) {
+    if (playerCredits < tipAmount) {
+        if (typeof showToast === 'function') showToast("Insufficient credits for tip!", "error");
+        return;
+    }
+    
+    playerCredits -= tipAmount;
+    playerFuel = typeof MAX_FUEL !== 'undefined' ? MAX_FUEL : 220;
+    
+    // Process the tip reputation
+    if (tipAmount > 0) {
+        const repGain = tipAmount === 500 ? 5 : 1;
+        playerFactionStanding['FUEL_RATS'] = (playerFactionStanding['FUEL_RATS'] || 0) + repGain;
+        logMessage(`<span style='color:var(--success)'>+${repGain} Fuel Rats Reputation</span>`);
+    }
+
+    // Process the VIP Perk: Free Hull Repair!
+    if ((playerFactionStanding['FUEL_RATS'] || 0) >= 5) {
+        playerHull = typeof MAX_PLAYER_HULL !== 'undefined' ? MAX_PLAYER_HULL : 100;
+        if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+    }
+
+    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    if (typeof showToast === 'function') showToast("TANKS REFILLED", "success");
+    logMessage("<span style='color:var(--warning)'>[ RESCUE ] The Fuel Rats detach and jump away. Tanks are full.</span>");
+    
+    closeGenericModal();
+    if (typeof renderUIStats === 'function') renderUIStats();
 }
 
 function renderFuelRatActions() {
@@ -5332,6 +5339,37 @@ setInterval(() => {
 }, 200); // 5 FPS is perfectly smooth for a slow twinkle, while keeping browser CPU usage extremely low.
 
 // ==========================================
+// --- DYNAMIC ECONOMY ENGINE ---
+// ==========================================
+
+function generateMarketTrend() {
+    if (typeof LOCATIONS_DATA === 'undefined' || typeof COMMODITIES === 'undefined') return;
+
+    // Grab all valid stations and legal commodities
+    const stations = Object.keys(LOCATIONS_DATA).filter(k => LOCATIONS_DATA[k].isMajorHub || LOCATIONS_DATA[k].type === 'O');
+    const items = Object.keys(COMMODITIES).filter(k => !COMMODITIES[k].illegal);
+    
+    if (stations.length === 0 || items.length === 0) return;
+
+    const targetStation = stations[Math.floor(Math.random() * stations.length)];
+    const targetItem = items[Math.floor(Math.random() * items.length)];
+    const isBoom = Math.random() > 0.5; // 50% chance for Boom (High Demand), 50% for Bust (Surplus)
+
+    activeMarketTrend = {
+        station: targetStation,
+        item: targetItem,
+        isBoom: isBoom,
+        expiry: currentGameDate + 60.0 // Lasts for roughly 60 stardates
+    };
+
+    // 20% chance the player casually intercepts this news on the comms channel while flying!
+    if (Math.random() < 0.20) {
+        const trendType = isBoom ? "<span style='color:var(--warning)'>CRITICAL SHORTAGE</span>" : "<span style='color:var(--success)'>MARKET SURPLUS</span>";
+        logMessage(`<span style="color:#A2D2FF">[ GALACTIC NEWS ]</span> ${trendType} of <span style="color:var(--gold-text)">${COMMODITIES[targetItem].name}</span> reported at ${targetStation}.`);
+    }
+}
+
+// ==========================================
 // --- DEVELOPER DEBUG CONSOLE ---
 // ==========================================
 
@@ -5416,4 +5454,185 @@ function devLevelUp() {
     if (typeof checkLevelUp === 'function') checkLevelUp();
     if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
     if (typeof showToast === 'function') showToast("DEV: Leveled Up", "success");
+}
+
+// ==========================================
+// --- FACTION HIRELING PASSIVES ---
+// ==========================================
+
+function processMercenaryDrawbacks() {
+    // 1. Eclipse Mercenary Cargo Theft (5% chance per sector jump)
+    if (window.hasEclipseMerc && Math.random() < 0.05) { 
+        const cargoItems = Object.keys(playerCargo).filter(k => playerCargo[k] > 0);
+        if (cargoItems.length > 0) {
+            const stolenItem = cargoItems[Math.floor(Math.random() * cargoItems.length)];
+            playerCargo[stolenItem]--;
+            if (playerCargo[stolenItem] <= 0) delete playerCargo[stolenItem];
+            
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            logMessage(`<span style="color:#9933FF; font-weight:bold;">[ CARTEL OPERATIVE ]</span> You catch your mercenary slipping away from the cargo bay. 1x ${COMMODITIES[stolenItem].name} is missing.`);
+            if (typeof showToast === 'function') showToast("CARGO STOLEN", "warning");
+            if (typeof renderUIStats === 'function') renderUIStats();
+        }
+    }
+
+    // 2. Concord Escort Jump Tracking
+    if (window.concordEscortJumps && window.concordEscortJumps > 0) {
+        window.concordEscortJumps--;
+        if (window.concordEscortJumps <= 0) {
+            logMessage("<span style='color:var(--accent-color); font-weight:bold;'>[ AEGIS COMMAND ]</span> Escort contract concluded. The gunship breaks formation and jumps away.");
+            if (typeof showToast === 'function') showToast("ESCORT DEPARTED", "info");
+        } else {
+            // 10% chance to hear your escort checking in on the comms!
+            if (Math.random() < 0.1) {
+                logMessage("<span style='color:var(--accent-color);'>[ AEGIS WING ]</span> <i>'We have your six, Commander. Proceed to next waypoint.'</i>");
+            }
+        }
+    }
+}
+
+// ==========================================
+// --- CREW PERK ENGINE HOOKS ---
+// ==========================================
+
+// Safely intercept the stat calculation function to apply our Crew Shield Boost!
+if (typeof window.applyPlayerShipStats === 'function' && !window._originalApplyStats) {
+    window._originalApplyStats = window.applyPlayerShipStats;
+    
+    window.applyPlayerShipStats = function() {
+        // 1. Run your original math first
+        window._originalApplyStats();
+        
+        // 2. Apply the Chief Engineer Shield Boost (25% Extra Shields)
+        if (typeof hasCrewPerk === 'function' && hasCrewPerk('SHIELD_BOOST')) {
+            if (typeof MAX_SHIELDS !== 'undefined') {
+                MAX_SHIELDS = Math.floor(MAX_SHIELDS * 1.25);
+                playerShields = Math.min(playerShields, MAX_SHIELDS); // Cap current shields
+            }
+        }
+    };
+}
+
+// ==========================================
+// --- MISSION BOARD UI OVERHAUL ---
+// ==========================================
+
+function displayMissionBoard() {
+    openGenericModal("STATION JOB BOARD");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // 1. Ensure missions exist via your native generator
+    if (typeof generateMissionsForStation === 'function' && (!missionsAvailableAtStation || missionsAvailableAtStation.length === 0)) {
+        generateMissionsForStation(); 
+    }
+
+    // 2. Setup Context so underlying logic doesn't break
+    currentMissionContext = {
+        step: 'selectMission',
+        availableMissions: missionsAvailableAtStation
+    };
+
+    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">POSTED CONTRACTS</div>`;
+
+    if (!missionsAvailableAtStation || missionsAvailableAtStation.length === 0) {
+         listEl.innerHTML += `<div style="padding:15px; color:#888;">No contracts available at this time. Check back later.</div>`;
+    } else {
+         missionsAvailableAtStation.forEach((mission, index) => {
+             const row = document.createElement('div');
+             row.className = 'trade-item-row';
+             row.style.cursor = 'pointer';
+             
+             // Extract data safely
+             const title = mission.title || (mission.template ? mission.template.title_template : "Unknown Contract");
+             const reward = mission.rewards ? mission.rewards.credits : 0;
+             const isBounty = mission.type === 'BOUNTY';
+
+             row.innerHTML = `
+                 <div style="display:flex; flex-direction:column; gap: 4px;">
+                     <span style="color:${isBounty ? 'var(--danger)' : 'var(--accent-color)'}; font-weight:bold; font-size:13px;">${title}</span> 
+                     <span style="color:var(--gold-text); font-size:10px;">Reward: ${formatNumber(reward)}c</span>
+                 </div>
+             `;
+             row.onclick = () => displayMissionDetails(index);
+             listEl.appendChild(row);
+         });
+    }
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 40px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; opacity:0.5;">📜</div>
+            <h3 style="color:var(--accent-color); margin-bottom:10px;">CONCORD JOB BOARD</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                Review available contracts. You may only hold one active mission at a time. High-risk bounties are marked in red.
+            </p>
+        </div>
+    `;
+    actionsEl.innerHTML = `<button class="action-button" onclick="openStationView()">RETURN TO CONCOURSE</button>`;
+}
+
+function displayMissionDetails(index) {
+    const mission = missionsAvailableAtStation[index];
+    if (!mission) return;
+
+    currentMissionContext.step = 'confirmMission';
+    currentMissionContext.selectedMissionIndex = index;
+
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    const title = mission.title || "Contract";
+    const desc = mission.description || "Mission details unavailable.";
+    const reward = mission.rewards ? mission.rewards.credits : 0;
+    const xp = mission.rewards ? mission.rewards.xp : 0;
+    const isBounty = mission.type === 'BOUNTY';
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:50px; margin-bottom:10px;">${isBounty ? '🎯' : '📦'}</div>
+            <h3 style="color:${isBounty ? 'var(--danger)' : 'var(--accent-color)'}; margin:0 0 15px 0;">${title.toUpperCase()}</h3>
+            
+            <p style="font-size:13px; color:var(--text-color); margin-bottom: 20px; line-height: 1.6; text-align:left; background:rgba(0,0,0,0.3); padding:15px; border:1px solid #333; border-radius:4px;">
+                "${desc}"
+            </p>
+            
+            <div class="trade-math-area" style="text-align:left;">
+                <div class="trade-stat-row"><span>Payout:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(reward)}c</span></div>
+                <div class="trade-stat-row"><span>Experience:</span> <span style="color:var(--success); font-weight:bold;">+${xp} XP</span></div>
+            </div>
+        </div>
+    `;
+
+    if (playerActiveMission) {
+        actionsEl.innerHTML = `
+            <button class="action-button" disabled>CONTRACT ALREADY ACTIVE</button>
+            <button class="action-button" onclick="displayMissionBoard()">BACK TO LIST</button>
+        `;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 10px rgba(0,224,224,0.2);" onclick="acceptMissionUI(${index})">
+                ACCEPT CONTRACT
+            </button>
+            <button class="action-button" onclick="displayMissionBoard()">CANCEL</button>
+        `;
+    }
+}
+
+function acceptMissionUI(index) {
+    // Re-use your flawless existing acceptMission logic!
+    currentMissionContext.selectedMissionIndex = index;
+    
+    if (typeof acceptMission === 'function') {
+        acceptMission(); 
+        
+        // Polish the UI output
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+        if (typeof showToast === 'function') showToast("CONTRACT ACCEPTED", "success");
+        
+        displayMissionBoard(); // Refresh the board
+        if (typeof renderUIStats === 'function') renderUIStats();
+    } else {
+        logMessage("Mission system offline.", "color:red");
+    }
 }
