@@ -242,6 +242,12 @@ function handleCombatAction(action) {
             damageDealt = Math.floor(damageDealt * 1.15); 
         }
 
+        // --- FACTION PERK: ECLIPSE MERCENARY ---
+        if (window.hasEclipseMerc) {
+            damageDealt = Math.floor(damageDealt * 1.20); // 20% bonus damage!
+            combatLog += "<span style='color:#9933FF;'>(Operative Focus Fire)</span> ";
+        }
+
         // --- DEEP TACTIC: CHARGE LOGIC ---
         if (playerIsChargingAttack) {
             damageDealt = Math.floor(damageDealt * 2.5); // Upgraded to massive 2.5x multiplier!
@@ -399,6 +405,20 @@ function handleCombatAction(action) {
             return;
         } else {
             combatLog += `<span style='color:var(--danger)'>[ ESCAPE FAILED ] The enemy matched your vector!</span>`;
+        }
+    }
+    if (window.concordEscortJumps && window.concordEscortJumps > 0 && currentCombatContext && currentCombatContext.pirateHull > 0) {
+        const escortDmg = 15 + Math.floor(Math.random() * 15); // Powerful auto-damage
+        combatLog += `<br><span style='color:var(--accent-color); font-weight:bold;'>[ AEGIS WING ]</span> Escort fires heavy cannons for ${escortDmg} damage!`;
+        
+        if (currentCombatContext.pirateShields > 0) {
+            currentCombatContext.pirateShields -= escortDmg;
+            if (currentCombatContext.pirateShields < 0) {
+                currentCombatContext.pirateHull += currentCombatContext.pirateShields; // spillover
+                currentCombatContext.pirateShields = 0;
+            }
+        } else {
+            currentCombatContext.pirateHull -= escortDmg;
         }
     }
 
