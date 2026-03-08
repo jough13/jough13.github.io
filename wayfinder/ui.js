@@ -50,8 +50,9 @@ function updateModalInfoBar(elementId) {
     const el = document.getElementById(elementId);
     if (!el) return;
 
-    // Get current ship name
-    const shipName = SHIP_CLASSES[playerShip.shipClass].name;
+    // --- THE FIX: USE CUSTOM NAME IF AVAILABLE ---
+    const baseShipName = SHIP_CLASSES[playerShip.shipClass].name;
+    const shipName = playerShip.name ? playerShip.name : baseShipName;
     
     // Calculate Reputation Text
     // Use the global title, or "Unknown" if undefined
@@ -340,6 +341,70 @@ function renderCodexText(entry) {
     `;
 }
 
+// ==========================================
+// --- VESSEL REGISTRATION (NAMING) ---
+// ==========================================
+
+function renameShip() {
+    const currentName = playerShip.name || SHIP_CLASSES[playerShip.shipClass].name;
+    const newName = prompt("Enter new vessel registry name:", currentName);
+    
+    // Check if the user entered a valid string and didn't hit cancel
+    if (newName && newName.trim() !== "") {
+        playerShip.name = newName.trim();
+        
+        logMessage(`<span style="color:var(--success)">[ NAV-COM ] Vessel registry updated to: <b>${playerShip.name}</b></span>`);
+        if (typeof showToast === 'function') showToast("REGISTRY UPDATED", "success");
+        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+        
+        // Refresh the UI to show the new name instantly!
+        if (typeof displayCommanderProfile === 'function') displayCommanderProfile('SHIP'); 
+        updateModalInfoBar('genericInfoBar'); 
+        if (typeof autoSaveGame === 'function') autoSaveGame();
+    }
+}
+
+// --- MODAL INFO BAR HELPER ---
+function updateModalInfoBar(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    // --- THE FIX: USE CUSTOM NAME IF AVAILABLE ---
+    const baseShipName = SHIP_CLASSES[playerShip.shipClass].name;
+    const shipName = playerShip.name ? playerShip.name : baseShipName;
+    
+    // Calculate Reputation Text
+    // Use the global title, or "Unknown" if undefined
+    const rep = playerNotorietyTitle || "Unknown";
+
+    el.innerHTML = `
+        <div class="info-bar-item">
+            <span class="info-bar-value info-ship">${playerName}</span>
+            <span class="info-bar-label">LVL ${playerLevel}</span>
+        </div>
+        
+        <div class="info-bar-item">
+            <span class="info-bar-label">REP:</span>
+            <span class="info-bar-value" style="color:var(--accent-color)">${rep}</span>
+        </div>
+
+        <div class="info-bar-item">
+            <span class="info-bar-label">SHIP:</span>
+            <span class="info-bar-value info-ship">${shipName}</span>
+        </div>
+
+        <div class="info-bar-item">
+            <span class="info-bar-label">CARGO:</span>
+            <span class="info-bar-value">${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}</span>
+        </div>
+
+        <div class="info-bar-item">
+            <span class="info-bar-label">CREDITS:</span>
+            <span class="info-bar-value info-credits">${formatNumber(playerCredits)}c</span>
+        </div>
+    `;
+}
+
 // --- COMMANDER PROFILE UI ---
 function displayCommanderProfile(tab = 'OVERVIEW') {
     // Hide the SYS menu so it doesn't overlap
@@ -399,11 +464,19 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
 
     else if (tab === 'SHIP') {
         const ship = SHIP_CLASSES[playerShip.shipClass];
+        const customName = playerShip.name || ship.name; // Pull custom name
+        
         html += `
             <div style="text-align:center;">
                 ${ship.image ? `<img src="${ship.image}" style="width:100%; max-width:180px; margin-bottom:15px; filter: drop-shadow(0 0 10px rgba(0,224,224,0.2));">` : '<div style="font-size:50px; opacity:0.5; margin-bottom:15px;">🚀</div>'}
             </div>
-            <h3 style="color:var(--accent-color); border-bottom:1px solid #333; padding-bottom:10px; margin-top:0; text-align:center;">${ship.name.toUpperCase()}</h3>
+            
+            <h3 style="color:var(--accent-color); margin-top:0; text-align:center; cursor:pointer;" onclick="renameShip()" title="Click to christen your vessel">
+                ${customName.toUpperCase()} <span style="font-size:14px; opacity:0.7;">✏️</span>
+            </h3>
+            <div style="text-align:center; font-size:10px; color:#888; margin-top:-10px; margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px; letter-spacing:1px;">
+                REGISTERED CHASSIS: ${ship.name.toUpperCase()}
+            </div>
             
             ${activeSynergy ? `<div style="text-align:center; color:var(--gold-text); font-size:12px; margin-bottom:15px; padding:5px; background:rgba(255,215,0,0.1); border:1px solid #886600; border-radius:4px; font-weight:bold; letter-spacing:1px;">★ SET BONUS: ${activeSynergy.name.toUpperCase()} ★<br><span style="color:#CCC; font-size:10px; font-weight:normal;">${activeSynergy.desc}</span></div>` : ''}
             
