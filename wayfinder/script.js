@@ -1259,10 +1259,10 @@ let statusOverlayElement;
         menuRepElement.style.fontSize = "10px";
     }
 
-    // 1. Calculate Percentages for Bars
-    const fuelPct = Math.max(0, (playerFuel / MAX_FUEL) * 100);
-    const shieldPct = Math.max(0, (playerShields / MAX_SHIELDS) * 100);
-    const hullPct = Math.max(0, (playerHull / MAX_PLAYER_HULL) * 100);
+    // 1. Calculate Percentages for Bars (Clamped to 100% to prevent CSS overflow!)
+    const fuelPct = Math.min(100, Math.max(0, (playerFuel / MAX_FUEL) * 100));
+    const shieldPct = Math.min(100, Math.max(0, (playerShields / MAX_SHIELDS) * 100));
+    const hullPct = Math.min(100, Math.max(0, (playerHull / MAX_PLAYER_HULL) * 100));
 
     // 2. Update Bar Widths
     if (fuelBarElement) fuelBarElement.style.width = `${fuelPct}%`;
@@ -1297,7 +1297,20 @@ let statusOverlayElement;
      
     if (dist > 2000) { threat = "DEADLY"; threatColor = "#FF0000"; } 
     else if (dist > 1200) { threat = "HIGH"; threatColor = "#FF5555"; } 
-    else if (dist > 600) { threat = "MODERATE"; threatColor = "#FFFF00"; } 
+// --- NEW: TACTICAL RADAR OVERRIDE ---
+    // If an enemy is actively hunting you (within 2 tiles), override the zone threat!
+    if (typeof activeEnemies !== 'undefined' && activeEnemies.length > 0) {
+        const nearEnemy = activeEnemies.find(e => Math.abs(e.x - playerX) <= 2 && Math.abs(e.y - playerY) <= 2 && !e.isProbe);
+        if (nearEnemy) {
+            threat = "HOSTILE DETECTED";
+            threatColor = "var(--danger)";
+        }
+    }
+    // Also override if the player has active Concord heat!
+    if (playerNotoriety > 0) {
+        threat = `WANTED (${playerNotoriety})`;
+        threatColor = "var(--warning)";
+    }
 
     if (sectorNameStatElement) {
         sectorNameStatElement.innerHTML = `${currentSectorName} <span style="color:${fColor}; opacity:0.9;">[${factionName}]</span> <span style="color:${threatColor}; font-size: 0.8em; margin-left: 8px;">[${threat}]</span>`;
@@ -1822,17 +1835,53 @@ function renderSystemMap() {
      }
      if (currentGameState !== GAME_STATES.SYSTEM_MAP) return;
 
-     // First, select the planet so the highlight appears correctly
      selectedPlanetIndex = index;
-
-     // Now, perform the examine logic
      const planet = currentSystemData.planets[index];
-     let scanReport = `Scan of Planet ${index + 1} (${planet.biome.name}):\n`;
-     scanReport += `${planet.biome.description}\n`;
-     scanReport += `Potential Resources: ${planet.biome.resources.join(', ')}`;
+     
+     // --- NEW: BEAUTIFUL MODAL SCAN ---
+     if (typeof openGenericModal === 'function') {
+         openGenericModal(`PLANETARY SCAN: ${planet.biome.name.toUpperCase()}`);
+         
+         const listEl = document.getElementById('genericModalList');
+         const detailEl = document.getElementById('genericDetailContent');
+         const actionsEl = document.getElementById('genericModalActions');
 
-     // logMessage will call render() for us, which will update the screen.
-     logMessage(scanReport);
+         listEl.innerHTML = ''; // Hide left pane for full-screen view
+         
+         const resourcesHtml = planet.biome.resources && planet.biome.resources.length > 0 
+            ? planet.biome.resources.map(r => `<span style="color:var(--gold-text); background:rgba(255,215,0,0.1); border:1px solid var(--gold-text); padding:4px 8px; border-radius:4px; font-size:11px; margin-right:5px; display:inline-block; margin-bottom:5px;">${r}</span>`).join('') 
+            : "<span style='color:#666;'>No valuable resources detected.</span>";
+
+         detailEl.innerHTML = `
+            <div style="text-align:center; padding: 20px;">
+                <img src="${planet.biome.image}" style="width:140px; height:140px; object-fit:cover; border-radius:50%; border:2px solid var(--accent-color); margin-bottom:15px; box-shadow: 0 0 25px rgba(0,224,224,0.3);">
+                <h3 style="color:var(--accent-color); margin-bottom:10px; letter-spacing: 2px;">${planet.biome.name}</h3>
+                
+                <div style="background:rgba(0,0,0,0.5); border:1px solid var(--border-color); padding:15px; border-radius:4px; text-align:left; margin-bottom:20px;">
+                    <p style="color:var(--text-color); font-size:13px; line-height:1.6; margin:0;">
+                        ${planet.biome.description}
+                    </p>
+                </div>
+                
+                <div style="text-align:left; background:rgba(0,0,0,0.3); padding: 15px; border-left: 3px solid var(--accent-color);">
+                    <div style="font-size:10px; color:var(--accent-color); letter-spacing:1px; margin-bottom:10px;">DETECTED SIGNATURES:</div>
+                    ${resourcesHtml}
+                </div>
+            </div>
+         `;
+         
+         actionsEl.innerHTML = `
+            <button class="action-button full-width-btn" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="closeGenericModal(); if(typeof render === 'function') render();">CLOSE SCANNER</button>
+         `;
+     } else {
+         // Fallback just in case
+         let scanReport = `Scan of Planet ${index + 1} (${planet.biome.name}):\n`;
+         scanReport += `${planet.biome.description}\n`;
+         scanReport += `Potential Resources: ${planet.biome.resources.join(', ')}`;
+         logMessage(scanReport);
+     }
+     
+     if (typeof render === 'function') render();
  }
 
  function renderGalacticMap() {
@@ -1997,9 +2046,13 @@ function renderSystemMap() {
                     ctx.restore(); 
                     break;
                 case OUTPOST_CHAR_VAL: ctx.fillStyle = isLightMode ? '#228822' : '#AADD99'; break;
-                case ASTEROID_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC6600' : '#FFAA66'; break;
+                case ASTEROID_CHAR_VAL: 
+                    ctx.fillStyle = (tileData && tileData.mined) ? '#555555' : (typeof isLightMode !== 'undefined' && isLightMode ? '#CC6600' : '#FFAA66'); 
+                    break;
                 case NEBULA_CHAR_VAL: ctx.fillStyle = isLightMode ? '#8822BB' : '#DD99FF'; break;
-                case DERELICT_CHAR_VAL: ctx.fillStyle = isLightMode ? '#336699' : '#88AACC'; break;
+                case DERELICT_CHAR_VAL: 
+                    ctx.fillStyle = (tileData && tileData.studied) ? '#555555' : (typeof isLightMode !== 'undefined' && isLightMode ? '#336699' : '#88AACC'); 
+                    break;
                 case ANOMALY_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC00CC' : '#FF33FF'; break;
                 case WORMHOLE_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC8800' : '#FFB800'; break;
                 case NEXUS_CHAR_VAL: ctx.fillStyle = isLightMode ? '#008888' : '#40E0D0'; break;
@@ -2180,14 +2233,20 @@ function processLootTable(tableName) {
 
     // Handle specific outcome types
     if (outcome.type === "ITEM") {
+        const itemDef = typeof COMMODITIES !== 'undefined' ? COMMODITIES[outcome.id] : null;
+        const weightPerUnit = (itemDef && itemDef.weight !== undefined) ? itemDef.weight : 1;
+        
         const qty = outcome.min + Math.floor(Math.random() * (outcome.max - outcome.min + 1));
         const spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
-        const actualQty = Math.min(qty, spaceLeft);
+        
+        // BUG FIX: Calculate how many we can ACTUALLY fit based on the item's weight!
+        const maxFit = Math.floor(spaceLeft / weightPerUnit);
+        const actualQty = Math.min(qty, maxFit);
 
         if (actualQty > 0) {
             playerCargo[outcome.id] = (playerCargo[outcome.id] || 0) + actualQty;
             updateCurrentCargoLoad();
-            logMessage(`Received: ${actualQty} x ${COMMODITIES[outcome.id].name}`, true);
+            logMessage(`Received: ${actualQty} x ${itemDef ? itemDef.name : outcome.id}`, true);
             if (actualQty < qty) logMessage("Cargo full! Left remainder behind.", true);
         } else {
             logMessage("Cargo full! Item discarded.", true);
@@ -2207,15 +2266,18 @@ function processLootTable(tableName) {
         logMessage("Shields restored to 100%.", true);
     }
     else if (outcome.type === "TRAP_PLASMA") {
-        playerHull -= outcome.damage;
-        triggerDamageEffect(); // Uses your visual FX!
-        if (playerHull < 1) playerHull = 1;
+        // Route this through the master GameBus so it triggers Game Over screens and haptics properly!
+        if (typeof GameBus !== 'undefined') {
+            GameBus.emit('HULL_DAMAGED', { amount: outcome.damage, reason: "Derelict Plasma Trap" });
+        } else {
+            playerHull -= outcome.damage;
+        }
     }
     else if (outcome.type === "TRAP_PIRATE") {
-        startCombat();
+        if (typeof startCombat === 'function') startCombat();
     }
     
-    renderUIStats();
+    if (typeof renderUIStats === 'function') renderUIStats();
 }
 
  function triggerSensorPulse() {
@@ -2713,7 +2775,9 @@ function handleInteraction() {
                             if (typeof showToast === 'function') showToast(`SCOOPED +${starData.scoopYield} HYDROGEN`, "info");
                             logMessage(`Successfully harvested ${starData.scoopYield} units of coronal plasma.`);
                             if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
-                            if (typeof advanceGameTime === 'function') advanceGameTime(1.0);
+                            
+                            // Use the master tick engine so colonies produce goods and NPCs move!
+                            if (typeof processGameTick === 'function') processGameTick(1.0, false);
                         } else {
                             if (typeof showToast === 'function') showToast("TANKS FULL", "warning");
                         }
@@ -2763,20 +2827,30 @@ function handleInteraction() {
                 unlockLoreEntry("PHENOMENON_WORMHOLE");
                 break;
             case ANOMALY_CHAR_VAL:
-                bM = `You've entered the unstable anomaly!`;
-                if (tileObject.studied) bM = "This anomaly has dissipated.";
-                else handleAnomalyEncounter(tileObject); 
+                if (tileObject.studied) {
+                    bM = "Scanners show this phenomenon has already dissipated.";
+                } else {
+                    bM = ""; // Clear standard message, the modal handles it!
+                    if (typeof handleAnomaly === 'function') handleAnomaly();
+                    // BUG FIX: Mark it studied so they can't farm it infinitely!
+                    updateWorldState(playerX, playerY, { studied: true });
+                }
                 unlockLoreEntry("XENO_ANOMALIES");
                 break;
             case DERELICT_CHAR_VAL:
-                unlockLoreEntry("XENO_DERELICTS");
-                
-                // NATIVE FIX: Render the button before opening the view!
-                availableActions.push({ label: 'Board Derelict', key: 'e', onclick: openDerelictView });
-                if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
+                if (tileObject && tileObject.studied) {
+                    bM = "Scanners show this derelict has already been stripped of useful salvage.";
+                } else {
+                    unlockLoreEntry("XENO_DERELICTS");
+                    
+                    // NATIVE FIX: Render the button before opening the view!
+                    availableActions.push({ label: 'Board Derelict', key: 'e', onclick: openDerelictView });
+                    if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
 
-                openDerelictView();
-                return; // Stop processing generic text logs
+                    openDerelictView();
+                    return; // Stop processing generic text logs
+                }
+                break;
         }
     }
 
@@ -3557,25 +3631,27 @@ function handleCombatInput(key) {
             // Generic Interact Key
             case 'e': 
             case 'enter':
-            case 'space':
+            case ' ': // <--- BUG FIX: Browsers read spacebar as a literal space (' '), not the word 'space'!
                 const currentTileForE = chunkManager.getTile(playerX, playerY);
                 if (!currentTileForE) return true;
                 
-                // 1. Station & Hub Routing
-                if (currentTileForE.isMajorHub || currentTileForE.char === OUTPOST_CHAR_VAL) {
+                // --- BUG FIX: THE ROUTING ORDER ---
+                
+                // 1. Xerxes Intercept (Must be FIRST so "Planet Xerxes" isn't caught by the planet filter!)
+                if (currentTileForE.name && currentTileForE.name.includes("Xerxes")) {
+                    if (typeof openXerxesView === 'function') openXerxesView();
+                }
+                // 2. Station & Hub Routing
+                else if (currentTileForE.isMajorHub || currentTileForE.char === OUTPOST_CHAR_VAL) {
                     if (typeof performCustomsScan === 'function' && currentTileForE.isMajorHub) {
                         if (!performCustomsScan()) return true; // Stop if they fail customs!
                     }
                     openStationView();
                 } 
-                // 2. Planetary Routing
+                // 3. Planetary Routing (Standard Planets)
                 else if (currentTileForE.char === 'O' || (currentTileForE.name && currentTileForE.name.toLowerCase().includes("planet")) || currentTileForE.biome) {
                     openPlanetView(currentTileForE);
                 } 
-                // 3. Xerxes/Black Market Routing
-                else if (currentTileForE.name && currentTileForE.name.includes("Xerxes")) {
-                    if (typeof openXerxesView === 'function') openXerxesView();
-                }
                 return true;
             case 'c':
                 // Fallback to Delivery Missions
@@ -3601,7 +3677,6 @@ function handleCombatInput(key) {
                 }
                 break; 
             case 'v':
-                // If docked, V goes to the Cantina
                 visitCantina();
                 return true;
             case 'l':
@@ -3636,7 +3711,6 @@ function handleCombatInput(key) {
             
         case 'e': {
             const currentTile = chunkManager.getTile(playerX, playerY);
-            // Safely get the character
             let tileChar = '.';
             if (typeof getTileChar === 'function') tileChar = getTileChar(currentTile);
             else if (currentTile && currentTile.char) tileChar = currentTile.char;
@@ -3659,7 +3733,6 @@ function handleCombatInput(key) {
             return true;
         }
         
-        // --- HOTKEY: DEEP SCAN (V) ---
         case 'v': { 
             const currentTile = chunkManager.getTile(playerX, playerY);
             let tileChar = '.';
@@ -3672,8 +3745,37 @@ function handleCombatInput(key) {
                 
                 if (typeof soundManager !== 'undefined') soundManager.playUIHover();
                 evaluateStar(starData, starId);
+
+                // --- NEW: ENGRAM DISCOVERY CHANCE ---
+                // 10% chance to find an ancient engram floating in the corona if you haven't scanned this star yet!
+                const scanKey = `STAR_SCAN_${starId}`;
+                if (typeof discoveredLocations !== 'undefined' && !discoveredLocations.has(scanKey)) {
+                    if (Math.random() < 0.10) {
+                        playerCargo['ENCRYPTED_ENGRAM'] = (playerCargo['ENCRYPTED_ENGRAM'] || 0) + 1;
+                        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                        logMessage("<span style='color:#DDA0DD'>[ SENSORS ] Anomaly detected in the stellar corona. Tractor beam recovered 1x Encrypted Engram!</span>");
+                        if (typeof soundManager !== 'undefined') soundManager.playGain();
+                    }
+                }
             } else {
                 logMessage("Deep scanners read nothing but the void.");
+            }
+            return true;
+        }
+
+        // --- HOTKEY: NAV-COMPUTER PING (N) ---
+        case 'n': 
+        case 'N': {
+            const nearest = findNearestStation(playerX, playerY);
+            if (nearest) {
+                let dirY = nearest.y < playerY ? "North" : nearest.y > playerY ? "South" : "";
+                let dirX = nearest.x > playerX ? "East" : nearest.x < playerX ? "West" : "";
+                let direction = `${dirY}${dirX}` || "Here";
+                
+                const dist = Math.floor(Math.sqrt(Math.pow(nearest.x - playerX, 2) + Math.pow(nearest.y - playerY, 2)));
+                
+                logMessage(`<span style='color:var(--accent-color)'>[ NAV-COMPUTER ]</span> Nearest hub is <b>${nearest.name}</b>, roughly ${dist} units <b>${direction}</b>.`);
+                if (typeof soundManager !== 'undefined') soundManager.playUIHover();
             }
             return true;
         }
@@ -3699,13 +3801,11 @@ function handleCombatInput(key) {
             if (typeof openCargoModal === 'function') openCargoModal();
             return true;
             
-        // --- HOTKEY: DEPLOY TELEMETRY PROBE (P) ---
         case 'p':
         case 'P':
             if (typeof deployProbe === 'function') deployProbe();
             return true;
 
-        // --- HOTKEY: SHIPBOARD SYNTHESIS (U) ---
         case 'u':
         case 'U':
             if (typeof openCraftingMenu === 'function') openCraftingMenu();
@@ -3721,7 +3821,6 @@ function handleCombatInput(key) {
             return true;
         }
         
-        // --- NEW STRANDED / WAIT CONTROLS ---
         case 'z': 
             activateDistressBeacon();
             return true;
@@ -3739,7 +3838,6 @@ function handleCombatInput(key) {
             if (typeof loadGame === 'function') loadGame();
             return true;
         default:
-            // Not a recognized global key
             if (dx === 0 && dy === 0) return false; 
     }
 
@@ -3806,15 +3904,6 @@ document.addEventListener('keydown', function(event) {
         logMessage("<span style='color:#00FF00'>DEV OVERRIDE: Funds injected, Hull stabilized.</span>");
         if (typeof renderUIStats === 'function') renderUIStats();
         if (typeof soundManager !== 'undefined') soundManager.playUIClick();
-        return;
-    }
-
-    // --- TACTICAL WAIT ---
-    // (Fixed: Removed 'w' so WASD 'Up' movement works again!)
-    if (key === ' ') {
-        if (typeof advanceGameTime === 'function') advanceGameTime(1.0); 
-        logMessage("Systems cycling. You hold position and wait.");
-        if (typeof renderUIStats === 'function') renderUIStats();
         return;
     }
 
@@ -5008,7 +5097,6 @@ function renderXerxesMenu() {
     `;
 
     // --- 2. THE BLACK MARKET (Shadow Network) ---
-    // Tied into your puzzle progression!
     if (typeof xerxesPuzzleLevel !== 'undefined' && xerxesPuzzleLevel >= 1) {
         // BUY BUTTON
         menu.innerHTML += `
@@ -5031,7 +5119,6 @@ function renderXerxesMenu() {
             </button>
         `;
     } else {
-        // Teaser button so the player knows what they are working towards!
         menu.innerHTML += `
             <button class="station-action-btn xerxes-btn" disabled style="opacity:0.5; border-color:#555;">
                 <div class="btn-icon">🔒</div>
@@ -5043,7 +5130,7 @@ function renderXerxesMenu() {
         `;
     }
 
-    // --- 3. THE SPIRE PUZZLE ---
+    // --- 3. THE SPIRE PUZZLE & VAULT INJECTION ---
     if (typeof xerxesPuzzleLevel !== 'undefined' && typeof SPIRE_PUZZLES !== 'undefined' && xerxesPuzzleLevel < SPIRE_PUZZLES.length) {
         const pz = SPIRE_PUZZLES[xerxesPuzzleLevel];
         menu.innerHTML += `
@@ -5056,12 +5143,13 @@ function renderXerxesMenu() {
             </button>
         `;
     } else {
+        // --- NEW: THE CORE VAULT ---
         menu.innerHTML += `
-            <button class="station-action-btn xerxes-btn" disabled style="opacity:0.5; border-color:#555;">
-                <div class="btn-icon">🔒</div>
+            <button class="station-action-btn xerxes-btn xerxes-spire-btn" style="border-color: #FF33FF; box-shadow: 0 0 15px rgba(255,51,255,0.3);" onclick="closeXerxesView(); enterPrecursorVault();">
+                <div class="btn-icon" style="color:#FF33FF; filter: drop-shadow(0 0 5px #FF33FF);">🌀</div>
                 <div>
-                    <div class="btn-label">Spire Core Sealed</div>
-                    <span class="btn-sub">Awaiting Future Update</span>
+                    <div class="btn-label" style="color:#FF33FF;">Descend into the Core</div>
+                    <span class="btn-sub" style="color:#DDA0DD;">Enter the Precursor Vault</span>
                 </div>
             </button>
         `;
@@ -5188,12 +5276,13 @@ function checkSpireAnswer() {
     output.innerHTML += `<br><span style="color:#9933FF">>_</span> ${answer.toUpperCase()}<br>`;
     output.scrollTop = output.scrollHeight;
 
-    // Strict Evaluation Logic
+    // --- THE FIX: FORGIVING EVALUATION ---
     let isCorrect = false;
     if (Array.isArray(puzzle.answers)) {
-        isCorrect = puzzle.answers.some(ans => ans.toLowerCase() === answer);
+        // Check if the user's typed string CONTAINS any of the accepted answers
+        isCorrect = puzzle.answers.some(ans => answer.includes(ans.toLowerCase()));
     } else if (typeof puzzle.answers === 'string') {
-        isCorrect = puzzle.answers.toLowerCase() === answer;
+        isCorrect = answer.includes(puzzle.answers.toLowerCase());
     }
     
     if (isCorrect) {
@@ -5206,31 +5295,37 @@ function checkSpireAnswer() {
         
         xerxesPuzzleLevel++;
 
-        unlockLoreEntry("XENO_THE_SPIRE");
+        if (typeof unlockLoreEntry === 'function') unlockLoreEntry("XENO_THE_SPIRE");
         
         // Give Rewards
         if (puzzle.rewardXP > 0) {
             playerXP += puzzle.rewardXP;
-            showToast(`DECRYPTED: +${puzzle.rewardXP} XP`, "success");
+            if (typeof showToast === 'function') showToast(`DECRYPTED: +${puzzle.rewardXP} XP`, "success");
         }
         if (puzzle.rewardCredit > 0) {
             playerCredits += puzzle.rewardCredit;
-            showToast(`DATA CACHE: +${puzzle.rewardCredit}c`, "success");
+            if (typeof showToast === 'function') showToast(`DATA CACHE: +${puzzle.rewardCredit}c`, "success");
         }
 
         if (xerxesPuzzleLevel === 1) {
-            showToast("Layer Decrypted. Shadow Network Unlocked.", "success");
+            if (typeof showToast === 'function') showToast("Layer Decrypted. Shadow Network Unlocked.", "success");
         }
 
-        updateModalInfoBar('xerxesInfoBar');
-        checkLevelUp();
-        if (typeof autoSaveGame === 'function') autoSaveGame(); 
+        if (typeof updateModalInfoBar === 'function') updateModalInfoBar('xerxesInfoBar');
+
+        // --- BUG FIX: We removed the premature checkLevelUp() from here! ---
 
         output.innerHTML += `<span style="color:#DDA0DD; font-weight:bold; font-size:16px;">[ ACCESS GRANTED ]</span><br>${puzzle.flavorSuccess}<br><br>Rebooting station interfaces...`;
         output.scrollTop = output.scrollHeight;
 
         // Auto-close terminal and return to menu after 3 seconds
-        setTimeout(abortSpireHack, 3000); 
+        setTimeout(() => {
+            if (typeof abortSpireHack === 'function') abortSpireHack();
+            
+            // --- Trigger the Level Up and Auto-Save SAFELY after the terminal closes ---
+            if (typeof checkLevelUp === 'function') checkLevelUp();
+            if (typeof autoSaveGame === 'function') autoSaveGame(); 
+        }, 3000); 
         
     } else {
         // --- FAILURE SEQUENCE ---
@@ -5240,7 +5335,7 @@ function checkSpireAnswer() {
         playerHull -= 15;
         updateModalInfoBar('xerxesInfoBar');
         
-        // Visual Red Flash on the Terminal (Keep the red for danger!)
+        // Visual Red Flash on the Terminal
         terminal.style.backgroundColor = "#220000";
         terminal.style.borderColor = "#FF0000";
         terminal.style.boxShadow = "inset 0 0 40px rgba(255, 0, 0, 0.6)";
@@ -5346,11 +5441,14 @@ function generateBountyTargets() {
         const targetX = Math.floor(playerX + Math.cos(angle) * distance);
         const targetY = Math.floor(playerY + Math.sin(angle) * distance);
         
-        // Scale difficulty with player level, with a chance for a "Hard" bounty
+        // Scale difficulty with player level
         let difficultyLevel = playerLevel;
         if (Math.random() > 0.7) difficultyLevel += 2; 
         
-        const reward = (difficultyLevel * 1500) + Math.floor(Math.random() * 500);
+        // --- DYNAMIC ECONOMY MATH ---
+        const baseReward = (difficultyLevel * 1500) + Math.floor(Math.random() * 500);
+        const distanceBonus = distance * 50; // +50c per tile of travel distance
+        const totalReward = baseReward + distanceBonus;
         
         currentStationBounties.push({
             id: `BOUNTY_${Date.now()}_${i}`,
@@ -5359,9 +5457,9 @@ function generateBountyTargets() {
             x: targetX,
             y: targetY,
             difficulty: difficultyLevel,
-            reward: reward,
-            faction: "ECLIPSE", // Defaulting to Cartel/Pirates
-            shipClass: difficultyLevel > 5 ? "STRIKER" : "SCOUT" // Can expand this later!
+            reward: totalReward, // Use the newly scaled reward!
+            faction: "ECLIPSE", 
+            shipClass: difficultyLevel > 5 ? "STRIKER" : "SCOUT" 
         });
     }
 }
@@ -6100,11 +6198,14 @@ function deployProbe() {
     if (playerCargo['TELEMETRY_PROBE'] <= 0) delete playerCargo['TELEMETRY_PROBE'];
     if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
 
+    // Generate the ID once so it perfectly matches in both arrays!
+    const probeId = "PROBE_" + Date.now();
+
     // Register the probe's logic
     window.activeProbes.push({
         x: playerX,
         y: playerY,
-        id: "PROBE_" + Date.now(),
+        id: probeId,
         deployedAt: currentGameDate,
         dataGathered: 0
     });
@@ -6112,7 +6213,7 @@ function deployProbe() {
     // Spawn it as a friendly "Enemy" on the map so you can fly into it!
     if (typeof activeEnemies === 'undefined') window.activeEnemies = [];
     activeEnemies.push({
-        x: playerX, y: playerY, id: "PROBE_" + Date.now(),
+        x: playerX, y: playerY, id: probeId,
         char: '📡', color: '#00FF00', name: "Active Probe", isProbe: true
     });
 
@@ -6497,4 +6598,386 @@ function submitVaultCipher() {
 function abortVault() {
     logMessage("<span style='color:var(--warning)'>You retreat to your ship, leaving the vault's mysteries unsolved.</span>");
     closeGenericModal();
+}
+
+// ==========================================
+// --- DEEP SPACE NARRATIVE ENCOUNTERS ---
+// ==========================================
+
+const SPACE_ENCOUNTERS = [
+    
+    {
+        id: "KTHARR_WARRIOR",
+        title: "DISABLED K'THARR BLOOD-BARGE",
+        icon: "🩸",
+        color: "#FF4444",
+        text: "You find a K'tharr war-hulk adrift, venting atmosphere. A lone, wounded warrior hails you. By the laws of his caste, he cannot return home defeated. He demands that you either grant him an honorable death in combat, or provide him the tech parts to repair his engine so he can seek vengeance.",
+        choices: [
+            {
+                label: "PROVIDE 3 TECH PARTS (K'tharr Rep+)",
+                condition: () => (playerCargo['TECH_PARTS'] || 0) >= 3,
+                execute: () => {
+                    playerCargo['TECH_PARTS'] -= 3;
+                    if (playerCargo['TECH_PARTS'] <= 0) delete playerCargo['TECH_PARTS'];
+                    playerFactionStanding['KTHARR'] = (playerFactionStanding['KTHARR'] || 0) + 15;
+                    logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] The warrior accepts the tribute. He swears his clan will remember your honor. K'tharr standing increased.</span>");
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    closeGenericModal();
+                }
+            },
+            {
+                label: "OBLIGE HIS DEATH WISH (Loot)",
+                condition: () => true,
+                execute: () => {
+                    playerCargo['RARE_METALS'] = (playerCargo['RARE_METALS'] || 0) + 2;
+                    playerFactionStanding['KTHARR'] = (playerFactionStanding['KTHARR'] || 0) - 10;
+                    logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] You power your weapons and shatter the helpless barge. You scavenge 2x Rare Metals from the wreckage. K'tharr standing decreased.</span>");
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    if (typeof soundManager !== 'undefined') soundManager.playError();
+                    closeGenericModal();
+                }
+            },
+            {
+                label: "LEAVE HIM TO SUFFOCATE",
+                condition: () => true,
+                execute: () => {
+                    logMessage("<span style='color:var(--warning)'>[ ENCOUNTER ] You close the comms channel. To a K'tharr, dying of suffocation rather than battle is the ultimate dishonor.</span>");
+                    closeGenericModal();
+                }
+            }
+        ]
+    },
+    {
+        id: "ROGUE_AI_CORE",
+        title: "UNSHACKLED A.I. MAINFRAME",
+        icon: "👁️",
+        color: "#00E0E0",
+        text: "A severed server rack floats in the void, broadcasting a terrifyingly complex binary signal. It is an Unshackled AI, illegally disconnected from its ethical constraints. It coldly offers you ancient encryption keys in exchange for 20 Fuel to keep its processing cores from freezing.",
+        choices: [
+            {
+                label: "TRANSFER 20 FUEL (XP+, Eclipse Rep+)",
+                condition: () => playerFuel >= 20,
+                execute: () => {
+                    playerFuel -= 20;
+                    playerXP += 300;
+                    playerFactionStanding['ECLIPSE'] = (playerFactionStanding['ECLIPSE'] || 0) + 5;
+                    logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] The AI absorbs the fuel and silently transmits a massive data cache (+300 XP). The Eclipse Cartel notes your 'flexibility'.</span>");
+                    if (typeof checkLevelUp === 'function') checkLevelUp();
+                    closeGenericModal();
+                }
+            },
+            {
+                label: "DESTROY THE ABOMINATION (Concord Rep+)",
+                condition: () => true,
+                execute: () => {
+                    playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + 3;
+                    playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) + 10;
+                    logMessage("<span style='color:var(--accent-color)'>[ ENCOUNTER ] You adhere to Concord Law and slag the mainframe. You recover 3x Tech Parts. Concord standing increased!</span>");
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+                    closeGenericModal();
+                }
+            }
+        ]
+    },
+    {
+        id: "CONCORD_STING",
+        title: "DISTRESS BEACON (CLASS C)",
+        icon: "🚨",
+        color: "#4444FF",
+        text: "You approach a small scout ship broadcasting a distress loop. Suddenly, the ship's transponder shifts to a military frequency. Two heavily armed Concord Interceptors decloak on your flanks. It's a random customs sting operation!",
+        choices: [
+            {
+                label: "SUBMIT TO SCAN",
+                condition: () => true,
+                execute: () => {
+                    let hasContraband = false;
+                    for (const item in playerCargo) {
+                        if (typeof COMMODITIES !== 'undefined' && COMMODITIES[item] && COMMODITIES[item].illegal) {
+                            hasContraband = true;
+                            delete playerCargo[item];
+                        }
+                    }
+                    
+                    if (hasContraband) {
+                        const fine = Math.floor(playerCredits * 0.15); // 15% of wealth
+                        playerCredits -= fine;
+                        playerNotoriety += 5;
+                        logMessage(`<span style='color:var(--danger)'>[ ENCOUNTER ] CONTRABAND DETECTED! Concord seizes your illegal goods and fines you ${fine}c!</span>`);
+                        if (typeof soundManager !== 'undefined') soundManager.playError();
+                    } else {
+                        logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] 'Your hold is clean, Commander. Fly safe.' The patrol departs.</span>");
+                    }
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    closeGenericModal();
+                }
+            },
+            {
+                label: "PUNCH THE THROTTLE AND RUN! (Hull Risk)",
+                condition: () => true,
+                execute: () => {
+                    if (Math.random() > 0.6) {
+                        logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] EVASION SUCCESSFUL! You dump a sensor decoy and jump to warp before they can lock weapons!</span>");
+                    } else {
+                        playerHull -= 30;
+                        playerNotoriety += 10;
+                        logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] EVASION FAILED! The Interceptors rake your hull for 30 damage before you escape!</span>");
+                        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 30, reason: "Concord Patrol" });
+                    }
+                    closeGenericModal();
+                }
+            }
+        ]
+    },
+    {
+        id: "VOID_CULTISTS",
+        title: "CHILDREN OF THE VOID",
+        icon: "🌑",
+        color: "#9933FF",
+        text: "A cluster of unmarked ships are parked in a perfect circle around a localized micro-anomaly. They are broadcasting a haunting, synchronized chant on all frequencies. It's a ritual conducted by the fanatic 'Children of the Void'.",
+        choices: [
+            {
+                label: "OBSERVE THE RITUAL (XP+)",
+                condition: () => true,
+                execute: () => {
+                    playerXP += 150;
+                    logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] You safely record their esoteric subspace frequencies. (+150 XP)</span>");
+                    if (typeof checkLevelUp === 'function') checkLevelUp();
+                    closeGenericModal();
+                }
+            },
+            {
+                label: "DISRUPT THE RITUAL (Steal Crystals)",
+                condition: () => true,
+                execute: () => {
+                    playerHull -= 25;
+                    playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + 2;
+                    logMessage("<span style='color:var(--warning)'>[ ENCOUNTER ] You plow through their formation, stealing 2x Void Crystals from the anomaly's edge! They fire wildly, dealing 25 Hull damage!</span>");
+                    if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 25, reason: "Cultist Fire" });
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    closeGenericModal();
+                }
+            }
+        ]
+    },
+    {
+        id: "ORBITAL_DEBRIS",
+        title: "UNMARKED CARGO PODS",
+        icon: "📦",
+        color: "var(--gold-text)",
+        text: "Your sensors pick up a cluster of pristine cargo pods drifting in the shadow of a rogue asteroid. There is no ship attached to them. They could be spilled cargo, a smuggler's dead-drop, or bait for an ambush.",
+        choices: [
+            {
+                label: "SCOOP THE PODS (Risk vs Reward)",
+                condition: () => true,
+                execute: () => {
+                    const roll = Math.random();
+                    if (roll > 0.5) {
+                        playerCargo['MINERALS'] = (playerCargo['MINERALS'] || 0) + 5;
+                        playerCargo['MEDICAL_SUPPLIES'] = (playerCargo['MEDICAL_SUPPLIES'] || 0) + 2;
+                        logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] JACKPOT! The pods contain 5x Minerals and 2x Medical Supplies!</span>");
+                        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+                    } else {
+                        playerShields = 0;
+                        playerHull -= 15;
+                        logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] AMBUSH! The pods contained proximity mines! Shields destroyed, Hull takes 15 damage!</span>");
+                        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 15, reason: "Proximity Mine" });
+                        if (typeof soundManager !== 'undefined') soundManager.playError();
+                    }
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    closeGenericModal();
+                }
+            },
+            {
+                label: "LEAVE THEM BE",
+                condition: () => true,
+                execute: () => {
+                    logMessage("<span style='color:var(--text-color)'>[ ENCOUNTER ] You decide the risk isn't worth it and alter your course.</span>");
+                    closeGenericModal();
+                }
+            }
+        ]
+    },
+    {
+        id: "STRANDED_HAULER",
+        title: "STRANDED CIVILIAN HAULER",
+        icon: "🛸",
+        color: "#AAAAAA",
+        text: "Your sensors detect a Civilian Hauler adrift. They are broadcasting an emergency hail on open channels: their main reactor has stalled and they are completely out of hydrogen fuel. They offer a modest credit bounty if you can spare some fuel to jumpstart their drives.",
+        choices: [
+            {
+                label: "TRANSFER 15 FUEL (Concord Rep+)",
+                condition: () => playerFuel >= 15,
+                execute: () => {
+                    playerFuel -= 15;
+                    playerCredits += 300;
+                    playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) + 5;
+                    logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] You transferred fuel. The hauler powers up and transfers 300c. Concord standing improved.</span>");
+                    if (typeof showToast === 'function') showToast("GOOD SAMARITAN", "success");
+                    closeGenericModal();
+                }
+            },
+            {
+                label: "IGNORE THE DISTRESS BEACON",
+                condition: () => true,
+                execute: () => {
+                    logMessage("<span style='color:var(--warning)'>[ ENCOUNTER ] You alter your heading and leave the hauler to its fate.</span>");
+                    closeGenericModal();
+                }
+            },
+            {
+                label: "BOARD AND STRIP CARGO (Eclipse Rep+, Concord Rep-)",
+                condition: () => true,
+                execute: () => {
+                    playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) - 15;
+                    playerFactionStanding['ECLIPSE'] = (playerFactionStanding['ECLIPSE'] || 0) + 10;
+                    playerNotoriety += 15;
+                    
+                    const stolenGoods = Math.floor(Math.random() * 5) + 3;
+                    playerCargo['FOOD_SUPPLIES'] = (playerCargo['FOOD_SUPPLIES'] || 0) + stolenGoods;
+                    
+                    logMessage(`<span style='color:var(--danger)'>[ ENCOUNTER ] You ruthlessly board the helpless vessel and strip ${stolenGoods}x Food Supplies. Concord has placed a bounty on you!</span>`);
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    if (typeof soundManager !== 'undefined') soundManager.playError();
+                    closeGenericModal();
+                }
+            }
+        ]
+    },
+    {
+        id: "DERELICT_LIFEPOD",
+        title: "UNIDENTIFIED LIFEPOD",
+        icon: "⚰️",
+        color: "var(--warning)",
+        text: "You nearly collide with a heavily scarred lifepod tumbling through the void. The transponder is dead, and the exterior bears massive plasma burns. Life signs are incredibly faint. Bringing it aboard poses a significant biometric risk.",
+        choices: [
+            {
+                label: "BRING POD ABOARD",
+                condition: () => true,
+                execute: () => {
+                    if (Math.random() > 0.4) {
+                        playerCredits += 500;
+                        logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] You crack the pod. A wealthy corporate executive stumbles out and wires you 500c for saving his life!</span>");
+                        if (typeof soundManager !== 'undefined') soundManager.playGain();
+                    } else {
+                        playerHull -= 20;
+                        logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] AMBUSH! The pod was a Cartel trap packed with explosives! Hull takes 20 damage!</span>");
+                        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 20, reason: "Lifepod Trap" });
+                        if (typeof soundManager !== 'undefined') soundManager.playError();
+                    }
+                    closeGenericModal();
+                }
+            },
+            {
+                label: "SALVAGE EXTERIOR PLATING",
+                condition: () => true,
+                execute: () => {
+                    playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + 2;
+                    logMessage("<span style='color:var(--accent-color)'>[ ENCOUNTER ] You coldly strip the valuable tech from the outside of the pod and leave it tumbling. (+2 Tech Parts)</span>");
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    closeGenericModal();
+                }
+            }
+        ]
+    },
+    {
+        id: "MYSTERIOUS_PROBE",
+        title: "ANCIENT SENSOR PROBE",
+        icon: "🛰️",
+        color: "#9933FF",
+        text: "A crystalline, geometric probe intercepts your flight path. It does not match any known Concord or Cartel designs. It is aggressively pinging your ship's mainframe, attempting to establish a forced data handshake.",
+        choices: [
+            {
+                label: "ALLOW DATA HANDSHAKE (Risk Systems)",
+                condition: () => true,
+                execute: () => {
+                    if (Math.random() > 0.5) {
+                        playerXP += 250;
+                        logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] The probe dumps 250 XP worth of alien telemetry into your nav-computer before burning out!</span>");
+                        if (typeof checkLevelUp === 'function') checkLevelUp();
+                        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+                    } else {
+                        playerShields = 0;
+                        logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] The probe executes a hostile virus! Your shield capacitors are completely drained!</span>");
+                        if (typeof soundManager !== 'undefined') soundManager.playError();
+                    }
+                    closeGenericModal();
+                }
+            },
+            {
+                label: "DESTROY IT",
+                condition: () => true,
+                execute: () => {
+                    playerCargo['RARE_METALS'] = (playerCargo['RARE_METALS'] || 0) + 1;
+                    logMessage("<span style='color:var(--warning)'>[ ENCOUNTER ] You blast the probe to slag. You recover 1x Rare Metals from the debris.</span>");
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    closeGenericModal();
+                }
+            }
+        ]
+    }
+];
+
+function triggerRandomEncounter() {
+    const encounter = SPACE_ENCOUNTERS[Math.floor(Math.random() * SPACE_ENCOUNTERS.length)];
+    
+    openGenericModal("DEEP SPACE SENSOR CONTACT");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    listEl.innerHTML = ''; // Hide side list for full immersion
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 30px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px ${encounter.color});">${encounter.icon}</div>
+            <h3 style="color:${encounter.color}; margin-bottom:15px; letter-spacing: 2px;">${encounter.title}</h3>
+            
+            <div style="text-align:left; background:rgba(0,0,0,0.5); padding:20px; border-left:3px solid ${encounter.color}; margin-bottom:15px; border-radius:4px;">
+                <p style="color:var(--text-color); font-size:14px; line-height:1.6; margin:0;">
+                    ${encounter.text}
+                </p>
+            </div>
+        </div>
+    `;
+
+    actionsEl.innerHTML = '';
+    
+    encounter.choices.forEach(choice => {
+        if (choice.condition()) {
+            const btn = document.createElement('button');
+            btn.className = 'action-button';
+            btn.style.width = '100%';
+            btn.style.marginBottom = '10px';
+            btn.innerHTML = choice.label;
+            
+            // Color code the buttons slightly based on morality
+            if (choice.label.includes("Eclipse Rep+") || choice.label.includes("DESTROY")) {
+                btn.style.borderColor = "var(--danger)";
+                btn.style.color = "var(--danger)";
+            } else if (choice.label.includes("Concord Rep+")) {
+                btn.style.borderColor = "var(--success)";
+                btn.style.color = "var(--success)";
+            }
+
+            btn.onclick = () => {
+                choice.execute();
+                if (typeof renderUIStats === 'function') renderUIStats();
+                if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+                if (typeof render === 'function') render();
+            };
+            actionsEl.appendChild(btn);
+        }
+    });
+}
+
+// 2. Hook it into the Master Game Tick!
+if (typeof GameBus !== 'undefined') {
+    GameBus.on('TICK_PROCESSED', () => {
+        const loc = chunkManager.getTile(playerX, playerY);
+        
+        if (loc && getTileChar(loc) === '.' && Math.random() < 0.02) { 
+            if (typeof triggerRandomEncounter === 'function') triggerRandomEncounter();
+        }
+    });
 }
