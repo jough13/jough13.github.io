@@ -923,11 +923,19 @@ let lastNotorietyDecayTime = 0;
 
  let worldStateDeltas = {};
 
- function performGarbageCollection() {
+function performGarbageCollection() {
     const keys = Object.keys(worldStateDeltas);
     let cleanedCount = 0;
     
-    // --- NEW: Thresholds for Memory Management ---
+    // We don't need to keep thousands of star systems in RAM. 
+    // The seeded generator will flawlessly recreate them if you revisit!
+    const sysCount = Object.keys(systemCache).length;
+    if (sysCount > 25) {
+        systemCache = {};
+        // Optional: console.log(`Memory Manager: Cleared ${sysCount} solar systems from RAM.`);
+    }
+    
+    // --- Thresholds for Memory Management ---
     const MAX_DELTAS = 1000;
     const isBloated = keys.length > MAX_DELTAS;
 
@@ -2390,10 +2398,15 @@ function processGameTick(timeAmount, isMovement = false) {
         });
     }
 
-    // --- 9. DYNAMIC ECONOMY SHIFTS ---
+// --- 9. DYNAMIC ECONOMY SHIFTS ---
     // If there is no active trend, or the current one has expired, generate a new one!
     if (!activeMarketTrend || currentGameDate > activeMarketTrend.expiry) {
         if (typeof generateMarketTrend === 'function') generateMarketTrend();
+    }
+
+    // This wakes up the Nebula encounters and any future passive listeners!
+    if (typeof GameBus !== 'undefined') {
+        GameBus.emit('TICK_PROCESSED');
     }
 
     return false; // Tick finished peacefully
@@ -3686,6 +3699,12 @@ function handleCombatInput(key) {
             if (typeof openCargoModal === 'function') openCargoModal();
             return true;
             
+        // --- HOTKEY: DEPLOY TELEMETRY PROBE (P) ---
+        case 'p':
+        case 'P':
+            if (typeof deployProbe === 'function') deployProbe();
+            return true;
+            
         case 't': { 
             const tileForWormhole = chunkManager.getTile(playerX, playerY);
             let whType = '';
@@ -4269,6 +4288,9 @@ function performSave(saveType) {
         worldStateDeltas: worldStateDeltas || {},
         currentSectorName, 
 
+        // --- BUG FIX: SAVE ACTIVE PROBES ---
+        activeProbes: window.activeProbes || [],
+
         // Data Structures
         visitedSectors: Array.from(visitedSectors),
         scannedObjectTypes: Array.from(scannedObjectTypes),
@@ -4392,9 +4414,9 @@ function loadGameData(jsonString) {
         playerName = savedState.playerName || "Captain";
 
         isAwaitingRescue = savedState.isAwaitingRescue || false; 
-        rescueTargetStation = savedState.rescueTargetStation || null; // NEW
-        rescueFeePaid = savedState.rescueFeePaid || 0; // NEW
-        freebieUsed = savedState.freebieUsed || false; // NEW
+        rescueTargetStation = savedState.rescueTargetStation || null; 
+        rescueFeePaid = savedState.rescueFeePaid || 0; 
+        freebieUsed = savedState.freebieUsed || false; 
         playerPfp = savedState.playerPfp || "assets/pfp_01.png";
         playerX = savedState.playerX;
         playerY = savedState.playerY;
@@ -4450,6 +4472,19 @@ function loadGameData(jsonString) {
         discoveredLoreEntries = new Set(savedState.discoveredLoreEntries);
         
         worldStateDeltas = savedState.worldStateDeltas || {}; 
+        
+        // --- RESTORE ACTIVE PROBES ---
+        window.activeProbes = savedState.activeProbes || [];
+        if (typeof activeEnemies !== 'undefined') {
+            window.activeProbes.forEach(probe => {
+                // Ensure no duplicates exist from weird save states
+                activeEnemies = activeEnemies.filter(e => e.id !== probe.id);
+                activeEnemies.push({
+                    x: probe.x, y: probe.y, id: probe.id,
+                    char: '📡', color: '#00FF00', name: "Active Probe", isProbe: true
+                });
+            });
+        }
         
         // Reset Logic
         chunkManager.loadedChunks = {}; 
@@ -4513,12 +4548,12 @@ function loadGameData(jsonString) {
         currentCombatContext = null;
         changeGameState(GAME_STATES.GALACTIC_MAP);
         handleInteraction();
-        renderMissionTracker();
+        if (typeof renderMissionTracker === 'function') renderMissionTracker();
         render();
         
         // START AUTOSAVE TIMER
-        if (autoSaveInterval) clearInterval(autoSaveInterval);
-        autoSaveInterval = setInterval(autoSaveGame, AUTOSAVE_DELAY);
+        if (typeof autoSaveInterval !== 'undefined' && autoSaveInterval) clearInterval(autoSaveInterval);
+        window.autoSaveInterval = setInterval(autoSaveGame, typeof AUTOSAVE_DELAY !== 'undefined' ? AUTOSAVE_DELAY : 60000);
 
     } catch (error) {
         console.error("Load failed:", error);
@@ -5635,4 +5670,482 @@ function acceptMissionUI(index) {
     } else {
         logMessage("Mission system offline.", "color:red");
     }
+}
+
+// ==========================================
+// --- LEGENDARY BOUNTIES & EXOTIC LOOT ---
+// ==========================================
+
+// 1. Inject Exotic Weapons & Boss Ships into the existing Databases
+if (typeof COMPONENTS_DATABASE !== 'undefined') {
+    COMPONENTS_DATABASE['WEAPON_SINGULARITY_CANNON'] = {
+        name: "Singularity Cannon", type: "weapon", slot: "weapon", manufacturer: "UNKNOWN",
+        description: "Fires localized micro-black holes. Devastating hull damage. Prototype hardwired to ship.",
+        cost: 999999, // Unbuyable in normal shops
+        stats: { damage: 85, hitChance: 0.85, maxAmmo: 8 }
+    };
+    COMPONENTS_DATABASE['WEAPON_VOID_BEAM'] = {
+        name: "K'tharr Void-Beam", type: "weapon", slot: "weapon", manufacturer: "KTHARR",
+        description: "An experimental continuous beam weapon stolen by the Cartel. Melts shields instantly.",
+        cost: 999999, 
+        stats: { damage: 45, hitChance: 0.95, vsShieldBonus: 50, maxAmmo: 12 }
+    };
+}
+
+if (typeof PIRATE_SHIP_CLASSES !== 'undefined') {
+    PIRATE_SHIP_CLASSES['BOSS_VOSS'] = { id: "BOSS_VOSS", name: "The Butcher's Blade", baseHull: 400, baseShields: 150 };
+    PIRATE_SHIP_CLASSES['BOSS_THORNE'] = { id: "BOSS_THORNE", name: "Rogue Aegis Interceptor", baseHull: 200, baseShields: 350 };
+}
+
+// 2. The Target Manifest
+const LEGENDARY_BOUNTIES = {
+    "DREAD_PIRATE_VOSS": {
+        id: "DREAD_PIRATE_VOSS",
+        name: "Voss 'The Butcher'",
+        title: "Dread Pirate Voss",
+        shipClassKey: "BOSS_VOSS", 
+        description: "A ruthless Cartel enforcer wanted for the destruction of the orbital shipyards at Ceti Alpha. Highly armored. Approach with extreme caution.",
+        reward: 15000,
+        exclusiveDrop: "WEAPON_SINGULARITY_CANNON",
+        minLevel: 1, // Kept at 1 so you can test it immediately!
+        color: "var(--danger)"
+    },
+    "RENEGADE_COMMANDER": {
+        id: "RENEGADE_COMMANDER",
+        name: "Cmdr. Elias Thorne",
+        title: "Renegade Aegis Commander",
+        shipClassKey: "BOSS_THORNE", 
+        description: "A former Concord hero who went rogue after a botched first contact mission. Heavily shielded and highly dangerous.",
+        reward: 12000,
+        exclusiveDrop: "WEAPON_VOID_BEAM",
+        minLevel: 5,
+        color: "var(--accent-color)"
+    }
+};
+
+window.defeatedLegendaries = window.defeatedLegendaries || [];
+
+// 3. The Bounty Board UI
+function openLegendaryBounties() {
+    openGenericModal("SEC-COM: HIGH VALUE TARGETS");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--danger); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">MOST WANTED</div>`;
+
+    const playerLevelEstimate = Math.floor(playerXP / 100) + 1;
+
+    for (const bossId in LEGENDARY_BOUNTIES) {
+        const boss = LEGENDARY_BOUNTIES[bossId];
+        
+        if (window.defeatedLegendaries.includes(boss.id)) {
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            row.style.opacity = '0.4';
+            row.innerHTML = `<span style="color:#666; text-decoration:line-through;">${boss.title}</span> <span style="color:var(--success); font-size:10px;">DECEASED</span>`;
+            listEl.appendChild(row);
+        } else if (playerLevelEstimate >= boss.minLevel) {
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            row.style.cursor = 'pointer';
+            row.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap: 4px;">
+                    <span style="color:${boss.color}; font-weight:bold; font-size:12px;">${boss.name}</span>
+                    <span style="color:var(--gold-text); font-size:10px;">Bounty: ${formatNumber(boss.reward)}c</span>
+                </div>
+            `;
+            row.onclick = () => showLegendaryDetails(bossId);
+            listEl.appendChild(row);
+        } else {
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            row.style.opacity = '0.5';
+            row.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap: 4px;">
+                    <span style="color:var(--text-color); font-weight:bold; font-size:12px;">CLASSIFIED TARGET</span>
+                    <span style="color:var(--danger); font-size:10px;">Clearance Level ${boss.minLevel} Required</span>
+                </div>
+            `;
+            listEl.appendChild(row);
+        }
+    }
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 40px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px var(--danger)); opacity:0.6;">🎯</div>
+            <h3 style="color:var(--danger); margin-bottom:10px;">HIGH VALUE TARGETS</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                These bounties represent the most dangerous individuals in the sector. Concord SEC-COM authorizes extreme prejudice. 
+                Targets are known to carry exotic, black-market armaments.
+            </p>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="openStationView()">RETURN TO CONCOURSE</button>`;
+}
+
+function showLegendaryDetails(bossId) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    const boss = LEGENDARY_BOUNTIES[bossId];
+    const weaponName = COMPONENTS_DATABASE[boss.exclusiveDrop]?.name || "Exotic Weapon";
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:10px; color:var(--danger); letter-spacing:2px; margin-bottom:5px;">WANTED: DEAD OR ALIVE</div>
+            <h3 style="color:${boss.color}; margin:0 0 15px 0; letter-spacing: 1px;">${boss.title.toUpperCase()}</h3>
+            
+            <div style="position:relative; display:inline-block; margin-bottom: 20px;">
+                <div style="font-size:80px; filter: drop-shadow(0 0 15px ${boss.color}); opacity:0.8;">☠️</div>
+            </div>
+
+            <p style="color:var(--text-color); font-size:12px; line-height:1.5; background:rgba(0,0,0,0.3); padding:10px; border-left:2px solid ${boss.color}; margin-bottom:20px; text-align:left;">
+                "${boss.description}"
+            </p>
+
+            <div class="trade-math-area" style="text-align:left; background:rgba(0,0,0,0.5);">
+                <div class="trade-stat-row"><span>Bounty Reward:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(boss.reward)}c</span></div>
+                <div class="trade-stat-row"><span>Known Armament:</span> <span style="color:#FF33FF; font-weight:bold;">${weaponName}</span></div>
+            </div>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `
+        <button class="action-button danger-btn" style="box-shadow: 0 0 10px rgba(255,0,0,0.2);" onclick="trackLegendaryTarget('${bossId}')">
+            TRACK TARGET LOCATION
+        </button>
+        <button class="action-button" onclick="openLegendaryBounties()">CANCEL</button>
+    `;
+}
+
+// 4. The Map Spawner
+function trackLegendaryTarget(bossId) {
+    const boss = LEGENDARY_BOUNTIES[bossId];
+    
+    // Spawn them 5 to 10 tiles away from the player's current location!
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 5 + Math.floor(Math.random() * 5);
+    const bx = Math.floor(playerX + Math.cos(angle) * dist);
+    const by = Math.floor(playerY + Math.sin(angle) * dist);
+    
+    if (typeof activeEnemies === 'undefined') window.activeEnemies = [];
+    
+    activeEnemies.push({
+        x: bx,
+        y: by,
+        id: boss.id + "_" + Date.now(),
+        type: 'BOSS',
+        char: '☠️', // They get a literal skull on the map!
+        color: boss.color,
+        shipClassKey: boss.shipClassKey,
+        isBoss: true,
+        name: boss.title,
+        
+        // --- Combat Hooks ---
+        isLegendary: true,
+        exclusiveDrop: boss.exclusiveDrop,
+        difficultyMultiplier: 1.5, // 50% harder than normal scaling
+        reward: boss.reward 
+    });
+    
+    logMessage(`<span style='color:${boss.color}; font-weight:bold;'>[ SEC-COM ALERT ]</span> ${boss.title} located at local coordinates [${bx}, ${by}]. Updating Nav-Computer.`);
+    if (typeof showToast === 'function') showToast("TARGET LOCATED ON MAP", "warning");
+    
+    closeGenericModal();
+    if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+    if (typeof render === 'function') render();
+}
+
+// ==========================================
+// --- DEEP SPACE ASTRONOMY & PHENOMENA ---
+// ==========================================
+
+if (typeof COMMODITIES !== 'undefined') {
+    // Existing Data
+    COMMODITIES['DATA_PULSAR'] = { name: "Pulsar Timing Data", basePrice: 2500, illegal: false, description: "Precise millisecond pulsar telemetry." };
+    COMMODITIES['DATA_MAGNETAR'] = { name: "Magnetar Harmonics", basePrice: 4000, illegal: false, description: "Raw magnetic field fluctuation data." };
+    COMMODITIES['DATA_SINGULARITY'] = { name: "Singularity Telemetry", basePrice: 8500, illegal: false, description: "Gravitational lensing spectroscopy." };
+    
+    // NEW Data
+    COMMODITIES['DATA_QUASAR'] = { name: "Quasar Spectrography", basePrice: 12000, illegal: false, description: "Incredibly rare relativistic jet measurements." };
+    COMMODITIES['DATA_SUPERNOVA'] = { name: "Supernova Isotope Data", basePrice: 6000, illegal: false, description: "Measurements of heavy element nucleosynthesis." };
+    COMMODITIES['TELEMETRY_PROBE'] = { name: "Autonomous Telemetry Probe", basePrice: 1500, illegal: false, description: "Deploy in deep space to passively gather valuable astrometric data over time." };
+}
+
+function handleAnomaly() { 
+    openGenericModal("DEEP SPACE ASTROMETRICS");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    listEl.innerHTML = ''; 
+
+    const phenomena = [
+        // ... (Original 3: Pulsar, Magnetar, Singularity)
+        {
+            id: 'PULSAR', title: "MILLISECOND PULSAR", icon: "💫", color: "#00E0E0",
+            desc: "A rapidly rotating neutron star emitting beams of intense electromagnetic radiation.",
+            science: "Because of the conservation of angular momentum, it is spinning at hundreds of revolutions per second.",
+            flavor: "You calibrate your ship's optical array to filter the blinding radiation.",
+            actionLabel: "RECORD TIMING DATA (Risk Shields)",
+            execute: () => resolvePhenomenon('PULSAR')
+        },
+        {
+            id: 'MAGNETAR', title: "MAGNETAR FIELD", icon: "🧲", color: "#FF00FF",
+            desc: "A rare neutron star with an overwhelmingly powerful magnetic field.",
+            science: "Crustal stresses cause 'starquakes', releasing massive bursts of soft gamma repeaters.",
+            flavor: "The magnetic shear is already causing your ship's hull to groan.",
+            actionLabel: "CAPTURE HARMONICS (Risk Hull)",
+            execute: () => resolvePhenomenon('MAGNETAR')
+        },
+        {
+            id: 'SINGULARITY', title: "MICRO-SINGULARITY", icon: "⚫", color: "#9933FF",
+            desc: "A localized, rogue black hole actively feeding on the interstellar medium.",
+            science: "By skimming the ergosphere, you can theoretically extract rotational energy via the Penrose process.",
+            flavor: "You route all auxiliary power to your thrusters.",
+            actionLabel: "SKIM ERGOSPHERE (Risk Fuel & Hull)",
+            execute: () => resolvePhenomenon('SINGULARITY')
+        },
+        // --- NEW 3 PHENOMENA ---
+        {
+            id: 'QUASAR', title: "QUASAR JET", icon: "🎇", color: "var(--warning)",
+            desc: "An active galactic nucleus powered by a supermassive black hole, firing a relativistic jet of plasma directly across your flight path.",
+            science: "The jet is traveling at 99.9% the speed of light. Minor misalignment will instantly vaporize your vessel.",
+            flavor: "Your proximity alarms are screaming. The sheer radiation output is scrambling your HUD.",
+            actionLabel: "MEASURE RELATIVISTIC JET (High Risk)",
+            execute: () => resolvePhenomenon('QUASAR')
+        },
+        {
+            id: 'SUPERNOVA', title: "SUPERNOVA REMNANT", icon: "💥", color: "var(--danger)",
+            desc: "The expanding shockwave of a detonated star, creating a vast, superheated cloud of ionized gas.",
+            science: "The immense heat of the blast wave is actively forging heavy, rare-earth isotopes.",
+            flavor: "You can plunge into the shockwave to physically scoop the heavy isotopes, but the thermal load will be immense.",
+            actionLabel: "SCOOP ISOTOPES (Risk Hull)",
+            execute: () => resolvePhenomenon('SUPERNOVA')
+        },
+        {
+            id: 'WHITE_DWARF', title: "BINARY MERGER", icon: "✨", color: "var(--gold-text)",
+            desc: "Two white dwarfs locked in a decaying orbit, spiraling toward a catastrophic merger.",
+            science: "The orbital decay is emitting massive gravitational waves that are distorting spacetime around your ship.",
+            flavor: "Your navigation computer struggles to compensate for the shifting geometry of space.",
+            actionLabel: "RECORD GRAVITY WAVES",
+            execute: () => resolvePhenomenon('WHITE_DWARF')
+        }
+    ];
+
+    const encounter = phenomena[Math.floor(Math.random() * phenomena.length)];
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 30px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px ${encounter.color});">${encounter.icon}</div>
+            <h3 style="color:${encounter.color}; margin-bottom:15px; letter-spacing: 2px;">${encounter.title}</h3>
+            <div style="text-align:left; background:rgba(0,0,0,0.4); padding:15px; border-left:3px solid ${encounter.color}; margin-bottom:15px;">
+                <p style="color:var(--text-color); font-size:13px; line-height:1.6; margin-top:0;">${encounter.desc}</p>
+                <p style="color:var(--item-desc-color); font-size:12px; line-height:1.5; margin-bottom:0; font-style:italic;"><strong>Astrometrics:</strong> ${encounter.science}</p>
+            </div>
+            <p style="color:var(--accent-color); font-size:13px; line-height:1.5; padding: 0 10px;">${encounter.flavor}</p>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `
+        <button class="action-button" style="border-color:${encounter.color}; color:${encounter.color}; box-shadow: 0 0 10px ${encounter.color}44;" onclick="(${encounter.execute})()">${encounter.actionLabel}</button>
+        <button class="action-button" onclick="evadeAnomaly()">ABORT AND RETREAT</button>
+    `;
+}
+
+function resolvePhenomenon(type) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    let resultHtml = "";
+
+    // Original 3 (Pulsar, Magnetar, Singularity)
+    if (type === 'PULSAR') {
+        if (Math.random() < 0.6) {
+            playerShields -= 25;
+            if (playerShields < 0) { playerHull += playerShields; playerShields = 0; }
+            resultHtml += `<span style="color:var(--danger)">RADIATION SURGE!</span> Stripped <span style="color:var(--danger)">25 Shields</span>.<br><br>`;
+            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 0, reason: "Radiation Burst" });
+        }
+        playerCargo['DATA_PULSAR'] = (playerCargo['DATA_PULSAR'] || 0) + 1;
+        playerXP += 100;
+        resultHtml += `<span style="color:var(--success)">DATA ACQUIRED.</span> Gained <span style="color:var(--gold-text)">1x Pulsar Timing Data</span> and <span style="color:var(--success)">+100 XP</span>!`;
+    } 
+    else if (type === 'MAGNETAR') {
+        const dmg = 15 + Math.floor(Math.random() * 20);
+        playerHull -= dmg;
+        resultHtml += `<span style="color:var(--danger)">STARQUAKE!</span> Hull takes <span style="color:var(--danger)">${dmg} damage</span>.<br><br>`;
+        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Magnetic Shear" });
+        playerCargo['DATA_MAGNETAR'] = (playerCargo['DATA_MAGNETAR'] || 0) + 1;
+        playerXP += 150;
+        resultHtml += `<span style="color:var(--success)">HARMONICS RECORDED.</span> Gained <span style="color:var(--gold-text)">1x Magnetar Harmonics</span> and <span style="color:var(--success)">+150 XP</span>!`;
+    }
+    else if (type === 'SINGULARITY') {
+        if (playerFuel < 50) {
+            playerHull -= 50;
+            resultHtml += `<span style="color:var(--danger)">INSUFFICIENT THRUST!</span> Took <span style="color:var(--danger)">50 damage</span>.<br><br>`;
+            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 50, reason: "Gravitational Shear" });
+        } else {
+            playerFuel -= 50;
+            playerCargo['DATA_SINGULARITY'] = (playerCargo['DATA_SINGULARITY'] || 0) + 1;
+            playerXP += 300;
+            resultHtml += `<span style="color:var(--success)">TELEMETRY SECURED.</span> Gained <span style="color:#FF33FF">1x Singularity Telemetry</span> and <span style="color:var(--success)">+300 XP</span>!`;
+        }
+    }
+    // NEW 3 (Quasar, Supernova, White Dwarf)
+    else if (type === 'QUASAR') {
+        if (Math.random() < 0.5) {
+            playerHull -= 40;
+            resultHtml += `<span style="color:var(--danger)">MISALIGNMENT!</span> The jet scorches your hull for <span style="color:var(--danger)">40 damage</span>.<br><br>`;
+            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 40, reason: "Relativistic Jet" });
+        } else {
+            playerCargo['DATA_QUASAR'] = (playerCargo['DATA_QUASAR'] || 0) + 1;
+            playerXP += 400;
+            resultHtml += `<span style="color:var(--success)">PERFECT ALIGNMENT.</span> Gained <span style="color:var(--gold-text)">1x Quasar Spectrography</span> and <span style="color:var(--success)">+400 XP</span>!`;
+        }
+    }
+    else if (type === 'SUPERNOVA') {
+        playerHull -= 20;
+        playerCargo['DATA_SUPERNOVA'] = (playerCargo['DATA_SUPERNOVA'] || 0) + 1;
+        playerCargo['RARE_METALS'] = (playerCargo['RARE_METALS'] || 0) + 3;
+        playerXP += 200;
+        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 20, reason: "Thermal Overload" });
+        resultHtml += `<span style="color:var(--warning)">THERMAL OVERLOAD.</span> You scoop the plasma but take <span style="color:var(--danger)">20 damage</span>.<br>Gained <span style="color:var(--gold-text)">1x Supernova Data</span> and <span style="color:var(--accent-color)">3x Rare Metals</span>!`;
+    }
+    else if (type === 'WHITE_DWARF') {
+        playerXP += 250;
+        resultHtml += `<span style="color:var(--success)">GRAVITATIONAL WAVES RECORDED.</span> A completely safe, but awe-inspiring observation. Gained <span style="color:var(--success)">+250 XP</span>.`;
+    }
+
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+    if (playerHull <= 0) {
+        closeGenericModal();
+        if (typeof triggerGameOver === 'function') triggerGameOver("Crushed by stellar forces.");
+        return;
+    }
+
+    detailEl.innerHTML = `<div style="text-align:center; padding: 40px 20px;"><h3 style="color:var(--text-color); margin-bottom:20px;">OBSERVATION COMPLETE</h3><p style="font-size:14px; line-height:1.6; background:rgba(0,0,0,0.3); padding:15px; border-radius:4px;">${resultHtml}</p></div>`;
+    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal(); changeGameState(GAME_STATES.GALACTIC_MAP); render();">RESUME COURSE</button>`;
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+}
+
+function evadeAnomaly() {
+    logMessage("<span style='color:var(--warning)'>You alter your heading to avoid the stellar phenomenon.</span>");
+    closeGenericModal();
+    if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+    if (typeof render === 'function') render();
+}
+
+// ==========================================
+// --- NEBULA EVENT ENGINE ---
+// ==========================================
+
+function triggerNebulaEvent() {
+    const events = [
+        { type: "ION_STORM", msg: "<span style='color:var(--warning)'>[ ION STORM ]</span> Lightning arcs across the nebula! Shields drained.", fx: () => { playerShields = 0; if(typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED'); } },
+        { type: "NURSERY", msg: "<span style='color:var(--success)'>[ STELLAR NURSERY ]</span> Your sensors capture a protostar igniting. (+100 XP)", fx: () => { playerXP += 100; if (typeof checkLevelUp === 'function') checkLevelUp(); } },
+        { type: "PLASMA_EDDY", msg: "<span style='color:var(--accent-color)'>[ PLASMA EDDY ]</span> You fly through a pocket of volatile gas. Fuel tanks overcharged!", fx: () => { playerFuel = Math.floor(MAX_FUEL * 1.5); } },
+        { type: "SENSOR_GHOSTS", msg: "<span style='color:#9933FF'>[ SENSOR GHOSTS ]</span> The nebula gas creates false radar signatures. Your targeting computer is confused.", fx: () => {} }
+    ];
+    
+    const ev = events[Math.floor(Math.random() * events.length)];
+    logMessage(ev.msg);
+    ev.fx();
+    if (typeof renderUIStats === 'function') renderUIStats();
+}
+
+// Hook it into the Master Game Tick!
+if (typeof GameBus !== 'undefined') {
+    GameBus.on('TICK_PROCESSED', () => {
+        const loc = chunkManager.getTile(playerX, playerY);
+        // 5% chance to trigger an event every time you move through a nebula
+        if (loc && loc.char === '~' && Math.random() < 0.05) {
+            triggerNebulaEvent();
+        }
+    });
+}
+
+// ==========================================
+// --- AUTONOMOUS PROBES ---
+// ==========================================
+
+window.activeProbes = window.activeProbes || [];
+
+// You can call this from the console for now, or we can bind it to a hotkey!
+function deployProbe() {
+    if (!playerCargo['TELEMETRY_PROBE'] || playerCargo['TELEMETRY_PROBE'] <= 0) {
+        if (typeof showToast === 'function') showToast("No Probes in Cargo Hold!", "error");
+        return;
+    }
+    
+    const loc = chunkManager.getTile(playerX, playerY);
+    if (loc && (loc.type === 'station' || loc.type === 'planet')) {
+        if (typeof showToast === 'function') showToast("Interference too high. Deploy in Deep Space.", "warning");
+        return;
+    }
+    
+    playerCargo['TELEMETRY_PROBE']--;
+    if (playerCargo['TELEMETRY_PROBE'] <= 0) delete playerCargo['TELEMETRY_PROBE'];
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+    // Register the probe's logic
+    window.activeProbes.push({
+        x: playerX,
+        y: playerY,
+        id: "PROBE_" + Date.now(),
+        deployedAt: currentGameDate,
+        dataGathered: 0
+    });
+
+    // Spawn it as a friendly "Enemy" on the map so you can fly into it!
+    if (typeof activeEnemies === 'undefined') window.activeEnemies = [];
+    activeEnemies.push({
+        x: playerX, y: playerY, id: "PROBE_" + Date.now(),
+        char: '📡', color: '#00FF00', name: "Active Probe", isProbe: true
+    });
+
+    logMessage("<span style='color:var(--success)'>[ PROBE DEPLOYED ]</span> It will passively gather data over time.");
+    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+    if (typeof render === 'function') render();
+}
+
+// Intercept the Combat Engine so when you bump into a Probe, it collects it instead of fighting it!
+if (typeof window.startCombat === 'function' && !window._originalStartCombatForProbes) {
+    window._originalStartCombatForProbes = window.startCombat;
+    
+    window.startCombat = function(specificEnemyEntity = null) {
+        if (specificEnemyEntity && specificEnemyEntity.isProbe) {
+            const probeIdx = window.activeProbes.findIndex(p => p.x === specificEnemyEntity.x && p.y === specificEnemyEntity.y);
+            if (probeIdx > -1) {
+                const probe = window.activeProbes[probeIdx];
+                // Earn 1 random Data Drive for every 10 stardates it sat there
+                const dataAmount = Math.floor((currentGameDate - probe.deployedAt) / 10);
+                
+                playerCargo['TELEMETRY_PROBE'] = (playerCargo['TELEMETRY_PROBE'] || 0) + 1; // Get probe back
+                
+                if (dataAmount > 0) {
+                    const dataTypes = ['DATA_PULSAR', 'DATA_MAGNETAR', 'DATA_SINGULARITY'];
+                    const dataId = dataTypes[Math.floor(Math.random() * dataTypes.length)];
+                    playerCargo[dataId] = (playerCargo[dataId] || 0) + dataAmount;
+                    logMessage(`<span style='color:var(--success)'>[ PROBE RECOVERED ]</span> Harvested ${dataAmount}x ${COMMODITIES[dataId].name}!`);
+                } else {
+                    logMessage("<span style='color:var(--warning)'>[ PROBE RECOVERED ]</span> Probe retrieved. Not enough time passed to gather data.");
+                }
+                
+                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                window.activeProbes.splice(probeIdx, 1);
+                activeEnemies = activeEnemies.filter(e => e.id !== specificEnemyEntity.id);
+                
+                if (typeof soundManager !== 'undefined') soundManager.playGain();
+                if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+                if (typeof render === 'function') render();
+            }
+            return; // Abort combat!
+        }
+        
+        // Otherwise, run normal combat!
+        window._originalStartCombatForProbes(specificEnemyEntity);
+    };
 }
