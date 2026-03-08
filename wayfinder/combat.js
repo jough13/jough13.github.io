@@ -60,18 +60,21 @@ function startCombat(specificEnemyEntity = null) {
          pirateMaxHull: Math.max(20, scaledHull),
          
          // Meta Data
-         difficultyMultiplier: difficultyMultiplier,
+         difficultyMultiplier: specificEnemyEntity && specificEnemyEntity.difficultyMultiplier ? specificEnemyEntity.difficultyMultiplier : difficultyMultiplier,
          aiProfile: aiType,
          turnCount: 0,
          
-         // Subsystem Foundation (Future-proofing)
+         // --- LEGENDARY BOSS DATA ---
+         isLegendary: specificEnemyEntity ? specificEnemyEntity.isLegendary : false,
+         exclusiveDrop: specificEnemyEntity ? specificEnemyEntity.exclusiveDrop : null,
+         bountyReward: specificEnemyEntity ? specificEnemyEntity.reward : 0,
+         bossId: specificEnemyEntity ? specificEnemyEntity.bossId : null,
+         
          subsystems: {
              engines: { name: "Ion Drives", hp: 30, status: 'ONLINE' },
              weapons: { name: "Beam Emitters", hp: 30, status: 'ONLINE' },
              sensors: { name: "Targeting Array", hp: 20, status: 'ONLINE' }
          },
-         
-         // The "Intent" System (Telegraphing moves)
          nextMove: null 
      };
 
@@ -427,6 +430,30 @@ function handleCombatAction(action) {
         logMessage(combatLog); 
         
         const defeatedShip = currentCombatContext.ship || currentCombatContext;
+        
+        // --- LEGENDARY BOSS LOOT ---
+        if (currentCombatContext.isLegendary) {
+            const weaponId = currentCombatContext.exclusiveDrop;
+            const weapon = COMPONENTS_DATABASE[weaponId];
+            
+            playerCredits += currentCombatContext.bountyReward;
+            
+            // Hardwire the weapon directly into the player's ship!
+            const oldWeaponId = playerShip.components.weapon;
+            playerShip.components.weapon = weaponId;
+            if (weapon.stats && weapon.stats.maxAmmo) playerShip.ammo[weaponId] = weapon.stats.maxAmmo;
+            delete playerShip.ammo[oldWeaponId]; // Clear old ammo
+            
+            if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
+            
+            logMessage(`<span style='color:var(--gold-text); font-weight:bold;'>[ LEGENDARY BOUNTY CLAIMED ]</span> Collected ${formatNumber(currentCombatContext.bountyReward)}c!`);
+            logMessage(`<span style='color:#FF33FF; font-weight:bold;'>[ EXOTIC WEAPON RECOVERED ]</span> The ${weapon.name} has been stripped from the wreckage and hardwired into your ship! <span style="color:var(--warning)">(Warning: Unequipping later will destroy this prototype)</span>`);
+            if (typeof showToast === 'function') showToast("EXOTIC WEAPON INSTALLED", "success");
+            
+            if (!window.defeatedLegendaries) window.defeatedLegendaries = [];
+            window.defeatedLegendaries.push(currentCombatContext.bossId);
+        }
+
         if (typeof processBountyVictory === 'function') processBountyVictory(defeatedShip);
         if (typeof handleVictory === 'function') handleVictory(); 
         return;
