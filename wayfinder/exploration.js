@@ -179,10 +179,18 @@ function renderPlanetView() {
     const surveyButtonState = hasDrone ? '' : 'disabled';
     const surveyLabel = hasDrone ? 'Launch Geo-Survey' : 'Geo-Survey <br><span style="font-size:10px; opacity:0.7">(Requires Drone)</span>';
      
+    // --- SURFACE EXPEDITION BUTTON LOGIC ---
+    // Fetch memory to see if we already explored this planet
+    const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
+    const savedState = worldStateDeltas[sysKey] || {};
+    if (savedState.explored) planet.exploredThisVisit = true;
+
+    const canExplore = planet.biome.landable && !planet.exploredThisVisit;
+    const exploreButtonState = canExplore ? '' : 'disabled';
+    const exploreLabel = canExplore ? 'Surface Expedition' : 'Region Explored';
+
     // --- DYNAMIC COLONY BUTTON LOGIC ---
     let colonyButtonHtml = '';
-    
-    // Create the unique ID to check if a colony exists right here
     const colId = `${currentSystemData.x}_${currentSystemData.y}_${planet.name.replace(/\s+/g, '')}`;
     const colonyHere = playerColonies[colId];
     const isColonyHere = colonyHere && colonyHere.established;
@@ -194,7 +202,6 @@ function renderPlanetView() {
             </button>`;
     } else if (typeof playerHasColonyCharter !== 'undefined' && playerHasColonyCharter && !isColonyHere) {
         if (planet.biome.landable) {
-            // Find the correct biome ID string to pass to the generator
             const biomeKey = Object.keys(PLANET_BIOMES).find(key => PLANET_BIOMES[key].name === planet.biome.name) || 'BARREN_ROCK';
             colonyButtonHtml = `
                 <button class="action-button" onclick="surveyForColony('${planet.name}', '${biomeKey}', ${currentSystemData.x}, ${currentSystemData.y})" style="border-color: var(--gold-text); color: var(--gold-text);">
@@ -219,10 +226,9 @@ function renderPlanetView() {
             <div class="planet-actions-grid">
                 <button class="action-button" onclick="minePlanet()" ${mineButtonState}>${mineLabel}</button>
                 <button class="action-button" onclick="scanPlanetForLife()" ${scanButtonState}>${scanLabel}</button>
-                
-                ${colonyButtonHtml}
-                
                 <button class="action-button" onclick="performGeoSurvey()" ${surveyButtonState}>${surveyLabel}</button>
+                <button class="action-button" onclick="startSurfaceExpedition()" style="border-color:#9933FF; color:#DDA0DD; box-shadow: 0 0 10px rgba(153,51,255,0.2);" ${exploreButtonState}>🏔️ ${exploreLabel}</button>
+                ${colonyButtonHtml}
                 <button class="action-button full-width-btn" onclick="returnToOrbit()">&lt;&lt; Return to Orbit</button>
             </div>
         </div>
@@ -2307,4 +2313,262 @@ function resolveColonyEvent(colId, action, cost) {
     if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
     if (typeof autoSaveGame === 'function') autoSaveGame();
     closeGenericModal();
+}
+
+// ==========================================
+// --- SURFACE EXPEDITIONS (MINI-EVENTS) ---
+// ==========================================
+
+function startSurfaceExpedition() {
+    if (currentGameState !== GAME_STATES.PLANET_VIEW) return;
+    const planet = currentSystemData.planets[selectedPlanetIndex];
+    if (planet.exploredThisVisit) return;
+
+    // 1. Lock the planet so they can't farm it
+    planet.exploredThisVisit = true;
+    const sysKey = `${currentSystemData.x},${currentSystemData.y}_p${selectedPlanetIndex}`;
+    if (!worldStateDeltas[sysKey]) worldStateDeltas[sysKey] = {};
+    worldStateDeltas[sysKey].explored = true;
+
+    // 2. Generate a random encounter based on Biome
+    const isBio = planet.biome.resources.some(r => typeof BIOLOGICAL_RESOURCES !== 'undefined' && BIOLOGICAL_RESOURCES.has(r));
+    
+    const events = [];
+    
+    // Event 1: Smuggler's Cache (Universal)
+    events.push({
+        title: "BURIED CARGO POD",
+        icon: "📦",
+        color: "var(--warning)",
+        desc: "Your localized scanners pick up a faint energy signature beneath the crust. Digging it up reveals a sealed cartel drop-pod. The locking mechanism is rigged with explosives.",
+        actions: [
+            { label: "FORCE IT OPEN (Risk Damage)", fn: () => resolveExpedition('SMUGGLER_FORCE') },
+            { label: "SLICE THE TERMINAL (Requires Cipher)", fn: () => resolveExpedition('SMUGGLER_SLICE'), reqItem: 'PRECURSOR_CIPHER' },
+            { label: "LEAVE IT BE", fn: () => resolveExpedition('LEAVE') }
+        ]
+    });
+
+    // Event 2: Precursor Obelisk (Universal)
+    events.push({
+        title: "PRECURSOR OBELISK",
+        icon: "👁️",
+        color: "#9933FF",
+        desc: "A massive, black stone monolith juts out of the landscape, completely untouched by erosion. It hums with a sickening, low-frequency vibration that makes your teeth ache.",
+        actions: [
+            { label: "TOUCH THE MONOLITH", fn: () => resolveExpedition('OBELISK_TOUCH') },
+            { label: "SCAN FROM AFAR", fn: () => resolveExpedition('OBELISK_SCAN') }
+        ]
+    });
+
+    // Event 3: Derelict Rover (Universal)
+    events.push({
+        title: "DERELICT ROVER",
+        icon: "🚜",
+        color: "var(--item-desc-color)",
+        desc: "Half-buried in the dust sits an ancient, six-wheeled exploration rover. Its solar panels are shattered, but the emergency beacon is still weakly pulsing.",
+        actions: [
+            { label: "DOWNLOAD NAV-LOGS", fn: () => resolveExpedition('ROVER_DOWNLOAD') },
+            { label: "SCAVENGE PARTS", fn: () => resolveExpedition('ROVER_SCAVENGE') }
+        ]
+    });
+
+    // Event 4: Crystal Cavern (Universal)
+    events.push({
+        title: "CRYSTAL CAVERN",
+        icon: "💎",
+        color: "var(--accent-color)",
+        desc: "You discover a deep subterranean fault line lined with resonating, high-purity void crystals. The cavern ceiling looks incredibly unstable.",
+        actions: [
+            { label: "DEPLOY DRONE (Requires Drone)", fn: () => resolveExpedition('CAVE_CAREFUL'), reqItem: 'MINING_DRONE' },
+            { label: "BLAST & GRAB (Risk Collapse)", fn: () => resolveExpedition('CAVE_SMASH') },
+            { label: "LEAVE IT BE", fn: () => resolveExpedition('LEAVE') }
+        ]
+    });
+
+    // Event 5: Hostile Fauna (Only on planets with biology)
+    if (isBio) {
+        events.push({
+            title: "TERRITORIAL FAUNA",
+            icon: "🦖",
+            color: "var(--danger)",
+            desc: "A pack of massive, heavily-armored apex predators has surrounded your landing zone. They are testing the perimeter of your ship's repulsor shields and preparing to charge.",
+            actions: [
+                { label: "FIRE SHIP CANNONS", fn: () => resolveExpedition('FAUNA_SHOOT') },
+                { label: "RELEASE TOXIC VENT", fn: () => resolveExpedition('FAUNA_GAS') }
+            ]
+        });
+        
+        // Event 6: Sentient Natives (Only on planets with biology)
+        events.push({
+            title: "SENTIENT NATIVES",
+            icon: "🏕️",
+            color: "var(--success)",
+            desc: "You spot a hunting party of bipedal aliens carrying spears tipped with sharpened rare metals. They are watching your ship with a mixture of fear and reverence.",
+            actions: [
+                { label: "OBSERVE FROM AFAR", fn: () => resolveExpedition('TRIBE_OBSERVE') },
+                { label: "OFFER TRIBUTE (Requires Meds)", fn: () => resolveExpedition('TRIBE_TRADE'), reqItem: 'MEDICAL_SUPPLIES' }
+            ]
+        });
+    }
+
+    // 3. Select and Render Event
+    const encounter = events[Math.floor(Math.random() * events.length)];
+    
+    openGenericModal(`EXPEDITION: ${planet.name.toUpperCase()}`);
+    const detailEl = document.getElementById('genericDetailContent');
+    const listEl = document.getElementById('genericModalList');
+    const actionsEl = document.getElementById('genericModalActions');
+    
+    listEl.innerHTML = ''; // Hide list pane
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 30px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px ${encounter.color});">${encounter.icon}</div>
+            <h3 style="color:${encounter.color}; margin-bottom:15px; letter-spacing: 2px;">${encounter.title}</h3>
+            <p style="color:var(--text-color); font-size:14px; line-height:1.6; padding: 15px; background: rgba(0,0,0,0.3); border-left: 3px solid ${encounter.color}; text-align: left;">
+                "${encounter.desc}"
+            </p>
+        </div>
+    `;
+
+    actionsEl.innerHTML = encounter.actions.map(act => {
+        const hasReq = act.reqItem ? ((playerCargo[act.reqItem] || 0) > 0) : true;
+        const disabledState = hasReq ? '' : 'disabled';
+        return `<button class="action-button" style="border-color:${encounter.color}; color:${encounter.color};" onclick="(${act.fn})()" ${disabledState}>${act.label}</button>`;
+    }).join('');
+}
+
+function resolveExpedition(choice) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    
+    let resultHtml = "";
+    
+    // --- PREVIOUS EVENTS ---
+    if (choice === 'LEAVE') {
+        resultHtml = `<p style="color:var(--text-color);">You wisely decide not to push your luck and return to the airlock.</p>`;
+    } 
+    else if (choice === 'SMUGGLER_FORCE') {
+        if (Math.random() < 0.5) {
+            const creds = 500 + Math.floor(Math.random() * 1000);
+            playerCredits += creds;
+            resultHtml = `<span style="color:var(--success)">SUCCESS!</span><br>The rusty lock gives way. You recover <span style="color:var(--gold-text)">${creds}c</span> from the stash!`;
+            if (typeof soundManager !== 'undefined') soundManager.playBuy();
+        } else {
+            const dmg = 20;
+            playerHull -= dmg;
+            resultHtml = `<span style="color:var(--danger)">BOOBY TRAP!</span><br>The pod detonates in your face! Hull takes <span style="color:var(--danger)">${dmg} damage</span>.`;
+            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Expedition Trap" });
+        }
+    }
+    else if (choice === 'SMUGGLER_SLICE') {
+        playerCargo['PRECURSOR_CIPHER']--;
+        if (playerCargo['PRECURSOR_CIPHER'] <= 0) delete playerCargo['PRECURSOR_CIPHER'];
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        
+        const creds = 1500;
+        playerCredits += creds;
+        resultHtml = `<span style="color:var(--success)">HACK SUCCESSFUL.</span><br>Cipher consumed. The cartel pod opens smoothly, revealing <span style="color:var(--gold-text)">${creds}c</span>!`;
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    }
+    else if (choice === 'OBELISK_TOUCH') {
+        if (Math.random() < 0.5) {
+            playerXP += 250;
+            resultHtml = `<span style="color:#9933FF">ENLIGHTENMENT.</span><br>A surge of ancient data floods your cybernetics. You gain <span style="color:var(--success)">250 XP</span>!`;
+            if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+        } else {
+            playerHull -= 15;
+            resultHtml = `<span style="color:var(--danger)">REJECTION.</span><br>The monolith lashes out with dark energy! Hull takes <span style="color:var(--danger)">15 damage</span>.`;
+            if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 15, reason: "Precursor Feedback" });
+        }
+    }
+    else if (choice === 'OBELISK_SCAN') {
+        playerXP += 50;
+        resultHtml = `You run passive sensors. The data is heavily encrypted, but you map its exterior. <span style="color:var(--success)">+50 XP</span>.`;
+    }
+    else if (choice === 'FAUNA_SHOOT') {
+        resultHtml = `You vaporize the pack alpha with a plasma battery. The rest scatter into the wilderness. Area secured.`;
+        if (typeof soundManager !== 'undefined') soundManager.playLaser();
+    }
+    else if (choice === 'FAUNA_GAS') {
+        const dmg = 10;
+        playerHull -= dmg;
+        playerCargo['ALIEN_SPECIMEN'] = (playerCargo['ALIEN_SPECIMEN'] || 0) + 1;
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        
+        resultHtml = `The creatures breach your outer hull before the toxic gas drives them back! Hull takes <span style="color:var(--danger)">${dmg} damage</span>.<br>You recover an <span style="color:var(--accent-color)">Alien Specimen</span> from the wreckage.`;
+        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Apex Predator Attack" });
+    }
+    // --- NEW EVENTS ---
+    else if (choice === 'ROVER_DOWNLOAD') {
+        playerXP += 75;
+        resultHtml = `You establish a hardline connection and download the rover's fragmented corrupted nav-logs. <span style="color:var(--success)">+75 XP</span>.`;
+        if (typeof soundManager !== 'undefined') soundManager.playScan();
+    }
+    else if (choice === 'ROVER_SCAVENGE') {
+        const parts = 3 + Math.floor(Math.random() * 6);
+        playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + parts;
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+        resultHtml = `You rip out the rover's intact servos, wiring, and power cells.<br>Recovered <span style="color:var(--accent-color)">${parts}x Tech Parts</span>!`;
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+    }
+    else if (choice === 'CAVE_CAREFUL') {
+        playerCargo['MINING_DRONE']--;
+        if (playerCargo['MINING_DRONE'] <= 0) delete playerCargo['MINING_DRONE'];
+
+        const crystals = 2;
+        playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + crystals;
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+        resultHtml = `<span style="color:var(--success)">EXTRACTION COMPLETE.</span><br>The drone safely navigates the fragile cavern and extracts pure resonance crystals.<br>Gained <span style="color:#FF33FF">${crystals}x Void Crystals</span>. (Drone Consumed)`;
+        if (typeof soundManager !== 'undefined') soundManager.playMining();
+    }
+    else if (choice === 'CAVE_SMASH') {
+        const dmg = 25;
+        playerHull -= dmg;
+        const minerals = 15;
+        playerCargo['MINERALS'] = (playerCargo['MINERALS'] || 0) + minerals;
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+        resultHtml = `<span style="color:var(--danger)">CAVE COLLAPSE!</span><br>You blast the pillars with your mining laser. The ceiling caves in! Hull takes <span style="color:var(--danger)">${dmg} damage</span>.<br>You limp away with <span style="color:var(--success)">${minerals}x Minerals</span>.`;
+        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Cave Collapse" });
+        if (typeof soundManager !== 'undefined') soundManager.playExplosion();
+    }
+    else if (choice === 'TRIBE_OBSERVE') {
+        playerXP += 100;
+        resultHtml = `You remain hidden, recording their tool-usage and language patterns. The xenobiology data is incredibly valuable. <span style="color:var(--success)">+100 XP</span>.`;
+        if (typeof soundManager !== 'undefined') soundManager.playScan();
+    }
+    else if (choice === 'TRIBE_TRADE') {
+        playerCargo['MEDICAL_SUPPLIES']--;
+        if (playerCargo['MEDICAL_SUPPLIES'] <= 0) delete playerCargo['MEDICAL_SUPPLIES'];
+
+        const rareMetals = 3;
+        playerCargo['RARE_METALS'] = (playerCargo['RARE_METALS'] || 0) + rareMetals;
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+
+        resultHtml = `<span style="color:var(--success)">PEACEFUL FIRST CONTACT.</span><br>You approach with open hands and offer the medical supplies. In reverence, the tribe gifts you their sacred glowing stones.<br>Gained <span style="color:var(--gold-text)">${rareMetals}x Rare Metals</span>!`;
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    }
+
+    // Check Death!
+    if (playerHull <= 0) {
+        closeGenericModal();
+        if (typeof triggerGameOver === 'function') triggerGameOver("Killed during a surface expedition.");
+        return;
+    }
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 40px 20px;">
+            <h3 style="color:var(--text-color); margin-bottom:20px;">EXPEDITION CONCLUDED</h3>
+            <p style="font-size:14px; line-height:1.6;">${resultHtml}</p>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `<button class="action-button" onclick="closeGenericModal(); renderPlanetView();">RETURN TO SHIP</button>`;
+    
+    if (typeof renderUIStats === 'function') renderUIStats();
+    if (typeof checkLevelUp === 'function') checkLevelUp();
+    if (typeof autoSaveGame === 'function') autoSaveGame();
 }
