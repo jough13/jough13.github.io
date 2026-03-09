@@ -25,18 +25,19 @@ class SoundManager {
         console.log("Audio System Initialized");
     }
 
-    toggleMute() {
+    setMuteState(wantsAudio) {
         // Ensure the context exists
         if (!this.initialized) this.init();
         
-        // Flip the audio state
-        this.enabled = !this.enabled;
+        this.enabled = wantsAudio;
+        
+        // Save the player's preference globally
+        try {
+            localStorage.setItem('wayfinder_audio_pref', this.enabled ? 'true' : 'false');
+        } catch(e) { console.warn("Could not save audio preference."); }
         
         if (this.enabled) {
-            // Browser Policy - Must explicitly resume the context after a click!
             this.ctx.resume();
-            
-            // Start the drone if it isn't already running
             if (!this.ambientPlaying) this.startAmbientDrone();
             console.log("Audio Enabled - Drone Active");
         } else {
@@ -45,6 +46,11 @@ class SoundManager {
         }
         
         return this.enabled;
+    }
+
+    toggleMute() {
+        // A simple wrapper that flips the current state and saves it
+        return this.setMuteState(!this.enabled);
     }
 
     // ==========================================
