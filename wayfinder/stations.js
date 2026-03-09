@@ -242,7 +242,6 @@ function visitCantina() {
         randomFlavor = "The air is thick with the smell of ozone, illegal stims, and danger.";
     }
 
-    // Added style="cursor: pointer;" to every button to fix the UX!
     listEl.innerHTML = `
         <div style="padding:15px; text-align:center;">
             ${headerArt}
@@ -259,6 +258,10 @@ function visitCantina() {
         <div class="generic-list-item" onclick="openRecruitmentBoard()" style="cursor: pointer;">
             <strong style="color:var(--accent-color);">Crew Recruitment</strong>
             <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Hire specialized crew members for your ship.</div>
+        </div>
+        <div class="generic-list-item" onclick="openLegendaryBounties()" style="cursor: pointer;">
+            <strong style="color:var(--danger);">Most Wanted (Bounties)</strong>
+            <div style="font-size:11px; color:var(--item-desc-color); margin-top:4px;">Hunt down legendary targets for exotic weapons.</div>
         </div>
     `;
 
@@ -453,11 +456,26 @@ else if (action === 'RUMOR') {
         });
         
         fine = Math.floor(fine);
+
+        // --- NEW: SMOOTH TALKER & LORE UNLOCK ---
+        // Safely check if playerPerks is an Array or a Set
+        const hasSmoothTalker = typeof playerPerks !== 'undefined' && 
+            ((playerPerks.has && playerPerks.has('SMOOTH_TALKER')) || 
+             (playerPerks.includes && playerPerks.includes('SMOOTH_TALKER')));
+
+        if (hasSmoothTalker) {
+            fine = Math.floor(fine / 2);
+            logMessage("<span style='color:var(--accent-color)'>[ PERK ] Smooth Talker activated! You talked the fine down by 50%.</span>");
+            
+            // Earned Knowledge: Unlock the lore entry!
+            if (typeof unlockLoreEntry === 'function') unlockLoreEntry('TACTIC_CUSTOMS_EVASION');
+        }
+        
         playerCredits = Math.max(0, playerCredits - fine);
-        updateCurrentCargoLoad();
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         
         // Huge Notoriety Hit (You are now a criminal)
-        updatePlayerNotoriety(5); 
+        if (typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(5); 
 
         // Alert Modal
         if (typeof showConfirmationModal === 'function') {
@@ -468,7 +486,7 @@ else if (action === 'RUMOR') {
         }
         
         logMessage(`<span style="color:#FF4444">CUSTOMS VIOLATION:</span> ${fine}c fine assessed. Contraband seized.`);
-        renderUIStats();
+        if (typeof renderUIStats === 'function') renderUIStats();
         return false; // Docking denied/interrupted
     } else {
         // --- EVADED ---
