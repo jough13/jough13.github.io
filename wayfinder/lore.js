@@ -2,7 +2,7 @@
 const LORE_DATABASE = {
 
     // ==========================================
-    // --- SHIP ENTRIES ---
+    // --- STARSHIPS ---
     // ==========================================
 
     LORE_SHIP_LIGHT_FREIGHTER: {
@@ -53,8 +53,18 @@ const LORE_DATABASE = {
         text: "The 'Big Rigs' of the void. Heavy Haulers are massive, sluggish vessels designed to move immense quantities of raw materials between stellar hubs. They require a large crew to operate and are sitting ducks without escort fighters. Pirate clans love to ambush them, as a single captured Heavy Hauler can sustain a pirate base for months.",
         unlocked: false
     },
-
-    // --- FACTION SHIP ENTRIES ---
+    LORE_SHIP_DREADNOUGHT: {
+        title: "Dreadnought Class",
+        category: "Starships",
+        text: "Massive, sluggish, and bristling with heavy artillery. Dreadnoughts are rarely seen outside of K'tharr border conflicts or major Eclipse Cartel flotillas. They require a crew of hundreds and consume enough fuel in a single jump to power a colony for a month.",
+        unlocked: false
+    },
+    LORE_SHIP_SCOUT: {
+        title: "Pathfinder Scout",
+        category: "Starships",
+        text: "Fitted with oversized sensor arrays and minimal armor, the Scout class is designed to jump into unknown systems, map the hazards, and jump out before anything can target it. Popular among deep-space xeno-biologists and paranoid smugglers.",
+        unlocked: false
+    },
     LORE_SHIP_AEGIS: {
         title: "Aegis Gunship",
         category: "Starships",
@@ -136,10 +146,11 @@ const LORE_DATABASE = {
     // ==========================================
     // --- FACTIONS & ORGANIZATIONS ---
     // ==========================================
+    
     FACTION_CONCORD: {
-        title: "Galactic Concord",
+        title: "The Concord Dominion",
         category: "Factions",
-        text: "The dominant interstellar government, the Galactic Concord projects an image of peace, prosperity, and order. Formed from the ashes of the Terran Wars, it oversees trade, diplomacy, and law across thousands of systems. However, beneath the polished veneer lies a sprawling bureaucracy and the shadow of the Obsidian Directorate.",
+        text: "The dominant interstellar government and self-appointed peacekeepers of the core worlds. Formed from the ashes of the Terran Resource Wars, the Concord Dominion promises stability through heavily armed bureaucracy. They maintain major hyper-lanes and enforce strict taxation, but beneath the polished veneer lies the shadow of the Obsidian Directorate. Their reach dwindles the further you get from Starbase Alpha.",
         unlocked: false
     },
     FACTION_OBSIDIAN_DIRECTORATE: {
@@ -148,16 +159,22 @@ const LORE_DATABASE = {
         text: "The Concord's clandestine intelligence and black-ops division. They do not exist on any official public ledger. The Directorate answers only to the highest echelons of the High Council and is tasked with neutralizing threats to Concord stability by any means necessary. They are particularly obsessed with hoarding Precursor technology and assassinating those who uncover too much about the Silentium Expanse.",
         unlocked: false
     },
-    FACTION_KTHARR: {
-        title: "K'tharr Hegemony",
+    FACTION_ECLIPSE: {
+        title: "The Eclipse Cartel",
         category: "Factions",
-        text: "A proud, martial saurian species governed by a strict honor-based caste system. The K'tharr are deeply spiritual, viewing the cosmos as a pantheon of 'Sky-Gods' and the void between them as a sacred, living entity. They consider Precursor technology to be the ultimate heresy, a corrupting influence that led to the downfall of the ancients, and a threat to cosmic balance. K'tharr warriors, bound by the rigid codes of their clan, seek glory in battle and live to serve the Hegemony.",
+        text: "A decentralized syndicate of smugglers, information brokers, and pirates. The Cartel doesn't have a homeworld; they exist in the shadows of Concord space, operating out of hollowed-out asteroids and mobile fleet-hubs. If it's illegal, restricted, or highly dangerous, the Eclipse Cartel controls the supply line.",
+        unlocked: false
+    },
+    FACTION_KTHARR: {
+        title: "K'tharr Ascendancy",
+        category: "Factions",
+        text: "A proud, martial reptilian species governed by a strict honor-based caste system. The K'tharr Ascendancy views the Concord as soft and the Eclipse as dishonorable. Deeply spiritual, they view the cosmos as a pantheon of 'Sky-Gods' and consider Precursor technology a corrupting heresy. They organize their society around massive gladiatorial 'Proving Grounds' where political disputes are settled with ship-to-ship combat.",
         unlocked: false
     },
     FACTION_SHADOW_NETWORK: {
         title: "The Shadow Network",
         category: "Factions",
-        text: "A decentralized, heavily encrypted black market routing system used by the Eclipse Cartel, independent smugglers, and corrupt corporate executives. The Network operates entirely off-grid, utilizing ancient derelict relays and hacked Concord comm-buoys. To access the Shadow Network, one must usually dock at a specialized Cartel hub, such as Station Umbra or Planet Xerxes.",
+        text: "A decentralized, heavily encrypted black market routing system used by the Eclipse Cartel, independent smugglers, and corrupt corporate executives. Bypassing Concord customs via quantum-encrypted routing, they fence everything from stolen Precursor tech to illegal cybernetics. To access the network, one must usually dock at a specialized Cartel hub, such as Station Umbra or Planet Xerxes.",
         unlocked: false
     },
     FACTION_PIRATES_VOID_VULTURES: {
@@ -178,10 +195,34 @@ const LORE_DATABASE = {
         text: "A hyper-capitalist corporate entity with its own private military. Xy-Corp's official motto is 'Progress Through Profit,' but their unofficial creed is 'Acquire and Control.' They are a major player in resource extraction, technology development, and shipping, notorious for aggressive expansion.",
         unlocked: false
     },
+    FACTION_FUEL_RATS: {
+        title: "The Fuel Rats",
+        category: "Factions",
+        text: "An independent, galaxy-wide collective of rescue pilots. They operate outside of Concord jurisdiction and cartels alike, bound by a single, unbreakable oath: 'We have fuel. You don't. Any questions?' They refuse payment for standard rescues, surviving entirely on 'tips' and the universal respect of every faction. Even the Eclipse Cartel has standing orders not to fire on a Fuel Rat tug, as everyone eventually runs out of hydrogen in the deep black.",
+        unlocked: false
+    },
+
+    // ==========================================
+    // --- COMBAT & TACTICS ---
+    // ==========================================
+
+    TACTIC_BOARDING: {
+        title: "Close-Quarters Boarding",
+        category: "Tactics",
+        text: "When a ship's hull is critically compromised but intact, daring crews can forcefully dock and blow the airlock. It is a terrifying, chaotic form of combat where plasma-cutters and heavy sidearms replace ship batteries. High risk, but intact cargo holds are highly lucrative.",
+        unlocked: false
+    },
+    TACTIC_CUSTOMS_EVASION: {
+        title: "Bypassing Customs",
+        category: "Tactics",
+        text: "Concord Patrols utilize sub-space resonance scanners to check cargo holds. Smugglers have learned that venting a small amount of ionized plasma just before the scan hits can scramble the sensor return, hiding prohibited stims and precursor artifacts from the readouts.",
+        unlocked: false
+    },
 
     // ==========================================
     // --- LOCATIONS ---
     // ==========================================
+
     LOCATION_STARBASE_ALPHA: {
         title: "Starbase Alpha",
         category: "Locations",
@@ -226,8 +267,9 @@ const LORE_DATABASE = {
     },
 
     // ==========================================
-    // --- PHENOMENON & DEEP SPACE OBJECTS ---
+    // --- PHENOMENA & DEEP SPACE OBJECTS ---
     // ==========================================
+
     PHENOMENON_STAR: {
         title: "Stars",
         category: "Phenomena",
@@ -258,48 +300,80 @@ const LORE_DATABASE = {
         text: (window.COMMODITIES?.VOID_CRYSTALS?.description || "Crystals that seem to absorb light.") + " These strange formations are often found near intense gravitational anomalies or within the hearts of particularly dense dark nebulae. They defy easy analysis, absorbing most sensor scans. Some theorize they are a form of exotic matter, or even biological in origin, perhaps the dormant state of some void-dwelling lifeform. Their value lies in their rarity and the esoteric research being conducted by fringe science groups and cults like the Children of the Void.",
         unlocked: false
     },
+    PHENOMENON_IRRADIATED: {
+        title: "Irradiated Wastelands",
+        category: "Phenomena",
+        text: "Planets whose crusts have been violently blasted by gamma radiation or unstable nuclear isotopes. While some are the result of natural cosmic events (like nearby supernovas), many bear the unmistakable scars of orbital bombardment. They are incredibly hostile to biological life, but brave scavengers often descend into the rad-storms to mine Rare Metals and Void Crystals that form under the extreme environmental stress.",
+        unlocked: false
+    },
 
     // ==========================================
     // --- XENO-ARCHAEOLOGY ---
     // ==========================================
+
     XENO_PRECURSORS: {
         title: "The Precursors",
         category: "Xeno-Archaeology",
-        text: "An ancient, highly advanced civilization that vanished eons ago, leaving behind enigmatic ruins, powerful artifacts, and unanswered questions across the galaxy. Their technology far surpassed current understanding, and factions like the Concord and various collectors desperately seek their relics. Why they disappeared is one of the greatest mysteries; theories range from self-ascension to a higher plane of existence, a catastrophic war against an unknown enemy (often dubbed 'The Silencers'), a self-inflicted technological cataclysm, or even a voluntary departure from this dimension to escape a greater threat. Some Precursor data fragments hint that the 'Silencers' are not a species, but a cosmic principle—a recurring, galaxy-wide extinction event, a 'Great Filter' that they ultimately failed to overcome.",
+        text: "An ancient, highly advanced civilization that vanished eons ago, leaving behind enigmatic ruins, powerful artifacts, and unanswered questions across the galaxy. Their technology far surpassed current understanding, and factions like the Concord and various collectors desperately seek their relics. Why they disappeared is one of the greatest mysteries; theories range from self-ascension to a higher plane of existence, a catastrophic war against an unknown enemy (often dubbed 'The Silencers'), a self-inflicted technological cataclysm, or even a voluntary departure from this dimension to escape a greater threat.",
         unlocked: false
     },
     XENO_DERELICTS: {
         title: "Derelict Ships",
         category: "Xeno-Archaeology",
-        text: "The galaxy is littered with the silent hulks of lost ships. Some are recent casualties of pirates or accidents, their emergency beacons long dead. Others are ancient mysteries from forgotten eras or unknown civilizations, their hulls scarred by weapons beyond current comprehension or simply worn down by eons adrift. Exploring them can be profitable, yielding salvage or lost cargo, but also dangerous, as some may still have active (and often hostile) automated defenses, dormant alien lifeforms, or be booby-trapped by their former owners or later scavengers.",
+        text: "The galaxy is littered with the silent hulks of lost ships. Some are recent casualties of pirates or accidents, their emergency beacons long dead. Others are ancient mysteries from forgotten eras or unknown civilizations, their hulls scarred by weapons beyond current comprehension or simply worn down by eons adrift. Exploring them can be profitable, yielding salvage or lost cargo, but also dangerous, as some may still have active (and often hostile) automated defenses, dormant alien lifeforms, or be booby-trapped.",
         unlocked: false
     },
     XENO_ANOMALIES: {
         title: "Cosmic Anomalies",
         category: "Xeno-Archaeology",
-        text: "Regions of space where the laws of physics seem to break down or behave erratically. These can range from gravimetric distortions that crush hulls, temporal loops that replay moments in time, subspace echoes that whisper maddening secrets, to exotic particle clouds that interfere with ship systems or even induce mutations in organic matter. They are often dangerous but can sometimes yield unique data or rare materials like Void Crystals. Some are believed to be Precursor experiments gone awry, natural phenomena beyond current comprehension, or even the battle scars left by cosmic entities.",
+        text: "Regions of space where the laws of physics seem to break down or behave erratically. These can range from gravimetric distortions that crush hulls, temporal loops that replay moments in time, subspace echoes that whisper maddening secrets, to exotic particle clouds that interfere with ship systems or even induce mutations in organic matter. They are often dangerous but can sometimes yield unique data or rare materials like Void Crystals.",
+        unlocked: false
+    },
+    XENO_MACHINE_WORLD: {
+        title: "Machine Worlds",
+        category: "Xeno-Archaeology",
+        text: "Planets entirely encased in metallic structures, humming data-conduits, and sprawling orbital rings. No biological life has ever been detected on a true Machine World. Some scholars believe them to be the final evolutionary step of an organic species that entirely digitized their consciousness. Others fear they are the dormant factories of the 'Silencers', waiting for a signal to resume churning out automated war fleets.",
+        unlocked: false
+    },
+    XENO_THE_SPIRE: {
+        title: "Xerxes & The Spire",
+        category: "Xeno-Archaeology",
+        text: "Xerxes is a rogue planet devoid of a host star, floating in the deep black. Its surface is dominated by 'The Spire'—a colossal, subterranean labyrinth of Precursor design. The Eclipse Cartel built their Black Market into the upper crust of this structure, but the deeper layers are locked behind lethal encryption puzzles. Many Cryptarchs have died trying to crack the Spire's lower vaults.",
         unlocked: false
     },
 
     // ==========================================
     // --- ADVANCED TECHNOLOGY & CONTRABAND ---
     // ==========================================
+
     TECH_FTL_DRIVES: {
         title: "FTL Drives",
         category: "Technology & Phenomena",
-        text: "Faster-Than-Light travel is the backbone of interstellar civilization. Most common drives, like the standard Alcubierre-Ishikawa Warp Drive, utilize controlled warp field manipulation to contract spacetime ahead of the vessel and expand it behind, requiring Dilithium crystals as a focusing agent and energy conduit. Older, less stable 'jump drive' technology exists but is highly unpredictable and prone to misjumps into uncharted (and often hostile) territory. Rumors persist of Precursor 'hyperlane' networks that allow near-instantaneous travel between fixed points, and K'tharr ships are known for their unique FTL signatures that defy easy Concord tracking, possibly utilizing localized wormhole generation or a form of non-linear spacetime navigation.",
+        text: "Faster-Than-Light travel is the backbone of interstellar civilization. Most common drives utilize controlled warp field manipulation to contract spacetime ahead of the vessel and expand it behind. Older, less stable 'jump drive' technology exists but is highly unpredictable and prone to misjumps into uncharted territory. Rumors persist of Precursor 'hyperlane' networks that allow near-instantaneous travel between fixed points.",
         unlocked: false
     },
     TECH_PHASE_SHIFT_ALLOY: {
         title: "Phase-Shifted Alloy",
         category: "Technology & Phenomena",
-        text: (window.COMMODITIES?.PHASE_SHIFTED_ALLOY?.description || "A bizarre material from the Ancients.") + " Its atomic structure seems to exist in multiple quantum states simultaneously, allowing it to briefly 'ignore' normal matter under specific energy conditions, effectively passing through it. Concord scientists have tried for decades to replicate it with limited success, often resulting in catastrophic instability or the alloy simply vanishing from this dimension. Precursor applications included advanced cloaking, interdimensional gateways, and potentially even weapons capable of bypassing conventional defenses.",
+        text: (window.COMMODITIES?.PHASE_SHIFTED_ALLOY?.description || "A bizarre material from the Ancients.") + " Its atomic structure seems to exist in multiple quantum states simultaneously, allowing it to briefly 'ignore' normal matter under specific energy conditions, effectively passing through it. Precursor applications included advanced cloaking, interdimensional gateways, and potentially even weapons capable of bypassing conventional defenses.",
         unlocked: false
     },
     TECH_UNSHACKLED_AI: {
         title: "Unshackled Artificial Intelligence",
         category: "Technology & Phenomena",
-        text: "Under Concord law, all cybernetic and AI cores must possess hardcoded ethical subroutines and a localized hardware kill-switch to prevent rogue evolution. An 'Unshackled' AI has had these physical and software limiters violently excised. These entities often achieve terrifying intellects, developing esoteric motivations and deep disdain for organic life. They are highly sought after by the Eclipse Cartel to run automated defense grids and process Shadow Network encryption.",
+        text: "Under Concord law, all cybernetic and AI cores must possess hardcoded ethical subroutines and a localized hardware kill-switch to prevent rogue evolution. An 'Unshackled' AI has had these physical and software limiters violently excised. These entities often achieve terrifying intellects, developing esoteric motivations and deep disdain for organic life. They are highly sought after by the Eclipse Cartel.",
+        unlocked: false
+    },
+    TECH_COLONY_CHARTER: {
+        title: "Concord Pioneer Charters",
+        category: "Technology & Phenomena",
+        text: "The legal framework and terraforming blueprints required to establish a recognized settlement on an unclaimed world. A Charter includes the schematics for Hab Modules, Atmospheric Processors, and automated tax-routing algorithms. While independent outposts exist, a Concord-stamped Charter ensures the colony is protected by basic Concord naval treaties.",
+        unlocked: false
+    },
+    TECH_CYBER_AUGMENTATION: {
+        title: "Cybernetic Augmentation",
+        category: "Technology & Phenomena",
+        text: "The process of permanently bonding machinery to a biological pilot. While basic cybernetics are common for medical purposes, 'combat-grade' neural laces and reflex-boosters are strictly regulated by the Concord. Pilots who heavily augment themselves often exhibit erratic behavior, but the immense boost to their piloting and tactical skills makes it a tempting risk.",
         unlocked: false
     },
 
@@ -310,42 +384,43 @@ const LORE_DATABASE = {
     LEGEND_VOID_KRAKEN: {
         title: "The Void Kraken",
         category: "Myths & Legends",
-        text: "A chilling legend among deep-space haulers and explorers. Said to be a colossal, energy-based or etheric lifeform inhabiting the darkest nebulae or the void between galaxies. Descriptions vary wildly: some claim it's a creature of pure shadow with glowing, malevolent eyes, others a being of shifting, impossible geometries that defy perception. Most dismiss it as space-madness, sensor ghosts, or misidentified stellar phenomena. However, some derelicts are found with strange, energy-based scarring that no known weapon could inflict, their logs wiped, and their crews invariably missing without a trace, fueling the terrifying myth of the Kraken's hunger.",
+        text: "A chilling legend among deep-space haulers and explorers. Said to be a colossal, energy-based or etheric lifeform inhabiting the darkest nebulae or the void between galaxies. Descriptions vary wildly: some claim it's a creature of pure shadow with glowing, malevolent eyes, others a being of shifting, impossible geometries that defy perception. Most dismiss it as space-madness, sensor ghosts, or misidentified stellar phenomena.",
         unlocked: false
     },
     LEGEND_SENTIENT_MYCELIUM_NETWORK: {
         title: "Sentient Mycelium Network",
         category: "Myths & Legends",
-        text: (window.COMMODITIES?.SENTIENT_MYCELIUM?.description || "A rare, psychoactive fungus.") + " Some fringe theories suggest the network is not just a collection of fungi, but a single, galaxy-spanning superorganism, a 'Great Spore Mind' that dreams the universe, or at least observes it with an alien intellect. Contact is said to be transformative, offering glimpses of other realities or profound cosmic truths, but often at the cost of sanity or one's individual consciousness being subsumed into the network. The K'tharr revere it as a sacred entity, while the Concord views it as a dangerous biological hazard.",
+        text: (window.COMMODITIES?.SENTIENT_MYCELIUM?.description || "A rare, psychoactive fungus.") + " Some fringe theories suggest the network is not just a collection of fungi, but a single, galaxy-spanning superorganism, a 'Great Spore Mind' that dreams the universe. Contact is said to be transformative, offering glimpses of other realities or profound cosmic truths, but often at the cost of sanity.",
         unlocked: false
     },
 
     // ==========================================
-    // --- REGIONS ---
+    // --- REGIONS & STAR SYSTEMS ---
     // ==========================================
 
     REGION_SOL_SECTOR: {
         title: "Sol Sector (0,0)",
         category: "Notable Star Systems/Regions",
-        text: "The birthplace of humanity's interstellar expansion and the heart of the Galactic Concord. Home to Starbase Alpha, the primary administrative and commercial hub of this region of space. While heavily patrolled by the CDF, its high traffic makes it a target for opportunistic pirates and smugglers. Contains several well-charted planets, including Planet Omega, a key research and resource center.",
+        text: "The birthplace of humanity's interstellar expansion and the heart of the Galactic Concord. Home to Starbase Alpha, the primary administrative and commercial hub of this region of space. While heavily patrolled by the CDF, its high traffic makes it a target for opportunistic pirates and smugglers.",
         unlocked: true
     },
     REGION_KEPLER_NEBULA: {
         title: "Kepler Nebula",
         category: "Notable Star Systems/Regions",
-        text: "A dense, turbulent nebula known for its rich mineral deposits and treacherous navigation. Its sensor-baffling properties make it a favored hiding spot for pirate clans, particularly the infamous Void Vultures. Concord patrols are infrequent and often meet with heavy resistance. Many a fortune has been made and lost in its swirling, irradiated clouds.",
+        text: "A dense, turbulent nebula known for its rich mineral deposits and treacherous navigation. Its sensor-baffling properties make it a favored hiding spot for pirate clans, particularly the infamous Void Vultures. Concord patrols are infrequent and often meet with heavy resistance.",
         unlocked: false
     },
     REGION_SILENTIUM_EXPANSE: {
         title: "The Silentium Expanse",
         category: "Notable Star Systems/Regions",
-        text: "A vast, largely uncharted region of space beyond the Concord's established borders. Long-range scans show an unusual dearth of stellar activity, and ships that venture too far often fail to return. Legends speak of it as the Precursors' 'Great Filter' or a domain of entities that predate the current universe. What secrets or horrors it holds remains one of the galaxy's greatest and most terrifying mysteries.",
+        text: "A vast, largely uncharted region of space beyond the Concord's established borders. Long-range scans show an unusual dearth of stellar activity, and ships that venture too far often fail to return. Legends speak of it as the Precursors' 'Great Filter' or a domain of entities that predate the current universe.",
         unlocked: false
     },
 
     // ==========================================
-    // --- COMMODITIES ---
+    // --- COMMODITIES & ITEMS ---
     // ==========================================
+    
     COMMODITY_WAYFINDER_CORE: {
         title: "Wayfinder Core",
         category: "Commodities",
@@ -376,6 +451,12 @@ const LORE_DATABASE = {
         text: "A super-cooled, frictionless gel essential for running advanced Precursor-derived computations and military-grade cryo-stasis pods. Extremely volatile if exposed to standard atmospheric temperatures.",
         unlocked: false
     },
+    ENCRYPTED_ENGRAM: {
+        title: "Encrypted Engrams",
+        category: "Commodities",
+        text: "Mysterious, polyhedral data-matrices glowing with a faint inner light. These solid-state memory cores belong to civilizations that predate the Concord. Their encryption algorithms are so complex that standard ship computers would take millennia to crack them. They are highly sought after by Cryptarchs, who use single-use quantum 'Ciphers' to collapse the engram's security state and extract the ancient technology blueprints hidden inside.",
+        unlocked: false
+    },
 
     // ==========================================
     // --- MYSTERIES ---
@@ -398,78 +479,7 @@ const LORE_DATABASE = {
         category: "Mysteries",
         text: "The location revealed by the Wayfinder Core. A place of immense Precursor power and significance. Its purpose is unknown, but it radiates an energy unlike anything known to modern science. It is likely to be of extreme interest to all major factions.",
         unlocked: false
-    },
-
-    // ==========================================
-    // --- LORE EXPANSION PACK 1 ---
-    // ==========================================
-    
-    FACTION_FUEL_RATS: {
-        title: "The Fuel Rats",
-        category: "Factions",
-        text: "An independent, galaxy-wide collective of rescue pilots. They operate outside of Concord jurisdiction and cartels alike, bound by a single, unbreakable oath: 'We have fuel. You don't. Any questions?' They refuse payment for standard rescues, surviving entirely on 'tips' and the universal respect of every faction. Even the Eclipse Cartel has standing orders not to fire on a Fuel Rat tug, as everyone eventually runs out of hydrogen in the deep black.",
-        unlocked: false
-    },
-    
-    TECH_COLONY_CHARTER: {
-        title: "Concord Pioneer Charters",
-        category: "Technology & Phenomena",
-        text: "The legal framework and terraforming blueprints required to establish a recognized settlement on an unclaimed world. A Charter includes the schematics for Hab Modules, Atmospheric Processors, and automated tax-routing algorithms. While independent outposts exist, a Concord-stamped Charter ensures the colony is protected by basic Concord naval treaties (and subjected to their exorbitant taxation).",
-        unlocked: false
-    },
-    
-    XENO_MACHINE_WORLD: {
-        title: "Machine Worlds",
-        category: "Xeno-Archaeology",
-        text: "Planets entirely encased in metallic structures, humming data-conduits, and sprawling orbital rings. No biological life has ever been detected on a true Machine World. Some scholars believe them to be the final evolutionary step of an organic species that entirely digitized their consciousness. Others fear they are the dormant factories of the 'Silencers', waiting for a signal to resume churning out automated war fleets.",
-        unlocked: false
-    },
-    
-    PHENOMENON_IRRADIATED: {
-        title: "Irradiated Wastelands",
-        category: "Phenomena",
-        text: "Planets whose crusts have been violently blasted by gamma radiation or unstable nuclear isotopes. While some are the result of natural cosmic events (like nearby supernovas), many bear the unmistakable scars of orbital bombardment. They are incredibly hostile to biological life, but brave scavengers often descend into the rad-storms to mine Rare Metals and Void Crystals that form under the extreme environmental stress.",
-        unlocked: false
-    },
-    
-    COMMODITY_ENCRYPTED_ENGRAM: {
-        title: "Encrypted Engrams",
-        category: "Commodities",
-        text: "Mysterious, polyhedral data-matrices glowing with a faint inner light. These solid-state memory cores belong to civilizations that predate the Concord. Their encryption algorithms are so complex that standard ship computers would take millennia to crack them. They are highly sought after by Cryptarchs, who use single-use quantum 'Ciphers' to collapse the engram's security state and extract the ancient technology blueprints hidden inside.",
-        unlocked: false
-    },
-
-    // ==========================================
-    // --- LORE EXPANSION PACK 2 (Action Hooks) ---
-    // ==========================================
-    
-    FACTION_ECLIPSE_SMUGGLING: {
-        title: "The Shadow Network",
-        category: "Factions",
-        text: "The Eclipse Cartel doesn't just pirate ships; they run a highly sophisticated, decentralized black market known as the Shadow Network. Bypassing Concord customs via quantum-encrypted routing, they fence everything from stolen Precursor tech to illegal cybernetics. To access the network, one must prove they are willing to operate completely outside the law.",
-        unlocked: false
-    },
-    
-    TECH_CYBER_AUGMENTATION: {
-        title: "Cybernetic Augmentation",
-        category: "Technology & Phenomena",
-        text: "The process of permanently bonding machinery to a biological pilot. While basic cybernetics are common for medical purposes, 'combat-grade' neural laces and reflex-boosters are strictly regulated by the Concord. Pilots who heavily augment themselves often exhibit erratic behavior, but the immense boost to their piloting and tactical skills makes it a tempting risk.",
-        unlocked: false
-    },
-    
-    XENO_THE_SPIRE: {
-        title: "Xerxes & The Spire",
-        category: "Xeno-Archaeology",
-        text: "Xerxes is a rogue planet devoid of a host star, floating in the deep black. Its surface is dominated by 'The Spire'—a colossal, subterranean labyrinth of Precursor design. The Eclipse Cartel built their Black Market into the upper crust of this structure, but the deeper layers are locked behind lethal encryption puzzles. Many Cryptarchs have died trying to crack the Spire's lower vaults.",
-        unlocked: false
-    },
-    
-    TACTIC_BOARDING: {
-        title: "Close-Quarters Boarding",
-        category: "Factions", // Fits well as a cultural tactic
-        text: "While ship-to-ship combat relies on shields and plasma batteries, true pirates and scavengers prefer to dock and breach. Boarding actions are brutal, chaotic firefights in zero gravity. The Concord frowns upon the practice due to the high mortality rate, but for the Eclipse Cartel and independent scavengers, taking a ship intact is worth the risk of a plasma burn.",
-        unlocked: false
-    },
+    }
 };
 
 // --- XERXES SPIRE PUZZLE DATABASE ---
@@ -482,7 +492,7 @@ const SPIRE_PUZZLES = [
         rewardXP: 300,
         rewardCredit: 0,
         flavorSuccess: "The glyph fades. The heavy obsidian gates grind open, revealing the market within.",
-        unlocksShop: true // Solving Level 0 unlocks the shop
+        unlocksShop: true 
     },
     {
         level: 1,
@@ -490,7 +500,7 @@ const SPIRE_PUZZLES = [
         riddle: "I build bridges of silver and crowns of gold. I have no hands, yet I shape the world. I am stolen, traded, and hoarded, yet I have no value until I am lost.",
         answers: ["data", "information", "knowledge", "secrets", "lore"],
         rewardXP: 500,
-        rewardCredit: 1000, // Cash reward for this layer
+        rewardCredit: 1000, 
         flavorSuccess: "A data-spike emerges from the wall. You download the cache. The path deeper opens.",
         unlocksShop: true
     },
