@@ -115,23 +115,62 @@ function showToast(message, type = 'info') {
 }
 
 function logMessage(newMessage, isImportant = false) {
-    if (!newMessage || newMessage.trim() === "") { render(); return; }
+    if (!newMessage || newMessage.trim() === "") { 
+        if (typeof render === 'function') render(); 
+        return; 
+    }
     
-    // SAFETY CHECK: If game hasn't started (Title Screen), use "0.00"
+    // 1. Format the string
     let dateStr = "0.00";
     if (typeof currentGameDate !== 'undefined' && currentGameDate !== null) {
         dateStr = currentGameDate.toFixed(2);
     }
 
     const timestamp = `<span class="log-datestamp">[SD ${dateStr}]</span>`;
-    messageLog.unshift(`${timestamp}${newMessage}`);
+    messageLog.unshift(`${timestamp} ${newMessage}`);
     
-    if (messageLog.length > MAX_LOG_MESSAGES) messageLog.pop();
+    if (typeof MAX_LOG_MESSAGES !== 'undefined' && messageLog.length > MAX_LOG_MESSAGES) {
+        messageLog.pop();
+    }
+
+    // Silently feed the background Diagnostician so your Crash Screen still catches everything
+    console.info(newMessage);
+
+    // --- 2. PRE-RENDER SCROLL SNAPSHOT ---
+    // THE FIX: Target the actual ID of your text box!
+    const oldLogEl = document.getElementById('messageArea');
     
-    // Only try to render if the function exists (prevents rare startup crashes)
+    let isScrolledToTop = true;
+    let previousScrollHeight = 0;
+    let previousScrollTop = 0;
+
+    if (oldLogEl) {
+        previousScrollTop = oldLogEl.scrollTop;
+        previousScrollHeight = oldLogEl.scrollHeight;
+        // Check if the user is currently at the top (with a 20px grace area)
+        isScrolledToTop = (oldLogEl.scrollTop <= 20); 
+    }
+    
+    // --- 3. TRIGGER ENGINE RENDER ---
     if (typeof render === 'function') {
         render();
     }
+
+    // --- 4. POST-RENDER SCROLL RESTORATION ---
+    setTimeout(() => {
+        const newLogEl = document.getElementById('messageArea');
+        
+        if (newLogEl) {
+            if (isScrolledToTop) {
+                // Keep them pinned to the top to see the new messages
+                newLogEl.scrollTop = 0;
+            } else {
+                // MAGIC MATH: Push the scrollbar down by the exact pixel height of the new text
+                const heightDifference = newLogEl.scrollHeight - previousScrollHeight;
+                newLogEl.scrollTop = previousScrollTop + Math.max(0, heightDifference);
+            }
+        }
+    }, 0);
 }
 
  function renderContextualActions(actions) {
