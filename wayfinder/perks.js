@@ -46,8 +46,15 @@ const PERKS_DATABASE = {
         icon: "📦",
         category: "Trade"
     },
+    SMOOTH_TALKER: {
+        id: "SMOOTH_TALKER",
+        name: "Smooth Talker",
+        description: "You know exactly what to say to Concord Customs. If caught with contraband, your credit fine is reduced by 50%.",
+        icon: "🗣️",
+        category: "Social"
+    },
 
-    // --- EXPLORATION ---
+    // --- EXPLORATION & SCIENCE ---
     XENO_BIOLOGIST: {
         id: "XENO_BIOLOGIST",
         name: "Xeno-Biologist",
@@ -69,4 +76,27 @@ const PERKS_DATABASE = {
         icon: "💻",
         category: "Exploration"
     },
+    VOID_DIVER: {
+        id: "VOID_DIVER",
+        name: "Void Diver",
+        description: "Your sensors are heavily modified for deep space. Pressing 'V' to Deep Scan a star has a 25% chance of revealing an Encrypted Engram (up from 10%).",
+        icon: "🌌",
+        category: "Exploration"
+    },
+
+    // --- SURVIVAL ---
+    HEALTH_PHYSICIST: {
+        id: "HEALTH_PHYSICIST",
+        name: "Health Physicist",
+        description: "Your background in radiological affairs allows you to perfectly calibrate your ship's shielding. You take zero hull damage when scooping plasma from highly radioactive O and B-class stars.",
+        icon: "☢️",
+        category: "Survival"
+    },
+    SCRAP_WELDER: {
+        id: "SCRAP_WELDER",
+        name: "Scrap Welder",
+        description: "You've learned to efficiently patch your hull using raw ore. Successfully mining an asteroid instantly restores 5 Hull Integrity.",
+        icon: "🔧",
+        category: "Survival"
+    }
 };
