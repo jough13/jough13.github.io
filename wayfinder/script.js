@@ -3229,22 +3229,23 @@ function handleInteraction() {
                 break;
             case DERELICT_CHAR_VAL:
                 if (tileObject && tileObject.studied) {
-                    // --- THE FIX ---
-                    // It's already looted! Instead of falling back to a blank menu, 
-                    // we force the classic view to open so they see the cool [STRIPPED] screen!
-                    if (typeof openDerelictView === 'function') openDerelictView();
-                    return; // Stop the weird "Sensors Offline" modal from appearing
+                    // It's stripped! Set the classic text log message.
+                    bM = "Scanners show this derelict has already been stripped of useful salvage.";
+                    availableActions.push({ label: 'Inspect Wreckage', key: 'e', onclick: openDerelictView });
                 } else {
-                    // Fresh derelict!
-                    unlockLoreEntry("XENO_DERELICTS");
-                    
-                    availableActions.push({ label: 'Inspect Derelict', key: 'e', onclick: openDerelictView });
-                    if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
-
-                    // Launch the classic image UI!
-                    if (typeof openDerelictView === 'function') openDerelictView();
-                    return; 
+                    // Fresh derelict! 
+                    if (typeof unlockLoreEntry === 'function') unlockLoreEntry("XENO_DERELICTS");
+                    availableActions.push({ label: 'Board Derelict', key: 'e', onclick: openDerelictView });
                 }
+                
+                // We use setTimeout to wait 10 milliseconds. This lets the game finish 
+                // drawing the map and the UI first, so our button doesn't get instantly erased!
+                setTimeout(() => {
+                    if (typeof renderContextualActions === 'function') {
+                        renderContextualActions(availableActions);
+                    }
+                }, 10);
+                
                 break;
         }
     }
@@ -4009,11 +4010,11 @@ function handleCombatInput(key) {
             // Generic Interact Key
             case 'e': 
             case 'enter':
-            case ' ': // <--- BUG FIX: Browsers read spacebar as a literal space (' '), not the word 'space'!
+            case ' ': // <--- Browsers read spacebar as a literal space (' '), not the word 'space'!
                 const currentTileForE = chunkManager.getTile(playerX, playerY);
                 if (!currentTileForE) return true;
                 
-                // --- BUG FIX: THE ROUTING ORDER ---
+                // --- THE ROUTING ORDER ---
                 
                 // 1. Xerxes Intercept (Must be FIRST so "Planet Xerxes" isn't caught by the planet filter!)
                 if (currentTileForE.name && currentTileForE.name.includes("Xerxes")) {
@@ -4087,7 +4088,8 @@ function handleCombatInput(key) {
             openDevMenu();
             return true;
             
-        case 'e': {
+        case 'e':
+        case 'E': {
             const currentTile = chunkManager.getTile(playerX, playerY);
             let tileChar = '.';
             if (typeof getTileChar === 'function') tileChar = getTileChar(currentTile);
@@ -4103,7 +4105,12 @@ function handleCombatInput(key) {
                 logMessage(`Entering ${currentSystemData.name}...`);
                 if (typeof showToast === 'function') showToast(`SYSTEM ORBIT:<br>${currentSystemData.name.toUpperCase()}`, "info");
 
+            } else if (tileChar === 'D' || (typeof DERELICT_CHAR_VAL !== 'undefined' && tileChar === DERELICT_CHAR_VAL)) {
+                // --- Let 'e' re-open the Derelict UI! ---
+                if (typeof openDerelictView === 'function') openDerelictView();
+                
             } else {
+                // Fallback for empty space, anomalies, etc.
                 setTimeout(() => {
                     if (typeof scanLocation === 'function') scanLocation();
                 }, 300);
