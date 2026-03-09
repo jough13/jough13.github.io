@@ -1123,17 +1123,21 @@ function hireRecruit(index) {
     const recruit = currentStationRecruits[index];
     if (playerCredits < recruit.cost || window.playerCrew.length >= 3) return;
 
+    // 1. Process the Transaction
     playerCredits -= recruit.cost;
-    window.playerCrew.push(recruit); // Add to your ship
+    window.playerCrew.push(recruit); // Add to your ship's roster
     
-    // Remove them from the local station pool so you can't hire them twice!
+    // 2. Remove them from the local station pool so you can't hire them twice
     currentStationRecruits.splice(index, 1);
     
+    // 3. Audio & Visual Feedback
     if (typeof soundManager !== 'undefined') soundManager.playBuy();
     logMessage(`<span style="color:var(--success); font-weight:bold;">[ RECRUITMENT ]</span> ${recruit.name} (${recruit.role}) has joined your crew!`);
     if (typeof showToast === 'function') showToast("CREW HIRED", "success");
     
+    // 4. Update the HUD and Force the Menu to Redraw
+    if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats(); // Re-calculate stats in case they have a passive buff!
     if (typeof renderUIStats === 'function') renderUIStats();
     
-    openRecruitmentBoard(); // Refresh the board
+    openRecruitmentBoard(); // Refresh the board so the buttons match the new array!
 }
