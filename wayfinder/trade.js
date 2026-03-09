@@ -1,6 +1,17 @@
 // --- CONSOLIDATED TRADE SYSTEM ---
 function openTradeModal(mode) {
-    const location = chunkManager.getTile(playerX, playerY);
+    // Patch the close function once to ensure Ship-to-Ship state is wiped when closed
+    if (typeof window.closeGenericModal === 'function' && !window._tradeClosePatched) {
+        const originalClose = window.closeGenericModal;
+        window.closeGenericModal = function() {
+            window.activeTradeNPC = null;
+            originalClose();
+        };
+        window._tradeClosePatched = true;
+    }
+
+    // Prioritize the active NPC if we are in Ship-to-Ship trade, otherwise use the tile
+    const location = window.activeTradeNPC || chunkManager.getTile(playerX, playerY);
     
     if (!location || location.type !== 'location') {
         logMessage("Trading terminal offline.");
@@ -8,9 +19,7 @@ function openTradeModal(mode) {
     }
 
     // --- ECONOMY RESTOCK LOGIC (Time-Gated) ---
-    // Only restock if 1.0 stardate (~100 moves) has passed since the last time they looked at this market
-    if (!location.lastRestockTime || (currentGameDate - location.lastRestockTime) > 1.0) {
-        
+    if (!window.activeTradeNPC && (!location.lastRestockTime || (currentGameDate - location.lastRestockTime) > 1.0)) {
         if (location.sells) {
             location.sells.forEach(item => {
                 if (item.stock < 100) item.stock += Math.floor(Math.random() * 3) + 1;
@@ -21,30 +30,24 @@ function openTradeModal(mode) {
                 if (item.stock > 0) item.stock = Math.max(0, item.stock - (Math.floor(Math.random() * 2) + 1));
             });
         }
-        
-        // Record the time of this restock
         location.lastRestockTime = currentGameDate;
     }
     
-    // Slowly recover demand (buys)
-    if (location.buys) {
+    if (!window.activeTradeNPC && location.buys) {
         location.buys.forEach(item => {
-            // If stock is high (they bought a lot from player), slowly reduce it
-            if (item.stock > 0) {
-                item.stock = Math.max(0, item.stock - (Math.floor(Math.random() * 2) + 1));
-            }
+            if (item.stock > 0) item.stock = Math.max(0, item.stock - (Math.floor(Math.random() * 2) + 1));
         });
     }
 
     const isBuy = mode === 'buy';
     
     // --- 1. OPEN MODAL & DYNAMIC TITLE ---
-    // Update the title to match the specialized faction marketplaces
     let modalTitle = isBuy ? "STATION MARKETPLACE" : "CARGO MANIFEST";
-    const faction = location.faction; // Standardizing to location.faction
+    const faction = location.faction; 
 
-    // If it's a specialty market (like Xerxes, which uses its own Spire menu context), we update the title
-    if (location.isBlackMarket) {
+    if (window.activeTradeNPC) {
+        modalTitle = isBuy ? "SHIP-TO-SHIP : BUY" : "SHIP-TO-SHIP : SELL";
+    } else if (location.isBlackMarket) {
         modalTitle = isBuy ? "SHADOW NETWORK : BUY" : "SHADOW NETWORK : SELL";
     } else if (faction === 'KTHARR') {
         modalTitle = isBuy ? "PROVING GROUNDS : BETTING DECK" : "PROVING GROUNDS : FENCE COMMODITIES";
@@ -54,20 +57,19 @@ function openTradeModal(mode) {
 
     // --- 2. DYNAMIC FACTION BANNER RESOLUTION ---
     let headerImageHTML = "";
-    
-    // Default asset (Independent/Aegis Standard)
     let bannerSrc = 'assets/concord_market.png';
-    // Match the standard accent glow color to the faction aesthetic
     let borderColor = 'var(--accent-color)';
-    let glowColor = 'rgba(0, 224, 224, 0.15)'; // Cyan standard
+    let glowColor = 'rgba(0, 224, 224, 0.15)'; 
     
-    // Black Market Override
-    if (location.isBlackMarket) {
+    if (window.activeTradeNPC) {
+        bannerSrc = 'assets/civ_hauler.png'; // Reusing your ship asset for the banner
+        borderColor = 'var(--gold-text)';
+        glowColor = 'rgba(255, 215, 0, 0.2)';
+    } else if (location.isBlackMarket) {
         bannerSrc = 'assets/black_market.png';
-        borderColor = '#9C27B0'; // Purple illicit glow
+        borderColor = '#9C27B0'; 
         glowColor = 'rgba(156, 39, 176, 0.2)';
     } else {
-        // Resolve standard faction-specific banners
         if (faction === 'CONCORD') {
             bannerSrc = 'assets/concord_market.png';
             borderColor = 'var(--accent-color)';
@@ -78,23 +80,20 @@ function openTradeModal(mode) {
             glowColor = 'rgba(255, 85, 85, 0.2)'; 
         } else if (faction === 'ECLIPSE') {
             bannerSrc = 'assets/eclipse_market.png';
-            borderColor = '#9933FF'; // Purple illegal
+            borderColor = '#9933FF'; 
             glowColor = 'rgba(153, 51, 255, 0.2)'; 
         } else if (faction === 'INDEPENDENT') {
-            bannerSrc = 'assets/organic_market.png'; // specialty independent
+            bannerSrc = 'assets/organic_market.png'; 
             borderColor = 'var(--success)';
-            glowColor = 'rgba(0, 255, 0, 0.15)'; // Sickly green
+            glowColor = 'rgba(0, 255, 0, 0.15)'; 
         }
     }
 
-    // Create the beautiful framed viewport banner using the determined asset
     headerImageHTML = `
         <div style="width: 100%; height: 140px; background-image: url('${bannerSrc}'); background-size: cover; background-position: center 25%; border: 1px solid ${borderColor}; border-radius: 6px; margin-bottom: 20px; box-shadow: 0 5px 20px ${glowColor}; flex-shrink: 0;"></div>
     `;
 
     const container = document.getElementById('genericModalContent');
-    
-    // Force the container to stack items cleanly
     container.style.display = 'flex';
     container.style.flexDirection = 'column';
     
@@ -116,24 +115,34 @@ function openTradeModal(mode) {
     const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
     
+    listEl.innerHTML = '';
+    
+    // --- NEW UI TABS: Clickable Buy/Sell Toggles! ---
+    const toggleHeader = document.createElement('div');
+    toggleHeader.style.cssText = "display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; position: sticky; top: 0; background: var(--bg-color); z-index: 5;";
+    toggleHeader.innerHTML = `
+        <button class="action-button" style="flex: 1; border-color: ${isBuy ? 'var(--accent-color)' : '#555'}; color: ${isBuy ? 'var(--accent-color)' : '#888'};" onclick="openTradeModal('buy')">🛒 BUY</button>
+        <button class="action-button" style="flex: 1; border-color: ${!isBuy ? 'var(--success)' : '#555'}; color: ${!isBuy ? 'var(--success)' : '#888'};" onclick="openTradeModal('sell')">📦 SELL</button>
+    `;
+    listEl.appendChild(toggleHeader);
+    
     // --- 3. POPULATE THE LISTS ---
     if (isBuy) {
-        // --- BUY MODE ---
         const items = location.sells || [];
         if (items.length === 0) {
-            listEl.innerHTML = `<div style="padding:15px; color:#888;">No commodities for sale here.</div>`;
+            const noData = document.createElement('div');
+            noData.innerHTML = `<div style="padding:15px; color:#888;">No commodities for sale here.</div>`;
+            listEl.appendChild(noData);
             return;
         }
 
         items.forEach(itemEntry => {
-            // Handle both object {id, stock} and simple string ID
             const itemId = itemEntry.id || itemEntry;
-            const stock = itemEntry.stock || 99; // Default to 99 if not specified
+            const stock = itemEntry.stock || 99; 
             renderTradeRow(itemId, stock, true, location, listEl);
         });
         
     } else {
-        // --- SELL MODE ---
         const playerHas = Object.keys(playerCargo).filter(id => playerCargo[id] > 0);
         const stationBuys = location.buys || [];
         
@@ -149,7 +158,6 @@ function openTradeModal(mode) {
             });
         }
 
-        // Fix Station Demand to handle string IDs vs Objects
         const otherDemands = stationBuys.filter(b => {
             const bId = b.id || b;
             return !playerHas.includes(bId);
@@ -169,12 +177,12 @@ function openTradeModal(mode) {
         }
 
         if (playerHas.length === 0 && otherDemands.length === 0) {
-            listEl.innerHTML = `<div style="padding:15px; color:#888;">Station is not currently buying resources.</div>`;
+            const noData = document.createElement('div');
+            noData.innerHTML = `<div style="padding:15px; color:#888;">Station is not currently buying resources.</div>`;
+            listEl.appendChild(noData);
         }
     }
 }
-
-// Helper to render individual rows consistently
 
 function renderTradeRow(itemId, qty, isBuy, location, listEl) {
     const item = COMMODITIES[itemId];
@@ -264,14 +272,14 @@ function renderTradeRow(itemId, qty, isBuy, location, listEl) {
 
 // --- MARKET ANALYSIS MODAL ---
 function displayMarketAnalysis(itemId) {
-    window.activeTradeItemId = itemId; // Tell the game to remember we are looking at this
+    window.activeTradeItemId = itemId; 
 
     const item = COMMODITIES[itemId];
     const detailEl = document.getElementById('genericDetailContent');
     
     if (!item || !detailEl) return;
 
-    const location = chunkManager.getTile(playerX, playerY);
+    const location = window.activeTradeNPC || chunkManager.getTile(playerX, playerY);
     const localPrice = calculateItemPrice(item, true, location); 
     const sellPrice = calculateItemPrice(item, false, location); 
     
@@ -301,11 +309,11 @@ function displayMarketAnalysis(itemId) {
             <div style="background:var(--bg-color); padding:15px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:25px; font-size:14px;">
                 <h4 style="margin:0 0 12px 0; color:var(--accent-color); font-size:12px; border-bottom:1px solid var(--border-color); padding-bottom:6px; letter-spacing:1px;">LOCAL MARKET DATA</h4>
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span style="color:var(--text-color);">Station Buy:</span>
+                    <span style="color:var(--text-color);">Market Buy:</span>
                     <span style="color:var(--gold-text); font-weight:bold;">${localPrice}c</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                    <span style="color:var(--text-color);">Station Sell:</span>
+                    <span style="color:var(--text-color);">Market Sell:</span>
                     <span style="color:var(--success); font-weight:bold;">${sellPrice}c</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; border-top:1px dashed var(--border-color); padding-top:10px; font-size:13px;">
@@ -336,9 +344,8 @@ function displayMarketAnalysis(itemId) {
     `;
 }
 
-// Resets the market analysis panel to its empty state
 function clearMarketAnalysis() {
-    window.activeTradeItemId = null; // Clear the memory
+    window.activeTradeItemId = null; 
     
     const detailEl = document.getElementById('genericDetailContent');
     if (detailEl) {
@@ -353,80 +360,25 @@ function clearMarketAnalysis() {
     }
 }
 
-function showTradeDetails(itemId, price, stock, isBuy, location) {
-    const comm = COMMODITIES[itemId];
-    let marketStatus = "Standard Market Rate";
-    
-    if (isBuy) {
-        if (price < comm.basePrice * 0.8) marketStatus = "<span style='color:var(--success)'>BELOW MARKET VALUE (Cheap!)</span>";
-        else if (price > comm.basePrice * 1.2) marketStatus = "<span style='color:var(--danger)'>INFLATED PRICE (Expensive)</span>";
-    } else {
-        const demand = location.buys.find(b => b.id === itemId);
-        if (demand) marketStatus = "<span style='color:var(--success)'>HIGH DEMAND ITEM</span>";
-        else marketStatus = "<span style='color:#888'>No Local Demand (Dumping)</span>";
-    }
-
-    const html = `
-        <h3 style="color:var(--accent-color)">${comm.name}</h3>
-        <p style="font-size:12px; color:var(--text-color); opacity:0.8;">${comm.description}</p>
-        
-        <div class="trade-math-area">
-            <div class="trade-stat-row"><span>Unit Price:</span> <span>${formatNumber(price)}c</span></div>
-            <div class="trade-stat-row"><span>Available: ${isBuy ? 'Stock' : 'In Hold'}</span> <span>${formatNumber(stock)} units</span></div>
-            <div class="trade-stat-row" style="margin-top:10px; border-top:1px solid #333; padding-top:5px;">
-                <span>Market Status:</span> <span style="font-size:10px">${marketStatus}</span>
-            </div>
-        </div>
-        
-        ${comm.illegal ? '<div style="background:#300; color:var(--danger); padding:5px; margin-top:10px; font-size:10px; text-align:center;">⚠ CONTRABAND: POSSESSION IS ILLEGAL ⚠</div>' : ''}
-    `;
-    
-    document.getElementById('genericDetailContent').innerHTML = html;
-
-    const actionsEl = document.getElementById('genericModalActions');
-    
-    if (isBuy) {
-        const maxAfford = Math.floor(playerCredits / price);
-        const spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
-        const canBuy = Math.min(stock, maxAfford, spaceLeft);
-        
-        actionsEl.innerHTML = `
-            <div style="text-align:center; margin-bottom:10px; color:#888;">Space: ${formatNumber(spaceLeft)} | Afford: ${formatNumber(maxAfford)}</div>
-            <button class="action-button" ${canBuy > 0 ? '' : 'disabled'} onclick="executeTrade('${itemId}', ${price}, 1, true)">BUY 1 (${formatNumber(price)}c)</button>
-            <button class="action-button" ${canBuy >= 5 ? '' : 'disabled'} onclick="executeTrade('${itemId}', ${price}, 5, true)">BUY 5 (${formatNumber(price * 5)}c)</button>
-            <button class="action-button" ${canBuy > 0 ? '' : 'disabled'} onclick="executeTrade('${itemId}', ${price}, ${canBuy}, true)">BUY MAX (${formatNumber(canBuy)})</button>
-        `;
-    } else {
-        actionsEl.innerHTML = `
-            <button class="action-button" ${stock > 0 ? '' : 'disabled'} onclick="executeTrade('${itemId}', ${price}, 1, false)">SELL 1 (${formatNumber(price)}c)</button>
-            <button class="action-button" ${stock >= 5 ? '' : 'disabled'} onclick="executeTrade('${itemId}', ${price}, 5, false)">SELL 5 (${formatNumber(price * 5)}c)</button>
-            <button class="action-button" ${stock > 0 ? '' : 'disabled'} onclick="executeTrade('${itemId}', ${price}, ${stock}, false)">SELL ALL (${formatNumber(price * stock)}c)</button>
-        `;
-    }
-}
-
 function executeTrade(itemId, isBuy, specificQty = 1) {
-    const location = chunkManager.getTile(playerX, playerY);
+    const location = window.activeTradeNPC || chunkManager.getTile(playerX, playerY);
     const item = COMMODITIES[itemId];
     const price = calculateItemPrice(item, isBuy, location);
 
     // --- FETCH ITEM ENTRY FOR STOCK/DEMAND LIMITS ---
     const tradeList = isBuy ? location.sells : location.buys;
-    // Find the specific item data for this station
     const itemEntry = tradeList ? tradeList.find(e => e.id === itemId || e === itemId) : null;
-    const availableStock = itemEntry ? itemEntry.stock : 999; // Fallback if infinite/undefined
+    const availableStock = itemEntry ? itemEntry.stock : 999; 
 
-    // --- Custom Quantity Logic ---
     let qtyToTrade = specificQty;
 
-    // If the user clicked the "[#]" button, ask them how many
     if (specificQty === 'custom') {
         const promptMsg = isBuy 
             ? `Buy how many ${item.name}? (Stock: ${availableStock}, Max affordable: ${Math.floor(playerCredits/price)})`
             : `Sell how many ${item.name}? (Demand: ${availableStock}, Owned: ${playerCargo[itemId] || 0})`;
             
         let input = prompt(promptMsg, "1");
-        if (input === null) return; // Cancelled
+        if (input === null) return; 
         qtyToTrade = parseInt(input);
         
         if (isNaN(qtyToTrade) || qtyToTrade <= 0) {
@@ -435,18 +387,15 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
         }
     }
 
-    // --- BUY LOGIC ---
     if (isBuy) {
         const affordable = Math.floor(playerCredits / price);
         const space = PLAYER_CARGO_CAPACITY - currentCargoLoad;
 
-        // Cap all buy options by the station's actual stock!
         if (qtyToTrade === 'max') {
             qtyToTrade = Math.min(affordable, space, availableStock);
         } else if (qtyToTrade === 10) {
             qtyToTrade = Math.min(10, affordable, space, availableStock);
         } else {
-            // Cap custom input
             qtyToTrade = Math.min(qtyToTrade, availableStock);
         }
 
@@ -462,12 +411,10 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
             return;
         }
         
-        // Final Affordability Check for Custom Amounts
         if (playerCredits < price * qtyToTrade) {
              if (typeof showToast === 'function') showToast("Insufficient Credits!", "error");
              return;
         }
-        // Final Space Check for Custom Amounts
         if (currentCargoLoad + qtyToTrade > PLAYER_CARGO_CAPACITY) {
             if (typeof showToast === 'function') showToast("Not enough Cargo Space!", "error");
             return;
@@ -477,7 +424,6 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
         playerCredits -= totalCost;
         playerCargo[itemId] = (playerCargo[itemId] || 0) + qtyToTrade;
         
-        // --- DECREMENT THE STOCK ---
         if (itemEntry) itemEntry.stock -= qtyToTrade;
         
         updateCurrentCargoLoad();
@@ -497,11 +443,9 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
         if (typeof showToast === 'function') showToast(`Bought ${qtyToTrade}x ${item.name}`, "success");
 
     } 
-    // --- SELL LOGIC ---
     else {
         const owned = playerCargo[itemId] || 0;
         
-        // Cap all sell options by what the station actually wants (demand/stock)
         if (qtyToTrade === 'all') {
             qtyToTrade = Math.min(owned, availableStock);
         } else {
@@ -510,7 +454,7 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
 
         if (qtyToTrade <= 0) {
             if (availableStock <= 0) {
-                if (typeof showToast === 'function') showToast("Station demand met!", "warning");
+                if (typeof showToast === 'function') showToast("Demand met!", "warning");
                 if (typeof soundManager !== 'undefined') soundManager.playError();
             }
             return;
@@ -520,13 +464,11 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
         playerCargo[itemId] -= qtyToTrade;
         if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
         
-        // --- DECREMENT STATION DEMAND ---
         if (itemEntry) itemEntry.stock -= qtyToTrade;
         
         playerCredits += totalEarned;
         updateCurrentCargoLoad();
 
-        // Economy XP
         const profitXP = Math.max(1, Math.floor((price * qtyToTrade) * (XP_PER_PROFIT_UNIT * 0.8)));
         playerXP += profitXP;
         checkLevelUp();
@@ -535,9 +477,8 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
         if (typeof showToast === 'function') showToast(`Sold ${qtyToTrade}x ${item.name}`, "success");
     }
 
-    // Save the station's modified inventory to the persistent world state.
-    // The Garbage Collector will naturally "restock" this station after 50 stardates!
-    if (location && (location.sells || location.buys)) {
+    // Only update the world state if this is a physical station (not a passing NPC)
+    if (!window.activeTradeNPC && location && (location.sells || location.buys)) {
         updateWorldState(playerX, playerY, {
             sells: location.sells,
             buys: location.buys,
@@ -545,27 +486,19 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
         });
     }
 
-    // Refresh UI
-    const savedItemId = window.activeTradeItemId; // Capture what we are looking at
+    const savedItemId = window.activeTradeItemId; 
     
     if (isBuy) openTradeModal('buy');
     else openTradeModal('sell');
     
     renderUIStats();
 
-    // If we were looking at an item, immediately re-open its panel so it doesn't vanish
     if (savedItemId) {
         displayMarketAnalysis(savedItemId);
     }
 }
 
-/**
- * Centralized logic for item pricing.
- * Ensures Outposts, Stations, and Perks all affect price identically.
- */
-
 function calculateItemPrice(itemOrId, isBuy, location) {
-    // Flexibility: Accept either the full object or just the ID string
     const itemId = typeof itemOrId === 'string' ? itemOrId : Object.keys(COMMODITIES).find(key => COMMODITIES[key] === itemOrId);
     const item = typeof itemOrId === 'string' ? COMMODITIES[itemOrId] : itemOrId;
 
@@ -574,7 +507,6 @@ function calculateItemPrice(itemOrId, isBuy, location) {
     let price = item.basePrice || 0;
     let locMult = 1.0;
 
-    // 1. Check for Station-Specific Economy Overrides
     if (location && (location.sells || location.buys)) {
         const tradeList = isBuy ? location.sells : location.buys;
         if (tradeList) {
@@ -585,46 +517,36 @@ function calculateItemPrice(itemOrId, isBuy, location) {
         }
     }
 
-    // 2. Fallback to Outpost generic pricing
     if (locMult === 1.0 && location && location.type === OUTPOST_CHAR_VAL) {
         locMult = isBuy ? 1.2 : 0.8;
     }
     
-    // 3. Trade Margin (Selling items to stations pays 50% base)
     if (!isBuy) {
         price = price * 0.5;
     }
 
     price = price * locMult;
 
-    // 4. Illegal Goods Markup (Risk Premium)
-    // If selling illegal goods, they are worth 2.5x more on the black market
     if (item.illegal && !isBuy) {
         price *= 2.5; 
     }
 
-    // 5. Dynamic Market Trends (Hot Commodities)
     const locationName = location ? location.name : "";
     if (activeMarketTrend && 
         activeMarketTrend.station === locationName && 
         activeMarketTrend.item === itemId && 
         currentGameDate < activeMarketTrend.expiry) {
         
-        if (activeMarketTrend.isBoom) {
-            price *= 2.5; // Massive Shortage: They pay 2.5x standard value!
-        } else {
-            price *= 0.4; // Massive Surplus: They sell it for 60% off!
-        }
+        if (activeMarketTrend.isBoom) price *= 2.5; 
+        else price *= 0.4; 
         
     } else {
-        // Standard Fluctuation (Sine Wave)
         const uniqueOffset = item.basePrice || 0;
         const fluctuation = Math.sin((currentGameDate + uniqueOffset) / 5);
         const marketFactor = 1 + (fluctuation * 0.15);
         price *= marketFactor;
     }
 
-    // 6. Apply Perks & Crew Bonuses (Separated so they stack!)
     if (typeof playerPerks !== 'undefined' && playerPerks.has('SILVER_TONGUE')) {
         price = isBuy ? (price * 0.9) : (price * 1.1);
     }
@@ -633,15 +555,12 @@ function calculateItemPrice(itemOrId, isBuy, location) {
         price = isBuy ? (price * 0.9) : (price * 1.1);
     }
 
-    // --- FACTION ALLIANCE PERKS ---
     if (typeof playerFactionStanding !== 'undefined') {
-        // Concord Allied Discount (Rep >= 50)
         if (isBuy && location && location.faction === 'CONCORD' && (playerFactionStanding['CONCORD'] || 0) >= 50) {
-            price *= 0.8; // Massive 20% off everything at Concord stations!
+            price *= 0.8; 
         }
     }
 
-    // 7. Safety Rounding
     price = Math.floor(price);
     return Math.max(1, price);
 }
@@ -654,7 +573,6 @@ function openShadowBroker() {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    // Initial landing view
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 20px;">
             <div style="font-size:60px; margin-bottom:15px; opacity:0.8;">🎲</div>
@@ -674,13 +592,12 @@ function renderShadowBrokerList() {
     let foundAny = false;
     let totalBlackMarketValue = 0;
 
-    // Search player cargo for illegal goods
     for (const itemId in playerCargo) {
         if (playerCargo[itemId] > 0 && COMMODITIES[itemId] && COMMODITIES[itemId].illegal) {
             foundAny = true;
             const item = COMMODITIES[itemId];
             const qty = playerCargo[itemId];
-            const value = (item.basePrice * 3) * qty; // 3x Premium Multiplier
+            const value = (item.basePrice * 3) * qty; 
             totalBlackMarketValue += value;
             
             const row = document.createElement('div');
@@ -692,7 +609,6 @@ function renderShadowBrokerList() {
     }
 
     if (!foundAny) {
-        // Player is clean
         listEl.innerHTML = `<div style="padding:15px; color:var(--item-desc-color); text-align:center; line-height:1.5;">Your hold is clean. The Broker has no interest in legal commodities.</div>`;
         document.getElementById('genericDetailContent').innerHTML = `
             <div style="text-align:center; padding: 20px;">
@@ -703,7 +619,6 @@ function renderShadowBrokerList() {
         `;
         document.getElementById('genericModalActions').innerHTML = '';
     } else {
-        // Add a "Fence All" button at the very top of the list for convenience
         const fenceAllRow = document.createElement('div');
         fenceAllRow.className = 'trade-item-row';
         fenceAllRow.style.background = 'rgba(153, 51, 255, 0.1)';
@@ -781,7 +696,6 @@ function processShadowBrokerTrade(itemId) {
     let soldItemsText = [];
 
     if (itemId === 'ALL') {
-        // Sell everything illegal
         for (const id in playerCargo) {
             if (playerCargo[id] > 0 && COMMODITIES[id] && COMMODITIES[id].illegal) {
                 const qty = playerCargo[id];
@@ -792,7 +706,6 @@ function processShadowBrokerTrade(itemId) {
             }
         }
     } else {
-        // Sell single item type
         const qty = playerCargo[itemId];
         const value = (COMMODITIES[itemId].basePrice * 3) * qty;
         totalProfit += value;
@@ -810,11 +723,8 @@ function processShadowBrokerTrade(itemId) {
         showToast(`CONTRABAND FENCED (+${formatNumber(totalProfit)}c)`, "success");
         
         renderUIStats();
-        
-        // Refresh the list view
         renderShadowBrokerList();
         
-        // Update the right pane to show a success receipt
         document.getElementById('genericDetailContent').innerHTML = `
             <div style="text-align:center; padding: 20px;">
                 <div style="font-size:50px; margin-bottom:10px; color:var(--success);">🤝</div>
@@ -835,7 +745,6 @@ function visitCryptarch() {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    // Initial landing view with the new custom image!
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 20px;">
             <img src="assets/cryptarch.png" alt="The Cryptarch" 
@@ -857,7 +766,6 @@ function renderCryptarchList() {
     const listEl = document.getElementById('genericModalList');
     listEl.innerHTML = '';
 
-    // Define which items can be decrypted
     const encryptedItems = ['ENCRYPTED_ENGRAM', 'ENCRYPTED_DATA', 'ANCIENT_ARCHIVE'];
     let foundAny = false;
 
@@ -886,9 +794,8 @@ function showCryptarchItemDetails(itemId) {
     const actionsEl = document.getElementById('genericModalActions');
 
     const hasCipher = (playerCargo['PRECURSOR_CIPHER'] || 0) > 0;
-    const hasPerk = playerPerks.has('CYBER_SLICER');
+    const hasPerk = typeof playerPerks !== 'undefined' && playerPerks.has('CYBER_SLICER');
     
-    // Dynamic cost scaling based on item rarity
     let decryptCost = 250;
     if (itemId === 'ENCRYPTED_DATA') decryptCost = 500;
     if (itemId === 'ANCIENT_ARCHIVE') decryptCost = 1000;
@@ -919,34 +826,26 @@ function showCryptarchItemDetails(itemId) {
 
     let btnHtml = '';
     
-    // Priority 1: Free Perk
     if (hasPerk) {
         btnHtml += `<button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 10px rgba(0,224,224,0.2);" onclick="processDecryption('perk', '${itemId}')">USE CYBER SLICER (FREE)</button>`;
     }
-    
-    // Priority 2: Consumable Item
     if (hasCipher) {
         btnHtml += `<button class="action-button" style="border-color:var(--success); color:var(--success);" onclick="processDecryption('cipher', '${itemId}')">USE CIPHER (CONSUMES 1)</button>`;
     }
-    
-    // Priority 3: Pay Credits
     const canAfford = playerCredits >= decryptCost;
     btnHtml += `<button class="action-button" ${canAfford ? '' : 'disabled'} style="border-color:var(--gold-text); color:var(--gold-text);" onclick="processDecryption('credits', '${itemId}')">PAY CRYPTARCH (${decryptCost}c)</button>`;
 
     actionsEl.innerHTML = btnHtml;
 }
 
-// --- MASTER DECRYPTION FUNCTION ---
 function processDecryption(method, itemId = 'ENCRYPTED_ENGRAM') {
     let cost = 250;
     if (itemId === 'ENCRYPTED_DATA') cost = 500;
     if (itemId === 'ANCIENT_ARCHIVE') cost = 1000;
     
-    // Check if we are at Xerxes for the "Spire Boost"
-    const isAtXerxes = document.getElementById('xerxesOverlay').style.display === 'flex';
+    const isAtXerxes = document.getElementById('xerxesOverlay') && document.getElementById('xerxesOverlay').style.display === 'flex';
     const xpMultiplier = isAtXerxes ? 2 : 1;
 
-    // 1. Handle the specific cost of the method used
     if (method === 'cipher') {
         playerCargo['PRECURSOR_CIPHER'] -= 1;
         if (playerCargo['PRECURSOR_CIPHER'] <= 0) delete playerCargo['PRECURSOR_CIPHER'];
@@ -962,13 +861,11 @@ function processDecryption(method, itemId = 'ENCRYPTED_ENGRAM') {
         logMessage("Cyber Slicer perk active. Bypassing encryption...");
     }
 
-    // 2. Consume the Target Item
     playerCargo[itemId] -= 1;
     if (playerCargo[itemId] <= 0) delete playerCargo[itemId];
     
     updateCurrentCargoLoad(); 
 
-    // 3. Reward Pool Generation
     let xpReward = 150;
     let textReward = "Data recovered.";
 
@@ -992,11 +889,9 @@ function processDecryption(method, itemId = 'ENCRYPTED_ENGRAM') {
         if (typeof unlockLore === 'function') unlockLore('PRECURSOR_ORIGINS');
     }
     
-    // --- APPLY THE XERXES MULTIPLIER ---
     const finalXP = xpReward * xpMultiplier;
     playerXP += finalXP;
 
-    // 4. Feedback
     if (isAtXerxes) {
         logMessage(`<span style="color:#00E0E0">> SPIRE RESONANCE: Decryption output doubled! (+${finalXP} XP)</span>`);
         if (typeof xerxesLog === 'function') xerxesLog("Spire energy channeled into decryption. Output maximized.", "good");
@@ -1008,10 +903,9 @@ function processDecryption(method, itemId = 'ENCRYPTED_ENGRAM') {
     if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
     checkLevelUp(); 
     
-    // 5. Cleanup / Refresh UI
-    if (document.getElementById('cargoOverlay').style.display !== 'none') {
+    if (document.getElementById('cargoOverlay') && document.getElementById('cargoOverlay').style.display !== 'none') {
         renderCargoList();
-    } else if (document.getElementById('genericModalOverlay').style.display !== 'none') {
+    } else if (document.getElementById('genericModalOverlay') && document.getElementById('genericModalOverlay').style.display !== 'none') {
         renderCryptarchList();
         document.getElementById('genericDetailContent').innerHTML = `
             <div style="text-align:center; padding: 20px;">
@@ -1026,12 +920,7 @@ function processDecryption(method, itemId = 'ENCRYPTED_ENGRAM') {
     renderUIStats();
 }
 
-// ==========================================
-// --- ECLIPSE CARTEL SERVICES ---
-// ==========================================
-
 function fenceEclipseContraband() {
-    // Instantly sells all illegal goods for 3x value
     let soldSomething = false;
     let totalProfit = 0;
     
@@ -1054,14 +943,79 @@ function fenceEclipseContraband() {
         if (typeof renderUIStats === 'function') renderUIStats();
 
         unlockLoreEntry("FACTION_ECLIPSE_SMUGGLING");
-        
     } else {
         showToast("No contraband in cargo hold.", "info");
     }
 }
 
 function buyFakeID() {
-    // PLACEHOLDER: Pay a massive flat fee (e.g., 5000c) to instantly wipe your Notoriety without dealing with Concord.
     showToast("The Forger is currently laying low.", "info");
     logMessage("A hooded figure whispers: 'Got too much heat right now. Come back next cycle.'");
+}
+
+// ==========================================
+// --- DEEP SPACE NPC TRADING ---
+// ==========================================
+
+function openShipTrade(npc) {
+    // Generate a temporary trading profile based on the NPC being hailed
+    window.activeTradeNPC = {
+        name: npc.name + " (Ship-to-Ship)",
+        type: 'location',
+        isNPC: true,
+        faction: npc.faction || 'INDEPENDENT',
+        isBlackMarket: npc.faction === 'ECLIPSE',
+        sells: [
+            { id: "FUEL_CELLS", priceMod: 1.5, stock: Math.floor(Math.random() * 10) + 5 }, // Marked up deep space delivery
+            { id: "MEDICAL_SUPPLIES", priceMod: 1.2, stock: Math.floor(Math.random() * 5) + 2 }
+        ],
+        buys: [
+            { id: "MINERALS", priceMod: 0.9, stock: 50 },
+            { id: "TECH_PARTS", priceMod: 1.1, stock: 10 }
+        ]
+    };
+
+    // Customize inventories based on the NPC's actual role/faction
+    const lowerDesc = (npc.desc || "").toLowerCase();
+    const lowerName = (npc.name || "").toLowerCase();
+
+    if (lowerName.includes("miner") || lowerDesc.includes("mining") || lowerDesc.includes("ore")) {
+        window.activeTradeNPC.sells = [
+            { id: "MINERALS", priceMod: 0.7, stock: Math.floor(Math.random() * 30) + 15 },
+            { id: "RARE_METALS", priceMod: 0.8, stock: Math.floor(Math.random() * 5) + 1 }
+        ];
+        window.activeTradeNPC.buys = [
+            { id: "FOOD_SUPPLIES", priceMod: 1.5, stock: 20 },
+            { id: "FUEL_CELLS", priceMod: 1.5, stock: 15 }
+        ];
+    } else if (npc.faction === 'ECLIPSE' || lowerName.includes("smuggler")) {
+        window.activeTradeNPC.sells = [
+            { id: "PROHIBITED_STIMS", priceMod: 1.1, stock: Math.floor(Math.random() * 8) + 2 },
+            { id: "FORBIDDEN_TEXTS", priceMod: 1.3, stock: Math.floor(Math.random() * 3) + 1 }
+        ];
+        window.activeTradeNPC.buys = [
+            { id: "FOOD_SUPPLIES", priceMod: 0.8, stock: 30 },
+            { id: "MEDICAL_SUPPLIES", priceMod: 1.2, stock: 15 }
+        ];
+    } else if (npc.faction === 'KTHARR') {
+        window.activeTradeNPC.sells = [
+            { id: "KTHARR_SPICES", priceMod: 1.0, stock: Math.floor(Math.random() * 10) + 5 },
+            { id: "LIVING_HULL_TISSUE", priceMod: 1.2, stock: Math.floor(Math.random() * 2) + 1 }
+        ];
+        window.activeTradeNPC.buys = [
+            { id: "RARE_METALS", priceMod: 1.1, stock: 20 },
+            { id: "MEDICAL_SUPPLIES", priceMod: 1.3, stock: 10 }
+        ];
+    } else if (npc.faction === 'CONCORD') {
+        window.activeTradeNPC.sells = [
+            { id: "NAVIGATION_CHARTS", priceMod: 1.0, stock: Math.floor(Math.random() * 5) + 1 },
+            { id: "FUEL_CELLS", priceMod: 1.0, stock: Math.floor(Math.random() * 20) + 10 }
+        ];
+        window.activeTradeNPC.buys = [
+            { id: "FOOD_SUPPLIES", priceMod: 1.1, stock: 30 }
+        ];
+    }
+
+    // Launch the standard trade interface loaded with our custom ship logic!
+    openTradeModal('buy');
 }
