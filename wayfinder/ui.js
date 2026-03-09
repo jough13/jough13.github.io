@@ -562,28 +562,6 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
 
 // --- VISUAL CARGO SYSTEM ---
 
-function openCargoModal() {
-    if (currentTradeContext || currentCombatContext || currentMissionContext) return;
-
-    document.getElementById('cargoOverlay').style.display = 'flex';
-    selectedCargoIndex = -1;
-    renderCargoList();
-    
-    document.getElementById('cargoItemName').textContent = "SELECT CARGO";
-    document.getElementById('cargoItemDesc').textContent = "Select an item to inspect or jettison.";
-    document.getElementById('cargoItemQty').textContent = "-";
-    document.getElementById('cargoItemVal').textContent = "-";
-    document.getElementById('jettisonBtn').disabled = true;
-    
-    currentOutfitContext = { step: 'viewingCargo' };
-
-    // Update the Info Bar
-    updateModalInfoBar('cargoInfoBar');
-
-    // UPDATE BORDERS
-    updateSideBorderVisibility();
-}
-
 function closeCargoModal() {
     document.getElementById('cargoOverlay').style.display = 'none';
     currentOutfitContext = null;
@@ -623,75 +601,6 @@ function renderCargoList() {
     });
 }
 
-function selectCargoItem(index, key) {
-    selectedCargoIndex = index;
-    renderCargoList(); // Update highlight
-    
-    const item = COMMODITIES[key];
-    const qty = playerCargo[key];
-    
-    document.getElementById('cargoItemName').textContent = item.name;
-    document.getElementById('cargoItemDesc').textContent = item.description;
-    document.getElementById('cargoItemQty').textContent = qty;
-    document.getElementById('cargoItemVal').textContent = `${item.basePrice}c`;
-    
-    const jetBtn = document.getElementById('jettisonBtn');
-    jetBtn.disabled = false;
-    jetBtn.onclick = () => jettisonItem(key);
-
-    // --- SPECIAL ITEM ACTIONS ---
-    const decryptBtn = document.getElementById('decryptBtn');
-    if (decryptBtn) {
-        // Support all decryptable items!
-        if (key === 'ENCRYPTED_ENGRAM' || key === 'ENCRYPTED_DATA' || key === 'ANCIENT_ARCHIVE') {
-            decryptBtn.style.display = 'block';
-            
-            // Smart Button Logic
-            if (playerPerks.has('CYBER_SLICER')) {
-                decryptBtn.innerText = "DECRYPT (Perk: Cyber Slicer)";
-                decryptBtn.disabled = false;
-                decryptBtn.onclick = () => processDecryption('perk', key);
-            } else if (playerCargo['PRECURSOR_CIPHER'] && playerCargo['PRECURSOR_CIPHER'] > 0) {
-                decryptBtn.innerText = "DECRYPT (Consumes 1 Cipher)";
-                decryptBtn.disabled = false;
-                decryptBtn.onclick = () => processDecryption('cipher', key);
-            } else {
-                decryptBtn.innerText = "LOCKED (Requires Cipher)";
-                decryptBtn.disabled = true;
-            }
-        } else {
-            decryptBtn.style.display = 'none';
-        }
-    }
-}
-
-function jettisonItem(key) {
-    if (playerCargo[key] > 0) {
-        playerCargo[key]--;
-        
-        if (playerCargo[key] <= 0) delete playerCargo[key];
-        
-        updateCurrentCargoLoad();
-        
-        // Visual updates
-        renderCargoList();
-        renderUIStats();
-        
-        // Update detail view or deselect if empty
-        if (playerCargo[key] > 0) {
-            selectCargoItem(selectedCargoIndex, key);
-        } else {
-            // Item gone
-            selectedCargoIndex = -1;
-            document.getElementById('cargoItemName').textContent = "ITEM EJECTED";
-            document.getElementById('jettisonBtn').disabled = true;
-        }
-        
-        // Optional: Spawn a particle effect in the background?
-        spawnParticles(playerX, playerY, 'mining'); // Reusing mining dust as "trash"
-    }
-}
-
 function updateCurrentCargoLoad() {
 
      // Instead of doing the math here, we just tell the engine it changed!
@@ -700,3 +609,120 @@ function updateCurrentCargoLoad() {
 
      GameBus.emit('CARGO_MODIFIED');
  }
+
+ // ==========================================
+// --- CARGO MANAGEMENT UI ---
+// ==========================================
+
+function openCargoModal() {
+    openGenericModal("CARGO MANIFEST");
+    renderCargoList();
+}
+
+function renderCargoList() {
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    
+    listEl.innerHTML = '';
+    let hasItems = false;
+    
+    for (const itemKey in playerCargo) {
+        if (playerCargo[itemKey] > 0) {
+            hasItems = true;
+            const itemDef = typeof COMMODITIES !== 'undefined' ? COMMODITIES[itemKey] : null;
+            const itemName = itemDef ? itemDef.name : itemKey;
+            const qty = playerCargo[itemKey];
+            
+            const row = document.createElement('div');
+            row.className = 'trade-item-row';
+            row.style.cursor = 'pointer';
+            row.innerHTML = `<span>📦 ${itemName}</span> <span style="color:var(--accent-color); font-weight:bold;">x${qty}</span>`;
+            row.onclick = () => selectCargoItem(itemKey);
+            listEl.appendChild(row);
+        }
+    }
+    
+    if (!hasItems) {
+        listEl.innerHTML = '<div style="padding:15px; color:#666;">Cargo hold is currently empty.</div>';
+        detailEl.innerHTML = `
+            <div style="text-align:center; padding: 40px 20px;">
+                <div style="font-size:50px; opacity:0.5; margin-bottom:15px;">🕸️</div>
+                <h3 style="color:#666;">HOLD EMPTY</h3>
+                <p style="color:var(--item-desc-color); font-size:12px;">No physical goods detected in the cargo bay.</p>
+            </div>`;
+        actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal()">CLOSE</button>`;
+    } else {
+        // Default select the first item if none is currently selected
+        const firstItemKey = Object.keys(playerCargo).find(k => playerCargo[k] > 0);
+        if (firstItemKey) selectCargoItem(firstItemKey);
+    }
+}
+
+function selectCargoItem(key) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    const itemDef = typeof COMMODITIES !== 'undefined' ? COMMODITIES[key] : null;
+    
+    if (!itemDef || !playerCargo[key]) {
+        renderCargoList();
+        return;
+    }
+
+    const qty = playerCargo[key];
+    const isIllegal = itemDef.illegal ? '<span style="color:var(--danger); font-size:10px; border:1px solid var(--danger); padding:2px 4px; border-radius:2px; margin-left:10px;">CONTRABAND</span>' : '';
+    const weight = itemDef.weight || 1;
+
+    detailEl.innerHTML = `
+        <div style="padding: 20px; text-align:center;">
+            <div style="font-size:50px; margin-bottom:15px;">${itemDef.illegal ? '⚠️' : '📦'}</div>
+            <h3 style="color:var(--item-name-color); margin-bottom:10px; display:flex; justify-content:center; align-items:center;">
+                ${itemDef.name.toUpperCase()} ${isIllegal}
+            </h3>
+            <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:4px; text-align:left; border-left: 3px solid var(--accent-color); margin-bottom:20px;">
+                <p style="color:var(--text-color); font-size:13px; margin:0; line-height:1.5;">${itemDef.description || 'No data available.'}</p>
+            </div>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:12px; text-align:left;">
+                <div style="color:#888;">Current Stock:</div> <div style="color:var(--accent-color); text-align:right; font-weight:bold;">${qty} Units</div>
+                <div style="color:#888;">Base Value:</div> <div style="color:var(--gold-text); text-align:right;">${itemDef.basePrice || 0}c</div>
+                <div style="color:#888;">Weight per Unit:</div> <div style="color:var(--text-color); text-align:right;">${weight} Ton(s)</div>
+                <div style="color:#888;">Total Weight:</div> <div style="color:var(--warning); text-align:right;">${weight * qty} Ton(s)</div>
+            </div>
+        </div>
+    `;
+
+    // The dual-jettison buttons!
+    actionsEl.innerHTML = `
+        <button class="action-button danger-btn" onclick="jettisonItem('${key}', 1)">EJECT 1x UNIT</button>
+        <button class="action-button danger-btn" onclick="jettisonItem('${key}', 'ALL')" style="background:rgba(204,0,0,0.1);">JETTISON ALL</button>
+        <button class="action-button" onclick="closeGenericModal()">CLOSE</button>
+    `;
+}
+
+function jettisonItem(key, amount) {
+    if (!playerCargo[key] || playerCargo[key] <= 0) return;
+
+    // Calculate how much we are dumping
+    let amountToDrop = amount === 'ALL' ? playerCargo[key] : 1;
+    playerCargo[key] -= amountToDrop;
+    
+    const itemDef = typeof COMMODITIES !== 'undefined' ? COMMODITIES[key] : null;
+    const itemName = itemDef ? itemDef.name : key;
+
+    // Clean up the object if it hits zero
+    if (playerCargo[key] <= 0) {
+        delete playerCargo[key];
+    }
+
+    // Ping the rest of the game to update UI bars
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+    if (typeof renderUIStats === 'function') renderUIStats();
+    
+    // Feedback
+    logMessage(`<span style="color:var(--danger)">[ CARGO ] Ejected ${amountToDrop}x ${itemName} into the void.</span>`);
+    if (typeof soundManager !== 'undefined') soundManager.playHullHit(); // We'll use the dull thud sound for the airlock cycling
+    
+    // Refresh the list instantly
+    renderCargoList();
+}
