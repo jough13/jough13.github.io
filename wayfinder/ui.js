@@ -5,7 +5,7 @@ function openGenericModal(title) {
     
     const container = document.getElementById('genericModalContent');
 
-    // --- CRITICAL FIX: SCRUB LINGERING INLINE STYLES ---
+    // --- SCRUB LINGERING INLINE STYLES ---
     // Wipes out flex-direction: column or specific heights left behind by other menus
     container.style.cssText = ''; 
     
@@ -610,12 +610,23 @@ function updateCurrentCargoLoad() {
      GameBus.emit('CARGO_MODIFIED');
  }
 
- // ==========================================
+// ==========================================
 // --- CARGO MANAGEMENT UI ---
 // ==========================================
 
 function openCargoModal() {
+    window.cargoSortMode = window.cargoSortMode || 'NAME'; // Default sort state
     openGenericModal("CARGO MANIFEST");
+    renderCargoList();
+}
+
+function cycleCargoSort() {
+    const modes = ['NAME', 'VALUE', 'QUANTITY', 'ILLEGAL'];
+    let currentIndex = modes.indexOf(window.cargoSortMode || 'NAME');
+    currentIndex = (currentIndex + 1) % modes.length;
+    window.cargoSortMode = modes[currentIndex];
+    
+    if (typeof soundManager !== 'undefined') soundManager.playUIHover();
     renderCargoList();
 }
 
@@ -625,25 +636,24 @@ function renderCargoList() {
     const actionsEl = document.getElementById('genericModalActions');
     
     listEl.innerHTML = '';
-    let hasItems = false;
     
+    // --- 1. Map Cargo into a Sortable Array ---
+    let cargoArray = [];
     for (const itemKey in playerCargo) {
         if (playerCargo[itemKey] > 0) {
-            hasItems = true;
             const itemDef = typeof COMMODITIES !== 'undefined' ? COMMODITIES[itemKey] : null;
-            const itemName = itemDef ? itemDef.name : itemKey;
-            const qty = playerCargo[itemKey];
-            
-            const row = document.createElement('div');
-            row.className = 'trade-item-row';
-            row.style.cursor = 'pointer';
-            row.innerHTML = `<span>📦 ${itemName}</span> <span style="color:var(--accent-color); font-weight:bold;">x${qty}</span>`;
-            row.onclick = () => selectCargoItem(itemKey);
-            listEl.appendChild(row);
+            cargoArray.push({
+                key: itemKey,
+                qty: playerCargo[itemKey],
+                def: itemDef,
+                name: itemDef ? itemDef.name : itemKey,
+                value: itemDef ? itemDef.basePrice : 0,
+                illegal: itemDef && itemDef.illegal ? 1 : 0
+            });
         }
     }
-    
-    if (!hasItems) {
+
+    if (cargoArray.length === 0) {
         listEl.innerHTML = '<div style="padding:15px; color:#666;">Cargo hold is currently empty.</div>';
         detailEl.innerHTML = `
             <div style="text-align:center; padding: 40px 20px;">
@@ -652,14 +662,84 @@ function renderCargoList() {
                 <p style="color:var(--item-desc-color); font-size:12px;">No physical goods detected in the cargo bay.</p>
             </div>`;
         actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal()">CLOSE</button>`;
+        return;
+    }
+
+    // --- 2. Build the Sorting Header ---
+    const sortHeader = document.createElement('div');
+    sortHeader.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; position: sticky; top: 0; background: var(--bg-color); z-index: 5;";
+    
+    let sortLabel = "A-Z";
+    if (window.cargoSortMode === 'VALUE') sortLabel = "TOTAL VALUE";
+    if (window.cargoSortMode === 'QUANTITY') sortLabel = "QUANTITY";
+    if (window.cargoSortMode === 'ILLEGAL') sortLabel = "CONTRABAND";
+
+    sortHeader.innerHTML = `
+        <span style="color:var(--item-desc-color); font-size:10px; letter-spacing:2px;">INVENTORY</span>
+        <button class="action-button" style="padding: 6px 10px; font-size: 10px; border-color:var(--accent-color); color:var(--accent-color);" onclick="cycleCargoSort()">
+            SORT: ${sortLabel} ⟳
+        </button>
+    `;
+    listEl.appendChild(sortHeader);
+
+    // --- 3. Apply the Sorting Algorithm ---
+    cargoArray.sort((a, b) => {
+        if (window.cargoSortMode === 'VALUE') {
+            return (b.value * b.qty) - (a.value * a.qty); // Highest total stack value first
+        } else if (window.cargoSortMode === 'QUANTITY') {
+            return b.qty - a.qty; // Largest stacks first
+        } else if (window.cargoSortMode === 'ILLEGAL') {
+            if (b.illegal !== a.illegal) return b.illegal - a.illegal; // Contraband at the top
+            return a.name.localeCompare(b.name); // Secondary sort A-Z
+        } else {
+            return a.name.localeCompare(b.name); // Standard A-Z
+        }
+    });
+
+    // --- 4. Render the Sorted Rows ---
+    cargoArray.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        row.style.cursor = 'pointer';
+        
+        // Highlight illegal items with a red border and icon
+        if (item.illegal) row.style.borderLeft = '3px solid var(--danger)';
+        // Highlight selected item
+        if (window.activeCargoItem === item.key) row.style.background = 'rgba(0, 224, 224, 0.1)';
+
+        let subtext = "";
+        if (window.cargoSortMode === 'VALUE') subtext = `<span style="color:var(--gold-text); font-size:10px; margin-left:10px; opacity:0.8;">${formatNumber(item.value * item.qty)}c</span>`;
+        
+        row.innerHTML = `<span>${item.illegal ? '⚠️' : '📦'} ${item.name} ${subtext}</span> <span style="color:var(--accent-color); font-weight:bold;">x${item.qty}</span>`;
+        row.onclick = () => selectCargoItem(item.key);
+        listEl.appendChild(row);
+    });
+
+    // Auto-select the active item, or the first item in the list if none is active
+    if (!window.activeCargoItem || !playerCargo[window.activeCargoItem]) {
+        selectCargoItem(cargoArray[0].key);
     } else {
-        // Default select the first item if none is currently selected
-        const firstItemKey = Object.keys(playerCargo).find(k => playerCargo[k] > 0);
-        if (firstItemKey) selectCargoItem(firstItemKey);
+        selectCargoItem(window.activeCargoItem);
     }
 }
 
 function selectCargoItem(key) {
+    window.activeCargoItem = key; // Remember what we are looking at!
+    
+    // Visually update the list selection without doing a full re-render
+    const listEl = document.getElementById('genericModalList');
+    if (listEl) {
+        Array.from(listEl.children).forEach(child => {
+            if (child.classList.contains('trade-item-row')) {
+                if (child.textContent.includes(typeof COMMODITIES !== 'undefined' && COMMODITIES[key] ? COMMODITIES[key].name : key)) {
+                    child.style.background = 'rgba(0, 224, 224, 0.1)';
+                } else {
+                    child.style.background = 'transparent';
+                }
+            }
+        });
+    }
+
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
     const itemDef = typeof COMMODITIES !== 'undefined' ? COMMODITIES[key] : null;
@@ -674,25 +754,24 @@ function selectCargoItem(key) {
     const weight = itemDef.weight || 1;
 
     detailEl.innerHTML = `
-        <div style="padding: 20px; text-align:center;">
-            <div style="font-size:50px; margin-bottom:15px;">${itemDef.illegal ? '⚠️' : '📦'}</div>
+        <div style="padding: 20px; text-align:center; animation: fadeIn 0.3s ease-out;">
+            <div style="font-size:50px; margin-bottom:15px; filter: drop-shadow(0 0 10px ${itemDef.illegal ? 'var(--danger)' : 'var(--accent-color)'});">${itemDef.illegal ? '⚠️' : (itemDef.icon || '📦')}</div>
             <h3 style="color:var(--item-name-color); margin-bottom:10px; display:flex; justify-content:center; align-items:center;">
                 ${itemDef.name.toUpperCase()} ${isIllegal}
             </h3>
-            <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:4px; text-align:left; border-left: 3px solid var(--accent-color); margin-bottom:20px;">
+            <div style="background:rgba(0,0,0,0.5); padding:15px; border-radius:4px; text-align:left; border-left: 3px solid ${itemDef.illegal ? 'var(--danger)' : 'var(--accent-color)'}; margin-bottom:20px;">
                 <p style="color:var(--text-color); font-size:13px; margin:0; line-height:1.5;">${itemDef.description || 'No data available.'}</p>
             </div>
             
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:12px; text-align:left;">
-                <div style="color:#888;">Current Stock:</div> <div style="color:var(--accent-color); text-align:right; font-weight:bold;">${qty} Units</div>
-                <div style="color:#888;">Base Value:</div> <div style="color:var(--gold-text); text-align:right;">${itemDef.basePrice || 0}c</div>
-                <div style="color:#888;">Weight per Unit:</div> <div style="color:var(--text-color); text-align:right;">${weight} Ton(s)</div>
-                <div style="color:#888;">Total Weight:</div> <div style="color:var(--warning); text-align:right;">${weight * qty} Ton(s)</div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:12px; text-align:left; background:var(--bg-color); padding: 15px; border: 1px solid var(--border-color); border-radius: 4px;">
+                <div style="color:var(--item-desc-color);">Current Stock:</div> <div style="color:var(--accent-color); text-align:right; font-weight:bold;">${qty} Units</div>
+                <div style="color:var(--item-desc-color);">Base Value:</div> <div style="color:var(--gold-text); text-align:right;">${itemDef.basePrice || 0}c</div>
+                <div style="color:var(--item-desc-color);">Unit Weight:</div> <div style="color:var(--text-color); text-align:right;">${weight} Ton(s)</div>
+                <div style="color:var(--item-desc-color);">Total Weight:</div> <div style="color:var(--warning); text-align:right;">${weight * qty} Ton(s)</div>
             </div>
         </div>
     `;
 
-    // The dual-jettison buttons!
     actionsEl.innerHTML = `
         <button class="action-button danger-btn" onclick="jettisonItem('${key}', 1)">EJECT 1x UNIT</button>
         <button class="action-button danger-btn" onclick="jettisonItem('${key}', 'ALL')" style="background:rgba(204,0,0,0.1);">JETTISON ALL</button>
