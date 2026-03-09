@@ -1068,6 +1068,9 @@ function performGarbageCollection() {
     const isBloated = keys.length > MAX_DELTAS;
 
     keys.forEach(key => {
+        // SAFETY CHECK: Never delete critical system data!
+        if (key === 'CRAFTING_BONUSES') return;
+        
         const delta = worldStateDeltas[key];
 
         // SAFETY CHECK: Never delete critical story/lore flags
@@ -2670,7 +2673,8 @@ function processGameTick(timeAmount, isMovement = false) {
                     // --- RARE COLONY EVENTS ---
                     // 0.2% chance per 1.0 stardate to trigger an event if they have population
                     if ((colony.phase === 'POPULATED' || colony.phase === 'OPERATIONAL') && Math.random() < 0.002) {
-                        if (typeof triggerColonyEvent === 'function') triggerColonyEvent(colony.id);
+                        // Pass the whole 'colony' object, not just 'colony.id'!
+                        if (typeof triggerColonyEvent === 'function') triggerColonyEvent(colony);
                     }
                 }
             }
@@ -6700,31 +6704,33 @@ function executeCrafting(recipeId, idx) {
     }
     if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
 
-    // 2. Apply Effect
+    // 2. Apply Effect to Base Bonuses
     const bonuses = getCraftingBonuses();
 
+    if (recipeId === 'MAX_HULL') bonuses.hull += 5;
+    else if (recipeId === 'MAX_SHIELD') bonuses.shields += 5;
+    else if (recipeId === 'MAX_FUEL') bonuses.fuel += 10;
+    else if (recipeId === 'DAMAGE') bonuses.damage += 2;
+
+    // 3. Force engine to recalculate MAX stats!
+    if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
+
+    // 4. NOW apply the current vitals heal, so the new MAX cap isn't violated
     if (recipeId === 'HEAL') {
         playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 25);
         logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Field repairs complete. Hull integrity restored (+25).</span>");
     } else if (recipeId === 'MAX_HULL') {
-        bonuses.hull += 5;
         playerHull += 5;
         logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Plating welded. Max Hull permanently increased!</span>");
     } else if (recipeId === 'MAX_SHIELD') {
-        bonuses.shields += 5;
         playerShields += 5;
         logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Capacitors upgraded. Max Shields permanently increased!</span>");
     } else if (recipeId === 'MAX_FUEL') {
-        bonuses.fuel += 10;
         playerFuel += 10;
         logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Containment expanded. Max Fuel permanently increased!</span>");
     } else if (recipeId === 'DAMAGE') {
-        bonuses.damage += 2;
         logMessage("<span style='color:var(--success)'>[ SYNTHESIS ] Calibration successful. Base Weapon Damage permanently increased!</span>");
     }
-
-    // Force engine to recalculate stats!
-    if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
 
     if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
     if (typeof showToast === 'function') showToast("SYNTHESIS COMPLETE", "success");
@@ -7284,18 +7290,6 @@ if (typeof GameBus !== 'undefined') {
         // Trigger rate kept extremely low (0.01%) for long-play pacing!
         if (loc && getTileChar(loc) === '.' && Math.random() < 0.0001) { 
             if (typeof triggerRandomEncounter === 'function') triggerRandomEncounter();
-        }
-
-        // --- 2. COLONY CRISES & BOOMS ---
-        // Check all established colonies for random events!
-        if (typeof playerColonies !== 'undefined') {
-            for (const colId in playerColonies) {
-                const col = playerColonies[colId];
-                if (col.established && Math.random() < 0.0002) { 
-                    if (typeof triggerColonyEvent === 'function') triggerColonyEvent(col);
-                    break; // Only trigger one event per tick to avoid spamming the player
-                }
-            }
         }
     });
 }
