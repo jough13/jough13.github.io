@@ -3229,16 +3229,21 @@ function handleInteraction() {
                 break;
             case DERELICT_CHAR_VAL:
                 if (tileObject && tileObject.studied) {
-                    bM = "Scanners show this derelict has already been stripped of useful salvage.";
+                    // --- THE FIX ---
+                    // It's already looted! Instead of falling back to a blank menu, 
+                    // we force the classic view to open so they see the cool [STRIPPED] screen!
+                    if (typeof openDerelictView === 'function') openDerelictView();
+                    return; // Stop the weird "Sensors Offline" modal from appearing
                 } else {
+                    // Fresh derelict!
                     unlockLoreEntry("XENO_DERELICTS");
                     
-                    // NATIVE FIX: Render the button before opening the view!
-                    availableActions.push({ label: 'Board Derelict', key: 'e', onclick: openDerelictView });
+                    availableActions.push({ label: 'Inspect Derelict', key: 'e', onclick: openDerelictView });
                     if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
 
-                    openDerelictView();
-                    return; // Stop processing generic text logs
+                    // Launch the classic image UI!
+                    if (typeof openDerelictView === 'function') openDerelictView();
+                    return; 
                 }
                 break;
         }
