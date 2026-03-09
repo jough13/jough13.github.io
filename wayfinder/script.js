@@ -373,7 +373,8 @@ function interactWithNPC(npc, index) {
     `;
 }
 
-// --- NEW SENSOR LOGIC ---
+// --- SENSOR LOGIC ---
+
 function scanNPCCargo(index) {
     // 1. Check if the player has the required gear/perk to pierce civilian shields
     const hasPerk = typeof playerPerks !== 'undefined' && playerPerks.has && playerPerks.has('LONG_RANGE_SENSORS');
@@ -427,6 +428,22 @@ function scanNPCCargo(index) {
             </ul>
         </div>
     `;
+
+    // 4. Earned Knowledge: Unlock Codex Entries based on the successful scan!
+    if (typeof unlockLoreEntry === 'function') {
+        // Unlock Faction Lore
+        if (npc.faction === 'CONCORD') unlockLoreEntry('FACTION_CONCORD');
+        if (npc.faction === 'ECLIPSE') unlockLoreEntry('FACTION_ECLIPSE');
+        if (npc.faction === 'KTHARR') unlockLoreEntry('FACTION_KTHARR');
+        
+        // Unlock Ship Chassis Lore
+        const shipClassUpper = (npc.shipClass || "").toUpperCase();
+        if (shipClassUpper.includes("FREIGHTER") || shipClassUpper.includes("HAULER")) unlockLoreEntry('LORE_SHIP_LIGHT_FREIGHTER');
+        if (shipClassUpper.includes("COURIER")) unlockLoreEntry('LORE_SHIP_COURIER');
+        if (shipClassUpper.includes("INTERCEPTOR") || shipClassUpper.includes("STRIKER")) unlockLoreEntry('LORE_SHIP_INTERCEPTOR');
+        if (shipClassUpper.includes("SCOUT")) unlockLoreEntry('LORE_SHIP_SCOUT');
+        if (shipClassUpper.includes("DREADNOUGHT") || shipClassUpper.includes("BARGE")) unlockLoreEntry('LORE_SHIP_DREADNOUGHT');
+    }
 }
 
 // ==========================================
@@ -1508,17 +1525,106 @@ function updatePlayerNotoriety(amount) {
      playerNotorietyTitle = currentTitle;
  }
 
-function unlockLoreEntry(entryKey, silent = false) {
-     if (LORE_DATABASE[entryKey] && !discoveredLoreEntries.has(entryKey)) {
-         discoveredLoreEntries.add(entryKey);
-         LORE_DATABASE[entryKey].unlocked = true;
-         
-         // Only print to the log if we aren't using the silent override
-         if (!silent) {
-            logMessage(`<span style='color:#A2D2FF;'>Codex Updated: ${LORE_DATABASE[entryKey].title}</span>`, true);
-         }
-     }
- }
+// ==========================================
+// --- CODEX COMPLETIONIST SYSTEM ---
+// ==========================================
+
+function unlockLoreEntry(key) {
+    if (typeof LORE_DATABASE === 'undefined' || !LORE_DATABASE[key]) return;
+    
+    if (!LORE_DATABASE[key].unlocked) {
+        LORE_DATABASE[key].unlocked = true;
+        const category = LORE_DATABASE[key].category;
+        
+        logMessage(`<span style="color:#00E0E0">[ CODEX ] New entry unlocked: ${LORE_DATABASE[key].title}</span>`);
+        if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+        
+        checkCodexCompletion(category);
+        
+        // Re-apply stats to immediately grant any newly unlocked buffs to the HUD
+        if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
+        if (typeof renderUIStats === 'function') renderUIStats();
+    }
+}
+
+function checkCodexCompletion(categoryToCheck) {
+    let total = 0;
+    let unlocked = 0;
+    
+    for (const key in LORE_DATABASE) {
+        if (LORE_DATABASE[key].category === categoryToCheck) {
+            total++;
+            if (LORE_DATABASE[key].unlocked) unlocked++;
+        }
+    }
+
+    // If they just unlocked the final entry for this category
+    if (total > 0 && unlocked === total) {
+        openGenericModal("CODEX MASTERY ACHIEVED");
+        
+        let buffText = "Systems optimized.";
+        if (categoryToCheck === "Starships") buffText = "+5 Max Hull Integrity";
+        else if (categoryToCheck === "Phenomena") buffText = "+10 Max Fuel Capacity";
+        else if (categoryToCheck === "Locations") buffText = "+2% Ship Evasion";
+        else if (categoryToCheck === "Factions") buffText = "+5 Max Shields";
+        else buffText = "+2 Cargo Capacity"; // Catch-all for Artifacts, Tactics, etc.
+
+        const detailEl = document.getElementById('genericDetailContent');
+        const listEl = document.getElementById('genericModalList');
+        const actionsEl = document.getElementById('genericModalActions');
+        
+        listEl.innerHTML = ''; // Hide the list pane for a cinematic full-screen modal
+        detailEl.innerHTML = `
+            <div style="text-align:center; padding: 40px 20px;">
+                <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px var(--gold-text));">🏆</div>
+                <h3 style="color:var(--gold-text); margin-bottom:10px; letter-spacing:2px;">KNOWLEDGE IS POWER</h3>
+                <p style="color:var(--text-color); font-size:13px; line-height:1.6; margin-bottom: 20px;">
+                    You have successfully uncovered all archived data within the <strong>${categoryToCheck}</strong> category. 
+                    Your ship's computer has integrated this complete dataset, optimizing operational parameters.
+                </p>
+                <div style="background:rgba(255,215,0,0.1); border:1px solid var(--gold-text); padding:15px; border-radius:4px; font-weight:bold; color:var(--success);">
+                    PASSIVE BUFF ACQUIRED: ${buffText}
+                </div>
+            </div>
+        `;
+        actionsEl.innerHTML = `<button class="action-button full-width-btn" style="border-color:var(--gold-text); color:var(--gold-text);" onclick="closeGenericModal()">ACKNOWLEDGE</button>`;
+        
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+    }
+}
+
+// --- NON-DESTRUCTIVE OUTFITTING PATCH ---
+// We dynamically wrap your existing outfitting math so we don't have to rewrite outfitting.js!
+if (typeof window._codexPatched === 'undefined') {
+    const originalApply = window.applyPlayerShipStats;
+    if (originalApply) {
+        window.applyPlayerShipStats = function() {
+            // 1. Run the original math first (which resets max stats based on ship chassis and components)
+            originalApply();
+            
+            // 2. Tally up which codex categories are 100% complete
+            const categories = {};
+            for (const key in LORE_DATABASE) {
+                const cat = LORE_DATABASE[key].category;
+                if (!categories[cat]) categories[cat] = { total: 0, unlocked: 0 };
+                categories[cat].total++;
+                if (LORE_DATABASE[key].unlocked) categories[cat].unlocked++;
+            }
+            
+            // 3. Layer the small permanent buffs on top!
+            for (const cat in categories) {
+                if (categories[cat].total > 0 && categories[cat].unlocked === categories[cat].total) {
+                    if (cat === "Starships") MAX_PLAYER_HULL += 5;
+                    else if (cat === "Phenomena") MAX_FUEL += 10;
+                    else if (cat === "Locations") PLAYER_EVASION += 2; 
+                    else if (cat === "Factions") MAX_SHIELDS += 5;
+                    else PLAYER_CARGO_CAPACITY += 2; 
+                }
+            }
+        };
+    }
+    window._codexPatched = true;
+}
 
  let WORLD_SEED;
  let systemCache = {};
@@ -7174,9 +7280,22 @@ if (typeof GameBus !== 'undefined') {
     GameBus.on('TICK_PROCESSED', () => {
         const loc = chunkManager.getTile(playerX, playerY);
         
-        // BUG FIX: Dropped encounter rate from 2% to 0.01% for long-play pacing!
+        // --- 1. DEEP SPACE ENCOUNTERS ---
+        // Trigger rate kept extremely low (0.01%) for long-play pacing!
         if (loc && getTileChar(loc) === '.' && Math.random() < 0.0001) { 
             if (typeof triggerRandomEncounter === 'function') triggerRandomEncounter();
+        }
+
+        // --- 2. COLONY CRISES & BOOMS ---
+        // Check all established colonies for random events!
+        if (typeof playerColonies !== 'undefined') {
+            for (const colId in playerColonies) {
+                const col = playerColonies[colId];
+                if (col.established && Math.random() < 0.0002) { 
+                    if (typeof triggerColonyEvent === 'function') triggerColonyEvent(col);
+                    break; // Only trigger one event per tick to avoid spamming the player
+                }
+            }
         }
     });
 }
@@ -7359,4 +7478,346 @@ function executeWormholeJump(targetX, targetY, fuelCost, damageRisk) {
     
     // Always auto-save after a massive jump!
     if (typeof autoSaveGame === 'function') autoSaveGame();
+}
+
+// ==========================================
+// --- COLONY CRISES & BOOMS ---
+// ==========================================
+
+const COLONY_EVENTS = [
+    {
+        id: "PIRATE_RAID",
+        title: "COLONY UNDER ATTACK",
+        icon: "☠️",
+        color: "var(--danger)",
+        getText: (colony) => `Emergency hail from ${colony.name}! An Eclipse Cartel raiding party has breached the outer perimeter. The militia is holding them back, but they need immediate support!`,
+        choices: [
+            {
+                label: "WIRE RANSOM FUNDS (5,000c)",
+                condition: () => playerCredits >= 5000,
+                execute: (colony) => {
+                    playerCredits -= 5000;
+                    logMessage(`<span style='color:var(--warning)'>[ COLONY ] You wired 5,000c to the raiders. They took the credits and left ${colony.name} alone.</span>`);
+                    closeGenericModal();
+                }
+            },
+            {
+                label: "IGNORE THE HAIL (Lose Hab Module)",
+                condition: () => true,
+                execute: (colony) => {
+                    if (colony.habs > 0) colony.habs--;
+                    logMessage(`<span style='color:var(--danger)'>[ COLONY ] The raiders bombarded ${colony.name}, destroying a Habitation Module before Concord authorities arrived.</span>`);
+                    closeGenericModal();
+                }
+            }
+        ]
+    },
+    {
+        id: "RESOURCE_BOOM",
+        title: "DEEP VEIN DISCOVERED",
+        icon: "💎",
+        color: "var(--gold-text)",
+        getText: (colony) => `Great news from ${colony.name}, Commander! Our automated excavators just broke through into a massive, previously undetected vein of rare materials!`,
+        choices: [
+            {
+                label: "ACKNOWLEDGE (Yield Increased)",
+                condition: () => true,
+                execute: (colony) => {
+                    if (!colony.inventory) colony.inventory = {};
+                    colony.inventory['RARE_METALS'] = (colony.inventory['RARE_METALS'] || 0) + 15;
+                    colony.inventory['VOID_CRYSTALS'] = (colony.inventory['VOID_CRYSTALS'] || 0) + 2;
+                    logMessage(`<span style='color:var(--success)'>[ COLONY ] ${colony.name} successfully extracted the deep vein materials! They are waiting in the colony storage.</span>`);
+                    if (typeof soundManager !== 'undefined') soundManager.playGain();
+                    closeGenericModal();
+                }
+            }
+        ]
+    },
+    {
+        id: "MEDICAL_EMERGENCY",
+        title: "OUTBREAK DETECTED",
+        icon: "☣️",
+        color: "var(--success)", 
+        getText: (colony) => `Priority alert from ${colony.name}! A dormant, indigenous pathogen has infected the water supply. We desperately need Medical Supplies!`,
+        choices: [
+            {
+                label: "TRANSFER 5 MEDICAL SUPPLIES",
+                condition: () => (playerCargo['MEDICAL_SUPPLIES'] || 0) >= 5,
+                execute: (colony) => {
+                    playerCargo['MEDICAL_SUPPLIES'] -= 5;
+                    if (playerCargo['MEDICAL_SUPPLIES'] <= 0) delete playerCargo['MEDICAL_SUPPLIES'];
+                    playerXP += 200;
+                    logMessage(`<span style='color:var(--success)'>[ COLONY ] You remotely deployed Medical Supplies to ${colony.name}. The outbreak is contained! (+200 XP)</span>`);
+                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                    if (typeof checkLevelUp === 'function') checkLevelUp();
+                    closeGenericModal();
+                }
+            },
+            {
+                label: "INITIATE QUARANTINE (Production Halted)",
+                condition: () => true,
+                execute: (colony) => {
+                    colony.quarantined = true; 
+                    logMessage(`<span style='color:var(--warning)'>[ COLONY ] You ordered ${colony.name} into strict quarantine. The population will survive, but production will suffer for a time.</span>`);
+                    closeGenericModal();
+                }
+            }
+        ]
+    }
+];
+
+function triggerColonyEvent(colony) {
+    const event = COLONY_EVENTS[Math.floor(Math.random() * COLONY_EVENTS.length)];
+    
+    openGenericModal("INCOMING TRANSMISSION");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    listEl.innerHTML = ''; 
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 30px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px ${event.color});">${event.icon}</div>
+            <h3 style="color:${event.color}; margin-bottom:15px; letter-spacing: 2px;">${event.title}</h3>
+            
+            <div style="text-align:left; background:rgba(0,0,0,0.5); padding:20px; border-left:3px solid ${event.color}; margin-bottom:15px; border-radius:4px;">
+                <p style="color:var(--text-color); font-size:14px; line-height:1.6; margin:0;">
+                    ${event.getText(colony)}
+                </p>
+            </div>
+        </div>
+    `;
+
+    actionsEl.innerHTML = '';
+    
+    event.choices.forEach(choice => {
+        if (choice.condition()) {
+            const btn = document.createElement('button');
+            btn.className = 'action-button';
+            btn.style.width = '100%';
+            btn.style.marginBottom = '10px';
+            btn.innerHTML = choice.label;
+            
+            if (choice.label.includes("Lose") || choice.label.includes("Halted") || choice.label.includes("IGNORE")) {
+                btn.style.borderColor = "var(--danger)";
+                btn.style.color = "var(--danger)";
+            } else if (choice.label.includes("TRANSFER") || choice.label.includes("ACKNOWLEDGE")) {
+                btn.style.borderColor = "var(--success)";
+                btn.style.color = "var(--success)";
+            }
+
+            btn.onclick = () => {
+                choice.execute(colony);
+                if (typeof renderUIStats === 'function') renderUIStats();
+                if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+                if (typeof render === 'function') render();
+            };
+            actionsEl.appendChild(btn);
+        }
+    });
+    
+    if (typeof soundManager !== 'undefined') soundManager.playWarning();
+}
+
+// ==========================================
+// --- SHIPBOARD SYNTHESIS (CRAFTING) ---
+// ==========================================
+
+const CRAFTING_RECIPES = {
+    TELEMETRY_PROBE: {
+        targetId: "TELEMETRY_PROBE",
+        name: "Telemetry Probe",
+        icon: "🛰️",
+        desc: "A single-use sensor probe for mapping deep space anomalies and gathering passive data.",
+        yield: 1,
+        ingredients: { 'TECH_PARTS': 2, 'MINERALS': 3 }
+    },
+    PRECURSOR_CIPHER: {
+        targetId: "PRECURSOR_CIPHER",
+        name: "Precursor Cipher",
+        icon: "🔑",
+        desc: "A quantum decryption key. Crucial for cracking Encrypted Engrams without paying a Cryptarch.",
+        yield: 1,
+        ingredients: { 'TECH_PARTS': 4, 'RARE_METALS': 2, 'VOID_CRYSTALS': 1 }
+    },
+    MEDICAL_SUPPLIES: {
+        targetId: "MEDICAL_SUPPLIES",
+        name: "Medical Supplies",
+        icon: "⚕️",
+        desc: "Synthesize trauma kits and stims. Highly valued during colony outbreaks.",
+        yield: 1,
+        ingredients: { 'GENETIC_SAMPLES': 2, 'FOOD_SUPPLIES': 1 }
+    },
+    FUEL_CELLS: {
+        targetId: "FUEL_CELLS",
+        name: "Emergency Fuel Cells",
+        icon: "🔋",
+        desc: "Refine raw minerals into low-grade hydrogen fuel.",
+        yield: 10,
+        ingredients: { 'MINERALS': 5 }
+    },
+    HULL_PATCH: {
+        targetId: "INSTANT_HEAL", // Special flag for instant use
+        name: "Nano-Sealant Patch",
+        icon: "🔧",
+        desc: "Synthesize and immediately deploy nano-sealant to repair 25 Hull Integrity.",
+        yield: 25,
+        ingredients: { 'MINERALS': 4, 'TECH_PARTS': 2 }
+    }
+};
+
+function openCraftingMenu() {
+    openGenericModal("SHIPBOARD SYNTHESIS");
+    renderCraftingList();
+}
+
+function renderCraftingList() {
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">AVAILABLE SCHEMATICS</div>`;
+    
+    for (const key in CRAFTING_RECIPES) {
+        const recipe = CRAFTING_RECIPES[key];
+        
+        // Evaluate if the player has enough raw materials
+        let canCraft = true;
+        for (const req in recipe.ingredients) {
+            if ((playerCargo[req] || 0) < recipe.ingredients[req]) {
+                canCraft = false;
+                break;
+            }
+        }
+        
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        row.style.cursor = 'pointer';
+        row.style.opacity = canCraft ? '1' : '0.4'; // Dim uncraftable items
+        row.style.borderLeft = canCraft ? '3px solid var(--accent-color)' : '3px solid transparent';
+        
+        row.innerHTML = `
+            <div style="display:flex; align-items:center; gap: 10px;">
+                <span style="font-size:18px;">${recipe.icon}</span>
+                <span style="color:${canCraft ? 'var(--item-name-color)' : 'var(--item-desc-color)'}; font-weight:bold; font-size:13px;">${recipe.name.toUpperCase()}</span>
+            </div>
+        `;
+        row.onclick = () => showCraftingDetails(key, canCraft);
+        listEl.appendChild(row);
+    }
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 40px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; opacity:0.3; filter: drop-shadow(0 0 15px var(--accent-color));">⚗️</div>
+            <h3 style="color:var(--text-color); margin-bottom:10px; letter-spacing:2px;">FABRICATOR IDLE</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.6;">
+                Select a schematic from the manifest to review required materials and initiate molecular synthesis.
+            </p>
+        </div>
+    `;
+    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal()">CLOSE TERMINAL</button>`;
+}
+
+function showCraftingDetails(recipeKey, canCraft) {
+    const recipe = CRAFTING_RECIPES[recipeKey];
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    let reqHtml = '';
+    for (const req in recipe.ingredients) {
+        const need = recipe.ingredients[req];
+        const have = playerCargo[req] || 0;
+        const hasEnough = have >= need;
+        
+        // Fetch the beautiful name from the COMMODITIES database
+        const itemDef = typeof COMMODITIES !== 'undefined' && COMMODITIES[req] ? COMMODITIES[req] : { name: req };
+        
+        reqHtml += `
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:13px; border-bottom:1px dashed #333; padding-bottom:4px;">
+                <span style="color:var(--text-color);">${itemDef.name}</span>
+                <span style="color:${hasEnough ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${have} / ${need}</span>
+            </div>
+        `;
+    }
+
+    // Special text for instant healing
+    const yieldText = recipe.targetId === "INSTANT_HEAL" 
+        ? `<span style="color:var(--success);">Repairs ${recipe.yield} Hull Integrity</span>`
+        : `<span style="color:var(--gold-text);">Yields: ${recipe.yield}x ${recipe.name}</span>`;
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 15px;">
+            <div style="font-size:50px; margin-bottom:10px; filter: drop-shadow(0 0 10px var(--accent-color));">${recipe.icon}</div>
+            <h3 style="color:var(--accent-color); margin:0; letter-spacing:1px;">${recipe.name.toUpperCase()}</h3>
+            <p style="font-size:12px; color:var(--item-desc-color); margin:15px 0; line-height:1.5;">${recipe.desc}</p>
+            
+            <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border-color); padding:15px; border-radius:4px; text-align:left;">
+                <div style="color:var(--text-color); font-size:11px; margin-bottom:12px; font-weight:bold; letter-spacing:1px; border-bottom:1px solid var(--accent-color); padding-bottom:5px;">REQUIRED MATERIALS:</div>
+                ${reqHtml}
+                <div style="margin-top:15px; text-align:right; font-size:12px; font-weight:bold;">
+                    ${yieldText}
+                </div>
+            </div>
+        </div>
+    `;
+
+    if (canCraft) {
+        // Prevent healing if hull is already full
+        if (recipe.targetId === "INSTANT_HEAL" && playerHull >= MAX_PLAYER_HULL) {
+            actionsEl.innerHTML = `
+                <button class="action-button" disabled style="opacity:0.5;">HULL ALREADY AT MAXIMUM</button>
+                <button class="action-button" onclick="renderCraftingList()">BACK</button>
+            `;
+        } else {
+            actionsEl.innerHTML = `
+                <button class="action-button" style="border-color:var(--success); color:var(--success); box-shadow: 0 0 15px rgba(0,255,0,0.2);" onclick="executeCrafting('${recipeKey}')">
+                    INITIATE SYNTHESIS
+                </button>
+                <button class="action-button" onclick="renderCraftingList()">CANCEL</button>
+            `;
+        }
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button danger-btn" disabled>INSUFFICIENT MATERIALS</button>
+            <button class="action-button" onclick="renderCraftingList()">BACK</button>
+        `;
+    }
+}
+
+function executeCrafting(recipeKey) {
+    const recipe = CRAFTING_RECIPES[recipeKey];
+    
+    // 1. Deduct ingredients
+    for (const req in recipe.ingredients) {
+        playerCargo[req] -= recipe.ingredients[req];
+        if (playerCargo[req] <= 0) delete playerCargo[req];
+    }
+    
+    // 2. Grant the product or effect
+    if (recipe.targetId === "INSTANT_HEAL") {
+        playerHull = Math.min(MAX_PLAYER_HULL, playerHull + recipe.yield);
+        logMessage(`<span style="color:var(--success)">[ SYNTHESIS ] Nano-sealant deployed. Hull integrity restored by ${recipe.yield}.</span>`);
+        if (typeof showToast === 'function') showToast("HULL REPAIRED", "success");
+    } else {
+        playerCargo[recipe.targetId] = (playerCargo[recipe.targetId] || 0) + recipe.yield;
+        logMessage(`<span style="color:var(--success)">[ SYNTHESIS ] Successfully fabricated ${recipe.yield}x ${recipe.name}.</span>`);
+        if (typeof showToast === 'function') showToast("SYNTHESIS COMPLETE", "success");
+    }
+    
+    // 3. Update global UI and dependencies
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+    if (typeof renderUIStats === 'function') renderUIStats();
+    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate(); 
+    
+    // 4. Re-evaluate if they can craft it again and refresh the panel
+    let canCraft = true;
+    for (const req in recipe.ingredients) {
+        if ((playerCargo[req] || 0) < recipe.ingredients[req]) {
+            canCraft = false;
+            break;
+        }
+    }
+    
+    showCraftingDetails(recipeKey, canCraft);
 }
