@@ -1638,58 +1638,6 @@ function abortAnomaly() {
     anomalyContext = null;
 }
 
-// --- DERELICT SYSTEM ---
-
-function openDerelictView() {
-    const tile = chunkManager.getTile(playerX, playerY);
-    if (!tile) return;
-
-    updateModalInfoBar('derelictInfoBar');
-    document.getElementById('derelictOverlay').style.display = 'flex';
-    
-    // --- NEW: Check if already looted (Using persistent flags) ---
-    if (tile.looted || tile.studied) {
-        document.getElementById('derelictNameTitle').textContent = `DERELICT ${tile.name || "UNKNOWN"} [STRIPPED]`;
-        document.getElementById('derelictLog').innerHTML = "> Sensors locked. Life support offline. Wreckage has been picked clean.<br>";
-    } else {
-        document.getElementById('derelictNameTitle').textContent = `DERELICT ${tile.name || "UNKNOWN"}`;
-        document.getElementById('derelictLog').innerHTML = "> Sensors locked. Vessel appears to be drifting.<br>";
-    }
-    
-    // Replace the canvas with the static PNG
-    const canvas = document.getElementById('derelictCanvas');
-    if (canvas) {
-        let img = document.getElementById('derelictStaticImg');
-        if (!img) {
-            img = document.createElement('img');
-            img.id = 'derelictStaticImg';
-            img.src = 'assets/derelict.png'; 
-            img.style.width = '100%';
-            img.style.maxWidth = '200px';
-            img.style.height = 'auto';
-            img.style.border = '1px solid var(--border-color)';
-            img.style.borderRadius = '8px';
-            img.style.display = 'block';
-            img.style.margin = '0 auto 15px auto';
-            img.style.boxShadow = '0 0 15px rgba(0,0,0,0.5)';
-            canvas.parentNode.insertBefore(img, canvas);
-            canvas.style.display = 'none'; 
-        }
-    }
-}
-
-function closeDerelictView() {
-    document.getElementById('derelictOverlay').style.display = 'none';
-    updateSideBorderVisibility();
-}
-
-function logDerelict(msg, type="neutral") {
-    const logEl = document.getElementById('derelictLog');
-    const color = type === 'bad' ? '#FF5555' : (type === 'good' ? '#00FF00' : '#888');
-    logEl.innerHTML += `<span style="color:${color}">> ${msg}</span><br>`;
-    logEl.scrollTop = logEl.scrollHeight;
-}
-
 function handleDerelictAction(action) {
     const tile = chunkManager.getTile(playerX, playerY);
     if (!tile) return;
@@ -1700,23 +1648,30 @@ function handleDerelictAction(action) {
         return; 
     }
 
-    // 2. THE FIX: Permanently save the looted state to the world data!
-    updateWorldState(playerX, playerY, { looted: true, studied: true });
+    // 2. Permanently save the looted state to the world data!
+    if (typeof updateWorldState === 'function') {
+        updateWorldState(playerX, playerY, { looted: true, studied: true });
+    } else {
+        tile.looted = true;
+        tile.studied = true;
+    }
 
+    // --- QUICK ACTION: SCAN ---
     if (action === 'SCAN') {
         const xp = 25;
         playerXP += xp;
         logDerelict(`Scan Complete. Structural analysis recorded. +${xp} XP`, 'good');
-        checkLevelUp();
+        if (typeof checkLevelUp === 'function') checkLevelUp();
     }
+    // --- QUICK ACTION: SALVAGE ---
     else if (action === 'SALVAGE') {
         if (Math.random() < 0.7) {
             const scrap = 2 + Math.floor(Math.random() * 5);
             if (currentCargoLoad + scrap <= PLAYER_CARGO_CAPACITY) {
                 playerCargo.TECH_PARTS = (playerCargo.TECH_PARTS || 0) + scrap;
-                updateCurrentCargoLoad();
+                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
                 logDerelict(`Salvage successful. Recovered ${scrap} Tech Parts.`, 'good');
-                updateModalInfoBar('derelictInfoBar');
+                if (typeof updateModalInfoBar === 'function') updateModalInfoBar('derelictInfoBar');
             } else {
                 logDerelict("Cargo hold full! Cannot salvage. Wreck destabilized.", 'bad');
             }
@@ -1727,42 +1682,23 @@ function handleDerelictAction(action) {
             if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
             if (playerHull <= 0) {
                 closeDerelictView();
-                triggerGameOver("Crushed by Derelict Debris");
+                if (typeof triggerGameOver === 'function') triggerGameOver("Crushed by Derelict Debris");
             }
-            updateModalInfoBar('derelictInfoBar');
+            if (typeof updateModalInfoBar === 'function') updateModalInfoBar('derelictInfoBar');
         }
     }
+    // --- DEEP DIVE: BREACH ---
     else if (action === 'BREACH') {
-        const roll = Math.random();
+        logDerelict("Airlock docking sequence initiated. Transferring control to boarding terminal...", "good");
+        if (typeof soundManager !== 'undefined') soundManager.playUIHover();
         
-        if (roll < 0.4) {
-            logDerelict("WARNING: Lifeforms detected in the airlock!", "bad");
-            
-            // Triggers the new boarding minigame if it exists, otherwise falls back to ship combat
-            if (typeof startBoardingCombat === 'function') {
-                setTimeout(startBoardingCombat, 1000); 
-            } else {
-                closeDerelictView();
-                startCombat();
+        // Wait a brief moment for dramatic effect, then transition to the new minigame!
+        setTimeout(() => {
+            closeDerelictView();
+            if (typeof startDerelictEncounter === 'function') {
+                startDerelictEncounter();
             }
-        } else if (roll < 0.8) {
-            const credits = 200 + Math.floor(Math.random() * 500);
-            playerCredits += credits;
-            logDerelict(`Hull breached. Captain's safe located! Found ${credits} credits.`, 'good');
-            updateModalInfoBar('derelictInfoBar');
-        } else {
-            const dmg = 20;
-            playerHull -= dmg;
-            logDerelict(`TRAP TRIGGERED! Explosive decompression. Hull -${dmg}`, 'bad');
-            if (typeof soundManager !== 'undefined') soundManager.playExplosion();
-            if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
-            
-            if (playerHull <= 0) {
-                closeDerelictView();
-                triggerGameOver("Killed by Derelict Trap");
-            }
-            updateModalInfoBar('derelictInfoBar');
-        }
+        }, 800);
     }
 }
 
@@ -2729,4 +2665,318 @@ function executeSweep(radius, fuelCost) {
     // 4. Update UI
     if (typeof renderUIStats === 'function') renderUIStats();
     if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+}
+
+// ==========================================
+// --- PROCEDURAL DERELICT DELVING ---
+// ==========================================
+
+let derelictContext = null;
+
+// ==========================================
+// --- CLASSIC DERELICT UI & LOGIC ---
+// ==========================================
+
+function openDerelictView() {
+    const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+    if (!tile) return;
+
+    if (typeof updateModalInfoBar === 'function') updateModalInfoBar('derelictInfoBar');
+    document.getElementById('derelictOverlay').style.display = 'flex';
+    
+    // Check if already looted
+    if (tile.looted || tile.studied) {
+        document.getElementById('derelictNameTitle').textContent = `DERELICT ${tile.name || "UNKNOWN"} [STRIPPED]`;
+        document.getElementById('derelictLog').innerHTML = "> Sensors locked. Life support offline. Wreckage has been picked clean.<br>";
+    } else {
+        document.getElementById('derelictNameTitle').textContent = `DERELICT ${tile.name || "UNKNOWN"}`;
+        document.getElementById('derelictLog').innerHTML = "> Sensors locked. Vessel appears to be drifting.<br>";
+    }
+    
+    // Replace the canvas with the static PNG
+    const canvas = document.getElementById('derelictCanvas');
+    if (canvas) {
+        let img = document.getElementById('derelictStaticImg');
+        if (!img) {
+            img = document.createElement('img');
+            img.id = 'derelictStaticImg';
+            img.src = 'assets/derelict.png'; 
+            img.style.width = '100%';
+            img.style.maxWidth = '200px';
+            img.style.height = 'auto';
+            img.style.border = '1px solid var(--border-color)';
+            img.style.borderRadius = '8px';
+            img.style.display = 'block';
+            img.style.margin = '0 auto 15px auto';
+            img.style.boxShadow = '0 0 15px rgba(0,0,0,0.5)';
+            canvas.parentNode.insertBefore(img, canvas);
+            canvas.style.display = 'none'; 
+        }
+    }
+}
+
+function closeDerelictView() {
+    document.getElementById('derelictOverlay').style.display = 'none';
+    if (typeof updateSideBorderVisibility === 'function') updateSideBorderVisibility();
+}
+
+function logDerelict(msg, type="neutral") {
+    const logEl = document.getElementById('derelictLog');
+    const color = type === 'bad' ? '#FF5555' : (type === 'good' ? '#00FF00' : '#888');
+    logEl.innerHTML += `<span style="color:${color}">> ${msg}</span><br>`;
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+function handleDerelictAction(action) {
+    const tile = typeof chunkManager !== 'undefined' ? chunkManager.getTile(playerX, playerY) : null;
+    if (!tile) return;
+
+    // 1. Stop the exploit instantly
+    if (tile.looted || tile.studied) {
+        logDerelict("Further attempts yield no new results. The wreck is tapped out.", "neutral");
+        return; 
+    }
+
+    // 2. Permanently save the looted state to the world data!
+    if (typeof updateWorldState === 'function') {
+        updateWorldState(playerX, playerY, { looted: true, studied: true });
+    } else {
+        tile.looted = true;
+        tile.studied = true;
+    }
+
+    // --- QUICK ACTION: SCAN ---
+    if (action === 'SCAN') {
+        const xp = 25;
+        playerXP += xp;
+        logDerelict(`Scan Complete. Structural analysis recorded. +${xp} XP`, 'good');
+        if (typeof checkLevelUp === 'function') checkLevelUp();
+    }
+    // --- QUICK ACTION: SALVAGE ---
+    else if (action === 'SALVAGE') {
+        if (Math.random() < 0.7) {
+            const scrap = 2 + Math.floor(Math.random() * 5);
+            if (currentCargoLoad + scrap <= PLAYER_CARGO_CAPACITY) {
+                playerCargo.TECH_PARTS = (playerCargo.TECH_PARTS || 0) + scrap;
+                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                logDerelict(`Salvage successful. Recovered ${scrap} Tech Parts.`, 'good');
+                if (typeof updateModalInfoBar === 'function') updateModalInfoBar('derelictInfoBar');
+            } else {
+                logDerelict("Cargo hold full! Cannot salvage. Wreck destabilized.", 'bad');
+            }
+        } else {
+            const dmg = 5;
+            playerHull -= dmg;
+            logDerelict(`Accident! Debris collision. Hull -${dmg}`, 'bad');
+            if (typeof triggerDamageEffect === 'function') triggerDamageEffect();
+            if (playerHull <= 0) {
+                closeDerelictView();
+                if (typeof triggerGameOver === 'function') triggerGameOver("Crushed by Derelict Debris");
+            }
+            if (typeof updateModalInfoBar === 'function') updateModalInfoBar('derelictInfoBar');
+        }
+    }
+    // --- DEEP DIVE: BREACH ---
+    else if (action === 'BREACH') {
+        logDerelict("Airlock docking sequence initiated. Transferring control to boarding terminal...", "good");
+        if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+        
+        // Wait a brief moment for dramatic effect, then transition to the new minigame!
+        setTimeout(() => {
+            closeDerelictView();
+            if (typeof startDerelictEncounter === 'function') {
+                startDerelictEncounter();
+            }
+        }, 800);
+    }
+}
+
+function startDerelictEncounter() {
+    if (typeof chunkManager !== 'undefined') {
+        const tile = chunkManager.getTile(playerX, playerY);
+        if (tile) tile.studied = true;
+    }
+
+    // 1. Generate a procedural name for the ghost ship
+    const adjectives = ["Haunted", "Silent", "Shattered", "Ancient", "Frozen", "Scorched", "Irradiated"];
+    const nouns = ["Freighter", "Warship", "Research Vessel", "Colony Ship", "Unknown Construct", "Dreadnought"];
+    const shipName = `${adjectives[Math.floor(Math.random() * adjectives.length)]} ${nouns[Math.floor(Math.random() * nouns.length)]}`;
+
+    // 2. Setup the internal state machine
+    derelictContext = {
+        name: shipName,
+        stage: 'APPROACH',
+        lootAccumulated: 0
+    };
+
+    // 3. Open the UI and hijack the layout
+    openGenericModal(`DERELICT: ${shipName.toUpperCase()}`);
+    renderDerelictStage();
+}
+
+function renderDerelictStage() {
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Hide the left list panel to make this a full-width text adventure!
+    if (listEl) listEl.style.display = 'none';
+
+    let storyText = "";
+    actionsEl.innerHTML = ""; // Clear old buttons
+
+    // --- STAGE 1: THE BREACH ---
+    if (derelictContext.stage === 'APPROACH') {
+        storyText = `Your ship matches velocity with the ${derelictContext.name}. The hull is dark, covered in micrometeoroid scarring. Scanners detect faint life support signatures deeper inside, but the main airlock is unpowered and magnetically sealed.`;
+
+        actionsEl.innerHTML += `<button class="action-button danger-btn" onclick="processDerelictChoice('FORCE_AIRLOCK')">Force Doors with Hull Grapples (Risk 10 Hull)</button>`;
+        actionsEl.innerHTML += `<button class="action-button" style="color:var(--warning); border-color:var(--warning);" onclick="processDerelictChoice('HACK_AIRLOCK')">Jumpstart Panel (Costs 10 Fuel)</button>`;
+        actionsEl.innerHTML += `<button class="action-button" onclick="closeGenericModal()">Abort and Leave</button>`;
+    }
+    // --- STAGE 2: THE CROSSROADS ---
+    else if (derelictContext.stage === 'CORRIDORS') {
+        storyText = `You are inside. The artificial gravity is offline. Floating debris and frozen coolant obscure your vision. You reach a junction: one path leads to the reinforced Cargo Bay, the other up to the Command Bridge.`;
+
+        actionsEl.innerHTML += `<button class="action-button" onclick="processDerelictChoice('GO_CARGO')">Search the Cargo Bay (High Risk / High Reward)</button>`;
+        actionsEl.innerHTML += `<button class="action-button" onclick="processDerelictChoice('GO_BRIDGE')">Head to the Bridge (Lore / Tech)</button>`;
+    }
+    // --- STAGE 3A: THE CARGO BAY ---
+    else if (derelictContext.stage === 'CARGO_BAY') {
+        storyText = `The cargo bay is a mess of ruptured containers. However, you spot a few intact secure-crates tethered to the deck. Suddenly, automated defense turrets power on, scanning for targets!`;
+
+        actionsEl.innerHTML += `<button class="action-button danger-btn" onclick="processDerelictChoice('FIGHT_TURRETS')">Draw weapons and fight! (Combat Risk)</button>`;
+        actionsEl.innerHTML += `<button class="action-button" onclick="processDerelictChoice('FLEE_WITH_SCRAP')">Grab loose scrap and run!</button>`;
+    }
+    // --- STAGE 3B: THE BRIDGE ---
+    else if (derelictContext.stage === 'BRIDGE') {
+        storyText = `The bridge is a graveyard. The captain's log is blinking on the central console, but the main drive core below is starting to cascade. You only have time for one action before the radiation spikes!`;
+
+        actionsEl.innerHTML += `<button class="action-button" style="color:var(--accent-color); border-color:var(--accent-color);" onclick="processDerelictChoice('DOWNLOAD_LOGS')">Download the Captain's Log (Codex Entry)</button>`;
+        actionsEl.innerHTML += `<button class="action-button" style="color:var(--gold-text); border-color:var(--gold-text);" onclick="processDerelictChoice('SALVAGE_TECH')">Pry out the Navigation Chip (High Credit Value)</button>`;
+    }
+    // --- RESOLUTIONS ---
+    else if (derelictContext.stage === 'VICTORY') {
+        storyText = `You successfully detach from the ${derelictContext.name} and return to your ship. <br><br>
+        <span style="color:var(--success); font-weight:bold; font-size: 16px;">SALVAGE SECURED: ${derelictContext.lootAccumulated} Credits</span>`;
+
+        actionsEl.innerHTML += `<button class="action-button full-width-btn" onclick="closeGenericModal()">RETURN TO HELM</button>`;
+        if (typeof soundManager !== 'undefined') soundManager.playBuy();
+    }
+    else if (derelictContext.stage === 'FAILURE') {
+        storyText = `<span style="color:var(--danger); font-weight:bold;">Mission Aborted.</span> You are forced to emergency evacuate back to your ship, leaving the salvage behind.`;
+
+        actionsEl.innerHTML += `<button class="action-button full-width-btn" onclick="closeGenericModal()">RETREAT</button>`;
+        if (typeof soundManager !== 'undefined') soundManager.playError();
+    }
+
+    // Render the text into the main panel
+    detailEl.innerHTML = `
+        <div style="padding:40px; font-family: 'Roboto Mono', monospace; text-align:center;">
+            <div style="font-size:60px; margin-bottom:20px; filter: grayscale(100%) opacity(0.5);">🛸</div>
+            <h2 style="color:var(--item-name-color); margin-bottom:20px; letter-spacing:4px;">${derelictContext.name.toUpperCase()}</h2>
+            <p style="color:var(--text-color); line-height:1.8; font-size:15px; text-align:left; background:rgba(0,0,0,0.3); padding:25px; border-left:4px solid var(--border-color); box-shadow: inset 0 0 20px rgba(0,0,0,0.5);">
+                ${storyText}
+            </p>
+        </div>
+    `;
+}
+
+function processDerelictChoice(choice) {
+    if (typeof soundManager !== 'undefined') soundManager.playUIClick();
+
+    switch(choice) {
+        case 'FORCE_AIRLOCK':
+            if (Math.random() > 0.5) { // 50% chance to fail
+                playerHull -= 10;
+                logMessage(`<span style="color:var(--danger)">[ HULL DAMAGE ] Grapples slipped! Took 10 damage breaching the airlock.</span>`);
+                if (typeof showToast === 'function') showToast("HULL DAMAGED", "error");
+                
+                // Death check
+                if (playerHull <= 0) {
+                    closeGenericModal();
+                    if (typeof triggerGameOver === 'function') triggerGameOver("Hull crushed while breaching a derelict.");
+                    return;
+                }
+            } else {
+                logMessage(`<span style="color:var(--success)">Airlock breached cleanly.</span>`);
+            }
+            derelictContext.stage = 'CORRIDORS';
+            break;
+            
+        case 'HACK_AIRLOCK':
+            if (typeof playerFuel !== 'undefined' && playerFuel >= 10) {
+                playerFuel -= 10;
+                logMessage(`Routed 10 Fuel to jumpstart the airlock. Access granted.`);
+                derelictContext.stage = 'CORRIDORS';
+            } else {
+                logMessage(`<span style="color:var(--warning)">Not enough fuel to power the override.</span>`);
+                if (typeof showToast === 'function') showToast("INSUFFICIENT FUEL", "error");
+                return; // Stop them from advancing
+            }
+            break;
+
+        case 'GO_CARGO':
+            derelictContext.stage = 'CARGO_BAY';
+            break;
+
+        case 'GO_BRIDGE':
+            derelictContext.stage = 'BRIDGE';
+            break;
+
+        case 'FIGHT_TURRETS':
+            if (Math.random() > 0.4) { // 60% chance to win
+                playerHull -= 5; // Take a small scrape
+                let loot = 400 + Math.floor(Math.random() * 800);
+                derelictContext.lootAccumulated += loot;
+                playerCredits += loot;
+                logMessage(`<span style="color:var(--success)">Turrets destroyed! Secured ${loot} credits. (Took 5 damage)</span>`);
+                derelictContext.stage = 'VICTORY';
+            } else {
+                playerHull -= 20;
+                logMessage(`<span style="color:var(--danger)">Overwhelmed by turret fire! Took 20 damage and had to flee.</span>`);
+                derelictContext.stage = 'FAILURE';
+            }
+            if (playerHull <= 0 && typeof triggerGameOver === 'function') {
+                closeGenericModal();
+                triggerGameOver("Shredded by derelict defense turrets.");
+                return;
+            }
+            break;
+
+        case 'FLEE_WITH_SCRAP':
+            let scrap = 100 + Math.floor(Math.random() * 200);
+            derelictContext.lootAccumulated += scrap;
+            playerCredits += scrap;
+            logMessage(`Fled the cargo bay with ${scrap} credits worth of scrap.`);
+            derelictContext.stage = 'VICTORY';
+            break;
+
+        case 'DOWNLOAD_LOGS':
+            // Automatically find and unlock a missing lore entry!
+            if (typeof unlockLoreEntry === 'function' && typeof LORE_DATABASE !== 'undefined') {
+                const lockedKeys = Object.keys(LORE_DATABASE).filter(k => !LORE_DATABASE[k].unlocked);
+                if (lockedKeys.length > 0) {
+                    const randomKey = lockedKeys[Math.floor(Math.random() * lockedKeys.length)];
+                    unlockLoreEntry(randomKey); // Grants the lore and the buff!
+                } else {
+                    logMessage(`Databases corrupted. No new information found.`);
+                }
+            }
+            derelictContext.stage = 'VICTORY';
+            break;
+
+        case 'SALVAGE_TECH':
+            let techVal = 800 + Math.floor(Math.random() * 500);
+            derelictContext.lootAccumulated += techVal;
+            playerCredits += techVal;
+            logMessage(`<span style="color:var(--gold-text)">Nav-chip secured! Worth ${techVal} credits.</span>`);
+            derelictContext.stage = 'VICTORY';
+            break;
+    }
+
+    // Update global UI bars (Fuel, Hull, Credits)
+    if (typeof renderUIStats === 'function') renderUIStats();
+    
+    // Re-render the stage with the new text
+    renderDerelictStage();
 }
