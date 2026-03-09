@@ -2572,3 +2572,161 @@ function resolveExpedition(choice) {
     if (typeof checkLevelUp === 'function') checkLevelUp();
     if (typeof autoSaveGame === 'function') autoSaveGame();
 }
+
+// ==========================================
+// --- DEEP SPACE OBSERVATORY SYSTEM ---
+// ==========================================
+
+function openObservatory() {
+    openGenericModal("OPTICAL ARRAY UPLINK");
+    
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Build the Left Panel (Scanner Options)
+    listEl.innerHTML = `
+        <div class="trade-list-header" style="color:var(--accent-color);">SENSOR SWEEPS</div>
+        
+        <div class="trade-item-row" style="cursor:pointer;" onclick="displayScannerDetails('SHORT')">
+            <div>
+                <strong style="color:var(--text-color);">Standard Ping</strong><br>
+                <span style="font-size:10px; color:var(--item-desc-color);">Radius: 8 Sectors | Precision: High</span>
+            </div>
+            <div style="color:var(--warning);">5 Fuel</div>
+        </div>
+
+        <div class="trade-item-row" style="cursor:pointer;" onclick="displayScannerDetails('DEEP')">
+            <div>
+                <strong style="color:var(--text-color);">Deep Space Sweep</strong><br>
+                <span style="font-size:10px; color:var(--item-desc-color);">Radius: 18 Sectors | Precision: Moderate</span>
+            </div>
+            <div style="color:var(--warning);">15 Fuel</div>
+        </div>
+    `;
+
+    // Default empty state for the right panel
+    detailEl.innerHTML = `
+        <div style="padding:20px; text-align:center; color:var(--item-desc-color); font-family:monospace;">
+            <div style="font-size:40px; margin-bottom:10px; opacity:0.5;">📡</div>
+            AWAITING SWEEP PARAMETERS...
+        </div>
+    `;
+    
+    actionsEl.innerHTML = `<button class="action-button" onclick="closeGenericModal()">CLOSE TERMINAL</button>`;
+}
+
+function displayScannerDetails(type) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+    
+    let cost = type === 'SHORT' ? 5 : 15;
+    let radius = type === 'SHORT' ? 8 : 18;
+
+    detailEl.innerHTML = `
+        <div style="padding:15px; font-family:monospace;">
+            <h3 style="color:var(--accent-color); margin-bottom:10px;">${type === 'SHORT' ? 'STANDARD PING' : 'DEEP SPACE SWEEP'}</h3>
+            <p style="color:var(--item-desc-color); font-size:12px; line-height:1.5; margin-bottom:20px;">
+                Diverting power from the warp drive to the optical arrays. This will scan all sectors within a ${radius}-tile radius and highlight anomalous signatures.
+            </p>
+            <div style="border:1px solid var(--border-color); padding:10px; background:rgba(0,0,0,0.3);">
+                <div style="color:var(--warning);">POWER DRAW: -${cost} FUEL</div>
+            </div>
+        </div>
+    `;
+
+    if (playerCargo && playerCargo['FUEL'] !== undefined) {
+         // Using whatever your fuel variable is. Assuming it's in cargo or playerFuel
+         // Adjust if your engine uses playerFuel instead!
+    }
+
+    actionsEl.innerHTML = `
+        <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="executeSweep(${radius}, ${cost})">
+            INITIATE SCAN
+        </button>
+        <button class="action-button" onclick="closeGenericModal()">CANCEL</button>
+    `;
+}
+
+function executeSweep(radius, fuelCost) {
+    // 1. Check Fuel Requirements (Replace 'playerFuel' with your actual fuel variable if needed!)
+    if (typeof playerFuel !== 'undefined') {
+        if (playerFuel < fuelCost) {
+            if (typeof showToast === 'function') showToast("INSUFFICIENT FUEL", "error");
+            if (typeof soundManager !== 'undefined') soundManager.playError();
+            return;
+        }
+        playerFuel -= fuelCost;
+    }
+
+    if (typeof soundManager !== 'undefined') soundManager.playGain();
+    logMessage(`<span style="color:var(--accent-color);">[ OBSERVATORY ]</span> Executing radius-${radius} sensor sweep...`);
+
+    // 2. The Sweep Logic
+    let targetsFound = [];
+    
+    for (let y = -radius; y <= radius; y++) {
+        for (let x = -radius; x <= radius; x++) {
+            if (x === 0 && y === 0) continue; // Skip the tile we are standing on
+            
+            let scanX = playerX + x;
+            let scanY = playerY + y;
+            
+            // Force the chunk manager to generate/fetch the tile
+            if (typeof chunkManager !== 'undefined') {
+                let tile = chunkManager.getTile(scanX, scanY);
+                
+                if (tile && tile.charVal) {
+                    // Check for interesting things!
+                    if (tile.charVal === 'D') targetsFound.push({ type: 'DERELICT WRECK', x: scanX, y: scanY, color: '#888888' });
+                    if (tile.charVal === '#' || tile.charVal === 'H') targetsFound.push({ type: 'STATION/OUTPOST', x: scanX, y: scanY, color: '#00AAFF' });
+                    if (tile.charVal === 'W') targetsFound.push({ type: 'UNSTABLE WORMHOLE', x: scanX, y: scanY, color: '#FF32FF' });
+                    if (tile.charVal === '?') targetsFound.push({ type: 'UNKNOWN ANOMALY', x: scanX, y: scanY, color: '#FFAA00' });
+                }
+            }
+        }
+    }
+
+    // 3. Format the Results
+    const detailEl = document.getElementById('genericDetailContent');
+    
+    let resultsHTML = `<div style="padding:15px; font-family:monospace;">`;
+    resultsHTML += `<h3 style="color:var(--success); margin-bottom:15px;">SWEEP COMPLETE</h3>`;
+    
+    if (targetsFound.length === 0) {
+        resultsHTML += `<p style="color:var(--item-desc-color);">No significant anomalous signatures detected in this region.</p>`;
+    } else {
+        resultsHTML += `<div style="max-height: 250px; overflow-y: auto; border:1px solid var(--border-color); background:rgba(0,0,0,0.4); padding:10px;">`;
+        
+        // Sort by distance to the player
+        targetsFound.sort((a, b) => {
+            let distA = Math.abs(a.x - playerX) + Math.abs(a.y - playerY);
+            let distB = Math.abs(b.x - playerX) + Math.abs(b.y - playerY);
+            return distA - distB;
+        });
+
+        targetsFound.forEach(target => {
+            let relX = target.x - playerX;
+            let relY = target.y - playerY;
+            let dirX = relX > 0 ? 'E' : (relX < 0 ? 'W' : '');
+            let dirY = relY > 0 ? 'S' : (relY < 0 ? 'N' : ''); // Assuming +Y is South on your grid!
+            
+            resultsHTML += `
+                <div style="margin-bottom:8px; border-bottom:1px dashed #333; padding-bottom:4px;">
+                    <strong style="color:${target.color};">${target.type}</strong><br>
+                    <span style="color:var(--item-desc-color); font-size:11px;">
+                        Vector: ${Math.abs(relY)}${dirY}, ${Math.abs(relX)}${dirX} (Abs: [${target.x}, ${target.y}])
+                    </span>
+                </div>
+            `;
+        });
+        resultsHTML += `</div>`;
+    }
+    
+    resultsHTML += `</div>`;
+    detailEl.innerHTML = resultsHTML;
+
+    // 4. Update UI
+    if (typeof renderUIStats === 'function') renderUIStats();
+    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+}
