@@ -1,4 +1,85 @@
 // ==========================================
+// --- CINEMATIC BOOT SEQUENCE ---
+// ==========================================
+
+function bootSequence() {
+    const titleScreen = document.getElementById('titleScreenOverlay');
+    
+    // 1. Read Audio Preferences
+    let audioPref = localStorage.getItem('wayfinder_audio_pref');
+    let shouldEnableAudio = (audioPref === null) ? false : (audioPref === 'true');
+    
+    if (typeof soundManager !== 'undefined') {
+        soundManager.setMuteState(shouldEnableAudio); 
+    }
+
+    // 2. Check for returning players (Looking for a save file or a 'has played' flag)
+    // Replace 'wayfinder_save_data' with whatever your actual save key is!
+    let isReturningPlayer = localStorage.getItem('wayfinder_save_data') !== null;
+
+    if (!isReturningPlayer) {
+        // --- NEW PLAYER: PLAY THE MP4 INTRO MOVIE ---
+        
+        // 1. Check if the body has your custom CSS class
+        const isBodyLight = document.body.classList.contains('light-mode'); 
+        
+        // 2. Check the user's actual Operating System settings!
+        const isOSLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        
+        // 3. If either is true, play the white video. Otherwise, play the black one.
+        const isLightMode = isBodyLight || isOSLight;
+        const videoSrc = isLightMode ? 'assets/intro_white.mp4' : 'assets/intro_black.mp4';
+        
+        // Inject the video player over the terminal text
+        titleScreen.innerHTML = `
+            <video id="introVideo" style="width: 100vw; height: 100vh; object-fit: cover;" autoplay>
+                <source src="${videoSrc}" type="video/mp4">
+            </video>
+        `;
+        
+        const video = document.getElementById('introVideo');
+        video.muted = !shouldEnableAudio; // Mute the video if the player has audio off!
+        
+        // When the video finishes naturally, transition into the game
+        video.onended = () => {
+            completeBootTransition(titleScreen, shouldEnableAudio);
+        };
+        
+        // Safety fallback: if they click the video, skip it
+        video.onclick = () => {
+            video.pause();
+            completeBootTransition(titleScreen, shouldEnableAudio);
+        };
+
+    } else {
+        // --- RETURNING PLAYER: QUICK TERMINAL BOOT ---
+        completeBootTransition(titleScreen, shouldEnableAudio);
+    }
+}
+
+function completeBootTransition(titleScreen, shouldEnableAudio) {
+    // Fade out whatever is on the title screen (video or terminal)
+    titleScreen.style.transition = "opacity 1.5s ease-out";
+    titleScreen.style.opacity = "0";
+    
+    setTimeout(() => {
+        titleScreen.style.display = "none";
+    }, 1500); 
+
+    // Play the Warp Spool-up SFX
+    if (shouldEnableAudio && typeof soundManager !== 'undefined') {
+        setTimeout(() => soundManager.playWarp(), 300); 
+    }
+
+    // Inject flavor text
+    logMessage("<span style='color:var(--accent-color); font-weight:bold;'>> SHIP SYSTEMS INITIALIZED.</span>");
+    if (typeof soundManager !== 'undefined' && !soundManager.enabled) {
+        logMessage("> <span style='color:var(--warning)'>WARNING: Audio Telemetry remains offline. Use dashboard toggle to enable.</span>");
+    }
+    logMessage("> Life support green. Engines hot. Awaiting captain's orders.");
+}
+
+// ==========================================
 // --- SHARED MODULE UI & GAME STATES ---
 // ==========================================
 
@@ -1453,7 +1534,6 @@ let statusOverlayElement;
     // 6. Log Handling
     if (messageAreaElement) {
         messageAreaElement.innerHTML = messageLog.join('<br>');
-        messageAreaElement.scrollTop = 0;
     }
 
     // --- 7. Visual Warning System ---
@@ -1532,21 +1612,90 @@ function updatePlayerNotoriety(amount) {
 // --- CODEX COMPLETIONIST SYSTEM ---
 // ==========================================
 
-function unlockLoreEntry(key) {
+function unlockLoreEntry(key, isSilent = false) {
     if (typeof LORE_DATABASE === 'undefined' || !LORE_DATABASE[key]) return;
     
     if (!LORE_DATABASE[key].unlocked) {
         LORE_DATABASE[key].unlocked = true;
         const category = LORE_DATABASE[key].category;
         
-        logMessage(`<span style="color:#00E0E0">[ CODEX ] New entry unlocked: ${LORE_DATABASE[key].title}</span>`);
-        if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+        // --- BUG FIX: ADD TO THE SAVE FILE SET ---
+        if (typeof discoveredLoreEntries !== 'undefined') {
+            discoveredLoreEntries.add(key);
+        }
         
-        checkCodexCompletion(category);
+        // Only push to the UI and play sounds if this was earned during active gameplay!
+        if (!isSilent) {
+            logMessage(`<span style="color:#00E0E0">[ CODEX ] New archive entry decrypted: ${LORE_DATABASE[key].title}</span>`);
+            if (typeof showToast === 'function') showToast(`CODEX UPDATED: ${LORE_DATABASE[key].title}`, "info");
+            if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+        }
+        
+        checkCodexCompletion(category, isSilent);
         
         // Re-apply stats to immediately grant any newly unlocked buffs to the HUD
         if (typeof applyPlayerShipStats === 'function') applyPlayerShipStats();
         if (typeof renderUIStats === 'function') renderUIStats();
+    }
+}
+
+function checkCodexCompletion(categoryToCheck, isSilent = false) {
+    let total = 0;
+    let unlocked = 0;
+    
+    for (const key in LORE_DATABASE) {
+        if (LORE_DATABASE[key].category === categoryToCheck) {
+            total++;
+            if (LORE_DATABASE[key].unlocked) unlocked++;
+        }
+    }
+
+    // If they just unlocked the final entry for this category
+    if (total > 0 && unlocked === total) {
+        let masteryStorage = {};
+        try {
+            masteryStorage = JSON.parse(localStorage.getItem('wayfinder_codex_mastery')) || {};
+        } catch(e) {}
+
+        if (masteryStorage[categoryToCheck]) return; 
+
+        masteryStorage[categoryToCheck] = true;
+        localStorage.setItem('wayfinder_codex_mastery', JSON.stringify(masteryStorage));
+
+        // --- THE SILENT FIX ---
+        // Only hijack the screen with the massive modal if they earned it in-game!
+        if (!isSilent) {
+            openGenericModal("CODEX MASTERY ACHIEVED");
+            
+            let buffText = "Systems optimized.";
+            if (categoryToCheck === "Starships") buffText = "+5 Max Hull Integrity";
+            else if (categoryToCheck === "Phenomena") buffText = "+10 Max Fuel Capacity";
+            else if (categoryToCheck === "Locations") buffText = "+2% Ship Evasion";
+            else if (categoryToCheck === "Factions") buffText = "+5 Max Shields";
+            else buffText = "+2 Cargo Capacity"; 
+
+            const detailEl = document.getElementById('genericDetailContent');
+            const listEl = document.getElementById('genericModalList');
+            const actionsEl = document.getElementById('genericModalActions');
+            
+            if (listEl) listEl.innerHTML = ''; 
+            if (detailEl) detailEl.innerHTML = `
+                <div style="text-align:center; padding: 40px 20px;">
+                    <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px var(--gold-text));">🏆</div>
+                    <h3 style="color:var(--gold-text); margin-bottom:10px; letter-spacing:2px;">KNOWLEDGE IS POWER</h3>
+                    <p style="color:var(--text-color); font-size:13px; line-height:1.6; margin-bottom: 20px;">
+                        You have successfully uncovered all archived data within the <strong>${categoryToCheck}</strong> category. 
+                        Your ship's computer has integrated this complete dataset, optimizing operational parameters.
+                    </p>
+                    <div style="background:rgba(255,215,0,0.1); border:1px solid var(--gold-text); padding:15px; border-radius:4px; font-weight:bold; color:var(--success);">
+                        PASSIVE BUFF ACQUIRED: ${buffText}
+                    </div>
+                </div>
+            `;
+            if (actionsEl) actionsEl.innerHTML = `<button class="action-button full-width-btn" style="border-color:var(--gold-text); color:var(--gold-text);" onclick="closeGenericModal()">ACKNOWLEDGE</button>`;
+            
+            if (typeof soundManager !== 'undefined') soundManager.playGain();
+        }
     }
 }
 
@@ -1563,6 +1712,21 @@ function checkCodexCompletion(categoryToCheck) {
 
     // If they just unlocked the final entry for this category
     if (total > 0 && unlocked === total) {
+        
+        // --- NEW: Check if we have already rewarded this! ---
+        let masteryStorage = {};
+        try {
+            masteryStorage = JSON.parse(localStorage.getItem('wayfinder_codex_mastery')) || {};
+        } catch(e) {}
+
+        // If this category is already marked as mastered, stop here. No spam!
+        if (masteryStorage[categoryToCheck]) return; 
+
+        // Otherwise, mark it as mastered in local storage so it never pops up again
+        masteryStorage[categoryToCheck] = true;
+        localStorage.setItem('wayfinder_codex_mastery', JSON.stringify(masteryStorage));
+
+        // --- OPEN THE REWARD MODAL ---
         openGenericModal("CODEX MASTERY ACHIEVED");
         
         let buffText = "Systems optimized.";
@@ -1570,13 +1734,13 @@ function checkCodexCompletion(categoryToCheck) {
         else if (categoryToCheck === "Phenomena") buffText = "+10 Max Fuel Capacity";
         else if (categoryToCheck === "Locations") buffText = "+2% Ship Evasion";
         else if (categoryToCheck === "Factions") buffText = "+5 Max Shields";
-        else buffText = "+2 Cargo Capacity"; // Catch-all for Artifacts, Tactics, etc.
+        else buffText = "+2 Cargo Capacity"; 
 
         const detailEl = document.getElementById('genericDetailContent');
         const listEl = document.getElementById('genericModalList');
         const actionsEl = document.getElementById('genericModalActions');
         
-        listEl.innerHTML = ''; // Hide the list pane for a cinematic full-screen modal
+        listEl.innerHTML = ''; 
         detailEl.innerHTML = `
             <div style="text-align:center; padding: 40px 20px;">
                 <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px var(--gold-text));">🏆</div>
@@ -3445,25 +3609,8 @@ function getFactionAt(worldX, worldY) {
  // --- LORE PROGRESSION SYSTEM ---
 
 function unlockLore(loreId) {
-    // 1. Check if the lore exists in the database
-    if (!LORE_DATABASE[loreId]) {
-        console.warn(`Attempted to unlock missing lore ID: ${loreId}`);
-        return;
-    }
-
-    // 2. Check if the player already has it
-    if (discoveredLoreEntries.has(loreId)) {
-        return; // Already unlocked, do nothing silently
-    }
-
-    // 3. Unlock it!
-    discoveredLoreEntries.add(loreId);
-    
-    // 4. Notify the player
-    showToast(`CODEX UPDATED: ${LORE_DATABASE[loreId].title}`, "info");
-    logMessage(`<span style="color:var(--accent-color)">> NEW ARCHIVE ENTRY UNLOCKED: ${LORE_DATABASE[loreId].title}</span>`);
-    
-    if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+    // Redirect any old legacy triggers to the new, unified silent-capable function!
+    unlockLoreEntry(loreId);
 }
 
 // --- Codex Functions ---
@@ -4028,6 +4175,14 @@ function handleCombatInput(key) {
             return true;
         case 'i':
             if (typeof openCargoModal === 'function') openCargoModal();
+            return true;
+            
+        // --- NEW: OBSERVATORY HOTKEY (O) ---
+        case 'o':
+        case 'O':
+            if (document.getElementById('genericModalOverlay').style.display !== 'flex') {
+                if (typeof openObservatory === 'function') openObservatory();
+            }
             return true;
             
         case 'p':
@@ -4794,8 +4949,14 @@ function loadGameData(jsonString) {
         discoveredLocations = new Set(savedState.discoveredLocations);
         playerCompletedMissions = new Set(savedState.playerCompletedMissions);
         discoveredLoreEntries = new Set(savedState.discoveredLoreEntries);
+        // Restore the internal database switches        
+        discoveredLoreEntries.forEach(loreId => {
+            if (LORE_DATABASE[loreId]) {
+                LORE_DATABASE[loreId].unlocked = true;
+            }
+        });
         
-        worldStateDeltas = savedState.worldStateDeltas || {}; 
+        worldStateDeltas = savedState.worldStateDeltas || {};
         
         // --- RESTORE ACTIVE PROBES ---
         window.activeProbes = savedState.activeProbes || [];
@@ -5608,7 +5769,7 @@ function playIntroVideo() {
         return;
     }
 
-    // --- NEW: THEME-MATCHING LOGIC ---
+    // --- THEME-MATCHING LOGIC ---
     const isLightMode = document.body.classList.contains('light-mode');
     
     // Swap the video source based on the theme
@@ -6316,7 +6477,7 @@ function handleAnomaly() {
             actionLabel: "SKIM ERGOSPHERE (Risk Fuel & Hull)",
             execute: () => resolvePhenomenon('SINGULARITY')
         },
-        // --- NEW 3 PHENOMENA ---
+        // --- NEW PHENOMENA ---
         {
             id: 'QUASAR', title: "QUASAR JET", icon: "🎇", color: "var(--warning)",
             desc: "An active galactic nucleus powered by a supermassive black hole, firing a relativistic jet of plasma directly across your flight path.",
