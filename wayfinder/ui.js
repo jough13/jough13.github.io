@@ -841,6 +841,8 @@ function jettisonItem(key, amount) {
     logMessage(`<span style="color:var(--danger)">[ CARGO ] Ejected ${amountToDrop}x ${itemName} into the void.</span>`);
     if (typeof soundManager !== 'undefined') soundManager.playHullHit(); // We'll use the dull thud sound for the airlock cycling
     
-    // Refresh the list instantly
-    renderCargoList();
+    // --- Refresh the Cargo Modal so the ghost item disappears! ---
+    if (document.getElementById('genericModalOverlay').style.display === 'flex') {
+        renderCargoList(); 
+    }
 }
