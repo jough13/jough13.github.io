@@ -22,28 +22,36 @@
             visibility: visible;
         }
     </style>
-<script>
-        // --- FLIGHT RECORDER v4.0 (The Diagnostician) ---
-        const consoleHistory = [];
-        const MAX_LOGS = 15;
 
-        // 1. Hijack standard console methods
-        ['log', 'warn', 'error'].forEach(method => {
+<script>
+        // --- FLIGHT RECORDER v4.2 (The Diagnostician - Telemetry Only) ---
+        const consoleHistory = [];
+        const MAX_LOGS = 50;
+
+        // 1. Hijack standard console methods strictly for background telemetry
+        ['log', 'warn', 'error', 'info'].forEach(method => {
             const original = console[method];
             console[method] = function(...args) {
                 const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+                
+                // A. Keep the Diagnostician History for the Crash Screen
                 consoleHistory.push({ type: method, msg: msg });
                 if (consoleHistory.length > MAX_LOGS) consoleHistory.shift();
+                
+                // B. Call the original console method for the browser dev tools
                 original.apply(console, args);
                 
+                // C. Trigger the massive Red Crash Screen on actual code errors
                 if (method === 'error') {
                     const stack = new Error().stack || "No stack trace";
-                    showCriticalErrorScreen("CONSOLE.ERROR TRIGGERED", msg, "Invoked via console", stack);
+                    if (typeof showCriticalErrorScreen === 'function') {
+                        showCriticalErrorScreen("CONSOLE.ERROR TRIGGERED", msg, "Invoked via console", stack);
+                    }
                 }
             };
         });
 
-        // 2. The Master Render Function
+        // 2. The Master Render Function (UNCHANGED)
         function showCriticalErrorScreen(errorType, exactMessage, location, stack, diagnosticHTML = "") {
             if (document.getElementById('criticalSystemFailureScreen')) return;
 
@@ -97,7 +105,7 @@
             document.body.appendChild(div);
         }
 
-        // 3. The Catchers
+        // 3. The Catchers (UNCHANGED)
         window.onerror = function(msg, url, lineNo, columnNo, error) {
             const fileName = url ? url.split('/').pop() : 'Unknown File';
             const loc = `${fileName} — Line: ${lineNo}, Column: ${columnNo}`;
@@ -106,10 +114,8 @@
             const exactMessage = error && error.message ? error.message : msg;
             const stackTrace = (error && error.stack) ? error.stack : `Parse/Syntax Error Data:\n${msg}`;
 
-            // --- THE AUTO-DIAGNOSTIC LOGIC ---
             let diagnosticHTML = "";
             
-            // 1. The "Ghost Object" (Undefined/Null Properties)
             if (exactMessage.includes("Cannot read properties of undefined") || exactMessage.includes("Cannot read properties of null")) {
                 const match = exactMessage.match(/reading '(.+?)'/);
                 const prop = match ? match[1] : 'something';
@@ -129,7 +135,6 @@
                     </p>
                 </div>`;
             }
-            // 2. The "Missing Identity" (ReferenceError)
             else if (errorType === "ReferenceError" && exactMessage.includes("is not defined")) {
                 const match = exactMessage.match(/(.+?) is not defined/);
                 const varName = match ? match[1] : 'A variable';
@@ -147,7 +152,6 @@
                     </p>
                 </div>`;
             }
-            // 3. The "Imposter Function" (TypeError)
             else if (errorType === "TypeError" && exactMessage.includes("is not a function")) {
                 const match = exactMessage.match(/(.+?) is not a function/);
                 const funcName = match ? match[1] : 'Something';
@@ -164,7 +168,6 @@
                     </p>
                 </div>`;
             }
-            // 4. The "Infinite Loop" (RangeError)
             else if (errorType === "RangeError" && exactMessage.includes("Maximum call stack size exceeded")) {
                 diagnosticHTML = `
                 <div style="background: rgba(255, 0, 0, 0.2); border: 1px solid #FF0000; padding: 15px; margin-top: 15px; font-family: sans-serif;">
@@ -203,8 +206,34 @@
             }
         }, true);
     </script>
+
 </head>
 <body class="crt">
+
+    <div id="titleScreenOverlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: var(--text-color); font-family: 'Orbitron', sans-serif;">
+        
+        <h1 style="font-size: 72px; margin: 0 0 10px 0; letter-spacing: 12px; text-transform: uppercase; color: var(--item-name-color); filter: drop-shadow(0 0 15px var(--accent-color)); animation: pulse-cyan 4s infinite ease-in-out;">
+            WAYFINDER
+        </h1>
+        
+        <h2 style="font-size: 20px; margin: 0 0 50px 0; color: var(--item-desc-color); font-weight: 400; letter-spacing: 10px; opacity: 0.8;">
+            ECHOES OF THE VOID
+        </h2>
+        
+        <div style="background: var(--bg-color); border: 1px dashed var(--border-color); padding: 20px; margin-bottom: 40px; width: 400px; max-width: 90%; box-shadow: inset 0 0 15px rgba(0,0,0,0.1);">
+            <div style="font-family: 'Roboto Mono', monospace; font-size: 12px; color: var(--item-desc-color); text-align: left; line-height: 1.6;">
+                > BIOS VER 4.0.12 ONLINE...<br>
+                > ESTABLISHING SATELLITE UPLINK... <span style="color:var(--success)">OK</span><br>
+                > WARP DRIVE CONTAINMENT... <span style="color:var(--success)">STABLE</span><br>
+                > <span style="color:var(--warning)">WARNING:</span> AUDIO TELEMETRY LOCKED.<br>
+                > AWAITING COMMANDER AUTHORIZATION...
+            </div>
+        </div>
+
+        <button class="action-button" style="background: var(--bg-color); font-size: 18px; padding: 15px 40px; border-color: var(--accent-color); color: var(--accent-color); box-shadow: 0 0 20px rgba(0, 224, 224, 0.2); animation: fadeIn 1s ease-in-out; cursor: pointer;" onclick="bootSequence()">
+            INITIALIZE SHIP SYSTEMS
+        </button>
+    </div>
 
     <div id="leftSideBorder" class="side-border left"></div>
     <div id="rightSideBorder" class="side-border right"></div>
