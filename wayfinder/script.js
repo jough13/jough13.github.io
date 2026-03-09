@@ -4,6 +4,8 @@
 
 let currentSectorName = "Sol Sector";
 
+let visitedSectors;
+
 let playerActiveBounty = null;
 let currentStationBounties = []; // Temporarily holds the bounties available at the current station
 
@@ -275,14 +277,12 @@ function interactWithNPC(npc, index) {
     openGenericModal("PROXIMITY ALERT");
     const modalContent = document.getElementById('genericModalContent');
 
-    // --- THE FIX ---
     // Override the default two-column flex layout and enable scrolling.
     modalContent.style.cssText = "display: block; overflow-y: auto;";
 
     // Dynamically choose between the image portrait or the ASCII character
     let imageHtml = '';
     if (npc.image) {
-        // Use the image portrait
         imageHtml = `
             <img src="${npc.image}" alt="${npc.name}" 
                  style="width: 120px; height: 120px; border-radius: 50%; border: 2px solid ${npc.color}; 
@@ -290,13 +290,11 @@ function interactWithNPC(npc, index) {
                         box-shadow: 0 0 15px ${npc.color};">
         `;
     } else {
-        // Fallback to the ship character
         imageHtml = `
             <div style="font-size:60px; margin-bottom:15px; color:${npc.color}; text-shadow: 0 0 15px ${npc.color};">${npc.char}</div>
         `;
     }
 
-    // Procedural telemetry data (this part remains the same)
     const transponderId = `${npc.name.substring(0,3).toUpperCase()}-${Math.floor(Math.random()*9000)+1000}`;
     const shipClass = npc.shipClass || (npc.faction === 'CONCORD' ? 'Patrol Cruiser' : npc.faction === 'KTHARR' ? 'War Barge' : 'Modified Freighter');
     const threatLvl = npc.level || Math.floor(Math.random() * 5) + 1;
@@ -317,7 +315,7 @@ function interactWithNPC(npc, index) {
         ? npc.dialogue[0] 
         : "We are transmitting our transponder codes. Please maintain safe distance.";
 
-    // Render the modal (this part remains the same)
+    // --- NEW UI: A 2x2 Button Grid ---
     modalContent.innerHTML = `
         <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 10px 20px;">
             
@@ -355,11 +353,19 @@ function interactWithNPC(npc, index) {
                 "${commsText}"
             </div>
 
-            <div class="trade-btn-group" style="margin-top: 20px; width: 100%; display: flex; gap: 10px;">
-                <button class="action-button" onclick="closeGenericModal()" style="flex: 1;">
+            <div id="tacticalScanResults" style="width: 100%; margin-top: 15px;"></div>
+
+            <div class="trade-btn-group" style="margin-top: 20px; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button class="action-button" onclick="closeGenericModal()">
                     MAINTAIN COURSE
                 </button>
-                <button class="action-button danger-btn" onclick="commitPiracy(${index})" style="flex: 1;">
+                <button class="action-button" onclick="initiateShipToShipTrade(${index})" style="border-color:var(--gold-text); color:var(--gold-text);">
+                    REQUEST TRADE
+                </button>
+                <button class="action-button" onclick="scanNPCCargo(${index})" style="border-color:var(--accent-color); color:var(--accent-color);">
+                    TACTICAL SCAN
+                </button>
+                <button class="action-button danger-btn" onclick="commitPiracy(${index})">
                     POWER WEAPONS
                 </button>
             </div>
@@ -367,7 +373,112 @@ function interactWithNPC(npc, index) {
     `;
 }
 
-let visitedSectors;
+// --- NEW SENSOR LOGIC ---
+function scanNPCCargo(index) {
+    // 1. Check if the player has the required gear/perk to pierce civilian shields
+    const hasPerk = typeof playerPerks !== 'undefined' && playerPerks.has && playerPerks.has('LONG_RANGE_SENSORS');
+    const hasScanner = playerShip && playerShip.components && playerShip.components.scanner === 'SCANNER_NEXSTAR_4SE';
+    
+    if (!hasPerk && !hasScanner) {
+        logMessage("<span style='color:var(--danger)'>[ SENSORS ] Tactical scan failed. Advanced Telemetry Array required to pierce hull plating.</span>");
+        if (typeof showToast === 'function') showToast("SENSORS INSUFFICIENT", "error");
+        if (typeof soundManager !== 'undefined') soundManager.playError();
+        return;
+    }
+
+    const npc = activeNPCs[index];
+    const resultsContainer = document.getElementById('tacticalScanResults');
+    
+    if (typeof soundManager !== 'undefined') soundManager.playScan();
+    logMessage(`<span style='color:var(--accent-color)'>[ SENSORS ] Penetrating hull plating of ${npc.name}...</span>`);
+
+    // 2. Generate the manifest based on the ship type
+    let cargoList = "";
+    const lowerName = (npc.name || "").toLowerCase();
+    
+    if (lowerName.includes("miner")) {
+        cargoList = `<li>MINERALS (High Yield)</li><li>RARE METALS (Trace Amounts)</li>`;
+    } else if (npc.faction === 'ECLIPSE' || lowerName.includes("smuggler")) {
+        cargoList = `<li style="color:var(--danger); font-weight:bold;">PROHIBITED STIMS (Contraband)</li><li style="color:var(--danger); font-weight:bold;">FORBIDDEN TEXTS (Contraband)</li><li>MEDICAL SUPPLIES</li>`;
+    } else if (npc.faction === 'KTHARR') {
+        cargoList = `<li>K'THARR SPICES</li><li>LIVING HULL TISSUE</li>`;
+    } else if (npc.faction === 'CONCORD') {
+        cargoList = `<li>WEAPONRY (Restricted)</li><li>FUEL CELLS (Standard)</li>`;
+    } else {
+        cargoList = `<li>FOOD SUPPLIES (Bulk)</li><li>FUEL CELLS (Standard)</li><li>TECH PARTS (Commercial)</li>`;
+    }
+
+    // 3. Inject the beautiful scan readout directly into the modal
+    resultsContainer.innerHTML = `
+        <div style="background:rgba(0, 224, 224, 0.1); border: 1px solid var(--accent-color); padding: 15px; border-radius: 4px; text-align: left; animation: fadeIn 0.5s;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--accent-color); padding-bottom:6px; margin-bottom:10px;">
+                <div style="color:var(--accent-color); font-size:11px; letter-spacing:2px; font-weight:bold;">TACTICAL TELEMETRY</div>
+                <div style="font-size:18px;">📡</div>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; margin-bottom: 10px; font-size:12px;">
+                <div style="color:var(--item-desc-color);">Shield Harmonics: <span style="color:var(--warning);">Stable</span></div>
+                <div style="color:var(--item-desc-color);">Armor Plating: <span style="color:var(--success);">100%</span></div>
+            </div>
+
+            <div style="color:var(--text-color); font-size:11px; letter-spacing:1px; margin-bottom:5px;">DETECTED MANIFEST:</div>
+            <ul style="color:var(--item-name-color); font-size:13px; margin:0; padding-left:20px; line-height:1.6;">
+                ${cargoList}
+            </ul>
+        </div>
+    `;
+}
+
+// ==========================================
+// --- NPC INTERACTION ACTIONS ---
+// ==========================================
+
+function commitPiracy(index) {
+    const npc = activeNPCs[index];
+    
+    // 1. Remove them from the peaceful ambient traffic array
+    activeNPCs.splice(index, 1);
+    
+    // 2. Convert them into a hostile enemy entity
+    if (typeof activeEnemies === 'undefined') window.activeEnemies = [];
+    
+    const enemyEntity = {
+        x: npc.x,
+        y: npc.y,
+        id: "PIRATED_" + Date.now(),
+        name: npc.name,
+        char: npc.char,
+        color: '#FF5555', // Turn them red!
+        shipClassKey: npc.combatProfile || "BRUISER",
+        faction: npc.faction || 'INDEPENDENT',
+        isHostile: true
+    };
+    
+    activeEnemies.push(enemyEntity);
+    
+    // 3. Apply the legal consequences!
+    playerNotoriety += 5;
+    if (typeof updateNotorietyTitle === 'function') updateNotorietyTitle();
+    
+    logMessage(`<span style='color:var(--danger)'>[ HOSTILE ACTION ] Weapons locked on ${npc.name}. Concord bounties updated.</span>`);
+    if (typeof soundManager !== 'undefined') soundManager.playWarning();
+    
+    closeGenericModal();
+    
+    // 4. Instantly start combat with this specific ship
+    if (typeof startCombat === 'function') startCombat(enemyEntity);
+}
+
+function initiateShipToShipTrade(index) {
+    const npc = activeNPCs[index];
+    // We will build this in trade.js!
+    if (typeof openShipTrade === 'function') {
+        openShipTrade(npc);
+    } else {
+        logMessage(`"Sorry Commander, our manifest is locked. No trading today."`);
+        closeGenericModal();
+    }
+}
 
 // ==========================================
 // --- EVENT BUS SYSTEM (Decoupling) ---
@@ -2764,10 +2875,15 @@ function handleInteraction() {
                     onclick: () => {
                         if (starData.class === "O" || starData.class === "B") {
                             const util = COMPONENTS_DATABASE[playerShip.components.utility || "UTIL_NONE"];
-                            if (!util || !util.radImmunity) {
+                            // Check for the Health Physicist perk!
+                            const hasRadPerk = typeof playerPerks !== 'undefined' && playerPerks.includes('HEALTH_PHYSICIST');
+                            
+                            if ((!util || !util.radImmunity) && !hasRadPerk) {
                                 playerHull -= 20;
                                 if (typeof triggerHaptic === 'function') triggerHaptic(200);
                                 logMessage("<span style='color:var(--danger);'>Radiation shielding breached! Hull integrity compromised while scooping.</span>");
+                            } else if (hasRadPerk && (!util || !util.radImmunity)) {
+                                logMessage("<span style='color:var(--success);'>Radiological protocols active. Radiation bypassed safely.</span>");
                             }
                         }
                         if (playerFuel < MAX_FUEL) {
@@ -3746,11 +3862,14 @@ function handleCombatInput(key) {
                 if (typeof soundManager !== 'undefined') soundManager.playUIHover();
                 evaluateStar(starData, starId);
 
-                // --- NEW: ENGRAM DISCOVERY CHANCE ---
                 // 10% chance to find an ancient engram floating in the corona if you haven't scanned this star yet!
+                // --- ENGRAM DISCOVERY CHANCE WITH PERK ---
                 const scanKey = `STAR_SCAN_${starId}`;
                 if (typeof discoveredLocations !== 'undefined' && !discoveredLocations.has(scanKey)) {
-                    if (Math.random() < 0.10) {
+                    // Check for Void Diver perk (25% vs 10%)
+                    const engramChance = (typeof playerPerks !== 'undefined' && playerPerks.includes('VOID_DIVER')) ? 0.25 : 0.10;
+                    
+                    if (Math.random() < engramChance) {
                         playerCargo['ENCRYPTED_ENGRAM'] = (playerCargo['ENCRYPTED_ENGRAM'] || 0) + 1;
                         if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
                         logMessage("<span style='color:#DDA0DD'>[ SENSORS ] Anomaly detected in the stellar corona. Tractor beam recovered 1x Encrypted Engram!</span>");
@@ -5657,45 +5776,52 @@ if (typeof window.applyPlayerShipStats === 'function' && !window._originalApplyS
 }
 
 // ==========================================
-// --- MISSION BOARD UI OVERHAUL ---
+// --- ADVANCED MERCENARY DATAPAD UI ---
 // ==========================================
 
 function displayMissionBoard() {
-    openGenericModal("STATION JOB BOARD");
+    openGenericModal("MERCENARY DATAPAD V2.0");
     const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
     // 1. Ensure missions exist via your native generator
+    const currentLocation = getCombinedLocationData(playerX, playerY);
     if (typeof generateMissionsForStation === 'function' && (!missionsAvailableAtStation || missionsAvailableAtStation.length === 0)) {
-        generateMissionsForStation(); 
+        generateMissionsForStation(currentLocation ? currentLocation.name : "Local Hub"); 
     }
 
-    // 2. Setup Context so underlying logic doesn't break
-    currentMissionContext = {
-        step: 'selectMission',
-        availableMissions: missionsAvailableAtStation
-    };
+    // 2. Setup Context
+    currentMissionContext = { step: 'selectMission', availableMissions: missionsAvailableAtStation };
 
-    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">POSTED CONTRACTS</div>`;
+    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--danger); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">ENCRYPTED CONTRACTS</div>`;
 
     if (!missionsAvailableAtStation || missionsAvailableAtStation.length === 0) {
-         listEl.innerHTML += `<div style="padding:15px; color:#888;">No contracts available at this time. Check back later.</div>`;
+         listEl.innerHTML += `<div style="padding:15px; color:#888;">No contracts available in this sector.</div>`;
     } else {
          missionsAvailableAtStation.forEach((mission, index) => {
              const row = document.createElement('div');
              row.className = 'trade-item-row';
              row.style.cursor = 'pointer';
+             row.style.padding = '12px 10px';
              
-             // Extract data safely
              const title = mission.title || (mission.template ? mission.template.title_template : "Unknown Contract");
              const reward = mission.rewards ? mission.rewards.credits : 0;
-             const isBounty = mission.type === 'BOUNTY';
+             
+             // Dynamic styling based on mission type
+             let icon = '📦';
+             let color = 'var(--accent-color)';
+             if (mission.type === 'BOUNTY') { icon = '🎯'; color = 'var(--danger)'; }
+             else if (mission.type === 'SURVEY') { icon = '🛰️'; color = '#9933FF'; }
+             else if (mission.type === 'ACQUIRE') { icon = '💎'; color = 'var(--gold-text)'; }
 
              row.innerHTML = `
-                 <div style="display:flex; flex-direction:column; gap: 4px;">
-                     <span style="color:${isBounty ? 'var(--danger)' : 'var(--accent-color)'}; font-weight:bold; font-size:13px;">${title}</span> 
-                     <span style="color:var(--gold-text); font-size:10px;">Reward: ${formatNumber(reward)}c</span>
+                 <div style="display:flex; align-items:center; gap: 15px;">
+                     <div style="font-size:24px; filter: drop-shadow(0 0 5px ${color});">${icon}</div>
+                     <div style="display:flex; flex-direction:column; gap: 4px;">
+                         <span style="color:${color}; font-weight:bold; font-size:12px; letter-spacing:0.5px;">${title.toUpperCase()}</span> 
+                         <span style="color:var(--text-color); font-size:10px;">Payout: <span style="color:var(--gold-text);">${formatNumber(reward)}c</span></span>
+                     </div>
                  </div>
              `;
              row.onclick = () => displayMissionDetails(index);
@@ -5705,14 +5831,15 @@ function displayMissionBoard() {
 
     detailEl.innerHTML = `
         <div style="text-align:center; padding: 40px 20px;">
-            <div style="font-size:60px; margin-bottom:15px; opacity:0.5;">📜</div>
-            <h3 style="color:var(--accent-color); margin-bottom:10px;">CONCORD JOB BOARD</h3>
-            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
-                Review available contracts. You may only hold one active mission at a time. High-risk bounties are marked in red.
+            <div style="font-size:60px; margin-bottom:15px; opacity:0.3;">📡</div>
+            <h3 style="color:var(--text-color); margin-bottom:10px; letter-spacing:2px;">SECURE BROKER NETWORK</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.6;">
+                Connect your datapad to the local brokerage node. Review hazard pay, target profiles, and route data before accepting a contract. 
+                <br><br><span style="color:var(--warning);">Note: Concord law dictates freelancers may only hold one active contract at a time.</span>
             </p>
         </div>
     `;
-    actionsEl.innerHTML = `<button class="action-button" onclick="openStationView()">RETURN TO CONCOURSE</button>`;
+    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="openStationView()">DISCONNECT DATAPAD</button>`;
 }
 
 function displayMissionDetails(index) {
@@ -5729,33 +5856,97 @@ function displayMissionDetails(index) {
     const desc = mission.description || "Mission details unavailable.";
     const reward = mission.rewards ? mission.rewards.credits : 0;
     const xp = mission.rewards ? mission.rewards.xp : 0;
-    const isBounty = mission.type === 'BOUNTY';
+    
+    let typeLabel = "LOGISTICS CONTRACT";
+    let typeColor = "var(--accent-color)";
+    let visualHTML = "";
+    let objectiveDataHTML = "";
+
+    // --- DYNAMIC CONTENT GENERATION ---
+    if (mission.type === 'BOUNTY') {
+        typeLabel = "ASSASSINATION DIRECTIVE";
+        typeColor = "var(--danger)";
+        
+        // Procedurally grab a random player portrait and use CSS to turn it into a red wanted poster!
+        const mugshotIndex = Math.floor(Math.random() * (typeof PLAYER_PORTRAITS !== 'undefined' ? PLAYER_PORTRAITS.length : 6));
+        const mugshotSrc = typeof PLAYER_PORTRAITS !== 'undefined' ? PLAYER_PORTRAITS[mugshotIndex] : `assets/pfp_01.png`;
+        const targetName = mission.targetName || "Classified Hostile";
+
+        visualHTML = `
+            <div style="position:relative; display:inline-block; margin-bottom:15px;">
+                <img src="${mugshotSrc}" style="width:100px; height:100px; border-radius:4px; border:2px solid var(--danger); filter: grayscale(100%) contrast(1.5) sepia(1.2) hue-rotate(300deg); box-shadow: 0 0 15px rgba(255,0,0,0.3);">
+                <div style="position:absolute; bottom:5px; left:0; width:100%; background:rgba(255,0,0,0.8); color:#fff; font-size:10px; font-weight:bold; letter-spacing:1px; text-align:center;">WANTED</div>
+            </div>
+        `;
+        
+        const hazardBonus = Math.floor(reward * 0.3); // Fake math to make the lore look deep
+        objectiveDataHTML = `
+            <div class="trade-stat-row"><span>Target Alias:</span> <span style="color:var(--text-color);">${targetName}</span></div>
+            <div class="trade-stat-row"><span>Last Known Sector:</span> <span style="color:var(--warning);">[ REDACTED UNTIL ACCEPTED ]</span></div>
+            <div class="trade-stat-row"><span>Hazard Pay Included:</span> <span style="color:var(--gold-text);">+${hazardBonus}c</span></div>
+        `;
+    } else if (mission.type === 'DELIVERY') {
+        typeLabel = "PRIORITY FREIGHT";
+        typeColor = "var(--accent-color)";
+        visualHTML = `<div style="font-size:60px; filter: drop-shadow(0 0 15px var(--accent-color)); margin-bottom:15px;">📦</div>`;
+        
+        const dest = mission.objectives && mission.objectives[0] ? mission.objectives[0].destinationName : "Unknown Hub";
+        objectiveDataHTML = `
+            <div class="trade-stat-row"><span>Destination:</span> <span style="color:var(--accent-color);">${dest}</span></div>
+            <div class="trade-stat-row"><span>Cargo Type:</span> <span style="color:var(--text-color);">Fragile / Time-Sensitive</span></div>
+            <div class="trade-stat-row"><span>Transit Risk:</span> <span style="color:var(--warning);">Moderate (Pirate Activity)</span></div>
+        `;
+    } else if (mission.type === 'SURVEY') {
+        typeLabel = "DEEP SPACE ASTROMETRICS";
+        typeColor = "#9933FF";
+        visualHTML = `<div style="font-size:60px; filter: drop-shadow(0 0 15px #9933FF); margin-bottom:15px;">🛰️</div>`;
+        objectiveDataHTML = `
+            <div class="trade-stat-row"><span>Target Class:</span> <span style="color:#9933FF;">Spatial Anomaly</span></div>
+            <div class="trade-stat-row"><span>Sensor Requirement:</span> <span style="color:var(--text-color);">Standard Array or Higher</span></div>
+        `;
+    } else if (mission.type === 'ACQUIRE') {
+        typeLabel = "PROCUREMENT CONTRACT";
+        typeColor = "var(--gold-text)";
+        visualHTML = `<div style="font-size:60px; filter: drop-shadow(0 0 15px var(--gold-text)); margin-bottom:15px;">💎</div>`;
+        objectiveDataHTML = `
+            <div class="trade-stat-row"><span>Client:</span> <span style="color:var(--text-color);">Anonymous Corporate Buyer</span></div>
+            <div class="trade-stat-row"><span>Acquisition Method:</span> <span style="color:var(--warning);">Discretionary (Legal or Illegal)</span></div>
+        `;
+    }
 
     detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px;">
-            <div style="font-size:50px; margin-bottom:10px;">${isBounty ? '🎯' : '📦'}</div>
-            <h3 style="color:${isBounty ? 'var(--danger)' : 'var(--accent-color)'}; margin:0 0 15px 0;">${title.toUpperCase()}</h3>
+        <div style="text-align:center; padding: 15px;">
+            <div style="font-size:10px; color:${typeColor}; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px; display:inline-block;">${typeLabel}</div>
             
-            <p style="font-size:13px; color:var(--text-color); margin-bottom: 20px; line-height: 1.6; text-align:left; background:rgba(0,0,0,0.3); padding:15px; border:1px solid #333; border-radius:4px;">
+            <br>${visualHTML}
+            
+            <h3 style="color:var(--item-name-color); margin:0 0 15px 0; font-size:16px;">${title.toUpperCase()}</h3>
+            
+            <p style="font-size:12px; color:var(--text-color); margin-bottom: 20px; line-height: 1.6; text-align:left; background:rgba(0,0,0,0.4); padding:12px; border-left:2px solid ${typeColor};">
                 "${desc}"
             </p>
             
+            <div class="trade-math-area" style="text-align:left; margin-bottom:15px; background:var(--bg-color);">
+                <div style="font-size:10px; color:#666; margin-bottom:5px; letter-spacing:1px;">MISSION PARAMETERS</div>
+                ${objectiveDataHTML}
+            </div>
+
             <div class="trade-math-area" style="text-align:left;">
-                <div class="trade-stat-row"><span>Payout:</span> <span style="color:var(--gold-text); font-weight:bold;">${formatNumber(reward)}c</span></div>
-                <div class="trade-stat-row"><span>Experience:</span> <span style="color:var(--success); font-weight:bold;">+${xp} XP</span></div>
+                <div class="trade-stat-row"><span>Total Payout:</span> <span style="color:var(--gold-text); font-weight:bold; font-size:14px;">${formatNumber(reward)}c</span></div>
+                <div class="trade-stat-row"><span>Experience Yield:</span> <span style="color:var(--success); font-weight:bold;">+${xp} XP</span></div>
             </div>
         </div>
     `;
 
     if (playerActiveMission) {
         actionsEl.innerHTML = `
-            <button class="action-button" disabled>CONTRACT ALREADY ACTIVE</button>
+            <button class="action-button" disabled style="opacity:0.5;">LIMIT: ONE ACTIVE CONTRACT</button>
             <button class="action-button" onclick="displayMissionBoard()">BACK TO LIST</button>
         `;
     } else {
         actionsEl.innerHTML = `
-            <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color); box-shadow: 0 0 10px rgba(0,224,224,0.2);" onclick="acceptMissionUI(${index})">
-                ACCEPT CONTRACT
+            <button class="action-button" style="border-color:${typeColor}; color:${typeColor}; box-shadow: 0 0 15px ${typeColor}44;" onclick="acceptMissionUI(${index})">
+                SIGN CONTRACT
             </button>
             <button class="action-button" onclick="displayMissionBoard()">CANCEL</button>
         `;
@@ -5771,7 +5962,7 @@ function acceptMissionUI(index) {
         
         // Polish the UI output
         if (typeof soundManager !== 'undefined') soundManager.playBuy();
-        if (typeof showToast === 'function') showToast("CONTRACT ACCEPTED", "success");
+        if (typeof showToast === 'function') showToast("CONTRACT SIGNED", "success");
         
         displayMissionBoard(); // Refresh the board
         if (typeof renderUIStats === 'function') renderUIStats();
@@ -6700,7 +6891,14 @@ const SPACE_ENCOUNTERS = [
                     }
                     
                     if (hasContraband) {
-                        const fine = Math.floor(playerCredits * 0.15); // 15% of wealth
+                        let fine = Math.floor(playerCredits * 0.15); // 15% of wealth
+                        
+                        // Smooth Talker perk cuts the fine in half!
+                        if (typeof playerPerks !== 'undefined' && playerPerks.includes('SMOOTH_TALKER')) {
+                            fine = Math.floor(fine / 2);
+                            logMessage("<span style='color:var(--accent-color)'>[ PERK ] Smooth Talker activated! You talked the fine down by 50%.</span>");
+                        }
+                        
                         playerCredits -= fine;
                         playerNotoriety += 5;
                         logMessage(`<span style='color:var(--danger)'>[ ENCOUNTER ] CONTRABAND DETECTED! Concord seizes your illegal goods and fines you ${fine}c!</span>`);
@@ -6976,8 +7174,189 @@ if (typeof GameBus !== 'undefined') {
     GameBus.on('TICK_PROCESSED', () => {
         const loc = chunkManager.getTile(playerX, playerY);
         
-        if (loc && getTileChar(loc) === '.' && Math.random() < 0.02) { 
+        // BUG FIX: Dropped encounter rate from 2% to 0.01% for long-play pacing!
+        if (loc && getTileChar(loc) === '.' && Math.random() < 0.0001) { 
             if (typeof triggerRandomEncounter === 'function') triggerRandomEncounter();
         }
     });
+}
+
+// ==========================================
+// --- SUBSPACE ROUTING (WORMHOLES) ---
+// ==========================================
+
+function traverseWormhole() {
+    const tile = chunkManager.getTile(playerX, playerY);
+    if (getTileChar(tile) !== WORMHOLE_CHAR_VAL) {
+        logMessage("No stable wormhole detected at these coordinates.");
+        return;
+    }
+
+    // 1. Register this wormhole as discovered!
+    // We save it to worldStateDeltas so it permanently persists in the player's save file!
+    updateWorldState(playerX, playerY, { 
+        isDiscoveredWormhole: true, 
+        customName: `Fracture Node [${Math.abs(playerX % 100)}-${Math.abs(playerY % 100)}]` 
+    });
+
+    // 2. Gather all known wormholes from the save state
+    const knownWormholes = [];
+    for (const key in worldStateDeltas) {
+        if (worldStateDeltas[key].isDiscoveredWormhole) {
+            // Keys are formatted as "X,Y"
+            const coords = key.split('_')[0].split(',');
+            const x = parseInt(coords[0], 10);
+            const y = parseInt(coords[1], 10);
+            
+            if (!isNaN(x) && !isNaN(y)) {
+                knownWormholes.push({
+                    x: x, 
+                    y: y, 
+                    name: worldStateDeltas[key].customName || `Anomaly [${x}, ${y}]`
+                });
+            }
+        }
+    }
+
+    // 3. Open the UI Modal
+    openGenericModal("SUBSPACE ROUTING SYSTEM");
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    listEl.innerHTML = `<div class="trade-list-header" style="color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;">STABLE FRACTURES</div>`;
+
+    if (knownWormholes.length <= 1) {
+        listEl.innerHTML += `<div style="padding:15px; color:var(--item-desc-color); font-size:12px; line-height:1.5;">No other stable subspace fractures have been mapped yet. Explore the galaxy to establish a network.</div>`;
+    }
+
+    knownWormholes.forEach(wh => {
+        const isCurrent = (wh.x === playerX && wh.y === playerY);
+        const dist = Math.floor(Math.sqrt(Math.pow(wh.x - playerX, 2) + Math.pow(wh.y - playerY, 2)));
+        
+        const row = document.createElement('div');
+        row.className = 'trade-item-row';
+        row.style.cursor = isCurrent ? 'default' : 'pointer';
+        row.style.opacity = isCurrent ? '0.5' : '1';
+        
+        row.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap: 4px;">
+                <span style="color:${isCurrent ? '#888' : '#FFB800'}; font-weight:bold; font-size:12px;">${wh.name}</span>
+                <span style="color:var(--item-desc-color); font-size:10px;">${isCurrent ? 'CURRENT LOCATION' : `Distance: ${dist}ly`}</span>
+            </div>
+        `;
+        
+        if (!isCurrent) {
+            row.onclick = () => showWormholeDetails(wh, dist);
+        }
+        listEl.appendChild(row);
+    });
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 40px 20px;">
+            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 15px #FFB800); opacity:0.8;">🌀</div>
+            <h3 style="color:#FFB800; margin-bottom:10px;">WORMHOLE NETWORK</h3>
+            <p style="color:var(--item-desc-color); font-size:13px; line-height:1.5;">
+                Select a mapped subspace fracture to initiate a high-velocity transit. 
+                Warning: Subspace traversal is highly unstable. Hull damage may occur based on distance.
+            </p>
+        </div>
+    `;
+
+    actionsEl.innerHTML = `<button class="action-button full-width-btn" onclick="closeGenericModal()">ABORT JUMP</button>`;
+}
+
+function showWormholeDetails(targetWh, distance) {
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // Fuel cost: Flat fee + small distance scaling, highly efficient compared to normal flight
+    const fuelCost = Math.floor(15 + (distance * 0.05)); 
+    const canAfford = playerFuel >= fuelCost;
+    
+    // Damage Risk: Scales with distance, maxes out at 75%
+    const damageRisk = Math.min(75, Math.floor(5 + (distance * 0.02))); 
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <div style="font-size:10px; color:#FFB800; letter-spacing:2px; margin-bottom:5px;">TARGET LOCK ESTABLISHED</div>
+            <h3 style="color:var(--item-name-color); margin:0 0 15px 0; letter-spacing: 1px;">${targetWh.name}</h3>
+            
+            <div style="position:relative; display:inline-block; margin-bottom: 20px;">
+                <div style="font-size:60px; filter: drop-shadow(0 0 20px #FFB800);">🌌</div>
+            </div>
+
+            <div class="trade-math-area" style="text-align:left; background:rgba(0,0,0,0.5);">
+                <div class="trade-stat-row">
+                    <span>Coordinates:</span> 
+                    <span style="color:var(--accent-color); font-weight:bold;">[${targetWh.x}, ${-targetWh.y}]</span>
+                </div>
+                <div class="trade-stat-row">
+                    <span>Fuel Requirement:</span> 
+                    <span style="color:${canAfford ? 'var(--success)' : 'var(--danger)'}; font-weight:bold;">${fuelCost} Units</span>
+                </div>
+                <div class="trade-stat-row" style="margin-top: 10px; border-top: 1px dashed #333; padding-top: 10px;">
+                    <span>Structural Risk:</span> 
+                    <span style="color:var(--warning); font-weight:bold;">${damageRisk}% Chance of Damage</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    if (canAfford) {
+        actionsEl.innerHTML = `
+            <button class="action-button" style="border-color:#FFB800; color:#FFB800; box-shadow: 0 0 15px rgba(255, 184, 0, 0.3);" onclick="executeWormholeJump(${targetWh.x}, ${targetWh.y}, ${fuelCost}, ${damageRisk})">
+                INITIATE JUMP
+            </button>
+            <button class="action-button" onclick="traverseWormhole()">CANCEL</button>
+        `;
+    } else {
+        actionsEl.innerHTML = `
+            <button class="action-button danger-btn" disabled>INSUFFICIENT FUEL</button>
+            <button class="action-button" onclick="traverseWormhole()">BACK</button>
+        `;
+    }
+}
+
+function executeWormholeJump(targetX, targetY, fuelCost, damageRisk) {
+    playerFuel -= fuelCost;
+    
+    // 1. Resolve structural damage before moving
+    let damageLog = "";
+    if (Math.random() * 100 < damageRisk) {
+        const dmg = Math.floor(Math.random() * 25) + 10; // 10 to 35 damage
+        damageLog = `<br><span style="color:var(--danger)">Subspace turbulence caused ${dmg} hull damage!</span>`;
+        
+        // This will deduct health and trigger screen shake perfectly
+        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Wormhole Collapse" });
+    } else {
+        damageLog = `<br><span style="color:var(--success)">Transit completed with zero structural anomalies.</span>`;
+    }
+
+    // 2. Move Player
+    playerX = targetX;
+    playerY = targetY;
+
+    // 3. Force map chunk cache clear so the destination renders instantly!
+    chunkManager.loadedChunks = {}; 
+    chunkManager.lastChunkKey = null;
+    chunkManager.lastChunkRef = null;
+    updateSectorState();
+    
+    // 4. Progress Time (Fast travel still takes some time!)
+    if (typeof processGameTick === 'function') processGameTick(0.5, true); 
+
+    // 5. UI Updates
+    if (typeof soundManager !== 'undefined') soundManager.playWarp();
+    if (typeof showToast === 'function') showToast("SUBSPACE JUMP COMPLETE", "warning");
+    
+    logMessage(`<span style="color:#FFB800">[ SUBSPACE TRANSIT ] Arrived at destination coordinates.</span>${damageLog}`);
+
+    closeGenericModal();
+    if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+    if (typeof render === 'function') render();
+    if (typeof renderUIStats === 'function') renderUIStats();
+    
+    // Always auto-save after a massive jump!
+    if (typeof autoSaveGame === 'function') autoSaveGame();
 }
