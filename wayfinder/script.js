@@ -1699,67 +1699,6 @@ function checkCodexCompletion(categoryToCheck, isSilent = false) {
     }
 }
 
-function checkCodexCompletion(categoryToCheck) {
-    let total = 0;
-    let unlocked = 0;
-    
-    for (const key in LORE_DATABASE) {
-        if (LORE_DATABASE[key].category === categoryToCheck) {
-            total++;
-            if (LORE_DATABASE[key].unlocked) unlocked++;
-        }
-    }
-
-    // If they just unlocked the final entry for this category
-    if (total > 0 && unlocked === total) {
-        
-        // --- NEW: Check if we have already rewarded this! ---
-        let masteryStorage = {};
-        try {
-            masteryStorage = JSON.parse(localStorage.getItem('wayfinder_codex_mastery')) || {};
-        } catch(e) {}
-
-        // If this category is already marked as mastered, stop here. No spam!
-        if (masteryStorage[categoryToCheck]) return; 
-
-        // Otherwise, mark it as mastered in local storage so it never pops up again
-        masteryStorage[categoryToCheck] = true;
-        localStorage.setItem('wayfinder_codex_mastery', JSON.stringify(masteryStorage));
-
-        // --- OPEN THE REWARD MODAL ---
-        openGenericModal("CODEX MASTERY ACHIEVED");
-        
-        let buffText = "Systems optimized.";
-        if (categoryToCheck === "Starships") buffText = "+5 Max Hull Integrity";
-        else if (categoryToCheck === "Phenomena") buffText = "+10 Max Fuel Capacity";
-        else if (categoryToCheck === "Locations") buffText = "+2% Ship Evasion";
-        else if (categoryToCheck === "Factions") buffText = "+5 Max Shields";
-        else buffText = "+2 Cargo Capacity"; 
-
-        const detailEl = document.getElementById('genericDetailContent');
-        const listEl = document.getElementById('genericModalList');
-        const actionsEl = document.getElementById('genericModalActions');
-        
-        listEl.innerHTML = ''; 
-        detailEl.innerHTML = `
-            <div style="text-align:center; padding: 40px 20px;">
-                <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px var(--gold-text));">🏆</div>
-                <h3 style="color:var(--gold-text); margin-bottom:10px; letter-spacing:2px;">KNOWLEDGE IS POWER</h3>
-                <p style="color:var(--text-color); font-size:13px; line-height:1.6; margin-bottom: 20px;">
-                    You have successfully uncovered all archived data within the <strong>${categoryToCheck}</strong> category. 
-                    Your ship's computer has integrated this complete dataset, optimizing operational parameters.
-                </p>
-                <div style="background:rgba(255,215,0,0.1); border:1px solid var(--gold-text); padding:15px; border-radius:4px; font-weight:bold; color:var(--success);">
-                    PASSIVE BUFF ACQUIRED: ${buffText}
-                </div>
-            </div>
-        `;
-        actionsEl.innerHTML = `<button class="action-button full-width-btn" style="border-color:var(--gold-text); color:var(--gold-text);" onclick="closeGenericModal()">ACKNOWLEDGE</button>`;
-        
-        if (typeof soundManager !== 'undefined') soundManager.playGain();
-    }
-}
-
 // --- NON-DESTRUCTIVE OUTFITTING PATCH ---
 // We dynamically wrap your existing outfitting math so we don't have to rewrite outfitting.js!
 if (typeof window._codexPatched === 'undefined') {
@@ -3189,7 +3128,7 @@ function handleInteraction() {
                 const tile = chunkManager.getTile(playerX, playerY);
                 
                 // Check if the asteroid was already blown open by the mini-game!
-                if (tile && tile.mined) {
+                if (tile && (tile.mined || tile.minedThisVisit)) {
                     bM += ` Scanners show this rock is completely depleted.`;
                     availableActions.push({ 
                         label: 'Depleted', 
