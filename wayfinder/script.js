@@ -1890,9 +1890,9 @@ if (typeof window._codexPatched === 'undefined') {
     // --- Reset Faction Standing ---
     playerFactionStanding = {
         "CONCORD": 0,
-        "KTHARR": 0,
+        "KTHARR": -50,
         "INDEPENDENT": 0,
-        "ECLIPSE": 0 
+        "ECLIPSE": -10 
     };
 
     updateNotorietyTitle();
@@ -2520,7 +2520,6 @@ function reEnterCurrentTile() {
         return; 
     }
 
-    // THE FIX: Fetch the tile first, then pass it to the global helper function
     const tileData = chunkManager.getTile(playerX, playerY);
     const tileChar = getTileChar(tileData);
 
@@ -2530,18 +2529,18 @@ function reEnterCurrentTile() {
         if (typeof soundManager !== 'undefined') soundManager.playUIClick();
         if (typeof showToast === 'function') showToast("DOCKING SEQUENCE INITIATED", "info");
         
-        // 3. Re-trigger your main interaction loop
+        // 3. Re-trigger the main interaction loop to run customs checks/logs
         if (typeof handleInteraction === 'function') {
             handleInteraction(); 
         }
 
-        // 4. Force the visual station view to open if it's a major hub
-        if (tileChar === '#' && typeof openStationView === 'function') {
+        // 4. Automatically open the visual UI for Hubs, Outposts, and Black Markets
+        const isStationNode = (tileChar === '#' || tileChar === OUTPOST_CHAR_VAL || (tileData && tileData.isBlackMarket));
+        if (isStationNode && typeof openStationView === 'function') {
             openStationView();
         }
 
     } else {
-        // Player pushed the button in empty space
         if (typeof showToast === 'function') showToast("NO DOCKING TARGET DETECTED", "warning");
         logMessage("Sensors detect only empty space here. Nothing to interact with.");
     }
@@ -4066,16 +4065,17 @@ function handleCombatInput(key) {
             if (tileChar === STAR_CHAR_VAL) {
                 const starData = generateStarData(playerX, playerY);
                 const starId = `${playerX}_${playerY}`;
+                const scanKey = `STAR_SCAN_${starId}`;
+                
+                // Capture the scan status BEFORE evaluateStar() adds it to the list!
+                const isFirstScan = typeof discoveredLocations !== 'undefined' && !discoveredLocations.has(scanKey);
                 
                 if (typeof soundManager !== 'undefined') soundManager.playUIHover();
                 evaluateStar(starData, starId);
 
-                // 10% chance to find an ancient engram floating in the corona if you haven't scanned this star yet!
-                // --- ENGRAM DISCOVERY CHANCE WITH PERK ---
-                const scanKey = `STAR_SCAN_${starId}`;
-                if (typeof discoveredLocations !== 'undefined' && !discoveredLocations.has(scanKey)) {
-                    // Check for Void Diver perk (25% vs 10%)
-                    const engramChance = (typeof playerPerks !== 'undefined' && playerPerks.includes('VOID_DIVER')) ? 0.25 : 0.10;
+                //Only trigger engrams on the first scan, and use .has() for Sets
+                if (isFirstScan) {
+                    const engramChance = (typeof playerPerks !== 'undefined' && playerPerks.has('VOID_DIVER')) ? 0.25 : 0.10;
                     
                     if (Math.random() < engramChance) {
                         playerCargo['ENCRYPTED_ENGRAM'] = (playerCargo['ENCRYPTED_ENGRAM'] || 0) + 1;
@@ -4701,7 +4701,7 @@ function performSave(saveType) {
         // Stats
         playerX, playerY, playerFuel, playerCredits, playerShields, playerHull,
         playerNotoriety, playerLevel, playerXP, playerName, playerPfp, playerCrew,
-        playerPerks: Array.from(playerPerks), 
+        playerPerks: Array.from(playerPerks), lastNotorietyDecayTime,
         
         // Colony Builder State
         playerHasColonyCharter: typeof playerHasColonyCharter !== 'undefined' ? playerHasColonyCharter : false,
@@ -4858,6 +4858,8 @@ function loadGameData(jsonString) {
         playerLevel = savedState.playerLevel;
         playerXP = savedState.playerXP;
         playerCrew = savedState.playerCrew || [];
+
+         lastNotorietyDecayTime = savedState.lastNotorietyDecayTime || savedState.currentGameDate; 
 
         xerxesPuzzleLevel = savedState.xerxesPuzzleLevel || 0;
 
