@@ -477,48 +477,6 @@ function confirmBuyComponent(compId) {
     if (typeof renderUIStats === 'function') renderUIStats();
 }
 
-function confirmBuyComponent(compId) {
-    const newComp = COMPONENTS_DATABASE[compId];
-    
-    const currentCompId = playerShip.components[newComp.slot];
-    const currentComp = COMPONENTS_DATABASE[currentCompId];
-    
-    const tradeInValue = currentComp ? Math.floor(currentComp.cost * 0.5) : 0;
-    const netCost = newComp.cost - tradeInValue;
-
-    if(playerCredits < netCost) {
-        showToast(`Insufficient Funds! Net cost: ${formatNumber(netCost)}c`, "error");
-        return;
-    }
-    
-    playerCredits -= netCost;
-    playerShip.components[newComp.slot] = compId;
-    
-    if (newComp.stats.maxAmmo) {
-        playerShip.ammo[compId] = newComp.stats.maxAmmo;
-    }
-    
-    // --- DELETE OLD AMMO DATA ---
-    if (currentCompId !== compId) {
-        delete playerShip.ammo[currentCompId]; 
-    }
-
-    applyPlayerShipStats();
-    
-    // --- CLARIFY REFUNDS FOR DOWNGRADING ---
-    let msg = `Installed ${newComp.name}.`;
-    if (netCost < 0) {
-        const refund = Math.abs(netCost);
-        msg += `<br><span style="font-size:11px; color:var(--success);">(Salvage Refund: +${formatNumber(refund)}c)</span>`;
-    } else if (tradeInValue > 0) {
-        msg += `<br><span style="font-size:11px; color:var(--item-desc-color);">(Traded in ${currentComp.name} for ${formatNumber(tradeInValue)}c)</span>`;
-    }
-    
-    showToast(msg, "success");
-    displayOutfittingScreen(); 
-    renderUIStats();
-}
-
  function displayComponentsForSlot(slotType) {
      currentOutfitContext.step = 'selectComponent';
      currentOutfitContext.selectedSlot = slotType;
