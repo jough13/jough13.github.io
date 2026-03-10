@@ -209,11 +209,12 @@ function handleVictory() {
 
 function handleCombatAction(action) {
     if (!currentCombatContext) return;
-
     let combatLog = "";
-    
-    // Default: Enemy gets to act unless Stunned or Dead
     let enemyCanAct = true; 
+
+    if (action !== 'fight' && action !== 'charge') {
+        playerIsChargingAttack = false; 
+    }
 
     // --- 1. PLAYER TURN ---
     if (action === 'fight') {
