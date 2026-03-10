@@ -403,47 +403,6 @@ function renameShip() {
     }
 }
 
-// --- MODAL INFO BAR HELPER ---
-function updateModalInfoBar(elementId) {
-    const el = document.getElementById(elementId);
-    if (!el) return;
-
-    // --- THE FIX: USE CUSTOM NAME IF AVAILABLE ---
-    const baseShipName = SHIP_CLASSES[playerShip.shipClass].name;
-    const shipName = playerShip.name ? playerShip.name : baseShipName;
-    
-    // Calculate Reputation Text
-    // Use the global title, or "Unknown" if undefined
-    const rep = playerNotorietyTitle || "Unknown";
-
-    el.innerHTML = `
-        <div class="info-bar-item">
-            <span class="info-bar-value info-ship">${playerName}</span>
-            <span class="info-bar-label">LVL ${playerLevel}</span>
-        </div>
-        
-        <div class="info-bar-item">
-            <span class="info-bar-label">REP:</span>
-            <span class="info-bar-value" style="color:var(--accent-color)">${rep}</span>
-        </div>
-
-        <div class="info-bar-item">
-            <span class="info-bar-label">SHIP:</span>
-            <span class="info-bar-value info-ship">${shipName}</span>
-        </div>
-
-        <div class="info-bar-item">
-            <span class="info-bar-label">CARGO:</span>
-            <span class="info-bar-value">${currentCargoLoad}/${PLAYER_CARGO_CAPACITY}</span>
-        </div>
-
-        <div class="info-bar-item">
-            <span class="info-bar-label">CREDITS:</span>
-            <span class="info-bar-value info-credits">${formatNumber(playerCredits)}c</span>
-        </div>
-    `;
-}
-
 // --- COMMANDER PROFILE UI ---
 function displayCommanderProfile(tab = 'OVERVIEW') {
     // Hide the SYS menu so it doesn't overlap
@@ -461,7 +420,7 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
         { id: 'SHIP', name: 'Vessel Manifest', icon: '🚀' },
         { id: 'LOADOUT', name: 'Equipped Gear', icon: '⚙️' },
         { id: 'FACTIONS', name: 'Reputation', icon: '📜' },
-        { id: 'LOG', name: "Captain's Log", icon: '📝' } // <-- NEW TAB ADDED
+        { id: 'LOG', name: "Captain's Log", icon: '📝' }
     ];
 
     tabs.forEach(t => {
