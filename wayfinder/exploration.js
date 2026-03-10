@@ -2571,11 +2571,6 @@ function displayScannerDetails(type) {
         </div>
     `;
 
-    if (playerCargo && playerCargo['FUEL'] !== undefined) {
-         // Using whatever your fuel variable is. Assuming it's in cargo or playerFuel
-         // Adjust if your engine uses playerFuel instead!
-    }
-
     actionsEl.innerHTML = `
         <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="executeSweep(${radius}, ${cost})">
             INITIATE SCAN
