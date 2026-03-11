@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLS Hybrid xG-Elo Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f4f9; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 20px; position: relative; }
+        h1 { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px; margin-top: 0; }
+        .info-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; background-color: #00285e; color: white; border-radius: 50%; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: background-color 0.2s; }
+        .info-btn:hover { background-color: #e31837; }
+        .as-of-date { display: block; width: fit-content; margin: 0 auto 20px auto; background-color: #e31837; color: white; padding: 5px 12px; border-radius: 15px; font-size: 0.9em; font-weight: bold; }
+        .upload-section { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; margin-top: 30px; border-top: 4px solid #00285e; }
+        input[type="file"] { margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px 15px; text-align: center; border-bottom: 1px solid #ddd; }
+        th { background-color: #00285e; color: #ffffff; font-weight: bold; }
+        tr:hover { background-color: #f1f1f1; }
+        .rank-col { font-weight: bold; color: #e31837; }
+        
+        .change-positive { color: #27ae60; font-size: 0.85em; font-weight: bold; margin-left: 6px; }
+        .change-negative { color: #c0392b; font-size: 0.85em; font-weight: bold; margin-left: 6px; }
+        .change-neutral { color: #7f8c8d; font-size: 0.85em; font-weight: bold; margin-left: 6px; }
+
+        .team-name { cursor: pointer; color: #00285e; border-bottom: 1px dashed #00285e; transition: color 0.2s, border-bottom 0.2s; }
+        .team-name:hover { color: #e31837; border-bottom: 1px solid #e31837; }
+
+        /* Form Badges Styles */
+        .form-container { display: flex; gap: 4px; justify-content: center; }
+        .form-badge { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: bold; border-radius: 3px; cursor: help; }
+        .form-w { background-color: #27ae60; }
+        .form-d { background-color: #7f8c8d; }
+        .form-l { background-color: #c0392b; }
+
+        .status-message { text-align: center; font-style: italic; margin-top: 15px; color: #555; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+        .modal-content { background-color: #fff; margin: 5% auto; padding: 30px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); width: 90%; max-width: 650px; line-height: 1.6; }
+        .modal-content h2 { margin-top: 0; color: #00285e; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .modal-content h3 { color: #e31837; margin-top: 25px; margin-bottom: 10px; }
+        .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; margin-top: -10px; }
+        .close-btn:hover, .close-btn:focus { color: #e31837; text-decoration: none; }
+        .formula-box { background-color: #f4f4f9; border-left: 4px solid #00285e; padding: 15px; font-family: monospace; font-size: 0.95em; margin-bottom: 15px; border-radius: 0 4px 4px 0; }
+        .example-box { background-color: #eef2f5; padding: 15px; border-radius: 6px; font-size: 0.95em; border: 1px solid #dcdcdc; }
+
+        #formTable th { background-color: #e31837; }
+        #formTable td, #formTable th { padding: 8px 10px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>⚽ MLS Hybrid xG-Elo <span id="infoButton" class="info-btn" title="How does this work?">?</span></h1>
+        <div class="as-of-date" id="dateBadge">Current as of March 8, 2026</div>
+        <p>A blended power ranking system weighting actual match results (70%) and expected goals share (30%).<br><em>Hover over the form badges, or click a team name for deep dive details!</em></p>
+    </div>
+
+    <div id="methodologyModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeModal">&times;</span>
+            <h2>How the Hybrid Engine Works</h2>
+            <p>Traditional Elo systems only look at wins and losses, ignoring the chaotic nature of soccer where the better team frequently loses to a lucky bounce. Pure Expected Goals (xG) models ignore the fact that actually finishing chances matters.</p>
+            <p>This <strong>Hybrid xG-Elo</strong> system solves this by blending the two. Every MLS match dating back to 2013 has been recalculated to establish a highly accurate historical baseline.</p>
+            
+            <h3>The Formulas</h3>
+            <div class="formula-box">
+                <strong>1. Expected Performance (E):</strong><br>
+                E = 1 / (1 + 10^((Rating_Away - (Rating_Home + 25)) / 400))<br>
+                <br>
+                <strong>2. Blended Actual Performance (A):</strong><br>
+                A = (0.70 * Match_Result) + (0.30 * xG_Share)<br>
+                <em>*Match Result = 1 (Win), 0.5 (Draw), 0 (Loss)</em><br>
+                <br>
+                <strong>3. Rating Update:</strong><br>
+                New_Rating = Old_Rating + [32 * Blowout_Multiplier * (A - E)]
+            </div>
+
+            <h3>Example Calculation</h3>
+            <div class="example-box">
+                <strong>The Scenario:</strong> Two evenly matched teams (both rated 1500) play. The Home Team wins <strong>2-0</strong> and dominates the chances, posting <strong>2.0 xG</strong> to the Away Team's <strong>0.5 xG</strong>.<br><br>
+                <strong>Step 1: Expectations</strong><br>
+                Because of the +25 Home Field Advantage boost, the model expects the Home Team to control the game slightly, giving them an Expected Performance <strong>(E) of 0.536</strong>.<br><br>
+                <strong>Step 2: Actual Performance</strong><br>
+                The Home Team won the game, earning a Match Result of 1.0. They also generated 80% of the total xG (2.0 out of 2.5).<br>
+                Blended Performance <strong>(A)</strong> = (0.70 * 1.0) + (0.30 * 0.80) = <strong>0.94</strong><br><br>
+                <strong>Step 3: The Rating Change</strong><br>
+                Because the Goal Differential was less than 3, the Blowout Multiplier is 1.0.<br>
+                Point Change = 32 * 1.0 * (0.94 - 0.536) = <strong>+12.9 points</strong>.<br><br>
+                <em>Result: The Home Team rises to 1512.9, and the Away Team drops to 1487.1.</em>
+            </div>
+        </div>
+    </div>
+
+    <div id="teamFormModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeFormModal">&times;</span>
+            <div id="teamFormContent"></div>
+        </div>
+    </div>
+
+    <div id="tableContainer">
+        </div>
+
+    <div class="upload-section">
+        <h3>Want to update the standings?</h3>
+        <p>Upload a fresh American Soccer Analysis Match Logs CSV to recalculate.</p>
+        <input type="file" id="csvFileInput" accept=".csv" />
+        <div id="statusMessage" class="status-message"></div>
+    </div>
+
+    <script>
+        // --- GLOBAL HARDCODED DATA (As of Mar 8, 2026) ---
+        window.teamForm = {"NER":[{"date":"Sep 27, 2025","opponent":"ATL","isHome":true,"gf":2,"ga":0,"xgf":1.94,"xga":1.0,"change":13.520779119179103},{"date":"Oct 4, 2025","opponent":"MIA","isHome":false,"gf":1,"ga":4,"xgf":1.06,"xga":3.36,"change":-5.64406603278889},{"date":"Oct 18, 2025","opponent":"CHI","isHome":true,"gf":2,"ga":1,"xgf":0.98,"xga":1.72,"change":14.688899580767064},{"date":"Feb 21, 2026","opponent":"NSH","isHome":false,"gf":1,"ga":4,"xgf":0.53,"xga":2.83,"change":-9.568843488346575},{"date":"Feb 28, 2026","opponent":"NYRB","isHome":false,"gf":0,"ga":1,"xgf":0.52,"xga":1.11,"change":-8.55308042790649}],"CHI":[{"date":"Oct 4, 2025","opponent":"TOR","isHome":true,"gf":2,"ga":1,"xgf":0.71,"xga":1.96,"change":3.3488236375585387},{"date":"Oct 18, 2025","opponent":"NER","isHome":false,"gf":1,"ga":2,"xgf":1.72,"xga":0.98,"change":-14.688899580767064},{"date":"Feb 21, 2026","opponent":"HOU","isHome":false,"gf":1,"ga":2,"xgf":0.74,"xga":0.9,"change":-13.101412711814428},{"date":"Feb 28, 2026","opponent":"MTL","isHome":true,"gf":3,"ga":0,"xgf":3.39,"xga":0.08,"change":13.11397017282647},{"date":"Mar 7, 2026","opponent":"CLB","isHome":false,"gf":0,"ga":0,"xgf":0.82,"xga":1.44,"change":-0.012557461012025211}],"TOR":[{"date":"Sep 28, 2025","opponent":"MIA","isHome":false,"gf":2,"ga":2,"xgf":0.98,"xga":1.87,"change":6.447545464506541},{"date":"Oct 4, 2025","opponent":"CHI","isHome":false,"gf":1,"ga":2,"xgf":1.96,"xga":0.71,"change":-3.3488236375585387},{"date":"Feb 21, 2026","opponent":"FCD","isHome":false,"gf":2,"ga":3,"xgf":1.55,"xga":1.4,"change":-4.662860640960533},{"date":"Feb 28, 2026","opponent":"VAN","isHome":false,"gf":0,"ga":3,"xgf":0.55,"xga":2.18,"change":-10.705860368383848},{"date":"Mar 8, 2026","opponent":"CIN","isHome":false,"gf":1,"ga":0,"xgf":1.21,"xga":1.08,"change":18.66324838311211}],"CLT":[{"date":"Oct 4, 2025","opponent":"DCU","isHome":true,"gf":1,"ga":1,"xgf":1.93,"xga":1.22,"change":1.1299949646452243},{"date":"Oct 18, 2025","opponent":"MIA","isHome":false,"gf":2,"ga":3,"xgf":2.34,"xga":3.25,"change":-6.790932356877846},{"date":"Feb 21, 2026","opponent":"STL","isHome":false,"gf":1,"ga":1,"xgf":0.75,"xga":2.21,"change":1.3662242139433615},{"date":"Feb 28, 2026","opponent":"LAG","isHome":false,"gf":0,"ga":3,"xgf":0.44,"xga":3.13,"change":-10.279619575971485},{"date":"Mar 7, 2026","opponent":"ATX","isHome":true,"gf":3,"ga":0,"xgf":3.18,"xga":0.15,"change":13.551662493375807}],"NYRB":[{"date":"Oct 4, 2025","opponent":"HOU","isHome":false,"gf":0,"ga":0,"xgf":0.29,"xga":1.74,"change":-0.7836377462446755},{"date":"Oct 18, 2025","opponent":"DCU","isHome":true,"gf":1,"ga":0,"xgf":2.25,"xga":0.2,"change":13.639727402947172},{"date":"Feb 21, 2026","opponent":"ORL","isHome":false,"gf":2,"ga":1,"xgf":3.46,"xga":2.01,"change":15.011689255018659},{"date":"Feb 28, 2026","opponent":"NER","isHome":true,"gf":1,"ga":0,"xgf":1.11,"xga":0.52,"change":8.55308042790649},{"date":"Mar 8, 2026","opponent":"MTL","isHome":true,"gf":0,"ga":3,"xgf":1.01,"xga":2.21,"change":-18.64669614459637}],"CLB":[{"date":"Oct 4, 2025","opponent":"ATL","isHome":false,"gf":2,"ga":1,"xgf":1.67,"xga":1.52,"change":14.646875904558027},{"date":"Oct 18, 2025","opponent":"PHI","isHome":false,"gf":0,"ga":0,"xgf":0.79,"xga":0.74,"change":1.0336681026600572},{"date":"Feb 21, 2026","opponent":"POR","isHome":false,"gf":2,"ga":3,"xgf":1.09,"xga":1.29,"change":-6.738663737299068},{"date":"Feb 28, 2026","opponent":"SKC","isHome":false,"gf":2,"ga":2,"xgf":2.35,"xga":1.58,"change":5.07470659987814},{"date":"Mar 7, 2026","opponent":"CHI","isHome":true,"gf":0,"ga":0,"xgf":1.44,"xga":0.82,"change":0.012557461012025211}],"DCU":[{"date":"Sep 28, 2025","opponent":"COL","isHome":false,"gf":1,"ga":1,"xgf":2.0,"xga":1.58,"change":4.439818817743527},{"date":"Oct 4, 2025","opponent":"CLT","isHome":false,"gf":1,"ga":1,"xgf":1.22,"xga":1.93,"change":-1.1299949646452243},{"date":"Oct 18, 2025","opponent":"NYRB","isHome":false,"gf":0,"ga":1,"xgf":0.2,"xga":2.25,"change":-13.639727402947172},{"date":"Feb 21, 2026","opponent":"PHI","isHome":true,"gf":1,"ga":0,"xgf":0.98,"xga":0.74,"change":12.722971358914618},{"date":"Mar 1, 2026","opponent":"ATX","isHome":false,"gf":0,"ga":1,"xgf":0.41,"xga":2.4,"change":-7.662589255799797},{"date":"Mar 7, 2026","opponent":"MIA","isHome":true,"gf":1,"ga":2,"xgf":1.65,"xga":0.95,"change":-2.4782672722888914}],"MTL":[{"date":"Oct 4, 2025","opponent":"POR","isHome":true,"gf":0,"ga":0,"xgf":1.78,"xga":0.68,"change":2.16279169620023},{"date":"Oct 18, 2025","opponent":"CIN","isHome":false,"gf":0,"ga":2,"xgf":0.24,"xga":3.0,"change":-11.411646270381084},{"date":"Feb 21, 2026","opponent":"SD","isHome":false,"gf":0,"ga":5,"xgf":0.4,"xga":1.52,"change":-10.748530491060932},{"date":"Feb 28, 2026","opponent":"CHI","isHome":false,"gf":0,"ga":3,"xgf":0.08,"xga":3.39,"change":-13.11397017282647},{"date":"Mar 8, 2026","opponent":"NYRB","isHome":false,"gf":3,"ga":0,"xgf":2.21,"xga":1.01,"change":18.64669614459637}],"MIA":[{"date":"Sep 28, 2025","opponent":"TOR","isHome":true,"gf":2,"ga":2,"xgf":1.87,"xga":0.98,"change":-6.447545464506541},{"date":"Oct 4, 2025","opponent":"NER","isHome":true,"gf":4,"ga":1,"xgf":3.36,"xga":1.06,"change":5.64406603278889},{"date":"Oct 18, 2025","opponent":"CLT","isHome":true,"gf":3,"ga":2,"xgf":3.25,"xga":2.34,"change":6.790932356877846},{"date":"Feb 21, 2026","opponent":"LAFC","isHome":false,"gf":0,"ga":3,"xgf":1.1,"xga":2.85,"change":-13.793064182341295},{"date":"Mar 1, 2026","opponent":"ORL","isHome":false,"gf":4,"ga":2,"xgf":1.63,"xga":1.03,"change":20.45785002010892},{"date":"Mar 7, 2026","opponent":"DCU","isHome":false,"gf":2,"ga":1,"xgf":0.95,"xga":1.65,"change":2.4782672722888914}],"ATL":[{"date":"Sep 27, 2025","opponent":"NER","isHome":false,"gf":0,"ga":2,"xgf":1.0,"xga":1.94,"change":-13.520779119179103},{"date":"Oct 4, 2025","opponent":"CLB","isHome":true,"gf":1,"ga":2,"xgf":1.52,"xga":1.67,"change":-14.646875904558027},{"date":"Oct 18, 2025","opponent":"ORL","isHome":false,"gf":2,"ga":1,"xgf":2.34,"xga":1.38,"change":18.91001878347895},{"date":"Feb 21, 2026","opponent":"CIN","isHome":false,"gf":0,"ga":2,"xgf":0.6,"xga":1.82,"change":-13.766308061413158},{"date":"Feb 28, 2026","opponent":"SJE","isHome":false,"gf":0,"ga":2,"xgf":0.85,"xga":2.72,"change":-12.78440702652174},{"date":"Mar 7, 2026","opponent":"RSL","isHome":true,"gf":2,"ga":3,"xgf":1.68,"xga":1.16,"change":-8.115371306354897}],"CIN":[{"date":"Sep 28, 2025","opponent":"LAFC","isHome":false,"gf":2,"ga":1,"xgf":1.06,"xga":1.08,"change":16.480076779899388},{"date":"Oct 4, 2025","opponent":"ORL","isHome":false,"gf":2,"ga":1,"xgf":1.77,"xga":0.99,"change":14.978835269707252},{"date":"Oct 18, 2025","opponent":"MTL","isHome":true,"gf":2,"ga":0,"xgf":3.0,"xga":0.24,"change":11.411646270381084},{"date":"Feb 21, 2026","opponent":"ATL","isHome":true,"gf":2,"ga":0,"xgf":1.82,"xga":0.6,"change":13.766308061413158},{"date":"Feb 28, 2026","opponent":"MIN","isHome":false,"gf":0,"ga":1,"xgf":1.17,"xga":1.78,"change":-13.435974003009594},{"date":"Mar 8, 2026","opponent":"TOR","isHome":true,"gf":0,"ga":1,"xgf":1.08,"xga":1.21,"change":-18.66324838311211}],"PHI":[{"date":"Oct 4, 2025","opponent":"SKC","isHome":true,"gf":0,"ga":3,"xgf":1.85,"xga":2.01,"change":-18.697523588220022},{"date":"Oct 18, 2025","opponent":"CLB","isHome":true,"gf":0,"ga":0,"xgf":0.74,"xga":0.79,"change":-1.0336681026600572},{"date":"Feb 21, 2026","opponent":"DCU","isHome":false,"gf":0,"ga":1,"xgf":0.74,"xga":0.98,"change":-12.722971358914618},{"date":"Mar 1, 2026","opponent":"NYC","isHome":true,"gf":1,"ga":2,"xgf":2.2,"xga":2.39,"change":-11.459346614144356},{"date":"Mar 7, 2026","opponent":"SJE","isHome":true,"gf":0,"ga":1,"xgf":1.19,"xga":1.12,"change":-15.177489233621458}],"NYC":[{"date":"Sep 28, 2025","opponent":"FCD","isHome":true,"gf":3,"ga":2,"xgf":3.22,"xga":1.11,"change":10.372551690196883},{"date":"Oct 4, 2025","opponent":"MIN","isHome":true,"gf":1,"ga":0,"xgf":2.84,"xga":0.69,"change":11.879743537243336},{"date":"Oct 18, 2025","opponent":"RSL","isHome":false,"gf":1,"ga":0,"xgf":0.89,"xga":0.89,"change":15.022312217684073},{"date":"Feb 22, 2026","opponent":"LAG","isHome":false,"gf":1,"ga":1,"xgf":1.56,"xga":0.36,"change":4.004481075677028},{"date":"Mar 1, 2026","opponent":"PHI","isHome":false,"gf":2,"ga":1,"xgf":2.39,"xga":2.2,"change":11.459346614144356},{"date":"Mar 7, 2026","opponent":"ORL","isHome":true,"gf":5,"ga":0,"xgf":2.39,"xga":0.17,"change":13.770857908990666}],"ORL":[{"date":"Oct 4, 2025","opponent":"CIN","isHome":true,"gf":1,"ga":2,"xgf":0.99,"xga":1.77,"change":-14.978835269707252},{"date":"Oct 18, 2025","opponent":"ATL","isHome":true,"gf":1,"ga":2,"xgf":1.38,"xga":2.34,"change":-18.91001878347895},{"date":"Feb 21, 2026","opponent":"NYRB","isHome":true,"gf":1,"ga":2,"xgf":2.01,"xga":3.46,"change":-15.011689255018659},{"date":"Mar 1, 2026","opponent":"MIA","isHome":true,"gf":2,"ga":4,"xgf":1.03,"xga":1.63,"change":-20.45785002010892},{"date":"Mar 7, 2026","opponent":"NYC","isHome":false,"gf":0,"ga":5,"xgf":0.17,"xga":2.39,"change":-13.770857908990666}],"POR":[{"date":"Oct 4, 2025","opponent":"MTL","isHome":false,"gf":0,"ga":0,"xgf":0.68,"xga":1.78,"change":-2.16279169620023},{"date":"Oct 18, 2025","opponent":"SEA","isHome":false,"gf":1,"ga":1,"xgf":1.51,"xga":0.77,"change":5.88167733854743},{"date":"Feb 21, 2026","opponent":"CLB","isHome":true,"gf":3,"ga":2,"xgf":1.29,"xga":1.09,"change":6.738663737299068},{"date":"Feb 28, 2026","opponent":"COL","isHome":false,"gf":0,"ga":2,"xgf":1.06,"xga":2.65,"change":-12.986873994263078},{"date":"Mar 7, 2026","opponent":"VAN","isHome":true,"gf":1,"ga":4,"xgf":0.47,"xga":2.98,"change":-10.705860368383848}],"VAN":[{"date":"Sep 27, 2025","opponent":"COL","isHome":true,"gf":1,"ga":2,"xgf":1.07,"xga":2.34,"change":-13.060183149021966},{"date":"Oct 4, 2025","opponent":"SEA","isHome":true,"gf":0,"ga":1,"xgf":1.56,"xga":0.89,"change":-12.593855518429938},{"date":"Oct 18, 2025","opponent":"RSL","isHome":true,"gf":2,"ga":1,"xgf":2.88,"xga":1.04,"change":14.469146197368735},{"date":"Feb 21, 2026","opponent":"RSL","isHome":true,"gf":1,"ga":0,"xgf":1.46,"xga":0.46,"change":13.048384351052683},{"date":"Feb 28, 2026","opponent":"TOR","isHome":true,"gf":3,"ga":0,"xgf":2.18,"xga":0.55,"change":10.705860368383848},{"date":"Mar 7, 2026","opponent":"POR","isHome":false,"gf":4,"ga":1,"xgf":2.98,"xga":0.47,"change":10.705860368383848}],"COL":[{"date":"Sep 28, 2025","opponent":"DCU","isHome":true,"gf":1,"ga":1,"xgf":1.58,"xga":2.0,"change":-4.439818817743527},{"date":"Oct 4, 2025","opponent":"SEA","isHome":true,"gf":0,"ga":1,"xgf":0.57,"xga":2.45,"change":-14.739726058066549},{"date":"Oct 18, 2025","opponent":"LAFC","isHome":true,"gf":2,"ga":2,"xgf":1.39,"xga":2.59,"change":4.0119729092913445},{"date":"Feb 22, 2026","opponent":"SEA","isHome":false,"gf":0,"ga":2,"xgf":0.75,"xga":1.27,"change":-13.023246752834316},{"date":"Feb 28, 2026","opponent":"POR","isHome":true,"gf":2,"ga":0,"xgf":2.65,"xga":1.06,"change":12.986873994263078},{"date":"Mar 7, 2026","opponent":"LAG","isHome":true,"gf":4,"ga":1,"xgf":2.28,"xga":1.45,"change":13.863559798038676}],"SEA":[{"date":"Sep 27, 2025","opponent":"HOU","isHome":true,"gf":1,"ga":0,"xgf":0.99,"xga":1.48,"change":10.281534066060855},{"date":"Oct 4, 2025","opponent":"VAN","isHome":false,"gf":1,"ga":0,"xgf":0.89,"xga":1.56,"change":12.593855518429938},{"date":"Oct 18, 2025","opponent":"POR","isHome":true,"gf":1,"ga":1,"xgf":0.77,"xga":1.51,"change":-5.88167733854743},{"date":"Feb 22, 2026","opponent":"COL","isHome":true,"gf":2,"ga":0,"xgf":1.27,"xga":0.75,"change":13.023246752834316},{"date":"Feb 28, 2026","opponent":"RSL","isHome":false,"gf":1,"ga":2,"xgf":1.96,"xga":2.04,"change":-10.457813098544911},{"date":"Mar 7, 2026","opponent":"STL","isHome":false,"gf":1,"ga":0,"xgf":0.96,"xga":1.04,"change":6.691957771239144}],"RSL":[{"date":"Sep 28, 2025","opponent":"ATX","isHome":false,"gf":2,"ga":2,"xgf":1.69,"xga":1.4,"change":2.6773223000969565},{"date":"Oct 18, 2025","opponent":"NYC","isHome":true,"gf":0,"ga":1,"xgf":0.89,"xga":0.89,"change":-15.022312217684073},{"date":"Oct 18, 2025","opponent":"VAN","isHome":false,"gf":1,"ga":2,"xgf":1.04,"xga":2.88,"change":-14.469146197368735},{"date":"Feb 21, 2026","opponent":"VAN","isHome":false,"gf":0,"ga":1,"xgf":0.46,"xga":1.46,"change":-13.048384351052683},{"date":"Feb 28, 2026","opponent":"SEA","isHome":true,"gf":2,"ga":1,"xgf":2.04,"xga":1.96,"change":10.457813098544911},{"date":"Mar 7, 2026","opponent":"ATL","isHome":false,"gf":3,"ga":2,"xgf":1.16,"xga":1.68,"change":8.115371306354897}],"SKC":[{"date":"Sep 28, 2025","opponent":"STL","isHome":false,"gf":1,"ga":3,"xgf":0.58,"xga":2.39,"change":-8.868770546654876},{"date":"Oct 4, 2025","opponent":"PHI","isHome":false,"gf":3,"ga":0,"xgf":2.01,"xga":1.85,"change":18.697523588220022},{"date":"Oct 18, 2025","opponent":"FCD","isHome":false,"gf":1,"ga":2,"xgf":0.65,"xga":1.51,"change":-11.770933939985923},{"date":"Feb 21, 2026","opponent":"SJE","isHome":false,"gf":0,"ga":3,"xgf":0.66,"xga":2.52,"change":-12.285871328906915},{"date":"Feb 28, 2026","opponent":"CLB","isHome":true,"gf":2,"ga":2,"xgf":1.58,"xga":2.35,"change":-5.07470659987814},{"date":"Mar 7, 2026","opponent":"SD","isHome":true,"gf":0,"ga":1,"xgf":0.63,"xga":2.1,"change":-6.176063994350172}],"MIN":[{"date":"Sep 27, 2025","opponent":"COL","isHome":true,"gf":3,"ga":0,"xgf":3.15,"xga":0.93,"change":14.881267576922573},{"date":"Oct 4, 2025","opponent":"NYC","isHome":false,"gf":0,"ga":1,"xgf":0.69,"xga":2.84,"change":-11.879743537243336},{"date":"Oct 18, 2025","opponent":"STL","isHome":true,"gf":4,"ga":1,"xgf":2.57,"xga":0.82,"change":14.073400511874404},{"date":"Feb 21, 2026","opponent":"ATX","isHome":false,"gf":2,"ga":2,"xgf":1.73,"xga":1.7,"change":5.418706240209217},{"date":"Feb 28, 2026","opponent":"CIN","isHome":true,"gf":1,"ga":0,"xgf":1.78,"xga":1.17,"change":13.435974003009594},{"date":"Mar 7, 2026","opponent":"NSH","isHome":false,"gf":1,"ga":3,"xgf":1.12,"xga":2.19,"change":-12.865963236081075}],"HOU":[{"date":"Sep 28, 2025","opponent":"SEA","isHome":false,"gf":0,"ga":1,"xgf":1.48,"xga":0.99,"change":-10.281534066060855},{"date":"Oct 4, 2025","opponent":"NYRB","isHome":true,"gf":0,"ga":0,"xgf":1.74,"xga":0.29,"change":0.7836377462446755},{"date":"Oct 18, 2025","opponent":"LAG","isHome":true,"gf":2,"ga":1,"xgf":1.24,"xga":1.77,"change":12.443916949390234},{"date":"Feb 21, 2026","opponent":"CHI","isHome":true,"gf":2,"ga":1,"xgf":0.9,"xga":0.74,"change":13.101412711814428},{"date":"Feb 28, 2026","opponent":"LAFC","isHome":true,"gf":0,"ga":2,"xgf":1.15,"xga":2.13,"change":-8.163957035301502}],"LAG":[{"date":"Sep 28, 2025","opponent":"SJE","isHome":true,"gf":2,"ga":0,"xgf":2.76,"xga":1.27,"change":11.861783049191062},{"date":"Oct 4, 2025","opponent":"ATX","isHome":false,"gf":1,"ga":1,"xgf":1.13,"xga":1.37,"change":6.446864434241619},{"date":"Oct 18, 2025","opponent":"HOU","isHome":false,"gf":1,"ga":2,"xgf":1.77,"xga":1.24,"change":-12.443916949390234},{"date":"Feb 22, 2026","opponent":"NYC","isHome":true,"gf":1,"ga":1,"xgf":0.36,"xga":1.56,"change":-4.004481075677028},{"date":"Feb 28, 2026","opponent":"CLT","isHome":true,"gf":3,"ga":0,"xgf":3.13,"xga":0.44,"change":10.279619575971485},{"date":"Mar 7, 2026","opponent":"COL","isHome":false,"gf":1,"ga":4,"xgf":1.45,"xga":2.28,"change":-13.863559798038676}],"FCD":[{"date":"Sep 28, 2025","opponent":"NYC","isHome":false,"gf":2,"ga":3,"xgf":1.11,"xga":3.22,"change":-10.372551690196883},{"date":"Oct 4, 2025","opponent":"SJE","isHome":false,"gf":2,"ga":3,"xgf":1.56,"xga":1.87,"change":-10.999663730591147},{"date":"Oct 18, 2025","opponent":"SKC","isHome":true,"gf":2,"ga":1,"xgf":1.51,"xga":0.65,"change":11.770933939985923},{"date":"Feb 21, 2026","opponent":"TOR","isHome":true,"gf":3,"ga":2,"xgf":1.4,"xga":1.55,"change":4.662860640960533},{"date":"Feb 28, 2026","opponent":"NSH","isHome":true,"gf":0,"ga":0,"xgf":0.95,"xga":0.51,"change":3.187895475390779},{"date":"Mar 7, 2026","opponent":"LAFC","isHome":false,"gf":0,"ga":1,"xgf":1.3,"xga":1.32,"change":-5.802731425279184}],"SJE":[{"date":"Sep 28, 2025","opponent":"LAG","isHome":false,"gf":0,"ga":2,"xgf":1.27,"xga":2.76,"change":-11.861783049191062},{"date":"Oct 4, 2025","opponent":"FCD","isHome":true,"gf":3,"ga":2,"xgf":1.87,"xga":1.56,"change":10.999663730591147},{"date":"Oct 18, 2025","opponent":"SD","isHome":false,"gf":1,"ga":2,"xgf":1.48,"xga":2.85,"change":-11.836594270222485},{"date":"Feb 21, 2026","opponent":"SKC","isHome":true,"gf":3,"ga":0,"xgf":2.52,"xga":0.66,"change":12.285871328906915},{"date":"Feb 28, 2026","opponent":"ATL","isHome":true,"gf":2,"ga":0,"xgf":2.72,"xga":0.85,"change":12.78440702652174},{"date":"Mar 7, 2026","opponent":"PHI","isHome":false,"gf":1,"ga":0,"xgf":1.12,"xga":1.19,"change":15.177489233621458}],"ATX":[{"date":"Sep 28, 2025","opponent":"RSL","isHome":true,"gf":2,"ga":2,"xgf":1.4,"xga":1.69,"change":-2.6773223000969565},{"date":"Oct 4, 2025","opponent":"LAG","isHome":true,"gf":1,"ga":1,"xgf":1.37,"xga":1.13,"change":-6.446864434241619},{"date":"Oct 12, 2025","opponent":"LAFC","isHome":true,"gf":1,"ga":0,"xgf":0.54,"xga":0.52,"change":16.653819608777468},{"date":"Feb 21, 2026","opponent":"MIN","isHome":true,"gf":2,"ga":2,"xgf":1.7,"xga":1.73,"change":-5.418706240209217},{"date":"Mar 1, 2026","opponent":"DCU","isHome":true,"gf":1,"ga":0,"xgf":2.4,"xga":0.41,"change":7.662589255799797},{"date":"Mar 7, 2026","opponent":"CLT","isHome":false,"gf":0,"ga":3,"xgf":0.15,"xga":3.18,"change":-13.551662493375807}],"LAFC":[{"date":"Oct 12, 2025","opponent":"ATX","isHome":false,"gf":0,"ga":1,"xgf":0.52,"xga":0.54,"change":-16.653819608777468},{"date":"Oct 18, 2025","opponent":"COL","isHome":false,"gf":2,"ga":2,"xgf":2.59,"xga":1.39,"change":-4.0119729092913445},{"date":"Feb 21, 2026","opponent":"MIA","isHome":true,"gf":3,"ga":0,"xgf":2.85,"xga":1.1,"change":13.793064182341295},{"date":"Feb 28, 2026","opponent":"HOU","isHome":false,"gf":2,"ga":0,"xgf":2.13,"xga":1.15,"change":8.163957035301502},{"date":"Mar 7, 2026","opponent":"FCD","isHome":true,"gf":1,"ga":0,"xgf":1.32,"xga":1.3,"change":5.802731425279184}],"NSH":[{"date":"Sep 27, 2025","opponent":"SD","isHome":false,"gf":2,"ga":3,"xgf":1.48,"xga":1.38,"change":-10.45524355322971},{"date":"Oct 4, 2025","opponent":"STL","isHome":true,"gf":2,"ga":1,"xgf":2.41,"xga":0.75,"change":12.793441712239638},{"date":"Feb 21, 2026","opponent":"NER","isHome":true,"gf":4,"ga":1,"xgf":2.83,"xga":0.53,"change":9.568843488346575},{"date":"Feb 28, 2026","opponent":"FCD","isHome":false,"gf":0,"ga":0,"xgf":0.51,"xga":0.95,"change":-3.187895475390779},{"date":"Mar 7, 2026","opponent":"MIN","isHome":true,"gf":3,"ga":1,"xgf":2.19,"xga":1.12,"change":12.865963236081075}],"STL":[{"date":"Sep 28, 2025","opponent":"SKC","isHome":true,"gf":3,"ga":1,"xgf":2.39,"xga":0.58,"change":8.868770546654876},{"date":"Oct 4, 2025","opponent":"NSH","isHome":false,"gf":1,"ga":2,"xgf":0.75,"xga":2.41,"change":-12.793441712239638},{"date":"Oct 18, 2025","opponent":"MIN","isHome":false,"gf":1,"ga":4,"xgf":0.82,"xga":2.57,"change":-14.073400511874404},{"date":"Feb 21, 2026","opponent":"CLT","isHome":true,"gf":1,"ga":1,"xgf":2.21,"xga":0.75,"change":-1.3662242139433615},{"date":"Mar 1, 2026","opponent":"SD","isHome":false,"gf":0,"ga":2,"xgf":1.26,"xga":1.3,"change":-7.901509176313364},{"date":"Mar 7, 2026","opponent":"SEA","isHome":true,"gf":0,"ga":1,"xgf":1.04,"xga":0.96,"change":-6.691957771239144}],"SD":[{"date":"Sep 27, 2025","opponent":"NSH","isHome":true,"gf":3,"ga":2,"xgf":1.38,"xga":1.48,"change":10.45524355322971},{"date":"Oct 18, 2025","opponent":"SJE","isHome":true,"gf":2,"ga":1,"xgf":2.85,"xga":1.48,"change":11.836594270222485},{"date":"Feb 21, 2026","opponent":"MTL","isHome":true,"gf":5,"ga":0,"xgf":1.52,"xga":0.4,"change":10.748530491060932},{"date":"Mar 1, 2026","opponent":"STL","isHome":true,"gf":2,"ga":0,"xgf":1.3,"xga":1.26,"change":7.901509176313364},{"date":"Mar 7, 2026","opponent":"SKC","isHome":false,"gf":1,"ga":0,"xgf":2.1,"xga":0.63,"change":6.176063994350172}]};
+
+        // Initialize hardcoded table on load
+        const initialStandings = [
+            {team: 'LAFC', elo: 1623.3, change: 5.8}, {team: 'MIA', elo: 1612.7, change: 2.5}, {team: 'SD', elo: 1594.1, change: 6.2},
+            {team: 'VAN', elo: 1593.9, change: 10.7}, {team: 'SEA', elo: 1583.8, change: 6.7}, {team: 'NYC', elo: 1571.3, change: 13.8},
+            {team: 'CIN', elo: 1552.9, change: -18.7}, {team: 'MIN', elo: 1546.2, change: -12.9}, {team: 'NSH', elo: 1544.5, change: 12.9},
+            {team: 'CLT', elo: 1534.8, change: 13.6}, {team: 'PHI', elo: 1534.4, change: -15.2}, {team: 'CLB', elo: 1529.6, change: 0.0},
+            {team: 'CHI', elo: 1526.2, change: 0.0}, {team: 'FCD', elo: 1513.9, change: -5.8}, {team: 'ORL', elo: 1506.4, change: -13.8},
+            {team: 'SJE', elo: 1498.2, change: 15.2}, {team: 'LAG', elo: 1491.2, change: -13.9}, {team: 'RSL', elo: 1480.9, change: 8.1},
+            {team: 'NYRB', elo: 1477.5, change: -18.6}, {team: 'HOU', elo: 1476.5, change: -8.2}, {team: 'COL', elo: 1476.3, change: 13.9},
+            {team: 'ATX', elo: 1471.7, change: -13.6}, {team: 'STL', elo: 1449.4, change: -6.7}, {team: 'TOR', elo: 1447.0, change: 18.7},
+            {team: 'POR', elo: 1444.9, change: -10.7}, {team: 'MTL', elo: 1437.0, change: 18.6}, {team: 'DCU', elo: 1408.0, change: -2.5},
+            {team: 'NER', elo: 1406.4, change: -8.6}, {team: 'ATL', elo: 1391.5, change: -8.1}, {team: 'SKC', elo: 1377.1, change: -6.2}
+        ];
+        
+        // --- UI Modals Logic ---
+        var methModal = document.getElementById("methodologyModal");
+        var formModal = document.getElementById("teamFormModal");
+        
+        document.getElementById("infoButton").onclick = () => methModal.style.display = "block";
+        document.getElementById("closeModal").onclick = () => methModal.style.display = "none";
+        document.getElementById("closeFormModal").onclick = () => formModal.style.display = "none";
+        
+        window.onclick = function(event) {
+            if (event.target == methModal) methModal.style.display = "none";
+            if (event.target == formModal) formModal.style.display = "none";
+        }
+
+        function showTeamForm(team) {
+            const history = window.teamForm[team] || [];
+            const last5 = history.slice(-5).reverse(); 
+            
+            let html = `<h2>${team} - Last 5 Matches</h2>`;
+            html += `<table id="formTable"><tr><th>Date</th><th>Opponent</th><th>Result</th><th>Score</th><th>xG</th><th>Elo Change</th></tr>`;
+            
+            if (last5.length === 0) {
+                html += `<tr><td colspan="6">No recent match data found for ${team}. Upload a new CSV to populate.</td></tr>`;
+            } else {
+                last5.forEach(match => {
+                    const oppStr = match.isHome ? `vs ${match.opponent}` : `@ ${match.opponent}`;
+                    
+                    let result = 'D';
+                    let resClass = 'change-neutral';
+                    if (match.gf > match.ga) { result = 'W'; resClass = 'change-positive'; }
+                    else if (match.gf < match.ga) { result = 'L'; resClass = 'change-negative'; }
+
+                    let changeStr = match.change > 0 ? `+${match.change.toFixed(1)}` : match.change.toFixed(1);
+                    let changeClass = match.change > 0 ? 'change-positive' : (match.change < 0 ? 'change-negative' : 'change-neutral');
+
+                    html += `<tr>
+                        <td>${match.date}</td>
+                        <td>${oppStr}</td>
+                        <td><strong class="${resClass}">${result}</strong></td>
+                        <td>${match.gf} - ${match.ga}</td>
+                        <td>${match.xgf.toFixed(2)} - ${match.xga.toFixed(2)}</td>
+                        <td class="${changeClass}">${changeStr}</td>
+                    </tr>`;
+                });
+            }
+            html += `</table>`;
+            
+            document.getElementById('teamFormContent').innerHTML = html;
+            formModal.style.display = "block";
+        }
+
+        // --- Core Parsing Logic ---
+        document.getElementById('csvFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('statusMessage').innerHTML = "Crunching the latest numbers...";
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processData(results.data);
+                }
+            });
+        });
+
+        function processData(data) {
+            let validData = data.filter(row => row.Date && row.Home && row.Away);
+            validData.forEach(row => {
+                row.parsedDate = new Date(row.Date);
+            });
+            
+            validData.sort((a, b) => a.parsedDate - b.parsedDate);
+
+            if (validData.length === 0) {
+                document.getElementById('statusMessage').innerHTML = "<span style='color:red;'>Error: No valid data found in CSV.</span>";
+                return;
+            }
+
+            const latestDate = validData[validData.length - 1].parsedDate;
+            const dateOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+            const formattedDate = latestDate.toLocaleDateString('en-US', dateOptions);
+
+            const keys = Object.keys(validData[0]);
+            const hgKey = keys.find(k => k === 'HG' || k.includes('HGGoals')) || 'HG';
+            const agKey = keys.find(k => k === 'AG' || k.includes('AGGoals')) || 'AG';
+            const hXgKey = keys.find(k => k === 'HxGt' || k.includes('HxGtTeam')) || 'HxGt';
+            const aXgKey = keys.find(k => k === 'AxGt' || k.includes('AxGtTeam')) || 'AxGt';
+            const gdKey = keys.find(k => k === 'GD' || k.includes('GDGoal Difference')) || 'GD';
+
+            let ratings = {};
+            let lastChange = {}; 
+            let activeTeams = new Set();
+            let maxYear = 0;
+            
+            window.teamForm = {};
+
+            validData.forEach(row => {
+                if (!isNaN(row.parsedDate.getFullYear())) {
+                    if (row.parsedDate.getFullYear() > maxYear) maxYear = row.parsedDate.getFullYear();
+                }
+            });
+
+            const HOME_ADVANTAGE = 25;
+            const XG_WEIGHT = 0.3;
+            const RESULT_WEIGHT = 0.7;
+            const BLOWOUT_FACTOR = 0.02;
+            const K_FACTOR = 32;
+
+            validData.forEach(row => {
+                const home = row['Home'];
+                const away = row['Away'];
+
+                if (row.parsedDate.getFullYear() === maxYear) {
+                    activeTeams.add(home);
+                    activeTeams.add(away);
+                }
+
+                if (!ratings[home]) ratings[home] = 1500.0;
+                if (!ratings[away]) ratings[away] = 1500.0;
+                
+                if (!window.teamForm[home]) window.teamForm[home] = [];
+                if (!window.teamForm[away]) window.teamForm[away] = [];
+
+                const r_home_old = ratings[home];
+                const r_away_old = ratings[away];
+
+                const e_home = 1 / (1 + Math.pow(10, (r_away_old - (r_home_old + HOME_ADVANTAGE)) / 400));
+
+                const xg_home = parseFloat(row[hXgKey]);
+                const xg_away = parseFloat(row[aXgKey]);
+                
+                let xg_share_home = 0.5;
+                if (!isNaN(xg_home) && !isNaN(xg_away) && (xg_home + xg_away) > 0) {
+                    xg_share_home = xg_home / (xg_home + xg_away);
+                }
+
+                const hg = parseFloat(row[hgKey]);
+                const ag = parseFloat(row[agKey]);
+
+                let s_home = 0.5;
+                if (!isNaN(hg) && !isNaN(ag)) {
+                    if (hg > ag) s_home = 1.0;
+                    else if (hg < ag) s_home = 0.0;
+                }
+
+                const a_home = (RESULT_WEIGHT * s_home) + (XG_WEIGHT * xg_share_home);
+
+                const gd = parseFloat(row[gdKey]);
+                let b_multiplier = 1.0;
+                if (!isNaN(gd)) {
+                    const abs_gd = Math.abs(gd);
+                    if (abs_gd >= 3) {
+                        b_multiplier = 1 + (abs_gd * BLOWOUT_FACTOR);
+                    }
+                }
+
+                const r_home_change = K_FACTOR * b_multiplier * (a_home - e_home);
+                const r_away_change = -r_home_change;
+
+                ratings[home] += r_home_change;
+                ratings[away] += r_away_change;
+                
+                lastChange[home] = r_home_change;
+                lastChange[away] = r_away_change;
+                
+                const matchDateStr = row.parsedDate.toLocaleDateString('en-US', dateOptions);
+                
+                window.teamForm[home].push({
+                    date: matchDateStr, opponent: away, isHome: true,
+                    gf: isNaN(hg) ? 0 : hg, ga: isNaN(ag) ? 0 : ag,
+                    xgf: isNaN(xg_home) ? 0 : xg_home, xga: isNaN(xg_away) ? 0 : xg_away,
+                    change: r_home_change
+                });
+                
+                window.teamForm[away].push({
+                    date: matchDateStr, opponent: home, isHome: false,
+                    gf: isNaN(ag) ? 0 : ag, ga: isNaN(hg) ? 0 : hg,
+                    xgf: isNaN(xg_away) ? 0 : xg_away, xga: isNaN(xg_home) ? 0 : xg_home,
+                    change: r_away_change
+                });
+            });
+
+            let finalStandings = [];
+            for (let team in ratings) {
+                if (activeTeams.has(team)) {
+                    finalStandings.push({ 
+                        team: team, elo: ratings[team], change: lastChange[team] || 0 
+                    });
+                }
+            }
+            
+            finalStandings.sort((a, b) => b.elo - a.elo);
+            
+            renderTable(finalStandings);
+            document.getElementById('dateBadge').innerText = "Current as of " + formattedDate;
+            document.getElementById('statusMessage').innerHTML = "Standings successfully updated!";
+        }
+
+        function renderTable(standings) {
+            let html = '<table><tr><th>Rank</th><th>Team</th><th>Hybrid Elo Rating</th><th>Recent Form</th></tr>';
+            
+            standings.forEach((item, index) => {
+                let changeIndicator = '';
+                if (item.change > 0.05) {
+                    changeIndicator = `<span class="change-positive">(+${item.change.toFixed(1)})</span>`;
+                } else if (item.change < -0.05) {
+                    changeIndicator = `<span class="change-negative">(${item.change.toFixed(1)})</span>`;
+                } else {
+                    changeIndicator = `<span class="change-neutral">(0.0)</span>`;
+                }
+
+                // Generate Form Badges
+                let formHtml = '<div class="form-container">';
+                if (window.teamForm && window.teamForm[item.team]) {
+                    // Get the last 5 matches (oldest to newest)
+                    const last5 = window.teamForm[item.team].slice(-5);
+                    last5.forEach(match => {
+                        let res = 'D';
+                        let fClass = 'form-d';
+                        if (match.gf > match.ga) { res = 'W'; fClass = 'form-w'; }
+                        else if (match.gf < match.ga) { res = 'L'; fClass = 'form-l'; }
+                        
+                        const oppStr = match.isHome ? `vs ${match.opponent}` : `@ ${match.opponent}`;
+                        const tooltip = `${match.date}: ${oppStr} (${match.gf}-${match.ga})`;
+                        
+                        formHtml += `<span class="form-badge ${fClass}" title="${tooltip}">${res}</span>`;
+                    });
+                }
+                formHtml += '</div>';
+
+                html += `<tr>
+                            <td class="rank-col">${index + 1}</td>
+                            <td><span class="team-name" onclick="showTeamForm('${item.team}')"><strong>${item.team}</strong></span></td>
+                            <td>${item.elo.toFixed(1)} ${changeIndicator}</td>
+                            <td>${formHtml}</td>
+                         </tr>`;
+            });
+            
+            html += '</table>';
+            document.getElementById('tableContainer').innerHTML = html;
+        }
+
+        // Render Initial Output
+        renderTable(initialStandings);
+    </script>
+</body>
+</html>
