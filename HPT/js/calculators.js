@@ -3760,49 +3760,32 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
         const lib = [];
         
         // 1. Ingest from DB
-        if (radionuclides) {
-            radionuclides.forEach(n => {
-                // Parse Parent Gammas
-                if (n.emissionEnergies && n.emissionEnergies.gamma) {
-                    n.emissionEnergies.gamma.forEach(eStr => {
-                        const match = eStr.match(/([\d.]+)/);
-                        if (match) {
-                            let energy = safeParseFloat(match[1]);
-                            if (eStr.includes('MeV')) energy *= 1000; 
-                            
-                            lib.push({ 
-                                symbol: n.symbol, 
-                                name: n.name, 
-                                energy: energy, 
-                                yield: 0, 
-                                confirm: null,
-                                isUnknownYield: true 
-                            });
-                        }
-                    });
-                }
-                
-                // Parse Daughter Gammas
-                if (n.daughterEmissions && n.daughterEmissions.gamma) {
-                    n.daughterEmissions.gamma.forEach(eStr => {
-                        const match = eStr.match(/([\d.]+)/);
-                        if (match) {
-                            let energy = safeParseFloat(match[1]);
-                            if (eStr.includes('MeV')) energy *= 1000; 
-                            
-                            lib.push({ 
-                                symbol: n.daughterEmissions.from, 
-                                name: `${n.daughterEmissions.from} (from ${n.symbol})`, 
-                                energy: energy, 
-                                yield: 0, 
-                                confirm: `Daughter of ${n.symbol}`,
-                                isUnknownYield: true 
-                            });
-                        }
-                    });
-                }
-            });
-        }
+            if (radionuclides) {
+                radionuclides.forEach(n => {
+                    // Parse Parent Gammas
+                    if (n.emissionEnergies && n.emissionEnergies.gamma) {
+                        n.emissionEnergies.gamma.forEach(eStr => {
+                            const match = eStr.match(/([\d.]+)\s*(MeV|keV)/i);
+                            if (match) {
+                                let energy = safeParseFloat(match[1]);
+                                if (match[2].toLowerCase() === 'mev') energy *= 1000;
+                                lib.push({ symbol: n.symbol, name: n.name, energy: energy, yield: 0, confirm: null, isUnknownYield: true });
+                            }
+                        });
+                    }
+                    // Parse Daughter Gammas
+                    if (n.daughterEmissions && n.daughterEmissions.gamma) {
+                        n.daughterEmissions.gamma.forEach(eStr => {
+                            const match = eStr.match(/([\d.]+)\s*(MeV|keV)/i);
+                            if (match) {
+                                let energy = safeParseFloat(match[1]);
+                                if (match[2].toLowerCase() === 'mev') energy *= 1000;
+                                lib.push({ symbol: n.daughterEmissions.from, name: `${n.daughterEmissions.from} (from ${n.symbol})`, energy: energy, yield: 0, confirm: `Daughter of ${n.symbol}`, isUnknownYield: true });
+                            }
+                        });
+                    }
+                });
+            }
 
         // 2. Fallback/Enrichment with High Quality Data
         const COMMON_ISOTOPES = [
