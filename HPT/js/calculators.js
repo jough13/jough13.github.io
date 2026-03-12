@@ -2701,6 +2701,9 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             }
 
         const actTBq = val * activityFactorsTBq[newItemUnit];
+        const actBq = val * (activityFactorsTBq[newItemUnit] * 1e12);
+
+        const exemptLimitBq = nuclideData.shipping.exemptConsignmentBq || 0;
 
         const item = {
             id: Date.now(),
@@ -2715,6 +2718,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             fracTypeA: limitTBq === Infinity ? 0 : actTBq / limitTBq,
             fracExcMat: (limitTBq === Infinity || limitTBq * matMultiplier === 0) ? 0 : actTBq / (limitTBq * matMultiplier),
             fracExcInst: (limitTBq === Infinity || limitTBq * instMultiplier === 0) ? 0 : actTBq / (limitTBq * instMultiplier),
+            fracExempt: exemptLimitBq > 0 ? actBq / exemptLimitBq : Infinity,
         };
 
         setPackageItems(prev => [...prev, item]);
@@ -2735,6 +2739,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         let sumFracExcMat = 0;
         let sumFracExcInst = 0;
         let sumFracHRCQ = 0;
+        let sumFracExempt = 0;
 
         packageItems.forEach(item => {
             totalTBq += item.actTBq;
@@ -2742,13 +2747,17 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             sumFracExcMat += item.fracExcMat;
             sumFracExcInst += item.fracExcInst; // Track Instrument fraction
             sumFracHRCQ += (item.actTBq / (3000 * item.typeALimit)); 
+            sumFracExempt += item.fracExempt;
         });
 
         let classification = '';
         let methodology = '';
 
-        // FIX 2: Evaluate both Material and Instrument Excepted logic
-        if (sumFracExcMat <= 1.0) {
+        // FIX 2: Evaluate Exempt first, then Material and Instrument Excepted logic
+        if (sumFracExempt <= 1.0) {
+            classification = 'EXEMPT';
+            methodology = 'Not Regulated as Class 7 (Below Exempt Consignment Limits per 49 CFR 173.436)';
+        } else if (sumFracExcMat <= 1.0) {
             classification = 'EXCEPTED';
             methodology = 'Sum of Fractions ≤ 1.0 (Excepted Material Limits)';
         } else if (sumFracExcInst <= 1.0) {
@@ -2822,7 +2831,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                 });
             }
         }
-    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType]); // Removed CONTAM_LIMITS dependency since it's constant
+    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType]);
 
     const handleClear = () => {
         setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1');
@@ -2846,6 +2855,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     // --- STATE & STYLE CONSTANTS ---
     const resultStyles = {
+        EXEMPT: { container: 'bg-slate-100 dark:bg-slate-700/50', title: 'text-slate-600 dark:text-slate-300', display: 'Exempt (Not Class 7)' },
         EXCEPTED: { container: 'bg-green-100 dark:bg-green-900/50', title: 'text-green-600 dark:text-green-400', display: 'Excepted Package' },
         TYPE_A: { container: 'bg-sky-100 dark:bg-sky-900/50', title: 'text-sky-600 dark:text-sky-400', display: 'Type A Package' },
         TYPE_B: { container: 'bg-amber-100 dark:bg-amber-900/50', title: 'text-amber-600 dark:text-amber-400', display: 'Type B Package' },
@@ -3013,6 +3023,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
         </div>
     );
 };
+
 /**
  * @description React component acting as a container for various medical physics tools.
  */
