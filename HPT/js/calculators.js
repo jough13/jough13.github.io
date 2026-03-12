@@ -2616,8 +2616,8 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     // FIX 1: Updated to current 49 CFR 173.443 limits (4 Bq/cm2 and 0.4 Bq/cm2)
     const CONTAM_LIMITS = {
-        beta_gamma: { removable: 24000, label: 'Beta/Gamma/Low-Tox Alpha' },
-        alpha: { removable: 2400, label: 'Other Alpha' }
+        beta_gamma: { dpm_100cm2: 24000, bq_cm2: 4, label: 'Beta/Gamma/Low-Tox Alpha' },
+        alpha: { dpm_100cm2: 2400, bq_cm2: 0.4, label: 'Other Alpha' }
     };
 
     // --- 2. STATE ---
@@ -2822,16 +2822,19 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
             if (isNaN(remVal)) { setContamResult(null); }
             else if (remVal < 0) { setContamResult({ status: 'ERROR', msg: 'Negative value' }); }
             else {
-                const limit = CONTAM_LIMITS[contamNuclideType].removable;
+                const isSi = settings.unitSystem === 'si';
+                const limit = isSi ? CONTAM_LIMITS[contamNuclideType].bq_cm2 : CONTAM_LIMITS[contamNuclideType].dpm_100cm2;
+                const unitLabel = isSi ? 'Bq/cm²' : 'dpm/100cm²';
+                
                 const fail = remVal > limit;
                 setContamResult({
                     status: fail ? 'FAIL' : 'PASS',
-                    msg: fail ? `Exceeds 49 CFR Limit (${limit.toLocaleString()} dpm/100cm²)` : 'Within Limits',
+                    msg: fail ? `Exceeds 49 CFR Limit (${limit.toLocaleString()} ${unitLabel})` : 'Within Limits',
                     limit
                 });
             }
         }
-    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType]);
+    }, [doseRateAt1m, doseRateUnit, surfaceDoseRate, surfaceDoseRateUnit, checkContam, removableContam, contamNuclideType, settings.unitSystem]);
 
     const handleClear = () => {
         setPackageItems([]); setNewItemSymbol(''); setNewItemActivity('1');
@@ -3051,21 +3054,27 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                             <input type="checkbox" checked={checkContam} onChange={e => setCheckContam(e.target.checked)} className="form-checkbox h-4 w-4 rounded text-sky-600" />
                             3. Contamination
                         </label>
-                        {checkContam && (
-                            <div className="animate-fade-in space-y-2">
-                                <div><label className="block text-[10px] font-bold mb-1">Nuclide Type</label><select value={contamNuclideType} onChange={e => setContamNuclideType(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-xs"><option value="beta_gamma">Beta / Gamma</option><option value="alpha">Alpha</option></select></div>
-                                <div>
-                                    <label className="block text-[10px] font-bold mb-1">Removable (dpm/100cm²)</label>
-                                    <input type="number" min="0" value={removableContam} onChange={e => setRemovableContam(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g. 500" />
-                                    <p className="text-[10px] text-slate-400 italic text-right mt-1">Limit: {CONTAM_LIMITS[contamNuclideType].removable.toLocaleString()}</p>
-                                </div>
-                                {contamResult && (
-                                    <div className={`p-2 rounded text-center text-sm font-bold ${contamResult.status === 'FAIL' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                        {contamResult.status === 'FAIL' ? '❌ Exceeds Limit' : '✅ Within Limits'}
+                        {checkContam && (() => {
+                            const isSi = settings.unitSystem === 'si';
+                            const unitLabel = isSi ? 'Bq/cm²' : 'dpm/100cm²';
+                            const activeLimit = isSi ? CONTAM_LIMITS[contamNuclideType].bq_cm2 : CONTAM_LIMITS[contamNuclideType].dpm_100cm2;
+
+                            return (
+                                <div className="animate-fade-in space-y-2">
+                                    <div><label className="block text-[10px] font-bold mb-1">Nuclide Type</label><select value={contamNuclideType} onChange={e => setContamNuclideType(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-xs"><option value="beta_gamma">Beta / Gamma</option><option value="alpha">Alpha</option></select></div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold mb-1">Removable ({unitLabel})</label>
+                                        <input type="number" min="0" step="any" value={removableContam} onChange={e => setRemovableContam(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm" placeholder={isSi ? "e.g. 0.5" : "e.g. 500"} />
+                                        <p className="text-[10px] text-slate-400 italic text-right mt-1">Limit: {activeLimit.toLocaleString()} {unitLabel}</p>
                                     </div>
-                                )}
-                            </div>
-                        )}
+                                    {contamResult && (
+                                        <div className={`p-2 rounded text-center text-sm font-bold ${contamResult.status === 'FAIL' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                                            {contamResult.status === 'FAIL' ? '❌ Exceeds Limit' : '✅ Within Limits'}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
 
