@@ -2894,10 +2894,23 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                 
                                 {/* A1/A2 INFO DISPLAY */}
                                 {selectedNuclideData && (() => {
-                                    // Calculate dynamic limits for display
+                                    // 1. Determine active units and multipliers based on user settings
+                                    const isSi = settings.unitSystem === 'si';
+                                    const unitBig = isSi ? 'TBq' : 'Ci';
+                                    const multBig = isSi ? 1 : 27.027; // 1 TBq = 27.027 Ci
+                                    const unitSmall = isSi ? 'Bq' : 'µCi';
+                                    const multSmall = isSi ? 1 : (1 / 37000); // 1 µCi = 37,000 Bq
+
+                                    // 2. Parse raw limits
+                                    const a1Raw = selectedNuclideData.shipping.A1;
+                                    const a2Raw = selectedNuclideData.shipping.A2;
+                                    const a1Val = (typeof a1Raw === 'string' && a1Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a1Raw);
+                                    const a2Val = (typeof a2Raw === 'string' && a2Raw.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(a2Raw);
+                                    
                                     let rawLimit = selectedNuclideData.shipping[newItemForm];
                                     let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
                                     
+                                    // 3. Determine multipliers based on Form & State
                                     let matMultiplier = 0; let instMultiplier = 0;
                                     if (newItemSymbol === 'H-3') { 
                                         matMultiplier = 2e-2; instMultiplier = 2e-1; 
@@ -2910,6 +2923,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                         matMultiplier = 1e-3; instMultiplier = 1e-2; 
                                     }
 
+                                    // 4. Formatting helper
                                     const formatLimit = (val) => val === Infinity ? 'Unlimited' : val.toExponential(2);
                                     const exemptBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
 
@@ -2922,21 +2936,21 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                             <div className="space-y-1.5 mt-1">
                                                 {/* A1 / A2 Limits */}
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    <div className="flex justify-between"><span className="text-slate-500">A₁ (Special):</span><span className="font-mono font-bold">{selectedNuclideData.shipping.A1} TBq</span></div>
-                                                    <div className="flex justify-between"><span className="text-slate-500">A₂ (Normal):</span><span className="font-mono font-bold">{selectedNuclideData.shipping.A2} TBq</span></div>
+                                                    <div className="flex justify-between"><span className="text-slate-500">A₁ (Special):</span><span className="font-mono font-bold">{formatLimit(a1Val * multBig)} {unitBig}</span></div>
+                                                    <div className="flex justify-between"><span className="text-slate-500">A₂ (Normal):</span><span className="font-mono font-bold">{formatLimit(a2Val * multBig)} {unitBig}</span></div>
                                                 </div>
                                                 
                                                 {/* Excepted Limits (Dynamic based on selected Form/State) */}
                                                 <div className="grid grid-cols-2 gap-2 bg-white/50 dark:bg-slate-800/50 p-1 rounded">
-                                                    <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight mb-0.5">Exc. Material</span><span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formatLimit(limitTBq * matMultiplier)} TBq</span></div>
-                                                    <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight mb-0.5">Exc. Instrument</span><span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formatLimit(limitTBq * instMultiplier)} TBq</span></div>
+                                                    <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight mb-0.5">Exc. Material</span><span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formatLimit(limitTBq * matMultiplier * multBig)} {unitBig}</span></div>
+                                                    <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight mb-0.5">Exc. Instrument</span><span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formatLimit(limitTBq * instMultiplier * multBig)} {unitBig}</span></div>
                                                 </div>
 
                                                 {/* Exempt Consignment Limit */}
                                                 <div className="flex justify-between items-center pt-1 border-t border-blue-200 dark:border-blue-800/50">
                                                     <span className="text-slate-500">Exempt Consignment:</span>
                                                     <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                                                        {exemptBq > 0 ? exemptBq.toExponential(2) : '0'} Bq
+                                                        {exemptBq > 0 ? (exemptBq * multSmall).toExponential(2) : '0'} {unitSmall}
                                                     </span>
                                                 </div>
                                             </div>
