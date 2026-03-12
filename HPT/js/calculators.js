@@ -2893,17 +2893,56 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                 </div>
                                 
                                 {/* A1/A2 INFO DISPLAY */}
-                                {selectedNuclideData && (
-                                    <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-[10px] sm:text-xs">
-                                        <div className="flex justify-between font-bold text-blue-700 dark:text-blue-300 mb-1">
-                                            <span>DOT Limits (TBq)</span>
+                                {selectedNuclideData && (() => {
+                                    // Calculate dynamic limits for display
+                                    let rawLimit = selectedNuclideData.shipping[newItemForm];
+                                    let limitTBq = (typeof rawLimit === 'string' && rawLimit.toLowerCase().includes('unlimited')) ? Infinity : parseFloat(rawLimit);
+                                    
+                                    let matMultiplier = 0; let instMultiplier = 0;
+                                    if (newItemSymbol === 'H-3') { 
+                                        matMultiplier = 2e-2; instMultiplier = 2e-1; 
+                                    } else if (newItemState === 'liquid') { 
+                                        matMultiplier = 1e-4; instMultiplier = 1e-3; 
+                                    } else if (newItemState === 'gas') {
+                                        matMultiplier = newItemForm === 'A1' ? 1e-3 : 1e-4; 
+                                        instMultiplier = 1e-3;
+                                    } else { // Solid
+                                        matMultiplier = 1e-3; instMultiplier = 1e-2; 
+                                    }
+
+                                    const formatLimit = (val) => val === Infinity ? 'Unlimited' : val.toExponential(2);
+                                    const exemptBq = selectedNuclideData.shipping.exemptConsignmentBq || 0;
+
+                                    return (
+                                        <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800 text-[10px] sm:text-xs">
+                                            <div className="flex justify-between font-bold text-blue-700 dark:text-blue-300 mb-1 border-b border-blue-200 dark:border-blue-800/50 pb-1">
+                                                <span>Regulatory Limits</span>
+                                            </div>
+                                            
+                                            <div className="space-y-1.5 mt-1">
+                                                {/* A1 / A2 Limits */}
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div className="flex justify-between"><span className="text-slate-500">A₁ (Special):</span><span className="font-mono font-bold">{selectedNuclideData.shipping.A1} TBq</span></div>
+                                                    <div className="flex justify-between"><span className="text-slate-500">A₂ (Normal):</span><span className="font-mono font-bold">{selectedNuclideData.shipping.A2} TBq</span></div>
+                                                </div>
+                                                
+                                                {/* Excepted Limits (Dynamic based on selected Form/State) */}
+                                                <div className="grid grid-cols-2 gap-2 bg-white/50 dark:bg-slate-800/50 p-1 rounded">
+                                                    <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight mb-0.5">Exc. Material</span><span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formatLimit(limitTBq * matMultiplier)} TBq</span></div>
+                                                    <div className="flex flex-col"><span className="text-slate-500 text-[9px] uppercase leading-tight mb-0.5">Exc. Instrument</span><span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formatLimit(limitTBq * instMultiplier)} TBq</span></div>
+                                                </div>
+
+                                                {/* Exempt Consignment Limit */}
+                                                <div className="flex justify-between items-center pt-1 border-t border-blue-200 dark:border-blue-800/50">
+                                                    <span className="text-slate-500">Exempt Consignment:</span>
+                                                    <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                                        {exemptBq > 0 ? exemptBq.toExponential(2) : '0'} Bq
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="flex justify-between"><span className="text-slate-500">A₁ (Special):</span><span className="font-mono font-bold">{selectedNuclideData.shipping.A1}</span></div>
-                                            <div className="flex justify-between"><span className="text-slate-500">A₂ (Normal):</span><span className="font-mono font-bold">{selectedNuclideData.shipping.A2}</span></div>
-                                        </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
                             </div>
                             
                             {/* Inputs */}
