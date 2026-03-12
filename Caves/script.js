@@ -5772,13 +5772,6 @@ async function attemptMovePlayer(newX, newY) {
     }
 
     // 4. Handle item pickups
-    let tileId;
-    if (gameState.mapMode === 'overworld') {
-        tileId = `${newX},${-newY}`;
-    } else {
-        const mapId = gameState.currentCaveId || gameState.currentCastleId;
-        tileId = `${mapId}:${newX},${-newY}`;
-    }
 
     const itemData = ITEM_DATA[newTile];
 
