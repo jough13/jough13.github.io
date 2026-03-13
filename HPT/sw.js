@@ -14,6 +14,7 @@ const urlsToCache = [
   './calculators.js',
   './views.js', 
   './apple-touch-icon.png',
+  './icon-transparent.png',
   './manifest.json',
   
   // --- Core Libraries ---
