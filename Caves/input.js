@@ -12,7 +12,7 @@ function handleInput(key) {
         AudioSystem.ctx.resume();
     }
 
-    // 2. FIX: Robust Safety Check
+    // 2. Robust Safety Check
     // Ensure player is logged in and data exists before doing anything.
     // Also check if gameContainer is visible to prevent moving while in Character Select.
     if (!player_id || !gameState || !gameState.player || gameContainer.classList.contains('hidden')) {
@@ -214,16 +214,19 @@ function handleInput(key) {
     // --- GUARD: BLOCK MOVEMENT IF MENUS ARE OPEN ---
     // This prevents walking while in Inventory, Shop, or Map
     if (gameState.inventoryMode || 
-        !mapModal.classList.contains('hidden') || 
-        !spellModal.classList.contains('hidden') ||
-        !skillModal.classList.contains('hidden') ||
-        !shopModal.classList.contains('hidden') ||
-        !craftingModal.classList.contains('hidden') ||
-        !stashModal.classList.contains('hidden') ||
-        !questModal.classList.contains('hidden') ||
-        !loreModal.classList.contains('hidden')) {
+        (typeof mapModal !== 'undefined' && !mapModal.classList.contains('hidden')) || 
+        (typeof spellModal !== 'undefined' && !spellModal.classList.contains('hidden')) ||
+        (typeof skillModal !== 'undefined' && !skillModal.classList.contains('hidden')) ||
+        (typeof shopModal !== 'undefined' && !shopModal.classList.contains('hidden')) ||
+        (typeof craftingModal !== 'undefined' && !craftingModal.classList.contains('hidden')) ||
+        (typeof stashModal !== 'undefined' && !stashModal.classList.contains('hidden')) ||
+        (typeof questModal !== 'undefined' && !questModal.classList.contains('hidden')) ||
+        (typeof loreModal !== 'undefined' && !loreModal.classList.contains('hidden')) ||
+        (typeof talentModal !== 'undefined' && !talentModal.classList.contains('hidden')) ||
+        (typeof collectionsModal !== 'undefined' && !collectionsModal.classList.contains('hidden')) ||
+        (typeof settingsModal !== 'undefined' && !settingsModal.classList.contains('hidden')) ||
+        (typeof evolutionModal !== 'undefined' && !evolutionModal.classList.contains('hidden'))) {
         
-        // Allow ONLY closing menus (Escape is handled above) or specific menu keys
         return;
     }
 
