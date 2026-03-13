@@ -60,6 +60,12 @@ function handleInput(key) {
         if (!craftingModal.classList.contains('hidden')) { craftingModal.classList.add('hidden'); return; }
         if (!settingsModal.classList.contains('hidden')) { settingsModal.classList.add('hidden'); return; } // Added Settings Modal support
 
+        if (typeof questModal !== 'undefined' && !questModal.classList.contains('hidden')) { questModal.classList.add('hidden'); return; }
+        if (typeof stashModal !== 'undefined' && !stashModal.classList.contains('hidden')) { stashModal.classList.add('hidden'); return; }
+        if (typeof collectionsModal !== 'undefined' && !collectionsModal.classList.contains('hidden')) { collectionsModal.classList.add('hidden'); return; }
+        if (typeof fastTravelModal !== 'undefined' && !fastTravelModal.classList.contains('hidden')) { fastTravelModal.classList.add('hidden'); return; }
+        if (typeof evolutionModal !== 'undefined' && !evolutionModal.classList.contains('hidden')) { evolutionModal.classList.add('hidden'); return; }
+
         if (gameState.isDroppingItem) {
             logMessage("Drop canceled.");
             gameState.isDroppingItem = false;
@@ -201,6 +207,9 @@ function handleInput(key) {
     if (key === 'k' || key === 'K') { openSkillbook(); return; }
     if (key === 'c' || key === 'C') { openCollections(); return; }
     if (key === 'p' || key === 'P') { openTalentModal(); return; }
+
+    // Auto-focus chat on Enter
+    if (key === 'Enter') { document.getElementById('chatInput').focus(); return; }
 
     // --- GUARD: BLOCK MOVEMENT IF MENUS ARE OPEN ---
     // This prevents walking while in Inventory, Shop, or Map
