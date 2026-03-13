@@ -8153,16 +8153,18 @@ const CFR_173_436_LIMITS = {
 
 // This maps over existing data and injects the CFR limits
 const ENRICHED_RADIONUCLIDE_DATA = RADIONUCLIDE_DATA.map(nuclide => {
-    const limits = CFR_173_436_LIMITS[nuclide.symbol];
+    const limits = CFR_173_436_LIMITS[nuclide.symbol] || CFR_173_436_LIMITS[nuclide.parent];
     
-    // Default to 0 if it's a rare nuclide not listed in the CFR lookup
-    const exemptLimit = limits ? limits.exemptConsignmentBq : 0; 
+    // If no limits exist in 49 CFR 173.436, return the nuclide unmodified
+    if (!limits) return nuclide;
 
     return {
         ...nuclide,
         shipping: {
-            ...nuclide.shipping,
-            exemptConsignmentBq: exemptLimit
+            // Add the fallback to prevent spreading undefined
+            ...(nuclide.shipping || {}),
+            exemptConsignmentBq: limits.exemptConsignmentBq,
+            exemptConsignmentCi: limits.exemptConsignmentCi
         }
     };
 });
