@@ -6702,7 +6702,11 @@ function gameLoop(timestamp) {
 requestAnimationFrame(gameLoop);
 
 // AUTO-SAVE: Save the game if the user closes the tab or refreshes
-window.addEventListener('beforeunload', () => { if(typeof player_id !== 'undefined' && player_id) saveGame(); });
+window.addEventListener('beforeunload', () => { 
+    if(typeof player_id !== 'undefined' && player_id) {
+        flushPendingSave(); 
+    }
+});
 
 // --- Restart / Respawn Handler ---
 restartButton.onclick = () => {
