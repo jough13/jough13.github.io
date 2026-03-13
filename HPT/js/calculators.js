@@ -131,7 +131,7 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
                 const currentAct_UserUnit = currentAct_Bq / factor0;
                 const targetLimit_UserUnit = Af_Bq / factor0;
 
-                // FIX: Dynamic X-Axis Labels adjusted for smoother mid-range ticks
+                // Dynamic X-Axis Labels adjusted for smoother mid-range ticks
                 let label;
                 if (totalTimePlot < 0.1) {
                     label = t_plot.toExponential(2);
@@ -210,14 +210,14 @@ const DecayToLimitCalculator = ({ radionuclides, selectedNuclide, setSelectedNuc
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Current Activity</label>
                     <div className="flex gap-2">
-                        <input type="number" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
                         <select value={initialUnit} onChange={e => setInitialUnit(e.target.value)} className="w-24 p-2 rounded bg-slate-200 dark:bg-slate-600 border-none text-sm font-bold">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                 </div>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Target Limit</label>
                     <div className="flex gap-2">
-                        <input type="number" value={finalActivity} onChange={e => setFinalActivity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={finalActivity} onChange={e => setFinalActivity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
                         <select value={finalUnit} onChange={e => setFinalUnit(e.target.value)} className="w-24 p-2 rounded bg-slate-200 dark:bg-slate-600 border-none text-sm font-bold">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                 </div>
@@ -549,7 +549,7 @@ const SourceCorrectionCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reference Activity</label>
                         <div className="flex gap-2">
-                            <input type="number" value={originalActivity} onChange={e => setOriginalActivity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600"/>
+                            <input type="number" inputMode="decimal" value={originalActivity} onChange={e => setOriginalActivity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600"/>
                             <select value={originalActivityUnit} onChange={e => setOriginalActivityUnit(e.target.value)} className="w-24 p-2 rounded bg-slate-200 dark:bg-slate-600 border-none text-sm font-bold">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
                         </div>
                     </div>
@@ -1047,7 +1047,7 @@ const StandardDecayCalculator = ({
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 cursor-help underline decoration-dotted">Branching Fraction</label>
                         </Tooltip>
                         <div className="flex gap-2 mt-1">
-                            <input type="number" value={branchingFraction} onChange={e => setBranchingFraction(e.target.value)} step="0.01" min="0" max="1" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <input type="number" inputMode="decimal" value={branchingFraction} onChange={e => setBranchingFraction(e.target.value)} step="0.01" min="0" max="1" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                         </div>
                     </div>
                 )}
@@ -1065,7 +1065,7 @@ const StandardDecayCalculator = ({
 
                         {timeMode === 'duration' ? (
                             <div className="flex gap-2">
-                                <input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                                <input type="number" inputMode="decimal" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                                 <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
                                     {['minutes', 'hours', 'days', 'years'].map(u => <option key={u} value={u}>{u}</option>)}
                                 </select>
@@ -1290,14 +1290,14 @@ const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, re
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Released Activity</label>
                     <div className="flex gap-2">
-                        <input type="number" value={releaseActivity} onChange={e => setReleaseActivity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={releaseActivity} onChange={e => setReleaseActivity(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
                         <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="w-24 p-2 rounded bg-slate-200 dark:bg-slate-600 border-none text-sm font-bold">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                 </div>
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Room Volume</label>
                     <div className="flex gap-2">
-                        <input type="number" value={roomVolume} onChange={e => setRoomVolume(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={roomVolume} onChange={e => setRoomVolume(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
                         <select value={volumeUnit} onChange={e => setVolumeUnit(e.target.value)} className="w-24 p-2 rounded bg-slate-200 dark:bg-slate-600 border-none text-sm font-bold">
                             <option value="m³">m³</option>
                             <option value="L">L</option>
@@ -1307,7 +1307,7 @@ const AirborneCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymbol, re
                 </div>
                 <div className="md:col-span-2">
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Ventilation Rate (ACH) - Optional</label>
-                    <input type="number" value={ventilationRate} onChange={e => setVentilationRate(e.target.value)} placeholder="Air Changes per Hour (e.g. 6)" className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
+                    <input type="number" inputMode="decimal" value={ventilationRate} onChange={e => setVentilationRate(e.target.value)} placeholder="Air Changes per Hour (e.g. 6)" className="w-full p-2 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600" />
                 </div>
             </div>
 
@@ -1545,12 +1545,12 @@ const SurfaceContaminationCalculator = ({
                         {/* NEW: Decoupled Static Background Input */}
                         <div>
                              <label className="text-xs font-bold text-slate-500">Bkg (cpm)</label>
-                             <input type="number" value={staticBackgroundCpm} onChange={e => setStaticBackgroundCpm(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                             <input type="number" inputMode="decimal" value={staticBackgroundCpm} onChange={e => setStaticBackgroundCpm(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
                         </div>
                         <div>
                              <label className="text-xs font-bold text-slate-500">Probe Area (cm²)</label>
                              <div className="flex">
-                                <input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full p-2 rounded-l border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                                <input type="number" inputMode="decimal" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full p-2 rounded-l border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
                                 <select onChange={e => setProbeArea(e.target.value)} className="bg-slate-200 dark:bg-slate-600 text-xs px-1 rounded-r border-l border-slate-300 dark:border-slate-500" value={probeArea}>
                                     <option value="100">100</option>
                                     <option value="15">15</option>
@@ -1560,7 +1560,7 @@ const SurfaceContaminationCalculator = ({
                     </div>
                     <div className="mt-3">
                          <label className="text-xs font-bold text-slate-500">Static Eff. (%)</label>
-                         <input type="number" value={staticEff} onChange={e => setStaticEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                         <input type="number" inputMode="decimal" value={staticEff} onChange={e => setStaticEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
                          <EfficiencyPresets onSelect={setStaticEff} />
                     </div>
                 </div>
@@ -1572,16 +1572,16 @@ const SurfaceContaminationCalculator = ({
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="text-xs font-bold text-slate-500">Gross CPM</label>
-                            <input type="number" value={wipeGrossCpm} onChange={e => setWipeGrossCpm(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                            <input type="number" inputMode="decimal" value={wipeGrossCpm} onChange={e => setWipeGrossCpm(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500">Bkg (cpm)</label>
-                            <input type="number" value={wipeBackgroundCpm} onChange={e => setWipeBackgroundCpm(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                            <input type="number" inputMode="decimal" value={wipeBackgroundCpm} onChange={e => setWipeBackgroundCpm(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
                         </div>
                     </div>
                     <div className="mt-3">
                         <label className="text-xs font-bold text-slate-500">Wipe Eff. (%)</label>
-                        <input type="number" value={wipeEff} onChange={e => setWipeEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={wipeEff} onChange={e => setWipeEff(e.target.value)} className="w-full p-2 rounded border-slate-200 dark:bg-slate-700 dark:border-slate-600" />
                         <EfficiencyPresets onSelect={setWipeEff} />
                     </div>
                     <div className="mt-3">
@@ -1870,7 +1870,7 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     <div>
                         <label className="block text-sm font-medium">Activity</label>
                         <div className="flex">
-                            <input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                            <input type="number" inputMode="decimal" value={activity} inputMode="decimal" onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
                             <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
                                 {Object.keys(activityFactorsCi).map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
@@ -1879,7 +1879,7 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     <div>
                         <label className="block text-sm font-medium">Distance</label>
                         <div className="flex">
-                            <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                            <input type="number" inputMode="decimal" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
                             <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
                                 {Object.keys(distanceFactorsM).map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
@@ -1891,7 +1891,7 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                             <label className="block text-sm font-medium cursor-help underline decoration-dotted">Emission Yield (%)</label>
                         </Tooltip>
                         <div className="flex mt-1">
-                            <input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} placeholder="100" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                            <input type="number" inputMode="decimal" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} placeholder="100" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
                         </div>
                     </div>
                 </div>
@@ -1908,7 +1908,7 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                         <div>
                             <label className="block text-sm font-medium">Thickness</label>
                             <div className="flex mt-1">
-                                <input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                                <input type="number" inputMode="decimal" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
                                 <select value={shieldThicknessUnit} onChange={e => setShieldThicknessUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
                                     {Object.keys(thicknessFactorsCm).map(u => <option key={u} value={u}>{u}</option>)}
                                 </select>
@@ -2220,11 +2220,11 @@ const SimpleEfficiencyCalculator = ({
                         
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Total Counts</label>
-                            <input type="number" value={counts} onChange={e => setCounts(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <input type="number" inputMode="decimal" value={counts} onChange={e => setCounts(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Count Time (min)</label>
-                            <input type="number" value={time} onChange={e => setTime(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <input type="number" inputMode="decimal" value={time} onChange={e => setTime(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                         </div>
                     </div>
                 )}
@@ -2233,14 +2233,14 @@ const SimpleEfficiencyCalculator = ({
                 {mode !== 'scaler' && (
                     <div className="animate-fade-in">
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Net Count Rate (cpm)</label>
-                        <input type="number" value={cpm} onChange={e => setCpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={cpm} onChange={e => setCpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                     </div>
                 )}
 
                 {mode === 'calcEff' && (
                     <div className="animate-fade-in">
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Source Activity (dpm)</label>
-                        <input type="number" value={dpm} onChange={e => setDpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={dpm} onChange={e => setDpm(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                     </div>
                 )}
 
@@ -2248,7 +2248,7 @@ const SimpleEfficiencyCalculator = ({
                     <div className="animate-fade-in">
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Instrument Efficiency (%)</label>
                         <div className="relative mt-1">
-                            <input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <input type="number" inputMode="decimal" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                             <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">%</div>
                         </div>
                     </div>
@@ -2354,24 +2354,24 @@ const InverseSquareCalculator = ({
                 <div className="grid grid-cols-2 gap-4 animate-fade-in">
                     <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Ref. Rate (I₁)</label>
-                        <input type="number" value={i1} onChange={e => setI1(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 100" />
+                        <input type="number" inputMode="decimal" value={i1} onChange={e => setI1(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 100" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Ref. Distance (d₁)</label>
-                        <input type="number" value={d1} onChange={e => setD1(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 1" />
+                        <input type="number" inputMode="decimal" value={d1} onChange={e => setD1(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 1" />
                     </div>
                 </div>
 
                 {mode === 'calcD2' ? (
                     <div className="animate-fade-in">
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Target Rate (I₂)</label>
-                        <input type="number" value={i2} onChange={e => setI2(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 2 or 500" />
+                        <input type="number" inputMode="decimal" value={i2} onChange={e => setI2(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 2 or 500" />
                         <p className="text-xs text-slate-500 mt-1">Example: Enter "2" to find the boundary line, or "500" to find the High Rad distance.</p>
                     </div>
                 ) : (
                     <div className="animate-fade-in">
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">New Distance (d₂)</label>
-                        <input type="number" value={d2} onChange={e => setD2(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 10" />
+                        <input type="number" inputMode="decimal" value={d2} onChange={e => setD2(e.target.value)} className="w-full p-2 mt-1 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" placeholder="e.g. 10" />
                     </div>
                 )}
             </div>
@@ -2491,11 +2491,10 @@ const OperationalHPCalculators = ({ radionuclides, initialTab }) => {
             setSc_staticData(''); 
             setSc_wipeGrossCpm('150'); 
             setSc_wipeBackgroundCpm('50');
-            // FIX: Replaced invalid setSc_instrumentEff with actual state setters
             setSc_staticBackgroundCpm('50');
             setSc_staticEff('10'); 
             setSc_wipeEff('30');
-            setSc_smearEff('0.1'); 
+            setSc_smearEff('1.0'); 
             setSc_probeArea('15'); 
             setSc_result(null); 
             setSc_error('');
@@ -2979,7 +2978,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                 <div>
                                     <label className="block text-xs font-medium mb-1">Activity</label>
                                     <div className="flex">
-                                        <input type="number" min="0" value={newItemActivity} onChange={e => setNewItemActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-800 border dark:border-slate-600 text-sm" />
+                                        <input type="number" inputMode="decimal" min="0" value={newItemActivity} onChange={e => setNewItemActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-800 border dark:border-slate-600 text-sm" />
                                         <select value={newItemUnit} onChange={e => setNewItemUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
                                     </div>
                                 </div>
@@ -3045,11 +3044,11 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                         
                         <div>
                             <label className="block text-[10px] font-bold mb-1">Max Dose Rate @ 1m (TI)</label>
-                            <div className="flex"><input type="number" min="0" value={doseRateAt1m} onChange={e => setDoseRateAt1m(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={doseRateUnit} onChange={e => setDoseRateUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
+                            <div className="flex"><input type="number" inputMode="decimal" min="0" value={doseRateAt1m} onChange={e => setDoseRateAt1m(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={doseRateUnit} onChange={e => setDoseRateUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
                         </div>
                         <div>
                             <label className="block text-[10px] font-bold mb-1">Max Surface Dose Rate</label>
-                            <div className="flex"><input type="number" min="0" value={surfaceDoseRate} onChange={e => setSurfaceDoseRate(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={surfaceDoseRateUnit} onChange={e => setSurfaceDoseRateUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
+                            <div className="flex"><input type="number" inputMode="decimal" min="0" value={surfaceDoseRate} onChange={e => setSurfaceDoseRate(e.target.value)} placeholder="0" className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" /><select value={surfaceDoseRateUnit} onChange={e => setSurfaceDoseRateUnit(e.target.value)} className="p-1 rounded-r-md bg-slate-200 dark:bg-slate-600 text-[10px]"><option value="mrem/hr">mrem/h</option><option value="mSv/hr">mSv/h</option></select></div>
                         </div>
                         {labelResult && (
                             <div className="p-2 bg-slate-100 dark:bg-slate-900 rounded text-center">
@@ -3076,7 +3075,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
                                     <div><label className="block text-[10px] font-bold mb-1">Nuclide Type</label><select value={contamNuclideType} onChange={e => setContamNuclideType(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-xs"><option value="beta_gamma">Beta / Gamma</option><option value="alpha">Alpha</option></select></div>
                                     <div>
                                         <label className="block text-[10px] font-bold mb-1">Removable ({unitLabel})</label>
-                                        <input type="number" min="0" step="any" value={removableContam} onChange={e => setRemovableContam(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm" placeholder={isSi ? "e.g. 0.5" : "e.g. 500"} />
+                                        <input type="number" inputMode="decimal" min="0" step="any" value={removableContam} onChange={e => setRemovableContam(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm" placeholder={isSi ? "e.g. 0.5" : "e.g. 500"} />
                                         <p className="text-[10px] text-slate-400 italic text-right mt-1">Limit: {activeLimit.toLocaleString()} {unitLabel}</p>
                                     </div>
                                     {contamResult && (
@@ -3302,10 +3301,10 @@ const XRayShieldingCalculator = ({ kvp, setKvp, workload, setWorkload, useFactor
             <ContextualNote type="warning"><strong>Limitation:</strong> Calculates Primary Barrier shielding only. Does not account for leakage or scatter radiation.</ContextualNote>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><label className="block text-xs font-bold mb-1">Tube Potential</label><select value={kvp} onChange={e => setKvp(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm">{Object.keys(K_FACTORS).map(k => <option key={k} value={k}>{k} kVp</option>)}</select></div>
-                <div><label className="block text-xs font-bold mb-1">Workload (mA-min/wk)</label><input type="number" value={workload} onChange={e => setWorkload(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="block text-xs font-bold mb-1">Workload (mA-min/wk)</label><input type="number" inputMode="decimal" value={workload} onChange={e => setWorkload(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
                 <div><label className="block text-xs font-bold mb-1">Use Factor (U)</label><select value={useFactor} onChange={e => setUseFactor(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm">{useFactorOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
                 <div><label className="block text-xs font-bold mb-1">Occupancy (T)</label><select value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm">{occupancyOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
-                <div><label className="block text-xs font-bold mb-1">Distance (m)</label><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="block text-xs font-bold mb-1">Distance (m)</label><input type="number" inputMode="decimal" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
                 <div><label className="block text-xs font-bold mb-1">Limit (Air Kerma)</label><select value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm">{doseLimitOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</select></div>
                 <div className="md:col-span-2"><label className="block text-xs font-bold mb-1">Shield Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"><option value="Lead">Lead (mm)</option><option value="Concrete">Concrete (cm)</option><option value="Drywall">Drywall (cm)</option></select></div>
             </div>
@@ -3441,25 +3440,25 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             <div><label className="text-xs font-bold mb-1 block">Isotope</label>{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={therapyNuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide..." />}</div>
             
             <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                <div><label className="text-xs font-bold mb-1 block">Meas. Rate @ 1m (mrem/h)</label><input type="number" value={measuredRate} onChange={e => setMeasuredRate(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="Optional" /></div>
+                <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" inputMode="decimal" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                <div><label className="text-xs font-bold mb-1 block">Meas. Rate @ 1m (mrem/h)</label><input type="number" inputMode="decimal" value={measuredRate} onChange={e => setMeasuredRate(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="Optional" /></div>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-xs font-bold mb-1 block">Occupancy (E)</label><input type="number" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} step="0.05" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
-                <div><label className="text-xs font-bold mb-1 block">Distance (m)</label><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="text-xs font-bold mb-1 block">Occupancy (E)</label><input type="number" inputMode="decimal" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} step="0.05" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="text-xs font-bold mb-1 block">Distance (m)</label><input type="number" inputMode="decimal" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
             </div>
 
             {/* Added missing UI fields for Attenuation and Effective Half-Life */}
             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-200 dark:border-slate-700">
                 <div>
                     <label className="text-xs font-bold mb-1 block">Tissue Atten. Factor</label>
-                    <input type="number" value={attenuation} onChange={e => setAttenuation(e.target.value)} step="0.1" max="1" min="0" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/>
+                    <input type="number" inputMode="decimal" value={attenuation} onChange={e => setAttenuation(e.target.value)} step="0.1" max="1" min="0" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/>
                 </div>
                 <div>
                     <label className="text-xs font-bold mb-1 block">Eff. Half-Life (Optional)</label>
                     <div className="flex">
-                        <input type="number" value={effectiveHalfLife} onChange={e => setEffectiveHalfLife(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="Phys T½"/>
+                        <input type="number" inputMode="decimal" value={effectiveHalfLife} onChange={e => setEffectiveHalfLife(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="Phys T½"/>
                         <select value={effectiveHalfLifeUnit} onChange={e => setEffectiveHalfLifeUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
                             <option value="hours">hrs</option>
                             <option value="days">days</option>
@@ -3522,8 +3521,8 @@ const DecayInStorageCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymb
         <div className="space-y-4">
             <div><label className="text-xs font-bold mb-1 block">Waste Isotope</label>{nuclideSymbol ? <CalculatorNuclideInfo nuclide={radionuclides.find(n => n.symbol === nuclideSymbol)} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={radionuclides} onSelect={setNuclideSymbol} placeholder="Select nuclide..." />}</div>
             <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-xs font-bold mb-1 block">Current Rate ({rateUnit})</label><input type="number" value={currentRate} onChange={e => setCurrentRate(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
-                <div><label className="text-xs font-bold mb-1 block">Release Limit ({rateUnit})</label><input type="number" value={limit} onChange={e => setLimit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="text-xs font-bold mb-1 block">Current Rate ({rateUnit})</label><input type="number" inputMode="decimal" value={currentRate} onChange={e => setCurrentRate(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="text-xs font-bold mb-1 block">Release Limit ({rateUnit})</label><input type="number" inputMode="decimal" value={limit} onChange={e => setLimit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
             </div>
             {result && (
                 <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-lg mt-4 text-center animate-fade-in relative">
@@ -3611,7 +3610,7 @@ const EffectiveHalfLifeCalculator = ({ radionuclides }) => {
                 
                 {useManualTp ? (
                     <div className="flex gap-2 animate-fade-in">
-                        <input type="number" value={manualTp} onChange={e => setManualTp(e.target.value)} className="w-full p-2 rounded border dark:bg-slate-800 dark:border-slate-600" placeholder="e.g. 6.0" />
+                        <input type="number" inputMode="decimal" value={manualTp} onChange={e => setManualTp(e.target.value)} className="w-full p-2 rounded border dark:bg-slate-800 dark:border-slate-600" placeholder="e.g. 6.0" />
                         <select value={manualTpUnit} onChange={e => setManualTpUnit(e.target.value)} className="p-2 rounded border bg-slate-100 dark:bg-slate-800 dark:border-slate-600"><option value="minutes">Minutes</option><option value="hours">Hours</option><option value="days">Days</option></select>
                     </div>
                 ) : (
@@ -3628,7 +3627,7 @@ const EffectiveHalfLifeCalculator = ({ radionuclides }) => {
             
             <div className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
                 <h3 className="text-sm font-bold text-slate-500 uppercase mb-2">2. Biological Half-Life (T<sub>b</sub>)</h3>
-                <div className="flex gap-2"><input type="number" value={bioHalfLife} onChange={e => setBioHalfLife(e.target.value)} className="w-full p-2 rounded border dark:bg-slate-800 dark:border-slate-600" placeholder="e.g. 24" /><select value={bioUnit} onChange={e => setBioUnit(e.target.value)} className="p-2 rounded border bg-slate-100 dark:bg-slate-800 dark:border-slate-600"><option value="minutes">Minutes</option><option value="hours">Hours</option><option value="days">Days</option></select></div>
+                <div className="flex gap-2"><input type="number" inputMode="decimal" value={bioHalfLife} onChange={e => setBioHalfLife(e.target.value)} className="w-full p-2 rounded border dark:bg-slate-800 dark:border-slate-600" placeholder="e.g. 24" /><select value={bioUnit} onChange={e => setBioUnit(e.target.value)} className="p-2 rounded border bg-slate-100 dark:bg-slate-800 dark:border-slate-600"><option value="minutes">Minutes</option><option value="hours">Hours</option><option value="days">Days</option></select></div>
             </div>
             <button onClick={handleCalculate} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition shadow-md">Calculate T<sub>eff</sub></button>
             {error && <p className="text-red-500 text-center text-sm">{error}</p>}
@@ -3648,10 +3647,12 @@ const EffectiveHalfLifeCalculator = ({ radionuclides }) => {
         </div>
     );
 };
+
 /**
  * @description A component to display sortable and filterable data tables of all radionuclide emissions.
  * NOTE: This must be defined BEFORE PeakIdentifier so it can be used there.
  */
+
 const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
     const [activeTable, setActiveTable] = React.useState('gamma');
     const [sortConfig, setSortConfig] = React.useState({ key: 'energyMeV', direction: 'ascending' });
@@ -3998,9 +3999,9 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
                 {peakIdMode === 'search' ? (
                     <div className="animate-fade-in">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <input type="number" value={searchEnergy} onChange={e => setSearchEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-bold text-lg" placeholder="e.g. 662"/>
+                            <input type="number" inputMode="decimal" value={searchEnergy} onChange={e => setSearchEnergy(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700 font-bold text-lg" placeholder="e.g. 662"/>
                             <div className="grid grid-cols-2 gap-2">
-                                <div><label className="block text-sm font-medium">Min Yield %</label><input type="number" value={minYield} onChange={e => setMinYield(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                                <div><label className="block text-sm font-medium">Min Yield %</label><input type="number" inputMode="decimal" value={minYield} onChange={e => setMinYield(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                                 <div><label className="block text-sm font-medium">Detector</label><select value={resolution} onChange={e => setResolution(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"><option value="low">NaI (Low)</option><option value="high">HPGe (High)</option></select></div>
                             </div>
                         </div>
@@ -4399,7 +4400,7 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData, theme, onNuclid
                     <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Initial Quantity</label>
                         <div className="flex">
-                            <input type="number" value={inputValue} onChange={e => setInputValue(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <input type="number" inputMode="decimal" value={inputValue} onChange={e => setInputValue(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                             <select
                                 value={inputUnit}
                                 onChange={e => {
@@ -4423,7 +4424,7 @@ const DecaySeriesCalculator = ({ radionuclides, decaySeriesData, theme, onNuclid
                     <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Time Elapsed</label>
                         <div className="flex gap-2 mt-1">
-                            <input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <input type="number" inputMode="decimal" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                             <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
                                 {timeUnitsList.map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
@@ -4580,12 +4581,12 @@ const SpecificActivityModule = ({ radionuclides, atomicWeight, setAtomicWeight, 
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Atomic Weight (g/mol)</label>
-                    <input type="number" value={atomicWeight} onChange={e => setAtomicWeight(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" placeholder="e.g. 238" />
+                    <input type="number" inputMode="decimal" value={atomicWeight} onChange={e => setAtomicWeight(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" placeholder="e.g. 238" />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Half-Life</label>
                     <div className="flex">
-                        <input type="number" value={halfLifeValue} onChange={e => setHalfLifeValue(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                        <input type="number" inputMode="decimal" value={halfLifeValue} onChange={e => setHalfLifeValue(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
                         <select value={halfLifeUnit} onChange={e => setHalfLifeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-sm">
                             {Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}
                         </select>
@@ -4708,7 +4709,7 @@ const MassActivityModule = ({ radionuclides, selectedNuclide, setSelectedNuclide
                 <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded border border-slate-200 dark:border-slate-700">
                     <label className="block text-xs font-medium mb-1 text-slate-700 dark:text-slate-300">Specific Activity</label>
                     <div className="flex">
-                        <input type="number" value={manualSA} onChange={e => setManualSA(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm" placeholder="e.g. 3.6e10"/>
+                        <input type="number" inputMode="decimal" value={manualSA} onChange={e => setManualSA(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm" placeholder="e.g. 3.6e10"/>
                         <select value={manualSAUnit} onChange={e => setManualSAUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-100 dark:bg-slate-600 text-xs">
                             {Object.keys(saUnitFactors).map(u => <option key={u} value={u}>{u}</option>)}
                         </select>
@@ -4844,7 +4845,7 @@ const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, 
                     <div className="animate-fade-in p-3 bg-slate-50 dark:bg-slate-800/50 rounded border border-slate-200 dark:border-slate-700">
                         <label className="block text-xs font-medium mb-1 text-slate-700 dark:text-slate-300">Gamma Constant (Γ)</label>
                         <div className="relative">
-                            <input type="number" value={manualGamma} onChange={e => setManualGamma(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm" placeholder="R·m²/hr·Ci" />
+                            <input type="number" inputMode="decimal" value={manualGamma} onChange={e => setManualGamma(e.target.value)} className="w-full p-2 rounded bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm" placeholder="R·m²/hr·Ci" />
                         </div>
                     </div>
                 ) : (
@@ -4858,20 +4859,20 @@ const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, 
                 <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Dose Rate</label>
                     <div className="flex">
-                        <input type="number" value={doseRate} onChange={e => setDoseRate(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                        <input type="number" inputMode="decimal" value={doseRate} onChange={e => setDoseRate(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
                         <select value={doseRateUnit} onChange={e => setDoseRateUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Distance</label>
                     <div className="flex">
-                        <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                        <input type="number" inputMode="decimal" value={distance} onChange={e => setDistance(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
                         <select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                 </div>
                 <div className="md:col-span-2">
                     <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Transmission (0-1)</label>
-                    <input type="number" step="0.1" min="0" max="1" value={transmission} onChange={e => setTransmission(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g., 0.5 for 1 HVL"/>
+                    <input type="number" inputMode="decimal" step="0.1" min="0" max="1" value={transmission} onChange={e => setTransmission(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g., 0.5 for 1 HVL"/>
                 </div>
             </div>
             
@@ -5349,14 +5350,14 @@ const EquilibriumCalculator = ({ radionuclides, theme }) => {
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Initial Parent Activity</label>
                                     <div className="flex">
-                                        <input type="number" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                                        <input type="number" inputMode="decimal" value={initialActivity} onChange={e => setInitialActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
                                         <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-sm">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
                                     </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Initial Daughter Activity</label>
                                     <div className="flex">
-                                        <input type="number" value={initialDaughterActivity} onChange={e => setInitialDaughterActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                                        <input type="number" inputMode="decimal" value={initialDaughterActivity} onChange={e => setInitialDaughterActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
                                         <div className="flex items-center justify-center px-3 bg-slate-200 dark:bg-slate-600 rounded-r-md text-sm text-slate-500 dark:text-slate-300">{activityUnit}</div>
                                     </div>
                                 </div>
@@ -5366,7 +5367,7 @@ const EquilibriumCalculator = ({ radionuclides, theme }) => {
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Time Elapsed</label>
                                     <div className="flex gap-2 mt-1">
-                                        <input type="number" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                                        <input type="number" inputMode="decimal" value={timeElapsed} onChange={e => setTimeElapsed(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                                         <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600">
                                             {timeUnitsOrdered.map(u => <option key={u} value={u}>{u}</option>)}
                                         </select>
@@ -5376,7 +5377,7 @@ const EquilibriumCalculator = ({ radionuclides, theme }) => {
                                     <Tooltip text="The fraction of parent decays that result in this daughter. Example: Mo-99 -> Tc-99m is ~0.875.">
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 cursor-help underline decoration-dotted">Branching Fraction (0-1)</label>
                                     </Tooltip>
-                                    <input type="number" value={branchingFraction} onChange={e => setBranchingFraction(e.target.value)} step="0.01" min="0" max="1" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                                    <input type="number" inputMode="decimal" value={branchingFraction} onChange={e => setBranchingFraction(e.target.value)} step="0.01" min="0" max="1" className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
                                 </div>
                             </div>
                         </div>
@@ -5546,7 +5547,7 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Radon Concentration</label>
                     <div className="flex">
-                        <input type="number" value={concentration} onChange={e => setConcentration(e.target.value)} disabled={calcMode === 'findConc'} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={concentration} onChange={e => setConcentration(e.target.value)} disabled={calcMode === 'findConc'} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                         <select value={unit} onChange={e => setUnit(e.target.value)} disabled={calcMode === 'findConc'} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 border border-slate-300 dark:border-slate-600 text-xs font-bold"><option>pCi/L</option><option>Bq/m³</option></select>
                     </div>
                 </div>
@@ -5555,11 +5556,11 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
                         <Tooltip text="Fraction of progeny in equilibrium (0.4 is standard for homes).">
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1 cursor-help underline decoration-dotted">Equil. Factor (F)</label>
                         </Tooltip>
-                        <input type="number" value={equilibriumFactor} onChange={e => setEquilibriumFactor(e.target.value)} disabled={calcMode === 'findEF'} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={equilibriumFactor} onChange={e => setEquilibriumFactor(e.target.value)} disabled={calcMode === 'findEF'} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Working Level (WL)</label>
-                        <input type="number" value={workingLevel} onChange={e => setWorkingLevel(e.target.value)} disabled={calcMode === 'findWL' || calcMode === 'doseFromConc'} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                        <input type="number" inputMode="decimal" value={workingLevel} onChange={e => setWorkingLevel(e.target.value)} disabled={calcMode === 'findWL' || calcMode === 'doseFromConc'} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                     </div>
                 </div>
                 
@@ -5571,7 +5572,7 @@ const ConcentrationDoseModule = ({ calcMode, setCalcMode, concentration, setConc
                             <button onClick={() => setOccupancyFactor('0.228')} className="px-2 py-0.5 text-[10px] bg-slate-200 dark:bg-slate-600 rounded font-bold transition">Work</button>
                         </div>
                     </div>
-                    <input type="number" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                    <input type="number" inputMode="decimal" value={occupancyFactor} onChange={e => setOccupancyFactor(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                 </div>
             </div>
             
@@ -5663,7 +5664,7 @@ const RadonIngrowthCalculator = ({ result, setResult, error, setError, amount, s
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Source Quantity (Ra-226)</label>
                         <div className="flex">
-                            <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <input type="number" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                             <select value={unit} onChange={e => setUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs font-bold border border-slate-300 dark:border-slate-600">
                                 <optgroup label="Mass">{Object.keys(massFactors_g).map(u => <option key={u} value={u}>{u}</option>)}</optgroup>
                                 <optgroup label="Activity">{(settings?.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq'] : ['µCi', 'mCi', 'Ci']).map(u => <option key={u} value={u}>{u}</option>)}</optgroup>
@@ -5673,7 +5674,7 @@ const RadonIngrowthCalculator = ({ result, setResult, error, setError, amount, s
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Ingrowth Time</label>
                         <div className="flex">
-                            <input type="number" value={time} onChange={e => setTime(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
+                            <input type="number" inputMode="decimal" value={time} onChange={e => setTime(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600" />
                             <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs font-bold border border-slate-300 dark:border-slate-600">
                                 {Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
@@ -6401,15 +6402,11 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                 {/* --- FIELD CALC (INVERSE SQUARE) UI --- */}
                 {calcMode === CALC_MODE_FIELD && (
                     <div className="space-y-4 animate-fade-in">
-                        
-
-[Image of inverse square law diagram]
-
                         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
                             <h3 className="text-sm font-bold mb-3">Known Point</h3>
                             <div className="grid grid-cols-2 gap-4">
-                                <div><label className="block text-xs font-medium">Rate (I₁)</label><div className="flex"><input type="number" min="0" value={field_r1} onChange={e => setField_r1(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_r1Unit} onChange={e => setField_r1Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                                <div><label className="block text-xs font-medium">Distance (d₁)</label><div className="flex"><input type="number" min="0" value={field_d1} onChange={e => setField_d1(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_d1Unit} onChange={e => setField_d1Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="block text-xs font-medium">Rate (I₁)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={field_r1} onChange={e => setField_r1(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_r1Unit} onChange={e => setField_r1Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="block text-xs font-medium">Distance (d₁)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={field_d1} onChange={e => setField_d1(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_d1Unit} onChange={e => setField_d1Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             </div>
                         </div>
                         
@@ -6420,9 +6417,9 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                         
                         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg">
                             {field_targetType === 'findRate' ? (
-                                <div><label className="block text-xs font-medium">Target Distance (d₂)</label><div className="flex"><input type="number" min="0" value={field_d2} onChange={e => setField_d2(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_d2Unit} onChange={e => setField_d2Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="block text-xs font-medium">Target Distance (d₂)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={field_d2} onChange={e => setField_d2(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_d2Unit} onChange={e => setField_d2Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             ) : (
-                                <div><label className="block text-xs font-medium">Target Rate (I₂)</label><div className="flex"><input type="number" min="0" value={field_r2} onChange={e => setField_r2(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_r2Unit} onChange={e => setField_r2Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="block text-xs font-medium">Target Rate (I₂)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={field_r2} onChange={e => setField_r2(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_r2Unit} onChange={e => setField_r2Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             )}
                         </div>
                     </div>
@@ -6452,31 +6449,31 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                             {inputMode === INPUT_MODE_DB ? (
                                 <div className="mt-1 min-h-[42px]">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={gammaNuclides} onSelect={setNuclideSymbol} placeholder="Select a gamma source..." />}</div>
                             ) : (
-                                <div className="animate-fade-in"><label className="block text-xs font-medium mb-1">Gamma Constant (Γ)</label><div className="flex"><input type="number" min="0" value={manualGammaConstant} onChange={e => setManualGammaConstant(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" placeholder="R·m²/hr·Ci" /></div></div>
+                                <div className="animate-fade-in"><label className="block text-xs font-medium mb-1">Gamma Constant (Γ)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={manualGammaConstant} onChange={e => setManualGammaConstant(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" placeholder="R·m²/hr·Ci" /></div></div>
                             )}
                         </div>
                         
                         <div className="grid grid-cols-2 gap-4">
                             {geometryMode === GEOMETRY_POINT && (
-                                <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             )}
                             {geometryMode === GEOMETRY_LINE && (
                                 <div className="col-span-2 grid grid-cols-2 gap-4">
-                                        <div><label className="block text-xs font-medium">Length (L)</label><div className="flex"><input type="number" min="0" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                        <div><label className="block text-xs font-medium">Length (L)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                                         <div><label className="block text-xs font-medium">Linear Activity</label><select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"><option>µCi/cm</option><option>mCi/cm</option><option>Ci/cm</option><option>µCi/m</option><option>mCi/m</option><option>Ci/m</option></select></div>
                                     </div>
                             )}
                             {geometryMode === GEOMETRY_AREA && (
                                 <div className="col-span-2 grid grid-cols-2 gap-4">
-                                        <div><label className="block text-xs font-medium">Radius (R)</label><div className="flex"><input type="number" min="0" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                        <div><label className="block text-xs font-medium">Radius (R)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                                         <div><label className="block text-xs font-medium">Areal Activity</label><select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"><option>µCi/cm²</option><option>mCi/cm²</option><option>Ci/cm²</option><option>µCi/m²</option><option>mCi/m²</option><option>Ci/m²</option></select></div>
                                     </div>
                             )}
-                            <div><label className="block text-xs font-medium">Distance (d or h)</label><div className="flex"><input type="number" min="0" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            <div><label className="block text-xs font-medium">Distance (d or h)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             
                             <div className="col-span-2">
                                 <label className="block text-xs font-medium mb-1">Transmission (0-1)</label>
-                                <input type="number" step="0.1" min="0" max="1" value={transmission} onChange={e => setTransmission(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g. 0.5"/>
+                                <input type="number" inputMode="decimal" step="0.1" min="0" max="1" value={transmission} onChange={e => setTransmission(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g. 0.5"/>
                             </div>
                         </div>
                     </div>
@@ -6491,7 +6488,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                         {inputMode === INPUT_MODE_DB ? (
                             <div className="min-h-[42px]">{selectedNuclide ? <CalculatorNuclideInfo nuclide={selectedNuclide} onClear={() => setNuclideSymbol('')} /> : <SearchableSelect options={betaNuclides} onSelect={setNuclideSymbol} placeholder="Select a beta source..." />}</div>
                         ) : (
-                            <div><label className="block text-xs font-medium">Max Beta Energy (MeV)</label><input type="number" min="0" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm"/></div>
+                            <div><label className="block text-xs font-medium">Max Beta Energy (MeV)</label><input type="number" inputMode="decimal" min="0" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm"/></div>
                         )}
                     
                         {calcMode === CALC_MODE_BETA && (
@@ -6499,13 +6496,13 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                         )}
                     
                         {calcMode === CALC_MODE_BETA && betaMode === BETA_MODE_SKIN && (
-                            <div><label className="block text-xs font-medium">Contamination Level</label><div className="flex"><input type="number" min="0" value={skinActivity} onChange={e => setSkinActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={skinActivityUnit} onChange={e => setSkinActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{['dpm/100cm²', 'µCi/cm²'].map(u=><option key={u}>{u}</option>)}</select></div></div>
+                            <div><label className="block text-xs font-medium">Contamination Level</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={skinActivity} onChange={e => setSkinActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={skinActivityUnit} onChange={e => setSkinActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{['dpm/100cm²', 'µCi/cm²'].map(u=><option key={u}>{u}</option>)}</select></div></div>
                         )}
                     
                         {calcMode === CALC_MODE_BETA && betaMode === BETA_MODE_AIR && (
                             <div className="grid grid-cols-2 gap-4">
-                                <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                                <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" min="0" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             </div>
                         )}
                     
@@ -6513,8 +6510,8 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                             <div className="space-y-4">
                                 <div><label className="block text-xs font-medium">Shielding Material</label><select value={shieldMaterial} onChange={e => setShieldMaterial(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm">{Object.keys(SHIELD_PROPS).filter(m => m !== 'None').map(m => <option key={m} value={m}>{m}</option>)}</select></div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                                    <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" min="0" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                    <div><label className="block text-xs font-medium">Activity</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                    <div><label className="block text-xs font-medium">Distance</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                                 </div>
                             </div>
                         )}
@@ -6529,7 +6526,7 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                             <div><label className="block text-xs font-medium">Method</label><select value={doseMethod} onChange={e => setDoseMethod(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm"><option value={METHOD_10CFR20}>10 CFR 20 (ALI)</option><option value={METHOD_FGR11}>FGR 11 (DCF)</option></select></div>
                             <div><label className="block text-xs font-medium">Route</label><select value={intakeRoute} onChange={e => setIntakeRoute(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm"><option value="inhalation">Inhalation</option><option value="ingestion">Ingestion</option></select></div>
                             {intakeRoute === 'inhalation' && (<div><label className="block text-xs font-medium">Lung Class</label><select value={solubility} onChange={e => setSolubility(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" disabled={availableClasses.length === 0}>{availableClasses.length > 0 ? availableClasses.map(c=><option key={c}>{c}</option>) : <option>N/A</option>}</select></div>)}
-                            <div><label className="block text-xs font-medium">Intake Amount</label><div className="flex"><input type="number" min="0" value={intakeAmount} onChange={e => setIntakeAmount(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={intakeUnit} onChange={e => setIntakeUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{intakeUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            <div><label className="block text-xs font-medium">Intake Amount</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={intakeAmount} onChange={e => setIntakeAmount(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={intakeUnit} onChange={e => setIntakeUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{intakeUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                         </div>
                     </div>
                 )}
@@ -6943,19 +6940,19 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 gap-4 animate-fade-in">
-                                    <div><label className="text-xs font-bold">Gamma Constant (Γ)</label><input type="number" value={manualGamma} onChange={e => setManualGamma(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" placeholder="R·m²/hr·Ci" /></div>
-                                    <div><label className="text-xs font-bold">Half-Value Layer (cm)</label><input type="number" value={manualHVL} onChange={e => { setManualHVL(e.target.value); setUseManualHVL(true); }} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
+                                    <div><label className="text-xs font-bold">Gamma Constant (Γ)</label><input type="number" inputMode="decimal" value={manualGamma} onChange={e => setManualGamma(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" placeholder="R·m²/hr·Ci" /></div>
+                                    <div><label className="text-xs font-bold">Half-Value Layer (cm)</label><input type="number" inputMode="decimal" value={manualHVL} onChange={e => { setManualHVL(e.target.value); setUseManualHVL(true); }} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
                                 </div>
                             )}
                             
                             {calcMode === MODE_BETA_RANGE && !nuclideSymbol && (
-                                <div><label className="text-xs font-bold">Max Beta Energy (MeV)</label><input type="number" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
+                                <div><label className="text-xs font-bold">Max Beta Energy (MeV)</label><input type="number" inputMode="decimal" value={manualBetaEnergy} onChange={e => setManualBetaEnergy(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
                             )}
                             
                             {calcMode !== MODE_BETA_RANGE && (
                                 <div className="grid grid-cols-2 gap-4 animate-fade-in">
-                                    <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u=><option key={u}>{u}</option>)}</select></div></div>
-                                    <div><label className="text-xs font-bold mb-1 block">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u=><option key={u}>{u}</option>)}</select></div></div>
+                                    <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" inputMode="decimal" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u=><option key={u}>{u}</option>)}</select></div></div>
+                                    <div><label className="text-xs font-bold mb-1 block">Distance</label><div className="flex"><input type="number" inputMode="decimal" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u=><option key={u}>{u}</option>)}</select></div></div>
                                 </div>
                             )}
                         </>
@@ -6963,7 +6960,7 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                         <div className="animate-fade-in">
                             <label className="text-xs font-bold mb-1 block">Initial (Unshielded) Dose Rate</label>
                             <div className="flex">
-                                <input type="number" value={unshieldedRate} onChange={e => setUnshieldedRate(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/>
+                                <input type="number" inputMode="decimal" value={unshieldedRate} onChange={e => setUnshieldedRate(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/>
                                 <select value={unshieldedRateUnit} onChange={e => setUnshieldedRateUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u=><option key={u}>{u}</option>)}</select>
                             </div>
                             
@@ -7000,15 +6997,15 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                             </div>
                             
                             {calcMode === MODE_GAMMA_DOSE && (
-                                <div><label className="text-xs font-medium mb-1 block">Thickness</label><div className="flex"><input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(thicknessFactors).map(u=><option key={u}>{u}</option>)}</select></div></div>
+                                <div><label className="text-xs font-medium mb-1 block">Thickness</label><div className="flex"><input type="number" inputMode="decimal" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{Object.keys(thicknessFactors).map(u=><option key={u}>{u}</option>)}</select></div></div>
                             )}
                             
                             {useManualHVL && calcMode !== MODE_BETA_RANGE && (
-                                <div className="col-span-2"><label className="text-xs font-medium mb-1 block">Manual HVL (cm)</label><input type="number" value={manualHVL} onChange={e => setManualHVL(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
+                                <div className="col-span-2"><label className="text-xs font-medium mb-1 block">Manual HVL (cm)</label><input type="number" inputMode="decimal" value={manualHVL} onChange={e => setManualHVL(e.target.value)} className="w-full p-2 bg-slate-100 dark:bg-slate-700 rounded text-sm" /></div>
                             )}
                             
                             {calcMode === MODE_FIND_THICKNESS && (
-                                <div className="col-span-2"><label className="text-xs font-medium mb-1 block">Target Dose Rate</label><div className="flex"><input type="number" value={targetDoseRate} onChange={e => setTargetDoseRate(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={targetDoseRateUnit} onChange={e => setTargetDoseRateUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u=><option key={u}>{u}</option>)}</select></div></div>
+                                <div className="col-span-2"><label className="text-xs font-medium mb-1 block">Target Dose Rate</label><div className="flex"><input type="number" inputMode="decimal" value={targetDoseRate} onChange={e => setTargetDoseRate(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={targetDoseRateUnit} onChange={e => setTargetDoseRateUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u=><option key={u}>{u}</option>)}</select></div></div>
                             )}
                         </div>
                         
@@ -7373,14 +7370,14 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
                             </div>
                 
                             <div className="grid grid-cols-2 gap-4">
-                                <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                                <div><label className="text-xs font-bold mb-1 block">Distance</label><div className="flex"><input type="number" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="text-xs font-bold mb-1 block">Activity</label><div className="flex"><input type="number" inputMode="decimal" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{activityUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div><label className="text-xs font-bold mb-1 block">Distance</label><div className="flex"><input type="number" inputMode="decimal" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             </div>
                         </div>
                     ) : (
                         <div className="animate-fade-in">
                             <label className="text-xs font-bold mb-1 block">Work Area Dose Rate (Unshielded)</label>
-                            <div className="flex"><input type="number" value={manualDoseRate} onChange={e => setManualDoseRate(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={manualDoseRateUnit} onChange={e => setManualDoseRateUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                            <div className="flex"><input type="number" inputMode="decimal" value={manualDoseRate} onChange={e => setManualDoseRate(e.target.value)} className="w-full p-2 rounded-l bg-slate-100 dark:bg-slate-700 text-sm"/><select value={manualDoseRateUnit} onChange={e => setManualDoseRateUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
                         </div>
                     )}
                 
@@ -7389,15 +7386,15 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
                         <Tooltip text="Factor to account for shielding. 1.0 = Unshielded. 0.5 = 1 HVL.">
                             <label className="text-xs font-bold mb-1 block cursor-help underline decoration-dotted">Transmission Factor (0-1)</label>
                         </Tooltip>
-                        <input type="number" step="0.1" min="0" max="1" value={transmission} onChange={e => setTransmission(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g., 0.5 for 1 HVL"/>
+                        <input type="number" inputMode="decimal" step="0.1" min="0" max="1" value={transmission} onChange={e => setTransmission(e.target.value)} className="w-full p-2 rounded bg-slate-100 dark:bg-slate-700 text-sm" placeholder="e.g., 0.5 for 1 HVL"/>
                     </div>
                 
                     {/* Planning Section */}
                     <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 bg-slate-50 dark:bg-slate-800/50">
                         <div className="flex items-center gap-2 mb-1"><Icon path={ICONS.stopwatch} className="w-4 h-4 text-slate-400"/><span className="text-sm font-bold text-slate-600 dark:text-slate-300">ALARA Planning</span></div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div><label className="text-xs font-bold mb-1 block">Dose Limit</label><div className="flex"><input type="number" value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full p-2 rounded-l bg-white dark:bg-slate-700 text-sm"/><select value={doseLimitUnit} onChange={e => setDoseLimitUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                            <div><label className="text-xs font-bold mb-1 block">Planned Time</label><div className="flex"><input type="number" value={plannedTime} onChange={e => setPlannedTime(e.target.value)} className="w-full p-2 rounded-l bg-white dark:bg-slate-700 text-sm"/><select value={plannedTimeUnit} onChange={e => setPlannedTimeUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{timeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            <div><label className="text-xs font-bold mb-1 block">Dose Limit</label><div className="flex"><input type="number" inputMode="decimal" value={doseLimit} onChange={e => setDoseLimit(e.target.value)} className="w-full p-2 rounded-l bg-white dark:bg-slate-700 text-sm"/><select value={doseLimitUnit} onChange={e => setDoseLimitUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{doseUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                            <div><label className="text-xs font-bold mb-1 block">Planned Time</label><div className="flex"><input type="number" inputMode="decimal" value={plannedTime} onChange={e => setPlannedTime(e.target.value)} className="w-full p-2 rounded-l bg-white dark:bg-slate-700 text-sm"/><select value={plannedTimeUnit} onChange={e => setPlannedTimeUnit(e.target.value)} className="rounded-r bg-slate-200 dark:bg-slate-600 text-xs">{timeUnits_ordered.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                         </div>
                     </div>
                 
@@ -7550,7 +7547,7 @@ const FluenceDoseConverter = ({ calcMode, setCalcMode, energy, setEnergy, inputV
                 <div>
                     <label className="block text-sm font-medium">{calcMode === 'fluenceToDose' ? 'Neutron Fluence' : 'Dose'}</label>
                     <div className="flex">
-                        <input type="number" value={inputValue} onChange={e => setInputValue(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                        <input type="number" inputMode="decimal" value={inputValue} onChange={e => setInputValue(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
                         {calcMode === 'doseToFluence' ? (
                             <select value={inputUnit} onChange={e => setInputUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{doseUnits.map(u => <option key={u} value={u}>{u}</option>)}</select>
                         ) : (
@@ -7692,10 +7689,10 @@ const ActivationCalculator = ({ radionuclides, inputMode, setInputMode, targetMa
             ) : (
                 <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4 animate-fade-in">
                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-sm font-medium">Atomic Weight</label><input type="number" value={manualAW} onChange={e => setManualAW(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                        <div><label className="block text-sm font-medium">Cross-Section (b)</label><input type="number" value={manualCS} onChange={e => setManualCS(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                        <div><label className="block text-sm font-medium">Atomic Weight</label><input type="number" inputMode="decimal" value={manualAW} onChange={e => setManualAW(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                        <div><label className="block text-sm font-medium">Cross-Section (b)</label><input type="number" inputMode="decimal" value={manualCS} onChange={e => setManualCS(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                     </div>
-                    <div><label className="block text-sm font-medium">Product Half-Life</label><div className="flex"><input type="number" value={manualHL} onChange={e => setManualHL(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={manualHLUnit} onChange={e => setManualHLUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{['seconds', 'minutes', 'hours', 'days', 'years'].map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                    <div><label className="block text-sm font-medium">Product Half-Life</label><div className="flex"><input type="number" inputMode="decimal" value={manualHL} onChange={e => setManualHL(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/><select value={manualHLUnit} onChange={e => setManualHLUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{['seconds', 'minutes', 'hours', 'days', 'years'].map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                 </div>
             )}
             
@@ -7704,7 +7701,7 @@ const ActivationCalculator = ({ radionuclides, inputMode, setInputMode, targetMa
                     <div>
                         <label className="block text-sm font-medium">Total Mass</label>
                         <div className="flex">
-                            <input type="number" value={targetMass} onChange={e => setTargetMass(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                            <input type="number" inputMode="decimal" value={targetMass} onChange={e => setTargetMass(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
                             <select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
                         </div>
                     </div>
@@ -7712,14 +7709,14 @@ const ActivationCalculator = ({ radionuclides, inputMode, setInputMode, targetMa
                         <Tooltip text="Percentage of the total mass that is the target isotope. Defaults to natural abundance.">
                             <label className="block text-sm font-medium cursor-help underline decoration-dotted">Abundance (%)</label>
                         </Tooltip>
-                        <input type="number" value={abundance} onChange={e => setAbundance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
+                        <input type="number" inputMode="decimal" value={abundance} onChange={e => setAbundance(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/>
                     </div>
                 </div>
                 <div><label className="block text-sm font-medium">Thermal Flux (n/cm²·s)</label><input type="text" value={neutronFlux} onChange={e => setNeutronFlux(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                 <div>
                     <label className="block text-sm font-medium">Irradiation Time</label>
                     <div className="flex">
-                        <input type="number" value={irradiationTime} onChange={e => setIrradiationTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                        <input type="number" inputMode="decimal" value={irradiationTime} onChange={e => setIrradiationTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
                         <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                 </div>
@@ -7810,7 +7807,7 @@ const CompositeActivationCalculator = ({ radionuclides, material, setMaterial, t
                 <div>
                     <label className="block text-sm font-medium">Total Mass</label>
                     <div className="flex">
-                        <input type="number" value={totalMass} onChange={e => setTotalMass(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                        <input type="number" inputMode="decimal" value={totalMass} onChange={e => setTotalMass(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
                         <select value={massUnit} onChange={e => setMassUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(massUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                 </div>
@@ -7818,7 +7815,7 @@ const CompositeActivationCalculator = ({ radionuclides, material, setMaterial, t
                 <div>
                     <label className="block text-sm font-medium">Irradiation Time</label>
                     <div className="flex">
-                        <input type="number" value={irradiationTime} onChange={e => setIrradiationTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                        <input type="number" inputMode="decimal" value={irradiationTime} onChange={e => setIrradiationTime(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
                         <select value={timeUnit} onChange={e => setTimeUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(timeUnits).map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                 </div>
@@ -7959,7 +7956,7 @@ const NeutronShieldingCalculator = ({ selectedEnergy, setSelectedEnergy, initial
                 <div>
                     <label className="block text-sm font-medium">Shield Thickness</label>
                     <div className="flex">
-                        <input type="number" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                        <input type="number" inputMode="decimal" value={shieldThickness} onChange={e => setShieldThickness(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
                         <select value={thicknessUnit} onChange={e => setThicknessUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600">{Object.keys(thicknessFactors_cm).map(u => <option key={u} value={u}>{u}</option>)}</select>
                     </div>
                 </div>
@@ -8410,37 +8407,37 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {backgroundMode === 'rate' || mdaMode === MDA_MODE_SCAN ? (
-                            <div><label className="block text-sm font-medium">Background Rate (cpm)</label><input type="number" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Background Rate (cpm)</label><input type="number" inputMode="decimal" value={backgroundCpm} onChange={e => setBackgroundCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                         ) : (
                             <>
-                                <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                                <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                                <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" inputMode="decimal" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                                <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" inputMode="decimal" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                             </>
                         )}
             
-                        <div><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                        <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                        <div><label className="block text-sm font-medium">Source Eff. (%)</label><input type="number" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                        <div><label className="block text-sm font-medium">Emission Yield (%)</label><input type="number" value={emissionYield} onChange={e => setEmissionYield(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        <div><label className="block text-sm font-medium">Probe Area (cm²)</label><input type="number" inputMode="decimal" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        <div><label className="block text-sm font-medium">Instrument Eff. (%)</label><input type="number" inputMode="decimal" value={instrumentEff} onChange={e => setInstrumentEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        <div><label className="block text-sm font-medium">Source Eff. (%)</label><input type="number" inputMode="decimal" value={surfaceEff} onChange={e => setSurfaceEff(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                        <div><label className="block text-sm font-medium">Emission Yield (%)</label><input type="number" inputMode="decimal" value={emissionYield} onChange={e => setEmissionYield(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                     </div>
                 </div>
             
                 {mdaMode === MDA_MODE_STATIC ? (
                     <div className="space-y-4 animate-fade-in">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" value={grossTime} onChange={e => setGrossTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" inputMode="decimal" value={grossTime} onChange={e => setGrossTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                             <div><label className="block text-sm font-medium">Desired Unit</label><select value={outputUnit} onChange={e => setOutputUnit(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700">{Object.keys(MDA_UNIT_CONFIG).map(u => <option key={u} value={u}>{MDA_UNIT_CONFIG[u].label}</option>)}</select></div>
                         </div>
                         {MDA_UNIT_CONFIG[outputUnit].requires.includes('volume') && (
-                            <div><label className="block text-sm font-medium">Sample Volume (L)</label><input type="number" value={sampleVolume} onChange={e => setSampleVolume(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Sample Volume (L)</label><input type="number" inputMode="decimal" value={sampleVolume} onChange={e => setSampleVolume(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                         )}
                         {MDA_UNIT_CONFIG[outputUnit].requires.includes('mass') && (
-                            <div><label className="block text-sm font-medium">Sample Mass (g)</label><input type="number" value={sampleMass} onChange={e => setSampleMass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Sample Mass (g)</label><input type="number" inputMode="decimal" value={sampleMass} onChange={e => setSampleMass(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                         )}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Target Limit (Optional)</label>
                             <div className="flex items-center gap-2">
-                                <input type="number" value={targetLimit} onChange={e => setTargetLimit(e.target.value)} placeholder={`e.g. 1000`} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                                <input type="number" inputMode="decimal" value={targetLimit} onChange={e => setTargetLimit(e.target.value)} placeholder={`e.g. 1000`} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
                                 <span className="text-xs text-slate-500 mt-1 whitespace-nowrap">{outputUnit}</span>
                             </div>
                         </div>
@@ -8449,14 +8446,14 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
                     <div className="space-y-4 animate-fade-in">
                         <ContextualNote type="info">Calculates Scan MDC based on NUREG-1507 / MARSSIM.  <strong>d'</strong> is the detectability index (default 1.38 for 95% detection/60% false positive).</ContextualNote>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label className="block text-sm font-medium">Scan Speed (cm/s)</label><input type="number" value={scanSpeed} onChange={e => setScanSpeed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                            <div><label className="block text-sm font-medium">Probe Dimension (Scan Direction)</label><input type="number" value={probeDimension} onChange={e => setProbeDimension(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
-                            <div><label className="block text-sm font-medium">Surveyor Efficiency (p)</label><input type="number" value={surveyorEff} onChange={e => setSurveyorEff(e.target.value)} step="0.1" min="0" max="1" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Scan Speed (cm/s)</label><input type="number" inputMode="decimal" value={scanSpeed} onChange={e => setScanSpeed(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Probe Dimension (Scan Direction)</label><input type="number" inputMode="decimal" value={probeDimension} onChange={e => setProbeDimension(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
+                            <div><label className="block text-sm font-medium">Surveyor Efficiency (p)</label><input type="number" inputMode="decimal" value={surveyorEff} onChange={e => setSurveyorEff(e.target.value)} step="0.1" min="0" max="1" className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" /></div>
                             <div>
                                 <Tooltip text="Detectability Index (d'). 1.38 = 95% True Positive / 60% False Positive (Standard).">
                                     <label className="block text-sm font-medium cursor-help underline decoration-dotted">Index (d')</label>
                                 </Tooltip>
-                                <input type="number" value={dprime} onChange={e => setDprime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
+                                <input type="number" inputMode="decimal" value={dprime} onChange={e => setDprime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700" />
                             </div>
                         </div>
                     </div>
@@ -9014,20 +9011,20 @@ const MdaCalculator = ({ bkgCounts, setBkgCounts, countTime, setCountTime, bkgTi
             <ContextualNote type="info"><strong>Currie Equation:</strong> Calculates the <i>a priori</i> detection limit (Ld) ensuring 95% confidence of detection.</ContextualNote>
             <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                    <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                    <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                    <div><label className="block text-sm font-medium">Bkg Counts</label><input type="number" inputMode="decimal" value={bkgCounts} onChange={e => setBkgCounts(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                    <div><label className="block text-sm font-medium">Bkg Time (min)</label><input type="number" inputMode="decimal" value={bkgTime} onChange={e => setBkgTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                    <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" value={countTime} onChange={e => setCountTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                    <div><label className="block text-sm font-medium">Sample Time (min)</label><input type="number" inputMode="decimal" value={countTime} onChange={e => setCountTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
                     <div>
                         <label className="block text-sm font-medium">Efficiency</label>
                         <div className="flex">
-                            <input type="number" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
+                            <input type="number" inputMode="decimal" value={efficiency} onChange={e => setEfficiency(e.target.value)} className="w-full mt-1 p-2 rounded-l-md bg-slate-100 dark:bg-slate-700"/>
                             <select value={effUnit} onChange={e => setEffUnit(e.target.value)} className="mt-1 p-2 rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs"><option>%</option><option>dec</option></select>
                         </div>
                     </div>
                 </div>
-                <div><label className="block text-sm font-medium">Probe Area (cm²) <span className="text-xs text-slate-400 font-normal">(For MDC)</span></label><input type="number" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Probe Area (cm²) <span className="text-xs text-slate-400 font-normal">(For MDC)</span></label><input type="number" inputMode="decimal" value={probeArea} onChange={e => setProbeArea(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
             </div>
             
             {result && (
@@ -9165,8 +9162,8 @@ const DeadTimeCorrector = ({ observedCpm, setObservedCpm, deadTime, setDeadTime,
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                <div><label className="block text-sm font-medium">Observed CPM</label><input type="number" value={observedCpm} onChange={e => setObservedCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Dead Time (µs)</label><input type="number" value={deadTime} onChange={e => setDeadTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Observed CPM</label><input type="number" inputMode="decimal" value={observedCpm} onChange={e => setObservedCpm(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Dead Time (µs)</label><input type="number" inputMode="decimal" value={deadTime} onChange={e => setDeadTime(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
             </div>
             {error && <p className="text-red-500 text-center text-sm">{error}</p>}
             {result && (
@@ -9207,8 +9204,8 @@ const RpdCalculator = ({ sample1, setSample1, sample2, setSample2, result, setRe
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                <div><label className="block text-sm font-medium">Sample 1</label><input type="number" value={sample1} onChange={e => setSample1(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
-                <div><label className="block text-sm font-medium">Sample 2</label><input type="number" value={sample2} onChange={e => setSample2(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Sample 1</label><input type="number" inputMode="decimal" value={sample1} onChange={e => setSample1(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
+                <div><label className="block text-sm font-medium">Sample 2</label><input type="number" inputMode="decimal" value={sample2} onChange={e => setSample2(e.target.value)} className="w-full mt-1 p-2 rounded-md bg-slate-100 dark:bg-slate-700"/></div>
             </div>
             {result && (
                 <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg text-center shadow-sm">
@@ -9245,9 +9242,9 @@ const FwhmCalculator = ({ centroid, setCentroid, lower, setLower, upper, setUppe
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-3 gap-2 p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-                <div><label className="block text-xs font-bold mb-1">Centroid</label><input type="number" value={centroid} onChange={e => setCentroid(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
-                <div><label className="block text-xs font-bold mb-1">Lower ½</label><input type="number" value={lower} onChange={e => setLower(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
-                <div><label className="block text-xs font-bold mb-1">Upper ½</label><input type="number" value={upper} onChange={e => setUpper(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="block text-xs font-bold mb-1">Centroid</label><input type="number" inputMode="decimal" value={centroid} onChange={e => setCentroid(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="block text-xs font-bold mb-1">Lower ½</label><input type="number" inputMode="decimal" value={lower} onChange={e => setLower(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
+                <div><label className="block text-xs font-bold mb-1">Upper ½</label><input type="number" inputMode="decimal" value={upper} onChange={e => setUpper(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"/></div>
             </div>
             {result && (
                 <div className="mt-4 p-5 bg-slate-100 dark:bg-slate-700 rounded-lg text-center shadow-sm">
