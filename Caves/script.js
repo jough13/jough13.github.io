@@ -1037,8 +1037,16 @@ function grantXp(amount) {
             player.level++;
             player.statPoints++;
             player.xpToNextLevel = player.level * 100;
+            
+            // --- FULL HEAL ON LEVEL UP ---
+            player.health = player.maxHealth;
+            player.mana = player.maxMana;
+            player.stamina = player.maxStamina;
+            player.hunger = player.maxHunger;
+            player.thirst = player.maxThirst;
 
             logMessage(`LEVEL UP! You are now level ${player.level}!`);
+            logMessage(`{green:You feel completely revitalized!}`); // Added flavor text
             
             if (typeof ParticleSystem !== 'undefined') {
                 ParticleSystem.createLevelUp(player.x, player.y);
@@ -6047,36 +6055,6 @@ async function attemptMovePlayer(newX, newY) {
     endPlayerTurn();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 const applyTheme = (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
     darkModeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
@@ -6128,6 +6106,7 @@ chatInput.addEventListener('keydown', (event) => {
 
         if (message.startsWith('/')) {
             handleChatCommand(message);
+            chatInput.blur(); 
             return; // Don't send commands to global chat
         }
 
@@ -6139,6 +6118,8 @@ chatInput.addEventListener('keydown', (event) => {
             message: message,
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
+
+        chatInput.blur(); // Unfocus after chatting so you can walk immediately!
     }
 });
 
