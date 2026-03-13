@@ -1,6 +1,5 @@
 const CACHE_NAME = 'rad-tools-v1';
 
-// Add all the files and CDNs your app needs to run
 const urlsToCache = [
   './',
   './index.html',
@@ -13,12 +12,21 @@ const urlsToCache = [
   './components-ui.js',
   './marssim.js',
   './calculators.js',
+  './views.js', 
   './apple-touch-icon.png',
   './manifest.json',
-  // Include your CDNs here so they work offline!
+  
+  // --- Core Libraries ---
   'https://unpkg.com/react@18/umd/react.production.min.js',
   'https://unpkg.com/react-dom@18/umd/react-dom.production.min.js',
   'https://cdn.tailwindcss.com',
+  
+  // --- Missing Essential CDNs ---
+  'https://unpkg.com/@babel/standalone/babel.min.js',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', 
+  
+  // --- Math & Charts ---
   'https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js',
   'https://cdn.jsdelivr.net/npm/chart.js'
 ];
