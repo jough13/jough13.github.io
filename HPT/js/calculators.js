@@ -1788,8 +1788,20 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                             attenuationMsg.push("Betas ranged out in combined shield and air.");
                         }
                     } else {
-                        // If it reaches, apply efficiency
-                        cpmBeta = A_dpm * geoEff * (detInfo.refBetaEff || 0.2) * eff_surf;
+                        // FIX: Apply empirical exponential attenuation for the beta spectrum
+                        // 1. Calculate apparent mass attenuation coefficient (cm²/g)
+                        const mu_rho = 17 / Math.pow(eMax, 1.14);
+                        
+                        // 2. Calculate transmission factor based on total mass-thickness
+                        const transmissionBeta = Math.exp(-mu_rho * total_g_cm2);
+                        
+                        // 3. Apply transmission to the detector response
+                        cpmBeta = A_dpm * geoEff * (detInfo.refBetaEff || 0.2) * eff_surf * transmissionBeta;
+                        
+                        // Optional: Add a UI note showing the attenuation loss
+                        if (transmissionBeta < 0.99) {
+                            attenuationMsg.push(`Beta flux attenuated to ${(transmissionBeta * 100).toFixed(1)}% by mass-thickness.`);
+                        }
                     }
                 }
 
@@ -3384,23 +3396,20 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             
             // 3. Dose Calc (NUREG-1556 Vol 9 Eq 1)
             const gamma_app = safeParseFloat(selectedNuclide.gammaConstant); // R·m²/hr·Ci
-            const gamma_nureg = gamma_app * 10; // Convert to R·cm²/hr·mCi
-            const d_cm = safeParseFloat(distance) * 100;
-            const E = safeParseFloat(occupancyFactor);
-            const att = safeParseFloat(attenuation);
-            
-            if ([d_cm, E, att].some(isNaN) || d_cm <= 0) throw new Error("Invalid inputs.");
-            
-            // If measured rate exists, use it as base!
+
+            // Standardize inputs to match the constant's native units
+            const A0_Ci = A0_mCi / 1000; 
+            const d_m = safeParseFloat(distance); // 'distance' state is already in meters
+
             let rate_R_hr;
-            if (!isNaN(rateCheck) && rateCheck > 0) {
-                // rateCheck is mrem/hr at 1m. 
-                // Convert to R/hr at 'd' meters
-                const rate_mrem_hr_at_1m = rateCheck;
-                // Inverse Square Law: I2 = I1 * (d1/d2)^2
-                rate_R_hr = (rate_mrem_hr_at_1m / 1000) * Math.pow(100 / d_cm, 2); 
+            if (selectedNuclide.symbol.includes('I-131') && !isNaN(rateCheck) && rateCheck > 0) {
+                // Calculate back from measured rate at 'd' meters
+                const rate_mrem_hr_at_1m = rateCheck; 
+                // Inverse Square Law
+                rate_R_hr = (rate_mrem_hr_at_1m / 1000) * Math.pow(1 / d_m, 2);
             } else {
-                rate_R_hr = (gamma_nureg * A0_mCi * att) / Math.pow(d_cm, 2);
+                // Calculate theoretical rate using native units
+                rate_R_hr = (gamma_app * A0_Ci * att) / Math.pow(d_m, 2);
             }
 
             // Total Dose = Rate * Occupancy * (T_eff / ln(2))
