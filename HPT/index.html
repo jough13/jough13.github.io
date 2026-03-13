@@ -4,7 +4,8 @@
 
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-        <meta name="theme-color" content="#0f172a">
+        <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
+        <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
         <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
         <link rel="manifest" href="manifest.json">
@@ -1219,5 +1220,18 @@
             }, 100); // 100ms delay
             }
         </script>
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                    console.log('Offline Service Worker registered successfully!');
+                    })
+                    .catch(err => {
+                    console.log('Service Worker registration failed: ', err);
+                    });
+                });
+            }
+    </script>
     </body>
 </html>
