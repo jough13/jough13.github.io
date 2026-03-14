@@ -2295,13 +2295,14 @@ const render = () => {
     // We use the logical dimensions because ctx is currently scaled
     ctx.drawImage(terrainCanvas, 0, 0, logicalW, logicalH);
 
-    // --- 4. LIGHTING & DYNAMIC LAYER ---
+// --- 4. LIGHTING & DYNAMIC LAYER (OPTIMIZED) ---
     let ambientLight = 0.0;
     let baseRadius = 10;
     const hasTorch = gameState.player.inventory.some(item => item.name === 'Torch');
     const torchBonus = hasTorch ? 6 : 0;
     const candleBonus = (gameState.player.candlelightTurns > 0) ? 8 : 0;
 
+    // Determine ambient light and base radius
     if (gameState.mapMode === 'dungeon') {
         ambientLight = 0.6;
         baseRadius = 6 + Math.floor(gameState.player.perception / 2) + torchBonus + candleBonus;
@@ -2321,57 +2322,12 @@ const render = () => {
     const torchFlicker = (Math.sin(now / 1000) * 0.2) + (Math.cos(now / 2500) * 0.1);
     const lightRadius = baseRadius + torchFlicker;
 
-    // --- LIGHTING LOOP ---
+    // --- ONLY LOOP FOR ANIMATED TILES (No heavy math here anymore!) ---
     for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
             const mapY = startY + y;
 
-            const distSq = (mapX - gameState.player.x) ** 2 + (mapY - gameState.player.y) ** 2;
-
-// --- OPTIMIZATION: Early Exit ---
-// If the tile is waaaay outside our max possible light radius, skip the math.
-// (15 is a safe upper limit for torch + flicker + noise)
-if (distSq > 225 && gameState.mapMode !== 'dungeon') { // 15^2 = 225
-    // Just draw shadow and continue
-    if (ambientLight < 1.0) {
-        ctx.fillStyle = `rgba(0, 0, 0, ${1 - ambientLight})`; // Invert logic for opacity
-        // Actually, your logic uses 'tileShadowOpacity'. 
-        // If it's far away, opacity is 1.0 (black) in dungeons, or 'ambient' in overworld.
-    }
-    // Note: If you have ambient light (Daytime), you still need to render, 
-    // but you can skip the 'Noise' and 'EffectiveRadius' math below.
-}
-
-let effectiveRadius = lightRadius;
-
-// ONLY run the expensive Perlin Noise if we are actually near the light's edge
-// (This saves running it 400 times a frame for tiles that are obviously dark or obviously bright)
-if (typeof elevationNoise !== 'undefined' && distSq < 400) { 
-    effectiveRadius += elevationNoise.noise(mapX / 5, mapY / 5) * 1.5;
-}
-
-            const effectiveRadiusSq = effectiveRadius * effectiveRadius;
-
-            let tileShadowOpacity = ambientLight;
-
-            if (gameState.mapMode === 'dungeon') {
-                if (distSq > effectiveRadiusSq) {
-                    tileShadowOpacity = 1.0;
-                } else {
-                    const dist = Math.sqrt(distSq);
-                    const edge = effectiveRadius - dist;
-                    if (edge < 5) tileShadowOpacity = 1.0 - (edge / 5);
-                    else tileShadowOpacity = 0.0;
-                }
-            } else if (distSq < effectiveRadiusSq) {
-                const dist = Math.sqrt(distSq);
-                const edge = effectiveRadius - dist;
-                if (edge < 5) tileShadowOpacity = ambientLight * (1 - (edge / 5));
-                else tileShadowOpacity = 0;
-            }
-
-            // Animated Tiles Overlay
             let tile = null;
             if (gameState.mapMode === 'overworld') tile = chunkManager.getTile(mapX, mapY);
             else if (gameState.mapMode === 'dungeon') {
@@ -2379,21 +2335,19 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
                 tile = (map && map[mapY]) ? map[mapY][mapX] : null;
             }
 
+            // Draw Spirit Ghost
             if (tile === '👻k') {
-                // We reused the 'hasLens' variable we defined at the top of render() in the previous step
                 if (!hasLens) {
                     tile = '.'; // Visually replace ghost with floor
                 } else {
-                    // Visually render the ghost
                     ctx.fillStyle = 'rgba(168, 85, 247, 0.6)'; // Ghostly Purple, transparent
                     ctx.font = `bold ${TILE_SIZE}px monospace`;
                     ctx.fillText('👻', x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
-                    
-                    // Skip the rest of the loop for this tile so we don't draw over it
                     continue; 
                 }
             }
 
+            // Draw Animated Terrain
             if (tile) {
                 if (tile === '~') {
                     const waveVal = (now / 1500) + (mapX * 0.3) + (mapY * 0.2) + Math.sin(mapY * 0.5);
@@ -2416,32 +2370,6 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
                     ctx.fillStyle = '#a855f7';
                     ctx.font = `bold ${TILE_SIZE}px monospace`;
                     ctx.fillText(chars[spin], x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
-                }
-            }
-
-            // Apply Shadow
-            if (tileShadowOpacity > 0) {
-                ctx.fillStyle = `rgba(0, 0, 0, ${tileShadowOpacity})`;
-                ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-            }
-
-            // Apply Tint
-            if (ambientLight > 0.3 && tileShadowOpacity < 0.5) {
-                let r = 255, g = 180, b = 100;
-                if (gameState.mapMode === 'dungeon') {
-                    const themeName = chunkManager.caveThemes[gameState.currentCaveId];
-                    if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
-                    if (themeName === 'FIRE') { r = 255; g = 100; b = 50; }
-                } else if (gameState.mapMode === 'overworld') {
-                    if (tile === '≈') { r = 100; g = 200; b = 100; }
-                    else if (tile === 'd') { r = 200; g = 200; b = 180; }
-                    else if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
-                }
-                const dist = Math.sqrt(distSq);
-                const tintStrength = (1 - (dist / effectiveRadius)) * 0.15;
-                if (tintStrength > 0) {
-                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${tintStrength})`;
-                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             }
         }
@@ -2549,6 +2477,65 @@ if (typeof elevationNoise !== 'undefined' && distSq < 400) {
     ctx.strokeText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
     ctx.fillStyle = '#3b82f6';
     ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+
+// --- 5. GPU ACCELERATED LIGHTING OVERLAY ---
+    if (ambientLight < 1.0) {
+        ctx.save();
+        
+        // We temporarily reset the transform so we draw over the actual screen coordinates
+        // instead of dealing with the screen shake translation offsets
+        ctx.setTransform(1, 0, 0, 1, 0, 0); 
+        
+        const playerScreenX = (viewportCenterX * TILE_SIZE + TILE_SIZE / 2) * dpr;
+        const playerScreenY = (viewportCenterY * TILE_SIZE + TILE_SIZE / 2) * dpr;
+        const radiusInPixels = lightRadius * TILE_SIZE * dpr;
+
+        // 1. Draw solid darkness over the whole screen
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = `rgba(0, 0, 0, ${1 - ambientLight})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 2. Punch a hole in the darkness using a radial gradient
+        const gradient = ctx.createRadialGradient(
+            playerScreenX, playerScreenY, radiusInPixels * 0.3, // Inner bright circle
+            playerScreenX, playerScreenY, radiusInPixels        // Outer fading edge
+        );
+        // Alpha 1 = Erase the darkness. Alpha 0 = Keep the darkness.
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 1)'); 
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); 
+
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(playerScreenX, playerScreenY, radiusInPixels, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3. Optional: Add biome tinting back in (Ice is blue, Fire is orange)
+        if (ambientLight > 0.3 || gameState.mapMode === 'dungeon') {
+            let r = 255, g = 180, b = 100; // Warm default
+            
+            if (gameState.mapMode === 'dungeon') {
+                const themeName = chunkManager.caveThemes[gameState.currentCaveId];
+                if (themeName === 'ICE') { r = 100; g = 200; b = 255; }
+                if (themeName === 'FIRE') { r = 255; g = 100; b = 50; }
+            } else if (gameState.mapMode === 'overworld') {
+                if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
+            }
+
+            ctx.globalCompositeOperation = 'source-over';
+            const tintGrad = ctx.createRadialGradient(
+                playerScreenX, playerScreenY, 0,
+                playerScreenX, playerScreenY, radiusInPixels
+            );
+            tintGrad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.15)`);
+            tintGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+            
+            ctx.fillStyle = tintGrad;
+            ctx.fill(); // Re-fills the same circle with the subtle color tint
+        }
+
+        ctx.restore();
+    }
 
     const intensity = gameState.player.weatherIntensity || 0;
     if (intensity > 0 && gameState.weather !== 'clear') {
