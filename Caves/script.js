@@ -2250,16 +2250,15 @@ const render = () => {
     if (!cachedThemeColors.canvasBg) updateThemeColors();
     const { canvasBg } = cachedThemeColors;
 
-        // Check if the player possesses the lens right now
+    // Check if the player possesses the lens right now
     const hasLens = gameState.player.inventory.some(i => i.name === 'Spirit Lens');
 
-    // 1. Clear & Fill Background (Handles "Shake Gaps")
-    // We fill the background BEFORE translation so screen shake doesn't leave trails/voids
+    // 1. Clear & Fill Background
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset to absolute coordinates
+    ctx.setTransform(1, 0, 0, 1, 0, 0); 
     ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.restore(); // Restore to logical coordinates (scaled by dpr)
+    ctx.restore(); 
 
     // --- SCREEN SHAKE ---
     let shakeX = 0; let shakeY = 0;
@@ -2271,24 +2270,32 @@ const render = () => {
     }
 
     ctx.save(); // Start Scene Transform
-    ctx.translate(shakeX, shakeY);
-
+    
+    // --- 1. SMOOTH CAMERA MATH (FIXED) ---
     const p = gameState.player;
-    // Fallback to logical position if visual isn't initialized yet
     const visX = p.visualX !== undefined ? p.visualX : p.x;
     const visY = p.visualY !== undefined ? p.visualY : p.y;
 
     const viewportCenterX = Math.floor(VIEWPORT_WIDTH / 2);
     const viewportCenterY = Math.floor(VIEWPORT_HEIGHT / 2);
     
-    // Terrain cache stays locked to the integer grid
-    const startX = Math.floor(visX) - viewportCenterX;
-    const startY = Math.floor(visY) - viewportCenterY;
+    // We round the visual position to determine the cache grid
+    const startX = Math.round(visX) - viewportCenterX;
+    const startY = Math.round(visY) - viewportCenterY;
 
-    // We calculate the sub-tile pixel offset for ultra-smooth camera panning
-    const offsetX = (visX - Math.floor(visX)) * TILE_SIZE;
-    const offsetY = (visY - Math.floor(visY)) * TILE_SIZE;
-    ctx.translate(-offsetX, -offsetY); // Pan the camera!
+    // If the grid shifts while sliding, force the cache to redraw! (This stops the shake!)
+    if (gameState.lastStartX !== startX || gameState.lastStartY !== startY) {
+        gameState.mapDirty = true;
+        gameState.lastStartX = startX;
+        gameState.lastStartY = startY;
+    }
+
+    // Sub-tile offset for ultra-smooth camera panning
+    const offsetX = (visX - Math.round(visX)) * TILE_SIZE;
+    const offsetY = (visY - Math.round(visY)) * TILE_SIZE;
+    
+    // Apply both Screen Shake and Smooth Panning
+    ctx.translate(shakeX - offsetX, shakeY - offsetY);
 
     // --- 2. UPDATE TERRAIN CACHE ---
     if (gameState.mapDirty) {
