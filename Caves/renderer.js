@@ -49,7 +49,11 @@ const ParticleSystem = {
     },
 
     createFloatingText: function(x, y, text, color) {
-        this.spawn(x, y, color, 'text', text);
+        // Add a slight random offset so simultaneous numbers (like attack + poison + procs) don't overlap perfectly
+        const offsetX = (Math.random() - 0.5) * 0.7;
+        const offsetY = (Math.random() - 0.5) * 0.7;
+        
+        this.spawn(x + offsetX, y + offsetY, color, 'text', text);
     },
 
     createLevelUp: function(x, y) {
