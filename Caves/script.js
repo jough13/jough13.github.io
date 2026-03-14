@@ -2273,10 +2273,22 @@ const render = () => {
     ctx.save(); // Start Scene Transform
     ctx.translate(shakeX, shakeY);
 
+    const p = gameState.player;
+    // Fallback to logical position if visual isn't initialized yet
+    const visX = p.visualX !== undefined ? p.visualX : p.x;
+    const visY = p.visualY !== undefined ? p.visualY : p.y;
+
     const viewportCenterX = Math.floor(VIEWPORT_WIDTH / 2);
     const viewportCenterY = Math.floor(VIEWPORT_HEIGHT / 2);
-    const startX = gameState.player.x - viewportCenterX;
-    const startY = gameState.player.y - viewportCenterY;
+    
+    // Terrain cache stays locked to the integer grid
+    const startX = Math.floor(visX) - viewportCenterX;
+    const startY = Math.floor(visY) - viewportCenterY;
+
+    // We calculate the sub-tile pixel offset for ultra-smooth camera panning
+    const offsetX = (visX - Math.floor(visX)) * TILE_SIZE;
+    const offsetY = (visY - Math.floor(visY)) * TILE_SIZE;
+    ctx.translate(-offsetX, -offsetY); // Pan the camera!
 
     // --- 2. UPDATE TERRAIN CACHE ---
     if (gameState.mapDirty) {
@@ -2428,35 +2440,38 @@ const render = () => {
         TileRenderer.drawHealthBar(ctx, x, y, entity.health, entity.maxHealth);
     };
 
-    if (gameState.mapMode === 'overworld') {
-        for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
-            for (let x = 0; x < VIEWPORT_WIDTH; x++) {
-                const mapX = startX + x;
-                const mapY = startY + y;
-                const enemyKey = `overworld:${mapX},${-mapY}`;
-                if (gameState.sharedEnemies[enemyKey]) {
-                    drawEntity(gameState.sharedEnemies[enemyKey], x, y);
-                }
-            }
-        }
-    } else {
-        gameState.instancedEnemies.forEach(enemy => {
-            const screenX = enemy.x - startX;
-            const screenY = enemy.y - startY;
-            if (screenX >= 0 && screenX < VIEWPORT_WIDTH && screenY >= 0 && screenY < VIEWPORT_HEIGHT) {
-                drawEntity(enemy, screenX, screenY);
-            }
-        });
-    }
+    // Helper to calculate smooth gliding for any object
+    const lerpEntity = (entity) => {
+        if (entity.visualX === undefined) entity.visualX = entity.x;
+        if (entity.visualY === undefined) entity.visualY = entity.y;
+        entity.visualX += (entity.x - entity.visualX) * 0.4;
+        entity.visualY += (entity.y - entity.visualY) * 0.4;
+        return { vx: entity.visualX, vy: entity.visualY };
+    };
 
-    const shouldRenderOtherPlayers = gameState.mapMode !== 'dungeon';
-    if (shouldRenderOtherPlayers) {
+    // Draw Enemies (Smoothly!)
+    const enemyList = gameState.mapMode === 'overworld' ? Object.values(gameState.sharedEnemies) : gameState.instancedEnemies;
+    
+    enemyList.forEach(enemy => {
+        const { vx, vy } = lerpEntity(enemy);
+        const screenX = vx - startX;
+        const screenY = vy - startY;
+        // Only draw if on-screen
+        if (screenX >= -1 && screenX <= VIEWPORT_WIDTH && screenY >= -1 && screenY <= VIEWPORT_HEIGHT) {
+            drawEntity(enemy, screenX, screenY);
+        }
+    });
+
+    // Draw Multiplayer Friends (Smoothly!)
+    if (gameState.mapMode !== 'dungeon') {
         for (const id in otherPlayers) {
-            if (otherPlayers[id].mapMode !== gameState.mapMode || 
-                otherPlayers[id].mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
             const op = otherPlayers[id];
-            const screenX = (op.x - startX) * TILE_SIZE;
-            const screenY = (op.y - startY) * TILE_SIZE;
+            if (op.mapMode !== gameState.mapMode || op.mapId !== (gameState.currentCaveId || gameState.currentCastleId)) continue;
+            
+            const { vx, vy } = lerpEntity(op);
+            const screenX = (vx - startX) * TILE_SIZE;
+            const screenY = (vy - startY) * TILE_SIZE;
+            
             if (screenX >= -TILE_SIZE && screenX < canvas.width && screenY >= -TILE_SIZE && screenY < canvas.height) {
                 ctx.fillStyle = '#f97316';
                 ctx.font = `bold ${TILE_SIZE}px monospace`;
@@ -2470,15 +2485,21 @@ const render = () => {
         }
     }
 
+    // Draw the Player (Smoothly!)
     const playerChar = gameState.player.isBoating ? 'c' : gameState.player.character;
     ctx.font = `bold ${TILE_SIZE}px monospace`;
+    
+    // Draw based on visual offset relative to startX/startY
+    const pScreenX = (visX - startX) * TILE_SIZE + TILE_SIZE / 2;
+    const pScreenY = (visY - startY) * TILE_SIZE + TILE_SIZE / 2;
+
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 3;
-    ctx.strokeText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+    ctx.strokeText(playerChar, pScreenX, pScreenY);
     ctx.fillStyle = '#3b82f6';
-    ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
+    ctx.fillText(playerChar, pScreenX, pScreenY);
 
-// --- 5. GPU ACCELERATED LIGHTING OVERLAY ---
+    // --- 5. GPU ACCELERATED LIGHTING OVERLAY ---
     
     // Determine how dark the areas outside your light radius should be
     let outerDarkness = 1.0; // Pitch black for Dungeons
@@ -6640,18 +6661,25 @@ auth.onAuthStateChanged((user) => {
 });
 
 let lastFrameTime = 0;
-const FPS_LIMIT = 30;
-const FRAME_MIN_TIME = 1000 / FPS_LIMIT;
 
 function gameLoop(timestamp) {
-    // 1. Throttle FPS
-    if (timestamp - lastFrameTime < FRAME_MIN_TIME) {
-        requestAnimationFrame(gameLoop);
-        return;
-    }
+    if (!lastFrameTime) lastFrameTime = timestamp;
+    const dt = (timestamp - lastFrameTime) / 1000; // Time in seconds
     lastFrameTime = timestamp;
 
-    // 2. Update Particles
+    // Cap delta-time so the game doesn't jump wildly if you switch browser tabs
+    const safeDt = Math.min(dt, 0.1);
+
+    // --- 1. LERP (SMOOTH GLIDE) THE PLAYER CAMERA ---
+    const p = gameState.player;
+    if (p.visualX === undefined) p.visualX = p.x;
+    if (p.visualY === undefined) p.visualY = p.y;
+    
+    // Move visual camera towards logical position smoothly
+    p.visualX += (p.x - p.visualX) * 15 * safeDt;
+    p.visualY += (p.y - p.visualY) * 15 * safeDt;
+
+    // 2. Update Particles smoothly
     if (typeof ParticleSystem !== 'undefined') ParticleSystem.update();
 
     // 3. Process Input Buffer
@@ -6661,11 +6689,19 @@ function gameLoop(timestamp) {
         handleInput(key);
     }
 
-    // 4. Re-render
+    // 4. Force continuous rendering while sliding
     if (gameState.mapMode) {
-        render();
+        if (Math.abs(p.x - p.visualX) > 0.01 || Math.abs(p.y - p.visualY) > 0.01) {
+            render(); 
+        } else {
+            // Snap to exact coordinates to save CPU when standing still
+            p.visualX = p.x;
+            p.visualY = p.y;
+            render();
+        }
     }
 
+    // Runs as fast as your monitor allows (60fps, 144fps, etc.)
     requestAnimationFrame(gameLoop);
 }
 
