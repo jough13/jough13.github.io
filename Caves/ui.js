@@ -74,15 +74,14 @@ const equippedArmorDisplay = document.getElementById('equippedArmorDisplay');
 const coreStatsPanel = document.getElementById('coreStatsPanel');
 const statusEffectsPanel = document.getElementById('statusEffectsPanel');
 
-const logMessage = (text) => {
-    const messageElement = document.createElement('p');
+let lastLogText = "";
+let lastLogCount = 1;
 
+const logMessage = (text) => {
     // 1. SANITIZE: Turn "<script>" into "&lt;script&gt;"
-    // This renders the text visibly but prevents it from running as code.
     let safeText = escapeHtml(text);
 
-    // 2. FORMAT: Now it is safe to re-introduce YOUR specific HTML tags
-    // Since we escaped the input first, users cannot inject their own <span> tags.
+    // 2. FORMAT: Re-introduce specific HTML tags safely
     let formattedText = safeText
         .replace(/{red:(.*?)}/g, '<span class="text-red-500 font-bold">$1</span>')
         .replace(/{green:(.*?)}/g, '<span class="text-green-500 font-bold">$1</span>')
@@ -90,6 +89,20 @@ const logMessage = (text) => {
         .replace(/{gold:(.*?)}/g, '<span class="text-yellow-500 font-bold">$1</span>')
         .replace(/{gray:(.*?)}/g, '<span class="text-gray-500">$1</span>');
 
+    // --- ANTI-SPAM LOGIC ---
+    // If this message is exactly the same as the last one, just increment a counter!
+    if (text === lastLogText && messageLog.firstChild) {
+        lastLogCount++;
+        messageLog.firstChild.innerHTML = `> ${formattedText} <span class="text-gray-500 ml-2 font-bold">(x${lastLogCount})</span>`;
+        return; // Stop here so we don't create a new line
+    }
+
+    // Otherwise, it's a new message. Reset the tracker.
+    lastLogText = text;
+    lastLogCount = 1;
+
+    // 3. CREATE & APPEND NEW MESSAGE
+    const messageElement = document.createElement('p');
     messageElement.innerHTML = `> ${formattedText}`;
     messageLog.prepend(messageElement);
 
