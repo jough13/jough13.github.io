@@ -2479,38 +2479,41 @@ const render = () => {
     ctx.fillText(playerChar, viewportCenterX * TILE_SIZE + TILE_SIZE / 2, viewportCenterY * TILE_SIZE + TILE_SIZE / 2);
 
 // --- 5. GPU ACCELERATED LIGHTING OVERLAY ---
-    if (ambientLight < 1.0) {
+    
+    // Determine how dark the areas outside your light radius should be
+    let outerDarkness = 1.0; // Pitch black for Dungeons
+    if (gameState.mapMode === 'overworld') {
+        outerDarkness = ambientLight; // Uses day/night cycle
+    } else if (gameState.mapMode === 'castle') {
+        outerDarkness = 0.8; // Dimly lit
+    }
+
+    if (outerDarkness > 0.0) {
         ctx.save();
         
-        // We temporarily reset the transform so we draw over the actual screen coordinates
-        // instead of dealing with the screen shake translation offsets
+        // Reset transform to draw in absolute screen coordinates
         ctx.setTransform(1, 0, 0, 1, 0, 0); 
         
         const playerScreenX = (viewportCenterX * TILE_SIZE + TILE_SIZE / 2) * dpr;
         const playerScreenY = (viewportCenterY * TILE_SIZE + TILE_SIZE / 2) * dpr;
         const radiusInPixels = lightRadius * TILE_SIZE * dpr;
 
-        // 1. Draw solid darkness over the whole screen
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = `rgba(0, 0, 0, ${1 - ambientLight})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // 2. Punch a hole in the darkness using a radial gradient
+        // 1. Create a gradient that is completely clear in the center, and fades to black
         const gradient = ctx.createRadialGradient(
-            playerScreenX, playerScreenY, radiusInPixels * 0.3, // Inner bright circle
+            playerScreenX, playerScreenY, radiusInPixels * 0.4, // Inner clear area
             playerScreenX, playerScreenY, radiusInPixels        // Outer fading edge
         );
-        // Alpha 1 = Erase the darkness. Alpha 0 = Keep the darkness.
-        gradient.addColorStop(0, 'rgba(0, 0, 0, 1)'); 
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); 
-
-        ctx.globalCompositeOperation = 'destination-out';
+        
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0)'); // Center: Transparent (we see the player)
+        gradient.addColorStop(1, `rgba(0, 0, 0, ${outerDarkness})`); // Edge: Dark
+        
+        // 2. Fill the screen. The gradient automatically fills the infinite area 
+        // outside of its radius with the color of its final stop (solid darkness).
+        ctx.globalCompositeOperation = 'source-over';
         ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(playerScreenX, playerScreenY, radiusInPixels, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 3. Optional: Add biome tinting back in (Ice is blue, Fire is orange)
+        // 3. Add biome tinting back in (Ice is blue, Fire is orange)
         if (ambientLight > 0.3 || gameState.mapMode === 'dungeon') {
             let r = 255, g = 180, b = 100; // Warm default
             
@@ -2522,7 +2525,7 @@ const render = () => {
                 if (gameState.weather === 'storm') { r = 100; g = 100; b = 150; }
             }
 
-            ctx.globalCompositeOperation = 'source-over';
+            // Draw a very faint colored circle over the player
             const tintGrad = ctx.createRadialGradient(
                 playerScreenX, playerScreenY, 0,
                 playerScreenX, playerScreenY, radiusInPixels
@@ -2531,7 +2534,7 @@ const render = () => {
             tintGrad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
             
             ctx.fillStyle = tintGrad;
-            ctx.fill(); // Re-fills the same circle with the subtle color tint
+            ctx.fillRect(0, 0, canvas.width, canvas.height); 
         }
 
         ctx.restore();
