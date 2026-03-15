@@ -563,7 +563,7 @@ window.CAVE_THEMES = {
             floor: '#1e1b4b' // Deep Midnight Blue
         },
         decorations: ['✨', '💀', 'vd', 'Ω'],
-        enemies: ['v', 'D', 'a'] // Void Stalkers, Demons, Acolytes
+        enemies: ['v', '😈d', 'a']
     },
     ROCK: {
         name: 'A Dark Cave',
@@ -621,7 +621,7 @@ window.CAVE_THEMES = {
             wall: '#67e8f9', 
             floor: '#22d3ee' 
         },
-        decorations: ['Y', '🔮', '$', 'K'],
+        decorations: ['💜', '🔮', '$', 'K'],
         enemies: ['g']
     },
     VOID: {
@@ -634,7 +634,7 @@ window.CAVE_THEMES = {
             floor: '#0f0518' 
         },
         decorations: ['✨', '💀', 'Ω'],
-        enemies: ['v', 'a', 'm', 'v', 'D']
+        enemies: ['v', 'a', 'm', 'v', '😈d']
     },
     ABYSS: {
         name: 'The Maw',
@@ -851,4 +851,3 @@ window.ATMOSPHERE_TEXT = {
         "You see ripples in the water. Something is moving."
     ]
 };
-
