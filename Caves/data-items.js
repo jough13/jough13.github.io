@@ -658,10 +658,10 @@ window.ITEM_DATA = {
         onHit: 'chainLightning', // The spell ID
         procChance: 0.20         // 20% chance
     },
-    '🧛': {
+    '🩸b': {
         name: 'Bloodthirster',
         type: 'weapon',
-        tile: '🧛',
+        tile: '🩸b',
         damage: 4,
         slot: 'weapon',
         description: "It pulses with a heartbeat. (30% chance to cast Siphon Life on hit)",
@@ -916,7 +916,7 @@ window.ITEM_DATA = {
 
     // --- NEW MONSTER LOOT ---
     '🐀': { name: 'Rat Tail', type: 'junk', description: "Gross, but the apothecary might buy it." },
-    '🦇': { name: 'Bat Wing', type: 'junk', description: "Leathery and thin." },
+    '🦇w': { name: 'Bat Wing', type: 'junk', description: "Leathery and thin." },
     '🦷': { name: 'Snake Fang', type: 'junk', description: "Still dripping with venom." },
     '🧣': { name: 'Red Bandana', type: 'junk', description: "Worn by low-level thugs." },
 
@@ -1109,49 +1109,44 @@ window.ITEM_DATA = {
             logMessage(`Used a Healing Potion. (+HP, +10 Thirst)`);
         }
     },
-
-    '🔮': { // Was 'o'
+    '🔮': { 
         name: 'Mana Orb',
-        type: 'consumable',
-        effect: (state) => {
+        type: 'instant', // <--- CHANGED FROM 'consumable'
+        effect: (state, tileId) => {
             const oldMana = state.player.mana;
             state.player.mana = Math.min(state.player.maxMana, state.player.mana + MANA_RESTORE_AMOUNT);
             if (state.player.mana > oldMana) {
                 triggerStatAnimation(statDisplays.mana, 'stat-pulse-blue');
-                return true;
             }
-            logMessage('Used a Mana Orb. Restored mana!');
+            logMessage('You absorb a Mana Orb!');
         },
         description: "A fragment of a dream given form. It feels insubstantial in your hand."
     },
 
     'S': {
         name: 'Stamina Crystal',
-        type: 'consumable',
-        effect: (state) => {
+        type: 'instant', // <--- CHANGED FROM 'consumable'
+        effect: (state, tileId) => {
             const oldStamina = state.player.stamina;
             state.player.stamina = Math.min(state.player.maxStamina, state.player.stamina + STAMINA_RESTORE_AMOUNT);
             if (state.player.stamina > oldStamina) {
-
                 triggerStatAnimation(statDisplays.stamina, 'stat-pulse-yellow');
-                return true;
             }
-            logMessage(`Used a Stamina Crystal. Restored ${STAMINA_RESTORE_AMOUNT} stamina!`);
+            logMessage(`You shatter a Stamina Crystal!`);
         },
         description: "A jagged green crystal that pulses with a rhythmic light."
     },
 
-    'Y': {
+    '💜': { 
         name: 'Psyche Shard',
-        type: 'consumable',
-        effect: (state) => {
+        type: 'instant', // <--- CHANGED FROM 'consumable'
+        effect: (state, tileId) => {
             const oldPsyche = state.player.psyche;
             state.player.psyche = Math.min(state.player.maxPsyche, state.player.psyche + PSYCHE_RESTORE_AMOUNT);
             if (state.player.psyche > oldPsyche) {
-                triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); // USE NEW FUNCTION
-                return true;
+                triggerStatAnimation(statDisplays.psyche, 'stat-pulse-purple'); 
             }
-            logMessage('Used a Psyche Shard. Restored psyche.');
+            logMessage('You absorb a Psyche Shard.');
         }
     },
     '📜C': {
@@ -1487,7 +1482,7 @@ window.ITEM_DATA = {
         statBonuses: { willpower: 2 },
         description: "The wood is charred black and warm to the touch. It whispers to you."
     },
-    'M': { // Using 'M' for Mage robe
+    '👘m': {
         name: 'Mage Robe',
         type: 'armor',
         defense: 3, // Good, but less than Steel
@@ -1499,13 +1494,13 @@ window.ITEM_DATA = {
         name: 'Frost Essence',
         type: 'junk'
     },
-    'v': {
+    '❄️b': {
         name: 'Cryo Blade',
         type: 'weapon',
         damage: 3, // Tier 2.5 (better than Rusty Sword)
         slot: 'weapon'
     },
-    'V': {
+    '❄️m': {
         name: 'Frozen Mail',
         type: 'armor',
         defense: 3, // Tier 2.5 (better than Studded Armor)
@@ -2121,4 +2116,3 @@ window.LOOT_TABLE_ARCHAEOLOGY = [
     'idol',        // Rare
     'tome_page'    // Very Rare (Lore Item)
 ];
-
