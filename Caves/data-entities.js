@@ -479,7 +479,7 @@ window.ENEMY_DATA = {
     loot: 'ectoplasm',
     flavor: "It wails silently."
 },
-    'D': {
+    '😈d': {
         name: 'Void Demon',
         maxHealth: 50,
         attack: 8,
@@ -603,6 +603,28 @@ window.ENEMY_DATA = {
         loot: '⚙️', // Gear
         flavor: "A relic of a lost civilization, still patrolling."
     },
+    '🐉h': {
+        name: 'Swamp Hydra',
+        maxHealth: 60,
+        attack: 6,
+        defense: 2,
+        xp: 150,
+        loot: '🐉',
+        inflicts: 'poison',
+        flavor: "Multiple heads snap at you from the muck."
+    },
+    '🔥e': {
+        name: 'Efreet',
+        maxHealth: 60,
+        attack: 8,
+        defense: 1,
+        xp: 150,
+        loot: '🔥c',
+        caster: true,
+        castRange: 5,
+        spellDamage: 6,
+        inflicts: 'burn'
+    }
 };
 
 window.PLAYER_BACKGROUNDS = {
