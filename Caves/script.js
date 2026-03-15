@@ -1084,9 +1084,9 @@ function resizeCanvas() {
 
     TILE_SIZE = 20;
 
-    // 2. Calculate Viewport (Round UP to ensure full coverage, +1 for buffer)
-    VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 1;
-    VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 1;
+    // 2. Calculate Viewport (Round UP to ensure full coverage, +3 for buffer)
+    VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 3; // +3 gives a wide buffer
+    VIEWPORT_HEIGHT = Math.ceil(containerHeight / TILE_SIZE) + 3;
 
     const dpr = window.devicePixelRatio || 1;
 
@@ -2148,9 +2148,13 @@ function renderTerrainCache(startX, startY) {
     terrainCtx.fillStyle = canvasBg;
     terrainCtx.fillRect(0, 0, terrainCanvas.width, terrainCanvas.height);
 
-    // Loop through the Viewport
-    for (let y = 0; y < VIEWPORT_HEIGHT; y++) {
-        for (let x = 0; x < VIEWPORT_WIDTH; x++) {
+    // --- OVERDRAW BUFFER: Shift canvas so x=-1 and y=-1 don't get clipped off ---
+    terrainCtx.save();
+    terrainCtx.translate(TILE_SIZE, TILE_SIZE);
+
+    // Loop through the Viewport (START AT -1 FOR THE BUFFER)
+    for (let y = -1; y <= VIEWPORT_HEIGHT; y++) {
+        for (let x = -1; x <= VIEWPORT_WIDTH; x++) {
             const mapX = startX + x;
             const mapY = startY + y;
 
@@ -2219,6 +2223,8 @@ function renderTerrainCache(startX, startY) {
                         case '/': fgChar = '/'; fgColor = '#000'; break;
                         default:
                             fgChar = tile;
+                            // Make sure isWideChar fallback exists
+                            const isWideCharCheck = typeof isWideChar === 'function' ? isWideChar : (c) => /\p{Extended_Pictographic}/u.test(c);
                             if (ENEMY_DATA[tile]) fgColor = ENEMY_DATA[tile].color || '#ef4444';
                             break;
                     }
@@ -2235,12 +2241,16 @@ function renderTerrainCache(startX, startY) {
                     }
                 } else {
                     terrainCtx.fillStyle = fgColor;
-                    terrainCtx.font = isWideChar(fgChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
+                    const isWideCharCheck = typeof isWideChar === 'function' ? isWideChar : (c) => /\p{Extended_Pictographic}/u.test(c);
+                    terrainCtx.font = isWideCharCheck(fgChar) ? `${TILE_SIZE}px monospace` : `bold ${TILE_SIZE}px monospace`;
                     terrainCtx.fillText(fgChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
                 }
             }
         }
     }
+
+    // --- CLEANUP: Restore the context so subsequent draws aren't permanently shifted
+    terrainCtx.restore();
 }
 
 const render = () => {
@@ -2305,14 +2315,12 @@ const render = () => {
 
     // --- 3. DRAW CACHED TERRAIN ---
     // The terrainCanvas is already scaled by DPR.
-    // The Main CTX is already scaled by DPR.
-    // To draw it 1:1, we must draw it at logical 0,0 with logical dimensions.
     const dpr = window.devicePixelRatio || 1;
     const logicalW = terrainCanvas.width / dpr;
     const logicalH = terrainCanvas.height / dpr;
 
-    // We use the logical dimensions because ctx is currently scaled
-    ctx.drawImage(terrainCanvas, 0, 0, logicalW, logicalH);
+    // Draw the cached terrain shifted UP and LEFT by 1 tile to counter the shift we did in the cache!
+    ctx.drawImage(terrainCanvas, -TILE_SIZE, -TILE_SIZE, logicalW, logicalH);
 
 // --- 4. LIGHTING & DYNAMIC LAYER (OPTIMIZED) ---
     let ambientLight = 0.0;
@@ -2463,8 +2471,8 @@ const render = () => {
         const { vx, vy } = lerpEntity(enemy);
         const screenX = vx - startX;
         const screenY = vy - startY;
-        // Only draw if on-screen
-        if (screenX >= -1 && screenX <= VIEWPORT_WIDTH && screenY >= -1 && screenY <= VIEWPORT_HEIGHT) {
+        // Widened the on-screen check from -1 to -2 to ensure smooth gliding in from offscreen
+        if (screenX >= -2 && screenX <= VIEWPORT_WIDTH && screenY >= -2 && screenY <= VIEWPORT_HEIGHT) {
             drawEntity(enemy, screenX, screenY);
         }
     });
