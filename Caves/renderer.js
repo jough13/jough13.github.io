@@ -33,7 +33,7 @@ const ParticleSystem = {
         
         if (type === 'text') {
             p.vx = 0; 
-            p.vy = -0.02; 
+            p.vy = -0.07; 
             p.size = 14;
             p.gravity = 0;
         } else {
@@ -66,7 +66,7 @@ const ParticleSystem = {
             const p = this.activeParticles[i];
             p.x += p.vx; 
             p.y += p.vy;
-            p.life -= 0.02;
+            p.life -= 0.07;
             if(p.gravity) p.vy += p.gravity;
 
             if (p.life <= 0) {
