@@ -153,7 +153,14 @@ function logMessage(newMessage, isImportant = false) {
     
     // --- 3. TRIGGER ENGINE RENDER ---
     if (typeof render === 'function') {
-        render();
+        // Debounce the render so multiple logs in one frame only draw the canvas once!
+        if (!window._isRenderingLog) {
+            window._isRenderingLog = true;
+            requestAnimationFrame(() => {
+                render();
+                window._isRenderingLog = false;
+            });
+        }
     }
 
     // --- 4. POST-RENDER SCROLL RESTORATION ---
