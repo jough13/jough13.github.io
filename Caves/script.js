@@ -976,6 +976,29 @@ authButton.addEventListener('click', async () => {
 });
 
 document.getElementById('closeMapButton').addEventListener('click', closeWorldMap);
+
+// --- MOUSE WHEEL ZOOM ---
+const canvasWrapper = document.getElementById('gameCanvasWrapper');
+if (canvasWrapper) {
+    canvasWrapper.addEventListener('wheel', (e) => {
+        // Prevent the whole webpage from scrolling when zooming the map
+        e.preventDefault(); 
+        
+        // Ensure zoom is initialized
+        if (!window.currentZoom) window.currentZoom = 20;
+
+        // Zoom In (Scroll Up) or Zoom Out (Scroll Down)
+        if (e.deltaY < 0) {
+            window.currentZoom = Math.min(40, window.currentZoom + 2); // Max zoom in
+        } else {
+            window.currentZoom = Math.max(12, window.currentZoom - 2); // Max zoom out
+        }
+        
+        // Instantly recalculate the grid and redraw!
+        resizeCanvas();
+    }, { passive: false });
+}
+
 window.addEventListener('resize', () => {
     if (!mapModal.classList.contains('hidden')) {
         fitMapCanvasToContainer();
@@ -1084,7 +1107,9 @@ function resizeCanvas() {
     const containerWidth = canvasContainer.clientWidth;
     const containerHeight = canvasContainer.clientHeight;
 
-    TILE_SIZE = 20;
+    // Use a global zoom tracker, default to 20 if it doesn't exist yet
+    if (!window.currentZoom) window.currentZoom = 20;
+    TILE_SIZE = window.currentZoom;
 
     // 2. Calculate Viewport (Round UP to ensure full coverage, +3 for buffer)
     VIEWPORT_WIDTH = Math.ceil(containerWidth / TILE_SIZE) + 3; // +3 gives a wide buffer
@@ -5985,6 +6010,16 @@ async function attemptMovePlayer(newX, newY) {
     gameState.mapDirty = true;
 
     AudioSystem.playStep();
+
+    // --- VISUAL FOOTSTEPS & SPLASHES ---
+    if (typeof ParticleSystem !== 'undefined') {
+        // If stepping in water, make a blue splash. Otherwise, make a gray dust puff!
+        const isWater = (newTile === '~' || newTile === '≈');
+        const particleColor = isWater ? '#60a5fa' : '#a8a29e'; 
+        
+        // Spawn the particle at the PREVIOUS tile so it looks like you kicked it up
+        ParticleSystem.spawn(prevX, prevY, particleColor, 'dust', '', isWater ? 5 : 3);
+    }
 
     if (gameState.player.companion) {
         gameState.player.companion.x = prevX;
