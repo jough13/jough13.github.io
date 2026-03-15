@@ -164,15 +164,20 @@ const renderStats = () => {
                 // Update text and bar color
                 element.classList.remove('text-red-500', 'text-yellow-500', 'text-green-500'); // Clear old text colors
 
+                const canvasWrapper = document.getElementById('gameCanvasWrapper');
+
                 if (percent > 60) {
                     element.classList.add('text-green-500');
                     statBarElements.health.style.backgroundColor = '#22c55e'; // Green
-                } else if (percent > 30) {
+                    canvasWrapper.classList.remove('critical-health'); // Safe
+                } else if (percent > 25) {
                     element.classList.add('text-yellow-500');
                     statBarElements.health.style.backgroundColor = '#eab308'; // Yellow
+                    canvasWrapper.classList.remove('critical-health'); // Safe
                 } else {
                     element.classList.add('text-red-500');
                     statBarElements.health.style.backgroundColor = '#ef4444'; // Red
+                    canvasWrapper.classList.add('critical-health'); // DANGER! Pulse screen!
                 }
 
             } else if (statName === 'mana') {
