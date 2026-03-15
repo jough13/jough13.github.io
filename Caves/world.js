@@ -198,7 +198,7 @@ generateCave(caveId) {
 
         // --- 4. Place procedural loot and decorations ---
 
-        const CAVE_LOOT_TABLE = ['+', '🔮', 'Y', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
+        const CAVE_LOOT_TABLE = ['+', '🔮', '💜', 'S', '$', '📄', '🍄', '🏺', '⚰️'];
         const lootQuantity = Math.floor(random() * 4);
 
         for (let i = 0; i < lootQuantity; i++) {
@@ -675,25 +675,25 @@ for (let y = 0; y < map.length; y++) {
                 4: ['🐲', '🦖', '🤖'] // Drake, Rex, Guardian
             },
             '≈': { // Swamp
-                0: ['🦟', '🐸', '🐍'], // Mosquito, Toad, Snake
-                1: ['🐍', 'l', 'Z'], // Snake, Leech, Draugr
-                2: ['Z', 'l', '💀'], // Draugr, Leech, Necro Tome (Trap)
-                3: ['Z', '💀', 'Hydra'], // Draugr, Necro, Hydra
-                4: ['Hydra', '👾', '🧛'] // Hydra, Horror, Vampire
+                0: ['🦟', '🐸', '🐍'], 
+                1: ['🐍', 'l', 'Z'], 
+                2: ['Z', 'l', 'a'], // Swapped missing skull for Acolyte
+                3: ['Z', 'a', '🐉h'], // Swapped missing Hydra string for new Hydra ID
+                4: ['🐉h', '👾', '🧛'] 
             },
             'D': { // Desert
-                0: ['🦂s', '🐍', '🌵'], // Small Scorpion, Snake, Cactus
-                1: ['🦂', '🐍c', '🌵'], // Giant Scorpion, Cobra, Cactus
-                2: ['🦂', 'm', '💀'], // Scorpion, Mage, Necro
-                3: ['m', '💀', 'Efreet'], // Mage, Necro, Efreet
-                4: ['Efreet', '🦖', '🤖'] // Efreet, Rex, Guardian
+                0: ['🦂s', '🐍', '🌵'], 
+                1: ['🦂', '🐍c', '🌵'], 
+                2: ['🦂', 'm', 'a'], 
+                3: ['m', 'a', '🔥e'], // Swapped missing Efreet string for new Efreet ID
+                4: ['🔥e', '🦖', '🤖'] 
             },
             'd': { // Deadlands
-                0: ['s', 'b', 'R'], // Skeleton, Bandit, Recruit
-                1: ['s', 'Z', 'a'], // Skeleton, Draugr, Acolyte
-                2: ['Z', 'a', 'D'], // Draugr, Acolyte, Demon
-                3: ['D', 'v', '🧙'], // Demon, Void Stalker, Necro Lord
-                4: ['🧙', '👾', '🧛'] // Necro Lord, Horror, Vampire
+                0: ['s', 'b', 'R'], 
+                1: ['s', 'Z', 'a'], 
+                2: ['Z', 'a', '😈d'], // Fixed Void Demon ID
+                3: ['😈d', 'v', '🧙'], // Fixed Void Demon ID
+                4: ['🧙', '👾', '🧛'] 
             }
         };
 
