@@ -6622,12 +6622,16 @@ async function enterGame(playerData) {
 
         // --- FLOATING CHAT BUBBLE ---
         // Store the message on the player object for 5 seconds
-        if (message.senderId === player_id) {
-            gameState.player.chatBubble = message.message;
-            gameState.player.chatTimer = Date.now() + 5000;
-        } else if (otherPlayers[message.senderId]) {
-            otherPlayers[message.senderId].chatBubble = message.message;
-            otherPlayers[message.senderId].chatTimer = Date.now() + 5000;
+        // Only draw the bubble if the message was sent in the last 5 seconds!
+        const now = Date.now();
+        if (now - message.timestamp < 5000) {
+            if (message.senderId === player_id) {
+                gameState.player.chatBubble = message.message;
+                gameState.player.chatTimer = now + 5000;
+            } else if (otherPlayers[message.senderId]) {
+                otherPlayers[message.senderId].chatBubble = message.message;
+                otherPlayers[message.senderId].chatTimer = now + 5000;
+            }
         }
 
         const messageDiv = document.createElement('div');
