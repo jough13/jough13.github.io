@@ -840,11 +840,15 @@ function animateParticles() {
     // Stop the loop if there are no particles and no active pulse
     if (activeParticles.length === 0 && !sensorPulseActive) {
         particleAnimationId = null;
-        // Perform a final clear/draw only if we are currently looking at the map
-        if (currentGameState === GAME_STATES.GALACTIC_MAP) {
-            render(); 
-        }
+        if (currentGameState === GAME_STATES.GALACTIC_MAP) render(); 
         return;
+    }
+
+    // --- PAUSE LOOP IF NOT ON MAP ---
+    // If the player is in a menu or on a planet, pause the animation entirely!
+    if (currentGameState !== GAME_STATES.GALACTIC_MAP) {
+        particleAnimationId = requestAnimationFrame(animateParticles);
+        return; // Skip all math and rendering for this frame!
     }
 
     // Update Particles (Movement & Decay)
@@ -859,14 +863,7 @@ function animateParticles() {
         }
     }
 
-    // Only redraw the screen if we are actually looking at the Galactic Map.
-    // This prevents the game from trying to re-render the System Map or Planet View 
-    // repeatedly (which causes UI freezing and high CPU usage).
-    if (currentGameState === GAME_STATES.GALACTIC_MAP) {
-        render(); 
-    }
-    
-    // Continue the loop
+    render(); 
     particleAnimationId = requestAnimationFrame(animateParticles);
 }
 
@@ -1055,13 +1052,15 @@ function animateParticles() {
      },
 
      pruneChunks(playerChunkX, playerChunkY) {
-         const MAX_CHUNK_DIST = 5; // Keep 5 chunks in every direction (approx 80 tiles)
+         const MAX_CHUNK_DIST = 7; // Slightly increased to account for Manhattan math
          const keys = Object.keys(this.loadedChunks);
          let prunedCount = 0;
 
          keys.forEach(key => {
              const [cx, cy] = key.split(',').map(Number);
-             const dist = Math.sqrt(Math.pow(cx - playerChunkX, 2) + Math.pow(cy - playerChunkY, 2));
+             
+             // Use Manhattan Distance instead of square root!
+             const dist = Math.abs(cx - playerChunkX) + Math.abs(cy - playerChunkY);
 
              if (dist > MAX_CHUNK_DIST) {
                  delete this.loadedChunks[key];
@@ -1149,17 +1148,18 @@ function performGarbageCollection() {
     const isBloated = keys.length > MAX_DELTAS;
 
     keys.forEach(key => {
-        // SAFETY CHECK: Never delete critical system data!
+        // SAFETY CHECK 1: Never delete critical global system data!
         if (key === 'CRAFTING_BONUSES') return;
         
         const delta = worldStateDeltas[key];
 
-        // SAFETY CHECK: Never delete critical story/lore flags
-        if (delta.activated || delta.studied || delta.isUnique) {
+        // Never delete critical story flags, player-built colonies, or mapped wormhole networks.
+        if (delta.activated || delta.studied || delta.isUnique || delta.hasColony || delta.isDiscoveredWormhole) {
             return; 
         }
 
         // 1. Standard Time Check
+        // If it's been a long time since the player touched this tile, it's safe to let resources respawn.
         const isOld = delta.lastInteraction && (currentGameDate - delta.lastInteraction > RESOURCE_RESPAWN_TIME);
 
         // 2. Distance Check (Only run if memory is getting bloated)
@@ -1180,6 +1180,7 @@ function performGarbageCollection() {
         }
 
         // 3. Execute Cleanup
+        // If the tile is old, or we are bloated and it's far away, wipe it.
         if (isOld || isDistant) {
             delete worldStateDeltas[key];
             cleanedCount++;
