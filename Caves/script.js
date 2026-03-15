@@ -2283,7 +2283,7 @@ const render = () => {
 
     ctx.save(); // Start Scene Transform
     
-    // --- 1. SMOOTH CAMERA MATH (FIXED) ---
+    // --- 1. SMOOTH CAMERA MATH ---
     const p = gameState.player;
     const visX = p.visualX !== undefined ? p.visualX : p.x;
     const visY = p.visualY !== undefined ? p.visualY : p.y;
@@ -6713,9 +6713,10 @@ function gameLoop(timestamp) {
         gameState.lastStartX = null; // Force background to redraw instantly
     }
 
-    // Move visual camera towards logical position smoothly
-    p.visualX += (p.x - p.visualX) * 15 * safeDt;
-    p.visualY += (p.y - p.visualY) * 15 * safeDt;
+    // Move visual camera towards logical position smoothly.
+    // '8' is the perfect speed to make holding WASD feel like continuous walking!
+    p.visualX += (p.x - p.visualX) * 8 * safeDt;
+    p.visualY += (p.y - p.visualY) * 8 * safeDt;
 
     // 2. Update Particles smoothly
     if (typeof ParticleSystem !== 'undefined') ParticleSystem.update();
