@@ -170,7 +170,7 @@ function generateEnemyLoot(player, enemy) {
     const scaledRoll = Math.random();
 
     // Define Tiers
-    const commonLoot = ['+', '🔮', 'S', 'Y', '🐀', '🦇', '🦷', '🧣'];
+    const commonLoot = ['+', '🔮', 'S', '💜', '🐀', '🦇w', '🦷', '🧣'];
 
     // Tier 1: Starter Gear (Club, Staff, Bow, Padded, Robes)
     const tier1Loot = ['/', '%', '🏏', '🦯', '🏹', '👕', '👘'];
