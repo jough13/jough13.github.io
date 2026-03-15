@@ -1112,8 +1112,8 @@ function resizeCanvas() {
     ctx.textBaseline = 'middle';
 
     // 5. Resize Offscreen Canvas (Match Main Canvas Exactly)
-    terrainCanvas.width = canvas.width;
-    terrainCanvas.height = canvas.height;
+    terrainCanvas.width = canvas.width + (2 * TILE_SIZE * dpr);
+    terrainCanvas.height = canvas.height + (2 * TILE_SIZE * dpr);
     
     // 6. Configure Offscreen Context
     terrainCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
@@ -2456,9 +2456,18 @@ const render = () => {
     };
 
     // Helper to calculate smooth gliding for any object
+
     const lerpEntity = (entity) => {
         if (entity.visualX === undefined) entity.visualX = entity.x;
         if (entity.visualY === undefined) entity.visualY = entity.y;
+        
+        // TELEPORT SNAP FOR ENEMIES AND OTHER PLAYERS
+        if (Math.abs(entity.x - entity.visualX) > 2 || Math.abs(entity.y - entity.visualY) > 2) {
+            entity.visualX = entity.x;
+            entity.visualY = entity.y;
+        }
+
+        // We use a fixed interpolation speed for entities here to keep them snappy
         entity.visualX += (entity.x - entity.visualX) * 0.4;
         entity.visualY += (entity.y - entity.visualY) * 0.4;
         return { vx: entity.visualX, vy: entity.visualY };
@@ -6690,6 +6699,13 @@ function gameLoop(timestamp) {
     if (p.visualX === undefined) p.visualX = p.x;
     if (p.visualY === undefined) p.visualY = p.y;
     
+    // TELEPORT SNAP: If the distance is > 2 tiles, snap instantly!
+    if (Math.abs(p.x - p.visualX) > 2 || Math.abs(p.y - p.visualY) > 2) {
+        p.visualX = p.x;
+        p.visualY = p.y;
+        gameState.lastStartX = null; // Force background to redraw instantly
+    }
+
     // Move visual camera towards logical position smoothly
     p.visualX += (p.x - p.visualX) * 15 * safeDt;
     p.visualY += (p.y - p.visualY) * 15 * safeDt;
