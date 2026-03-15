@@ -1027,6 +1027,8 @@ function grantXp(amount) {
     logMessage(`You gained ${amount} XP!`);
     triggerStatFlash(statDisplays.xp, true);
 
+    if (typeof ParticleSystem !== 'undefined') ParticleSystem.createFloatingText(player.x, player.y, `+${amount} XP`, '#a855f7');
+
     // --- Level Up Loop ---
     while (player.xp >= player.xpToNextLevel) { 
         
@@ -2322,7 +2324,7 @@ const render = () => {
     // Draw the cached terrain shifted UP and LEFT by 1 tile to counter the shift we did in the cache!
     ctx.drawImage(terrainCanvas, -TILE_SIZE, -TILE_SIZE, logicalW, logicalH);
 
-// --- 4. LIGHTING & DYNAMIC LAYER (OPTIMIZED) ---
+    // --- 4. LIGHTING & DYNAMIC LAYER (OPTIMIZED) ---
     let ambientLight = 0.0;
     let baseRadius = 10;
     const hasTorch = gameState.player.inventory.some(item => item.name === 'Torch');
@@ -2337,11 +2339,16 @@ const render = () => {
         ambientLight = 0.2;
         baseRadius = 12 + torchBonus + candleBonus;
     } else {
-        const hour = gameState.time.hour;
-        if (hour >= 6 && hour < 18) ambientLight = 0.0;
-        else if (hour >= 18 && hour < 20) ambientLight = 0.3;
-        else if (hour >= 5 && hour < 6) ambientLight = 0.3;
-        else ambientLight = 0.5;
+        // Calculate exact minute of the day (0 to 1440)
+        const timeInMinutes = (gameState.time.hour * 60) + gameState.time.minute;
+        
+        // Creates a perfectly smooth wave: 0.0 at noon, 1.0 at midnight
+        const timeWave = (Math.cos((timeInMinutes / 1440) * Math.PI * 2) + 1) / 2;
+        
+        // Scale it so max darkness is 0.85 (pitch black) and noon is 0.0 (bright)
+        ambientLight = timeWave * 0.85;
+        
+        // If it's darker than 30%, shrink vision so torches matter!
         baseRadius = (ambientLight > 0.3) ? 8 + torchBonus + candleBonus : 25;
     }
 
