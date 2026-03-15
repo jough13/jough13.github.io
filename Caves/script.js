@@ -2511,6 +2511,17 @@ const render = () => {
                     ctx.fillStyle = '#86efac';
                     ctx.font = `bold ${TILE_SIZE * 0.7}px monospace`;
                     ctx.fillText(op.companion.tile || '?', screenX + TILE_SIZE - 2, screenY + 6);
+
+                }
+            // --- NEW: DRAW OTHER PLAYER CHAT BUBBLE ---
+                if (op.chatBubble && Date.now() < op.chatTimer) {
+                    ctx.font = `bold 12px monospace`;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    const textWidth = ctx.measureText(op.chatBubble).width;
+                    ctx.fillRect(screenX + TILE_SIZE/2 - textWidth/2 - 4, screenY - 20, textWidth + 8, 16);
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(op.chatBubble, screenX + TILE_SIZE/2, screenY - 12);
                 }
             }
         }
@@ -2529,6 +2540,17 @@ const render = () => {
     ctx.strokeText(playerChar, pScreenX, pScreenY);
     ctx.fillStyle = '#3b82f6';
     ctx.fillText(playerChar, pScreenX, pScreenY);
+
+    // --- DRAW YOUR CHAT BUBBLE ---
+    if (gameState.player.chatBubble && Date.now() < gameState.player.chatTimer) {
+        ctx.font = `bold 12px monospace`;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        const textWidth = ctx.measureText(gameState.player.chatBubble).width;
+        ctx.fillRect(pScreenX - textWidth/2 - 4, pScreenY - TILE_SIZE - 12, textWidth + 8, 16);
+        
+        ctx.fillStyle = 'white';
+        ctx.fillText(gameState.player.chatBubble, pScreenX, pScreenY - TILE_SIZE - 4);
+    }
 
     // --- 5. GPU ACCELERATED LIGHTING OVERLAY ---
     
@@ -6562,6 +6584,17 @@ async function enterGame(playerData) {
     const chatRef = rtdb.ref('chat').orderByChild('timestamp').limitToLast(100);
     chatRef.on('child_added', (snapshot) => {
         const message = snapshot.val();
+
+        // --- FLOATING CHAT BUBBLE ---
+        // Store the message on the player object for 5 seconds
+        if (message.senderId === player_id) {
+            gameState.player.chatBubble = message.message;
+            gameState.player.chatTimer = Date.now() + 5000;
+        } else if (otherPlayers[message.senderId]) {
+            otherPlayers[message.senderId].chatBubble = message.message;
+            otherPlayers[message.senderId].chatTimer = Date.now() + 5000;
+        }
+
         const messageDiv = document.createElement('div');
         const date = new Date(message.timestamp);
         const timeString = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
