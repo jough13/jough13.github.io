@@ -525,7 +525,7 @@ function processEnemyTurns() {
                 }
 
                 // 2. VOID DEMON: Reality Shift
-                else if (enemy.name.includes("Demon") || enemy.tile === 'D') {
+                else if (enemy.name.includes("Demon") || enemy.tile === '😈d') {
                     logMessage(`The ${enemy.name} roars and shatters reality!`);
                     gameState.screenShake = 30;
 
@@ -647,13 +647,13 @@ function processEnemyTurns() {
 
         // B. PREPARE NEW ATTACK (The Warning)
         // 20% chance for Bosses/Mages to start a telegraph if player is in range
-        const canTelegraph = enemy.isBoss || enemy.tile === 'm' || enemy.tile === 'D' || enemy.tile === '🐲';
+        const canTelegraph = enemy.isBoss || enemy.tile === 'm' || enemy.tile === '😈d' || enemy.tile === '🐲';
 
         if (canTelegraph && dist < 6 && Math.random() < 0.20) {
             enemy.pendingAttacks = [];
 
             // Pattern 1: The "Cross" (Mages/Demons)
-            if (enemy.tile === 'm' || enemy.tile === 'D') {
+            if (enemy.tile === 'm' || enemy.tile === '😈d') {
                 logMessage(`The ${enemy.name} gathers dark energy...`);
                 // Target player's current spot + adjacent
                 enemy.pendingAttacks.push({ x: player.x, y: player.y });
