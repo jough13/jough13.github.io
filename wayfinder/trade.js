@@ -127,20 +127,23 @@ function openTradeModal(mode) {
     listEl.appendChild(toggleHeader);
     
     // --- 3. POPULATE THE LISTS ---
+    // Use a DocumentFragment for the Trade UI
+    const fragment = document.createDocumentFragment();
+
     if (isBuy) {
         const items = location.sells || [];
         if (items.length === 0) {
             const noData = document.createElement('div');
             noData.innerHTML = `<div style="padding:15px; color:#888;">No commodities for sale here.</div>`;
-            listEl.appendChild(noData);
-            return;
+            fragment.appendChild(noData);
+        } else {
+            items.forEach(itemEntry => {
+                const itemId = itemEntry.id || itemEntry;
+                const stock = itemEntry.stock || 99; 
+                // Notice we pass 'fragment' instead of 'listEl' here!
+                renderTradeRow(itemId, stock, true, location, fragment);
+            });
         }
-
-        items.forEach(itemEntry => {
-            const itemId = itemEntry.id || itemEntry;
-            const stock = itemEntry.stock || 99; 
-            renderTradeRow(itemId, stock, true, location, listEl);
-        });
         
     } else {
         const playerHas = Object.keys(playerCargo).filter(id => playerCargo[id] > 0);
@@ -151,10 +154,10 @@ function openTradeModal(mode) {
             header.className = 'trade-list-header';
             header.style.cssText = "color:var(--accent-color); font-size:10px; letter-spacing:2px; margin-bottom:10px; border-bottom:1px solid #333;";
             header.textContent = "YOUR CARGO";
-            listEl.appendChild(header);
+            fragment.appendChild(header);
 
             playerHas.forEach(itemId => {
-                renderTradeRow(itemId, playerCargo[itemId], false, location, listEl);
+                renderTradeRow(itemId, playerCargo[itemId], false, location, fragment);
             });
         }
 
@@ -168,20 +171,23 @@ function openTradeModal(mode) {
             header.className = 'trade-list-header';
             header.style.cssText = "color:#666; font-size:10px; letter-spacing:2px; margin-top:20px; margin-bottom:10px; border-bottom:1px solid #333;";
             header.textContent = "STATION DEMAND";
-            listEl.appendChild(header);
+            fragment.appendChild(header);
 
             otherDemands.forEach(entry => {
                 const itemId = entry.id || entry;
-                renderTradeRow(itemId, 0, false, location, listEl);
+                renderTradeRow(itemId, 0, false, location, fragment);
             });
         }
 
         if (playerHas.length === 0 && otherDemands.length === 0) {
             const noData = document.createElement('div');
             noData.innerHTML = `<div style="padding:15px; color:#888;">Station is not currently buying resources.</div>`;
-            listEl.appendChild(noData);
+            fragment.appendChild(noData);
         }
     }
+
+    // Push all generated trade rows to the screen at once!
+    listEl.appendChild(fragment);
 }
 
 function renderTradeRow(itemId, qty, isBuy, location, listEl) {
