@@ -2209,8 +2209,11 @@ function renderSystemMap() {
  }
 
  function renderGalacticMap() {
-    // --- 1. Check Theme Status ---
+    // --- 1. Check Theme & Hardware Status ---
     const isLightMode = document.body.classList.contains('light-mode');
+    
+    // Performance & Visual Fix: Disable glows on mobile, OR if Light Mode is active!
+    const useHighGraphics = window.innerWidth > 768; 
 
     // --- 2. Calculate Camera Position ---
     const halfViewW = Math.floor(VIEWPORT_WIDTH_TILES / 2);
@@ -2220,8 +2223,6 @@ function renderSystemMap() {
 
     // --- 3. Clear Canvas & Reset Alignment ---
     ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
-    
-    // Enforce center alignment every frame so symbols stay locked to their grid cells
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
@@ -2244,17 +2245,12 @@ function renderSystemMap() {
             const worldX = Math.floor(camX + x);
             const worldY = Math.floor(camY + y);
             
-            const tileData = chunkManager.getTile(worldX, worldY);
-
-            // --- OPTIMIZATION: LAZY CACHING ---
-            // Calculate the heavy Sine/Cosine math ONCE and save it to the tile in memory!
-            if (typeof tileData.factionCache === 'undefined') {
-                tileData.factionCache = getFactionAt(worldX, worldY);
-                tileData.hazardCache = getHazardType(worldX, worldY);
-            }
+            // 🚨 THE FIX: Calculate faction/hazard directly. 
+            // We cannot cache this on the tileData because empty space is a primitive string!
+            const factionKey = getFactionAt(worldX, worldY);
+            const hazard = getHazardType(worldX, worldY);
             
             // --- FACTION LAYER ---
-            const factionKey = getFactionAt(worldX, worldY);
             const faction = FACTIONS[factionKey];
             
             if (faction && factionKey !== 'INDEPENDENT') {
@@ -2268,7 +2264,6 @@ function renderSystemMap() {
             }
 
             // --- HAZARD LAYER ---
-            const hazard = getHazardType(worldX, worldY);
             if (hazard === 'RADIATION_BELT') {
                 ctx.fillStyle = isLightMode ? 'rgba(255, 80, 0, 0.15)' : 'rgba(255, 165, 0, 0.25)';
                 ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
@@ -2293,14 +2288,14 @@ function renderSystemMap() {
             // --- XERXES SPECIAL RENDER ---
             if (tileData && tileData.name && tileData.name.includes("Xerxes")) {
                 ctx.save();
-                const pulse = (Math.sin(Date.now() / 500) + 1) / 2;
-                ctx.shadowBlur = 20 + (pulse * 10);
-                ctx.shadowColor = '#8A2BE2'; 
+                if (useHighGraphics && !isLightMode) { 
+                    const pulse = (Math.sin(Date.now() / 500) + 1) / 2;
+                    ctx.shadowBlur = 20 + (pulse * 10);
+                    ctx.shadowColor = '#8A2BE2'; 
+                }
                 ctx.fillStyle = '#9933FF';
-                
                 ctx.font = `bold ${TILE_SIZE * 1.2}px 'Orbitron', monospace`;
                 ctx.fillText("●", x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
-                
                 ctx.restore();
                 continue; 
             }
@@ -2309,8 +2304,10 @@ function renderSystemMap() {
             if (tileData && tileData.name === "Aegis Dyson Sphere") {
                 ctx.save();
                 const pulse = (Math.sin(Date.now() / 800) + 1) / 2;
-                ctx.shadowBlur = 25 + (pulse * 15);
-                ctx.shadowColor = '#FFD700';
+                if (useHighGraphics && !isLightMode) { 
+                    ctx.shadowBlur = 25 + (pulse * 15);
+                    ctx.shadowColor = '#FFD700';
+                }
                 ctx.fillStyle = '#FFAA00'; 
                 const sizeMod = 1.1 + (pulse * 0.1);
                 ctx.font = `bold ${TILE_SIZE * sizeMod}px 'Orbitron', monospace`;
@@ -2319,12 +2316,14 @@ function renderSystemMap() {
                 continue; 
             }
 
-            // Custom colored tiles
+            // Custom colored tiles (Colonies, etc)
             if (tileData && tileData.customColor) {
                 ctx.save();
-                const pulse = (Math.sin(Date.now() / 600) + 1) / 2;
-                ctx.shadowBlur = 12 + (pulse * 8);
-                ctx.shadowColor = tileData.customColor;
+                if (useHighGraphics && !isLightMode) { 
+                    const pulse = (Math.sin(Date.now() / 600) + 1) / 2;
+                    ctx.shadowBlur = 12 + (pulse * 8);
+                    ctx.shadowColor = tileData.customColor;
+                }
                 ctx.fillStyle = tileData.customColor;
                 ctx.font = `bold ${TILE_SIZE * 1.2}px 'Orbitron', monospace`;
                 const charToDraw = tileData.displayChar || tileChar;
@@ -2333,15 +2332,20 @@ function renderSystemMap() {
                 continue; 
             }
 
-            // Standard Tile Colors (With Light Mode Contrast Adjustments)
+            // Standard Tile Colors
             switch (tileChar) {
                 case STAR_CHAR_VAL: 
                     const phase = worldX + (worldY * 3); 
                     ctx.globalAlpha = 0.85 + (Math.sin((Date.now() / 2000) + phase) * 0.15);
-                    const visualStarData = generateStarData(worldX, worldY);
+                    
+                    // This cache is safe because Stars are always Objects, never primitives!
+                    if (!tileData.visualStarData) {
+                        tileData.visualStarData = generateStarData(worldX, worldY);
+                    }
+                    const visualStarData = tileData.visualStarData;
                     
                     let starColor = visualStarData.color;
-                    if (typeof isLightMode !== 'undefined' && isLightMode) {
+                    if (isLightMode) {
                         if (visualStarData.class === "A") starColor = "#444444";       
                         else if (visualStarData.class === "F") starColor = "#999900";  
                         else if (visualStarData.class === "B") starColor = "#3355BB";  
@@ -2349,20 +2353,23 @@ function renderSystemMap() {
                     }
                     
                     ctx.fillStyle = starColor; 
-                    if (visualStarData.class === "O" || visualStarData.class === "B") {
-                        ctx.shadowBlur = (typeof isLightMode !== 'undefined' && isLightMode) ? 5 : 15;
+                    
+                    if (useHighGraphics && !isLightMode) {
+                        ctx.shadowBlur = (visualStarData.class === "O" || visualStarData.class === "B") ? 15 : 5;
                         ctx.shadowColor = starColor;
                     } else {
-                        ctx.shadowBlur = (typeof isLightMode !== 'undefined' && isLightMode) ? 0 : 5; 
-                        ctx.shadowColor = starColor;
+                        ctx.shadowBlur = 0; 
+                        ctx.shadowColor = 'transparent';
                     }
                     break;
                 case PLANET_CHAR_VAL: ctx.fillStyle = isLightMode ? '#0066CC' : '#88CCFF'; break;
                 case STARBASE_CHAR_VAL: 
                     ctx.save();
                     const pulse = (Math.sin(Date.now() / 300) + 1) / 2; 
-                    ctx.shadowBlur = 15 + (pulse * 15); 
-                    ctx.shadowColor = isLightMode ? '#008888' : '#00FFFF'; 
+                    if (useHighGraphics && !isLightMode) { 
+                        ctx.shadowBlur = 15 + (pulse * 15); 
+                        ctx.shadowColor = isLightMode ? '#008888' : '#00FFFF'; 
+                    }
                     ctx.fillStyle = isLightMode ? '#008888' : '#00FFFF';
                     const sizeMod = 1.0 + (pulse * 0.1); 
                     ctx.font = `bold ${TILE_SIZE * 1.3 * sizeMod}px 'Orbitron', monospace`;
@@ -2371,11 +2378,11 @@ function renderSystemMap() {
                     break;
                 case OUTPOST_CHAR_VAL: ctx.fillStyle = isLightMode ? '#228822' : '#AADD99'; break;
                 case ASTEROID_CHAR_VAL: 
-                    ctx.fillStyle = (tileData && tileData.mined) ? '#555555' : (typeof isLightMode !== 'undefined' && isLightMode ? '#CC6600' : '#FFAA66'); 
+                    ctx.fillStyle = (tileData && tileData.mined) ? '#555555' : (isLightMode ? '#CC6600' : '#FFAA66'); 
                     break;
                 case NEBULA_CHAR_VAL: ctx.fillStyle = isLightMode ? '#8822BB' : '#DD99FF'; break;
                 case DERELICT_CHAR_VAL: 
-                    ctx.fillStyle = (tileData && tileData.studied) ? '#555555' : (typeof isLightMode !== 'undefined' && isLightMode ? '#336699' : '#88AACC'); 
+                    ctx.fillStyle = (tileData && tileData.studied) ? '#555555' : (isLightMode ? '#336699' : '#88AACC'); 
                     break;
                 case ANOMALY_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC00CC' : '#FF33FF'; break;
                 case WORMHOLE_CHAR_VAL: ctx.fillStyle = isLightMode ? '#CC8800' : '#FFB800'; break;
@@ -2391,9 +2398,10 @@ function renderSystemMap() {
                 ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
             }
             
+            // Clean slate for the next tile
             ctx.globalAlpha = 1.0;
             ctx.shadowBlur = 0; 
-            
+            ctx.shadowColor = 'transparent'; 
         } 
     } 
 
@@ -2410,44 +2418,32 @@ function renderSystemMap() {
         ctx.stroke();
     }
 
-    // --- NEW: BOUNTY TRACKING RETICLE ---
+    // --- BOUNTY TRACKING RETICLE ---
     if (typeof playerActiveBounty !== 'undefined' && playerActiveBounty !== null) {
         const screenX = playerActiveBounty.x - camX;
         const screenY = playerActiveBounty.y - camY;
 
-        // Draw only if it is currently inside the camera's view
         if (screenX >= 0 && screenX < VIEWPORT_WIDTH_TILES && screenY >= 0 && screenY < VIEWPORT_HEIGHT_TILES) {
             const pixelX = screenX * TILE_SIZE;
             const pixelY = screenY * TILE_SIZE;
             
             ctx.save();
             const pulse = Math.abs(Math.sin(Date.now() / 300));
-            // Ensure brackets draw relative to the top-left of the tile
             ctx.strokeStyle = `rgba(255, 50, 50, ${0.4 + (pulse * 0.6)})`;
             ctx.lineWidth = 2;
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = 'var(--danger)';
             
-            const m = 4; // Margin outside the tile
+            if (useHighGraphics && !isLightMode) { 
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = 'var(--danger)';
+            }
+            
+            const m = 4; 
             const s = TILE_SIZE;
             ctx.beginPath();
-            // Top Left
-            ctx.moveTo(pixelX - m + 8, pixelY - m);
-            ctx.lineTo(pixelX - m, pixelY - m);
-            ctx.lineTo(pixelX - m, pixelY - m + 8);
-            // Bottom Left
-            ctx.moveTo(pixelX - m, pixelY + s + m - 8);
-            ctx.lineTo(pixelX - m, pixelY + s + m);
-            ctx.lineTo(pixelX - m + 8, pixelY + s + m);
-            // Top Right
-            ctx.moveTo(pixelX + s + m - 8, pixelY - m);
-            ctx.lineTo(pixelX + s + m, pixelY - m);
-            ctx.lineTo(pixelX + s + m, pixelY - m + 8);
-            // Bottom Right
-            ctx.moveTo(pixelX + s + m, pixelY + s + m - 8);
-            ctx.lineTo(pixelX + s + m, pixelY + s + m);
-            ctx.lineTo(pixelX + s + m - 8, pixelY + s + m);
-            
+            ctx.moveTo(pixelX - m + 8, pixelY - m); ctx.lineTo(pixelX - m, pixelY - m); ctx.lineTo(pixelX - m, pixelY - m + 8);
+            ctx.moveTo(pixelX - m, pixelY + s + m - 8); ctx.lineTo(pixelX - m, pixelY + s + m); ctx.lineTo(pixelX - m + 8, pixelY + s + m);
+            ctx.moveTo(pixelX + s + m - 8, pixelY - m); ctx.lineTo(pixelX + s + m, pixelY - m); ctx.lineTo(pixelX + s + m, pixelY - m + 8);
+            ctx.moveTo(pixelX + s + m, pixelY + s + m - 8); ctx.lineTo(pixelX + s + m, pixelY + s + m); ctx.lineTo(pixelX + s + m - 8, pixelY + s + m);
             ctx.stroke();
             ctx.restore();
         }
@@ -2465,7 +2461,7 @@ function renderSystemMap() {
         }
     });
 
-    // Draw Enemies (Updated for Bounty Support)
+    // Draw Enemies
     activeEnemies.forEach(enemy => {
         const screenX = (enemy.x - camX) * TILE_SIZE + TILE_SIZE / 2;
         const screenY = (enemy.y - camY) * TILE_SIZE + TILE_SIZE / 2;
@@ -2485,8 +2481,10 @@ function renderSystemMap() {
             if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width && screenY >= -TILE_SIZE && screenY <= gameCanvas.height) {
                 ctx.save();
                 ctx.fillStyle = npc.color; 
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = npc.color;
+                if (useHighGraphics && !isLightMode) { 
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = npc.color;
+                }
                 ctx.font = `bold ${TILE_SIZE * 0.9}px 'Orbitron', monospace`;
                 ctx.fillText(npc.char, screenX, screenY);
                 ctx.restore();
@@ -2504,7 +2502,6 @@ function renderSystemMap() {
     }
 
     // --- 6. Update UI Stats ---
-    // OPTIMIZATION: Only update DOM text if we aren't currently blasting the canvas with 60fps animations
     if (!particleAnimationId) {
         document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
         if (typeof renderUIStats === 'function') renderUIStats();
@@ -5795,13 +5792,14 @@ function generateBountyTargets() {
         const totalReward = baseReward + distanceBonus;
         
         currentStationBounties.push({
-            id: `BOUNTY_${Date.now()}_${i}`,
+            // 🚨 FIXED: Added random entropy to prevent duplicate Bounty IDs
+            id: `BOUNTY_${Date.now()}_${Math.floor(Math.random() * 100000)}_${i}`,
             targetName: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
             crime: crimeList[Math.floor(Math.random() * crimeList.length)],
             x: targetX,
             y: targetY,
             difficulty: difficultyLevel,
-            reward: totalReward, // Use the newly scaled reward!
+            reward: totalReward, 
             faction: "ECLIPSE", 
             shipClass: difficultyLevel > 5 ? "STRIKER" : "SCOUT" 
         });
