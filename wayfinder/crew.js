@@ -306,7 +306,7 @@ function showStandardCrewDetails(crew) {
 
     if (playerCrew.length >= MAX_CREW) {
         actionsEl.innerHTML = `<button class="action-button danger-btn" disabled>CREW QUARTERS FULL</button>`;
-    } else if (playerCredits < merc.cost) {
+    } else if (playerCredits < crew.cost) {
         actionsEl.innerHTML = `<button class="action-button" disabled>INSUFFICIENT FUNDS</button>`;
     } else {
         actionsEl.innerHTML = `
@@ -568,7 +568,8 @@ function generateRecruits() {
         // Fallback to Tier 1 Standard Recruit
         const roleData = standardRoles[Math.floor(Math.random() * standardRoles.length)];
         currentStationRecruits.push({
-            id: `CREW_${Date.now()}_${i}`,
+            // Added random entropy to prevent duplicate Crew IDs
+            id: `CREW_${Date.now()}_${Math.floor(Math.random() * 100000)}_${i}`,
             name: `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`,
             role: roleData.role,
             perk: roleData.perk,
