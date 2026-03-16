@@ -104,10 +104,26 @@ function displayCrewRoster() {
 
 function fireCrew(crewId) {
     const crew = playerCrew.find(c => c.id === crewId);
+    
+    // 1. Remove them from the active roster
     playerCrew = playerCrew.filter(c => c.id !== crewId);
+    
+    // If the dismissed crew member was an Eclipse Mercenary, revoke the global combat flag!
+    if (crew && crew.isMercenary) {
+        window.hasEclipseMerc = false;
+    }
+    
+    // Force the ship to recalculate Max Hull, Damage, and Evasion so you instantly lose their buffs.
+    if (typeof applyPlayerShipStats === 'function') {
+        applyPlayerShipStats();
+    }
+    
     logMessage(`You dismissed ${crew.name} at the nearest port.`);
     showToast("CREW MEMBER DISMISSED", "info");
-    displayCrewRoster(); // Refresh screen
+    
+    // Update the HUD bars to reflect the removed stats, then redraw the menu
+    if (typeof renderUIStats === 'function') renderUIStats(); 
+    displayCrewRoster(); 
 }
 
 // ==========================================
