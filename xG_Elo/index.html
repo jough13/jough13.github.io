@@ -31,7 +31,7 @@ tr:hover{background-color:#f1f1f1}
 .f-w{background-color:#27ae60}
 .f-d{background-color:#7f8c8d}
 .f-l{background-color:#c0392b}
-.status-msg{text-align:center;font-style:italic;margin-top:15px;color:#555}
+.status-msg{text-align:center;font-style:italic;margin-top:15px;color:#555;font-size:1.1em}
 .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgba(0,0,0,0.6)}
 .modal-content{background-color:#fff;margin:5% auto;padding:30px;border-radius:8px;width:90%;max-width:650px;line-height:1.6}
 .modal-content h2{margin-top:0;color:#00285e;border-bottom:2px solid #eee;padding-bottom:10px}
@@ -48,7 +48,7 @@ tr:hover{background-color:#f1f1f1}
 
     <div class="header">
         <h1>⚽ MLS Hybrid xG-Elo <span id="infoButton" class="info-btn" title="How does this work?">?</span></h1>
-        <div class="as-of-date" id="dateBadge">Current as of Mar 15, 2026</div>
+        <div class="as-of-date" id="dateBadge">Fetching Data...</div>
         <p>A blended power ranking system weighting actual match results (70%) and expected goals share (30%).<br><em>Hover over the form badges, or click a team name for deep dive details!</em></p>
     </div>
 
@@ -96,197 +96,214 @@ tr:hover{background-color:#f1f1f1}
     </div>
 
     <div class="upload-section">
-        <h3>Update the Standings</h3>
-        <p>Upload a newer <strong>American Soccer Analysis Match Logs CSV</strong> to instantly recalculate and overwrite the table below!</p>
+        <h3>Update the Standings manually (Optional)</h3>
+        <p>This page automatically loads the latest data from the server, but you can upload a newer <strong>ASA Match Logs CSV</strong> to instantly override it below!</p>
         <input type="file" id="csvFileInput" accept=".csv" />
-        <div id="statusMessage" class="status-msg"></div>
     </div>
 
-    <div id="tableContainer">
-        </div>
+    <div id="statusMessage" class="status-msg">
+        <strong>Loading:</strong> Crunching over 10 years of MLS historical data in real-time...
+    </div>
+
+    <div id="tableContainer"></div>
 
     <script>
-        // --- SECURE INITIAL STATE INJECTION (Updated for Mar 15, 2026) ---
-        const initialStandings = [{"team":"LAFC","elo":1634.3,"change":11.0,"rank_change":0},{"team":"MIA","elo":1612.7,"change":2.5,"rank_change":0},{"team":"VAN","elo":1602.8,"change":8.9,"rank_change":1},{"team":"SD","elo":1594.1,"change":6.2,"rank_change":-1},{"team":"SEA","elo":1571.2,"change":-12.6,"rank_change":0},{"team":"CIN","elo":1569.4,"change":16.5,"rank_change":1},{"team":"NYC","elo":1561.4,"change":-9.9,"rank_change":-1},{"team":"NSH","elo":1544.5,"change":12.9,"rank_change":1},{"team":"MIN","elo":1537.3,"change":-8.9,"rank_change":-1},{"team":"CLT","elo":1534.8,"change":13.6,"rank_change":0},{"team":"PHI","elo":1534.4,"change":-15.2,"rank_change":0},{"team":"CLB","elo":1529.6,"change":0.0,"rank_change":0},{"team":"CHI","elo":1526.2,"change":-0.0,"rank_change":0},{"team":"SJE","elo":1510.7,"change":12.6,"rank_change":2},{"team":"ORL","elo":1506.4,"change":-13.8,"rank_change":0},{"team":"FCD","elo":1505.7,"change":-8.2,"rank_change":-2},{"team":"RSL","elo":1479.2,"change":-1.7,"rank_change":1},{"team":"HOU","elo":1476.5,"change":-8.2,"rank_change":2},{"team":"COL","elo":1476.3,"change":13.9,"rank_change":2},{"team":"NYRB","elo":1474.2,"change":-3.3,"rank_change":-1},{"team":"ATX","elo":1473.4,"change":1.7,"rank_change":1},{"team":"LAG","elo":1466.8,"change":-24.4,"rank_change":-5},{"team":"STL","elo":1438.3,"change":-11.0,"rank_change":0},{"team":"TOR","elo":1422.6,"change":-24.4,"rank_change":0},{"team":"POR","elo":1420.5,"change":-24.4,"rank_change":0},{"team":"MTL","elo":1412.6,"change":-24.4,"rank_change":0},{"team":"DCU","elo":1408.0,"change":-2.5,"rank_change":0},{"team":"NER","elo":1389.8,"change":-16.5,"rank_change":0},{"team":"ATL","elo":1380.5,"change":-11.0,"rank_change":0},{"team":"SKC","elo":1377.1,"change":-6.2,"rank_change":0}];
-        
-        window.teamForm = {"SKC": [{"d": "Oct 4", "o": "MIN", "h": 0, "gf": 0, "ga": 3, "xf": 0.83, "xa": 1.74, "c": -5.2}, {"d": "Oct 18", "o": "HOU", "h": 1, "gf": 0, "ga": 0, "xf": 1.1, "xa": 1.13, "c": 2.8}, {"d": "Feb 21", "o": "SJE", "h": 0, "gf": 0, "ga": 3, "xf": 0.66, "xa": 2.52, "c": -10.1}, {"d": "Feb 28", "o": "CLB", "h": 1, "gf": 2, "ga": 2, "xf": 1.58, "xa": 2.35, "c": 4.8}, {"d": "Mar 7", "o": "SD", "h": 1, "gf": 0, "ga": 1, "xf": 0.63, "xa": 2.1, "c": -6.2}, {"d": "Mar 14", "o": "LAG", "h": 0, "gf": 2, "ga": 1, "xf": 0.6, "xa": 2.2, "c": 14.5}], "NSH": [{"d": "Oct 4", "o": "MTL", "h": 0, "gf": 1, "ga": 1, "xf": 1.9, "xa": 1.01, "c": -1.6}, {"d": "Oct 18", "o": "MIA", "h": 1, "gf": 2, "ga": 5, "xf": 3.0, "xa": 3.85, "c": -10.3}, {"d": "Feb 21", "o": "NER", "h": 1, "gf": 4, "ga": 1, "xf": 2.83, "xa": 0.53, "c": 9.6}, {"d": "Feb 28", "o": "FCD", "h": 0, "gf": 0, "ga": 0, "xf": 0.51, "xa": 0.95, "c": -0.9}, {"d": "Mar 7", "o": "MIN", "h": 1, "gf": 3, "ga": 1, "xf": 2.19, "xa": 1.12, "c": 12.9}], "RSL": [{"d": "Oct 11", "o": "SEA", "h": 0, "gf": 0, "ga": 1, "xf": 0.75, "xa": 2.35, "c": -8.5}, {"d": "Oct 18", "o": "STL", "h": 0, "gf": 2, "ga": 2, "xf": 0.85, "xa": 3.92, "c": -2.6}, {"d": "Feb 21", "o": "VAN", "h": 0, "gf": 0, "ga": 1, "xf": 0.46, "xa": 1.46, "c": -8.0}, {"d": "Feb 28", "o": "SEA", "h": 1, "gf": 2, "ga": 1, "xf": 2.04, "xa": 1.96, "c": 16.3}, {"d": "Mar 7", "o": "ATL", "h": 0, "gf": 3, "ga": 2, "xf": 1.16, "xa": 1.68, "c": 8.1}, {"d": "Mar 14", "o": "ATX", "h": 1, "gf": 1, "ga": 1, "xf": 1.8, "xa": 0.8, "c": -1.7}], "MIA": [{"d": "Oct 11", "o": "ATL", "h": 1, "gf": 4, "ga": 0, "xf": 3.3, "xa": 1.21, "c": 5.5}, {"d": "Oct 18", "o": "NSH", "h": 0, "gf": 5, "ga": 2, "xf": 3.85, "xa": 3.0, "c": 10.3}, {"d": "Feb 21", "o": "LAFC", "h": 0, "gf": 0, "ga": 3, "xf": 1.1, "xa": 2.85, "c": -13.8}, {"d": "Mar 1", "o": "ORL", "h": 0, "gf": 4, "ga": 2, "xf": 1.63, "xa": 1.03, "c": 10.2}, {"d": "Mar 7", "o": "DCU", "h": 0, "gf": 2, "ga": 1, "xf": 0.95, "xa": 1.65, "c": 2.5}], "NER": [{"d": "Sep 27", "o": "ATL", "h": 1, "gf": 2, "ga": 0, "xf": 1.94, "xa": 1.0, "c": 13.5}, {"d": "Oct 4", "o": "MIA", "h": 0, "gf": 1, "ga": 4, "xf": 1.06, "xa": 3.36, "c": -5.6}, {"d": "Oct 18", "o": "CHI", "h": 1, "gf": 2, "ga": 1, "xf": 0.98, "xa": 1.72, "c": 14.7}, {"d": "Feb 21", "o": "NSH", "h": 0, "gf": 1, "ga": 4, "xf": 0.53, "xa": 2.83, "c": -9.6}, {"d": "Feb 28", "o": "NYRB", "h": 0, "gf": 0, "ga": 1, "xf": 0.52, "xa": 1.11, "c": -8.6}, {"d": "Mar 15", "o": "CIN", "h": 1, "gf": 6, "ga": 1, "xf": 1.65, "xa": 1.47, "c": -16.5}], "SEA": [{"d": "Oct 11", "o": "RSL", "h": 1, "gf": 1, "ga": 0, "xf": 2.35, "xa": 0.75, "c": 8.5}, {"d": "Oct 18", "o": "NYC", "h": 0, "gf": 2, "ga": 1, "xf": 0.83, "xa": 0.77, "c": 11.5}, {"d": "Feb 22", "o": "COL", "h": 1, "gf": 2, "ga": 0, "xf": 1.27, "xa": 0.75, "c": 5.6}, {"d": "Feb 28", "o": "RSL", "h": 0, "gf": 1, "ga": 2, "xf": 1.96, "xa": 2.04, "c": -16.3}, {"d": "Mar 7", "o": "STL", "h": 0, "gf": 1, "ga": 0, "xf": 0.96, "xa": 1.04, "c": 6.7}, {"d": "Mar 15", "o": "SJE", "h": 0, "gf": 1, "ga": 0, "xf": 0.56, "xa": 2.13, "c": -12.6}], "CLB": [{"d": "Oct 4", "o": "ORL", "h": 0, "gf": 1, "ga": 1, "xf": 3.17, "xa": 0.85, "c": 6.2}, {"d": "Oct 18", "o": "NYRB", "h": 1, "gf": 3, "ga": 1, "xf": 2.29, "xa": 0.84, "c": 9.6}, {"d": "Feb 21", "o": "POR", "h": 0, "gf": 2, "ga": 3, "xf": 1.09, "xa": 1.29, "c": -14.8}, {"d": "Feb 28", "o": "SKC", "h": 0, "gf": 2, "ga": 2, "xf": 2.35, "xa": 1.58, "c": -4.8}, {"d": "Mar 7", "o": "CHI", "h": 1, "gf": 0, "ga": 0, "xf": 1.44, "xa": 0.82, "c": 0.0}], "SJE": [{"d": "Oct 5", "o": "VAN", "h": 0, "gf": 1, "ga": 4, "xf": 0.6, "xa": 2.51, "c": -9.1}, {"d": "Oct 18", "o": "ATX", "h": 1, "gf": 2, "ga": 1, "xf": 2.6, "xa": 0.55, "c": 14.9}, {"d": "Feb 21", "o": "SKC", "h": 1, "gf": 3, "ga": 0, "xf": 2.52, "xa": 0.66, "c": 10.1}, {"d": "Feb 28", "o": "ATL", "h": 1, "gf": 2, "ga": 0, "xf": 2.72, "xa": 0.85, "c": 9.7}, {"d": "Mar 7", "o": "PHI", "h": 0, "gf": 1, "ga": 0, "xf": 1.12, "xa": 1.19, "c": 15.2}, {"d": "Mar 15", "o": "SEA", "h": 1, "gf": 0, "ga": 1, "xf": 2.13, "xa": 0.56, "c": 12.6}], "COL": [{"d": "Oct 4", "o": "RSL", "h": 0, "gf": 0, "ga": 1, "xf": 2.8, "xa": 0.71, "c": -6.7}, {"d": "Oct 18", "o": "LAFC", "h": 1, "gf": 2, "ga": 2, "xf": 1.39, "xa": 2.59, "c": 4.0}, {"d": "Feb 22", "o": "SEA", "h": 0, "gf": 0, "ga": 2, "xf": 0.75, "xa": 1.27, "c": -5.6}, {"d": "Feb 28", "o": "POR", "h": 1, "gf": 2, "ga": 0, "xf": 2.65, "xa": 1.06, "c": 13.0}, {"d": "Mar 7", "o": "LAG", "h": 1, "gf": 4, "ga": 1, "xf": 2.28, "xa": 1.45, "c": 13.9}], "VAN": [{"d": "Oct 11", "o": "ORL", "h": 0, "gf": 2, "ga": 1, "xf": 3.1, "xa": 1.02, "c": 15.2}, {"d": "Oct 18", "o": "FCD", "h": 1, "gf": 1, "ga": 2, "xf": 2.07, "xa": 1.36, "c": -15.2}, {"d": "Feb 21", "o": "RSL", "h": 1, "gf": 1, "ga": 0, "xf": 1.46, "xa": 0.46, "c": 8.0}, {"d": "Feb 28", "o": "TOR", "h": 1, "gf": 3, "ga": 0, "xf": 2.18, "xa": 0.55, "c": 7.4}, {"d": "Mar 7", "o": "POR", "h": 0, "gf": 4, "ga": 1, "xf": 2.98, "xa": 0.47, "c": 10.7}, {"d": "Mar 15", "o": "MIN", "h": 1, "gf": 6, "ga": 0, "xf": 4.67, "xa": 1.06, "c": 8.9}], "CHI": [{"d": "Oct 4", "o": "TOR", "h": 1, "gf": 2, "ga": 1, "xf": 0.71, "xa": 1.96, "c": 3.3}, {"d": "Oct 18", "o": "NER", "h": 0, "gf": 1, "ga": 2, "xf": 1.72, "xa": 0.98, "c": -14.7}, {"d": "Feb 21", "o": "HOU", "h": 0, "gf": 1, "ga": 2, "xf": 0.74, "xa": 0.9, "c": -13.1}, {"d": "Feb 28", "o": "MTL", "h": 1, "gf": 3, "ga": 0, "xf": 3.39, "xa": 0.08, "c": 11.5}, {"d": "Mar 7", "o": "CLB", "h": 0, "gf": 0, "ga": 0, "xf": 0.82, "xa": 1.44, "c": -0.0}], "CLT": [{"d": "Oct 4", "o": "DCU", "h": 0, "gf": 1, "ga": 0, "xf": 0.69, "xa": 0.87, "c": 6.4}, {"d": "Oct 18", "o": "PHI", "h": 1, "gf": 2, "ga": 0, "xf": 0.96, "xa": 2.74, "c": 10.5}, {"d": "Feb 21", "o": "STL", "h": 0, "gf": 1, "ga": 1, "xf": 0.75, "xa": 2.21, "c": -5.2}, {"d": "Feb 28", "o": "LAG", "h": 0, "gf": 0, "ga": 3, "xf": 0.44, "xa": 3.13, "c": -16.9}, {"d": "Mar 7", "o": "ATX", "h": 1, "gf": 3, "ga": 0, "xf": 3.18, "xa": 0.15, "c": 13.6}], "SD": [{"d": "Oct 4", "o": "HOU", "h": 0, "gf": 4, "ga": 2, "xf": 2.29, "xa": 2.19, "c": 9.1}, {"d": "Oct 18", "o": "POR", "h": 0, "gf": 4, "ga": 0, "xf": 2.75, "xa": 1.21, "c": 10.4}, {"d": "Feb 21", "o": "MTL", "h": 1, "gf": 5, "ga": 0, "xf": 1.52, "xa": 0.4, "c": 7.7}, {"d": "Mar 1", "o": "STL", "h": 1, "gf": 2, "ga": 0, "xf": 1.3, "xa": 1.26, "c": 4.9}, {"d": "Mar 7", "o": "SKC", "h": 0, "gf": 1, "ga": 0, "xf": 2.1, "xa": 0.63, "c": 6.2}], "LAG": [{"d": "Oct 11", "o": "FCD", "h": 1, "gf": 2, "ga": 1, "xf": 1.46, "xa": 0.59, "c": 14.3}, {"d": "Oct 18", "o": "MIN", "h": 1, "gf": 2, "ga": 1, "xf": 1.67, "xa": 2.24, "c": 13.2}, {"d": "Feb 22", "o": "NYC", "h": 1, "gf": 1, "ga": 1, "xf": 0.36, "xa": 1.56, "c": -1.7}, {"d": "Feb 28", "o": "CLT", "h": 1, "gf": 3, "ga": 0, "xf": 3.13, "xa": 0.44, "c": 16.9}, {"d": "Mar 7", "o": "COL", "h": 0, "gf": 1, "ga": 4, "xf": 1.45, "xa": 2.28, "c": -13.9}, {"d": "Mar 14", "o": "SKC", "h": 1, "gf": 1, "ga": 2, "xf": 2.16, "xa": 0.62, "c": -24.4}], "ORL": [{"d": "Oct 11", "o": "VAN", "h": 1, "gf": 1, "ga": 2, "xf": 1.02, "xa": 3.1, "c": -15.2}, {"d": "Oct 18", "o": "TOR", "h": 0, "gf": 2, "ga": 4, "xf": 2.91, "xa": 1.31, "c": -14.2}, {"d": "Feb 21", "o": "NYRB", "h": 1, "gf": 1, "ga": 2, "xf": 2.01, "xa": 3.46, "c": -17.0}, {"d": "Mar 1", "o": "MIA", "h": 1, "gf": 2, "ga": 4, "xf": 1.03, "xa": 1.63, "c": -10.2}, {"d": "Mar 7", "o": "NYC", "h": 0, "gf": 0, "ga": 5, "xf": 0.17, "xa": 2.39, "c": -13.8}], "DCU": [{"d": "Oct 4", "o": "CLT", "h": 1, "gf": 0, "ga": 1, "xf": 0.87, "xa": 0.69, "c": -6.4}, {"d": "Oct 18", "o": "ATL", "h": 0, "gf": 1, "ga": 1, "xf": 1.23, "xa": 0.91, "c": 2.7}, {"d": "Feb 21", "o": "PHI", "h": 1, "gf": 1, "ga": 0, "xf": 0.98, "xa": 0.74, "c": 18.5}, {"d": "Mar 1", "o": "ATX", "h": 0, "gf": 0, "ga": 1, "xf": 0.41, "xa": 2.4, "c": -11.1}, {"d": "Mar 7", "o": "MIA", "h": 1, "gf": 1, "ga": 2, "xf": 1.65, "xa": 0.95, "c": -2.5}], "POR": [{"d": "Oct 4", "o": "SEA", "h": 0, "gf": 0, "ga": 1, "xf": 0.78, "xa": 1.87, "c": -8.2}, {"d": "Oct 18", "o": "SD", "h": 1, "gf": 0, "ga": 4, "xf": 1.21, "xa": 2.75, "c": -10.4}, {"d": "Feb 21", "o": "CLB", "h": 1, "gf": 3, "ga": 2, "xf": 1.29, "xa": 1.09, "c": 14.8}, {"d": "Feb 28", "o": "COL", "h": 0, "gf": 0, "ga": 2, "xf": 1.06, "xa": 2.65, "c": -13.0}, {"d": "Mar 7", "o": "VAN", "h": 1, "gf": 1, "ga": 4, "xf": 0.47, "xa": 2.98, "c": -10.7}, {"d": "Mar 14", "o": "NYC", "h": 1, "gf": 1, "ga": 2, "xf": 2.27, "xa": 1.5, "c": -24.4}], "FCD": [{"d": "Oct 11", "o": "LAG", "h": 0, "gf": 1, "ga": 2, "xf": 0.59, "xa": 1.46, "c": -14.3}, {"d": "Oct 18", "o": "VAN", "h": 0, "gf": 2, "ga": 1, "xf": 1.36, "xa": 2.07, "c": 15.2}, {"d": "Feb 21", "o": "TOR", "h": 1, "gf": 3, "ga": 2, "xf": 1.4, "xa": 1.55, "c": 6.7}, {"d": "Feb 28", "o": "NSH", "h": 1, "gf": 0, "ga": 0, "xf": 0.95, "xa": 0.51, "c": 0.9}, {"d": "Mar 7", "o": "LAFC", "h": 0, "gf": 0, "ga": 1, "xf": 1.3, "xa": 1.32, "c": -5.8}, {"d": "Mar 14", "o":"TOR", "h":0, "gf":1, "ga":2, "xf":0.82, "xa":1.97, "c":-8.2}], "HOU": [{"d": "Sep 27", "o": "NSH", "h": 0, "gf": 1, "ga": 3, "xf": 0.45, "xa": 2.21, "c": -12.0}, {"d": "Oct 4", "o": "SD", "h": 1, "gf": 2, "ga": 4, "xf": 2.19, "xa": 2.29, "c": -9.1}, {"d": "Oct 18", "o": "SKC", "h": 0, "gf": 0, "ga": 0, "xf": 1.13, "xa": 1.1, "c": -2.8}, {"d": "Feb 21", "o": "CHI", "h": 1, "gf": 2, "ga": 1, "xf": 0.9, "xa": 0.74, "c": 13.1}, {"d": "Feb 28", "o": "LAFC", "h": 1, "gf": 0, "ga": 2, "xf": 1.15, "xa": 2.13, "c": -8.2}], "STL": [{"d": "Oct 4", "o": "ATX", "h": 0, "gf": 3, "ga": 1, "xf": 2.89, "xa": 1.3, "c": 16.4}, {"d": "Oct 18", "o": "RSL", "h": 1, "gf": 2, "ga": 2, "xf": 3.92, "xa": 0.85, "c": 2.6}, {"d": "Feb 21", "o": "CLT", "h": 1, "gf": 1, "ga": 1, "xf": 2.21, "xa": 0.75, "c": 5.2}, {"d": "Mar 1", "o": "SD", "h": 0, "gf": 0, "ga": 2, "xf": 1.26, "xa": 1.3, "c": -4.9}, {"d": "Mar 7", "o": "SEA", "h": 1, "gf": 0, "ga": 1, "xf": 1.04, "xa": 0.96, "c": -6.7}, {"d": "Mar 14", "o": "LAFC", "h": 0, "gf": 0, "ga": 2, "xf": 1.75, "xa": 1.14, "c": -11.0}], "NYRB": [{"d": "Oct 4", "o": "CIN", "h": 1, "gf": 0, "ga": 1, "xf": 1.18, "xa": 0.84, "c": -8.0}, {"d": "Oct 18", "o": "CLB", "h": 0, "gf": 1, "ga": 3, "xf": 0.84, "xa": 2.29, "c": -9.6}, {"d": "Feb 21", "o": "ORL", "h": 0, "gf": 2, "ga": 1, "xf": 3.46, "xa": 2.01, "c": 17.0}, {"d": "Feb 28", "o": "NER", "h": 1, "gf": 1, "ga": 0, "xf": 1.11, "xa": 0.52, "c": 8.6}, {"d": "Mar 8", "o": "MTL", "h": 1, "gf": 0, "ga": 3, "xf": 1.01, "xa": 2.21, "c": -18.6}, {"d": "Mar 14", "o": "PHI", "h": 1, "gf": 0, "ga": 0, "xf": 0.59, "xa": 0.35, "c": -3.3}], "CIN": [{"d": "Oct 4", "o": "NYRB", "h": 0, "gf": 1, "ga": 0, "xf": 0.84, "xa": 1.18, "c": 8.0}, {"d": "Oct 18", "o": "MTL", "h": 1, "gf": 3, "ga": 0, "xf": 1.95, "xa": 1.25, "c": 5.9}, {"d": "Feb 21", "o": "ATL", "h": 1, "gf": 2, "ga": 0, "xf": 1.82, "xa": 0.6, "c": 5.7}, {"d": "Feb 28", "o": "MIN", "h": 0, "gf": 0, "ga": 1, "xf": 1.17, "xa": 1.78, "c": -12.8}, {"d": "Mar 8", "o": "TOR", "h": 1, "gf": 0, "ga": 1, "xf": 1.08, "xa": 1.21, "c": -18.7}, {"d": "Mar 15", "o": "NER", "h": 0, "gf": 1, "ga": 6, "xf": 1.47, "xa": 1.65, "c": 16.5}], "ATX": [{"d": "Oct 12", "o": "LAFC", "h": 1, "gf": 1, "ga": 0, "xf": 0.54, "xa": 0.52, "c": 16.7}, {"d": "Oct 18", "o": "SJE", "h": 0, "gf": 1, "ga": 2, "xf": 0.55, "xa": 2.6, "c": -14.9}, {"d": "Feb 21", "o": "MIN", "h": 1, "gf": 2, "ga": 2, "xf": 1.7, "xa": 1.73, "c": 2.3}, {"d": "Mar 1", "o": "DCU", "h": 1, "gf": 1, "ga": 0, "xf": 2.4, "xa": 0.41, "c": 11.1}, {"d": "Mar 7", "o": "CLT", "h": 0, "gf": 0, "ga": 3, "xf": 0.15, "xa": 3.18, "c": -13.6}, {"d": "Mar 14", "o": "RSL", "h": 0, "gf": 1, "ga": 1, "xf": 0.78, "xa": 1.79, "c": 1.7}], "PHI": [{"d": "Oct 4", "o": "NYC", "h": 1, "gf": 1, "ga": 0, "xf": 1.18, "xa": 0.76, "c": 10.3}, {"d": "Oct 18", "o": "CLT", "h": 0, "gf": 0, "ga": 2, "xf": 2.74, "xa": 0.96, "c": -10.5}, {"d": "Feb 21", "o": "DCU", "h": 0, "gf": 0, "ga": 1, "xf": 0.74, "xa": 0.98, "c": -18.5}, {"d": "Mar 1", "o": "NYC", "h": 1, "gf": 1, "ga": 2, "xf": 2.2, "xa": 2.39, "c": -13.4}, {"d": "Mar 7", "o": "SJE", "h": 1, "gf": 0, "ga": 1, "xf": 1.19, "xa": 1.12, "c": -15.2}, {"d": "Mar 14", "o": "NYRB", "h": 0, "gf": 0, "ga": 0, "xf": 0.35, "xa": 0.59, "c": 3.3}], "ATL": [{"d": "Oct 11", "o": "MIA", "h": 0, "gf": 0, "ga": 4, "xf": 1.21, "xa": 3.3, "c": -5.5}, {"d": "Oct 18", "o": "DCU", "h": 1, "gf": 1, "ga": 1, "xf": 0.91, "xa": 1.23, "c": -2.7}, {"d": "Feb 21", "o": "CIN", "h": 0, "gf": 0, "ga": 2, "xf": 0.6, "xa": 1.82, "c": -5.7}, {"d": "Feb 28", "o": "SJE", "h": 0, "gf": 0, "ga": 2, "xf": 0.85, "xa": 2.72, "c": -9.7}, {"d": "Mar 7", "o": "RSL", "h": 1, "gf": 2, "ga": 3, "xf": 1.68, "xa": 1.16, "c": -8.1}, {"d": "Mar 14", "o": "LAG", "h": 1, "gf": 2, "ga": 1, "xf": 2.45, "xa": 1.55, "c": 24.4}], "TOR": [{"d": "Oct 8", "o": "LAFC", "h": 0, "gf": 0, "ga": 2, "xf": 0.87, "xa": 2.92, "c": -5.4}, {"d": "Oct 18", "o": "ORL", "h": 1, "gf": 4, "ga": 2, "xf": 1.31, "xa": 2.91, "c": 14.2}, {"d": "Feb 21", "o": "FCD", "h": 0, "gf": 2, "ga": 3, "xf": 1.55, "xa": 1.4, "c": -6.7}, {"d": "Feb 28", "o": "VAN", "h": 0, "gf": 0, "ga": 3, "xf": 0.55, "xa": 2.18, "c": -7.4}, {"d": "Mar 8", "o": "CIN", "h": 0, "gf": 1, "ga": 0, "xf": 1.21, "xa": 1.08, "c": 18.7}, {"d": "Mar 14", "o":"FCD", "h":1, "gf":2, "ga":1, "xf":1.97, "xa":0.82, "c":8.2}], "MTL": [{"d": "Oct 4", "o": "NSH", "h": 1, "gf": 1, "ga": 1, "xf": 1.01, "xa": 1.9, "c": 1.6}, {"d": "Oct 18", "o": "CIN", "h": 0, "gf": 0, "ga": 3, "xf": 1.25, "xa": 1.95, "c": -5.9}, {"d": "Feb 21", "o": "SD", "h": 0, "gf": 0, "ga": 5, "xf": 0.4, "xa": 1.52, "c": -7.7}, {"d": "Feb 28", "o": "CHI", "h": 0, "gf": 0, "ga": 3, "xf": 0.08, "xa": 3.39, "c": -11.5}, {"d": "Mar 8", "o": "NYRB", "h": 0, "gf": 3, "ga": 0, "xf": 2.21, "xa": 1.01, "c": 18.6}, {"d": "Mar 14", "o": "CHI", "h": 1, "gf": 0, "ga": 0, "xf": 1.15, "xa": 0.35, "c": -5.0}], "NYC": [{"d": "Oct 4", "o": "PHI", "h": 0, "gf": 0, "ga": 1, "xf": 0.76, "xa": 1.18, "c": -10.3}, {"d": "Oct 18", "o": "SEA", "h": 1, "gf": 1, "ga": 2, "xf": 0.77, "xa": 0.83, "c": -11.5}, {"d": "Feb 22", "o": "LAG", "h": 0, "gf": 1, "ga": 1, "xf": 1.56, "xa": 0.36, "c": 1.7}, {"d": "Mar 1", "o": "PHI", "h": 0, "gf": 2, "ga": 1, "xf": 2.39, "xa": 2.2, "c": 13.4}, {"d": "Mar 7", "o": "ORL", "h": 1, "gf": 5, "ga": 0, "xf": 2.39, "xa": 0.17, "c": 13.8}, {"d": "Mar 14", "o": "POR", "h": 0, "gf": 2, "ga": 1, "xf": 1.5, "xa": 2.27, "c": 24.4}]};
+        // Start completely empty! 
+        window.teamForm = {};
 
-        var methModal = document.getElementById("methodologyModal");
-        var formModal = document.getElementById("teamFormModal");
-        document.getElementById("infoButton").onclick = () => methModal.style.display = "block";
-        document.getElementById("closeModal").onclick = () => methModal.style.display = "none";
-        document.getElementById("closeFormModal").onclick = () => formModal.style.display = "none";
-        window.onclick = function(e) {
-            if (e.target == methModal) methModal.style.display = "none";
-            if (e.target == formModal) formModal.style.display = "none";
-        }
+        var methModal = document.getElementById("methodologyModal");
+        var formModal = document.getElementById("teamFormModal");
+        document.getElementById("infoButton").onclick = () => methModal.style.display = "block";
+        document.getElementById("closeModal").onclick = () => methModal.style.display = "none";
+        document.getElementById("closeFormModal").onclick = () => formModal.style.display = "none";
+        window.onclick = function(e) {
+            if (e.target == methModal) methModal.style.display = "none";
+            if (e.target == formModal) formModal.style.display = "none";
+        }
 
-        function showTeamForm(team) {
-            const last5 = (window.teamForm[team] || []).slice(-5).reverse(); 
-            let html = `<h2>${team} - Last 5 Matches</h2>`;
-            html += `<table id="formTable"><tr><th>Date</th><th>Opponent</th><th>Result</th><th>Score</th><th>xG</th><th>Elo Change</th></tr>`;
-            
-            if (last5.length === 0) {
-                html += `<tr><td colspan="6">No recent match data.</td></tr>`;
-            } else {
-                last5.forEach(m => {
-                    const oppStr = m.h ? `vs ${m.o}` : `@ ${m.o}`;
-                    let res = 'D', resClass = 'c-neu';
-                    if (m.gf > m.ga) { res = 'W'; resClass = 'c-pos'; }
-                    else if (m.gf < m.ga) { res = 'L'; resClass = 'c-neg'; }
-                    let chgStr = m.c > 0 ? `+${m.c.toFixed(1)}` : m.c.toFixed(1);
-                    let chgClass = m.c > 0 ? 'c-pos' : (m.c < 0 ? 'c-neg' : 'c-neu');
-                    html += `<tr><td>${m.d}</td><td>${oppStr}</td><td><strong class="${resClass}">${res}</strong></td>
-                             <td>${m.gf} - ${m.ga}</td><td>${m.xf.toFixed(2)} - ${m.xa.toFixed(2)}</td><td class="${chgClass}">${chgStr}</td></tr>`;
-                });
-            }
-            html += `</table>`;
-            document.getElementById('teamFormContent').innerHTML = html;
-            formModal.style.display = "block";
-        }
+        function showTeamForm(team) {
+            const last5 = (window.teamForm[team] || []).slice(-5).reverse(); 
+            let html = `<h2>${team} - Last 5 Matches</h2>`;
+            html += `<table id="formTable"><tr><th>Date</th><th>Opponent</th><th>Result</th><th>Score</th><th>xG</th><th>Elo Change</th></tr>`;
+            
+            if (last5.length === 0) {
+                html += `<tr><td colspan="6">No recent match data.</td></tr>`;
+            } else {
+                last5.forEach(m => {
+                    const oppStr = m.h ? `vs ${m.o}` : `@ ${m.o}`;
+                    let res = 'D', resClass = 'c-neu';
+                    if (m.gf > m.ga) { res = 'W'; resClass = 'c-pos'; }
+                    else if (m.gf < m.ga) { res = 'L'; resClass = 'c-neg'; }
+                    let chgStr = m.c > 0 ? `+${m.c.toFixed(1)}` : m.c.toFixed(1);
+                    let chgClass = m.c > 0 ? 'c-pos' : (m.c < 0 ? 'c-neg' : 'c-neu');
+                    html += `<tr><td>${m.d}</td><td>${oppStr}</td><td><strong class="${resClass}">${res}</strong></td>
+                             <td>${m.gf} - ${m.ga}</td><td>${m.xf.toFixed(2)} - ${m.xa.toFixed(2)}</td><td class="${chgClass}">${chgStr}</td></tr>`;
+                });
+            }
+            html += `</table>`;
+            document.getElementById('teamFormContent').innerHTML = html;
+            formModal.style.display = "block";
+        }
 
-        document.getElementById('csvFileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            document.getElementById('statusMessage').innerHTML = "Crunching thousands of matches...";
-            Papa.parse(file, { header: true, skipEmptyLines: true, complete: function(r) { processData(r.data); } });
-        });
+        // --- AUTOMATIC FETCH ON PAGE LOAD ---
+        window.onload = function() {
+            Papa.parse("mls_data.csv", {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    processData(results.data);
+                },
+                error: function(err) {
+                    document.getElementById('statusMessage').innerHTML = "<span style='color:#c0392b;'><strong>Error loading mls_data.csv</strong><br>Make sure the CSV file is named 'mls_data.csv' and is in the same folder as this webpage.</span>";
+                }
+            });
+        };
 
-        function processData(data) {
-            let validData = data.filter(row => row.Date && row.Home && row.Away);
-            validData.forEach(row => {
-                // TIMEZONE FIX: Append T12:00:00 to force noon processing
-                row.parsedDate = new Date(row.Date + 'T12:00:00');
-            });
-            validData.sort((a, b) => a.parsedDate - b.parsedDate);
+        // --- MANUAL UPLOAD FALLBACK ---
+        document.getElementById('csvFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            document.getElementById('statusMessage').style.display = "block";
+            document.getElementById('statusMessage').innerHTML = "<strong>Loading:</strong> Crunching thousands of matches...";
+            Papa.parse(file, { header: true, skipEmptyLines: true, complete: function(r) { processData(r.data); } });
+        });
 
-            if (validData.length === 0) {
-                document.getElementById('statusMessage').innerHTML = "<span style='color:red;'>Error: No valid data found in CSV.</span>";
-                return;
-            }
+        function processData(data) {
+            let validData = data.filter(row => row.Date && row.Home && row.Away);
+            validData.forEach(row => {
+                // TIMEZONE FIX: Append T12:00:00 to force noon processing
+                row.parsedDate = new Date(row.Date + 'T12:00:00');
+            });
+            validData.sort((a, b) => a.parsedDate - b.parsedDate);
 
-            const latestDate = validData[validData.length - 1].parsedDate;
-            const fDate = latestDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            if (validData.length === 0) {
+                document.getElementById('statusMessage').innerHTML = "<span style='color:red;'>Error: No valid data found in CSV.</span>";
+                return;
+            }
 
-            const keys = Object.keys(validData[0]);
-            const hgKey = keys.find(k => k === 'HG' || k.includes('HGGoals')) || 'HG';
-            const agKey = keys.find(k => k === 'AG' || k.includes('AGGoals')) || 'AG';
-            const hXgKey = keys.find(k => k === 'HxGt' || k.includes('HxGtTeam')) || 'HxGt';
-            const aXgKey = keys.find(k => k === 'AxGt' || k.includes('AxGtTeam')) || 'AxGt';
-            const gdKey = keys.find(k => k === 'GD' || k.includes('GDGoal Difference')) || 'GD';
+            const latestDate = validData[validData.length - 1].parsedDate;
+            const fDate = latestDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
-            let ratings = {}; let lastChange = {}; let activeTeams = new Set(); let maxYear = 0;
-            window.teamForm = {};
+            const keys = Object.keys(validData[0]);
+            const hgKey = keys.find(k => k === 'HG' || k.includes('HGGoals')) || 'HG';
+            const agKey = keys.find(k => k === 'AG' || k.includes('AGGoals')) || 'AG';
+            const hXgKey = keys.find(k => k === 'HxGt' || k.includes('HxGtTeam')) || 'HxGt';
+            const aXgKey = keys.find(k => k === 'AxGt' || k.includes('AxGtTeam')) || 'AxGt';
+            const gdKey = keys.find(k => k === 'GD' || k.includes('GDGoal Difference')) || 'GD';
 
-            validData.forEach(row => {
-                if (!isNaN(row.parsedDate.getFullYear()) && row.parsedDate.getFullYear() > maxYear) maxYear = row.parsedDate.getFullYear();
-            });
+            let ratings = {}; let lastChange = {}; let activeTeams = new Set(); let maxYear = 0;
+            window.teamForm = {};
 
-            validData.forEach(row => {
-                const home = row['Home'], away = row['Away'];
-                if (row.parsedDate.getFullYear() === maxYear) { activeTeams.add(home); activeTeams.add(away); }
-                if (!ratings[home]) ratings[home] = 1500.0;
-                if (!ratings[away]) ratings[away] = 1500.0;
-                if (!window.teamForm[home]) window.teamForm[home] = [];
-                if (!window.teamForm[away]) window.teamForm[away] = [];
+            validData.forEach(row => {
+                if (!isNaN(row.parsedDate.getFullYear()) && row.parsedDate.getFullYear() > maxYear) maxYear = row.parsedDate.getFullYear();
+            });
 
-                const r_home_old = ratings[home], r_away_old = ratings[away];
-                const e_home = 1 / (1 + Math.pow(10, (r_away_old - (r_home_old + 25)) / 400));
+            validData.forEach(row => {
+                const home = row['Home'], away = row['Away'];
+                if (row.parsedDate.getFullYear() === maxYear) { activeTeams.add(home); activeTeams.add(away); }
+                if (!ratings[home]) ratings[home] = 1500.0;
+                if (!ratings[away]) ratings[away] = 1500.0;
+                if (!window.teamForm[home]) window.teamForm[home] = [];
+                if (!window.teamForm[away]) window.teamForm[away] = [];
 
-                const xg_home = parseFloat(row[hXgKey]), xg_away = parseFloat(row[aXgKey]);
-                let xg_share = 0.5;
-                if (!isNaN(xg_home) && !isNaN(xg_away) && (xg_home + xg_away) > 0) xg_share = xg_home / (xg_home + xg_away);
+                const r_home_old = ratings[home], r_away_old = ratings[away];
+                const e_home = 1 / (1 + Math.pow(10, (r_away_old - (r_home_old + 25)) / 400));
 
-                const hg = parseFloat(row[hgKey]), ag = parseFloat(row[agKey]);
-                let s_home = 0.5;
-                if (!isNaN(hg) && !isNaN(ag)) { if (hg > ag) s_home = 1.0; else if (hg < ag) s_home = 0.0; }
+                const xg_home = parseFloat(row[hXgKey]), xg_away = parseFloat(row[aXgKey]);
+                let xg_share = 0.5;
+                if (!isNaN(xg_home) && !isNaN(xg_away) && (xg_home + xg_away) > 0) xg_share = xg_home / (xg_home + xg_away);
 
-                const a_home = (0.7 * s_home) + (0.3 * xg_share);
+                const hg = parseFloat(row[hgKey]), ag = parseFloat(row[agKey]);
+                let s_home = 0.5;
+                if (!isNaN(hg) && !isNaN(ag)) { if (hg > ag) s_home = 1.0; else if (hg < ag) s_home = 0.0; }
 
-                const gd = parseFloat(row[gdKey]);
-                let b_mult = 1.0;
-                if (!isNaN(gd) && Math.abs(gd) >= 3) b_mult = 1 + (Math.abs(gd) * 0.02);
+                const a_home = (0.7 * s_home) + (0.3 * xg_share);
 
-                const r_home_change = 32 * b_mult * (a_home - e_home);
-                const r_away_change = -r_home_change;
+                const gd = parseFloat(row[gdKey]);
+                let b_mult = 1.0;
+                if (!isNaN(gd) && Math.abs(gd) >= 3) b_mult = 1 + (Math.abs(gd) * 0.02);
 
-                ratings[home] += r_home_change; ratings[away] += r_away_change;
-                lastChange[home] = r_home_change; lastChange[away] = r_away_change;
-                
-                const dStr = row.parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                
-                window.teamForm[home].push({ d: dStr, o: away, h: 1, gf: isNaN(hg)?0:hg, ga: isNaN(ag)?0:ag, xf: isNaN(xg_home)?0:xg_home, xa: isNaN(xg_away)?0:xg_away, c: r_home_change });
-                window.teamForm[away].push({ d: dStr, o: home, h: 0, gf: isNaN(ag)?0:ag, ga: isNaN(hg)?0:hg, xf: isNaN(xg_away)?0:xg_away, xa: isNaN(xg_home)?0:xg_home, c: r_away_change });
-            });
+                const r_home_change = 32 * b_mult * (a_home - e_home);
+                const r_away_change = -r_home_change;
 
-            let prevStandings = [];
-            for (let team in ratings) {
-                if (activeTeams.has(team)) {
-                    let c = lastChange[team] || 0;
-                    prevStandings.push({ team: team, prev_elo: ratings[team] - c });
-                }
-            }
-            prevStandings.sort((a, b) => b.prev_elo - a.prev_elo);
-            let prevRanks = {};
-            prevStandings.forEach((item, idx) => { prevRanks[item.team] = idx + 1; });
+                ratings[home] += r_home_change; ratings[away] += r_away_change;
+                lastChange[home] = r_home_change; lastChange[away] = r_away_change;
+                
+                const dStr = row.parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                
+                window.teamForm[home].push({ d: dStr, o: away, h: 1, gf: isNaN(hg)?0:hg, ga: isNaN(ag)?0:ag, xf: isNaN(xg_home)?0:xg_home, xa: isNaN(xg_away)?0:xg_away, c: r_home_change });
+                window.teamForm[away].push({ d: dStr, o: home, h: 0, gf: isNaN(ag)?0:ag, ga: isNaN(hg)?0:hg, xf: isNaN(xg_away)?0:xg_away, xa: isNaN(xg_home)?0:xg_home, c: r_away_change });
+            });
 
-            let finalStandings = [];
-            for (let team in ratings) {
-                if (activeTeams.has(team)) {
-                    finalStandings.push({ team: team, elo: ratings[team], change: lastChange[team] || 0 });
-                }
-            }
-            finalStandings.sort((a, b) => b.elo - a.elo);
-            
-            finalStandings.forEach((item, idx) => {
-                let currentRank = idx + 1;
-                item.rank_change = prevRanks[item.team] - currentRank;
-            });
-            
-            renderTable(finalStandings);
-            document.getElementById('dateBadge').innerText = "Current as of " + fDate;
-            document.getElementById('statusMessage').innerHTML = "<span style='color:#27ae60;font-weight:bold;'>Standings successfully calculated!</span>";
-        }
+            let prevStandings = [];
+            for (let team in ratings) {
+                if (activeTeams.has(team)) {
+                    let c = lastChange[team] || 0;
+                    prevStandings.push({ team: team, prev_elo: ratings[team] - c });
+                }
+            }
+            prevStandings.sort((a, b) => b.prev_elo - a.prev_elo);
+            let prevRanks = {};
+            prevStandings.forEach((item, idx) => { prevRanks[item.team] = idx + 1; });
 
-        function renderTable(standings) {
-            let html = '<table><tr><th style="min-width:70px;">Rank</th><th>Team</th><th>Hybrid Elo Rating</th><th>Recent Form</th></tr>';
-            standings.forEach((item, index) => {
-                let cInd = '';
-                if (item.change > 0.05) cInd = `<span class="c-pos">(+${item.change.toFixed(1)})</span>`;
-                else if (item.change < -0.05) cInd = `<span class="c-neg">(${item.change.toFixed(1)})</span>`;
-                else cInd = `<span class="c-neu">(0.0)</span>`;
-                
-                let rankHtml = `<span class="rank-col">${index + 1}</span>`;
-                if (item.rank_change > 0) {
-                    rankHtml += `<span class="rank-up" title="Up ${item.rank_change} spots">▲${item.rank_change}</span>`;
-                } else if (item.rank_change < 0) {
-                    rankHtml += `<span class="rank-down" title="Down ${Math.abs(item.rank_change)} spots">▼${Math.abs(item.rank_change)}</span>`;
-                } else {
-                    rankHtml += `<span class="rank-same" title="No change in rank">-</span>`;
-                }
+            let finalStandings = [];
+            for (let team in ratings) {
+                if (activeTeams.has(team)) {
+                    finalStandings.push({ team: team, elo: ratings[team], change: lastChange[team] || 0 });
+                }
+            }
+            finalStandings.sort((a, b) => b.elo - a.elo);
+            
+            finalStandings.forEach((item, idx) => {
+                let currentRank = idx + 1;
+                item.rank_change = prevRanks[item.team] - currentRank;
+            });
+            
+            renderTable(finalStandings);
+            document.getElementById('dateBadge').innerText = "Current as of " + fDate;
+            
+            // Hide the loading message once the table is rendered
+            document.getElementById('statusMessage').style.display = "none";
+        }
 
-                let formHtml = '<div class="f-cont">';
-                if (window.teamForm && window.teamForm[item.team]) {
-                    const last5 = window.teamForm[item.team].slice(-5);
-                    last5.forEach(m => {
-                        let res = 'D', fClass = 'f-d';
-                        if (m.gf > m.ga) { res = 'W'; fClass = 'f-w'; }
-                        else if (m.gf < m.ga) { res = 'L'; fClass = 'f-l'; }
-                        const oppStr = m.h ? `vs ${m.o}` : `@ ${m.o}`;
-                        formHtml += `<span class="f-badge ${fClass}" title="${m.d}: ${oppStr} (${m.gf}-${m.ga})">${res}</span>`;
-                    });
-                }
-                formHtml += '</div>';
+        function renderTable(standings) {
+            let html = '<table><tr><th style="min-width:70px;">Rank</th><th>Team</th><th>Hybrid Elo Rating</th><th>Recent Form</th></tr>';
+            standings.forEach((item, index) => {
+                let cInd = '';
+                if (item.change > 0.05) cInd = `<span class="c-pos">(+${item.change.toFixed(1)})</span>`;
+                else if (item.change < -0.05) cInd = `<span class="c-neg">(${item.change.toFixed(1)})</span>`;
+                else cInd = `<span class="c-neu">(0.0)</span>`;
+                
+                let rankHtml = `<span class="rank-col">${index + 1}</span>`;
+                if (item.rank_change > 0) {
+                    rankHtml += `<span class="rank-up" title="Up ${item.rank_change} spots">▲${item.rank_change}</span>`;
+                } else if (item.rank_change < 0) {
+                    rankHtml += `<span class="rank-down" title="Down ${Math.abs(item.rank_change)} spots">▼${Math.abs(item.rank_change)}</span>`;
+                } else {
+                    rankHtml += `<span class="rank-same" title="No change in rank">-</span>`;
+                }
 
-                html += `<tr><td>${rankHtml}</td>
-                         <td><span class="team-name" onclick="showTeamForm('${item.team}')"><strong>${item.team}</strong></span></td>
-                         <td>${item.elo.toFixed(1)} ${cInd}</td><td>${formHtml}</td></tr>`;
-            });
-            html += '</table>';
-            document.getElementById('tableContainer').innerHTML = html;
-        }
-        
-        renderTable(initialStandings);
-    </script>
+                let formHtml = '<div class="f-cont">';
+                if (window.teamForm && window.teamForm[item.team]) {
+                    const last5 = window.teamForm[item.team].slice(-5);
+                    last5.forEach(m => {
+                        let res = 'D', fClass = 'f-d';
+                        if (m.gf > m.ga) { res = 'W'; fClass = 'f-w'; }
+                        else if (m.gf < m.ga) { res = 'L'; fClass = 'f-l'; }
+                        const oppStr = m.h ? `vs ${m.o}` : `@ ${m.o}`;
+                        formHtml += `<span class="f-badge ${fClass}" title="${m.d}: ${oppStr} (${m.gf}-${m.ga})">${res}</span>`;
+                    });
+                }
+                formHtml += '</div>';
+
+                html += `<tr><td>${rankHtml}</td>
+                         <td><span class="team-name" onclick="showTeamForm('${item.team}')"><strong>${item.team}</strong></span></td>
+                         <td>${item.elo.toFixed(1)} ${cInd}</td><td>${formHtml}</td></tr>`;
+            });
+            html += '</table>';
+            document.getElementById('tableContainer').innerHTML = html;
+        }
+    </script>
 </body>
 </html>
