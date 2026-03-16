@@ -702,14 +702,29 @@ function renderCargoList() {
     });
 
     // --- 4. Render the Sorted Rows ---
+    cargoArray.sort((a, b) => {
+        if (window.cargoSortMode === 'VALUE') {
+            return (b.value * b.qty) - (a.value * a.qty); 
+        } else if (window.cargoSortMode === 'QUANTITY') {
+            return b.qty - a.qty; 
+        } else if (window.cargoSortMode === 'ILLEGAL') {
+            if (b.illegal !== a.illegal) return b.illegal - a.illegal; 
+            return a.name.localeCompare(b.name); 
+        } else {
+            return a.name.localeCompare(b.name); 
+        }
+    });
+
+    // Create an off-screen fragment
+    const fragment = document.createDocumentFragment();
+
+    // Render the Sorted Rows to the Fragment ---
     cargoArray.forEach(item => {
         const row = document.createElement('div');
         row.className = 'trade-item-row';
         row.style.cursor = 'pointer';
         
-        // Highlight illegal items with a red border and icon
         if (item.illegal) row.style.borderLeft = '3px solid var(--danger)';
-        // Highlight selected item
         if (window.activeCargoItem === item.key) row.style.background = 'rgba(0, 224, 224, 0.1)';
 
         let subtext = "";
@@ -717,8 +732,13 @@ function renderCargoList() {
         
         row.innerHTML = `<span>${item.illegal ? '⚠️' : '📦'} ${item.name} ${subtext}</span> <span style="color:var(--accent-color); font-weight:bold;">x${item.qty}</span>`;
         row.onclick = () => selectCargoItem(item.key);
-        listEl.appendChild(row);
+        
+        // Append to the invisible fragment, NOT the live DOM
+        fragment.appendChild(row);
     });
+
+    // Push all rows to the screen at the exact same time
+    listEl.appendChild(fragment);
 
     // Auto-select the active item, or the first item in the list if none is active
     if (!window.activeCargoItem || !playerCargo[window.activeCargoItem]) {
