@@ -10,7 +10,7 @@ function generateMissionsForStation(stationName) {
     // Determine how many missions we want to generate (2 to 3)
     const numMissionsToGenerate = 2 + Math.floor(Math.random() * 2);
 
-    // FIX: Safety counter to prevent infinite loops if valid missions cannot be generated
+    // Safety counter to prevent infinite loops if valid missions cannot be generated
     // (e.g., if selectRandomDestination keeps returning null)
     let attempts = 0;
     const MAX_ATTEMPTS = 20;
@@ -25,8 +25,8 @@ function generateMissionsForStation(stationName) {
             // Deep copy of the template to avoid side-effects
             let newMission = JSON.parse(JSON.stringify(chosenTemplate));
 
-            // Generate a unique ID
-            newMission.id = `${newMission.id_prefix}${attempts}_${Date.now()}`;
+            // Generate a truly unique ID using Math.random entropy
+            newMission.id = `${newMission.id_prefix}${attempts}_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
             newMission.giver = stationName;
 
             // Get the first objective template
