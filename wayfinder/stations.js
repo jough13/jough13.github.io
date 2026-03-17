@@ -439,6 +439,9 @@ else if (action === 'RUMOR') {
 
     // 2. Risk Calculation (Base 30% chance + 10% per illegal item type)
     const catchChance = 0.30 + (contrabandFound.length * 0.10);
+
+    // 🚨 SMUGGLING: Multiply by the ship's signature size!
+    catchChance *= (window.PLAYER_SIGNATURE || 1.0);
     
     logMessage("Scanning vessel signature...", true);
 
