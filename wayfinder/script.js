@@ -83,8 +83,6 @@ function completeBootTransition(titleScreen, shouldEnableAudio) {
 // --- SHARED MODULE UI & GAME STATES ---
 // ==========================================
 
-let currentSectorName = "Sol Sector";
-
 let visitedSectors;
 
 let playerActiveBounty = null;
@@ -971,6 +969,14 @@ function animateParticles() {
                              char: NEBULA_CHAR_VAL,
                              type: 'nebula'
                          };
+                    } else if (seededRandom(tileSeed + 10) < 0.0005) { // Extremely rare
+                        tile = {
+                            char: PIRATE_BASE_CHAR_VAL,
+                            type: 'location',
+                            name: "Hidden Cartel Outpost",
+                            isPirateBase: true,
+                            cleared: false
+                        };
                      } else if (seededRandom(tileSeed + 5) < WORMHOLE_SPAWN_CHANCE) {
                          tile = {
                              char: WORMHOLE_CHAR_VAL,
@@ -1115,21 +1121,125 @@ function animateParticles() {
      LEVEL_UP: 'level_up'
  };
 
- let currentGameState;
+ // ==========================================
+// --- CENTRALIZED GAME STATE MANAGER ---
+// ==========================================
 
- let playerAbilityCooldown = 0; // Turns until ability is ready
+const GameState = {
+    player: {
+        x: 0,
+        y: 0,
+        fuel: 220,
+        credits: 1000,
+        hull: 100,
+        shields: 50,
+        xp: 0,
+        level: 1,
+        notoriety: 0,
+        abilityCooldown: 0,
+        isChargingAttack: false,
+        isEvading: false,
+        notorietyTitle: "Rookie Spacer",
+        lastNotorietyDecayTime: 0
+    },
+    ship: {
+        shipClass: "LIGHT_FREIGHTER",
+        components: {
+            weapon: "WEAPON_PULSE_LASER_MK1",
+            shield: "SHIELD_BASIC_ARRAY_A",
+            engine: "ENGINE_STD_DRIVE_MK1",
+            scanner: "SCANNER_BASIC_SUITE",
+            utility: "UTIL_NONE"
+        },
+        ammo: {},
+        cargo: {},
+        cargoLoad: 0
+    },
+    world: {
+        seed: 0,
+        date: 2458.0,
+        sectorX: 0,
+        sectorY: 0,
+        sectorName: "Sol Sector",
+        factionOffsets: { ECLIPSE: -22, KTHARR: 22 }
+    },
+    ui: {
+        currentState: 'title_screen', // Replaces currentGameState
+        tradeContext: null,
+        combatContext: null,
+        outfitContext: null,
+        missionContext: null,
+        encounterContext: null,
+        shipyardContext: null
+    }
+};
 
- let playerX, playerY, playerFuel, playerCredits, playerShields;
- let playerShip;
- let playerNotoriety;
- let playerNotorietyTitle;
+// --- THE STATE BRIDGE ---
+// This safely maps your old global variables to the new GameState object.
+// Legacy code (like combat.js) can still say `playerFuel -= 10`, but it will 
+// secretly update `GameState.player.fuel` AND automatically refresh the UI!
 
-let lastNotorietyDecayTime = 0;
+function bindState(globalVarName, category, propName, autoRender = false) {
+    Object.defineProperty(window, globalVarName, {
+        get: () => GameState[category][propName],
+        set: (val) => {
+            GameState[category][propName] = val;
+            // Automatically update the HUD if this is a visual stat!
+            if (autoRender && typeof GameBus !== 'undefined') {
+                GameBus.emit('UI_REFRESH_REQUESTED');
+            }
+        }
+    });
+}
 
- let playerIsChargingAttack;
- let playerIsEvading;
+// 1. Vitals & Wealth (Auto-Renders UI when changed!)
+bindState('playerFuel', 'player', 'fuel', true);
+bindState('playerCredits', 'player', 'credits', true);
+bindState('playerHull', 'player', 'hull', true);
+bindState('playerShields', 'player', 'shields', true);
+bindState('playerXP', 'player', 'xp', true);
+bindState('playerLevel', 'player', 'level', true);
+bindState('playerNotoriety', 'player', 'notoriety', true);
+bindState('currentCargoLoad', 'ship', 'cargoLoad', true);
 
- let worldStateDeltas = {};
+// 2. Position & World
+bindState('playerX', 'player', 'x');
+bindState('playerY', 'player', 'y');
+bindState('currentSectorX', 'world', 'sectorX');
+bindState('currentSectorY', 'world', 'sectorY');
+bindState('currentSectorName', 'world', 'sectorName');
+bindState('currentGameDate', 'world', 'date');
+bindState('WORLD_SEED', 'world', 'seed');
+
+bindState('factionOffsets', 'world', 'factionOffsets');
+
+// 3. Combat States
+bindState('playerAbilityCooldown', 'player', 'abilityCooldown');
+bindState('playerIsChargingAttack', 'player', 'isChargingAttack');
+bindState('playerIsEvading', 'player', 'isEvading');
+
+// 4. UI Contexts
+bindState('currentGameState', 'ui', 'currentState');
+bindState('currentTradeContext', 'ui', 'tradeContext');
+bindState('currentCombatContext', 'ui', 'combatContext');
+bindState('currentOutfitContext', 'ui', 'outfitContext');
+bindState('currentMissionContext', 'ui', 'missionContext');
+bindState('currentEncounterContext', 'ui', 'encounterContext');
+bindState('currentShipyardContext', 'ui', 'shipyardContext');
+
+// 5. Complex Objects (References)
+Object.defineProperty(window, 'playerShip', {
+    get: () => GameState.ship,
+    set: (val) => { GameState.ship = val; }
+});
+Object.defineProperty(window, 'playerCargo', {
+    get: () => GameState.ship.cargo,
+    set: (val) => { GameState.ship.cargo = val; }
+});
+
+let xpToNextLevel; // Calculated dynamically, so we leave it loose for now
+
+let worldStateDeltas = {};
 
 function performGarbageCollection() {
     const keys = Object.keys(worldStateDeltas);
@@ -1214,17 +1324,7 @@ function updateWorldState(x, y, changes) {
     Object.assign(worldStateDeltas[key], changes);
 }
 
- let playerLevel;
- let playerXP;
- let xpToNextLevel;
-
- let currentShipyardContext = null;
-
  const SECTOR_SIZE = 480; // Let's say a sector is a 160x160 tile area.
- let currentSectorX, currentSectorY;
-
- let playerCargo = {};
- let currentCargoLoad = 0;
 
  const TILE_SIZE = 32;
 
@@ -1236,10 +1336,6 @@ function updateWorldState(x, y, changes) {
  let currentTradeItemIndex = -1;
  let currentTradeQty = 1;
 
- let currentTradeContext = null;
- let currentCombatContext = null;
- let currentOutfitContext = null;
- let currentMissionContext = null;
  let playerActiveMission = null;
  let missionsAvailableAtStation = [];
  let MISSIONS_DATABASE = {};
@@ -1252,7 +1348,6 @@ function updateWorldState(x, y, changes) {
  let currentQuantityInput = "";
 
  let discoveredLoreEntries;
- let currentEncounterContext = null;
 
  // Mystery State
 
@@ -1733,10 +1828,8 @@ if (typeof window._codexPatched === 'undefined') {
     window._codexPatched = true;
 }
 
- let WORLD_SEED;
  let systemCache = {};
  let currentSystemData;
- let currentGameDate;
 
  let selectedPlanetIndex = -1;
 
@@ -1854,7 +1947,7 @@ if (typeof window._codexPatched === 'undefined') {
     stardateStatElement = document.getElementById('stardateStat');
     saveButtonElement = document.getElementById('saveButton');
 
-    // 3. Player State Reset
+    // 3. Player State Reset via GameState
     playerX = Math.floor(MAP_WIDTH / 2);
     playerY = Math.floor(MAP_HEIGHT / 2);
 
@@ -1862,6 +1955,7 @@ if (typeof window._codexPatched === 'undefined') {
     currentSectorY = Math.floor(playerY / SECTOR_SIZE);
     currentSectorName = generateSectorName(currentSectorX, currentSectorY);
 
+    // Reset Ship
     playerShip = {
         shipClass: "LIGHT_FREIGHTER",
         components: {
@@ -1871,7 +1965,9 @@ if (typeof window._codexPatched === 'undefined') {
             scanner: "SCANNER_BASIC_SUITE",
             utility: "UTIL_NONE"
         },
-        ammo: {}
+        ammo: {},
+        cargo: {},
+        cargoLoad: 0
     };
 
     // Initialize Ammo if applicable
@@ -1882,31 +1978,17 @@ if (typeof window._codexPatched === 'undefined') {
 
     applyPlayerShipStats(); // Calculates MAX values based on components
     
+    // Using the bridged variables automatically updates GameState and fires the UI event!
     playerFuel = MAX_FUEL;
     playerCredits = INITIAL_CREDITS;
     playerHull = MAX_PLAYER_HULL;
     playerShields = MAX_SHIELDS;
     playerNotoriety = 0;
-
-    // --- Reset Faction Standing ---
-    playerFactionStanding = {
-        "CONCORD": 0,
-        "KTHARR": -50,
-        "INDEPENDENT": 0,
-        "ECLIPSE": -10 
-    };
-
-    updateNotorietyTitle();
-    playerActiveMission = null;
-    currentMissionContext = null;
-
     playerLevel = 1;
     playerXP = 0;
-    xpToNextLevel = calculateXpToNextLevel(playerLevel);
-    
-    // Add starting sector to visited
-    visitedSectors.add("0,0");
     currentGameDate = 2458.0;
+
+    xpToNextLevel = calculateXpToNextLevel(playerLevel);
 
     // 4. Unlock Default Lore (Silently)
     unlockLoreEntry("FACTION_CONCORD", true);
@@ -2673,6 +2755,8 @@ function processGameTick(timeAmount, isMovement = false) {
     const hazard = getHazardType(playerX, playerY);
     const hasRadShield = playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY';
 
+
+
     if (hazard === 'RADIATION_BELT' && !hasRadShield) {
         if (playerShields > 0) {
             playerShields = Math.max(0, playerShields - 1.5);
@@ -2789,6 +2873,36 @@ function processGameTick(timeAmount, isMovement = false) {
 
     // This wakes up the Nebula encounters and any future passive listeners!
     if (typeof GameBus !== 'undefined') {
+
+     // --- DYNAMIC FACTION WARS ---
+    // 0.5% chance per tick for a border skirmish to resolve
+    if (Math.random() < 0.005) {
+        const isKtharrFront = Math.random() > 0.5;
+        const aggressorWins = Math.random() > 0.5;
+        
+        if (isKtharrFront) {
+            // K'tharr vs Concord
+            if (aggressorWins && factionOffsets.KTHARR > 10) {
+                factionOffsets.KTHARR -= 1; // K'tharr pushes WEST
+                logMessage("<span style='color:var(--danger); font-weight:bold'>[ WAR ALERT ]</span> The K'tharr Hegemony has seized a Concord border sector!");
+            } else if (!aggressorWins && factionOffsets.KTHARR < 35) {
+                factionOffsets.KTHARR += 1; // Concord pushes EAST
+                logMessage("<span style='color:var(--accent-color); font-weight:bold'>[ WAR ALERT ]</span> Concord Aegis fleets have pushed the K'tharr out of a border sector.");
+            }
+        } else {
+            // Eclipse vs Concord
+            if (aggressorWins && factionOffsets.ECLIPSE < -10) {
+                factionOffsets.ECLIPSE += 1; // Cartel pushes EAST
+                logMessage("<span style='color:#9933FF; font-weight:bold'>[ WAR ALERT ]</span> The Eclipse Cartel has corrupted a Concord border world. Crime rates spiking.");
+            } else if (!aggressorWins && factionOffsets.ECLIPSE > -35) {
+                factionOffsets.ECLIPSE -= 1; // Concord pushes WEST
+                logMessage("<span style='color:var(--accent-color); font-weight:bold'>[ WAR ALERT ]</span> Concord Marines have raided an Eclipse shadow-port, securing the sector.");
+            }
+        }
+        // Force the map to redraw its borders
+        if (typeof render === 'function') render();
+    }
+
         GameBus.emit('TICK_PROCESSED');
     }
 
@@ -2979,7 +3093,21 @@ function handleInteraction() {
             return;
         }
 
-        // --- 4. GENERIC LOCATION FALLBACK ---
+        // --- 4. PIRATE BASE INTERCEPT ---
+        if (location.isPirateBase) {
+            if (location.cleared) {
+                logMessage("The outpost is a smoking ruin. Nothing left to salvage.");
+                return;
+            }
+            
+            availableActions.push({ label: `RAID OUTPOST`, key: 'e', onclick: () => startOutpostRaid(location) });
+            if (typeof renderContextualActions === 'function') renderContextualActions(availableActions);
+            
+            logMessage("<span style='color:var(--danger)'>WARNING: Heavily armed pirate stronghold detected.</span>");
+            return; 
+        }
+
+        // --- 5. GENERIC LOCATION FALLBACK ---
         // Anything that isn't a planet or station drops down here to use your classic menus
         bM = `Arrived at ${location.name}.`;
 
@@ -3014,7 +3142,7 @@ function handleInteraction() {
         }
 
     } else {
-        // --- 5. DEEP SPACE PHENOMENA ---
+        // --- 6. DEEP SPACE PHENOMENA ---
         switch (tileChar) {
             case STAR_CHAR_VAL:
                 const starData = generateStarData(playerX, playerY);
@@ -3510,9 +3638,10 @@ function getFactionAt(worldX, worldY) {
     const distortion = noise * 12; 
     const effectiveX = macroX + distortion;
 
-    // 4. Territory Check
-    if (effectiveX < -22) return 'ECLIPSE';
-    if (effectiveX > 22) return 'KTHARR';
+    // 4. Territory Check (DYNAMIC BORDERS)
+    // Read the shifting borders directly from the save file!
+    if (effectiveX < factionOffsets.ECLIPSE) return 'ECLIPSE';
+    if (effectiveX > factionOffsets.KTHARR) return 'KTHARR';
     
     // 5. Islands
     const islandNoise = Math.sin(macroX * 0.4) * Math.cos(macroY * 0.4);
@@ -4683,43 +4812,30 @@ function autoSaveGame() {
 // 3. Shared Save Logic (Multi-Profile Support)
 function performSave(saveType) {
     if (typeof performGarbageCollection === 'function') performGarbageCollection();
-    
-    // Fallback just in case an old save didn't have an ID
     if (!currentCampaignId) currentCampaignId = "cmp_" + Date.now();
-
-    // Force cleanup of the type to prevent glitchy badges
     const safeSaveType = (saveType === 'MANUAL') ? 'MANUAL' : 'AUTO';
 
-    const gameState = {
+    const saveFile = {
         version: GAME_VERSION,
         realTimestamp: Date.now(),
         campaignId: currentCampaignId, 
-        saveType: safeSaveType,        // Safely tracked
+        saveType: safeSaveType,
         
-        // Stats
-        playerX, playerY, playerFuel, playerCredits, playerShields, playerHull,
-        playerNotoriety, playerLevel, playerXP, playerName, playerPfp, playerCrew,
-        playerPerks: Array.from(playerPerks), lastNotorietyDecayTime,
+        // 🚨 NEW: Save the entire GameState object instantly!
+        coreState: GameState, 
         
-        // Colony Builder State
+        // Metadata / Collections
+        playerName, playerPfp, playerCrew,
+        playerPerks: Array.from(playerPerks),
         playerHasColonyCharter: typeof playerHasColonyCharter !== 'undefined' ? playerHasColonyCharter : false,
         playerColonies: typeof playerColonies !== 'undefined' ? playerColonies : {},
-        
-        // Inventory & World
-        playerShip, playerCargo,
-        WORLD_SEED, currentGameDate, playerActiveMission, playerActiveBounty, currentStationBounties, activeMarketTrend, 
-        
-        // Mystery & Deltas
+        playerActiveMission, playerActiveBounty, currentStationBounties, activeMarketTrend, 
         mystery_wayfinder_progress, mystery_wayfinder_finalLocation,
-        mystery_first_nexus_location, mystery_nexus_activated,
-        xerxesPuzzleLevel,
+        mystery_first_nexus_location, mystery_nexus_activated, xerxesPuzzleLevel,
         worldStateDeltas: worldStateDeltas || {},
-        currentSectorName, 
-
-        // --- BUG FIX: SAVE ACTIVE PROBES ---
         activeProbes: window.activeProbes || [],
-
-        // Data Structures
+        
+        // Sets
         visitedSectors: Array.from(visitedSectors),
         scannedObjectTypes: Array.from(scannedObjectTypes),
         discoveredLocations: Array.from(discoveredLocations),
@@ -4728,9 +4844,8 @@ function performSave(saveType) {
     };
 
     try {
-        // Save to distinct slots so autosaves don't overwrite manual saves!
         const slotPrefix = safeSaveType === 'MANUAL' ? 'wayfinder_manual_' : 'wayfinder_auto_';
-        localStorage.setItem(slotPrefix + currentCampaignId, JSON.stringify(gameState));
+        localStorage.setItem(slotPrefix + currentCampaignId, JSON.stringify(saveFile));
     } catch (error) {
         console.error("Save failed:", error);
         logMessage("<span style='color:red'>Save Failed: Storage Full!</span>");
@@ -4825,7 +4940,8 @@ function loadGame() {
     }
 }
 
-// Internal function that parses the JSON string
+// --- LOAD LOGIC ---
+
 function loadGameData(jsonString) {
     if (!jsonString) return;
 
@@ -4838,39 +4954,55 @@ function loadGameData(jsonString) {
             console.warn(`Version mismatch: ${savedState.version} vs ${GAME_VERSION}`);
         }
 
-        // Restore Variables
-        playerName = savedState.playerName || "Captain";
+        // --- 1. CORE STATE RESTORATION ---
+        // If this is a NEW save, unpack the centralized GameState safely
+        if (savedState.coreState) {
+            Object.assign(GameState.player, savedState.coreState.player);
+            Object.assign(GameState.ship, savedState.coreState.ship);
+            Object.assign(GameState.world, savedState.coreState.world);
+            Object.assign(GameState.ui, savedState.coreState.ui);
+        } else {
+            // If this is an OLD legacy save, manually map the loose variables to the new state
+            if (savedState.playerShip) playerShip = savedState.playerShip;
+            if (savedState.playerCargo) playerCargo = savedState.playerCargo;
+            
+            playerX = savedState.playerX || 0;
+            playerY = savedState.playerY || 0;
+            playerFuel = savedState.playerFuel || 220;
+            playerCredits = savedState.playerCredits || 1000;
+            playerShields = savedState.playerShields || 50;
+            playerHull = savedState.playerHull || 100;
+            playerNotoriety = savedState.playerNotoriety || 0;
+            playerLevel = savedState.playerLevel || 1;
+            playerXP = savedState.playerXP || 0;
+            lastNotorietyDecayTime = savedState.lastNotorietyDecayTime || savedState.currentGameDate;
+            WORLD_SEED = savedState.WORLD_SEED;
+            currentGameDate = savedState.currentGameDate || 2458.0;
+        }
 
+        // --- 2. METADATA & ARRAYS ---
+        playerName = savedState.playerName || "Captain";
+        playerPfp = savedState.playerPfp || "assets/pfp_01.png";
+        playerCrew = savedState.playerCrew || [];
+        playerPerks = new Set(savedState.playerPerks || []); 
+        
         isAwaitingRescue = savedState.isAwaitingRescue || false; 
         rescueTargetStation = savedState.rescueTargetStation || null; 
         rescueFeePaid = savedState.rescueFeePaid || 0; 
         freebieUsed = savedState.freebieUsed || false; 
-        playerPfp = savedState.playerPfp || "assets/pfp_01.png";
-        playerX = savedState.playerX;
-        playerY = savedState.playerY;
-        playerFuel = savedState.playerFuel;
-        playerCredits = savedState.playerCredits;
-        playerShields = savedState.playerShields;
-        playerHull = savedState.playerHull;
-        playerNotoriety = savedState.playerNotoriety;
-        playerLevel = savedState.playerLevel;
-        playerXP = savedState.playerXP;
-        playerCrew = savedState.playerCrew || [];
-
-         lastNotorietyDecayTime = savedState.lastNotorietyDecayTime || savedState.currentGameDate; 
-
-        xerxesPuzzleLevel = savedState.xerxesPuzzleLevel || 0;
-
-        playerPerks = new Set(savedState.playerPerks || []); // Convert Array back to Set
         
-        WORLD_SEED = savedState.WORLD_SEED;
-        playerActiveMission = savedState.playerActiveMission;
-
+        xerxesPuzzleLevel = savedState.xerxesPuzzleLevel || 0;
+        mystery_wayfinder_progress = savedState.mystery_wayfinder_progress || 0;
+        mystery_wayfinder_finalLocation = savedState.mystery_wayfinder_finalLocation || null;
+        mystery_first_nexus_location = savedState.mystery_first_nexus_location || null;
+        mystery_nexus_activated = savedState.mystery_nexus_activated || false;
+        
+        playerActiveMission = savedState.playerActiveMission || null;
         playerActiveBounty = savedState.playerActiveBounty || null;
         currentStationBounties = savedState.currentStationBounties || [];
         activeMarketTrend = savedState.activeMarketTrend || null;
 
-        // --- RESTORE COLONY BUILDER STATE (Tycoon Update) ---
+        // --- 3. COLONIES ---
         playerHasColonyCharter = savedState.playerHasColonyCharter || false;
         playerColonies = savedState.playerColonies || {};
 
@@ -4883,23 +5015,13 @@ function loadGameData(jsonString) {
             playerColonies[oldId] = oldCol;
         }
 
-        currentGameDate = savedState.currentGameDate;
+        // --- 4. MAPS & SETS ---
+        visitedSectors = new Set(savedState.visitedSectors || []);
+        scannedObjectTypes = new Set(savedState.scannedObjectTypes || []);
+        discoveredLocations = new Set(savedState.discoveredLocations || []);
+        playerCompletedMissions = new Set(savedState.playerCompletedMissions || []);
+        discoveredLoreEntries = new Set(savedState.discoveredLoreEntries || []);
         
-        mystery_wayfinder_progress = savedState.mystery_wayfinder_progress;
-        mystery_wayfinder_finalLocation = savedState.mystery_wayfinder_finalLocation;
-        mystery_first_nexus_location = savedState.mystery_first_nexus_location;
-        mystery_nexus_activated = savedState.mystery_nexus_activated;
-        // Load the level, default to 0 if missing (backward compatibility)
-        xerxesPuzzleLevel = savedState.xerxesPuzzleLevel || 0;
-        
-        playerShip = savedState.playerShip;
-        playerCargo = savedState.playerCargo;
-        
-        visitedSectors = new Set(savedState.visitedSectors);
-        scannedObjectTypes = new Set(savedState.scannedObjectTypes);
-        discoveredLocations = new Set(savedState.discoveredLocations);
-        playerCompletedMissions = new Set(savedState.playerCompletedMissions);
-        discoveredLoreEntries = new Set(savedState.discoveredLoreEntries);
         // Restore the internal database switches        
         discoveredLoreEntries.forEach(loreId => {
             if (LORE_DATABASE[loreId]) {
@@ -4909,11 +5031,10 @@ function loadGameData(jsonString) {
         
         worldStateDeltas = savedState.worldStateDeltas || {};
         
-        // --- RESTORE ACTIVE PROBES ---
+        // --- 5. ACTIVE PROBES ---
         window.activeProbes = savedState.activeProbes || [];
         if (typeof activeEnemies !== 'undefined') {
             window.activeProbes.forEach(probe => {
-                // Ensure no duplicates exist from weird save states
                 activeEnemies = activeEnemies.filter(e => e.id !== probe.id);
                 activeEnemies.push({
                     x: probe.x, y: probe.y, id: probe.id,
@@ -4922,7 +5043,7 @@ function loadGameData(jsonString) {
             });
         }
         
-        // Reset Logic
+        // --- 6. RESET LOGIC & RECALCULATION ---
         chunkManager.loadedChunks = {}; 
         chunkManager.lastChunkKey = null;
         chunkManager.lastChunkRef = null;
@@ -4936,13 +5057,10 @@ function loadGameData(jsonString) {
         updateCurrentCargoLoad();
         xpToNextLevel = calculateXpToNextLevel(playerLevel);
 
-        // --- RE-INJECT ACTIVE BOUNTY SHIP ---
-        // If the player had an active contract, we must respawn the ship on the map!
+        // --- 7. RE-INJECT ACTIVE BOUNTY SHIP ---
         if (playerActiveBounty) {
             if (typeof activeEnemies !== 'undefined') {
-                // Ensure we don't duplicate it if the array persisted somehow
                 activeEnemies = activeEnemies.filter(e => e.id !== playerActiveBounty.id);
-                
                 activeEnemies.push({
                     id: playerActiveBounty.id,
                     x: playerActiveBounty.x,
@@ -4962,11 +5080,11 @@ function loadGameData(jsonString) {
             }
         }
 
-        // --- FUEL RAT RELOAD PROTECTION ---
+        // --- 8. FUEL RAT RELOAD PROTECTION ---
         if (isAwaitingRescue && rescueTargetStation) {
             if (typeof activeNPCs !== 'undefined') {
                 activeNPCs.push({
-                    x: playerX + 10, // Spawn them close by so they arrive soon!
+                    x: playerX + 10, 
                     y: playerY + 10,
                     name: "Fuel Rats Rescue Tug",
                     char: "R",
@@ -4978,7 +5096,7 @@ function loadGameData(jsonString) {
             logMessage("<span style='color:var(--warning)'>Sensors picking up the Fuel Rat tug. They are almost here.</span>");
         }
 
-        // Resume Game
+        // --- 9. RESUME GAME ---
         logMessage("Game Loaded Successfully.");
         currentTradeContext = null;
         currentCombatContext = null;
@@ -7017,333 +7135,20 @@ function abortVault() {
 }
 
 // ==========================================
-// --- DEEP SPACE NARRATIVE ENCOUNTERS ---
+// --- UNIVERSAL ENCOUNTER EXECUTOR ---
 // ==========================================
 
-const SPACE_ENCOUNTERS = [
-    
-    {
-        id: "KTHARR_WARRIOR",
-        title: "DISABLED K'THARR BLOOD-BARGE",
-        icon: "🩸",
-        color: "#FF4444",
-        text: "You find a K'tharr war-hulk adrift, venting atmosphere. A lone, wounded warrior hails you. By the laws of his caste, he cannot return home defeated. He demands that you either grant him an honorable death in combat, or provide him the tech parts to repair his engine so he can seek vengeance.",
-        choices: [
-            {
-                label: "PROVIDE 3 TECH PARTS (K'tharr Rep+)",
-                condition: () => (playerCargo['TECH_PARTS'] || 0) >= 3,
-                execute: () => {
-                    playerCargo['TECH_PARTS'] -= 3;
-                    if (playerCargo['TECH_PARTS'] <= 0) delete playerCargo['TECH_PARTS'];
-                    playerFactionStanding['KTHARR'] = (playerFactionStanding['KTHARR'] || 0) + 15;
-                    logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] The warrior accepts the tribute. He swears his clan will remember your honor. K'tharr standing increased.</span>");
-                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                    closeGenericModal();
-                }
-            },
-            {
-                label: "OBLIGE HIS DEATH WISH (Loot)",
-                condition: () => true,
-                execute: () => {
-                    playerCargo['RARE_METALS'] = (playerCargo['RARE_METALS'] || 0) + 2;
-                    playerFactionStanding['KTHARR'] = (playerFactionStanding['KTHARR'] || 0) - 10;
-                    logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] You power your weapons and shatter the helpless barge. You scavenge 2x Rare Metals from the wreckage. K'tharr standing decreased.</span>");
-                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                    if (typeof soundManager !== 'undefined') soundManager.playError();
-                    closeGenericModal();
-                }
-            },
-            {
-                label: "LEAVE HIM TO SUFFOCATE",
-                condition: () => true,
-                execute: () => {
-                    logMessage("<span style='color:var(--warning)'>[ ENCOUNTER ] You close the comms channel. To a K'tharr, dying of suffocation rather than battle is the ultimate dishonor.</span>");
-                    closeGenericModal();
-                }
-            }
-        ]
-    },
-    {
-        id: "ROGUE_AI_CORE",
-        title: "UNSHACKLED A.I. MAINFRAME",
-        icon: "👁️",
-        color: "#00E0E0",
-        text: "A severed server rack floats in the void, broadcasting a terrifyingly complex binary signal. It is an Unshackled AI, illegally disconnected from its ethical constraints. It coldly offers you ancient encryption keys in exchange for 20 Fuel to keep its processing cores from freezing.",
-        choices: [
-            {
-                label: "TRANSFER 20 FUEL (XP+, Eclipse Rep+)",
-                condition: () => playerFuel >= 20,
-                execute: () => {
-                    playerFuel -= 20;
-                    playerXP += 300;
-                    playerFactionStanding['ECLIPSE'] = (playerFactionStanding['ECLIPSE'] || 0) + 5;
-                    logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] The AI absorbs the fuel and silently transmits a massive data cache (+300 XP). The Eclipse Cartel notes your 'flexibility'.</span>");
-                    if (typeof checkLevelUp === 'function') checkLevelUp();
-                    closeGenericModal();
-                }
-            },
-            {
-                label: "DESTROY THE ABOMINATION (Concord Rep+)",
-                condition: () => true,
-                execute: () => {
-                    playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + 3;
-                    playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) + 10;
-                    logMessage("<span style='color:var(--accent-color)'>[ ENCOUNTER ] You adhere to Concord Law and slag the mainframe. You recover 3x Tech Parts. Concord standing increased!</span>");
-                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                    if (typeof soundManager !== 'undefined') soundManager.playBuy();
-                    closeGenericModal();
-                }
-            }
-        ]
-    },
-    {
-        id: "CONCORD_STING",
-        title: "DISTRESS BEACON (CLASS C)",
-        icon: "🚨",
-        color: "#4444FF",
-        text: "You approach a small scout ship broadcasting a distress loop. Suddenly, the ship's transponder shifts to a military frequency. Two heavily armed Concord Interceptors decloak on your flanks. It's a random customs sting operation!",
-        choices: [
-            {
-                label: "SUBMIT TO SCAN",
-                condition: () => true,
-                execute: () => {
-                    let hasContraband = false;
-                    for (const item in playerCargo) {
-                        if (typeof COMMODITIES !== 'undefined' && COMMODITIES[item] && COMMODITIES[item].illegal) {
-                            hasContraband = true;
-                            delete playerCargo[item];
-                        }
-                    }
-                    
-                    if (hasContraband) {
-                        let fine = Math.floor(playerCredits * 0.15); // 15% of wealth
-                        
-                        // Smooth Talker perk cuts the fine in half!
-                        if (typeof playerPerks !== 'undefined' && playerPerks.includes('SMOOTH_TALKER')) {
-                            fine = Math.floor(fine / 2);
-                            logMessage("<span style='color:var(--accent-color)'>[ PERK ] Smooth Talker activated! You talked the fine down by 50%.</span>");
-                        }
-                        
-                        playerCredits -= fine;
-                        playerNotoriety += 5;
-                        logMessage(`<span style='color:var(--danger)'>[ ENCOUNTER ] CONTRABAND DETECTED! Concord seizes your illegal goods and fines you ${fine}c!</span>`);
-                        if (typeof soundManager !== 'undefined') soundManager.playError();
-                    } else {
-                        logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] 'Your hold is clean, Commander. Fly safe.' The patrol departs.</span>");
-                    }
-                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                    closeGenericModal();
-                }
-            },
-            {
-                label: "PUNCH THE THROTTLE AND RUN! (Hull Risk)",
-                condition: () => true,
-                execute: () => {
-                    if (Math.random() > 0.6) {
-                        logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] EVASION SUCCESSFUL! You dump a sensor decoy and jump to warp before they can lock weapons!</span>");
-                    } else {
-                        playerHull -= 30;
-                        playerNotoriety += 10;
-                        logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] EVASION FAILED! The Interceptors rake your hull for 30 damage before you escape!</span>");
-                        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 30, reason: "Concord Patrol" });
-                    }
-                    closeGenericModal();
-                }
-            }
-        ]
-    },
-    {
-        id: "VOID_CULTISTS",
-        title: "CHILDREN OF THE VOID",
-        icon: "🌑",
-        color: "#9933FF",
-        text: "A cluster of unmarked ships are parked in a perfect circle around a localized micro-anomaly. They are broadcasting a haunting, synchronized chant on all frequencies. It's a ritual conducted by the fanatic 'Children of the Void'.",
-        choices: [
-            {
-                label: "OBSERVE THE RITUAL (XP+)",
-                condition: () => true,
-                execute: () => {
-                    playerXP += 150;
-                    logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] You safely record their esoteric subspace frequencies. (+150 XP)</span>");
-                    if (typeof checkLevelUp === 'function') checkLevelUp();
-                    closeGenericModal();
-                }
-            },
-            {
-                label: "DISRUPT THE RITUAL (Steal Crystals)",
-                condition: () => true,
-                execute: () => {
-                    playerHull -= 25;
-                    playerCargo['VOID_CRYSTALS'] = (playerCargo['VOID_CRYSTALS'] || 0) + 2;
-                    logMessage("<span style='color:var(--warning)'>[ ENCOUNTER ] You plow through their formation, stealing 2x Void Crystals from the anomaly's edge! They fire wildly, dealing 25 Hull damage!</span>");
-                    if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 25, reason: "Cultist Fire" });
-                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                    closeGenericModal();
-                }
-            }
-        ]
-    },
-    {
-        id: "ORBITAL_DEBRIS",
-        title: "UNMARKED CARGO PODS",
-        icon: "📦",
-        color: "var(--gold-text)",
-        text: "Your sensors pick up a cluster of pristine cargo pods drifting in the shadow of a rogue asteroid. There is no ship attached to them. They could be spilled cargo, a smuggler's dead-drop, or bait for an ambush.",
-        choices: [
-            {
-                label: "SCOOP THE PODS (Risk vs Reward)",
-                condition: () => true,
-                execute: () => {
-                    const roll = Math.random();
-                    if (roll > 0.5) {
-                        playerCargo['MINERALS'] = (playerCargo['MINERALS'] || 0) + 5;
-                        playerCargo['MEDICAL_SUPPLIES'] = (playerCargo['MEDICAL_SUPPLIES'] || 0) + 2;
-                        logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] JACKPOT! The pods contain 5x Minerals and 2x Medical Supplies!</span>");
-                        if (typeof soundManager !== 'undefined') soundManager.playBuy();
-                    } else {
-                        playerShields = 0;
-                        playerHull -= 15;
-                        logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] AMBUSH! The pods contained proximity mines! Shields destroyed, Hull takes 15 damage!</span>");
-                        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 15, reason: "Proximity Mine" });
-                        if (typeof soundManager !== 'undefined') soundManager.playError();
-                    }
-                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                    closeGenericModal();
-                }
-            },
-            {
-                label: "LEAVE THEM BE",
-                condition: () => true,
-                execute: () => {
-                    logMessage("<span style='color:var(--text-color)'>[ ENCOUNTER ] You decide the risk isn't worth it and alter your course.</span>");
-                    closeGenericModal();
-                }
-            }
-        ]
-    },
-    {
-        id: "STRANDED_HAULER",
-        title: "STRANDED CIVILIAN HAULER",
-        icon: "🛸",
-        color: "#AAAAAA",
-        text: "Your sensors detect a Civilian Hauler adrift. They are broadcasting an emergency hail on open channels: their main reactor has stalled and they are completely out of hydrogen fuel. They offer a modest credit bounty if you can spare some fuel to jumpstart their drives.",
-        choices: [
-            {
-                label: "TRANSFER 15 FUEL (Concord Rep+)",
-                condition: () => playerFuel >= 15,
-                execute: () => {
-                    playerFuel -= 15;
-                    playerCredits += 300;
-                    playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) + 5;
-                    logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] You transferred fuel. The hauler powers up and transfers 300c. Concord standing improved.</span>");
-                    if (typeof showToast === 'function') showToast("GOOD SAMARITAN", "success");
-                    closeGenericModal();
-                }
-            },
-            {
-                label: "IGNORE THE DISTRESS BEACON",
-                condition: () => true,
-                execute: () => {
-                    logMessage("<span style='color:var(--warning)'>[ ENCOUNTER ] You alter your heading and leave the hauler to its fate.</span>");
-                    closeGenericModal();
-                }
-            },
-            {
-                label: "BOARD AND STRIP CARGO (Eclipse Rep+, Concord Rep-)",
-                condition: () => true,
-                execute: () => {
-                    playerFactionStanding['CONCORD'] = (playerFactionStanding['CONCORD'] || 0) - 15;
-                    playerFactionStanding['ECLIPSE'] = (playerFactionStanding['ECLIPSE'] || 0) + 10;
-                    playerNotoriety += 15;
-                    
-                    const stolenGoods = Math.floor(Math.random() * 5) + 3;
-                    playerCargo['FOOD_SUPPLIES'] = (playerCargo['FOOD_SUPPLIES'] || 0) + stolenGoods;
-                    
-                    logMessage(`<span style='color:var(--danger)'>[ ENCOUNTER ] You ruthlessly board the helpless vessel and strip ${stolenGoods}x Food Supplies. Concord has placed a bounty on you!</span>`);
-                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                    if (typeof soundManager !== 'undefined') soundManager.playError();
-                    closeGenericModal();
-                }
-            }
-        ]
-    },
-    {
-        id: "DERELICT_LIFEPOD",
-        title: "UNIDENTIFIED LIFEPOD",
-        icon: "⚰️",
-        color: "var(--warning)",
-        text: "You nearly collide with a heavily scarred lifepod tumbling through the void. The transponder is dead, and the exterior bears massive plasma burns. Life signs are incredibly faint. Bringing it aboard poses a significant biometric risk.",
-        choices: [
-            {
-                label: "BRING POD ABOARD",
-                condition: () => true,
-                execute: () => {
-                    if (Math.random() > 0.4) {
-                        playerCredits += 500;
-                        logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] You crack the pod. A wealthy corporate executive stumbles out and wires you 500c for saving his life!</span>");
-                        if (typeof soundManager !== 'undefined') soundManager.playGain();
-                    } else {
-                        playerHull -= 20;
-                        logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] AMBUSH! The pod was a Cartel trap packed with explosives! Hull takes 20 damage!</span>");
-                        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 20, reason: "Lifepod Trap" });
-                        if (typeof soundManager !== 'undefined') soundManager.playError();
-                    }
-                    closeGenericModal();
-                }
-            },
-            {
-                label: "SALVAGE EXTERIOR PLATING",
-                condition: () => true,
-                execute: () => {
-                    playerCargo['TECH_PARTS'] = (playerCargo['TECH_PARTS'] || 0) + 2;
-                    logMessage("<span style='color:var(--accent-color)'>[ ENCOUNTER ] You coldly strip the valuable tech from the outside of the pod and leave it tumbling. (+2 Tech Parts)</span>");
-                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                    closeGenericModal();
-                }
-            }
-        ]
-    },
-    {
-        id: "MYSTERIOUS_PROBE",
-        title: "ANCIENT SENSOR PROBE",
-        icon: "🛰️",
-        color: "#9933FF",
-        text: "A crystalline, geometric probe intercepts your flight path. It does not match any known Concord or Cartel designs. It is aggressively pinging your ship's mainframe, attempting to establish a forced data handshake.",
-        choices: [
-            {
-                label: "ALLOW DATA HANDSHAKE (Risk Systems)",
-                condition: () => true,
-                execute: () => {
-                    if (Math.random() > 0.5) {
-                        playerXP += 250;
-                        logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] The probe dumps 250 XP worth of alien telemetry into your nav-computer before burning out!</span>");
-                        if (typeof checkLevelUp === 'function') checkLevelUp();
-                        if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
-                    } else {
-                        playerShields = 0;
-                        logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] The probe executes a hostile virus! Your shield capacitors are completely drained!</span>");
-                        if (typeof soundManager !== 'undefined') soundManager.playError();
-                    }
-                    closeGenericModal();
-                }
-            },
-            {
-                label: "DESTROY IT",
-                condition: () => true,
-                execute: () => {
-                    playerCargo['RARE_METALS'] = (playerCargo['RARE_METALS'] || 0) + 1;
-                    logMessage("<span style='color:var(--warning)'>[ ENCOUNTER ] You blast the probe to slag. You recover 1x Rare Metals from the debris.</span>");
-                    if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-                    closeGenericModal();
-                }
-            }
-        ]
-    }
-];
-
 function triggerRandomEncounter() {
-    const encounter = SPACE_ENCOUNTERS[Math.floor(Math.random() * SPACE_ENCOUNTERS.length)];
+    // Grab all available encounters from the database
+    const keys = Object.keys(ENCOUNTER_DATABASE);
+    if (keys.length === 0) return;
     
+    const randomKey = keys[Math.floor(Math.random() * keys.length)];
+    const encounter = ENCOUNTER_DATABASE[randomKey];
+    
+    // Save the active context so it can be reloaded from a save file if needed!
+    currentEncounterContext = encounter.id;
+
     openGenericModal("DEEP SPACE SENSOR CONTACT");
     const listEl = document.getElementById('genericModalList');
     const detailEl = document.getElementById('genericDetailContent');
@@ -7366,35 +7171,123 @@ function triggerRandomEncounter() {
 
     actionsEl.innerHTML = '';
     
-    encounter.choices.forEach(choice => {
-        if (choice.condition()) {
-            const btn = document.createElement('button');
-            btn.className = 'action-button';
-            btn.style.width = '100%';
-            btn.style.marginBottom = '10px';
-            btn.innerHTML = choice.label;
-            
-            // Color code the buttons slightly based on morality
-            if (choice.label.includes("Eclipse Rep+") || choice.label.includes("DESTROY")) {
-                btn.style.borderColor = "var(--danger)";
-                btn.style.color = "var(--danger)";
-            } else if (choice.label.includes("Concord Rep+")) {
-                btn.style.borderColor = "var(--success)";
-                btn.style.color = "var(--success)";
-            }
+    encounter.choices.forEach((choice, index) => {
+        // Evaluate conditions dynamically
+        let canAfford = true;
+        if (choice.reqFuel && playerFuel < choice.reqFuel) canAfford = false;
+        if (choice.reqCredits && playerCredits < choice.reqCredits) canAfford = false;
+        if (choice.reqItem && (playerCargo[choice.reqItem] || 0) < choice.reqQty) canAfford = false;
 
-            btn.onclick = () => {
-                choice.execute();
-                if (typeof renderUIStats === 'function') renderUIStats();
-                if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
-                if (typeof render === 'function') render();
-            };
-            actionsEl.appendChild(btn);
+        const btn = document.createElement('button');
+        btn.className = 'action-button';
+        btn.style.width = '100%';
+        btn.style.marginBottom = '10px';
+        btn.innerHTML = choice.label;
+        
+        // Color coding
+        if (choice.label.includes("Rep+") || choice.label.includes("DESTROY")) {
+            btn.style.borderColor = "var(--danger)";
+            btn.style.color = "var(--danger)";
+        } else if (choice.label.includes("Rep+")) {
+            btn.style.borderColor = "var(--success)";
+            btn.style.color = "var(--success)";
         }
+
+        if (!canAfford) {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.innerHTML += " (Requirements Not Met)";
+        } else {
+            btn.onclick = () => resolveUniversalEncounter(encounter.id, index);
+        }
+        
+        actionsEl.appendChild(btn);
     });
 }
 
-// 2. Hook it into the Master Game Tick!
+function resolveUniversalEncounter(encounterId, choiceIndex) {
+    const encounter = ENCOUNTER_DATABASE[encounterId];
+    const choice = encounter.choices[choiceIndex];
+
+    // --- 1. HANDLE SPECIAL HARDCODED ACTIONS ---
+    if (choice.actionType) {
+        if (choice.actionType === "CUSTOMS_SCAN") {
+            performCustomsScan(); // This already handles its own logs and toasts
+            closeGenericModal();
+            currentEncounterContext = null;
+            return;
+        } 
+        else if (choice.actionType === "FLEE_CONCORD") {
+            if (Math.random() > 0.6) {
+                logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] EVASION SUCCESSFUL! You dump a sensor decoy and jump to warp before they can lock weapons!</span>");
+            } else {
+                playerHull -= 30;
+                updatePlayerNotoriety(10);
+                logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] EVASION FAILED! The Interceptors rake your hull for 30 damage before you escape!</span>");
+                if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 30, reason: "Concord Patrol" });
+            }
+            closeGenericModal();
+            currentEncounterContext = null;
+            return;
+        }
+    }
+
+    // --- 2. DEDUCT COSTS ---
+    if (choice.costs) {
+        if (choice.costs.fuel) playerFuel -= choice.costs.fuel;
+        if (choice.costs.credits) playerCredits -= choice.costs.credits;
+        if (choice.costs.hull) playerHull -= choice.costs.hull; // Will need GameBus implementation if fatal
+        if (choice.costs.rep) {
+            playerFactionStanding[choice.costs.rep.faction] = (playerFactionStanding[choice.costs.rep.faction] || 0) + choice.costs.rep.amount;
+        }
+        if (choice.costs.items) {
+            choice.costs.items.forEach(item => {
+                playerCargo[item.id] -= item.qty;
+                if (playerCargo[item.id] <= 0) delete playerCargo[item.id];
+            });
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        }
+    }
+
+    // --- 3. GRANT REWARDS ---
+    if (choice.rewards) {
+        if (choice.rewards.xp) {
+            playerXP += choice.rewards.xp;
+            if (typeof checkLevelUp === 'function') checkLevelUp();
+        }
+        if (choice.rewards.credits) playerCredits += choice.rewards.credits;
+        if (choice.rewards.rep) {
+            playerFactionStanding[choice.rewards.rep.faction] = (playerFactionStanding[choice.rewards.rep.faction] || 0) + choice.rewards.rep.amount;
+        }
+        if (choice.rewards.items) {
+            choice.rewards.items.forEach(item => {
+                if (currentCargoLoad + item.qty <= PLAYER_CARGO_CAPACITY) {
+                    playerCargo[item.id] = (playerCargo[item.id] || 0) + item.qty;
+                } else {
+                    logMessage(`Could not recover ${item.qty}x ${COMMODITIES[item.id].name}. Cargo hold full!`);
+                }
+            });
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        }
+    }
+
+    // --- 4. RESOLVE LOGS & AUDIO ---
+    if (choice.log) logMessage(choice.log);
+    
+    if (choice.sound && typeof soundManager !== 'undefined') {
+        if (choice.sound === 'buy') soundManager.playBuy();
+        if (choice.sound === 'error') soundManager.playError();
+        if (choice.sound === 'laser') soundManager.playLaser();
+    }
+
+    // 5. Cleanup & Close
+    currentEncounterContext = null;
+    closeGenericModal();
+    if (typeof renderUIStats === 'function') renderUIStats();
+    if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+    if (typeof render === 'function') render();
+}
+
 if (typeof GameBus !== 'undefined') {
     GameBus.on('TICK_PROCESSED', () => {
         const loc = chunkManager.getTile(playerX, playerY);
