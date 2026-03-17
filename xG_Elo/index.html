@@ -11,7 +11,7 @@ h1{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom
 .info-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background-color:#00285e;color:white;border-radius:50%;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.2);transition:0.2s}
 .info-btn:hover{background-color:#e31837}
 .as-of-date{display:block;width:fit-content;margin:0 auto 20px auto;background-color:#e31837;color:white;padding:5px 12px;border-radius:15px;font-size:0.9em;font-weight:bold}
-.upload-section{background:#fff;padding:20px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);text-align:center;margin-bottom:30px;border-top:4px solid #00285e}
+.upload-section{background:#fff;padding:20px;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);text-align:center;margin-top:40px;margin-bottom:30px;border-top:4px solid #00285e}
 input[type="file"]{margin-top:10px}
 table{width:100%;border-collapse:collapse;background:#fff;box-shadow:0 4px 6px rgba(0,0,0,0.1);border-radius:8px;overflow:hidden}
 th,td{padding:12px 15px;text-align:center;border-bottom:1px solid #ddd}
@@ -95,17 +95,17 @@ tr:hover{background-color:#f1f1f1}
         </div>
     </div>
 
-    <div class="upload-section">
-        <h3>Update the Standings manually (Optional)</h3>
-        <p>This page automatically loads the latest data from the server, but you can upload a newer <strong>ASA Match Logs CSV</strong> to instantly override it below!</p>
-        <input type="file" id="csvFileInput" accept=".csv" />
-    </div>
-
     <div id="statusMessage" class="status-msg">
         <strong>Loading:</strong> Crunching over 10 years of MLS historical data in real-time...
     </div>
 
     <div id="tableContainer"></div>
+
+    <div class="upload-section">
+        <h3>Update the Standings manually (Optional)</h3>
+        <p>This page automatically loads the latest data from the server, but you can upload a newer <strong>ASA Match Logs CSV</strong> to instantly override it below!</p>
+        <input type="file" id="csvFileInput" accept=".csv" />
+    </div>
 
     <script>
         // Start completely empty! 
@@ -268,47 +268,38 @@ tr:hover{background-color:#f1f1f1}
         }
 
         function renderTable(standings) {
-            let html = '<table style="width: 100%; border-collapse: collapse; background: #fff; text-align: center; font-family: -apple-system, BlinkMacSystemFont, sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden;">';
-            html += '<tr><th style="background-color: #00285e; color: white; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #ddd;">Rank</th>';
-            html += '<th style="background-color: #00285e; color: white; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #ddd;">Team</th>';
-            html += '<th style="background-color: #00285e; color: white; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #ddd;">Hybrid Elo Rating</th>';
-            html += '<th style="background-color: #00285e; color: white; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #ddd;">Recent Form</th></tr>';
-
+            let html = '<table><tr><th style="min-width:70px;">Rank</th><th>Team</th><th>Hybrid Elo Rating</th><th>Recent Form</th></tr>';
             standings.forEach((item, index) => {
                 let cInd = '';
-                if (item.change > 0.05) cInd = `<span style="color: #27ae60; font-size: 0.85em; font-weight: bold; margin-left: 6px;">(+${item.change.toFixed(1)})</span>`;
-                else if (item.change < -0.05) cInd = `<span style="color: #c0392b; font-size: 0.85em; font-weight: bold; margin-left: 6px;">(${item.change.toFixed(1)})</span>`;
-                else cInd = `<span style="color: #7f8c8d; font-size: 0.85em; font-weight: bold; margin-left: 6px;">(0.0)</span>`;
+                if (item.change > 0.05) cInd = `<span class="c-pos">(+${item.change.toFixed(1)})</span>`;
+                else if (item.change < -0.05) cInd = `<span class="c-neg">(${item.change.toFixed(1)})</span>`;
+                else cInd = `<span class="c-neu">(0.0)</span>`;
                 
-                let rankHtml = `<span style="font-weight: bold; color: #e31837; font-size: 1.1em;">${index + 1}</span>`;
+                let rankHtml = `<span class="rank-col">${index + 1}</span>`;
                 if (item.rank_change > 0) {
-                    rankHtml += `<span style="color: #27ae60; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Up ${item.rank_change} spots">▲${item.rank_change}</span>`;
+                    rankHtml += `<span class="rank-up" title="Up ${item.rank_change} spots">▲${item.rank_change}</span>`;
                 } else if (item.rank_change < 0) {
-                    rankHtml += `<span style="color: #c0392b; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Down ${Math.abs(item.rank_change)} spots">▼${Math.abs(item.rank_change)}</span>`;
+                    rankHtml += `<span class="rank-down" title="Down ${Math.abs(item.rank_change)} spots">▼${Math.abs(item.rank_change)}</span>`;
                 } else {
-                    rankHtml += `<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span>`;
+                    rankHtml += `<span class="rank-same" title="No change in rank">-</span>`;
                 }
 
-                let formHtml = '<div style="display: flex; gap: 4px; justify-content: center;">';
+                let formHtml = '<div class="f-cont">';
                 if (window.teamForm && window.teamForm[item.team]) {
                     const last5 = window.teamForm[item.team].slice(-5);
                     last5.forEach(m => {
-                        let res = 'D', bg = '#7f8c8d';
-                        if (m.gf > m.ga) { res = 'W'; bg = '#27ae60'; }
-                        else if (m.gf < m.ga) { res = 'L'; bg = '#c0392b'; }
+                        let res = 'D', fClass = 'f-d';
+                        if (m.gf > m.ga) { res = 'W'; fClass = 'f-w'; }
+                        else if (m.gf < m.ga) { res = 'L'; fClass = 'f-l'; }
                         const oppStr = m.h ? `vs ${m.o}` : `@ ${m.o}`;
-                        
-                        // Inline-styled badges!
-                        formHtml += `<span style="display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; background-color: ${bg}; color: white; font-size: 11px; font-weight: bold; border-radius: 3px;" title="${m.d}: ${oppStr} (${m.gf}-${m.ga})">${res}</span>`;
+                        formHtml += `<span class="f-badge ${fClass}" title="${m.d}: ${oppStr} (${m.gf}-${m.ga})">${res}</span>`;
                     });
                 }
                 formHtml += '</div>';
 
-                html += `<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
-                         <td style="padding: 12px 15px;">${rankHtml}</td>
-                         <td style="padding: 12px 15px; color: #00285e;"><strong>${item.team}</strong></td>
-                         <td style="padding: 12px 15px;">${item.elo.toFixed(1)} ${cInd}</td>
-                         <td style="padding: 12px 15px;">${formHtml}</td></tr>`;
+                html += `<tr><td>${rankHtml}</td>
+                         <td><span class="team-name" onclick="showTeamForm('${item.team}')"><strong>${item.team}</strong></span></td>
+                         <td>${item.elo.toFixed(1)} ${cInd}</td><td>${formHtml}</td></tr>`;
             });
             html += '</table>';
             document.getElementById('tableContainer').innerHTML = html;
