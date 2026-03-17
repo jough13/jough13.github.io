@@ -1,12 +1,10 @@
 // --- Game Configuration ---
 
 // STARTING VALUES (Based on Light Freighter + Standard Drive Mk1)
-// These are the ONLY declarations for these variables. 
 let MAX_FUEL = 220; 
 let PLAYER_CARGO_CAPACITY = 50; 
 let MAX_SHIELDS = 50; 
-let MAX_PLAYER_HULL = 100; 
-let playerHull = 100;
+let MAX_PLAYER_HULL = 100;
 
 const GAME_VERSION = "v0.9.5";
 const MAP_WIDTH = 40;  
@@ -32,15 +30,8 @@ const ASTEROID_SPAWN_CHANCE = 0.00125;
 const NEBULA_SPAWN_CHANCE = 0.05; 
 const ASTEROID_BELT_CHANCE = 0.01; 
 
-// --- DELETE THE DUPLICATE LINES BELOW ---
-// let MAX_FUEL;  <-- DELETE THIS
 const INITIAL_CREDITS = 1000;
-// let PLAYER_CARGO_CAPACITY; <-- DELETE THIS
 const BASE_FUEL_PER_MOVE = 0.8;
-// let MAX_SHIELDS; <-- DELETE THIS
-// let MAX_PLAYER_HULL; <-- DELETE THIS
-// let playerHull; <-- DELETE THIS
-
 const HULL_REPAIR_COST_PER_POINT = 5;
 
 const BIOLOGICAL_RESOURCES = new Set(['GENETIC_SAMPLES', 'KTHARR_SPICES', 'FOOD_SUPPLIES', 'SENTIENT_MYCELIUM']);
@@ -73,7 +64,6 @@ const MAX_SCOOP_YIELD_RICHNESS_MULTIPLIER = 18;
 const SCOOP_RANDOM_BONUS = 4;
 
 const ANOMALY_SPAWN_CHANCE = 0.000125; 
-
 const OUTPOST_SPAWN_CHANCE = 0.0002; 
 
 const WORMHOLE_SPAWN_CHANCE = 0.0000075; 
@@ -146,10 +136,10 @@ const FACTIONS = {
         name: "Concord Dominion",
         color: "#00AAFF", // Blue
         bg: "rgba(0, 100, 255, 0.08)", 
-        homeRadius: 15, 
+        homeRadius: 8, // <--- CHANGED FROM 15 TO 8 (400 Tiles)
         description: "The central government. Values law, order, and taxes."
     },
-    ECLIPSE: { // RENAMED from VOID_VULTURES
+    ECLIPSE: { 
         name: "Eclipse Cartel",
         color: "#FF4444", // Red
         bg: "rgba(255, 50, 50, 0.08)",
@@ -158,7 +148,7 @@ const FACTIONS = {
     },
     KTHARR: {
         name: "K'tharr Ascendancy",
-        color: "#00FF44", // Green
+        color: "#4CAF50",
         bg: "rgba(0, 255, 50, 0.08)",
         zone: "EAST", // X > 20
         description: "A xenophobic warrior caste. Highly territorial."
