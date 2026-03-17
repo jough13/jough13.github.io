@@ -22,6 +22,7 @@ const DERELICT_CHAR_VAL = 'D';
 const ANOMALY_CHAR_VAL = '?';
 const WORMHOLE_CHAR_VAL = 'W';
 const NEXUS_CHAR_VAL = '&';
+const PIRATE_BASE_CHAR_VAL = '^';
 
 const DERELICT_SPAWN_CHANCE = 0.00025; 
 
