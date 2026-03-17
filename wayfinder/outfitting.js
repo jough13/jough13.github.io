@@ -649,6 +649,7 @@ function applyPlayerShipStats() {
     let calculatedMaxHull = shipClassData.baseHull || 100;
     let calculatedMaxCargo = shipClassData.cargoCapacity || 50;
     let calculatedEvasion = shipClassData.baseEvasion || 0; 
+    let calculatedSignature = shipClassData.baseSignature || 1.0; // 🚨 NEW: Base Radar Signature
 
     // 2. Apply Base Component Stats First
     const weapon = COMPONENTS_DATABASE[playerShip.components.weapon];
@@ -660,14 +661,17 @@ function applyPlayerShipStats() {
     MAX_SHIELDS = shield.stats.maxShields || 0;
     MAX_FUEL = engine.stats.maxFuel || 0;
 
-    // 3. Check Utility Slot (FIXED: Now includes shieldBonus!)
+    // 3. Check Utility Slot
     const utilityId = playerShip.components.utility || "UTIL_NONE";
     const utility = COMPONENTS_DATABASE[utilityId];
 
     if (utility && utility.stats) {
         if (utility.stats.hullBonus) calculatedMaxHull += utility.stats.hullBonus;
         if (utility.stats.cargoBonus) calculatedMaxCargo += utility.stats.cargoBonus;
-        if (utility.stats.shieldBonus) MAX_SHIELDS += utility.stats.shieldBonus; // <-- THE MISSING LINK!
+        if (utility.stats.shieldBonus) MAX_SHIELDS += utility.stats.shieldBonus;
+        
+        // 🚨 NEW: Check if the utility module reduces signature (e.g. Smuggler's Hold)
+        if (utility.stats.signatureMod) calculatedSignature += utility.stats.signatureMod; 
     }
 
     // --- 4. APPLY CREW & MERCENARY BONUSES ---
@@ -691,6 +695,9 @@ function applyPlayerShipStats() {
     MAX_PLAYER_HULL = calculatedMaxHull;
     PLAYER_CARGO_CAPACITY = calculatedMaxCargo;
     PLAYER_EVASION = calculatedEvasion; 
+    
+    // 🚨 NEW: Export the final signature globally (capping it so it can never drop below 10%)
+    window.PLAYER_SIGNATURE = Math.max(0.1, calculatedSignature); 
 
     // --- 6. APPLY SYNERGIES (SET BONUSES) ---
     if (typeof SYNERGIES_DATABASE !== 'undefined') {
