@@ -9,6 +9,7 @@ const SHIP_CLASSES = {
         baseHull: 100,
         cargoCapacity: 50,
         baseCost: 0, 
+        baseSignature: 1.0, // Standard radar profile
         description: "A reliable, jack-of-all-trades vessel.",
         loreKey: "LORE_SHIP_LIGHT_FREIGHTER",
         ability: {
@@ -29,6 +30,7 @@ const SHIP_CLASSES = {
        baseHull: 115,
        cargoCapacity: 65,
        baseCost: 6500,
+       baseSignature: 0.8, // Slightly harder to scan than a freighter
        description: "A professional vessel balancing speed and durability.",
        loreKey: "LORE_SHIP_COURIER",
        ability: {
@@ -49,6 +51,7 @@ const SHIP_CLASSES = {
         baseHull: 75,
         cargoCapacity: 20,
         baseCost: 8000,
+        baseSignature: 0.5, // Small profile
         description: "Built for speed and combat agility.",
         loreKey: "LORE_SHIP_INTERCEPTOR",
         ability: {
@@ -68,6 +71,7 @@ const SHIP_CLASSES = {
         baseHull: 120,
         cargoCapacity: 40,
         baseCost: 10000,
+        baseSignature: 1.2, // Big sensor arrays make it light up on radar
         description: "Long-range vessel with advanced sensors.",
         loreKey: "LORE_SHIP_EXPLORER",
         ability: {
@@ -87,6 +91,7 @@ const SHIP_CLASSES = {
        baseHull: 50,
        cargoCapacity: 15,
        baseCost: 2500,
+       baseSignature: 0.4, // Tiny profile
        description: "Fast, fragile, and cheap.",
        loreKey: "LORE_SHIP_VOID_SKIFF",
        ability: {
@@ -107,6 +112,7 @@ const SHIP_CLASSES = {
        baseHull: 180,
        cargoCapacity: 150,
        baseCost: 22000,
+       baseSignature: 1.5, // Big and noisy
        description: "Industrial mining barge. Tough but slow.",
        loreKey: "LORE_SHIP_ROCK_HOPPER",
        ability: {
@@ -126,6 +132,7 @@ const SHIP_CLASSES = {
        baseHull: 200,
        cargoCapacity: 80,
        baseCost: 50000,
+       baseSignature: 2.0, // Massive, luxurious target
        description: "The pinnacle of luxury and defense.",
        loreKey: "LORE_SHIP_STAR_GALLEON",
        ability: {
@@ -145,6 +152,7 @@ const SHIP_CLASSES = {
         baseHull: 150,
         cargoCapacity: 120,
         baseCost: 15000,
+        baseSignature: 1.8, // Very easy for customs to scan
         description: "A veritable fortress with massive cargo holds.",
         loreKey: "LORE_SHIP_HEAVY_HAULER",
         ability: {
@@ -170,6 +178,7 @@ const SHIP_CLASSES = {
        baseHull: 250,
        cargoCapacity: 40,
        baseCost: 65000,
+       baseSignature: 1.6, // Military craft aren't subtle
        description: "A Concord military patrol vessel. Heavily armored and built for pure combat superiority.",
        loreKey: "LORE_SHIP_AEGIS",
        manufacturer: "CONCORD",
@@ -193,6 +202,7 @@ const SHIP_CLASSES = {
        baseHull: 90,
        cargoCapacity: 80,
        baseCost: 55000,
+       baseSignature: 0.2, // Practically invisible to customs
        description: "A stealth smuggling vessel. Sensor-absorbent plating makes it a ghost on Concord radars.",
        loreKey: "LORE_SHIP_NIGHTRUNNER",
        manufacturer: "ECLIPSE",
@@ -215,6 +225,7 @@ const SHIP_CLASSES = {
        baseHull: 350,
        cargoCapacity: 60,
        baseCost: 50000,
+       baseSignature: 1.9, // Massive radar signature
        description: "A brutal, heavily armored war-hulk. Lacks finesse, but hits like a localized asteroid strike.",
        loreKey: "LORE_SHIP_BLOODBARGE",
        manufacturer: "KTHARR",
@@ -414,7 +425,7 @@ const COMPONENTS_DATABASE = {
    SMUGGLERS_HOLD: {
        name: "Eclipse Cargo Bay", type: "utility", slot: "utility", manufacturer: "ECLIPSE",
        description: "Shielded cargo bays. +10 Cargo. Immune to standard scans.",
-       cost: 4000, stats: { cargoBonus: 10, isSmuggler: true }, reqFaction: "ECLIPSE", minRep: 20, loreKey: "LORE_COMP_SCANNER" 
+       cost: 4000, stats: { cargoBonus: 10, isSmuggler: true, signatureMod: -0.3 }, reqFaction: "ECLIPSE", minRep: 20, loreKey: "LORE_COMP_SCANNER" 
    },
    // --- CONCORD EXCLUSIVES ---
    MILITARY_SHIELD_MOD: {
