@@ -20,6 +20,24 @@ function openTradeModal(mode) {
 
     // --- ECONOMY RESTOCK LOGIC (Time-Gated) ---
     if (!window.activeTradeNPC && (!location.lastRestockTime || (currentGameDate - location.lastRestockTime) > 1.0)) {
+        
+        // 🚨 SUPPLY CHAIN ENGINE
+        if (location.factory) {
+            let buyStock = location.buys.find(b => b.id === location.factory.consumes);
+            let sellStock = location.sells.find(s => s.id === location.factory.produces);
+            
+            if (buyStock && sellStock) {
+                if (buyStock.stock >= location.factory.consumeQty) {
+                    // Factory is running! Consume raw materials, produce finished goods.
+                    buyStock.stock -= location.factory.consumeQty;
+                    sellStock.stock += location.factory.produceQty;
+                    sellStock.priceMod = 1.0; // Price normalizes
+                } else {
+                    // Factory stalled! Price of finished goods skyrockets due to shortage!
+                    sellStock.priceMod = 2.5; 
+                }
+            }
+        }
         if (location.sells) {
             location.sells.forEach(item => {
                 if (item.stock < 100) item.stock += Math.floor(Math.random() * 3) + 1;
