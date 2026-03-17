@@ -48,6 +48,12 @@ const LOCATIONS_DATA = {
             { id: "HYDROGEN_3", priceMod: 2.0, stock: 5 },
             { id: "ANCIENT_WINE", priceMod: 1.5, stock: 5 }
         ],
+        factory: {
+            consumes: "MINERALS",
+            produces: "TECH_PARTS",
+            consumeQty: 5,
+            produceQty: 2
+        },
         scanFlavor: "Starbase Alpha: Major Concord trade hub. Bustling with merchant traffic and heavily patrolled by Concord security drones." 
     },
     
