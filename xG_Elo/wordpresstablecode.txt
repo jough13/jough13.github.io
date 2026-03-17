@@ -1,0 +1,190 @@
+<table style="width: 100%; border-collapse: collapse; background: #fff; text-align: center; font-family: -apple-system, BlinkMacSystemFont, sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; font-size: 18px;">
+<tbody>
+<tr>
+<th style="background-color: #00285e; color: white; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #ddd;">Rank</th>
+<th style="background-color: #00285e; color: white; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #ddd;">Team</th>
+<th style="background-color: #00285e; color: white; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #ddd;">Hybrid Elo Rating</th>
+<th style="background-color: #00285e; color: white; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #ddd;">Recent Form</th>
+</tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">1<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>LAFC</strong></td>
+<td style="padding: 12px 15px;">1634.3 <span style="color: #27ae60; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(+11.0)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Oct 18: @ COL (2-2)">D</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 21: vs MIA (3-0)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 28: @ HOU (2-0)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 7: vs FCD (1-0)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 14: vs STL (2-0)">W</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">2<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>MIA</strong></td>
+<td style="padding: 12px 15px;">1612.7 <span style="color: #27ae60; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(+2.5)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Oct 18: @ NSH (5-2)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 21: @ LAFC (0-3)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 1: @ ORL (4-2)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 7: @ DCU (2-1)">W</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Mar 14: @ CLT (0-0)">D</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">3<span style="color: #27ae60; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Up 1 spots">▲1</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>VAN</strong></td>
+<td style="padding: 12px 15px;">1602.8 <span style="color: #27ae60; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(+8.9)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 18: vs FCD (1-2)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 21: vs RSL (1-0)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 28: vs TOR (3-0)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 7: @ POR (4-1)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 15: vs MIN (6-0)">W</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">4<span style="color: #c0392b; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Down 1 spots">▼1</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>SD</strong></td>
+<td style="padding: 12px 15px;">1594.1 <span style="color: #27ae60; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(+6.2)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Oct 18: @ POR (4-0)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 21: vs MTL (5-0)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 1: vs STL (2-0)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 7: @ SKC (1-0)">W</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Mar 14: @ FCD (3-3)">D</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">5<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>SEA</strong></td>
+<td style="padding: 12px 15px;">1571.2 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-12.6)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Oct 18: @ NYC (2-1)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 22: vs COL (2-0)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 28: @ RSL (1-2)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 7: @ STL (1-0)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 15: @ SJE (0-1)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">6<span style="color: #27ae60; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Up 1 spots">▲1</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>CIN</strong></td>
+<td style="padding: 12px 15px;">1569.4 <span style="color: #27ae60; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(+16.5)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Oct 18: vs MTL (3-0)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 21: vs ATL (2-0)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 28: @ MIN (0-1)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 8: vs TOR (0-1)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 15: @ NER (1-6)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">7<span style="color: #c0392b; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Down 1 spots">▼1</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>NYC</strong></td>
+<td style="padding: 12px 15px;">1561.4 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-9.9)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 18: vs SEA (1-2)">L</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Feb 22: @ LAG (1-1)">D</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 1: @ PHI (2-1)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 7: vs ORL (5-0)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 14: vs POR (1-2)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">8<span style="color: #27ae60; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Up 1 spots">▲1</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>NSH</strong></td>
+<td style="padding: 12px 15px;">1544.5 <span style="color: #27ae60; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(+12.9)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 18: vs MIA (2-5)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 21: vs NER (4-1)">W</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Feb 28: @ FCD (0-0)">D</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 7: vs MIN (3-1)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 14: @ CLB (0-1)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">9<span style="color: #c0392b; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Down 1 spots">▼1</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>MIN</strong></td>
+<td style="padding: 12px 15px;">1537.3 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-8.9)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 18: @ LAG (1-2)">L</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Feb 21: @ ATX (2-2)">D</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 28: vs CIN (1-0)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 7: @ NSH (1-3)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 15: @ VAN (0-6)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">10<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>CLT</strong></td>
+<td style="padding: 12px 15px;">1534.8 <span style="color: #27ae60; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(+13.6)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Oct 18: vs PHI (2-0)">W</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Feb 21: @ STL (1-1)">D</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 28: @ LAG (0-3)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 7: vs ATX (3-0)">W</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Mar 14: vs DCU (0-0)">D</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">11<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>PHI</strong></td>
+<td style="padding: 12px 15px;">1534.4 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-15.2)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 18: @ CLT (0-2)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 21: @ DCU (0-1)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 1: vs NYC (1-2)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 7: vs SJE (0-1)">L</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Mar 14: @ NYRB (0-0)">D</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">12<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>CLB</strong></td>
+<td style="padding: 12px 15px;">1529.6 <span style="color: #7f8c8d; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(0.0)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Oct 18: vs NYRB (3-1)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 21: @ POR (2-3)">L</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Feb 28: @ SKC (2-2)">D</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Mar 7: vs CHI (0-0)">D</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 14: vs NSH (1-0)">W</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">13<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>CHI</strong></td>
+<td style="padding: 12px 15px;">1526.2 <span style="color: #7f8c8d; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(0.0)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 18: @ NER (1-2)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 21: @ HOU (1-2)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 28: vs MTL (3-0)">W</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Mar 7: @ CLB (0-0)">D</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Mar 14: vs MTL (0-0)">D</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">14<span style="color: #27ae60; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Up 2 spots">▲2</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>SJE</strong></td>
+<td style="padding: 12px 15px;">1510.7 <span style="color: #27ae60; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(+12.6)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Oct 18: vs ATX (2-1)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 21: vs SKC (3-0)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 28: vs ATL (2-0)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 7: @ PHI (1-0)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 15: vs SEA (0-1)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">15<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>ORL</strong></td>
+<td style="padding: 12px 15px;">1506.4 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-13.8)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 18: @ TOR (2-4)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 21: vs NYRB (1-2)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 1: vs MIA (2-4)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 7: @ NYC (0-5)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 14: vs MTL (2-1)">W</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">16<span style="color: #c0392b; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Down 2 spots">▼2</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>FCD</strong></td>
+<td style="padding: 12px 15px;">1505.7 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-8.2)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Oct 18: @ VAN (2-1)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 21: vs TOR (3-2)">W</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Feb 28: vs NSH (0-0)">D</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 7: @ LAFC (0-1)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 14: @ TOR (1-2)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">17<span style="color: #27ae60; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Up 1 spots">▲1</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>RSL</strong></td>
+<td style="padding: 12px 15px;">1479.2 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-1.7)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Oct 18: @ STL (2-2)">D</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 21: @ VAN (0-1)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 28: vs SEA (2-1)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 7: @ ATL (3-2)">W</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Mar 14: vs ATX (1-1)">D</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">18<span style="color: #27ae60; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Up 2 spots">▲2</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>HOU</strong></td>
+<td style="padding: 12px 15px;">1476.5 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-8.2)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 4: vs SD (2-4)">L</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Oct 18: @ SKC (0-0)">D</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 21: vs CHI (2-1)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 28: vs LAFC (0-2)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 14: vs POR (2-3)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">19<span style="color: #27ae60; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Up 2 spots">▲2</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>COL</strong></td>
+<td style="padding: 12px 15px;">1476.3 <span style="color: #27ae60; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(+13.9)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Oct 18: vs LAFC (2-2)">D</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 22: @ SEA (0-2)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 28: vs POR (2-0)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 7: vs LAG (4-1)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 14: @ NYC (1-3)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">20<span style="color: #c0392b; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Down 1 spots">▼1</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>NYRB</strong></td>
+<td style="padding: 12px 15px;">1474.2 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-3.3)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 18: @ CLB (1-3)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 21: @ ORL (2-1)">W</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 28: vs NER (1-0)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 8: vs MTL (0-3)">L</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Mar 14: @ PHI (0-0)">D</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">21<span style="color: #27ae60; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Up 1 spots">▲1</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>ATX</strong></td>
+<td style="padding: 12px 15px;">1473.4 <span style="color: #27ae60; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(+1.7)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 18: @ SJE (1-2)">L</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Feb 21: vs MIN (2-2)">D</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 1: vs DCU (1-0)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 7: @ CLT (0-3)">L</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Mar 14: @ RSL (1-1)">D</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">22<span style="color: #c0392b; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="Down 5 spots">▼5</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>LAG</strong></td>
+<td style="padding: 12px 15px;">1466.8 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-24.4)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Oct 18: vs MIN (2-1)">W</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Feb 22: vs NYC (1-1)">D</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 28: vs CLT (3-0)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 7: @ COL (1-4)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 14: vs SKC (1-2)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">23<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>STL</strong></td>
+<td style="padding: 12px 15px;">1438.3 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-11.0)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Oct 18: vs RSL (2-2)">D</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Feb 21: vs CLT (1-1)">D</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 1: @ SD (0-2)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 7: vs SEA (0-1)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 14: @ LAFC (0-2)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">24<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>TOR</strong></td>
+<td style="padding: 12px 15px;">1422.6 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-24.4)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Oct 18: vs ORL (4-2)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 21: @ FCD (2-3)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 28: @ VAN (0-3)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 8: @ CIN (1-0)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 14: @ FCD (1-2)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">25<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>POR</strong></td>
+<td style="padding: 12px 15px;">1420.5 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-24.4)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 18: vs SD (0-4)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 21: vs CLB (3-2)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 28: @ COL (0-2)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 7: vs VAN (1-4)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 14: @ HOU (2-3)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">26<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>MTL</strong></td>
+<td style="padding: 12px 15px;">1412.6 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-24.4)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 18: @ CIN (0-3)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 21: @ SD (0-5)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 28: @ CHI (0-3)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 8: @ NYRB (3-0)">W</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Mar 14: @ CHI (0-0)">D</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">27<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>NER</strong></td>
+<td style="padding: 12px 15px;">1389.8 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-16.5)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Oct 4: @ MIA (1-4)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Oct 18: vs CHI (2-1)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 21: @ NSH (1-4)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 28: @ NYRB (0-1)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 15: vs CIN (1-6)">L</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">28<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>DCU</strong></td>
+<td style="padding: 12px 15px;">1408.0 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-2.5)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Oct 18: @ ATL (1-1)">D</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Feb 21: vs PHI (1-0)">W</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 1: @ ATX (0-1)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 7: vs MIA (1-2)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 14: @ CHI (2-1)">W</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">29<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>ATL</strong></td>
+<td style="padding: 12px 15px;">1380.5 <span style="color: #c0392b; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(-11.0)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Oct 18: vs DCU (1-1)">D</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 21: @ CIN (0-2)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 28: @ SJE (0-2)">L</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 7: vs RSL (2-3)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 14: @ LAG (2-1)">W</span></div></td></tr>
+<tr style="border-bottom: 1px solid #ddd; background-color: #ffffff;">
+<td style="padding: 12px 15px; font-weight: bold; color: #e31837; font-size: 1.1em;">30<span style="color: #7f8c8d; font-size: 0.7em; margin-left: 4px; font-weight: bold;" title="No change in rank">-</span></td>
+<td style="padding: 12px 15px; color: #00285e;"><strong>SKC</strong></td>
+<td style="padding: 12px 15px;">1391.6 <span style="color: #27ae60; font-size: 0.9em; font-weight: bold; margin-left: 6px;">(+14.5)</span></td>
+<td style="padding: 12px 15px;">
+<div style="display: flex; gap: 4px; justify-content: center;"><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Oct 18: vs HOU (0-0)">D</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Feb 21: @ SJE (0-3)">L</span><span style="color: #7f8c8d; font-weight: bold; margin: 0 4px;" title="Feb 28: vs CLB (2-2)">D</span><span style="color: #c0392b; font-weight: bold; margin: 0 4px;" title="Mar 7: vs SD (0-1)">L</span><span style="color: #27ae60; font-weight: bold; margin: 0 4px;" title="Mar 14: @ LAG (2-1)">W</span></div></td></tr>
+</tbody>
+</table>
