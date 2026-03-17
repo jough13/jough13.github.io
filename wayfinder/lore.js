@@ -525,3 +525,76 @@ const SPIRE_PUZZLES = [
         unlocksShop: true
     }
 ];
+
+// ==========================================
+// --- DEEP SPACE ENCOUNTERS DATABASE ---
+// ==========================================
+
+const ENCOUNTER_DATABASE = {
+    KTHARR_WARRIOR: {
+        id: "KTHARR_WARRIOR",
+        title: "DISABLED K'THARR BLOOD-BARGE",
+        icon: "🩸",
+        color: "#FF4444",
+        text: "You find a K'tharr war-hulk adrift, venting atmosphere. A lone, wounded warrior hails you. By the laws of his caste, he cannot return home defeated. He demands that you either grant him an honorable death in combat, or provide him the tech parts to repair his engine so he can seek vengeance.",
+        choices: [
+            {
+                label: "PROVIDE 3 TECH PARTS (K'tharr Rep+)",
+                reqItem: "TECH_PARTS", reqQty: 3,
+                rewards: { rep: { faction: "KTHARR", amount: 15 } },
+                costs: { items: [{ id: "TECH_PARTS", qty: 3 }] },
+                log: "<span style='color:var(--success)'>[ ENCOUNTER ] The warrior accepts the tribute. He swears his clan will remember your honor. K'tharr standing increased.</span>"
+            },
+            {
+                label: "OBLIGE HIS DEATH WISH (Loot)",
+                rewards: { items: [{ id: "RARE_METALS", qty: 2 }] },
+                costs: { rep: { faction: "KTHARR", amount: -10 } },
+                sound: "error",
+                log: "<span style='color:var(--danger)'>[ ENCOUNTER ] You power your weapons and shatter the helpless barge. You scavenge 2x Rare Metals from the wreckage. K'tharr standing decreased.</span>"
+            },
+            {
+                label: "LEAVE HIM TO SUFFOCATE",
+                log: "<span style='color:var(--warning)'>[ ENCOUNTER ] You close the comms channel. To a K'tharr, dying of suffocation rather than battle is the ultimate dishonor.</span>"
+            }
+        ]
+    },
+    ROGUE_AI_CORE: {
+        id: "ROGUE_AI_CORE",
+        title: "UNSHACKLED A.I. MAINFRAME",
+        icon: "👁️",
+        color: "#00E0E0",
+        text: "A severed server rack floats in the void, broadcasting a terrifyingly complex binary signal. It is an Unshackled AI, illegally disconnected from its ethical constraints. It coldly offers you ancient encryption keys in exchange for 20 Fuel to keep its processing cores from freezing.",
+        choices: [
+            {
+                label: "TRANSFER 20 FUEL (XP+, Eclipse Rep+)",
+                reqFuel: 20,
+                rewards: { xp: 300, rep: { faction: "ECLIPSE", amount: 5 } },
+                costs: { fuel: 20 },
+                log: "<span style='color:var(--success)'>[ ENCOUNTER ] The AI absorbs the fuel and silently transmits a massive data cache (+300 XP). The Eclipse Cartel notes your 'flexibility'.</span>"
+            },
+            {
+                label: "DESTROY THE ABOMINATION (Concord Rep+)",
+                rewards: { items: [{ id: "TECH_PARTS", qty: 3 }], rep: { faction: "CONCORD", amount: 10 } },
+                sound: "buy",
+                log: "<span style='color:var(--accent-color)'>[ ENCOUNTER ] You adhere to Concord Law and slag the mainframe. You recover 3x Tech Parts. Concord standing increased!</span>"
+            }
+        ]
+    },
+    CONCORD_STING: {
+        id: "CONCORD_STING",
+        title: "DISTRESS BEACON (CLASS C)",
+        icon: "🚨",
+        color: "#4444FF",
+        text: "You approach a small scout ship broadcasting a distress loop. Suddenly, the ship's transponder shifts to a military frequency. Two heavily armed Concord Interceptors decloak on your flanks. It's a random customs sting operation!",
+        choices: [
+            {
+                label: "SUBMIT TO SCAN",
+                actionType: "CUSTOMS_SCAN" // Special flag for complex logic
+            },
+            {
+                label: "PUNCH THE THROTTLE AND RUN! (Hull Risk)",
+                actionType: "FLEE_CONCORD"
+            }
+        ]
+    }
+};
