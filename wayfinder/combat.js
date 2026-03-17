@@ -860,6 +860,25 @@ function commitPiracy(npcIndex) {
     startCombat(hostileEntity); 
 }
 
+function startOutpostRaid(location) {
+    if (typeof closeGenericModal === 'function') closeGenericModal(); 
+    
+    // Set up the firefight stats for a Ground Base (Harder than a Derelict)
+    boardingContext = {
+        isOutpost: true, // Special flag for loot resolution
+        locationObj: location,
+        playerHp: playerHull, // Uses actual ship hull (representing your landing party's armor)
+        playerMaxHp: MAX_PLAYER_HULL,
+        enemyHp: 100,
+        enemyMaxHp: 100,
+        enemyName: "Cartel Garrison",
+        log: ["YOU BREACH THE AIRLOCK! The garrison immediately opens fire!"]
+    };
+    
+    openGenericModal(`RAID: ${location.name.toUpperCase()}`);
+    renderBoardingUI();
+}
+
 // --- BOARDING COMBAT MINIGAME ---
 
 function startBoardingCombat() {
@@ -971,17 +990,31 @@ function executeBoardingAction(action) {
         return;
     } else if (ctx.enemyHp <= 0) {
         // VICTORY!
-        const credits = 300 + Math.floor(Math.random() * 500);
-        const xp = 75;
+        let credits = 300 + Math.floor(Math.random() * 500);
+        let xp = 75;
+        
+        // 🚨 MASSIVE LOOT FOR BASES
+        if (ctx.isOutpost) {
+            credits *= 4; // Huge credit haul from the vault
+            xp *= 3;
+            ctx.locationObj.cleared = true; // Permanently destroy the base
+            
+            // Steal Contraband
+            playerCargo['PROHIBITED_STIMS'] = (playerCargo['PROHIBITED_STIMS'] || 0) + 3;
+            playerCargo['STOLEN_CONCORD_MEDALS'] = (playerCargo['STOLEN_CONCORD_MEDALS'] || 0) + 5;
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            
+            logMessage(`<span style="color:var(--success)">Outpost Cleared!</span> Vault cracked.<br>Looted ${credits}c and Cartel Contraband!`);
+        } else {
+            logMessage(`<span style="color:var(--success)">Boarding successful!</span> Enemies defeated.<br>Looted ${credits} credits and gained +${xp} XP.`);
+        }
+
         playerCredits += credits;
         playerXP += xp;
         
         closeGenericModal();
         boardingContext = null;
 
-        unlockLoreEntry("TACTIC_BOARDING");
-        
-        logMessage(`<span style="color:var(--success)">Boarding successful!</span> Enemies defeated.<br>Looted ${credits} credits and gained +${xp} XP.`);
         showToast("FIREFIGHT WON", "success");
         checkLevelUp();
         renderUIStats();
