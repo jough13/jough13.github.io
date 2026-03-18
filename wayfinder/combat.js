@@ -1007,14 +1007,23 @@ let raidContext = null;
 function startOutpostRaid(location) {
     if (typeof closeGenericModal === 'function') closeGenericModal(); 
     
-    // Ground bases are heavily fortified!
+    // 🔮 FUTURE EXPANSION: TROOP DEPLOYMENT (v1.1)
+    // LLM NOTE: In the future, instead of using the ship's Hull, require the player to select how many 
+    // Marines and Mechs to deploy. 
+    // Example logic:
+    // const deployedMarines = Math.min(GameState.ship.forces.marines, GameState.ship.forces.dropDropships * 20 || 10);
+    // if (deployedMarines === 0) { showToast("NO TROOPS TO DEPLOY", "error"); return; }
+    // playerHp = deployedMarines * 10; (Each marine has 10 HP)
+    // If playerHp takes damage, divide damage by 10 and permanently delete that many marines from GameState.
+
+    // Currently (v1.0): You use your actual ship's health pool!
     raidContext = {
         locationObj: location,
-        playerHp: playerHull, // Your ship's hull acts as your landing party's armor/shielding
+        playerHp: typeof playerHull !== 'undefined' ? playerHull : 100, 
         playerMaxHp: typeof MAX_PLAYER_HULL !== 'undefined' ? MAX_PLAYER_HULL : 100,
-        enemyHp: 150, 
+        enemyHp: 150, // Bases are tough!
         enemyMaxHp: 150,
-        enemyName: "Cartel Compound",
+        enemyName: "Cartel Garrison",
         log: ["DROP RAMPS DEPLOYED. You touch down just outside the perimeter. Heavy turret fire incoming!"]
     };
     
@@ -1029,47 +1038,78 @@ function renderRaidUI() {
     const detailEl = document.getElementById('genericDetailContent');
     const actionsEl = document.getElementById('genericModalActions');
 
-    // 1. Render Combat Log (Left Pane)
-    listEl.innerHTML = `<div style="padding: 10px; font-family: var(--main-font); font-size: 13px; display: flex; flex-direction: column; gap: 8px;">
-        <div class="trade-list-header" style="color:var(--danger); border-bottom-color:var(--danger);">TACTICAL FEED</div>
-        ${raidContext.log.map(msg => `<div>> ${msg}</div>`).join('')}
-    </div>`;
-    listEl.scrollTop = listEl.scrollHeight;
+    // 1. Render Combat Log (Left Pane) - Forced Dark Tactical Terminal!
+    listEl.style.padding = "0"; 
+    listEl.innerHTML = `
+        <div style="background: #050510; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="background: var(--danger); color: #000; font-family: var(--title-font); font-size: 12px; font-weight: 900; text-align: center; padding: 10px; letter-spacing: 2px;">
+                TACTICAL FEED
+            </div>
+            <div id="raidLogContainer" style="padding: 15px; font-family: var(--main-font); font-size: 12px; color: var(--accent-color); display: flex; flex-direction: column; gap: 10px; overflow-y: auto; flex: 1;">
+                ${raidContext.log.map(msg => `<div>> ${msg}</div>`).join('')}
+            </div>
+        </div>
+    `;
+    
+    // Auto-scroll the log to the bottom
+    setTimeout(() => {
+        const logBox = document.getElementById('raidLogContainer');
+        if (logBox) logBox.scrollTop = logBox.scrollHeight;
+    }, 10);
 
-    // 2. Render Health Bars (Right Pane)
+    // 2. Render Health Bars & ARTWORK (Right Pane)
     const playerPct = Math.max(0, (raidContext.playerHp / raidContext.playerMaxHp) * 100);
     const enemyPct = Math.max(0, (raidContext.enemyHp / raidContext.enemyMaxHp) * 100);
 
     detailEl.innerHTML = `
-        <div style="text-align:center; padding: 20px 10px;">
-            <div style="font-size: 50px; margin-bottom: 20px; filter: drop-shadow(0 0 15px rgba(255,0,0,0.5));">🏴‍☠️</div>
+        <div style="text-align:center; padding: 10px;">
             
-            <h4 style="color:var(--accent-color); margin-bottom: 5px;">LANDING PARTY (${playerName.toUpperCase()})</h4>
-            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;"><span>Armor Integrity</span><span>${raidContext.playerHp}</span></div>
-            <div style="width:100%; height:12px; background:rgba(0,0,0,0.5); border:1px solid var(--border-color); border-radius:4px; margin-bottom:20px;">
+            <!-- 🚨 INTEGRATED RAID ARTWORK -->
+            <img src="assets/planetary_raid.png" 
+                 onerror="this.style.display='none'" 
+                 alt="Ground Assault" 
+                 style="width: 100%; max-height: 150px; object-fit: cover; object-position: center; border: 2px solid var(--danger); border-radius: 4px; box-shadow: 0 0 20px rgba(255, 0, 0, 0.2); margin-bottom: 15px; image-rendering: pixelated; background: #000;">
+            
+            <h4 style="color:var(--accent-color); margin: 0 0 5px 0; font-size: 13px;">LANDING PARTY (${playerName.toUpperCase()})</h4>
+            <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;"><span>Armor Integrity</span><span>${Math.floor(raidContext.playerHp)}</span></div>
+            <div style="width:100%; height:10px; background:rgba(0,0,0,0.5); border:1px solid var(--border-color); border-radius:4px; margin-bottom:15px;">
                 <div style="width:${playerPct}%; height:100%; background:var(--success); transition:width 0.3s;"></div>
             </div>
 
-            <h4 style="color:var(--danger); margin-bottom: 5px;">${raidContext.enemyName.toUpperCase()}</h4>
-            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;"><span>Fortification</span><span>${raidContext.enemyHp}</span></div>
-            <div style="width:100%; height:12px; background:rgba(0,0,0,0.5); border:1px solid var(--danger); border-radius:4px;">
+            <h4 style="color:var(--danger); margin: 0 0 5px 0; font-size: 13px;">${raidContext.enemyName.toUpperCase()}</h4>
+            <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:2px;"><span>Fortification</span><span>${Math.floor(raidContext.enemyHp)}</span></div>
+            <div style="width:100%; height:10px; background:rgba(0,0,0,0.5); border:1px solid var(--danger); border-radius:4px; margin-bottom: 15px;">
                 <div style="width:${enemyPct}%; height:100%; background:var(--danger); transition:width 0.3s;"></div>
             </div>
             
-            <p style="color:var(--item-desc-color); font-size:12px; margin-top:20px; font-style:italic;">"The cartel has locked down the central vault. You need to break their defenses to get inside."</p>
+            <p style="color:var(--item-desc-color); font-size:11px; margin: 5px 0; font-style:italic; line-height: 1.4;">
+                "The cartel has locked down the central vault. Break their defenses to get inside."
+            </p>
         </div>
     `;
 
-    // 3. Render Tactical Actions
-    const canBombard = playerFuel >= 25;
+    // 3. Render Tactical Actions (Buttons compressed to fit!)
+    const currentFuel = typeof playerFuel !== 'undefined' ? playerFuel : 0;
+    const canBombard = currentFuel >= 25;
 
     actionsEl.innerHTML = `
-        <button class="action-button danger-btn" onclick="executeRaidAction('assault')">ASSAULT BARRICADES (High Risk/High Dmg)</button>
-        <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="executeRaidAction('flank')">FLANK POSITION (Low Risk/Low Dmg)</button>
-        <button class="action-button" style="border-color:var(--warning); color:var(--warning);" ${!canBombard ? 'disabled' : ''} onclick="executeRaidAction('strike')">
+        <div style="display: flex; gap: 10px; width: 100%;">
+            <button class="action-button danger-btn" style="flex: 1; margin: 0; padding: 10px 5px; font-size: 11px;" onclick="executeRaidAction('assault')">
+                ASSAULT<br><span style="font-size:9px; opacity:0.8; font-family: var(--main-font);">(High Dmg/Risk)</span>
+            </button>
+            <button class="action-button" style="flex: 1; margin: 0; padding: 10px 5px; font-size: 11px; border-color:var(--accent-color); color:var(--accent-color);" onclick="executeRaidAction('flank')">
+                FLANK<br><span style="font-size:9px; opacity:0.8; font-family: var(--main-font);">(Low Dmg/Risk)</span>
+            </button>
+        </div>
+        
+        <button class="action-button" style="border-color:var(--warning); color:var(--warning); box-shadow: ${canBombard ? '0 0 10px rgba(255, 170, 0, 0.3)' : 'none'}; margin-bottom: 0;" 
+            ${!canBombard ? 'disabled' : ''} onclick="executeRaidAction('strike')">
             ${canBombard ? 'ORBITAL BOMBARDMENT (-25 Fuel)' : 'ORBITAL STRIKE (Needs 25 Fuel)'}
         </button>
-        <button class="action-button" style="border-color:#888; color:#888; margin-top: 10px;" onclick="executeRaidAction('flee')">ABORT RAID & EVACUATE</button>
+        
+        <button class="action-button" style="border-color:#888; color:#888; margin-bottom: 0;" onclick="executeRaidAction('flee')">
+            ABORT RAID & EVACUATE
+        </button>
     `;
 }
 
@@ -1082,6 +1122,10 @@ function executeRaidAction(action) {
     let actionLog = "";
 
     // --- TACTICAL CHOICES ---
+    // 🔮 FUTURE EXPANSION (v1.1):
+    // If GameState.ship.forces.heavyMechs > 0, multiply playerDmg by 1.5.
+    // If player takes enemyDmg, permanently subtract (enemyDmg / 10) from GameState.ship.forces.marines.
+    
     if (action === 'assault') {
         playerDmg = Math.floor(Math.random() * 20) + 15; // 15-35 dmg to enemy
         enemyDmg = Math.floor(Math.random() * 15) + 10;  // 10-25 dmg to player
@@ -1101,6 +1145,7 @@ function executeRaidAction(action) {
         actionLog = `<span style="color:var(--warning)">ORBITAL STRIKE!</span> Your ship rains fire from above! ${playerDmg} structural damage!`;
         if (typeof soundManager !== 'undefined') soundManager.playExplosion();
         if (typeof triggerDamageEffect === 'function') triggerDamageEffect(); // Shake screen!
+        if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED'); // Update Fuel Bar!
     } 
     else if (action === 'flee') {
         closeGenericModal();
@@ -1110,7 +1155,7 @@ function executeRaidAction(action) {
         return;
     }
 
-    // Apply Damage
+    // Apply Damage to Enemy
     ctx.enemyHp -= playerDmg;
     if (ctx.enemyHp < 0) ctx.enemyHp = 0;
 
@@ -1118,15 +1163,20 @@ function executeRaidAction(action) {
     if (ctx.enemyHp > 0) {
         if (enemyDmg > 0) {
             actionLog += ` The garrison returns fire! <span style="color:var(--danger)">Took ${enemyDmg} damage!</span>`;
-            playerHull -= enemyDmg; // Direct hit to global playerHull
             
-            // Juice: Screen shake on taking damage
-            if (typeof triggerHaptic === 'function') triggerHaptic(50);
-            if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+            // This ensures your HUD flashes red and your global hull goes down properly.
+            if (typeof GameBus !== 'undefined') {
+                GameBus.emit('HULL_DAMAGED', { amount: enemyDmg, reason: "Ground Assault Firefight" });
+            } else {
+                playerHull -= enemyDmg; // Fallback
+            }
+            
         } else {
             actionLog += ` The garrison is suppressed and misses their shots!`;
         }
-        ctx.playerHp = playerHull; // Sync visual UI bar
+        
+        // Sync the visual UI bar with your actual ship health!
+        ctx.playerHp = typeof playerHull !== 'undefined' ? playerHull : 0; 
     } else {
         actionLog += ` <span style="color:var(--success); font-weight:bold;">Defenses broken! Vault exposed!</span>`;
     }
@@ -1137,12 +1187,12 @@ function executeRaidAction(action) {
     // Check Win/Loss conditions
     if (ctx.playerHp <= 0) {
         closeGenericModal();
-        triggerGameOver("Overrun by Cartel mercenaries during a ground assault");
+        // The GameBus 'HULL_DAMAGED' event above will automatically trigger Game Over!
         return;
     } 
     else if (ctx.enemyHp <= 0) {
         // --- VICTORY RESOLUTION ---
-        const credits = (800 + Math.floor(Math.random() * 1000)) * (window.hasCrewPerk && hasCrewPerk('SCAVENGER_PROTOCOL') ? 2 : 1);
+        const credits = (800 + Math.floor(Math.random() * 1000)) * (typeof hasCrewPerk === 'function' && hasCrewPerk('SCAVENGER_PROTOCOL') ? 2 : 1);
         const xp = 250;
         
         playerCredits += credits;
@@ -1153,20 +1203,21 @@ function executeRaidAction(action) {
         updateWorldState(playerX, playerY, { cleared: true });
         
         // Steal Cartel Contraband
-        playerCargo['PROHIBITED_STIMS'] = (playerCargo['PROHIBITED_STIMS'] || 0) + Math.floor(Math.random() * 3) + 2;
-        playerCargo['STOLEN_CONCORD_MEDALS'] = (playerCargo['STOLEN_CONCORD_MEDALS'] || 0) + Math.floor(Math.random() * 5) + 1;
-        
-        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        if (typeof playerCargo !== 'undefined') {
+            playerCargo['PROHIBITED_STIMS'] = (playerCargo['PROHIBITED_STIMS'] || 0) + Math.floor(Math.random() * 3) + 2;
+            playerCargo['STOLEN_CONCORD_MEDALS'] = (playerCargo['STOLEN_CONCORD_MEDALS'] || 0) + Math.floor(Math.random() * 5) + 1;
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        }
         
         closeGenericModal();
         raidContext = null;
 
-        logMessage(`<span style="color:var(--success); font-weight:bold;">OUTPOST SECURED!</span> You cracked the cartel vault.<br>Looted <span style="color:var(--gold-text)">${formatNumber(credits)}c</span> and seized local contraband! (+${xp} XP)`);
-        showToast("BASE DESTROYED", "success");
+        logMessage(`<span style="color:var(--success); font-weight:bold;">OUTPOST SECURED!</span> You cracked the cartel vault.<br>Looted <span style="color:var(--gold-text)">${typeof formatNumber === 'function' ? formatNumber(credits) : credits}c</span> and seized local contraband! (+${xp} XP)`);
+        if (typeof showToast === 'function') showToast("BASE DESTROYED", "success");
         if (typeof soundManager !== 'undefined') soundManager.playGain();
         
-        checkLevelUp();
-        renderUIStats();
+        if (typeof checkLevelUp === 'function') checkLevelUp();
+        if (typeof renderUIStats === 'function') renderUIStats();
         
         // Force the map to redraw so the player can see the base is dead
         if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
