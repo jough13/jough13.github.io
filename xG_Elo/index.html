@@ -55,12 +55,29 @@ tr:hover{background-color:#f1f1f1}
     </div>
 
     <div id="methodologyModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-height: 80vh; overflow-y: auto;">
             <span class="close-btn" id="closeModal">&times;</span>
             <h2>How the Hybrid Engine Works</h2>
             <p>Traditional Elo systems only look at wins and losses, ignoring the chaotic nature of soccer where the better team frequently loses to a lucky bounce. Pure Expected Goals (xG) models ignore the fact that actually finishing chances matters.</p>
             <p>This <strong>Hybrid xG-Elo</strong> system solves this by blending the two. Every MLS match dating back to 2013 is recalculated to establish a highly accurate historical baseline.</p>
             
+            <h3>The Philosophy: Why These Specific Weights?</h3>
+            <p><strong>1. The 70/30 Split (Result vs. xG)</strong><br>
+            Every match is graded on a blended performance score. 70% of the grade is based purely on the final result (Win, Lose, or Draw). The remaining 30% is based on the team's share of the total Expected Goals (xG) created in the match. <br>
+            <em>Why?</em> It respects the scoreboard as the ultimate truth, but acts as a "justice system" for variance. If a team dominates 3.5 xG to 0.2 xG but draws 1-1 because the opposing goalkeeper stood on his head, the model won't punish them as harshly as a traditional system would. They are rewarded for creating high-quality chances.</p>
+
+            <p><strong>2. The MLS "Travel Tax" (+25 Home Advantage)</strong><br>
+            Before the math even begins, the Home team receives a temporary +25 point boost to their Elo rating for that specific match. <br>
+            <em>Why?</em> MLS has arguably the most brutal home-field advantage in world soccer due to massive travel distances, shifting time zones, extreme climate variations, and turf fields. Mathematically, a +25 bump shifts the expected win probability just enough to account for this historical reality.</p>
+
+            <p><strong>3. The K-Factor (32)</strong><br>
+            The K-Factor dictates the maximum number of points a team can realistically swing in a standard match. <br>
+            <em>Why 32?</em> It is the standard sweet-spot used in many international ranking systems (like FIFA). If the number is too low, the rankings feel sluggish and unresponsive to hot streaks. If it's too high, the model suffers from recency bias, where one bad week tanks a historically great team's ranking.</p>
+
+            <p><strong>4. The Blowout Multiplier</strong><br>
+            If a team wins by 3 or more goals, a small multiplier is applied to their rating gain. <br>
+            <em>Why?</em> In the actual MLS standings, a 1-0 win is worth 3 points, and a 5-0 win is worth 3 points. But in a power ranking, utterly dismantling an opponent signifies a true gap in quality. This ensures teams are slightly rewarded for keeping their foot on the gas.</p>
+
             <h3>The Formulas</h3>
             <div class="formula-box">
                 <strong>1. Expected Performance (E):</strong><br>
