@@ -942,9 +942,10 @@ function animateParticles() {
                  if (this.staticLocations.has(locationKey)) {
                      const location = this.staticLocations.get(locationKey);
                      chunkData[y][x] = {
-                         ...location,       // 1. Spread location data first (including type: '#')
-                         char: location.type, // 2. Ensure char is set
-                         type: 'location'   // 3. FORCE type to 'location' so interaction works
+                         ...location,       
+                         // 🚨 Prioritize custom characters over the type string!
+                         char: location.char || location.displayChar || location.type, 
+                         type: 'location'   
                      };
                  } else {
                      let tile = EMPTY_SPACE_CHAR_VAL;
@@ -2364,12 +2365,14 @@ function renderSystemMap() {
 
             // --- HAZARD LAYER ---
             if (hazard === 'RADIATION_BELT') {
-                ctx.fillStyle = isLightMode ? 'rgba(255, 80, 0, 0.15)' : 'rgba(255, 165, 0, 0.25)';
+                // Upped the opacity and brightness so it looks like a distinct hazard zone
+                ctx.fillStyle = isLightMode ? 'rgba(255, 120, 0, 0.25)' : 'rgba(255, 165, 0, 0.25)';
                 ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
                 
-                if (Math.random() < 0.06) {
+                // Draw harsh radioactive static sparks
+                if (Math.random() < 0.15) {
                     ctx.fillStyle = isLightMode ? '#FF3300' : '#FFAA00';
-                    ctx.fillRect((x * tileSize) + Math.random()*tileSize, (y * tileSize) + Math.random()*tileSize, 2, 2);
+                    ctx.fillRect((x * tileSize) + Math.random()*tileSize, (y * tileSize) + Math.random()*tileSize, 3, 3);
                 }
             }
         }
@@ -2437,7 +2440,6 @@ function renderSystemMap() {
                     const phase = worldX + (worldY * 3); 
                     ctx.globalAlpha = 0.85 + (Math.sin((Date.now() / 2000) + phase) * 0.15);
                     
-                    // This cache is safe because Stars are always Objects, never primitives!
                     if (!tileData.visualStarData) {
                         tileData.visualStarData = generateStarData(worldX, worldY);
                     }
@@ -2453,13 +2455,15 @@ function renderSystemMap() {
                     
                     ctx.fillStyle = starColor; 
                     
+                    // 🚨 FIX: Bypassing the browser ghost-box bug by completely isolating the shadow rendering
                     if (useHighGraphics && !isLightMode) {
+                        ctx.save(); // Lock the canvas state
                         ctx.shadowBlur = (visualStarData.class === "O" || visualStarData.class === "B") ? 15 : 5;
                         ctx.shadowColor = starColor;
-                    } else {
-                        ctx.shadowBlur = 0; 
-                        ctx.shadowColor = 'transparent';
-                    }
+                        ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
+                        ctx.restore(); // Instantly wipe the shadow state clean
+                        continue; // Skip the standard text rendering below since we just drew it!
+                    } 
                     break;
                 case PLANET_CHAR_VAL: ctx.fillStyle = isLightMode ? '#0066CC' : '#88CCFF'; break;
                 case STARBASE_CHAR_VAL: 
@@ -2474,7 +2478,7 @@ function renderSystemMap() {
                     ctx.font = `bold ${TILE_SIZE * 1.3 * sizeMod}px 'Orbitron', monospace`;
                     ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
                     ctx.restore(); 
-                    break;
+                    continue; // 🚨 FIX: Skip standard render so we don't draw it twice!
                 case OUTPOST_CHAR_VAL: ctx.fillStyle = isLightMode ? '#228822' : '#AADD99'; break;
                 case ASTEROID_CHAR_VAL: 
                     ctx.fillStyle = (tileData && tileData.mined) ? '#555555' : (isLightMode ? '#CC6600' : '#FFAA66'); 
@@ -2493,9 +2497,8 @@ function renderSystemMap() {
                     break;
             }
 
-            if (tileChar !== STARBASE_CHAR_VAL) {
-                ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
-            }
+            // Standard render for non-glowing objects
+            ctx.fillText(tileChar, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2);
             
             // Clean slate for the next tile
             ctx.globalAlpha = 1.0;
@@ -2776,17 +2779,25 @@ function processGameTick(timeAmount, isMovement = false) {
 
     if (hazard === 'RADIATION_BELT' && !hasRadShield) {
         if (playerShields > 0) {
-            playerShields = Math.max(0, playerShields - 1.5);
-            if (isMovement && Math.random() < 0.10) {
-                logMessage("<span style='color:#FFAA00'>Dosimeters detect Ionized Radiation Belt. Shields degrading.</span>");
+            // Strips 5 shields per step
+            playerShields = Math.max(0, playerShields - 5.0);
+            
+            // 40% chance to warn the player
+            if (isMovement && Math.random() < 0.40) {
+                logMessage("<span style='color:var(--warning)'>Dosimeters detect Ionized Radiation Belt. Shields degrading rapidly!</span>");
             }
         } else {
-            playerFuel = Math.max(0, playerFuel - 0.5); 
-            if (isMovement && Math.random() < 0.15) {
-                logMessage("<span style='color:#FF5555'>Radiation interfering with plasma injectors. Excess fuel consumed.</span>");
+            // Burns 3 Fuel per step if shields are down!
+            playerFuel = Math.max(0, playerFuel - 3.0); 
+            if (isMovement && Math.random() < 0.40) {
+                logMessage("<span style='color:var(--danger)'>Radiation interfering with plasma injectors. Excess fuel consumed!</span>");
             }
         }
-        if (Math.random() < 0.1 && typeof triggerDamageEffect === 'function') triggerDamageEffect();
+        
+        // 25% chance to shake the screen and flash red!
+        if (Math.random() < 0.25 && typeof triggerDamageEffect === 'function') {
+            triggerDamageEffect();
+        }
     }
 
     // 3. Mercenary / Crew Passive Checks
