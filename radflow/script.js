@@ -458,12 +458,14 @@ let finStart = "";
         render();
     }
 
-// --- SEARCH HIGHLIGHTER ---
+    // --- SEARCH HIGHLIGHTER ---
     const high = (text, term) => {
         const safe = esc(text); 
         if (!term || term.length < 2) return safe; 
         
-        const regex = new RegExp(`(${term})`, 'gi');
+        // Escape regex control characters to prevent bracket/parenthesis crashes
+        const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${safeTerm})`, 'gi');
 
         return safe.replace(regex, '<mark style="padding:0 2px; background:var(--accent-dim); color:var(--accent); font-weight:bold; border-radius:2px;">$1</mark>');
     };
@@ -1053,7 +1055,15 @@ function renderMonthlyChart(data, targetId = 'monthly-spend-chart') {
         }
 
         // 1. Filter: Ensure date string exists AND parses to a valid number
-        const validData = chartData.filter(e => e.date && !isNaN(new Date(e.date).getTime()));
+        // Prevent absurd future/past typos from hitting the chart render limits
+        const validData = chartData.filter(e => {
+            if (!e.date) return false;
+            const time = new Date(e.date).getTime();
+            if (isNaN(time)) return false;
+            
+            const year = new Date(e.date).getFullYear();
+            return year > 1990 && year < 2100; 
+        });
 
         // 2. Safety Check: If filtering leaves us with nothing, show "No Activity" to prevent crash
         if(validData.length === 0) {
@@ -1599,7 +1609,7 @@ function normalizeIso(input) {
         if(dashInvSort === 'dose') { filteredInv.sort((a,b) => b.dose - a.dose); } 
         else if (dashInvSort === 'fill') { filteredInv.sort((a,b) => (b.fill||0) - (a.fill||0)); } 
         else if (dashInvSort === 'recent') { filteredInv.sort((a,b) => (b.logDate || "").localeCompare(a.logDate || "")); }
-        else if (dashInvSort === 'act') { filteredInv.sort((a,b) => getActValue(b.act) - getActValue(a.act)); } 
+        else if (dashInvSort === 'act') { filteredInv.sort((a,b) => getActValue(b.act, b.qty) - getActValue(a.act, a.qty)); }
         
         // --- PROJECT SORTS ---
         else if (dashInvSort === 'proj-old') { 
@@ -1665,7 +1675,7 @@ function normalizeIso(input) {
             }
             
             // Highlight high activity items (arbitrary threshold > 1 Ci just for visual pop)
-            const isHot = getActValue(i.act) >= 1; 
+            const isHot = getActValue(i.act, i.qty) >= 1;
 
             return `<div class="list-item" onclick="viewInventory('${jsEsc(i.id)}')">
                 <div style="display:flex; flex-direction:column; overflow:hidden;">
@@ -2244,10 +2254,20 @@ let rollupHtml = budgetData.map(row => {
 
 function downloadBackup() {
     const data = JSON.stringify({
-        projects, inventory, deletedInventory, expenses, allocations, 
-        chat: chatLog, team, wiki: wikiText, 
-        hpState, viewMode, showComplete, estItems, exemptLog
-    }, null, 2); // Pretty print for readability
+        // CORE DATA
+        projects, inventory, expenses, allocations, 
+        exemptLog, estItems, chat: chatLog, team, wiki: wikiText, 
+        
+        // SETTINGS & STATE
+        hpState, viewMode, showComplete, 
+        currentUser, // Persist who you are
+
+        // CRITICAL FOR SYNC
+        references, 
+        tombstones, 
+        deletedProjects,
+        deletedInventory
+    }, null, 2);
 
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -2257,42 +2277,39 @@ function downloadBackup() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast("Backup Downloaded");
+    showToast("Full System Backup Downloaded");
 }
 
 // --- HELPER: Parse Radioactivity & Concentrations ---
 // Handles: "10 mCi", "5 uCi", "50 pCi/g", "100 uCi/ml"
-function getActValue(str) {
+function getActValue(str, qty = 1) {
     if (!str) return 0;
     const s = str.toString().toLowerCase().trim();
     if (s.includes('unknown') || s.includes('n/a') || s.includes('tbd')) return -1;
 
-    // Regex: Captures Number + Unit (allowing letters, µ, and /)
     const match = s.match(/^([\d\.]+(?:[eE][-+]?\d+)?)\s*([a-zA-Zµ\/]+)$/);
     if (!match) return 0;
     
     const val = parseFloat(match[1]);
     let unit = match[2]; 
 
-    // STRIP CONCENTRATION (e.g. "pCi/g" -> "pci")
-    // We only care about the numerator for magnitude sorting
     if (unit.includes('/')) {
         unit = unit.split('/')[0];
     }
     
-    // Standardize Prefixes
-    if (unit === 'ci') return val;
-    if (unit === 'mci' || unit === 'm') return val * 1e-3;
-    if (unit === 'uci' || unit === 'u' || unit === 'µ' || unit === 'µci') return val * 1e-6;
-    if (unit === 'nci' || unit === 'n') return val * 1e-9;
-    if (unit === 'pci' || unit === 'p') return val * 1e-12; // Added Pico support
+    let multiplier = 1;
+    if (unit === 'ci') multiplier = 1;
+    else if (unit === 'mci' || unit === 'm') multiplier = 1e-3;
+    else if (unit === 'uci' || unit === 'u' || unit === 'µ' || unit === 'µci') multiplier = 1e-6;
+    else if (unit === 'nci' || unit === 'n') multiplier = 1e-9;
+    else if (unit === 'pci' || unit === 'p') multiplier = 1e-12;
+    else if (unit === 'gbq') multiplier = 1 / 37;
+    else if (unit === 'mbq') multiplier = (1 / 37) * 1e-3;
+    else if (unit === 'kbq') multiplier = (1 / 37) * 1e-6;
+    else if (unit === 'bq') multiplier = (1 / 37) * 1e-9;
     
-    if (unit === 'gbq') return val / 37;
-    if (unit === 'mbq') return (val / 37) * 1e-3;
-    if (unit === 'kbq') return (val / 37) * 1e-6;
-    if (unit === 'bq') return (val / 37) * 1e-9;
-    
-    return val; 
+    // Multiply the final normalized activity by the quantity
+    return (val * multiplier) * (parseFloat(qty) || 1); 
 }
 
 function viewProject(id) {
@@ -3322,8 +3339,12 @@ function cloneProject(id) {
 }
 
 function togTask(pId, tId) {
+    const p = projects.find(x => x.id === pId);
+    if (!p) return; 
     
-    const t = p.tasks.find(x=>x.id===tId);
+    const t = p.tasks.find(x => x.id === tId);
+    if (!t) return;
+
     t.done = !t.done; 
     p.updated = Date.now();
     
@@ -3333,7 +3354,7 @@ function togTask(pId, tId) {
     saveLocally(); 
 
     // Only go to project view if we are NOT in the master list
-    if(document.getElementById('view-all-tasks').classList.contains('active')) {
+    if (document.getElementById('view-all-tasks').classList.contains('active')) {
         render(); // Just re-render the list in place
     } else {
         viewProject(pId); // Refresh project view
@@ -3389,18 +3410,20 @@ function delProj(id) {
             // 1. CAPTURE DATA SNAPSHOT (So we can Revive it later)
             const snapExpenses = expenses.filter(x => x.projId === id);
             const snapAllocations = allocations.filter(x => x.projId === id);
+            
+            // Capture which inventory items were attached at time of death
+            const linkedInvIds = inventory.filter(i => i.projId === id).map(i => i.id);
 
             snapExpenses.forEach(e => registerDeletion(e.id));
             snapAllocations.forEach(a => registerDeletion(a.id));
 
             // 2. Archive to Graveyard
             deletedProjects.push({
-                ...p, // <--- Copies uic, poc, mipr, etc. automatically.
-                
-                // Overwrite/Add specific archive metadata
+                ...p, 
                 snapshotData: {
                     expenses: snapExpenses,
-                    allocations: snapAllocations
+                    allocations: snapAllocations,
+                    linkedInventory: linkedInvIds // NEW: Stash the IDs
                 },
                 deletedBy: currentUser,
                 deletedDate: Date.now(),
@@ -3471,6 +3494,17 @@ function reviveProject(id) {
                 if(corpse.snapshotData.allocations) {
                     allocations.push(...corpse.snapshotData.allocations);
                 }
+            }
+
+            // Restore Inventory Links (if the items still exist and are unassigned)
+            if(corpse.snapshotData && corpse.snapshotData.linkedInventory) {
+                corpse.snapshotData.linkedInventory.forEach(invId => {
+                    const item = inventory.find(i => i.id === invId);
+                    if(item && !item.projId) {
+                        item.projId = restored.id;
+                        item.updated = Date.now();
+                    }
+                });
             }
 
             // 4. Remove from Graveyard
@@ -4539,17 +4573,18 @@ let searchDebounce;
 
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
     
-    function openExportModal() { 
-        const data = JSON.stringify({
-            projects, inventory, expenses, allocations, 
-            chat: chatLog, team, wiki: wikiText, 
-            hpState, viewMode, showComplete, estItems, exemptLog,
-            deletedProjects 
-        });
+function openExportModal() { 
+    // Match the exact structure of downloadBackup
+    const data = JSON.stringify({
+        projects, inventory, expenses, allocations, 
+        exemptLog, estItems, chat: chatLog, team, wiki: wikiText, 
+        hpState, viewMode, showComplete, currentUser,
+        references, tombstones, deletedProjects, deletedInventory 
+    }, null, 2);
 
-        document.getElementById('exportText').value = data;
-        openModal('exportModal');
-    }
+    document.getElementById('exportText').value = data;
+    openModal('exportModal');
+}
 
     function copyExport() {
         const copyText = document.getElementById("exportText");
@@ -4610,7 +4645,7 @@ function validateSchema(d) {
     return d; // Return the sanitized data object
 }
 
-function runImport() {
+function runImport(isWipe = false) {
     try {
         const raw = document.getElementById('importText').value;
         if(!raw) throw new Error("No data pasted.");
@@ -4618,9 +4653,45 @@ function runImport() {
         // 1. PARSE & VALIDATE
         let d = JSON.parse(raw);
         
-        // Use the validateSchema helper we created earlier
-        // (Ensure you added the validateSchema function above this one as discussed!)
+        // Use the validateSchema helper
         d = validateSchema(d); 
+
+        // --- WIPE & RESTORE LOGIC ---
+        if(isWipe) {
+            if(!confirm("WARNING: This will delete all current local data and replace it exactly with the backup file.\n\nAre you sure you want to continue?")) return;
+            
+            // A. Wipe all local arrays
+            projects = []; inventory = []; expenses = []; allocations = [];
+            exemptLog = []; estItems = []; chatLog = []; team = []; 
+            tombstones = []; deletedProjects = []; deletedInventory = []; references = [];
+
+            // B. Direct Assignment (Trusting the validated schema)
+            projects = d.projects || [];
+            inventory = d.inventory || [];
+            expenses = d.expenses || [];
+            allocations = d.allocations || [];
+            exemptLog = d.exemptLog || [];
+            estItems = d.estItems || [];
+            chatLog = d.chat || [];
+            team = d.team || [];
+            wikiText = d.wiki || "";
+            
+            tombstones = d.tombstones || [];
+            deletedProjects = d.deletedProjects || [];
+            deletedInventory = d.deletedInventory || [];
+            references = d.references || [];
+            
+            hpState = d.hpState || {};
+
+            // C. Restore Settings
+            if(d.currentUser) currentUser = d.currentUser;
+            if(d.viewMode) viewMode = d.viewMode;
+            if(typeof d.showComplete !== 'undefined') showComplete = d.showComplete;
+
+            saveLocally();
+            location.reload(); // Hard refresh to reset all UI states cleanly
+            return;
+        }
 
         // 2. CONFLICT-AWARE MERGE ENGINE
         const mergeList = (currentList, importedList) => {
@@ -4632,17 +4703,14 @@ function runImport() {
 
             importedList.forEach(importItem => {
                 // A. CHECK GRAVEYARD (Zombie Protection)
-                // If we deleted this item locally, we don't want an old import bringing it back to life.
                 const stone = tombstones.find(t => t.id === importItem.id);
                 const tImport = importItem.updated || 0;
 
                 if (stone) {
-                    // If the import is OLDER than our deletion, block it.
                     if (stone.date > tImport) {
                         zombies++;
-                        return; // Skip this item
+                        return; // Skip (Blocked by Tombstone)
                     }
-                    // If import is NEWER than deletion, it's a valid Restoration. Allow it.
                 }
 
                 // B. STANDARD MERGE
@@ -4652,7 +4720,6 @@ function runImport() {
                     const local = currentList[idx];
                     const tLocal = local.updated || 0;
 
-                    // Only overwrite if the import is newer
                     if(tImport > tLocal) {
                         currentList[idx] = importItem;
                         updates++;
@@ -4667,7 +4734,6 @@ function runImport() {
         };
         
         // 3. MERGE TOMBSTONES FIRST
-        // We need to know what the other user deleted before we process their data.
         if(d.tombstones) {
             d.tombstones.forEach(t => {
                 const exists = tombstones.find(local => local.id === t.id);
@@ -4685,17 +4751,15 @@ function runImport() {
         mergeList(deletedProjects, d.deletedProjects);
         mergeList(references, d.references);
 
-        // 5. APPLY "THE REAPER"
-        // If the import contained new tombstones, we must now delete those items from our active lists.
+        // 5. APPLY "THE REAPER" (Delete items that match new tombstones)
         const applyGraves = (list) => {
             return list.filter(item => {
                 const grave = tombstones.find(t => t.id === item.id);
-                // If a grave exists AND it is newer than the item's last update...
                 if(grave && grave.date > (item.updated || 0)) {
                     console.log(`Reaper: Removing ${item.id} based on imported tombstone.`);
-                    return false; // DELETE IT
+                    return false; 
                 }
-                return true; // KEEP IT
+                return true; 
             });
         };
 
@@ -4706,26 +4770,21 @@ function runImport() {
         exemptLog = applyGraves(exemptLog);
         references = applyGraves(references);
 
-        // 6. MERGE SIMPLE LISTS (Append Only)
+        // 6. MERGE SIMPLE LISTS
         if(d.chat) {
-    d.chat.forEach(c => {
-        // Avoid duplicate chat messages
-        const exists = chatLog.some(x => x.time === c.time && x.text === c.text);
-        if(!exists) {
-            // Retroactive Fix: If importing old data without a timestamp, try to generate one
-            // (Note: this still guesses the year for legacy data, but fixes mixed sorting)
-            if(!c.timestamp) c.timestamp = new Date(c.time).getTime() || 0;
-            chatLog.push(c);
+            d.chat.forEach(c => {
+                const exists = chatLog.some(x => x.time === c.time && x.text === c.text);
+                if(!exists) {
+                    // Ensure unparseable historical dates don't break the sort
+                    if(!c.timestamp) {
+                        const parsedTime = new Date(c.time).getTime();
+                        c.timestamp = !isNaN(parsedTime) ? parsedTime : Date.now();
+                    }
+                    chatLog.push(c);
+                }
+            });
+            chatLog.sort((a,b) => (a.timestamp || 0) - (b.timestamp || 0));
         }
-    });
-    
-    // Sort using the precise timestamp first
-    chatLog.sort((a,b) => {
-        const tA = a.timestamp || new Date(a.time).getTime();
-        const tB = b.timestamp || new Date(b.time).getTime();
-        return tA - tB;
-    });
-}
         
         if(d.team) {
             d.team.forEach(m => { if(!team.includes(m)) team.push(m); });
@@ -4735,8 +4794,19 @@ function runImport() {
             wikiText += "\n\n--- IMPORTED NOTES ---\n" + d.wiki;
         }
 
+        // --- RESTORE PREFERENCES ---
+        if(d.currentUser) {
+            currentUser = d.currentUser;
+            const userDisplay = document.getElementById('sidebar-user-display');
+            if(userDisplay) userDisplay.innerText = currentUser;
+            localStorage.setItem('rad_curr_user', currentUser);
+        }
+
+        if(d.viewMode) viewMode = d.viewMode;
+        if(typeof d.showComplete !== 'undefined') showComplete = d.showComplete;
+        // --------------------------------
+
         // 7. CLEANUP & SAVE
-        // Normalize isotope names in case the import had bad spelling
         inventory.forEach(i => { if(i.iso) i.iso = normalizeIso(i.iso); });
 
         saveLocally(); 
@@ -4744,7 +4814,6 @@ function runImport() {
         loadHPState();
         closeModal('importModal');
         
-        // 8. USER FEEDBACK
         showToast("Data Merged (Newer versions kept)");
 
     } catch(e) { 
@@ -4753,13 +4822,23 @@ function runImport() {
     }
 }
 
-    function saveLocally() { 
-    localStorage.setItem('rad25_7_data', JSON.stringify({
-        projects, inventory, deletedInventory, expenses, allocations, 
-        chat: chatLog, team, wiki: wikiText, 
-        hpState, viewMode, showComplete, estItems, exemptLog,
-        tombstones, deletedProjects
-    })); 
+function saveLocally() { 
+    try {
+        localStorage.setItem('rad25_7_data', JSON.stringify({
+            projects, inventory, deletedInventory, expenses, allocations, 
+            chat: chatLog, team, wiki: wikiText, 
+            hpState, viewMode, showComplete, estItems, exemptLog,
+            tombstones, deletedProjects
+        })); 
+    } catch (e) {
+        // Catch storage limits before they wipe session data silently
+        if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+            console.error("Storage limit reached!");
+            showAlert("Browser storage limit reached! Please export your data and clear the Graveyard to prevent data loss.", "CRITICAL WARNING");
+        } else {
+            console.error("Failed to save locally:", e);
+        }
+    }
 }
 
     function loadHPState() {
