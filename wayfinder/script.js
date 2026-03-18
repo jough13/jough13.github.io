@@ -1153,7 +1153,17 @@ const GameState = {
         },
         ammo: {},
         cargo: {},
-        cargoLoad: 0
+        cargoLoad: 0,
+        
+        // 🔮 FUTURE EXPANSION: GROUND FORCES (v1.1)
+        // Used for Planetary Raids, Base Defense, and Boarding Actions.
+        // LLM NOTE: When implementing, consider adding a "Barracks" utility module to increase maxTroops.
+        forces: {
+            marines: 0,         // Basic infantry. Consumed on death.
+            heavyMechs: 0,      // High damage, acts as a multiplier.
+            dropDropships: 0,   // Required to deploy > 10 marines per raid.
+            maxTroops: 10       // Baseline capacity without upgrades.
+        }
     },
     world: {
         seed: 0,
