@@ -860,24 +860,7 @@ function commitPiracy(npcIndex) {
     startCombat(hostileEntity); 
 }
 
-function startOutpostRaid(location) {
-    if (typeof closeGenericModal === 'function') closeGenericModal(); 
-    
-    // Set up the firefight stats for a Ground Base (Harder than a Derelict)
-    boardingContext = {
-        isOutpost: true, // Special flag for loot resolution
-        locationObj: location,
-        playerHp: playerHull, // Uses actual ship hull (representing your landing party's armor)
-        playerMaxHp: MAX_PLAYER_HULL,
-        enemyHp: 100,
-        enemyMaxHp: 100,
-        enemyName: "Cartel Garrison",
-        log: ["YOU BREACH THE AIRLOCK! The garrison immediately opens fire!"]
-    };
-    
-    openGenericModal(`RAID: ${location.name.toUpperCase()}`);
-    renderBoardingUI();
-}
+
 
 // --- BOARDING COMBAT MINIGAME ---
 
@@ -993,22 +976,6 @@ function executeBoardingAction(action) {
         let credits = 300 + Math.floor(Math.random() * 500);
         let xp = 75;
         
-        // 🚨 MASSIVE LOOT FOR BASES
-        if (ctx.isOutpost) {
-            credits *= 4; // Huge credit haul from the vault
-            xp *= 3;
-            ctx.locationObj.cleared = true; // Permanently destroy the base
-            
-            // Steal Contraband
-            playerCargo['PROHIBITED_STIMS'] = (playerCargo['PROHIBITED_STIMS'] || 0) + 3;
-            playerCargo['STOLEN_CONCORD_MEDALS'] = (playerCargo['STOLEN_CONCORD_MEDALS'] || 0) + 5;
-            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-            
-            logMessage(`<span style="color:var(--success)">Outpost Cleared!</span> Vault cracked.<br>Looted ${credits}c and Cartel Contraband!`);
-        } else {
-            logMessage(`<span style="color:var(--success)">Boarding successful!</span> Enemies defeated.<br>Looted ${credits} credits and gained +${xp} XP.`);
-        }
-
         playerCredits += credits;
         playerXP += xp;
         
@@ -1029,4 +996,184 @@ function executeBoardingAction(action) {
 // Simple helper to remove an enemy after combat
 function removeEnemyAt(x, y) {
     activeEnemies = activeEnemies.filter(e => e.x !== x || e.y !== y);
+}
+
+// ==========================================
+// --- PLANETARY OUTPOST RAIDS (GROUND) ---
+// ==========================================
+
+let raidContext = null;
+
+function startOutpostRaid(location) {
+    if (typeof closeGenericModal === 'function') closeGenericModal(); 
+    
+    // Ground bases are heavily fortified!
+    raidContext = {
+        locationObj: location,
+        playerHp: playerHull, // Your ship's hull acts as your landing party's armor/shielding
+        playerMaxHp: typeof MAX_PLAYER_HULL !== 'undefined' ? MAX_PLAYER_HULL : 100,
+        enemyHp: 150, 
+        enemyMaxHp: 150,
+        enemyName: "Cartel Compound",
+        log: ["DROP RAMPS DEPLOYED. You touch down just outside the perimeter. Heavy turret fire incoming!"]
+    };
+    
+    openGenericModal(`GROUND ASSAULT: ${location.name.toUpperCase()}`);
+    renderRaidUI();
+}
+
+function renderRaidUI() {
+    if (!raidContext) return;
+
+    const listEl = document.getElementById('genericModalList');
+    const detailEl = document.getElementById('genericDetailContent');
+    const actionsEl = document.getElementById('genericModalActions');
+
+    // 1. Render Combat Log (Left Pane)
+    listEl.innerHTML = `<div style="padding: 10px; font-family: var(--main-font); font-size: 13px; display: flex; flex-direction: column; gap: 8px;">
+        <div class="trade-list-header" style="color:var(--danger); border-bottom-color:var(--danger);">TACTICAL FEED</div>
+        ${raidContext.log.map(msg => `<div>> ${msg}</div>`).join('')}
+    </div>`;
+    listEl.scrollTop = listEl.scrollHeight;
+
+    // 2. Render Health Bars (Right Pane)
+    const playerPct = Math.max(0, (raidContext.playerHp / raidContext.playerMaxHp) * 100);
+    const enemyPct = Math.max(0, (raidContext.enemyHp / raidContext.enemyMaxHp) * 100);
+
+    detailEl.innerHTML = `
+        <div style="text-align:center; padding: 20px 10px;">
+            <div style="font-size: 50px; margin-bottom: 20px; filter: drop-shadow(0 0 15px rgba(255,0,0,0.5));">🏴‍☠️</div>
+            
+            <h4 style="color:var(--accent-color); margin-bottom: 5px;">LANDING PARTY (${playerName.toUpperCase()})</h4>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;"><span>Armor Integrity</span><span>${raidContext.playerHp}</span></div>
+            <div style="width:100%; height:12px; background:rgba(0,0,0,0.5); border:1px solid var(--border-color); border-radius:4px; margin-bottom:20px;">
+                <div style="width:${playerPct}%; height:100%; background:var(--success); transition:width 0.3s;"></div>
+            </div>
+
+            <h4 style="color:var(--danger); margin-bottom: 5px;">${raidContext.enemyName.toUpperCase()}</h4>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;"><span>Fortification</span><span>${raidContext.enemyHp}</span></div>
+            <div style="width:100%; height:12px; background:rgba(0,0,0,0.5); border:1px solid var(--danger); border-radius:4px;">
+                <div style="width:${enemyPct}%; height:100%; background:var(--danger); transition:width 0.3s;"></div>
+            </div>
+            
+            <p style="color:var(--item-desc-color); font-size:12px; margin-top:20px; font-style:italic;">"The cartel has locked down the central vault. You need to break their defenses to get inside."</p>
+        </div>
+    `;
+
+    // 3. Render Tactical Actions
+    const canBombard = playerFuel >= 25;
+
+    actionsEl.innerHTML = `
+        <button class="action-button danger-btn" onclick="executeRaidAction('assault')">ASSAULT BARRICADES (High Risk/High Dmg)</button>
+        <button class="action-button" style="border-color:var(--accent-color); color:var(--accent-color);" onclick="executeRaidAction('flank')">FLANK POSITION (Low Risk/Low Dmg)</button>
+        <button class="action-button" style="border-color:var(--warning); color:var(--warning);" ${!canBombard ? 'disabled' : ''} onclick="executeRaidAction('strike')">
+            ${canBombard ? 'ORBITAL BOMBARDMENT (-25 Fuel)' : 'ORBITAL STRIKE (Needs 25 Fuel)'}
+        </button>
+        <button class="action-button" style="border-color:#888; color:#888; margin-top: 10px;" onclick="executeRaidAction('flee')">ABORT RAID & EVACUATE</button>
+    `;
+}
+
+function executeRaidAction(action) {
+    if (!raidContext) return;
+    const ctx = raidContext;
+
+    let playerDmg = 0;
+    let enemyDmg = 0; 
+    let actionLog = "";
+
+    // --- TACTICAL CHOICES ---
+    if (action === 'assault') {
+        playerDmg = Math.floor(Math.random() * 20) + 15; // 15-35 dmg to enemy
+        enemyDmg = Math.floor(Math.random() * 15) + 10;  // 10-25 dmg to player
+        actionLog = `<span style="color:var(--danger)">You charge the main gates!</span> Dealt ${playerDmg} damage.`;
+        if (typeof soundManager !== 'undefined') soundManager.playLaser();
+    } 
+    else if (action === 'flank') {
+        playerDmg = Math.floor(Math.random() * 10) + 8; // 8-18 dmg to enemy
+        enemyDmg = Math.floor(Math.random() * 5);       // 0-5 dmg to player
+        actionLog = `<span style="color:var(--accent-color)">You take the high ground.</span> Sniped guards for ${playerDmg} damage.`;
+        if (typeof soundManager !== 'undefined') soundManager.playLaser();
+    } 
+    else if (action === 'strike') {
+        playerFuel -= 25;
+        playerDmg = Math.floor(Math.random() * 30) + 30; // 30-60 massive dmg to enemy!
+        enemyDmg = 0; // Completely safe for the player!
+        actionLog = `<span style="color:var(--warning)">ORBITAL STRIKE!</span> Your ship rains fire from above! ${playerDmg} structural damage!`;
+        if (typeof soundManager !== 'undefined') soundManager.playExplosion();
+        if (typeof triggerDamageEffect === 'function') triggerDamageEffect(); // Shake screen!
+    } 
+    else if (action === 'flee') {
+        closeGenericModal();
+        raidContext = null;
+        logMessage("<span style='color:var(--danger)'>You evacuate under heavy fire! Ship took 20 damage during takeoff!</span>");
+        if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 20, reason: "Shot while fleeing a raid" });
+        return;
+    }
+
+    // Apply Damage
+    ctx.enemyHp -= playerDmg;
+    if (ctx.enemyHp < 0) ctx.enemyHp = 0;
+
+    // Enemy Turn (Only if they survive)
+    if (ctx.enemyHp > 0) {
+        if (enemyDmg > 0) {
+            actionLog += ` The garrison returns fire! <span style="color:var(--danger)">Took ${enemyDmg} damage!</span>`;
+            playerHull -= enemyDmg; // Direct hit to global playerHull
+            
+            // Juice: Screen shake on taking damage
+            if (typeof triggerHaptic === 'function') triggerHaptic(50);
+            if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+        } else {
+            actionLog += ` The garrison is suppressed and misses their shots!`;
+        }
+        ctx.playerHp = playerHull; // Sync visual UI bar
+    } else {
+        actionLog += ` <span style="color:var(--success); font-weight:bold;">Defenses broken! Vault exposed!</span>`;
+    }
+
+    ctx.log.push(actionLog);
+    if (ctx.log.length > 7) ctx.log.shift();
+
+    // Check Win/Loss conditions
+    if (ctx.playerHp <= 0) {
+        closeGenericModal();
+        triggerGameOver("Overrun by Cartel mercenaries during a ground assault");
+        return;
+    } 
+    else if (ctx.enemyHp <= 0) {
+        // --- VICTORY RESOLUTION ---
+        const credits = (800 + Math.floor(Math.random() * 1000)) * (window.hasCrewPerk && hasCrewPerk('SCAVENGER_PROTOCOL') ? 2 : 1);
+        const xp = 250;
+        
+        playerCredits += credits;
+        playerXP += xp;
+        
+        // Permanently destroy the pirate base on the map!
+        ctx.locationObj.cleared = true; 
+        updateWorldState(playerX, playerY, { cleared: true });
+        
+        // Steal Cartel Contraband
+        playerCargo['PROHIBITED_STIMS'] = (playerCargo['PROHIBITED_STIMS'] || 0) + Math.floor(Math.random() * 3) + 2;
+        playerCargo['STOLEN_CONCORD_MEDALS'] = (playerCargo['STOLEN_CONCORD_MEDALS'] || 0) + Math.floor(Math.random() * 5) + 1;
+        
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        
+        closeGenericModal();
+        raidContext = null;
+
+        logMessage(`<span style="color:var(--success); font-weight:bold;">OUTPOST SECURED!</span> You cracked the cartel vault.<br>Looted <span style="color:var(--gold-text)">${formatNumber(credits)}c</span> and seized local contraband! (+${xp} XP)`);
+        showToast("BASE DESTROYED", "success");
+        if (typeof soundManager !== 'undefined') soundManager.playGain();
+        
+        checkLevelUp();
+        renderUIStats();
+        
+        // Force the map to redraw so the player can see the base is dead
+        if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
+        if (typeof render === 'function') render();
+        return;
+    }
+
+    // Re-render UI for the next turn
+    renderRaidUI();
 }
