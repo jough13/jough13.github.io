@@ -1,23 +1,51 @@
-Jough Donakowski's Personal Website & Blog
-This is the source code for my personal website and blog, a place to share my projects, writing, and various interests.
+Welcome to my personal repository. This site serves as a central hub for my professional tools, creative writing, tabletop RPG development, and data-driven hobbies. It is continuously updated to reflect my active projects and interests.
 
-Current Status
-The site is currently a single-page placeholder while the full blog is under construction. It is built to be easily expandable when new content is ready.
+☢️ Health Physics & Science
+Tools and reference materials focused on radiological physics, data visualization, and professional development.
 
-Tech Stack
-HTML5 with semantic tags for better structure and accessibility.
+HPT, RadFlow, & RadLegacy: Custom utilities and calculators for health physics applications.
 
-Tailwind CSS for styling.
+Study Guides: Reference materials and documentation for CHP certification prep.
 
-Vanilla JavaScript for interactivity (theme toggle, header particle effect).
+Science: General scientific notes and data tracking.
 
-Hosted On
-This project is proudly hosted on Netlify.
+🎲 Tabletop RPGs & World-Building
+Interactive scripts, lore, and assets for original tabletop campaigns and fantasy/sci-fi settings.
 
-Getting Started
-Since this is a simple static site, you can open the index.html file directly in your browser to view it locally.
+Core Settings: Aethelgard, Eldoria, Realms, Noir, and Echoes of the Fall (EotF).
 
-Future Plans
-The long-term goal is to migrate this single-page site to a Static Site Generator (SSG) like Astro or Eleventy to make managing blog content easier and more scalable.
+Mechanics & Combat: The Wayfinder combat tracker (combat.js) and procedural item generation in Caves.
 
-Version 1.0
+Assets: Custom graphics including sci-fi marketplaces (cyber_trader.png, concord_market.png) and familiar vendor nods (cryptarch.png).
+
+DCD: The Cartographer's Desk (DCD/index.html) for world mapping and layout.
+
+⚽ Sports Analytics
+xG_Elo & MLS 2026: Statistical tracking, expected goals (xG) data, and Elo ratings, keeping a close eye on the upcoming Major League Soccer season and Sporting KC.
+
+🧶 Hobbies & Lifestyle
+A collection of scripts and notes dedicated to off-screen hobbies and domestic projects.
+
+Hooked: A custom calculator (calculator.html), perfect for tracking yarn, crafting, and crochet projects.
+
+Recipes: Personal cooking documentation, including the highly specific sandwich-theory.md.
+
+Photography: Portfolio galleries and metadata tracking (photos.json) for my camera work.
+
+Chess, Finances & Commodities: Analytical trackers for personal interests and economics.
+
+✍️ Creative Writing & Blog
+My personal digital garden for essays, stories, and thoughts.
+
+Directories: articles, writing (featuring active chapter drafts), thoughts, and ideas.
+
+Lexicon & Books: Reading lists and world-building glossaries.
+
+Posts: Markdown-based blog entries (posts.json) documenting daily life and projects.
+
+⚙️ Site Architecture
+The underlying mechanics running this digital sandbox.
+
+Infrastructure: Deployed via netlify.toml with custom GitHub Actions (secret_scanning.yml).
+
+Frontend: Modular UI components powered by panel-loader.js, sidebar-loader.js, and shared.js.
