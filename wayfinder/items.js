@@ -320,5 +320,24 @@ const COMMODITIES = {
         name: "Ancient Archive",
         basePrice: 2000,
         description: "A high-density holographic array. Contains forbidden history, advanced schematics, and lost truths."
+    },
+    
+    // 🔮 FUTURE EXPANSION: GROUND FORCES (v1.1)
+    // LLM NOTE: These should be purchasable at CONCORD or ECLIPSE mercenary dens.
+    // When bought, they should add to `GameState.ship.forces.marines` rather than taking up standard cargo.
+
+    MERCENARY_PLATOON: {
+        name: "Mercenary Platoon",
+        basePrice: 5000,
+        isTroop: true,
+        troopCount: 10, // Buying 1 unit grants 10 marines
+        description: "A squad of hardened, disposable freelancers equipped with standard plasma rifles. Ready for immediate deployment."
+    },
+    ASSAULT_MECH: {
+        name: "Goliath Assault Mech",
+        basePrice: 15000,
+        isTroop: true,
+        isVehicle: true,
+        description: "A massive, bipedal walking tank. Provides heavy covering fire and drastically reduces marine casualties during ground raids."
     }
 };
