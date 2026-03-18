@@ -192,6 +192,13 @@ function renderStationMenu(location, faction) {
         html += createBtn('⚖️', 'Security Office', 'Clear Bounties', "clearConcordBounty()", "border-left: 3px solid var(--accent-color);");
         html += createBtn('🛡️', 'Aegis Armory', 'Concord Gear', "openConcordArmory()", "border-left: 3px solid var(--accent-color);");
         html += createBtn('📡', 'Naval Command', 'Hire Escort', "requestConcordEscort()", "border-left: 3px solid var(--accent-color);");
+        
+        // 🔮 FUTURE EXPANSION (v1.1): MARINE BARRACKS
+        // LLM NOTE: Activate this button to open a UI where the player can spend Credits to buy "MERCENARY_PLATOON" 
+        // to supply their ground forces array.
+        // html += createBtn('🪖', 'Marine Barracks', 'Recruit Ground Forces', "openBarracksUI()", "border-left: 3px solid var(--accent-color);");
+
+    } else if (faction === 'KTHARR') {
     } else if (faction === 'KTHARR') {
         html += createBtn('⚔️', 'Proving Grounds', 'Arena Betting', "openKtharrProvingGrounds()", "border-left: 3px solid var(--danger);");
         html += createBtn('🍖', 'The Blood Pits', 'Bio-Trade', "openBloodPitsTrade()", "border-left: 3px solid var(--danger);");
