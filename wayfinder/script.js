@@ -4075,24 +4075,32 @@ function handleCombatInput(key) {
             // Generic Interact Key
             case 'e': 
             case 'enter':
-            case ' ': // <--- Browsers read spacebar as a literal space (' '), not the word 'space'!
+            case ' ': // <--- Browsers read spacebar as a literal space (' ')
                 const currentTileForE = chunkManager.getTile(playerX, playerY);
                 if (!currentTileForE) return true;
                 
                 // --- THE ROUTING ORDER ---
                 
-                // 1. Xerxes Intercept (Must be FIRST so "Planet Xerxes" isn't caught by the planet filter!)
+                // 1. Xerxes Intercept
                 if (currentTileForE.name && currentTileForE.name.includes("Xerxes")) {
                     if (typeof openXerxesView === 'function') openXerxesView();
                 }
-                // 2. Station & Hub Routing
+                // 🚨 NEW: 2. Pirate Base Intercept
+                else if (currentTileForE.isPirateBase) {
+                    if (currentTileForE.cleared) {
+                        logMessage("The outpost is a smoking ruin. Nothing left to salvage.");
+                    } else if (typeof startOutpostRaid === 'function') {
+                        startOutpostRaid(currentTileForE);
+                    }
+                }
+                // 3. Station & Hub Routing
                 else if (currentTileForE.isMajorHub || currentTileForE.char === OUTPOST_CHAR_VAL) {
                     if (typeof performCustomsScan === 'function' && currentTileForE.isMajorHub) {
                         if (!performCustomsScan()) return true; // Stop if they fail customs!
                     }
                     openStationView();
                 } 
-                // 3. Planetary Routing (Standard Planets)
+                // 4. Planetary Routing (Standard Planets)
                 else if (currentTileForE.char === 'O' || (currentTileForE.name && currentTileForE.name.toLowerCase().includes("planet")) || currentTileForE.biome) {
                     openPlanetView(currentTileForE);
                 } 
