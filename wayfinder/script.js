@@ -1977,7 +1977,14 @@ if (typeof window._codexPatched === 'undefined') {
         },
         ammo: {},
         cargo: {},
-        cargoLoad: 0
+        cargoLoad: 0,
+        // 🚨 Re-injected the forces object so it doesn't get deleted on New Game!
+        forces: {
+            marines: 0,         
+            heavyMechs: 0,      
+            dropDropships: 0,   
+            maxTroops: 10       
+        }
     };
 
     // Initialize Ammo if applicable
@@ -3294,10 +3301,14 @@ function handleInteraction() {
                 if (tileObject.studied) {
                     bM = "Scanners show this phenomenon has already dissipated.";
                 } else {
-                    bM = ""; // Clear standard message, the modal handles it!
-                    if (typeof handleAnomaly === 'function') handleAnomaly();
-                    // BUG FIX: Mark it studied so they can't farm it infinitely!
-                    updateWorldState(playerX, playerY, { studied: true });
+                    bM = ""; 
+                    // 50% chance to trigger the Hacking Minigame, 50% chance for Astrometrics!
+                    if (Math.random() > 0.5 && typeof handleAnomalyEncounter === 'function') {
+                        handleAnomalyEncounter(tileObject);
+                    } else if (typeof handleAnomaly === 'function') {
+                        handleAnomaly();
+                        updateWorldState(playerX, playerY, { studied: true });
+                    }
                 }
                 unlockLoreEntry("XENO_ANOMALIES");
                 break;
@@ -3604,9 +3615,9 @@ function selectPerk(perkId) {
 
 function getHazardType(worldX, worldY) {
     // --- SPAWN PROTECTION ---
-    // Ensure the immediate starting area is always free of hazards
-    const spawnX = Math.floor(MAP_WIDTH / 2);
-    const spawnY = Math.floor(MAP_HEIGHT / 2);
+    // 🚨 FIX: Ensure the protection is centered on Starbase Alpha, not the middle of the grid!
+    const spawnX = MAP_WIDTH - 7;
+    const spawnY = MAP_HEIGHT - 5;
     const distFromSpawn = Math.sqrt(Math.pow(worldX - spawnX, 2) + Math.pow(worldY - spawnY, 2));
     
     // Guarantees a completely clear 25-tile radius around the starting point
@@ -3615,16 +3626,13 @@ function getHazardType(worldX, worldY) {
     }
 
     const scale = 0.08; 
-    
-    // Combine sine and cosine waves to create organic, blob-like structures
     const noise = Math.sin(worldX * scale) + Math.cos(worldY * scale) + Math.sin((worldX + worldY) * scale * 0.5);
     
-    // Threshold: 2.4 makes these zones very rare and scattered
     if (noise > 2.4) {
         return 'RADIATION_BELT';
     }
     
-    return null; // Safe space
+    return null; 
 }
 
 /**
@@ -4845,6 +4853,7 @@ function performSave(saveType) {
         // Metadata / Collections
         playerName, playerPfp, playerCrew,
         playerPerks: Array.from(playerPerks),
+        concordEscortJumps: window.concordEscortJumps || 0, 
         playerHasColonyCharter: typeof playerHasColonyCharter !== 'undefined' ? playerHasColonyCharter : false,
         playerColonies: typeof playerColonies !== 'undefined' ? playerColonies : {},
         playerActiveMission, playerActiveBounty, currentStationBounties, activeMarketTrend, 
@@ -5002,7 +5011,8 @@ function loadGameData(jsonString) {
         playerName = savedState.playerName || "Captain";
         playerPfp = savedState.playerPfp || "assets/pfp_01.png";
         playerCrew = savedState.playerCrew || [];
-        playerPerks = new Set(savedState.playerPerks || []); 
+        playerPerks = new Set(savedState.playerPerks || []);
+        window.concordEscortJumps = savedState.concordEscortJumps || 0;
         
         isAwaitingRescue = savedState.isAwaitingRescue || false; 
         rescueTargetStation = savedState.rescueTargetStation || null; 
