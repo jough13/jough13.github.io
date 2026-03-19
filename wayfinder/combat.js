@@ -144,30 +144,40 @@ function handleVictory() {
     // 4. Build the Combat Log Message
     let msg = `Victory! Enemy destroyed.\nSalvaged: ${credits}c\nExperience: +${xp}`;
 
-    // --- 5. LOOT DROP CHANCE ---
-    if (Math.random() < 0.4) {
-        // 40% chance for cargo loot
-        const lootTable = [
-            { id: 'TECH_PARTS', qty: [2, 5] },
-            { id: 'FUEL_CELLS', qty: [3, 8] },
-            { id: 'RARE_METALS', qty: [1, 2] }
-        ];
-        
-        // Pick a random item from the table
-        const loot = lootTable[Math.floor(Math.random() * lootTable.length)];
-        
-        // Calculate quantity based on the [min, max] range
-        const qty = loot.qty[0] + Math.floor(Math.random() * (loot.qty[1] - loot.qty[0] + 1));
+    // --- 5. TRACTOR BEAM LOOT RECOVERY ---
+    // The player only gets physical cargo if they have the equipment to tractor it in!
+    const hasTractorBeam = typeof playerPerks !== 'undefined' && 
+        ((playerPerks.has && playerPerks.has('LONG_RANGE_SENSORS')) || 
+         (playerPerks.includes && playerPerks.includes('LONG_RANGE_SENSORS'))) || 
+        (playerShip && playerShip.components && playerShip.components.scanner === 'SCANNER_NEXSTAR_4SE');
 
-        const spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
-        if (spaceLeft > 0) {
-            const actualQty = Math.min(qty, spaceLeft);
-            playerCargo[loot.id] = (playerCargo[loot.id] || 0) + actualQty;
-            updateCurrentCargoLoad();
-            msg += `\nLooted: ${actualQty}x ${COMMODITIES[loot.id].name}`;
-            if (actualQty < qty) msg += " (Hold full, left remainder)";
-        } else {
-            msg += `\nLoot found (${COMMODITIES[loot.id].name}) but cargo is full!`;
+    if (hasTractorBeam) {
+        // 60% chance for cargo loot if they have the gear!
+        if (Math.random() < 0.6) {
+            const lootTable = [
+                { id: 'TECH_PARTS', qty: [2, 5] },
+                { id: 'FUEL_CELLS', qty: [3, 8] },
+                { id: 'RARE_METALS', qty: [1, 2] }
+            ];
+            
+            const loot = lootTable[Math.floor(Math.random() * lootTable.length)];
+            const qty = loot.qty[0] + Math.floor(Math.random() * (loot.qty[1] - loot.qty[0] + 1));
+            const spaceLeft = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+            
+            if (spaceLeft > 0) {
+                const actualQty = Math.min(qty, spaceLeft);
+                playerCargo[loot.id] = (playerCargo[loot.id] || 0) + actualQty;
+                updateCurrentCargoLoad();
+                msg += `\n<span style="color:var(--accent-color);">[ TRACTOR BEAM ]</span> Recovered: ${actualQty}x ${COMMODITIES[loot.id].name}`;
+                if (actualQty < qty) msg += " (Hold full, left remainder)";
+            } else {
+                msg += `\n<span style="color:var(--warning);">[ TRACTOR BEAM ]</span> Loot detected (${COMMODITIES[loot.id].name}) but cargo is full!`;
+            }
+        }
+    } else {
+        // If they don't have a tractor beam, the loot drifts away!
+        if (Math.random() < 0.4) {
+            msg += `\n<span style="color:var(--item-desc-color);">Sensors detect valuable debris drifting away. (Requires Telemetry Array or NexStar Scanner to recover)</span>`;
         }
     }
 
