@@ -1271,10 +1271,18 @@ function executeRaidAction(action) {
         ctx.locationObj.cleared = true; 
         updateWorldState(playerX, playerY, { cleared: true });
         
-        // Steal Cartel Contraband
+        // Steal Cartel Contraband & Vault Tech
         if (typeof playerCargo !== 'undefined') {
             playerCargo['PROHIBITED_STIMS'] = (playerCargo['PROHIBITED_STIMS'] || 0) + Math.floor(Math.random() * 3) + 2;
             playerCargo['STOLEN_CONCORD_MEDALS'] = (playerCargo['STOLEN_CONCORD_MEDALS'] || 0) + Math.floor(Math.random() * 5) + 1;
+            
+            // --- PROCEDURAL VAULT LOOT ---
+            const rareLoot = typeof generateProceduralModule === 'function' ? generateProceduralModule("MILITARY_SHIELD_MOD") : null;
+            if (rareLoot) {
+                playerCargo[rareLoot.id] = rareLoot;
+                logMessage(`<span style="color:#FF33FF; font-weight:bold;">[ VAULT BREACHED ]</span> You recovered a prototype module: <span style="color:var(--gold-text)">${rareLoot.name}</span>!`);
+            }
+            
             if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         }
         
