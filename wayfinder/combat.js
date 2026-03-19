@@ -761,6 +761,20 @@ function updateEnemies() {
 
         // Calculate the absolute distance between the player and the enemy
         const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // STEALTH MECHANIC: NEBULA SLIPPING
+        // If the player is sitting in a nebula (~), sensors are scrambled!
+        const playerTile = chunkManager.getTile(playerX, playerY);
+        if (playerTile && getTileChar(playerTile) === '~') {
+            // 80% chance the enemy completely loses tracking this turn
+            if (Math.random() < 0.80) {
+                // Enemy wanders randomly instead of chasing you
+                enemy.x += (Math.random() > 0.5 ? 1 : -1) * Math.round(Math.random());
+                enemy.y += (Math.random() > 0.5 ? 1 : -1) * Math.round(Math.random());
+                continue; // Skip the rest of their hunting logic
+            }
+        }
+
         if (dist > 100) { 
             // If the pirate is more than 100 tiles away, they've lost our trail.
             activeEnemies.splice(i, 1); // Delete from memory
