@@ -454,13 +454,12 @@ const LOOT_SUFFIXES = [
 ];
 
 function generateProceduralModule(baseModuleKey) {
-    // 1. Get the base item from your existing database
-    const baseItem = typeof SHIPS_CLASSES !== 'undefined' ? SHIP_CLASSES[baseModuleKey] : null; 
-    // (Note: Adjust the dictionary lookup to wherever your ship modules/weapons live!)
+    // 1. Get the base item from your components database!
+    const baseItem = typeof COMPONENTS_DATABASE !== 'undefined' ? COMPONENTS_DATABASE[baseModuleKey] : null; 
     
     if (!baseItem) return null;
 
-    // 2. Clone it so we don't accidentally mutate the master database
+    // 2. Clone it 
     let newItem = JSON.parse(JSON.stringify(baseItem)); 
     
     // 3. Roll for a Prefix (30% chance)
@@ -479,7 +478,7 @@ function generateProceduralModule(baseModuleKey) {
         newItem.stats[suffix.stat] = (newItem.stats[suffix.stat] || 0) + suffix.val;
     }
 
-    // 5. Give it a unique ID so it doesn't stack incorrectly in inventory
+    // 5. Give it a unique ID!
     newItem.id = `${baseModuleKey}_${Date.now()}`; 
     
     return newItem;
