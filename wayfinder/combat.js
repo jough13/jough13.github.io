@@ -443,9 +443,31 @@ function handleCombatAction(action) {
         
     } else if (action === 'run') {
         const cost = typeof RUN_FUEL_COST !== 'undefined' ? RUN_FUEL_COST : 30;
-        const chance = typeof RUN_ESCAPE_CHANCE !== 'undefined' ? RUN_ESCAPE_CHANCE : 0.5;
+        
+        // 🚨 TACTICAL FIX: Dynamic Escape Math!
+        let baseChance = typeof RUN_ESCAPE_CHANCE !== 'undefined' ? RUN_ESCAPE_CHANCE : 0.5;
+        
+        // Check the terrain! Asteroids and Nebulas give massive escape bonuses.
+        const tile = chunkManager.getTile(playerX, playerY);
+        const char = getTileChar(tile);
+        
+        if (char === ASTEROID_CHAR_VAL) {
+            baseChance += 0.25; // +25% chance to escape in an asteroid field!
+            combatLog += "<span style='color:var(--warning);'>[ TERRAIN ADVANTAGE ] You weave through the dense asteroid field to break their target lock!</span><br>";
+        } else if (char === NEBULA_CHAR_VAL) {
+            baseChance += 0.35; // +35% chance to escape in a gas cloud!
+            combatLog += "<span style='color:#9933FF;'>[ TERRAIN ADVANTAGE ] The dense nebula gas scrambles their sensors!</span><br>";
+        }
+        
+        // Check ship evasion stat
+        baseChance += (typeof PLAYER_EVASION !== 'undefined' ? PLAYER_EVASION : 0);
+
+        // Cap escape chance at 95% (always a tiny risk!)
+        const finalChance = Math.min(0.95, baseChance);
+
         playerFuel -= cost;
-        if (Math.random() < chance) {
+        
+        if (Math.random() < finalChance) {
             combatLog += `Escaped! Used ${cost} fuel.`;
             logMessage(combatLog);
             if(typeof updatePlayerNotoriety === 'function') updatePlayerNotoriety(-1);
@@ -456,20 +478,6 @@ function handleCombatAction(action) {
             return;
         } else {
             combatLog += `<span style='color:var(--danger)'>[ ESCAPE FAILED ] The enemy matched your vector!</span>`;
-        }
-    }
-    if (window.concordEscortJumps && window.concordEscortJumps > 0 && currentCombatContext && currentCombatContext.pirateHull > 0) {
-        const escortDmg = 15 + Math.floor(Math.random() * 15); // Powerful auto-damage
-        combatLog += `<br><span style='color:var(--accent-color); font-weight:bold;'>[ AEGIS WING ]</span> Escort fires heavy cannons for ${escortDmg} damage!`;
-        
-        if (currentCombatContext.pirateShields > 0) {
-            currentCombatContext.pirateShields -= escortDmg;
-            if (currentCombatContext.pirateShields < 0) {
-                currentCombatContext.pirateHull += currentCombatContext.pirateShields; // spillover
-                currentCombatContext.pirateShields = 0;
-            }
-        } else {
-            currentCombatContext.pirateHull -= escortDmg;
         }
     }
 
