@@ -441,15 +441,43 @@ function interactWithNPC(npc, index) {
                 <button class="action-button" onclick="initiateShipToShipTrade(${index})" style="border-color:var(--gold-text); color:var(--gold-text);">
                     REQUEST TRADE
                 </button>
+                
+                ${npc.faction === 'CONCORD' ? `
+                <button class="action-button danger-btn" onclick="dumpAllContraband()">
+                    DUMP CONTRABAND
+                </button>
+                ` : `
                 <button class="action-button" onclick="scanNPCCargo(${index})" style="border-color:var(--accent-color); color:var(--accent-color);">
                     TACTICAL SCAN
                 </button>
+                `}
+                
                 <button class="action-button danger-btn" onclick="commitPiracy(${index})">
                     POWER WEAPONS
                 </button>
             </div>
         </div>
     `;
+}
+
+function dumpAllContraband() {
+    let dumped = false;
+    for (const itemID in playerCargo) {
+        if (COMMODITIES[itemID] && COMMODITIES[itemID].illegal && playerCargo[itemID] > 0) {
+            delete playerCargo[itemID];
+            dumped = true;
+        }
+    }
+    if (dumped) {
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+        if (typeof soundManager !== 'undefined') soundManager.playHullHit(); // Airlock thud
+        showToast("CONTRABAND JETTISONED", "warning");
+        logMessage("<span style='color:var(--warning)'>You flush all illegal cargo out the airlock before the patrol can scan you.</span>");
+        closeGenericModal();
+        renderUIStats();
+    } else {
+        showToast("NO CONTRABAND TO DUMP", "info");
+    }
 }
 
 // --- SENSOR LOGIC ---
@@ -1148,7 +1176,8 @@ const GameState = {
         isChargingAttack: false,
         isEvading: false,
         notorietyTitle: "Rookie Spacer",
-        lastNotorietyDecayTime: 0
+        lastNotorietyDecayTime: 0,
+        milestones: [] 
     },
     ship: {
         shipClass: "LIGHT_FREIGHTER",
@@ -2767,6 +2796,25 @@ function reEnterCurrentTile() {
         if (typeof showToast === 'function') showToast("NO DOCKING TARGET DETECTED", "warning");
         logMessage("Sensors detect only empty space here. Nothing to interact with.");
     }
+}
+
+// 🚨 Universal Loot Generator
+function generateLoot(lootTable) {
+    // Expected format: [ { id: 'IRON', weight: 50, min: 1, max: 5 }, { id: 'GOLD', weight: 5, min: 1, max: 2 } ]
+    const roll = Math.random() * lootTable.reduce((sum, item) => sum + item.weight, 0);
+    let cumulative = 0;
+    
+    for (const item of lootTable) {
+        cumulative += item.weight;
+        if (roll <= cumulative) {
+            // Found our item! Calculate the random quantity
+            const qty = item.min + Math.floor(Math.random() * (item.max - item.min + 1));
+            return { id: item.id, qty: qty };
+        }
+    }
+    // Fallback to the most common item if rounding errors occur
+    const fallback = lootTable[0];
+    return { id: fallback.id, qty: fallback.min };
 }
 
 function processLootTable(tableName) {
@@ -4423,7 +4471,7 @@ function handleCombatInput(key) {
             if (typeof openCargoModal === 'function') openCargoModal();
             return true;
             
-        // --- NEW: OBSERVATORY HOTKEY (O) ---
+        // --- OBSERVATORY HOTKEY (O) ---
         case 'o':
         case 'O':
             if (document.getElementById('genericModalOverlay').style.display !== 'flex') {
@@ -4433,7 +4481,8 @@ function handleCombatInput(key) {
             
         case 'p':
         case 'P':
-            if (typeof deployProbe === 'function') deployProbe();
+            // Active Sensor Ping
+            fireSensorPing();
             return true;
 
         case 'u':
@@ -4501,6 +4550,65 @@ function handleCombatInput(key) {
      // We always "handle" input in the planet view
      return true;
  }
+
+ function fireSensorPing() {
+    // 1. Costs Fuel
+    if (playerFuel < 5) {
+        if (typeof showToast === 'function') showToast("INSUFFICIENT FUEL", "error");
+        return;
+    }
+    playerFuel -= 5;
+    
+    // 2. Visual/Audio Feedback
+    if (typeof soundManager !== 'undefined') soundManager.playScan();
+    triggerSensorPulse(); // The cool blue expanding ring!
+    
+    // 3. Scan the grid!
+    // Base radius is 5, but the Long Range Sensors perk boosts it to 10!
+    let scanRadius = 5;
+    if (typeof playerPerks !== 'undefined' && 
+        ((playerPerks.has && playerPerks.has('LONG_RANGE_SENSORS')) || 
+         (playerPerks.includes && playerPerks.includes('LONG_RANGE_SENSORS')))) {
+        scanRadius = 10;
+    }
+
+    let foundSomething = false;
+    let scanLog = `<span style='color:var(--accent-color); font-weight:bold;'>[ ACTIVE PING ]</span> Sector scan complete. Fuel consumed (-5).<br>`;
+
+    for (let dy = -scanRadius; dy <= scanRadius; dy++) {
+        for (let dx = -scanRadius; dx <= scanRadius; dx++) {
+            if (dx === 0 && dy === 0) continue; // Don't scan yourself
+            
+            const scanX = playerX + dx;
+            const scanY = playerY + dy;
+            const tile = chunkManager.getTile(scanX, scanY);
+            const char = getTileChar(tile);
+            
+            // What are we looking for?
+            if (char === DERELICT_CHAR_VAL) {
+                foundSomething = true;
+                const dirY = dy < 0 ? "North" : "South";
+                const dirX = dx > 0 ? "East" : "West";
+                scanLog += `> Anomalous signature (Derelict): ${Math.abs(dy)} ${dirY}, ${Math.abs(dx)} ${dirX}.<br>`;
+            }
+            if (char === WORMHOLE_CHAR_VAL) {
+                foundSomething = true;
+                scanLog += `> <span style="color:#FFB800;">Gravimetric Shear (Wormhole)</span> detected nearby.<br>`;
+            }
+            if (tile && tile.isPirateBase && !tile.cleared) {
+                foundSomething = true;
+                scanLog += `> <span style="color:var(--danger);">WARNING: heavily shielded compound detected nearby.</span><br>`;
+            }
+        }
+    }
+
+    if (!foundSomething) {
+        scanLog += "> Only cosmic background radiation detected.";
+    }
+    
+    logMessage(scanLog);
+    if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+}
 
  // --- INPUT HANDLING WITH SMOOTHING ---
 let lastInputTime = 0;
@@ -5111,6 +5219,14 @@ function quitToTitle() {
     location.reload(); // Simplest way to "Quit"
 }
 
+function addMilestone(message) {
+    if (typeof currentGameDate === 'undefined') return;
+    const dateStr = currentGameDate.toFixed(2);
+    GameState.player.milestones.unshift(`[SD ${dateStr}] ${message}`); // Newest at top
+    // Keep it from getting too massive in the save file
+    if (GameState.player.milestones.length > 100) GameState.player.milestones.pop();
+}
+
 // --- LOAD LOGIC ---
 
 function loadGame() {
@@ -5173,6 +5289,8 @@ function loadGameData(jsonString) {
         playerCrew = savedState.playerCrew || [];
         playerPerks = new Set(savedState.playerPerks || []);
         window.concordEscortJumps = savedState.concordEscortJumps || 0;
+
+        GameState.player.milestones = savedState.coreState?.player?.milestones || []; 
         
         isAwaitingRescue = savedState.isAwaitingRescue || false; 
         rescueTargetStation = savedState.rescueTargetStation || null; 
