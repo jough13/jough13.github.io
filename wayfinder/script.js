@@ -2603,6 +2603,97 @@ function renderSystemMap() {
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
     }
 
+    // --- DYNAMIC WAYPOINT COMPASS ---
+    // Look for an active target (Bounty, Rescue, or Delivery Mission)
+    let targetPoint = null;
+    let targetColor = "var(--accent-color)";
+    let targetLabel = "NAV";
+
+    if (isAwaitingRescue && rescueTargetStation) {
+        targetPoint = { x: rescueTargetStation.x, y: rescueTargetStation.y };
+        targetColor = "var(--warning)";
+        targetLabel = "TUG";
+    } else if (playerActiveBounty) {
+        targetPoint = { x: playerActiveBounty.x, y: playerActiveBounty.y };
+        targetColor = "var(--danger)";
+        targetLabel = "KILL";
+    } else if (playerActiveMission && playerActiveMission.type === "DELIVERY" && !playerActiveMission.isComplete) {
+        const destName = playerActiveMission.objectives[0].destinationName;
+        if (LOCATIONS_DATA[destName]) {
+            targetPoint = { x: LOCATIONS_DATA[destName].coords.x, y: LOCATIONS_DATA[destName].coords.y };
+            targetColor = "var(--gold-text)";
+            targetLabel = "DROP";
+        }
+    } else if (playerActiveMission && playerActiveMission.isComplete && LOCATIONS_DATA[playerActiveMission.giver]) {
+        targetPoint = { x: LOCATIONS_DATA[playerActiveMission.giver].coords.x, y: LOCATIONS_DATA[playerActiveMission.giver].coords.y };
+        targetColor = "var(--success)";
+        targetLabel = "TURN-IN";
+    }
+
+    // If we have a target, draw the compass pointer on the edge of the screen!
+    if (targetPoint) {
+        const dx = targetPoint.x - playerX;
+        const dy = targetPoint.y - playerY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Only draw the compass if the target is off-screen (further than half the viewport)
+        if (dist > Math.min(VIEWPORT_WIDTH_TILES, VIEWPORT_HEIGHT_TILES) / 2) {
+            const angle = Math.atan2(dy, dx);
+            
+            // Calculate screen edge intersection
+            const padding = TILE_SIZE; // Keep it inside the canvas edge
+            const cx = gameCanvas.width / 2;
+            const cy = gameCanvas.height / 2;
+            
+            // Map the angle to the boundaries of the canvas
+            let edgeX = cx + Math.cos(angle) * (cx - padding);
+            let edgeY = cy + Math.sin(angle) * (cy - padding);
+            
+            // Clamp to a rectangle instead of an oval
+            edgeX = Math.max(padding, Math.min(gameCanvas.width - padding, edgeX));
+            edgeY = Math.max(padding, Math.min(gameCanvas.height - padding, edgeY));
+
+            ctx.save();
+            ctx.translate(edgeX, edgeY);
+            ctx.rotate(angle);
+
+            // Draw the Holographic Arrow
+            ctx.beginPath();
+            ctx.moveTo(10, 0);
+            ctx.lineTo(-10, -8);
+            ctx.lineTo(-5, 0);
+            ctx.lineTo(-10, 8);
+            ctx.closePath();
+            
+            ctx.fillStyle = targetColor;
+            if (useHighGraphics && !isLightMode) {
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = targetColor;
+            }
+            ctx.fill();
+            
+            // Pulse opacity based on distance (Flashes faster as you get closer)
+            const pulseSpd = Math.max(200, dist * 10);
+            ctx.globalAlpha = 0.5 + (Math.sin(Date.now() / pulseSpd) * 0.5);
+
+            ctx.restore(); // Un-rotate to draw text perfectly flat
+
+            // Draw the Distance/Label Text
+            ctx.save();
+            ctx.fillStyle = targetColor;
+            ctx.font = `bold 10px 'Orbitron', monospace`;
+            
+            // Nudge text away from the arrow so they don't overlap
+            const textOffsetX = Math.cos(angle) * -25; 
+            const textOffsetY = Math.sin(angle) * -25;
+            
+            ctx.fillText(`${Math.floor(dist)}u`, edgeX + textOffsetX, edgeY + textOffsetY - 6);
+            ctx.fillText(targetLabel, edgeX + textOffsetX, edgeY + textOffsetY + 6);
+            
+            ctx.restore();
+        }
+    }
+
     // --- 6. Update UI Stats ---
     if (!particleAnimationId) {
         document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
@@ -3241,8 +3332,11 @@ function handleInteraction() {
                     onclick: () => {
                         if (starData.class === "O" || starData.class === "B") {
                             const util = COMPONENTS_DATABASE[playerShip.components.utility || "UTIL_NONE"];
-                            // Check for the Health Physicist perk!
-                            const hasRadPerk = typeof playerPerks !== 'undefined' && playerPerks.includes('HEALTH_PHYSICIST');
+                            
+                            // 🚨 BUG FIX: Safely check for the perk whether it's a Set or a legacy Array!
+                            const hasRadPerk = typeof playerPerks !== 'undefined' && 
+                                ((playerPerks.has && playerPerks.has('HEALTH_PHYSICIST')) || 
+                                 (playerPerks.includes && playerPerks.includes('HEALTH_PHYSICIST')));
                             
                             if ((!util || !util.radImmunity) && !hasRadPerk) {
                                 playerHull -= 20;
@@ -4237,9 +4331,14 @@ function handleCombatInput(key) {
                 if (typeof soundManager !== 'undefined') soundManager.playUIHover();
                 evaluateStar(starData, starId);
 
-                //Only trigger engrams on the first scan, and use .has() for Sets
+                // Only trigger engrams on the first scan
                 if (isFirstScan) {
-                    const engramChance = (typeof playerPerks !== 'undefined' && playerPerks.has('VOID_DIVER')) ? 0.25 : 0.10;
+                    // 🚨 Safely check for VOID_DIVER whether it's a Set or an Array
+                    const hasVoidDiver = typeof playerPerks !== 'undefined' && 
+                        ((playerPerks.has && playerPerks.has('VOID_DIVER')) || 
+                         (playerPerks.includes && playerPerks.includes('VOID_DIVER')));
+
+                    const engramChance = hasVoidDiver ? 0.25 : 0.10;
                     
                     if (Math.random() < engramChance) {
                         playerCargo['ENCRYPTED_ENGRAM'] = (playerCargo['ENCRYPTED_ENGRAM'] || 0) + 1;
