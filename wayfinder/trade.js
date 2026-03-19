@@ -412,8 +412,9 @@ function executeTrade(itemId, isBuy, specificQty = 1) {
     }
 
     if (isBuy) {
+        const itemWeight = item.weight || 1; // 🚨 Grab the item's weight
         const affordable = Math.floor(playerCredits / price);
-        const space = PLAYER_CARGO_CAPACITY - currentCargoLoad;
+        const space = Math.floor((PLAYER_CARGO_CAPACITY - currentCargoLoad) / itemWeight); // 🚨 Divide space by weight!
 
         if (qtyToTrade === 'max') {
             qtyToTrade = Math.min(affordable, space, availableStock);
