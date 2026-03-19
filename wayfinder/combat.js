@@ -274,10 +274,9 @@ function handleCombatAction(action) {
         }
 
         if (Math.random() < hitChance) {
-            if (Math.random() < hitChance) {
             if (typeof soundManager !== 'undefined') soundManager.playLaser();
             
-            // CRITICAL HIT MECHANIC
+            // 🚨 NEW CRITICAL HIT MECHANIC
             const critRoll = weaponStats.critChance || 0.05; // Default 5% if not defined
             if (Math.random() < critRoll) {
                 damageDealt *= 2;
