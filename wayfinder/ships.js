@@ -440,3 +440,47 @@ const COMPONENTS_DATABASE = {
        cost: 8000, stats: { hullBonus: 40, passiveRegen: true }, reqFaction: "KTHARR", minRep: 50, loreKey: "LORE_COMP_ENGINE"
    }
 };
+
+// --- PROCEDURAL LOOT ENGINE ---
+const LOOT_PREFIXES = [
+    { name: "Hardened", stat: "hullBonus", val: 15, costMod: 1.2 },
+    { name: "Overcharged", stat: "shieldBonus", val: 20, costMod: 1.3 },
+    { name: "Smuggler's", stat: "cargoBonus", val: 10, costMod: 1.5 }
+];
+
+const LOOT_SUFFIXES = [
+    { name: "of the Cartel", stat: "signatureMod", val: -0.2, costMod: 1.4 },
+    { name: "from the Core", stat: "scanBonus", val: 0.1, costMod: 1.2 }
+];
+
+function generateProceduralModule(baseModuleKey) {
+    // 1. Get the base item from your existing database
+    const baseItem = typeof SHIPS_CLASSES !== 'undefined' ? SHIP_CLASSES[baseModuleKey] : null; 
+    // (Note: Adjust the dictionary lookup to wherever your ship modules/weapons live!)
+    
+    if (!baseItem) return null;
+
+    // 2. Clone it so we don't accidentally mutate the master database
+    let newItem = JSON.parse(JSON.stringify(baseItem)); 
+    
+    // 3. Roll for a Prefix (30% chance)
+    if (Math.random() < 0.3) {
+        let prefix = LOOT_PREFIXES[Math.floor(Math.random() * LOOT_PREFIXES.length)];
+        newItem.name = `${prefix.name} ${newItem.name}`;
+        newItem.cost = Math.floor(newItem.cost * prefix.costMod);
+        newItem.stats[prefix.stat] = (newItem.stats[prefix.stat] || 0) + prefix.val;
+    }
+
+    // 4. Roll for a Suffix (20% chance)
+    if (Math.random() < 0.2) {
+        let suffix = LOOT_SUFFIXES[Math.floor(Math.random() * LOOT_SUFFIXES.length)];
+        newItem.name = `${newItem.name} ${suffix.name}`;
+        newItem.cost = Math.floor(newItem.cost * suffix.costMod);
+        newItem.stats[suffix.stat] = (newItem.stats[suffix.stat] || 0) + suffix.val;
+    }
+
+    // 5. Give it a unique ID so it doesn't stack incorrectly in inventory
+    newItem.id = `${baseModuleKey}_${Date.now()}`; 
+    
+    return newItem;
+}
