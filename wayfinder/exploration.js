@@ -258,9 +258,16 @@ function renderPlanetView() {
     }
 
     // 3. Calculate Loot Table (RNG dictates rarity)
-    const roll = Math.random();
-    let itemId = "MINERALS"; // Default fallback
-    let amount = Math.floor(Math.random() * 5) + 5; // Yields 5 to 9 units
+    const orbitalLootTable = [
+        { id: "MINERALS", weight: 70, min: 5, max: 9 },
+        { id: "PLATINUM_ORE", weight: 20, min: 1, max: 4 },
+        { id: "RARE_METALS", weight: 8, min: 2, max: 4 },
+        { id: "VOID_CRYSTALS", weight: 2, min: 1, max: 1 }
+    ];
+    
+    const loot = generateLoot(orbitalLootTable);
+    let itemId = loot.id;
+    let amount = loot.qty;
 
     // Pull from your actual items.js database!
     if (roll > 0.95) { itemId = "VOID_CRYSTALS"; amount = 1; }
