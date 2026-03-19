@@ -40,19 +40,41 @@ function startCombat(specificEnemyEntity = null) {
      playerIsChargingAttack = false;
      playerIsEvading = false;
 
-     // 2. Scaling Logic
+     // 2. Scaling Logic & PROCEDURAL ENEMY ENGINE
      const distanceFromCenter = Math.sqrt((playerX * playerX) + (playerY * playerY));
-     const difficultyMultiplier = 1 + (distanceFromCenter / 400);
+     let difficultyMultiplier = 1 + (distanceFromCenter / 400);
 
-     const baseHull = pirateShip.baseHull + Math.floor(Math.random() * 10) - 5;
-     const baseShields = pirateShip.baseShields + Math.floor(Math.random() * 10) - 5;
+     // --- NEW: Deep clone the ship so we can mutate it safely ---
+     let enemyShipClone = JSON.parse(JSON.stringify(pirateShip));
+
+     // 20% chance to spawn an Elite/Mutated variant (unless it's already a legendary boss)
+     let isElite = specificEnemyEntity ? specificEnemyEntity.isLegendary : false;
+     
+     if (Math.random() < 0.20 && !isElite) {
+         const enemyPrefixes = [
+             { name: "Armored", hullMult: 1.5, shieldMult: 1.0, diffMod: 0.1 },
+             { name: "Overcharged", hullMult: 1.0, shieldMult: 1.5, diffMod: 0.1 },
+             { name: "Elite", hullMult: 1.3, shieldMult: 1.3, diffMod: 0.2 },
+             { name: "Deranged", hullMult: 0.6, shieldMult: 0.4, diffMod: 0.4 } // Glass cannon, hits way harder!
+         ];
+         let prefix = enemyPrefixes[Math.floor(Math.random() * enemyPrefixes.length)];
+         
+         // Apply the mutations
+         enemyShipClone.name = `${prefix.name} ${enemyShipClone.name}`;
+         enemyShipClone.baseHull = Math.floor(enemyShipClone.baseHull * prefix.hullMult);
+         enemyShipClone.baseShields = Math.floor(enemyShipClone.baseShields * prefix.shieldMult);
+         difficultyMultiplier += prefix.diffMod;
+     }
+
+     const baseHull = enemyShipClone.baseHull + Math.floor(Math.random() * 10) - 5;
+     const baseShields = enemyShipClone.baseShields + Math.floor(Math.random() * 10) - 5;
 
      const scaledHull = Math.floor(baseHull * difficultyMultiplier);
      const scaledShields = Math.floor(baseShields * difficultyMultiplier);
 
      // 3. Initialize Combat Context with Subsystems
      currentCombatContext = {
-         ship: pirateShip,
+         ship: enemyShipClone, // <-- CRITICAL: Use the mutated clone here!
          // Core Stats
          pirateShields: Math.max(10, scaledShields),
          pirateMaxShields: Math.max(10, scaledShields),
