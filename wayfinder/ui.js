@@ -427,7 +427,8 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
         { id: 'SHIP', name: 'Vessel Manifest', icon: '🚀' },
         { id: 'LOADOUT', name: 'Equipped Gear', icon: '⚙️' },
         { id: 'FACTIONS', name: 'Reputation', icon: '📜' },
-        { id: 'LOG', name: "Captain's Log", icon: '📝' }
+        { id: 'LOG', name: "Recent Comms", icon: '💬' },
+        { id: 'MILESTONES', name: "Service Record", icon: '🏆' }
     ];
 
     tabs.forEach(t => {
@@ -535,7 +536,31 @@ function displayCommanderProfile(tab = 'OVERVIEW') {
         }
         html += `</div>`;
     }
-    // --- NEW: THE CAPTAIN'S LOG TAB ---
+
+    else if (tab === 'MILESTONES') {
+        html += `
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:15px; margin-top:0;">
+                <h3 style="color:var(--gold-text); margin:0;">SERVICE RECORD</h3>
+                <span style="font-size:10px; color:var(--item-desc-color); letter-spacing:1px;">CAREER MILESTONES</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; max-height: 380px; overflow-y: auto; padding-right: 5px;">
+        `;
+        
+        if (GameState.player.milestones && GameState.player.milestones.length > 0) {
+            GameState.player.milestones.forEach(msg => {
+                html += `
+                    <div style="background:rgba(255,215,0,0.05); border-left:2px solid var(--gold-text); padding:10px; border-radius:0 4px 4px 0; font-size:12px; line-height:1.5;">
+                        ${msg}
+                    </div>
+                `;
+            });
+        } else {
+            html += `<div style="text-align:center; padding: 30px; color:#666; font-style:italic;">No major milestones recorded yet.</div>`;
+        }
+        
+        html += `</div>`;
+    }
+
     else if (tab === 'LOG') {
         html += `
             <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:1px solid #333; padding-bottom:10px; margin-bottom:15px; margin-top:0;">
