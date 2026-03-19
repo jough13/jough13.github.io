@@ -111,6 +111,8 @@ let rescueTargetStation = null;
 let rescueFeePaid = 0;
 let freebieUsed = false;
 
+let activeDistressCalls = [];
+
 // --- AMBIENT TRAFFIC SYSTEM ---
 let activeNPCs = [];
 
@@ -1640,7 +1642,23 @@ let statusOverlayElement;
     const exactFaction = getFactionAt(playerX, playerY);
     let factionName = "Independent";
     const isLightMode = document.body.classList.contains('light-mode');
-    let fColor = isLightMode ? "#888899" : "#FFFFFF"; 
+    let fColor = isLightMode ? "#888899" : "#FFFFFF";
+
+    // --- MINI-MAP DISTANCE VISUALIZER ---
+    // Creates a text-based "radar line" showing how far from Sector 0,0 the player is!
+    const distToCore = Math.floor(Math.sqrt((currentSectorX * currentSectorX) + (currentSectorY * currentSectorY)));
+    
+    // Scale the distance so 50 sectors out fills the bar
+    let mapString = "[";
+    const maxDots = 15;
+    const playerPos = Math.min(maxDots - 1, Math.floor((distToCore / 50) * maxDots));
+    
+    for (let i = 0; i < maxDots; i++) {
+        if (i === playerPos) mapString += `<span style='color:${fColor}; font-weight:bold;'>@</span>`; // You (Draw this first!)
+        else if (i === 0) mapString += "<span style='color:#00AAFF'>O</span>"; // Sol (Core)
+        else mapString += "<span style='color:#444'>-</span>"; // Empty space
+    }
+    mapString += "]";
      
     if (exactFaction === "KTHARR") { factionName = "Hegemony"; fColor = "#00FF44"; }
     else if (exactFaction === "CONCORD") { factionName = "Concord"; fColor = "#00AAFF"; }
@@ -1668,7 +1686,7 @@ let statusOverlayElement;
     }
 
     if (sectorNameStatElement) {
-        sectorNameStatElement.innerHTML = `${currentSectorName} <span style="color:${fColor}; opacity:0.9;">[${factionName}]</span> <span style="color:${threatColor}; font-size: 0.8em; margin-left: 8px;">[${threat}]</span>`;
+        sectorNameStatElement.innerHTML = `${currentSectorName} <span style="color:${fColor}; opacity:0.9;">[${factionName}]</span> <span style="font-family: monospace; letter-spacing: 2px; margin-left: 10px;">${mapString}</span> <span style="color:${threatColor}; font-size: 0.8em; margin-left: 8px;">[${threat}]</span>`;
         sectorNameStatElement.style.color = "#00E0E0"; 
     }
      
@@ -2352,7 +2370,7 @@ function renderSystemMap() {
      if (typeof render === 'function') render();
  }
 
- function renderGalacticMap() {
+function renderGalacticMap() {
     // --- 1. Check Theme & Hardware Status ---
     const isLightMode = document.body.classList.contains('light-mode');
     
@@ -2365,21 +2383,25 @@ function renderSystemMap() {
     let camX = playerX - halfViewW;
     let camY = playerY - halfViewH;
 
-    // --- 3. Clear Canvas & Reset Alignment ---
-    ctx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+    // --- 3. Define the logical dimensions of the map (THE ZOOM FIX) ---
+    const logicalWidth = VIEWPORT_WIDTH_TILES * TILE_SIZE;
+    const logicalHeight = VIEWPORT_HEIGHT_TILES * TILE_SIZE;
+
+    // --- 4. Clear Canvas & Reset Alignment ---
+    ctx.clearRect(0, 0, logicalWidth, logicalHeight);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
-    // --- 4A. DRAW FACTION BACKGROUNDS (LAYER 0) ---
+    // --- 5A. DRAW FACTION BACKGROUNDS (LAYER 0) ---
     if (sensorPulseActive) {
         const pulseIntensity = (1 - (sensorPulseRadius / MAX_PULSE_RADIUS)) * 0.2;
         ctx.fillStyle = isLightMode 
             ? `rgba(0, 119, 119, ${0.05 + pulseIntensity})` 
             : `rgba(0, 40, 40, ${0.4 + pulseIntensity})`;
-        ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+        ctx.fillRect(0, 0, logicalWidth, logicalHeight);
     } else {
         ctx.fillStyle = isLightMode ? '#FFFFFF' : '#000000';
-        ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+        ctx.fillRect(0, 0, logicalWidth, logicalHeight);
     }
 
     const tileSize = TILE_SIZE;
@@ -2422,7 +2444,7 @@ function renderSystemMap() {
         }
     }
 
-    // --- 4B. DRAW TILES & OBJECTS (LAYER 1) ---
+    // --- 5B. DRAW TILES & OBJECTS (LAYER 1) ---
     for (let y = 0; y < VIEWPORT_HEIGHT_TILES; y++) {
         for (let x = 0; x < VIEWPORT_WIDTH_TILES; x++) {
             const worldX = Math.floor(camX + x);
@@ -2551,7 +2573,7 @@ function renderSystemMap() {
         } 
     } 
 
-    // --- 5. Draw Dynamic Entities (LAYER 2) ---
+    // --- 6. Draw Dynamic Entities (LAYER 2) ---
     const playerScreenX = (playerX - camX) * TILE_SIZE + TILE_SIZE / 2;
     const playerScreenY = (playerY - camY) * TILE_SIZE + TILE_SIZE / 2;
 
@@ -2599,7 +2621,7 @@ function renderSystemMap() {
     activeParticles.forEach(p => {
         const screenX = (p.x - camX) * TILE_SIZE;
         const screenY = (p.y - camY) * TILE_SIZE;
-        if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width && screenY >= -TILE_SIZE) {
+        if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE) {
             ctx.fillStyle = p.color;
             ctx.globalAlpha = p.life; 
             ctx.fillRect(screenX, screenY, p.size, p.size);
@@ -2607,11 +2629,42 @@ function renderSystemMap() {
         }
     });
 
+    // --- DRAW DISTRESS CALLS ---
+    activeDistressCalls.forEach(ev => {
+        const screenX = (ev.x - camX) * TILE_SIZE + TILE_SIZE / 2;
+        const screenY = (ev.y - camY) * TILE_SIZE + TILE_SIZE / 2;
+        
+        // Only draw if it's currently on-screen
+        if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
+            ctx.save();
+            
+            // Make it flash rapidly to grab attention!
+            const pulse = (Math.sin(Date.now() / 150) + 1) / 2;
+            
+            ctx.fillStyle = `rgba(255, 170, 0, ${0.4 + (pulse * 0.6)})`; // Warning Orange
+            
+            if (useHighGraphics && !isLightMode) { 
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#FFAA00';
+            }
+            
+            ctx.font = `bold ${TILE_SIZE * 1.2}px 'Orbitron', monospace`;
+            ctx.fillText("?", screenX, screenY);
+            
+            // Optional: Draw a tiny timer bar above it so the player knows it's urgent
+            ctx.fillStyle = '#FFAA00';
+            const barWidth = (ev.turnsRemaining / 30) * TILE_SIZE;
+            ctx.fillRect(screenX - (TILE_SIZE/2), screenY - (TILE_SIZE/2) - 4, barWidth, 2);
+            
+            ctx.restore();
+        }
+    });
+
     // Draw Enemies
     activeEnemies.forEach(enemy => {
         const screenX = (enemy.x - camX) * TILE_SIZE + TILE_SIZE / 2;
         const screenY = (enemy.y - camY) * TILE_SIZE + TILE_SIZE / 2;
-        if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width && screenY >= -TILE_SIZE && screenY <= gameCanvas.height) {
+        if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
             ctx.fillStyle = enemy.color || '#FF5555'; 
             ctx.font = `bold ${TILE_SIZE}px 'Roboto Mono', monospace`; 
             const charToDraw = enemy.char || PIRATE_CHAR_VAL;
@@ -2624,7 +2677,7 @@ function renderSystemMap() {
         activeNPCs.forEach(npc => {
             const screenX = (npc.x - camX) * TILE_SIZE + TILE_SIZE / 2;
             const screenY = (npc.y - camY) * TILE_SIZE + TILE_SIZE / 2;
-            if (screenX >= -TILE_SIZE && screenX <= gameCanvas.width && screenY >= -TILE_SIZE && screenY <= gameCanvas.height) {
+            if (screenX >= -TILE_SIZE && screenX <= logicalWidth && screenY >= -TILE_SIZE && screenY <= logicalHeight) {
                 ctx.save();
                 ctx.fillStyle = npc.color; 
                 if (useHighGraphics && !isLightMode) { 
@@ -2669,7 +2722,7 @@ function renderSystemMap() {
         }
     }
 
-// --- 6. Update UI Stats ---
+    // --- 7. Update UI Stats ---
     if (!particleAnimationId) {
         document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
         if (typeof renderUIStats === 'function') renderUIStats();
@@ -2717,16 +2770,16 @@ function renderSystemMap() {
             
             // Calculate screen edge intersection
             const padding = TILE_SIZE; // Keep it inside the canvas edge
-            const cx = gameCanvas.width / 2;
-            const cy = gameCanvas.height / 2;
+            const cx = logicalWidth / 2;
+            const cy = logicalHeight / 2;
             
             // Map the angle to the boundaries of the canvas
             let edgeX = cx + Math.cos(angle) * (cx - padding);
             let edgeY = cy + Math.sin(angle) * (cy - padding);
             
             // Clamp to a rectangle instead of an oval
-            edgeX = Math.max(padding, Math.min(gameCanvas.width - padding, edgeX));
-            edgeY = Math.max(padding, Math.min(gameCanvas.height - padding, edgeY));
+            edgeX = Math.max(padding, Math.min(logicalWidth - padding, edgeX));
+            edgeY = Math.max(padding, Math.min(logicalHeight - padding, edgeY));
 
             ctx.save();
             ctx.translate(edgeX, edgeY);
@@ -3170,6 +3223,57 @@ if (typeof GameBus !== 'undefined') {
         playerFuel = Math.max(0, playerFuel - actualFuelPerMove);
         
         spawnParticles(playerX - dx, playerY - dy, 'thruster', { x: dx, y: dy });
+
+        // ==========================================
+        // --- DYNAMIC DISTRESS CALL SYSTEM ---
+        // ==========================================
+        
+        // 1. Roll to spawn a new event (5% chance per step, max 2 active at a time)
+        if (Math.random() < 0.05 && activeDistressCalls.length < 2) {
+            // Spawn it 8 to 15 tiles away from the player
+            const dist = 8 + Math.floor(Math.random() * 7);
+            const angle = Math.random() * Math.PI * 2;
+            
+            const eventX = Math.floor(playerX + Math.cos(angle) * dist);
+            const eventY = Math.floor(playerY + Math.sin(angle) * dist);
+            
+            activeDistressCalls.push({
+                x: eventX,
+                y: eventY,
+                turnsRemaining: 30, // Player has 30 movement steps to reach it
+                type: Math.random() > 0.5 ? 'AMBUSH' : 'RESCUE' 
+            });
+            
+            if (typeof showToast === 'function') showToast("DISTRESS SIGNAL DETECTED", "warning");
+            if (typeof soundManager !== 'undefined') soundManager.playUIHover(); // A soft blip sound
+        }
+
+        // 2. Tick down existing events and check for collisions
+        for (let i = activeDistressCalls.length - 1; i >= 0; i--) {
+            let ev = activeDistressCalls[i];
+            ev.turnsRemaining--;
+            
+            // Did the player reach the exact coordinates?
+            if (playerX === ev.x && playerY === ev.y) {
+                if (ev.type === 'AMBUSH') {
+                    logMessage("<span style='color:var(--danger)'>It was a trap! Pirates decloak!</span>");
+                    // Trigger your existing combat system!
+                    if (typeof startCombat === 'function') startCombat(); 
+                } else {
+                    logMessage("<span style='color:var(--success)'>You rescued a stranded pilot. They transfer 500c in gratitude.</span>");
+                    playerCredits += 500;
+                    if (typeof renderUIStats === 'function') renderUIStats();
+                    if (typeof soundManager !== 'undefined') soundManager.playBuy();
+                }
+                // Remove the event since it was resolved
+                activeDistressCalls.splice(i, 1); 
+            } 
+            // Did the timer hit zero?
+            else if (ev.turnsRemaining <= 0) {
+                logMessage("<span style='color:#666'>A nearby distress signal faded to static...</span>");
+                activeDistressCalls.splice(i, 1);
+            }
+        }
 
         // --- THE MAGIC HANDOFF ---
         // Let the Tick Engine handle the rest!
@@ -4623,16 +4727,12 @@ function handleCombatInput(key) {
     if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
 }
 
- // --- INPUT HANDLING WITH SMOOTHING ---
-let lastInputTime = 0;
-const INPUT_DELAY = 120; // 120ms cooldown between moves (Adjust this to change "weight")
-
 // --- INPUT HANDLING WITH SMOOTHING ---
 let lastInputTime = 0;
 const INPUT_DELAY = 120; 
 
 document.addEventListener('keydown', function(event) {
-    // 🚨PERFORMANCE FIX: Instant Rejection
+    // Instant Rejection
     // If the key is being held down (repeating), ignore it immediately.
     // This stops the browser from running the massive Switch statement 60x a second!
     if (event.repeat) return; 
@@ -4656,7 +4756,6 @@ document.addEventListener('keydown', function(event) {
 
     // 1. TIMING CHECK (The Smoother)
     const isMovementKey = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key);
-    const now = Date.now();
 
     if (isMovementKey && (now - lastInputTime < INPUT_DELAY)) {
         return; // Ignore input if too fast
