@@ -360,7 +360,7 @@ function handleCombatAction(action) {
         }
 
     } else if (action === 'hail') {
-        // --- DIPLOMACY LOGIC ---
+        // --- DIPLOMACY & BRIBERY LOGIC ---
         let faction = "PIRATE";
         const shipId = currentCombatContext.ship && currentCombatContext.ship.id ? currentCombatContext.ship.id : "PIRATE";
         if (shipId.includes("KTHARR")) faction = "KTHARR";
@@ -369,20 +369,49 @@ function handleCombatAction(action) {
         const standing = (typeof playerFactionStanding !== 'undefined' && playerFactionStanding) ? (playerFactionStanding[faction] || 0) : 0;
         
         combatLog += "Open channel: ";
-        if (faction === "PIRATE") {
-            combatLog += "\"Only credits talk here!\" (Diplomacy Failed)";
-        } else if (standing > 20) {
+        
+        // 1. High Reputation (Free Pass)
+        if (standing > 20 && faction !== "PIRATE") {
             combatLog += "\"Visual ID confirmed. Apologies, Commander.\" <span style='color:#00FF00'>Hostiles disengaging.</span>";
             logMessage(combatLog);
             currentCombatContext = null;
             changeGameState(GAME_STATES.GALACTIC_MAP);
             handleInteraction();
             return;
-        } else {
-            combatLog += "\"You have no authority here.\" ";
-            currentCombatContext.difficultyMultiplier += 0.2;
-            combatLog += "(Enemy Enraged)";
+        } 
+        
+        // 2. 🚨 NEW: The Bribe Mechanic!
+        // If your rep isn't high enough, but you have cash, try to buy them off!
+        const bribeCost = (currentCombatContext.difficultyMultiplier || 1) * 500;
+        
+        if (playerCredits >= bribeCost) {
+            // 75% chance the bribe works!
+            if (Math.random() < 0.75) {
+                playerCredits -= bribeCost;
+                combatLog += `"Credits received. We never saw you." <span style='color:var(--gold-text)'>(-${formatNumber(bribeCost)}c) Hostiles disengaging.</span>`;
+                logMessage(combatLog);
+                
+                if (typeof soundManager !== 'undefined') soundManager.playBuy();
+                if (typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED');
+                
+                currentCombatContext = null;
+                changeGameState(GAME_STATES.GALACTIC_MAP);
+                handleInteraction();
+                return;
+            } else {
+                // They took the money AND kept fighting!
+                playerCredits -= bribeCost;
+                combatLog += `"Thanks for the tip. Now die!" <span style='color:var(--danger)'>(-${formatNumber(bribeCost)}c) Bribe failed!</span> `;
+                currentCombatContext.difficultyMultiplier += 0.2; // Enemy Enraged
+            }
+        } 
+        
+        // 3. Flat Failure
+        else {
+            combatLog += "\"Only credits talk here!\" (Diplomacy Failed) ";
+            currentCombatContext.difficultyMultiplier += 0.2; // Enemy Enraged
         }
+        
         enemyCanAct = true;
 
     } else if (action === 'charge') {
