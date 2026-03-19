@@ -324,17 +324,17 @@ const COMPONENTS_DATABASE = {
     WEAPON_PULSE_LASER_MK1: {
         name: "Pulse Laser Mk1", type: "weapon", slot: "weapon", manufacturer: "FRONTIER",
         description: "Standard issue civilian pulse laser. Reliable but low power.",
-        cost: 0, stats: { damage: 8, hitChance: 0.70 }, loreKey: "LORE_COMP_PULSE_LASER"
+        cost: 0, stats: { damage: 8, hitChance: 0.70, critChance: 0.05 }, loreKey: "LORE_COMP_PULSE_LASER"
     },
     WEAPON_PULSE_LASER_MK2: {
         name: "Pulse Laser Mk2", type: "weapon", slot: "weapon", manufacturer: "FRONTIER",
         description: "Upgraded pulse laser with improved focusing coils for higher damage.",
-        cost: 2000, stats: { damage: 12, hitChance: 0.75 }, loreKey: "LORE_COMP_PULSE_LASER"
+        cost: 2000, stats: { damage: 12, hitChance: 0.75, critChance: 0.1 }, loreKey: "LORE_COMP_PULSE_LASER"
     },
     WEAPON_PULSE_LASER_MK3: {
         name: "Pulse Laser Mk3", type: "weapon", slot: "weapon", manufacturer: "CONCORD",
         description: "Military-grade pulse laser. Significant damage output and better targeting.",
-        cost: 5500, stats: { damage: 18, hitChance: 0.78 }, loreKey: "LORE_COMP_PULSE_LASER"
+        cost: 5500, stats: { damage: 18, hitChance: 0.78, critChance: 0.15 }, loreKey: "LORE_COMP_PULSE_LASER"
     },
     WEAPON_KINETIC_IMPULSOR_MK1: {
         name: "Kinetic Impulsor Mk1", type: "weapon", slot: "weapon", manufacturer: "KTHARR",
@@ -354,7 +354,7 @@ const COMPONENTS_DATABASE = {
     WEAPON_MASS_DRIVER_MK1: {
         name: "Mass Driver Mk1", type: "weapon", slot: "weapon", manufacturer: "KTHARR",
         description: "Accelerates a dense projectile to devastating speeds. High hull damage, slow fire rate.",
-        cost: 3800, stats: { damage: 25, hitChance: 0.60 }, loreKey: "LORE_COMP_MASS_DRIVER"
+        cost: 3800, stats: {  damage: 25, hitChance: 0.60, critChance: 0.25 }, loreKey: "LORE_COMP_MASS_DRIVER"
     },
     WEAPON_MISSILE_LAUNCHER_MK1: {
         name: "Missile Launcher Mk1", type: "weapon", slot: "weapon", manufacturer: "CONCORD",
