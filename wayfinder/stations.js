@@ -430,23 +430,48 @@ else if (action === 'RUMOR') {
     }
 }
 
- function performCustomsScan() {
+function performCustomsScan() {
     // 1. Check for Contraband
     let contrabandFound = [];
+    let hiddenCapacity = 0;
+    
+    // Check if the player has the Cartel module installed
+    if (typeof playerShip !== 'undefined' && playerShip.components) {
+        const util = COMPONENTS_DATABASE[playerShip.components.utility || "UTIL_NONE"];
+        if (util && util.stats && util.stats.isSmuggler) {
+            hiddenCapacity = 5; // The shielded bay hides 5 units of contraband!
+        }
+    }
+
+    // Tally up illegal goods and attempt to hide them
     for (const itemID in playerCargo) {
-        // SAFETY CHECK: Ensure the item actually exists in the database before checking if it is illegal!
         const itemDef = COMMODITIES[itemID];
+        
+        // SAFETY CHECK: Ensure the item exists and is illegal
         if (playerCargo[itemID] > 0 && itemDef && itemDef.illegal) {
-            contrabandFound.push(itemID);
+            let exposedQty = playerCargo[itemID];
+            
+            // Hide items in the shielded compartment first
+            if (hiddenCapacity > 0) {
+                const amountToHide = Math.min(exposedQty, hiddenCapacity);
+                hiddenCapacity -= amountToHide;
+                exposedQty -= amountToHide;
+            }
+            
+            // If they still have illegal goods spilling out of the hidden compartment, flag them!
+            if (exposedQty > 0) {
+                // Push an object with the exact exposed quantity
+                contrabandFound.push({ id: itemID, exposedQty: exposedQty });
+            }
         }
     }
 
     if (contrabandFound.length === 0) return true; // Clean scan, proceed
 
     // 2. Risk Calculation (Base 30% chance + 10% per illegal item type)
-    const catchChance = 0.30 + (contrabandFound.length * 0.10);
+    let catchChance = 0.30 + (contrabandFound.length * 0.10);
 
-    // 🚨 SMUGGLING: Multiply by the ship's signature size!
+    // 🚨 SMUGGLING: Multiply by the ship's overall radar signature size!
     catchChance *= (window.PLAYER_SIGNATURE || 1.0);
     
     logMessage("Scanning vessel signature...", true);
@@ -457,16 +482,21 @@ else if (action === 'RUMOR') {
         if (typeof triggerHaptic === 'function') triggerHaptic([200, 100, 200]);
         
         let fine = 0;
-        contrabandFound.forEach(id => {
-            const qty = playerCargo[id];
-            const val = COMMODITIES[id].basePrice || 0;
-            fine += (qty * val * 0.5); // Fine is 50% of base value
-            playerCargo[id] = 0; // Confiscated!
+        
+        // 🚨 Update the loop to use the new object properties (c.id and c.exposedQty)
+        contrabandFound.forEach(c => {
+            const val = COMMODITIES[c.id].basePrice || 0;
+            // The fine is exactly 50% of the base value of the EXPOSED goods
+            fine += (c.exposedQty * val * 0.5); 
+            
+            // Confiscate the exposed goods (leaving the hidden ones safely in the hold!)
+            playerCargo[c.id] -= c.exposedQty;
+            if (playerCargo[c.id] <= 0) delete playerCargo[c.id];
         });
         
         fine = Math.floor(fine);
 
-        // --- NEW: SMOOTH TALKER & LORE UNLOCK ---
+        // --- SMOOTH TALKER & LORE UNLOCK ---
         // Safely check if playerPerks is an Array or a Set
         const hasSmoothTalker = typeof playerPerks !== 'undefined' && 
             ((playerPerks.has && playerPerks.has('SMOOTH_TALKER')) || 
