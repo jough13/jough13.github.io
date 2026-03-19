@@ -2407,11 +2407,19 @@ function resolveExpedition(choice) {
     else if (choice === 'SMUGGLER_SLICE') {
         playerCargo['PRECURSOR_CIPHER']--;
         if (playerCargo['PRECURSOR_CIPHER'] <= 0) delete playerCargo['PRECURSOR_CIPHER'];
-        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         
         const creds = 1500;
         playerCredits += creds;
         resultHtml = `<span style="color:var(--success)">HACK SUCCESSFUL.</span><br>Cipher consumed. The cartel pod opens smoothly, revealing <span style="color:var(--gold-text)">${creds}c</span>!`;
+        
+        // --- NEW: PROCEDURAL SMUGGLER LOOT ---
+        const rareHold = typeof generateProceduralModule === 'function' ? generateProceduralModule("SMUGGLERS_HOLD") : null;
+        if (rareHold) {
+            playerCargo[rareHold.id] = rareHold;
+            resultHtml += `<br><span style="color:#9933FF; font-weight:bold;">You also found a modified ship part: ${rareHold.name}!</span>`;
+        }
+        
+        if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
         if (typeof soundManager !== 'undefined') soundManager.playBuy();
     }
     else if (choice === 'OBELISK_TOUCH') {
@@ -2968,10 +2976,21 @@ function processDerelictChoice(choice) {
             break;
 
         case 'SALVAGE_TECH':
-            let techVal = 800 + Math.floor(Math.random() * 500);
-            derelictContext.lootAccumulated += techVal;
-            playerCredits += techVal;
-            logMessage(`<span style="color:var(--gold-text)">Nav-chip secured! Worth ${techVal} credits.</span>`);
+            // --- PROCEDURAL DERELICT LOOT ---
+            const rareScanner = typeof generateProceduralModule === 'function' ? generateProceduralModule("SCANNER_NEXSTAR_4SE") : null;
+            
+            if (rareScanner) {
+                playerCargo[rareScanner.id] = rareScanner;
+                if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+                logMessage(`<span style="color:var(--gold-text)">Rare Tech Secured! You salvaged a ${rareScanner.name} from the console!</span>`);
+            } else {
+                // Fallback to credits if the generator fails
+                let techVal = 800 + Math.floor(Math.random() * 500);
+                derelictContext.lootAccumulated += techVal;
+                playerCredits += techVal;
+                logMessage(`<span style="color:var(--gold-text)">Nav-chip secured! Worth ${techVal} credits.</span>`);
+            }
+            
             derelictContext.stage = 'VICTORY';
             break;
     }
