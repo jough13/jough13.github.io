@@ -2730,3 +2730,14 @@ body.light-mode, .light-mode {
     color: #333344 !important; 
     font-weight: bold !important;
 }
+
+/* --- WARP JUMP EFFECT --- */
+@keyframes warp-jump {
+    0% { filter: blur(0px) contrast(1); transform: scale(1); opacity: 1; }
+    30% { filter: blur(20px) contrast(2); transform: scale(1.5); opacity: 0.5; }
+    100% { filter: blur(0px) contrast(1); transform: scale(1); opacity: 1; }
+}
+
+.warp-effect {
+    animation: warp-jump 0.6s ease-in-out;
+}
