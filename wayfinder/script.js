@@ -2214,14 +2214,22 @@ function renderSystemMap() {
     currentSystemData.planets.forEach((planet, index) => {
         const borderStyle = (index === selectedPlanetIndex) ? '2px solid #00E0E0' : '1px solid #303060';
         const bgStyle = (index === selectedPlanetIndex) ? 'rgba(0, 224, 224, 0.1)' : 'rgba(0,0,0,0.5)';
-        
+       
         const landButtonHTML = planet.biome.landable ?
             `<button class="action-button" style="margin-top: 10px;" onclick="landOnPlanet(${index})">LAND</button>` :
             `<button class="action-button" disabled style="margin-top: 10px; border-color:#444; color:#666;">UNINHABITABLE</button>`;
 
+        // Visually tag planets the player has already explored!
+        let statusBadge = "";
+        if (planet.scannedThisVisit || planet.minedThisVisit || planet.exploredThisVisit) {
+            statusBadge = `<div style="position:absolute; top:-10px; right:-10px; background:var(--success); color:#000; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:10px; box-shadow: 0 0 10px var(--success);">SCANNED</div>`;
+        }
+
         html += `
            <div onclick="selectPlanet(${index})" ondblclick="examinePlanet(${index})" 
                 style="border: ${borderStyle}; background: ${bgStyle}; padding: 15px; border-radius: 8px; text-align: center; flex: 1; min-width: 140px; max-width: 220px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s;">
+
+                 ${statusBadge}
                
                <div>
                    <div style="font-size: 14px; font-weight:bold; color: #8888AA; margin-bottom: 8px;">PLANET ${index + 1}</div>
@@ -2934,7 +2942,7 @@ function getCombinedLocationData(x, y) {
      return null;
  }
 
- // ==========================================
+// ==========================================
 // --- MASTER GAME TICK ENGINE ---
 // ==========================================
 
@@ -2945,8 +2953,6 @@ function processGameTick(timeAmount, isMovement = false) {
     // 2. Resolve Environment & Hazards
     const hazard = getHazardType(playerX, playerY);
     const hasRadShield = playerShip.components.utility === 'UTIL_DOSIMETRY_ARRAY';
-
-
 
     if (hazard === 'RADIATION_BELT' && !hasRadShield) {
         if (playerShields > 0) {
@@ -3064,48 +3070,55 @@ function processGameTick(timeAmount, isMovement = false) {
         });
     }
 
-// --- 9. DYNAMIC ECONOMY SHIFTS ---
+    // --- 9. DYNAMIC ECONOMY SHIFTS ---
     // If there is no active trend, or the current one has expired, generate a new one!
     if (!activeMarketTrend || currentGameDate > activeMarketTrend.expiry) {
         if (typeof generateMarketTrend === 'function') generateMarketTrend();
     }
 
-    // This wakes up the Nebula encounters and any future passive listeners!
+    // 🚨 The Universal Tick Broadcast
+    // Instead of hardcoding everything here, any script file (trade.js, colonies.js, etc.) 
+    // can just listen for 'TICK_PROCESSED' and run its own background math!
     if (typeof GameBus !== 'undefined') {
-
-     // --- DYNAMIC FACTION WARS ---
-    // 0.5% chance per tick for a border skirmish to resolve
-    if (Math.random() < 0.005) {
-        const isKtharrFront = Math.random() > 0.5;
-        const aggressorWins = Math.random() > 0.5;
-        
-        if (isKtharrFront) {
-            // K'tharr vs Concord
-            if (aggressorWins && factionOffsets.KTHARR > 10) {
-                factionOffsets.KTHARR -= 1; // K'tharr pushes WEST
-                logMessage("<span style='color:var(--danger); font-weight:bold'>[ WAR ALERT ]</span> The K'tharr Hegemony has seized a Concord border sector!");
-            } else if (!aggressorWins && factionOffsets.KTHARR < 35) {
-                factionOffsets.KTHARR += 1; // Concord pushes EAST
-                logMessage("<span style='color:var(--accent-color); font-weight:bold'>[ WAR ALERT ]</span> Concord Aegis fleets have pushed the K'tharr out of a border sector.");
-            }
-        } else {
-            // Eclipse vs Concord
-            if (aggressorWins && factionOffsets.ECLIPSE < -10) {
-                factionOffsets.ECLIPSE += 1; // Cartel pushes EAST
-                logMessage("<span style='color:#9933FF; font-weight:bold'>[ WAR ALERT ]</span> The Eclipse Cartel has corrupted a Concord border world. Crime rates spiking.");
-            } else if (!aggressorWins && factionOffsets.ECLIPSE > -35) {
-                factionOffsets.ECLIPSE -= 1; // Concord pushes WEST
-                logMessage("<span style='color:var(--accent-color); font-weight:bold'>[ WAR ALERT ]</span> Concord Marines have raided an Eclipse shadow-port, securing the sector.");
-            }
-        }
-        // Force the map to redraw its borders
-        if (typeof render === 'function') render();
-    }
-
-        GameBus.emit('TICK_PROCESSED');
+        GameBus.emit('TICK_PROCESSED', { timeAmount: timeAmount, isMovement: isMovement });
     }
 
     return false; // Tick finished peacefully
+}
+
+// 🚨  Modular War Engine
+// This listens to the GameBus instead of cluttering the main tick function!
+if (typeof GameBus !== 'undefined') {
+    GameBus.on('TICK_PROCESSED', (data) => {
+        // 0.5% chance per tick for a border skirmish to resolve
+        if (Math.random() < 0.005) {
+            const isKtharrFront = Math.random() > 0.5;
+            const aggressorWins = Math.random() > 0.5;
+            const offsets = GameState.world.factionOffsets;
+            
+            if (isKtharrFront) {
+                // K'tharr vs Concord
+                if (aggressorWins && offsets.KTHARR > 10) {
+                    offsets.KTHARR -= 1; // K'tharr pushes WEST
+                    logMessage("<span style='color:var(--danger); font-weight:bold'>[ WAR ALERT ]</span> The K'tharr Hegemony has seized a Concord border sector!");
+                } else if (!aggressorWins && offsets.KTHARR < 35) {
+                    offsets.KTHARR += 1; // Concord pushes EAST
+                    logMessage("<span style='color:var(--accent-color); font-weight:bold'>[ WAR ALERT ]</span> Concord Aegis fleets have pushed the K'tharr out of a border sector.");
+                }
+            } else {
+                // Eclipse vs Concord
+                if (aggressorWins && offsets.ECLIPSE < -10) {
+                    offsets.ECLIPSE += 1; // Cartel pushes EAST
+                    logMessage("<span style='color:#9933FF; font-weight:bold'>[ WAR ALERT ]</span> The Eclipse Cartel has corrupted a Concord border world. Crime rates spiking.");
+                } else if (!aggressorWins && offsets.ECLIPSE > -35) {
+                    offsets.ECLIPSE -= 1; // Concord pushes WEST
+                    logMessage("<span style='color:var(--accent-color); font-weight:bold'>[ WAR ALERT ]</span> Concord Marines have raided an Eclipse shadow-port, securing the sector.");
+                }
+            }
+            // Force the map to redraw its borders
+            if (typeof render === 'function') render();
+        }
+    });
 }
 
  function movePlayer(dx, dy) {
@@ -4614,7 +4627,21 @@ function handleCombatInput(key) {
 let lastInputTime = 0;
 const INPUT_DELAY = 120; // 120ms cooldown between moves (Adjust this to change "weight")
 
+// --- INPUT HANDLING WITH SMOOTHING ---
+let lastInputTime = 0;
+const INPUT_DELAY = 120; 
+
 document.addEventListener('keydown', function(event) {
+    // 🚨PERFORMANCE FIX: Instant Rejection
+    // If the key is being held down (repeating), ignore it immediately.
+    // This stops the browser from running the massive Switch statement 60x a second!
+    if (event.repeat) return; 
+
+    const now = Date.now();
+    if (now - lastInputTime < INPUT_DELAY) {
+        return; // Ignore input if too fast (key mashing)
+    }
+
     // --- 0. BLOCK INPUT IF TYPING ---
     if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
         // Allow Enter and Escape to pass through for specific UI handlers (like the Spire hack!)
@@ -7756,6 +7783,14 @@ function executeWormholeJump(targetX, targetY, fuelCost, damageRisk) {
         if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: dmg, reason: "Wormhole Collapse" });
     } else {
         damageLog = `<br><span style="color:var(--success)">Transit completed with zero structural anomalies.</span>`;
+    }
+
+    // Trigger Visual Warp Effect
+    const canvas = document.getElementById('gameCanvas');
+    if (canvas) {
+        canvas.classList.remove('warp-effect');
+        void canvas.offsetWidth; // Magic trick to restart CSS animation instantly
+        canvas.classList.add('warp-effect');
     }
 
     // 2. Move Player
