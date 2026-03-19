@@ -759,6 +759,13 @@ let activeParticles = [];
 let lastParticleTime = 0;
 let particleAnimationId = null;
 
+let floatingTexts = [];
+
+function spawnFloatingText(x, y, text, color) {
+    floatingTexts.push({ x: x + 0.5, y: y + 0.5, text, color, life: 1.0, offsetY: 0 });
+    if (!particleAnimationId) animateParticles();
+}
+
 function getThemeColor(varName, fallback) {
     return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || fallback;
 }
@@ -2603,13 +2610,35 @@ function renderSystemMap() {
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
     }
 
+    // Draw Floating Text
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        const screenX = (ft.x - camX) * TILE_SIZE;
+        const screenY = (ft.y - camY) * TILE_SIZE + ft.offsetY;
+        
+        ctx.fillStyle = ft.color;
+        ctx.globalAlpha = ft.life;
+        ctx.font = `bold 14px 'Orbitron', monospace`;
+        if (useHighGraphics && !isLightMode) { ctx.shadowBlur = 5; ctx.shadowColor = ft.color; }
+        ctx.fillText(ft.text, screenX, screenY);
+        
+        ctx.globalAlpha = 1.0;
+        ctx.shadowBlur = 0;
+        
+        if (currentGameState === GAME_STATES.GALACTIC_MAP) {
+            ft.offsetY -= 0.5; // Float up
+            ft.life -= 0.02;   // Fade out
+            if (ft.life <= 0) floatingTexts.splice(i, 1);
+        }
+    }
+
 // --- 6. Update UI Stats ---
     if (!particleAnimationId) {
         document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
         if (typeof renderUIStats === 'function') renderUIStats();
     }
 
-    // 🚨 NEW: Check if the player turned off the compass!
+    // Check if the player turned off the compass!
     if (window.navAssistEnabled === false) return;
 
     // --- DYNAMIC WAYPOINT COMPASS ---
