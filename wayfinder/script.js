@@ -2603,6 +2603,15 @@ function renderSystemMap() {
         ctx.fillText(PLAYER_CHAR_VAL, playerScreenX, playerScreenY);
     }
 
+// --- 6. Update UI Stats ---
+    if (!particleAnimationId) {
+        document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
+        if (typeof renderUIStats === 'function') renderUIStats();
+    }
+
+    // 🚨 NEW: Check if the player turned off the compass!
+    if (window.navAssistEnabled === false) return;
+
     // --- DYNAMIC WAYPOINT COMPASS ---
     // Look for an active target (Bounty, Rescue, or Delivery Mission)
     let targetPoint = null;
@@ -2692,12 +2701,6 @@ function renderSystemMap() {
             
             ctx.restore();
         }
-    }
-
-    // --- 6. Update UI Stats ---
-    if (!particleAnimationId) {
-        document.getElementById('versionInfo').textContent = `Wayfinder: Echoes of the Void - ${GAME_VERSION}`;
-        if (typeof renderUIStats === 'function') renderUIStats();
     }
 }
 
@@ -4761,6 +4764,24 @@ function initializeDOMElements() {
         soundBtn.addEventListener('click', () => {
             const isEnabled = soundManager.toggleMute();
             soundBtn.textContent = isEnabled ? "Mute Audio" : "Enable Audio";
+        });
+    }
+
+     // Nav-Computer Toggle Logic
+    window.navAssistEnabled = localStorage.getItem('wayfinder_nav_assist') !== 'false'; // Default to true
+    const navBtn = document.getElementById('navToggleButton');
+    
+    if (navBtn) {
+        // Set initial button text based on saved preference
+        navBtn.textContent = window.navAssistEnabled ? "Disable Nav-Assist" : "Enable Nav-Assist";
+        
+        navBtn.addEventListener('click', () => {
+            window.navAssistEnabled = !window.navAssistEnabled;
+            localStorage.setItem('wayfinder_nav_assist', window.navAssistEnabled ? 'true' : 'false');
+            navBtn.textContent = window.navAssistEnabled ? "Disable Nav-Assist" : "Enable Nav-Assist";
+            
+            if (typeof soundManager !== 'undefined') soundManager.playUIClick();
+            if (typeof render === 'function') render(); // Force map to hide/show the arrow instantly
         });
     }
 
