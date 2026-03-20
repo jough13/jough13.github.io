@@ -269,11 +269,6 @@ function renderPlanetView() {
     let itemId = loot.id;
     let amount = loot.qty;
 
-    // Pull from your actual items.js database!
-    if (roll > 0.95) { itemId = "VOID_CRYSTALS"; amount = 1; }
-    else if (roll > 0.75) { itemId = "RARE_METALS"; amount = Math.floor(Math.random() * 3) + 2; }
-    else if (roll > 0.50) { itemId = "PLATINUM_ORE"; amount = Math.floor(Math.random() * 4) + 1; }
-
     // --- Cap the extracted amount against the global capacity ---
     if (currentCargoLoad + amount > PLAYER_CARGO_CAPACITY) {
         amount = PLAYER_CARGO_CAPACITY - currentCargoLoad;
