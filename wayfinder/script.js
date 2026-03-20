@@ -7945,7 +7945,8 @@ const COLONY_EVENTS = [
                 label: "IGNORE THE HAIL (Lose Hab Module)",
                 condition: () => true,
                 execute: (colony) => {
-                    if (colony.habs > 0) colony.habs--;
+                    // Correctly targets the suppliesDelivered object
+                    if (colony.suppliesDelivered.habModules > 0) colony.suppliesDelivered.habModules--;
                     logMessage(`<span style='color:var(--danger)'>[ COLONY ] The raiders bombarded ${colony.name}, destroying a Habitation Module before Concord authorities arrived.</span>`);
                     closeGenericModal();
                 }
