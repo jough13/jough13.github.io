@@ -2018,8 +2018,14 @@ const LeakTestCalculator = ({ grossCpm, setGrossCpm, backgroundCpm, setBackgroun
             // 7. Pass/Fail Check (10 CFR 35.3067 states "presence of 185 Bq (0.005 µCi) or more" is a failure)
             const pass = isSI ? (act_Bq < LIMIT_BQ) : (act_uCi < LIMIT_UCI);
 
+            // Gracefully handle exact zeroes so they don't display as "0.00e+0"
+            let formattedActivity = "0";
+            if (displayActivity > 0) {
+                formattedActivity = displayActivity < 0.01 ? displayActivity.toExponential(2) : displayActivity.toPrecision(3);
+            }
+
             setResult({ 
-                activity: displayActivity < 0.01 ? displayActivity.toExponential(2) : displayActivity.toPrecision(3), 
+                activity: formattedActivity, 
                 dpm: dpm.toFixed(0),
                 pass, 
                 netCpm: netCpm.toFixed(0),
@@ -2202,14 +2208,17 @@ const SimpleEfficiencyCalculator = ({
             // DPM = CPM / Efficiency(decimal)
             const activity = c / (e / 100);
 
-            // FIX: Respect global unit settings for subtext display
+            // Respect global unit settings for subtext display
             const subActivity = isSI ? (activity / 60) : (activity / 2.22e6);
             const subUnit = isSI ? 'Bq' : 'µCi';
+
+            // Gracefully handle exact zeroes to prevent "0.000e+0"
+            const formattedSubActivity = subActivity === 0 ? "0" : subActivity.toExponential(3);
 
             setResult({ 
                 label: 'Activity', 
                 value: Math.round(activity).toLocaleString() + ' dpm',
-                subtext: `${subActivity.toExponential(3)} ${subUnit}`
+                subtext: `${formattedSubActivity} ${subUnit}`
             });
         }
     // Removed setCpm/setEfficiency from dependencies to prevent loops
@@ -2638,7 +2647,7 @@ const TransportationCalculator = ({ radionuclides, preselectedNuclide }) => {
 
     const activityUnits = React.useMemo(() => settings.unitSystem === 'si' ? ['Bq', 'kBq', 'MBq', 'GBq', 'TBq'] : ['µCi', 'mCi', 'Ci'], [settings.unitSystem]);
 
-    // FIX 1: Updated to current 49 CFR 173.443 limits (4 Bq/cm2 and 0.4 Bq/cm2)
+    // Updated to current 49 CFR 173.443 limits (4 Bq/cm2 and 0.4 Bq/cm2)
     const CONTAM_LIMITS = {
         beta_gamma: { dpm_100cm2: 24000, bq_cm2: 4, label: 'Beta/Gamma/Low-Tox Alpha' },
         alpha: { dpm_100cm2: 2400, bq_cm2: 0.4, label: 'Other Alpha' }
@@ -3409,9 +3418,17 @@ const PatientReleaseCalculator = ({ radionuclides, therapyList, nuclideSymbol, s
             // 3. Dose Calc (NUREG-1556 Vol 9 Eq 1)
             const gamma_app = safeParseFloat(selectedNuclide.gammaConstant); // R·m²/hr·Ci
 
+            // Define 'E' and 'att' from state so the math formulas don't throw ReferenceErrors
+            const E = safeParseFloat(occupancyFactor);
+            const att = safeParseFloat(attenuation);
+
             // Standardize inputs to match the constant's native units
             const A0_Ci = A0_mCi / 1000; 
             const d_m = safeParseFloat(distance); // 'distance' state is already in meters
+
+            if (isNaN(E) || isNaN(att) || isNaN(d_m) || d_m <= 0) {
+                throw new Error("Please ensure Occupancy, Distance, and Attenuation are valid numbers.");
+            }
 
             let rate_R_hr;
             if (selectedNuclide.symbol.includes('I-131') && !isNaN(rateCheck) && rateCheck > 0) {
@@ -3512,6 +3529,11 @@ const DecayInStorageCalculator = ({ radionuclides, nuclideSymbol, setNuclideSymb
         }
         
         const hlSeconds = parseHalfLifeToSeconds(n.halfLife);
+        // Prevent "Invalid Date" math if a stable isotope is selected
+        if (!hlSeconds || hlSeconds === Infinity) {
+            setResult(null);
+            return;
+        }
         const hlDays = hlSeconds / 86400;
         if (hlDays === 0) return;
         
@@ -3756,7 +3778,8 @@ const PeakDataTables = ({ radionuclides, onNuclideClick }) => {
     const handleExportCSV = () => {
         if (sortedAndFilteredData.length === 0) return;
         const headers = ['Nuclide', 'Energy', 'Category'];
-        const rows = sortedAndFilteredData.map(item => [`"${item.nuclideName}"`, item.displayEnergy, item.category].join(','));
+        // Wrap all fields in quotes to prevent internal commas from breaking the CSV layout
+        const rows = sortedAndFilteredData.map(item => [`"${item.nuclideName}"`, `"${item.displayEnergy}"`, `"${item.category || 'Other'}"`].join(','));
         const csvContent = [headers.join(','), ...rows].join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
@@ -3961,8 +3984,11 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
         // Reverse Math: "If this IS an artifact, what was the parent photopeak?"
         // CE Parent derived from quadratic formula of E_c = (2E^2)/(m + 2E)
         const parentFromCE = (targetMeV + Math.sqrt(Math.pow(targetMeV, 2) + 2 * mc2 * targetMeV)) / 2;
-        const parentFromSE = targetMeV + 0.511;
-        const parentFromDE = targetMeV + 1.022;
+
+        // Pair production requires Parent > 1.022 MeV. 
+        // Therefore, an artifact cannot be a Single Escape peak unless it is > 0.511 MeV.
+        const parentFromSE = targetMeV > 0.511 ? targetMeV + 0.511 : null;
+        const parentFromDE = targetMeV > 0 ? targetMeV + 1.022 : null;
 
         const leadXrayMatch = LEAD_XRAYS.find(xray => Math.abs(xray.energy - energyVal) <= tolerance);
         const isAnnihilation = Math.abs(energyVal - 511) <= tolerance;
@@ -3974,8 +4000,8 @@ const PeakIdentifier = ({ radionuclides, onNuclideClick }) => {
             doubleEscape: doubleEscape ? (doubleEscape * 1000).toFixed(1) : null,
             // Reverse
             parentFromCE: (parentFromCE * 1000).toFixed(1),
-            parentFromSE: (parentFromSE * 1000).toFixed(1),
-            parentFromDE: (parentFromDE * 1000).toFixed(1),
+            parentFromSE: parentFromSE ? (parentFromSE * 1000).toFixed(1) : null,
+            parentFromDE: parentFromDE ? (parentFromDE * 1000).toFixed(1) : null,
             // Misc Checks
             isLeadXray: leadXrayMatch ? leadXrayMatch.name : null,
             isAnnihilation: isAnnihilation
@@ -4794,7 +4820,7 @@ const ActivityFromDoseRate = ({ radionuclides, nuclideSymbol, setNuclideSymbol, 
     const gammaNuclides = React.useMemo(() => radionuclides.filter(n => n.gammaConstant).sort((a, b) => a.name.localeCompare(b.name)), [radionuclides]);
     const selectedNuclide = React.useMemo(() => gammaNuclides.find(n => n.symbol === nuclideSymbol), [nuclideSymbol, gammaNuclides]);
     
-    const doseRateFactors_mrem_hr = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000 };
+    const doseRateFactors_mrem_hr = { 'µrem/hr': 0.001, 'mrem/hr': 1, 'rem/hr': 1000, 'µSv/hr': 0.1, 'mSv/hr': 100, 'Sv/hr': 100000, 'mR/hr': 1, 'R/hr': 1000 };
     const distanceFactors_m = { 'mm': 0.001, 'cm': 0.01, 'm': 1, 'in': 0.0254, 'ft': 0.3048 };
     
     React.useEffect(() => {
@@ -5956,7 +5982,8 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
     React.useEffect(() => {
         if (!activityUnits.includes(activityUnit)) setActivityUnit(activityUnits[0]);
         if (!distanceUnits.includes(distanceUnit)) setDistanceUnit(distanceUnits[0]);
-    }, [settings.unitSystem]);
+        if (!intakeUnits.includes(intakeUnit)) setIntakeUnit(intakeUnits[2] || intakeUnits[0]);
+    }, [settings.unitSystem, activityUnits, distanceUnits, intakeUnits, activityUnit, distanceUnit, intakeUnit]);
 
     React.useEffect(() => { if (preselectedNuclide) { setNuclideSymbol(preselectedNuclide.symbol); setInputMode(INPUT_MODE_DB); } }, [preselectedNuclide]);
 
@@ -6432,7 +6459,10 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                             {field_targetType === 'findRate' ? (
                                 <div><label className="block text-xs font-medium">Target Distance (d₂)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={field_d2} onChange={e => setField_d2(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_d2Unit} onChange={e => setField_d2Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             ) : (
-                                <div><label className="block text-xs font-medium">Target Rate (I₂)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={field_r2} onChange={e => setField_r2(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_r2Unit} onChange={e => setField_r2Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="block text-xs font-medium">Target Rate (I₂)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={field_r2} onChange={e => setField_r2(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={field_r2Unit} onChange={e => setField_r2Unit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{doseRateUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                    <div><label className="block text-xs font-medium">Result Unit</label><select value={field_d2Unit} onChange={e => setField_d2Unit(e.target.value)} className="w-full p-2 rounded-md bg-white dark:bg-slate-700 text-sm border border-slate-200 dark:border-slate-600">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -6472,15 +6502,27 @@ const DoseRateCalculator = ({ radionuclides, preselectedNuclide }) => {
                             )}
                             {geometryMode === GEOMETRY_LINE && (
                                 <div className="col-span-2 grid grid-cols-2 gap-4">
-                                        <div><label className="block text-xs font-medium">Length (L)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                                        <div><label className="block text-xs font-medium">Linear Activity</label><select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"><option>µCi/cm</option><option>mCi/cm</option><option>Ci/cm</option><option>µCi/m</option><option>mCi/m</option><option>Ci/m</option></select></div>
+                                    <div><label className="block text-xs font-medium">Length (L)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={lineLength} onChange={e => setLineLength(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={lineLengthUnit} onChange={e => setLineLengthUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                    <div>
+                                        <label className="block text-xs font-medium">Linear Activity</label>
+                                        <div className="flex">
+                                            <input type="number" inputMode="decimal" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/>
+                                            <select value={linearActivityUnit} onChange={e => setLinearActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs font-bold"><option>µCi/cm</option><option>mCi/cm</option><option>Ci/cm</option><option>µCi/m</option><option>mCi/m</option><option>Ci/m</option></select>
+                                        </div>
                                     </div>
+                                </div>
                             )}
                             {geometryMode === GEOMETRY_AREA && (
                                 <div className="col-span-2 grid grid-cols-2 gap-4">
-                                        <div><label className="block text-xs font-medium">Radius (R)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
-                                        <div><label className="block text-xs font-medium">Areal Activity</label><select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="w-full p-2 rounded-md bg-slate-100 dark:bg-slate-700 text-sm"><option>µCi/cm²</option><option>mCi/cm²</option><option>Ci/cm²</option><option>µCi/m²</option><option>mCi/m²</option><option>Ci/m²</option></select></div>
+                                    <div><label className="block text-xs font-medium">Radius (R)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={diskRadius} onChange={e => setDiskRadius(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/><select value={diskRadiusUnit} onChange={e => setDiskRadiusUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
+                                    <div>
+                                        <label className="block text-xs font-medium">Areal Activity</label>
+                                        <div className="flex">
+                                            <input type="number" inputMode="decimal" min="0" value={activity} onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-white dark:bg-slate-700 text-sm"/>
+                                            <select value={arealActivityUnit} onChange={e => setArealActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs font-bold"><option>µCi/cm²</option><option>mCi/cm²</option><option>Ci/cm²</option><option>µCi/m²</option><option>mCi/m²</option><option>Ci/m²</option></select>
+                                        </div>
                                     </div>
+                                </div>
                             )}
                             <div><label className="block text-xs font-medium">Distance (d or h)</label><div className="flex"><input type="number" inputMode="decimal" min="0" value={distance} onChange={e => setDistance(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700 text-sm"/><select value={distanceUnit} onChange={e => setDistanceUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">{distanceUnits.map(u => <option key={u} value={u}>{u}</option>)}</select></div></div>
                             
@@ -6703,7 +6745,12 @@ const ShieldingCalculator = ({ radionuclides, preselectedNuclide }) => {
                 if (inputMode === INPUT_MODE_DB) {
                     if (!nuclideSymbol) return;
                     const n = radionuclides.find(r => r.symbol === nuclideSymbol);
-                    if (n?.emissionEnergies?.beta) E_max = parseEnergyToMeV(n.emissionEnergies.beta);
+                    // Safely parse the first beta energy directly from the array
+                    if (n?.emissionEnergies?.beta?.length > 0) {
+                        const betaStr = n.emissionEnergies.beta[0];
+                        E_max = safeParseFloat(betaStr);
+                        if (betaStr.toLowerCase().includes('kev')) E_max /= 1000;
+                    }
                 } else {
                     E_max = safeParseFloat(manualBetaEnergy);
                 }
@@ -7309,9 +7356,10 @@ const StayTimeCalculator = ({ radionuclides, preselectedNuclide }) => {
     }, [isTimerRunning, targetEndTime]);
 
     const handleStartTimer = () => {
-        if (!result || !result.isSafe) return; // Prevent starting if infinite or unsafe
-        
-        const secondsToRun = Math.floor(result.seconds);
+        // Add isFinite check to prevent starting a timer for "Infinite" stay times
+        if (!result || !result.isSafe || !isFinite(result.seconds)) return; 
+    
+    const secondsToRun = Math.floor(result.seconds);
         setTimeLeft(secondsToRun);
         setTargetEndTime(Date.now() + (secondsToRun * 1000)); // Lock in the absolute finish time
         setIsTimerRunning(true);
@@ -8258,9 +8306,6 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
         const yield_pct = safeParseFloat(emissionYield);
         
         if (isNaN(bkgRate) || isNaN(Ts) || Ts <= 0) throw new Error('Please enter valid, positive numbers for background and time.');
-        if (isNaN(yield_pct) || yield_pct <= 0) throw new Error('Emission Yield must be greater than 0%.');
-        
-        const Y = yield_pct / 100.0;
         
         // Currie Equation
         let Ld_counts;
@@ -8272,29 +8317,35 @@ const MDACalculator = ({ onNavClick, onDeepLink }) => {
             Ld_counts = 2.71 + 4.65 * Math.sqrt(bkgRate * Ts);
         }
         
-        if (isNaN(ei) || isNaN(es) || ei <= 0 || es <= 0) throw new Error('Valid efficiencies are required.');
-        
-        const E_total = getTotalEfficiency(ei, es);
-        
-        // Apply Yield (Y) to the DPM conversion
-        const mda_dpm = (Ld_counts / Ts) / (E_total * Y);
-        
         let finalMDA;
-        if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
-            finalMDA = mda_dpm * dpmFactors[outputUnit];
-        } else if (outputUnit === 'dpm/100cm²') {
-            if (isNaN(A) || A <= 0) throw new Error('Probe Area is required.');
-            finalMDA = mda_dpm * (100 / A);
-        } else if (outputUnit === 'Bq/L') {
-            if (isNaN(V) || V <= 0) throw new Error('Sample Volume is required.');
-            finalMDA = (mda_dpm / 60) / V;
-        } else if (outputUnit === 'pCi/g') {
-            if (isNaN(M) || M <= 0) throw new Error('Sample Mass is required.');
-            finalMDA = (mda_dpm / 2.22) / M;
+        
+        // Only mandate efficiencies and yield if calculating activity or concentration
+        if (outputUnit === 'counts') {
+            finalMDA = Ld_counts;
         } else if (outputUnit === 'cpm') {
             finalMDA = Ld_counts / Ts;
-        } else if (outputUnit === 'counts') {
-            finalMDA = Ld_counts;
+        } else {
+            if (isNaN(ei) || isNaN(es) || ei <= 0 || es <= 0) throw new Error('Valid efficiencies are required for this unit.');
+            if (isNaN(yield_pct) || yield_pct <= 0) throw new Error('Emission Yield must be greater than 0%.');
+            
+            const Y = yield_pct / 100.0;
+            const E_total = getTotalEfficiency(ei, es);
+            
+            // Apply Yield (Y) to the DPM conversion
+            const mda_dpm = (Ld_counts / Ts) / (E_total * Y);
+            
+            if (MDA_UNIT_CONFIG[outputUnit].category === 'Activity') {
+                finalMDA = mda_dpm * dpmFactors[outputUnit];
+            } else if (outputUnit === 'dpm/100cm²') {
+                if (isNaN(A) || A <= 0) throw new Error('Probe Area is required.');
+                finalMDA = mda_dpm * (100 / A);
+            } else if (outputUnit === 'Bq/L') {
+                if (isNaN(V) || V <= 0) throw new Error('Sample Volume is required.');
+                finalMDA = (mda_dpm / 60) / V;
+            } else if (outputUnit === 'pCi/g') {
+                if (isNaN(M) || M <= 0) throw new Error('Sample Mass is required.');
+                finalMDA = (mda_dpm / 2.22) / M;
+            }
         }
         
         let timeToTarget = null;
@@ -8695,21 +8746,36 @@ const ScientificCalculator = ({ calcState, setCalcState }) => {
     // Memory
     const memClear = () => { setCalcState(s => ({ ...s, memory: 0 })); addToast("Memory Cleared"); };
     const memRecall = () => { setCalcState(s => ({ ...s, expression: s.expression + s.memory })); };
+    // Safely evaluate the current state, whether it's a finished result or an in-progress equation
     const memAdd = () => {
         try {
-            const valToStore = calcState.expression ? safeEvaluate(calcState.expression, angleMode, lastAnswer) : (safeParseFloat(calcState.result) || 0);
+            let valToStore = 0;
+            if (calcState.expression) {
+                valToStore = safeEvaluate(calcState.expression, angleMode, lastAnswer);
+            } else if (calcState.result) {
+                // If there's no expression, evaluate the result string itself in case it contains 'e'
+                valToStore = safeEvaluate(calcState.result, angleMode, lastAnswer); 
+            }
             if (!isFinite(valToStore)) throw new Error();
+            
             setCalcState(s => ({ ...s, memory: s.memory + valToStore }));
-            addToast(`M+ (${(calcState.memory + valToStore).toPrecision(4)})`);
-        } catch { addToast("Invalid value"); }
+            addToast(`M+ (${valToStore.toPrecision(4)})`); // Show the added value, not the total
+        } catch { addToast("Finish equation first"); }
     };
+    
     const memSub = () => {
         try {
-            const valToStore = calcState.expression ? safeEvaluate(calcState.expression, angleMode, lastAnswer) : (safeParseFloat(calcState.result) || 0);
+            let valToStore = 0;
+            if (calcState.expression) {
+                valToStore = safeEvaluate(calcState.expression, angleMode, lastAnswer);
+            } else if (calcState.result) {
+                valToStore = safeEvaluate(calcState.result, angleMode, lastAnswer); 
+            }
             if (!isFinite(valToStore)) throw new Error();
+            
             setCalcState(s => ({ ...s, memory: s.memory - valToStore }));
-            addToast(`M- (${(calcState.memory - valToStore).toPrecision(4)})`);
-        } catch { addToast("Invalid value"); }
+            addToast(`M- (${valToStore.toPrecision(4)})`);
+        } catch { addToast("Finish equation first"); }
     };
     
     const handleHistoryClick = (histItem) => {
