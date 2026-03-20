@@ -817,14 +817,21 @@ const StandardDecayCalculator = ({
                     });
                     timeForChart_seconds = 10 * T_half_seconds;
                 } else {
-                    const bestUnit = getBestHalfLifeUnit(timeInSeconds);
+                    const bestUnit = getBestHalfLifeUnit(timeInSeconds) || 'seconds';
+                    const convertedTime = (timeInSeconds / UNIT_CONVERSIONS[bestUnit.toLowerCase()]).toPrecision(4);
+                    
                     setResult({
                         label: 'Time Elapsed',
-                        value: (timeInSeconds / unitConversions[bestUnit]).toPrecision(4),
+                        value: convertedTime,
                         unit: bestUnit,
                         lambdaVal: displayLambda.toPrecision(4),
                         lambdaUnit: lambdaUnit
                     });
+                    
+                    // Sync the state variables so the UI updates
+                    setTimeElapsed(convertedTime);
+                    setTimeUnit(bestUnit.toLowerCase());
+                    
                     timeForChart_seconds = timeInSeconds;
                 }
                 
@@ -1117,12 +1124,18 @@ const StandardDecayCalculator = ({
                                     <span>{result.parent.value} {result.unit}</span>
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-600 pt-2">
-                                <div className="text-lg font-bold text-left">
-                                    <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.daughter.name} {result.daughter.isStable ? "(Stable)" : ""}</span>
-                                    {/* Display with Daughter's unit */}
-                                    <span>{result.daughter.value} {daughterUnit}</span>
+                            <div className="flex flex-col border-t border-slate-200 dark:border-slate-600 pt-2 mt-2">
+                                <div className="flex items-center justify-between">
+                                    <div className="text-lg font-bold text-left">
+                                        <span className="font-semibold block text-sm text-slate-500 dark:text-slate-400">{result.daughter.name} {result.daughter.isStable ? "(Stable)" : ""}</span>
+                                        <span>{result.daughter.value} {daughterUnit}</span>
+                                    </div>
                                 </div>
+                                {result.daughter.isStable && (
+                                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic leading-tight">
+                                        Note: Stable isotopes have no radioactivity (0 Bq). Mass/atom accumulation is occurring, but cannot be expressed in Activity units.
+                                    </p>
+                                )}
                             </div>
                         </div>
                     )}
@@ -1870,7 +1883,7 @@ const DetectorResponseCalculator = ({ radionuclides, nuclideSymbol, setNuclideSy
                     <div>
                         <label className="block text-sm font-medium">Activity</label>
                         <div className="flex">
-                            <input type="number" inputMode="decimal" value={activity} inputMode="decimal" onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
+                            <input type="number" value={activity} inputMode="decimal" onChange={e => setActivity(e.target.value)} className="w-full p-2 rounded-l-md bg-slate-100 dark:bg-slate-700" />
                             <select value={activityUnit} onChange={e => setActivityUnit(e.target.value)} className="rounded-r-md bg-slate-200 dark:bg-slate-600 text-xs">
                                 {Object.keys(activityFactorsCi).map(u => <option key={u} value={u}>{u}</option>)}
                             </select>
