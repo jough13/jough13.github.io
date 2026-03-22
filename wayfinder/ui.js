@@ -822,11 +822,46 @@ function selectCargoItem(key) {
         </div>
     `;
 
+    // Check if the item has a usable function attached to it!
+    let useButtonHtml = "";
+    if (itemDef.onUse) {
+        useButtonHtml = `
+        <button class="action-button" style="border-color:var(--success); color:var(--success); box-shadow: 0 0 10px rgba(0,255,0,0.2);" onclick="useCargoItem('${key}')">
+            ACTIVATE / USE ITEM
+        </button>`;
+    }
+
     actionsEl.innerHTML = `
-        <button class="action-button danger-btn" onclick="jettisonItem('${key}', 1)">EJECT 1x UNIT</button>
-        <button class="action-button danger-btn" onclick="jettisonItem('${key}', 'ALL')" style="background:rgba(204,0,0,0.1);">JETTISON ALL</button>
-        <button class="action-button" onclick="closeGenericModal()">CLOSE</button>
+        ${useButtonHtml}
+        <div style="display:flex; gap:10px; width:100%;">
+            <button class="action-button danger-btn" style="flex:1;" onclick="jettisonItem('${key}', 1)">EJECT 1x</button>
+            <button class="action-button danger-btn" style="flex:1; background:rgba(204,0,0,0.1);" onclick="jettisonItem('${key}', 'ALL')">DUMP ALL</button>
+        </div>
+        <button class="action-button" onclick="closeGenericModal()">CLOSE MANIFEST</button>
     `;
+}
+
+function useCargoItem(key) {
+    const itemDef = COMMODITIES[key];
+    if (itemDef && itemDef.onUse) {
+        // Execute the item's unique code. If it returns true, it was successfully consumed!
+        const consumed = itemDef.onUse();
+        
+        if (consumed) {
+            playerCargo[key]--;
+            if (playerCargo[key] <= 0) delete playerCargo[key];
+            
+            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
+            if (typeof renderUIStats === 'function') renderUIStats();
+            
+            // Refresh the UI to reflect the new quantity, or close if we ran out
+            if (playerCargo[key]) {
+                selectCargoItem(key); 
+            } else {
+                renderCargoList();
+            }
+        }
+    }
 }
 
 function jettisonItem(key, amount) {
