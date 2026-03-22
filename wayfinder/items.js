@@ -30,15 +30,43 @@ const LOOT_TABLES = {
 // ==========================================
 // --- COMMODITIES DATABASE ---
 // ==========================================
+
 const COMMODITIES = {
     
     // ==========================================
     // --- STANDARD GOODS & RAW MATERIALS ---
     // ==========================================
+    
     FUEL_CELLS: {
         name: "Fuel Cells",
         basePrice: 10,
-        description: "Concord-grade hyper-refined hydrogen. The lifeblood of interstellar travel, ensuring stable warp fields."
+        description: "Concord-grade hyper-refined hydrogen. Use from the Cargo Manifest to manually restore 50 Fuel in an emergency.",
+        onUse: () => {
+            if (typeof playerFuel !== 'undefined' && playerFuel >= MAX_FUEL) {
+                if (typeof showToast === 'function') showToast("TANK ALREADY FULL", "info");
+                return false;
+            }
+            playerFuel = Math.min(MAX_FUEL, playerFuel + 50);
+            logMessage("<span style='color:var(--warning)'>Emergency Fuel Cell consumed. +50 Fuel.</span>");
+            if (typeof soundManager !== 'undefined') soundManager.playBuy();
+            return true;
+        }
+    },
+    NANO_REPAIR_KIT: {
+        name: "Nano-Repair Kit",
+        basePrice: 150,
+        description: "A pressurized canister of programmable smart-matter. Use from the Cargo Manifest to instantly patch 25 Hull Integrity.",
+        onUse: () => {
+            if (typeof playerHull !== 'undefined' && playerHull >= MAX_PLAYER_HULL) {
+                if (typeof showToast === 'function') showToast("HULL ALREADY MAXED", "info");
+                return false;
+            }
+            playerHull = Math.min(MAX_PLAYER_HULL, playerHull + 25);
+            logMessage("<span style='color:var(--success)'>Nano-sealant deployed. Hull repaired by 25.</span>");
+            if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+            if (typeof showToast === 'function') showToast("HULL REPAIRED", "success");
+            return true;
+        }
     },
     MINERALS: {
         name: "Minerals",
@@ -58,7 +86,7 @@ const COMMODITIES = {
     MEDICAL_SUPPLIES: {
         name: "Medical Supplies",
         basePrice: 60,
-        description: "Sterile field kits, broad-spectrum anti-rads, combat stims, and advanced auto-suture devices."
+        description: "Sterile field kits, broad-spectrum anti-rads, and auto-suture devices. Highly valued during colony outbreaks."
     },
     RARE_METALS: {
         name: "Rare Metals",
@@ -200,7 +228,18 @@ const COMMODITIES = {
         name: "Combat Stims",
         basePrice: 400,
         illegal: true,
-        description: "Military-grade performance enhancers. Highly addictive and strictly banned in civilian sectors."
+        description: "Military-grade performance enhancers. Highly addictive. Use to instantly reset your ship's Combat Ability cooldown!",
+        onUse: () => {
+            if (typeof playerAbilityCooldown !== 'undefined' && playerAbilityCooldown <= 0) {
+                if (typeof showToast === 'function') showToast("ABILITY ALREADY READY", "info");
+                return false; 
+            }
+            playerAbilityCooldown = 0;
+            logMessage("<span style='color:var(--danger)'>Injected Prohibited Stims! Combat systems overclocked and ready!</span>");
+            if (typeof soundManager !== 'undefined') soundManager.playAbilityActivate();
+            if (typeof showToast === 'function') showToast("ABILITY RECHARGED", "warning");
+            return true; 
+        }
     },
     STARDUST_EXOTICA: {
         name: "Stardust Exotica",
