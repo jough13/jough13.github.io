@@ -14,6 +14,7 @@ const LOCATIONS_DATA = {
         faction: "CONCORD",
         sells: [
             { id: "FUEL_CELLS", priceMod: 0.9, stock: 100 }, 
+             { id: "NANO_REPAIR_KIT", priceMod: 1.0, stock: 15 },
             { id: "MINING_DRONE", priceMod: 1.0, stock: 10 }, 
             { id: "TECH_PARTS", priceMod: 1.1, stock: 30 }, 
             { id: "MEDICAL_SUPPLIES", priceMod: 1.0, stock: 25 }, 
