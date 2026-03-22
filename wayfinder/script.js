@@ -7993,11 +7993,11 @@ const CRAFTING_RECIPES = {
         ingredients: { 'MINERALS': 5 }
     },
     HULL_PATCH: {
-        targetId: "INSTANT_HEAL", // Special flag for instant use
-        name: "Nano-Sealant Patch",
+        targetId: "NANO_REPAIR_KIT",
+        name: "Nano-Repair Kit",
         icon: "🔧",
-        desc: "Synthesize and immediately deploy nano-sealant to repair 25 Hull Integrity.",
-        yield: 25,
+        desc: "Synthesize a portable canister of smart-matter. Can be used from your cargo hold to repair 25 Hull Integrity.",
+        yield: 1,
         ingredients: { 'MINERALS': 4, 'TECH_PARTS': 2 }
     }
 };
