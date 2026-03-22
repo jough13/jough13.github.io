@@ -32,7 +32,14 @@
         ['log', 'warn', 'error', 'info'].forEach(method => {
             const original = console[method];
             console[method] = function(...args) {
-                const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+
+                const msg = args.map(a => {
+                    if (typeof a === 'object') {
+                        try { return JSON.stringify(a); } 
+                        catch (e) { return "[Complex Object/DOM Node]"; }
+                    }
+                    return String(a);
+                }).join(' ');
                 
                 // A. Keep the Diagnostician History for the Crash Screen
                 consoleHistory.push({ type: method, msg: msg });
@@ -209,6 +216,19 @@
 
 </head>
 <body class="crt">
+
+    <!-- FALLBACK 1: If JavaScript is disabled -->
+    <noscript>
+        <div style="background: #000; color: red; text-align: center; padding: 50px; font-family: monospace; z-index: 99999; position: relative;">
+            <h1>JAVASCRIPT REQUIRED</h1>
+            <p>Wayfinder requires JavaScript to run. Please enable it in your browser settings.</p>
+        </div>
+    </noscript>
+
+    <!-- FALLBACK 2: If the engine crashes during boot, force the screen to appear so the Red Crash Screen is visible -->
+    <script>
+        setTimeout(function() { document.body.classList.add('loaded'); }, 3000);
+    </script>
 
     <div id="titleScreenOverlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--bg-color); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: var(--text-color); font-family: 'Orbitron', sans-serif;">
         
