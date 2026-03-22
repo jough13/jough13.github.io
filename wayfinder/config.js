@@ -168,3 +168,37 @@ let playerFactionStanding = {
     ECLIPSE: -10, // They don't trust outsiders
     KTHARR: -50   // They hate humans
 };
+
+// ==========================================
+// --- CUSTOM TILE INTERACTIONS ---
+// ==========================================
+
+// Want to add a new space object? Just add its character symbol here!
+// We never have to touch the core engine's handleInteraction() function again.
+
+const TILE_INTERACTIONS = {
+    // Example Expansion: A derelict escape pod floating in space
+    'P': {
+        log: "Sensors detect a sealed escape pod floating adrift.",
+        actions: (tileObj) => [
+            { 
+                label: 'Pry it Open', 
+                key: 'e', 
+                onclick: () => {
+                    logMessage("<span style='color:var(--success)'>You pried open the pod. Found 500c!</span>");
+                    playerCredits += 500;
+                    // Change the tile to empty space so it can't be looted twice
+                    updateWorldState(playerX, playerY, { char: '.' }); 
+                    GameBus.emit('UI_REFRESH_REQUESTED');
+                    handleInteraction(); // Refresh the tile
+                }
+            },
+            { 
+                label: 'Leave it', 
+                key: 'l', 
+                onclick: () => logMessage("You left the pod to drift.") 
+            }
+        ]
+    }
+    // We can easily add '$' for a Casino, 'C' for a Comet, etc.
+};
