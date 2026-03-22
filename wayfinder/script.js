@@ -711,8 +711,16 @@ GameBus.on('HULL_REPAIRED', (amount) => {
 });
 
 // Whenever vitals, credits, or stats change, refresh the UI
+let _uiUpdatePending = false;
 GameBus.on('UI_REFRESH_REQUESTED', () => {
-    if (typeof renderUIStats === 'function') renderUIStats();
+    if (!_uiUpdatePending) {
+        _uiUpdatePending = true;
+        // Wait until the browser is ready to draw the next frame, then update the UI ONCE.
+        requestAnimationFrame(() => {
+            if (typeof renderUIStats === 'function') renderUIStats();
+            _uiUpdatePending = false;
+        });
+    }
 });
 
 // --- NPC CREW SYSTEM GLOBALS ---
@@ -3139,40 +3147,6 @@ function processGameTick(timeAmount, isMovement = false) {
     return false; // Tick finished peacefully
 }
 
-// 🚨  Modular War Engine
-// This listens to the GameBus instead of cluttering the main tick function!
-if (typeof GameBus !== 'undefined') {
-    GameBus.on('TICK_PROCESSED', (data) => {
-        // 0.5% chance per tick for a border skirmish to resolve
-        if (Math.random() < 0.005) {
-            const isKtharrFront = Math.random() > 0.5;
-            const aggressorWins = Math.random() > 0.5;
-            const offsets = GameState.world.factionOffsets;
-            
-            if (isKtharrFront) {
-                // K'tharr vs Concord
-                if (aggressorWins && offsets.KTHARR > 10) {
-                    offsets.KTHARR -= 1; // K'tharr pushes WEST
-                    logMessage("<span style='color:var(--danger); font-weight:bold'>[ WAR ALERT ]</span> The K'tharr Hegemony has seized a Concord border sector!");
-                } else if (!aggressorWins && offsets.KTHARR < 35) {
-                    offsets.KTHARR += 1; // Concord pushes EAST
-                    logMessage("<span style='color:var(--accent-color); font-weight:bold'>[ WAR ALERT ]</span> Concord Aegis fleets have pushed the K'tharr out of a border sector.");
-                }
-            } else {
-                // Eclipse vs Concord
-                if (aggressorWins && offsets.ECLIPSE < -10) {
-                    offsets.ECLIPSE += 1; // Cartel pushes EAST
-                    logMessage("<span style='color:#9933FF; font-weight:bold'>[ WAR ALERT ]</span> The Eclipse Cartel has corrupted a Concord border world. Crime rates spiking.");
-                } else if (!aggressorWins && offsets.ECLIPSE > -35) {
-                    offsets.ECLIPSE -= 1; // Concord pushes WEST
-                    logMessage("<span style='color:var(--accent-color); font-weight:bold'>[ WAR ALERT ]</span> Concord Marines have raided an Eclipse shadow-port, securing the sector.");
-                }
-            }
-            // Force the map to redraw its borders
-            if (typeof render === 'function') render();
-        }
-    });
-}
 
  function movePlayer(dx, dy) {
     // 1. UI & State Blocks
@@ -3459,6 +3433,29 @@ function handleInteraction() {
 
     } else {
         // --- 6. DEEP SPACE PHENOMENA ---
+
+        // ==========================================
+        // --- DATA-DRIVEN TILE OVERRIDE HOOK ---
+        // ==========================================
+
+        // If the tile character exists in our custom interactions dictionary, 
+        // run that logic and completely skip the hardcoded engine switch below!
+
+        if (typeof TILE_INTERACTIONS !== 'undefined' && TILE_INTERACTIONS[tileChar]) {
+            const customInteraction = TILE_INTERACTIONS[tileChar];
+            
+            if (customInteraction.log) logMessage(customInteraction.log);
+            if (customInteraction.actions) {
+                // If actions are provided as a function (for dynamic buttons), execute it
+                if (typeof customInteraction.actions === 'function') {
+                    renderContextualActions(customInteraction.actions(tileObject));
+                } else {
+                    renderContextualActions(customInteraction.actions);
+                }
+            }
+            return; // Skip the rest of the hardcoded interactions!
+        }
+
         switch (tileChar) {
             case STAR_CHAR_VAL:
                 const starData = generateStarData(playerX, playerY);
@@ -5268,8 +5265,45 @@ function performSave(saveType) {
         const slotPrefix = safeSaveType === 'MANUAL' ? 'wayfinder_manual_' : 'wayfinder_auto_';
         localStorage.setItem(slotPrefix + currentCampaignId, JSON.stringify(saveFile));
     } catch (error) {
-        console.error("Save failed:", error);
-        logMessage("<span style='color:red'>Save Failed: Storage Full!</span>");
+        // Did we hit the 5MB browser limit?
+        if (error.name === 'QuotaExceededError' || error.message.toLowerCase().includes('quota')) {
+            console.warn("Storage quota exceeded! Forcing aggressive garbage collection...");
+            logMessage("<span style='color:var(--warning)'>WARNING: Memory banks full. Purging old navigational data to save game...</span>");
+            
+            // Force aggressive purge of non-critical tiles
+            const keys = Object.keys(worldStateDeltas);
+            
+            // Sort by oldest interaction time so we delete the oldest memories first
+            keys.sort((a, b) => (worldStateDeltas[a].lastInteraction || 0) - (worldStateDeltas[b].lastInteraction || 0));
+            
+            let purged = 0;
+            for(let i = 0; i < keys.length; i++) {
+                const key = keys[i];
+                const delta = worldStateDeltas[key];
+                
+                // Never delete critical flags (Colonies, Puzzles, Wormholes)
+                if (key === 'CRAFTING_BONUSES' || delta.activated || delta.isUnique || delta.hasColony || delta.isDiscoveredWormhole) continue;
+                
+                delete worldStateDeltas[key];
+                purged++;
+                
+                // Delete up to 50% of stored tiles to free up massive space
+                if (purged > keys.length / 2) break; 
+            }
+            
+            try { 
+                // Try saving one more time with the slimmed-down data
+                saveFile.worldStateDeltas = worldStateDeltas;
+                localStorage.setItem(slotPrefix + currentCampaignId, JSON.stringify(saveFile));
+                logMessage("<span style='color:var(--success)'>Emergency purge successful. Game saved.</span>");
+            } catch (e) {
+                console.error("Emergency save failed:", e);
+                logMessage("<span style='color:var(--danger)'>CRITICAL ERROR: Save failed. Storage completely full.</span>");
+            }
+        } else {
+            console.error("Save failed:", error);
+            logMessage("<span style='color:var(--danger)'>Save Failed: Unknown Error</span>");
+        }
     }
 }
 
@@ -7111,35 +7145,6 @@ function evadeAnomaly() {
 }
 
 // ==========================================
-// --- NEBULA EVENT ENGINE ---
-// ==========================================
-
-function triggerNebulaEvent() {
-    const events = [
-        { type: "ION_STORM", msg: "<span style='color:var(--warning)'>[ ION STORM ]</span> Lightning arcs across the nebula! Shields drained.", fx: () => { playerShields = 0; if(typeof GameBus !== 'undefined') GameBus.emit('UI_REFRESH_REQUESTED'); } },
-        { type: "NURSERY", msg: "<span style='color:var(--success)'>[ STELLAR NURSERY ]</span> Your sensors capture a protostar igniting. (+100 XP)", fx: () => { playerXP += 100; if (typeof checkLevelUp === 'function') checkLevelUp(); } },
-        { type: "PLASMA_EDDY", msg: "<span style='color:var(--accent-color)'>[ PLASMA EDDY ]</span> You fly through a pocket of volatile gas. Fuel tanks overcharged!", fx: () => { playerFuel = Math.floor(MAX_FUEL * 1.5); } },
-        { type: "SENSOR_GHOSTS", msg: "<span style='color:#9933FF'>[ SENSOR GHOSTS ]</span> The nebula gas creates false radar signatures. Your targeting computer is confused.", fx: () => {} }
-    ];
-    
-    const ev = events[Math.floor(Math.random() * events.length)];
-    logMessage(ev.msg);
-    ev.fx();
-    if (typeof renderUIStats === 'function') renderUIStats();
-}
-
-// Hook it into the Master Game Tick!
-if (typeof GameBus !== 'undefined') {
-    GameBus.on('TICK_PROCESSED', () => {
-        const loc = chunkManager.getTile(playerX, playerY);
-        // 5% chance to trigger an event every time you move through a nebula
-        if (loc && loc.char === '~' && Math.random() < 0.05) {
-            triggerNebulaEvent();
-        }
-    });
-}
-
-// ==========================================
 // --- AUTONOMOUS PROBES ---
 // ==========================================
 
@@ -7564,172 +7569,6 @@ function submitVaultCipher() {
 function abortVault() {
     logMessage("<span style='color:var(--warning)'>You retreat to your ship, leaving the vault's mysteries unsolved.</span>");
     closeGenericModal();
-}
-
-// ==========================================
-// --- UNIVERSAL ENCOUNTER EXECUTOR ---
-// ==========================================
-
-function triggerRandomEncounter() {
-    // Grab all available encounters from the database
-    const keys = Object.keys(ENCOUNTER_DATABASE);
-    if (keys.length === 0) return;
-    
-    const randomKey = keys[Math.floor(Math.random() * keys.length)];
-    const encounter = ENCOUNTER_DATABASE[randomKey];
-    
-    // Save the active context so it can be reloaded from a save file if needed!
-    currentEncounterContext = encounter.id;
-
-    openGenericModal("DEEP SPACE SENSOR CONTACT");
-    const listEl = document.getElementById('genericModalList');
-    const detailEl = document.getElementById('genericDetailContent');
-    const actionsEl = document.getElementById('genericModalActions');
-
-    listEl.innerHTML = ''; // Hide side list for full immersion
-
-    detailEl.innerHTML = `
-        <div style="text-align:center; padding: 30px 20px;">
-            <div style="font-size:60px; margin-bottom:15px; filter: drop-shadow(0 0 20px ${encounter.color});">${encounter.icon}</div>
-            <h3 style="color:${encounter.color}; margin-bottom:15px; letter-spacing: 2px;">${encounter.title}</h3>
-            
-            <div style="text-align:left; background:rgba(0,0,0,0.5); padding:20px; border-left:3px solid ${encounter.color}; margin-bottom:15px; border-radius:4px;">
-                <p style="color:var(--text-color); font-size:14px; line-height:1.6; margin:0;">
-                    ${encounter.text}
-                </p>
-            </div>
-        </div>
-    `;
-
-    actionsEl.innerHTML = '';
-    
-    encounter.choices.forEach((choice, index) => {
-        // Evaluate conditions dynamically
-        let canAfford = true;
-        if (choice.reqFuel && playerFuel < choice.reqFuel) canAfford = false;
-        if (choice.reqCredits && playerCredits < choice.reqCredits) canAfford = false;
-        if (choice.reqItem && (playerCargo[choice.reqItem] || 0) < choice.reqQty) canAfford = false;
-
-        const btn = document.createElement('button');
-        btn.className = 'action-button';
-        btn.style.width = '100%';
-        btn.style.marginBottom = '10px';
-        btn.innerHTML = choice.label;
-        
-        // Color coding
-        if (choice.label.includes("Rep+") || choice.label.includes("DESTROY")) {
-            btn.style.borderColor = "var(--danger)";
-            btn.style.color = "var(--danger)";
-        } else if (choice.label.includes("Rep+")) {
-            btn.style.borderColor = "var(--success)";
-            btn.style.color = "var(--success)";
-        }
-
-        if (!canAfford) {
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-            btn.innerHTML += " (Requirements Not Met)";
-        } else {
-            btn.onclick = () => resolveUniversalEncounter(encounter.id, index);
-        }
-        
-        actionsEl.appendChild(btn);
-    });
-}
-
-function resolveUniversalEncounter(encounterId, choiceIndex) {
-    const encounter = ENCOUNTER_DATABASE[encounterId];
-    const choice = encounter.choices[choiceIndex];
-
-    // --- 1. HANDLE SPECIAL HARDCODED ACTIONS ---
-    if (choice.actionType) {
-        if (choice.actionType === "CUSTOMS_SCAN") {
-            performCustomsScan(); // This already handles its own logs and toasts
-            closeGenericModal();
-            currentEncounterContext = null;
-            return;
-        } 
-        else if (choice.actionType === "FLEE_CONCORD") {
-            if (Math.random() > 0.6) {
-                logMessage("<span style='color:var(--success)'>[ ENCOUNTER ] EVASION SUCCESSFUL! You dump a sensor decoy and jump to warp before they can lock weapons!</span>");
-            } else {
-                playerHull -= 30;
-                updatePlayerNotoriety(10);
-                logMessage("<span style='color:var(--danger)'>[ ENCOUNTER ] EVASION FAILED! The Interceptors rake your hull for 30 damage before you escape!</span>");
-                if (typeof GameBus !== 'undefined') GameBus.emit('HULL_DAMAGED', { amount: 30, reason: "Concord Patrol" });
-            }
-            closeGenericModal();
-            currentEncounterContext = null;
-            return;
-        }
-    }
-
-    // --- 2. DEDUCT COSTS ---
-    if (choice.costs) {
-        if (choice.costs.fuel) playerFuel -= choice.costs.fuel;
-        if (choice.costs.credits) playerCredits -= choice.costs.credits;
-        if (choice.costs.hull) playerHull -= choice.costs.hull; // Will need GameBus implementation if fatal
-        if (choice.costs.rep) {
-            playerFactionStanding[choice.costs.rep.faction] = (playerFactionStanding[choice.costs.rep.faction] || 0) + choice.costs.rep.amount;
-        }
-        if (choice.costs.items) {
-            choice.costs.items.forEach(item => {
-                playerCargo[item.id] -= item.qty;
-                if (playerCargo[item.id] <= 0) delete playerCargo[item.id];
-            });
-            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-        }
-    }
-
-    // --- 3. GRANT REWARDS ---
-    if (choice.rewards) {
-        if (choice.rewards.xp) {
-            playerXP += choice.rewards.xp;
-            if (typeof checkLevelUp === 'function') checkLevelUp();
-        }
-        if (choice.rewards.credits) playerCredits += choice.rewards.credits;
-        if (choice.rewards.rep) {
-            playerFactionStanding[choice.rewards.rep.faction] = (playerFactionStanding[choice.rewards.rep.faction] || 0) + choice.rewards.rep.amount;
-        }
-        if (choice.rewards.items) {
-            choice.rewards.items.forEach(item => {
-                if (currentCargoLoad + item.qty <= PLAYER_CARGO_CAPACITY) {
-                    playerCargo[item.id] = (playerCargo[item.id] || 0) + item.qty;
-                } else {
-                    logMessage(`Could not recover ${item.qty}x ${COMMODITIES[item.id].name}. Cargo hold full!`);
-                }
-            });
-            if (typeof updateCurrentCargoLoad === 'function') updateCurrentCargoLoad();
-        }
-    }
-
-    // --- 4. RESOLVE LOGS & AUDIO ---
-    if (choice.log) logMessage(choice.log);
-    
-    if (choice.sound && typeof soundManager !== 'undefined') {
-        if (choice.sound === 'buy') soundManager.playBuy();
-        if (choice.sound === 'error') soundManager.playError();
-        if (choice.sound === 'laser') soundManager.playLaser();
-    }
-
-    // 5. Cleanup & Close
-    currentEncounterContext = null;
-    closeGenericModal();
-    if (typeof renderUIStats === 'function') renderUIStats();
-    if (typeof changeGameState === 'function') changeGameState(GAME_STATES.GALACTIC_MAP);
-    if (typeof render === 'function') render();
-}
-
-if (typeof GameBus !== 'undefined') {
-    GameBus.on('TICK_PROCESSED', () => {
-        const loc = chunkManager.getTile(playerX, playerY);
-        
-        // --- 1. DEEP SPACE ENCOUNTERS ---
-        // Trigger rate kept extremely low (0.01%) for long-play pacing!
-        if (loc && getTileChar(loc) === '.' && Math.random() < 0.0001) { 
-            if (typeof triggerRandomEncounter === 'function') triggerRandomEncounter();
-        }
-    });
 }
 
 // ==========================================
