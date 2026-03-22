@@ -4558,19 +4558,63 @@ function handleCombatInput(key) {
             return true;
         }
 
-        // --- HOTKEY: NAV-COMPUTER PING (N) ---
+        // --- HOTKEY: SMART NAV-COMPUTER PING (N) ---
         case 'n': 
         case 'N': {
-            const nearest = findNearestStation(playerX, playerY);
-            if (nearest) {
-                let dirY = nearest.y < playerY ? "North" : nearest.y > playerY ? "South" : "";
-                let dirX = nearest.x > playerX ? "East" : nearest.x < playerX ? "West" : "";
+            let targetPoint = null;
+            let targetLabel = "";
+            let targetColor = "var(--accent-color)";
+
+            // 1. Prioritize Emergency Rescues
+            if (typeof isAwaitingRescue !== 'undefined' && isAwaitingRescue && rescueTargetStation) {
+                targetPoint = rescueTargetStation;
+                targetLabel = "Fuel Rat Rescue Tug";
+                targetColor = "var(--warning)";
+            } 
+            // 2. Prioritize Bounties
+            else if (typeof playerActiveBounty !== 'undefined' && playerActiveBounty) {
+                targetPoint = { x: playerActiveBounty.x, y: playerActiveBounty.y, name: playerActiveBounty.targetName };
+                targetLabel = "Bounty Target";
+                targetColor = "var(--danger)";
+            } 
+            // 3. Prioritize Active Delivery Missions
+            else if (typeof playerActiveMission !== 'undefined' && playerActiveMission && playerActiveMission.type === "DELIVERY" && !playerActiveMission.isComplete) {
+                const destName = playerActiveMission.objectives[0].destinationName;
+                if (LOCATIONS_DATA[destName]) {
+                    targetPoint = { x: LOCATIONS_DATA[destName].coords.x, y: LOCATIONS_DATA[destName].coords.y, name: destName };
+                    targetLabel = "Delivery Destination";
+                    targetColor = "var(--gold-text)";
+                }
+            } 
+            // 4. Prioritize Mission Turn-ins
+            else if (typeof playerActiveMission !== 'undefined' && playerActiveMission && playerActiveMission.isComplete) {
+                if (LOCATIONS_DATA[playerActiveMission.giver]) {
+                    targetPoint = { x: LOCATIONS_DATA[playerActiveMission.giver].coords.x, y: LOCATIONS_DATA[playerActiveMission.giver].coords.y, name: playerActiveMission.giver };
+                    targetLabel = "Contract Turn-In";
+                    targetColor = "var(--success)";
+                }
+            } 
+            // 5. Fallback to Nearest Station
+            else {
+                targetPoint = findNearestStation(playerX, playerY);
+                targetLabel = "Nearest Safe Harbor";
+            }
+
+            // Output the ping to the log!
+            if (targetPoint) {
+                let dirY = targetPoint.y < playerY ? "North" : targetPoint.y > playerY ? "South" : "";
+                let dirX = targetPoint.x > playerX ? "East" : targetPoint.x < playerX ? "West" : "";
                 let direction = `${dirY}${dirX}` || "Here";
                 
-                const dist = Math.floor(Math.sqrt(Math.pow(nearest.x - playerX, 2) + Math.pow(nearest.y - playerY, 2)));
+                const dist = Math.floor(Math.sqrt(Math.pow(targetPoint.x - playerX, 2) + Math.pow(targetPoint.y - playerY, 2)));
                 
-                logMessage(`<span style='color:var(--accent-color)'>[ NAV-COMPUTER ]</span> Nearest hub is <b>${nearest.name}</b>, roughly ${dist} units <b>${direction}</b>.`);
-                if (typeof soundManager !== 'undefined') soundManager.playUIHover();
+                logMessage(`<span style='color:${targetColor}'>[ NAV-COMPUTER ]</span> ${targetLabel}: <b>${targetPoint.name}</b> is approx ${dist} units <b>${direction}</b>.`);
+                if (typeof soundManager !== 'undefined') soundManager.playScan();
+                
+                // Fire the visual blue pulse!
+                if (typeof triggerSensorPulse === 'function') triggerSensorPulse();
+            } else {
+                logMessage("<span style='color:var(--item-desc-color)'>[ NAV-COMPUTER ] No significant targets detected in this quadrant.</span>");
             }
             return true;
         }
